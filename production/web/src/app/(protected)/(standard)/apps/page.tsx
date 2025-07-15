@@ -19,16 +19,7 @@ export default function Apps() {
     <div className='pl-72 max-lg:pl-0 min-h-full'>
       <main className='row-layout max-w-[1200px] mx-auto'>
         <div className='px-6 flex items-center justify-between gap-4 pt-2 pb-2 max-sm:px-4'>
-          <div className='text-3xl max-sm:text-xl font-medium flex-shrink-0'>
-            Installed Apps
-            <p className='text-secondary-foreground text-sm font-normal pt-2'>
-              You have{' '}
-              {yourApps.reduce((acc, curr) => {
-                return acc + (curr.running ? 1 : 0)
-              }, 0)}{' '}
-              running apps, <span className='text-destructive cursor-pointer ml-2 font-semibold'>Stop All</span>
-            </p>
-          </div>
+          <div className='text-3xl max-sm:text-xl font-medium flex-shrink-0'>Installed Apps</div>
           <Button variant='ghost'>Manage</Button>
         </div>
         <AppsList yourApps={yourApps} />
