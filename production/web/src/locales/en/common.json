@@ -1,0 +1,18 @@
+{
+  "details": {
+    "properties": "Properties",
+    "sharing": "Sharing"
+  },
+  "property": {
+    "name": "Name",
+    "type": "Type",
+    "size": "Size",
+    "modified": "Modified",
+    "created": "Created",
+    "path": "Path",
+    "owner": "Owner"
+  },
+  "filetype": {
+    "folder": "Yeee"
+  }
+}

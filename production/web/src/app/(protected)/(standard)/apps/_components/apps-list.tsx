@@ -1,0 +1,90 @@
+'use client'
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
+import { IconPlayerPlay, IconPlayerPlayFilled, IconRestore, IconRun, IconTrash } from '@tabler/icons-react'
+import Link from 'next/link'
+
+export interface AppItem {
+  id: string
+  name: string
+  icon: string
+  running: boolean
+}
+
+export const AppsList = ({ yourApps }: { yourApps: AppItem[] }) => {
+  return (
+    <>
+      <svg
+        width='10'
+        height='10'
+        viewBox='0 0 10 10'
+      >
+        <clipPath
+          id='squircleClip'
+          clipPathUnits='objectBoundingBox'
+        >
+          <path
+            fill='red'
+            stroke='none'
+            d='M 0,0.5
+               C 0,0.13 0.13,0 0.5,0
+               S 1,0.13 1,0.5
+               0.87,1 0.5,1
+               0,0.87 0,0.5'
+          />
+        </clipPath>
+      </svg>
+      <div className='grid gap-x-5 gap-y-12 py-4 px-2 grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-7'>
+        {yourApps
+          .toSorted((a, b) => {
+            if (a.running && !b.running) return -1
+            if (!a.running && b.running) return 1
+            return a.name.localeCompare(b.name)
+          })
+          .map(item => (
+            <ContextMenu>
+              <ContextMenuTrigger>
+                <Link
+                  href={`/apps/${item.id}`}
+                  key={item.id}
+                >
+                  <div className='flex flex-col items-center justify-center cursor-pointer gap-2 overflow-hidden'>
+                    <div className='relative w-24 h-24 hover:saturate-150 transition-all hover:scale-95'>
+                      {item.running && (
+                        <>
+                          <div className='absolute top-2 right-2 rounded-2xl w-4 h-4 bg-primary/95 z-10'></div>
+                          <div className='absolute top-2 right-2 rounded-2xl w-4 h-4 bg-primary z-10 animate-ping duration-[2s]'></div>
+                        </>
+                      )}
+                      <div
+                        className='absolute top-[50%] left-[50%] translate-y-[-50%] translate-x-[-50%] w-20 h-20 bg-slate-400/20 flex items-center justify-center transition-all'
+                        style={{
+                          clipPath: `url(#squircleClip)`,
+                          backgroundImage: `url("https://static.suchanecki.me/${item.icon}")`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center'
+                        }}
+                      ></div>
+                    </div>
+                    <span className='text-sm text-ellipsis w-full text-nowrap overflow-hidden text-center lg:px-2'>
+                      {item.name}
+                    </span>
+                  </div>
+                </Link>
+              </ContextMenuTrigger>
+              <ContextMenuContent className='w-52'>
+                <ContextMenuItem>
+                  <IconPlayerPlayFilled /> Run
+                </ContextMenuItem>
+                {item.running && <ContextMenuItem inset>Stop</ContextMenuItem>}
+                <ContextMenuItem inset>Reset</ContextMenuItem>
+                <ContextMenuItem variant='destructive'>
+                  <IconTrash className='text-destructive' />
+                  Delete
+                </ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>
+          ))}
+      </div>
+    </>
+  )
+}

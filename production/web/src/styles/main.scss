@@ -1,0 +1,61 @@
+@use './reset' as *;
+@use './typography' as *;
+@use './theme' as *;
+
+@mixin custom-scroll($width: 1rem, $height: 0.5rem, $thumbColor: #000, $trackColor: #fff) {
+  & {
+    scrollbar-color: $thumbColor $trackColor;
+    scrollbar-width: $width;
+  }
+
+  &::-webkit-scrollbar {
+    width: $width;
+    height: $height;
+  }
+
+  &::-webkit-scrollbar-track {
+    background-color: $trackColor;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: $thumbColor;
+  }
+}
+
+@mixin pseudo($location: 'after', $position: 'relative', $content: '') {
+  position: relative;
+
+  &::#{$location} {
+    content: $content;
+    position: $position;
+    @content;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  @include custom-scroll;
+}
+
+html {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+html,
+body {
+  background: var(--th-clr-page-bg);
+  color: var(--th-clr-primary-text);
+  margin: 0;
+  position: relative;
+
+  @include font-family;
+}
+
+#root {
+  height: 100%;
+  min-height: 100%;
+}

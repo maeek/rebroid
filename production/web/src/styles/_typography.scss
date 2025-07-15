@@ -1,0 +1,19 @@
+$font-family:
+  var(--font-ubuntu),
+  'Helvetica Neue',
+  -apple-system,
+  BlinkMacSystemFont,
+  Noto,
+  'Segoe UI',
+  Arial,
+  sans-serif;
+
+@mixin font-family {
+  font-family: $font-family;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:root {
+  --font-family: $font-family;
+}
