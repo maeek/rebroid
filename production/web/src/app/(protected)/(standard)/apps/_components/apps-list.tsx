@@ -100,7 +100,7 @@ export const AppsList = ({ yourApps }: { yourApps: AppItem[] }) => {
         </clipPath>
       </svg>
       <h3 className='font-medium text-secondary-foreground flex pt-2 px-6 text-md items-center justify-between'>
-        Running ({yourApps.filter(app => app.running).length}) <Button variant='destructive'>Stop All</Button>
+        Running ( {yourApps.filter(app => app.running).length} )
       </h3>
       <div className='grid gap-x-5 gap-y-12 py-4 px-2 grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-7'>
         {runningApps.map(itemRenderer)}
