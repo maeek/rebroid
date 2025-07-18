@@ -1,14 +1,6 @@
 'use client'
-import { Button } from '@/components/ui/button'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
-import {
-  IconPlayerPlay,
-  IconPlayerPlayFilled,
-  IconPlayerStopFilled,
-  IconRestore,
-  IconRun,
-  IconTrash
-} from '@tabler/icons-react'
+import { IconPlayerPlayFilled, IconPlayerStopFilled, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
 
 export interface AppItem {
@@ -31,7 +23,7 @@ export const AppsList = ({ yourApps }: { yourApps: AppItem[] }) => {
     <ContextMenu>
       <ContextMenuTrigger>
         <Link
-          href={`/apps/${item.id}`}
+          href={`/app/${item.id}`}
           key={item.id}
         >
           <div className='flex flex-col items-center justify-center cursor-pointer gap-2 overflow-hidden'>
@@ -79,26 +71,6 @@ export const AppsList = ({ yourApps }: { yourApps: AppItem[] }) => {
 
   return (
     <>
-      <svg
-        width='10'
-        height='10'
-        viewBox='0 0 10 10'
-      >
-        <clipPath
-          id='squircleClip'
-          clipPathUnits='objectBoundingBox'
-        >
-          <path
-            fill='red'
-            stroke='none'
-            d='M 0,0.5
-               C 0,0.13 0.13,0 0.5,0
-               S 1,0.13 1,0.5
-               0.87,1 0.5,1
-               0,0.87 0,0.5'
-          />
-        </clipPath>
-      </svg>
       <h3 className='font-medium text-secondary-foreground flex pt-2 px-6 text-md items-center justify-between'>
         Running ( {yourApps.filter(app => app.running).length} )
       </h3>

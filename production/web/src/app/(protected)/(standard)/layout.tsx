@@ -3,6 +3,7 @@ import { getServerAuthSession } from '@/server/auth/auth'
 import Sidebar from '../_components/sidebar'
 import { TopBarProtected } from '../_components/top-bar/top-bar'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { SquircleSVG } from './apps/_components/squircle-svg'
 
 export default async function FilesLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerAuthSession()
@@ -20,6 +21,7 @@ export default async function FilesLayout({ children }: { children: React.ReactN
           {children}
         </div>
       </div>
+      <SquircleSVG />
     </TooltipProvider>
   )
 }

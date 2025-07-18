@@ -1,6 +1,12 @@
 'use client'
 
-import { IconAdjustments, IconApps, IconBrandAndroid, IconBrandAppgallery, IconServerSpark } from '@tabler/icons-react'
+import {
+  IconAdjustments,
+  IconApps,
+  IconBrandAndroid,
+  IconLibraryPlusFilled,
+  IconServerSpark
+} from '@tabler/icons-react'
 import classNames from 'classnames'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -18,7 +24,7 @@ export default function Sidebar({
 
   const appsSections = [
     { name: 'Installed Apps', Icon: IconApps, href: '/apps' },
-    { name: 'Available Apps', Icon: IconBrandAppgallery, href: '/apps/available' }
+    { name: 'Add New App', Icon: IconLibraryPlusFilled, href: '/apps/create' }
   ]
 
   const settingsSections = [

@@ -17,7 +17,7 @@ export const TopBarProtected = () => {
   ]
 
   return (
-    <div className='z-50 flex justify-between h-16 w-dvw flex-shrink-0 sticky top-0 max-w-full max-sm:px-1'>
+    <div className='z-50 flex justify-between h-16 w-dvw flex-shrink-0 sticky top-0 max-w-full max-sm:px-1 max-sm:bg-background'>
       <div className={classNames(sectionClasses, 'justify-start')}>
         <Link href='/'>
           <span className='text-xl font-bold'>Shop</span>
@@ -37,7 +37,7 @@ export const TopBarProtected = () => {
               <h3 className='text-lg font-semibold pb-4'>Running Apps</h3>
               {yourApps.map(app => (
                 <Link
-                  href={`/apps/${app.id}`}
+                  href={`/app/${app.id}`}
                   key={`popover-app-${app.id}`}
                 >
                   <div className='flex text-sm px-4 py-2 rounded-sm hover:bg-popover'>{app.name}</div>
