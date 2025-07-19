@@ -28,8 +28,8 @@ export default function Sidebar({
   ]
 
   const settingsSections = [
-    { name: 'General', Icon: IconAdjustments },
-    { name: 'Redroid', Icon: IconBrandAndroid, href: '/redroid' },
+    { name: 'General', Icon: IconAdjustments, href: '/settings/general' },
+    { name: 'Redroid', Icon: IconBrandAndroid, href: '/settings/redroid' },
     { name: 'System', Icon: IconServerSpark, href: '/settings/system' }
   ]
 

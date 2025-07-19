@@ -1,0 +1,64 @@
+import { IconCopy } from '@tabler/icons-react'
+import classNames from 'classnames'
+import { AppDefinition } from '../../../constants'
+
+const AppInfoRow = ({
+  label,
+  value,
+  copyValue
+}: {
+  label: string
+  value: string | React.ReactNode
+  copyValue?: string
+}) => (
+  <div className='flex justify-between text-secondary-foreground group py-2'>
+    <div>{label}</div>
+    <div className='text-foreground flex gap-2 items-center group'>
+      {copyValue && (
+        <IconCopy
+          className='w-4 h-4 invisible group-hover:visible cursor-pointer'
+          onClick={() => {
+            void navigator.clipboard.write([
+              new ClipboardItem({
+                'text/plain': copyValue
+              })
+            ])
+          }}
+        />
+      )}
+      {value}
+    </div>
+  </div>
+)
+
+export const AppInfo = ({ app, className }: { app?: AppDefinition; className?: string }) => {
+  return (
+    <div
+      className={classNames(
+        'flex flex-col bg-card/60 bg-opacity-40 p-6 max-sm:p-4 w-full rounded-xl hover:bg-card/50 border border-input',
+        className
+      )}
+    >
+      <AppInfoRow
+        label='ID'
+        value={app?.id || 'Loading...'}
+        copyValue={app?.id}
+      />
+      <AppInfoRow
+        label='Last accessed'
+        value={'Now'}
+        copyValue={app?.lastAccessed?.toLocaleString()}
+      />
+      <AppInfoRow
+        label='App version'
+        value={<div className='flex justify-end flex-col items-end gap-2'>v{app?.version}</div>}
+        copyValue={app?.version}
+      />
+      <AppInfoRow
+        label='Container name'
+        value={app?.containerName}
+        copyValue={app?.containerName}
+      />
+    </div>
+  )
+}

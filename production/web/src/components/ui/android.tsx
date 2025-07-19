@@ -3,12 +3,10 @@ import { SVGProps } from 'react'
 export interface AndroidProps extends SVGProps<SVGSVGElement> {
   width?: number
   height?: number
-  src?: string
-  videoSrc?: string
   children?: React.ReactNode
 }
 
-export default function Android({ width = 433, height = 882, src, videoSrc, children, ...props }: AndroidProps) {
+export default function Android({ width = 433, height = 882, children, ...props }: AndroidProps) {
   return (
     <svg
       width={width}

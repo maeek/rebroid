@@ -18,7 +18,12 @@ export const AppViewerHeading = ({ app }: { app?: AppDefinition }) => {
         )}
         {app?.name || 'Loading...'}
       </div>
-      <Button variant='destructive'>Exit App</Button>
+      <Button
+        variant='destructive'
+        className='px-8'
+      >
+        Exit App
+      </Button>
     </div>
   )
 }

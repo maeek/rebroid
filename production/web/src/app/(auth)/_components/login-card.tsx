@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
@@ -28,7 +27,7 @@ export default function LoginCard() {
   }
 
   return (
-    <Card className='w-96'>
+    <Card className='w-[32rem]'>
       <CardHeader>
         <div className='flex gap-2'>
           <CardTitle className='text-3xl'>Welcome</CardTitle>
@@ -37,7 +36,7 @@ export default function LoginCard() {
         <CardDescription className='pt-1'>Login to your account</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className='w-full flex flex-col gap-4'>
+        <div className='w-full flex flex-col gap-4 pt-4'>
           <Label htmlFor='username'>Username</Label>
           <Input
             id='username'
@@ -47,7 +46,7 @@ export default function LoginCard() {
             onKeyDown={e => e.key === 'Enter' && void handleSubmit()}
           />
         </div>
-        <div className='w-full flex flex-col gap-4 pt-6'>
+        <div className='w-full flex flex-col gap-4 pt-6 pb-4'>
           <Label htmlFor='password'>Password</Label>
           <Input
             className='placeholder:text-2xl placeholder:align-middle'
@@ -58,12 +57,12 @@ export default function LoginCard() {
             value={password}
             onKeyDown={e => e.key === 'Enter' && void handleSubmit()}
           />
-          <Link
+          {/* <Link
             href='/forgot-password'
             className='flex justify-end text-sm text-blue-200 mt-2'
           >
             Forgot password?
-          </Link>
+          </Link> */}
         </div>
       </CardContent>
       <CardFooter>

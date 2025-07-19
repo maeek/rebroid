@@ -20,13 +20,14 @@ export function useMediaQuery(query: string) {
 }
 
 export function useScreenWidth() {
-  const [width, setWidth] = React.useState(window?.innerWidth)
+  const [width, setWidth] = React.useState<number>()
 
   React.useEffect(() => {
     function handleResize() {
       setWidth(window.innerWidth)
     }
 
+    setWidth(window.innerWidth)
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])

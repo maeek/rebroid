@@ -1,6 +1,7 @@
 'use client'
 
 import { CSSProperties } from 'react'
+import { IconLogout, IconSettingsCog, IconUser } from '@tabler/icons-react'
 import { signOut, useSession } from 'next-auth/react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -11,7 +12,6 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
-import { IconLogout, IconSettingsCog, IconUser } from '@tabler/icons-react'
 
 export const TopBarAccount = () => {
   const session = useSession()

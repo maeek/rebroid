@@ -1,8 +1,8 @@
 import { redirect, RedirectType } from 'next/navigation'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { getServerAuthSession } from '@/server/auth/auth'
 import Sidebar from '../_components/sidebar'
 import { TopBarProtected } from '../_components/top-bar/top-bar'
-import { TooltipProvider } from '@/components/ui/tooltip'
 import { SquircleSVG } from './apps/_components/squircle-svg'
 
 export default async function FilesLayout({ children }: { children: React.ReactNode }) {

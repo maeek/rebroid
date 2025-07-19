@@ -1,9 +1,9 @@
 'use client'
 import Android from '@/components/ui/android'
-import { AppDefinition } from '../../../constants'
 import { useMediaQuery, useScreenWidth } from '@/hooks/use-media-query'
+import { AppDefinition } from '../../../constants'
 
-export const AppViewer = ({ app, hideOutline }: { app?: AppDefinition; hideOutline?: boolean }) => {
+export const AppViewer = ({ hideOutline }: { app?: AppDefinition; hideOutline?: boolean }) => {
   const width = useScreenWidth()
   const isMobile = useMediaQuery('(max-width: 768px)')
 
@@ -39,9 +39,9 @@ export const AppViewer = ({ app, hideOutline }: { app?: AppDefinition; hideOutli
           </div>
         )} */}
       </div>
-      <div className='absolute bottom-8 left-1/2 transform -translate-x-1/2 text-center pointer-events-none'>
+      {/* <div className='absolute bottom-8 left-1/2 transform -translate-x-1/2 text-center pointer-events-none'>
         <h3 className='mt-2'>Establishing connection...</h3>
-      </div>
+      </div> */}
     </>
   )
 
@@ -53,5 +53,5 @@ export const AppViewer = ({ app, hideOutline }: { app?: AppDefinition; hideOutli
     )
   }
 
-  return <Android width={isMobile ? width - 64 : undefined}>{content}</Android>
+  return <Android width={isMobile ? (width ?? 100) - 64 : undefined}>{content}</Android>
 }

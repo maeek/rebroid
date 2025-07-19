@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
-import { getAssignedTagForFile } from './tag-assignment'
 import { filterResolved } from '@/utils/promise-utils'
+import { getAssignedTagForFile } from './tag-assignment'
 
 const BASE_PATH = path.resolve('/Users/maek/Projects')
 

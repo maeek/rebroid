@@ -1,11 +1,15 @@
 import { CSSProperties } from 'react'
 import localFont from 'next/font/local'
 import Head from 'next/head'
+// eslint-disable-next-line import/order
 import Providers from './providers'
+// eslint-disable-next-line import/order
 import type { Metadata, Viewport } from 'next'
+import NextTopLoader from 'nextjs-toploader'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/toaster'
 import { getServerAuthSession } from '@/server/auth/auth'
+// eslint-disable-next-line import/order
 import './globals.scss'
 // eslint-disable-next-line import/order
 import './globals.css'
@@ -71,6 +75,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           enableSystem
           disableTransitionOnChange
         >
+          <NextTopLoader showSpinner={false} />
           <div id='modal-root' />
           <Providers session={session}>{children}</Providers>
           <Toaster />

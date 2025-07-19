@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { IconMoon, IconSun, IconSunMoon } from '@tabler/icons-react'
 import { useTheme } from 'next-themes'
 import {
   DropdownMenuItem,
@@ -9,7 +10,6 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger
 } from '@/components/ui/dropdown-menu'
-import { IconMoon, IconSun, IconSunMoon } from '@tabler/icons-react'
 
 export function ThemeToggle() {
   const { setTheme, theme } = useTheme()

@@ -1,12 +1,10 @@
 'use client'
 
+import { IconStackBack } from '@tabler/icons-react'
 import classNames from 'classnames'
 import Link from 'next/link'
-import { TopBarAccount } from './account'
-import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { IconStackBack } from '@tabler/icons-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { TopBarAccount } from './account'
 
 export const TopBarProtected = () => {
   const sectionClasses = 'flex items-center h-full px-4 gap-x-4 max-sm:px-2 sm:w-[33%]'

@@ -1,7 +1,7 @@
 'use client'
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { IconPlayerPlayFilled, IconPlayerStopFilled, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
 
 export interface AppItem {
   id: string
@@ -20,12 +20,9 @@ export const AppsList = ({ yourApps }: { yourApps: AppItem[] }) => {
   const availableApps = sortedApps.filter(app => !app.running)
 
   const itemRenderer = (item: AppItem) => (
-    <ContextMenu>
+    <ContextMenu key={item.id}>
       <ContextMenuTrigger>
-        <Link
-          href={`/app/${item.id}`}
-          key={item.id}
-        >
+        <Link href={`/app/${item.id}`}>
           <div className='flex flex-col items-center justify-center cursor-pointer gap-2 overflow-hidden'>
             <div className='relative w-24 h-24 hover:saturate-150 transition-all hover:scale-95'>
               {item.running && (

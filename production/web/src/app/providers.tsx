@@ -9,7 +9,6 @@ import { SessionProvider } from 'next-auth/react'
 import { I18nextProvider } from 'react-i18next'
 import { trpc } from '@/app/_trpc/client'
 import i18nInstance from '@/lib/i18n/instance'
-import { TooltipProvider } from '@/components/ui/tooltip'
 
 const Providers = ({ children, session }: PropsWithChildren<{ session: Session | null }>) => {
   const [queryClient] = useState(() => new QueryClient())
