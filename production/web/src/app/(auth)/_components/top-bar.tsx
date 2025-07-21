@@ -5,7 +5,7 @@ export const TopBarUnprotected = () => {
   const sectionClasses = 'flex items-center h-full px-4 gap-x-4'
 
   return (
-    <div className='flex justify-between h-16 w-dvw flex-shrink-0 sticky top-0'>
+    <div className='flex justify-between h-16 w-dvw shrink-0 sticky top-0'>
       <div className={classNames(sectionClasses, 'justify-start')}>
         <Link href='/'>
           <span className='text-xl font-black'>Shop</span>
@@ -15,7 +15,7 @@ export const TopBarUnprotected = () => {
           </span>
         </Link>
       </div>
-      <div className={classNames(sectionClasses, 'justify-center flex-initial w-full max-w-screen-sm')}></div>
+      <div className={classNames(sectionClasses, 'justify-center flex-initial w-full max-w-(--breakpoint-sm)')}></div>
     </div>
   )
 }

@@ -13,7 +13,7 @@ export const ViewerPage = ({ app }: { app?: AppDefinition }) => {
   return (
     <div className='pl-72 max-lg:pl-0 min-h-full h-[calc(100vh-4rem)] max-sm:w-full'>
       <div
-        className='w-[100vw] h-[100vh] bg-primary/80 blur-3xl fixed top-0 left-0 z-[-1] pointer-events-none'
+        className='w-screen h-screen bg-primary/80 blur-3xl fixed top-0 left-0 z-[-10] pointer-events-none'
         style={{
           backgroundImage: `url("https://static.suchanecki.me/${app?.icon}")`,
           backgroundSize: '1000% 1000%',

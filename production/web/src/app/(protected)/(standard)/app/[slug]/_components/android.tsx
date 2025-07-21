@@ -17,9 +17,9 @@ export const AppViewer = ({ hideOutline }: { app?: AppDefinition; hideOutline?: 
           className='w-full h-full rounded-lg'
         />
         {/* {app?.icon && (
-          <div className='relative w-32 h-32 flex items-center justify-center flex-col'>
+          <div className='relative size-32 flex items-center justify-center flex-col'>
             <div
-              className='w-24 h-24 bg-primary/80 rounded-[50%] animate-ping origin-center delay-500 blur-xl'
+              className='size-24 bg-primary/80 rounded-[50%] animate-ping origin-center delay-500 blur-xl'
               style={{
                 backgroundImage: `url("https://static.suchanecki.me/${app?.icon}")`,
                 backgroundSize: 'cover',
@@ -28,7 +28,7 @@ export const AppViewer = ({ hideOutline }: { app?: AppDefinition; hideOutline?: 
               }}
             />
             <div
-              className='absolute top-[1.6rem] left-[1.6rem] w-20 h-20 bg-slate-400/20 flex items-center justify-center transition-all animate-bounce'
+              className='absolute top-[1.6rem] left-[1.6rem] size-20 bg-slate-400/20 flex items-center justify-center transition-all animate-bounce'
               style={{
                 clipPath: `url(#squircleClip)`,
                 backgroundImage: `url("https://static.suchanecki.me/${app?.icon}")`,
@@ -47,7 +47,7 @@ export const AppViewer = ({ hideOutline }: { app?: AppDefinition; hideOutline?: 
 
   if (hideOutline) {
     return (
-      <div className='flex flex-col items-center w-full h-full min-w-[calc(433px*1)] flex-1 lg:h-[calc(882px*1)] max-sm:min-w-[100vw] max-sm:min-h-[calc(100vh-4rem)] relative rounded-lg overflow-hidden'>
+      <div className='flex flex-col items-center w-full h-full min-w-[calc(433px*1)] flex-1 lg:h-[calc(882px*1)] max-sm:min-w-screen max-sm:min-h-[calc(100vh-4rem)] relative rounded-lg overflow-hidden'>
         {content}
       </div>
     )

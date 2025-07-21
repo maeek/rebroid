@@ -10,11 +10,11 @@ export default function SystemPage() {
   return (
     <div className='pl-72 max-lg:pl-0 min-h-full'>
       <main className='row-layout max-w-[1600px] mx-auto flex h-full justify-between gap-2 flex-col'>
-        <section className='py-4 px-4 flex items-center justify-between gap-3 flex-shrink-0 bg-background sticky top-16 z-[500]'>
-          <h2 className='text-3xl max-sm:text-xl font-medium flex-shrink-0'>General</h2>
+        <section className='py-4 px-4 flex items-center justify-between gap-3 shrink-0 bg-background sticky top-16 z-500'>
+          <h2 className='text-3xl max-sm:text-xl font-medium shrink-0'>General</h2>
           <Button>Apply</Button>
         </section>
-        <section className='px-4 w-full flex flex-col gap-4 flex-shrink flex-wrap pb-16'>
+        <section className='px-4 w-full flex flex-col gap-4 shrink flex-wrap pb-16'>
           <Section className='flex flex-col gap-4'>
             <h3 className='font-medium mb-2'>APK Search</h3>
             <Setting label='Use APKPure'>

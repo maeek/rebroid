@@ -18,11 +18,11 @@ export function ThemeToggle() {
     <DropdownMenuSub>
       <DropdownMenuSubTrigger>
         {theme === 'light' ? (
-          <IconSun className='mr-2 h-4 w-4' />
+          <IconSun className='mr-2 size-4' />
         ) : theme === 'dark' ? (
-          <IconMoon className='mr-2 h-4 w-4' />
+          <IconMoon className='mr-2 size-4' />
         ) : (
-          <IconSunMoon className='mr-2 h-4 w-4' />
+          <IconSunMoon className='mr-2 size-4' />
         )}
         <span>Theme</span>
       </DropdownMenuSubTrigger>

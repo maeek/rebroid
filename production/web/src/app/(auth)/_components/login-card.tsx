@@ -27,7 +27,7 @@ export default function LoginCard() {
   }
 
   return (
-    <Card className='w-[32rem]'>
+    <Card className='w-lg'>
       <CardHeader>
         <div className='flex gap-2'>
           <CardTitle className='text-3xl'>Welcome</CardTitle>

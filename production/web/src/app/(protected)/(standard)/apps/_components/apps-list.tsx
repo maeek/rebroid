@@ -24,15 +24,15 @@ export const AppsList = ({ yourApps }: { yourApps: AppItem[] }) => {
       <ContextMenuTrigger>
         <Link href={`/app/${item.id}`}>
           <div className='flex flex-col items-center justify-center cursor-pointer gap-2 overflow-hidden'>
-            <div className='relative w-24 h-24 hover:saturate-150 transition-all hover:scale-95'>
+            <div className='relative size-24 hover:saturate-150 transition-all hover:scale-95'>
               {item.running && (
                 <>
-                  <div className='absolute top-2 right-2 rounded-2xl w-4 h-4 bg-primary/95 z-10'></div>
-                  <div className='absolute top-2 right-2 rounded-2xl w-4 h-4 bg-primary z-10 animate-ping duration-[2s]'></div>
+                  <div className='absolute top-2 right-2 rounded-2xl size-4 bg-primary/95 z-10'></div>
+                  <div className='absolute top-2 right-2 rounded-2xl size-4 bg-primary z-10 animate-ping duration-[2s]'></div>
                 </>
               )}
               <div
-                className='absolute top-[50%] left-[50%] translate-y-[-50%] translate-x-[-50%] w-20 h-20 bg-slate-400/20 flex items-center justify-center transition-all'
+                className='absolute top-[50%] left-[50%] translate-y-[-50%] translate-x-[-50%] size-20 bg-slate-400/20 flex items-center justify-center transition-all'
                 style={{
                   clipPath: `url(#squircleClip)`,
                   backgroundImage: `url("https://static.suchanecki.me/${item.icon}")`,

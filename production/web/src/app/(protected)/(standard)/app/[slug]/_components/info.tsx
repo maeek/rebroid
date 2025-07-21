@@ -16,7 +16,7 @@ const AppInfoRow = ({
     <div className='text-foreground flex gap-2 items-center group'>
       {copyValue && (
         <IconCopy
-          className='w-4 h-4 invisible group-hover:visible cursor-pointer'
+          className='size-4 invisible group-hover:visible cursor-pointer'
           onClick={() => {
             void navigator.clipboard.write([
               new ClipboardItem({

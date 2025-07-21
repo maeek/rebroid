@@ -31,14 +31,14 @@ export const TopBarAccount = () => {
         <ThemeToggle />
         <DropdownMenuSeparator />
         <DropdownMenuItem>
-          <IconUser className='w-4 h-4 mr-2' /> Profile
+          <IconUser className='size-4 mr-2' /> Profile
         </DropdownMenuItem>
         <DropdownMenuItem>
-          <IconSettingsCog className='w-4 h-4 mr-2' /> Settings
+          <IconSettingsCog className='size-4 mr-2' /> Settings
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => void signOut({ redirect: true })}>
-          <IconLogout className='w-4 h-4 mr-2' /> Log out
+          <IconLogout className='size-4 mr-2' /> Log out
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

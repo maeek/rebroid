@@ -1,4 +1,5 @@
 import { IconSettingsCog, IconRestore } from '@tabler/icons-react'
+import classNames from 'classnames'
 import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -6,7 +7,7 @@ import { AppDefinition } from '../../../constants'
 
 export const AppViewerActions = ({ className }: { app?: AppDefinition; className?: string }) => {
   return (
-    <Section className={className}>
+    <Section className={classNames('flex-row gap-2', className)}>
       <Tooltip>
         <TooltipTrigger asChild>
           <Button variant='secondary'>

@@ -7,9 +7,9 @@ const alertVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-card/60 hover:bg-card/50 bg-opacity-40 text-foreground',
+        default: 'bg-card/60 hover:bg-card/50 text-foreground',
         destructive: 'border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive',
-        update: 'bg-green-500/10 hover:bg-card/50 bg-opacity-40 text-foreground hover:bg-green-500/20'
+        update: 'bg-green-500/10 hover:bg-card/50 text-foreground hover:bg-green-500/20'
       }
     },
     defaultVariants: {

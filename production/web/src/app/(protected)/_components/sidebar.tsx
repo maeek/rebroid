@@ -55,8 +55,8 @@ export default function Sidebar({
                   { 'bg-input': pathname === href }
                 )}
               >
-                <div className='w-8 h-8 rounded-sm flex justify-center items-center'>
-                  <Icon className='w-5 h-5 max-lg:w-5 max-lg:h-5 stroke-current' />
+                <div className='size-8 rounded-sm flex justify-center items-center'>
+                  <Icon className='size-5 max-lg:size-5 stroke-current' />
                 </div>
                 <span className='text-base max-lg:text-inherit text-inherit'>{name}</span>
               </li>
@@ -77,8 +77,8 @@ export default function Sidebar({
                   { 'bg-input': pathname === href }
                 )}
               >
-                <div className='w-8 h-8 rounded-sm flex justify-center items-center'>
-                  <Icon className='w-5 h-5 max-lg:w-5 max-lg:h-5 stroke-current' />
+                <div className='size-8 rounded-sm flex justify-center items-center'>
+                  <Icon className='size-5 max-lg:size-5 stroke-current' />
                 </div>
                 <span className='text-base max-lg:text-inherit text-inherit'>{name}</span>
               </li>

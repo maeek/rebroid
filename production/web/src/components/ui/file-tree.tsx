@@ -129,7 +129,7 @@ const Tree = forwardRef<HTMLDivElement, TreeViewProps>(
           direction
         }}
       >
-        <div className={cn('w-full h-full', className)}>
+        <div className={cn('size-full', className)}>
           <AccordionPrimitive.Root
             {...props}
             type='multiple'
@@ -205,8 +205,8 @@ const Folder = ({
         onClick={() => handleExpand(value)}
       >
         {expandedItems?.includes(value)
-          ? (openIcon ?? <IconFolderOpen className='size-4 flex-shrink-0' />)
-          : (closeIcon ?? <IconFolderFilled className='size-4 flex-shrink-0' />)}
+          ? (openIcon ?? <IconFolderOpen className='size-4 shrink-0' />)
+          : (closeIcon ?? <IconFolderFilled className='size-4 shrink-0' />)}
         <span className='text-ellipsis overflow-hidden w-full whitespace-nowrap'>{element}</span>
       </AccordionPrimitive.Trigger>
       <AccordionPrimitive.Content className='text-sm data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down relative overflow-hidden h-full'>
@@ -266,7 +266,7 @@ const File = forwardRef<
           selectItem(value)
         }}
       >
-        {fileIcon ?? <IconFile className='size-4 flex-shrink-0' />}
+        {fileIcon ?? <IconFile className='size-4 shrink-0' />}
         {children}
       </AccordionPrimitive.Trigger>
     </AccordionPrimitive.Item>
