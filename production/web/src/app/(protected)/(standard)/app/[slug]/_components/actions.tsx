@@ -1,17 +1,12 @@
 import { IconSettingsCog, IconRestore } from '@tabler/icons-react'
-import classNames from 'classnames'
 import { Button } from '@/components/ui/button'
+import { Section } from '@/components/ui/section'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { AppDefinition } from '../../../constants'
 
 export const AppViewerActions = ({ className }: { app?: AppDefinition; className?: string }) => {
   return (
-    <div
-      className={classNames(
-        'flex bg-card/60 bg-opacity-40 p-4 w-full min-h-16 rounded-xl gap-2 flex-wrap hover:bg-card/50 border border-input',
-        className
-      )}
-    >
+    <Section className={className}>
       <Tooltip>
         <TooltipTrigger asChild>
           <Button variant='secondary'>
@@ -45,6 +40,6 @@ export const AppViewerActions = ({ className }: { app?: AppDefinition; className
         </TooltipTrigger>
         <TooltipContent>Toggle the device mockup outline</TooltipContent>
       </Tooltip>
-    </div>
+    </Section>
   )
 }

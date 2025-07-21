@@ -15,12 +15,12 @@ export const TopBarProtected = () => {
   ]
 
   return (
-    <div className='z-50 flex justify-between h-16 w-dvw flex-shrink-0 sticky top-0 max-w-full max-sm:px-1 max-sm:bg-background'>
+    <div className='z-[1000] flex justify-between h-16 w-dvw flex-shrink-0 sticky top-0 max-w-full max-sm:px-1 bg-background'>
       <div className={classNames(sectionClasses, 'justify-start')}>
         <Link href='/'>
-          <span className='text-xl font-bold'>Shop</span>
-          <span className='text-xl font-bold'>Me</span>
-          <span className='text-xl font-bold underline underline-offset-4 decoration-primary decoration-solid'>
+          <span className='text-xl font-black'>Shop</span>
+          <span className='text-xl font-black'>Me</span>
+          <span className='text-xl font-black underline underline-offset-4 decoration-primary decoration-solid'>
             Alone
           </span>
         </Link>

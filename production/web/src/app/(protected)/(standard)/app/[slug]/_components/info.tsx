@@ -1,5 +1,5 @@
 import { IconCopy } from '@tabler/icons-react'
-import classNames from 'classnames'
+import { Section } from '@/components/ui/section'
 import { AppDefinition } from '../../../constants'
 
 const AppInfoRow = ({
@@ -33,12 +33,7 @@ const AppInfoRow = ({
 
 export const AppInfo = ({ app, className }: { app?: AppDefinition; className?: string }) => {
   return (
-    <div
-      className={classNames(
-        'flex flex-col bg-card/60 bg-opacity-40 p-6 max-sm:p-4 w-full rounded-xl hover:bg-card/50 border border-input',
-        className
-      )}
-    >
+    <Section className={className}>
       <AppInfoRow
         label='ID'
         value={app?.id || 'Loading...'}
@@ -59,6 +54,6 @@ export const AppInfo = ({ app, className }: { app?: AppDefinition; className?: s
         value={app?.containerName}
         copyValue={app?.containerName}
       />
-    </div>
+    </Section>
   )
 }
