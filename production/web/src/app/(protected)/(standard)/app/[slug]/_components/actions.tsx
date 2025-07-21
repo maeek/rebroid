@@ -1,4 +1,4 @@
-import { IconSettingsCog, IconRestore } from '@tabler/icons-react'
+import { IconSettings, IconRestore } from '@tabler/icons-react'
 import classNames from 'classnames'
 import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
@@ -11,7 +11,7 @@ export const AppViewerActions = ({ className }: { app?: AppDefinition; className
       <Tooltip>
         <TooltipTrigger asChild>
           <Button variant='secondary'>
-            <IconSettingsCog />
+            <IconSettings />
           </Button>
         </TooltipTrigger>
         <TooltipContent>Manage the App</TooltipContent>

@@ -1,4 +1,5 @@
 import { IconProgressDown } from '@tabler/icons-react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
 import { cn } from '@/lib/utils'
@@ -16,21 +17,23 @@ export const UpdateAlert = ({ app, className }: { app?: AppDefinition; className
         className
       )}
     >
-      <div className='flex flex-row gap-2 items-center'>
-        <div>
-          <IconProgressDown className='size-6' />
+      <div className='flex flex-row gap-2 items-start'>
+        <div className='pt-2'>
+          <IconProgressDown className='size-5' />
         </div>
         <div>
-          <div>Update Available!</div>
+          <div className='font-medium'>Update Available!</div>
           <div>We detected a new version of {app?.name}. Go to the app management to update it.</div>
         </div>
       </div>
-      <Button
-        className='px-8 mt-4 w-full'
-        variant='update'
-      >
-        Update Available&nbsp;&nbsp;•&nbsp;&nbsp;v{app?.newVersion}
-      </Button>
+      <Link href={`/app/${app?.id}/manage`}>
+        <Button
+          className='px-8 mt-4 w-full'
+          variant='update'
+        >
+          Update&nbsp;&nbsp;•&nbsp;&nbsp;v{app?.newVersion}
+        </Button>
+      </Link>
     </Section>
   )
 }

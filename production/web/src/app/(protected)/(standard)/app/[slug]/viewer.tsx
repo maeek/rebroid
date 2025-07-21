@@ -1,5 +1,6 @@
 'use client'
 import { useSearchParams } from 'next/navigation'
+import { Button } from '@/components/ui/button'
 import { AppDefinition } from '../../constants'
 import { AppViewerActions } from './_components/actions'
 import { AppViewer } from './_components/android'
@@ -23,7 +24,14 @@ export const ViewerPage = ({ app }: { app?: AppDefinition }) => {
       />
       <main className='row-layout max-w-[1600px] mx-auto flex h-full justify-between gap-8 max-sm:flex-col max-sm:items-center'>
         <div className='px-6 w-full flex items-start gap-4 pt-2 pb-2 max-sm:px-4 flex-col'>
-          <AppViewerHeading app={app} />
+          <AppViewerHeading app={app}>
+            <Button
+              variant='destructive'
+              className='px-8'
+            >
+              Exit App
+            </Button>
+          </AppViewerHeading>
           <UpdateAlert app={app} />
           <AppViewerActions app={app} />
           <AppInfo app={app} />

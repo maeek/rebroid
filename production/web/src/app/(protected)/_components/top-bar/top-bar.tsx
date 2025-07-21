@@ -15,7 +15,7 @@ export const TopBarProtected = () => {
   ]
 
   return (
-    <div className='flex justify-between h-16 w-dvw shrink-0 sticky top-0 max-w-full max-sm:px-1 backdrop-blur-2xl'>
+    <div className='flex justify-between h-16 w-dvw shrink-0 sticky top-0 max-w-full max-sm:px-1 backdrop-blur-2xl z-50'>
       <div className={classNames(sectionClasses, 'justify-start')}>
         <Link href='/'>
           <span className='text-xl font-black'>Shop</span>

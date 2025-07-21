@@ -25,6 +25,7 @@ export const yourApps = [
     icon: 'decathlon.png',
     running: false,
     version: '2.1.0',
+    newVersion: '2.4.5',
     containerName: 'redroid-admin-llsdiy'
   },
   {

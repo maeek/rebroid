@@ -10,7 +10,7 @@ export default function SystemPage() {
   return (
     <div className='pl-72 max-lg:pl-0 min-h-full'>
       <main className='row-layout max-w-[1600px] mx-auto flex h-full justify-between gap-2 flex-col'>
-        <section className='py-4 px-4 flex items-center justify-between gap-3 shrink-0 bg-background sticky top-16 z-500'>
+        <section className='py-4 px-4 flex items-center justify-between gap-3 shrink-0 bg-background'>
           <h2 className='text-3xl max-sm:text-xl font-medium shrink-0'>General</h2>
           <Button>Apply</Button>
         </section>
@@ -27,9 +27,13 @@ export default function SystemPage() {
               <Switch defaultChecked />
             </Setting>
           </Section>
-          <Section className='mt-4 flex flex-col gap-4'>
+          <Section className='flex flex-col gap-4'>
             <h3 className='font-medium mb-2'>Docker</h3>
-            <Setting label='Docker socket path'>
+            <Setting
+              label='Docker socket path'
+              className='flex-col items-start w-full'
+              variant='vertical'
+            >
               <Input defaultValue='/var/sock/docker.socket' />
             </Setting>
           </Section>

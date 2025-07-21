@@ -1,7 +1,7 @@
-import { Button } from '@/components/ui/button'
+import { ReactNode } from 'react'
 import { AppDefinition } from '../../../constants'
 
-export const AppViewerHeading = ({ app }: { app?: AppDefinition }) => {
+export const AppViewerHeading = ({ app, children }: { app?: AppDefinition; children?: ReactNode }) => {
   return (
     <div className='text-3xl max-sm:text-lg font-medium shrink-0 flex gap-4 justify-between items-center w-full py-4'>
       <div className='flex gap-4 items-center'>
@@ -18,12 +18,7 @@ export const AppViewerHeading = ({ app }: { app?: AppDefinition }) => {
         )}
         {app?.name || 'Loading...'}
       </div>
-      <Button
-        variant='destructive'
-        className='px-8'
-      >
-        Exit App
-      </Button>
+      {children}
     </div>
   )
 }

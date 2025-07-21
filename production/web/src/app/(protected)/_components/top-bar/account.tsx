@@ -1,7 +1,7 @@
 'use client'
 
 import { CSSProperties } from 'react'
-import { IconLogout, IconSettingsCog, IconUser } from '@tabler/icons-react'
+import { IconLogout, IconSettings, IconUser } from '@tabler/icons-react'
 import { signOut, useSession } from 'next-auth/react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -34,7 +34,7 @@ export const TopBarAccount = () => {
           <IconUser className='size-4 mr-2' /> Profile
         </DropdownMenuItem>
         <DropdownMenuItem>
-          <IconSettingsCog className='size-4 mr-2' /> Settings
+          <IconSettings className='size-4 mr-2' /> Settings
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => void signOut({ redirect: true })}>
