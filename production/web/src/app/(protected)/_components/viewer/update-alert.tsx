@@ -1,11 +1,24 @@
+'use client'
 import { IconProgressDown } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
 import { cn } from '@/lib/utils'
-import { AppDefinition } from '../../../constants'
+import { AppDefinition } from '../../(standard)/constants'
 
-export const UpdateAlert = ({ app, className }: { app?: AppDefinition; className?: string }) => {
+export const AppUpdateAlert = ({
+  app,
+  className,
+  buttonText,
+  description,
+  onClick
+}: {
+  app?: AppDefinition
+  className?: string
+  buttonText?: string
+  description?: string
+  onClick?: () => void
+}) => {
   if (!app?.newVersion) {
     return <></>
   }
@@ -23,15 +36,25 @@ export const UpdateAlert = ({ app, className }: { app?: AppDefinition; className
         </div>
         <div>
           <div className='font-medium'>Update Available!</div>
-          <div>We detected a new version of {app?.name}. Go to the app management to update it.</div>
+          <div>
+            {description || `We detected a new version of ${app?.name}. Go to the app management to update it.`}
+          </div>
         </div>
       </div>
-      <Link href={`/app/${app?.id}/manage`}>
+      <Link
+        href={`/app/${app?.id}/manage`}
+        onClick={e => {
+          if (onClick) {
+            e.preventDefault()
+            onClick()
+          }
+        }}
+      >
         <Button
           className='px-8 mt-4 w-full'
           variant='update'
         >
-          Update&nbsp;&nbsp;•&nbsp;&nbsp;v{app?.newVersion}
+          {buttonText || 'Update Now'}&nbsp;&nbsp;•&nbsp;&nbsp;{app?.newVersion ? `v${app.newVersion}` : 'Latest'}
         </Button>
       </Link>
     </Section>

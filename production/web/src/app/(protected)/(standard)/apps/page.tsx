@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { yourApps } from '../constants'
-import { AppsList } from './_components/apps-list'
+import { AppsList } from '../../_components/apps/apps-list'
 
 export default function Apps() {
   return (

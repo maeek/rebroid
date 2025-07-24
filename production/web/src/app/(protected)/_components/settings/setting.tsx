@@ -10,19 +10,21 @@ export const Setting = ({
   label,
   children,
   variant = 'horizontal',
-  className
+  className,
+  withLabel
 }: {
   label: string
   children: ReactNode
   className?: string
   variant?: keyof typeof variants
+  withLabel?: boolean
 }) => {
-  return (
-    <label>
-      <div className={cn('flex items-center justify-between gap-4', className)}>
-        <div className={cn(variants[variant])}>{label}</div>
-        <div className={cn(variants[variant])}>{children}</div>
-      </div>
-    </label>
+  const content = (
+    <div className={cn('flex items-center justify-between gap-4', className)}>
+      <div className={cn(variants[variant], 'font-bold')}>{label}</div>
+      <div className={cn(variants[variant])}>{children}</div>
+    </div>
   )
+
+  return withLabel ? <label>{content}</label> : content
 }

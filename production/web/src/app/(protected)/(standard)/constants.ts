@@ -1,3 +1,17 @@
+import {
+  IconApps,
+  IconLibraryPlusFilled,
+  IconAdjustments,
+  IconBrandAndroid,
+  IconServerSpark
+} from '@tabler/icons-react'
+
+export const ApkProviders = [
+  { value: 'manual', label: 'Manual' },
+  { value: 'apk-pure', label: 'APKPure' },
+  { value: 'f-droid', label: 'F-Droid' }
+] as const
+
 export interface AppDefinition {
   id: string
   name: string
@@ -7,6 +21,10 @@ export interface AppDefinition {
   containerName: string
   newVersion?: string
   lastAccessed?: Date
+  provider?: (typeof ApkProviders)[number]['value']
+  apkProvidedBy?: (typeof ApkProviders)[number]['value']
+  persistentStorage?: boolean
+  internetAccess?: boolean
 }
 
 export const yourApps = [
@@ -94,3 +112,14 @@ export const yourApps = [
     containerName: 'redroid-admin-cmisdf'
   }
 ] as AppDefinition[]
+
+export const appsSections = [
+  { name: 'Installed Apps', Icon: IconApps, href: '/apps' },
+  { name: 'Add New App', Icon: IconLibraryPlusFilled, href: '/apps/create' }
+] as const
+
+export const settingsSections = [
+  { name: 'General', Icon: IconAdjustments, href: '/settings/general' },
+  { name: 'Redroid', Icon: IconBrandAndroid, href: '/settings/redroid' },
+  { name: 'System', Icon: IconServerSpark, href: '/settings/system' }
+] as const

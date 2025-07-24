@@ -1,6 +1,6 @@
 import { IconCopy } from '@tabler/icons-react'
 import { Section } from '@/components/ui/section'
-import { AppDefinition } from '../../../constants'
+import { AppDefinition } from '../../(standard)/constants'
 
 const AppInfoRow = ({
   label,
@@ -16,7 +16,7 @@ const AppInfoRow = ({
     <div className='text-foreground flex gap-2 items-center group'>
       {copyValue && (
         <IconCopy
-          className='size-4 invisible group-hover:visible cursor-pointer'
+          className='size-4 invisible group-focus-within:visible group-hover:visible cursor-pointer'
           onClick={() => {
             void navigator.clipboard.write([
               new ClipboardItem({
@@ -33,7 +33,10 @@ const AppInfoRow = ({
 
 export const AppInfo = ({ app, className }: { app?: AppDefinition; className?: string }) => {
   return (
-    <Section className={className}>
+    <Section
+      className={className}
+      title='Details'
+    >
       <AppInfoRow
         label='ID'
         value={app?.id || 'Loading...'}
