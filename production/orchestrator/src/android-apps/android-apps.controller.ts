@@ -1,0 +1,123 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Headers,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Query,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBody,
+  ApiConsumes,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { AndroidApplication } from './android-application.entity';
+import { AndroidAppsService } from './android-apps.service';
+import { CreateAndroidApplicationDto } from './dto/create-android-application.dto';
+import { DeleteAndroidApplicationResponseDto } from './dto/delete-android-application-response.dto';
+import { ListAndroidApplicationsDto } from './dto/list-android-applications.dto';
+import { RemoveAndroidApplicationDto } from './dto/remove-android-application.dto';
+import { ScrcpySessionDto } from './dto/scrcpy-session.dto';
+import { UpdateAndroidApplicationDto } from './dto/update-android-application.dto';
+
+@ApiTags('android-applications')
+@Controller('android-applications')
+export class AndroidAppsController {
+  constructor(private readonly androidApps: AndroidAppsService) {}
+
+  @Post()
+  @UseInterceptors(FileInterceptor('apk'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Provision an isolated redroid application container.' })
+  @ApiCreatedResponse({ type: AndroidApplication })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['name'],
+      properties: {
+        name: { type: 'string', example: 'Signal Android' },
+        ownerUserId: { type: 'string', example: 'user_123' },
+        redroidImage: { type: 'string', example: 'redroid/redroid:13.0.0-latest' },
+        scrcpyTransport: { type: 'string', enum: ['websocket', 'webrtc'] },
+        inactivityTimeoutSeconds: { type: 'integer', example: 900 },
+        apk: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  create(
+    @Body() dto: CreateAndroidApplicationDto,
+    @UploadedFile() apk?: Express.Multer.File,
+  ) {
+    return this.androidApps.create(dto, apk);
+  }
+
+  @Get()
+  @ApiOkResponse({ type: AndroidApplication, isArray: true })
+  list(@Query() query: ListAndroidApplicationsDto) {
+    return this.androidApps.list(query);
+  }
+
+  @Get(':id')
+  @ApiOkResponse({ type: AndroidApplication })
+  get(@Param('id') id: string) {
+    return this.androidApps.get(id);
+  }
+
+  @Patch(':id')
+  @ApiOkResponse({ type: AndroidApplication })
+  update(@Param('id') id: string, @Body() dto: UpdateAndroidApplicationDto) {
+    return this.androidApps.update(id, dto);
+  }
+
+  @Post(':id/start')
+  @ApiOkResponse({ type: AndroidApplication })
+  start(@Param('id') id: string) {
+    return this.androidApps.start(id);
+  }
+
+  @Post(':id/stop')
+  @ApiOkResponse({ type: AndroidApplication })
+  stop(@Param('id') id: string) {
+    return this.androidApps.stop(id);
+  }
+
+  @Put(':id/apk')
+  @UseInterceptors(FileInterceptor('apk'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOkResponse({ type: AndroidApplication })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['apk'],
+      properties: {
+        apk: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  updateApk(@Param('id') id: string, @UploadedFile() apk: Express.Multer.File) {
+    return this.androidApps.updateApk(id, apk);
+  }
+
+  @Get(':id/scrcpy-session')
+  @ApiOkResponse({ type: ScrcpySessionDto })
+  scrcpySession(@Param('id') id: string, @Headers('host') host?: string) {
+    const baseUrl = host ? `ws://${host}` : undefined;
+    return this.androidApps.scrcpySession(id, baseUrl);
+  }
+
+  @Delete(':id')
+  @ApiOkResponse({ type: DeleteAndroidApplicationResponseDto })
+  remove(@Param('id') id: string, @Query() query: RemoveAndroidApplicationDto) {
+    return this.androidApps.remove(id, query);
+  }
+}

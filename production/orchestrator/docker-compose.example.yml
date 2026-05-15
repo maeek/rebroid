@@ -1,0 +1,22 @@
+services:
+  orchestrator:
+    build: .
+    container_name: shop-me-alone-orchestrator
+    ports:
+      - "4100:4100"
+    environment:
+      PORT: 4100
+      DATABASE_PATH: /app/data/orchestrator.sqlite
+      UPLOADS_DIR: /app/uploads
+      DOCKER_SOCKET_PATH: /var/run/docker.sock
+      ORCHESTRATOR_CONTAINER_ID: shop-me-alone-orchestrator
+      REDROID_IMAGE: redroid/redroid:13.0.0-latest
+      REDROID_PRIVILEGED: "true"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - orchestrator-data:/app/data
+      - orchestrator-uploads:/app/uploads
+
+volumes:
+  orchestrator-data:
+  orchestrator-uploads:
