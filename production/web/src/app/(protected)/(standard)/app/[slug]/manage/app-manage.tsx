@@ -1,13 +1,13 @@
 'use client'
 import { useDeferredValue, useState } from 'react'
 import { IconArrowRight } from '@tabler/icons-react'
-import { Argument } from 'classnames'
 import { Setting } from '@/app/(protected)/_components/settings/setting'
 import { AppUpdateAlert } from '@/app/(protected)/_components/viewer/update-alert'
 import { Button } from '@/components/ui/button'
-import { Combobox } from '@/components/ui/combo-box'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
 import { AppViewerHeading } from '../../../../_components/viewer/heading'
 import { ApkProviders, AppDefinition } from '../../../constants'
 
@@ -35,7 +35,7 @@ export default function AppManage({ app }: { app?: AppDefinition }) {
           <AppViewerHeading app={{ ...app, name: deferredName }}>
             <Button>Save</Button>
           </AppViewerHeading>
-          <div className='flex w-full gap-8 max-sm:flex-col max-sm:gap-10'>
+          <div className='flex w-full gap-8 max-sm:flex-col-reverse max-sm:gap-10 pb-24'>
             <div className='flex flex-col gap-4 flex-3/5'>
               <Setting
                 label='Name'
@@ -48,35 +48,64 @@ export default function AppManage({ app }: { app?: AppDefinition }) {
                 />
               </Setting>
               <Setting
-                label='Provider'
+                label='APK Provider'
                 className='flex-col items-start w-full'
                 variant='vertical'
               >
-                <Combobox
-                  defaultValue='apk-pure'
-                  options={ApkProviders as unknown as Parameters<typeof Combobox>['0']['options']}
-                />
+                <Select value={ApkProviders[1].value}>
+                  <SelectTrigger className='w-full'>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ApkProviders.map(option => (
+                      <SelectItem
+                        key={option.value}
+                        value={option.value}
+                      >
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </Setting>
               <Setting
-                label='Version'
+                label='APK Version'
                 className='flex-col items-start w-full'
                 variant='vertical'
               >
-                <p className='text-secondary-foreground pb-4 flex items-center gap-2'>
-                  <span>v{app.version}</span>
-                  {typeof app.newVersion === 'string' && (
+                <p className='text-secondary-foreground flex items-center gap-2'>
+                  <span>v{app.apk.version}</span>
+                  {typeof app.apk.newVersion === 'string' && (
                     <>
                       <IconArrowRight className='inline size-4 text-secondary-foreground' />
-                      <span className='text-primary'>v{app.newVersion}</span>
+                      <span className='text-primary'>v{app.apk.newVersion}</span>
                     </>
                   )}
-                  <span> • Provided by APKPure</span>
+                  <span>•</span>
+                  <span>Provided by APKPure</span>
                 </p>
                 <AppUpdateAlert
                   app={app}
                   buttonText='Download new version'
                   description='A new version of this app is available. Click to download it.'
+                  className='mt-4'
                 />
+              </Setting>
+              <Setting
+                label='Redroid settings'
+                className='flex-col items-start w-full'
+                variant='vertical'
+              >
+                <div className='flex flex-col gap-6 w-full'>
+                  <div className='flex items-start gap-2 flex-col w-full'>
+                    <span className='text-secondary-foreground'>Start arguments</span>
+                    <Textarea
+                      defaultValue='androidboot.redroid_width=433 androidboot.redroid_height=882 androidboot.redroid_dpi=480'
+                      className='w-full'
+                      placeholder='androidboot.redroid_dpi=480'
+                    />
+                  </div>
+                </div>
               </Setting>
               <Setting
                 label='Container settings'
@@ -84,6 +113,29 @@ export default function AppManage({ app }: { app?: AppDefinition }) {
                 variant='vertical'
               >
                 <div className='flex flex-col gap-6 w-full'>
+                  <div className='flex items-start gap-2 flex-col w-full'>
+                    <span className='text-secondary-foreground'>Image</span>
+                    <Select value='14'>
+                      <SelectTrigger className='w-full'>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[
+                          { value: '12', label: 'Android 12' },
+                          { value: '13', label: 'Android 13' },
+                          { value: '14', label: 'Android 14' },
+                          { value: '15', label: 'Android 15' }
+                        ].map(option => (
+                          <SelectItem
+                            key={option.value}
+                            value={option.value}
+                          >
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className='flex items-center gap-2 justify-between'>
                     <span className='text-secondary-foreground'>Preserve container data between restarts</span>
                     <Switch defaultChecked />
@@ -104,7 +156,7 @@ export default function AppManage({ app }: { app?: AppDefinition }) {
                 </div>
               </Setting>
             </div>
-            <div className='shrink-0 flex flex-col gap-4 grow-0 flex-2/5 items-center'>
+            <div className='shrink-0 flex flex-col gap-4 grow-0 flex-2/5 items-center max-sm:flex-1'>
               <Setting
                 label='Icon'
                 className='flex-col items-start w-full'

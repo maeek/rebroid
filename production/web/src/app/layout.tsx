@@ -54,6 +54,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html
       lang='en'
       dir='ltr'
+      suppressHydrationWarning
       className={ubuntu.className}
       style={
         {

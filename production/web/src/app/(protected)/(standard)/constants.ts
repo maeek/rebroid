@@ -17,14 +17,22 @@ export interface AppDefinition {
   name: string
   icon: string
   running: boolean
-  version: string
   containerName: string
-  newVersion?: string
   lastAccessed?: Date
-  provider?: (typeof ApkProviders)[number]['value']
-  apkProvidedBy?: (typeof ApkProviders)[number]['value']
-  persistentStorage?: boolean
-  internetAccess?: boolean
+  apk: {
+    version: string
+    newVersion?: string
+    provider?: (typeof ApkProviders)[number]['value']
+    apkProvidedBy?: (typeof ApkProviders)[number]['value']
+  }
+  container?: {
+    persistentStorage?: boolean
+    internetAccess?: boolean
+  }
+  redroid?: {
+    version: string
+    arguments?: string
+  }
 }
 
 export const yourApps = [
@@ -33,8 +41,10 @@ export const yourApps = [
     name: 'Zappka',
     icon: 'zappka.png',
     running: true,
-    version: '1.4.3',
-    newVersion: '1.5.0',
+    apk: {
+      version: '1.4.3',
+      newVersion: '1.5.0'
+    },
     containerName: 'redroid-admin-uxjswa'
   },
   {
@@ -42,8 +52,10 @@ export const yourApps = [
     name: 'Decathlon',
     icon: 'decathlon.png',
     running: false,
-    version: '2.1.0',
-    newVersion: '2.4.5',
+    apk: {
+      version: '2.1.0',
+      newVersion: '2.4.5'
+    },
     containerName: 'redroid-admin-llsdiy'
   },
   {
@@ -51,7 +63,9 @@ export const yourApps = [
     name: 'Rossmann',
     icon: 'rossmann.jpg',
     running: false,
-    version: '3.0.1',
+    apk: {
+      version: '3.0.1'
+    },
     containerName: 'redroid-admin-gllasn'
   },
   {
@@ -59,7 +73,9 @@ export const yourApps = [
     name: 'Lidl Plus',
     icon: 'lidl.png',
     running: false,
-    version: '1.2.5',
+    apk: {
+      version: '1.2.5'
+    },
     containerName: 'redroid-admin-uuiaqd'
   },
   {
@@ -67,7 +83,9 @@ export const yourApps = [
     name: "McDonald's",
     icon: 'mcdonalds.png',
     running: true,
-    version: '1.3.2',
+    apk: {
+      version: '1.3.2'
+    },
     containerName: 'redroid-admin-vihwqd'
   },
   {
@@ -75,7 +93,9 @@ export const yourApps = [
     name: 'Kaufland',
     icon: 'kaufland.png',
     running: false,
-    version: '1.0.0',
+    apk: {
+      version: '1.0.0'
+    },
     containerName: 'redroid-admin-oaf8ds'
   },
   {
@@ -83,7 +103,9 @@ export const yourApps = [
     name: 'LEROY MERLIN',
     icon: 'leroy.png',
     running: false,
-    version: '2.3.4',
+    apk: {
+      version: '2.3.4'
+    },
     containerName: 'redroid-admin-aldfef'
   },
   {
@@ -91,8 +113,10 @@ export const yourApps = [
     name: 'Hebe',
     icon: 'hebe.png',
     running: false,
-    version: '8.43.1',
-    newVersion: '94.1.19',
+    apk: {
+      version: '8.43.1',
+      newVersion: '94.1.19'
+    },
     containerName: 'redroid-admin-pyflca'
   },
   {
@@ -100,7 +124,9 @@ export const yourApps = [
     name: 'Deichmann Footwear',
     icon: 'deichman.png',
     running: false,
-    version: '99.0.1-prod',
+    apk: {
+      version: '99.0.1-prod'
+    },
     containerName: 'redroid-admin-sdfois'
   },
   {
@@ -108,7 +134,9 @@ export const yourApps = [
     name: 'Orlen Vitay',
     icon: 'orlen.png',
     running: true,
-    version: '100.1.1',
+    apk: {
+      version: '100.1.1'
+    },
     containerName: 'redroid-admin-cmisdf'
   }
 ] as AppDefinition[]
