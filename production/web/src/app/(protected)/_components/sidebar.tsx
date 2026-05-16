@@ -1,13 +1,6 @@
 'use client'
 
-import {
-  IconAdjustments,
-  IconApps,
-  IconBrandDocker,
-  IconLayoutDashboard,
-  IconLibraryPlus,
-  IconServerSpark
-} from '@tabler/icons-react'
+import { IconAdjustments, IconApps, IconBrandDocker, IconLibraryPlus, IconServerSpark } from '@tabler/icons-react'
 import { usePathname } from 'next/navigation'
 import SidebarLink from '@/components/sidebar-link'
 
@@ -28,14 +21,6 @@ export default function Sidebar() {
   return (
     <aside className='h-full w-72 flex flex-col overflow-auto pb-8 fixed left-0 top-16 max-lg:hidden'>
       <div className='w-full py-6 flex flex-col px-2'>
-        <ul className='w-full pb-6 flex flex-col'>
-          <SidebarLink
-            href={'/'}
-            label={'Dashboard'}
-            Icon={IconLayoutDashboard}
-            isActive={pathname === '/dashboard'}
-          />
-        </ul>
         <h6 className='text-sm pb-4 font-semibold color-secondary px-2 max-lg:text-sm'>Apps</h6>
         <ul className='w-full pb-6 flex flex-col'>
           {appsSections.map(({ name, Icon, href }) => (

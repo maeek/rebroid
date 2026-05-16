@@ -155,10 +155,7 @@ export const CreateAppForm = ({ initialSettings }: { initialSettings: Orchestrat
   return (
     <>
       <div className='flex gap-2 flex-col'>
-        <PageBreadcrumbs items={[{ label: 'Apps', href: '/apps' }, { label: 'Create' }]} />
-        <h2 className='text-3xl max-sm:text-xl font-medium shrink-0 pt-4'>
-          {formValues.name ? formValues.name.trim() : 'Create App'}
-        </h2>
+        <PageBreadcrumbs items={[{ label: 'Apps', href: '/apps' }, { label: `Create ${formValues.name.trim()}` }]} />
       </div>
       {iconPreview && (
         <div
