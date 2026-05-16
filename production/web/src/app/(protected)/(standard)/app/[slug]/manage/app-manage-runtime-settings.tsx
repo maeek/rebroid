@@ -1,5 +1,6 @@
 import { Setting } from '@/app/(protected)/_components/settings/setting'
 import { Input } from '@/components/ui/input'
+import { Section } from '@/components/ui/section'
 import { Textarea } from '@/components/ui/textarea'
 import type { AppDefinition } from '@/app/(protected)/(standard)/constants'
 
@@ -33,67 +34,83 @@ export const AppManageRuntimeSettings = ({
   onRedroidArgsChange
 }: AppManageRuntimeSettingsProps) => {
   return (
-    <Setting
-      label='Runtime'
-      className={verticalSettingClassName}
-      variant='vertical'
+    <Section
+      title='Runtime'
+      boxed
+      contentClassName='gap-6'
     >
-      <div className='flex w-full flex-col gap-6'>
-        <div className='flex w-full flex-col items-start gap-2'>
-          <span className='text-secondary-foreground'>Image</span>
+      <Setting
+        label='Image'
+        className={verticalSettingClassName}
+        variant='vertical'
+      >
+        <Input
+          value={app?.redroidImage ?? ''}
+          readOnly
+        />
+      </Setting>
+      <Setting
+        label='Inactivity timeout'
+        className={verticalSettingClassName}
+        variant='vertical'
+      >
+        <Input
+          value={inactivityTimeoutSeconds}
+          min={60}
+          max={86400}
+          type='number'
+          onChange={event => onInactivityTimeoutChange(Number(event.target.value))}
+        />
+      </Setting>
+      <div className='grid grid-cols-3 gap-3 max-md:grid-cols-1'>
+        <Setting
+          label='RAM limit MB'
+          className={verticalSettingClassName}
+          variant='vertical'
+        >
           <Input
-            value={app?.redroidImage ?? ''}
-            readOnly
-          />
-        </div>
-        <div className='flex w-full flex-col items-start gap-2'>
-          <span className='text-secondary-foreground'>Inactivity timeout</span>
-          <Input
-            value={inactivityTimeoutSeconds}
-            min={60}
-            max={86400}
+            value={memoryLimitMb}
             type='number'
-            onChange={event => onInactivityTimeoutChange(Number(event.target.value))}
+            min={128}
+            onChange={event => onMemoryLimitChange(event.target.value)}
           />
-        </div>
-        <div className='grid grid-cols-3 gap-3 max-md:grid-cols-1'>
-          <div className='flex w-full flex-col items-start gap-2'>
-            <span className='text-secondary-foreground'>RAM limit MB</span>
-            <Input
-              value={memoryLimitMb}
-              type='number'
-              min={128}
-              onChange={event => onMemoryLimitChange(event.target.value)}
-            />
-          </div>
-          <div className='flex w-full flex-col items-start gap-2'>
-            <span className='text-secondary-foreground'>CPU cores</span>
-            <Input
-              value={cpuLimitCpus}
-              type='number'
-              min={0.1}
-              step={0.1}
-              onChange={event => onCpuLimitChange(event.target.value)}
-            />
-          </div>
-          <div className='flex w-full flex-col items-start gap-2'>
-            <span className='text-secondary-foreground'>Volume MB</span>
-            <Input
-              value={volumeSizeLimitMb}
-              type='number'
-              min={16}
-              onChange={event => onVolumeSizeLimitChange(event.target.value)}
-            />
-          </div>
-        </div>
-        <div className='flex w-full flex-col items-start gap-2'>
-          <span className='text-secondary-foreground'>Redroid arguments</span>
-          <Textarea
-            value={redroidArgs}
-            onChange={event => onRedroidArgsChange(event.target.value)}
+        </Setting>
+        <Setting
+          label='CPU cores'
+          className={verticalSettingClassName}
+          variant='vertical'
+        >
+          <Input
+            value={cpuLimitCpus}
+            type='number'
+            min={0.1}
+            step={0.1}
+            onChange={event => onCpuLimitChange(event.target.value)}
           />
-        </div>
+        </Setting>
+        <Setting
+          label='Volume MB'
+          className={verticalSettingClassName}
+          variant='vertical'
+        >
+          <Input
+            value={volumeSizeLimitMb}
+            type='number'
+            min={16}
+            onChange={event => onVolumeSizeLimitChange(event.target.value)}
+          />
+        </Setting>
       </div>
-    </Setting>
+      <Setting
+        label='Redroid arguments'
+        className={verticalSettingClassName}
+        variant='vertical'
+      >
+        <Textarea
+          value={redroidArgs}
+          onChange={event => onRedroidArgsChange(event.target.value)}
+        />
+      </Setting>
+    </Section>
   )
 }

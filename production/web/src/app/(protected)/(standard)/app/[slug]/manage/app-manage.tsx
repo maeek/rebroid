@@ -11,7 +11,9 @@ import { getApplicationAction, updateApplicationAction } from '@/lib/orchestrato
 import { mapAndroidApplicationToAppDefinition } from '@/lib/orchestrator/app-mapper'
 import { useForegroundRefresh } from '../../../../../../hooks/use-foreground-refresh'
 import { getAppRefreshIntervalMs } from '../../../../../../lib/orchestrator/refresh'
+import { AppViewerDeleteAction } from '../../../../_components/viewer/actions/app-viewer-delete-action'
 import { AppViewerHeading } from '../../../../_components/viewer/heading'
+import { AppViewerStatusSection } from '../app-viewer-status-section'
 import { AppManageGeneralSettings } from './app-manage-general-settings'
 import { AppManageIconPanel } from './app-manage-icon-panel'
 import { AppManageNetworkPolicySettings } from './app-manage-network-policy-settings'
@@ -141,16 +143,20 @@ export default function AppManage({ app }: { app?: AppDefinition }) {
           ]}
         />
         <AppViewerHeading app={displayApp}>
-          <Button
-            disabled={isSaving}
-            onClick={() => void handleSave()}
-          >
-            <IconDeviceFloppy className='size-4' />
-            Save
-          </Button>
+          <div className='flex gap-2'>
+            <AppViewerDeleteAction app={displayApp} />
+            <Button
+              disabled={isSaving}
+              onClick={() => void handleSave()}
+            >
+              <IconDeviceFloppy className='size-4' />
+              Save
+            </Button>
+          </div>
         </AppViewerHeading>
-        <div className='flex w-full gap-8 max-sm:flex-col-reverse max-sm:gap-10 pb-24'>
-          <div className='flex flex-col gap-4 flex-3/5'>
+        <div className='grid w-full grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)] items-start gap-6 pb-24 max-lg:grid-cols-1'>
+          <div className='flex min-w-0 flex-col gap-5'>
+            <AppViewerStatusSection app={currentApp} />
             <AppManageGeneralSettings
               app={currentApp}
               appId={currentApp.id}
@@ -160,7 +166,6 @@ export default function AppManage({ app }: { app?: AppDefinition }) {
                 setAppName(value)
               }}
             />
-            <div className='h-px bg-border my-2' />
             <AppManageRuntimeSettings
               app={currentApp}
               inactivityTimeoutSeconds={inactivityTimeoutSeconds}
@@ -189,18 +194,16 @@ export default function AppManage({ app }: { app?: AppDefinition }) {
                 setRedroidArgs(value)
               }}
             />
-            <div className='h-px bg-border my-2' />
             <AppManageProfileSettings
               app={currentApp}
               onUpdated={setCurrentApp}
             />
-            <div className='h-px bg-border my-2' />
             <AppManageNetworkPolicySettings
               app={currentApp}
               onUpdated={setCurrentApp}
             />
           </div>
-          <div className='shrink-0 flex flex-col gap-4 grow-0 flex-2/5 items-center max-sm:flex-1'>
+          <div className='flex w-full min-w-0 flex-col gap-4'>
             <AppManageIconPanel
               appId={currentApp.id}
               appName={appName}

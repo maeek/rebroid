@@ -5,7 +5,9 @@ import { Setting } from '@/app/(protected)/_components/settings/setting'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Section } from '@/components/ui/section'
 import { toast } from '@/hooks/use-toast'
+import { uploadApkWithProgress } from '@/lib/apks/upload'
 import { updateApkAction } from '@/lib/orchestrator/actions'
 import { apkSizeLabel, isFileWithinApkLimit, useOrchestratorUiSettings } from '@/lib/orchestrator/settings'
 import type { AppDefinition } from '@/app/(protected)/(standard)/constants'
@@ -22,6 +24,7 @@ const formatStatusLabel = (value?: string | null) => (value ? value.replaceAll('
 
 export const AppManageGeneralSettings = ({ app, appId, appName, onAppNameChange }: AppManageGeneralSettingsProps) => {
   const [isUploadingApk, setIsUploadingApk] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
   const apkInputRef = useRef<HTMLInputElement>(null)
   const settings = useOrchestratorUiSettings()
   const router = useRouter()
@@ -43,22 +46,30 @@ export const AppManageGeneralSettings = ({ app, appId, appName, onAppNameChange 
     }
 
     setIsUploadingApk(true)
+    setUploadProgress(0)
     try {
-      const body = new FormData()
-      body.set('apk', file)
-      await updateApkAction(appId, body)
+      const uploaded = await uploadApkWithProgress({
+        file,
+        onProgress: setUploadProgress
+      })
+      await updateApkAction(appId, uploaded.id)
       toast({ title: 'APK uploaded' })
       router.refresh()
     } catch (error) {
       toast({ title: 'Could not upload APK', description: error instanceof Error ? error.message : 'Unknown error' })
     } finally {
       setIsUploadingApk(false)
+      setUploadProgress(null)
       event.target.value = ''
     }
   }
 
   return (
-    <>
+    <Section
+      title='General'
+      boxed
+      contentClassName='gap-5'
+    >
       <Setting
         label='Name'
         className={verticalSettingClassName}
@@ -114,8 +125,16 @@ export const AppManageGeneralSettings = ({ app, appId, appName, onAppNameChange 
             <IconUpload className='size-4' />
             Upload APK
           </Button>
+          {uploadProgress !== null && (
+            <div className='h-2 w-full overflow-hidden rounded-full bg-secondary'>
+              <div
+                className='h-full bg-primary transition-all'
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          )}
         </div>
       </Setting>
-    </>
+    </Section>
   )
 }

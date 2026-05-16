@@ -59,6 +59,23 @@ export interface DockerPruneAllResponse {
   volumes: DockerPruneResponse
 }
 
+export interface UploadedApk {
+  id: string
+  ownerUserId: string | null
+  originalName: string
+  sha256: string
+  sizeBytes: number
+  filePath: string
+  extractedIconDataUrl: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CleanupUploadedApksResponse {
+  deletedRecords: number
+  removedFiles: number
+}
+
 export interface AndroidApplication {
   id: string
   name: string
@@ -84,6 +101,7 @@ export interface AndroidApplication {
   networkPolicyAppliedAt: string | null
   apkFilePath: string | null
   apkOriginalName: string | null
+  uploadedApkId: string | null
   scrcpyTransport: ScrcpyTransport
   adbPort: number
   inactivityTimeoutSeconds: number
@@ -95,6 +113,18 @@ export interface AndroidApplication {
   lastError: string | null
   createdAt: string
   updatedAt: string
+}
+
+export interface CreateAndroidApplicationInput {
+  name: string
+  ownerUserId?: string
+  redroidImage?: string
+  inactivityTimeoutSeconds?: number
+  memoryLimitMb?: number
+  cpuLimitCpus?: number
+  volumeSizeLimitMb?: number
+  redroidArgs?: string
+  uploadedApkId?: string
 }
 
 export interface UpdateAndroidApplicationInput {

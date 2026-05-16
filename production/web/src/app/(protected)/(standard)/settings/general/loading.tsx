@@ -5,7 +5,7 @@ export default function Loading() {
     <SettingsPageSkeleton
       title='General'
       sectionTitle='Misc'
-      rows={3}
+      rows={2}
     />
   )
 }

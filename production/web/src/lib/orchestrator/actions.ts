@@ -3,8 +3,16 @@
 import { revalidatePath } from 'next/cache'
 import { getServerAuthSession } from '@/server/auth/auth'
 import { orchestratorApi } from './client'
-import type { SwitchApplicationProfileInput, UpdateAndroidApplicationInput, UpdateNetworkPolicyInput } from './types'
+import { getCurrentOwnerUserId } from './current-owner'
+import type {
+  CreateAndroidApplicationInput,
+  SwitchApplicationProfileInput,
+  UpdateAndroidApplicationInput,
+  UpdateNetworkPolicyInput
+} from './types'
 import type { RuntimeUiSettings } from './ui-settings'
+
+type CreateApplicationActionInput = Omit<CreateAndroidApplicationInput, 'ownerUserId'>
 
 const requireUser = async () => {
   const session = await getServerAuthSession()
@@ -21,15 +29,15 @@ export const updateApplicationAction = async (id: string, input: UpdateAndroidAp
   return app
 }
 
-export const createApplicationAction = async (input: FormData) => {
-  await requireUser()
-  const app = await orchestratorApi.createApplication(input)
+export const createApplicationAction = async (input: CreateApplicationActionInput) => {
+  const ownerUserId = await getCurrentOwnerUserId()
+  const app = await orchestratorApi.createApplication({ ...input, ownerUserId })
   revalidatePath('/apps')
   return app
 }
 
-export const listApplicationsAction = async (ownerUserId?: string) => {
-  await requireUser()
+export const listApplicationsAction = async () => {
+  const ownerUserId = await getCurrentOwnerUserId()
   return orchestratorApi.listApplications(ownerUserId)
 }
 
@@ -65,14 +73,9 @@ export const deleteApplicationAction = async (id: string, removeData = true) => 
   return result
 }
 
-export const updateApkAction = async (id: string, input: FormData) => {
+export const updateApkAction = async (id: string, uploadedApkId: string) => {
   await requireUser()
-  const apk = input.get('apk')
-  if (!(apk instanceof File)) {
-    throw new Error('APK file is required.')
-  }
-
-  const app = await orchestratorApi.updateApk(id, apk)
+  const app = await orchestratorApi.updateApk(id, uploadedApkId)
   revalidatePath(`/app/${id}`)
   revalidatePath(`/app/${id}/manage`)
   return app
@@ -149,6 +152,13 @@ export const pruneAllDockerResourcesAction = async () => {
   const result = await orchestratorApi.pruneAllDockerResources()
   revalidatePath('/settings/orchestrator')
   revalidatePath('/settings/system')
+  return result
+}
+
+export const cleanupUploadedApksAction = async () => {
+  const ownerUserId = await getCurrentOwnerUserId()
+  const result = await orchestratorApi.cleanupUploadedApks(ownerUserId)
+  revalidatePath('/settings/orchestrator')
   return result
 }
 

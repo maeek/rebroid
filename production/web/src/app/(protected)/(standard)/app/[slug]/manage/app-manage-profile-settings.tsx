@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Setting } from '@/app/(protected)/_components/settings/setting'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/hooks/use-toast'
 import { switchApplicationProfileAction } from '@/lib/orchestrator/actions'
@@ -55,44 +56,51 @@ export const AppManageProfileSettings = ({ app, onUpdated }: AppManageProfileSet
   }
 
   return (
-    <Setting
-      label='Profile'
-      className={verticalSettingClassName}
-      variant='vertical'
+    <Section
+      title='Profile'
+      boxed
+      contentClassName='gap-4'
     >
-      <div className='grid w-full grid-cols-2 gap-3 max-sm:grid-cols-1'>
-        <Select
-          value={profileMode}
-          onValueChange={value => {
-            isDirtyRef.current = true
-            setProfileMode(value === 'temporary' ? 'temporary' : 'persistent')
-          }}
-        >
-          <SelectTrigger className='w-full'>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value='persistent'>Persistent volume</SelectItem>
-            <SelectItem value='temporary'>Temporary data</SelectItem>
-          </SelectContent>
-        </Select>
-        <Input
-          value={profileName}
-          onChange={event => {
-            isDirtyRef.current = true
-            setProfileName(event.target.value)
-          }}
-        />
-      </div>
+      <Setting
+        label='Profile volume'
+        description='Choose which data profile will be used next time this app starts.'
+        className={verticalSettingClassName}
+        variant='vertical'
+      >
+        <div className='grid w-full grid-cols-2 gap-3 max-sm:grid-cols-1'>
+          <Select
+            value={profileMode}
+            onValueChange={value => {
+              isDirtyRef.current = true
+              setProfileMode(value === 'temporary' ? 'temporary' : 'persistent')
+            }}
+          >
+            <SelectTrigger className='w-full'>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value='persistent'>Persistent volume</SelectItem>
+              <SelectItem value='temporary'>Temporary data</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input
+            value={profileName}
+            onChange={event => {
+              isDirtyRef.current = true
+              setProfileName(event.target.value)
+            }}
+          />
+        </div>
+      </Setting>
       <Button
         type='button'
-        className='mt-3'
+        className='self-start'
         variant='secondary'
         disabled={isSaving}
         onClick={() => void handleSwitchProfile()}
       >
         Switch profile
       </Button>
-    </Setting>
+    </Section>
   )
 }

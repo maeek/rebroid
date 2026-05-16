@@ -49,6 +49,7 @@ export interface AppDefinition {
   networkPolicyAppliedAt: Date | null
   apkOriginalName: string | null
   apkFilePath: string | null
+  uploadedApkId: string | null
   scrcpyTransport: 'websocket'
   adbPort: number
   inactivityTimeoutSeconds: number

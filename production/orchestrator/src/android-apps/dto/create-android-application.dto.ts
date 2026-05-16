@@ -5,6 +5,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   MaxLength,
   Min,
@@ -69,4 +70,12 @@ export class CreateAndroidApplicationDto {
   @IsString()
   @MaxLength(2048)
   redroidArgs?: string;
+
+  @ApiPropertyOptional({
+    description: 'Previously uploaded APK id to install into this Android application.',
+    example: '98a530d6-a45d-466a-9cb4-c023067c4971',
+  })
+  @IsOptional()
+  @IsUUID()
+  uploadedApkId?: string;
 }

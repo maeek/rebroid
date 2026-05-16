@@ -2,6 +2,9 @@
 const apkUploadBodySizeLimit =
   process.env.NEXT_SERVER_ACTIONS_BODY_SIZE_LIMIT || process.env.NEXT_PROXY_CLIENT_MAX_BODY_SIZE || '512mb'
 
+/**
+ * @type {import('next').NextConfig}
+ */
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
@@ -10,10 +13,6 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: apkUploadBodySizeLimit
     }
-  },
-  i18n: {
-    locales: ['en', 'pl'],
-    defaultLocale: 'en'
   },
   compiler: {
     styledComponents: true

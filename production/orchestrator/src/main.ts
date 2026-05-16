@@ -25,6 +25,7 @@ async function bootstrap() {
     .setDescription('Internal API for isolated redroid app container orchestration.')
     .setVersion('0.1.0')
     .addTag('android-applications')
+    .addTag('apks')
     .addTag('container-images')
     .addTag('docker-maintenance')
     .addTag('system-resources')

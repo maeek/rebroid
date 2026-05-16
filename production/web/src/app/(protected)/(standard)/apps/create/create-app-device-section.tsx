@@ -15,6 +15,7 @@ export const CreateAppDeviceSection = ({ values, onChange }: CreateAppDeviceSect
   return (
     <Section
       title='Device'
+      boxed
       contentClassName='gap-4'
       collapsible
     >

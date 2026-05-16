@@ -15,16 +15,12 @@ import type { OrchestratorUiSettings } from '@/lib/orchestrator/ui-settings'
 
 const numberValue = (value: number, fallback: number) => (Number.isFinite(value) ? value : fallback)
 
-type SaveGeneralUiSettingsInput = Pick<
-  OrchestratorUiSettings,
-  'ownerUserId' | 'appListRefreshIntervalSeconds' | 'removeDataOnDelete'
->
+type SaveGeneralUiSettingsInput = Pick<OrchestratorUiSettings, 'appListRefreshIntervalSeconds' | 'removeDataOnDelete'>
 
 const persistGeneralUiSettings = saveGeneralUiSettings
 const restoreGeneralUiSettings = resetGeneralUiSettings
 
 const toGeneralUiSettings = (settings: OrchestratorUiSettings): SaveGeneralUiSettingsInput => ({
-  ownerUserId: settings.ownerUserId,
   appListRefreshIntervalSeconds: settings.appListRefreshIntervalSeconds,
   removeDataOnDelete: settings.removeDataOnDelete
 })
@@ -72,7 +68,7 @@ export const GeneralSettingsForm = ({ initialSettings }: { initialSettings: Orch
   }
 
   return (
-    <ProtectedStackPageLayout mainClassName='h-full justify-between gap-2'>
+    <ProtectedStackPageLayout mainClassName='gap-2'>
       <section className='py-4 px-6 max-sm:px-4 flex items-center justify-between gap-3 shrink-0 bg-background'>
         <div className='flex flex-col gap-2'>
           <PageBreadcrumbs
@@ -99,23 +95,13 @@ export const GeneralSettingsForm = ({ initialSettings }: { initialSettings: Orch
           </Button>
         </div>
       </section>
-      <section className='px-6 max-sm:px-4 w-full flex flex-col gap-6 shrink flex-wrap pb-16'>
+      <section className='px-6 max-sm:px-4 w-full flex flex-col gap-6 pb-16'>
         <Section
           orientation='vertical'
-          title=''
+          title='Frontend defaults'
+          boxed
           contentClassName='gap-6'
         >
-          <Setting
-            label='Owner user id'
-            description='Used by the frontend when filtering app lists and as the default owner for newly created apps.'
-            className='flex-col items-start w-full'
-            variant='vertical'
-          >
-            <Input
-              value={settings.ownerUserId}
-              onChange={event => updateSettings({ ownerUserId: event.target.value })}
-            />
-          </Setting>
           <Setting
             label='List refresh interval'
             description='Controls how often app lists refresh automatically across the frontend.'
@@ -143,7 +129,7 @@ export const GeneralSettingsForm = ({ initialSettings }: { initialSettings: Orch
           <Setting
             label='Remove data on delete'
             description='When enabled, deleting an app also removes its persistent storage volume and stored APK data.'
-            className='w-full'
+            className='w-full rounded-md bg-background/45 px-4 py-3'
           >
             <Switch
               checked={settings.removeDataOnDelete}

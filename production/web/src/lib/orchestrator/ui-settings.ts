@@ -1,7 +1,6 @@
-import { ORCHESTRATOR_OWNER_USER_ID, ScrcpyTransport } from './types'
+import { ScrcpyTransport } from './types'
 
 export interface OrchestratorUiSettings {
-  ownerUserId: string
   defaultRedroidImage: string
   defaultInactivityTimeoutSeconds: number
   maxApkUploadSizeMb: number
@@ -12,10 +11,7 @@ export interface OrchestratorUiSettings {
   scrcpyTransport: ScrcpyTransport
 }
 
-export type GeneralUiSettings = Pick<
-  OrchestratorUiSettings,
-  'ownerUserId' | 'appListRefreshIntervalSeconds' | 'removeDataOnDelete'
->
+export type GeneralUiSettings = Pick<OrchestratorUiSettings, 'appListRefreshIntervalSeconds' | 'removeDataOnDelete'>
 
 export type RuntimeUiSettings = Pick<
   OrchestratorUiSettings,
@@ -27,7 +23,6 @@ export type RuntimeUiSettings = Pick<
 >
 
 export interface WebSettingsResponse {
-  ownerUserId: string
   appListRefreshIntervalSeconds: number
   removeDataOnDelete: boolean
 }
@@ -42,7 +37,6 @@ export interface OrchestratorSettingsResponse {
 }
 
 export const defaultOrchestratorUiSettings: OrchestratorUiSettings = {
-  ownerUserId: ORCHESTRATOR_OWNER_USER_ID,
   defaultRedroidImage: 'redroid/redroid:13.0.0-latest',
   defaultInactivityTimeoutSeconds: 900,
   maxApkUploadSizeMb: 512,
@@ -54,7 +48,6 @@ export const defaultOrchestratorUiSettings: OrchestratorUiSettings = {
 }
 
 export const defaultWebSettingsResponse: WebSettingsResponse = {
-  ownerUserId: defaultOrchestratorUiSettings.ownerUserId,
   appListRefreshIntervalSeconds: defaultOrchestratorUiSettings.appListRefreshIntervalSeconds,
   removeDataOnDelete: defaultOrchestratorUiSettings.removeDataOnDelete
 }
@@ -72,7 +65,6 @@ export const normalizeOrchestratorUiSettings = (
   web: Partial<WebSettingsResponse>,
   orchestrator: Partial<OrchestratorSettingsResponse>
 ): OrchestratorUiSettings => ({
-  ownerUserId: web.ownerUserId?.trim() || defaultOrchestratorUiSettings.ownerUserId,
   appListRefreshIntervalSeconds:
     Number(web.appListRefreshIntervalSeconds) || defaultOrchestratorUiSettings.appListRefreshIntervalSeconds,
   removeDataOnDelete:

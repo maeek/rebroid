@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AndroidAppsModule } from './android-apps/android-apps.module';
+import { ApkModule } from './apk/apk.module';
 import { ContainerImagesModule } from './container-images/container-images.module';
 import { AppConfigModule } from './config/app-config.module';
 import { DatabaseModule } from './database/database.module';
@@ -21,6 +22,7 @@ import { SystemResourcesModule } from './system-resources/system-resources.modul
     DockerModule,
     NetworkIsolationModule,
     NetworkPolicyModule,
+    ApkModule,
     AndroidAppsModule,
     ContainerImagesModule,
     DockerMaintenanceModule,

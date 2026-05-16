@@ -6,10 +6,9 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { randomUUID } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
-import { extname, join } from 'node:path';
 import { Repository } from 'typeorm';
+import { ApkService } from '../apk/apk.service';
+import { UploadedApk } from '../apk/uploaded-apk.entity';
 import { throwNotFound } from '../common/not-found';
 import { ContainerRuntimeState, DockerService } from '../docker/docker.service';
 import { NetworkIsolationService } from '../network-isolation/network-isolation.service';
@@ -27,6 +26,7 @@ import { RemoveAndroidApplicationDto } from './dto/remove-android-application.dt
 import { ScrcpySessionDto } from './dto/scrcpy-session.dto';
 import { StartAndroidApplicationDto } from './dto/start-android-application.dto';
 import { SwitchApplicationProfileDto } from './dto/switch-application-profile.dto';
+import { UpdateAndroidApplicationApkDto } from './dto/update-android-application-apk.dto';
 import { UpdateAndroidApplicationDto } from './dto/update-android-application.dto';
 import { UpdateNetworkPolicyDto } from './dto/update-network-policy.dto';
 
@@ -43,11 +43,12 @@ export class AndroidAppsService {
     private readonly networkIsolation: NetworkIsolationService,
     private readonly networkPolicy: NetworkPolicyService,
     private readonly settings: SettingsService,
+    private readonly apks: ApkService,
   ) {}
 
-  async create(dto: CreateAndroidApplicationDto, apk?: Express.Multer.File) {
-    await this.settings.assertApkSizeAllowed(apk);
+  async create(dto: CreateAndroidApplicationDto) {
     const settings = await this.settings.getSettings();
+    const uploadedApk = dto.uploadedApkId ? await this.apks.get(dto.uploadedApkId) : null;
 
     const app = this.applications.create({
       name: dto.name,
@@ -62,6 +63,7 @@ export class AndroidAppsService {
       containerId: null,
       apkFilePath: null,
       apkOriginalName: null,
+      uploadedApkId: null,
       scrcpyTransport: settings.defaultScrcpyTransport,
       adbPort: this.config.getOrThrow<number>('app.redroid.adbPort'),
       inactivityTimeoutSeconds:
@@ -90,10 +92,8 @@ export class AndroidAppsService {
     const names = this.networkIsolation.namesFor(app.id, app.name, app.profileName);
     Object.assign(app, names);
 
-    if (apk) {
-      const savedApk = await this.saveApkFile(app.id, apk);
-      app.apkFilePath = savedApk.path;
-      app.apkOriginalName = apk.originalname;
+    if (uploadedApk) {
+      this.applyUploadedApk(app, uploadedApk);
     }
 
     await this.applications.save(app);
@@ -269,18 +269,12 @@ export class AndroidAppsService {
     return this.applications.save(app);
   }
 
-  async updateApk(id: string, apk: Express.Multer.File) {
-    if (!apk) {
-      throw new ConflictException('An APK file is required.');
-    }
-    await this.settings.assertApkSizeAllowed(apk);
-
+  async updateApk(id: string, dto: UpdateAndroidApplicationApkDto) {
     const app = await this.get(id);
     this.assertRunnable(app);
 
-    const savedApk = await this.saveApkFile(app.id, apk);
-    app.apkFilePath = savedApk.path;
-    app.apkOriginalName = apk.originalname;
+    const uploadedApk = await this.apks.get(dto.uploadedApkId);
+    this.applyUploadedApk(app, uploadedApk);
     await this.applications.save(app);
 
     if (app.status === AndroidApplicationStatus.Running) {
@@ -531,17 +525,6 @@ export class AndroidAppsService {
     }
   }
 
-  private async saveApkFile(applicationId: string, apk: Express.Multer.File) {
-    const uploadsDir = this.config.getOrThrow<string>('app.uploadsDir');
-    await mkdir(uploadsDir, { recursive: true });
-
-    const extension = extname(apk.originalname) || '.apk';
-    const path = join(uploadsDir, `${applicationId}-${randomUUID()}${extension}`);
-    await writeFile(path, apk.buffer);
-
-    return { path };
-  }
-
   private async installApk(app: AndroidApplication) {
     if (!app.containerId || !app.apkFilePath) {
       throw new InternalServerErrorException('Container and APK are required.');
@@ -561,6 +544,20 @@ export class AndroidAppsService {
       '-lc',
       `pm install -r ${targetDir}/${targetName}`,
     ]);
+  }
+
+  private applyUploadedApk(app: AndroidApplication, uploadedApk: UploadedApk) {
+    if (
+      uploadedApk.ownerUserId &&
+      app.ownerUserId &&
+      uploadedApk.ownerUserId !== app.ownerUserId
+    ) {
+      throw new ConflictException('Uploaded APK belongs to a different owner.');
+    }
+
+    app.uploadedApkId = uploadedApk.id;
+    app.apkFilePath = uploadedApk.filePath;
+    app.apkOriginalName = uploadedApk.originalName;
   }
 
   private parseNotifications(output: string) {

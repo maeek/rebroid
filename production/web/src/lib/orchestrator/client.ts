@@ -1,12 +1,14 @@
 import {
   AndroidApplication,
   AndroidNotification,
+  CleanupUploadedApksResponse,
+  CreateAndroidApplicationInput,
   DeleteAndroidApplicationResponse,
   DockerPruneAllResponse,
   DockerPruneResponse,
-  ORCHESTRATOR_OWNER_USER_ID,
   SwitchApplicationProfileInput,
   SystemResources,
+  UploadedApk,
   UpdateNetworkPolicyInput,
   UpdateAndroidApplicationInput
 } from './types'
@@ -52,10 +54,29 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const orchestratorApi = {
-  createApplication(input: FormData) {
+  createApplication(input: CreateAndroidApplicationInput) {
     return request<AndroidApplication>('/android-applications', {
       method: 'POST',
+      body: JSON.stringify(input)
+    })
+  },
+
+  uploadApk(input: FormData) {
+    return request<UploadedApk>('/apks', {
+      method: 'POST',
       body: input
+    })
+  },
+
+  listUploadedApks(ownerUserId?: string) {
+    const query = ownerUserId ? `?${new URLSearchParams({ ownerUserId }).toString()}` : ''
+    return request<UploadedApk[]>(`/apks${query}`)
+  },
+
+  cleanupUploadedApks(ownerUserId?: string) {
+    return request<CleanupUploadedApksResponse>('/apks/cleanup', {
+      method: 'POST',
+      body: JSON.stringify({ ownerUserId })
     })
   },
 
@@ -74,7 +95,7 @@ export const orchestratorApi = {
     return request<OrchestratorSettingsResponse>('/settings/reset', { method: 'POST' })
   },
 
-  listApplications(ownerUserId = ORCHESTRATOR_OWNER_USER_ID) {
+  listApplications(ownerUserId: string) {
     const query = new URLSearchParams({ ownerUserId })
     return request<AndroidApplication[]>(`/android-applications?${query.toString()}`)
   },
@@ -158,13 +179,10 @@ export const orchestratorApi = {
     })
   },
 
-  updateApk(id: string, apk: File) {
-    const body = new FormData()
-    body.set('apk', apk)
-
+  updateApk(id: string, uploadedApkId: string) {
     return request<AndroidApplication>(`/android-applications/${id}/apk`, {
       method: 'PUT',
-      body
+      body: JSON.stringify({ uploadedApkId })
     })
   }
 }

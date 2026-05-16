@@ -1,18 +1,26 @@
 'use client'
 
 import { useState } from 'react'
-import { IconBox, IconBoxMultiple, IconDatabase, IconRecycle, IconTopologyStar3 } from '@tabler/icons-react'
+import {
+  IconBox,
+  IconBoxMultiple,
+  IconDatabase,
+  IconPackage,
+  IconRecycle,
+  IconTopologyStar3
+} from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
 import { toast } from '@/hooks/use-toast'
 import {
+  cleanupUploadedApksAction,
   pruneAllDockerResourcesAction,
   pruneContainersAction,
   pruneImagesAction,
   pruneNetworksAction,
   pruneVolumesAction
 } from '@/lib/orchestrator/actions'
-import type { DockerPruneResponse } from '@/lib/orchestrator/types'
+import type { CleanupUploadedApksResponse, DockerPruneResponse } from '@/lib/orchestrator/types'
 
 const formatBytes = (bytes?: number) => {
   if (!bytes) {
@@ -54,16 +62,17 @@ const MaintenanceActionCard = ({
   onClick: () => void
 }) => {
   return (
-    <div className='flex flex-col gap-3 rounded-md border border-input bg-card/40 p-4'>
-      <div className='flex items-start gap-3'>
-        <div className='rounded-md border border-input bg-background/60 p-2 text-secondary-foreground'>{icon}</div>
+    <div className='flex w-full items-center justify-between gap-4 rounded-lg border border-border/70 bg-secondary/55 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]'>
+      <div className='flex min-w-0 items-start gap-3'>
+        <div className='rounded-md bg-destructive/10 p-2 text-destructive'>{icon}</div>
         <div className='flex flex-col gap-1'>
           <h3 className='font-medium text-foreground'>{title}</h3>
-          <p className='text-sm text-secondary-foreground'>{description}</p>
+          <p className='text-sm leading-5 text-secondary-foreground'>{description}</p>
         </div>
       </div>
       <Button
-        variant='secondary'
+        variant='destructive'
+        className='shrink-0 max-sm:w-full'
         disabled={isBusy}
         onClick={onClick}
       >
@@ -122,6 +131,24 @@ export const OrchestratorMaintenanceSection = ({
       </p>
       <div className='grid gap-3'>
         <MaintenanceActionCard
+          title='Clean APK uploads'
+          description='Removes uploaded APK records and files that are not referenced by any Android application.'
+          icon={<IconPackage className='size-5' />}
+          actionLabel='Clean'
+          isBusy={activeAction !== null}
+          onClick={() =>
+            void runMaintenanceAction({
+              action: cleanupUploadedApksAction,
+              key: 'apks',
+              successTitle: 'APK uploads cleaned',
+              successDescription: result => {
+                const cleanup = result as CleanupUploadedApksResponse
+                return `Removed ${cleanup.deletedRecords} upload records and ${cleanup.removedFiles} files.`
+              }
+            })
+          }
+        />
+        <MaintenanceActionCard
           title='Prune images'
           description={
             imagePruneDanglingOnly
@@ -129,7 +156,7 @@ export const OrchestratorMaintenanceSection = ({
               : 'Removes all unused images using the current cleanup mode.'
           }
           icon={<IconBox className='size-5' />}
-          actionLabel={imagePruneDanglingOnly ? 'Prune dangling images' : 'Prune unused images'}
+          actionLabel='Prune'
           isBusy={activeAction !== null}
           onClick={() =>
             void runMaintenanceAction({
@@ -144,7 +171,7 @@ export const OrchestratorMaintenanceSection = ({
           title='Prune containers'
           description='Removes stopped containers that are no longer in use.'
           icon={<IconBoxMultiple className='size-5' />}
-          actionLabel='Prune stopped containers'
+          actionLabel='Prune'
           isBusy={activeAction !== null}
           onClick={() =>
             void runMaintenanceAction({
@@ -159,7 +186,7 @@ export const OrchestratorMaintenanceSection = ({
           title='Prune networks'
           description='Removes unused Docker networks that are no longer attached to active containers.'
           icon={<IconTopologyStar3 className='size-5' />}
-          actionLabel='Prune unused networks'
+          actionLabel='Prune'
           isBusy={activeAction !== null}
           onClick={() =>
             void runMaintenanceAction({
@@ -174,7 +201,7 @@ export const OrchestratorMaintenanceSection = ({
           title='Prune volumes'
           description='Removes unused volumes that are no longer mounted by managed containers.'
           icon={<IconDatabase className='size-5' />}
-          actionLabel='Prune unused volumes'
+          actionLabel='Prune'
           isBusy={activeAction !== null}
           onClick={() =>
             void runMaintenanceAction({
@@ -186,33 +213,35 @@ export const OrchestratorMaintenanceSection = ({
           }
         />
       </div>
-      <div className='rounded-md border border-primary/20 bg-primary/8 p-4'>
-        <div className='flex items-start gap-3'>
-          <div className='rounded-md border border-primary/20 bg-background/60 p-2 text-primary'>
-            <IconRecycle className='size-5' />
-          </div>
-          <div className='flex flex-col gap-3'>
+      <div className='rounded-md bg-destructive/10 p-4 text-foreground'>
+        <div className='flex items-center justify-between gap-4 max-sm:flex-col max-sm:items-stretch'>
+          <div className='flex min-w-0 items-start gap-3'>
+            <div className='rounded-md bg-background/50 p-2 text-destructive'>
+              <IconRecycle className='size-5' />
+            </div>
             <div>
               <h3 className='font-medium text-foreground'>Full cleanup</h3>
-              <p className='text-sm text-secondary-foreground'>
+              <p className='text-sm leading-5 text-secondary-foreground'>
                 Prunes stopped containers, unused networks, dangling images, and unused volumes in one pass.
               </p>
             </div>
-            <Button
-              disabled={activeAction !== null}
-              onClick={() =>
-                void runMaintenanceAction({
-                  action: pruneAllDockerResourcesAction,
-                  key: 'all',
-                  successTitle: 'Full cleanup completed',
-                  successDescription: () =>
-                    'Stopped containers, unused networks, dangling images, and unused volumes were pruned.'
-                })
-              }
-            >
-              Run full cleanup
-            </Button>
           </div>
+          <Button
+            className='shrink-0 max-sm:w-full'
+            variant='destructive'
+            disabled={activeAction !== null}
+            onClick={() =>
+              void runMaintenanceAction({
+                action: pruneAllDockerResourcesAction,
+                key: 'all',
+                successTitle: 'Full cleanup completed',
+                successDescription: () =>
+                  'Stopped containers, unused networks, dangling images, and unused volumes were pruned.'
+              })
+            }
+          >
+            Full cleanup
+          </Button>
         </div>
       </div>
     </Section>

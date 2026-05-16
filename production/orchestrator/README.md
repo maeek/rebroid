@@ -111,6 +111,26 @@ The orchestrator settings currently own:
 - max APK upload size.
 - scheduled image pruning interval and dangling-only mode.
 
+## APK Uploads
+
+APK files are uploaded before an Android application is created or updated. Uploads are deduplicated by SHA-256 per owner, stored under `UPLOADS_DIR/apks`, and inspected for a direct launcher icon in common `res/mipmap*` and `res/drawable*` image paths.
+
+```text
+POST   /apks
+GET    /apks?ownerUserId=admin
+DELETE /apks/:id
+POST   /apks/cleanup
+```
+
+Create or update applications by referencing the uploaded APK:
+
+```json
+{
+  "name": "Signal Android",
+  "uploadedApkId": "98a530d6-a45d-466a-9cb4-c023067c4971"
+}
+```
+
 ## Network Policy
 
 Each app still receives its own Docker network. When `IPTABLES_POLICY_ENABLED=false`, those networks are created as Docker `Internal` networks for a hard no-egress default.

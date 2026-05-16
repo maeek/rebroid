@@ -9,13 +9,9 @@ import {
   Post,
   Put,
   Query,
-  UploadedFile,
-  UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBody,
-  ApiConsumes,
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
@@ -31,6 +27,7 @@ import { RemoveAndroidApplicationDto } from './dto/remove-android-application.dt
 import { ScrcpySessionDto } from './dto/scrcpy-session.dto';
 import { StartAndroidApplicationDto } from './dto/start-android-application.dto';
 import { SwitchApplicationProfileDto } from './dto/switch-application-profile.dto';
+import { UpdateAndroidApplicationApkDto } from './dto/update-android-application-apk.dto';
 import { UpdateAndroidApplicationDto } from './dto/update-android-application.dto';
 import { UpdateNetworkPolicyDto } from './dto/update-network-policy.dto';
 
@@ -40,8 +37,6 @@ export class AndroidAppsController {
   constructor(private readonly androidApps: AndroidAppsService) {}
 
   @Post()
-  @UseInterceptors(FileInterceptor('apk'))
-  @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Provision an isolated redroid application container.' })
   @ApiCreatedResponse({ type: AndroidApplication })
   @ApiBody({
@@ -60,15 +55,12 @@ export class AndroidAppsController {
           type: 'string',
           example: 'androidboot.redroid_dpi=480 androidboot.redroid_width=1080',
         },
-        apk: { type: 'string', format: 'binary' },
+        uploadedApkId: { type: 'string', example: '98a530d6-a45d-466a-9cb4-c023067c4971' },
       },
     },
   })
-  create(
-    @Body() dto: CreateAndroidApplicationDto,
-    @UploadedFile() apk?: Express.Multer.File,
-  ) {
-    return this.androidApps.create(dto, apk);
+  create(@Body() dto: CreateAndroidApplicationDto) {
+    return this.androidApps.create(dto);
   }
 
   @Get()
@@ -124,20 +116,18 @@ export class AndroidAppsController {
   }
 
   @Put(':id/apk')
-  @UseInterceptors(FileInterceptor('apk'))
-  @ApiConsumes('multipart/form-data')
   @ApiOkResponse({ type: AndroidApplication })
   @ApiBody({
     schema: {
       type: 'object',
-      required: ['apk'],
+      required: ['uploadedApkId'],
       properties: {
-        apk: { type: 'string', format: 'binary' },
+        uploadedApkId: { type: 'string', example: '98a530d6-a45d-466a-9cb4-c023067c4971' },
       },
     },
   })
-  updateApk(@Param('id') id: string, @UploadedFile() apk: Express.Multer.File) {
-    return this.androidApps.updateApk(id, apk);
+  updateApk(@Param('id') id: string, @Body() dto: UpdateAndroidApplicationApkDto) {
+    return this.androidApps.updateApk(id, dto);
   }
 
   @Get(':id/scrcpy-session')

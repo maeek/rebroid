@@ -5,7 +5,8 @@ export default function Loading() {
     <SettingsPageSkeleton
       title='Orchestrator'
       sectionTitle='Runtime'
-      rows={5}
+      rows={4}
+      variant='orchestrator'
     />
   )
 }

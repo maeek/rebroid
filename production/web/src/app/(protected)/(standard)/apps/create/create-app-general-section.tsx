@@ -2,19 +2,29 @@ import { Setting } from '@/app/(protected)/_components/settings/setting'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import type { CreateAppFormValues } from './create-app-form.types'
+import type { UploadedApk } from '@/lib/orchestrator/types'
 
 type CreateAppGeneralSectionProps = {
   values: CreateAppFormValues
   onChange: (patch: Partial<CreateAppFormValues>) => void
-  onApkChange: (file: File | null) => void
+  uploadedApk: UploadedApk | null
+  isUploadingApk: boolean
+  onApkSelect: (file: File | null) => void
 }
 
 const verticalSettingClassName = 'flex-col items-start w-full'
 
-export const CreateAppGeneralSection = ({ values, onChange, onApkChange }: CreateAppGeneralSectionProps) => {
+export const CreateAppGeneralSection = ({
+  values,
+  onChange,
+  uploadedApk,
+  isUploadingApk,
+  onApkSelect
+}: CreateAppGeneralSectionProps) => {
   return (
     <Section
       title='General'
+      boxed
       contentClassName='gap-4'
     >
       <Setting
@@ -32,15 +42,23 @@ export const CreateAppGeneralSection = ({ values, onChange, onApkChange }: Creat
       </Setting>
       <Setting
         label='APK file'
-        description='Optional Android package to upload during creation. Leave empty to provision the app without installing an APK.'
+        description='Optional Android package. It uploads first so metadata and icons can be extracted before the app is created.'
         variant='vertical'
         className={verticalSettingClassName}
       >
-        <Input
-          type='file'
-          accept='.apk,application/vnd.android.package-archive'
-          onChange={event => onApkChange(event.target.files?.[0] ?? null)}
-        />
+        <div className='flex w-full flex-col gap-2'>
+          <Input
+            type='file'
+            accept='.apk,application/vnd.android.package-archive'
+            disabled={isUploadingApk}
+            onChange={event => onApkSelect(event.target.files?.[0] ?? null)}
+          />
+          {uploadedApk && (
+            <p className='text-sm text-secondary-foreground'>
+              Uploaded {uploadedApk.originalName} · {(uploadedApk.sizeBytes / 1024 / 1024).toFixed(2)} MB
+            </p>
+          )}
+        </div>
       </Setting>
     </Section>
   )

@@ -2,9 +2,11 @@
 
 import { ChangeEvent, FormEvent, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTopLoader } from 'nextjs-toploader'
 import { PageBreadcrumbs } from '@/app/(protected)/_components/page-breadcrumbs'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/hooks/use-toast'
+import { uploadApkWithProgress } from '@/lib/apks/upload'
 import { setAppIconAction } from '@/lib/app-icons/actions'
 import { createApplicationAction } from '@/lib/orchestrator/actions'
 import { optimizeIconFile } from '@/lib/orchestrator/icon-metadata'
@@ -15,6 +17,7 @@ import { CreateAppIconSection } from './create-app-icon-section'
 import { CreateAppResourcesSection } from './create-app-resources-section'
 import type { CreateAppFormValues } from './create-app-form.types'
 import type { OrchestratorUiSettings } from '@/lib/orchestrator/settings'
+import type { UploadedApk } from '@/lib/orchestrator/types'
 
 const getInitialFormValues = (settings: OrchestratorUiSettings): CreateAppFormValues => ({
   name: '',
@@ -27,13 +30,17 @@ const getInitialFormValues = (settings: OrchestratorUiSettings): CreateAppFormVa
 })
 
 export const CreateAppForm = ({ initialSettings }: { initialSettings: OrchestratorUiSettings }) => {
+  const topLoader = useTopLoader()
   const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
   const [formValues, setFormValues] = useState<CreateAppFormValues>(() => getInitialFormValues(settings))
-  const [apk, setApk] = useState<File | null>(null)
-  const [iconFile, setIconFile] = useState<File | null>(null)
-  const [iconPreview, setIconPreview] = useState<string | null>(null)
+  const [uploadedApk, setUploadedApk] = useState<UploadedApk | null>(null)
+  const [isUploadingApk, setIsUploadingApk] = useState(false)
+  const [manualIconPreview, setManualIconPreview] = useState<string | null>(null)
+  const [autoExtractIcon, setAutoExtractIcon] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
   const router = useRouter()
+  const extractedIcon = uploadedApk?.extractedIconDataUrl ?? null
+  const iconPreview = manualIconPreview ?? (autoExtractIcon ? extractedIcon : null)
 
   useEffect(() => {
     setFormValues(current => ({
@@ -48,33 +55,40 @@ export const CreateAppForm = ({ initialSettings }: { initialSettings: Orchestrat
   }
 
   const trimmedName = formValues.name.trim()
-  const isSubmitDisabled = isCreating || trimmedName.length < 2
+  const isSubmitDisabled = isCreating || isUploadingApk || trimmedName.length < 2
 
   const handleIconChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null
-    setIconFile(file)
 
     if (!file) {
-      setIconPreview(null)
+      setManualIconPreview(null)
       return
     }
 
     try {
-      setIconPreview(await optimizeIconFile(file))
+      setManualIconPreview(await optimizeIconFile(file))
     } catch (error) {
       toast({ title: 'Could not prepare icon', description: error instanceof Error ? error.message : 'Unknown error' })
     }
   }
 
   const handleClearIcon = () => {
-    setIconFile(null)
-    setIconPreview(null)
+    if (!manualIconPreview && extractedIcon) {
+      setAutoExtractIcon(false)
+      return
+    }
+
+    setManualIconPreview(null)
   }
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const handleApkSelect = async (file: File | null) => {
+    setUploadedApk(null)
 
-    if (apk && !isFileWithinApkLimit(apk, settings.maxApkUploadSizeMb)) {
+    if (!file) {
+      return
+    }
+
+    if (!isFileWithinApkLimit(file, settings.maxApkUploadSizeMb)) {
       toast({
         title: 'APK is too large',
         description: `The configured upload limit is ${apkSizeLabel(settings.maxApkUploadSizeMb)}.`
@@ -82,24 +96,50 @@ export const CreateAppForm = ({ initialSettings }: { initialSettings: Orchestrat
       return
     }
 
+    setIsUploadingApk(true)
+    topLoader.start()
+    topLoader.setProgress(0.08)
+
+    try {
+      const uploaded = await uploadApkWithProgress({
+        file,
+        onProgress: progress => {
+          topLoader.setProgress(Math.min(Math.max(progress / 100, 0.08), 0.95))
+        }
+      })
+      topLoader.setProgress(1)
+      setUploadedApk(uploaded)
+
+      if (!uploaded.extractedIconDataUrl) {
+        toast({ title: 'APK uploaded', description: 'No direct launcher icon was found in the APK.' })
+      } else {
+        toast({ title: 'APK uploaded', description: 'Launcher icon was extracted.' })
+      }
+    } catch (error) {
+      toast({ title: 'Could not upload APK', description: error instanceof Error ? error.message : 'Unknown error' })
+    } finally {
+      topLoader.done(true)
+      setIsUploadingApk(false)
+    }
+  }
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
     setIsCreating(true)
     try {
-      const body = new FormData()
-      body.set('name', trimmedName)
-      body.set('ownerUserId', settings.ownerUserId)
-      if (formValues.redroidImage.trim()) body.set('redroidImage', formValues.redroidImage.trim())
-      if (formValues.inactivityTimeoutSeconds) {
-        body.set('inactivityTimeoutSeconds', String(formValues.inactivityTimeoutSeconds))
-      }
-      if (formValues.memoryLimitMb) body.set('memoryLimitMb', formValues.memoryLimitMb)
-      if (formValues.cpuLimitCpus) body.set('cpuLimitCpus', formValues.cpuLimitCpus)
-      if (formValues.volumeSizeLimitMb) body.set('volumeSizeLimitMb', formValues.volumeSizeLimitMb)
-      if (formValues.redroidArgs.trim()) body.set('redroidArgs', formValues.redroidArgs.trim())
-      if (apk) body.set('apk', apk)
+      const createdApp = await createApplicationAction({
+        name: trimmedName,
+        redroidImage: formValues.redroidImage.trim() || undefined,
+        inactivityTimeoutSeconds: formValues.inactivityTimeoutSeconds || undefined,
+        memoryLimitMb: formValues.memoryLimitMb ? Number(formValues.memoryLimitMb) : undefined,
+        cpuLimitCpus: formValues.cpuLimitCpus ? Number(formValues.cpuLimitCpus) : undefined,
+        volumeSizeLimitMb: formValues.volumeSizeLimitMb ? Number(formValues.volumeSizeLimitMb) : undefined,
+        redroidArgs: formValues.redroidArgs.trim() || undefined,
+        uploadedApkId: uploadedApk?.id
+      })
 
-      const createdApp = await createApplicationAction(body)
-
-      if (iconFile && iconPreview) {
+      if (iconPreview) {
         await setAppIconAction(createdApp.id, iconPreview)
       }
 
@@ -133,15 +173,18 @@ export const CreateAppForm = ({ initialSettings }: { initialSettings: Orchestrat
         />
       )}
       <form
-        className='w-full flex items-start gap-8 pt-2 pb-24 max-md:flex-col'
+        className='grid w-full grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)] items-start gap-6 pt-2 pb-24 max-lg:grid-cols-1'
         onSubmit={event => void handleSubmit(event)}
       >
-        <div className='flex flex-col gap-5 flex-3/5 w-full'>
+        <div className='flex w-full flex-col gap-5'>
           <CreateAppGeneralSection
             values={formValues}
             onChange={updateFormValues}
-            onApkChange={setApk}
+            uploadedApk={uploadedApk}
+            isUploadingApk={isUploadingApk}
+            onApkSelect={file => void handleApkSelect(file)}
           />
+          <h2 className='font-bold'>Advanced</h2>
           <CreateAppDeviceSection
             values={formValues}
             onChange={updateFormValues}
@@ -158,12 +201,15 @@ export const CreateAppForm = ({ initialSettings }: { initialSettings: Orchestrat
             Create
           </Button>
         </div>
-        <div className='shrink-0 flex flex-col gap-4 grow-0 flex-2/5 items-center max-md:w-full'>
+        <div className='flex w-full flex-col gap-4'>
           <CreateAppIconSection
             appName={trimmedName}
             iconPreview={iconPreview}
+            autoExtractIcon={autoExtractIcon}
+            hasExtractedIcon={Boolean(extractedIcon)}
             onIconChange={event => void handleIconChange(event)}
             onClearIcon={handleClearIcon}
+            onAutoExtractIconChange={setAutoExtractIcon}
           />
         </div>
       </form>

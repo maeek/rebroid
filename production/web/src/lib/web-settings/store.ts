@@ -1,15 +1,12 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import { ORCHESTRATOR_OWNER_USER_ID } from '@/lib/orchestrator/types'
 
 export interface WebSettings {
-  ownerUserId: string
   appListRefreshIntervalSeconds: number
   removeDataOnDelete: boolean
 }
 
 export const defaultWebSettings: WebSettings = {
-  ownerUserId: ORCHESTRATOR_OWNER_USER_ID,
   appListRefreshIntervalSeconds: 5,
   removeDataOnDelete: true
 }
@@ -23,7 +20,6 @@ const numberInRange = (value: unknown, fallback: number, minimum: number, maximu
 }
 
 const normalize = (value: Partial<WebSettings>): WebSettings => ({
-  ownerUserId: value.ownerUserId?.trim() || defaultWebSettings.ownerUserId,
   appListRefreshIntervalSeconds: numberInRange(
     value.appListRefreshIntervalSeconds,
     defaultWebSettings.appListRefreshIntervalSeconds,

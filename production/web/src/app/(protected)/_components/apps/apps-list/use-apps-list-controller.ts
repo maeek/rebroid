@@ -47,7 +47,7 @@ export const useAppsListController = ({
     intervalMs: refreshIntervalMs,
     refresh: async () => {
       try {
-        const items = await listApplicationsAction(settings.ownerUserId)
+        const items = await listApplicationsAction()
         setApps(current => {
           const currentIcons = new Map(current.map(app => [app.id, app.icon]))
 

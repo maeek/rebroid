@@ -1,8 +1,8 @@
 import { useRef, useState, type ChangeEvent } from 'react'
 import { IconUpload, IconX } from '@tabler/icons-react'
 import { AppIcon } from '@/app/(protected)/_components/apps/app-icon'
-import { Setting } from '@/app/(protected)/_components/settings/setting'
 import { Button } from '@/components/ui/button'
+import { Section } from '@/components/ui/section'
 import { toast } from '@/hooks/use-toast'
 import { setAppIconAction } from '@/lib/app-icons/actions'
 import { optimizeIconFile } from '@/lib/orchestrator/icon-metadata'
@@ -14,8 +14,6 @@ type AppManageIconPanelProps = {
   icon: string | null
   onIconChange: (icon: string | null, isDirty: boolean) => void
 }
-
-const verticalSettingClassName = 'flex-col items-start w-full'
 
 export const AppManageIconPanel = ({ appId, appName, icon, onIconChange }: AppManageIconPanelProps) => {
   const [isUploadingIcon, setIsUploadingIcon] = useState(false)
@@ -57,17 +55,20 @@ export const AppManageIconPanel = ({ appId, appName, icon, onIconChange }: AppMa
   }
 
   return (
-    <Setting
-      label=''
-      className={verticalSettingClassName}
-      variant='vertical'
+    <Section
+      title='Icon'
+      boxed
+      contentClassName='gap-5'
     >
-      <div className='flex w-full flex-col items-center gap-6'>
+      <p className='text-xs leading-relaxed text-muted-foreground'>
+        This icon is stored in the web app metadata for display.
+      </p>
+      <div className='flex w-full flex-col items-center gap-5'>
         <AppIcon
           appId={appId}
           appName={appName}
           icon={icon}
-          className='shrink-0 size-72 z-[-1] text-4xl'
+          className='shrink-0 size-56 text-4xl shadow-[0_18px_60px_rgba(0,0,0,0.24)] max-sm:size-48'
         />
         <input
           ref={iconInputRef}
@@ -76,9 +77,10 @@ export const AppManageIconPanel = ({ appId, appName, icon, onIconChange }: AppMa
           className='hidden'
           onChange={event => void handleIconUpload(event)}
         />
-        <div className='flex gap-1'>
+        <div className='flex w-full gap-2 max-sm:flex-col'>
           <Button
             type='button'
+            className='flex-1'
             disabled={isUploadingIcon}
             onClick={() => iconInputRef.current?.click()}
           >
@@ -88,6 +90,7 @@ export const AppManageIconPanel = ({ appId, appName, icon, onIconChange }: AppMa
           <Button
             type='button'
             variant='secondary'
+            className='flex-1'
             disabled={isUploadingIcon}
             onClick={handleClearIcon}
           >
@@ -96,6 +99,6 @@ export const AppManageIconPanel = ({ appId, appName, icon, onIconChange }: AppMa
           </Button>
         </div>
       </div>
-    </Setting>
+    </Section>
   )
 }

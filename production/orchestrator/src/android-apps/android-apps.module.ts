@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ApkModule } from '../apk/apk.module';
 import { DockerModule } from '../docker/docker.module';
 import { NetworkIsolationModule } from '../network-isolation/network-isolation.module';
 import { NetworkPolicyModule } from '../network-policy/network-policy.module';
@@ -16,6 +17,7 @@ import { InactivityService } from './inactivity.service';
     NetworkIsolationModule,
     NetworkPolicyModule,
     SettingsModule,
+    ApkModule,
   ],
   controllers: [AndroidAppsController],
   providers: [AndroidAppsService, InactivityService],

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Setting } from '@/app/(protected)/_components/settings/setting'
 import { NetworkAccessInput } from '@/app/(protected)/_components/viewer/app-info/network-access-input'
 import { Button } from '@/components/ui/button'
+import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/hooks/use-toast'
 import { applyNetworkPolicyAction, updateNetworkPolicyAction } from '@/lib/orchestrator/actions'
@@ -103,13 +104,18 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
   }
 
   return (
-    <Setting
-      label='Network policy'
-      description={app.networkPolicyMessage}
-      className={verticalSettingClassName}
-      variant='vertical'
+    <Section
+      title='Network policy'
+      boxed
+      contentClassName='gap-4'
     >
-      <div className='flex w-full flex-col gap-3'>
+      {app.networkPolicyMessage && <p className='text-sm text-secondary-foreground'>{app.networkPolicyMessage}</p>}
+      <Setting
+        label='Outbound access'
+        description='Limit Android traffic to the API plus any CIDR ranges explicitly added below.'
+        className={verticalSettingClassName}
+        variant='vertical'
+      >
         <Select
           value={networkPolicyEnabled ? 'enabled' : 'disabled'}
           onValueChange={value => {
@@ -125,6 +131,8 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
             <SelectItem value='disabled'>Disabled</SelectItem>
           </SelectContent>
         </Select>
+      </Setting>
+      <div className='flex w-full flex-col gap-3'>
         <NetworkAccessInput
           cidrs={networkPolicyAllowCidrs}
           disabled={isSaving}
@@ -151,6 +159,6 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
           </Button>
         </div>
       </div>
-    </Setting>
+    </Section>
   )
 }

@@ -1,24 +1,29 @@
 import { type ChangeEvent, useRef } from 'react'
 import { IconX } from '@tabler/icons-react'
 import { AppIcon } from '@/app/(protected)/_components/apps/app-icon'
-import { Setting } from '@/app/(protected)/_components/settings/setting'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Section } from '@/components/ui/section'
+import { Switch } from '@/components/ui/switch'
 
 type CreateAppIconSectionProps = {
   appName: string
   iconPreview: string | null
+  autoExtractIcon: boolean
+  hasExtractedIcon: boolean
   onIconChange: (event: ChangeEvent<HTMLInputElement>) => void
   onClearIcon: () => void
+  onAutoExtractIconChange: (checked: boolean) => void
 }
-
-const verticalSettingClassName = 'flex-col items-start w-full'
 
 export const CreateAppIconSection = ({
   appName,
   iconPreview,
+  autoExtractIcon,
+  hasExtractedIcon,
   onIconChange,
-  onClearIcon
+  onClearIcon,
+  onAutoExtractIconChange
 }: CreateAppIconSectionProps) => {
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -31,20 +36,37 @@ export const CreateAppIconSection = ({
   }
 
   return (
-    <Setting
-      label='Icon'
-      description='Optional app icon for the web UI. Square images work best and are optimized locally before upload.'
-      variant='vertical'
-      className={verticalSettingClassName}
+    <Section
+      title='Icon'
+      boxed
+      contentClassName='gap-5'
     >
-      <div className='flex flex-col gap-4 items-center w-full'>
+      <p className='text-xs leading-relaxed text-muted-foreground'>
+        Optional app icon for the web UI. Square images work best and are optimized locally before upload.
+      </p>
+      <div className='flex w-full flex-col items-center gap-5'>
         <AppIcon
           appId='new'
           appName={appName || 'App'}
           icon={iconPreview}
-          className='size-56 text-4xl'
+          className='size-44 text-4xl shadow-[0_18px_60px_rgba(0,0,0,0.24)] max-sm:size-40'
         />
-        <div className='flex gap-1'>
+        <div className='flex w-full items-center justify-between gap-4 rounded-lg border border-border/70 bg-secondary/55 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]'>
+          <div className='flex min-w-0 flex-col'>
+            <span className='text-sm font-medium'>Auto extract from APK</span>
+            <span className='text-xs text-secondary-foreground'>
+              {hasExtractedIcon
+                ? 'A launcher icon was found during APK upload.'
+                : 'Upload an APK to extract its launcher icon.'}
+            </span>
+          </div>
+          <Switch
+            checked={autoExtractIcon}
+            disabled={!hasExtractedIcon}
+            onCheckedChange={onAutoExtractIconChange}
+          />
+        </div>
+        <div className='flex w-full gap-2 max-sm:flex-col'>
           <Input
             ref={inputRef}
             type='file'
@@ -55,6 +77,7 @@ export const CreateAppIconSection = ({
             <Button
               type='button'
               variant='outline'
+              className='shrink-0'
               onClick={handleClearIcon}
             >
               <IconX className='size-4' />
@@ -63,6 +86,6 @@ export const CreateAppIconSection = ({
           )}
         </div>
       </div>
-    </Setting>
+    </Section>
   )
 }

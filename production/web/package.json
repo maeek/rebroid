@@ -9,7 +9,7 @@
     "format:fix": "prettier --write --ignore-path .gitignore .",
     "eslint": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start -p 3001"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",

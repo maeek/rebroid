@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Section } from '@/components/ui/section'
 import { getSystemResourcesAction } from '@/lib/orchestrator/actions'
 import type { SystemResources } from '@/lib/orchestrator/types'
 
@@ -19,10 +18,10 @@ const formatPercent = (value: number) => `${value.toFixed(1)}%`
 
 const QuickGlanceCard = ({ label, value, hint }: { label: string; value: string; hint: string }) => {
   return (
-    <div className='rounded-md border border-input bg-card/40 p-3'>
-      <div className='text-sm text-secondary-foreground'>{label}</div>
-      <div className='text-2xl font-medium'>{value}</div>
-      <div className='mt-1 text-xs text-secondary-foreground'>{hint}</div>
+    <div className='rounded-md border border-border/60 border-l-primary/50 p-4 bg-card/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md max-sm:p-4'>
+      <div className='text-sm font-medium text-secondary-foreground'>{label}</div>
+      <div className='mt-1 text-2xl font-semibold text-foreground'>{value}</div>
+      <div className='mt-2 text-xs leading-5 text-muted-foreground'>{hint}</div>
     </div>
   )
 }
@@ -42,16 +41,7 @@ export const OrchestratorQuickGlanceSection = ({ refreshKey = 0 }: { refreshKey?
   }, [refreshKey])
 
   return (
-    <Section
-      title='Quick glance'
-      boxed
-      contentClassName='gap-4'
-      className='w-full'
-    >
-      <p className='text-sm text-secondary-foreground'>
-        CPU and memory below come from aggregated live Docker stats for managed containers, not host-level system
-        metrics.
-      </p>
+    <>
       <div className='grid grid-cols-4 gap-3 max-xl:grid-cols-2 max-sm:grid-cols-1'>
         <QuickGlanceCard
           label='Managed container CPU'
@@ -95,6 +85,6 @@ export const OrchestratorQuickGlanceSection = ({ refreshKey = 0 }: { refreshKey?
           ? ` • Volume sizes cached at ${new Date(resources.volumeUsageCachedAt).toLocaleString()}`
           : ''}
       </div>
-    </Section>
+    </>
   )
 }
