@@ -27,6 +27,9 @@ async function bootstrap() {
     .addTag('android-applications')
     .addTag('container-images')
     .addTag('docker-maintenance')
+    .addTag('system-resources')
+    .addTag('settings')
+    .addTag('network-policy')
     .addTag('health')
     .build();
 

@@ -7,7 +7,7 @@ function authenticate(username: string, password: string) {
     id: '9001',
     name: 'Web Admin',
     email: 'admin@example.com',
-    image: 'https://static.suchanecki.me/avatar.png'
+    image: null
   }
 
   return user

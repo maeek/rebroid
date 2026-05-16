@@ -1,187 +1,218 @@
 'use client'
-import { useDeferredValue, useState } from 'react'
-import { IconArrowRight } from '@tabler/icons-react'
-import { Setting } from '@/app/(protected)/_components/settings/setting'
-import { AppUpdateAlert } from '@/app/(protected)/_components/viewer/update-alert'
+
+import { useEffect, useRef, useState } from 'react'
+import { IconDeviceFloppy } from '@tabler/icons-react'
+import { useRouter } from 'next/navigation'
+import { PageBreadcrumbs } from '@/app/(protected)/_components/page-breadcrumbs'
+import { ProtectedSplitPageContent, ProtectedSplitPageLayout } from '@/app/(protected)/_components/protected-page-shell'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
+import { toast } from '@/hooks/use-toast'
+import { getApplicationAction, updateApplicationAction } from '@/lib/orchestrator/actions'
+import { mapAndroidApplicationToAppDefinition } from '@/lib/orchestrator/app-mapper'
+import { useForegroundRefresh } from '../../../../../../hooks/use-foreground-refresh'
+import { getAppRefreshIntervalMs } from '../../../../../../lib/orchestrator/refresh'
 import { AppViewerHeading } from '../../../../_components/viewer/heading'
-import { ApkProviders, AppDefinition } from '../../../constants'
+import { AppManageGeneralSettings } from './app-manage-general-settings'
+import { AppManageIconPanel } from './app-manage-icon-panel'
+import { AppManageNetworkPolicySettings } from './app-manage-network-policy-settings'
+import { AppManageProfileSettings } from './app-manage-profile-settings'
+import { AppManageRuntimeSettings } from './app-manage-runtime-settings'
+import type { AppDefinition } from '../../../constants'
+
+const mergeAppPreservingIcon = (nextApp: AppDefinition, currentApp?: AppDefinition) => ({
+  ...nextApp,
+  icon: currentApp?.icon ?? nextApp.icon
+})
 
 export default function AppManage({ app }: { app?: AppDefinition }) {
+  const [currentApp, setCurrentApp] = useState(app)
   const [appName, setAppName] = useState(app?.name || '')
-  const deferredName = useDeferredValue(appName)
+  const [inactivityTimeoutSeconds, setInactivityTimeoutSeconds] = useState(app?.inactivityTimeoutSeconds ?? 900)
+  const [memoryLimitMb, setMemoryLimitMb] = useState(app?.memoryLimitMb?.toString() ?? '')
+  const [cpuLimitCpus, setCpuLimitCpus] = useState(app?.cpuLimitCpus?.toString() ?? '')
+  const [volumeSizeLimitMb, setVolumeSizeLimitMb] = useState(app?.volumeSizeLimitMb?.toString() ?? '')
+  const [redroidArgs, setRedroidArgs] = useState(app?.redroidArgs ?? '')
+  const [icon, setIcon] = useState<string | null>(app?.icon ?? null)
+  const [isSaving, setIsSaving] = useState(false)
+  const hasPendingAppChangesRef = useRef(false)
+  const isIconDirtyRef = useRef(false)
+  const previousAppIdRef = useRef(app?.id)
+  const router = useRouter()
+  const currentAppId = currentApp?.id
+  const refreshIntervalMs = getAppRefreshIntervalMs(currentApp)
 
-  if (!app) {
+  useEffect(() => {
+    if (app?.id !== previousAppIdRef.current) {
+      previousAppIdRef.current = app?.id
+      hasPendingAppChangesRef.current = false
+      isIconDirtyRef.current = false
+    }
+
+    setCurrentApp(current => {
+      if (!app) {
+        return app
+      }
+
+      if (app.id !== current?.id) {
+        return app
+      }
+
+      return mergeAppPreservingIcon(app, current)
+    })
+  }, [app])
+
+  useEffect(() => {
+    if (!currentApp) {
+      return
+    }
+
+    if (!hasPendingAppChangesRef.current) {
+      setAppName(currentApp.name)
+      setInactivityTimeoutSeconds(currentApp.inactivityTimeoutSeconds)
+      setMemoryLimitMb(currentApp.memoryLimitMb?.toString() ?? '')
+      setCpuLimitCpus(currentApp.cpuLimitCpus?.toString() ?? '')
+      setVolumeSizeLimitMb(currentApp.volumeSizeLimitMb?.toString() ?? '')
+      setRedroidArgs(currentApp.redroidArgs ?? '')
+    }
+  }, [currentApp])
+
+  useEffect(() => {
+    if (!currentApp) return
+
+    if (!isIconDirtyRef.current) {
+      setIcon(currentApp.icon ?? null)
+    }
+  }, [currentApp])
+
+  useForegroundRefresh({
+    enabled: Boolean(currentAppId),
+    intervalMs: refreshIntervalMs,
+    refresh: async () => {
+      if (!currentAppId) {
+        return
+      }
+
+      try {
+        const nextApp = await getApplicationAction(currentAppId)
+        setCurrentApp(current => mergeAppPreservingIcon(mapAndroidApplicationToAppDefinition(nextApp), current))
+      } catch {
+        // Keep the last known app state on transient refresh failures.
+      }
+    }
+  })
+
+  if (!currentApp) {
     return <div className='p-4'>App not found</div>
   }
 
+  const displayApp = { ...currentApp, name: appName, icon }
+
+  const handleSave = async () => {
+    setIsSaving(true)
+    try {
+      const updated = await updateApplicationAction(currentApp.id, {
+        name: appName,
+        inactivityTimeoutSeconds,
+        memoryLimitMb: memoryLimitMb ? Number(memoryLimitMb) : null,
+        cpuLimitCpus: cpuLimitCpus ? Number(cpuLimitCpus) : null,
+        volumeSizeLimitMb: volumeSizeLimitMb ? Number(volumeSizeLimitMb) : null,
+        redroidArgs: redroidArgs.trim() || null
+      })
+      hasPendingAppChangesRef.current = false
+      setCurrentApp(current => mergeAppPreservingIcon(mapAndroidApplicationToAppDefinition(updated), current))
+      toast({ title: 'App saved' })
+      router.refresh()
+    } catch (error) {
+      toast({ title: 'Could not save app', description: error instanceof Error ? error.message : 'Unknown error' })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   return (
-    <div className='pl-72 max-lg:pl-0 min-h-full h-[calc(100vh-4rem)] max-sm:w-full'>
-      <div
-        className='w-screen h-screen bg-primary/80 blur-3xl fixed top-0 left-0 z-[-10] pointer-events-none'
-        style={{
-          backgroundImage: `url("https://static.suchanecki.me/${app?.icon}")`,
-          backgroundSize: '1000% 1000%',
-          backgroundPosition: 'top left',
-          opacity: 0.05
-        }}
-      />
-      <main className='row-layout max-w-[1200px] mx-auto flex h-full justify-between gap-8 max-sm:flex-col max-sm:items-center'>
-        <div className='px-6 w-full flex items-start gap-4 pt-2 pb-2 max-sm:px-4 flex-col'>
-          <AppViewerHeading app={{ ...app, name: deferredName }}>
-            <Button>Save</Button>
-          </AppViewerHeading>
-          <div className='flex w-full gap-8 max-sm:flex-col-reverse max-sm:gap-10 pb-24'>
-            <div className='flex flex-col gap-4 flex-3/5'>
-              <Setting
-                label='Name'
-                className='flex-col items-start w-full'
-                variant='vertical'
-              >
-                <Input
-                  value={deferredName}
-                  onChange={e => setAppName(e.target.value)}
-                />
-              </Setting>
-              <Setting
-                label='APK Provider'
-                className='flex-col items-start w-full'
-                variant='vertical'
-              >
-                <Select value={ApkProviders[1].value}>
-                  <SelectTrigger className='w-full'>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ApkProviders.map(option => (
-                      <SelectItem
-                        key={option.value}
-                        value={option.value}
-                      >
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Setting>
-              <Setting
-                label='APK Version'
-                className='flex-col items-start w-full'
-                variant='vertical'
-              >
-                <p className='text-secondary-foreground flex items-center gap-2'>
-                  <span>v{app.apk.version}</span>
-                  {typeof app.apk.newVersion === 'string' && (
-                    <>
-                      <IconArrowRight className='inline size-4 text-secondary-foreground' />
-                      <span className='text-primary'>v{app.apk.newVersion}</span>
-                    </>
-                  )}
-                  <span>•</span>
-                  <span>Provided by APKPure</span>
-                </p>
-                <AppUpdateAlert
-                  app={app}
-                  buttonText='Download new version'
-                  description='A new version of this app is available. Click to download it.'
-                  className='mt-4'
-                />
-              </Setting>
-              <Setting
-                label='Redroid settings'
-                className='flex-col items-start w-full'
-                variant='vertical'
-              >
-                <div className='flex flex-col gap-6 w-full'>
-                  <div className='flex items-start gap-2 flex-col w-full'>
-                    <span className='text-secondary-foreground'>Start arguments</span>
-                    <Textarea
-                      defaultValue='androidboot.redroid_width=433 androidboot.redroid_height=882 androidboot.redroid_dpi=480'
-                      className='w-full'
-                      placeholder='androidboot.redroid_dpi=480'
-                    />
-                  </div>
-                </div>
-              </Setting>
-              <Setting
-                label='Container settings'
-                className='flex-col items-start w-full'
-                variant='vertical'
-              >
-                <div className='flex flex-col gap-6 w-full'>
-                  <div className='flex items-start gap-2 flex-col w-full'>
-                    <span className='text-secondary-foreground'>Image</span>
-                    <Select value='14'>
-                      <SelectTrigger className='w-full'>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {[
-                          { value: '12', label: 'Android 12' },
-                          { value: '13', label: 'Android 13' },
-                          { value: '14', label: 'Android 14' },
-                          { value: '15', label: 'Android 15' }
-                        ].map(option => (
-                          <SelectItem
-                            key={option.value}
-                            value={option.value}
-                          >
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className='flex items-center gap-2 justify-between'>
-                    <span className='text-secondary-foreground'>Preserve container data between restarts</span>
-                    <Switch defaultChecked />
-                  </div>
-                  <div className='flex items-center gap-2 justify-between'>
-                    <span className='text-secondary-foreground'>Provide internet access to the container</span>
-                    <Switch defaultChecked />
-                  </div>
-                  <div className='flex items-center gap-2 justify-between'>
-                    <span className='text-secondary-foreground'>Container keepalive</span>
-                    <Input
-                      defaultValue='1h'
-                      className='w-40'
-                      placeholder='1h'
-                      type='text'
-                    />
-                  </div>
-                </div>
-              </Setting>
-            </div>
-            <div className='shrink-0 flex flex-col gap-4 grow-0 flex-2/5 items-center max-sm:flex-1'>
-              <Setting
-                label='Icon'
-                className='flex-col items-start w-full'
-                variant='vertical'
-              >
-                <p className='text-secondary-foreground text-sm pb-4'>
-                  Drop the image in the container below or click <b className='text-primary cursor-pointer'>here</b> to
-                  upload a photo
-                </p>
-                <div className='flex flex-col items-center gap-6 w-full'>
-                  <div
-                    className='shrink-0 size-72 bg-slate-400/20 flex items-center justify-center transition-all -z-[1]'
-                    style={{
-                      clipPath: `url(#squircleClip)`,
-                      backgroundImage: `url("https://static.suchanecki.me/${app?.icon}")`,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center'
-                    }}
-                  />
-                </div>
-              </Setting>
-            </div>
+    <ProtectedSplitPageLayout>
+      <div className='w-screen h-screen bg-primary/80 blur-3xl fixed top-0 left-0 -z-10 pointer-events-none opacity-5' />
+      <ProtectedSplitPageContent>
+        <PageBreadcrumbs
+          items={[
+            { label: 'Apps', href: '/apps' },
+            { label: appName || currentApp.name, href: `/app/${currentApp.id}` },
+            { label: 'Manage' }
+          ]}
+        />
+        <AppViewerHeading app={displayApp}>
+          <Button
+            disabled={isSaving}
+            onClick={() => void handleSave()}
+          >
+            <IconDeviceFloppy className='size-4' />
+            Save
+          </Button>
+        </AppViewerHeading>
+        <div className='flex w-full gap-8 max-sm:flex-col-reverse max-sm:gap-10 pb-24'>
+          <div className='flex flex-col gap-4 flex-3/5'>
+            <AppManageGeneralSettings
+              app={currentApp}
+              appId={currentApp.id}
+              appName={appName}
+              onAppNameChange={value => {
+                hasPendingAppChangesRef.current = true
+                setAppName(value)
+              }}
+            />
+            <div className='h-px bg-border my-2' />
+            <AppManageRuntimeSettings
+              app={currentApp}
+              inactivityTimeoutSeconds={inactivityTimeoutSeconds}
+              memoryLimitMb={memoryLimitMb}
+              cpuLimitCpus={cpuLimitCpus}
+              volumeSizeLimitMb={volumeSizeLimitMb}
+              redroidArgs={redroidArgs}
+              onInactivityTimeoutChange={value => {
+                hasPendingAppChangesRef.current = true
+                setInactivityTimeoutSeconds(value)
+              }}
+              onMemoryLimitChange={value => {
+                hasPendingAppChangesRef.current = true
+                setMemoryLimitMb(value)
+              }}
+              onCpuLimitChange={value => {
+                hasPendingAppChangesRef.current = true
+                setCpuLimitCpus(value)
+              }}
+              onVolumeSizeLimitChange={value => {
+                hasPendingAppChangesRef.current = true
+                setVolumeSizeLimitMb(value)
+              }}
+              onRedroidArgsChange={value => {
+                hasPendingAppChangesRef.current = true
+                setRedroidArgs(value)
+              }}
+            />
+            <div className='h-px bg-border my-2' />
+            <AppManageProfileSettings
+              app={currentApp}
+              onUpdated={setCurrentApp}
+            />
+            <div className='h-px bg-border my-2' />
+            <AppManageNetworkPolicySettings
+              app={currentApp}
+              onUpdated={setCurrentApp}
+            />
+          </div>
+          <div className='shrink-0 flex flex-col gap-4 grow-0 flex-2/5 items-center max-sm:flex-1'>
+            <AppManageIconPanel
+              appId={currentApp.id}
+              appName={appName}
+              icon={icon}
+              onIconChange={(nextIcon, isDirty) => {
+                isIconDirtyRef.current = isDirty
+                setIcon(nextIcon)
+              }}
+            />
           </div>
         </div>
-      </main>
-    </div>
+      </ProtectedSplitPageContent>
+    </ProtectedSplitPageLayout>
   )
 }

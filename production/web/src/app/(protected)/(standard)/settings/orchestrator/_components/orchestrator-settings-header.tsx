@@ -1,0 +1,44 @@
+import { IconDeviceFloppy, IconRotateClockwise } from '@tabler/icons-react'
+import { PageBreadcrumbs } from '@/app/(protected)/_components/page-breadcrumbs'
+import { Button } from '@/components/ui/button'
+
+export const OrchestratorSettingsHeader = ({
+  isSaving,
+  onReset,
+  onSave
+}: {
+  isSaving: boolean
+  onReset: () => void
+  onSave: () => void
+}) => {
+  return (
+    <section className='shrink-0 bg-background px-6 py-4 max-sm:px-4'>
+      <div className='flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-start'>
+        <div className='flex flex-col gap-2'>
+          <PageBreadcrumbs
+            className='pt-0'
+            items={[{ label: 'Settings', href: '/settings/general' }, { label: 'Orchestrator' }]}
+          />
+          <h2 className='pt-4 text-3xl font-medium max-sm:text-xl'>Orchestrator</h2>
+        </div>
+        <div className='flex gap-2 max-sm:w-full'>
+          <Button
+            variant='secondary'
+            disabled={isSaving}
+            onClick={onReset}
+          >
+            <IconRotateClockwise className='size-4' />
+            Reset
+          </Button>
+          <Button
+            disabled={isSaving}
+            onClick={onSave}
+          >
+            <IconDeviceFloppy className='size-4' />
+            Save
+          </Button>
+        </div>
+      </div>
+    </section>
+  )
+}

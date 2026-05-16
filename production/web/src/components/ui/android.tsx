@@ -1,17 +1,20 @@
 import { SVGProps } from 'react'
 
+const androidViewBoxWidth = 380
+const androidViewBoxHeight = 830
+
 export interface AndroidProps extends SVGProps<SVGSVGElement> {
   width?: number
   height?: number
   children?: React.ReactNode
 }
 
-export default function Android({ width = 433, height = 882, children, ...props }: AndroidProps) {
+export default function Android({ width, height, children, ...props }: AndroidProps) {
   return (
     <svg
       width={width}
       height={height}
-      viewBox={`0 0 ${width} ${height}`}
+      viewBox={`0 0 ${androidViewBoxWidth} ${androidViewBoxHeight}`}
       fill='none'
       xmlns='http://www.w3.org/2000/svg'
       {...props}

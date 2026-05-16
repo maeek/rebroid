@@ -1,0 +1,79 @@
+'use client'
+
+import { useState } from 'react'
+import { IconRestore } from '@tabler/icons-react'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from '@/components/ui/dialog'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { startApplicationAction, stopApplicationAction } from '@/lib/orchestrator/actions'
+import { useAppViewerActionRunner } from './use-app-viewer-action-runner'
+import type { AppDefinition } from '../../../(standard)/constants'
+
+export const AppViewerRestartAction = ({ app }: { app?: AppDefinition }) => {
+  const [open, setOpen] = useState(false)
+  const { runAction } = useAppViewerActionRunner()
+  const isBusy = app?.status === 'provisioning' || app?.status === 'removing'
+
+  const handleRestart = async () => {
+    if (!app) {
+      return
+    }
+
+    const didSucceed = await runAction(async () => {
+      await stopApplicationAction(app.id)
+      await startApplicationAction(app.id)
+    }, 'Could not restart app')
+
+    if (didSucceed) {
+      setOpen(false)
+    }
+  }
+
+  return (
+    <Dialog
+      modal
+      open={open}
+      onOpenChange={setOpen}
+    >
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DialogTrigger asChild>
+            <Button variant='secondary'>
+              <IconRestore className='size-4' /> Restart
+            </Button>
+          </DialogTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Restart</TooltipContent>
+      </Tooltip>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Restart {app?.name}?</DialogTitle>
+          <DialogDescription>
+            This action will kill the docker container and start it with configured settings. Do you wish to continue?
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button
+            variant='destructive'
+            disabled={!app || isBusy}
+            onClick={() => void handleRestart()}
+          >
+            Restart
+          </Button>
+          <DialogClose asChild>
+            <Button variant='secondary'>Cancel</Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}

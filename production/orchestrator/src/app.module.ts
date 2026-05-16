@@ -8,7 +8,10 @@ import { DockerModule } from './docker/docker.module';
 import { DockerMaintenanceModule } from './docker-maintenance/docker-maintenance.module';
 import { HealthModule } from './health/health.module';
 import { NetworkIsolationModule } from './network-isolation/network-isolation.module';
+import { NetworkPolicyModule } from './network-policy/network-policy.module';
 import { ScrcpyModule } from './scrcpy/scrcpy.module';
+import { SettingsModule } from './settings/settings.module';
+import { SystemResourcesModule } from './system-resources/system-resources.module';
 
 @Module({
   imports: [
@@ -17,9 +20,12 @@ import { ScrcpyModule } from './scrcpy/scrcpy.module';
     ScheduleModule.forRoot(),
     DockerModule,
     NetworkIsolationModule,
+    NetworkPolicyModule,
     AndroidAppsModule,
     ContainerImagesModule,
     DockerMaintenanceModule,
+    SettingsModule,
+    SystemResourcesModule,
     ScrcpyModule,
     HealthModule,
   ],

@@ -54,7 +54,7 @@ function CommandInput({ className, ...props }: React.ComponentProps<typeof Comma
   return (
     <div
       data-slot='command-input-wrapper'
-      className='flex h-9 items-center gap-2 border-b px-3'
+      className='mx-2 mt-2 flex h-9 items-center gap-2 rounded-md border border-border/70 bg-input/72 px-3 backdrop-blur-xs transition-[background-color,border-color,color] hover:bg-input/84'
     >
       <SearchIcon className='size-4 shrink-0 opacity-50' />
       <CommandPrimitive.Input

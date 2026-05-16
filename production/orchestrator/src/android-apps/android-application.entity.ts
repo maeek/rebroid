@@ -6,6 +6,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { ApplicationProfileMode } from './application-profile-mode';
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
@@ -66,6 +67,58 @@ export class AndroidApplication {
   @ApiProperty({ example: 'sma-data-signal-android-98a530d6' })
   @Column()
   volumeName!: string;
+
+  @ApiProperty({ enum: ApplicationProfileMode, example: ApplicationProfileMode.Persistent })
+  @Column({ default: ApplicationProfileMode.Persistent })
+  profileMode!: ApplicationProfileMode;
+
+  @ApiPropertyOptional({ example: 'default', nullable: true })
+  @Column({ type: 'text', nullable: true })
+  profileName!: string | null;
+
+  @ApiPropertyOptional({ example: 2048, nullable: true })
+  @Column({ type: 'integer', nullable: true })
+  memoryLimitMb!: number | null;
+
+  @ApiPropertyOptional({ example: 2, nullable: true })
+  @Column({ type: 'real', nullable: true })
+  cpuLimitCpus!: number | null;
+
+  @ApiPropertyOptional({
+    description: 'Advisory size limit. Docker local named volumes do not enforce this without a storage driver.',
+    example: 8192,
+    nullable: true,
+  })
+  @Column({ type: 'integer', nullable: true })
+  volumeSizeLimitMb!: number | null;
+
+  @ApiPropertyOptional({ example: 'androidboot.redroid_width=1080 androidboot.redroid_height=1920', nullable: true })
+  @Column({ type: 'text', nullable: true })
+  redroidArgs!: string | null;
+
+  @ApiProperty({ example: true })
+  @Column({ default: true })
+  networkPolicyEnabled!: boolean;
+
+  @ApiProperty({
+    type: [String],
+    description: 'App-specific CIDR allowlist. Backend default destinations are applied separately.',
+    example: ['10.20.0.0/16'],
+  })
+  @Column({ type: 'text', default: '[]' })
+  networkPolicyAllowCidrs!: string;
+
+  @ApiPropertyOptional({ example: 'applied', nullable: true })
+  @Column({ type: 'text', nullable: true })
+  networkPolicyStatus!: string | null;
+
+  @ApiPropertyOptional({ example: 'Policy applied to DOCKER-USER.', nullable: true })
+  @Column({ type: 'text', nullable: true })
+  networkPolicyMessage!: string | null;
+
+  @ApiPropertyOptional({ example: '2026-05-16T20:40:00.000Z', nullable: true })
+  @Column({ type: 'datetime', nullable: true })
+  networkPolicyAppliedAt!: Date | null;
 
   @ApiPropertyOptional({
     example: '/app/uploads/98a530d6-a45d-466a-9cb4-c023067c4971.apk',

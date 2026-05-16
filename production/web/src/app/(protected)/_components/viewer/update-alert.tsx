@@ -19,14 +19,14 @@ export const AppUpdateAlert = ({
   description?: string
   onClick?: () => void
 }) => {
-  if (!app?.newVersion) {
+  if (!app?.apk.newVersion) {
     return <></>
   }
 
   return (
     <Section
       className={cn(
-        'flex flex-col gap-2 border-green-500/20 !bg-green-500/10 text-foreground hover:bg-green-500/20 w-full rounded-lg border px-4 py-3 text-sm',
+        'flex w-full flex-col gap-2 rounded-lg border border-green-500/20 bg-green-500/10! px-4 py-3 text-sm text-foreground hover:bg-green-500/20',
         className
       )}
     >
@@ -54,7 +54,8 @@ export const AppUpdateAlert = ({
           className='px-8 mt-4 w-full'
           variant='update'
         >
-          {buttonText || 'Update Now'}&nbsp;&nbsp;•&nbsp;&nbsp;{app?.newVersion ? `v${app.newVersion}` : 'Latest'}
+          {buttonText || 'Update Now'}&nbsp;&nbsp;•&nbsp;&nbsp;
+          {app?.apk.newVersion ? `v${app.apk.newVersion}` : 'Latest'}
         </Button>
       </Link>
     </Section>

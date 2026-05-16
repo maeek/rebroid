@@ -1,6 +1,5 @@
 'use client'
 
-import { CSSProperties } from 'react'
 import { IconLogout, IconSettings, IconUser } from '@tabler/icons-react'
 import { signOut, useSession } from 'next-auth/react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -26,7 +25,7 @@ export const TopBarAccount = () => {
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align='end'
-        style={{ width: '12rem' } as CSSProperties}
+        style={{ width: '12rem' }}
       >
         <ThemeToggle />
         <DropdownMenuSeparator />

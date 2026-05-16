@@ -1,17 +1,24 @@
-import { Button } from '@/components/ui/button'
-import { yourApps } from '../constants'
+import { ProtectedStackPageLayout } from '@/app/(protected)/_components/protected-page-shell'
+import { withStoredAppIcons } from '@/lib/app-icons/enrich'
+import { mapAndroidApplicationToAppDefinition } from '@/lib/orchestrator/app-mapper'
+import { orchestratorApi } from '@/lib/orchestrator/client'
+import { getServerOrchestratorUiSettings } from '@/lib/orchestrator/server-settings'
 import { AppsList } from '../../_components/apps/apps-list'
 
-export default function Apps() {
+export default async function Apps() {
+  const initialSettings = await getServerOrchestratorUiSettings()
+  const apps = await orchestratorApi
+    .listApplications(initialSettings.ownerUserId)
+    .then(items => items.map(mapAndroidApplicationToAppDefinition))
+    .then(withStoredAppIcons)
+    .catch(() => [])
+
   return (
-    <div className='pl-72 max-lg:pl-0 min-h-full'>
-      <main className='row-layout max-w-[1600px] mx-auto'>
-        <div className='px-6 flex items-center justify-between gap-4 pt-2 pb-2 max-sm:px-4'>
-          <h2 className='text-3xl max-sm:text-xl font-medium shrink-0'>Installed Apps</h2>
-          <Button variant='ghost'>Manage</Button>
-        </div>
-        <AppsList yourApps={yourApps} />
-      </main>
-    </div>
+    <ProtectedStackPageLayout>
+      <AppsList
+        yourApps={apps}
+        initialSettings={initialSettings}
+      />
+    </ProtectedStackPageLayout>
   )
 }

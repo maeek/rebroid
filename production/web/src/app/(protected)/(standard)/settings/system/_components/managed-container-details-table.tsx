@@ -1,0 +1,39 @@
+'use client'
+
+import type { SystemResources } from '@/lib/orchestrator/types'
+
+const formatBytes = (bytes: number) => {
+  if (bytes === 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
+  return `${(bytes / 1024 ** index).toFixed(2)} ${units[index]}`
+}
+
+const formatPercent = (value: number) => `${value.toFixed(1)}%`
+
+export function ManagedContainerDetailsTable({ resources }: { resources?: SystemResources }) {
+  if (!resources) return null
+
+  return (
+    <ul className='divide-y divide-border'>
+      <li className='p-2 flex justify-between gap-2 text-right text-sm'>
+        <span className='font-semibold'>CPU Usage:</span> {formatPercent(resources.managedContainersCpuUsagePercent)}
+      </li>
+      <li className='p-2 flex justify-between gap-2 text-right text-sm'>
+        <span className='font-semibold'>Memory Usage:</span> {formatBytes(resources.managedContainersMemoryUsageBytes)}
+      </li>
+      <li className='p-2 flex justify-between gap-2 text-right text-sm'>
+        <span className='font-semibold'>Metric Scope:</span> Aggregated across running managed containers
+      </li>
+      <li className='p-2 flex justify-between gap-2 text-right text-sm'>
+        <span className='font-semibold'>Memory Source:</span> Working-set estimate from Docker stats
+      </li>
+      <li className='p-2 flex justify-between gap-2 text-right text-sm'>
+        <span className='font-semibold'>Last Sample:</span>{' '}
+        {resources.containerStatsCollectedAt
+          ? new Date(resources.containerStatsCollectedAt).toLocaleString()
+          : 'Unavailable'}
+      </li>
+    </ul>
+  )
+}

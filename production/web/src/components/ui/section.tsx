@@ -21,32 +21,47 @@ export const Section = ({
   boxed?: boolean
 }) => {
   const [isOpen, setIsOpen] = useState(false)
+  const content = (
+    <div
+      className={cn('flex', contentClassName, {
+        'flex-col': orientation === 'vertical'
+      })}
+    >
+      {children}
+    </div>
+  )
+
   return (
     <div
       className={cn(
-        'flex flex-col w-full rounded-lg py-4',
+        'flex flex-col w-full rounded-lg',
         boxed && 'bg-card/60 p-6 max-sm:p-4 hover:bg-card/50 border border-input',
         className
       )}
     >
       {title && (
         <div
-          className='flex justify-between items-center pb-2'
+          className={cn('flex justify-between items-center pb-4', collapsible && 'cursor-pointer')}
           onClick={() => collapsible && setIsOpen(p => !p)}
         >
           <h3 className='font-medium'>{title}</h3>
-          {collapsible && <IconChevronDown className={cn('cursor-pointer transition', isOpen && '-rotate-180')} />}
+          {collapsible && (
+            <IconChevronDown className={cn('cursor-pointer transition hover:text-primary', isOpen && '-rotate-180')} />
+          )}
         </div>
       )}
-      {(!title || isOpen || !collapsible) && (
+
+      {title && collapsible ? (
         <div
-          className={cn('flex', contentClassName, {
-            'pt-2': isOpen,
-            'flex-col': orientation === 'vertical'
-          })}
+          className={cn(
+            'grid overflow-hidden transition-[grid-template-rows,opacity,padding-top] duration-200 ease-out',
+            isOpen ? 'grid-rows-[1fr] opacity-100 pt-2' : 'grid-rows-[0fr] opacity-0 pt-0'
+          )}
         >
-          {children}
+          <div className='min-h-0'>{content}</div>
         </div>
+      ) : (
+        content
       )}
     </div>
   )

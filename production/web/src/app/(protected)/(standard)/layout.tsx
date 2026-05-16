@@ -1,9 +1,9 @@
 import { redirect, RedirectType } from 'next/navigation'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { getServerAuthSession } from '@/server/auth/auth'
+import { SquircleSVG } from '../_components/apps/squircle-svg'
 import Sidebar from '../_components/sidebar'
 import { TopBarProtected } from '../_components/top-bar/top-bar'
-import { SquircleSVG } from '../_components/apps/squircle-svg'
 
 export default async function FilesLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerAuthSession()

@@ -1,6 +1,7 @@
 import { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import { AppDefinition } from '../../(standard)/constants'
+import { AppIcon } from '../apps/app-icon'
 
 export const AppViewerHeading = ({
   app,
@@ -19,15 +20,12 @@ export const AppViewerHeading = ({
       )}
     >
       <div className='flex gap-4 items-center overflow-hidden'>
-        {app?.icon && (
-          <div
-            className='shrink-0 size-10 bg-slate-400/20 flex items-center justify-center transition-all -z-[1]'
-            style={{
-              clipPath: `url(#squircleClip)`,
-              backgroundImage: `url("https://static.suchanecki.me/${app?.icon}")`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center'
-            }}
+        {app && (
+          <AppIcon
+            appId={app.id}
+            appName={app.name}
+            icon={app.icon}
+            className='shrink-0 size-10 -z-[1]'
           />
         )}
         <span className='text-ellipsis text-nowrap overflow-hidden max-w-[calc(100%-3rem)]'>

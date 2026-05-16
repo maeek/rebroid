@@ -16,15 +16,16 @@ export class NetworkIsolationService {
     private readonly docker: DockerService,
   ) {}
 
-  namesFor(applicationId: string, name: string): IsolatedRuntimeNames {
+  namesFor(applicationId: string, name: string, profileName?: string | null): IsolatedRuntimeNames {
     const prefix = this.config.getOrThrow<string>('app.docker.resourcePrefix');
     const safeName = dockerSafeName(name, 'android-app');
+    const safeProfileName = profileName ? `-${dockerSafeName(profileName, 'profile')}` : '';
     const suffix = applicationId.slice(0, 8);
 
     return {
       containerName: `${prefix}-redroid-${safeName}-${suffix}`,
       networkName: `${prefix}-net-${safeName}-${suffix}`,
-      volumeName: `${prefix}-data-${safeName}-${suffix}`,
+      volumeName: `${prefix}-data-${safeName}${safeProfileName}-${suffix}`,
     };
   }
 

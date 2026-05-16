@@ -3,6 +3,7 @@
 import * as React from 'react'
 import * as RechartsPrimitive from 'recharts'
 import { cn } from '@/lib/utils'
+import type { LegendPayload, TooltipContentProps } from 'recharts'
 
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: '', dark: '.dark' } as const
@@ -16,6 +17,25 @@ export type ChartConfig = {
 
 type ChartContextProps = {
   config: ChartConfig
+}
+
+const getConfigLookupKey = (...values: unknown[]) => {
+  for (const value of values) {
+    if (typeof value === 'string' || typeof value === 'number') {
+      return String(value)
+    }
+  }
+
+  return 'value'
+}
+
+const getPayloadFillColor = (payload: unknown) => {
+  if (typeof payload !== 'object' || payload === null || !('fill' in payload)) {
+    return undefined
+  }
+
+  const fill = payload.fill
+  return typeof fill === 'string' ? fill : undefined
 }
 
 const ChartContext = React.createContext<ChartContextProps | null>(null)
@@ -95,7 +115,7 @@ const ChartTooltip = RechartsPrimitive.Tooltip
 
 const ChartTooltipContent = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
+  Partial<TooltipContentProps> &
     React.ComponentProps<'div'> & {
       hideLabel?: boolean
       hideIndicator?: boolean
@@ -130,7 +150,7 @@ const ChartTooltipContent = React.forwardRef<
       }
 
       const [item] = payload
-      const key = `${labelKey || item.dataKey || item.name || 'value'}`
+      const key = getConfigLookupKey(labelKey, item.dataKey, item.name)
       const itemConfig = getPayloadConfigFromPayload(config, item, key)
       const value = !labelKey && typeof label === 'string' ? config[label]?.label || label : itemConfig?.label
 
@@ -162,21 +182,20 @@ const ChartTooltipContent = React.forwardRef<
         {!nestLabel ? tooltipLabel : null}
         <div className='grid gap-1.5'>
           {payload.map((item, index) => {
-            const key = `${nameKey || item.name || item.dataKey || 'value'}`
+            const key = getConfigLookupKey(nameKey, item.name, item.dataKey)
             const itemConfig = getPayloadConfigFromPayload(config, item, key)
-            const indicatorColor = color || (item.payload as { fill: string }).fill || item.color
+            const indicatorColor = color || getPayloadFillColor(item.payload) || item.color
 
             return (
               <div
-                key={item.dataKey}
+                key={String(item.dataKey ?? item.name ?? index)}
                 className={cn(
                   'flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-muted-foreground',
                   indicator === 'dot' && 'items-center'
                 )}
               >
                 {formatter && item?.value !== undefined && item.name ? (
-                  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-                  formatter(item.value, item.name, item, index, item.payload)
+                  formatter(item.value, item.name, item, index, payload)
                 ) : (
                   <>
                     {itemConfig?.icon ? (
@@ -232,7 +251,7 @@ const ChartLegend = RechartsPrimitive.Legend
 const ChartLegendContent = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<'div'> &
-    Pick<RechartsPrimitive.LegendProps, 'payload' | 'verticalAlign'> & {
+    Pick<Partial<RechartsPrimitive.DefaultLegendContentProps>, 'payload' | 'verticalAlign'> & {
       hideIcon?: boolean
       nameKey?: string
     }
@@ -248,13 +267,13 @@ const ChartLegendContent = React.forwardRef<
       ref={ref}
       className={cn('flex items-center justify-center gap-4', verticalAlign === 'top' ? 'pb-3' : 'pt-3', className)}
     >
-      {payload.map(item => {
+      {payload.map((item: LegendPayload) => {
         const key = `${nameKey || (item.dataKey as string) || 'value'}`
         const itemConfig = getPayloadConfigFromPayload(config, item, key)
 
         return (
           <div
-            key={item.value as string}
+            key={item.value}
             className={cn('flex items-center gap-1.5 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:text-muted-foreground')}
           >
             {itemConfig?.icon && !hideIcon ? (
@@ -290,13 +309,13 @@ function getPayloadConfigFromPayload(config: ChartConfig, payload: unknown, key:
   let configLabelKey: string = key
 
   if (key in payload && typeof payload[key as keyof typeof payload] === 'string') {
-    configLabelKey = payload[key as keyof typeof payload] as string
+    configLabelKey = payload[key as keyof typeof payload]
   } else if (
     payloadPayload &&
     key in payloadPayload &&
     typeof payloadPayload[key as keyof typeof payloadPayload] === 'string'
   ) {
-    configLabelKey = payloadPayload[key as keyof typeof payloadPayload] as string
+    configLabelKey = payloadPayload[key as keyof typeof payloadPayload]
   }
 
   return configLabelKey in config ? config[configLabelKey] : config[key]

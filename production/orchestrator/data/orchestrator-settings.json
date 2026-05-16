@@ -1,0 +1,6 @@
+{
+  "defaultRedroidImage": "redroid/redroid:13.0.0-latest",
+  "defaultScrcpyTransport": "websocket",
+  "defaultInactivityTimeoutSeconds": 900,
+  "maxApkUploadSizeMb": 512
+}

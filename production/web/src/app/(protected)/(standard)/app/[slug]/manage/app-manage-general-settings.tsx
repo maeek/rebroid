@@ -1,0 +1,121 @@
+import { useRef, useState, type ChangeEvent } from 'react'
+import { IconUpload } from '@tabler/icons-react'
+import { useRouter } from 'next/navigation'
+import { Setting } from '@/app/(protected)/_components/settings/setting'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { toast } from '@/hooks/use-toast'
+import { updateApkAction } from '@/lib/orchestrator/actions'
+import { apkSizeLabel, isFileWithinApkLimit, useOrchestratorUiSettings } from '@/lib/orchestrator/settings'
+import type { AppDefinition } from '@/app/(protected)/(standard)/constants'
+
+type AppManageGeneralSettingsProps = {
+  app?: AppDefinition
+  appId: string
+  appName: string
+  onAppNameChange: (value: string) => void
+}
+
+const verticalSettingClassName = 'flex-col items-start w-full'
+const formatStatusLabel = (value?: string | null) => (value ? value.replaceAll('_', ' ') : 'unknown')
+
+export const AppManageGeneralSettings = ({ app, appId, appName, onAppNameChange }: AppManageGeneralSettingsProps) => {
+  const [isUploadingApk, setIsUploadingApk] = useState(false)
+  const apkInputRef = useRef<HTMLInputElement>(null)
+  const settings = useOrchestratorUiSettings()
+  const router = useRouter()
+  const lifecycleLabel = formatStatusLabel(app?.lifecycleStage)
+  const statusLabel = app?.status ?? 'unknown'
+  const shouldShowLifecycleBadge = lifecycleLabel.toLowerCase() !== statusLabel.toLowerCase()
+
+  const handleApkUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!isFileWithinApkLimit(file, settings.maxApkUploadSizeMb)) {
+      toast({
+        title: 'APK is too large',
+        description: `The configured upload limit is ${apkSizeLabel(settings.maxApkUploadSizeMb)}.`
+      })
+      event.target.value = ''
+      return
+    }
+
+    setIsUploadingApk(true)
+    try {
+      const body = new FormData()
+      body.set('apk', file)
+      await updateApkAction(appId, body)
+      toast({ title: 'APK uploaded' })
+      router.refresh()
+    } catch (error) {
+      toast({ title: 'Could not upload APK', description: error instanceof Error ? error.message : 'Unknown error' })
+    } finally {
+      setIsUploadingApk(false)
+      event.target.value = ''
+    }
+  }
+
+  return (
+    <>
+      <Setting
+        label='Name'
+        className={verticalSettingClassName}
+        variant='vertical'
+      >
+        <Input
+          value={appName}
+          onChange={event => onAppNameChange(event.target.value)}
+        />
+      </Setting>
+      <Setting
+        label='State'
+        className={verticalSettingClassName}
+        variant='vertical'
+      >
+        <div className='flex flex-wrap gap-2'>
+          <Badge
+            variant={app?.status === 'error' ? 'destructive' : 'status'}
+            className='capitalize'
+          >
+            {statusLabel}
+          </Badge>
+          {shouldShowLifecycleBadge && (
+            <Badge
+              className='capitalize'
+              variant='secondary'
+            >
+              {lifecycleLabel}
+            </Badge>
+          )}
+        </div>
+        {app?.statusMessage && <p className='mt-2 text-sm text-secondary-foreground'>{app.statusMessage}</p>}
+      </Setting>
+      <Setting
+        label='APK'
+        className={verticalSettingClassName}
+        variant='vertical'
+      >
+        <div className='flex w-full flex-col gap-3'>
+          <p className='text-secondary-foreground'>{app?.apkOriginalName || 'No APK uploaded'}</p>
+          <input
+            ref={apkInputRef}
+            type='file'
+            accept='.apk,application/vnd.android.package-archive'
+            className='hidden'
+            onChange={event => void handleApkUpload(event)}
+          />
+          <Button
+            type='button'
+            disabled={isUploadingApk}
+            onClick={() => apkInputRef.current?.click()}
+          >
+            <IconUpload className='size-4' />
+            Upload APK
+          </Button>
+        </div>
+      </Setting>
+    </>
+  )
+}

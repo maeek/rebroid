@@ -23,12 +23,16 @@ import {
 } from '@nestjs/swagger';
 import { AndroidApplication } from './android-application.entity';
 import { AndroidAppsService } from './android-apps.service';
+import { AndroidNotificationDto } from './dto/android-notification.dto';
 import { CreateAndroidApplicationDto } from './dto/create-android-application.dto';
 import { DeleteAndroidApplicationResponseDto } from './dto/delete-android-application-response.dto';
 import { ListAndroidApplicationsDto } from './dto/list-android-applications.dto';
 import { RemoveAndroidApplicationDto } from './dto/remove-android-application.dto';
 import { ScrcpySessionDto } from './dto/scrcpy-session.dto';
+import { StartAndroidApplicationDto } from './dto/start-android-application.dto';
+import { SwitchApplicationProfileDto } from './dto/switch-application-profile.dto';
 import { UpdateAndroidApplicationDto } from './dto/update-android-application.dto';
+import { UpdateNetworkPolicyDto } from './dto/update-network-policy.dto';
 
 @ApiTags('android-applications')
 @Controller('android-applications')
@@ -48,8 +52,14 @@ export class AndroidAppsController {
         name: { type: 'string', example: 'Signal Android' },
         ownerUserId: { type: 'string', example: 'user_123' },
         redroidImage: { type: 'string', example: 'redroid/redroid:13.0.0-latest' },
-        scrcpyTransport: { type: 'string', enum: ['websocket', 'webrtc'] },
         inactivityTimeoutSeconds: { type: 'integer', example: 900 },
+        memoryLimitMb: { type: 'integer', example: 2048 },
+        cpuLimitCpus: { type: 'number', example: 2 },
+        volumeSizeLimitMb: { type: 'integer', example: 8192 },
+        redroidArgs: {
+          type: 'string',
+          example: 'androidboot.redroid_dpi=480 androidboot.redroid_width=1080',
+        },
         apk: { type: 'string', format: 'binary' },
       },
     },
@@ -79,10 +89,32 @@ export class AndroidAppsController {
     return this.androidApps.update(id, dto);
   }
 
-  @Post(':id/start')
+  @Patch(':id/network-policy')
+  @ApiOperation({ summary: 'Update and reconcile the app container egress allowlist.' })
   @ApiOkResponse({ type: AndroidApplication })
-  start(@Param('id') id: string) {
-    return this.androidApps.start(id);
+  updateNetworkPolicy(@Param('id') id: string, @Body() dto: UpdateNetworkPolicyDto) {
+    return this.androidApps.updateNetworkPolicy(id, dto);
+  }
+
+  @Post(':id/network-policy/apply')
+  @ApiOperation({ summary: 'Re-apply the stored network policy without restarting the container.' })
+  @ApiOkResponse({ type: AndroidApplication })
+  applyNetworkPolicy(@Param('id') id: string) {
+    return this.androidApps.applyNetworkPolicy(id);
+  }
+
+  @Post(':id/profile')
+  @ApiOperation({ summary: 'Select the runtime profile volume used by the next container start.' })
+  @ApiOkResponse({ type: AndroidApplication })
+  switchProfile(@Param('id') id: string, @Body() dto: SwitchApplicationProfileDto) {
+    return this.androidApps.switchProfile(id, dto);
+  }
+
+  @Post(':id/start')
+  @ApiOperation({ summary: 'Start the application container, optionally selecting a runtime profile.' })
+  @ApiOkResponse({ type: AndroidApplication })
+  start(@Param('id') id: string, @Body() dto: StartAndroidApplicationDto) {
+    return this.androidApps.start(id, dto);
   }
 
   @Post(':id/stop')
@@ -113,6 +145,12 @@ export class AndroidAppsController {
   scrcpySession(@Param('id') id: string, @Headers('host') host?: string) {
     const baseUrl = host ? `ws://${host}` : undefined;
     return this.androidApps.scrcpySession(id, baseUrl);
+  }
+
+  @Get(':id/notifications')
+  @ApiOkResponse({ type: AndroidNotificationDto, isArray: true })
+  notifications(@Param('id') id: string) {
+    return this.androidApps.notifications(id);
   }
 
   @Delete(':id')

@@ -98,24 +98,27 @@ export const TopBarProtected = () => {
         </Link>
       </div>
       <div className={classNames(sectionClasses, 'justify-end')}>
-        <Popover>
-          <PopoverTrigger className='mr-2'>
-            <IconStackBack className='text-secondary-foreground hover:text-foreground focus:text-foreground' />
-          </PopoverTrigger>
-          <PopoverContent className='w-80'>
-            <div className='flex flex-col'>
-              <h3 className='text-lg font-semibold pb-4'>Running Apps</h3>
-              {runningApps.map(app => (
-                <Link
-                  href={`/app/${app.id}`}
-                  key={`popover-app-${app.id}`}
-                >
-                  <div className='flex text-sm px-4 py-2 rounded-sm hover:bg-popover'>{app.name}</div>
-                </Link>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+        {runningApps.length > 0 && (
+          <Popover>
+            <PopoverTrigger className='mr-2'>
+              <IconStackBack className='text-secondary-foreground hover:text-foreground focus:text-foreground' />
+            </PopoverTrigger>
+
+            <PopoverContent className='w-80'>
+              <div className='flex flex-col'>
+                <h3 className='text-lg font-semibold pb-4'>Running Apps</h3>
+                {runningApps.map(app => (
+                  <Link
+                    href={`/app/${app.id}`}
+                    key={`popover-app-${app.id}`}
+                  >
+                    <div className='flex text-sm px-4 py-2 rounded-sm hover:bg-popover'>{app.name}</div>
+                  </Link>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
         <TopBarAccount />
       </div>
     </div>

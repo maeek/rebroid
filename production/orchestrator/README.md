@@ -9,6 +9,7 @@ NestJS backend for provisioning isolated `redroid` containers and exposing a fut
 - `ContainerImagesModule`: list, pull/update, and remove images.
 - `DockerMaintenanceModule`: prune unused containers, networks, images, and volumes.
 - `NetworkIsolationModule`: per-application Docker names, volume, and internal network boundary.
+- `SettingsModule`: JSON-backed runtime defaults and APK upload limits.
 - `ScrcpyModule`: Socket.IO namespace that tracks viewing/input activity and reserves the future proxy contract.
 - `HealthModule`: Docker socket health check.
 
@@ -91,6 +92,53 @@ POST /docker-maintenance/prune/networks
 POST /docker-maintenance/prune/volumes
 POST /docker-maintenance/prune/all
 ```
+
+Settings:
+
+```text
+GET  /settings
+PATCH /settings
+POST /settings/reset
+```
+
+Settings are stored in `SETTINGS_PATH`, defaulting to `./data/orchestrator-settings.json`.
+
+The orchestrator settings currently own:
+
+- default redroid image,
+- default scrcpy transport,
+- default inactivity timeout,
+- max APK upload size.
+- scheduled image pruning interval and dangling-only mode.
+
+## Network Policy
+
+Each app still receives its own Docker network. When `IPTABLES_POLICY_ENABLED=false`, those networks are created as Docker `Internal` networks for a hard no-egress default.
+
+When `IPTABLES_POLICY_ENABLED=true`, the app network is routable and the orchestrator applies per-container `DOCKER-USER` rules:
+
+- allow backend-owned default destinations,
+- allow the app-specific CIDR allowlist,
+- reject everything else from that container IP.
+
+Default destinations are configured by `NETWORK_POLICY_DEFAULT_ALLOW_DESTINATIONS` and are applied at policy reconciliation time, not stored on the application record or returned as user-managed CIDRs. Supported values are:
+
+- `API_IP`: resolves `NETWORK_POLICY_API_CIDRS`, `NETWORK_POLICY_API_HOST`, and the orchestrator container IP on the app network when available.
+- `ORCHESTRATOR_IP`: alias for `API_IP`.
+- `GATEWAY_IP`: resolves the app network gateway.
+- `DEFAULT`: expands to `API_IP,GATEWAY_IP`.
+- explicit IPv4 addresses or CIDRs, for example `10.0.5.12` or `10.0.5.0/24`.
+
+If the API is running outside the per-app Docker network, set `NETWORK_POLICY_API_HOST` or `NETWORK_POLICY_API_CIDRS` so `API_IP` resolves to the current API destination dynamically when policies are applied.
+
+This mode is meant for Linux hosts where the orchestrator has permission to run `iptables`, usually by running with `NET_ADMIN` or equivalent host privileges. Policy can be reconciled without restarting the Android container:
+
+```text
+PATCH /android-applications/:id/network-policy
+POST  /android-applications/:id/network-policy/apply
+```
+
+Resource/profile options are stored per app. RAM and CPU are applied to new containers. Named Docker volume size is currently advisory because the default local volume driver does not enforce quota cleanly across hosts.
 
 ## Docker
 

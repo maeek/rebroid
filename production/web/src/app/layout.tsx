@@ -76,7 +76,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           enableSystem
           disableTransitionOnChange
         >
-          <NextTopLoader showSpinner={false} />
+          <NextTopLoader
+            showSpinner={false}
+            zIndex={9999}
+          />
           <div id='modal-root' />
           <Providers session={session}>{children}</Providers>
           <Toaster />

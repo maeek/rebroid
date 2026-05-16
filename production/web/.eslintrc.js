@@ -39,6 +39,12 @@ module.exports = {
       extends: ['plugin:node/recommended']
     },
     {
+      files: ['*.d.ts'],
+      rules: {
+        'import/extensions': 'off'
+      }
+    },
+    {
       files: ['*.test.ts', '*.test.tsx'],
       plugins: ['jest', 'testing-library'],
       extends: ['plugin:jest/recommended', 'plugin:testing-library/react'],
@@ -86,7 +92,6 @@ module.exports = {
     'no-console': ['error', { allow: ['warn', 'error'] }],
     'no-shadow': 'off',
     '@typescript-eslint/no-shadow': ['error'],
-    '@typescript-eslint/type-annotation-spacing': ['error'],
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/comma-dangle': 'off',
     'react/prop-types': 'off',
