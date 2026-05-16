@@ -1,6 +1,7 @@
 import { useRef, useState, type ChangeEvent } from 'react'
 import { IconUpload } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
+import { useTopLoader } from 'nextjs-toploader'
 import { Setting } from '@/app/(protected)/_components/settings/setting'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -24,10 +25,10 @@ const formatStatusLabel = (value?: string | null) => (value ? value.replaceAll('
 
 export const AppManageGeneralSettings = ({ app, appId, appName, onAppNameChange }: AppManageGeneralSettingsProps) => {
   const [isUploadingApk, setIsUploadingApk] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
   const apkInputRef = useRef<HTMLInputElement>(null)
   const settings = useOrchestratorUiSettings()
   const router = useRouter()
+  const topLoader = useTopLoader()
   const lifecycleLabel = formatStatusLabel(app?.lifecycleStage)
   const statusLabel = app?.status ?? 'unknown'
   const shouldShowLifecycleBadge = lifecycleLabel.toLowerCase() !== statusLabel.toLowerCase()
@@ -46,20 +47,25 @@ export const AppManageGeneralSettings = ({ app, appId, appName, onAppNameChange 
     }
 
     setIsUploadingApk(true)
-    setUploadProgress(0)
+    topLoader.start()
+    topLoader.setProgress(0.08)
+
     try {
       const uploaded = await uploadApkWithProgress({
         file,
-        onProgress: setUploadProgress
+        onProgress: progress => {
+          topLoader.setProgress(Math.min(Math.max(progress / 100, 0.08), 0.95))
+        }
       })
+      topLoader.setProgress(1)
       await updateApkAction(appId, uploaded.id)
       toast({ title: 'APK uploaded' })
       router.refresh()
     } catch (error) {
       toast({ title: 'Could not upload APK', description: error instanceof Error ? error.message : 'Unknown error' })
     } finally {
+      topLoader.done(true)
       setIsUploadingApk(false)
-      setUploadProgress(null)
       event.target.value = ''
     }
   }
@@ -125,14 +131,6 @@ export const AppManageGeneralSettings = ({ app, appId, appName, onAppNameChange 
             <IconUpload className='size-4' />
             Upload APK
           </Button>
-          {uploadProgress !== null && (
-            <div className='h-2 w-full overflow-hidden rounded-full bg-secondary'>
-              <div
-                className='h-full bg-primary transition-all'
-                style={{ width: `${uploadProgress}%` }}
-              />
-            </div>
-          )}
         </div>
       </Setting>
     </Section>
