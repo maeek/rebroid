@@ -20,7 +20,7 @@ export function MemoryChart({ totalMemory, freeMemory }: { totalMemory: number; 
           color: `hsl(var(--chart-${memory > 75 ? '3' : '2'}))`
         }
       }}
-      className='mx-auto aspect-square max-h-[340px] w-full flex flex-col'
+      className='mx-auto aspect-square max-h-85 w-full flex flex-col'
     >
       <RadialBarChart
         data={chartData}

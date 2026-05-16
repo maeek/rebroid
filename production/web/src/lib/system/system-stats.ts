@@ -1,7 +1,23 @@
 import os from 'node:os'
-import { protectedProcedure, router } from './trpc'
 
-// In-memory store for the last 50 CPU usage percentages
+export interface SystemStats {
+  platform: string
+  architecture: string
+  cpu: string
+  cpuCores: number
+  cpuUsage: string
+  totalMemory: string
+  totalMemoryBytes: number
+  freeMemory: string
+  freeMemoryBytes: number
+  memoryUsage: string
+  uptime: string
+  networkInterfaces: ReturnType<typeof os.networkInterfaces>
+  homeDirectory: string
+  hostname: string
+  cpuUsagePercentLast50Entrires: [string, number][]
+}
+
 const cpuUsagePercentLast50Entrires: [Date, number][] = []
 
 function getCPUUsageOverInterval(interval = 1000) {
@@ -14,7 +30,6 @@ function getCPUUsageOverInterval(interval = 1000) {
     let totalEndIdle = 0
     let totalEndTick = 0
 
-    // Calculate the total start and end idle and ticks for all CPUs
     startTimes.forEach((start, index) => {
       const end = endTimes[index]
 
@@ -24,11 +39,8 @@ function getCPUUsageOverInterval(interval = 1000) {
       totalEndTick += end.user + end.nice + end.sys + end.idle + end.irq
     })
 
-    // Calculate the difference in idle and total times
     const idleDifference = totalEndIdle - totalStartIdle
     const totalDifference = totalEndTick - totalStartTick
-
-    // CPU usage is 100% minus the idle time percentage
     const cpuUsage = (1 - idleDifference / totalDifference) * 100
 
     cpuUsagePercentLast50Entrires.push([new Date(), +cpuUsage.toFixed(2)])
@@ -52,7 +64,6 @@ function formatBytes(bytes: number, decimals = 2) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
 }
 
-// Helper function to format uptime in hours, minutes, and seconds
 function formatUptime(seconds: number) {
   const hrs = Math.floor(seconds / 3600)
   const mins = Math.floor((seconds % 3600) / 60)
@@ -60,28 +71,25 @@ function formatUptime(seconds: number) {
   return `${hrs}h ${mins}m ${Math.ceil(secs)}s`
 }
 
-function getSystemStats() {
+export function getSystemStats(): SystemStats {
   return {
     platform: os.platform(),
     architecture: os.arch(),
-    cpu: os.cpus().map(cpu => cpu.model)[0], // Model of the first CPU
+    cpu: os.cpus().map(cpu => cpu.model)[0],
     cpuCores: os.cpus().length,
-    cpuUsage: `${os.loadavg()[0].toFixed(2)} (1 min avg)`, // System load for the last minute
+    cpuUsage: `${os.loadavg()[0].toFixed(2)} (1 min avg)`,
     totalMemory: formatBytes(os.totalmem()),
     totalMemoryBytes: os.totalmem(),
     freeMemory: formatBytes(os.freemem()),
     freeMemoryBytes: os.freemem(),
-    memoryUsage: `${((1 - os.freemem() / os.totalmem()) * 100).toFixed(2)}%`, // Memory usage percentage
+    memoryUsage: `${((1 - os.freemem() / os.totalmem()) * 100).toFixed(2)}%`,
     uptime: formatUptime(os.uptime()),
     networkInterfaces: os.networkInterfaces(),
     homeDirectory: os.homedir(),
     hostname: os.hostname(),
-    cpuUsagePercentLast50Entrires
+    cpuUsagePercentLast50Entrires: cpuUsagePercentLast50Entrires.map(([time, cpuUsagePercent]) => [
+      time.toISOString(),
+      cpuUsagePercent
+    ])
   }
 }
-
-export const systemRouter = router({
-  getSystemStats: protectedProcedure.query(getSystemStats)
-})
-
-export type SystemRouter = typeof systemRouter

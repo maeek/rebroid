@@ -1,19 +1,22 @@
 'use client'
 
+import type { SystemStats } from '@/lib/system/system-stats'
+
 export function DetailsTable({
   systemUtilization
 }: {
-  systemUtilization?: {
-    platform: string
-    architecture: string
-    cpu: string
-    cpuCores: number
-    cpuUsage: string
-    totalMemory: string
-    freeMemory: string
-    memoryUsage: string
-    uptime: string
-  }
+  systemUtilization?: Pick<
+    SystemStats,
+    | 'platform'
+    | 'architecture'
+    | 'cpu'
+    | 'cpuCores'
+    | 'cpuUsage'
+    | 'totalMemory'
+    | 'freeMemory'
+    | 'memoryUsage'
+    | 'uptime'
+  >
 }) {
   if (!systemUtilization) return null
 

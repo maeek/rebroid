@@ -2,7 +2,6 @@
 import { useEffect, useState } from 'react'
 import { PageBreadcrumbs } from '@/app/(protected)/_components/page-breadcrumbs'
 import { ProtectedStackPageLayout } from '@/app/(protected)/_components/protected-page-shell'
-import { trpc } from '@/app/_trpc/client'
 import { Section } from '@/components/ui/section'
 import { getSystemResourcesAction } from '@/lib/orchestrator/actions'
 import { SystemChart } from './_components/chart'
@@ -11,14 +10,25 @@ import { ManagedContainerDetailsTable } from './_components/managed-container-de
 import { MemoryChart } from './_components/memory-chart'
 import { OrchestratorResources } from './_components/orchestrator-resources'
 import type { SystemResources } from '@/lib/orchestrator/types'
+import type { SystemStats } from '@/lib/system/system-stats'
 
 export default function SystemPage() {
   const [resources, setResources] = useState<SystemResources>()
+  const [systemUtilization, setSystemUtilization] = useState<SystemStats>()
+  const [isLoading, setIsLoading] = useState(true)
   const [isRefreshingResources, setIsRefreshingResources] = useState(false)
-  const { data: systemUtilization, isLoading } = trpc.system.getSystemStats.useQuery(undefined, {
-    refetchInterval: 5000,
-    refetchOnReconnect: true
-  })
+
+  const fetchSystemUtilization = async (): Promise<SystemStats> => {
+    const response = await fetch('/api/system/stats', {
+      cache: 'no-store'
+    })
+
+    if (!response.ok) {
+      throw new Error('Could not load system stats.')
+    }
+
+    return (await response.json()) as SystemStats
+  }
 
   const refreshResources = async (refreshVolumes = false) => {
     setIsRefreshingResources(true)
@@ -28,6 +38,33 @@ export default function SystemPage() {
       setIsRefreshingResources(false)
     }
   }
+
+  useEffect(() => {
+    let isActive = true
+
+    const refresh = async () => {
+      try {
+        const stats = await fetchSystemUtilization()
+
+        if (isActive) {
+          setSystemUtilization(stats)
+          setIsLoading(false)
+        }
+      } catch {
+        if (isActive) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    void refresh()
+    const interval = window.setInterval(() => void refresh(), 5000)
+
+    return () => {
+      isActive = false
+      window.clearInterval(interval)
+    }
+  }, [])
 
   useEffect(() => {
     void refreshResources()
