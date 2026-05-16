@@ -38,4 +38,4 @@ next-env.d.ts
 # Mock Service Worker
 mockServiceWorker.js
 certificates
-data/*.json
+data/
