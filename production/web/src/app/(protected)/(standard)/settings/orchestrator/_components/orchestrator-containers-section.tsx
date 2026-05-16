@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { IconRefresh } from '@tabler/icons-react'
+import { IconRefresh, IconSearch } from '@tabler/icons-react'
 import { OrchestratorContainersTable } from '@/app/(protected)/(standard)/settings/orchestrator/_components/orchestrator-containers-table'
 import { Button } from '@/components/ui/button'
 import {
@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { toast } from '@/hooks/use-toast'
 import {
@@ -30,6 +31,7 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
   const [isLoading, setIsLoading] = useState(true)
   const [pendingAction, setPendingAction] = useState<PendingAction>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
 
   const sortedContainers = useMemo(
     () =>
@@ -44,6 +46,32 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
       }),
     [containers]
   )
+
+  const filteredContainers = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    if (!query) {
+      return sortedContainers
+    }
+
+    return sortedContainers.filter(container =>
+      [
+        container.id,
+        container.shortId,
+        ...container.names,
+        container.image,
+        container.imageId,
+        container.command,
+        container.state,
+        container.status,
+        container.applicationId ?? '',
+        container.component ?? '',
+        ...container.networks
+      ]
+        .join(' ')
+        .toLowerCase()
+        .includes(query)
+    )
+  }, [search, sortedContainers])
 
   const refresh = async () => {
     setIsLoading(true)
@@ -110,6 +138,15 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
             Refresh
           </Button>
         </div>
+        <div className='relative max-w-md'>
+          <IconSearch className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
+          <Input
+            value={search}
+            placeholder='Search containers'
+            className='pl-9'
+            onChange={event => setSearch(event.target.value)}
+          />
+        </div>
 
         {error ? (
           <div className='rounded-md border border-destructive/35 bg-destructive/10 p-4 text-sm text-destructive'>
@@ -117,9 +154,10 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
           </div>
         ) : (
           <OrchestratorContainersTable
-            containers={sortedContainers}
+            containers={filteredContainers}
             isLoading={isLoading}
             busyId={busyId}
+            emptyMessage={search.trim() ? 'No containers match this search.' : undefined}
             onStop={container => setPendingAction({ type: 'stop', container })}
             onRemove={container => setPendingAction({ type: 'remove', container })}
           />

@@ -59,6 +59,41 @@ export interface PlatformContainer {
   networks: string[];
 }
 
+export interface PlatformImage {
+  id: string;
+  shortId: string;
+  repoTags: string[];
+  repoDigests: string[];
+  sizeBytes: number;
+  sharedSizeBytes: number;
+  virtualSizeBytes: number;
+  createdAt: string;
+  labels: Record<string, string>;
+  containers: number;
+}
+
+export interface PlatformNetwork {
+  id: string;
+  shortId: string;
+  name: string;
+  driver: string;
+  scope: string;
+  createdAt: string | null;
+  internal: boolean;
+  attachable: boolean;
+  ingress: boolean;
+  labels: Record<string, string>;
+  managed: boolean;
+  containers: string[];
+  subnets: string[];
+  gateways: string[];
+}
+
+const shortDockerId = (id: string) => id.replace(/^sha256:/, '').slice(0, 12);
+
+const isString = (value: string | undefined): value is string =>
+  typeof value === 'string' && value.length > 0;
+
 const parseCommandLine = (value?: string | null) => {
   if (!value?.trim()) {
     return undefined;
@@ -237,8 +272,54 @@ export class DockerService {
     return this.docker.listImages();
   }
 
+  async listPlatformImages(): Promise<PlatformImage[]> {
+    const images = await this.docker.listImages({ all: true });
+    return images.map((image) => ({
+      id: image.Id,
+      shortId: shortDockerId(image.Id),
+      repoTags: image.RepoTags?.filter((tag) => tag !== '<none>:<none>') ?? [],
+      repoDigests: image.RepoDigests ?? [],
+      sizeBytes: image.Size ?? 0,
+      sharedSizeBytes: image.SharedSize ?? 0,
+      virtualSizeBytes: image.VirtualSize ?? image.Size ?? 0,
+      createdAt: new Date((image.Created ?? 0) * 1000).toISOString(),
+      labels: image.Labels ?? {},
+      containers: image.Containers ?? 0,
+    }));
+  }
+
+  async listPlatformNetworks(): Promise<PlatformNetwork[]> {
+    const networks = await this.docker.listNetworks();
+    return networks.map((network) => {
+      const containers = Object.keys(network.Containers ?? {});
+      const ipamConfig = network.IPAM?.Config ?? [];
+
+      return {
+        id: network.Id,
+        shortId: network.Id.slice(0, 12),
+        name: network.Name,
+        driver: network.Driver,
+        scope: network.Scope,
+        createdAt: network.Created ?? null,
+        internal: Boolean(network.Internal),
+        attachable: Boolean(network.Attachable),
+        ingress: Boolean(network.Ingress),
+        labels: network.Labels ?? {},
+        managed: network.Labels?.['com.shop-me-alone.managed'] === 'true',
+        containers,
+        subnets: ipamConfig.map((item) => item.Subnet).filter(isString),
+        gateways: ipamConfig.map((item) => item.Gateway).filter(isString),
+      };
+    });
+  }
+
   async removeImage(image: string, force = false) {
     return this.docker.getImage(image).remove({ force });
+  }
+
+  async removePlatformImage(image: string, force = false) {
+    await this.removeImage(image, force);
+    return { id: image, removed: true };
   }
 
   async pruneImages(danglingOnly = true) {
@@ -584,6 +665,11 @@ export class DockerService {
     await this.assertNotOrchestratorContainer(containerId);
     await this.removeContainer(containerId);
     return { id: containerId, removed: true };
+  }
+
+  async removePlatformNetwork(networkId: string) {
+    await this.docker.getNetwork(networkId).remove();
+    return { id: networkId, removed: true };
   }
 
   async getManagedContainerResourceUsage(

@@ -68,6 +68,36 @@ export interface PlatformContainer {
   networks: string[]
 }
 
+export interface PlatformImage {
+  id: string
+  shortId: string
+  repoTags: string[]
+  repoDigests: string[]
+  sizeBytes: number
+  sharedSizeBytes: number
+  virtualSizeBytes: number
+  createdAt: string
+  labels: Record<string, string>
+  containers: number
+}
+
+export interface PlatformNetwork {
+  id: string
+  shortId: string
+  name: string
+  driver: string
+  scope: string
+  createdAt: string | null
+  internal: boolean
+  attachable: boolean
+  ingress: boolean
+  labels: Record<string, string>
+  managed: boolean
+  containers: string[]
+  subnets: string[]
+  gateways: string[]
+}
+
 export interface OrchestratorHealth {
   ok: boolean
   docker: boolean

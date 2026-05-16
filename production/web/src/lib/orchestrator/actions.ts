@@ -180,6 +180,32 @@ export const listPlatformContainersAction = async () => {
   return orchestratorApi.listPlatformContainers()
 }
 
+export const listPlatformImagesAction = async () => {
+  await requireAdmin()
+  return orchestratorApi.listPlatformImages()
+}
+
+export const removePlatformImageAction = async (id: string, force = false) => {
+  await requireAdmin()
+  const result = await orchestratorApi.removePlatformImage(id, force)
+  revalidatePath('/settings/orchestrator')
+  revalidatePath('/settings/system')
+  return result
+}
+
+export const listPlatformNetworksAction = async () => {
+  await requireAdmin()
+  return orchestratorApi.listPlatformNetworks()
+}
+
+export const removePlatformNetworkAction = async (id: string) => {
+  await requireAdmin()
+  const result = await orchestratorApi.removePlatformNetwork(id)
+  revalidatePath('/settings/orchestrator')
+  revalidatePath('/settings/system')
+  return result
+}
+
 export const stopPlatformContainerAction = async (id: string) => {
   await requireAdmin()
   const result = await orchestratorApi.stopPlatformContainer(id)

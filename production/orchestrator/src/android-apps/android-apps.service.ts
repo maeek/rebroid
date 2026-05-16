@@ -298,9 +298,7 @@ export class AndroidAppsService {
 
     app.status = AndroidApplicationStatus.Stopped;
     app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
-    app.statusMessage = app.containerId
-      ? 'Application is stopped.'
-      : 'Application is stopped. A new container will be created on next start.';
+    app.statusMessage = this.stoppedStatusMessage(app);
     app.lastStoppedAt = new Date();
     return this.applications.save(app);
   }
@@ -814,6 +812,18 @@ export class AndroidAppsService {
       : 'Managed container no longer exists.';
 
     if (app.status === AndroidApplicationStatus.Provisioning) {
+      if (runtimeState.exists && runtimeState.exitCode === 0) {
+        app.status = AndroidApplicationStatus.Stopped;
+        app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
+        app.statusMessage = message;
+        app.lastError = null;
+        app.lastStoppedAt = runtimeState.finishedAt
+          ? new Date(runtimeState.finishedAt)
+          : new Date();
+        this.cancelledProvisioning.add(app.id);
+        return this.applications.save(app);
+      }
+
       if (!runtimeState.exists) {
         await this.networkPolicy.remove(app);
         app.containerId = null;
@@ -828,6 +838,17 @@ export class AndroidAppsService {
     }
 
     if (app.status === AndroidApplicationStatus.Running) {
+      if (runtimeState.exists && runtimeState.exitCode === 0) {
+        app.status = AndroidApplicationStatus.Stopped;
+        app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
+        app.statusMessage = this.stoppedStatusMessage(app);
+        app.lastError = null;
+        app.lastStoppedAt = runtimeState.finishedAt
+          ? new Date(runtimeState.finishedAt)
+          : new Date();
+        return this.applications.save(app);
+      }
+
       if (!runtimeState.exists) {
         await this.networkPolicy.remove(app);
         app.containerId = null;
@@ -841,6 +862,16 @@ export class AndroidAppsService {
     }
 
     return app;
+  }
+
+  private stoppedStatusMessage(app: AndroidApplication) {
+    if (app.recreateContainerOnNextStart) {
+      return 'Runtime settings changed. A new container will be created on next start.';
+    }
+
+    return app.containerId
+      ? 'Application is stopped.'
+      : 'Application is stopped. A new container will be created on next start.';
   }
 
   private shouldReconcileContainerState(app: AndroidApplication) {

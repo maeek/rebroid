@@ -5,6 +5,7 @@ import { Section } from '@/components/ui/section'
 import type { AppDefinition } from '../../constants'
 
 const formatStatusLabel = (value: string) => value.replaceAll('_', ' ')
+const hasRuntimeRecreateNotice = (message: string | null) => message?.startsWith('Runtime settings changed.') ?? false
 
 const getStatusIcon = (app: AppDefinition) => {
   if (app.status === 'error') {
@@ -20,6 +21,7 @@ const getStatusIcon = (app: AppDefinition) => {
 
 export const AppViewerStatusSection = ({ app }: { app: AppDefinition }) => {
   const isError = app.status === 'error'
+  const shouldShowRuntimeRecreateBadge = hasRuntimeRecreateNotice(app.statusMessage)
 
   return (
     <Section
@@ -41,8 +43,9 @@ export const AppViewerStatusSection = ({ app }: { app: AppDefinition }) => {
           >
             {app.status}
           </Badge>
+          {shouldShowRuntimeRecreateBadge && <Badge variant='warning'>Runtime modified</Badge>}
         </div>
-        {app.statusMessage && (
+        {app.statusMessage && !shouldShowRuntimeRecreateBadge && (
           <ImagePullProgress
             statusMessage={app.statusMessage}
             isImagePulling={app.lifecycleStage === 'image_pulling'}

@@ -1,0 +1,281 @@
+'use client'
+
+import { useEffect, useMemo, useState } from 'react'
+import { IconRefresh, IconSearch, IconTrash } from '@tabler/icons-react'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Section } from '@/components/ui/section'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { toast } from '@/hooks/use-toast'
+import { listPlatformNetworksAction, removePlatformNetworkAction } from '@/lib/orchestrator/actions'
+import type { PlatformNetwork } from '@/lib/orchestrator/types'
+
+const NetworkNameCell = ({ network }: { network: PlatformNetwork }) => (
+  <div className='flex min-w-[16rem] flex-col gap-1'>
+    <div className='flex min-w-0 items-center gap-2'>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className='block min-w-0 truncate font-medium'>{network.name}</span>
+        </TooltipTrigger>
+        <TooltipContent className='max-w-sm break-all'>{network.name}</TooltipContent>
+      </Tooltip>
+      {network.managed && (
+        <span className='shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary'>managed</span>
+      )}
+      {network.internal && (
+        <span className='shrink-0 rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground'>
+          internal
+        </span>
+      )}
+    </div>
+    <div className='truncate text-xs text-muted-foreground'>{network.shortId}</div>
+  </div>
+)
+
+export const OrchestratorNetworksSection = ({ refreshKey = 0 }: { refreshKey?: number }) => {
+  const [networks, setNetworks] = useState<PlatformNetwork[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [pendingRemove, setPendingRemove] = useState<PlatformNetwork | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null)
+
+  const sortedNetworks = useMemo(
+    () =>
+      [...networks].sort((a, b) => {
+        if (a.managed !== b.managed) {
+          return a.managed ? -1 : 1
+        }
+        return a.name.localeCompare(b.name)
+      }),
+    [networks]
+  )
+
+  const filteredNetworks = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    if (!query) {
+      return sortedNetworks
+    }
+
+    return sortedNetworks.filter(network =>
+      [
+        network.id,
+        network.shortId,
+        network.name,
+        network.driver,
+        network.scope,
+        ...network.subnets,
+        ...network.gateways,
+        ...network.containers
+      ]
+        .join(' ')
+        .toLowerCase()
+        .includes(query)
+    )
+  }, [search, sortedNetworks])
+
+  const refresh = async () => {
+    setIsLoading(true)
+    try {
+      setNetworks(await listPlatformNetworksAction())
+      setError(null)
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'Could not load network inventory.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void refresh()
+  }, [refreshKey])
+
+  const removeNetwork = async () => {
+    if (!pendingRemove) {
+      return
+    }
+
+    setBusyId(pendingRemove.id)
+    try {
+      await removePlatformNetworkAction(pendingRemove.id)
+      toast({ title: 'Network removed' })
+      setPendingRemove(null)
+      await refresh()
+    } catch (caughtError) {
+      toast({
+        title: 'Could not remove network',
+        description: caughtError instanceof Error ? caughtError.message : 'Unknown error',
+        variant: 'destructive'
+      })
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const emptyMessage = search.trim() ? 'No networks match this search.' : 'No networks are visible to Docker.'
+
+  return (
+    <>
+      <Section
+        title='Networks'
+        boxed
+        titleClassName='pb-4'
+        contentClassName='gap-4'
+      >
+        <div className='flex items-center justify-between gap-3'>
+          <p className='text-sm text-secondary-foreground'>
+            Docker networks visible to the platform, including per-application isolation networks.
+          </p>
+          <Button
+            type='button'
+            variant='secondary'
+            disabled={isLoading}
+            onClick={() => void refresh()}
+          >
+            <IconRefresh className={isLoading ? 'size-4 animate-spin' : 'size-4'} />
+            Refresh
+          </Button>
+        </div>
+        <div className='relative max-w-md'>
+          <IconSearch className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
+          <Input
+            value={search}
+            placeholder='Search networks'
+            className='pl-9'
+            onChange={event => setSearch(event.target.value)}
+          />
+        </div>
+        {error ? (
+          <div className='rounded-md border border-destructive/35 bg-destructive/10 p-4 text-sm text-destructive'>
+            {error}
+          </div>
+        ) : (
+          <div className='overflow-hidden rounded-lg border border-border/60 bg-background/25'>
+            <div className='overflow-x-auto'>
+              <TooltipProvider delayDuration={150}>
+                <Table
+                  className='table-fixed'
+                  style={{ minWidth: '78rem' }}
+                >
+                  <TableHeader className='bg-background/45'>
+                    <TableRow className='hover:bg-transparent'>
+                      <TableHead className='w-[22rem] px-4 py-3 uppercase'>Network</TableHead>
+                      <TableHead className='w-32 px-4 py-3 uppercase'>Driver</TableHead>
+                      <TableHead className='w-28 px-4 py-3 uppercase'>Scope</TableHead>
+                      <TableHead className='w-[20rem] px-4 py-3 uppercase'>Subnet</TableHead>
+                      <TableHead className='w-[12rem] px-4 py-3 uppercase'>Gateway</TableHead>
+                      <TableHead className='w-32 px-4 py-3 uppercase'>Containers</TableHead>
+                      <TableHead className='w-40 px-4 py-3 text-right uppercase'>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading && networks.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={7}
+                          className='px-4 py-4 text-sm text-secondary-foreground'
+                        >
+                          Loading networks...
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredNetworks.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={7}
+                          className='px-4 py-4 text-sm text-secondary-foreground'
+                        >
+                          {emptyMessage}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredNetworks.map(network => (
+                        <TableRow key={network.id}>
+                          <TableCell className='px-4 py-3 align-top'>
+                            <NetworkNameCell network={network} />
+                          </TableCell>
+                          <TableCell className='px-4 py-3 align-top text-sm text-secondary-foreground'>
+                            {network.driver}
+                          </TableCell>
+                          <TableCell className='px-4 py-3 align-top text-sm text-secondary-foreground'>
+                            {network.scope}
+                          </TableCell>
+                          <TableCell className='px-4 py-3 align-top'>
+                            <div className='truncate text-sm text-secondary-foreground'>
+                              {network.subnets.length > 0 ? network.subnets.join(', ') : 'none'}
+                            </div>
+                          </TableCell>
+                          <TableCell className='px-4 py-3 align-top'>
+                            <div className='truncate text-sm text-secondary-foreground'>
+                              {network.gateways.length > 0 ? network.gateways.join(', ') : 'none'}
+                            </div>
+                          </TableCell>
+                          <TableCell className='px-4 py-3 align-top text-sm text-secondary-foreground'>
+                            {network.containers.length}
+                          </TableCell>
+                          <TableCell className='px-4 py-3 align-top'>
+                            <div className='flex justify-end'>
+                              <Button
+                                type='button'
+                                variant='destructive'
+                                disabled={busyId === network.id || network.containers.length > 0}
+                                onClick={() => setPendingRemove(network)}
+                              >
+                                <IconTrash className='size-4' />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TooltipProvider>
+            </div>
+          </div>
+        )}
+      </Section>
+
+      <Dialog
+        modal
+        open={Boolean(pendingRemove)}
+        onOpenChange={open => {
+          if (!open) {
+            setPendingRemove(null)
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove network?</DialogTitle>
+            <DialogDescription>
+              This removes {pendingRemove?.name ?? 'the selected network'} from Docker. Networks with attached
+              containers cannot be removed.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant='destructive'
+              disabled={!pendingRemove || busyId === pendingRemove.id}
+              onClick={() => void removeNetwork()}
+            >
+              Remove network
+            </Button>
+            <DialogClose asChild>
+              <Button variant='secondary'>Cancel</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}

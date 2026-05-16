@@ -8,7 +8,9 @@ import { toast } from '@/hooks/use-toast'
 import { getOrchestratorHealthAction } from '@/lib/orchestrator/actions'
 import { resetOrchestratorUiSettings, saveOrchestratorUiSettings } from '@/lib/orchestrator/settings'
 import { OrchestratorContainersSection } from './_components/orchestrator-containers-section'
+import { OrchestratorImagesSection } from './_components/orchestrator-images-section'
 import { OrchestratorMaintenanceSection } from './_components/orchestrator-maintenance-section'
+import { OrchestratorNetworksSection } from './_components/orchestrator-networks-section'
 import { OrchestratorQuickGlanceSection } from './_components/orchestrator-quick-glance-section'
 import { OrchestratorSettingsFieldsSection } from './_components/orchestrator-settings-fields-section'
 import { OrchestratorSettingsHeader } from './_components/orchestrator-settings-header'
@@ -147,6 +149,8 @@ export const OrchestratorSettingsForm = ({ initialSettings }: { initialSettings:
       <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
         <OrchestratorQuickGlanceSection refreshKey={maintenanceRefreshKey} />
         <OrchestratorContainersSection refreshKey={maintenanceRefreshKey} />
+        <OrchestratorImagesSection refreshKey={maintenanceRefreshKey} />
+        <OrchestratorNetworksSection refreshKey={maintenanceRefreshKey} />
         <div className='grid w-full gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)]'>
           <OrchestratorSettingsFieldsSection
             settings={settings}

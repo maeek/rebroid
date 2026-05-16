@@ -43,6 +43,33 @@ export class DockerMaintenanceController {
     return this.docker.removePlatformContainer(id);
   }
 
+  @Get('images')
+  @ApiOperation({ summary: 'List Docker images visible to the platform.' })
+  listImages() {
+    return this.docker.listPlatformImages();
+  }
+
+  @Delete('images/:id')
+  @ApiOperation({ summary: 'Remove a Docker image by encoded id or name.' })
+  removeImage(@Param('id') id: string, @Query('force') force?: string) {
+    return this.docker.removePlatformImage(
+      decodeURIComponent(id),
+      force === 'true',
+    );
+  }
+
+  @Get('networks')
+  @ApiOperation({ summary: 'List Docker networks visible to the platform.' })
+  listNetworks() {
+    return this.docker.listPlatformNetworks();
+  }
+
+  @Delete('networks/:id')
+  @ApiOperation({ summary: 'Remove a Docker network by id.' })
+  removeNetwork(@Param('id') id: string) {
+    return this.docker.removePlatformNetwork(id);
+  }
+
   @Post('prune/images')
   @ApiOperation({ summary: 'Prune unused images.' })
   pruneImages(@Query() query: PruneImagesDto) {

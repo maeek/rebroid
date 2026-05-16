@@ -13,12 +13,14 @@ export const OrchestratorContainersTable = ({
   containers,
   isLoading,
   busyId,
+  emptyMessage = 'No containers are visible to Docker.',
   onStop,
   onRemove
 }: {
   containers: PlatformContainer[]
   isLoading: boolean
   busyId: string | null
+  emptyMessage?: string
   onStop: (container: PlatformContainer) => void
   onRemove: (container: PlatformContainer) => void
 }) => {
@@ -58,7 +60,7 @@ export const OrchestratorContainersTable = ({
                     colSpan={colSpan}
                     className='px-4 py-4 text-sm text-secondary-foreground'
                   >
-                    No containers are visible to Docker.
+                    {emptyMessage}
                   </TableCell>
                 </TableRow>
               ) : (

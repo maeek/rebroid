@@ -13,8 +13,8 @@ export const AppViewerActions = ({ className, app }: { app?: AppDefinition; clas
     <div className={classNames('flex flex-row gap-2 items-center', className)}>
       <AppViewerManageAction appId={app?.id} />
       <AppLogsDialog app={app} />
-      <AppViewerRestartAction app={app} />
       <AppViewerPowerAction app={app} />
+      <AppViewerRestartAction app={app} />
       <AppViewerDeleteAction app={app} />
     </div>
   )

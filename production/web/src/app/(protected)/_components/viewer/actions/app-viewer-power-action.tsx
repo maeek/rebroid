@@ -1,6 +1,6 @@
 'use client'
 
-import { IconLoader2 } from '@tabler/icons-react'
+import { IconLoader2, IconPlayerPlayFilled, IconPlayerStopFilled } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { startApplicationAction, stopApplicationAction } from '@/lib/orchestrator/actions'
 import { useAppViewerActionRunner } from './use-app-viewer-action-runner'
@@ -17,7 +17,11 @@ export const AppViewerPowerAction = ({ app }: { app?: AppDefinition }) => {
         disabled={isBusy || isRunningAction}
         onClick={() => void runAction(() => stopApplicationAction(app.id), 'Could not stop app')}
       >
-        {isRunningAction && <IconLoader2 className='size-4 animate-spin' />}
+        {isRunningAction ? (
+          <IconLoader2 className='size-4 animate-spin' />
+        ) : (
+          <IconPlayerStopFilled className='size-4' />
+        )}
         Stop
       </Button>
     )
@@ -25,11 +29,11 @@ export const AppViewerPowerAction = ({ app }: { app?: AppDefinition }) => {
 
   return (
     <Button
-      variant='secondary'
+      variant='update'
       disabled={!app || isBusy || isRunningAction}
       onClick={() => app && void runAction(() => startApplicationAction(app.id), 'Could not start app')}
     >
-      {isRunningAction && <IconLoader2 className='size-4 animate-spin' />}
+      {isRunningAction ? <IconLoader2 className='size-4 animate-spin' /> : <IconPlayerPlayFilled className='size-4' />}
       Start
     </Button>
   )

@@ -9,6 +9,8 @@ import {
   DockerPruneResponse,
   OrchestratorHealth,
   PlatformContainer,
+  PlatformImage,
+  PlatformNetwork,
   SwitchApplicationProfileInput,
   SystemResources,
   UploadedApk,
@@ -178,6 +180,26 @@ export const orchestratorApi = {
 
   listPlatformContainers() {
     return request<PlatformContainer[]>('/docker-maintenance/containers')
+  },
+
+  listPlatformImages() {
+    return request<PlatformImage[]>('/docker-maintenance/images')
+  },
+
+  removePlatformImage(id: string, force = false) {
+    const query = new URLSearchParams({ force: String(force) })
+    return request<{ id: string; removed: boolean }>(
+      `/docker-maintenance/images/${encodeURIComponent(id)}?${query.toString()}`,
+      { method: 'DELETE' }
+    )
+  },
+
+  listPlatformNetworks() {
+    return request<PlatformNetwork[]>('/docker-maintenance/networks')
+  },
+
+  removePlatformNetwork(id: string) {
+    return request<{ id: string; removed: boolean }>(`/docker-maintenance/networks/${id}`, { method: 'DELETE' })
   },
 
   stopPlatformContainer(id: string) {
