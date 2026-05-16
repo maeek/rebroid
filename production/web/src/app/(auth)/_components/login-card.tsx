@@ -40,7 +40,7 @@ export default function LoginCard() {
           <Label htmlFor='username'>Username</Label>
           <Input
             id='username'
-            placeholder='username'
+            placeholder='Username'
             onChange={e => setUsername(e.target.value)}
             value={username}
             onKeyDown={e => e.key === 'Enter' && void handleSubmit()}

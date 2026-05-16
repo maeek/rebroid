@@ -1,11 +1,14 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { IconDeviceMobileQuestion } from '@tabler/icons-react'
 import { ProtectedSplitPageLayout } from '@/app/(protected)/_components/protected-page-shell'
+import { StatusSplash } from '@/app/(protected)/_components/status-splash'
 import { resolveAppIconUrl } from '@/lib/app-icons/url'
 import { getApplicationAction } from '@/lib/orchestrator/actions'
 import { mapAndroidApplicationToAppDefinition } from '@/lib/orchestrator/app-mapper'
 import { useForegroundRefresh } from '../../../../../hooks/use-foreground-refresh'
 import { getAppRefreshIntervalMs } from '../../../../../lib/orchestrator/refresh'
+import { rememberRecentApp } from '../../../../../lib/recent-apps'
 import { AppDefinition } from '../../constants'
 import { AppViewerContent } from './app-viewer-content'
 import { AppViewerPane } from './app-viewer-pane'
@@ -18,6 +21,12 @@ export const AppViewerPage = ({ app }: { app?: AppDefinition }) => {
   useEffect(() => {
     setCurrentApp(app)
   }, [app])
+
+  useEffect(() => {
+    if (currentApp) {
+      rememberRecentApp(currentApp)
+    }
+  }, [currentApp])
 
   useForegroundRefresh({
     enabled: Boolean(currentAppId),
@@ -40,7 +49,19 @@ export const AppViewerPage = ({ app }: { app?: AppDefinition }) => {
   })
 
   if (!currentApp) {
-    return <div className='pl-72 max-lg:pl-0 p-6'>App not found</div>
+    return (
+      <div className='pl-72 max-lg:pl-0'>
+        <section className='px-6 py-8 max-sm:px-4'>
+          <StatusSplash
+            title='App not found'
+            description='This Android app may have been deleted, or your account may not have access to it.'
+            icon={<IconDeviceMobileQuestion className='size-10' />}
+            primaryAction={{ label: 'Refresh', onClick: () => window.location.reload() }}
+            secondaryAction={{ label: 'Back to apps', href: '/apps' }}
+          />
+        </section>
+      </div>
+    )
   }
 
   return (

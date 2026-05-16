@@ -6,7 +6,7 @@ import { ChartContainer } from '@/components/ui/chart'
 export const description = 'A radial chart with text'
 
 export function MemoryChart({ totalMemory, freeMemory }: { totalMemory: number; freeMemory: number }) {
-  const memory = Math.round(((totalMemory - freeMemory) / totalMemory) * 100)
+  const memory = totalMemory > 0 ? Math.round(((totalMemory - freeMemory) / totalMemory) * 100) : 0
   const chartData = [{ memory, fill: 'var(--color-mem_usage)' }]
 
   return (
@@ -17,7 +17,7 @@ export function MemoryChart({ totalMemory, freeMemory }: { totalMemory: number; 
         },
         mem_usage: {
           label: 'Memory usage',
-          color: `hsl(var(--chart-${memory > 75 ? '3' : '2'}))`
+          color: memory > 75 ? 'var(--color-chart-3)' : 'var(--color-chart-2)'
         }
       }}
       className='mx-auto aspect-square max-h-85 w-full flex flex-col'

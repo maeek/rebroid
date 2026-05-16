@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { getServerAuthSession } from '@/server/auth/auth'
-import { removeStoredAppIcon, setStoredAppIcon } from './store'
+import { getApplicationAction } from '../orchestrator/actions'
+import { getStoredAppIcon, removeStoredAppIcon, setStoredAppIcon } from './store'
 
 const requireUser = async () => {
   const session = await getServerAuthSession()
@@ -26,4 +27,20 @@ export const removeAppIconAction = async (appId: string) => {
   revalidatePath('/apps')
   revalidatePath(`/app/${appId}`)
   revalidatePath(`/app/${appId}/manage`)
+}
+
+export const getAppIconsAction = async (appIds: string[]) => {
+  await requireUser()
+  const uniqueIds = [...new Set(appIds.filter(Boolean))]
+  const entries = await Promise.all(
+    uniqueIds.map(async appId => {
+      try {
+        await getApplicationAction(appId)
+        return [appId, await getStoredAppIcon(appId)] as const
+      } catch {
+        return [appId, null] as const
+      }
+    })
+  )
+  return Object.fromEntries(entries)
 }

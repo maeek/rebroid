@@ -48,7 +48,9 @@ export class AndroidAppsService {
 
   async create(dto: CreateAndroidApplicationDto) {
     const settings = await this.settings.getSettings();
-    const uploadedApk = dto.uploadedApkId ? await this.apks.get(dto.uploadedApkId) : null;
+    const uploadedApk = dto.uploadedApkId
+      ? await this.apks.get(dto.uploadedApkId)
+      : null;
 
     const app = this.applications.create({
       name: dto.name,
@@ -56,7 +58,7 @@ export class AndroidAppsService {
       status: AndroidApplicationStatus.Provisioning,
       lifecycleStage: AndroidApplicationLifecycleStage.Queued,
       statusMessage: 'Provisioning has been queued.',
-      redroidImage: dto.redroidImage ?? settings.defaultRedroidImage,
+      containerImage: dto.containerImage ?? settings.defaultContainerImage,
       containerName: 'pending',
       networkName: 'pending',
       volumeName: 'pending',
@@ -67,13 +69,15 @@ export class AndroidAppsService {
       scrcpyTransport: settings.defaultScrcpyTransport,
       adbPort: this.config.getOrThrow<number>('app.redroid.adbPort'),
       inactivityTimeoutSeconds:
-        dto.inactivityTimeoutSeconds ?? settings.defaultInactivityTimeoutSeconds,
+        dto.inactivityTimeoutSeconds ??
+        settings.defaultInactivityTimeoutSeconds,
       profileMode: ApplicationProfileMode.Persistent,
       profileName: 'default',
       memoryLimitMb: dto.memoryLimitMb ?? null,
       cpuLimitCpus: dto.cpuLimitCpus ?? null,
       volumeSizeLimitMb: dto.volumeSizeLimitMb ?? null,
-      redroidArgs: dto.redroidArgs?.trim() || null,
+      containerArgs: dto.containerArgs?.trim() || null,
+      recreateContainerOnNextStart: false,
       networkPolicyEnabled: true,
       networkPolicyAllowCidrs: '[]',
       networkPolicyStatus: null,
@@ -89,7 +93,11 @@ export class AndroidAppsService {
 
     await this.applications.save(app);
 
-    const names = this.networkIsolation.namesFor(app.id, app.name, app.profileName);
+    const names = this.networkIsolation.namesFor(
+      app.id,
+      app.name,
+      app.profileName,
+    );
     Object.assign(app, names);
 
     if (uploadedApk) {
@@ -113,12 +121,18 @@ export class AndroidAppsService {
   }
 
   async get(id: string) {
-    const app = (await this.applications.findOneBy({ id })) ?? throwNotFound('Application', id);
+    const app =
+      (await this.applications.findOneBy({ id })) ??
+      throwNotFound('Application', id);
     return this.reconcileContainerState(app);
   }
 
   async update(id: string, dto: UpdateAndroidApplicationDto) {
     const app = await this.get(id);
+    const shouldRecreateContainer = this.shouldRecreateContainerOnUpdate(
+      app,
+      dto,
+    );
 
     if (dto.name !== undefined) {
       app.name = dto.name;
@@ -138,8 +152,12 @@ export class AndroidAppsService {
     if (dto.volumeSizeLimitMb !== undefined) {
       app.volumeSizeLimitMb = dto.volumeSizeLimitMb;
     }
-    if (dto.redroidArgs !== undefined) {
-      app.redroidArgs = dto.redroidArgs?.trim() || null;
+    if (dto.containerArgs !== undefined) {
+      app.containerArgs = dto.containerArgs?.trim() || null;
+    }
+
+    if (shouldRecreateContainer) {
+      await this.markContainerForRecreation(app);
     }
 
     return this.applications.save(app);
@@ -179,10 +197,15 @@ export class AndroidAppsService {
 
     app.profileMode = dto.profileMode ?? app.profileMode;
     app.profileName = dto.profileName?.trim() || app.profileName || 'default';
-    app.volumeName = this.networkIsolation.namesFor(app.id, app.name, app.profileName).volumeName;
+    app.volumeName = this.networkIsolation.namesFor(
+      app.id,
+      app.name,
+      app.profileName,
+    ).volumeName;
     app.status = AndroidApplicationStatus.Stopped;
     app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
-    app.statusMessage = 'Profile switched. Start the app to create a container for this profile.';
+    app.statusMessage =
+      'Profile switched. Start the app to create a container for this profile.';
     app.lastStoppedAt = new Date();
 
     return this.applications.save(app);
@@ -196,21 +219,24 @@ export class AndroidAppsService {
       await this.prepareRuntimeProfile(app, dto);
     }
 
+    await this.clearMissingContainerReference(app);
+    await this.prepareContainerForRecreationOnStart(app);
+
     await this.setLifecycle(app.id, {
       status: AndroidApplicationStatus.Provisioning,
       lifecycleStage: AndroidApplicationLifecycleStage.ContainerStarting,
-      statusMessage: 'Starting redroid container.',
+      statusMessage: 'Starting application container.',
       lastError: null,
     });
 
-    if (!(await this.docker.imageExists(app.redroidImage))) {
+    if (!(await this.docker.imageExists(app.containerImage))) {
       await this.setLifecycle(app.id, {
         lifecycleStage: AndroidApplicationLifecycleStage.ImagePulling,
-        statusMessage: `Docker image "${app.redroidImage}" is not available locally. Pulling it now.`,
+        statusMessage: `Docker image "${app.containerImage}" is not available locally. Pulling it now.`,
       });
-      await this.docker.pullImage(app.redroidImage, (message) => {
+      await this.docker.pullImage(app.containerImage, (message) => {
         void this.setLifecycle(app.id, {
-          statusMessage: message || `Pulling ${app.redroidImage}.`,
+          statusMessage: message || `Pulling ${app.containerImage}.`,
         });
       });
     }
@@ -221,21 +247,24 @@ export class AndroidAppsService {
       }
       await this.docker.createIsolatedNetwork(app.id, app.networkName);
       await this.docker.connectOrchestratorToNetwork(app.networkName);
-      const container = await this.docker.createRedroidContainer({
+      const container = await this.docker.createApplicationContainer({
         applicationId: app.id,
         containerName: app.containerName,
         networkName: app.networkName,
         volumeName: app.volumeName,
-        image: app.redroidImage,
-        dataMountPath: this.config.getOrThrow<string>('app.redroid.dataMountPath'),
+        image: app.containerImage,
+        dataMountPath: this.config.getOrThrow<string>(
+          'app.redroid.dataMountPath',
+        ),
         adbPort: app.adbPort,
         privileged: this.config.getOrThrow<boolean>('app.redroid.privileged'),
         profileMode: app.profileMode,
         memoryLimitMb: app.memoryLimitMb,
         cpuLimitCpus: app.cpuLimitCpus,
-        redroidArgs: app.redroidArgs,
+        containerArgs: app.containerArgs,
       });
       app.containerId = container.id;
+      app.recreateContainerOnNextStart = false;
       await this.applications.save(app);
     }
 
@@ -255,16 +284,23 @@ export class AndroidAppsService {
 
     app.status = AndroidApplicationStatus.Stopped;
     app.lifecycleStage = AndroidApplicationLifecycleStage.Stopping;
-    app.statusMessage = 'Stopping redroid container.';
+    app.statusMessage = 'Stopping application container.';
     await this.applications.save(app);
 
     if (app.containerId) {
       await this.docker.stopContainer(app.containerId);
     }
 
+    if (app.recreateContainerOnNextStart && app.containerId) {
+      await this.removeManagedContainer(app);
+      app.recreateContainerOnNextStart = false;
+    }
+
     app.status = AndroidApplicationStatus.Stopped;
     app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
-    app.statusMessage = 'Application is stopped.';
+    app.statusMessage = app.containerId
+      ? 'Application is stopped.'
+      : 'Application is stopped. A new container will be created on next start.';
     app.lastStoppedAt = new Date();
     return this.applications.save(app);
   }
@@ -297,7 +333,7 @@ export class AndroidAppsService {
     this.cancelledProvisioning.add(id);
     app.status = AndroidApplicationStatus.Removing;
     app.lifecycleStage = AndroidApplicationLifecycleStage.Removing;
-    app.statusMessage = 'Removing redroid container and network resources.';
+    app.statusMessage = 'Removing application container and network resources.';
     await this.applications.save(app);
 
     if (app.containerId) {
@@ -328,12 +364,17 @@ export class AndroidAppsService {
     return this.applications.save(app);
   }
 
-  async scrcpySession(id: string, publicBaseUrl?: string): Promise<ScrcpySessionDto> {
+  async scrcpySession(
+    id: string,
+    publicBaseUrl?: string,
+  ): Promise<ScrcpySessionDto> {
     const app = await this.get(id);
     this.assertRunnable(app);
 
     if (app.status !== AndroidApplicationStatus.Running) {
-      throw new ConflictException('Application must be running before opening scrcpy.');
+      throw new ConflictException(
+        'Application must be running before opening scrcpy.',
+      );
     }
 
     const baseUrl = publicBaseUrl?.replace(/\/$/, '') ?? '';
@@ -352,19 +393,74 @@ export class AndroidAppsService {
       return [];
     }
 
-    const { stdout } = await this.docker.execInContainerWithOutput(app.containerId, [
-      'sh',
-      '-lc',
-      'cmd notification list --noredact 2>/dev/null || dumpsys notification --noredact 2>/dev/null | head -n 200',
-    ]);
+    const { stdout } = await this.docker.execInContainerWithOutput(
+      app.containerId,
+      [
+        'sh',
+        '-lc',
+        'cmd notification list --noredact 2>/dev/null || dumpsys notification --noredact 2>/dev/null | head -n 200',
+      ],
+    );
 
     return this.parseNotifications(stdout);
   }
 
-  private async prepareRuntimeProfile(app: AndroidApplication, dto: StartAndroidApplicationDto) {
+  async containerLogs(id: string, tail = 300) {
+    const app = await this.get(id);
+    if (!app.containerId) {
+      return {
+        source: 'container' as const,
+        collectedAt: new Date().toISOString(),
+        output: 'No container has been created for this application yet.',
+      };
+    }
+
+    return {
+      source: 'container' as const,
+      collectedAt: new Date().toISOString(),
+      output: await this.docker.getContainerLogs(app.containerId, tail),
+    };
+  }
+
+  async adbLogs(id: string, tail = 300) {
+    const app = await this.get(id);
+    if (!app.containerId || app.status !== AndroidApplicationStatus.Running) {
+      return {
+        source: 'adb' as const,
+        collectedAt: new Date().toISOString(),
+        output:
+          'ADB logs are available after the Android container is running.',
+      };
+    }
+
+    const { stdout, stderr } = await this.docker.execInContainerWithOutput(
+      app.containerId,
+      [
+        'sh',
+        '-lc',
+        `logcat -d -t ${Math.max(1, Math.min(tail, 2000))} 2>&1 || true`,
+      ],
+    );
+
+    return {
+      source: 'adb' as const,
+      collectedAt: new Date().toISOString(),
+      output: stdout || stderr,
+    };
+  }
+
+  private async prepareRuntimeProfile(
+    app: AndroidApplication,
+    dto: StartAndroidApplicationDto,
+  ) {
     const nextProfileMode = dto.profileMode ?? app.profileMode;
-    const nextProfileName = dto.profileName?.trim() || app.profileName || 'default';
-    const nextVolumeName = this.networkIsolation.namesFor(app.id, app.name, nextProfileName).volumeName;
+    const nextProfileName =
+      dto.profileName?.trim() || app.profileName || 'default';
+    const nextVolumeName = this.networkIsolation.namesFor(
+      app.id,
+      app.name,
+      nextProfileName,
+    ).volumeName;
     const profileChanged =
       nextProfileMode !== app.profileMode ||
       nextProfileName !== app.profileName ||
@@ -384,6 +480,70 @@ export class AndroidAppsService {
     app.profileName = nextProfileName;
     app.volumeName = nextVolumeName;
     await this.applications.save(app);
+  }
+
+  private shouldRecreateContainerOnUpdate(
+    app: AndroidApplication,
+    dto: UpdateAndroidApplicationDto,
+  ) {
+    return (
+      (dto.memoryLimitMb !== undefined && dto.memoryLimitMb !== app.memoryLimitMb) ||
+      (dto.cpuLimitCpus !== undefined && dto.cpuLimitCpus !== app.cpuLimitCpus) ||
+      (dto.containerArgs !== undefined &&
+        (dto.containerArgs?.trim() || null) !== app.containerArgs)
+    );
+  }
+
+  private async markContainerForRecreation(app: AndroidApplication) {
+    if (!app.containerId) {
+      app.recreateContainerOnNextStart = false;
+      return;
+    }
+
+    if (app.status === AndroidApplicationStatus.Running) {
+      app.recreateContainerOnNextStart = true;
+      app.statusMessage =
+        'Runtime settings changed. Stop and start the app to recreate the managed container.';
+      return;
+    }
+
+    await this.removeManagedContainer(app);
+    app.recreateContainerOnNextStart = false;
+    app.statusMessage =
+      'Runtime settings changed. A new container will be created on next start.';
+  }
+
+  private async prepareContainerForRecreationOnStart(app: AndroidApplication) {
+    if (!app.recreateContainerOnNextStart) {
+      return;
+    }
+
+    if (!app.containerId) {
+      app.recreateContainerOnNextStart = false;
+      await this.applications.save(app);
+      return;
+    }
+
+    const runtimeState = await this.docker.getContainerRuntimeState(app.containerId);
+    if (runtimeState.running) {
+      throw new ConflictException(
+        'Runtime settings changed. Stop the app before starting it again so the managed container can be recreated.',
+      );
+    }
+
+    await this.removeManagedContainer(app);
+    app.recreateContainerOnNextStart = false;
+    await this.applications.save(app);
+  }
+
+  private async removeManagedContainer(app: AndroidApplication) {
+    if (!app.containerId) {
+      return;
+    }
+
+    await this.networkPolicy.remove(app);
+    await this.docker.removeContainer(app.containerId);
+    app.containerId = null;
   }
 
   async findInactiveRunningApplications(now = new Date()) {
@@ -408,7 +568,8 @@ export class AndroidAppsService {
       await this.setLifecycle(applicationId, {
         status: AndroidApplicationStatus.Provisioning,
         lifecycleStage: AndroidApplicationLifecycleStage.ImageChecking,
-        statusMessage: 'Checking whether the redroid image is available locally.',
+        statusMessage:
+          'Checking whether the container image is available locally.',
         provisioningStartedAt: new Date(),
         lastError: null,
       });
@@ -416,16 +577,16 @@ export class AndroidAppsService {
       const app = await this.get(applicationId);
       this.ensureProvisioningActive(applicationId);
 
-      if (!(await this.docker.imageExists(app.redroidImage))) {
+      if (!(await this.docker.imageExists(app.containerImage))) {
         this.ensureProvisioningActive(applicationId);
         await this.setLifecycle(applicationId, {
           lifecycleStage: AndroidApplicationLifecycleStage.ImagePulling,
-          statusMessage: `Docker image "${app.redroidImage}" is not available locally. Pulling it now.`,
+          statusMessage: `Docker image "${app.containerImage}" is not available locally. Pulling it now.`,
         });
 
-        await this.docker.pullImage(app.redroidImage, (message) => {
+        await this.docker.pullImage(app.containerImage, (message) => {
           void this.setLifecycle(applicationId, {
-            statusMessage: message || `Pulling ${app.redroidImage}.`,
+            statusMessage: message || `Pulling ${app.containerImage}.`,
           });
         });
         this.ensureProvisioningActive(applicationId);
@@ -449,7 +610,8 @@ export class AndroidAppsService {
 
       this.ensureProvisioningActive(applicationId);
       await this.setLifecycle(applicationId, {
-        lifecycleStage: AndroidApplicationLifecycleStage.OrchestratorNetworkConnecting,
+        lifecycleStage:
+          AndroidApplicationLifecycleStage.OrchestratorNetworkConnecting,
         statusMessage: 'Connecting orchestrator to the isolated app network.',
       });
       await this.docker.connectOrchestratorToNetwork(app.networkName);
@@ -457,21 +619,23 @@ export class AndroidAppsService {
       this.ensureProvisioningActive(applicationId);
       await this.setLifecycle(applicationId, {
         lifecycleStage: AndroidApplicationLifecycleStage.ContainerCreating,
-        statusMessage: `Creating redroid container ${app.containerName}.`,
+        statusMessage: `Creating application container ${app.containerName}.`,
       });
-      const container = await this.docker.createRedroidContainer({
+      const container = await this.docker.createApplicationContainer({
         applicationId: app.id,
         containerName: app.containerName,
         networkName: app.networkName,
         volumeName: app.volumeName,
-        image: app.redroidImage,
-        dataMountPath: this.config.getOrThrow<string>('app.redroid.dataMountPath'),
+        image: app.containerImage,
+        dataMountPath: this.config.getOrThrow<string>(
+          'app.redroid.dataMountPath',
+        ),
         adbPort: app.adbPort,
         privileged: this.config.getOrThrow<boolean>('app.redroid.privileged'),
         profileMode: app.profileMode,
         memoryLimitMb: app.memoryLimitMb,
         cpuLimitCpus: app.cpuLimitCpus,
-        redroidArgs: app.redroidArgs,
+        containerArgs: app.containerArgs,
       });
 
       this.ensureProvisioningActive(applicationId);
@@ -482,7 +646,7 @@ export class AndroidAppsService {
       this.ensureProvisioningActive(applicationId);
       await this.setLifecycle(applicationId, {
         lifecycleStage: AndroidApplicationLifecycleStage.ContainerStarting,
-        statusMessage: 'Starting redroid container.',
+        statusMessage: 'Starting application container.',
       });
       await this.docker.startContainer(container.id);
       await this.applyNetworkPolicy(app.id);
@@ -495,7 +659,8 @@ export class AndroidAppsService {
         this.ensureProvisioningActive(applicationId);
         await this.setLifecycle(applicationId, {
           lifecycleStage: AndroidApplicationLifecycleStage.AndroidBooting,
-          statusMessage: 'Waiting for Android to finish booting before APK install.',
+          statusMessage:
+            'Waiting for Android to finish booting before APK install.',
         });
         await this.installApk({ ...app, containerId: container.id });
       }
@@ -533,7 +698,12 @@ export class AndroidAppsService {
     const targetDir = '/data/local/tmp';
     const targetName = `${app.id}.apk`;
 
-    await this.docker.copyFileToContainer(app.containerId, app.apkFilePath, targetDir, targetName);
+    await this.docker.copyFileToContainer(
+      app.containerId,
+      app.apkFilePath,
+      targetDir,
+      targetName,
+    );
     await this.waitForAndroidBoot(app.containerId);
     await this.setLifecycle(app.id, {
       lifecycleStage: AndroidApplicationLifecycleStage.ApkInstalling,
@@ -593,6 +763,28 @@ export class AndroidAppsService {
     ]);
   }
 
+  private async clearMissingContainerReference(app: AndroidApplication) {
+    if (!app.containerId) {
+      return;
+    }
+
+    const runtimeState = await this.docker.getContainerRuntimeState(
+      app.containerId,
+    );
+    if (runtimeState.exists) {
+      return;
+    }
+
+    await this.networkPolicy.remove(app);
+    app.containerId = null;
+    app.status = AndroidApplicationStatus.Stopped;
+    app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
+    app.statusMessage =
+      'Managed container was removed. A new container will be created on start.';
+    app.lastStoppedAt = new Date();
+    await this.applications.save(app);
+  }
+
   private async reconcileContainerState(app: AndroidApplication) {
     if (!this.shouldReconcileContainerState(app)) {
       return app;
@@ -622,6 +814,10 @@ export class AndroidAppsService {
       : 'Managed container no longer exists.';
 
     if (app.status === AndroidApplicationStatus.Provisioning) {
+      if (!runtimeState.exists) {
+        await this.networkPolicy.remove(app);
+        app.containerId = null;
+      }
       app.status = AndroidApplicationStatus.Error;
       app.lifecycleStage = AndroidApplicationLifecycleStage.Error;
       app.statusMessage = message;
@@ -632,6 +828,10 @@ export class AndroidAppsService {
     }
 
     if (app.status === AndroidApplicationStatus.Running) {
+      if (!runtimeState.exists) {
+        await this.networkPolicy.remove(app);
+        app.containerId = null;
+      }
       app.status = AndroidApplicationStatus.Error;
       app.lifecycleStage = AndroidApplicationLifecycleStage.Error;
       app.statusMessage = message;
@@ -651,24 +851,39 @@ export class AndroidAppsService {
     );
   }
 
-  private containerExitedMessage(app: AndroidApplication, runtimeState: ContainerRuntimeState) {
+  private containerExitedMessage(
+    app: AndroidApplication,
+    runtimeState: ContainerRuntimeState,
+  ) {
     const status = runtimeState.status ?? 'exited';
     const exitCode =
       runtimeState.exitCode === null || runtimeState.exitCode === undefined
         ? ''
         : ` with exit code ${runtimeState.exitCode}`;
-    const dockerError = runtimeState.error ? ` Docker reported: ${runtimeState.error}` : '';
+    const dockerError = runtimeState.error
+      ? ` Docker reported: ${runtimeState.error}`
+      : '';
     const context =
       app.status === AndroidApplicationStatus.Provisioning
         ? ' before provisioning completed'
         : '';
 
-    return `Managed container ${status}${exitCode}${context}.${dockerError}`;
+    const startupHint =
+      app.status === AndroidApplicationStatus.Provisioning &&
+      runtimeState.exitCode === 0
+        ? app.containerArgs?.trim()
+          ? ' The configured container command completed immediately. Managed apps need a long-running primary process.'
+          : ' The image likely finished its default command immediately. Managed apps need a long-running primary process, so plain images such as ubuntu usually require container arguments like "sleep infinity".'
+        : '';
+
+    return `Managed container ${status}${exitCode}${context}.${startupHint}${dockerError}`;
   }
 
   private assertRunnable(app: AndroidApplication) {
     if (app.status === AndroidApplicationStatus.Removed) {
-      throw new ConflictException('Removed applications cannot be started or updated.');
+      throw new ConflictException(
+        'Removed applications cannot be started or updated.',
+      );
     }
   }
 
@@ -696,7 +911,10 @@ export class AndroidAppsService {
   }
 
   private isProvisioningCancelled(error: unknown) {
-    return error instanceof Error && error.message.startsWith('Provisioning cancelled for ');
+    return (
+      error instanceof Error &&
+      error.message.startsWith('Provisioning cancelled for ')
+    );
   }
 
   private errorMessage(error: unknown) {

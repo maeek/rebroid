@@ -45,7 +45,11 @@ export const GeneralSettingsForm = ({ initialSettings }: { initialSettings: Orch
       setSettings(saved)
       toast({ title: 'Settings saved' })
     } catch (error) {
-      toast({ title: 'Could not save settings', description: error instanceof Error ? error.message : 'Unknown error' })
+      toast({
+        title: 'Could not save settings',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
+      })
     } finally {
       setIsSaving(false)
     }
@@ -60,7 +64,8 @@ export const GeneralSettingsForm = ({ initialSettings }: { initialSettings: Orch
     } catch (error) {
       toast({
         title: 'Could not reset settings',
-        description: error instanceof Error ? error.message : 'Unknown error'
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
       })
     } finally {
       setIsSaving(false)
@@ -100,6 +105,7 @@ export const GeneralSettingsForm = ({ initialSettings }: { initialSettings: Orch
           orientation='vertical'
           title='Frontend defaults'
           boxed
+          titleClassName='pb-4'
           contentClassName='gap-6'
         >
           <Setting

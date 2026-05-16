@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { IconRestore } from '@tabler/icons-react'
+import { IconLoader2, IconRestore } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -20,7 +20,7 @@ import type { AppDefinition } from '../../../(standard)/constants'
 
 export const AppViewerRestartAction = ({ app }: { app?: AppDefinition }) => {
   const [open, setOpen] = useState(false)
-  const { runAction } = useAppViewerActionRunner()
+  const { isRunningAction, runAction } = useAppViewerActionRunner()
   const isBusy = app?.status === 'provisioning' || app?.status === 'removing'
 
   const handleRestart = async () => {
@@ -47,8 +47,12 @@ export const AppViewerRestartAction = ({ app }: { app?: AppDefinition }) => {
       <Tooltip>
         <TooltipTrigger asChild>
           <DialogTrigger asChild>
-            <Button variant='secondary'>
-              <IconRestore className='size-4' /> Restart
+            <Button
+              variant='secondary'
+              disabled={!app || isBusy || isRunningAction}
+            >
+              {isRunningAction ? <IconLoader2 className='size-4 animate-spin' /> : <IconRestore className='size-4' />}{' '}
+              Restart
             </Button>
           </DialogTrigger>
         </TooltipTrigger>
@@ -64,9 +68,10 @@ export const AppViewerRestartAction = ({ app }: { app?: AppDefinition }) => {
         <DialogFooter>
           <Button
             variant='destructive'
-            disabled={!app || isBusy}
+            disabled={!app || isBusy || isRunningAction}
             onClick={() => void handleRestart()}
           >
+            {isRunningAction && <IconLoader2 className='size-4 animate-spin' />}
             Restart
           </Button>
           <DialogClose asChild>

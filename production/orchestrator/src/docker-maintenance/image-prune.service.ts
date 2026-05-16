@@ -21,7 +21,8 @@ export class ImagePruneService {
     }
 
     const dueAt =
-      (this.lastPrunedAt?.getTime() ?? 0) + settings.imagePruneIntervalHours * 60 * 60 * 1000;
+      (this.lastPrunedAt?.getTime() ?? 0) +
+      settings.imagePruneIntervalHours * 60 * 60 * 1000;
     if (Date.now() < dueAt) {
       return;
     }

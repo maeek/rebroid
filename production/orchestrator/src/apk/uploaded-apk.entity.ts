@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 @Entity({ name: 'uploaded_apks' })
 export class UploadedApk {
@@ -29,7 +35,10 @@ export class UploadedApk {
   @Column()
   filePath!: string;
 
-  @ApiPropertyOptional({ example: 'data:image/png;base64,iVBORw0KGgo...', nullable: true })
+  @ApiPropertyOptional({
+    example: 'data:image/png;base64,iVBORw0KGgo...',
+    nullable: true,
+  })
   @Column({ type: 'text', nullable: true })
   extractedIconDataUrl!: string | null;
 

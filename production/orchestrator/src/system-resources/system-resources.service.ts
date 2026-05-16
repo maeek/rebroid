@@ -27,7 +27,9 @@ export class SystemResourcesService {
   async getUsage(refreshVolumes = false) {
     const containers = await this.docker.listManagedContainers();
     const volumes = await this.getVolumeUsage(refreshVolumes);
-    const running = containers.filter((container) => container.State === 'running').length;
+    const running = containers.filter(
+      (container) => container.State === 'running',
+    ).length;
     const managedContainerResourceUsage =
       await this.docker.getManagedContainerResourceUsage(containers);
 
@@ -35,8 +37,10 @@ export class SystemResourcesService {
       containersTotal: containers.length,
       containersRunning: running,
       containersStopped: containers.length - running,
-      managedContainersCpuUsagePercent: managedContainerResourceUsage.cpuUsagePercent,
-      managedContainersMemoryUsageBytes: managedContainerResourceUsage.memoryUsageBytes,
+      managedContainersCpuUsagePercent:
+        managedContainerResourceUsage.cpuUsagePercent,
+      managedContainersMemoryUsageBytes:
+        managedContainerResourceUsage.memoryUsageBytes,
       containerStatsCollectedAt: new Date().toISOString(),
       managedVolumesTotal: volumes.length,
       managedVolumesSizeBytes: volumes.reduce(
@@ -46,7 +50,8 @@ export class SystemResourcesService {
       volumeUsageCachedAt: this.volumeCache?.cachedAt.toISOString() ?? null,
       containers: containers.map((container) => ({
         id: container.Id,
-        name: container.Names[0]?.replace(/^\//, '') ?? container.Id.slice(0, 12),
+        name:
+          container.Names[0]?.replace(/^\//, '') ?? container.Id.slice(0, 12),
         state: container.State,
         status: container.Status,
       })),
@@ -55,7 +60,9 @@ export class SystemResourcesService {
   }
 
   private async getVolumeUsage(refreshVolumes: boolean) {
-    const ttlSeconds = this.config.getOrThrow<number>('app.docker.volumeUsageCacheTtlSeconds');
+    const ttlSeconds = this.config.getOrThrow<number>(
+      'app.docker.volumeUsageCacheTtlSeconds',
+    );
     const cacheIsFresh =
       this.volumeCache &&
       Date.now() - this.volumeCache.cachedAt.getTime() < ttlSeconds * 1000;
@@ -67,7 +74,10 @@ export class SystemResourcesService {
     const df = await this.docker.systemDf();
     const dockerVolumes = (df.Volumes ?? []) as DockerVolumeDf[];
     const volumes = dockerVolumes
-      .filter((volume: DockerVolumeDf) => volume.Labels?.['com.shop-me-alone.managed'] === 'true')
+      .filter(
+        (volume: DockerVolumeDf) =>
+          volume.Labels?.['com.shop-me-alone.managed'] === 'true',
+      )
       .map((volume: DockerVolumeDf) => ({
         name: volume.Name,
         sizeBytes: volume.UsageData?.Size ?? null,

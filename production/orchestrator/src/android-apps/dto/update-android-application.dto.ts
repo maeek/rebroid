@@ -31,7 +31,12 @@ export class UpdateAndroidApplicationDto {
   @Max(86400)
   inactivityTimeoutSeconds?: number;
 
-  @ApiPropertyOptional({ example: 2048, minimum: 128, maximum: 262144, nullable: true })
+  @ApiPropertyOptional({
+    example: 2048,
+    minimum: 128,
+    maximum: 262144,
+    nullable: true,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -39,7 +44,12 @@ export class UpdateAndroidApplicationDto {
   @Max(262144)
   memoryLimitMb?: number | null;
 
-  @ApiPropertyOptional({ example: 2, minimum: 0.1, maximum: 128, nullable: true })
+  @ApiPropertyOptional({
+    example: 2,
+    minimum: 0.1,
+    maximum: 128,
+    nullable: true,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
@@ -47,7 +57,12 @@ export class UpdateAndroidApplicationDto {
   @Max(128)
   cpuLimitCpus?: number | null;
 
-  @ApiPropertyOptional({ example: 8192, minimum: 16, maximum: 1048576, nullable: true })
+  @ApiPropertyOptional({
+    example: 8192,
+    minimum: 16,
+    maximum: 1048576,
+    nullable: true,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -55,9 +70,14 @@ export class UpdateAndroidApplicationDto {
   @Max(1048576)
   volumeSizeLimitMb?: number | null;
 
-  @ApiPropertyOptional({ example: 'androidboot.redroid_dpi=480', nullable: true })
+  @ApiPropertyOptional({
+    description:
+      'Optional command or arguments passed to the container as Docker Cmd. Use a long-running command if the image would otherwise exit immediately.',
+    example: 'sleep infinity',
+    nullable: true,
+  })
   @IsOptional()
   @IsString()
   @MaxLength(2048)
-  redroidArgs?: string | null;
+  containerArgs?: string | null;
 }

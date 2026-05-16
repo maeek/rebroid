@@ -21,7 +21,7 @@ export const mapAndroidApplicationToAppDefinition = (app: AndroidApplication): A
   lifecycleStage: app.lifecycleStage,
   statusMessage: app.statusMessage,
   ownerUserId: app.ownerUserId,
-  redroidImage: app.redroidImage,
+  containerImage: app.containerImage,
   containerName: app.containerName,
   containerId: app.containerId,
   networkName: app.networkName,
@@ -31,7 +31,7 @@ export const mapAndroidApplicationToAppDefinition = (app: AndroidApplication): A
   memoryLimitMb: app.memoryLimitMb,
   cpuLimitCpus: app.cpuLimitCpus,
   volumeSizeLimitMb: app.volumeSizeLimitMb,
-  redroidArgs: app.redroidArgs,
+  containerArgs: app.containerArgs,
   networkPolicyEnabled: app.networkPolicyEnabled,
   networkPolicyAllowCidrs: parseAllowCidrs(app.networkPolicyAllowCidrs),
   networkPolicyStatus: app.networkPolicyStatus,
@@ -57,8 +57,8 @@ export const mapAndroidApplicationToAppDefinition = (app: AndroidApplication): A
     persistentStorage: app.profileMode === 'persistent',
     internetAccess: app.networkPolicyAllowCidrs !== '[]'
   },
-  redroid: {
-    version: app.redroidImage,
-    arguments: app.redroidArgs ?? undefined
+  runtime: {
+    version: app.containerImage,
+    arguments: app.containerArgs ?? undefined
   }
 })

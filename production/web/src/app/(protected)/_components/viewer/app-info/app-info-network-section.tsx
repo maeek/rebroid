@@ -76,7 +76,8 @@ export const AppInfoNetworkSection = ({ app, onAppChange }: AppInfoNetworkSectio
       setAllowCidrs(previousCidrs)
       toast({
         title: 'Could not update network access',
-        description: error instanceof Error ? error.message : 'Unknown error'
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
       })
     } finally {
       setIsSaving(false)
@@ -95,6 +96,7 @@ export const AppInfoNetworkSection = ({ app, onAppChange }: AppInfoNetworkSectio
     <Section
       title='Network'
       boxed
+      titleClassName='pb-4'
       contentClassName='flex-col'
     >
       <AppInfoRow
@@ -151,7 +153,8 @@ export const AppInfoNetworkSection = ({ app, onAppChange }: AppInfoNetworkSectio
             onInvalidCidr={value =>
               toast({
                 title: 'Invalid CIDR',
-                description: `${value} is not a valid IPv4 address or CIDR range.`
+                description: `${value} is not a valid IPv4 address or CIDR range.`,
+                variant: 'destructive'
               })
             }
           />

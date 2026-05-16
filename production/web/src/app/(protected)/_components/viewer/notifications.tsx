@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { IconBell } from '@tabler/icons-react'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Section } from '@/components/ui/section'
 import { getAndroidNotificationsAction } from '@/lib/orchestrator/actions'
 import { AppDefinition } from '../../(standard)/constants'
@@ -9,6 +11,10 @@ import type { AndroidNotification } from '@/lib/orchestrator/types'
 
 export const AndroidNotifications = ({ app }: { app: AppDefinition }) => {
   const [notifications, setNotifications] = useState<AndroidNotification[]>([])
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const visibleNotifications = notifications
+  const previewNotifications = visibleNotifications.slice(0, 2)
+  const hasOverflowNotifications = visibleNotifications.length > 2
 
   useEffect(() => {
     if (!app.running) {
@@ -30,28 +36,58 @@ export const AndroidNotifications = ({ app }: { app: AppDefinition }) => {
     }
   }, [app.id, app.running])
 
-  return (
-    <Section
-      title='Android notifications'
-      contentClassName='gap-3'
+  if (visibleNotifications.length === 0) {
+    return null
+  }
+
+  const renderNotificationCard = (notification: AndroidNotification) => (
+    <div
+      key={`${notification.packageName}-${notification.raw}`}
+      className='flex flex-row rounded-md border border-border/70 bg-secondary/40 px-4 py-3 transition-colors hover:bg-secondary/58'
     >
-      {notifications.length === 0 ? (
-        <div className='flex items-center gap-2 text-sm text-secondary-foreground'>
-          <IconBell className='size-4' />
-          {app.running ? 'No notifications reported.' : 'Start the app to read Android notifications.'}
+      <IconBell className='mr-4 mt-0.5 size-6 shrink-0 text-secondary-foreground' />
+      <div className='flex w-full grow flex-col gap-1'>
+        <div className='flex items-center gap-2'>
+          <span className='text-sm font-medium text-foreground'>{notification.title}</span>
         </div>
-      ) : (
-        notifications.map(notification => (
-          <div
-            key={`${notification.packageName}-${notification.raw}`}
-            className='rounded-md border border-input bg-card/40 p-3'
+        <p className='text-sm text-secondary-foreground'>{notification.text}</p>
+        <div className='text-xs text-muted-foreground'>{notification.packageName}</div>
+      </div>
+    </div>
+  )
+
+  return (
+    <>
+      <Section
+        title='Android notifications'
+        titleClassName='pb-4'
+        contentClassName='gap-3'
+      >
+        {previewNotifications.map(renderNotificationCard)}
+        {hasOverflowNotifications && (
+          <Button
+            variant='secondary'
+            className='w-full sm:w-fit'
+            onClick={() => setIsDialogOpen(true)}
           >
-            <div className='text-sm font-medium'>{notification.title}</div>
-            <div className='text-xs text-secondary-foreground'>{notification.packageName}</div>
-            <p className='pt-2 text-sm text-secondary-foreground'>{notification.text}</p>
+            Show all {visibleNotifications.length} notifications
+          </Button>
+        )}
+      </Section>
+      <Dialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+      >
+        <DialogContent className='max-h-[min(80vh,44rem)] sm:max-w-2xl'>
+          <DialogHeader>
+            <DialogTitle>Android notifications</DialogTitle>
+            <DialogDescription>Live notifications reported by the Android app session.</DialogDescription>
+          </DialogHeader>
+          <div className='grid max-h-[min(60vh,34rem)] gap-3 overflow-y-auto pr-1'>
+            {visibleNotifications.map(renderNotificationCard)}
           </div>
-        ))
-      )}
-    </Section>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

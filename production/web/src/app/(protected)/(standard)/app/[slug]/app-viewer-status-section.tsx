@@ -34,7 +34,7 @@ export const AppViewerStatusSection = ({ app }: { app: AppDefinition }) => {
       {getStatusIcon(app)}
       <div className='flex w-full grow flex-col gap-1'>
         <div className='flex items-center gap-2'>
-          <span className='text-foreground font-light capitalize'>{formatStatusLabel(app.lifecycleStage)}</span>
+          <span className='text-foreground capitalize'>{formatStatusLabel(app.lifecycleStage)}</span>
           <Badge
             variant={isError ? 'destructive' : 'status'}
             className='capitalize'

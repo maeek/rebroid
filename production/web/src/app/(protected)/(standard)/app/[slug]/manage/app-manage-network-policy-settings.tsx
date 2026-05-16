@@ -60,7 +60,8 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
     } catch (error) {
       toast({
         title: 'Could not save network policy',
-        description: error instanceof Error ? error.message : 'Unknown error'
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
       })
     } finally {
       setIsSaving(false)
@@ -80,7 +81,11 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
       syncFromApp(mapped)
       toast({ title: 'Network policy applied' })
     } catch (error) {
-      toast({ title: 'Could not apply policy', description: error instanceof Error ? error.message : 'Unknown error' })
+      toast({
+        title: 'Could not apply policy',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
+      })
     } finally {
       setIsSaving(false)
     }
@@ -99,7 +104,8 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
   const handleInvalidNetworkPolicyCidr = (value: string) => {
     toast({
       title: 'Invalid CIDR',
-      description: `${value} is not a valid IPv4 address or CIDR range.`
+      description: `${value} is not a valid IPv4 address or CIDR range.`,
+      variant: 'destructive'
     })
   }
 
@@ -107,6 +113,7 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
     <Section
       title='Network policy'
       boxed
+      titleClassName='pb-4'
       contentClassName='gap-4'
     >
       {app.networkPolicyMessage && <p className='text-sm text-secondary-foreground'>{app.networkPolicyMessage}</p>}

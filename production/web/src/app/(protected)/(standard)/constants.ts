@@ -1,10 +1,4 @@
-import {
-  IconApps,
-  IconLibraryPlusFilled,
-  IconAdjustments,
-  IconBrandAndroid,
-  IconServerSpark
-} from '@tabler/icons-react'
+import { IconApps, IconLibraryPlusFilled, IconAdjustments, IconBrandDocker, IconServerSpark } from '@tabler/icons-react'
 
 export interface AppDefinition {
   id: string
@@ -31,7 +25,7 @@ export interface AppDefinition {
     | 'error'
   statusMessage: string | null
   ownerUserId: string | null
-  redroidImage: string
+  containerImage: string
   containerName: string
   containerId: string | null
   networkName: string
@@ -41,7 +35,7 @@ export interface AppDefinition {
   memoryLimitMb: number | null
   cpuLimitCpus: number | null
   volumeSizeLimitMb: number | null
-  redroidArgs: string | null
+  containerArgs: string | null
   networkPolicyEnabled: boolean
   networkPolicyAllowCidrs: string[]
   networkPolicyStatus: string | null
@@ -68,7 +62,7 @@ export interface AppDefinition {
     persistentStorage?: boolean
     internetAccess?: boolean
   }
-  redroid?: {
+  runtime?: {
     version: string
     arguments?: string
   }
@@ -83,6 +77,6 @@ export const appsSections = [
 
 export const settingsSections = [
   { name: 'General', Icon: IconAdjustments, href: '/settings/general' },
-  { name: 'Redroid', Icon: IconBrandAndroid, href: '/settings/redroid' },
+  { name: 'Orchestrator', Icon: IconBrandDocker, href: '/settings/orchestrator' },
   { name: 'System', Icon: IconServerSpark, href: '/settings/system' }
 ] as const

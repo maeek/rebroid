@@ -37,7 +37,7 @@ export const AppIcon = ({
         backgroundPosition: 'center'
       }}
     >
-      {!displayIcon && appName.slice(0, 2).toUpperCase()}
+      {!displayIcon && appName.slice(0, 3).toUpperCase()}
     </div>
   )
 }

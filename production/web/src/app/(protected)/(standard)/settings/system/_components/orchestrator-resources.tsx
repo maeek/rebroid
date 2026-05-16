@@ -4,6 +4,7 @@ import { IconRefresh } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { QuickGlanceCard } from '../../../../_components/settings/quick-glance-card'
 import type { SystemResources } from '@/lib/orchestrator/types'
 
 const formatBytes = (bytes: number) => {
@@ -29,25 +30,31 @@ export const OrchestratorResources = ({
   return (
     <Section
       title='Managed inventory and storage'
+      titleClassName='pb-4'
       contentClassName='gap-4'
       className='w-full'
     >
-      <div className='grid grid-cols-4 gap-3 max-lg:grid-cols-2 max-sm:grid-cols-1'>
-        <div className='rounded-md border border-input bg-card/40 p-3'>
-          <div className='text-sm text-secondary-foreground'>Containers</div>
-          <div className='text-2xl font-medium'>{resources?.containersTotal ?? 0}</div>
-        </div>
-        <div className='rounded-md border border-input bg-card/40 p-3'>
-          <div className='text-sm text-secondary-foreground'>Running</div>
-          <div className='text-2xl font-medium'>{resources?.containersRunning ?? 0}</div>
-        </div>
-        <div className='rounded-md border border-input bg-card/40 p-3'>
-          <div className='text-sm text-secondary-foreground'>Volumes</div>
-          <div className='text-2xl font-medium'>{resources?.managedVolumesTotal ?? 0}</div>
-        </div>
-        <div className='rounded-md border border-input bg-card/40 p-3'>
-          <div className='flex items-start justify-between gap-2'>
-            <div className='text-sm text-secondary-foreground'>Volume size</div>
+      <div className='grid grid-cols-4 gap-3 max-xl:grid-cols-2 max-sm:grid-cols-1'>
+        <QuickGlanceCard
+          label='Containers'
+          value={resources?.containersTotal ?? 0}
+          hint='Managed containers visible to Docker'
+        />
+        <QuickGlanceCard
+          label='Running'
+          value={resources?.containersRunning ?? 0}
+          hint='Managed containers currently running'
+        />
+        <QuickGlanceCard
+          label='Volumes'
+          value={resources?.managedVolumesTotal ?? 0}
+          hint='Managed persistent volumes'
+        />
+        <QuickGlanceCard
+          label='Volume size'
+          value={formatBytes(resources?.managedVolumesSizeBytes ?? 0)}
+          hint={`Cached at ${volumeCacheLabel}`}
+          headerAction={
             <Tooltip>
               <TooltipTrigger asChild>
                 <span>
@@ -65,10 +72,8 @@ export const OrchestratorResources = ({
               </TooltipTrigger>
               <TooltipContent>Refresh cached volume sizes</TooltipContent>
             </Tooltip>
-          </div>
-          <div className='text-2xl font-medium'>{formatBytes(resources?.managedVolumesSizeBytes ?? 0)}</div>
-          <div className='mt-1 text-xs text-secondary-foreground'>Cached at {volumeCacheLabel}</div>
-        </div>
+          }
+        />
       </div>
     </Section>
   )

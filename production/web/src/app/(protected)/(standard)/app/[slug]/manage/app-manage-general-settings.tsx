@@ -40,7 +40,8 @@ export const AppManageGeneralSettings = ({ app, appId, appName, onAppNameChange 
     if (!isFileWithinApkLimit(file, settings.maxApkUploadSizeMb)) {
       toast({
         title: 'APK is too large',
-        description: `The configured upload limit is ${apkSizeLabel(settings.maxApkUploadSizeMb)}.`
+        description: `The configured upload limit is ${apkSizeLabel(settings.maxApkUploadSizeMb)}.`,
+        variant: 'destructive'
       })
       event.target.value = ''
       return
@@ -62,7 +63,11 @@ export const AppManageGeneralSettings = ({ app, appId, appName, onAppNameChange 
       toast({ title: 'APK uploaded' })
       router.refresh()
     } catch (error) {
-      toast({ title: 'Could not upload APK', description: error instanceof Error ? error.message : 'Unknown error' })
+      toast({
+        title: 'Could not upload APK',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
+      })
     } finally {
       topLoader.done(true)
       setIsUploadingApk(false)
@@ -74,6 +79,7 @@ export const AppManageGeneralSettings = ({ app, appId, appName, onAppNameChange 
     <Section
       title='General'
       boxed
+      titleClassName='pb-4'
       contentClassName='gap-5'
     >
       <Setting

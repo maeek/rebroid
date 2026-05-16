@@ -7,7 +7,10 @@ import { ApkService } from './apk.service';
 import { UploadedApk } from './uploaded-apk.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([UploadedApk, AndroidApplication]), SettingsModule],
+  imports: [
+    TypeOrmModule.forFeature([UploadedApk, AndroidApplication]),
+    SettingsModule,
+  ],
   controllers: [ApkController],
   providers: [ApkService],
   exports: [ApkService],

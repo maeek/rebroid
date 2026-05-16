@@ -1,11 +1,14 @@
 import {
   AndroidApplication,
   AndroidNotification,
+  ApplicationLog,
   CleanupUploadedApksResponse,
   CreateAndroidApplicationInput,
   DeleteAndroidApplicationResponse,
   DockerPruneAllResponse,
   DockerPruneResponse,
+  OrchestratorHealth,
+  PlatformContainer,
   SwitchApplicationProfileInput,
   SystemResources,
   UploadedApk,
@@ -15,6 +18,8 @@ import {
 import type { OrchestratorSettingsResponse, RuntimeUiSettings } from './ui-settings'
 
 const defaultOrchestratorUrl = 'http://localhost:4100'
+const secretHeaderName = 'x-orchestrator-secret'
+const orchestratorSharedSecret = process.env.ORCHESTRATOR_SHARED_SECRET?.trim()
 
 export const getOrchestratorBaseUrl = () =>
   process.env.ORCHESTRATOR_API_URL || process.env.NEXT_PUBLIC_ORCHESTRATOR_API_URL || defaultOrchestratorUrl
@@ -41,6 +46,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers: {
       accept: 'application/json',
       ...(init?.body instanceof FormData ? {} : { 'content-type': 'application/json' }),
+      ...(orchestratorSharedSecret ? { [secretHeaderName]: orchestratorSharedSecret } : {}),
       ...init?.headers
     }
   })
@@ -54,6 +60,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const orchestratorApi = {
+  health() {
+    return request<OrchestratorHealth>('/health')
+  },
+
   createApplication(input: CreateAndroidApplicationInput) {
     return request<AndroidApplication>('/android-applications', {
       method: 'POST',
@@ -95,9 +105,9 @@ export const orchestratorApi = {
     return request<OrchestratorSettingsResponse>('/settings/reset', { method: 'POST' })
   },
 
-  listApplications(ownerUserId: string) {
-    const query = new URLSearchParams({ ownerUserId })
-    return request<AndroidApplication[]>(`/android-applications?${query.toString()}`)
+  listApplications(ownerUserId?: string) {
+    const query = ownerUserId ? `?${new URLSearchParams({ ownerUserId }).toString()}` : ''
+    return request<AndroidApplication[]>(`/android-applications${query}`)
   },
 
   getApplication(id: string) {
@@ -133,6 +143,11 @@ export const orchestratorApi = {
     return request<AndroidNotification[]>(`/android-applications/${id}/notifications`)
   },
 
+  getApplicationLogs(id: string, source: 'container' | 'adb', tail = 300) {
+    const query = new URLSearchParams({ tail: String(tail) })
+    return request<ApplicationLog>(`/android-applications/${id}/logs/${source}?${query.toString()}`)
+  },
+
   getSystemResources(refreshVolumes = false) {
     const query = new URLSearchParams({ refreshVolumes: String(refreshVolumes) })
     return request<SystemResources>(`/system-resources?${query.toString()}`)
@@ -159,6 +174,18 @@ export const orchestratorApi = {
 
   pruneAllDockerResources() {
     return request<DockerPruneAllResponse>('/docker-maintenance/prune/all', { method: 'POST' })
+  },
+
+  listPlatformContainers() {
+    return request<PlatformContainer[]>('/docker-maintenance/containers')
+  },
+
+  stopPlatformContainer(id: string) {
+    return request<{ id: string; stopped: boolean }>(`/docker-maintenance/containers/${id}/stop`, { method: 'POST' })
+  },
+
+  removePlatformContainer(id: string) {
+    return request<{ id: string; removed: boolean }>(`/docker-maintenance/containers/${id}`, { method: 'DELETE' })
   },
 
   startApplication(id: string, input?: SwitchApplicationProfileInput) {

@@ -8,14 +8,18 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt'
   },
   callbacks: {
-    async jwt({ token, account, profile: _profile }) {
+    async jwt({ token, account, profile: _profile, user }) {
       if (account && account.type === 'credentials') {
         token.userId = account.providerAccountId
+      }
+      if (user && 'role' in user) {
+        token.role = user.role
       }
       return token
     },
     async session({ session, token, user: _user }) {
       session.user.id = token.userId
+      session.user.role = token.role
       return session
     }
   },
@@ -35,7 +39,8 @@ export const authOptions: NextAuthOptions = {
           password: string
         }
 
-        return userService.authenticate(username, password)
+        const user = await userService.authenticate(username, password)
+        return user
       }
     })
   ]

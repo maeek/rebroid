@@ -77,7 +77,7 @@ export const saveOrchestratorUiSettings = async (settings: RuntimeUiSettings): P
   const [web, orchestrator] = await Promise.all([
     loadWebSettings(),
     updateOrchestratorSettingsAction({
-      defaultRedroidImage: settings.defaultRedroidImage,
+      defaultContainerImage: settings.defaultContainerImage,
       defaultInactivityTimeoutSeconds: settings.defaultInactivityTimeoutSeconds,
       maxApkUploadSizeMb: settings.maxApkUploadSizeMb,
       imagePruneIntervalHours: settings.imagePruneIntervalHours,

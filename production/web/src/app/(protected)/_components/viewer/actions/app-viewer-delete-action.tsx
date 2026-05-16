@@ -18,6 +18,7 @@ import { toast } from '@/hooks/use-toast'
 import { removeAppIconAction } from '@/lib/app-icons/actions'
 import { deleteApplicationAction } from '@/lib/orchestrator/actions'
 import { useOrchestratorUiSettings } from '@/lib/orchestrator/settings'
+import { forgetRecentApp } from '@/lib/recent-apps'
 import type { AppDefinition } from '../../../(standard)/constants'
 
 export const AppViewerDeleteAction = ({ app }: { app?: AppDefinition }) => {
@@ -33,10 +34,15 @@ export const AppViewerDeleteAction = ({ app }: { app?: AppDefinition }) => {
     try {
       await deleteApplicationAction(app.id, settings.removeDataOnDelete)
       await removeAppIconAction(app.id)
+      forgetRecentApp(app.id)
       setOpen(false)
       router.push('/apps')
     } catch (error) {
-      toast({ title: 'Could not delete app', description: error instanceof Error ? error.message : 'Unknown error' })
+      toast({
+        title: 'Could not delete app',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
+      })
     }
   }
 

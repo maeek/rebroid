@@ -21,12 +21,12 @@ import type { UploadedApk } from '@/lib/orchestrator/types'
 
 const getInitialFormValues = (settings: OrchestratorUiSettings): CreateAppFormValues => ({
   name: '',
-  redroidImage: settings.defaultRedroidImage,
+  containerImage: settings.defaultContainerImage,
   inactivityTimeoutSeconds: settings.defaultInactivityTimeoutSeconds,
   memoryLimitMb: '',
   cpuLimitCpus: '',
   volumeSizeLimitMb: '',
-  redroidArgs: ''
+  containerArgs: ''
 })
 
 export const CreateAppForm = ({ initialSettings }: { initialSettings: OrchestratorUiSettings }) => {
@@ -45,10 +45,10 @@ export const CreateAppForm = ({ initialSettings }: { initialSettings: Orchestrat
   useEffect(() => {
     setFormValues(current => ({
       ...current,
-      redroidImage: settings.defaultRedroidImage,
+      containerImage: settings.defaultContainerImage,
       inactivityTimeoutSeconds: settings.defaultInactivityTimeoutSeconds
     }))
-  }, [settings.defaultInactivityTimeoutSeconds, settings.defaultRedroidImage])
+  }, [settings.defaultInactivityTimeoutSeconds, settings.defaultContainerImage])
 
   const updateFormValues = (patch: Partial<CreateAppFormValues>) => {
     setFormValues(current => ({ ...current, ...patch }))
@@ -68,7 +68,11 @@ export const CreateAppForm = ({ initialSettings }: { initialSettings: Orchestrat
     try {
       setManualIconPreview(await optimizeIconFile(file))
     } catch (error) {
-      toast({ title: 'Could not prepare icon', description: error instanceof Error ? error.message : 'Unknown error' })
+      toast({
+        title: 'Could not prepare icon',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
+      })
     }
   }
 
@@ -91,7 +95,8 @@ export const CreateAppForm = ({ initialSettings }: { initialSettings: Orchestrat
     if (!isFileWithinApkLimit(file, settings.maxApkUploadSizeMb)) {
       toast({
         title: 'APK is too large',
-        description: `The configured upload limit is ${apkSizeLabel(settings.maxApkUploadSizeMb)}.`
+        description: `The configured upload limit is ${apkSizeLabel(settings.maxApkUploadSizeMb)}.`,
+        variant: 'destructive'
       })
       return
     }
@@ -116,7 +121,11 @@ export const CreateAppForm = ({ initialSettings }: { initialSettings: Orchestrat
         toast({ title: 'APK uploaded', description: 'Launcher icon was extracted.' })
       }
     } catch (error) {
-      toast({ title: 'Could not upload APK', description: error instanceof Error ? error.message : 'Unknown error' })
+      toast({
+        title: 'Could not upload APK',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
+      })
     } finally {
       topLoader.done(true)
       setIsUploadingApk(false)
@@ -130,12 +139,12 @@ export const CreateAppForm = ({ initialSettings }: { initialSettings: Orchestrat
     try {
       const createdApp = await createApplicationAction({
         name: trimmedName,
-        redroidImage: formValues.redroidImage.trim() || undefined,
+        containerImage: formValues.containerImage.trim() || undefined,
         inactivityTimeoutSeconds: formValues.inactivityTimeoutSeconds || undefined,
         memoryLimitMb: formValues.memoryLimitMb ? Number(formValues.memoryLimitMb) : undefined,
         cpuLimitCpus: formValues.cpuLimitCpus ? Number(formValues.cpuLimitCpus) : undefined,
         volumeSizeLimitMb: formValues.volumeSizeLimitMb ? Number(formValues.volumeSizeLimitMb) : undefined,
-        redroidArgs: formValues.redroidArgs.trim() || undefined,
+        containerArgs: formValues.containerArgs.trim() || undefined,
         uploadedApkId: uploadedApk?.id
       })
 
@@ -146,7 +155,11 @@ export const CreateAppForm = ({ initialSettings }: { initialSettings: Orchestrat
       toast({ title: 'App created', description: 'Provisioning has started.' })
       router.push(`/app/${createdApp.id}/manage`)
     } catch (error) {
-      toast({ title: 'Could not create app', description: error instanceof Error ? error.message : 'Unknown error' })
+      toast({
+        title: 'Could not create app',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
+      })
     } finally {
       setIsCreating(false)
     }

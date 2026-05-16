@@ -22,6 +22,14 @@ export async function middleware(request: NextRequest) {
       loginUrl.searchParams.set('callbackUrl', request.nextUrl.pathname)
       return NextResponse.redirect(loginUrl)
     }
+
+    const isAdminPath =
+      request.nextUrl.pathname.startsWith('/settings/orchestrator') ||
+      request.nextUrl.pathname.startsWith('/settings/system') ||
+      request.nextUrl.pathname.startsWith('/settings/users')
+    if (isAdminPath && token.role !== 'admin') {
+      return NextResponse.redirect(new URL('/apps', request.url))
+    }
   }
 
   return NextResponse.next({ request: { headers } })

@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { PageBreadcrumbs } from '@/app/(protected)/_components/page-breadcrumbs'
 import { ProtectedStackPageLayout } from '@/app/(protected)/_components/protected-page-shell'
+import { StatusSplash } from '@/app/(protected)/_components/status-splash'
 import { Section } from '@/components/ui/section'
 import { getSystemResourcesAction } from '@/lib/orchestrator/actions'
 import { SystemChart } from './_components/chart'
@@ -17,6 +18,7 @@ export default function SystemPage() {
   const [systemUtilization, setSystemUtilization] = useState<SystemStats>()
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshingResources, setIsRefreshingResources] = useState(false)
+  const [resourcesError, setResourcesError] = useState<string | null>(null)
 
   const fetchSystemUtilization = async (): Promise<SystemStats> => {
     const response = await fetch('/api/system/stats', {
@@ -34,6 +36,9 @@ export default function SystemPage() {
     setIsRefreshingResources(true)
     try {
       setResources(await getSystemResourcesAction(refreshVolumes))
+      setResourcesError(null)
+    } catch (error) {
+      setResourcesError(error instanceof Error ? error.message : 'Could not load orchestrator resources.')
     } finally {
       setIsRefreshingResources(false)
     }
@@ -93,6 +98,7 @@ export default function SystemPage() {
           <Section
             title='Host system'
             boxed
+            titleClassName='pb-4'
             contentClassName='gap-3'
             className='h-full'
           >
@@ -104,24 +110,39 @@ export default function SystemPage() {
           <Section
             title='Managed containers'
             boxed
+            titleClassName='pb-4'
             contentClassName='gap-3'
             className='h-full'
           >
             <p className='text-sm text-secondary-foreground'>
               Live aggregated Docker stats across managed app containers, shown separately from host-level usage.
             </p>
-            <ManagedContainerDetailsTable resources={resources} />
+            {resourcesError ? (
+              <StatusSplash
+                title='Orchestrator resources unavailable'
+                description='Docker inventory could not be loaded from the orchestrator.'
+                detail={resourcesError}
+                tone='danger'
+                primaryAction={{ label: 'Refresh', onClick: () => void refreshResources(true) }}
+                className='min-h-64 p-4'
+              />
+            ) : (
+              <ManagedContainerDetailsTable resources={resources} />
+            )}
           </Section>
         </div>
-        <OrchestratorResources
-          resources={resources}
-          isRefreshing={isRefreshingResources}
-          onRefresh={refreshResources}
-        />
+        {!resourcesError && (
+          <OrchestratorResources
+            resources={resources}
+            isRefreshing={isRefreshingResources}
+            onRefresh={refreshResources}
+          />
+        )}
         <div className='grid gap-6 xl:grid-cols-[minmax(20rem,24rem)_minmax(0,1fr)]'>
           <Section
             title='Host memory'
             boxed
+            titleClassName='pb-4'
             className='h-full'
           >
             <MemoryChart
@@ -132,6 +153,7 @@ export default function SystemPage() {
           <Section
             title='Host CPU history'
             boxed
+            titleClassName='pb-4'
             className='h-full'
           >
             <div className='h-160 w-full max-lg:h-96'>

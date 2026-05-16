@@ -111,7 +111,8 @@ export const OrchestratorMaintenanceSection = ({
     } catch (error) {
       toast({
         title: `Could not ${successTitle.toLowerCase()}`,
-        description: error instanceof Error ? error.message : 'Unknown error'
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
       })
     } finally {
       setActiveAction(null)
@@ -122,6 +123,7 @@ export const OrchestratorMaintenanceSection = ({
     <Section
       title='Maintenance'
       boxed
+      titleClassName='pb-4'
       contentClassName='gap-4'
       className='w-full'
     >

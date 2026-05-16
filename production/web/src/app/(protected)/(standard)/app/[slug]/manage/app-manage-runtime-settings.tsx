@@ -10,12 +10,12 @@ type AppManageRuntimeSettingsProps = {
   memoryLimitMb: string
   cpuLimitCpus: string
   volumeSizeLimitMb: string
-  redroidArgs: string
+  containerArgs: string
   onInactivityTimeoutChange: (value: number) => void
   onMemoryLimitChange: (value: string) => void
   onCpuLimitChange: (value: string) => void
   onVolumeSizeLimitChange: (value: string) => void
-  onRedroidArgsChange: (value: string) => void
+  onContainerArgsChange: (value: string) => void
 }
 
 const verticalSettingClassName = 'flex-col items-start w-full'
@@ -26,17 +26,18 @@ export const AppManageRuntimeSettings = ({
   memoryLimitMb,
   cpuLimitCpus,
   volumeSizeLimitMb,
-  redroidArgs,
+  containerArgs,
   onInactivityTimeoutChange,
   onMemoryLimitChange,
   onCpuLimitChange,
   onVolumeSizeLimitChange,
-  onRedroidArgsChange
+  onContainerArgsChange
 }: AppManageRuntimeSettingsProps) => {
   return (
     <Section
       title='Runtime'
       boxed
+      titleClassName='pb-4'
       contentClassName='gap-6'
     >
       <Setting
@@ -45,7 +46,7 @@ export const AppManageRuntimeSettings = ({
         variant='vertical'
       >
         <Input
-          value={app?.redroidImage ?? ''}
+          value={app?.containerImage ?? ''}
           readOnly
         />
       </Setting>
@@ -102,13 +103,15 @@ export const AppManageRuntimeSettings = ({
         </Setting>
       </div>
       <Setting
-        label='Redroid arguments'
+        label='Container arguments'
+        description='Optional Docker Cmd override. Use a long-running command for images that would otherwise exit immediately, for example sleep infinity.'
         className={verticalSettingClassName}
         variant='vertical'
       >
         <Textarea
-          value={redroidArgs}
-          onChange={event => onRedroidArgsChange(event.target.value)}
+          value={containerArgs}
+          placeholder='sleep infinity'
+          onChange={event => onContainerArgsChange(event.target.value)}
         />
       </Setting>
     </Section>

@@ -20,6 +20,7 @@ import {
 import { AndroidApplication } from './android-application.entity';
 import { AndroidAppsService } from './android-apps.service';
 import { AndroidNotificationDto } from './dto/android-notification.dto';
+import { ApplicationLogDto } from './dto/application-log.dto';
 import { CreateAndroidApplicationDto } from './dto/create-android-application.dto';
 import { DeleteAndroidApplicationResponseDto } from './dto/delete-android-application-response.dto';
 import { ListAndroidApplicationsDto } from './dto/list-android-applications.dto';
@@ -37,7 +38,9 @@ export class AndroidAppsController {
   constructor(private readonly androidApps: AndroidAppsService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Provision an isolated redroid application container.' })
+  @ApiOperation({
+    summary: 'Provision an isolated application container.',
+  })
   @ApiCreatedResponse({ type: AndroidApplication })
   @ApiBody({
     schema: {
@@ -46,16 +49,22 @@ export class AndroidAppsController {
       properties: {
         name: { type: 'string', example: 'Signal Android' },
         ownerUserId: { type: 'string', example: 'user_123' },
-        redroidImage: { type: 'string', example: 'redroid/redroid:13.0.0-latest' },
+        containerImage: {
+          type: 'string',
+          example: 'redroid/redroid:13.0.0-latest',
+        },
         inactivityTimeoutSeconds: { type: 'integer', example: 900 },
         memoryLimitMb: { type: 'integer', example: 2048 },
         cpuLimitCpus: { type: 'number', example: 2 },
         volumeSizeLimitMb: { type: 'integer', example: 8192 },
-        redroidArgs: {
+        containerArgs: {
           type: 'string',
-          example: 'androidboot.redroid_dpi=480 androidboot.redroid_width=1080',
+          example: 'sleep infinity',
         },
-        uploadedApkId: { type: 'string', example: '98a530d6-a45d-466a-9cb4-c023067c4971' },
+        uploadedApkId: {
+          type: 'string',
+          example: '98a530d6-a45d-466a-9cb4-c023067c4971',
+        },
       },
     },
   })
@@ -82,28 +91,45 @@ export class AndroidAppsController {
   }
 
   @Patch(':id/network-policy')
-  @ApiOperation({ summary: 'Update and reconcile the app container egress allowlist.' })
+  @ApiOperation({
+    summary: 'Update and reconcile the app container egress allowlist.',
+  })
   @ApiOkResponse({ type: AndroidApplication })
-  updateNetworkPolicy(@Param('id') id: string, @Body() dto: UpdateNetworkPolicyDto) {
+  updateNetworkPolicy(
+    @Param('id') id: string,
+    @Body() dto: UpdateNetworkPolicyDto,
+  ) {
     return this.androidApps.updateNetworkPolicy(id, dto);
   }
 
   @Post(':id/network-policy/apply')
-  @ApiOperation({ summary: 'Re-apply the stored network policy without restarting the container.' })
+  @ApiOperation({
+    summary:
+      'Re-apply the stored network policy without restarting the container.',
+  })
   @ApiOkResponse({ type: AndroidApplication })
   applyNetworkPolicy(@Param('id') id: string) {
     return this.androidApps.applyNetworkPolicy(id);
   }
 
   @Post(':id/profile')
-  @ApiOperation({ summary: 'Select the runtime profile volume used by the next container start.' })
+  @ApiOperation({
+    summary:
+      'Select the runtime profile volume used by the next container start.',
+  })
   @ApiOkResponse({ type: AndroidApplication })
-  switchProfile(@Param('id') id: string, @Body() dto: SwitchApplicationProfileDto) {
+  switchProfile(
+    @Param('id') id: string,
+    @Body() dto: SwitchApplicationProfileDto,
+  ) {
     return this.androidApps.switchProfile(id, dto);
   }
 
   @Post(':id/start')
-  @ApiOperation({ summary: 'Start the application container, optionally selecting a runtime profile.' })
+  @ApiOperation({
+    summary:
+      'Start the application container, optionally selecting a runtime profile.',
+  })
   @ApiOkResponse({ type: AndroidApplication })
   start(@Param('id') id: string, @Body() dto: StartAndroidApplicationDto) {
     return this.androidApps.start(id, dto);
@@ -122,11 +148,17 @@ export class AndroidAppsController {
       type: 'object',
       required: ['uploadedApkId'],
       properties: {
-        uploadedApkId: { type: 'string', example: '98a530d6-a45d-466a-9cb4-c023067c4971' },
+        uploadedApkId: {
+          type: 'string',
+          example: '98a530d6-a45d-466a-9cb4-c023067c4971',
+        },
       },
     },
   })
-  updateApk(@Param('id') id: string, @Body() dto: UpdateAndroidApplicationApkDto) {
+  updateApk(
+    @Param('id') id: string,
+    @Body() dto: UpdateAndroidApplicationApkDto,
+  ) {
     return this.androidApps.updateApk(id, dto);
   }
 
@@ -141,6 +173,24 @@ export class AndroidAppsController {
   @ApiOkResponse({ type: AndroidNotificationDto, isArray: true })
   notifications(@Param('id') id: string) {
     return this.androidApps.notifications(id);
+  }
+
+  @Get(':id/logs/container')
+  @ApiOperation({
+    summary: 'Read recent Docker container logs for an application.',
+  })
+  @ApiOkResponse({ type: ApplicationLogDto })
+  containerLogs(@Param('id') id: string, @Query('tail') tail?: string) {
+    return this.androidApps.containerLogs(id, tail ? Number(tail) : undefined);
+  }
+
+  @Get(':id/logs/adb')
+  @ApiOperation({
+    summary: 'Read recent Android logcat output for a running application.',
+  })
+  @ApiOkResponse({ type: ApplicationLogDto })
+  adbLogs(@Param('id') id: string, @Query('tail') tail?: string) {
+    return this.androidApps.adbLogs(id, tail ? Number(tail) : undefined);
   }
 
   @Delete(':id')

@@ -7,7 +7,7 @@ import { PassThrough } from 'node:stream';
 import tar from 'tar-stream';
 import { ApplicationProfileMode } from '../android-apps/application-profile-mode';
 
-export interface RedroidContainerSpec {
+export interface ApplicationContainerSpec {
   applicationId: string;
   containerName: string;
   networkName: string;
@@ -19,7 +19,7 @@ export interface RedroidContainerSpec {
   profileMode: ApplicationProfileMode;
   memoryLimitMb?: number | null;
   cpuLimitCpus?: number | null;
-  redroidArgs?: string | null;
+  containerArgs?: string | null;
 }
 
 export interface ContainerRuntimeState {
@@ -34,6 +34,29 @@ export interface ContainerRuntimeState {
 export interface ManagedContainerResourceUsage {
   cpuUsagePercent: number;
   memoryUsageBytes: number;
+}
+
+export interface PlatformContainer {
+  id: string;
+  shortId: string;
+  names: string[];
+  image: string;
+  imageId: string;
+  command: string;
+  createdAt: string;
+  state: string;
+  status: string;
+  labels: Record<string, string>;
+  managed: boolean;
+  applicationId: string | null;
+  component: string | null;
+  ports: {
+    privatePort: number;
+    publicPort: number | null;
+    type: string;
+    ip: string | null;
+  }[];
+  networks: string[];
 }
 
 const parseCommandLine = (value?: string | null) => {
@@ -98,10 +121,15 @@ export class DockerService {
   private readonly orchestratorContainerId?: string;
 
   constructor(private readonly config: ConfigService) {
-    this.docker = new Dockerode({
-      socketPath: this.config.getOrThrow<string>('app.docker.socketPath'),
-    });
-    this.resourcePrefix = this.config.getOrThrow<string>('app.docker.resourcePrefix');
+    const dockerHost = process.env.DOCKER_HOST;
+    this.docker = dockerHost
+      ? new Dockerode({ host: dockerHost })
+      : new Dockerode({
+          socketPath: this.config.getOrThrow<string>('app.docker.socketPath'),
+        });
+    this.resourcePrefix = this.config.getOrThrow<string>(
+      'app.docker.resourcePrefix',
+    );
     this.orchestratorContainerId = this.config.get<string>(
       'app.docker.orchestratorContainerId',
     );
@@ -115,14 +143,19 @@ export class DockerService {
     return this.docker.getContainer(containerId).inspect();
   }
 
-  async getContainerRuntimeState(containerId: string): Promise<ContainerRuntimeState> {
+  async getContainerRuntimeState(
+    containerId: string,
+  ): Promise<ContainerRuntimeState> {
     try {
       const inspect = await this.inspectContainer(containerId);
       return {
         exists: true,
         running: Boolean(inspect.State?.Running),
         status: inspect.State?.Status ?? null,
-        exitCode: typeof inspect.State?.ExitCode === 'number' ? inspect.State.ExitCode : null,
+        exitCode:
+          typeof inspect.State?.ExitCode === 'number'
+            ? inspect.State.ExitCode
+            : null,
         error: inspect.State?.Error || null,
         finishedAt: inspect.State?.FinishedAt || null,
       };
@@ -140,6 +173,18 @@ export class DockerService {
 
       throw error;
     }
+  }
+
+  async getContainerLogs(containerId: string, tail = 300) {
+    const container = this.docker.getContainer(containerId);
+    const stream = await container.logs({
+      stdout: true,
+      stderr: true,
+      timestamps: true,
+      tail,
+    });
+
+    return Buffer.isBuffer(stream) ? stream.toString('utf-8') : String(stream);
   }
 
   async imageExists(image: string) {
@@ -179,7 +224,9 @@ export class DockerService {
             return;
           }
 
-          const parts = [event.status, event.progress, event.id].filter(Boolean);
+          const parts = [event.status, event.progress, event.id].filter(
+            Boolean,
+          );
           onProgress(parts.join(' '));
         },
       );
@@ -260,7 +307,7 @@ export class DockerService {
     }
   }
 
-  async createRedroidContainer(spec: RedroidContainerSpec) {
+  async createApplicationContainer(spec: ApplicationContainerSpec) {
     await this.ensureImage(spec.image);
 
     const existing = await this.findContainerByName(spec.containerName);
@@ -299,12 +346,12 @@ export class DockerService {
     return this.docker.createContainer({
       Image: spec.image,
       name: spec.containerName,
-      Cmd: parseCommandLine(spec.redroidArgs),
+      Cmd: parseCommandLine(spec.containerArgs),
       Env: [`ADB_TCP_PORT=${spec.adbPort}`],
       ExposedPorts: {
         [`${spec.adbPort}/tcp`]: {},
       },
-      Labels: this.labels(spec.applicationId, 'redroid'),
+      Labels: this.labels(spec.applicationId, 'runtime'),
       HostConfig: hostConfig,
       NetworkingConfig: {
         EndpointsConfig: {
@@ -495,13 +542,55 @@ export class DockerService {
     return this.docker.listContainers({
       all: true,
       filters: {
-        label: ['com.shop-me-alone.managed=true', 'com.shop-me-alone.component=redroid'],
+        label: ['com.shop-me-alone.managed=true'],
       },
     });
   }
 
-  async getManagedContainerResourceUsage(containers?: Dockerode.ContainerInfo[]) {
-    const managedContainers = containers ?? (await this.listManagedContainers());
+  async listPlatformContainers(): Promise<PlatformContainer[]> {
+    const containers = await this.docker.listContainers({ all: true });
+    return containers.map((container) => ({
+      id: container.Id,
+      shortId: container.Id.slice(0, 12),
+      names: container.Names.map((name) => name.replace(/^\//, '')),
+      image: container.Image,
+      imageId: container.ImageID,
+      command: container.Command,
+      createdAt: new Date(container.Created * 1000).toISOString(),
+      state: container.State,
+      status: container.Status,
+      labels: container.Labels ?? {},
+      managed: container.Labels?.['com.shop-me-alone.managed'] === 'true',
+      applicationId:
+        container.Labels?.['com.shop-me-alone.application-id'] ?? null,
+      component: container.Labels?.['com.shop-me-alone.component'] ?? null,
+      ports: (container.Ports ?? []).map((port) => ({
+        privatePort: port.PrivatePort,
+        publicPort: port.PublicPort ?? null,
+        type: port.Type,
+        ip: port.IP ?? null,
+      })),
+      networks: Object.keys(container.NetworkSettings?.Networks ?? {}),
+    }));
+  }
+
+  async stopPlatformContainer(containerId: string) {
+    await this.assertNotOrchestratorContainer(containerId);
+    await this.stopContainer(containerId);
+    return { id: containerId, stopped: true };
+  }
+
+  async removePlatformContainer(containerId: string) {
+    await this.assertNotOrchestratorContainer(containerId);
+    await this.removeContainer(containerId);
+    return { id: containerId, removed: true };
+  }
+
+  async getManagedContainerResourceUsage(
+    containers?: Dockerode.ContainerInfo[],
+  ) {
+    const managedContainers =
+      containers ?? (await this.listManagedContainers());
     const runningContainers = managedContainers.filter(
       (container) => container.State === 'running',
     );
@@ -509,7 +598,9 @@ export class DockerService {
     const stats = await Promise.all(
       runningContainers.map(async (container) => {
         try {
-          return await this.docker.getContainer(container.Id).stats({ stream: false });
+          return await this.docker
+            .getContainer(container.Id)
+            .stats({ stream: false });
         } catch (error) {
           if (this.isDockerNotFound(error)) {
             return null;
@@ -528,9 +619,11 @@ export class DockerService {
 
         return {
           cpuUsagePercent:
-            totals.cpuUsagePercent + this.calculateContainerCpuUsagePercent(containerStats),
+            totals.cpuUsagePercent +
+            this.calculateContainerCpuUsagePercent(containerStats),
           memoryUsageBytes:
-            totals.memoryUsageBytes + this.calculateContainerMemoryUsageBytes(containerStats),
+            totals.memoryUsageBytes +
+            this.calculateContainerMemoryUsageBytes(containerStats),
         };
       },
       {
@@ -546,7 +639,8 @@ export class DockerService {
 
   private calculateContainerCpuUsagePercent(stats: Dockerode.ContainerStats) {
     const cpuDelta =
-      stats.cpu_stats.cpu_usage.total_usage - stats.precpu_stats.cpu_usage.total_usage;
+      stats.cpu_stats.cpu_usage.total_usage -
+      stats.precpu_stats.cpu_usage.total_usage;
     const systemDelta =
       stats.cpu_stats.system_cpu_usage - stats.precpu_stats.system_cpu_usage;
 
@@ -582,6 +676,28 @@ export class DockerService {
     });
     const volume = volumes.Volumes?.find((item) => item.Name === name);
     return volume ? this.docker.getVolume(volume.Name) : undefined;
+  }
+
+  private async assertNotOrchestratorContainer(containerId: string) {
+    if (!this.orchestratorContainerId) {
+      return;
+    }
+
+    const inspect = await this.inspectContainer(containerId);
+    const configuredIdOrName = this.orchestratorContainerId.replace(/^\//, '');
+    const names = (inspect.Name ? [inspect.Name] : [])
+      .map((name) => name.replace(/^\//, ''))
+      .filter(Boolean);
+    const matchesConfigured =
+      inspect.Id === configuredIdOrName ||
+      inspect.Id.startsWith(configuredIdOrName) ||
+      names.includes(configuredIdOrName);
+
+    if (matchesConfigured) {
+      throw new ConflictException(
+        'The orchestrator container cannot stop or remove itself.',
+      );
+    }
   }
 
   private labels(applicationId: string, component: string) {

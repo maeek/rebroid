@@ -1,7 +1,7 @@
 import { ScrcpyTransport } from './types'
 
 export interface OrchestratorUiSettings {
-  defaultRedroidImage: string
+  defaultContainerImage: string
   defaultInactivityTimeoutSeconds: number
   maxApkUploadSizeMb: number
   imagePruneIntervalHours: number
@@ -15,7 +15,7 @@ export type GeneralUiSettings = Pick<OrchestratorUiSettings, 'appListRefreshInte
 
 export type RuntimeUiSettings = Pick<
   OrchestratorUiSettings,
-  | 'defaultRedroidImage'
+  | 'defaultContainerImage'
   | 'defaultInactivityTimeoutSeconds'
   | 'maxApkUploadSizeMb'
   | 'imagePruneIntervalHours'
@@ -28,7 +28,7 @@ export interface WebSettingsResponse {
 }
 
 export interface OrchestratorSettingsResponse {
-  defaultRedroidImage: string
+  defaultContainerImage: string
   defaultScrcpyTransport: ScrcpyTransport
   defaultInactivityTimeoutSeconds: number
   maxApkUploadSizeMb: number
@@ -37,7 +37,7 @@ export interface OrchestratorSettingsResponse {
 }
 
 export const defaultOrchestratorUiSettings: OrchestratorUiSettings = {
-  defaultRedroidImage: 'redroid/redroid:13.0.0-latest',
+  defaultContainerImage: 'redroid/redroid:13.0.0-latest',
   defaultInactivityTimeoutSeconds: 900,
   maxApkUploadSizeMb: 512,
   imagePruneIntervalHours: 24,
@@ -53,7 +53,7 @@ export const defaultWebSettingsResponse: WebSettingsResponse = {
 }
 
 export const defaultRuntimeSettingsResponse: OrchestratorSettingsResponse = {
-  defaultRedroidImage: defaultOrchestratorUiSettings.defaultRedroidImage,
+  defaultContainerImage: defaultOrchestratorUiSettings.defaultContainerImage,
   defaultScrcpyTransport: defaultOrchestratorUiSettings.scrcpyTransport,
   defaultInactivityTimeoutSeconds: defaultOrchestratorUiSettings.defaultInactivityTimeoutSeconds,
   maxApkUploadSizeMb: defaultOrchestratorUiSettings.maxApkUploadSizeMb,
@@ -71,7 +71,8 @@ export const normalizeOrchestratorUiSettings = (
     typeof web.removeDataOnDelete === 'boolean'
       ? web.removeDataOnDelete
       : defaultOrchestratorUiSettings.removeDataOnDelete,
-  defaultRedroidImage: orchestrator.defaultRedroidImage?.trim() || defaultOrchestratorUiSettings.defaultRedroidImage,
+  defaultContainerImage:
+    orchestrator.defaultContainerImage?.trim() || defaultOrchestratorUiSettings.defaultContainerImage,
   defaultInactivityTimeoutSeconds:
     Number(orchestrator.defaultInactivityTimeoutSeconds) ||
     defaultOrchestratorUiSettings.defaultInactivityTimeoutSeconds,

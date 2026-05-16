@@ -1,9 +1,18 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsEnum,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { ApplicationProfileMode } from '../application-profile-mode';
 
 export class SwitchApplicationProfileDto {
-  @ApiPropertyOptional({ enum: ApplicationProfileMode, default: ApplicationProfileMode.Persistent })
+  @ApiPropertyOptional({
+    enum: ApplicationProfileMode,
+    default: ApplicationProfileMode.Persistent,
+  })
   @IsOptional()
   @IsEnum(ApplicationProfileMode)
   profileMode?: ApplicationProfileMode;

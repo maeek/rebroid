@@ -2,8 +2,9 @@
 
 import { revalidatePath } from 'next/cache'
 import { getServerAuthSession } from '@/server/auth/auth'
+import { requireAdmin } from '@/server/auth/authorization'
 import { orchestratorApi } from './client'
-import { getCurrentOwnerUserId } from './current-owner'
+import { getCurrentOwnerUserId, getCurrentUserContext } from './current-owner'
 import type {
   CreateAndroidApplicationInput,
   SwitchApplicationProfileInput,
@@ -21,8 +22,12 @@ const requireUser = async () => {
   }
 }
 
+const assertCanAccessApplication = async (id: string) => {
+  await getApplicationAction(id)
+}
+
 export const updateApplicationAction = async (id: string, input: UpdateAndroidApplicationInput) => {
-  await requireUser()
+  await assertCanAccessApplication(id)
   const app = await orchestratorApi.updateApplication(id, input)
   revalidatePath(`/app/${id}`)
   revalidatePath(`/app/${id}/manage`)
@@ -37,17 +42,22 @@ export const createApplicationAction = async (input: CreateApplicationActionInpu
 }
 
 export const listApplicationsAction = async () => {
-  const ownerUserId = await getCurrentOwnerUserId()
+  const user = await getCurrentUserContext()
+  const ownerUserId = user.role === 'admin' ? undefined : user.ownerUserId
   return orchestratorApi.listApplications(ownerUserId)
 }
 
 export const getApplicationAction = async (id: string) => {
-  await requireUser()
-  return orchestratorApi.getApplication(id)
+  const user = await getCurrentUserContext()
+  const app = await orchestratorApi.getApplication(id)
+  if (user.role !== 'admin' && app.ownerUserId !== user.ownerUserId) {
+    throw new Error('Application not found.')
+  }
+  return app
 }
 
 export const startApplicationAction = async (id: string, input?: SwitchApplicationProfileInput) => {
-  await requireUser()
+  await assertCanAccessApplication(id)
   const app = await orchestratorApi.startApplication(id, input)
   revalidatePath('/apps')
   revalidatePath(`/app/${id}`)
@@ -56,7 +66,7 @@ export const startApplicationAction = async (id: string, input?: SwitchApplicati
 }
 
 export const stopApplicationAction = async (id: string) => {
-  await requireUser()
+  await assertCanAccessApplication(id)
   const app = await orchestratorApi.stopApplication(id)
   revalidatePath('/apps')
   revalidatePath(`/app/${id}`)
@@ -65,7 +75,7 @@ export const stopApplicationAction = async (id: string) => {
 }
 
 export const deleteApplicationAction = async (id: string, removeData = true) => {
-  await requireUser()
+  await assertCanAccessApplication(id)
   const result = await orchestratorApi.deleteApplication(id, removeData)
   revalidatePath('/apps')
   revalidatePath(`/app/${id}`)
@@ -74,7 +84,7 @@ export const deleteApplicationAction = async (id: string, removeData = true) => 
 }
 
 export const updateApkAction = async (id: string, uploadedApkId: string) => {
-  await requireUser()
+  await assertCanAccessApplication(id)
   const app = await orchestratorApi.updateApk(id, uploadedApkId)
   revalidatePath(`/app/${id}`)
   revalidatePath(`/app/${id}/manage`)
@@ -82,7 +92,7 @@ export const updateApkAction = async (id: string, uploadedApkId: string) => {
 }
 
 export const updateNetworkPolicyAction = async (id: string, input: UpdateNetworkPolicyInput) => {
-  await requireUser()
+  await assertCanAccessApplication(id)
   const app = await orchestratorApi.updateNetworkPolicy(id, input)
   revalidatePath(`/app/${id}`)
   revalidatePath(`/app/${id}/manage`)
@@ -90,7 +100,7 @@ export const updateNetworkPolicyAction = async (id: string, input: UpdateNetwork
 }
 
 export const applyNetworkPolicyAction = async (id: string) => {
-  await requireUser()
+  await assertCanAccessApplication(id)
   const app = await orchestratorApi.applyNetworkPolicy(id)
   revalidatePath(`/app/${id}`)
   revalidatePath(`/app/${id}/manage`)
@@ -98,7 +108,7 @@ export const applyNetworkPolicyAction = async (id: string) => {
 }
 
 export const switchApplicationProfileAction = async (id: string, input: SwitchApplicationProfileInput) => {
-  await requireUser()
+  await assertCanAccessApplication(id)
   const app = await orchestratorApi.switchProfile(id, input)
   revalidatePath(`/app/${id}`)
   revalidatePath(`/app/${id}/manage`)
@@ -106,17 +116,27 @@ export const switchApplicationProfileAction = async (id: string, input: SwitchAp
 }
 
 export const getAndroidNotificationsAction = async (id: string) => {
-  await requireUser()
+  await assertCanAccessApplication(id)
   return orchestratorApi.getNotifications(id)
 }
 
-export const getSystemResourcesAction = async (refreshVolumes = false) => {
+export const getApplicationLogsAction = async (id: string, source: 'container' | 'adb', tail = 300) => {
+  await assertCanAccessApplication(id)
+  return orchestratorApi.getApplicationLogs(id, source, tail)
+}
+
+export const getOrchestratorHealthAction = async () => {
   await requireUser()
+  return orchestratorApi.health()
+}
+
+export const getSystemResourcesAction = async (refreshVolumes = false) => {
+  await requireAdmin()
   return orchestratorApi.getSystemResources(refreshVolumes)
 }
 
 export const pruneImagesAction = async (danglingOnly = true) => {
-  await requireUser()
+  await requireAdmin()
   const result = await orchestratorApi.pruneImages(danglingOnly)
   revalidatePath('/settings/orchestrator')
   revalidatePath('/settings/system')
@@ -124,7 +144,7 @@ export const pruneImagesAction = async (danglingOnly = true) => {
 }
 
 export const pruneContainersAction = async () => {
-  await requireUser()
+  await requireAdmin()
   const result = await orchestratorApi.pruneContainers()
   revalidatePath('/settings/orchestrator')
   revalidatePath('/settings/system')
@@ -132,7 +152,7 @@ export const pruneContainersAction = async () => {
 }
 
 export const pruneNetworksAction = async () => {
-  await requireUser()
+  await requireAdmin()
   const result = await orchestratorApi.pruneNetworks()
   revalidatePath('/settings/orchestrator')
   revalidatePath('/settings/system')
@@ -140,7 +160,7 @@ export const pruneNetworksAction = async () => {
 }
 
 export const pruneVolumesAction = async () => {
-  await requireUser()
+  await requireAdmin()
   const result = await orchestratorApi.pruneVolumes()
   revalidatePath('/settings/orchestrator')
   revalidatePath('/settings/system')
@@ -148,8 +168,29 @@ export const pruneVolumesAction = async () => {
 }
 
 export const pruneAllDockerResourcesAction = async () => {
-  await requireUser()
+  await requireAdmin()
   const result = await orchestratorApi.pruneAllDockerResources()
+  revalidatePath('/settings/orchestrator')
+  revalidatePath('/settings/system')
+  return result
+}
+
+export const listPlatformContainersAction = async () => {
+  await requireAdmin()
+  return orchestratorApi.listPlatformContainers()
+}
+
+export const stopPlatformContainerAction = async (id: string) => {
+  await requireAdmin()
+  const result = await orchestratorApi.stopPlatformContainer(id)
+  revalidatePath('/settings/orchestrator')
+  revalidatePath('/settings/system')
+  return result
+}
+
+export const removePlatformContainerAction = async (id: string) => {
+  await requireAdmin()
+  const result = await orchestratorApi.removePlatformContainer(id)
   revalidatePath('/settings/orchestrator')
   revalidatePath('/settings/system')
   return result
@@ -163,16 +204,16 @@ export const cleanupUploadedApksAction = async () => {
 }
 
 export const getOrchestratorSettingsAction = async () => {
-  await requireUser()
+  await requireAdmin()
   return orchestratorApi.getSettings()
 }
 
 export const updateOrchestratorSettingsAction = async (input: RuntimeUiSettings) => {
-  await requireUser()
+  await requireAdmin()
   return orchestratorApi.updateSettings(input)
 }
 
 export const resetOrchestratorSettingsAction = async () => {
-  await requireUser()
+  await requireAdmin()
   return orchestratorApi.resetSettings()
 }

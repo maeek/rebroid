@@ -9,6 +9,7 @@ import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { appsSections, settingsSections, yourApps } from '../../(standard)/constants'
 import { TopBarAccount } from './account'
+import { OrchestratorStatus } from './orchestrator-status'
 
 export const TopBarProtected = () => {
   const sectionClasses = 'flex items-center h-full px-4 gap-x-4 max-sm:px-2 sm:w-[33%]'
@@ -98,6 +99,7 @@ export const TopBarProtected = () => {
         </Link>
       </div>
       <div className={classNames(sectionClasses, 'justify-end')}>
+        <OrchestratorStatus />
         {runningApps.length > 0 && (
           <Popover>
             <PopoverTrigger className='mr-2'>

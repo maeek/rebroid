@@ -30,6 +30,12 @@ export interface AndroidNotification {
   raw: string
 }
 
+export interface ApplicationLog {
+  source: 'container' | 'adb'
+  collectedAt: string
+  output: string
+}
+
 export interface SystemResources {
   containersTotal: number
   containersRunning: number
@@ -42,6 +48,29 @@ export interface SystemResources {
   volumeUsageCachedAt: string | null
   containers: Array<{ id: string; name: string; state: string; status: string }>
   volumes: Array<{ name: string; sizeBytes: number | null }>
+}
+
+export interface PlatformContainer {
+  id: string
+  shortId: string
+  names: string[]
+  image: string
+  imageId: string
+  command: string
+  createdAt: string
+  state: string
+  status: string
+  labels: Record<string, string>
+  managed: boolean
+  applicationId: string | null
+  component: string | null
+  ports: Array<{ privatePort: number; publicPort: number | null; type: string; ip: string | null }>
+  networks: string[]
+}
+
+export interface OrchestratorHealth {
+  ok: boolean
+  docker: boolean
 }
 
 export interface DockerPruneResponse {
@@ -83,7 +112,7 @@ export interface AndroidApplication {
   status: AndroidApplicationStatus
   lifecycleStage: AndroidApplicationLifecycleStage
   statusMessage: string | null
-  redroidImage: string
+  containerImage: string
   containerName: string
   containerId: string | null
   networkName: string
@@ -93,7 +122,7 @@ export interface AndroidApplication {
   memoryLimitMb: number | null
   cpuLimitCpus: number | null
   volumeSizeLimitMb: number | null
-  redroidArgs: string | null
+  containerArgs: string | null
   networkPolicyEnabled: boolean
   networkPolicyAllowCidrs: string
   networkPolicyStatus: string | null
@@ -118,12 +147,12 @@ export interface AndroidApplication {
 export interface CreateAndroidApplicationInput {
   name: string
   ownerUserId?: string
-  redroidImage?: string
+  containerImage?: string
   inactivityTimeoutSeconds?: number
   memoryLimitMb?: number
   cpuLimitCpus?: number
   volumeSizeLimitMb?: number
-  redroidArgs?: string
+  containerArgs?: string
   uploadedApkId?: string
 }
 
@@ -134,7 +163,7 @@ export interface UpdateAndroidApplicationInput {
   memoryLimitMb?: number | null
   cpuLimitCpus?: number | null
   volumeSizeLimitMb?: number | null
-  redroidArgs?: string | null
+  containerArgs?: string | null
 }
 
 export interface UpdateNetworkPolicyInput {

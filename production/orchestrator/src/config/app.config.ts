@@ -31,12 +31,16 @@ const csv = (value: string | undefined, fallback: string[]) => {
 
 export default registerAs('app', () => {
   const uploadsDir = process.env.UPLOADS_DIR ?? './uploads';
-  const databasePath = process.env.DATABASE_PATH ?? './data/orchestrator.sqlite';
-  const settingsPath = process.env.SETTINGS_PATH ?? './data/orchestrator-settings.json';
+  const databasePath =
+    process.env.DATABASE_PATH ?? './data/orchestrator.sqlite';
+  const settingsPath =
+    process.env.SETTINGS_PATH ?? './data/orchestrator-settings.json';
+  const sharedSecret = process.env.ORCHESTRATOR_SHARED_SECRET?.trim();
 
   return {
     nodeEnv: process.env.NODE_ENV ?? 'development',
     port: number(process.env.PORT, 4100),
+    sharedSecret: sharedSecret || undefined,
     databasePath: resolve(databasePath),
     settingsPath: resolve(settingsPath),
     uploadsDir: resolve(uploadsDir),
@@ -44,10 +48,15 @@ export default registerAs('app', () => {
       socketPath: process.env.DOCKER_SOCKET_PATH ?? '/var/run/docker.sock',
       resourcePrefix: process.env.DOCKER_RESOURCE_PREFIX ?? 'sma',
       orchestratorContainerId:
-        process.env.ORCHESTRATOR_CONTAINER_ID || process.env.HOSTNAME || undefined,
+        process.env.ORCHESTRATOR_CONTAINER_ID ||
+        process.env.HOSTNAME ||
+        undefined,
       iptablesEnabled: bool(process.env.IPTABLES_POLICY_ENABLED, false),
       iptablesBinary: process.env.IPTABLES_BINARY ?? 'iptables',
-      volumeUsageCacheTtlSeconds: number(process.env.VOLUME_USAGE_CACHE_TTL_SECONDS, 300),
+      volumeUsageCacheTtlSeconds: number(
+        process.env.VOLUME_USAGE_CACHE_TTL_SECONDS,
+        300,
+      ),
     },
     networkPolicy: {
       apiHost:
@@ -55,13 +64,15 @@ export default registerAs('app', () => {
         process.env.ORCHESTRATOR_API_HOST ||
         undefined,
       apiCidrs: csv(process.env.NETWORK_POLICY_API_CIDRS, []),
-      defaultAllowDestinations: csv(process.env.NETWORK_POLICY_DEFAULT_ALLOW_DESTINATIONS, [
-        'API_IP',
-        'GATEWAY_IP',
-      ]),
+      defaultAllowDestinations: csv(
+        process.env.NETWORK_POLICY_DEFAULT_ALLOW_DESTINATIONS,
+        ['API_IP', 'GATEWAY_IP'],
+      ),
+    },
+    container: {
+      image: process.env.CONTAINER_IMAGE ?? 'redroid/redroid:13.0.0-latest',
     },
     redroid: {
-      image: process.env.REDROID_IMAGE ?? 'redroid/redroid:13.0.0-latest',
       dataMountPath: process.env.REDROID_DATA_MOUNT_PATH ?? '/data',
       adbPort: number(process.env.REDROID_ADB_PORT, 5555),
       privileged: bool(process.env.REDROID_PRIVILEGED, true),

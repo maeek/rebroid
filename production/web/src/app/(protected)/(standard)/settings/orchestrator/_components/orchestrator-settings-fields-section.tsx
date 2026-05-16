@@ -20,6 +20,7 @@ export const OrchestratorSettingsFieldsSection = ({
       <Section
         title='Runtime defaults'
         boxed
+        titleClassName='pb-4'
         contentClassName='gap-6'
       >
         <Setting
@@ -35,13 +36,13 @@ export const OrchestratorSettingsFieldsSection = ({
         </Setting>
         <Setting
           label='Default image'
-          description='Base Redroid image used when creating a new app without an explicit image override.'
+          description='Base container image used when creating a new app without an explicit image override.'
           className={verticalSettingClassName}
           variant='vertical'
         >
           <Input
-            value={settings.defaultRedroidImage}
-            onChange={event => onSettingsChange({ defaultRedroidImage: event.target.value })}
+            value={settings.defaultContainerImage}
+            onChange={event => onSettingsChange({ defaultContainerImage: event.target.value })}
           />
         </Setting>
         <Setting
@@ -93,6 +94,7 @@ export const OrchestratorSettingsFieldsSection = ({
       <Section
         title='Cleanup defaults'
         boxed
+        titleClassName='pb-4'
         contentClassName='gap-6'
       >
         <Setting

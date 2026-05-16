@@ -1,10 +1,9 @@
 import { PageBreadcrumbs } from '@/app/(protected)/_components/page-breadcrumbs'
 import { ProtectedSplitPageContent } from '@/app/(protected)/_components/protected-page-shell'
+import { AndroidNotifications } from '@/app/(protected)/_components/viewer/notifications'
 import { AppViewerActions } from '../../../_components/viewer/actions'
 import { AppViewerHeading } from '../../../_components/viewer/heading'
 import { AppInfo } from '../../../_components/viewer/info'
-import { AndroidNotifications } from '../../../_components/viewer/notifications'
-import { AppUpdateAlert } from '../../../_components/viewer/update-alert'
 import { AppViewerStatusSection } from './app-viewer-status-section'
 import type { AppDefinition } from '../../constants'
 
@@ -24,7 +23,6 @@ export const AppViewerContent = ({
         </AppViewerHeading>
       </div>
       <AppViewerStatusSection app={app} />
-      <AppUpdateAlert app={app} />
       <AndroidNotifications app={app} />
       <AppInfo
         app={app}

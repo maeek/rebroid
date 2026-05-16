@@ -55,6 +55,8 @@ Useful frontend fields:
 - `statusMessage`: human-readable current progress.
 - `lastError`: error message when `status` is `error`.
 
+Managed app containers are expected to keep their primary process running. Minimal images such as `ubuntu` usually exit immediately unless you override the Docker command with something long-lived, for example `sleep infinity`.
+
 If the redroid image is missing, app creation no longer fails with `409`. The application moves to:
 
 ```json

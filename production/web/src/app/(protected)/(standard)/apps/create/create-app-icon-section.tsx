@@ -39,6 +39,7 @@ export const CreateAppIconSection = ({
     <Section
       title='Icon'
       boxed
+      titleClassName='pb-1'
       contentClassName='gap-5'
     >
       <p className='text-xs leading-relaxed text-muted-foreground'>

@@ -1,9 +1,9 @@
 export type CreateAppFormValues = {
   name: string
-  redroidImage: string
+  containerImage: string
   inactivityTimeoutSeconds: number
   memoryLimitMb: string
   cpuLimitCpus: string
   volumeSizeLimitMb: string
-  redroidArgs: string
+  containerArgs: string
 }

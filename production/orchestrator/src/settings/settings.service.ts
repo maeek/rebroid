@@ -61,8 +61,8 @@ export class SettingsService {
   private normalizeSettings(value: Partial<OrchestratorSettingsDto>) {
     const defaults = this.defaults();
     return {
-      defaultRedroidImage:
-        value.defaultRedroidImage?.trim() || defaults.defaultRedroidImage,
+      defaultContainerImage:
+        value.defaultContainerImage?.trim() || defaults.defaultContainerImage,
       defaultScrcpyTransport: ScrcpyTransport.WebSocket,
       defaultInactivityTimeoutSeconds: this.numberInRange(
         value.defaultInactivityTimeoutSeconds,
@@ -91,7 +91,9 @@ export class SettingsService {
 
   private defaults(): OrchestratorSettingsDto {
     return {
-      defaultRedroidImage: this.config.getOrThrow<string>('app.redroid.image'),
+      defaultContainerImage: this.config.getOrThrow<string>(
+        'app.container.image',
+      ),
       defaultScrcpyTransport: ScrcpyTransport.WebSocket,
       defaultInactivityTimeoutSeconds: this.config.getOrThrow<number>(
         'app.redroid.defaultInactivityTimeoutSeconds',

@@ -13,6 +13,7 @@ export const AppInfoRuntimeSection = ({ app }: { app?: AppDefinition }) => {
     <Section
       title='Runtime'
       boxed
+      titleClassName='pb-4'
       contentClassName='flex-col'
     >
       <AppInfoRow
@@ -27,8 +28,8 @@ export const AppInfoRuntimeSection = ({ app }: { app?: AppDefinition }) => {
       />
       <AppInfoRow
         label='Image'
-        value={app?.redroidImage || 'Loading...'}
-        copyValue={app?.redroidImage}
+        value={app?.containerImage || 'Loading...'}
+        copyValue={app?.containerImage}
       />
       <AppInfoRow
         label='Volume'
@@ -43,11 +44,11 @@ export const AppInfoRuntimeSection = ({ app }: { app?: AppDefinition }) => {
         label='Resources'
         value={app ? formatResources(app) : 'Loading...'}
       />
-      {app?.redroidArgs && (
+      {app?.containerArgs && (
         <AppInfoRow
-          label='Redroid args'
-          value={app.redroidArgs}
-          copyValue={app.redroidArgs}
+          label='Container args'
+          value={app.containerArgs}
+          copyValue={app.containerArgs}
         />
       )}
       <AppInfoRow

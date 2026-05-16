@@ -16,14 +16,20 @@ export class NetworkIsolationService {
     private readonly docker: DockerService,
   ) {}
 
-  namesFor(applicationId: string, name: string, profileName?: string | null): IsolatedRuntimeNames {
+  namesFor(
+    applicationId: string,
+    name: string,
+    profileName?: string | null,
+  ): IsolatedRuntimeNames {
     const prefix = this.config.getOrThrow<string>('app.docker.resourcePrefix');
     const safeName = dockerSafeName(name, 'android-app');
-    const safeProfileName = profileName ? `-${dockerSafeName(profileName, 'profile')}` : '';
+    const safeProfileName = profileName
+      ? `-${dockerSafeName(profileName, 'profile')}`
+      : '';
     const suffix = applicationId.slice(0, 8);
 
     return {
-      containerName: `${prefix}-redroid-${safeName}-${suffix}`,
+      containerName: `${prefix}-runtime-${safeName}-${suffix}`,
       networkName: `${prefix}-net-${safeName}-${suffix}`,
       volumeName: `${prefix}-data-${safeName}${safeProfileName}-${suffix}`,
     };
@@ -35,7 +41,9 @@ export class NetworkIsolationService {
     await this.docker.connectOrchestratorToNetwork(names.networkName);
   }
 
-  async removeBoundary(names: Pick<IsolatedRuntimeNames, 'networkName' | 'volumeName'>) {
+  async removeBoundary(
+    names: Pick<IsolatedRuntimeNames, 'networkName' | 'volumeName'>,
+  ) {
     await this.docker.removeNetwork(names.networkName);
     await this.docker.removeVolume(names.volumeName);
   }

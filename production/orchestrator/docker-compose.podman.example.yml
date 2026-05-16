@@ -8,9 +8,10 @@ services:
       PORT: 4100
       DATABASE_PATH: /app/data/orchestrator.sqlite
       UPLOADS_DIR: /app/uploads
+      ORCHESTRATOR_SHARED_SECRET: change-me
       DOCKER_SOCKET_PATH: /var/run/docker.sock
       ORCHESTRATOR_CONTAINER_ID: shop-me-alone-orchestrator
-      REDROID_IMAGE: redroid/redroid:13.0.0-latest
+      CONTAINER_IMAGE: redroid/redroid:13.0.0-latest
       REDROID_PRIVILEGED: "true"
     volumes:
       # On macOS, Podman Desktop / podman-mac-helper can expose this Docker-compatible

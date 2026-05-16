@@ -39,22 +39,35 @@ export class NetworkPolicyService {
     if (!this.config.getOrThrow<boolean>('app.docker.iptablesEnabled')) {
       return {
         status: 'skipped',
-        message: 'IPTables policy is disabled. Set IPTABLES_POLICY_ENABLED=true on the Linux host.',
+        message:
+          'IPTables policy is disabled. Set IPTABLES_POLICY_ENABLED=true on the Linux host.',
       };
     }
 
     if (!app.containerId) {
-      return { status: 'skipped', message: 'Container has not been created yet.' };
+      return {
+        status: 'skipped',
+        message: 'Container has not been created yet.',
+      };
     }
 
     if (!app.networkPolicyEnabled) {
       await this.remove(app);
-      return { status: 'skipped', message: 'Network policy is disabled for this application.' };
+      return {
+        status: 'skipped',
+        message: 'Network policy is disabled for this application.',
+      };
     }
 
-    const containerIp = await this.docker.getContainerIp(app.containerId, app.networkName);
+    const containerIp = await this.docker.getContainerIp(
+      app.containerId,
+      app.networkName,
+    );
     if (!containerIp) {
-      return { status: 'skipped', message: 'Container IP address is not available yet.' };
+      return {
+        status: 'skipped',
+        message: 'Container IP address is not available yet.',
+      };
     }
 
     const destinations = await this.allowedDestinations(app);
@@ -76,29 +89,39 @@ export class NetworkPolicyService {
         message: this.appliedMessage(containerIp, destinations),
       };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown iptables error';
+      const message =
+        error instanceof Error ? error.message : 'Unknown iptables error';
       this.logger.error(message);
       return { status: 'error', message };
     }
   }
 
-  async remove(app: Pick<AndroidApplication, 'id' | 'containerId' | 'networkName'>) {
+  async remove(
+    app: Pick<AndroidApplication, 'id' | 'containerId' | 'networkName'>,
+  ) {
     if (!this.config.get<boolean>('app.docker.iptablesEnabled')) {
       return;
     }
 
     const chain = this.chainName(app.id);
     if (app.containerId) {
-      const containerIp = await this.docker.getContainerIp(app.containerId, app.networkName).catch(() => null);
+      const containerIp = await this.docker
+        .getContainerIp(app.containerId, app.networkName)
+        .catch(() => null);
       if (containerIp) {
-        await this.run(['-D', 'DOCKER-USER', '-s', containerIp, '-j', chain], true);
+        await this.run(
+          ['-D', 'DOCKER-USER', '-s', containerIp, '-j', chain],
+          true,
+        );
       }
     }
     await this.run(['-F', chain], true);
     await this.run(['-X', chain], true);
   }
 
-  private async allowedDestinations(app: AndroidApplication): Promise<AllowedDestinations> {
+  private async allowedDestinations(
+    app: AndroidApplication,
+  ): Promise<AllowedDestinations> {
     const customCidrs = this.parseAllowCidrs(app.networkPolicyAllowCidrs);
     const defaultDestinations = await this.resolveDefaultDestinations(app);
     const cidrs = this.unique([...defaultDestinations.cidrs, ...customCidrs]);
@@ -111,11 +134,12 @@ export class NetworkPolicyService {
     };
   }
 
-  private async resolveDefaultDestinations(app: AndroidApplication): Promise<ResolvedDefaultDestinations> {
-    const destinations = this.config.get<string[]>('app.networkPolicy.defaultAllowDestinations') ?? [
-      'API_IP',
-      'GATEWAY_IP',
-    ];
+  private async resolveDefaultDestinations(
+    app: AndroidApplication,
+  ): Promise<ResolvedDefaultDestinations> {
+    const destinations = this.config.get<string[]>(
+      'app.networkPolicy.defaultAllowDestinations',
+    ) ?? ['API_IP', 'GATEWAY_IP'];
     const cidrs: string[] = [];
     const unresolved: string[] = [];
 
@@ -149,25 +173,37 @@ export class NetworkPolicyService {
 
     if (token === 'API_IP' || token === 'ORCHESTRATOR_IP') {
       const cidrs = await this.resolveApiCidrs(app);
-      return cidrs.length > 0 ? { cidrs, unresolved: [] } : { cidrs: [], unresolved: [token] };
+      return cidrs.length > 0
+        ? { cidrs, unresolved: [] }
+        : { cidrs: [], unresolved: [token] };
     }
 
     if (token === 'GATEWAY_IP') {
       const gatewayIp = await this.docker.getNetworkGateway(app.networkName);
-      return gatewayIp ? { cidrs: [`${gatewayIp}/32`], unresolved: [] } : { cidrs: [], unresolved: [token] };
+      return gatewayIp
+        ? { cidrs: [`${gatewayIp}/32`], unresolved: [] }
+        : { cidrs: [], unresolved: [token] };
     }
 
     const cidr = this.normalizeIpv4Cidr(normalized);
-    return cidr ? { cidrs: [cidr], unresolved: [] } : { cidrs: [], unresolved: [normalized] };
+    return cidr
+      ? { cidrs: [cidr], unresolved: [] }
+      : { cidrs: [], unresolved: [normalized] };
   }
 
   private async resolveApiCidrs(app: AndroidApplication): Promise<string[]> {
-    const configuredCidrs = (this.config.get<string[]>('app.networkPolicy.apiCidrs') ?? [])
+    const configuredCidrs = (
+      this.config.get<string[]>('app.networkPolicy.apiCidrs') ?? []
+    )
       .map((value) => this.normalizeIpv4Cidr(value))
       .filter((value): value is string => Boolean(value));
     const apiHostCidrs = await this.resolveApiHostCidrs();
-    const attachedOrchestratorIp = await this.docker.getOrchestratorIp(app.networkName);
-    const attachedOrchestratorCidr = attachedOrchestratorIp ? `${attachedOrchestratorIp}/32` : null;
+    const attachedOrchestratorIp = await this.docker.getOrchestratorIp(
+      app.networkName,
+    );
+    const attachedOrchestratorCidr = attachedOrchestratorIp
+      ? `${attachedOrchestratorIp}/32`
+      : null;
 
     return this.unique([
       ...configuredCidrs,
@@ -258,14 +294,21 @@ export class NetworkPolicyService {
     }
 
     const numericPrefix = Number(prefix);
-    if (!Number.isInteger(numericPrefix) || numericPrefix < 0 || numericPrefix > 32) {
+    if (
+      !Number.isInteger(numericPrefix) ||
+      numericPrefix < 0 ||
+      numericPrefix > 32
+    ) {
       return null;
     }
 
     return `${address}/${numericPrefix}`;
   }
 
-  private appliedMessage(containerIp: string, destinations: AllowedDestinations) {
+  private appliedMessage(
+    containerIp: string,
+    destinations: AllowedDestinations,
+  ) {
     const customCount = destinations.customCidrs.length;
     const defaultSummary =
       destinations.defaultCidrsCount > 0

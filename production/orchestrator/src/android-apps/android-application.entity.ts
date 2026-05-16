@@ -27,7 +27,10 @@ export class AndroidApplication {
   @Column({ type: 'text', nullable: true })
   ownerUserId!: string | null;
 
-  @ApiProperty({ enum: AndroidApplicationStatus, example: AndroidApplicationStatus.Provisioning })
+  @ApiProperty({
+    enum: AndroidApplicationStatus,
+    example: AndroidApplicationStatus.Provisioning,
+  })
   @Column({ default: AndroidApplicationStatus.Provisioning })
   status!: AndroidApplicationStatus;
 
@@ -39,7 +42,8 @@ export class AndroidApplication {
   lifecycleStage!: AndroidApplicationLifecycleStage;
 
   @ApiPropertyOptional({
-    example: 'Docker image "redroid/redroid:13.0.0-latest" is not available locally. Pulling it now.',
+    example:
+      'Docker image "redroid/redroid:13.0.0-latest" is not available locally. Pulling it now.',
     nullable: true,
   })
   @Column({ type: 'text', nullable: true })
@@ -47,9 +51,9 @@ export class AndroidApplication {
 
   @ApiProperty({ example: 'redroid/redroid:13.0.0-latest' })
   @Column()
-  redroidImage!: string;
+  containerImage!: string;
 
-  @ApiProperty({ example: 'sma-redroid-signal-android-98a530d6' })
+  @ApiProperty({ example: 'sma-runtime-signal-android-98a530d6' })
   @Column()
   containerName!: string;
 
@@ -68,7 +72,10 @@ export class AndroidApplication {
   @Column()
   volumeName!: string;
 
-  @ApiProperty({ enum: ApplicationProfileMode, example: ApplicationProfileMode.Persistent })
+  @ApiProperty({
+    enum: ApplicationProfileMode,
+    example: ApplicationProfileMode.Persistent,
+  })
   @Column({ default: ApplicationProfileMode.Persistent })
   profileMode!: ApplicationProfileMode;
 
@@ -85,16 +92,24 @@ export class AndroidApplication {
   cpuLimitCpus!: number | null;
 
   @ApiPropertyOptional({
-    description: 'Advisory size limit. Docker local named volumes do not enforce this without a storage driver.',
+    description:
+      'Advisory size limit. Docker local named volumes do not enforce this without a storage driver.',
     example: 8192,
     nullable: true,
   })
   @Column({ type: 'integer', nullable: true })
   volumeSizeLimitMb!: number | null;
 
-  @ApiPropertyOptional({ example: 'androidboot.redroid_width=1080 androidboot.redroid_height=1920', nullable: true })
+  @ApiPropertyOptional({
+    example: 'sleep infinity',
+    nullable: true,
+  })
   @Column({ type: 'text', nullable: true })
-  redroidArgs!: string | null;
+  containerArgs!: string | null;
+
+  @ApiProperty({ example: false })
+  @Column({ default: false })
+  recreateContainerOnNextStart!: boolean;
 
   @ApiProperty({ example: true })
   @Column({ default: true })
@@ -102,7 +117,8 @@ export class AndroidApplication {
 
   @ApiProperty({
     type: [String],
-    description: 'App-specific CIDR allowlist. Backend default destinations are applied separately.',
+    description:
+      'App-specific CIDR allowlist. Backend default destinations are applied separately.',
     example: ['10.20.0.0/16'],
   })
   @Column({ type: 'text', default: '[]' })
@@ -112,7 +128,10 @@ export class AndroidApplication {
   @Column({ type: 'text', nullable: true })
   networkPolicyStatus!: string | null;
 
-  @ApiPropertyOptional({ example: 'Policy applied to DOCKER-USER.', nullable: true })
+  @ApiPropertyOptional({
+    example: 'Policy applied to DOCKER-USER.',
+    nullable: true,
+  })
   @Column({ type: 'text', nullable: true })
   networkPolicyMessage!: string | null;
 
@@ -131,7 +150,10 @@ export class AndroidApplication {
   @Column({ type: 'text', nullable: true })
   apkOriginalName!: string | null;
 
-  @ApiPropertyOptional({ example: '98a530d6-a45d-466a-9cb4-c023067c4971', nullable: true })
+  @ApiPropertyOptional({
+    example: '98a530d6-a45d-466a-9cb4-c023067c4971',
+    nullable: true,
+  })
   @Column({ type: 'text', nullable: true })
   uploadedApkId!: string | null;
 
@@ -167,7 +189,10 @@ export class AndroidApplication {
   @Column({ type: 'datetime', nullable: true })
   provisioningCompletedAt!: Date | null;
 
-  @ApiPropertyOptional({ example: 'Container command failed with exit code 1', nullable: true })
+  @ApiPropertyOptional({
+    example: 'Container command failed with exit code 1',
+    nullable: true,
+  })
   @Column({ type: 'text', nullable: true })
   lastError!: string | null;
 

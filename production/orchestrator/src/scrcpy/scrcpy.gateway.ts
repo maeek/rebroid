@@ -39,7 +39,11 @@ export class ScrcpyGateway implements OnGatewayConnection {
 
     try {
       const app = await this.androidApps.get(query.applicationId);
-      if (query.ownerUserId && app.ownerUserId && query.ownerUserId !== app.ownerUserId) {
+      if (
+        query.ownerUserId &&
+        app.ownerUserId &&
+        query.ownerUserId !== app.ownerUserId
+      ) {
         client.disconnect(true);
         return;
       }
@@ -64,7 +68,8 @@ export class ScrcpyGateway implements OnGatewayConnection {
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: { applicationId?: string },
   ) {
-    const applicationId = payload.applicationId ?? this.firstJoinedApplicationRoom(client);
+    const applicationId =
+      payload.applicationId ?? this.firstJoinedApplicationRoom(client);
     if (!applicationId) {
       return { ok: false };
     }
@@ -78,7 +83,8 @@ export class ScrcpyGateway implements OnGatewayConnection {
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: { applicationId?: string; event?: unknown },
   ) {
-    const applicationId = payload.applicationId ?? this.firstJoinedApplicationRoom(client);
+    const applicationId =
+      payload.applicationId ?? this.firstJoinedApplicationRoom(client);
     if (!applicationId) {
       return { ok: false };
     }

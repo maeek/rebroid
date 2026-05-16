@@ -10,11 +10,12 @@ export class InactivityService {
 
   @Cron(CronExpression.EVERY_MINUTE)
   async stopInactiveApplications() {
-    const inactiveApplications = await this.androidApps.findInactiveRunningApplications();
+    const inactiveApplications =
+      await this.androidApps.findInactiveRunningApplications();
 
     for (const app of inactiveApplications) {
       this.logger.log(
-        `Stopping inactive redroid container ${app.containerName} for application ${app.id}.`,
+        `Stopping inactive application container ${app.containerName} for application ${app.id}.`,
       );
       await this.androidApps.stop(app.id);
     }

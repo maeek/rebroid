@@ -7,6 +7,7 @@ export const AppInfoArtifactsSection = ({ app }: { app?: AppDefinition }) => {
     <Section
       title='Artifacts'
       boxed
+      titleClassName='pb-4'
       contentClassName='flex-col'
     >
       <AppInfoRow

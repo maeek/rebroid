@@ -11,6 +11,7 @@ import { HealthModule } from './health/health.module';
 import { NetworkIsolationModule } from './network-isolation/network-isolation.module';
 import { NetworkPolicyModule } from './network-policy/network-policy.module';
 import { ScrcpyModule } from './scrcpy/scrcpy.module';
+import { SecurityModule } from './security/security.module';
 import { SettingsModule } from './settings/settings.module';
 import { SystemResourcesModule } from './system-resources/system-resources.module';
 
@@ -30,6 +31,7 @@ import { SystemResourcesModule } from './system-resources/system-resources.modul
     SystemResourcesModule,
     ScrcpyModule,
     HealthModule,
+    SecurityModule,
   ],
 })
 export class AppModule {}

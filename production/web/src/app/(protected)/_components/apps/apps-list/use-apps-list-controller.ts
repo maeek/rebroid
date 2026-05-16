@@ -11,6 +11,7 @@ import {
 import { mapAndroidApplicationToAppDefinition } from '@/lib/orchestrator/app-mapper'
 import { getAppsRefreshIntervalMs } from '@/lib/orchestrator/refresh'
 import { useOrchestratorUiSettings } from '@/lib/orchestrator/settings'
+import { forgetRecentApp } from '@/lib/recent-apps'
 import type { AppsListContextValue, BulkAction } from './apps-list-context'
 import type { AppDefinition } from '@/app/(protected)/(standard)/constants'
 import type { OrchestratorUiSettings } from '@/lib/orchestrator/settings'
@@ -94,7 +95,11 @@ export const useAppsListController = ({
       updateApp(mapAndroidApplicationToAppDefinition(updated))
     } catch (error) {
       updateApp(app)
-      toast({ title: 'Could not start app', description: error instanceof Error ? error.message : 'Unknown error' })
+      toast({
+        title: 'Could not start app',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
+      })
     }
   }
 
@@ -114,7 +119,11 @@ export const useAppsListController = ({
       updateApp(mapAndroidApplicationToAppDefinition(updated))
     } catch (error) {
       updateApp(app)
-      toast({ title: 'Could not stop app', description: error instanceof Error ? error.message : 'Unknown error' })
+      toast({
+        title: 'Could not stop app',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
+      })
     }
   }
 
@@ -123,10 +132,15 @@ export const useAppsListController = ({
       updateApp({ ...app, status: 'removing', lifecycleStage: 'removing', statusMessage: 'Removing app.' }, true)
       await deleteApplicationAction(app.id, settings.removeDataOnDelete)
       await removeAppIconAction(app.id)
+      forgetRecentApp(app.id)
       removeApp(app.id)
     } catch (error) {
       updateApp(app)
-      toast({ title: 'Could not delete app', description: error instanceof Error ? error.message : 'Unknown error' })
+      toast({
+        title: 'Could not delete app',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
+      })
     }
   }
 
@@ -154,7 +168,6 @@ export const useAppsListController = ({
     if (!a.running && b.running) return 1
     return a.name.localeCompare(b.name)
   })
-  const availableApps = sortedApps.filter(app => !app.running)
   const selectedApps = sortedApps.filter(app => selectedIds.has(app.id))
   const stoppableSelectedApps = selectedApps.filter(app => app.running && app.status !== 'removing')
   const deletableSelectedApps = selectedApps.filter(app => app.status !== 'removing')
@@ -209,7 +222,11 @@ export const useAppsListController = ({
     })
 
     if (failedCount > 0) {
-      toast({ title: 'Some apps could not be stopped', description: `${failedCount} stop request failed.` })
+      toast({
+        title: 'Some apps could not be stopped',
+        description: `${failedCount} stop request failed.`,
+        variant: 'destructive'
+      })
     } else {
       toast({ title: 'Selected apps stopped' })
     }
@@ -229,6 +246,7 @@ export const useAppsListController = ({
       appsToDelete.map(async app => {
         await deleteApplicationAction(app.id, settings.removeDataOnDelete)
         await removeAppIconAction(app.id)
+        forgetRecentApp(app.id)
         return app.id
       })
     )
@@ -245,7 +263,11 @@ export const useAppsListController = ({
     })
 
     if (failedCount > 0) {
-      toast({ title: 'Some apps could not be deleted', description: `${failedCount} delete request failed.` })
+      toast({
+        title: 'Some apps could not be deleted',
+        description: `${failedCount} delete request failed.`,
+        variant: 'destructive'
+      })
     } else {
       toast({ title: 'Selected apps deleted' })
     }
@@ -292,7 +314,7 @@ export const useAppsListController = ({
   }
 
   return {
-    availableApps,
+    availableApps: sortedApps,
     contextValue,
     hasApps: apps.length > 0
   }

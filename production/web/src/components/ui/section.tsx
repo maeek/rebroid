@@ -10,6 +10,7 @@ export const Section = ({
   orientation = 'vertical',
   collapsible,
   contentClassName,
+  titleClassName,
   boxed
 }: {
   className?: string
@@ -17,6 +18,7 @@ export const Section = ({
   title?: ReactNode
   orientation?: 'horizontal' | 'vertical'
   collapsible?: boolean
+  titleClassName?: string
   contentClassName?: string
   boxed?: boolean
 }) => {
@@ -45,9 +47,10 @@ export const Section = ({
       {title && (
         <div
           className={cn(
-            'flex items-center justify-between pb-4',
+            'flex items-center justify-between',
             collapsible && 'cursor-pointer',
-            boxedCollapsible && 'px-6 py-5 pb-5 max-sm:px-4 max-sm:py-4 max-sm:pb-4'
+            boxedCollapsible && 'px-6 py-5 pb-5 max-sm:px-4 max-sm:py-4 max-sm:pb-4',
+            titleClassName
           )}
           onClick={() => collapsible && setIsOpen(p => !p)}
         >

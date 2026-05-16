@@ -25,6 +25,7 @@ export const CreateAppGeneralSection = ({
     <Section
       title='General'
       boxed
+      titleClassName='pb-4'
       contentClassName='gap-4'
     >
       <Setting

@@ -1,15 +1,26 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsBoolean, IsEnum, IsInt, IsString, Max, Min, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsInt,
+  IsString,
+  Max,
+  Min,
+  MinLength,
+} from 'class-validator';
 import { ScrcpyTransport } from '../../android-apps/android-application-status';
 
 export class OrchestratorSettingsDto {
   @ApiProperty({ example: 'redroid/redroid:13.0.0-latest' })
   @IsString()
   @MinLength(3)
-  defaultRedroidImage!: string;
+  defaultContainerImage!: string;
 
-  @ApiProperty({ enum: [ScrcpyTransport.WebSocket], default: ScrcpyTransport.WebSocket })
+  @ApiProperty({
+    enum: [ScrcpyTransport.WebSocket],
+    default: ScrcpyTransport.WebSocket,
+  })
   @IsEnum(ScrcpyTransport)
   defaultScrcpyTransport!: ScrcpyTransport;
 

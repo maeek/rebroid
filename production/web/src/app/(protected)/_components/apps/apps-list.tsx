@@ -1,4 +1,5 @@
 'use client'
+import { StatusSplash } from '../status-splash'
 import { AppsListBulkDialog } from './apps-list/apps-list-bulk-dialog'
 import { AppsListProvider } from './apps-list/apps-list-context'
 import { AppsListEmptyState } from './apps-list/apps-list-empty-state'
@@ -10,12 +11,28 @@ import type { OrchestratorUiSettings } from '@/lib/orchestrator/settings'
 
 export const AppsList = ({
   yourApps,
-  initialSettings
+  initialSettings,
+  orchestratorError
 }: {
   yourApps: AppDefinition[]
   initialSettings: OrchestratorUiSettings
+  orchestratorError?: string | null
 }) => {
   const { availableApps, contextValue, hasApps } = useAppsListController({ initialSettings, yourApps })
+
+  if (orchestratorError) {
+    return (
+      <section className='px-6 py-8 max-sm:px-4'>
+        <StatusSplash
+          title='Orchestrator unavailable'
+          description='The web app is still available, but Android app management is temporarily offline.'
+          detail={orchestratorError}
+          tone='danger'
+          primaryAction={{ label: 'Refresh', onClick: () => window.location.reload() }}
+        />
+      </section>
+    )
+  }
 
   if (!hasApps) {
     return <AppsListEmptyState />

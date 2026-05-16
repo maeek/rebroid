@@ -48,7 +48,8 @@ export const AppManageProfileSettings = ({ app, onUpdated }: AppManageProfileSet
     } catch (error) {
       toast({
         title: 'Could not switch profile',
-        description: error instanceof Error ? error.message : 'Unknown error'
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
       })
     } finally {
       setIsSaving(false)
@@ -59,6 +60,7 @@ export const AppManageProfileSettings = ({ app, onUpdated }: AppManageProfileSet
     <Section
       title='Profile'
       boxed
+      titleClassName='pb-4'
       contentClassName='gap-4'
     >
       <Setting

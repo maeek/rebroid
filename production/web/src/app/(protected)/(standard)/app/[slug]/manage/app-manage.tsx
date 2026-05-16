@@ -12,6 +12,7 @@ import { mapAndroidApplicationToAppDefinition } from '@/lib/orchestrator/app-map
 import { useForegroundRefresh } from '../../../../../../hooks/use-foreground-refresh'
 import { getAppRefreshIntervalMs } from '../../../../../../lib/orchestrator/refresh'
 import { AppViewerDeleteAction } from '../../../../_components/viewer/actions/app-viewer-delete-action'
+import { AppLogsDialog } from '../../../../_components/viewer/app-logs-dialog'
 import { AppViewerHeading } from '../../../../_components/viewer/heading'
 import { AppViewerStatusSection } from '../app-viewer-status-section'
 import { AppManageGeneralSettings } from './app-manage-general-settings'
@@ -33,7 +34,7 @@ export default function AppManage({ app }: { app?: AppDefinition }) {
   const [memoryLimitMb, setMemoryLimitMb] = useState(app?.memoryLimitMb?.toString() ?? '')
   const [cpuLimitCpus, setCpuLimitCpus] = useState(app?.cpuLimitCpus?.toString() ?? '')
   const [volumeSizeLimitMb, setVolumeSizeLimitMb] = useState(app?.volumeSizeLimitMb?.toString() ?? '')
-  const [redroidArgs, setRedroidArgs] = useState(app?.redroidArgs ?? '')
+  const [containerArgs, setContainerArgs] = useState(app?.containerArgs ?? '')
   const [icon, setIcon] = useState<string | null>(app?.icon ?? null)
   const [isSaving, setIsSaving] = useState(false)
   const hasPendingAppChangesRef = useRef(false)
@@ -74,7 +75,7 @@ export default function AppManage({ app }: { app?: AppDefinition }) {
       setMemoryLimitMb(currentApp.memoryLimitMb?.toString() ?? '')
       setCpuLimitCpus(currentApp.cpuLimitCpus?.toString() ?? '')
       setVolumeSizeLimitMb(currentApp.volumeSizeLimitMb?.toString() ?? '')
-      setRedroidArgs(currentApp.redroidArgs ?? '')
+      setContainerArgs(currentApp.containerArgs ?? '')
     }
   }, [currentApp])
 
@@ -118,14 +119,18 @@ export default function AppManage({ app }: { app?: AppDefinition }) {
         memoryLimitMb: memoryLimitMb ? Number(memoryLimitMb) : null,
         cpuLimitCpus: cpuLimitCpus ? Number(cpuLimitCpus) : null,
         volumeSizeLimitMb: volumeSizeLimitMb ? Number(volumeSizeLimitMb) : null,
-        redroidArgs: redroidArgs.trim() || null
+        containerArgs: containerArgs.trim() || null
       })
       hasPendingAppChangesRef.current = false
       setCurrentApp(current => mergeAppPreservingIcon(mapAndroidApplicationToAppDefinition(updated), current))
       toast({ title: 'App saved' })
       router.refresh()
     } catch (error) {
-      toast({ title: 'Could not save app', description: error instanceof Error ? error.message : 'Unknown error' })
+      toast({
+        title: 'Could not save app',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
+      })
     } finally {
       setIsSaving(false)
     }
@@ -145,6 +150,7 @@ export default function AppManage({ app }: { app?: AppDefinition }) {
         <AppViewerHeading app={displayApp}>
           <div className='flex gap-2'>
             <AppViewerDeleteAction app={displayApp} />
+            <AppLogsDialog app={currentApp} />
             <Button
               disabled={isSaving}
               onClick={() => void handleSave()}
@@ -172,7 +178,7 @@ export default function AppManage({ app }: { app?: AppDefinition }) {
               memoryLimitMb={memoryLimitMb}
               cpuLimitCpus={cpuLimitCpus}
               volumeSizeLimitMb={volumeSizeLimitMb}
-              redroidArgs={redroidArgs}
+              containerArgs={containerArgs}
               onInactivityTimeoutChange={value => {
                 hasPendingAppChangesRef.current = true
                 setInactivityTimeoutSeconds(value)
@@ -189,9 +195,9 @@ export default function AppManage({ app }: { app?: AppDefinition }) {
                 hasPendingAppChangesRef.current = true
                 setVolumeSizeLimitMb(value)
               }}
-              onRedroidArgsChange={value => {
+              onContainerArgsChange={value => {
                 hasPendingAppChangesRef.current = true
-                setRedroidArgs(value)
+                setContainerArgs(value)
               }}
             />
             <AppManageProfileSettings

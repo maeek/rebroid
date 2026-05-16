@@ -21,13 +21,13 @@ export const CreateAppDeviceSection = ({ values, onChange }: CreateAppDeviceSect
     >
       <Setting
         label='Image'
-        description='Base Redroid image used to boot the Android runtime for this app.'
+        description='Container image used to boot this managed app runtime. Android images such as redroid are the intended default.'
         variant='vertical'
         className={verticalSettingClassName}
       >
         <Input
-          value={values.redroidImage}
-          onChange={event => onChange({ redroidImage: event.target.value })}
+          value={values.containerImage}
+          onChange={event => onChange({ containerImage: event.target.value })}
         />
       </Setting>
       <Setting
@@ -45,15 +45,15 @@ export const CreateAppDeviceSection = ({ values, onChange }: CreateAppDeviceSect
         />
       </Setting>
       <Setting
-        label='Redroid arguments'
-        description='Optional space-separated boot arguments passed to Redroid, such as DPI or screen size overrides.'
+        label='Container arguments'
+        description='Optional Docker Cmd override. Use a long-running command for images that would otherwise exit immediately, for example sleep infinity.'
         variant='vertical'
         className={verticalSettingClassName}
       >
         <Textarea
-          value={values.redroidArgs}
-          placeholder='androidboot.redroid_dpi=480 androidboot.redroid_width=1080'
-          onChange={event => onChange({ redroidArgs: event.target.value })}
+          value={values.containerArgs}
+          placeholder='sleep infinity'
+          onChange={event => onChange({ containerArgs: event.target.value })}
         />
       </Setting>
     </Section>

@@ -32,6 +32,8 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@tabler/icons-react": "^3.44.0",
     "@tanstack/react-table": "^8.21.3",
+    "@types/bcrypt": "^6.0.0",
+    "bcrypt": "^6.0.0",
     "blurhash": "^2.0.5",
     "class-variance-authority": "^0.7.1",
     "classnames": "^2.5.1",

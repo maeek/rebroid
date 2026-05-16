@@ -5,11 +5,13 @@ import { Button } from '@/components/ui/button'
 export const OrchestratorSettingsHeader = ({
   isSaving,
   onReset,
-  onSave
+  onSave,
+  showActions = true
 }: {
   isSaving: boolean
   onReset: () => void
   onSave: () => void
+  showActions?: boolean
 }) => {
   return (
     <section className='shrink-0 bg-background px-6 py-4 max-sm:px-4'>
@@ -21,23 +23,25 @@ export const OrchestratorSettingsHeader = ({
           />
           <h2 className='pt-4 text-3xl font-medium max-sm:text-xl'>Orchestrator</h2>
         </div>
-        <div className='flex gap-2 max-sm:w-full'>
-          <Button
-            variant='secondary'
-            disabled={isSaving}
-            onClick={onReset}
-          >
-            <IconRotateClockwise className='size-4' />
-            Reset
-          </Button>
-          <Button
-            disabled={isSaving}
-            onClick={onSave}
-          >
-            <IconDeviceFloppy className='size-4' />
-            Save
-          </Button>
-        </div>
+        {showActions && (
+          <div className='flex gap-2 max-sm:w-full'>
+            <Button
+              variant='secondary'
+              disabled={isSaving}
+              onClick={onReset}
+            >
+              <IconRotateClockwise className='size-4' />
+              Reset
+            </Button>
+            <Button
+              disabled={isSaving}
+              onClick={onSave}
+            >
+              <IconDeviceFloppy className='size-4' />
+              Save
+            </Button>
+          </div>
+        )}
       </div>
     </section>
   )

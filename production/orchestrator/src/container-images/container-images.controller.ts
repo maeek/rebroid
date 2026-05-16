@@ -1,4 +1,12 @@
-import { Body, Controller, Delete, Get, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 import {
   ApiCreatedResponse,
   ApiOkResponse,
@@ -47,7 +55,13 @@ export class ContainerImagesController {
     description:
       'URL-encoded image name or id. Example: redroid%2Fredroid%3A13.0.0-latest',
   })
-  remove(@Param('image') image: string, @Query() query: RemoveContainerImageDto) {
-    return this.docker.removeImage(decodeURIComponent(image), query.force ?? false);
+  remove(
+    @Param('image') image: string,
+    @Query() query: RemoveContainerImageDto,
+  ) {
+    return this.docker.removeImage(
+      decodeURIComponent(image),
+      query.force ?? false,
+    );
   }
 }

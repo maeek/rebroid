@@ -5,7 +5,7 @@ import { IsBoolean, IsOptional } from 'class-validator';
 export class RemoveAndroidApplicationDto {
   @ApiPropertyOptional({
     default: true,
-    description: 'When true, remove the persisted redroid Docker volume too.',
+    description: 'When true, remove the persisted Docker volume too.',
   })
   @IsOptional()
   @Transform(({ value }) => value === true || value === 'true')

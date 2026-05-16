@@ -29,7 +29,7 @@ export class CreateAndroidApplicationDto {
   @ApiPropertyOptional({ example: 'redroid/redroid:13.0.0-latest' })
   @IsOptional()
   @IsString()
-  redroidImage?: string;
+  containerImage?: string;
 
   @ApiPropertyOptional({ default: 900, minimum: 60, maximum: 86400 })
   @IsOptional()
@@ -64,15 +64,18 @@ export class CreateAndroidApplicationDto {
   volumeSizeLimitMb?: number;
 
   @ApiPropertyOptional({
-    example: 'androidboot.redroid_dpi=480 androidboot.redroid_width=1080 androidboot.redroid_height=1920',
+    description:
+      'Optional command or arguments passed to the container as Docker Cmd. Use a long-running command if the image would otherwise exit immediately.',
+    example: 'sleep infinity',
   })
   @IsOptional()
   @IsString()
   @MaxLength(2048)
-  redroidArgs?: string;
+  containerArgs?: string;
 
   @ApiPropertyOptional({
-    description: 'Previously uploaded APK id to install into this Android application.',
+    description:
+      'Previously uploaded APK id to install into this Android application.',
     example: '98a530d6-a45d-466a-9cb4-c023067c4971',
   })
   @IsOptional()
