@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { unknownErrorMessage } from '../../common/error-message';
 import { throwNotFound } from '../../common/not-found';
 import { DockerRuntimeService } from '../../docker/docker-runtime.service';
 import { ContainerRuntimeState } from '../../docker/docker.types';
@@ -128,7 +129,7 @@ export class AndroidAppsStateService {
       runtimeState = await this.docker.getContainerRuntimeState(containerId);
     } catch (error) {
       this.logger.warn(
-        `Could not inspect container state for ${app.id}: ${this.errorMessage(error)}`,
+        `Could not inspect container state for ${app.id}: ${unknownErrorMessage(error)}`,
       );
       return this.status.decorateApplication(app);
     }
@@ -200,9 +201,5 @@ export class AndroidAppsStateService {
       (app.status === AndroidApplicationStatus.Provisioning ||
         app.status === AndroidApplicationStatus.Running)
     );
-  }
-
-  private errorMessage(error: unknown) {
-    return error instanceof Error ? error.message : 'Unknown error';
   }
 }

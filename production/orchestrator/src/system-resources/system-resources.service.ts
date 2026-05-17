@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { unknownErrorMessage } from '../common/error-message';
 import { DockerRuntimeService } from '../docker/docker-runtime.service';
 
 interface VolumeUsageCache {
@@ -67,7 +68,7 @@ export class SystemResourcesService {
       return await this.docker.getManagedContainerResourceUsage(containers);
     } catch (error) {
       this.logger.warn(
-        `Unable to collect managed container stats: ${this.errorMessage(error)}`,
+        `Unable to collect managed container stats: ${unknownErrorMessage(error)}`,
       );
       return {
         cpuUsagePercent: 0,
@@ -102,9 +103,5 @@ export class SystemResourcesService {
 
     this.volumeCache = { cachedAt: new Date(), volumes };
     return volumes;
-  }
-
-  private errorMessage(error: unknown) {
-    return error instanceof Error ? error.message : 'Unknown error';
   }
 }

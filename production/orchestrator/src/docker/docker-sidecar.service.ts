@@ -17,6 +17,10 @@ import {
   ViewerTargetError,
   ViewerTargetStatus,
 } from './docker.types';
+import {
+  isTransientAdbConnectionError,
+  shouldIgnoreBuildContextEntry,
+} from './utils/docker-sidecar.utils';
 
 @Injectable()
 export class DockerSidecarService implements OnModuleInit {
@@ -348,7 +352,7 @@ export class DockerSidecarService implements OnModuleInit {
   ) {
     const entries = await readdir(currentDirectory, { withFileTypes: true });
     for (const entry of entries) {
-      if (this.shouldIgnoreBuildContextEntry(entry.name)) {
+      if (shouldIgnoreBuildContextEntry(entry.name)) {
         continue;
       }
 
@@ -387,11 +391,6 @@ export class DockerSidecarService implements OnModuleInit {
       });
     }
   }
-
-  private shouldIgnoreBuildContextEntry(name: string) {
-    return ['.git', 'node_modules', 'dist', 'npm-debug.log'].includes(name);
-  }
-
   private sidecarUnavailableStatus(): ViewerTargetStatus {
     const message =
       'ws-scrcpy sidecar is not available. Build the sidecar image or disable WS_SCRCPY_AUTO_START.';
@@ -453,7 +452,7 @@ export class DockerSidecarService implements OnModuleInit {
       };
     }
 
-    if (this.isTransientAdbConnectionError(combinedOutput)) {
+    if (isTransientAdbConnectionError(combinedOutput)) {
       return {
         code: 'adb_unreachable',
         message: details.message,
@@ -474,15 +473,5 @@ export class DockerSidecarService implements OnModuleInit {
       stdout: details.stdout,
       stderr: details.stderr,
     };
-  }
-
-  private isTransientAdbConnectionError(message: string) {
-    return (
-      message.includes('failed to connect') ||
-      message.includes('connection refused') ||
-      message.includes('cannot connect') ||
-      message.includes('no route to host') ||
-      message.includes('device offline')
-    );
   }
 }

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { inflateRawSync } from 'node:zlib';
+import { unknownErrorMessage } from '../common/error-message';
 import {
   androidIconAttr,
   androidRoundIconAttr,
@@ -22,6 +23,7 @@ import {
   typedValueString,
   ZipEntry,
 } from './apk.types';
+import { imageDimensions, imageMimeType } from './utils/apk-image.utils';
 
 @Injectable()
 export class ApkIconExtractorService {
@@ -49,7 +51,7 @@ export class ApkIconExtractorService {
           continue;
         }
 
-        const dimensions = this.imageDimensions(content, candidate.mimeType);
+        const dimensions = imageDimensions(content, candidate.mimeType);
         const dimensionScore = dimensions
           ? Math.min(Math.max(dimensions.width, dimensions.height), 512)
           : 0;
@@ -64,7 +66,7 @@ export class ApkIconExtractorService {
         : null;
     } catch (error) {
       this.logger.warn(
-        `Could not extract APK launcher icon: ${error instanceof Error ? error.message : 'unknown error'}`,
+        `Could not extract APK launcher icon: ${unknownErrorMessage(error, 'unknown error')}`,
       );
       return null;
     }
@@ -76,7 +78,7 @@ export class ApkIconExtractorService {
       return null;
     }
 
-    const mimeType = this.imageMimeType(path);
+    const mimeType = imageMimeType(path);
     if (!mimeType) {
       return null;
     }
@@ -170,7 +172,7 @@ export class ApkIconExtractorService {
   ) {
     const normalizedPath = path.replace(/^\/+/, '');
     const entry = entriesByName.get(normalizedPath);
-    const mimeType = this.imageMimeType(normalizedPath.toLowerCase());
+    const mimeType = imageMimeType(normalizedPath.toLowerCase());
     if (!entry || !mimeType || entry.uncompressedSize > maxIconBytes) {
       return null;
     }
@@ -180,7 +182,7 @@ export class ApkIconExtractorService {
       return null;
     }
 
-    const dimensions = this.imageDimensions(content, mimeType);
+    const dimensions = imageDimensions(content, mimeType);
     if (
       score < 10_000 &&
       dimensions &&
@@ -363,7 +365,7 @@ export class ApkIconExtractorService {
 
           const entryName = globalStringPool.strings[data];
           const mimeType = entryName
-            ? this.imageMimeType(entryName.toLowerCase())
+            ? imageMimeType(entryName.toLowerCase())
             : null;
           if (!entryName || !mimeType) {
             continue;
@@ -483,56 +485,6 @@ export class ApkIconExtractorService {
 
   private readChunkHeaderSize(buffer: Buffer, offset: number) {
     return offset + 4 <= buffer.length ? buffer.readUInt16LE(offset + 2) : 8;
-  }
-
-  private imageMimeType(path: string) {
-    if (path.endsWith('.png')) return 'image/png';
-    if (path.endsWith('.webp')) return 'image/webp';
-    if (path.endsWith('.jpg') || path.endsWith('.jpeg')) return 'image/jpeg';
-    return null;
-  }
-
-  private imageDimensions(content: Buffer, mimeType: string) {
-    if (
-      mimeType === 'image/png' &&
-      content.length >= 24 &&
-      content[0] === 0x89 &&
-      content.toString('ascii', 1, 4) === 'PNG'
-    ) {
-      return {
-        width: content.readUInt32BE(16),
-        height: content.readUInt32BE(20),
-      };
-    }
-
-    if (
-      mimeType === 'image/webp' &&
-      content.length >= 30 &&
-      content.toString('ascii', 0, 4) === 'RIFF'
-    ) {
-      const chunkType = content.toString('ascii', 12, 16);
-      if (chunkType === 'VP8X' && content.length >= 30) {
-        return {
-          width: 1 + content.readUIntLE(24, 3),
-          height: 1 + content.readUIntLE(27, 3),
-        };
-      }
-      if (chunkType === 'VP8 ' && content.length >= 30) {
-        return {
-          width: content.readUInt16LE(26) & 0x3fff,
-          height: content.readUInt16LE(28) & 0x3fff,
-        };
-      }
-      if (chunkType === 'VP8L' && content.length >= 25) {
-        const bits = content.readUInt32LE(21);
-        return {
-          width: 1 + (bits & 0x3fff),
-          height: 1 + ((bits >> 14) & 0x3fff),
-        };
-      }
-    }
-
-    return null;
   }
 
   private readCentralDirectory(apk: Buffer): ZipEntry[] {

@@ -5,10 +5,12 @@ import { basename } from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { PassThrough } from 'node:stream';
 import tar from 'tar-stream';
+import { unknownErrorMessage } from '../common/error-message';
 import {
   ContainerCommandFailedException,
   ContainerCommandResult,
 } from './docker.types';
+import { hasDockerStatusCode } from './utils/docker-engine.utils';
 
 @Injectable()
 export class DockerEngineService {
@@ -234,15 +236,15 @@ export class DockerEngineService {
   }
 
   isDockerConflict(error: unknown) {
-    return this.hasStatusCode(error, 409);
+    return hasDockerStatusCode(error, 409);
   }
 
   isDockerNotFound(error: unknown) {
-    return this.hasStatusCode(error, 404);
+    return hasDockerStatusCode(error, 404);
   }
 
   isDockerNotModified(error: unknown) {
-    return this.hasStatusCode(error, 304);
+    return hasDockerStatusCode(error, 304);
   }
 
   isContainerAlreadyConnectedToNetwork(error: unknown) {
@@ -251,11 +253,7 @@ export class DockerEngineService {
   }
 
   errorMessage(error: unknown) {
-    if (error instanceof Error) {
-      return error.message;
-    }
-
-    return 'Unknown Docker error';
+    return unknownErrorMessage(error, 'Unknown Docker error');
   }
 
   private containerCommandFailureMessage({
@@ -273,14 +271,5 @@ export class DockerEngineService {
     return detail
       ? `Container command failed with exit code ${exitCode}: ${command.join(' ')} ${detail}`
       : `Container command failed with exit code ${exitCode}: ${command.join(' ')}`;
-  }
-
-  private hasStatusCode(error: unknown, statusCode: number) {
-    return (
-      typeof error === 'object' &&
-      error !== null &&
-      'statusCode' in error &&
-      error.statusCode === statusCode
-    );
   }
 }

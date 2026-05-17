@@ -1,3 +1,4 @@
+import { unknownErrorMessage } from './error-message';
 import { parseJsonStringArray } from './json-array';
 import {
   extractHostname,
@@ -24,6 +25,14 @@ describe('common utilities', () => {
     ]);
     expect(parseJsonStringArray('{"cidrs":[]}')).toEqual([]);
     expect(parseJsonStringArray('invalid json')).toEqual([]);
+  });
+
+  it('formats unknown errors with a configurable fallback', () => {
+    expect(unknownErrorMessage(new Error('boom'))).toBe('boom');
+    expect(unknownErrorMessage('boom')).toBe('Unknown error');
+    expect(unknownErrorMessage(null, 'Unknown Docker error')).toBe(
+      'Unknown Docker error',
+    );
   });
 
   it('clamps numbers into an integer range', () => {

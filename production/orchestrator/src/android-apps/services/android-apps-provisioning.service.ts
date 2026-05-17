@@ -6,6 +6,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { unknownErrorMessage } from '../../common/error-message';
 import { DockerRuntimeService } from '../../docker/docker-runtime.service';
 import { NetworkPolicyService } from '../../network-policy/network-policy.service';
 import { AndroidApplication } from '../android-application.entity';
@@ -152,7 +153,10 @@ export class AndroidAppsProvisioningService {
         return;
       }
 
-      const message = this.errorMessage(error);
+      if (!(error instanceof Error)) {
+        this.logger.error(error);
+      }
+      const message = unknownErrorMessage(error);
       this.logger.error(`Provisioning failed for ${applicationId}: ${message}`);
       await this.state.setLifecycle(applicationId, {
         status: AndroidApplicationStatus.Error,
@@ -195,14 +199,5 @@ export class AndroidAppsProvisioningService {
       '-lc',
       'i=0; while [ "$i" -lt 60 ]; do [ "$(getprop sys.boot_completed 2>/dev/null)" = "1" ] && exit 0; i=$((i+1)); sleep 2; done; exit 1',
     ]);
-  }
-
-  private errorMessage(error: unknown) {
-    if (error instanceof Error) {
-      return error.message;
-    }
-
-    this.logger.error(error);
-    return 'Unknown error';
   }
 }
