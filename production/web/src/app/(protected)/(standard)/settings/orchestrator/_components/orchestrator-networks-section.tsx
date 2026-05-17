@@ -17,10 +17,11 @@ import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Visible } from '@/components/ui/visible'
 import { toast } from '@/hooks/use-toast'
-import { listPlatformNetworksAction, removePlatformNetworkAction } from '@/lib/orchestrator/actions'
+import { listPlatformNetworksAction, removePlatformNetworkAction } from '@/server/orchestrator/platform/actions'
 import { PlatformGridPagination } from './platform-grid-pagination'
-import type { PlatformNetwork } from '@/lib/orchestrator/types'
+import type { PlatformNetwork } from '@/server/orchestrator/platform/types'
 
 const NetworkNameCell = ({ network }: { network: PlatformNetwork }) => (
   <div className='flex min-w-[16rem] flex-col gap-1'>
@@ -36,14 +37,14 @@ const NetworkNameCell = ({ network }: { network: PlatformNetwork }) => (
         </TooltipTrigger>
         <TooltipContent className='max-w-sm break-all'>{network.name}</TooltipContent>
       </Tooltip>
-      {network.managed && (
+      <Visible when={network.managed}>
         <span className='shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary'>managed</span>
-      )}
-      {network.internal && (
+      </Visible>
+      <Visible when={network.internal}>
         <span className='shrink-0 rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground'>
           internal
         </span>
-      )}
+      </Visible>
     </div>
     <div className='truncate text-xs text-muted-foreground'>{network.shortId}</div>
   </div>
@@ -276,7 +277,7 @@ export const OrchestratorNetworksSection = ({ refreshKey = 0 }: { refreshKey?: n
             </div>
           </div>
         )}
-        {!error && (
+        <Visible when={!error}>
           <PlatformGridPagination
             totalItems={filteredNetworks.length}
             pageIndex={pageIndex}
@@ -284,7 +285,7 @@ export const OrchestratorNetworksSection = ({ refreshKey = 0 }: { refreshKey?: n
             onPageIndexChange={setPageIndex}
             onPageSizeChange={setPageSize}
           />
-        )}
+        </Visible>
       </Section>
 
       <Dialog

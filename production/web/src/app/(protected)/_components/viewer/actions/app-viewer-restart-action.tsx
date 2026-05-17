@@ -14,7 +14,8 @@ import {
   DialogTrigger
 } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { startApplicationAction, stopApplicationAction } from '@/lib/orchestrator/actions'
+import { Visible } from '@/components/ui/visible'
+import { startApplicationAction, stopApplicationAction } from '@/server/orchestrator/applications/mutation-actions'
 import { useAppViewerActionRunner } from './use-app-viewer-action-runner'
 import type { AppDefinition } from '../../../(standard)/constants'
 
@@ -51,7 +52,12 @@ export const AppViewerRestartAction = ({ app }: { app?: AppDefinition }) => {
               variant='secondary'
               disabled={!app || isBusy || isRunningAction}
             >
-              {isRunningAction ? <IconLoader2 className='size-4 animate-spin' /> : <IconRestore className='size-4' />}{' '}
+              <Visible
+                when={isRunningAction}
+                fallback={<IconRestore className='size-4' />}
+              >
+                <IconLoader2 className='size-4 animate-spin' />
+              </Visible>{' '}
               Restart
             </Button>
           </DialogTrigger>
@@ -71,7 +77,9 @@ export const AppViewerRestartAction = ({ app }: { app?: AppDefinition }) => {
             disabled={!app || isBusy || isRunningAction}
             onClick={() => void handleRestart()}
           >
-            {isRunningAction && <IconLoader2 className='size-4 animate-spin' />}
+            <Visible when={isRunningAction}>
+              <IconLoader2 className='size-4 animate-spin' />
+            </Visible>
             Restart
           </Button>
           <DialogClose asChild>

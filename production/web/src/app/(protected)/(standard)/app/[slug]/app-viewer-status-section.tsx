@@ -2,8 +2,9 @@ import { IconAlertTriangle, IconCircleCheck, IconLoader2 } from '@tabler/icons-r
 import { ImagePullProgress } from '@/app/(protected)/_components/viewer/image-pull-progress'
 import { Badge } from '@/components/ui/badge'
 import { Section } from '@/components/ui/section'
+import { Visible } from '@/components/ui/visible'
 import type { AppDefinition } from '../../constants'
-import type { AndroidApplicationStatusDetail } from '@/lib/orchestrator/types'
+import type { AndroidApplicationStatusDetail } from '@/server/orchestrator/applications/types'
 
 type AppImagePullProgress = {
   status: string
@@ -55,14 +56,16 @@ export const AppViewerStatusSection = ({ app }: { app: AppDefinition }) => {
           >
             {app.status}
           </Badge>
-          {hasRuntimeRecreateBadge(app) && <Badge variant='warning'>Runtime modified</Badge>}
+          <Visible when={hasRuntimeRecreateBadge(app)}>
+            <Badge variant='warning'>Runtime modified</Badge>
+          </Visible>
         </div>
-        {statusDescription && !hasRuntimeRecreateBadge(app) && (
+        <Visible when={statusDescription && !hasRuntimeRecreateBadge(app)}>
           <ImagePullProgress
             statusMessage={statusDescription}
             progress={getAppImagePullProgress(app)}
           />
-        )}
+        </Visible>
       </div>
     </Section>
   )

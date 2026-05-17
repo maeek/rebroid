@@ -4,9 +4,13 @@ import { NetworkAccessInput } from '@/app/(protected)/_components/viewer/app-inf
 import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Visible } from '@/components/ui/visible'
 import { toast } from '@/hooks/use-toast'
-import { applyNetworkPolicyAction, updateNetworkPolicyAction } from '@/lib/orchestrator/actions'
 import { mapAndroidApplicationToAppDefinition } from '@/lib/orchestrator/app-mapper'
+import {
+  applyNetworkPolicyAction,
+  updateNetworkPolicyAction
+} from '@/server/orchestrator/applications/mutation-actions'
 import type { AppDefinition } from '@/app/(protected)/(standard)/constants'
 
 type AppManageNetworkPolicySettingsProps = {
@@ -116,11 +120,11 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
       titleClassName='pb-4'
       contentClassName='gap-4'
     >
-      {(app.networkPolicyResult?.hint ?? app.networkPolicyResult?.message ?? app.networkPolicyMessage) && (
+      <Visible when={app.networkPolicyResult?.hint ?? app.networkPolicyResult?.message ?? app.networkPolicyMessage}>
         <p className='text-sm text-secondary-foreground'>
           {app.networkPolicyResult?.hint ?? app.networkPolicyResult?.message ?? app.networkPolicyMessage}
         </p>
-      )}
+      </Visible>
       <Setting
         label='Outbound access'
         description='Limit Android traffic to the API plus any CIDR ranges explicitly added below.'

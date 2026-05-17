@@ -4,8 +4,9 @@ import { IconEye, IconPlayerStopFilled, IconTerminal2, IconTrash } from '@tabler
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
-import type { PlatformContainer } from '@/lib/orchestrator/types'
+import type { PlatformContainer } from '@/server/orchestrator/platform/types'
 
 export const stateClassName = (state: string) => {
   if (state === 'running') {
@@ -34,9 +35,9 @@ export const ContainerNameCell = ({ container, className }: { container: Platfor
           </TooltipTrigger>
           <TooltipContent className='max-w-sm break-all'>{name}</TooltipContent>
         </Tooltip>
-        {container.managed && (
+        <Visible when={container.managed}>
           <span className='shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary'>managed</span>
-        )}
+        </Visible>
       </div>
       <div className='truncate text-xs text-muted-foreground'>{container.shortId}</div>
     </div>
@@ -69,18 +70,18 @@ export const ContainerActions = ({
         <IconEye className='size-4' />
       </Link>
     </Button>
-    {container.applicationId && (
+    <Visible when={container.applicationId}>
       <Button
         asChild
         variant='secondary'
         className='min-w-24'
       >
-        <Link href={`/app/${container.applicationId}?logs=1`}>
+        <Link href={`/app/${container.applicationId ?? ''}?logs=1`}>
           <IconTerminal2 className='size-4' />
           Logs
         </Link>
       </Button>
-    )}
+    </Visible>
     <Button
       type='button'
       variant='secondary'

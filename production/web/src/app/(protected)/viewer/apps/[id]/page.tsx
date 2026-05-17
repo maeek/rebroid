@@ -2,11 +2,12 @@ import type { ReactNode } from 'react'
 import { IconAlertTriangle, IconCast, IconLoader2 } from '@tabler/icons-react'
 import { headers } from 'next/headers'
 import { StatusSplash } from '@/app/(protected)/_components/status-splash'
-import { getApplicationAction, getScrcpySessionAction } from '@/lib/orchestrator/actions'
+import { Visible } from '@/components/ui/visible'
 import { getProtectedWsScrcpyUrl } from '@/lib/orchestrator/scrcpy'
 import { createScrcpyViewerToken } from '@/lib/scrcpy/viewer-token'
+import { getApplicationAction, getScrcpySessionAction } from '@/server/orchestrator/applications/read-actions'
 import { ViewerActivityKeepalive, ViewerStartupRefresh } from './viewer-activity-keepalive'
-import type { AndroidApplication, ScrcpySession } from '@/lib/orchestrator/types'
+import type { AndroidApplication, ScrcpySession } from '@/server/orchestrator/applications/types'
 
 const redroidViewerStartupGracePeriodMs = 45_000
 const redroidViewerRefreshIntervalMs = 3_000
@@ -142,10 +143,9 @@ const describeViewerIssue = ({
   if (viewerError?.code === 'adb_missing') {
     return {
       kind: 'fatal' as const,
-      title: 'Viewer not supported for this image',
+      title: 'Viewer not supported for this app',
       description: 'This app image does not expose the Android tools needed for live screen streaming.',
-      detail:
-        'Use an Android runtime image with ADB enabled. Plain Ubuntu and other generic Linux images will not provide a scrcpy stream.'
+      detail: ''
     }
   }
 
@@ -261,13 +261,13 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   return (
     <main className='relative min-h-screen overflow-hidden bg-background'>
       <ViewerActivityKeepalive applicationId={session.applicationId} />
-      {!session.viewerTargetConnected && (
+      <Visible when={!session.viewerTargetConnected}>
         <div className='absolute left-3 right-3 top-3 z-10 rounded-md border border-destructive/35 bg-destructive/20 px-3 py-2 text-xs text-foreground backdrop-blur-md'>
           {viewerIssue?.kind === 'warning'
             ? viewerIssue.banner
             : `ws-scrcpy could not confirm ADB connection: ${session.viewerMessage ?? 'unknown error'}`}
         </div>
-      )}
+      </Visible>
       <iframe
         title='scrcpy viewer'
         src={viewerUrl}

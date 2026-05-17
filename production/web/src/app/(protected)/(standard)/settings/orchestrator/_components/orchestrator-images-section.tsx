@@ -17,11 +17,12 @@ import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Visible } from '@/components/ui/visible'
 import { toast } from '@/hooks/use-toast'
-import { listPlatformImagesAction, removePlatformImageAction } from '@/lib/orchestrator/actions'
 import { imageDisplayName } from '@/lib/orchestrator/image-display-name'
+import { listPlatformImagesAction, removePlatformImageAction } from '@/server/orchestrator/platform/actions'
 import { PlatformGridPagination } from './platform-grid-pagination'
-import type { PlatformImage } from '@/lib/orchestrator/types'
+import type { PlatformImage } from '@/server/orchestrator/platform/types'
 
 const formatBytes = (bytes: number) => {
   if (!bytes) {
@@ -270,7 +271,7 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
             </div>
           </div>
         )}
-        {!error && (
+        <Visible when={!error}>
           <PlatformGridPagination
             totalItems={filteredImages.length}
             pageIndex={pageIndex}
@@ -278,7 +279,7 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
             onPageIndexChange={setPageIndex}
             onPageSizeChange={setPageSize}
           />
-        )}
+        </Visible>
       </Section>
 
       <Dialog

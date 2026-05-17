@@ -62,10 +62,9 @@ export const AppViewerPane = ({ app }: { app: AppDefinition }) => {
     <div className='flex w-full max-w-md flex-col items-center justify-start gap-4 lg:sticky lg:top-10 lg:self-start lg:pr-4 lg:pt-6 max-sm:max-w-full'>
       <div
         ref={viewerContainerRef}
-        className={cn(
-          'flex w-full items-center justify-center',
-          isViewerFullscreen && 'h-full w-full bg-background p-6 max-sm:p-4'
-        )}
+        className={cn('flex w-full items-center justify-center', {
+          'h-full w-full bg-background p-6 max-sm:p-4': isViewerFullscreen
+        })}
       >
         <AppViewer
           app={app}

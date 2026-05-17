@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getSystemResourcesAction } from '@/lib/orchestrator/actions'
+import { Visible } from '@/components/ui/visible'
+import { getSystemResourcesAction } from '@/server/orchestrator/diagnostics/actions'
 import { QuickGlanceCard } from '../../../../_components/settings/quick-glance-card'
-import type { SystemResources } from '@/lib/orchestrator/types'
+import type { SystemResources } from '@/server/orchestrator/diagnostics/types'
 
 const formatBytes = (bytes: number) => {
   if (bytes === 0) {
@@ -83,11 +84,11 @@ export const OrchestratorQuickGlanceSection = ({ refreshKey = 0 }: { refreshKey?
 
   return (
     <>
-      {error && (
+      <Visible when={error}>
         <div className='rounded-lg border border-destructive/35 bg-destructive/10 p-4 text-sm text-destructive'>
           {error}
         </div>
-      )}
+      </Visible>
       <div className='grid grid-cols-4 gap-3 max-xl:grid-cols-2 max-sm:grid-cols-1'>
         <QuickGlanceCard
           label='Managed container CPU'

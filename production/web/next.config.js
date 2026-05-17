@@ -18,6 +18,7 @@ const nextConfig = {
       bodySizeLimit: apkUploadBodySizeLimit
     }
   },
+  allowedDevOrigins: ['192.168.1.12'],
   compiler: {
     styledComponents: true
   },

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { QuickGlanceCard } from '../../../../_components/settings/quick-glance-card'
-import type { SystemResources } from '@/lib/orchestrator/types'
+import type { SystemResources } from '@/server/orchestrator/diagnostics/types'
 
 const formatBytes = (bytes: number) => {
   if (bytes === 0) return '0 B'

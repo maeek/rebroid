@@ -1,4 +1,4 @@
-import { getServerOrchestratorUiSettings } from '@/lib/orchestrator/server-settings'
+import { getServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
 import { GeneralSettingsForm } from './general-settings-form'
 
 export default async function GeneralSettingsPage() {

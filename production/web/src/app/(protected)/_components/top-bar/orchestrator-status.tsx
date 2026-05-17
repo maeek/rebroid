@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { IconAlertTriangle, IconCircleCheck, IconLoader2 } from '@tabler/icons-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { getOrchestratorHealthAction, repairScrcpySidecarAction } from '@/lib/orchestrator/actions'
+import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
-import type { OrchestratorHealth, ServiceHealth } from '@/lib/orchestrator/types'
+import { getOrchestratorHealthAction, repairScrcpySidecarAction } from '@/server/orchestrator/diagnostics/actions'
+import type { OrchestratorHealth, ServiceHealth } from '@/server/orchestrator/diagnostics/types'
 
 type HealthState = 'checking' | 'online' | 'degraded' | 'offline'
 
@@ -20,6 +21,9 @@ const checkingService = (message = 'Checking service health.'): ServiceHealth =>
   status: 'unhealthy',
   message
 })
+
+const getOrchestratorHealth = getOrchestratorHealthAction
+const repairScrcpySidecar = repairScrcpySidecarAction
 
 const dotTone = (status: ServiceHealth['status']) => {
   if (status === 'healthy') {
@@ -95,7 +99,7 @@ export const OrchestratorStatus = () => {
 
   const check = useCallback(async () => {
     try {
-      applyHealth(await getOrchestratorHealthAction())
+      applyHealth(await getOrchestratorHealth())
     } catch (error) {
       applyOfflineHealth(error)
     }
@@ -126,7 +130,7 @@ export const OrchestratorStatus = () => {
   const repairScrcpy = async () => {
     setIsRepairingScrcpy(true)
     try {
-      await repairScrcpySidecarAction()
+      await repairScrcpySidecar()
       await check()
     } catch (error) {
       setHealth(current => {
@@ -172,10 +176,12 @@ export const OrchestratorStatus = () => {
           type='button'
           className={cn(
             'flex max-w-[18rem] items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
-            state === 'checking' && 'border-border/70 bg-secondary/50 text-secondary-foreground',
-            state === 'online' && 'border-green-400/30 bg-green-400/10 text-green-400',
-            state === 'degraded' && 'border-yellow-400/40 bg-yellow-400/10 text-yellow-400',
-            state === 'offline' && 'border-destructive/50 bg-destructive/15 text-destructive'
+            {
+              'border-border/70 bg-secondary/50 text-secondary-foreground': state === 'checking',
+              'border-green-400/30 bg-green-400/10 text-green-400': state === 'online',
+              'border-yellow-400/40 bg-yellow-400/10 text-yellow-400': state === 'degraded',
+              'border-destructive/50 bg-destructive/15 text-destructive': state === 'offline'
+            }
           )}
         >
           {icon}
@@ -193,21 +199,21 @@ export const OrchestratorStatus = () => {
               className='flex gap-3 rounded-md px-3 py-2 hover:bg-secondary/40 items-center'
             >
               <span className={cn('mt-1 size-2.5 shrink-0 rounded-full', dotTone(service.status))} />
-              <div className='min-w-0'>
-                <div className='flex items-center gap-2'>
+              <div className='min-w-0 grow shrink flex justify-between gap-2 items-center'>
+                <div>
                   <p className='text-xs font-normal text-foreground'>{name}</p>
-                  <span
-                    className={cn(
-                      'rounded-full border px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-normal',
-                      badgeTone(service.status)
-                    )}
-                  >
-                    {service.status}
-                  </span>
+                  <p className='mt-0.5 line-clamp-2 text-[10px] text-secondary-foreground'>{service.message}</p>
                 </div>
-                <p className='mt-0.5 line-clamp-2 text-[10px] text-secondary-foreground'>{service.message}</p>
+                <span
+                  className={cn(
+                    'rounded-full border px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-normal',
+                    badgeTone(service.status)
+                  )}
+                >
+                  {service.status}
+                </span>
               </div>
-              {name === 'Scrcpy' && canRepairScrcpy && (
+              <Visible when={name === 'Scrcpy' && canRepairScrcpy}>
                 <button
                   type='button'
                   className='ml-auto inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-md border border-border/70 bg-secondary/70 px-2 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-70'
@@ -221,7 +227,7 @@ export const OrchestratorStatus = () => {
                 >
                   {isRepairingScrcpy ? <IconLoader2 className='size-3.5 animate-spin' /> : 'Fix'}
                 </button>
-              )}
+              </Visible>
             </div>
           ))}
         </div>

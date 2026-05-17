@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { IconCopy } from '@tabler/icons-react'
+import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 
 type AppInfoRowProps = {
@@ -27,7 +28,7 @@ export const AppInfoRow = ({ label, value, copyValue, valueClassName }: AppInfoR
           valueClassName
         )}
       >
-        {copyValue ? (
+        <Visible when={copyValue}>
           <button
             type='button'
             className='mt-0.5 shrink-0 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 hover:text-primary'
@@ -35,7 +36,7 @@ export const AppInfoRow = ({ label, value, copyValue, valueClassName }: AppInfoR
           >
             <IconCopy className='size-4' />
           </button>
-        ) : null}
+        </Visible>
         <div className='min-w-0 break-all'>{value}</div>
       </div>
     </div>

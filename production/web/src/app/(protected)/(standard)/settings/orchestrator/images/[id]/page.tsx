@@ -1,8 +1,8 @@
 import { ProtectedStackPageLayout } from '@/app/(protected)/_components/protected-page-shell'
 import { StatusSplash } from '@/app/(protected)/_components/status-splash'
-import { getPlatformImageAction } from '@/lib/orchestrator/actions'
 import { imageDisplayName } from '@/lib/orchestrator/image-display-name'
 import { requireAdmin } from '@/server/auth/authorization'
+import { getPlatformImageAction } from '@/server/orchestrator/platform/actions'
 import { PlatformPageHeader } from '../../_components/platform-page-header'
 import { OrchestratorImageDetail } from './orchestrator-image-detail'
 

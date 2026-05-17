@@ -7,8 +7,10 @@ import { PageBreadcrumbs } from '@/app/(protected)/_components/page-breadcrumbs'
 import { ProtectedSplitPageContent, ProtectedSplitPageLayout } from '@/app/(protected)/_components/protected-page-shell'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/hooks/use-toast'
-import { getApplicationAction, updateApplicationAction } from '@/lib/orchestrator/actions'
+import { resolveAppIconUrl } from '@/lib/app-icons/url'
 import { mapAndroidApplicationToAppDefinition } from '@/lib/orchestrator/app-mapper'
+import { updateApplicationAction } from '@/server/orchestrator/applications/mutation-actions'
+import { getApplicationAction } from '@/server/orchestrator/applications/read-actions'
 import { useForegroundRefresh } from '../../../../../../hooks/use-foreground-refresh'
 import { getAppRefreshIntervalMs } from '../../../../../../lib/orchestrator/refresh'
 import { AppViewerDeleteAction } from '../../../../_components/viewer/actions/app-viewer-delete-action'
@@ -138,7 +140,15 @@ export default function AppManage({ app }: { app?: AppDefinition }) {
 
   return (
     <ProtectedSplitPageLayout>
-      <div className='w-screen h-screen bg-primary/80 blur-3xl fixed top-0 left-0 -z-10 pointer-events-none opacity-5' />
+      <div
+        className='w-screen h-screen bg-primary/80 blur-3xl fixed top-0 left-0 -z-10 pointer-events-none'
+        style={{
+          backgroundImage: displayApp.icon ? `url("${resolveAppIconUrl(displayApp.icon)}")` : undefined,
+          backgroundSize: '1000% 1000%',
+          backgroundPosition: 'top left',
+          opacity: 0.05
+        }}
+      />
       <ProtectedSplitPageContent>
         <PageBreadcrumbs
           items={[

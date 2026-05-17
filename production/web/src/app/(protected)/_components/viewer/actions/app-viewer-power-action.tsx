@@ -2,7 +2,7 @@
 
 import { IconLoader2, IconPlayerPlayFilled, IconPlayerStopFilled } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
-import { startApplicationAction, stopApplicationAction } from '@/lib/orchestrator/actions'
+import { startApplicationAction, stopApplicationAction } from '@/server/orchestrator/applications/mutation-actions'
 import { useAppViewerActionRunner } from './use-app-viewer-action-runner'
 import type { AppDefinition } from '../../../(standard)/constants'
 

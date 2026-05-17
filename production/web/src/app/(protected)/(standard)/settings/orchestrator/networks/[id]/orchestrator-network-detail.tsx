@@ -17,13 +17,44 @@ import {
 } from '@/components/ui/dialog'
 import { Section } from '@/components/ui/section'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Visible } from '@/components/ui/visible'
 import { toast } from '@/hooks/use-toast'
-import { removePlatformNetworkAction } from '@/lib/orchestrator/actions'
+import { removePlatformNetworkAction } from '@/server/orchestrator/platform/actions'
 import { ContainerStateBadge } from '../../_components/orchestrator-containers-table-parts'
 import { PlatformDetailRow, PlatformJsonBlock, formatPlatformDate } from '../../_components/platform-detail-parts'
-import type { PlatformNetworkDetails } from '@/lib/orchestrator/types'
+type NetworkDetailModel = {
+  id: string
+  shortId: string
+  driver: string
+  scope: string
+  createdAt: string | null
+  internal: boolean
+  managed: boolean
+  containers: string[]
+  subnets: string[]
+  gateways: string[]
+  labels: Record<string, string>
+}
 
-export const OrchestratorNetworkDetail = ({ details }: { details: PlatformNetworkDetails }) => {
+type NetworkDetailContainer = {
+  id: string
+  names: string[]
+  shortId: string
+  state: string
+  image: string
+}
+
+type OrchestratorNetworkDetailProps = {
+  details: {
+    network: NetworkDetailModel
+    inspect: unknown
+    relatedContainers: NetworkDetailContainer[]
+  }
+}
+
+const removePlatformNetwork = removePlatformNetworkAction
+
+export const OrchestratorNetworkDetail = ({ details }: OrchestratorNetworkDetailProps) => {
   const router = useRouter()
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
   const [isRemoving, setIsRemoving] = useState(false)
@@ -32,7 +63,7 @@ export const OrchestratorNetworkDetail = ({ details }: { details: PlatformNetwor
   const removeNetwork = async () => {
     setIsRemoving(true)
     try {
-      await removePlatformNetworkAction(network.id)
+      await removePlatformNetwork(network.id)
       toast({ title: 'Network removed' })
       router.push('/settings/orchestrator/networks')
     } catch (error) {
@@ -56,8 +87,12 @@ export const OrchestratorNetworkDetail = ({ details }: { details: PlatformNetwor
         >
           <div className='flex flex-wrap items-center justify-between gap-4'>
             <div className='flex flex-wrap items-center gap-2'>
-              {network.managed && <Badge variant='status'>managed</Badge>}
-              {network.internal && <Badge variant='secondary'>internal</Badge>}
+              <Visible when={network.managed}>
+                <Badge variant='status'>managed</Badge>
+              </Visible>
+              <Visible when={network.internal}>
+                <Badge variant='secondary'>internal</Badge>
+              </Visible>
               <span className='font-mono text-xs text-muted-foreground'>{network.shortId}</span>
             </div>
             <Button

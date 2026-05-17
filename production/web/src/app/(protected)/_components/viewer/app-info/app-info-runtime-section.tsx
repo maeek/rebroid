@@ -1,4 +1,5 @@
 import { Section } from '@/components/ui/section'
+import { Visible } from '@/components/ui/visible'
 import { AppInfoRow } from './app-info-row'
 import type { AppDefinition } from '@/app/(protected)/(standard)/constants'
 
@@ -44,13 +45,13 @@ export const AppInfoRuntimeSection = ({ app }: { app?: AppDefinition }) => {
         label='Resources'
         value={app ? formatResources(app) : 'Loading...'}
       />
-      {app?.containerArgs && (
+      <Visible when={app?.containerArgs}>
         <AppInfoRow
           label='Container args'
-          value={app.containerArgs}
-          copyValue={app.containerArgs}
+          value={app?.containerArgs ?? ''}
+          copyValue={app?.containerArgs ?? undefined}
         />
-      )}
+      </Visible>
       <AppInfoRow
         label='Idle timeout'
         value={app ? `${app.inactivityTimeoutSeconds}s` : 'Loading...'}

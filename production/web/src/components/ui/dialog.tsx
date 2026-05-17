@@ -3,6 +3,7 @@
 import * as React from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { XIcon } from 'lucide-react'
+import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 
 function Dialog({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
@@ -74,7 +75,7 @@ function DialogContent({
         {...props}
       >
         {children}
-        {showCloseButton && (
+        <Visible when={showCloseButton}>
           <DialogPrimitive.Close
             data-slot='dialog-close'
             className="ring-offset-background focus:ring-ring absolute top-4 right-4 rounded-xs p-1 text-muted-foreground opacity-80 transition-[background-color,color,opacity] hover:bg-secondary/80 hover:text-foreground hover:opacity-100 focus:bg-secondary/80 focus:text-foreground focus:ring-2 focus:ring-offset-2 focus:outline-hidden data-[state=open]:bg-secondary/65 data-[state=open]:text-secondary-foreground disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
@@ -82,7 +83,7 @@ function DialogContent({
             <XIcon />
             <span className='sr-only'>Close</span>
           </DialogPrimitive.Close>
-        )}
+        </Visible>
       </DialogPrimitive.Content>
     </DialogPortal>
   )

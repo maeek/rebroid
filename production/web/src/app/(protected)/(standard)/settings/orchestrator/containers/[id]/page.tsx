@@ -1,7 +1,7 @@
 import { ProtectedStackPageLayout } from '@/app/(protected)/_components/protected-page-shell'
 import { StatusSplash } from '@/app/(protected)/_components/status-splash'
-import { getPlatformContainerAction, getPlatformContainerLogsAction } from '@/lib/orchestrator/actions'
 import { requireAdmin } from '@/server/auth/authorization'
+import { getPlatformContainerAction, getPlatformContainerLogsAction } from '@/server/orchestrator/platform/actions'
 import { PlatformPageHeader } from '../../_components/platform-page-header'
 import { OrchestratorContainerDetail } from './orchestrator-container-detail'
 

@@ -4,6 +4,7 @@ import { IconAlertTriangle, IconLoader2, IconPlayerPlay } from '@tabler/icons-re
 import { AppIcon } from '@/app/(protected)/_components/apps/app-icon'
 import { ImagePullProgress } from '@/app/(protected)/_components/viewer/image-pull-progress'
 import Android from '@/components/ui/android'
+import { Visible } from '@/components/ui/visible'
 import { resolveAppIconUrl } from '@/lib/app-icons/url'
 import { getProtectedViewerShellUrl } from '@/lib/orchestrator/scrcpy'
 import { cn } from '@/lib/utils'
@@ -18,6 +19,7 @@ export const AppViewer = ({
   hideOutline?: boolean
   fullscreen?: boolean
 }) => {
+  const isBorderless = Boolean(hideOutline)
   const isBorderlessFullscreen = Boolean(hideOutline && fullscreen)
   const isViewerReady = Boolean(app?.id && app.adbPort && app.running && app.status === 'running')
   const viewerSrc = useMemo(() => {
@@ -94,53 +96,60 @@ export const AppViewer = ({
 
   const content = (
     <div
-      className={cn(
-        'flex w-full items-center justify-center',
-        isBorderlessFullscreen ? 'h-full bg-transparent' : 'bg-card h-[calc(100%+0.5rem)]',
-        !hideOutline && 'p-2'
-      )}
+      className={cn('flex w-full justify-center', {
+        'min-h-0 flex-1 items-stretch self-stretch bg-transparent': isBorderless,
+        'h-full items-center bg-card': !isBorderless,
+        'p-2': !hideOutline
+      })}
     >
       {viewerSrc ? (
         <iframe
           src={viewerSrc}
-          className={cn('h-full w-full', !isBorderlessFullscreen && 'rounded-lg')}
+          className={cn('h-full w-full', {
+            'rounded-lg': !isBorderless
+          })}
         />
       ) : (
         <div
-          className={cn(
-            'relative flex h-full w-full items-center justify-center overflow-hidden px-6',
-            isBorderlessFullscreen ? 'bg-transparent' : 'rounded-lg border border-dashed border-border/60 bg-muted/30'
-          )}
+          className={cn('relative flex w-full items-center justify-center overflow-hidden px-6', {
+            'min-h-0 flex-1 self-stretch': isBorderless,
+            'h-full': !isBorderless,
+            'bg-transparent': isBorderless,
+            'rounded-lg border border-dashed border-border/60 bg-muted/30': !isBorderless
+          })}
         >
-          {app?.icon ? (
+          <Visible when={app?.icon}>
             <div
-              className={cn(
-                'absolute inset-0 bg-center bg-cover',
-                isBorderlessFullscreen ? 'scale-110 opacity-20 blur-3xl' : 'opacity-10 blur-3xl'
-              )}
-              style={{ backgroundImage: `url("${resolveAppIconUrl(app.icon)}")` }}
+              className={cn('absolute inset-0 bg-center bg-cover blur-3xl', {
+                'scale-110': isBorderless,
+                'opacity-20': isBorderlessFullscreen,
+                'opacity-10': !isBorderlessFullscreen
+              })}
+              style={{ backgroundImage: `url("${resolveAppIconUrl(app?.icon ?? '')}")` }}
             />
-          ) : null}
-          {!isBorderlessFullscreen && app && (
+          </Visible>
+          <Visible when={!isBorderless && app}>
             <div className='absolute inset-0 opacity-10 blur-3xl'>
               <AppIcon
-                appId={app.id}
-                appName={app.name}
-                icon={app.icon}
+                appId={app!.id}
+                appName={app!.name}
+                icon={app!.icon}
                 className='h-full w-full'
               />
             </div>
-          )}
-          {isBorderlessFullscreen && <div className='absolute inset-0 bg-background/40' />}
+          </Visible>
+          <Visible when={isBorderlessFullscreen}>
+            <div className='absolute inset-0 bg-background/40' />
+          </Visible>
           <div className='relative z-10 flex w-full max-w-sm flex-col items-center gap-5 text-center'>
-            {app && (
+            <Visible when={app}>
               <AppIcon
-                appId={app.id}
-                appName={app.name}
-                icon={app.icon}
+                appId={app!.id}
+                appName={app!.name}
+                icon={app!.icon}
                 className='size-24 text-xl drop-shadow-[0_12px_24px_rgba(15,23,42,0.24)]'
               />
-            )}
+            </Visible>
             <div className='flex flex-col items-center gap-3'>
               <div
                 className={cn(
@@ -155,13 +164,13 @@ export const AppViewer = ({
                 <p className='text-sm text-secondary-foreground'>{viewerPlaceholder.description}</p>
               </div>
             </div>
-            {viewerPlaceholder.showProgress && (
+            <Visible when={viewerPlaceholder.showProgress}>
               <ImagePullProgress
                 statusMessage={app?.statusMessage}
                 progress={app?.imagePullProgress}
                 className='w-full rounded-lg border border-border/60 bg-background/60 px-4 py-3 text-left backdrop-blur-xs'
               />
-            )}
+            </Visible>
           </div>
         </div>
       )}
@@ -171,12 +180,11 @@ export const AppViewer = ({
   if (hideOutline) {
     return (
       <div
-        className={cn(
-          'relative flex flex-col items-center overflow-hidden',
-          fullscreen
-            ? 'aspect-380/820 h-full w-auto max-h-full max-w-full'
-            : 'h-full min-w-108.25 flex-1 rounded-lg bg-card lg:h-220.5 max-sm:min-h-[calc(100vh-4rem)] max-sm:min-w-screen'
-        )}
+        className={cn('relative flex flex-col items-center overflow-hidden', {
+          'aspect-380/820 h-full w-auto max-h-full max-w-full': fullscreen,
+          'flex-1 w-full self-stretch rounded-lg bg-card lg:h-220.5 lg:min-w-108.25 max-sm:min-h-[calc(100vh-4rem)]':
+            !fullscreen
+        })}
       >
         {content}
       </div>

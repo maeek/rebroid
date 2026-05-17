@@ -9,6 +9,7 @@ import {
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
+import { Visible } from '@/components/ui/visible'
 import { AppIcon } from '../app-icon'
 import { useAppsListContext } from './apps-list-context'
 import { getAppStatusLabel, isAppBusy } from './apps-list.utils'
@@ -36,18 +37,22 @@ export const AppsListItem = ({ app }: { app: AppDefinition }) => {
                 data-selected={isSelected}
                 aria-hidden='true'
               >
-                {isSelected && <IconCheck className='size-4' />}
+                <Visible when={isSelected}>
+                  <IconCheck className='size-4' />
+                </Visible>
               </span>
-              {app.running && (
+              <Visible when={app.running}>
                 <>
                   <div className='absolute top-2 right-2 rounded-2xl size-4 bg-primary/95 z-10' />
                   <div className='absolute top-2 right-2 rounded-2xl size-4 bg-primary z-10 animate-ping duration-[2s]' />
                 </>
-              )}
-              {app.status === 'error' && (
+              </Visible>
+              <Visible when={app.status === 'error'}>
                 <IconAlertTriangle className='absolute top-1 right-1 size-5 text-destructive z-10' />
-              )}
-              {busy && <IconLoader2 className='absolute top-1 right-1 size-5 text-primary z-10 animate-spin' />}
+              </Visible>
+              <Visible when={busy}>
+                <IconLoader2 className='absolute top-1 right-1 size-5 text-primary z-10 animate-spin' />
+              </Visible>
               <AppIcon
                 appId={app.id}
                 appName={app.name}
@@ -69,16 +74,18 @@ export const AppsListItem = ({ app }: { app: AppDefinition }) => {
           <Link href={`/app/${app.id}`}>
             <div className='flex flex-col items-center justify-center cursor-pointer gap-2 overflow-hidden p-2'>
               <div className='relative size-24 hover:saturate-150 transition-all hover:scale-95'>
-                {app.running && (
+                <Visible when={app.running}>
                   <>
                     <div className='absolute top-2 right-2 rounded-2xl size-4 bg-primary/95 z-10' />
                     <div className='absolute top-2 right-2 rounded-2xl size-4 bg-primary z-10 animate-ping duration-[2s]' />
                   </>
-                )}
-                {app.status === 'error' && (
+                </Visible>
+                <Visible when={app.status === 'error'}>
                   <IconAlertTriangle className='absolute top-1 right-1 size-5 text-destructive z-10' />
-                )}
-                {busy && <IconLoader2 className='absolute top-1 right-1 size-5 text-primary z-10 animate-spin' />}
+                </Visible>
+                <Visible when={busy}>
+                  <IconLoader2 className='absolute top-1 right-1 size-5 text-primary z-10 animate-spin' />
+                </Visible>
                 <AppIcon
                   appId={app.id}
                   appName={app.name}

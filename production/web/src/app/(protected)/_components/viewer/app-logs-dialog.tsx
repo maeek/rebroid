@@ -13,10 +13,11 @@ import {
 } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { Visible } from '@/components/ui/visible'
 import { toast } from '@/hooks/use-toast'
-import { getApplicationLogsAction } from '@/lib/orchestrator/actions'
+import { getApplicationLogsAction } from '@/server/orchestrator/applications/read-actions'
 import type { AppDefinition } from '@/app/(protected)/(standard)/constants'
-import type { ApplicationLog } from '@/lib/orchestrator/types'
+import type { ApplicationLog } from '@/server/orchestrator/applications/types'
 
 type AppLogsDialogProps = {
   app?: AppDefinition
@@ -142,7 +143,11 @@ export const AppLogsDialog = ({ app, triggerClassName }: AppLogsDialogProps) => 
         <pre className='min-h-72 flex-1 overflow-auto rounded-md border border-border/60 bg-background/65 p-4 font-mono text-xs leading-5 text-secondary-foreground'>
           {log?.output || 'Refresh logs to inspect container startup failures or Android logcat output.'}
         </pre>
-        {log && <p className='text-xs text-muted-foreground'>Collected {new Date(log.collectedAt).toLocaleString()}</p>}
+        <Visible when={log}>
+          <p className='text-xs text-muted-foreground'>
+            Collected {log?.collectedAt ? new Date(log.collectedAt).toLocaleString() : ''}
+          </p>
+        </Visible>
       </DialogContent>
     </Dialog>
   )

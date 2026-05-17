@@ -1,5 +1,5 @@
 import { AppDefinition } from '@/app/(protected)/(standard)/constants'
-import { getStoredAppIcon } from './store'
+import { getStoredAppIcon } from '@/server/app-icons/store'
 
 export const withStoredAppIcon = async (app: AppDefinition): Promise<AppDefinition> => ({
   ...app,

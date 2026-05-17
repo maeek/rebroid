@@ -1,4 +1,5 @@
 import { SVGProps } from 'react'
+import { Visible } from '@/components/ui/visible'
 
 const androidViewBoxWidth = 380
 const androidViewBoxHeight = 830
@@ -54,7 +55,7 @@ export default function Android({ width, height, children, ...props }: AndroidPr
         r='4'
         className='fill-[#E5E5E5] dark:fill-[#404040]'
       />
-      {children && (
+      <Visible when={children}>
         <foreignObject
           width='380'
           height='820'
@@ -63,7 +64,7 @@ export default function Android({ width, height, children, ...props }: AndroidPr
         >
           {children}
         </foreignObject>
-      )}
+      </Visible>
       <defs>
         <clipPath id='clip0_514_20855'>
           <rect

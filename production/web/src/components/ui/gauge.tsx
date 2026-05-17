@@ -1,3 +1,4 @@
+import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -47,7 +48,7 @@ export function GaugeCircle({
         strokeWidth='2'
         viewBox='0 0 100 100'
       >
-        {currentPercent <= 90 && currentPercent >= 0 && (
+        <Visible when={currentPercent <= 90 && currentPercent >= 0}>
           <circle
             cx='50'
             cy='50'
@@ -70,7 +71,7 @@ export function GaugeCircle({
               } as React.CSSProperties
             }
           />
-        )}
+        </Visible>
         <circle
           cx='50'
           cy='50'

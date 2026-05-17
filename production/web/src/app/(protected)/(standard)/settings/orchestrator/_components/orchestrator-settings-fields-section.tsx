@@ -1,7 +1,7 @@
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { getOrchestratorBaseUrl } from '@/lib/orchestrator/client'
+import { getOrchestratorBaseUrl } from '@/lib/orchestrator/config'
 import { Setting } from '../../../../_components/settings/setting'
 import type { OrchestratorUiSettings } from '@/lib/orchestrator/ui-settings'
 

@@ -1,17 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { useForegroundRefresh } from '@/hooks/use-foreground-refresh'
 import { toast } from '@/hooks/use-toast'
-import { removeAppIconAction } from '@/lib/app-icons/actions'
-import {
-  deleteApplicationAction,
-  listApplicationsAction,
-  startApplicationAction,
-  stopApplicationAction
-} from '@/lib/orchestrator/actions'
 import { mapAndroidApplicationToAppDefinition } from '@/lib/orchestrator/app-mapper'
 import { getAppsRefreshIntervalMs } from '@/lib/orchestrator/refresh'
 import { useOrchestratorUiSettings } from '@/lib/orchestrator/settings'
 import { forgetRecentApp } from '@/lib/recent-apps'
+import { removeAppIconAction } from '@/server/app-icons/actions/remove-app-icon-action'
+import {
+  deleteApplicationAction,
+  startApplicationAction,
+  stopApplicationAction
+} from '@/server/orchestrator/applications/mutation-actions'
+import { listApplicationsAction } from '@/server/orchestrator/applications/read-actions'
 import type { AppsListContextValue, BulkAction } from './apps-list-context'
 import type { AppDefinition } from '@/app/(protected)/(standard)/constants'
 import type { OrchestratorUiSettings } from '@/lib/orchestrator/settings'

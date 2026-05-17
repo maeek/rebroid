@@ -5,19 +5,20 @@ import { useRouter } from 'next/navigation'
 import { useTopLoader } from 'nextjs-toploader'
 import { PageBreadcrumbs } from '@/app/(protected)/_components/page-breadcrumbs'
 import { Button } from '@/components/ui/button'
+import { Visible } from '@/components/ui/visible'
 import { toast } from '@/hooks/use-toast'
 import { uploadApkWithProgress } from '@/lib/apks/upload'
-import { setAppIconAction } from '@/lib/app-icons/actions'
-import { createApplicationAction } from '@/lib/orchestrator/actions'
 import { optimizeIconFile } from '@/lib/orchestrator/icon-metadata'
 import { apkSizeLabel, isFileWithinApkLimit, useOrchestratorUiSettings } from '@/lib/orchestrator/settings'
+import { setAppIconAction } from '@/server/app-icons/actions/set-app-icon-action'
+import { createApplicationAction } from '@/server/orchestrator/applications/mutation-actions'
 import { CreateAppDeviceSection } from './create-app-device-section'
 import { CreateAppGeneralSection } from './create-app-general-section'
 import { CreateAppIconSection } from './create-app-icon-section'
 import { CreateAppResourcesSection } from './create-app-resources-section'
 import type { CreateAppFormValues } from './create-app-form.types'
 import type { OrchestratorUiSettings } from '@/lib/orchestrator/settings'
-import type { UploadedApk } from '@/lib/orchestrator/types'
+import type { UploadedApk } from '@/server/orchestrator/applications/types'
 
 const getInitialFormValues = (settings: OrchestratorUiSettings): CreateAppFormValues => ({
   name: '',
@@ -170,18 +171,18 @@ export const CreateAppForm = ({ initialSettings }: { initialSettings: Orchestrat
       <div className='flex gap-2 flex-col'>
         <PageBreadcrumbs items={[{ label: 'Apps', href: '/apps' }, { label: `Create ${formValues.name.trim()}` }]} />
       </div>
-      {iconPreview && (
+      <Visible when={iconPreview}>
         <div
           aria-hidden='true'
           className='w-screen h-screen bg-primary/80 blur-3xl fixed top-0 left-0 -z-10 pointer-events-none'
           style={{
-            backgroundImage: `url("${iconPreview}")`,
+            backgroundImage: iconPreview ? `url("${iconPreview}")` : undefined,
             backgroundSize: '1000% 1000%',
             backgroundPosition: 'top left',
             opacity: 0.05
           }}
         />
-      )}
+      </Visible>
       <form
         className='grid w-full grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)] items-start gap-6 pt-2 pb-24 max-lg:grid-cols-1'
         onSubmit={event => void handleSubmit(event)}

@@ -1,29 +1,22 @@
 import { IconApps, IconLibraryPlusFilled, IconAdjustments, IconBrandDocker, IconServerSpark } from '@tabler/icons-react'
-import type { AndroidApplicationStatusDetail } from '@/lib/orchestrator/types'
+import type {
+  AndroidApplicationError,
+  AndroidApplicationLifecycleStage,
+  AndroidApplicationStatus,
+  AndroidApplicationStatusDetail,
+  AndroidImagePullProgress,
+  AndroidNetworkPolicyResult,
+  ApplicationProfileMode,
+  ScrcpyTransport
+} from '@/server/orchestrator/applications/types'
 
 export interface AppDefinition {
   id: string
   name: string
   icon: string | null
   running: boolean
-  status: 'provisioning' | 'running' | 'stopped' | 'error' | 'removing' | 'removed'
-  lifecycleStage:
-    | 'queued'
-    | 'image_checking'
-    | 'image_pulling'
-    | 'volume_creating'
-    | 'network_creating'
-    | 'orchestrator_network_connecting'
-    | 'container_creating'
-    | 'container_starting'
-    | 'android_booting'
-    | 'apk_installing'
-    | 'ready'
-    | 'stopping'
-    | 'stopped'
-    | 'removing'
-    | 'removed'
-    | 'error'
+  status: AndroidApplicationStatus
+  lifecycleStage: AndroidApplicationLifecycleStage
   statusMessage: string | null
   statusDetail: AndroidApplicationStatusDetail | null
   ownerUserId: string | null
@@ -32,7 +25,6 @@ export interface AppDefinition {
   containerId: string | null
   networkName: string
   volumeName: string
-  profileMode: 'persistent' | 'temporary'
   profileName: string | null
   memoryLimitMb: number | null
   cpuLimitCpus: number | null
@@ -43,24 +35,12 @@ export interface AppDefinition {
   networkPolicyAllowCidrs: string[]
   networkPolicyStatus: string | null
   networkPolicyMessage: string | null
-  networkPolicyResult: {
-    status: 'applied' | 'skipped' | 'error'
-    code:
-      | 'applied'
-      | 'apply_failed'
-      | 'container_ip_unavailable'
-      | 'container_not_created'
-      | 'iptables_disabled'
-      | 'policy_disabled'
-      | 'unknown'
-    message: string
-    hint: string | null
-  } | null
+  networkPolicyResult: AndroidNetworkPolicyResult | null
   networkPolicyAppliedAt: Date | null
   apkOriginalName: string | null
   apkFilePath: string | null
   uploadedApkId: string | null
-  scrcpyTransport: 'websocket'
+  scrcpyTransport: ScrcpyTransport
   adbPort: number
   inactivityTimeoutSeconds: number
   lastError: string | null
@@ -70,21 +50,8 @@ export interface AppDefinition {
   provisioningCompletedAt?: Date
   createdAt: Date
   updatedAt: Date
-  imagePullProgress: {
-    status: string
-    current: string
-    total: string
-    layerId: string | null
-    percent: number
-  } | null
-  applicationError: {
-    code: 'container_command_failed' | 'container_exited' | 'container_missing' | 'startup_command_finished' | 'unknown'
-    phase: 'provisioning' | 'runtime' | 'unknown'
-    message: string
-    retryable: boolean
-    exitCode: number | null
-    hint: string | null
-  } | null
+  imagePullProgress: AndroidImagePullProgress | null
+  applicationError: AndroidApplicationError | null
   apk: {
     version: string
     newVersion?: string
@@ -97,6 +64,7 @@ export interface AppDefinition {
     version: string
     arguments?: string
   }
+  profileMode: ApplicationProfileMode
 }
 
 export const yourApps = [] as AppDefinition[]

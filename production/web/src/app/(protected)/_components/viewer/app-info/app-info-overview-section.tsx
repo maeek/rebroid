@@ -1,6 +1,7 @@
 import { ImagePullProgress } from '@/app/(protected)/_components/viewer/image-pull-progress'
 import { Badge } from '@/components/ui/badge'
 import { Section } from '@/components/ui/section'
+import { Visible } from '@/components/ui/visible'
 import { AppInfoRow } from './app-info-row'
 import type { AppDefinition } from '@/app/(protected)/(standard)/constants'
 
@@ -35,14 +36,14 @@ export const AppInfoOverviewSection = ({ app }: { app?: AppDefinition }) => {
               >
                 {app.status}
               </Badge>
-              {shouldShowLifecycleBadge && lifecycleLabel && (
+              <Visible when={shouldShowLifecycleBadge && lifecycleLabel}>
                 <Badge
                   variant='secondary'
                   className='capitalize'
                 >
                   {lifecycleLabel}
                 </Badge>
-              )}
+              </Visible>
             </div>
           ) : (
             'Loading...'

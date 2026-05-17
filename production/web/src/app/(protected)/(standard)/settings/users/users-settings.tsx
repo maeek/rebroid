@@ -20,7 +20,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from '@/hooks/use-toast'
-import { createUserAction, deleteUserAction, resetUserPasswordAction, setUserDisabledAction } from '@/lib/users/actions'
+import { createUserAction } from '@/server/users/actions/create-user-action'
+import { deleteUserAction } from '@/server/users/actions/delete-user-action'
+import { resetUserPasswordAction } from '@/server/users/actions/reset-user-password-action'
+import { setUserDisabledAction } from '@/server/users/actions/set-user-disabled-action'
 import type { PublicUser, UserRole } from '@/server/auth/user'
 
 type PasswordDrafts = Record<string, string>

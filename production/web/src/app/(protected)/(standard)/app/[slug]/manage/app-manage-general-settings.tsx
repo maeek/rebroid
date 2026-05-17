@@ -7,12 +7,13 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
+import { Visible } from '@/components/ui/visible'
 import { toast } from '@/hooks/use-toast'
 import { uploadApkWithProgress } from '@/lib/apks/upload'
-import { updateApkAction } from '@/lib/orchestrator/actions'
 import { apkSizeLabel, isFileWithinApkLimit, useOrchestratorUiSettings } from '@/lib/orchestrator/settings'
+import { updateApkAction } from '@/server/orchestrator/applications/mutation-actions'
 import type { AppDefinition } from '@/app/(protected)/(standard)/constants'
-import type { AndroidApplicationStatusDetail } from '@/lib/orchestrator/types'
+import type { AndroidApplicationStatusDetail } from '@/server/orchestrator/applications/types'
 
 type AppManageGeneralSettingsProps = {
   app?: AppDefinition
@@ -109,16 +110,18 @@ export const AppManageGeneralSettings = ({ app, appId, appName, onAppNameChange 
           >
             {statusLabel}
           </Badge>
-          {shouldShowLifecycleBadge && (
+          <Visible when={shouldShowLifecycleBadge}>
             <Badge
               className='capitalize'
               variant='secondary'
             >
               {lifecycleLabel}
             </Badge>
-          )}
+          </Visible>
         </div>
-        {statusDescription && <p className='mt-2 text-sm text-secondary-foreground'>{statusDescription}</p>}
+        <Visible when={statusDescription}>
+          <p className='mt-2 text-sm text-secondary-foreground'>{statusDescription}</p>
+        </Visible>
       </Setting>
       <Setting
         label='APK'

@@ -1,5 +1,6 @@
 import { IconCheck, IconPlayerStopFilled, IconTrash, IconX } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { Visible } from '@/components/ui/visible'
 import { useAppsListContext } from './apps-list-context'
 import { AppsListTitle } from './apps-list-title'
 
@@ -67,7 +68,7 @@ export const AppsListHeader = () => {
           </Button>
         )}
       </div>
-      {isManaging && (
+      <Visible when={isManaging}>
         <div className='mx-6 mb-3 flex items-center justify-between gap-3 rounded-lg border border-input bg-card/40 px-4 py-3 text-sm max-sm:mx-4 max-sm:flex-col max-sm:items-start'>
           <span className='text-secondary-foreground'>
             {selectionCount} selected. Choose apps, then run a bulk action.
@@ -76,7 +77,7 @@ export const AppsListHeader = () => {
             Stop targets: {stoppableSelectedCount} - Delete targets: {deletableSelectedCount}
           </span>
         </div>
-      )}
+      </Visible>
     </>
   )
 }

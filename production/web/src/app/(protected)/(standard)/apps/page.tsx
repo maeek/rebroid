@@ -1,9 +1,9 @@
 import { ProtectedStackPageLayout } from '@/app/(protected)/_components/protected-page-shell'
 import { withStoredAppIcons } from '@/lib/app-icons/enrich'
 import { mapAndroidApplicationToAppDefinition } from '@/lib/orchestrator/app-mapper'
-import { orchestratorApi } from '@/lib/orchestrator/client'
-import { getCurrentUserContext } from '@/lib/orchestrator/current-owner'
-import { getServerOrchestratorUiSettings } from '@/lib/orchestrator/server-settings'
+import { orchestratorApplicationsClient } from '@/server/orchestrator/applications/client'
+import { getCurrentUserContext } from '@/server/orchestrator/current-user'
+import { getServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
 import { AppsList } from '../../_components/apps/apps-list'
 
 export default async function Apps() {
@@ -11,7 +11,7 @@ export default async function Apps() {
   const user = await getCurrentUserContext()
   const ownerUserId = user.role === 'admin' ? undefined : user.ownerUserId
   let orchestratorError: string | null = null
-  const apps = await orchestratorApi
+  const apps = await orchestratorApplicationsClient
     .listApplications(ownerUserId)
     .then(items => items.map(mapAndroidApplicationToAppDefinition))
     .then(withStoredAppIcons)

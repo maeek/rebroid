@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Switch } from '@/components/ui/switch'
+import { Visible } from '@/components/ui/visible'
 
 type CreateAppIconSectionProps = {
   appName: string
@@ -74,7 +75,7 @@ export const CreateAppIconSection = ({
             accept='image/*'
             onChange={event => onIconChange(event)}
           />
-          {iconPreview && (
+          <Visible when={iconPreview}>
             <Button
               type='button'
               variant='outline'
@@ -84,7 +85,7 @@ export const CreateAppIconSection = ({
               <IconX className='size-4' />
               Clear icon
             </Button>
-          )}
+          </Visible>
         </div>
       </div>
     </Section>

@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
+import { Visible } from '@/components/ui/visible'
 import { useAppsListContext } from './apps-list-context'
 
 export const AppsListBulkDialog = () => {
@@ -58,7 +59,9 @@ export const AppsListBulkDialog = () => {
             disabled={isBulkWorking || activeBulkApps.length === 0}
             onClick={() => void confirmBulkAction()}
           >
-            {isBulkWorking && <IconLoader2 className='size-4 animate-spin' />}
+            <Visible when={isBulkWorking}>
+              <IconLoader2 className='size-4 animate-spin' />
+            </Visible>
             {bulkAction === 'stop' ? 'Stop apps' : 'Delete apps'}
           </Button>
         </DialogFooter>

@@ -1,5 +1,5 @@
-import { getServerOrchestratorUiSettings } from '@/lib/orchestrator/server-settings'
 import { requireAdmin } from '@/server/auth/authorization'
+import { getServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
 import { OrchestratorSettingsForm } from './orchestrator-settings-form'
 
 export default async function OrchestratorSettingsPage() {

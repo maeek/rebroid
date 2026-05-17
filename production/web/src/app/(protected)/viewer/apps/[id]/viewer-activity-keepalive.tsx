@@ -2,7 +2,7 @@
 
 import { startTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { recordViewerActivityAction } from '@/lib/orchestrator/actions'
+import { recordViewerActivityAction } from '@/server/orchestrator/applications/read-actions'
 
 const keepaliveIntervalMs = 30_000
 

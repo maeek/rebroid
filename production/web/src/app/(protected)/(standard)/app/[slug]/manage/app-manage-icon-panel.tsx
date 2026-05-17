@@ -4,9 +4,20 @@ import { AppIcon } from '@/app/(protected)/_components/apps/app-icon'
 import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
 import { toast } from '@/hooks/use-toast'
-import { setAppIconAction } from '@/lib/app-icons/actions'
 import { optimizeIconFile } from '@/lib/orchestrator/icon-metadata'
 import { apkSizeLabel, isFileWithinApkLimit, useOrchestratorUiSettings } from '@/lib/orchestrator/settings'
+import { removeAppIconAction } from '@/server/app-icons/actions/remove-app-icon-action'
+import { setAppIconAction } from '@/server/app-icons/actions/set-app-icon-action'
+
+const recentAppsStorageKey = 'sma_recent_apps'
+const recentAppsUpdatedEvent = 'sma-recent-apps-updated'
+
+type RecentApp = {
+  id: string
+  name: string
+  icon?: string | null
+  openedAt: number
+}
 
 type AppManageIconPanelProps = {
   appId: string
@@ -19,6 +30,32 @@ export const AppManageIconPanel = ({ appId, appName, icon, onIconChange }: AppMa
   const [isUploadingIcon, setIsUploadingIcon] = useState(false)
   const iconInputRef = useRef<HTMLInputElement>(null)
   const settings = useOrchestratorUiSettings()
+
+  const syncSidebarRecentApp = (nextIcon: string | null) => {
+    try {
+      const raw = window.localStorage.getItem(recentAppsStorageKey)
+      const currentApps = raw ? (JSON.parse(raw) as RecentApp[]) : []
+      let didUpdate = false
+
+      const nextApps = currentApps.map(app => {
+        if (app.id !== appId) {
+          return app
+        }
+
+        didUpdate = true
+        return { ...app, name: appName, icon: nextIcon }
+      })
+
+      if (!didUpdate) {
+        return
+      }
+
+      window.localStorage.setItem(recentAppsStorageKey, JSON.stringify(nextApps))
+      window.dispatchEvent(new CustomEvent(recentAppsUpdatedEvent, { detail: nextApps }))
+    } catch {
+      // Keep the local UI responsive even if recent-app metadata cannot be updated.
+    }
+  }
 
   const handleIconUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -38,6 +75,7 @@ export const AppManageIconPanel = ({ appId, appName, icon, onIconChange }: AppMa
     try {
       const optimizedIcon = await optimizeIconFile(file)
       await setAppIconAction(appId, optimizedIcon)
+      syncSidebarRecentApp(optimizedIcon)
       onIconChange(optimizedIcon, true)
       toast({ title: 'Icon updated' })
     } catch (error) {
@@ -52,11 +90,26 @@ export const AppManageIconPanel = ({ appId, appName, icon, onIconChange }: AppMa
     }
   }
 
-  const handleClearIcon = () => {
+  const handleClearIcon = async () => {
     if (iconInputRef.current) {
       iconInputRef.current.value = ''
     }
-    onIconChange(null, true)
+
+    setIsUploadingIcon(true)
+    try {
+      await removeAppIconAction(appId)
+      syncSidebarRecentApp(null)
+      onIconChange(null, true)
+      toast({ title: 'Icon cleared' })
+    } catch (error) {
+      toast({
+        title: 'Could not clear icon',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsUploadingIcon(false)
+    }
   }
 
   return (
@@ -97,7 +150,7 @@ export const AppManageIconPanel = ({ appId, appName, icon, onIconChange }: AppMa
             variant='secondary'
             className='flex-1'
             disabled={isUploadingIcon}
-            onClick={handleClearIcon}
+            onClick={() => void handleClearIcon()}
           >
             <IconX className='size-4' />
             Clear icon

@@ -4,14 +4,15 @@ import { PageBreadcrumbs } from '@/app/(protected)/_components/page-breadcrumbs'
 import { ProtectedStackPageLayout } from '@/app/(protected)/_components/protected-page-shell'
 import { StatusSplash } from '@/app/(protected)/_components/status-splash'
 import { Section } from '@/components/ui/section'
-import { getSystemResourcesAction } from '@/lib/orchestrator/actions'
+import { Visible } from '@/components/ui/visible'
+import { getSystemResourcesAction } from '@/server/orchestrator/diagnostics/actions'
 import { SystemChart } from './_components/chart'
 import { DetailsTable } from './_components/details-table'
 import { ManagedContainerDetailsTable } from './_components/managed-container-details-table'
 import { MemoryChart } from './_components/memory-chart'
 import { OrchestratorResources } from './_components/orchestrator-resources'
-import type { SystemResources } from '@/lib/orchestrator/types'
 import type { SystemStats } from '@/lib/system/system-stats'
+import type { SystemResources } from '@/server/orchestrator/diagnostics/types'
 
 export default function SystemPage() {
   const [resources, setResources] = useState<SystemResources>()
@@ -131,13 +132,13 @@ export default function SystemPage() {
             )}
           </Section>
         </div>
-        {!resourcesError && (
+        <Visible when={!resourcesError}>
           <OrchestratorResources
             resources={resources}
             isRefreshing={isRefreshingResources}
             onRefresh={refreshResources}
           />
-        )}
+        </Visible>
         <div className='grid gap-6 xl:grid-cols-[minmax(20rem,24rem)_minmax(0,1fr)]'>
           <Section
             title='Host memory'

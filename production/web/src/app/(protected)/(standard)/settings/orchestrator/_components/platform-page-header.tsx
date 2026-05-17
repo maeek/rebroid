@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { PageBreadcrumbs } from '@/app/(protected)/_components/page-breadcrumbs'
+import { Visible } from '@/components/ui/visible'
 
 export const PlatformPageHeader = ({
   title,
@@ -26,7 +27,9 @@ export const PlatformPageHeader = ({
         />
         <div className='flex flex-col gap-2 pt-4'>
           <h2 className='text-3xl font-medium max-sm:text-xl'>{title}</h2>
-          {description && <p className='max-w-3xl text-sm text-secondary-foreground'>{description}</p>}
+          <Visible when={description}>
+            <p className='max-w-3xl text-sm text-secondary-foreground'>{description}</p>
+          </Visible>
         </div>
       </div>
       {actions}

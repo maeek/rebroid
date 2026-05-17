@@ -77,7 +77,9 @@ export const NetworkAccessInput = ({
       <div
         className={cn(
           'flex min-h-11 w-full flex-wrap items-center gap-2 rounded-md border border-input bg-input dark:bg-white/5 px-3 py-2',
-          (disabled || isBusy) && 'cursor-not-allowed opacity-60'
+          {
+            'cursor-not-allowed opacity-60': disabled || isBusy
+          }
         )}
       >
         {cidrs.map(cidr => (

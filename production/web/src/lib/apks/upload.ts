@@ -1,4 +1,4 @@
-import type { UploadedApk } from '@/lib/orchestrator/types'
+import type { UploadedApk } from '@/server/orchestrator/applications/types'
 
 type UploadApkOptions = {
   file: File

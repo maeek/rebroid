@@ -1,6 +1,6 @@
 'use client'
 
-import type { SystemResources } from '@/lib/orchestrator/types'
+import type { SystemResources } from '@/server/orchestrator/diagnostics/types'
 
 const formatBytes = (bytes: number) => {
   if (bytes === 0) return '0 B'

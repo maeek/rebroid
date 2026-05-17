@@ -13,14 +13,15 @@ import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
 import { toast } from '@/hooks/use-toast'
 import {
-  cleanupUploadedApksAction,
   pruneAllDockerResourcesAction,
   pruneContainersAction,
   pruneImagesAction,
   pruneNetworksAction,
   pruneVolumesAction
-} from '@/lib/orchestrator/actions'
-import type { CleanupUploadedApksResponse, DockerPruneResponse } from '@/lib/orchestrator/types'
+} from '@/server/orchestrator/docker-maintenance/actions'
+import { cleanupUploadedApksAction } from '@/server/orchestrator/settings/actions'
+import type { DockerPruneResponse } from '@/server/orchestrator/docker-maintenance/types'
+import type { CleanupUploadedApksResponse } from '@/server/orchestrator/settings/types'
 
 const formatBytes = (bytes?: number) => {
   if (!bytes) {
@@ -62,7 +63,7 @@ const MaintenanceActionCard = ({
   onClick: () => void
 }) => {
   return (
-    <div className='flex w-full items-center justify-between gap-4 rounded-lg border border-border/70 bg-secondary/55 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]'>
+    <div className='flex w-full items-center justify-between gap-4 rounded-lg border border-border/70 bg-secondary/55 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] max-sm:flex-col max-sm:items-stretch'>
       <div className='flex min-w-0 items-start gap-3'>
         <div className='rounded-md bg-destructive/10 p-2 text-destructive'>{icon}</div>
         <div className='flex flex-col gap-1'>

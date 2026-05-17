@@ -1,8 +1,9 @@
 import { Setting } from '@/app/(protected)/_components/settings/setting'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
+import { Visible } from '@/components/ui/visible'
 import type { CreateAppFormValues } from './create-app-form.types'
-import type { UploadedApk } from '@/lib/orchestrator/types'
+import type { UploadedApk } from '@/server/orchestrator/applications/types'
 
 type CreateAppGeneralSectionProps = {
   values: CreateAppFormValues
@@ -54,11 +55,11 @@ export const CreateAppGeneralSection = ({
             disabled={isUploadingApk}
             onChange={event => onApkSelect(event.target.files?.[0] ?? null)}
           />
-          {uploadedApk && (
+          <Visible when={uploadedApk}>
             <p className='text-sm text-secondary-foreground'>
-              Uploaded {uploadedApk.originalName} · {(uploadedApk.sizeBytes / 1024 / 1024).toFixed(2)} MB
+              Uploaded {uploadedApk?.originalName ?? ''} · {((uploadedApk?.sizeBytes ?? 0) / 1024 / 1024).toFixed(2)} MB
             </p>
-          )}
+          </Visible>
         </div>
       </Setting>
     </Section>

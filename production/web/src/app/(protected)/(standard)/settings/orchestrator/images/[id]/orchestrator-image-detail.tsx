@@ -18,7 +18,7 @@ import {
 import { Section } from '@/components/ui/section'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from '@/hooks/use-toast'
-import { removePlatformImageAction } from '@/lib/orchestrator/actions'
+import { removePlatformImageAction } from '@/server/orchestrator/platform/actions'
 import { ContainerStateBadge } from '../../_components/orchestrator-containers-table-parts'
 import {
   PlatformDetailRow,
@@ -26,7 +26,7 @@ import {
   formatPlatformBytes,
   formatPlatformDate
 } from '../../_components/platform-detail-parts'
-import type { PlatformImageDetails } from '@/lib/orchestrator/types'
+import type { PlatformImageDetails } from '@/server/orchestrator/platform/types'
 
 export const OrchestratorImageDetail = ({ details }: { details: PlatformImageDetails }) => {
   const router = useRouter()

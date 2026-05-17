@@ -1,6 +1,7 @@
 import { IconDeviceFloppy, IconRotateClockwise } from '@tabler/icons-react'
 import { PageBreadcrumbs } from '@/app/(protected)/_components/page-breadcrumbs'
 import { Button } from '@/components/ui/button'
+import { Visible } from '@/components/ui/visible'
 
 export const OrchestratorSettingsHeader = ({
   isSaving,
@@ -23,7 +24,7 @@ export const OrchestratorSettingsHeader = ({
           />
           <h2 className='pt-4 text-3xl font-medium max-sm:text-xl'>Orchestrator</h2>
         </div>
-        {showActions && (
+        <Visible when={showActions}>
           <div className='flex gap-2 max-sm:w-full'>
             <Button
               variant='secondary'
@@ -41,7 +42,7 @@ export const OrchestratorSettingsHeader = ({
               Save
             </Button>
           </div>
-        )}
+        </Visible>
       </div>
     </section>
   )

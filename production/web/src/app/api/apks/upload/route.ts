@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { orchestratorApi } from '@/lib/orchestrator/client'
-import { getCurrentOwnerUserId } from '@/lib/orchestrator/current-owner'
+import { orchestratorApplicationsClient } from '@/server/orchestrator/applications/client'
+import { getCurrentOwnerUserId } from '@/server/orchestrator/current-user'
 
 export const POST = async (request: NextRequest) => {
   let ownerUserId: string
@@ -17,6 +17,6 @@ export const POST = async (request: NextRequest) => {
   }
 
   body.set('ownerUserId', ownerUserId)
-  const uploaded = await orchestratorApi.uploadApk(body)
+  const uploaded = await orchestratorApplicationsClient.uploadApk(body)
   return NextResponse.json(uploaded)
 }

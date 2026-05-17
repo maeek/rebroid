@@ -1,34 +1,37 @@
 'use client'
 
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment */
+
 import { useEffect, useState } from 'react'
-import { getWebSettingsAction, resetWebSettingsAction, saveWebSettingsAction } from '../web-settings/actions'
 import {
   getOrchestratorSettingsAction,
   resetOrchestratorSettingsAction,
   updateOrchestratorSettingsAction
-} from './actions'
+} from '@/server/orchestrator/settings/actions'
+import { getWebSettingsAction } from '@/server/web-settings/actions/get-web-settings-action'
+import { resetWebSettingsAction } from '@/server/web-settings/actions/reset-web-settings-action'
+import { saveWebSettingsAction } from '@/server/web-settings/actions/save-web-settings-action'
 import {
   defaultOrchestratorUiSettings,
   defaultRuntimeSettingsResponse,
   defaultWebSettingsResponse,
   normalizeOrchestratorUiSettings
 } from './ui-settings'
-import type {
-  GeneralUiSettings,
-  OrchestratorSettingsResponse,
-  OrchestratorUiSettings,
-  RuntimeUiSettings,
-  WebSettingsResponse
-} from './ui-settings'
+import type { GeneralUiSettings, OrchestratorUiSettings, RuntimeUiSettings } from './ui-settings'
+import type { OrchestratorSettingsResponse } from '@/server/orchestrator/settings/types'
+import type { WebSettings as WebSettingsResponse } from '@/server/web-settings/types'
 
 export { defaultOrchestratorUiSettings } from './ui-settings'
-export type {
-  GeneralUiSettings,
-  OrchestratorSettingsResponse,
-  OrchestratorUiSettings,
-  RuntimeUiSettings,
-  WebSettingsResponse
-} from './ui-settings'
+export type { GeneralUiSettings, OrchestratorUiSettings, RuntimeUiSettings } from './ui-settings'
+export type { OrchestratorSettingsResponse } from '@/server/orchestrator/settings/types'
+export type { WebSettings as WebSettingsResponse } from '@/server/web-settings/types'
+
+const getWebSettings = getWebSettingsAction
+const resetWebSettings = resetWebSettingsAction
+const saveWebSettings = saveWebSettingsAction
+const getOrchestratorSettings = getOrchestratorSettingsAction
+const resetOrchestratorSettings = resetOrchestratorSettingsAction
+const updateOrchestratorSettings = updateOrchestratorSettingsAction
 
 const maxApkCookieName = 'sma_max_apk_size_mb'
 
@@ -40,11 +43,31 @@ const dispatchSettingsUpdated = (settings: OrchestratorUiSettings) => {
   window.dispatchEvent(new CustomEvent('orchestrator-settings-updated', { detail: settings }))
 }
 
-const loadWebSettings = async (): Promise<WebSettingsResponse> =>
-  getWebSettingsAction().catch(() => defaultWebSettingsResponse)
+const loadWebSettings = async (): Promise<WebSettingsResponse> => {
+  try {
+    return await getWebSettings()
+  } catch {
+    return defaultWebSettingsResponse
+  }
+}
 
-const loadRuntimeSettings = async (): Promise<OrchestratorSettingsResponse> =>
-  getOrchestratorSettingsAction().catch(() => defaultRuntimeSettingsResponse)
+const saveGeneralWebSettings = async (settings: GeneralUiSettings): Promise<WebSettingsResponse> =>
+  await saveWebSettings(settings)
+
+const resetGeneralWebSettings = async (): Promise<WebSettingsResponse> => await resetWebSettings()
+
+const loadRuntimeSettings = async (): Promise<OrchestratorSettingsResponse> => {
+  try {
+    return await getOrchestratorSettings()
+  } catch {
+    return defaultRuntimeSettingsResponse
+  }
+}
+
+const saveRuntimeSettings = async (settings: RuntimeUiSettings): Promise<OrchestratorSettingsResponse> =>
+  await updateOrchestratorSettings(settings)
+
+const resetRuntimeSettings = async (): Promise<OrchestratorSettingsResponse> => await resetOrchestratorSettings()
 
 const mergeSettings = (web: Partial<WebSettingsResponse>, orchestrator: Partial<OrchestratorSettingsResponse>) => {
   const settings = normalizeOrchestratorUiSettings(web, orchestrator)
@@ -53,46 +76,44 @@ const mergeSettings = (web: Partial<WebSettingsResponse>, orchestrator: Partial<
 }
 
 export const getOrchestratorUiSettings = async (): Promise<OrchestratorUiSettings> => {
-  const [web, orchestrator] = await Promise.all([loadWebSettings(), loadRuntimeSettings()])
+  const web = await loadWebSettings()
+  const orchestrator = await loadRuntimeSettings()
   return mergeSettings(web, orchestrator)
 }
 
 export const saveGeneralUiSettings = async (settings: GeneralUiSettings): Promise<OrchestratorUiSettings> => {
-  const [web, orchestrator] = await Promise.all([saveWebSettingsAction(settings), loadRuntimeSettings()])
-
+  const web = await saveGeneralWebSettings(settings)
+  const orchestrator = await loadRuntimeSettings()
   const saved = mergeSettings(web, orchestrator)
   dispatchSettingsUpdated(saved)
   return saved
 }
 
 export const resetGeneralUiSettings = async (): Promise<OrchestratorUiSettings> => {
-  const [web, orchestrator] = await Promise.all([resetWebSettingsAction(), loadRuntimeSettings()])
-
+  const web = await resetGeneralWebSettings()
+  const orchestrator = await loadRuntimeSettings()
   const saved = mergeSettings(web, orchestrator)
   dispatchSettingsUpdated(saved)
   return saved
 }
 
 export const saveOrchestratorUiSettings = async (settings: RuntimeUiSettings): Promise<OrchestratorUiSettings> => {
-  const [web, orchestrator] = await Promise.all([
-    loadWebSettings(),
-    updateOrchestratorSettingsAction({
-      defaultContainerImage: settings.defaultContainerImage,
-      defaultInactivityTimeoutSeconds: settings.defaultInactivityTimeoutSeconds,
-      maxApkUploadSizeMb: settings.maxApkUploadSizeMb,
-      imagePruneIntervalHours: settings.imagePruneIntervalHours,
-      imagePruneDanglingOnly: settings.imagePruneDanglingOnly
-    })
-  ])
-
+  const web = await loadWebSettings()
+  const orchestrator = await saveRuntimeSettings({
+    defaultContainerImage: settings.defaultContainerImage,
+    defaultInactivityTimeoutSeconds: settings.defaultInactivityTimeoutSeconds,
+    maxApkUploadSizeMb: settings.maxApkUploadSizeMb,
+    imagePruneIntervalHours: settings.imagePruneIntervalHours,
+    imagePruneDanglingOnly: settings.imagePruneDanglingOnly
+  })
   const saved = mergeSettings(web, orchestrator)
   dispatchSettingsUpdated(saved)
   return saved
 }
 
 export const resetOrchestratorUiSettings = async (): Promise<OrchestratorUiSettings> => {
-  const [web, orchestrator] = await Promise.all([loadWebSettings(), resetOrchestratorSettingsAction()])
-
+  const web = await loadWebSettings()
+  const orchestrator = await resetRuntimeSettings()
   const saved = mergeSettings(web, orchestrator)
   dispatchSettingsUpdated(saved)
   return saved
@@ -111,12 +132,13 @@ export const useOrchestratorUiSettings = (
 
   useEffect(() => {
     if (shouldRefreshOnMount) {
-      void getOrchestratorUiSettings().then(setSettings)
+      void getOrchestratorUiSettings().then(nextSettings => setSettings(nextSettings))
     }
 
     const onSettingsUpdated = (event: Event) => {
       const customEvent = event as CustomEvent<OrchestratorUiSettings>
-      setSettings(customEvent.detail ?? defaultOrchestratorUiSettings)
+      const nextSettings = customEvent.detail ?? defaultOrchestratorUiSettings
+      setSettings(nextSettings)
     }
 
     window.addEventListener('orchestrator-settings-updated', onSettingsUpdated)

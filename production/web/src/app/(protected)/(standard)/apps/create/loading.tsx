@@ -1,5 +1,6 @@
 import { ProtectedSplitPageContent, ProtectedSplitPageLayout } from '@/app/(protected)/_components/protected-page-shell'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Visible } from '@/components/ui/visible'
 
 export default function Loading() {
   return (
@@ -19,13 +20,13 @@ export default function Loading() {
                   <Skeleton className='h-3 w-full max-w-lg opacity-70' />
                   <Skeleton className='h-10 w-full' />
                 </div>
-                {index === 0 && (
+                <Visible when={index === 0}>
                   <div className='flex flex-col gap-3'>
                     <Skeleton className='h-4 w-24' />
                     <Skeleton className='h-3 w-full max-w-xl opacity-70' />
                     <Skeleton className='h-10 w-full' />
                   </div>
-                )}
+                </Visible>
               </div>
             ))}
             <Skeleton className='h-10 w-full' />

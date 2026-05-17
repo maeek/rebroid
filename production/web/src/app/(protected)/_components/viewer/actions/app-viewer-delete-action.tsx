@@ -15,10 +15,10 @@ import {
   DialogTrigger
 } from '@/components/ui/dialog'
 import { toast } from '@/hooks/use-toast'
-import { removeAppIconAction } from '@/lib/app-icons/actions'
-import { deleteApplicationAction } from '@/lib/orchestrator/actions'
 import { useOrchestratorUiSettings } from '@/lib/orchestrator/settings'
 import { forgetRecentApp } from '@/lib/recent-apps'
+import { removeAppIconAction } from '@/server/app-icons/actions/remove-app-icon-action'
+import { deleteApplicationAction } from '@/server/orchestrator/applications/mutation-actions'
 import type { AppDefinition } from '../../../(standard)/constants'
 
 export const AppViewerDeleteAction = ({ app }: { app?: AppDefinition }) => {

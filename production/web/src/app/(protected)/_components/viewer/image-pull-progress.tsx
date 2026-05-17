@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import type { AndroidImagePullProgress } from '@/lib/orchestrator/types'
+import type { AndroidImagePullProgress } from '@/server/orchestrator/applications/types'
 
 export const ImagePullProgress = ({
   statusMessage,

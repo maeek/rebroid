@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { IconRefresh, IconServerOff } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 
 export const StatusSplash = ({
@@ -32,7 +33,9 @@ export const StatusSplash = ({
         variant={variant}
         onClick={action.onClick}
       >
-        {action.label.toLowerCase().includes('refresh') && <IconRefresh className='size-4' />}
+        <Visible when={action.label.toLowerCase().includes('refresh')}>
+          <IconRefresh className='size-4' />
+        </Visible>
         {action.label}
       </Button>
     )
@@ -49,10 +52,9 @@ export const StatusSplash = ({
     >
       <div className='flex max-w-xl flex-col items-center gap-5'>
         <div
-          className={cn(
-            'flex size-20 items-center justify-center rounded-full bg-secondary/80 text-primary',
-            tone === 'danger' && 'bg-destructive/15 text-destructive'
-          )}
+          className={cn('flex size-20 items-center justify-center rounded-full bg-secondary/80 text-primary', {
+            'bg-destructive/15 text-destructive': tone === 'danger'
+          })}
         >
           {icon ?? <IconServerOff className='size-10' />}
         </div>
@@ -60,15 +62,17 @@ export const StatusSplash = ({
           <h2 className='text-2xl font-medium'>{title}</h2>
           <p className='text-secondary-foreground'>{description}</p>
         </div>
-        {detail && (
+        <Visible when={detail}>
           <p className='w-full rounded-md bg-background/50 p-3 text-xs text-muted-foreground text-center'>{detail}</p>
-        )}
-        {(primaryAction || secondaryAction) && (
+        </Visible>
+        <Visible when={primaryAction || secondaryAction}>
           <div className='flex flex-wrap items-center justify-center gap-3'>
-            {primaryAction && renderAction(primaryAction, 'default')}
-            {secondaryAction && renderAction(secondaryAction, 'secondary')}
+            <Visible when={primaryAction}>{primaryAction ? renderAction(primaryAction, 'default') : null}</Visible>
+            <Visible when={secondaryAction}>
+              {secondaryAction ? renderAction(secondaryAction, 'secondary') : null}
+            </Visible>
           </div>
-        )}
+        </Visible>
       </div>
     </div>
   )

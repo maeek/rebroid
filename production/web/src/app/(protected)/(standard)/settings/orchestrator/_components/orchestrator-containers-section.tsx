@@ -15,14 +15,15 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
+import { Visible } from '@/components/ui/visible'
 import { toast } from '@/hooks/use-toast'
 import {
   listPlatformContainersAction,
   removePlatformContainerAction,
   stopPlatformContainerAction
-} from '@/lib/orchestrator/actions'
+} from '@/server/orchestrator/platform/actions'
 import { PlatformGridPagination } from './platform-grid-pagination'
-import type { PlatformContainer } from '@/lib/orchestrator/types'
+import type { PlatformContainer } from '@/server/orchestrator/platform/types'
 
 type PendingAction = { type: 'stop' | 'remove'; container: PlatformContainer } | null
 
@@ -181,7 +182,7 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
             onRemove={container => setPendingAction({ type: 'remove', container })}
           />
         )}
-        {!error && (
+        <Visible when={!error}>
           <PlatformGridPagination
             totalItems={filteredContainers.length}
             pageIndex={pageIndex}
@@ -189,7 +190,7 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
             onPageIndexChange={setPageIndex}
             onPageSizeChange={setPageSize}
           />
-        )}
+        </Visible>
       </Section>
 
       <Dialog

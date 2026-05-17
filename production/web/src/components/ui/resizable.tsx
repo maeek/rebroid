@@ -1,6 +1,7 @@
 'use client'
 
 import * as ResizablePrimitive from 'react-resizable-panels'
+import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 
 const ResizablePanelGroup = ({ className, ...props }: React.ComponentProps<typeof ResizablePrimitive.Group>) => (
@@ -26,9 +27,9 @@ const ResizableHandle = ({
     )}
     {...props}
   >
-    {withHandle && (
+    <Visible when={withHandle}>
       <div className='z-10 flex h-24 w-[0.3rem] items-center justify-center rounded-sm bg-[#808389] absolute' />
-    )}
+    </Visible>
   </ResizablePrimitive.Separator>
 )
 

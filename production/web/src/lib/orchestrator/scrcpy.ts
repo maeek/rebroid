@@ -1,4 +1,4 @@
-import type { ScrcpySession } from './types'
+import type { ScrcpySession } from '@/server/orchestrator/applications/types'
 
 const trimTrailingSlash = (value: string) => value.replace(/\/$/, '')
 

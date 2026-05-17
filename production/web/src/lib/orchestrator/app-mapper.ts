@@ -1,5 +1,5 @@
 import { AppDefinition } from '@/app/(protected)/(standard)/constants'
-import { AndroidApplication } from './types'
+import type { AndroidApplication } from '@/server/orchestrator/applications/types'
 
 export const isApplicationRunning = (app: AndroidApplication) => app.status.currentStatus === 'running'
 

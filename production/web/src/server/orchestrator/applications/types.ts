@@ -1,5 +1,3 @@
-export const ORCHESTRATOR_OWNER_USER_ID = 'admin'
-
 export type AndroidApplicationStatus = 'provisioning' | 'running' | 'stopped' | 'error' | 'removing' | 'removed'
 
 export type AndroidApplicationLifecycleStage =
@@ -129,126 +127,6 @@ export interface ScrcpySession {
   adbPort: number
 }
 
-export interface SystemResources {
-  containersTotal: number
-  containersRunning: number
-  containersStopped: number
-  managedContainersCpuUsagePercent: number
-  managedContainersMemoryUsageBytes: number
-  containerStatsCollectedAt: string | null
-  managedVolumesTotal: number
-  managedVolumesSizeBytes: number
-  volumeUsageCachedAt: string | null
-  containers: Array<{ id: string; name: string; state: string; status: string }>
-  volumes: Array<{ name: string; sizeBytes: number | null }>
-}
-
-export interface PlatformContainer {
-  id: string
-  shortId: string
-  names: string[]
-  image: string
-  imageId: string
-  command: string
-  createdAt: string
-  state: string
-  status: string
-  labels: Record<string, string>
-  managed: boolean
-  applicationId: string | null
-  component: string | null
-  ports: Array<{ privatePort: number; publicPort: number | null; type: string; ip: string | null }>
-  networks: string[]
-}
-
-export interface PlatformContainerLog {
-  source: 'container'
-  collectedAt: string
-  output: string
-}
-
-export interface PlatformImage {
-  id: string
-  shortId: string
-  repoTags: string[]
-  repoDigests: string[]
-  sizeBytes: number
-  sharedSizeBytes: number
-  virtualSizeBytes: number
-  createdAt: string
-  labels: Record<string, string>
-  containers: number
-}
-
-export interface PlatformImageDetails {
-  image: PlatformImage
-  inspect: unknown
-  relatedContainers: PlatformContainer[]
-}
-
-export interface PlatformNetwork {
-  id: string
-  shortId: string
-  name: string
-  driver: string
-  scope: string
-  createdAt: string | null
-  internal: boolean
-  attachable: boolean
-  ingress: boolean
-  labels: Record<string, string>
-  managed: boolean
-  containers: string[]
-  subnets: string[]
-  gateways: string[]
-}
-
-export interface PlatformNetworkDetails {
-  network: PlatformNetwork
-  inspect: unknown
-  relatedContainers: PlatformContainer[]
-}
-
-export interface PlatformContainerDetails {
-  container: PlatformContainer
-  inspect: unknown
-  relatedImage: PlatformImage | null
-  relatedNetworks: PlatformNetwork[]
-}
-
-export interface OrchestratorHealth {
-  ok: boolean
-  docker: boolean
-  scrcpy: boolean
-  services: {
-    orchestrator: ServiceHealth
-    docker: ServiceHealth
-    scrcpy: ServiceHealth
-  }
-}
-
-export interface ServiceHealth {
-  ok: boolean
-  status: 'healthy' | 'unhealthy' | 'offline'
-  message: string
-  details?: Record<string, string | number | boolean | null>
-}
-
-export interface DockerPruneResponse {
-  ContainersDeleted?: string[]
-  ImagesDeleted?: Array<{ Deleted?: string; Untagged?: string }>
-  NetworksDeleted?: string[]
-  VolumesDeleted?: string[]
-  SpaceReclaimed?: number
-}
-
-export interface DockerPruneAllResponse {
-  containers: DockerPruneResponse
-  networks: DockerPruneResponse
-  images: DockerPruneResponse
-  volumes: DockerPruneResponse
-}
-
 export interface UploadedApk {
   id: string
   ownerUserId: string | null
@@ -259,11 +137,6 @@ export interface UploadedApk {
   extractedIconDataUrl: string | null
   createdAt: string
   updatedAt: string
-}
-
-export interface CleanupUploadedApksResponse {
-  deletedRecords: number
-  removedFiles: number
 }
 
 export interface AndroidApplication {
@@ -337,6 +210,8 @@ export interface CreateAndroidApplicationInput {
   containerArgs?: string
   uploadedApkId?: string
 }
+
+export type CreateApplicationActionInput = Omit<CreateAndroidApplicationInput, 'ownerUserId'>
 
 export interface UpdateAndroidApplicationInput {
   name?: string

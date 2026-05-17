@@ -7,7 +7,7 @@ import {
 } from '@/app/(protected)/(standard)/settings/orchestrator/_components/orchestrator-containers-table-parts'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import type { PlatformContainer } from '@/lib/orchestrator/types'
+import type { PlatformContainer } from '@/server/orchestrator/platform/types'
 
 export const OrchestratorContainersTable = ({
   containers,

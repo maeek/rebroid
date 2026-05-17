@@ -5,9 +5,10 @@ import { IconBell } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Section } from '@/components/ui/section'
-import { getAndroidNotificationsAction } from '@/lib/orchestrator/actions'
+import { Visible } from '@/components/ui/visible'
+import { getAndroidNotificationsAction } from '@/server/orchestrator/applications/read-actions'
 import { AppDefinition } from '../../(standard)/constants'
-import type { AndroidNotification } from '@/lib/orchestrator/types'
+import type { AndroidNotification } from '@/server/orchestrator/applications/types'
 
 export const AndroidNotifications = ({ app }: { app: AppDefinition }) => {
   const [notifications, setNotifications] = useState<AndroidNotification[]>([])
@@ -64,7 +65,7 @@ export const AndroidNotifications = ({ app }: { app: AppDefinition }) => {
         contentClassName='gap-3'
       >
         {previewNotifications.map(renderNotificationCard)}
-        {hasOverflowNotifications && (
+        <Visible when={hasOverflowNotifications}>
           <Button
             variant='secondary'
             className='w-full sm:w-fit'
@@ -72,7 +73,7 @@ export const AndroidNotifications = ({ app }: { app: AppDefinition }) => {
           >
             Show all {visibleNotifications.length} notifications
           </Button>
-        )}
+        </Visible>
       </Section>
       <Dialog
         open={isDialogOpen}

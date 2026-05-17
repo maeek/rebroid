@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Section } from '@/components/ui/section'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Visible } from '@/components/ui/visible'
 import { toast } from '@/hooks/use-toast'
-import { updateNetworkPolicyAction } from '@/lib/orchestrator/actions'
 import { mapAndroidApplicationToAppDefinition } from '@/lib/orchestrator/app-mapper'
+import { updateNetworkPolicyAction } from '@/server/orchestrator/applications/mutation-actions'
 import { AppInfoRow } from './app-info-row'
 import { NetworkAccessInput } from './network-access-input'
 import type { AppDefinition } from '@/app/(protected)/(standard)/constants'
@@ -182,18 +183,18 @@ export const AppInfoNetworkSection = ({ app, onAppChange }: AppInfoNetworkSectio
         label='Applied'
         value={app?.networkPolicyAppliedAt ? app.networkPolicyAppliedAt.toLocaleString() : 'Not applied'}
       />
-      {app?.networkPolicyResult?.hint && (
+      <Visible when={app?.networkPolicyResult?.hint}>
         <AppInfoRow
           label='Policy hint'
-          value={app.networkPolicyResult.hint}
+          value={app?.networkPolicyResult?.hint ?? ''}
         />
-      )}
-      {(app?.networkPolicyResult?.message ?? app?.networkPolicyMessage) && (
+      </Visible>
+      <Visible when={app?.networkPolicyResult?.message ?? app?.networkPolicyMessage}>
         <AppInfoRow
           label='Policy message'
           value={app?.networkPolicyResult?.message ?? app?.networkPolicyMessage ?? 'Unknown policy state'}
         />
-      )}
+      </Visible>
     </Section>
   )
 }

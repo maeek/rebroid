@@ -16,16 +16,17 @@ import {
 } from '@/components/ui/dialog'
 import { Section } from '@/components/ui/section'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Visible } from '@/components/ui/visible'
 import { toast } from '@/hooks/use-toast'
+import { cn } from '@/lib/utils'
 import {
   getPlatformContainerLogsAction,
   removePlatformContainerAction,
   stopPlatformContainerAction
-} from '@/lib/orchestrator/actions'
-import { cn } from '@/lib/utils'
+} from '@/server/orchestrator/platform/actions'
 import { ContainerStateBadge } from '../../_components/orchestrator-containers-table-parts'
 import { PlatformDetailRow, PlatformJsonBlock, formatPlatformDate } from '../../_components/platform-detail-parts'
-import type { PlatformContainerDetails, PlatformContainerLog } from '@/lib/orchestrator/types'
+import type { PlatformContainerDetails, PlatformContainerLog } from '@/server/orchestrator/platform/types'
 
 export const OrchestratorContainerDetail = ({
   details,
@@ -96,7 +97,9 @@ export const OrchestratorContainerDetail = ({
             <div className='flex min-w-0 flex-col gap-2'>
               <div className='flex flex-wrap items-center gap-2'>
                 <h3 className='text-xl font-medium'>Overview</h3>
-                {container.managed && <Badge variant='status'>managed</Badge>}
+                <Visible when={container.managed}>
+                  <Badge variant='status'>managed</Badge>
+                </Visible>
                 <ContainerStateBadge state={container.state} />
               </div>
               <div className='font-mono text-xs text-muted-foreground'>{container.id}</div>
@@ -254,7 +257,11 @@ export const OrchestratorContainerDetail = ({
               disabled={isRefreshingLogs}
               onClick={() => void refreshLogs()}
             >
-              <IconRefresh className={cn('size-4', isRefreshingLogs && 'animate-spin')} />
+              <IconRefresh
+                className={cn('size-4', {
+                  'animate-spin': isRefreshingLogs
+                })}
+              />
               Refresh
             </Button>
           </div>

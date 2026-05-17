@@ -1,6 +1,7 @@
 'use client'
 
 import { Toast, ToastClose, ToastDescription, ToastProvider, ToastTitle, ToastViewport } from '@/components/ui/toast'
+import { Visible } from '@/components/ui/visible'
 import { useToast } from '@/hooks/use-toast'
 
 export function Toaster() {
@@ -15,8 +16,12 @@ export function Toaster() {
             {...props}
           >
             <div className='grid flex-1 gap-1 pr-2'>
-              {title && <ToastTitle>{title}</ToastTitle>}
-              {description && <ToastDescription>{description}</ToastDescription>}
+              <Visible when={title}>
+                <ToastTitle>{title}</ToastTitle>
+              </Visible>
+              <Visible when={description}>
+                <ToastDescription>{description}</ToastDescription>
+              </Visible>
             </div>
             {action}
             <ToastClose />

@@ -1,5 +1,6 @@
 import { ProtectedStackPageLayout } from '@/app/(protected)/_components/protected-page-shell'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Visible } from '@/components/ui/visible'
 
 export const SettingsPageSkeleton = ({
   title,
@@ -25,7 +26,7 @@ export const SettingsPageSkeleton = ({
         </div>
       </section>
       <section className='px-6 max-sm:px-4 w-full flex flex-col gap-6 pb-16'>
-        {variant === 'orchestrator' && (
+        <Visible when={variant === 'orchestrator'}>
           <div className='flex w-full flex-col gap-4 rounded-lg border border-border/70 bg-card/55 p-6 backdrop-blur-md max-sm:p-4'>
             <Skeleton className='h-5 w-28' />
             <Skeleton className='h-3 w-full max-w-3xl opacity-70' />
@@ -42,7 +43,7 @@ export const SettingsPageSkeleton = ({
               ))}
             </div>
           </div>
-        )}
+        </Visible>
         <div
           className={
             variant === 'orchestrator'
@@ -69,7 +70,7 @@ export const SettingsPageSkeleton = ({
                 ))}
               </div>
             </div>
-            {variant === 'orchestrator' && (
+            <Visible when={variant === 'orchestrator'}>
               <div className='flex flex-col w-full rounded-lg border border-border/70 bg-card/55 p-6 backdrop-blur-md max-sm:p-4'>
                 <Skeleton className='h-5 w-32 mb-6' />
                 <div className='flex flex-col gap-6'>
@@ -77,9 +78,9 @@ export const SettingsPageSkeleton = ({
                   <Skeleton className='h-10 w-full' />
                 </div>
               </div>
-            )}
+            </Visible>
           </div>
-          {variant === 'orchestrator' && (
+          <Visible when={variant === 'orchestrator'}>
             <div className='flex flex-col gap-3 rounded-lg border border-border/70 bg-card/55 p-6 backdrop-blur-md max-sm:p-4'>
               <Skeleton className='h-5 w-32' />
               <Skeleton className='h-3 w-full opacity-70' />
@@ -96,7 +97,7 @@ export const SettingsPageSkeleton = ({
                 </div>
               ))}
             </div>
-          )}
+          </Visible>
         </div>
       </section>
     </ProtectedStackPageLayout>

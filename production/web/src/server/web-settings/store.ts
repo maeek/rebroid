@@ -1,10 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-
-export interface WebSettings {
-  appListRefreshIntervalSeconds: number
-  removeDataOnDelete: boolean
-}
+import type { WebSettings } from './types'
 
 export const defaultWebSettings: WebSettings = {
   appListRefreshIntervalSeconds: 5,

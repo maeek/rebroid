@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import * as RechartsPrimitive from 'recharts'
+import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 import type { LegendPayload, TooltipContentProps } from 'recharts'
 
@@ -179,7 +180,7 @@ const ChartTooltipContent = React.forwardRef<
           className
         )}
       >
-        {!nestLabel ? tooltipLabel : null}
+        <Visible when={!nestLabel}>{tooltipLabel}</Visible>
         <div className='grid gap-1.5'>
           {payload.map((item, index) => {
             const key = getConfigLookupKey(nameKey, item.name, item.dataKey)
@@ -191,7 +192,9 @@ const ChartTooltipContent = React.forwardRef<
                 key={String(item.dataKey ?? item.name ?? index)}
                 className={cn(
                   'flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-muted-foreground',
-                  indicator === 'dot' && 'items-center'
+                  {
+                    'items-center': indicator === 'dot'
+                  }
                 )}
               >
                 {formatter && item?.value !== undefined && item.name ? (
@@ -201,7 +204,7 @@ const ChartTooltipContent = React.forwardRef<
                     {itemConfig?.icon ? (
                       <itemConfig.icon />
                     ) : (
-                      !hideIndicator && (
+                      <Visible when={!hideIndicator}>
                         <div
                           className={cn('shrink-0 rounded-[2px] border-(--color-border) bg-(--color-bg)', {
                             'h-2.5 w-2.5': indicator === 'dot',
@@ -216,23 +219,23 @@ const ChartTooltipContent = React.forwardRef<
                             } as React.CSSProperties
                           }
                         />
-                      )
+                      </Visible>
                     )}
                     <div
-                      className={cn(
-                        'flex flex-1 justify-between leading-none',
-                        nestLabel ? 'items-end' : 'items-center'
-                      )}
+                      className={cn('flex flex-1 justify-between leading-none', {
+                        'items-end': nestLabel,
+                        'items-center': !nestLabel
+                      })}
                     >
                       <div className='grid gap-1.5'>
-                        {nestLabel ? tooltipLabel : null}
+                        <Visible when={nestLabel}>{tooltipLabel}</Visible>
                         <span className='text-muted-foreground'>{itemConfig?.label || item.name}</span>
                       </div>
-                      {item.value && (
+                      <Visible when={item.value}>
                         <span className='font-mono font-medium tabular-nums text-foreground'>
-                          {item.value.toLocaleString()}
+                          {item.value != null ? item.value.toLocaleString() : ''}
                         </span>
-                      )}
+                      </Visible>
                     </div>
                   </>
                 )}
@@ -265,7 +268,14 @@ const ChartLegendContent = React.forwardRef<
   return (
     <div
       ref={ref}
-      className={cn('flex items-center justify-center gap-4', verticalAlign === 'top' ? 'pb-3' : 'pt-3', className)}
+      className={cn(
+        'flex items-center justify-center gap-4',
+        {
+          'pb-3': verticalAlign === 'top',
+          'pt-3': verticalAlign !== 'top'
+        },
+        className
+      )}
     >
       {payload.map((item: LegendPayload) => {
         const key = `${nameKey || (item.dataKey as string) || 'value'}`

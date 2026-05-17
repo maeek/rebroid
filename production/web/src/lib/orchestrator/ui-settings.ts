@@ -1,4 +1,6 @@
-import { ScrcpyTransport } from './types'
+import type { ScrcpyTransport } from '@/server/orchestrator/applications/types'
+import type { OrchestratorSettingsResponse } from '@/server/orchestrator/settings/types'
+import type { WebSettings as WebSettingsResponse } from '@/server/web-settings/types'
 
 export interface OrchestratorUiSettings {
   defaultContainerImage: string
@@ -21,20 +23,6 @@ export type RuntimeUiSettings = Pick<
   | 'imagePruneIntervalHours'
   | 'imagePruneDanglingOnly'
 >
-
-export interface WebSettingsResponse {
-  appListRefreshIntervalSeconds: number
-  removeDataOnDelete: boolean
-}
-
-export interface OrchestratorSettingsResponse {
-  defaultContainerImage: string
-  defaultScrcpyTransport: ScrcpyTransport
-  defaultInactivityTimeoutSeconds: number
-  maxApkUploadSizeMb: number
-  imagePruneIntervalHours: number
-  imagePruneDanglingOnly: boolean
-}
 
 export const defaultOrchestratorUiSettings: OrchestratorUiSettings = {
   defaultContainerImage: 'redroid/redroid:13.0.0-latest',

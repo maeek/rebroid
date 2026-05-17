@@ -5,8 +5,8 @@ import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/hooks/use-toast'
-import { switchApplicationProfileAction } from '@/lib/orchestrator/actions'
 import { mapAndroidApplicationToAppDefinition } from '@/lib/orchestrator/app-mapper'
+import { switchApplicationProfileAction } from '@/server/orchestrator/applications/mutation-actions'
 import type { AppDefinition } from '@/app/(protected)/(standard)/constants'
 
 type AppManageProfileSettingsProps = {

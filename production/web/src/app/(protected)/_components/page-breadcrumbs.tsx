@@ -8,6 +8,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator
 } from '@/components/ui/breadcrumb'
+import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 
 type PageBreadcrumbItem = {
@@ -39,7 +40,9 @@ export const PageBreadcrumbs = ({ items, className }: { items: PageBreadcrumbIte
                   <span>{item.label}</span>
                 )}
               </BreadcrumbItem>
-              {!isLast && <BreadcrumbSeparator />}
+              <Visible when={!isLast}>
+                <BreadcrumbSeparator />
+              </Visible>
             </Fragment>
           )
         })}

@@ -52,7 +52,12 @@ export function Combobox({
                   }}
                 >
                   {option.label}
-                  <Check className={cn('ml-auto', value === option.value ? 'opacity-100' : 'opacity-0')} />
+                  <Check
+                    className={cn('ml-auto', {
+                      'opacity-100': value === option.value,
+                      'opacity-0': value !== option.value
+                    })}
+                  />
                 </CommandItem>
               ))}
             </CommandGroup>
