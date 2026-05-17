@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { formatUnderscoreLabel } from '../../common/string-format';
 import { ContainerRuntimeState } from '../../docker/docker.types';
 import {
   AndroidApplication,
   AndroidApplicationError,
-  AndroidImagePullProgress,
   AndroidApplicationStatusDetail,
   AndroidNetworkPolicyResult,
 } from '../android-application.entity';
@@ -12,24 +12,18 @@ import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
 } from '../android-application-status';
+import {
+  extractExitCode,
+  isStartupCommandFinishedMessage,
+  parseImagePullProgress,
+} from '../utils/android-apps-status.utils';
 
 @Injectable()
 export class AndroidAppsStatusService {
-  private static readonly pullProgressPattern =
-    /^(.+?)(?:\s+\[[^\]]*\])?\s+(\d+(?:\.\d+)?)([kmgt]?b)\/(\d+(?:\.\d+)?)([kmgt]?b)(?:\s+([a-z0-9:_-]+))?$/i;
-
-  private static readonly sizeMultipliers: Record<string, number> = {
-    b: 1,
-    kb: 1024,
-    mb: 1024 ** 2,
-    gb: 1024 ** 3,
-    tb: 1024 ** 4,
-  };
-
   constructor(private readonly config: ConfigService) {}
 
   decorateApplication(app: AndroidApplication) {
-    app.imagePullProgress = this.parseImagePullProgress(
+    app.imagePullProgress = parseImagePullProgress(
       app.statusMessage,
       app.lifecycleStage,
     );
@@ -263,7 +257,7 @@ export class AndroidAppsStatusService {
       default:
         return {
           code: 'unknown',
-          title: this.formatLifecycleStageLabel(app.lifecycleStage),
+          title: formatUnderscoreLabel(app.lifecycleStage),
           description,
           tone: 'neutral',
         };
@@ -291,15 +285,6 @@ export class AndroidAppsStatusService {
 
     return 'App failed';
   }
-
-  private formatLifecycleStageLabel(value: string) {
-    return value
-      .split('_')
-      .filter(Boolean)
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(' ');
-  }
-
   private deriveNetworkPolicyResult(
     app: AndroidApplication,
   ): AndroidNetworkPolicyResult | null {
@@ -390,7 +375,7 @@ export class AndroidAppsStatusService {
       return null;
     }
 
-    const exitCode = this.extractExitCode(message);
+    const exitCode = extractExitCode(message);
     const phase = this.deriveApplicationErrorPhase(app, message);
 
     if (message === 'Managed container no longer exists.') {
@@ -404,7 +389,7 @@ export class AndroidAppsStatusService {
       };
     }
 
-    if (this.isStartupCommandFinishedMessage(message)) {
+    if (isStartupCommandFinishedMessage(message)) {
       return {
         code: 'startup_command_finished',
         phase: 'provisioning',
@@ -477,73 +462,5 @@ export class AndroidAppsStatusService {
     }
 
     return 'unknown';
-  }
-
-  private isStartupCommandFinishedMessage(message: string) {
-    return (
-      message.includes('completed immediately') ||
-      message.includes('plain images such as ubuntu')
-    );
-  }
-
-  private extractExitCode(message: string) {
-    const match = message.match(/exit code (\d+)/i);
-    return match ? Number(match[1]) : null;
-  }
-
-  private parseImagePullProgress(
-    statusMessage: string | null,
-    lifecycleStage: AndroidApplicationLifecycleStage,
-  ): AndroidImagePullProgress | null {
-    if (
-      lifecycleStage !== AndroidApplicationLifecycleStage.ImagePulling ||
-      !statusMessage
-    ) {
-      return null;
-    }
-
-    const match = statusMessage
-      .trim()
-      .match(AndroidAppsStatusService.pullProgressPattern);
-
-    if (!match) {
-      return null;
-    }
-
-    const [, status, currentRaw, currentUnit, totalRaw, totalUnit, layerId] =
-      match;
-    const currentBytes = this.toBytes(Number(currentRaw), currentUnit);
-    const totalBytes = this.toBytes(Number(totalRaw), totalUnit);
-
-    if (
-      !Number.isFinite(currentBytes) ||
-      !Number.isFinite(totalBytes) ||
-      totalBytes <= 0
-    ) {
-      return null;
-    }
-
-    return {
-      status: status.trim(),
-      current: `${currentRaw} ${this.formatUnit(currentUnit)}`,
-      total: `${totalRaw} ${this.formatUnit(totalUnit)}`,
-      layerId: layerId?.trim() || null,
-      percent: Math.min(100, Math.max(0, (currentBytes / totalBytes) * 100)),
-    };
-  }
-
-  private formatUnit(unit: string) {
-    return unit.trim().toUpperCase();
-  }
-
-  private toBytes(value: number, unit: string) {
-    const normalizedUnit = unit.trim().toLowerCase();
-    const multiplier = AndroidAppsStatusService.sizeMultipliers[normalizedUnit];
-
-    if (!multiplier) {
-      return Number.NaN;
-    }
-
-    return value * multiplier;
   }
 }

@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { ScrcpyTransport } from '../android-apps/android-application-status';
+import { numberInRange } from '../common/number-range';
 import { OrchestratorSettingsDto } from './dto/orchestrator-settings.dto';
 import { UpdateOrchestratorSettingsDto } from './dto/update-orchestrator-settings.dto';
 
@@ -64,19 +65,19 @@ export class SettingsService {
       defaultContainerImage:
         value.defaultContainerImage?.trim() || defaults.defaultContainerImage,
       defaultScrcpyTransport: ScrcpyTransport.WebSocket,
-      defaultInactivityTimeoutSeconds: this.numberInRange(
+      defaultInactivityTimeoutSeconds: numberInRange(
         value.defaultInactivityTimeoutSeconds,
         defaults.defaultInactivityTimeoutSeconds,
         60,
         86400,
       ),
-      maxApkUploadSizeMb: this.numberInRange(
+      maxApkUploadSizeMb: numberInRange(
         value.maxApkUploadSizeMb,
         defaults.maxApkUploadSizeMb,
         1,
         4096,
       ),
-      imagePruneIntervalHours: this.numberInRange(
+      imagePruneIntervalHours: numberInRange(
         value.imagePruneIntervalHours,
         defaults.imagePruneIntervalHours,
         0,
@@ -104,20 +105,6 @@ export class SettingsService {
       imagePruneIntervalHours: 24,
       imagePruneDanglingOnly: true,
     };
-  }
-
-  private numberInRange(
-    value: unknown,
-    fallback: number,
-    minimum: number,
-    maximum: number,
-  ) {
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed)) {
-      return fallback;
-    }
-
-    return Math.min(maximum, Math.max(minimum, Math.trunc(parsed)));
   }
 
   private settingsPath() {

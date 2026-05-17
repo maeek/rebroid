@@ -2,9 +2,15 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { execFile } from 'node:child_process';
 import { lookup } from 'node:dns/promises';
-import { isIP } from 'node:net';
 import { promisify } from 'node:util';
 import { AndroidApplication } from '../android-apps/android-application.entity';
+import {
+  extractHostname,
+  networkPolicyChainName,
+  normalizeIpv4Cidr,
+  parseAllowCidrs,
+  uniqueStrings,
+} from '../common/network-policy';
 import { DockerRuntimeService } from '../docker/docker-runtime.service';
 
 const execFileAsync = promisify(execFile);
@@ -71,7 +77,7 @@ export class NetworkPolicyService {
     }
 
     const destinations = await this.allowedDestinations(app);
-    const chain = this.chainName(app.id);
+    const chain = networkPolicyChainName(app.id);
 
     try {
       await this.run(['-N', chain], true);
@@ -103,7 +109,7 @@ export class NetworkPolicyService {
       return;
     }
 
-    const chain = this.chainName(app.id);
+    const chain = networkPolicyChainName(app.id);
     if (app.containerId) {
       const containerIp = await this.docker
         .getContainerIp(app.containerId, app.networkName)
@@ -122,10 +128,10 @@ export class NetworkPolicyService {
   private async allowedDestinations(
     app: AndroidApplication,
   ): Promise<AllowedDestinations> {
-    const customCidrs = this.parseAllowCidrs(app.networkPolicyAllowCidrs);
+    const customCidrs = parseAllowCidrs(app.networkPolicyAllowCidrs);
     const defaultDestinations = await this.resolveDefaultDestinations(app);
     const sidecarCidrs = await this.resolveScrcpySidecarCidrs(app);
-    const cidrs = this.unique([
+    const cidrs = uniqueStrings([
       ...defaultDestinations.cidrs,
       ...sidecarCidrs,
       ...customCidrs,
@@ -160,8 +166,8 @@ export class NetworkPolicyService {
     }
 
     return {
-      cidrs: this.unique(cidrs),
-      unresolved: this.unique(unresolved),
+      cidrs: uniqueStrings(cidrs),
+      unresolved: uniqueStrings(unresolved),
     };
   }
 
@@ -176,8 +182,8 @@ export class NetworkPolicyService {
       const api = await this.resolveDefaultDestination(app, 'API_IP');
       const gateway = await this.resolveDefaultDestination(app, 'GATEWAY_IP');
       return {
-        cidrs: this.unique([...api.cidrs, ...gateway.cidrs]),
-        unresolved: this.unique([...api.unresolved, ...gateway.unresolved]),
+        cidrs: uniqueStrings([...api.cidrs, ...gateway.cidrs]),
+        unresolved: uniqueStrings([...api.unresolved, ...gateway.unresolved]),
       };
     }
 
@@ -195,7 +201,7 @@ export class NetworkPolicyService {
         : { cidrs: [], unresolved: [token] };
     }
 
-    const cidr = this.normalizeIpv4Cidr(normalized);
+    const cidr = normalizeIpv4Cidr(normalized);
     return cidr
       ? { cidrs: [cidr], unresolved: [] }
       : { cidrs: [], unresolved: [normalized] };
@@ -205,7 +211,7 @@ export class NetworkPolicyService {
     const configuredCidrs = (
       this.config.get<string[]>('app.networkPolicy.apiCidrs') ?? []
     )
-      .map((value) => this.normalizeIpv4Cidr(value))
+      .map((value) => normalizeIpv4Cidr(value))
       .filter((value): value is string => Boolean(value));
     const apiHostCidrs = await this.resolveApiHostCidrs();
     const attachedOrchestratorIp = await this.docker.getOrchestratorIp(
@@ -215,7 +221,7 @@ export class NetworkPolicyService {
       ? `${attachedOrchestratorIp}/32`
       : null;
 
-    return this.unique([
+    return uniqueStrings([
       ...configuredCidrs,
       ...apiHostCidrs,
       ...(attachedOrchestratorCidr ? [attachedOrchestratorCidr] : []),
@@ -224,19 +230,19 @@ export class NetworkPolicyService {
 
   private async resolveApiHostCidrs(): Promise<string[]> {
     const apiHost = this.config.get<string>('app.networkPolicy.apiHost');
-    const hostname = this.extractHostname(apiHost);
+    const hostname = extractHostname(apiHost);
     if (!hostname) {
       return [];
     }
 
-    const directCidr = this.normalizeIpv4Cidr(hostname);
+    const directCidr = normalizeIpv4Cidr(hostname);
     if (directCidr) {
       return [directCidr];
     }
 
     try {
       const addresses = await lookup(hostname, { all: true, family: 4 });
-      return this.unique(addresses.map((address) => `${address.address}/32`));
+      return uniqueStrings(addresses.map((address) => `${address.address}/32`));
     } catch (error) {
       this.logger.warn(
         `Could not resolve NETWORK_POLICY_API_HOST "${hostname}": ${
@@ -247,72 +253,12 @@ export class NetworkPolicyService {
     }
   }
 
-  private extractHostname(value?: string) {
-    if (!value?.trim()) {
-      return null;
-    }
-
-    const trimmed = value.trim();
-    try {
-      return new URL(trimmed).hostname;
-    } catch {
-      try {
-        return new URL(`http://${trimmed}`).hostname;
-      } catch {
-        return trimmed;
-      }
-    }
-  }
-
   private async ensureDockerUserJump(containerIp: string, chain: string) {
     const rule = ['DOCKER-USER', '-s', containerIp, '-j', chain];
     const exists = await this.run(['-C', ...rule], true);
     if (!exists.ok) {
       await this.run(['-I', ...rule]);
     }
-  }
-
-  private parseAllowCidrs(value: string) {
-    try {
-      const parsed = JSON.parse(value) as unknown;
-      if (!Array.isArray(parsed)) {
-        return [];
-      }
-
-      return parsed
-        .filter((item): item is string => typeof item === 'string')
-        .map((item) => this.normalizeIpv4Cidr(item))
-        .filter((item): item is string => Boolean(item));
-    } catch {
-      return [];
-    }
-  }
-
-  private normalizeIpv4Cidr(value: string) {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return null;
-    }
-
-    const [address, prefix] = trimmed.split('/');
-    if (isIP(address) !== 4) {
-      return null;
-    }
-
-    if (prefix === undefined) {
-      return `${address}/32`;
-    }
-
-    const numericPrefix = Number(prefix);
-    if (
-      !Number.isInteger(numericPrefix) ||
-      numericPrefix < 0 ||
-      numericPrefix > 32
-    ) {
-      return null;
-    }
-
-    return `${address}/${numericPrefix}`;
   }
 
   private appliedMessage(
@@ -331,14 +277,6 @@ export class NetworkPolicyService {
         : '';
 
     return `Applied policy for ${containerIp}. Allowed ${defaultSummary} plus ${customSummary}.${unresolvedSummary}`;
-  }
-
-  private unique(values: string[]) {
-    return [...new Set(values)];
-  }
-
-  private chainName(applicationId: string) {
-    return `SMA-${applicationId.replace(/-/g, '').slice(0, 24)}`;
   }
 
   private async run(args: string[], ignoreFailure = false) {

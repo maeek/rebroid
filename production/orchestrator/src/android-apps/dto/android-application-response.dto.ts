@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { parseJsonStringArray } from '../../common/json-array';
 import { AndroidApplication } from '../android-application.entity';
 import { ApplicationProfileMode } from '../application-profile-mode';
 import {
@@ -15,17 +16,6 @@ import {
 
 const toIso = (value: Date | string | null | undefined) =>
   value ? new Date(value).toISOString() : null;
-
-const parseAllowCidrs = (value: string) => {
-  try {
-    const parsed: unknown = JSON.parse(value);
-    return Array.isArray(parsed)
-      ? parsed.filter((item): item is string => typeof item === 'string')
-      : [];
-  } catch {
-    return [];
-  }
-};
 
 export class AndroidApplicationStatusResponseDto {
   @ApiProperty({ enum: AndroidApplicationStatus })
@@ -236,7 +226,7 @@ export class AndroidApplicationResponseDto {
         networkName: app.networkName,
         policy: {
           enabled: app.networkPolicyEnabled,
-          allowCidrs: parseAllowCidrs(app.networkPolicyAllowCidrs),
+          allowCidrs: parseJsonStringArray(app.networkPolicyAllowCidrs),
           status: app.networkPolicyStatus,
           message: app.networkPolicyMessage,
           result: app.networkPolicyResult,
