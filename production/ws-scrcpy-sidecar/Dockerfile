@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:24-bookworm-slim AS builder
+FROM node:22-bookworm-slim AS builder
 
 ARG WS_SCRCPY_REPOSITORY=https://github.com/NetrisTV/ws-scrcpy.git
 ARG WS_SCRCPY_REF=master
@@ -23,7 +23,7 @@ RUN --mount=type=cache,target=/root/.npm npm install \
   && npm prune --omit=dev \
   && npm cache clean --force
 
-FROM node:24-bookworm-slim AS runtime
+FROM node:22-bookworm-slim AS runtime
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
