@@ -1,22 +1,28 @@
-FROM node:24-alpine AS deps
-WORKDIR /app
-COPY orchestrator/package*.json ./
-RUN npm ci
+# syntax=docker/dockerfile:1.7
 
-FROM node:24-alpine AS builder
+FROM node:24-alpine AS base
 WORKDIR /app
+
+FROM base AS deps
+RUN apk add --no-cache --virtual .build-deps python3 make g++
+COPY package*.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci
+
+FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
-COPY orchestrator .
+COPY . .
 RUN npm run build
 
-FROM node:24-alpine AS runner
-WORKDIR /app
+FROM base AS runner
 ENV NODE_ENV=production
 RUN apk add --no-cache docker-cli iptables ip6tables
+COPY package*.json ./
 COPY --from=deps /app/node_modules ./node_modules
+RUN npm prune --omit=dev && npm cache clean --force
 COPY --from=builder /app/dist ./dist
-COPY orchestrator/package*.json ./
-COPY ws-scrcpy-sidecar /app/ws-scrcpy-sidecar
-RUN mkdir -p /app/data /app/uploads
+COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/shop-me-alone-orchestrator-entrypoint
+RUN mkdir -p /app/data /app/uploads /app/secrets && chown -R node:node /app
+USER node
 EXPOSE 4100
-CMD ["node", "dist/main.js"]
+ENTRYPOINT ["shop-me-alone-orchestrator-entrypoint"]
+CMD ["node", "dist/src/main.js"]

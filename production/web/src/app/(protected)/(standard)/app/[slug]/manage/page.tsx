@@ -1,8 +1,8 @@
-import { withStoredAppIcon } from '@/lib/app-icons/enrich'
-import { mapAndroidApplicationToAppDefinition } from '@/lib/orchestrator/app-mapper'
+import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
+import { withStoredAppIcon } from '@/features/applications/icons/enrich'
+import AppManage from '@/features/applications/manage/app-manage'
 import { orchestratorApplicationsClient } from '@/server/orchestrator/applications/client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
-import AppManage from './app-manage'
 
 export default async function ManagePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params

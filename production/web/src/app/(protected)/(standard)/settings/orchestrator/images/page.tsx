@@ -1,7 +1,7 @@
-import { ProtectedStackPageLayout } from '@/app/(protected)/_components/protected-page-shell'
+import { OrchestratorImagesSection } from '@/features/orchestrator/components/orchestrator-images-section'
+import { PlatformPageHeader } from '@/features/orchestrator/components/platform-page-header'
+import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { requireAdmin } from '@/server/auth/authorization'
-import { OrchestratorImagesSection } from '../_components/orchestrator-images-section'
-import { PlatformPageHeader } from '../_components/platform-page-header'
 
 export default async function OrchestratorImagesPage() {
   await requireAdmin()

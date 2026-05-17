@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AndroidApplication } from '../android-apps/android-application.entity';
 import { UploadedApk } from '../apk/uploaded-apk.entity';
+import { InitializeSqliteSchema1715970000000 } from './migrations/1715970000000-initialize-sqlite-schema';
 
 @Module({
   imports: [
@@ -12,7 +13,9 @@ import { UploadedApk } from '../apk/uploaded-apk.entity';
         type: 'sqlite',
         database: config.getOrThrow<string>('app.databasePath'),
         entities: [AndroidApplication, UploadedApk],
-        synchronize: config.get<string>('app.nodeEnv') !== 'production',
+        migrations: [InitializeSqliteSchema1715970000000],
+        migrationsRun: true,
+        synchronize: false,
       }),
     }),
   ],

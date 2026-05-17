@@ -1,6 +1,6 @@
 import { request } from '../request'
 import type { CleanupUploadedApksResponse, OrchestratorSettingsResponse } from './types'
-import type { RuntimeUiSettings } from '@/lib/orchestrator/ui-settings'
+import type { RuntimeUiSettings } from '@/features/settings/domain/orchestrator-ui-settings'
 
 export const orchestratorSettingsClient = {
   cleanupUploadedApks(ownerUserId?: string) {

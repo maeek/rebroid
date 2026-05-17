@@ -85,7 +85,7 @@ export default registerAs('app', () => {
         process.env.DEFAULT_INACTIVITY_TIMEOUT_SECONDS,
         900,
       ),
-      maxApkUploadSizeMb: number(process.env.MAX_APK_UPLOAD_SIZE_MB, 512),
+      maxApkUploadSizeMb: number(process.env.MAX_APK_UPLOAD_SIZE_MB, 4096),
     },
     scrcpy: {
       wsScrcpyContainerId: process.env.WS_SCRCPY_CONTAINER_ID || undefined,

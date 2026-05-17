@@ -1,9 +1,9 @@
-import { ProtectedStackPageLayout } from '@/app/(protected)/_components/protected-page-shell'
-import { StatusSplash } from '@/app/(protected)/_components/status-splash'
+import { PlatformPageHeader } from '@/features/orchestrator/components/platform-page-header'
+import { OrchestratorNetworkDetail } from '@/features/orchestrator/details/orchestrator-network-detail'
+import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
+import { StatusSplash } from '@/features/shell/components/status-splash'
 import { requireAdmin } from '@/server/auth/authorization'
 import { getPlatformNetworkAction } from '@/server/orchestrator/platform/actions'
-import { PlatformPageHeader } from '../../_components/platform-page-header'
-import { OrchestratorNetworkDetail } from './orchestrator-network-detail'
 
 export default async function OrchestratorNetworkDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin()

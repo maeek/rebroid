@@ -1,4 +1,4 @@
-import LoginCard from '../_components/login-card'
+import LoginCard from '@/features/auth/components/login-card'
 
 export default function Login() {
   return (

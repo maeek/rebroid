@@ -4,29 +4,21 @@ services:
       context: ..
       dockerfile: orchestrator/Dockerfile
     container_name: shop-me-alone-orchestrator
-    ports:
-      - "4100:4100"
+    restart: unless-stopped
     environment:
-      PORT: 4100
-      DATABASE_PATH: /app/data/orchestrator.sqlite
-      UPLOADS_DIR: /app/uploads
-      ORCHESTRATOR_SHARED_SECRET: change-me
-      DOCKER_SOCKET_PATH: /var/run/docker.sock
-      ORCHESTRATOR_CONTAINER_ID: shop-me-alone-orchestrator
-      CONTAINER_IMAGE: redroid/redroid:13.0.0-latest
-      REDROID_PRIVILEGED: "true"
-      WS_SCRCPY_IMAGE: shop-me-alone/ws-scrcpy-sidecar:latest
-      WS_SCRCPY_BUILD_CONTEXT: /app/ws-scrcpy-sidecar
-      WS_SCRCPY_CONTAINER_NAME: sma-ws-scrcpy
-      WS_SCRCPY_AUTO_START: "true"
+      NODE_ENV: production
+      ORCHESTRATOR_SHARED_SECRET_FILE: /app/secrets/orchestrator-secret
+    ports:
+      - '4100:4100'
+    cap_add:
+      - NET_ADMIN
     volumes:
-      # On macOS, Podman Desktop / podman-mac-helper can expose this Docker-compatible
-      # socket path. The orchestrator uses dockerode, so it only needs Docker API
-      # compatibility, not the Docker engine specifically.
-      - /var/run/docker.sock:/var/run/docker.sock
+      - ${CONTAINER_ENGINE_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
       - orchestrator-data:/app/data
       - orchestrator-uploads:/app/uploads
+      - orchestrator-secrets:/app/secrets
 
 volumes:
   orchestrator-data:
   orchestrator-uploads:
+  orchestrator-secrets:

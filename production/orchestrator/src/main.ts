@@ -27,7 +27,7 @@ async function bootstrap() {
 
   if (!config.get<string>('app.sharedSecret')) {
     throw new Error(
-      'ORCHESTRATOR_SHARED_SECRET must be configured for the orchestrator API.',
+      'The orchestrator API needs a shared secret. The Docker entrypoint creates one automatically; bare local runs should set ORCHESTRATOR_SHARED_SECRET.',
     );
   }
 

@@ -1,0 +1,10 @@
+.DS_Store
+.git
+.next
+node_modules
+npm-debug.log
+coverage
+data
+certificates
+README.md
+.env*

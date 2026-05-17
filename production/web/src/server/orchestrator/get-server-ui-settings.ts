@@ -2,10 +2,10 @@ import {
   defaultRuntimeSettingsResponse,
   defaultWebSettingsResponse,
   normalizeOrchestratorUiSettings
-} from '@/lib/orchestrator/ui-settings'
+} from '@/features/settings/domain/orchestrator-ui-settings'
 import { getWebSettings } from '@/server/web-settings/store'
 import { orchestratorSettingsClient } from './settings/client'
-import type { OrchestratorUiSettings } from '@/lib/orchestrator/ui-settings'
+import type { OrchestratorUiSettings } from '@/features/settings/domain/orchestrator-ui-settings'
 
 export const getServerOrchestratorUiSettings = async (): Promise<OrchestratorUiSettings> => {
   const [webSettings, orchestratorSettings] = await Promise.all([

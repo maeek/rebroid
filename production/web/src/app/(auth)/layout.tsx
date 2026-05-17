@@ -1,4 +1,4 @@
-import { TopBarUnprotected } from './_components/top-bar'
+import { TopBarUnprotected } from '@/features/auth/components/top-bar'
 
 export default function FilesLayout({ children }: { children: React.ReactNode }) {
   return (

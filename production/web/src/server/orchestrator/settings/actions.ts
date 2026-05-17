@@ -3,7 +3,7 @@
 import { getCurrentOwnerUserId } from '../current-user'
 import { requireAdminUser, revalidateOrchestratorSettingsPage } from '../shared'
 import { orchestratorSettingsClient } from './client'
-import type { RuntimeUiSettings } from '@/lib/orchestrator/ui-settings'
+import type { RuntimeUiSettings } from '@/features/settings/domain/orchestrator-ui-settings'
 
 export const cleanupUploadedApksAction = async () => {
   const ownerUserId = await getCurrentOwnerUserId()

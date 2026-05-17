@@ -1,0 +1,9 @@
+.DS_Store
+.git
+dist
+node_modules
+npm-debug.log
+data
+uploads
+README.md
+.env*

@@ -4,7 +4,11 @@ This image builds a single internal ws-scrcpy service for the platform. Do not p
 
 The orchestrator attaches this container to each managed application network when a viewer session is opened, then runs `adb connect <containerName>:5555` inside the sidecar.
 
-## Build
+## Default Setup
+
+The root `docker-compose.yml` builds this image automatically and keeps it on the internal platform network. You do not need to publish port `8000` or set any sidecar environment variables for the default setup.
+
+## Manual Build
 
 ```bash
 docker build -t shop-me-alone/ws-scrcpy-sidecar ./ws-scrcpy-sidecar
@@ -19,9 +23,9 @@ docker build \
   -t shop-me-alone/ws-scrcpy-sidecar ./ws-scrcpy-sidecar
 ```
 
-## Runtime
+## Runtime Defaults
 
-The sidecar listens on port `8000` and is configured with:
+The sidecar listens on port `8000` and the image already sets:
 
 ```bash
 WS_SCRCPY_PATHNAME=/viewer/ws-scrcpy
@@ -30,10 +34,4 @@ WS_SCRCPY_CONFIG=/etc/ws-scrcpy/config.yaml
 
 The service needs `adb` in `PATH`; this Dockerfile installs Debian's `android-sdk-platform-tools` package.
 
-In deployment:
-
-- set `WS_SCRCPY_IMAGE=shop-me-alone/ws-scrcpy-sidecar:latest` on the orchestrator,
-- keep the default `WS_SCRCPY_CONTAINER_NAME=sma-ws-scrcpy`, or set the same custom name in the orchestrator and web env,
-- set `WS_SCRCPY_INTERNAL_BASE_URL=http://sma-ws-scrcpy:8000` on the Next.js server when overriding the default,
-- keep the sidecar on an internal platform network shared with Next.js,
-- do not expose `8000` publicly.
+In custom deployments, keep the sidecar on an internal network shared with Next.js and do not expose `8000` publicly. The web image defaults to `http://sma-ws-scrcpy:8000`, so only override `WS_SCRCPY_INTERNAL_BASE_URL` when you also change the sidecar service name.

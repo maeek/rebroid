@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { getSystemStats } from '@/lib/system/system-stats'
 import { getServerAuthSession } from '@/server/auth/auth'
+import { getSystemStats } from '@/server/system/system-stats'
 
 export const dynamic = 'force-dynamic'
 

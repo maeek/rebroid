@@ -1,0 +1,83 @@
+services:
+  orchestrator:
+    build:
+      context: ./orchestrator
+      dockerfile: Dockerfile
+    image: shop-me-alone/orchestrator:test
+    container_name: shop-me-alone-orchestrator-test
+    user: '0:0'
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      ORCHESTRATOR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
+      ORCHESTRATOR_SHARED_SECRET_FILE: /app/secrets/orchestrator-secret
+      CONTAINER_IMAGE: ${CONTAINER_IMAGE:-redroid/redroid:13.0.0-latest}
+      REDROID_PRIVILEGED: ${REDROID_PRIVILEGED:-true}
+      IPTABLES_POLICY_ENABLED: ${IPTABLES_POLICY_ENABLED:-false}
+      WS_SCRCPY_IMAGE: shop-me-alone/ws-scrcpy-sidecar:test
+      WS_SCRCPY_CONTAINER_NAME: sma-ws-scrcpy-test
+      WS_SCRCPY_AUTO_START: 'false'
+      MAX_APK_UPLOAD_SIZE_MB: ${MAX_APK_UPLOAD_SIZE_MB:-4096}
+    cap_add:
+      - NET_ADMIN
+    expose:
+      - '4100'
+    volumes:
+      - ${CONTAINER_ENGINE_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
+      - orchestrator-test-data:/app/data
+      - orchestrator-test-uploads:/app/uploads
+      - shared-test-secrets:/app/secrets
+    networks:
+      - platform
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PROXY_CLIENT_MAX_BODY_SIZE: ${NEXT_PROXY_CLIENT_MAX_BODY_SIZE:-4096mb}
+        WS_SCRCPY_INTERNAL_BASE_URL: ${WS_SCRCPY_INTERNAL_BASE_URL:-http://sma-ws-scrcpy-test:8000}
+    image: shop-me-alone/web:test
+    container_name: shop-me-alone-web-test
+    restart: unless-stopped
+    depends_on:
+      - orchestrator
+      - ws-scrcpy
+    environment:
+      NODE_ENV: production
+      ORCHESTRATOR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
+      ORCHESTRATOR_SHARED_SECRET_FILE: /app/secrets/orchestrator-secret
+      ORCHESTRATOR_API_URL: http://orchestrator:4100
+      WS_SCRCPY_INTERNAL_BASE_URL: http://sma-ws-scrcpy-test:8000
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
+    ports:
+      - '${SHOP_ME_ALONE_PORT:-3001}:3001'
+    volumes:
+      - web-test-data:/app/data
+      - shared-test-secrets:/app/secrets
+    networks:
+      - platform
+
+  ws-scrcpy:
+    build:
+      context: ./ws-scrcpy-sidecar
+      dockerfile: Dockerfile
+    image: shop-me-alone/ws-scrcpy-sidecar:test
+    container_name: sma-ws-scrcpy-test
+    restart: unless-stopped
+    expose:
+      - '8000'
+    networks:
+      platform:
+        aliases:
+          - sma-ws-scrcpy-test
+
+volumes:
+  orchestrator-test-data:
+  orchestrator-test-uploads:
+  shared-test-secrets:
+  web-test-data:
+
+networks:
+  platform:
+    name: shop-me-alone-test-platform

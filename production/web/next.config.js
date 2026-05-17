@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const apkUploadBodySizeLimit =
-  process.env.NEXT_SERVER_ACTIONS_BODY_SIZE_LIMIT || process.env.NEXT_PROXY_CLIENT_MAX_BODY_SIZE || '512mb'
+  process.env.NEXT_SERVER_ACTIONS_BODY_SIZE_LIMIT || process.env.NEXT_PROXY_CLIENT_MAX_BODY_SIZE || '4096mb'
 const wsScrcpyInternalBaseUrl = (process.env.WS_SCRCPY_INTERNAL_BASE_URL || 'http://sma-ws-scrcpy:8000').replace(
   /\/$/,
   ''
@@ -12,13 +12,13 @@ const wsScrcpyInternalBaseUrl = (process.env.WS_SCRCPY_INTERNAL_BASE_URL || 'htt
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  output: 'standalone',
   experimental: {
     proxyClientMaxBodySize: apkUploadBodySizeLimit,
     serverActions: {
       bodySizeLimit: apkUploadBodySizeLimit
     }
   },
-  allowedDevOrigins: ['192.168.1.12'],
   compiler: {
     styledComponents: true
   },

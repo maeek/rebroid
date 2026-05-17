@@ -21,7 +21,7 @@ Each Android application receives:
 - one persistent Docker volume mounted at `/data`,
 - one Docker network created with `Internal: true`.
 
-The redroid container is attached only to its own network. The orchestrator can optionally attach itself to each network by setting `ORCHESTRATOR_CONTAINER_ID`, which lets it proxy scrcpy/ADB traffic without making redroid containers reachable from the frontend or from each other.
+The redroid container is attached only to its own network. When the orchestrator runs in a container, it discovers its own container id from `HOSTNAME` and attaches itself to each app network as needed. You can still override this with `ORCHESTRATOR_CONTAINER_ID` in unusual runtimes.
 
 The frontend should call the orchestrator API and the authenticated Next.js viewer proxy. It should not connect directly to a redroid container or a public ws-scrcpy port.
 
@@ -117,14 +117,11 @@ The orchestrator settings currently own:
 
 The first viewer integration uses one shared ws-scrcpy sidecar service. Do not expose ws-scrcpy directly to users; the service has no built-in authorization.
 
-Recommended shape:
+Default compose shape:
 
-- build `ws-scrcpy-sidecar` as `shop-me-alone/ws-scrcpy-sidecar:latest`,
-- configure ws-scrcpy with `WS_SCRCPY_PATHNAME=/viewer/ws-scrcpy`,
-- use a ws-scrcpy image that has `adb` available in `PATH`,
-- let the orchestrator create the singleton sidecar container with `WS_SCRCPY_CONTAINER_NAME=sma-ws-scrcpy`,
-- set `WS_SCRCPY_PLATFORM_NETWORK` only when the spawned sidecar must join a specific Docker network for Next.js to reach it,
-- keep the Next.js server pointed at the internal sidecar URL so `/viewer/ws-scrcpy/*` can be proxied internally,
+- build `ws-scrcpy-sidecar` locally from the root compose file,
+- keep the sidecar named `sma-ws-scrcpy` on the internal platform network,
+- keep Next.js pointed at the default internal sidecar URL so `/viewer/ws-scrcpy/*` is proxied internally,
 - let users load `/viewer/apps/:id`, which validates their session and mints a short-lived viewer token scoped to the app/ADB target.
 
 The orchestrator prepares a viewer session at:
@@ -194,16 +191,22 @@ Resource/profile options are stored per app. RAM and CPU are applied to new cont
 
 ## Docker
 
-Copy `.env.example` to `.env`, adjust values, then:
+From the repository root:
 
 ```bash
-docker compose -f docker-compose.example.yml up --build
+docker compose up --build
 ```
 
-The orchestrator container needs the Docker socket mounted:
+The default compose file generates the internal shared secret, NextAuth secret, viewer token secret, and initial admin password automatically. The orchestrator container still needs a Docker-compatible socket mounted:
 
 ```text
 /var/run/docker.sock:/var/run/docker.sock
+```
+
+If your engine socket is elsewhere, pass one variable:
+
+```bash
+CONTAINER_ENGINE_SOCKET=/path/to/docker-compatible.sock docker compose up --build
 ```
 
 ## Podman on macOS
@@ -230,20 +233,8 @@ curl --unix-socket /var/run/docker.sock http://d/_ping
 Then start the orchestrator with the Podman compose example:
 
 ```bash
-podman compose -f docker-compose.podman.example.yml up --build
+CONTAINER_ENGINE_SOCKET=/var/run/docker.sock podman compose -f docker-compose.podman.example.yml up --build
 ```
-
-The important wiring is:
-
-```yaml
-environment:
-  DOCKER_SOCKET_PATH: /var/run/docker.sock
-  ORCHESTRATOR_CONTAINER_ID: shop-me-alone-orchestrator
-volumes:
-  - /var/run/docker.sock:/var/run/docker.sock
-```
-
-`ORCHESTRATOR_CONTAINER_ID` matters because each redroid app gets an internal, per-app network. The orchestrator connects itself to that app network so it can proxy scrcpy/ADB traffic, while the frontend still only talks to the orchestrator.
 
 If `/var/run/docker.sock` is not available, check Podman Desktop's Docker Compatibility settings or run:
 
@@ -261,12 +252,7 @@ podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}'
 
 Then mount that host path to `/var/run/docker.sock` inside the orchestrator container and keep `DOCKER_SOCKET_PATH=/var/run/docker.sock`.
 
-Example shape:
-
-```yaml
-volumes:
-  - /Users/you/.local/share/containers/podman/machine/podman.sock:/var/run/docker.sock
-```
+You can pass that path as `CONTAINER_ENGINE_SOCKET=/Users/you/.../podman.sock`.
 
 ### Podman Caveats
 
@@ -279,4 +265,4 @@ volumes:
 - APK upload is persisted in the orchestrator uploads directory.
 - When a container is running, APK install currently uses `docker cp`-style archive upload plus `pm install -r` inside the redroid container.
 - The current viewer slice embeds the ws-scrcpy browser stream through an authenticated Next.js proxy. Input/control hardening is still a later slice.
-- `synchronize` is enabled for SQLite outside production. Replace with migrations before depending on the schema in a deployed environment.
+- SQLite bootstraps through TypeORM migrations on startup. The initial schema migration runs automatically when the database is empty.

@@ -1,4 +1,4 @@
-import { getOrchestratorBaseUrl } from '@/lib/orchestrator/config'
+import { getOrchestratorBaseUrl } from '@/server/orchestrator/config'
 
 const secretHeaderName = 'x-orchestrator-secret'
 const orchestratorSharedSecret = process.env.ORCHESTRATOR_SHARED_SECRET?.trim()

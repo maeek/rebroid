@@ -1,10 +1,10 @@
-import { ProtectedStackPageLayout } from '@/app/(protected)/_components/protected-page-shell'
-import { withStoredAppIcons } from '@/lib/app-icons/enrich'
-import { mapAndroidApplicationToAppDefinition } from '@/lib/orchestrator/app-mapper'
+import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
+import { withStoredAppIcons } from '@/features/applications/icons/enrich'
+import { AppsList } from '@/features/applications/list/apps-list'
+import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { orchestratorApplicationsClient } from '@/server/orchestrator/applications/client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { getServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
-import { AppsList } from '../../_components/apps/apps-list'
 
 export default async function Apps() {
   const initialSettings = await getServerOrchestratorUiSettings()
