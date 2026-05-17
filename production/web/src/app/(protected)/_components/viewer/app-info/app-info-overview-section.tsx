@@ -10,6 +10,7 @@ export const AppInfoOverviewSection = ({ app }: { app?: AppDefinition }) => {
   const lifecycleLabel = app ? formatStatusLabel(app.lifecycleStage) : null
   const shouldShowLifecycleBadge =
     app && lifecycleLabel ? lifecycleLabel.toLowerCase() !== app.status.toLowerCase() : false
+  const progressDescription = app?.statusDetail?.description ?? app?.statusMessage
 
   return (
     <Section
@@ -51,10 +52,10 @@ export const AppInfoOverviewSection = ({ app }: { app?: AppDefinition }) => {
       <AppInfoRow
         label='Progress'
         value={
-          app?.statusMessage ? (
+          progressDescription ? (
             <ImagePullProgress
-              statusMessage={app.statusMessage}
-              isImagePulling={app.lifecycleStage === 'image_pulling'}
+              statusMessage={progressDescription}
+              progress={app?.imagePullProgress}
             />
           ) : (
             'Idle'

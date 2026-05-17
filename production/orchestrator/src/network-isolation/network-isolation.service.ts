@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { dockerSafeName } from '../common/docker-name';
-import { DockerService } from '../docker/docker.service';
+import { DockerRuntimeService } from '../docker/docker-runtime.service';
 
 export interface IsolatedRuntimeNames {
   containerName: string;
@@ -13,7 +13,7 @@ export interface IsolatedRuntimeNames {
 export class NetworkIsolationService {
   constructor(
     private readonly config: ConfigService,
-    private readonly docker: DockerService,
+    private readonly docker: DockerRuntimeService,
   ) {}
 
   namesFor(

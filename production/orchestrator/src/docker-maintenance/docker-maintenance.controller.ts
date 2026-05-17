@@ -1,12 +1,12 @@
 import { Controller, Delete, Get, Param, Post, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { DockerService } from '../docker/docker.service';
+import { DockerAdminService } from './docker-admin.service';
 import { PruneImagesDto } from './dto/prune-images.dto';
 
 @ApiTags('docker-maintenance')
 @Controller('docker-maintenance')
 export class DockerMaintenanceController {
-  constructor(private readonly docker: DockerService) {}
+  constructor(private readonly dockerAdmin: DockerAdminService) {}
 
   @Get('containers')
   @ApiOperation({ summary: 'List Docker containers visible to the platform.' })
@@ -28,70 +28,94 @@ export class DockerMaintenanceController {
     },
   })
   listContainers() {
-    return this.docker.listPlatformContainers();
+    return this.dockerAdmin.listContainers();
+  }
+
+  @Get('containers/:id')
+  @ApiOperation({ summary: 'Read Docker container details and relationships.' })
+  getContainer(@Param('id') id: string) {
+    return this.dockerAdmin.getContainer(id);
+  }
+
+  @Get('containers/:id/logs')
+  @ApiOperation({ summary: 'Read recent Docker logs for a platform container.' })
+  getContainerLogs(@Param('id') id: string, @Query('tail') tail?: string) {
+    return this.dockerAdmin.getContainerLogs(
+      id,
+      tail ? Number(tail) : undefined,
+    );
   }
 
   @Post('containers/:id/stop')
   @ApiOperation({ summary: 'Stop a Docker container.' })
   stopContainer(@Param('id') id: string) {
-    return this.docker.stopPlatformContainer(id);
+    return this.dockerAdmin.stopContainer(id);
   }
 
   @Delete('containers/:id')
   @ApiOperation({ summary: 'Remove a Docker container.' })
   removeContainer(@Param('id') id: string) {
-    return this.docker.removePlatformContainer(id);
+    return this.dockerAdmin.removeContainer(id);
   }
 
   @Get('images')
   @ApiOperation({ summary: 'List Docker images visible to the platform.' })
   listImages() {
-    return this.docker.listPlatformImages();
+    return this.dockerAdmin.listImages();
+  }
+
+  @Get('images/:id')
+  @ApiOperation({ summary: 'Read Docker image details and relationships.' })
+  getImage(@Param('id') id: string) {
+    return this.dockerAdmin.getImage(id);
   }
 
   @Delete('images/:id')
   @ApiOperation({ summary: 'Remove a Docker image by encoded id or name.' })
   removeImage(@Param('id') id: string, @Query('force') force?: string) {
-    return this.docker.removePlatformImage(
-      decodeURIComponent(id),
-      force === 'true',
-    );
+    return this.dockerAdmin.removeImage(id, force === 'true');
   }
 
   @Get('networks')
   @ApiOperation({ summary: 'List Docker networks visible to the platform.' })
   listNetworks() {
-    return this.docker.listPlatformNetworks();
+    return this.dockerAdmin.listNetworks();
+  }
+
+  @Get('networks/:id')
+  @ApiOperation({ summary: 'Read Docker network details and relationships.' })
+  getNetwork(@Param('id') id: string) {
+    return this.dockerAdmin.getNetwork(id);
   }
 
   @Delete('networks/:id')
   @ApiOperation({ summary: 'Remove a Docker network by id.' })
   removeNetwork(@Param('id') id: string) {
-    return this.docker.removePlatformNetwork(id);
+    return this.dockerAdmin.removeNetwork(id);
   }
 
   @Post('prune/images')
   @ApiOperation({ summary: 'Prune unused images.' })
   pruneImages(@Query() query: PruneImagesDto) {
-    return this.docker.pruneImages(query.danglingOnly ?? true);
+    return this.dockerAdmin.pruneImages(query);
   }
 
   @Post('prune/containers')
   @ApiOperation({ summary: 'Prune stopped containers.' })
   pruneContainers() {
-    return this.docker.pruneContainers();
+    return this.dockerAdmin.pruneContainers();
   }
 
   @Post('prune/networks')
   @ApiOperation({ summary: 'Prune unused networks.' })
   pruneNetworks() {
-    return this.docker.pruneNetworks();
+    return this.dockerAdmin.pruneNetworks();
   }
 
   @Post('prune/volumes')
   @ApiOperation({ summary: 'Prune unused volumes.' })
   pruneVolumes() {
-    return this.docker.pruneVolumes();
+    return this.dockerAdmin.pruneVolumes();
   }
 
   @Post('prune/all')
@@ -100,18 +124,6 @@ export class DockerMaintenanceController {
       'Prune stopped containers, unused networks, dangling images, and unused volumes.',
   })
   async pruneAll() {
-    const [containers, networks, images, volumes] = await Promise.all([
-      this.docker.pruneContainers(),
-      this.docker.pruneNetworks(),
-      this.docker.pruneImages(true),
-      this.docker.pruneVolumes(),
-    ]);
-
-    return {
-      containers,
-      networks,
-      images,
-      volumes,
-    };
+    return this.dockerAdmin.pruneAll();
   }
 }

@@ -21,6 +21,7 @@ import {
   removePlatformContainerAction,
   stopPlatformContainerAction
 } from '@/lib/orchestrator/actions'
+import { PlatformGridPagination } from './platform-grid-pagination'
 import type { PlatformContainer } from '@/lib/orchestrator/types'
 
 type PendingAction = { type: 'stop' | 'remove'; container: PlatformContainer } | null
@@ -32,6 +33,8 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
   const [pendingAction, setPendingAction] = useState<PendingAction>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [pageIndex, setPageIndex] = useState(0)
+  const [pageSize, setPageSize] = useState(20)
 
   const sortedContainers = useMemo(
     () =>
@@ -73,6 +76,11 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
     )
   }, [search, sortedContainers])
 
+  const paginatedContainers = useMemo(
+    () => filteredContainers.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize),
+    [filteredContainers, pageIndex, pageSize]
+  )
+
   const refresh = async () => {
     setIsLoading(true)
     try {
@@ -88,6 +96,17 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
   useEffect(() => {
     void refresh()
   }, [refreshKey])
+
+  useEffect(() => {
+    setPageIndex(0)
+  }, [search])
+
+  useEffect(() => {
+    const pageCount = Math.max(Math.ceil(filteredContainers.length / pageSize), 1)
+    if (pageIndex >= pageCount) {
+      setPageIndex(pageCount - 1)
+    }
+  }, [filteredContainers.length, pageIndex, pageSize])
 
   const runContainerAction = async () => {
     if (!pendingAction) {
@@ -154,12 +173,21 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
           </div>
         ) : (
           <OrchestratorContainersTable
-            containers={filteredContainers}
+            containers={paginatedContainers}
             isLoading={isLoading}
             busyId={busyId}
             emptyMessage={search.trim() ? 'No containers match this search.' : undefined}
             onStop={container => setPendingAction({ type: 'stop', container })}
             onRemove={container => setPendingAction({ type: 'remove', container })}
+          />
+        )}
+        {!error && (
+          <PlatformGridPagination
+            totalItems={filteredContainers.length}
+            pageIndex={pageIndex}
+            pageSize={pageSize}
+            onPageIndexChange={setPageIndex}
+            onPageSizeChange={setPageSize}
           />
         )}
       </Section>

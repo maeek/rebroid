@@ -125,9 +125,24 @@ export const getApplicationLogsAction = async (id: string, source: 'container' |
   return orchestratorApi.getApplicationLogs(id, source, tail)
 }
 
+export const getScrcpySessionAction = async (id: string) => {
+  await assertCanAccessApplication(id)
+  return orchestratorApi.getScrcpySession(id)
+}
+
+export const recordViewerActivityAction = async (id: string) => {
+  await assertCanAccessApplication(id)
+  return orchestratorApi.recordViewerActivity(id)
+}
+
 export const getOrchestratorHealthAction = async () => {
   await requireUser()
   return orchestratorApi.health()
+}
+
+export const repairScrcpySidecarAction = async () => {
+  await requireAdmin()
+  return orchestratorApi.repairScrcpySidecar()
 }
 
 export const getSystemResourcesAction = async (refreshVolumes = false) => {
@@ -180,9 +195,24 @@ export const listPlatformContainersAction = async () => {
   return orchestratorApi.listPlatformContainers()
 }
 
+export const getPlatformContainerAction = async (id: string) => {
+  await requireAdmin()
+  return orchestratorApi.getPlatformContainer(id)
+}
+
+export const getPlatformContainerLogsAction = async (id: string, tail = 500) => {
+  await requireAdmin()
+  return orchestratorApi.getPlatformContainerLogs(id, tail)
+}
+
 export const listPlatformImagesAction = async () => {
   await requireAdmin()
   return orchestratorApi.listPlatformImages()
+}
+
+export const getPlatformImageAction = async (id: string) => {
+  await requireAdmin()
+  return orchestratorApi.getPlatformImage(id)
 }
 
 export const removePlatformImageAction = async (id: string, force = false) => {
@@ -196,6 +226,11 @@ export const removePlatformImageAction = async (id: string, force = false) => {
 export const listPlatformNetworksAction = async () => {
   await requireAdmin()
   return orchestratorApi.listPlatformNetworks()
+}
+
+export const getPlatformNetworkAction = async (id: string) => {
+  await requireAdmin()
+  return orchestratorApi.getPlatformNetwork(id)
 }
 
 export const removePlatformNetworkAction = async (id: string) => {

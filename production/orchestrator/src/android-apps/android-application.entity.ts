@@ -13,6 +13,140 @@ import {
   ScrcpyTransport,
 } from './android-application-status';
 
+export class AndroidImagePullProgress {
+  @ApiProperty({ example: 'Downloading' })
+  status!: string;
+
+  @ApiProperty({ example: '120.5 MB' })
+  current!: string;
+
+  @ApiProperty({ example: '512 MB' })
+  total!: string;
+
+  @ApiPropertyOptional({ example: 'sha256:abc123', nullable: true })
+  layerId!: string | null;
+
+  @ApiProperty({ example: 23.5 })
+  percent!: number;
+}
+
+export class AndroidApplicationError {
+  @ApiProperty({
+    enum: [
+      'container_command_failed',
+      'container_exited',
+      'container_missing',
+      'startup_command_finished',
+      'unknown',
+    ],
+  })
+  code!:
+    | 'container_command_failed'
+    | 'container_exited'
+    | 'container_missing'
+    | 'startup_command_finished'
+    | 'unknown';
+
+  @ApiProperty({ enum: ['provisioning', 'runtime', 'unknown'] })
+  phase!: 'provisioning' | 'runtime' | 'unknown';
+
+  @ApiProperty()
+  message!: string;
+
+  @ApiProperty()
+  retryable!: boolean;
+
+  @ApiPropertyOptional({ nullable: true })
+  exitCode!: number | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  hint!: string | null;
+}
+
+export class AndroidNetworkPolicyResult {
+  @ApiProperty({ enum: ['applied', 'skipped', 'error'] })
+  status!: 'applied' | 'skipped' | 'error';
+
+  @ApiProperty({
+    enum: [
+      'applied',
+      'apply_failed',
+      'container_ip_unavailable',
+      'container_not_created',
+      'iptables_disabled',
+      'policy_disabled',
+      'unknown',
+    ],
+  })
+  code!:
+    | 'applied'
+    | 'apply_failed'
+    | 'container_ip_unavailable'
+    | 'container_not_created'
+    | 'iptables_disabled'
+    | 'policy_disabled'
+    | 'unknown';
+
+  @ApiProperty()
+  message!: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  hint!: string | null;
+}
+
+export class AndroidApplicationStatusDetail {
+  @ApiProperty({
+    enum: [
+      'queued',
+      'image_checking',
+      'image_pulling',
+      'volume_creating',
+      'network_creating',
+      'orchestrator_network_connecting',
+      'container_creating',
+      'container_starting',
+      'android_booting',
+      'apk_installing',
+      'ready',
+      'stopping',
+      'stopped',
+      'stopped_recreate_required',
+      'removing',
+      'removed',
+      'error',
+      'unknown',
+    ],
+  })
+  code!:
+    | 'queued'
+    | 'image_checking'
+    | 'image_pulling'
+    | 'volume_creating'
+    | 'network_creating'
+    | 'orchestrator_network_connecting'
+    | 'container_creating'
+    | 'container_starting'
+    | 'android_booting'
+    | 'apk_installing'
+    | 'ready'
+    | 'stopping'
+    | 'stopped'
+    | 'stopped_recreate_required'
+    | 'removing'
+    | 'removed'
+    | 'error'
+    | 'unknown';
+
+  @ApiProperty()
+  title!: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  description!: string | null;
+
+  @ApiProperty({ enum: ['neutral', 'progress', 'success', 'warning', 'error'] })
+  tone!: 'neutral' | 'progress' | 'success' | 'warning' | 'error';
+}
+
 @Entity({ name: 'android_applications' })
 export class AndroidApplication {
   @ApiProperty({ example: '98a530d6-a45d-466a-9cb4-c023067c4971' })
@@ -48,6 +182,12 @@ export class AndroidApplication {
   })
   @Column({ type: 'text', nullable: true })
   statusMessage!: string | null;
+
+  @ApiPropertyOptional({
+    type: () => AndroidApplicationStatusDetail,
+    nullable: true,
+  })
+  statusDetail!: AndroidApplicationStatusDetail | null;
 
   @ApiProperty({ example: 'redroid/redroid:13.0.0-latest' })
   @Column()
@@ -135,6 +275,12 @@ export class AndroidApplication {
   @Column({ type: 'text', nullable: true })
   networkPolicyMessage!: string | null;
 
+  @ApiPropertyOptional({
+    type: () => AndroidNetworkPolicyResult,
+    nullable: true,
+  })
+  networkPolicyResult!: AndroidNetworkPolicyResult | null;
+
   @ApiPropertyOptional({ example: '2026-05-16T20:40:00.000Z', nullable: true })
   @Column({ type: 'datetime', nullable: true })
   networkPolicyAppliedAt!: Date | null;
@@ -195,6 +341,12 @@ export class AndroidApplication {
   })
   @Column({ type: 'text', nullable: true })
   lastError!: string | null;
+
+  @ApiPropertyOptional({ type: AndroidImagePullProgress, nullable: true })
+  imagePullProgress!: AndroidImagePullProgress | null;
+
+  @ApiPropertyOptional({ type: AndroidApplicationError, nullable: true })
+  applicationError!: AndroidApplicationError | null;
 
   @ApiProperty({ example: '2026-05-15T20:39:29.000Z' })
   @CreateDateColumn()

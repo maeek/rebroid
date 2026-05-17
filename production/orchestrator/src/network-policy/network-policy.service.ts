@@ -5,7 +5,7 @@ import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import { promisify } from 'node:util';
 import { AndroidApplication } from '../android-apps/android-application.entity';
-import { DockerService } from '../docker/docker.service';
+import { DockerRuntimeService } from '../docker/docker-runtime.service';
 
 const execFileAsync = promisify(execFile);
 
@@ -32,7 +32,7 @@ export class NetworkPolicyService {
 
   constructor(
     private readonly config: ConfigService,
-    private readonly docker: DockerService,
+    private readonly docker: DockerRuntimeService,
   ) {}
 
   async apply(app: AndroidApplication): Promise<AppliedNetworkPolicy> {
@@ -124,14 +124,24 @@ export class NetworkPolicyService {
   ): Promise<AllowedDestinations> {
     const customCidrs = this.parseAllowCidrs(app.networkPolicyAllowCidrs);
     const defaultDestinations = await this.resolveDefaultDestinations(app);
-    const cidrs = this.unique([...defaultDestinations.cidrs, ...customCidrs]);
+    const sidecarCidrs = await this.resolveScrcpySidecarCidrs(app);
+    const cidrs = this.unique([
+      ...defaultDestinations.cidrs,
+      ...sidecarCidrs,
+      ...customCidrs,
+    ]);
 
     return {
       cidrs,
       customCidrs,
-      defaultCidrsCount: defaultDestinations.cidrs.length,
+      defaultCidrsCount: defaultDestinations.cidrs.length + sidecarCidrs.length,
       unresolvedDefaults: defaultDestinations.unresolved,
     };
+  }
+
+  private async resolveScrcpySidecarCidrs(app: AndroidApplication) {
+    const sidecarIp = await this.docker.getWsScrcpyContainerIp(app.networkName);
+    return sidecarIp ? [`${sidecarIp}/32`] : [];
   }
 
   private async resolveDefaultDestinations(

@@ -1,16 +1,16 @@
 # Shop Me Alone Orchestrator
 
-NestJS backend for provisioning isolated `redroid` containers and exposing a future browser scrcpy session API.
+NestJS backend for provisioning isolated application containers and preparing browser scrcpy viewer sessions through an internal sidecar.
 
 ## Current Shape
 
-- `AndroidAppsModule`: CRUD for redroid-backed Android applications.
+- `AndroidAppsModule`: CRUD for managed application containers.
 - `DockerModule`: low-level Docker socket wrapper.
 - `ContainerImagesModule`: list, pull/update, and remove images.
 - `DockerMaintenanceModule`: prune unused containers, networks, images, and volumes.
 - `NetworkIsolationModule`: per-application Docker names, volume, and internal network boundary.
 - `SettingsModule`: JSON-backed runtime defaults and APK upload limits.
-- `ScrcpyModule`: Socket.IO namespace that tracks viewing/input activity and reserves the future proxy contract.
+- Viewer session API: `GET /android-applications/:id/scrcpy-session` prepares the shared internal ws-scrcpy sidecar and returns app-scoped connection metadata for the Next.js viewer proxy.
 - `HealthModule`: Docker socket health check.
 
 ## Isolation Model
@@ -23,7 +23,7 @@ Each Android application receives:
 
 The redroid container is attached only to its own network. The orchestrator can optionally attach itself to each network by setting `ORCHESTRATOR_CONTAINER_ID`, which lets it proxy scrcpy/ADB traffic without making redroid containers reachable from the frontend or from each other.
 
-The frontend should call the orchestrator API and websocket gateway. It should not connect directly to a redroid container.
+The frontend should call the orchestrator API and the authenticated Next.js viewer proxy. It should not connect directly to a redroid container or a public ws-scrcpy port.
 
 ## Local Development
 
@@ -107,11 +107,41 @@ Settings are stored in `SETTINGS_PATH`, defaulting to `./data/orchestrator-setti
 
 The orchestrator settings currently own:
 
-- default redroid image,
+- default container image,
 - default scrcpy transport,
 - default inactivity timeout,
 - max APK upload size.
 - scheduled image pruning interval and dangling-only mode.
+
+## Browser Viewer
+
+The first viewer integration uses one shared ws-scrcpy sidecar service. Do not expose ws-scrcpy directly to users; the service has no built-in authorization.
+
+Recommended shape:
+
+- build `ws-scrcpy-sidecar` as `shop-me-alone/ws-scrcpy-sidecar:latest`,
+- configure ws-scrcpy with `WS_SCRCPY_PATHNAME=/viewer/ws-scrcpy`,
+- use a ws-scrcpy image that has `adb` available in `PATH`,
+- let the orchestrator create the singleton sidecar container with `WS_SCRCPY_CONTAINER_NAME=sma-ws-scrcpy`,
+- set `WS_SCRCPY_PLATFORM_NETWORK` only when the spawned sidecar must join a specific Docker network for Next.js to reach it,
+- keep the Next.js server pointed at the internal sidecar URL so `/viewer/ws-scrcpy/*` can be proxied internally,
+- let users load `/viewer/apps/:id`, which validates their session and mints a short-lived viewer token scoped to the app/ADB target.
+
+The orchestrator prepares a viewer session at:
+
+```text
+GET /android-applications/:id/scrcpy-session
+```
+
+That endpoint validates that the app is running, creates/starts the singleton ws-scrcpy sidecar if needed, connects it to the app's isolated Docker network, re-applies the app egress policy so replies to the sidecar are allowed, and attempts `adb connect <containerName>:<adbPort>` inside the sidecar. The frontend then opens the ws-scrcpy stream through the authenticated Next.js proxy path rather than through a raw public ws-scrcpy URL.
+
+While the viewer shell is open, Next.js sends an authenticated keepalive to:
+
+```text
+POST /android-applications/:id/viewer-activity
+```
+
+That refreshes `lastScrcpyActivityAt`, which is the timestamp used by the inactivity cron before stopping idle running containers.
 
 ## APK Uploads
 
@@ -248,5 +278,5 @@ volumes:
 
 - APK upload is persisted in the orchestrator uploads directory.
 - When a container is running, APK install currently uses `docker cp`-style archive upload plus `pm install -r` inside the redroid container.
-- The scrcpy gateway currently tracks activity for idle shutdown. The actual ws-scrcpy/WebRTC bridge is intentionally left as the next implementation slice.
+- The current viewer slice embeds the ws-scrcpy browser stream through an authenticated Next.js proxy. Input/control hardening is still a later slice.
 - `synchronize` is enabled for SQLite outside production. Replace with migrations before depending on the schema in a deployed environment.

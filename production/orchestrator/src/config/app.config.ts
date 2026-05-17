@@ -1,4 +1,5 @@
 import { registerAs } from '@nestjs/config';
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const bool = (value: string | undefined, fallback: boolean) => {
@@ -36,6 +37,10 @@ export default registerAs('app', () => {
   const settingsPath =
     process.env.SETTINGS_PATH ?? './data/orchestrator-settings.json';
   const sharedSecret = process.env.ORCHESTRATOR_SHARED_SECRET?.trim();
+  const resourcePrefix = process.env.DOCKER_RESOURCE_PREFIX ?? 'sma';
+  const defaultWsScrcpyBuildContext = existsSync('/app/ws-scrcpy-sidecar')
+    ? '/app/ws-scrcpy-sidecar'
+    : '../ws-scrcpy-sidecar';
 
   return {
     nodeEnv: process.env.NODE_ENV ?? 'development',
@@ -46,7 +51,7 @@ export default registerAs('app', () => {
     uploadsDir: resolve(uploadsDir),
     docker: {
       socketPath: process.env.DOCKER_SOCKET_PATH ?? '/var/run/docker.sock',
-      resourcePrefix: process.env.DOCKER_RESOURCE_PREFIX ?? 'sma',
+      resourcePrefix,
       orchestratorContainerId:
         process.env.ORCHESTRATOR_CONTAINER_ID ||
         process.env.HOSTNAME ||
@@ -81,6 +86,24 @@ export default registerAs('app', () => {
         900,
       ),
       maxApkUploadSizeMb: number(process.env.MAX_APK_UPLOAD_SIZE_MB, 512),
+    },
+    scrcpy: {
+      wsScrcpyContainerId: process.env.WS_SCRCPY_CONTAINER_ID || undefined,
+      wsScrcpyContainerName:
+        process.env.WS_SCRCPY_CONTAINER_NAME ??
+        `${resourcePrefix}-ws-scrcpy`,
+      wsScrcpyImage:
+        process.env.WS_SCRCPY_IMAGE ??
+        'shop-me-alone/ws-scrcpy-sidecar:latest',
+      wsScrcpyBuildContext: resolve(
+        process.env.WS_SCRCPY_BUILD_CONTEXT ?? defaultWsScrcpyBuildContext,
+      ),
+      wsScrcpyAutoStart: bool(process.env.WS_SCRCPY_AUTO_START, true),
+      wsScrcpyPlatformNetwork:
+        process.env.WS_SCRCPY_PLATFORM_NETWORK || undefined,
+      wsScrcpyPort: number(process.env.WS_SCRCPY_PORT, 8000),
+      wsScrcpyPlayer: process.env.WS_SCRCPY_PLAYER ?? 'mse',
+      wsScrcpyProxyRemote: process.env.WS_SCRCPY_PROXY_REMOTE || undefined,
     },
   };
 });

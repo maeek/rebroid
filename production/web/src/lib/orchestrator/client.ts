@@ -9,8 +9,14 @@ import {
   DockerPruneResponse,
   OrchestratorHealth,
   PlatformContainer,
+  PlatformContainerDetails,
+  PlatformContainerLog,
   PlatformImage,
+  PlatformImageDetails,
   PlatformNetwork,
+  PlatformNetworkDetails,
+  ScrcpySession,
+  ServiceHealth,
   SwitchApplicationProfileInput,
   SystemResources,
   UploadedApk,
@@ -64,6 +70,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const orchestratorApi = {
   health() {
     return request<OrchestratorHealth>('/health')
+  },
+
+  repairScrcpySidecar() {
+    return request<ServiceHealth>('/health/scrcpy/repair', { method: 'POST' })
   },
 
   createApplication(input: CreateAndroidApplicationInput) {
@@ -150,6 +160,16 @@ export const orchestratorApi = {
     return request<ApplicationLog>(`/android-applications/${id}/logs/${source}?${query.toString()}`)
   },
 
+  getScrcpySession(id: string) {
+    return request<ScrcpySession>(`/android-applications/${id}/scrcpy-session`)
+  },
+
+  recordViewerActivity(id: string) {
+    return request<{ id: string; lastScrcpyActivityAt: string }>(`/android-applications/${id}/viewer-activity`, {
+      method: 'POST'
+    })
+  },
+
   getSystemResources(refreshVolumes = false) {
     const query = new URLSearchParams({ refreshVolumes: String(refreshVolumes) })
     return request<SystemResources>(`/system-resources?${query.toString()}`)
@@ -182,8 +202,21 @@ export const orchestratorApi = {
     return request<PlatformContainer[]>('/docker-maintenance/containers')
   },
 
+  getPlatformContainer(id: string) {
+    return request<PlatformContainerDetails>(`/docker-maintenance/containers/${id}`)
+  },
+
+  getPlatformContainerLogs(id: string, tail = 500) {
+    const query = new URLSearchParams({ tail: String(tail) })
+    return request<PlatformContainerLog>(`/docker-maintenance/containers/${id}/logs?${query.toString()}`)
+  },
+
   listPlatformImages() {
     return request<PlatformImage[]>('/docker-maintenance/images')
+  },
+
+  getPlatformImage(id: string) {
+    return request<PlatformImageDetails>(`/docker-maintenance/images/${encodeURIComponent(id)}`)
   },
 
   removePlatformImage(id: string, force = false) {
@@ -196,6 +229,10 @@ export const orchestratorApi = {
 
   listPlatformNetworks() {
     return request<PlatformNetwork[]>('/docker-maintenance/networks')
+  },
+
+  getPlatformNetwork(id: string) {
+    return request<PlatformNetworkDetails>(`/docker-maintenance/networks/${id}`)
   },
 
   removePlatformNetwork(id: string) {

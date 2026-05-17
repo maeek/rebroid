@@ -17,9 +17,53 @@ const formatBytes = (bytes: number) => {
 
 const formatPercent = (value: number) => `${value.toFixed(1)}%`
 
+const valueOrUnavailable = (value: string | undefined, error: string | null) => {
+  if (value) {
+    return value
+  }
+
+  return error ? 'Unavailable' : 'Loading...'
+}
+
+const loadingHint = (loading: string, error: string | null, errorHint: string) => {
+  if (error) {
+    return errorHint
+  }
+
+  return loading
+}
+
 export const OrchestratorQuickGlanceSection = ({ refreshKey = 0 }: { refreshKey?: number }) => {
   const [resources, setResources] = useState<SystemResources>()
   const [error, setError] = useState<string | null>(null)
+
+  const cpuHint = () => {
+    if (!resources) {
+      return loadingHint('Collecting live Docker stats', error, 'Live Docker stats could not be collected')
+    }
+
+    return resources.containersRunning > 0
+      ? `Aggregated live usage across ${resources.containersRunning} running containers`
+      : 'No running managed containers'
+  }
+
+  const memoryHint = () => {
+    if (!resources) {
+      return loadingHint('Collecting live Docker stats', error, 'Live Docker stats could not be collected')
+    }
+
+    return resources.containersRunning > 0
+      ? 'Aggregated working-set memory from live Docker container stats'
+      : 'No running managed containers'
+  }
+
+  const volumeHint = () => {
+    if (!resources) {
+      return loadingHint('Refreshing storage usage', error, 'Storage usage could not be refreshed')
+    }
+
+    return `${resources.managedVolumesTotal} managed volumes`
+  }
 
   useEffect(() => {
     const refresh = async (refreshVolumes = false) => {
@@ -47,35 +91,32 @@ export const OrchestratorQuickGlanceSection = ({ refreshKey = 0 }: { refreshKey?
       <div className='grid grid-cols-4 gap-3 max-xl:grid-cols-2 max-sm:grid-cols-1'>
         <QuickGlanceCard
           label='Managed container CPU'
-          value={resources ? formatPercent(resources.managedContainersCpuUsagePercent) : 'Loading...'}
-          hint={
-            resources
-              ? resources.containersRunning > 0
-                ? `Aggregated live usage across ${resources.containersRunning} running containers`
-                : 'No running managed containers'
-              : 'Collecting live Docker stats'
-          }
+          value={valueOrUnavailable(
+            resources ? formatPercent(resources.managedContainersCpuUsagePercent) : undefined,
+            error
+          )}
+          hint={cpuHint()}
         />
         <QuickGlanceCard
           label='Managed container memory'
-          value={resources ? formatBytes(resources.managedContainersMemoryUsageBytes) : 'Loading...'}
-          hint={
-            resources
-              ? resources.containersRunning > 0
-                ? 'Aggregated working-set memory from live Docker container stats'
-                : 'No running managed containers'
-              : 'Collecting live Docker stats'
-          }
+          value={valueOrUnavailable(
+            resources ? formatBytes(resources.managedContainersMemoryUsageBytes) : undefined,
+            error
+          )}
+          hint={memoryHint()}
         />
         <QuickGlanceCard
           label='Containers'
-          value={resources ? `${resources.containersRunning}/${resources.containersTotal}` : 'Loading...'}
+          value={valueOrUnavailable(
+            resources ? `${resources.containersRunning}/${resources.containersTotal}` : undefined,
+            error
+          )}
           hint='Running / Total'
         />
         <QuickGlanceCard
           label='Managed volume size'
-          value={resources ? formatBytes(resources.managedVolumesSizeBytes) : 'Loading...'}
-          hint={resources ? `${resources.managedVolumesTotal} managed volumes` : 'Refreshing storage usage'}
+          value={valueOrUnavailable(resources ? formatBytes(resources.managedVolumesSizeBytes) : undefined, error)}
+          hint={volumeHint()}
         />
       </div>
       <div className='text-xs text-secondary-foreground'>

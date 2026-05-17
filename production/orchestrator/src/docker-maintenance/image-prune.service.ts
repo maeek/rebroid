@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
-import { DockerService } from '../docker/docker.service';
+import { DockerPlatformService } from '../docker/docker-platform.service';
 import { SettingsService } from '../settings/settings.service';
 
 @Injectable()
@@ -9,7 +9,7 @@ export class ImagePruneService {
   private lastPrunedAt: Date | null = null;
 
   constructor(
-    private readonly docker: DockerService,
+    private readonly docker: DockerPlatformService,
     private readonly settings: SettingsService,
   ) {}
 

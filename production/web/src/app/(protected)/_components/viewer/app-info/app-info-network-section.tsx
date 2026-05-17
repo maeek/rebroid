@@ -17,14 +17,22 @@ const getPolicyEnabledDescription = (enabled: boolean) => {
     : 'Network policy restrictions are turned off for this app, so outbound access is not limited.'
 }
 
-const getPolicyStatusDescription = (status?: string | null) => {
-  switch (status) {
+const getPolicyStatusDescription = (result?: AppDefinition['networkPolicyResult']) => {
+  switch (result?.code) {
     case 'applied':
-      return 'The latest network policy rules were applied successfully to the running container.'
-    case 'skipped':
-      return 'Policy application was skipped, usually because the container is not ready yet or policy enforcement is disabled.'
-    case 'error':
-      return 'Applying the latest network policy failed. Check the policy message below for more detail.'
+      return result.hint ?? 'The latest network policy rules were applied successfully to the running container.'
+    case 'apply_failed':
+      return result.hint ?? 'Applying the latest network policy failed. Check the policy details below for more detail.'
+    case 'container_ip_unavailable':
+      return result.hint ?? 'The container is not ready on its network yet, so the policy could not be attached.'
+    case 'container_not_created':
+      return result.hint ?? 'The app must create its managed container before policy rules can be applied.'
+    case 'iptables_disabled':
+      return result.hint ?? 'Policy enforcement is disabled on the host.'
+    case 'policy_disabled':
+      return result.hint ?? 'Network policy restrictions are disabled for this app.'
+    case 'unknown':
+      return result.message
     default:
       return 'The network policy has not been applied yet.'
   }
@@ -126,14 +134,14 @@ export const AppInfoNetworkSection = ({ app, onAppChange }: AppInfoNetworkSectio
                 <TooltipTrigger asChild>
                   <span>
                     <Badge
-                      variant={app.networkPolicyStatus === 'error' ? 'destructive' : 'secondary'}
+                      variant={app.networkPolicyResult?.status === 'error' ? 'destructive' : 'secondary'}
                       className='capitalize'
                     >
-                      {app.networkPolicyStatus ?? 'not applied'}
+                      {app.networkPolicyResult?.status ?? app.networkPolicyStatus ?? 'not applied'}
                     </Badge>
                   </span>
                 </TooltipTrigger>
-                <TooltipContent>{getPolicyStatusDescription(app.networkPolicyStatus)}</TooltipContent>
+                <TooltipContent>{getPolicyStatusDescription(app.networkPolicyResult)}</TooltipContent>
               </Tooltip>
             </div>
           ) : (
@@ -174,10 +182,16 @@ export const AppInfoNetworkSection = ({ app, onAppChange }: AppInfoNetworkSectio
         label='Applied'
         value={app?.networkPolicyAppliedAt ? app.networkPolicyAppliedAt.toLocaleString() : 'Not applied'}
       />
-      {app?.networkPolicyMessage && (
+      {app?.networkPolicyResult?.hint && (
+        <AppInfoRow
+          label='Policy hint'
+          value={app.networkPolicyResult.hint}
+        />
+      )}
+      {(app?.networkPolicyResult?.message ?? app?.networkPolicyMessage) && (
         <AppInfoRow
           label='Policy message'
-          value={app.networkPolicyMessage}
+          value={app?.networkPolicyResult?.message ?? app?.networkPolicyMessage ?? 'Unknown policy state'}
         />
       )}
     </Section>

@@ -116,7 +116,11 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
       titleClassName='pb-4'
       contentClassName='gap-4'
     >
-      {app.networkPolicyMessage && <p className='text-sm text-secondary-foreground'>{app.networkPolicyMessage}</p>}
+      {(app.networkPolicyResult?.hint ?? app.networkPolicyResult?.message ?? app.networkPolicyMessage) && (
+        <p className='text-sm text-secondary-foreground'>
+          {app.networkPolicyResult?.hint ?? app.networkPolicyResult?.message ?? app.networkPolicyMessage}
+        </p>
+      )}
       <Setting
         label='Outbound access'
         description='Limit Android traffic to the API plus any CIDR ranges explicitly added below.'

@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DockerService } from '../docker/docker.service';
+import { DockerRuntimeService } from '../docker/docker-runtime.service';
 
 interface VolumeUsageCache {
   cachedAt: Date;
@@ -17,11 +17,12 @@ interface DockerVolumeDf {
 
 @Injectable()
 export class SystemResourcesService {
+  private readonly logger = new Logger(SystemResourcesService.name);
   private volumeCache: VolumeUsageCache | null = null;
 
   constructor(
     private readonly config: ConfigService,
-    private readonly docker: DockerService,
+    private readonly docker: DockerRuntimeService,
   ) {}
 
   async getUsage(refreshVolumes = false) {
@@ -31,7 +32,7 @@ export class SystemResourcesService {
       (container) => container.State === 'running',
     ).length;
     const managedContainerResourceUsage =
-      await this.docker.getManagedContainerResourceUsage(containers);
+      await this.getManagedContainerResourceUsage(containers);
 
     return {
       containersTotal: containers.length,
@@ -57,6 +58,22 @@ export class SystemResourcesService {
       })),
       volumes,
     };
+  }
+
+  private async getManagedContainerResourceUsage(
+    containers: Awaited<ReturnType<DockerRuntimeService['listManagedContainers']>>,
+  ) {
+    try {
+      return await this.docker.getManagedContainerResourceUsage(containers);
+    } catch (error) {
+      this.logger.warn(
+        `Unable to collect managed container stats: ${this.errorMessage(error)}`,
+      );
+      return {
+        cpuUsagePercent: 0,
+        memoryUsageBytes: 0,
+      };
+    }
   }
 
   private async getVolumeUsage(refreshVolumes: boolean) {
@@ -85,5 +102,9 @@ export class SystemResourcesService {
 
     this.volumeCache = { cachedAt: new Date(), volumes };
     return volumes;
+  }
+
+  private errorMessage(error: unknown) {
+    return error instanceof Error ? error.message : 'Unknown error';
   }
 }

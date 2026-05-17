@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  Headers,
   Param,
   Patch,
   Post,
@@ -20,6 +19,7 @@ import {
 import { AndroidApplication } from './android-application.entity';
 import { AndroidAppsService } from './android-apps.service';
 import { AndroidNotificationDto } from './dto/android-notification.dto';
+import { AndroidApplicationResponseDto } from './dto/android-application-response.dto';
 import { ApplicationLogDto } from './dto/application-log.dto';
 import { CreateAndroidApplicationDto } from './dto/create-android-application.dto';
 import { DeleteAndroidApplicationResponseDto } from './dto/delete-android-application-response.dto';
@@ -41,7 +41,7 @@ export class AndroidAppsController {
   @ApiOperation({
     summary: 'Provision an isolated application container.',
   })
-  @ApiCreatedResponse({ type: AndroidApplication })
+  @ApiCreatedResponse({ type: AndroidApplicationResponseDto })
   @ApiBody({
     schema: {
       type: 'object',
@@ -69,37 +69,37 @@ export class AndroidAppsController {
     },
   })
   create(@Body() dto: CreateAndroidApplicationDto) {
-    return this.androidApps.create(dto);
+    return this.toResponse(this.androidApps.create(dto));
   }
 
   @Get()
-  @ApiOkResponse({ type: AndroidApplication, isArray: true })
+  @ApiOkResponse({ type: AndroidApplicationResponseDto, isArray: true })
   list(@Query() query: ListAndroidApplicationsDto) {
-    return this.androidApps.list(query);
+    return this.toResponseList(this.androidApps.list(query));
   }
 
   @Get(':id')
-  @ApiOkResponse({ type: AndroidApplication })
+  @ApiOkResponse({ type: AndroidApplicationResponseDto })
   get(@Param('id') id: string) {
-    return this.androidApps.get(id);
+    return this.toResponse(this.androidApps.get(id));
   }
 
   @Patch(':id')
-  @ApiOkResponse({ type: AndroidApplication })
+  @ApiOkResponse({ type: AndroidApplicationResponseDto })
   update(@Param('id') id: string, @Body() dto: UpdateAndroidApplicationDto) {
-    return this.androidApps.update(id, dto);
+    return this.toResponse(this.androidApps.update(id, dto));
   }
 
   @Patch(':id/network-policy')
   @ApiOperation({
     summary: 'Update and reconcile the app container egress allowlist.',
   })
-  @ApiOkResponse({ type: AndroidApplication })
+  @ApiOkResponse({ type: AndroidApplicationResponseDto })
   updateNetworkPolicy(
     @Param('id') id: string,
     @Body() dto: UpdateNetworkPolicyDto,
   ) {
-    return this.androidApps.updateNetworkPolicy(id, dto);
+    return this.toResponse(this.androidApps.updateNetworkPolicy(id, dto));
   }
 
   @Post(':id/network-policy/apply')
@@ -107,9 +107,9 @@ export class AndroidAppsController {
     summary:
       'Re-apply the stored network policy without restarting the container.',
   })
-  @ApiOkResponse({ type: AndroidApplication })
+  @ApiOkResponse({ type: AndroidApplicationResponseDto })
   applyNetworkPolicy(@Param('id') id: string) {
-    return this.androidApps.applyNetworkPolicy(id);
+    return this.toResponse(this.androidApps.applyNetworkPolicy(id));
   }
 
   @Post(':id/profile')
@@ -117,12 +117,12 @@ export class AndroidAppsController {
     summary:
       'Select the runtime profile volume used by the next container start.',
   })
-  @ApiOkResponse({ type: AndroidApplication })
+  @ApiOkResponse({ type: AndroidApplicationResponseDto })
   switchProfile(
     @Param('id') id: string,
     @Body() dto: SwitchApplicationProfileDto,
   ) {
-    return this.androidApps.switchProfile(id, dto);
+    return this.toResponse(this.androidApps.switchProfile(id, dto));
   }
 
   @Post(':id/start')
@@ -130,19 +130,19 @@ export class AndroidAppsController {
     summary:
       'Start the application container, optionally selecting a runtime profile.',
   })
-  @ApiOkResponse({ type: AndroidApplication })
+  @ApiOkResponse({ type: AndroidApplicationResponseDto })
   start(@Param('id') id: string, @Body() dto: StartAndroidApplicationDto) {
-    return this.androidApps.start(id, dto);
+    return this.toResponse(this.androidApps.start(id, dto));
   }
 
   @Post(':id/stop')
-  @ApiOkResponse({ type: AndroidApplication })
+  @ApiOkResponse({ type: AndroidApplicationResponseDto })
   stop(@Param('id') id: string) {
-    return this.androidApps.stop(id);
+    return this.toResponse(this.androidApps.stop(id));
   }
 
   @Put(':id/apk')
-  @ApiOkResponse({ type: AndroidApplication })
+  @ApiOkResponse({ type: AndroidApplicationResponseDto })
   @ApiBody({
     schema: {
       type: 'object',
@@ -159,14 +159,31 @@ export class AndroidAppsController {
     @Param('id') id: string,
     @Body() dto: UpdateAndroidApplicationApkDto,
   ) {
-    return this.androidApps.updateApk(id, dto);
+    return this.toResponse(this.androidApps.updateApk(id, dto));
   }
 
   @Get(':id/scrcpy-session')
   @ApiOkResponse({ type: ScrcpySessionDto })
-  scrcpySession(@Param('id') id: string, @Headers('host') host?: string) {
-    const baseUrl = host ? `ws://${host}` : undefined;
-    return this.androidApps.scrcpySession(id, baseUrl);
+  scrcpySession(@Param('id') id: string) {
+    return this.androidApps.scrcpySession(id);
+  }
+
+  @Post(':id/viewer-activity')
+  @ApiOperation({
+    summary: 'Refresh viewer activity for inactivity timeout tracking.',
+  })
+  @ApiOkResponse({
+    schema: {
+      type: 'object',
+      required: ['id', 'lastScrcpyActivityAt'],
+      properties: {
+        id: { type: 'string' },
+        lastScrcpyActivityAt: { type: 'string', format: 'date-time' },
+      },
+    },
+  })
+  viewerActivity(@Param('id') id: string) {
+    return this.androidApps.recordViewerActivity(id);
   }
 
   @Get(':id/notifications')
@@ -197,5 +214,15 @@ export class AndroidAppsController {
   @ApiOkResponse({ type: DeleteAndroidApplicationResponseDto })
   remove(@Param('id') id: string, @Query() query: RemoveAndroidApplicationDto) {
     return this.androidApps.remove(id, query);
+  }
+
+  private async toResponse(application: Promise<AndroidApplication>) {
+    return AndroidApplicationResponseDto.fromEntity(await application);
+  }
+
+  private async toResponseList(applications: Promise<AndroidApplication[]>) {
+    return (await applications).map((app) =>
+      AndroidApplicationResponseDto.fromEntity(app),
+    );
   }
 }

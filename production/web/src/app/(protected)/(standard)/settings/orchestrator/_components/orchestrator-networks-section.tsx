@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { IconRefresh, IconSearch, IconTrash } from '@tabler/icons-react'
+import { IconEye, IconRefresh, IconSearch, IconTrash } from '@tabler/icons-react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -18,6 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { toast } from '@/hooks/use-toast'
 import { listPlatformNetworksAction, removePlatformNetworkAction } from '@/lib/orchestrator/actions'
+import { PlatformGridPagination } from './platform-grid-pagination'
 import type { PlatformNetwork } from '@/lib/orchestrator/types'
 
 const NetworkNameCell = ({ network }: { network: PlatformNetwork }) => (
@@ -25,7 +27,12 @@ const NetworkNameCell = ({ network }: { network: PlatformNetwork }) => (
     <div className='flex min-w-0 items-center gap-2'>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className='block min-w-0 truncate font-medium'>{network.name}</span>
+          <Link
+            href={`/settings/orchestrator/networks/${network.id}`}
+            className='block min-w-0 truncate font-medium hover:text-primary'
+          >
+            {network.name}
+          </Link>
         </TooltipTrigger>
         <TooltipContent className='max-w-sm break-all'>{network.name}</TooltipContent>
       </Tooltip>
@@ -49,6 +56,8 @@ export const OrchestratorNetworksSection = ({ refreshKey = 0 }: { refreshKey?: n
   const [search, setSearch] = useState('')
   const [pendingRemove, setPendingRemove] = useState<PlatformNetwork | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [pageIndex, setPageIndex] = useState(0)
+  const [pageSize, setPageSize] = useState(20)
 
   const sortedNetworks = useMemo(
     () =>
@@ -84,6 +93,11 @@ export const OrchestratorNetworksSection = ({ refreshKey = 0 }: { refreshKey?: n
     )
   }, [search, sortedNetworks])
 
+  const paginatedNetworks = useMemo(
+    () => filteredNetworks.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize),
+    [filteredNetworks, pageIndex, pageSize]
+  )
+
   const refresh = async () => {
     setIsLoading(true)
     try {
@@ -99,6 +113,17 @@ export const OrchestratorNetworksSection = ({ refreshKey = 0 }: { refreshKey?: n
   useEffect(() => {
     void refresh()
   }, [refreshKey])
+
+  useEffect(() => {
+    setPageIndex(0)
+  }, [search])
+
+  useEffect(() => {
+    const pageCount = Math.max(Math.ceil(filteredNetworks.length / pageSize), 1)
+    if (pageIndex >= pageCount) {
+      setPageIndex(pageCount - 1)
+    }
+  }, [filteredNetworks.length, pageIndex, pageSize])
 
   const removeNetwork = async () => {
     if (!pendingRemove) {
@@ -198,7 +223,7 @@ export const OrchestratorNetworksSection = ({ refreshKey = 0 }: { refreshKey?: n
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredNetworks.map(network => (
+                      paginatedNetworks.map(network => (
                         <TableRow key={network.id}>
                           <TableCell className='px-4 py-3 align-top'>
                             <NetworkNameCell network={network} />
@@ -223,7 +248,15 @@ export const OrchestratorNetworksSection = ({ refreshKey = 0 }: { refreshKey?: n
                             {network.containers.length}
                           </TableCell>
                           <TableCell className='px-4 py-3 align-top'>
-                            <div className='flex justify-end'>
+                            <div className='flex justify-end gap-2'>
+                              <Button
+                                asChild
+                                variant='secondary'
+                              >
+                                <Link href={`/settings/orchestrator/networks/${network.id}`}>
+                                  <IconEye className='size-4' />
+                                </Link>
+                              </Button>
                               <Button
                                 type='button'
                                 variant='destructive'
@@ -242,6 +275,15 @@ export const OrchestratorNetworksSection = ({ refreshKey = 0 }: { refreshKey?: n
               </TooltipProvider>
             </div>
           </div>
+        )}
+        {!error && (
+          <PlatformGridPagination
+            totalItems={filteredNetworks.length}
+            pageIndex={pageIndex}
+            pageSize={pageSize}
+            onPageIndexChange={setPageIndex}
+            onPageSizeChange={setPageSize}
+          />
         )}
       </Section>
 

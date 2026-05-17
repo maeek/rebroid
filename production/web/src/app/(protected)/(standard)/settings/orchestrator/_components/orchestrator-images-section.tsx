@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { IconRefresh, IconSearch, IconTrash } from '@tabler/icons-react'
+import { IconEye, IconRefresh, IconSearch, IconTrash } from '@tabler/icons-react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -18,6 +19,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { toast } from '@/hooks/use-toast'
 import { listPlatformImagesAction, removePlatformImageAction } from '@/lib/orchestrator/actions'
+import { imageDisplayName } from '@/lib/orchestrator/image-display-name'
+import { PlatformGridPagination } from './platform-grid-pagination'
 import type { PlatformImage } from '@/lib/orchestrator/types'
 
 const formatBytes = (bytes: number) => {
@@ -30,8 +33,6 @@ const formatBytes = (bytes: number) => {
   return `${(bytes / 1024 ** index).toFixed(2)} ${units[index]}`
 }
 
-const imageDisplayName = (image: PlatformImage) => image.repoTags[0] ?? image.repoDigests[0] ?? image.shortId
-
 const ImageNameCell = ({ image }: { image: PlatformImage }) => {
   const name = imageDisplayName(image)
   const secondary = image.repoTags.length > 1 ? image.repoTags.slice(1).join(', ') : image.repoDigests[0]
@@ -40,7 +41,12 @@ const ImageNameCell = ({ image }: { image: PlatformImage }) => {
     <div className='flex min-w-[18rem] flex-col gap-1'>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className='block truncate font-medium'>{name}</span>
+          <Link
+            href={`/settings/orchestrator/images/${encodeURIComponent(image.id)}`}
+            className='block truncate font-medium hover:text-primary'
+          >
+            {name}
+          </Link>
         </TooltipTrigger>
         <TooltipContent className='max-w-sm break-all'>{name}</TooltipContent>
       </Tooltip>
@@ -56,6 +62,8 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
   const [search, setSearch] = useState('')
   const [pendingRemove, setPendingRemove] = useState<PlatformImage | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [pageIndex, setPageIndex] = useState(0)
+  const [pageSize, setPageSize] = useState(20)
 
   const sortedImages = useMemo(
     () =>
@@ -87,6 +95,11 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
     )
   }, [search, sortedImages])
 
+  const paginatedImages = useMemo(
+    () => filteredImages.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize),
+    [filteredImages, pageIndex, pageSize]
+  )
+
   const refresh = async () => {
     setIsLoading(true)
     try {
@@ -102,6 +115,17 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
   useEffect(() => {
     void refresh()
   }, [refreshKey])
+
+  useEffect(() => {
+    setPageIndex(0)
+  }, [search])
+
+  useEffect(() => {
+    const pageCount = Math.max(Math.ceil(filteredImages.length / pageSize), 1)
+    if (pageIndex >= pageCount) {
+      setPageIndex(pageCount - 1)
+    }
+  }, [filteredImages.length, pageIndex, pageSize])
 
   const removeImage = async () => {
     if (!pendingRemove) {
@@ -200,7 +224,7 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredImages.map(image => (
+                      paginatedImages.map(image => (
                         <TableRow key={image.id}>
                           <TableCell className='px-4 py-3 align-top'>
                             <ImageNameCell image={image} />
@@ -218,7 +242,15 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
                             {image.shortId}
                           </TableCell>
                           <TableCell className='px-4 py-3 align-top'>
-                            <div className='flex justify-end'>
+                            <div className='flex justify-end gap-2'>
+                              <Button
+                                asChild
+                                variant='secondary'
+                              >
+                                <Link href={`/settings/orchestrator/images/${encodeURIComponent(image.id)}`}>
+                                  <IconEye className='size-4' />
+                                </Link>
+                              </Button>
                               <Button
                                 type='button'
                                 variant='destructive'
@@ -237,6 +269,15 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
               </TooltipProvider>
             </div>
           </div>
+        )}
+        {!error && (
+          <PlatformGridPagination
+            totalItems={filteredImages.length}
+            pageIndex={pageIndex}
+            pageSize={pageSize}
+            onPageIndexChange={setPageIndex}
+            onPageSizeChange={setPageSize}
+          />
         )}
       </Section>
 

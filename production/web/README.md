@@ -8,7 +8,8 @@ Point the web app at the orchestrator:
 
 ```bash
 ORCHESTRATOR_API_URL=http://localhost:4100
-NEXT_PUBLIC_SCRCPY_BASE_URL=http://localhost:8000
+WS_SCRCPY_INTERNAL_BASE_URL=http://sma-ws-scrcpy:8000
+SCRCPY_VIEWER_TOKEN_SECRET=change-me
 WEB_SETTINGS_PATH=./data/web-settings.json
 NEXT_PROXY_CLIENT_MAX_BODY_SIZE=4096mb
 NEXT_PROXY_MAX_APK_UPLOAD_SIZE_MB=4096
@@ -18,12 +19,16 @@ When the orchestrator runs on your Linux redroid host, use that host instead:
 
 ```bash
 ORCHESTRATOR_API_URL=http://your-linux-host:4100
-NEXT_PUBLIC_SCRCPY_BASE_URL=https://your-public-scrcpy-host
+WS_SCRCPY_INTERNAL_BASE_URL=http://sma-ws-scrcpy:8000
 ```
 
 The web app stores frontend-only settings in `WEB_SETTINGS_PATH`. Orchestrator-owned runtime settings are fetched from the Nest API at `/settings`.
 
-The APK limit in General Settings is the effective upload limit. `NEXT_PROXY_CLIENT_MAX_BODY_SIZE` is the Next.js transport ceiling and requires a server restart if changed. `NEXT_PROXY_MAX_APK_UPLOAD_SIZE_MB` is the proxy route's maximum accepted value for the mirrored settings cookie. `NEXT_PUBLIC_SCRCPY_BASE_URL` controls the public base URL used by the embedded Android viewer; if it is unset, the frontend falls back to the current browser origin.
+The APK limit in General Settings is the effective upload limit. `NEXT_PROXY_CLIENT_MAX_BODY_SIZE` is the Next.js transport ceiling and requires a server restart if changed. `NEXT_PROXY_MAX_APK_UPLOAD_SIZE_MB` is the proxy route's maximum accepted value for the mirrored settings cookie.
+
+The browser viewer is intentionally not pointed at a public ws-scrcpy port. The orchestrator can create one shared sidecar container named `sma-ws-scrcpy`; point `WS_SCRCPY_INTERNAL_BASE_URL` at it from the Next.js server when you need to override the default. Configure that sidecar with `WS_SCRCPY_PATHNAME=/viewer/ws-scrcpy` and make sure `adb` is available in the sidecar `PATH`; Next.js proxies authenticated `/viewer/ws-scrcpy/*` requests to that internal service and requires a short-lived app-scoped viewer token for the raw ADB websocket.
+
+The viewer shell also sends an authenticated keepalive while open so the orchestrator's inactivity cron does not stop an actively viewed container.
 
 First, run the development server:
 

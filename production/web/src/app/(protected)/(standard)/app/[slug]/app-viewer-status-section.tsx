@@ -3,9 +3,19 @@ import { ImagePullProgress } from '@/app/(protected)/_components/viewer/image-pu
 import { Badge } from '@/components/ui/badge'
 import { Section } from '@/components/ui/section'
 import type { AppDefinition } from '../../constants'
+import type { AndroidApplicationStatusDetail } from '@/lib/orchestrator/types'
 
-const formatStatusLabel = (value: string) => value.replaceAll('_', ' ')
-const hasRuntimeRecreateNotice = (message: string | null) => message?.startsWith('Runtime settings changed.') ?? false
+type AppImagePullProgress = {
+  status: string
+  current: string
+  total: string
+  layerId: string | null
+  percent: number
+} | null
+
+const hasRuntimeRecreateBadge = (app: AppDefinition) => app.recreateContainerOnNextStart === true
+
+const getAppImagePullProgress = (app: AppDefinition): AppImagePullProgress => app.imagePullProgress
 
 const getStatusIcon = (app: AppDefinition) => {
   if (app.status === 'error') {
@@ -21,7 +31,9 @@ const getStatusIcon = (app: AppDefinition) => {
 
 export const AppViewerStatusSection = ({ app }: { app: AppDefinition }) => {
   const isError = app.status === 'error'
-  const shouldShowRuntimeRecreateBadge = hasRuntimeRecreateNotice(app.statusMessage)
+  const statusDetail = (app as AppDefinition & { statusDetail: AndroidApplicationStatusDetail | null }).statusDetail
+  const statusTitle = statusDetail?.title ?? app.lifecycleStage.replaceAll('_', ' ')
+  const statusDescription = statusDetail?.description ?? app.statusMessage
 
   return (
     <Section
@@ -36,19 +48,19 @@ export const AppViewerStatusSection = ({ app }: { app: AppDefinition }) => {
       {getStatusIcon(app)}
       <div className='flex w-full grow flex-col gap-1'>
         <div className='flex items-center gap-2'>
-          <span className='text-foreground capitalize'>{formatStatusLabel(app.lifecycleStage)}</span>
+          <span className='text-foreground'>{statusTitle}</span>
           <Badge
             variant={isError ? 'destructive' : 'status'}
             className='capitalize'
           >
             {app.status}
           </Badge>
-          {shouldShowRuntimeRecreateBadge && <Badge variant='warning'>Runtime modified</Badge>}
+          {hasRuntimeRecreateBadge(app) && <Badge variant='warning'>Runtime modified</Badge>}
         </div>
-        {app.statusMessage && !shouldShowRuntimeRecreateBadge && (
+        {statusDescription && !hasRuntimeRecreateBadge(app) && (
           <ImagePullProgress
-            statusMessage={app.statusMessage}
-            isImagePulling={app.lifecycleStage === 'image_pulling'}
+            statusMessage={statusDescription}
+            progress={getAppImagePullProgress(app)}
           />
         )}
       </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { IconPlayerStopFilled, IconTerminal2, IconTrash } from '@tabler/icons-react'
+import { IconEye, IconPlayerStopFilled, IconTerminal2, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -25,7 +25,12 @@ export const ContainerNameCell = ({ container, className }: { container: Platfor
       <div className='flex min-w-0 items-center gap-2'>
         <Tooltip>
           <TooltipTrigger asChild>
-            <span className='block min-w-0 truncate font-medium'>{name}</span>
+            <Link
+              href={`/settings/orchestrator/containers/${container.id}`}
+              className='block min-w-0 truncate font-medium hover:text-primary'
+            >
+              {name}
+            </Link>
           </TooltipTrigger>
           <TooltipContent className='max-w-sm break-all'>{name}</TooltipContent>
         </Tooltip>
@@ -56,6 +61,14 @@ export const ContainerActions = ({
   className?: string
 }) => (
   <div className={cn('flex justify-end gap-2', className)}>
+    <Button
+      asChild
+      variant='secondary'
+    >
+      <Link href={`/settings/orchestrator/containers/${container.id}`}>
+        <IconEye className='size-4' />
+      </Link>
+    </Button>
     {container.applicationId && (
       <Button
         asChild

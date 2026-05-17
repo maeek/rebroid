@@ -36,6 +36,99 @@ export interface ApplicationLog {
   output: string
 }
 
+export type ScrcpyViewerErrorCode = 'sidecar_unavailable' | 'adb_missing' | 'adb_unreachable' | 'unknown'
+
+export interface ScrcpyViewerError {
+  code: ScrcpyViewerErrorCode
+  message: string
+  retryable: boolean
+  exitCode: number | null
+  command: string[] | null
+  stdout: string | null
+  stderr: string | null
+}
+
+export interface AndroidImagePullProgress {
+  status: string
+  current: string
+  total: string
+  layerId: string | null
+  percent: number
+}
+
+export type AndroidApplicationErrorCode =
+  | 'container_command_failed'
+  | 'container_exited'
+  | 'container_missing'
+  | 'startup_command_finished'
+  | 'unknown'
+
+export interface AndroidApplicationError {
+  code: AndroidApplicationErrorCode
+  phase: 'provisioning' | 'runtime' | 'unknown'
+  message: string
+  retryable: boolean
+  exitCode: number | null
+  hint: string | null
+}
+
+export type AndroidApplicationStatusDetailCode =
+  | 'queued'
+  | 'image_checking'
+  | 'image_pulling'
+  | 'volume_creating'
+  | 'network_creating'
+  | 'orchestrator_network_connecting'
+  | 'container_creating'
+  | 'container_starting'
+  | 'android_booting'
+  | 'apk_installing'
+  | 'ready'
+  | 'stopping'
+  | 'stopped'
+  | 'stopped_recreate_required'
+  | 'removing'
+  | 'removed'
+  | 'error'
+  | 'unknown'
+
+export interface AndroidApplicationStatusDetail {
+  code: AndroidApplicationStatusDetailCode
+  title: string
+  description: string | null
+  tone: 'neutral' | 'progress' | 'success' | 'warning' | 'error'
+}
+
+export type AndroidNetworkPolicyResultCode =
+  | 'applied'
+  | 'apply_failed'
+  | 'container_ip_unavailable'
+  | 'container_not_created'
+  | 'iptables_disabled'
+  | 'policy_disabled'
+  | 'unknown'
+
+export interface AndroidNetworkPolicyResult {
+  status: 'applied' | 'skipped' | 'error'
+  code: AndroidNetworkPolicyResultCode
+  message: string
+  hint: string | null
+}
+
+export interface ScrcpySession {
+  applicationId: string
+  transport: ScrcpyTransport
+  udid: string
+  proxyRemote: string
+  player: string
+  viewerServiceConfigured: boolean
+  viewerTargetConnected: boolean
+  viewerMessage: string | null
+  viewerError: ScrcpyViewerError | null
+  adbHost: string
+  adbPort: number
+}
+
 export interface SystemResources {
   containersTotal: number
   containersRunning: number
@@ -68,6 +161,12 @@ export interface PlatformContainer {
   networks: string[]
 }
 
+export interface PlatformContainerLog {
+  source: 'container'
+  collectedAt: string
+  output: string
+}
+
 export interface PlatformImage {
   id: string
   shortId: string
@@ -79,6 +178,12 @@ export interface PlatformImage {
   createdAt: string
   labels: Record<string, string>
   containers: number
+}
+
+export interface PlatformImageDetails {
+  image: PlatformImage
+  inspect: unknown
+  relatedContainers: PlatformContainer[]
 }
 
 export interface PlatformNetwork {
@@ -98,9 +203,35 @@ export interface PlatformNetwork {
   gateways: string[]
 }
 
+export interface PlatformNetworkDetails {
+  network: PlatformNetwork
+  inspect: unknown
+  relatedContainers: PlatformContainer[]
+}
+
+export interface PlatformContainerDetails {
+  container: PlatformContainer
+  inspect: unknown
+  relatedImage: PlatformImage | null
+  relatedNetworks: PlatformNetwork[]
+}
+
 export interface OrchestratorHealth {
   ok: boolean
   docker: boolean
+  scrcpy: boolean
+  services: {
+    orchestrator: ServiceHealth
+    docker: ServiceHealth
+    scrcpy: ServiceHealth
+  }
+}
+
+export interface ServiceHealth {
+  ok: boolean
+  status: 'healthy' | 'unhealthy' | 'offline'
+  message: string
+  details?: Record<string, string | number | boolean | null>
 }
 
 export interface DockerPruneResponse {
@@ -139,37 +270,58 @@ export interface AndroidApplication {
   id: string
   name: string
   ownerUserId: string | null
-  status: AndroidApplicationStatus
-  lifecycleStage: AndroidApplicationLifecycleStage
-  statusMessage: string | null
-  containerImage: string
-  containerName: string
-  containerId: string | null
-  networkName: string
-  volumeName: string
-  profileMode: ApplicationProfileMode
-  profileName: string | null
-  memoryLimitMb: number | null
-  cpuLimitCpus: number | null
-  volumeSizeLimitMb: number | null
-  containerArgs: string | null
-  networkPolicyEnabled: boolean
-  networkPolicyAllowCidrs: string
-  networkPolicyStatus: string | null
-  networkPolicyMessage: string | null
-  networkPolicyAppliedAt: string | null
-  apkFilePath: string | null
-  apkOriginalName: string | null
-  uploadedApkId: string | null
-  scrcpyTransport: ScrcpyTransport
-  adbPort: number
-  inactivityTimeoutSeconds: number
-  lastScrcpyActivityAt: string | null
-  lastStartedAt: string | null
-  lastStoppedAt: string | null
-  provisioningStartedAt: string | null
-  provisioningCompletedAt: string | null
-  lastError: string | null
+  status: {
+    currentStatus: AndroidApplicationStatus
+    lifecycleStage: AndroidApplicationLifecycleStage
+    message: string | null
+    detail: AndroidApplicationStatusDetail | null
+    progress: AndroidImagePullProgress | null
+    recreateRequired: boolean
+    lastScrcpyActivityAt: string | null
+    lastStartedAt: string | null
+    lastStoppedAt: string | null
+    provisioningStartedAt: string | null
+    provisioningCompletedAt: string | null
+  }
+  errors: {
+    lastError: string | null
+    application: AndroidApplicationError | null
+  }
+  runtime: {
+    image: string
+    containerName: string
+    containerId: string | null
+    containerArgs: string | null
+    adbPort: number
+    scrcpyTransport: ScrcpyTransport
+    inactivityTimeoutSeconds: number
+    resources: {
+      memoryLimitMb: number | null
+      cpuLimitCpus: number | null
+      volumeSizeLimitMb: number | null
+    }
+  }
+  storage: {
+    volumeName: string
+    profileMode: ApplicationProfileMode
+    profileName: string | null
+  }
+  network: {
+    networkName: string
+    policy: {
+      enabled: boolean
+      allowCidrs: string[]
+      status: string | null
+      message: string | null
+      result: AndroidNetworkPolicyResult | null
+      appliedAt: string | null
+    }
+  }
+  apk: {
+    filePath: string | null
+    originalName: string | null
+    uploadedApkId: string | null
+  }
   createdAt: string
   updatedAt: string
 }

@@ -1,64 +1,62 @@
 import { AppDefinition } from '@/app/(protected)/(standard)/constants'
 import { AndroidApplication } from './types'
 
-export const isApplicationRunning = (app: AndroidApplication) => app.status === 'running'
-
-const parseAllowCidrs = (value: string) => {
-  try {
-    const parsed: unknown = JSON.parse(value)
-    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : []
-  } catch {
-    return []
-  }
-}
+export const isApplicationRunning = (app: AndroidApplication) => app.status.currentStatus === 'running'
 
 export const mapAndroidApplicationToAppDefinition = (app: AndroidApplication): AppDefinition => ({
   id: app.id,
   name: app.name,
   icon: null,
   running: isApplicationRunning(app),
-  status: app.status,
-  lifecycleStage: app.lifecycleStage,
-  statusMessage: app.statusMessage,
+  status: app.status.currentStatus,
+  lifecycleStage: app.status.lifecycleStage,
+  statusMessage: app.status.message,
+  statusDetail: app.status.detail,
   ownerUserId: app.ownerUserId,
-  containerImage: app.containerImage,
-  containerName: app.containerName,
-  containerId: app.containerId,
-  networkName: app.networkName,
-  volumeName: app.volumeName,
-  profileMode: app.profileMode,
-  profileName: app.profileName,
-  memoryLimitMb: app.memoryLimitMb,
-  cpuLimitCpus: app.cpuLimitCpus,
-  volumeSizeLimitMb: app.volumeSizeLimitMb,
-  containerArgs: app.containerArgs,
-  networkPolicyEnabled: app.networkPolicyEnabled,
-  networkPolicyAllowCidrs: parseAllowCidrs(app.networkPolicyAllowCidrs),
-  networkPolicyStatus: app.networkPolicyStatus,
-  networkPolicyMessage: app.networkPolicyMessage,
-  networkPolicyAppliedAt: app.networkPolicyAppliedAt ? new Date(app.networkPolicyAppliedAt) : null,
-  apkOriginalName: app.apkOriginalName,
-  apkFilePath: app.apkFilePath,
-  uploadedApkId: app.uploadedApkId,
-  scrcpyTransport: app.scrcpyTransport,
-  adbPort: app.adbPort,
-  inactivityTimeoutSeconds: app.inactivityTimeoutSeconds,
-  lastError: app.lastError,
-  lastStartedAt: app.lastStartedAt ? new Date(app.lastStartedAt) : undefined,
-  lastStoppedAt: app.lastStoppedAt ? new Date(app.lastStoppedAt) : undefined,
-  provisioningStartedAt: app.provisioningStartedAt ? new Date(app.provisioningStartedAt) : undefined,
-  provisioningCompletedAt: app.provisioningCompletedAt ? new Date(app.provisioningCompletedAt) : undefined,
+  containerImage: app.runtime.image,
+  containerName: app.runtime.containerName,
+  containerId: app.runtime.containerId,
+  networkName: app.network.networkName,
+  volumeName: app.storage.volumeName,
+  profileMode: app.storage.profileMode,
+  profileName: app.storage.profileName,
+  memoryLimitMb: app.runtime.resources.memoryLimitMb,
+  cpuLimitCpus: app.runtime.resources.cpuLimitCpus,
+  volumeSizeLimitMb: app.runtime.resources.volumeSizeLimitMb,
+  containerArgs: app.runtime.containerArgs,
+  recreateContainerOnNextStart: app.status.recreateRequired,
+  networkPolicyEnabled: app.network.policy.enabled,
+  networkPolicyAllowCidrs: app.network.policy.allowCidrs,
+  networkPolicyStatus: app.network.policy.status,
+  networkPolicyMessage: app.network.policy.message,
+  networkPolicyResult: app.network.policy.result,
+  networkPolicyAppliedAt: app.network.policy.appliedAt ? new Date(app.network.policy.appliedAt) : null,
+  apkOriginalName: app.apk.originalName,
+  apkFilePath: app.apk.filePath,
+  uploadedApkId: app.apk.uploadedApkId,
+  scrcpyTransport: app.runtime.scrcpyTransport,
+  adbPort: app.runtime.adbPort,
+  inactivityTimeoutSeconds: app.runtime.inactivityTimeoutSeconds,
+  lastError: app.errors.lastError,
+  lastStartedAt: app.status.lastStartedAt ? new Date(app.status.lastStartedAt) : undefined,
+  lastStoppedAt: app.status.lastStoppedAt ? new Date(app.status.lastStoppedAt) : undefined,
+  provisioningStartedAt: app.status.provisioningStartedAt ? new Date(app.status.provisioningStartedAt) : undefined,
+  provisioningCompletedAt: app.status.provisioningCompletedAt
+    ? new Date(app.status.provisioningCompletedAt)
+    : undefined,
   createdAt: new Date(app.createdAt),
   updatedAt: new Date(app.updatedAt),
+  imagePullProgress: app.status.progress,
+  applicationError: app.errors.application,
   apk: {
-    version: app.apkOriginalName ?? 'Unknown'
+    version: app.apk.originalName ?? 'Unknown'
   },
   container: {
-    persistentStorage: app.profileMode === 'persistent',
-    internetAccess: app.networkPolicyAllowCidrs !== '[]'
+    persistentStorage: app.storage.profileMode === 'persistent',
+    internetAccess: app.network.policy.allowCidrs.length > 0
   },
   runtime: {
-    version: app.containerImage,
-    arguments: app.containerArgs ?? undefined
+    version: app.runtime.image,
+    arguments: app.runtime.containerArgs ?? undefined
   }
 })

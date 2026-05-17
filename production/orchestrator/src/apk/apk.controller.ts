@@ -17,7 +17,7 @@ import {
   ApiOkResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { ApkService } from './apk.service';
+import { ApkCatalogService } from './apk-catalog.service';
 import { CleanupUploadedApksDto } from './dto/cleanup-uploaded-apks.dto';
 import { CleanupUploadedApksResponseDto } from './dto/cleanup-uploaded-apks-response.dto';
 import { ListUploadedApksDto } from './dto/list-uploaded-apks.dto';
@@ -27,7 +27,7 @@ import { UploadedApk } from './uploaded-apk.entity';
 @ApiTags('apks')
 @Controller('apks')
 export class ApkController {
-  constructor(private readonly apk: ApkService) {}
+  constructor(private readonly apk: ApkCatalogService) {}
 
   @Post()
   @UseInterceptors(FileInterceptor('apk'))

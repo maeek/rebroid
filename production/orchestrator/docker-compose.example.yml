@@ -1,6 +1,8 @@
 services:
   orchestrator:
-    build: .
+    build:
+      context: ..
+      dockerfile: orchestrator/Dockerfile
     container_name: shop-me-alone-orchestrator
     ports:
       - "4100:4100"
@@ -13,6 +15,10 @@ services:
       ORCHESTRATOR_CONTAINER_ID: shop-me-alone-orchestrator
       CONTAINER_IMAGE: redroid/redroid:13.0.0-latest
       REDROID_PRIVILEGED: "true"
+      WS_SCRCPY_IMAGE: shop-me-alone/ws-scrcpy-sidecar:latest
+      WS_SCRCPY_BUILD_CONTEXT: /app/ws-scrcpy-sidecar
+      WS_SCRCPY_CONTAINER_NAME: sma-ws-scrcpy
+      WS_SCRCPY_AUTO_START: "true"
     volumes:
       # Preferred: mount the host Docker/Podman socket. The image also includes
       # docker-cli and iptables so admins can inspect/debug from inside the API

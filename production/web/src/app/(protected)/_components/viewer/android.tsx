@@ -5,17 +5,9 @@ import { AppIcon } from '@/app/(protected)/_components/apps/app-icon'
 import { ImagePullProgress } from '@/app/(protected)/_components/viewer/image-pull-progress'
 import Android from '@/components/ui/android'
 import { resolveAppIconUrl } from '@/lib/app-icons/url'
-import { getScrcpyViewerUrl } from '@/lib/orchestrator/scrcpy'
+import { getProtectedViewerShellUrl } from '@/lib/orchestrator/scrcpy'
 import { cn } from '@/lib/utils'
 import { AppDefinition } from '../../(standard)/constants'
-
-const formatStateLabel = (value?: string | null) => {
-  if (!value) {
-    return 'Unknown state'
-  }
-
-  return value.replaceAll('_', ' ')
-}
 
 export const AppViewer = ({
   app,
@@ -33,7 +25,7 @@ export const AppViewer = ({
       return null
     }
 
-    return getScrcpyViewerUrl({ applicationId: app.id, adbPort: app.adbPort })
+    return getProtectedViewerShellUrl(app.id)
   }, [app?.adbPort, app?.id, isViewerReady])
 
   const viewerPlaceholder = useMemo(() => {
@@ -50,8 +42,11 @@ export const AppViewer = ({
 
     if (app.status === 'error') {
       return {
-        title: 'App failed to start',
-        description: app.statusMessage ?? 'The orchestrator reported an error while preparing the viewer.',
+        title: app.statusDetail?.title ?? 'App failed to start',
+        description:
+          app.statusDetail?.description ??
+          app.statusMessage ??
+          'The orchestrator reported an error while preparing the viewer.',
         toneClassName: 'text-destructive',
         Icon: IconAlertTriangle,
         showSpinner: false,
@@ -61,8 +56,11 @@ export const AppViewer = ({
 
     if (app.status === 'provisioning' || app.status === 'removing') {
       return {
-        title: formatStateLabel(app.lifecycleStage),
-        description: app.statusMessage ?? 'Preparing the Android environment and viewer connection.',
+        title: app.statusDetail?.title ?? 'Preparing app',
+        description:
+          app.statusDetail?.description ??
+          app.statusMessage ??
+          'Preparing the Android environment and viewer connection.',
         toneClassName: 'text-primary',
         Icon: IconLoader2,
         showSpinner: true,
@@ -72,8 +70,8 @@ export const AppViewer = ({
 
     if (app.status === 'stopped') {
       return {
-        title: 'App is stopped',
-        description: app.statusMessage ?? 'Start the app to open the live viewer.',
+        title: app.statusDetail?.title ?? 'App is stopped',
+        description: app.statusDetail?.description ?? app.statusMessage ?? 'Start the app to open the live viewer.',
         toneClassName: 'text-secondary-foreground',
         Icon: IconPlayerPlay,
         showSpinner: false,
@@ -82,8 +80,11 @@ export const AppViewer = ({
     }
 
     return {
-      title: 'Viewer unavailable',
-      description: app.statusMessage ?? 'Scrcpy viewer URL is not available for this environment.',
+      title: app.statusDetail?.title ?? 'Viewer unavailable',
+      description:
+        app.statusDetail?.description ??
+        app.statusMessage ??
+        'Scrcpy viewer URL is not available for this environment.',
       toneClassName: 'text-secondary-foreground',
       Icon: IconAlertTriangle,
       showSpinner: false,
@@ -157,7 +158,7 @@ export const AppViewer = ({
             {viewerPlaceholder.showProgress && (
               <ImagePullProgress
                 statusMessage={app?.statusMessage}
-                isImagePulling
+                progress={app?.imagePullProgress}
                 className='w-full rounded-lg border border-border/60 bg-background/60 px-4 py-3 text-left backdrop-blur-xs'
               />
             )}
@@ -173,7 +174,7 @@ export const AppViewer = ({
         className={cn(
           'relative flex flex-col items-center overflow-hidden',
           fullscreen
-            ? 'aspect-[380/820] h-full w-auto max-h-full max-w-full'
+            ? 'aspect-380/820 h-full w-auto max-h-full max-w-full'
             : 'h-full min-w-108.25 flex-1 rounded-lg bg-card lg:h-220.5 max-sm:min-h-[calc(100vh-4rem)] max-sm:min-w-screen'
         )}
       >
@@ -182,5 +183,5 @@ export const AppViewer = ({
     )
   }
 
-  return <Android className='h-auto w-full max-w-[28rem]'>{content}</Android>
+  return <Android className='h-auto w-full max-w-md'>{content}</Android>
 }

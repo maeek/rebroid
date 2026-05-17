@@ -12,6 +12,7 @@ import { uploadApkWithProgress } from '@/lib/apks/upload'
 import { updateApkAction } from '@/lib/orchestrator/actions'
 import { apkSizeLabel, isFileWithinApkLimit, useOrchestratorUiSettings } from '@/lib/orchestrator/settings'
 import type { AppDefinition } from '@/app/(protected)/(standard)/constants'
+import type { AndroidApplicationStatusDetail } from '@/lib/orchestrator/types'
 
 type AppManageGeneralSettingsProps = {
   app?: AppDefinition
@@ -31,6 +32,10 @@ export const AppManageGeneralSettings = ({ app, appId, appName, onAppNameChange 
   const topLoader = useTopLoader()
   const lifecycleLabel = formatStatusLabel(app?.lifecycleStage)
   const statusLabel = app?.status ?? 'unknown'
+  const statusDetail = app
+    ? (app as AppDefinition & { statusDetail: AndroidApplicationStatusDetail | null }).statusDetail
+    : null
+  const statusDescription = statusDetail?.description ?? app?.statusMessage
   const shouldShowLifecycleBadge = lifecycleLabel.toLowerCase() !== statusLabel.toLowerCase()
 
   const handleApkUpload = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -113,7 +118,7 @@ export const AppManageGeneralSettings = ({ app, appId, appName, onAppNameChange 
             </Badge>
           )}
         </div>
-        {app?.statusMessage && <p className='mt-2 text-sm text-secondary-foreground'>{app.statusMessage}</p>}
+        {statusDescription && <p className='mt-2 text-sm text-secondary-foreground'>{statusDescription}</p>}
       </Setting>
       <Setting
         label='APK'

@@ -3,7 +3,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AndroidApplication } from '../android-apps/android-application.entity';
 import { SettingsModule } from '../settings/settings.module';
 import { ApkController } from './apk.controller';
-import { ApkService } from './apk.service';
+import { ApkCatalogService } from './apk-catalog.service';
+import { ApkIconExtractorService } from './apk-icon-extractor.service';
+import { ApkStorageService } from './apk-storage.service';
 import { UploadedApk } from './uploaded-apk.entity';
 
 @Module({
@@ -12,7 +14,7 @@ import { UploadedApk } from './uploaded-apk.entity';
     SettingsModule,
   ],
   controllers: [ApkController],
-  providers: [ApkService],
-  exports: [ApkService],
+  providers: [ApkCatalogService, ApkIconExtractorService, ApkStorageService],
+  exports: [ApkCatalogService, ApkIconExtractorService, ApkStorageService],
 })
 export class ApkModule {}

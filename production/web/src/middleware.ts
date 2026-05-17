@@ -2,6 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
+import { verifyScrcpyViewerToken, viewerTokenParamName } from '@/lib/scrcpy/viewer-token'
 
 export async function middleware(request: NextRequest) {
   const headers = new Headers(request.headers)
@@ -9,7 +10,8 @@ export async function middleware(request: NextRequest) {
   const isProtectedPath =
     request.nextUrl.pathname.startsWith('/apps') ||
     request.nextUrl.pathname.startsWith('/app') ||
-    request.nextUrl.pathname.startsWith('/settings')
+    request.nextUrl.pathname.startsWith('/settings') ||
+    request.nextUrl.pathname.startsWith('/viewer')
 
   if (isProtectedPath) {
     const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
@@ -30,11 +32,29 @@ export async function middleware(request: NextRequest) {
     if (isAdminPath && token.role !== 'admin') {
       return NextResponse.redirect(new URL('/apps', request.url))
     }
+
+    const isScrcpyProxyPath = request.nextUrl.pathname.startsWith('/viewer/ws-scrcpy')
+    const scrcpyAction = request.nextUrl.searchParams.get('action')
+    if (isScrcpyProxyPath && scrcpyAction && scrcpyAction !== 'proxy-adb') {
+      return NextResponse.json({ message: 'Viewer action is not allowed.' }, { status: 403 })
+    }
+
+    if (isScrcpyProxyPath && scrcpyAction === 'proxy-adb') {
+      const isViewerTokenValid = await verifyScrcpyViewerToken({
+        token: request.nextUrl.searchParams.get(viewerTokenParamName),
+        appId: request.nextUrl.searchParams.get('appId'),
+        udid: request.nextUrl.searchParams.get('udid')
+      })
+
+      if (!isViewerTokenValid) {
+        return NextResponse.json({ message: 'Viewer token is invalid or expired.' }, { status: 403 })
+      }
+    }
   }
 
   return NextResponse.next({ request: { headers } })
 }
 
 export const config = {
-  matcher: ['/apps/:path*', '/app/:path*', '/settings/:path*']
+  matcher: ['/apps/:path*', '/app/:path*', '/settings/:path*', '/viewer/:path*']
 }

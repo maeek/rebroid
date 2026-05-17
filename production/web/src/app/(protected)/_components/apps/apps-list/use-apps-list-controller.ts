@@ -87,7 +87,13 @@ export const useAppsListController = ({
           running: false,
           status: 'provisioning',
           lifecycleStage: 'container_starting',
-          statusMessage: 'Starting app.'
+          statusMessage: 'Starting app.',
+          statusDetail: {
+            code: 'container_starting',
+            title: 'Starting container',
+            description: 'Starting app.',
+            tone: 'progress'
+          }
         },
         true
       )
@@ -111,7 +117,13 @@ export const useAppsListController = ({
           running: false,
           status: 'stopped',
           lifecycleStage: 'stopping',
-          statusMessage: 'Stopping app.'
+          statusMessage: 'Stopping app.',
+          statusDetail: {
+            code: 'stopping',
+            title: 'Stopping app',
+            description: 'Stopping app.',
+            tone: 'progress'
+          }
         },
         true
       )
@@ -129,7 +141,21 @@ export const useAppsListController = ({
 
   const deleteApp = async (app: AppDefinition) => {
     try {
-      updateApp({ ...app, status: 'removing', lifecycleStage: 'removing', statusMessage: 'Removing app.' }, true)
+      updateApp(
+        {
+          ...app,
+          status: 'removing',
+          lifecycleStage: 'removing',
+          statusMessage: 'Removing app.',
+          statusDetail: {
+            code: 'removing',
+            title: 'Removing app',
+            description: 'Removing app.',
+            tone: 'progress'
+          }
+        },
+        true
+      )
       await deleteApplicationAction(app.id, settings.removeDataOnDelete)
       await removeAppIconAction(app.id)
       forgetRecentApp(app.id)
@@ -192,7 +218,13 @@ export const useAppsListController = ({
           running: false,
           status: 'stopped',
           lifecycleStage: 'stopping',
-          statusMessage: 'Stopping app.'
+          statusMessage: 'Stopping app.',
+          statusDetail: {
+            code: 'stopping',
+            title: 'Stopping app',
+            description: 'Stopping app.',
+            tone: 'progress'
+          }
         },
         true
       )
@@ -239,7 +271,21 @@ export const useAppsListController = ({
   const handleBulkDelete = async (appsToDelete: AppDefinition[]) => {
     setIsBulkWorking(true)
     appsToDelete.forEach(app => {
-      updateApp({ ...app, status: 'removing', lifecycleStage: 'removing', statusMessage: 'Removing app.' }, true)
+      updateApp(
+        {
+          ...app,
+          status: 'removing',
+          lifecycleStage: 'removing',
+          statusMessage: 'Removing app.',
+          statusDetail: {
+            code: 'removing',
+            title: 'Removing app',
+            description: 'Removing app.',
+            tone: 'progress'
+          }
+        },
+        true
+      )
     })
 
     const results = await Promise.allSettled(

@@ -1,4 +1,5 @@
 import { IconApps, IconLibraryPlusFilled, IconAdjustments, IconBrandDocker, IconServerSpark } from '@tabler/icons-react'
+import type { AndroidApplicationStatusDetail } from '@/lib/orchestrator/types'
 
 export interface AppDefinition {
   id: string
@@ -24,6 +25,7 @@ export interface AppDefinition {
     | 'removed'
     | 'error'
   statusMessage: string | null
+  statusDetail: AndroidApplicationStatusDetail | null
   ownerUserId: string | null
   containerImage: string
   containerName: string
@@ -36,10 +38,24 @@ export interface AppDefinition {
   cpuLimitCpus: number | null
   volumeSizeLimitMb: number | null
   containerArgs: string | null
+  recreateContainerOnNextStart: boolean
   networkPolicyEnabled: boolean
   networkPolicyAllowCidrs: string[]
   networkPolicyStatus: string | null
   networkPolicyMessage: string | null
+  networkPolicyResult: {
+    status: 'applied' | 'skipped' | 'error'
+    code:
+      | 'applied'
+      | 'apply_failed'
+      | 'container_ip_unavailable'
+      | 'container_not_created'
+      | 'iptables_disabled'
+      | 'policy_disabled'
+      | 'unknown'
+    message: string
+    hint: string | null
+  } | null
   networkPolicyAppliedAt: Date | null
   apkOriginalName: string | null
   apkFilePath: string | null
@@ -54,6 +70,21 @@ export interface AppDefinition {
   provisioningCompletedAt?: Date
   createdAt: Date
   updatedAt: Date
+  imagePullProgress: {
+    status: string
+    current: string
+    total: string
+    layerId: string | null
+    percent: number
+  } | null
+  applicationError: {
+    code: 'container_command_failed' | 'container_exited' | 'container_missing' | 'startup_command_finished' | 'unknown'
+    phase: 'provisioning' | 'runtime' | 'unknown'
+    message: string
+    retryable: boolean
+    exitCode: number | null
+    hint: string | null
+  } | null
   apk: {
     version: string
     newVersion?: string

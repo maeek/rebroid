@@ -1,22 +1,8 @@
+import type { ScrcpySession } from './types'
+
 const trimTrailingSlash = (value: string) => value.replace(/\/$/, '')
 
-const getBrowserOrigin = () => {
-  if (typeof window === 'undefined') {
-    return null
-  }
-
-  return window.location.origin
-}
-
-export const getScrcpyBaseUrl = () => {
-  const configuredBaseUrl = process.env.NEXT_PUBLIC_SCRCPY_BASE_URL?.trim()
-  if (configuredBaseUrl) {
-    return trimTrailingSlash(configuredBaseUrl)
-  }
-
-  const browserOrigin = getBrowserOrigin()
-  return browserOrigin ? trimTrailingSlash(browserOrigin) : null
-}
+export const getProtectedViewerShellUrl = (applicationId: string) => `/viewer/apps/${applicationId}`
 
 const toWebSocketBaseUrl = (baseUrl: string) => {
   if (baseUrl.startsWith('https://')) {
@@ -30,23 +16,33 @@ const toWebSocketBaseUrl = (baseUrl: string) => {
   return baseUrl
 }
 
-export const getScrcpyViewerUrl = ({
-  applicationId,
-  adbPort,
-  baseUrl = getScrcpyBaseUrl()
+export const getProtectedWsScrcpyUrl = ({
+  session,
+  baseUrl,
+  viewerToken
 }: {
-  applicationId: string
-  adbPort: number
-  baseUrl?: string | null
+  session: ScrcpySession
+  baseUrl: string
+  viewerToken: string
 }) => {
-  if (!baseUrl) {
-    return null
-  }
+  const publicBaseUrl = trimTrailingSlash(baseUrl)
+  const proxyPath = '/viewer/ws-scrcpy/'
+  const websocketBaseUrl = toWebSocketBaseUrl(publicBaseUrl)
+  const proxyQuery = new URLSearchParams({
+    action: 'proxy-adb',
+    appId: session.applicationId,
+    remote: session.proxyRemote,
+    udid: session.udid,
+    sma_viewer_token: viewerToken
+  })
+  const proxyUrl = `${websocketBaseUrl}${proxyPath}?${proxyQuery.toString()}`
+  const viewerQuery = new URLSearchParams({ sma_viewer_token: viewerToken })
+  const hashQuery = new URLSearchParams({
+    action: 'stream',
+    udid: session.udid,
+    player: session.player,
+    ws: proxyUrl
+  })
 
-  const websocketBaseUrl = toWebSocketBaseUrl(baseUrl)
-  const remoteTarget = encodeURIComponent(`tcp:${adbPort}`)
-  const udid = encodeURIComponent(applicationId)
-  const proxyUrl = `${websocketBaseUrl}/?action=proxy-adb&remote=${remoteTarget}&udid=${udid}`
-
-  return `${baseUrl}/#!action=stream&udid=${udid}&player=mse&ws=${encodeURIComponent(proxyUrl)}`
+  return `${publicBaseUrl}${proxyPath}?${viewerQuery.toString()}#!${hashQuery.toString()}`
 }

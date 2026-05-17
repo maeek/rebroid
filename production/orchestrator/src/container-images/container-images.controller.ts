@@ -14,14 +14,14 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { DockerService } from '../docker/docker.service';
+import { DockerRuntimeService } from '../docker/docker-runtime.service';
 import { PullContainerImageDto } from './dto/pull-container-image.dto';
 import { RemoveContainerImageDto } from './dto/remove-container-image.dto';
 
 @ApiTags('container-images')
 @Controller('container-images')
 export class ContainerImagesController {
-  constructor(private readonly docker: DockerService) {}
+  constructor(private readonly docker: DockerRuntimeService) {}
 
   @Get()
   @ApiOperation({ summary: 'List images available in the container engine.' })

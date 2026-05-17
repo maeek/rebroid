@@ -1,69 +1,15 @@
 import { cn } from '@/lib/utils'
-
-const PULL_PROGRESS_PATTERN =
-  /^(.+?)(?:\s+\[[^\]]*\])?\s+(\d+(?:\.\d+)?)([kmgt]?b)\/(\d+(?:\.\d+)?)([kmgt]?b)(?:\s+([a-z0-9:_-]+))?$/i
-
-const SIZE_MULTIPLIERS: Record<string, number> = {
-  b: 1,
-  kb: 1024,
-  mb: 1024 ** 2,
-  gb: 1024 ** 3,
-  tb: 1024 ** 4
-}
-
-const formatUnit = (unit: string) => unit.trim().toUpperCase()
-
-const toBytes = (value: number, unit: string) => {
-  const normalizedUnit = unit.trim().toLowerCase()
-  const multiplier = SIZE_MULTIPLIERS[normalizedUnit]
-
-  if (!multiplier) {
-    return Number.NaN
-  }
-
-  return value * multiplier
-}
-
-export const parseImagePullProgress = (statusMessage?: string | null) => {
-  if (!statusMessage) {
-    return null
-  }
-
-  const match = statusMessage.trim().match(PULL_PROGRESS_PATTERN)
-
-  if (!match) {
-    return null
-  }
-
-  const [, status, currentRaw, currentUnit, totalRaw, totalUnit, layerId] = match
-
-  const currentValue = Number(currentRaw)
-  const totalValue = Number(totalRaw)
-  const currentBytes = toBytes(currentValue, currentUnit)
-  const totalBytes = toBytes(totalValue, totalUnit)
-
-  if (!Number.isFinite(currentBytes) || !Number.isFinite(totalBytes) || totalBytes <= 0) {
-    return null
-  }
-
-  return {
-    status: status.trim(),
-    current: `${currentRaw} ${formatUnit(currentUnit)}`,
-    total: `${totalRaw} ${formatUnit(totalUnit)}`,
-    layerId: layerId?.trim(),
-    percent: Math.min(100, Math.max(0, (currentBytes / totalBytes) * 100))
-  }
-}
+import type { AndroidImagePullProgress } from '@/lib/orchestrator/types'
 
 export const ImagePullProgress = ({
   statusMessage,
-  isImagePulling,
+  progress,
   className,
   textClassName,
   barClassName
 }: {
   statusMessage?: string | null
-  isImagePulling?: boolean
+  progress?: AndroidImagePullProgress | null
   className?: string
   textClassName?: string
   barClassName?: string
@@ -71,8 +17,6 @@ export const ImagePullProgress = ({
   if (!statusMessage) {
     return null
   }
-
-  const progress = isImagePulling ? parseImagePullProgress(statusMessage) : null
 
   if (!progress) {
     return <span className={cn('text-secondary-foreground text-sm', textClassName)}>{statusMessage}</span>
