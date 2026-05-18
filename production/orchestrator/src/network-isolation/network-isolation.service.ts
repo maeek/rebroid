@@ -16,6 +16,10 @@ export class NetworkIsolationService {
     private readonly docker: DockerRuntimeService,
   ) {}
 
+  /**
+   * Derives stable Docker resource names from the app id, name, and optional profile.
+   * Only the first eight id characters are used to keep names deterministic and short.
+   */
   namesFor(
     applicationId: string,
     name: string,
@@ -35,12 +39,19 @@ export class NetworkIsolationService {
     };
   }
 
+  /**
+   * Creates the volume and isolated network needed for a managed runtime.
+   * The orchestrator is attached so it can still reach the app over that network.
+   */
   async createBoundary(applicationId: string, names: IsolatedRuntimeNames) {
     await this.docker.createVolume(applicationId, names.volumeName);
     await this.docker.createIsolatedNetwork(applicationId, names.networkName);
     await this.docker.connectOrchestratorToNetwork(names.networkName);
   }
 
+  /**
+   * Removes the network boundary resources for an application profile.
+   */
   async removeBoundary(
     names: Pick<IsolatedRuntimeNames, 'networkName' | 'volumeName'>,
   ) {

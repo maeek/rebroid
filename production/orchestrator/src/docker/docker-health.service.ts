@@ -10,6 +10,9 @@ export class DockerHealthService {
     private readonly sidecar: DockerSidecarService,
   ) {}
 
+  /**
+   * Checks basic Docker API reachability without inspecting any managed resource.
+   */
   async dockerHealth(): Promise<ServiceHealth> {
     try {
       await this.engine.ping();

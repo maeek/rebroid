@@ -20,6 +20,10 @@ export class ApkCatalogService {
     private readonly iconExtractor: ApkIconExtractorService,
   ) {}
 
+  /**
+   * Deduplicates APK uploads by hash and owner before persisting the shared file.
+   * Existing records may still get an updated extracted icon.
+   */
   async upload(apk: Express.Multer.File, ownerUserId?: string | null) {
     if (!apk) {
       throw new ConflictException('An APK file is required.');
@@ -68,6 +72,9 @@ export class ApkCatalogService {
     });
   }
 
+  /**
+   * Loads an uploaded APK or throws when the id does not exist.
+   */
   async get(id: string) {
     const uploaded = await this.uploadedApks.findOneBy({ id });
     if (!uploaded) {
@@ -77,6 +84,9 @@ export class ApkCatalogService {
     return uploaded;
   }
 
+  /**
+   * Deletes an upload record only when no application still references it.
+   */
   async remove(id: string) {
     const uploaded = await this.get(id);
     const inUseCount = await this.applications.countBy({ uploadedApkId: id });
@@ -91,6 +101,9 @@ export class ApkCatalogService {
     return uploaded;
   }
 
+  /**
+   * Removes unreferenced uploads and deletes shared files only after the last reference is gone.
+   */
   async cleanupUnused(ownerUserId?: string | null) {
     const owner = ownerUserId?.trim();
     const uploads = await this.uploadedApks.find({

@@ -63,6 +63,10 @@ export class DockerSidecarService implements OnModuleInit {
     return this.engine.docker;
   }
 
+  /**
+   * Starts the ws-scrcpy sidecar lazily on module init when autostart is enabled.
+   * Startup failures are logged and cached for health responses instead of crashing boot.
+   */
   onModuleInit() {
     if (!this.wsScrcpyAutoStart) {
       return;
@@ -76,6 +80,9 @@ export class DockerSidecarService implements OnModuleInit {
     });
   }
 
+  /**
+   * Ensures the sidecar can reach the app network and then opens the ADB connection.
+   */
   async prepareViewerTarget(
     networkName: string,
     adbHost: string,
@@ -89,6 +96,9 @@ export class DockerSidecarService implements OnModuleInit {
     return this.connectAdb(adbHost, adbPort);
   }
 
+  /**
+   * Creates or starts the sidecar if needed, then attaches it to the app network.
+   */
   async ensureSidecarOnNetwork(
     networkName: string,
   ): Promise<ViewerTargetStatus> {
@@ -106,6 +116,9 @@ export class DockerSidecarService implements OnModuleInit {
     };
   }
 
+  /**
+   * Runs adb connect inside the sidecar and classifies common connection failures.
+   */
   async connectAdb(
     adbHost: string,
     adbPort: number,
@@ -141,6 +154,9 @@ export class DockerSidecarService implements OnModuleInit {
     }
   }
 
+  /**
+   * Returns the sidecar IP on a specific app network when it is attached.
+   */
   async getSidecarIp(networkName: string) {
     const sidecar = await this.findSidecar();
     if (!sidecar) {
@@ -155,6 +171,10 @@ export class DockerSidecarService implements OnModuleInit {
     }
   }
 
+  /**
+   * Reports whether the sidecar exists and is currently running.
+   * Cached startup errors are surfaced when autostart failed earlier.
+   */
   async health(): Promise<ServiceHealth> {
     try {
       const sidecar = await this.findSidecar();
@@ -206,6 +226,9 @@ export class DockerSidecarService implements OnModuleInit {
     }
   }
 
+  /**
+   * Restarts an existing sidecar or creates it if autostart is enabled.
+   */
   async repair() {
     try {
       const existing = await this.findSidecar();
@@ -231,6 +254,9 @@ export class DockerSidecarService implements OnModuleInit {
     }
   }
 
+  /**
+   * Returns a started sidecar container, creating one only when autostart is enabled.
+   */
   private async ensureSidecar() {
     const existing = await this.findSidecar();
     if (existing) {
@@ -298,6 +324,9 @@ export class DockerSidecarService implements OnModuleInit {
     return existing ? this.docker.getContainer(existing.Id) : null;
   }
 
+  /**
+   * Builds the sidecar image from the local build context when it is missing.
+   */
   private async ensureSidecarImage() {
     if (await this.engine.imageExists(this.wsScrcpyImage)) {
       return;
@@ -331,6 +360,9 @@ export class DockerSidecarService implements OnModuleInit {
     });
   }
 
+  /**
+   * Packs the configured build context into a tar stream for Docker image builds.
+   */
   private async createBuildContextTar(directory: string) {
     const directoryStat = await stat(directory);
     if (!directoryStat.isDirectory()) {
@@ -391,6 +423,10 @@ export class DockerSidecarService implements OnModuleInit {
       });
     }
   }
+
+  /**
+   * Returns a consistent viewer error payload when the sidecar is unavailable.
+   */
   private sidecarUnavailableStatus(): ViewerTargetStatus {
     const message =
       'ws-scrcpy sidecar is not available. Build the sidecar image or disable WS_SCRCPY_AUTO_START.';
@@ -428,6 +464,9 @@ export class DockerSidecarService implements OnModuleInit {
     };
   }
 
+  /**
+   * Maps adb command failures into retryable and non-retryable viewer errors.
+   */
   private classifyViewerTargetError(
     details: ContainerCommandFailure,
   ): ViewerTargetError {

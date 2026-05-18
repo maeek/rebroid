@@ -8,6 +8,10 @@ export class InactivityService {
 
   constructor(private readonly androidApps: AndroidAppsService) {}
 
+  /**
+   * Stops running apps that have been idle longer than their configured timeout.
+   * Activity is based on scrcpy refreshes, not generic container noise.
+   */
   @Cron(CronExpression.EVERY_MINUTE)
   async stopInactiveApplications() {
     const inactiveApplications =

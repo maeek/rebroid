@@ -31,6 +31,9 @@ export class DockerRuntimeService {
     return this.engine.inspectContainer(containerId);
   }
 
+  /**
+   * Returns a simplified runtime snapshot and turns Docker 404s into exists=false.
+   */
   async getContainerRuntimeState(
     containerId: string,
   ): Promise<ContainerRuntimeState> {
@@ -71,6 +74,9 @@ export class DockerRuntimeService {
     return this.engine.imageExists(image);
   }
 
+  /**
+   * Fails fast when a required image is missing instead of starting partial provisioning.
+   */
   async ensureImage(image: string) {
     if (await this.engine.imageExists(image)) {
       return;
@@ -81,6 +87,9 @@ export class DockerRuntimeService {
     );
   }
 
+  /**
+   * Pulls an image and streams raw progress text to an optional callback.
+   */
   async pullImage(image: string, onProgress?: (message: string) => void) {
     const stream = await this.engine.docker.pull(image);
     await new Promise<void>((resolve, reject) => {
@@ -114,6 +123,10 @@ export class DockerRuntimeService {
     return this.engine.docker.getImage(image).remove({ force });
   }
 
+  /**
+   * Creates the app network if it does not exist already.
+   * The network stays Docker-internal only when host-side iptables enforcement is disabled.
+   */
   async createIsolatedNetwork(applicationId: string, networkName: string) {
     const existing = await this.findNetworkByName(networkName);
     if (existing) {
@@ -128,6 +141,9 @@ export class DockerRuntimeService {
     });
   }
 
+  /**
+   * Creates the persistent app volume if it does not exist already.
+   */
   async createVolume(applicationId: string, volumeName: string) {
     const existing = await this.findVolumeByName(volumeName);
     if (existing) {
@@ -140,6 +156,10 @@ export class DockerRuntimeService {
     });
   }
 
+  /**
+   * Attaches the orchestrator container to the app network when its container id is known.
+   * Without this, control-plane access must come from another route.
+   */
   async connectOrchestratorToNetwork(networkName: string) {
     if (!this.engine.orchestratorContainerId) {
       this.logger.warn(
@@ -187,6 +207,10 @@ export class DockerRuntimeService {
     return this.sidecar.repair();
   }
 
+  /**
+   * Creates the managed Android container with the requested network, volume, and resource limits.
+   * Existing containers with the same name are reused rather than replaced.
+   */
   async createApplicationContainer(spec: ApplicationContainerSpec) {
     await this.ensureImage(spec.image);
 
@@ -253,6 +277,9 @@ export class DockerRuntimeService {
     await this.engine.removeContainer(containerId);
   }
 
+  /**
+   * Best-effort cleanup by name for containers whose id reference was already lost.
+   */
   async removeContainerByName(containerName: string) {
     const existing = await this.engine.findContainerByName(containerName);
     if (!existing) {
@@ -292,16 +319,26 @@ export class DockerRuntimeService {
     return this.engine.execInContainerWithOutput(containerId, command);
   }
 
+  /**
+   * Reads the container IP from a specific Docker network attachment.
+   */
   async getContainerIp(containerId: string, networkName: string) {
     const inspect = await this.engine.inspectContainer(containerId);
     return inspect.NetworkSettings.Networks?.[networkName]?.IPAddress || null;
   }
 
+  /**
+   * Returns the gateway IP advertised by the app network, if Docker exposed one.
+   */
   async getNetworkGateway(networkName: string) {
     const network = await this.engine.docker.getNetwork(networkName).inspect();
     return network.IPAM?.Config?.find((item) => item.Gateway)?.Gateway ?? null;
   }
 
+  /**
+   * Resolves the orchestrator container IP on the app network when attached.
+   * Missing orchestrator metadata is treated as unavailable instead of an error.
+   */
   async getOrchestratorIp(networkName: string) {
     if (!this.engine.orchestratorContainerId) {
       return null;
@@ -326,6 +363,10 @@ export class DockerRuntimeService {
     });
   }
 
+  /**
+   * Aggregates CPU and memory usage across currently running managed containers.
+   * Containers that disappear during stats collection are skipped.
+   */
   async getManagedContainerResourceUsage(
     containers?: Dockerode.ContainerInfo[],
   ) {
@@ -372,6 +413,9 @@ export class DockerRuntimeService {
     );
   }
 
+  /**
+   * Returns Docker disk-usage data for callers that need volume sizing details.
+   */
   async systemDf() {
     return this.engine.docker.df();
   }

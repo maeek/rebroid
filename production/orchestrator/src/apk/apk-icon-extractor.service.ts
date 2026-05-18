@@ -35,6 +35,10 @@ import {
 export class ApkIconExtractorService {
   private readonly logger = new Logger(ApkIconExtractorService.name);
 
+  /**
+   * Extracts the best launcher icon candidate from an APK and returns it as a data URL.
+   * Parsing is best-effort and falls back to heuristic ZIP scanning.
+   */
   extractLauncherIconDataUrl(apk: Buffer) {
     try {
       const entries = this.readCentralDirectory(apk);
@@ -112,6 +116,9 @@ export class ApkIconExtractorService {
     return score > 0 ? { entry, score, mimeType } : null;
   }
 
+  /**
+   * Prefers manifest-declared icon paths before falling back to generic resource scoring.
+   */
   private extractDeclaredLauncherIcon(
     apk: Buffer,
     entriesByName: Map<string, ZipEntry>,

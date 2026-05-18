@@ -14,6 +14,10 @@ export class ApkStorageService {
     private readonly config: ConfigService,
   ) {}
 
+  /**
+   * Persists APK bytes under a content-addressed filename.
+   * Existing files are treated as reusable shared storage.
+   */
   async persistApk(sha256: string, content: Buffer) {
     const uploadsDir = this.config.getOrThrow<string>('app.uploadsDir');
     const apkDir = join(uploadsDir, 'apks');
@@ -29,6 +33,9 @@ export class ApkStorageService {
     return filePath;
   }
 
+  /**
+   * Deletes the underlying APK file only after the last database reference is gone.
+   */
   async removeSharedFileIfUnused(upload: UploadedApk) {
     const remaining = await this.uploadedApks.countBy({
       sha256: upload.sha256,

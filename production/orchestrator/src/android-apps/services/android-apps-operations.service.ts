@@ -41,6 +41,10 @@ export class AndroidAppsOperationsService {
     private readonly status: AndroidAppsStatusService,
   ) {}
 
+  /**
+   * Creates the application record and starts provisioning in the background.
+   * Callers should expect a queued app before any Docker resources exist.
+   */
   async create(dto: CreateAndroidApplicationDto) {
     const settings = await this.settings.getSettings();
     const uploadedApk = dto.uploadedApkId
@@ -102,6 +106,10 @@ export class AndroidAppsOperationsService {
     return this.state.decorateApplication(app);
   }
 
+  /**
+   * Updates editable metadata and flags runtime-only changes for container recreation.
+   * Running containers are not recreated in place.
+   */
   async update(id: string, dto: UpdateAndroidApplicationDto) {
     const app = await this.state.get(id);
     const shouldRecreateContainer = this.shouldRecreateContainerOnUpdate(app, dto);
@@ -135,6 +143,10 @@ export class AndroidAppsOperationsService {
     return this.state.saveAndDecorate(app);
   }
 
+  /**
+   * Persists network policy settings and reapplies rules immediately.
+   * Resolution failures are surfaced by the follow-up apply step.
+   */
   async updateNetworkPolicy(id: string, dto: UpdateNetworkPolicyDto) {
     const app = await this.state.get(id);
     if (dto.networkPolicyEnabled !== undefined) {
@@ -148,6 +160,10 @@ export class AndroidAppsOperationsService {
     return this.applyNetworkPolicy(id);
   }
 
+  /**
+   * Recomputes and stores the current network policy result for the app.
+   * This can be skipped while the container is still being created.
+   */
   async applyNetworkPolicy(id: string) {
     const app = await this.state.get(id);
     const result = await this.networkPolicy.apply(app);
@@ -157,6 +173,10 @@ export class AndroidAppsOperationsService {
     return this.state.saveAndDecorate(app);
   }
 
+  /**
+   * Switches the active profile by discarding any existing managed container first.
+   * The next start recreates runtime state for the selected profile.
+   */
   async switchProfile(id: string, dto: SwitchApplicationProfileDto) {
     const app = await this.state.get(id);
     this.assertRunnable(app);
@@ -183,6 +203,10 @@ export class AndroidAppsOperationsService {
     return this.state.saveAndDecorate(app);
   }
 
+  /**
+   * Starts the managed container, creating missing runtime resources on demand.
+   * Restart is blocked when runtime settings require a stopped container first.
+   */
   async start(id: string, dto: StartAndroidApplicationDto = {}) {
     const app = await this.state.get(id);
     this.assertRunnable(app);
@@ -249,6 +273,10 @@ export class AndroidAppsOperationsService {
     return this.state.saveAndDecorate(app);
   }
 
+  /**
+   * Stops the managed container and removes it when recreation is already pending.
+   * The app record still ends in a stopped state even if no container exists.
+   */
   async stop(id: string) {
     const app = await this.state.get(id);
 
@@ -273,6 +301,10 @@ export class AndroidAppsOperationsService {
     return this.state.saveAndDecorate(app);
   }
 
+  /**
+   * Replaces the APK reference and installs it immediately when the app is running.
+   * Ownership checks are enforced before the APK metadata is copied onto the app.
+   */
   async updateApk(id: string, dto: UpdateAndroidApplicationApkDto) {
     const app = await this.state.get(id);
     this.assertRunnable(app);
@@ -296,6 +328,10 @@ export class AndroidAppsOperationsService {
     return this.state.saveAndDecorate(app);
   }
 
+  /**
+   * Removes the application record together with its managed Docker resources.
+   * Volume data is deleted unless removeData is explicitly false.
+   */
   async remove(id: string, query: RemoveAndroidApplicationDto) {
     const app = await this.state.get(id);
     this.tracker.cancel(id);
@@ -326,6 +362,10 @@ export class AndroidAppsOperationsService {
     };
   }
 
+  /**
+   * Prepares viewer connection details and refreshes scrcpy activity tracking.
+   * The app must already be running because the ADB target comes from the container.
+   */
   async scrcpySession(id: string): Promise<ScrcpySessionDto> {
     const app = await this.state.get(id);
     this.assertRunnable(app);
@@ -365,6 +405,10 @@ export class AndroidAppsOperationsService {
     };
   }
 
+  /**
+   * Refreshes the inactivity timer from viewer-side pings.
+   * Only running applications can accept activity updates.
+   */
   async recordViewerActivity(id: string) {
     const app = await this.state.get(id);
     if (app.status !== AndroidApplicationStatus.Running) {
@@ -382,6 +426,10 @@ export class AndroidAppsOperationsService {
     };
   }
 
+  /**
+   * Reads recent Android notifications from the running container.
+   * Returns an empty list when the runtime is not available.
+   */
   async notifications(id: string) {
     const app = await this.state.get(id);
     if (!app.containerId || app.status !== AndroidApplicationStatus.Running) {
@@ -400,6 +448,9 @@ export class AndroidAppsOperationsService {
     return this.status.parseNotifications(stdout);
   }
 
+  /**
+   * Returns recent Docker logs or a placeholder when the container was never created.
+   */
   async containerLogs(id: string, tail = 300) {
     const app = await this.state.get(id);
     if (!app.containerId) {
@@ -417,6 +468,10 @@ export class AndroidAppsOperationsService {
     };
   }
 
+  /**
+   * Dumps recent logcat output from the running Android runtime.
+   * Tail is clamped to avoid expensive reads from the container.
+   */
   async adbLogs(id: string, tail = 300) {
     const app = await this.state.get(id);
     if (!app.containerId || app.status !== AndroidApplicationStatus.Running) {
@@ -449,6 +504,10 @@ export class AndroidAppsOperationsService {
     return this.docker.connectWsScrcpyAdb(app.containerName, app.adbPort);
   }
 
+  /**
+   * Applies profile overrides before start and removes any incompatible container.
+   * Volume names are derived from the normalized profile name.
+   */
   private async prepareRuntimeProfile(
     app: AndroidApplication,
     dto: StartAndroidApplicationDto,
@@ -493,6 +552,9 @@ export class AndroidAppsOperationsService {
     );
   }
 
+  /**
+   * Marks runtime-only config changes for later recreation or removes a stopped container now.
+   */
   private async markContainerForRecreation(app: AndroidApplication) {
     if (!app.containerId) {
       app.recreateContainerOnNextStart = false;
@@ -512,6 +574,10 @@ export class AndroidAppsOperationsService {
       'Runtime settings changed. A new container will be created on next start.';
   }
 
+  /**
+   * Enforces the recreate-on-start contract before launching again.
+   * A running container must be stopped first to avoid mutating it in place.
+   */
   private async prepareContainerForRecreationOnStart(app: AndroidApplication) {
     if (!app.recreateContainerOnNextStart) {
       return;
@@ -545,6 +611,9 @@ export class AndroidAppsOperationsService {
     app.containerId = null;
   }
 
+  /**
+   * Copies APK metadata onto the app after enforcing owner isolation.
+   */
   private applyUploadedApk(app: AndroidApplication, uploadedApk: UploadedApk) {
     if (
       uploadedApk.ownerUserId &&
@@ -559,6 +628,9 @@ export class AndroidAppsOperationsService {
     app.apkOriginalName = uploadedApk.originalName;
   }
 
+  /**
+   * Guards operations that should not run against removed applications.
+   */
   private assertRunnable(app: AndroidApplication) {
     if (app.status === AndroidApplicationStatus.Removed) {
       throw new ConflictException(

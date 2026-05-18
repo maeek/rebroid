@@ -11,11 +11,17 @@ import { UpdateOrchestratorSettingsDto } from './dto/update-orchestrator-setting
 export class SettingsService {
   constructor(private readonly config: ConfigService) {}
 
+  /**
+   * Loads persisted settings and fills in any missing values from config defaults.
+   */
   async getSettings(): Promise<OrchestratorSettingsDto> {
     const stored = await this.readStoredSettings();
     return this.normalizeSettings(stored);
   }
 
+  /**
+   * Merges partial updates through normalization so persisted values always stay in range.
+   */
   async updateSettings(dto: UpdateOrchestratorSettingsDto) {
     const current = await this.getSettings();
     const updated = this.normalizeSettings({ ...current, ...dto });
@@ -23,12 +29,19 @@ export class SettingsService {
     return updated;
   }
 
+  /**
+   * Restores settings to config-backed defaults and overwrites the stored file.
+   */
   async resetSettings() {
     const defaults = this.defaults();
     await this.writeSettings(defaults);
     return defaults;
   }
 
+  /**
+   * Enforces the current APK upload size limit.
+   * This is a no-op when no file object is provided.
+   */
   async assertApkSizeAllowed(file?: Express.Multer.File) {
     if (!file) {
       return;
@@ -59,6 +72,9 @@ export class SettingsService {
     await writeFile(path, `${JSON.stringify(settings, null, 2)}\n`, 'utf-8');
   }
 
+  /**
+   * Normalizes persisted values and clamps numeric settings to safe ranges.
+   */
   private normalizeSettings(value: Partial<OrchestratorSettingsDto>) {
     const defaults = this.defaults();
     return {

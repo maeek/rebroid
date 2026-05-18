@@ -44,6 +44,9 @@ export class DockerEngineService {
     return this.docker.getContainer(containerId).inspect();
   }
 
+  /**
+   * Reads combined stdout and stderr logs with timestamps from a container.
+   */
   async getContainerLogs(containerId: string, tail = 300) {
     const container = this.docker.getContainer(containerId);
     const stream = await container.logs({
@@ -56,6 +59,9 @@ export class DockerEngineService {
     return Buffer.isBuffer(stream) ? stream.toString('utf-8') : String(stream);
   }
 
+  /**
+   * Checks image availability by inspection and treats any inspect failure as missing.
+   */
   async imageExists(image: string) {
     try {
       await this.docker.getImage(image).inspect();
@@ -65,6 +71,9 @@ export class DockerEngineService {
     }
   }
 
+  /**
+   * Starts a container and ignores Docker's already-started response.
+   */
   async startContainer(containerId: string) {
     const container = this.docker.getContainer(containerId);
     try {
@@ -76,6 +85,9 @@ export class DockerEngineService {
     }
   }
 
+  /**
+   * Stops a container and ignores already-stopped or missing-container responses.
+   */
   async stopContainer(containerId: string, timeoutSeconds = 10) {
     const container = this.docker.getContainer(containerId);
     try {
@@ -87,6 +99,9 @@ export class DockerEngineService {
     }
   }
 
+  /**
+   * Force-removes a container and ignores missing-container errors.
+   */
   async removeContainer(containerId: string) {
     const container = this.docker.getContainer(containerId);
     try {
@@ -98,6 +113,9 @@ export class DockerEngineService {
     }
   }
 
+  /**
+   * Removes a Docker network and ignores already-missing networks.
+   */
   async removeNetwork(networkName: string) {
     try {
       await this.docker.getNetwork(networkName).remove();
@@ -108,6 +126,9 @@ export class DockerEngineService {
     }
   }
 
+  /**
+   * Removes a Docker volume and ignores already-missing volumes.
+   */
   async removeVolume(volumeName: string) {
     try {
       await this.docker.getVolume(volumeName).remove();
@@ -118,6 +139,9 @@ export class DockerEngineService {
     }
   }
 
+  /**
+   * Packs a single local file into a tar stream because Docker archive upload expects tar input.
+   */
   async copyFileToContainer(
     containerId: string,
     sourcePath: string,
@@ -157,6 +181,9 @@ export class DockerEngineService {
     await this.execInContainerWithOutput(containerId, command);
   }
 
+  /**
+   * Executes a command, captures stdout and stderr separately, and throws on non-zero exits.
+   */
   async execInContainerWithOutput(
     containerId: string,
     command: string[],
@@ -205,6 +232,9 @@ export class DockerEngineService {
     return { stdout: stdoutText, stderr: stderrText, exitCode };
   }
 
+  /**
+   * Connects a container to a network and treats duplicate attachment as success.
+   */
   async connectContainerToNetwork(containerId: string, networkName: string) {
     const network = this.docker.getNetwork(networkName);
     try {
@@ -223,12 +253,18 @@ export class DockerEngineService {
     }
   }
 
+  /**
+   * Finds a container by exact Docker name, including stopped containers.
+   */
   async findContainerByName(name: string) {
     const containers = await this.docker.listContainers({ all: true });
     const dockerName = `/${name}`;
     return containers.find((container) => container.Names.includes(dockerName));
   }
 
+  /**
+   * Builds the label set used to identify orchestrator-managed Docker resources.
+   */
   labels(applicationId: string, component: string) {
     return {
       'com.shop-me-alone.managed': 'true',
@@ -255,6 +291,9 @@ export class DockerEngineService {
     return message.includes('already connected');
   }
 
+  /**
+   * Normalizes Docker and transport errors into a single readable message.
+   */
   errorMessage(error: unknown) {
     return getErrorMessage(error, 'Unknown Docker error');
   }

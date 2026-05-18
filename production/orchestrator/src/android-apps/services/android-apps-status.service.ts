@@ -22,6 +22,10 @@ import {
 export class AndroidAppsStatusService {
   constructor(private readonly config: ConfigService) {}
 
+  /**
+   * Derives display-only status fields from the persisted application record.
+   * The entity is mutated in place before it is returned.
+   */
   decorateApplication(app: AndroidApplication) {
     app.imagePullProgress = parseImagePullProgress(
       app.statusMessage,
@@ -33,6 +37,10 @@ export class AndroidAppsStatusService {
     return app;
   }
 
+  /**
+   * Extracts a compact notification list from noisy dumpsys or cmd output.
+   * Parsing is heuristic and intentionally capped to recent lines.
+   */
   parseNotifications(output: string) {
     return output
       .split('\n')
@@ -58,6 +66,9 @@ export class AndroidAppsStatusService {
       });
   }
 
+  /**
+   * Builds the stopped message, including whether a fresh container is required next time.
+   */
   stoppedStatusMessage(app: AndroidApplication) {
     if (app.recreateContainerOnNextStart) {
       return 'Runtime settings changed. A new container will be created on next start.';
@@ -68,6 +79,9 @@ export class AndroidAppsStatusService {
       : 'Application is stopped. A new container will be created on next start.';
   }
 
+  /**
+   * Explains why a managed container stopped, with startup-specific hints when possible.
+   */
   containerExitedMessage(
     app: AndroidApplication,
     runtimeState: ContainerRuntimeState,

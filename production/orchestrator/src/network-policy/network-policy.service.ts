@@ -41,6 +41,10 @@ export class NetworkPolicyService {
     private readonly docker: DockerRuntimeService,
   ) {}
 
+  /**
+   * Creates or refreshes the per-app iptables chain and DOCKER-USER jump.
+   * Returns skipped until iptables, the container, and its IP are all available.
+   */
   async apply(app: AndroidApplication): Promise<AppliedNetworkPolicy> {
     if (!this.config.getOrThrow<boolean>('app.docker.iptablesEnabled')) {
       return {
@@ -102,6 +106,10 @@ export class NetworkPolicyService {
     }
   }
 
+  /**
+   * Removes the app-specific iptables chain and jump rule when they exist.
+   * Cleanup is best-effort so repeated calls remain safe.
+   */
   async remove(
     app: Pick<AndroidApplication, 'id' | 'containerId' | 'networkName'>,
   ) {
@@ -125,6 +133,9 @@ export class NetworkPolicyService {
     await this.run(['-X', chain], true);
   }
 
+  /**
+   * Merges default, sidecar, and custom allowlist CIDRs into the final rule set.
+   */
   private async allowedDestinations(
     app: AndroidApplication,
   ): Promise<AllowedDestinations> {
@@ -171,6 +182,10 @@ export class NetworkPolicyService {
     };
   }
 
+  /**
+   * Expands built-in tokens like API_IP and GATEWAY_IP, or normalizes literal CIDRs.
+   * Unknown tokens are reported back as unresolved instead of throwing.
+   */
   private async resolveDefaultDestination(
     app: AndroidApplication,
     destination: string,
@@ -207,6 +222,9 @@ export class NetworkPolicyService {
       : { cidrs: [], unresolved: [normalized] };
   }
 
+  /**
+   * Resolves all orchestrator/API endpoints that must remain reachable under the policy.
+   */
   private async resolveApiCidrs(app: AndroidApplication): Promise<string[]> {
     const configuredCidrs = (
       this.config.get<string[]>('app.networkPolicy.apiCidrs') ?? []
@@ -228,6 +246,10 @@ export class NetworkPolicyService {
     ]);
   }
 
+  /**
+   * Resolves NETWORK_POLICY_API_HOST to IPv4 /32 entries.
+   * Hostnames that do not resolve are logged and ignored.
+   */
   private async resolveApiHostCidrs(): Promise<string[]> {
     const apiHost = this.config.get<string>('app.networkPolicy.apiHost');
     const hostname = extractHostname(apiHost);
@@ -253,6 +275,9 @@ export class NetworkPolicyService {
     }
   }
 
+  /**
+   * Ensures DOCKER-USER forwards container traffic into the app-specific chain exactly once.
+   */
   private async ensureDockerUserJump(containerIp: string, chain: string) {
     const rule = ['DOCKER-USER', '-s', containerIp, '-j', chain];
     const exists = await this.run(['-C', ...rule], true);
@@ -261,6 +286,9 @@ export class NetworkPolicyService {
     }
   }
 
+  /**
+   * Summarizes the applied policy, including unresolved defaults for operator visibility.
+   */
   private appliedMessage(
     containerIp: string,
     destinations: AllowedDestinations,
@@ -279,6 +307,10 @@ export class NetworkPolicyService {
     return `Applied policy for ${containerIp}. Allowed ${defaultSummary} plus ${customSummary}.${unresolvedSummary}`;
   }
 
+  /**
+   * Executes the configured iptables binary.
+   * Some cleanup paths intentionally ignore failures to keep rule removal idempotent.
+   */
   private async run(args: string[], ignoreFailure = false) {
     const binary = this.config.getOrThrow<string>('app.docker.iptablesBinary');
     try {

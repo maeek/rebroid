@@ -31,6 +31,10 @@ export class AndroidAppsProvisioningService {
     private readonly tracker: AndroidAppsProvisioningTrackerService,
   ) {}
 
+  /**
+   * Provisions a new runtime end to end while updating lifecycle stages as it progresses.
+   * Cancellation is cooperative and checked between long-running Docker steps.
+   */
   async provision(applicationId: string) {
     try {
       this.tracker.ensureActive(applicationId);
@@ -167,6 +171,10 @@ export class AndroidAppsProvisioningService {
     }
   }
 
+  /**
+   * Copies the APK into the container and installs it after Android finishes booting.
+   * Both the container id and staged APK path must already be present.
+   */
   async installApk(app: AndroidApplication) {
     if (!app.containerId || !app.apkFilePath) {
       throw new InternalServerErrorException('Container and APK are required.');
@@ -193,6 +201,9 @@ export class AndroidAppsProvisioningService {
     ]);
   }
 
+  /**
+   * Polls sys.boot_completed with a fixed timeout before APK installation.
+   */
   private async waitForAndroidBoot(containerId: string) {
     await this.docker.execInContainer(containerId, [
       'sh',

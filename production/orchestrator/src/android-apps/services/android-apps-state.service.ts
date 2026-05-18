@@ -29,6 +29,10 @@ export class AndroidAppsStateService {
     private readonly status: AndroidAppsStatusService,
   ) {}
 
+  /**
+   * Lists applications and reconciles stored state with the current container state.
+   * Reconciliation may update persisted status as a side effect.
+   */
   async list(query: ListAndroidApplicationsDto) {
     const apps = await this.applications.find({
       where: query.ownerUserId ? { ownerUserId: query.ownerUserId } : {},
@@ -37,6 +41,9 @@ export class AndroidAppsStateService {
     return Promise.all(apps.map((app) => this.reconcileContainerState(app)));
   }
 
+  /**
+   * Loads one application and reconciles any stale runtime state before returning it.
+   */
   async get(id: string) {
     const app = await this.getStored(id);
     return this.reconcileContainerState(app);
@@ -78,6 +85,10 @@ export class AndroidAppsStateService {
     await this.applications.update(applicationId, patch);
   }
 
+  /**
+   * Clears stale container references when Docker reports that the managed container is gone.
+   * Any lingering network policy jump is removed as part of the cleanup.
+   */
   async clearMissingContainerReference(app: AndroidApplication) {
     if (!app.containerId) {
       return app;
@@ -99,6 +110,10 @@ export class AndroidAppsStateService {
     return app;
   }
 
+  /**
+   * Finds running apps whose last activity has exceeded the configured timeout.
+   * lastStartedAt is used when no viewer activity has been recorded yet.
+   */
   async findInactiveRunningApplications(now = new Date()) {
     const running = await this.applications.findBy({
       status: AndroidApplicationStatus.Running,
@@ -115,6 +130,10 @@ export class AndroidAppsStateService {
     });
   }
 
+  /**
+   * Converts Docker runtime state into persisted app status updates.
+   * Missing or exited containers can move provisioning apps into stopped or error states.
+   */
   private async reconcileContainerState(app: AndroidApplication) {
     if (!shouldReconcileContainerState(app)) {
       return this.status.decorateApplication(app);

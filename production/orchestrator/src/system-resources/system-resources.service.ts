@@ -26,6 +26,9 @@ export class SystemResourcesService {
     private readonly docker: DockerRuntimeService,
   ) {}
 
+  /**
+   * Aggregates managed container counts, live resource usage, and cached volume sizes.
+   */
   async getUsage(refreshVolumes = false) {
     const containers = await this.docker.listManagedContainers();
     const volumes = await this.getVolumeUsage(refreshVolumes);
@@ -61,6 +64,9 @@ export class SystemResourcesService {
     };
   }
 
+  /**
+   * Falls back to zeroed stats when Docker refuses runtime metrics collection.
+   */
   private async getManagedContainerResourceUsage(
     containers: Awaited<ReturnType<DockerRuntimeService['listManagedContainers']>>,
   ) {
@@ -77,6 +83,9 @@ export class SystemResourcesService {
     }
   }
 
+  /**
+   * Caches managed volume usage for a configurable TTL because docker df can be expensive.
+   */
   private async getVolumeUsage(refreshVolumes: boolean) {
     const ttlSeconds = this.config.getOrThrow<number>(
       'app.docker.volumeUsageCacheTtlSeconds',

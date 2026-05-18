@@ -13,6 +13,9 @@ export class ImagePruneService {
     private readonly settings: SettingsService,
   ) {}
 
+  /**
+   * Runs image pruning on a minute tick but only executes when the configured interval has elapsed.
+   */
   @Interval(60_000)
   async pruneOnSchedule() {
     const settings = await this.settings.getSettings();
