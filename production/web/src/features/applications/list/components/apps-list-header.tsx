@@ -69,7 +69,7 @@ export const AppsListHeader = () => {
         )}
       </div>
       <Visible when={isManaging}>
-        <div className='mx-6 mb-3 flex items-center justify-between gap-3 rounded-lg border border-input bg-card/40 px-4 py-3 text-sm max-sm:mx-4 max-sm:flex-col max-sm:items-start'>
+        <div className='mx-6 mb-3 flex items-center justify-between gap-3 rounded-lg border border-input bg-card/40 px-4 py-3 text-sm max-sm:mx-4 max-sm:flex-col max-sm:items-start my-3'>
           <span className='text-secondary-foreground'>
             {selectionCount} selected. Choose apps, then run a bulk action.
           </span>
