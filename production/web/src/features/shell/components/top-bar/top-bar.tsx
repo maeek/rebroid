@@ -36,10 +36,8 @@ export const TopBarProtected = () => {
           </Drawer>
         </div>
         <Link href='/'>
-          <span className='text-xl max-sm:text-md font-black'>Shop</span>
-          <span className='text-xl max-sm:text-md font-black'>Me</span>
-          <span className='text-xl max-sm:text-md font-black underline underline-offset-4 decoration-primary decoration-solid'>
-            Alone
+          <span className='text-xl font-black underline underline-offset-4 decoration-primary decoration-solid'>
+            Rebroid
           </span>
         </Link>
       </div>

@@ -1,4 +1,4 @@
-# Shop Me Alone ws-scrcpy Sidecar
+# Rebroid ws-scrcpy Sidecar
 
 This image builds a single internal ws-scrcpy service for the platform. Do not publish it directly to users. The web app should reach it only through the authenticated `/viewer/ws-scrcpy/*` Next.js proxy.
 
@@ -11,7 +11,7 @@ The root `docker-compose.yml` builds this image automatically and keeps it on th
 ## Manual Build
 
 ```bash
-docker build -t shop-me-alone/ws-scrcpy-sidecar ./ws-scrcpy-sidecar
+docker build -t rebroid/ws-scrcpy-sidecar ./ws-scrcpy-sidecar
 ```
 
 To pin a fork or tag:
@@ -20,7 +20,7 @@ To pin a fork or tag:
 docker build \
   --build-arg WS_SCRCPY_REPOSITORY=https://github.com/your-org/ws-scrcpy.git \
   --build-arg WS_SCRCPY_REF=your-branch-or-tag \
-  -t shop-me-alone/ws-scrcpy-sidecar ./ws-scrcpy-sidecar
+  -t rebroid/ws-scrcpy-sidecar ./ws-scrcpy-sidecar
 ```
 
 ## Runtime Defaults

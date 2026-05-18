@@ -36,7 +36,7 @@ const ubuntu = localFont({
 })
 
 export const metadata: Metadata = {
-  title: 'Shop Me Alone',
+  title: 'Rebroid',
   description: 'Stop making me install your dumb apps on my phone!'
 }
 

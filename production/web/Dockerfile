@@ -29,9 +29,9 @@ ENV ORCHESTRATOR_API_URL=http://orchestrator:4100
 RUN apk add --no-cache libc6-compat
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/shop-me-alone-web-entrypoint
+COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/rebroid-web-entrypoint
 RUN mkdir -p /app/data /app/secrets && chown -R node:node /app
 USER node
 EXPOSE 3001
-ENTRYPOINT ["shop-me-alone-web-entrypoint"]
+ENTRYPOINT ["rebroid-web-entrypoint"]
 CMD ["node", "server.js"]

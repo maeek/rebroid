@@ -1,4 +1,4 @@
-# Shop Me Alone Orchestrator
+# Rebroid Orchestrator
 
 NestJS backend for provisioning isolated application containers and preparing browser scrcpy viewer sessions through an internal sidecar.
 

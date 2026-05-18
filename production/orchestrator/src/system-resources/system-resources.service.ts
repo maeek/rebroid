@@ -103,7 +103,7 @@ export class SystemResourcesService {
     const volumes = dockerVolumes
       .filter(
         (volume: DockerVolumeDf) =>
-          volume.Labels?.['com.shop-me-alone.managed'] === 'true',
+          volume.Labels?.['com.rebroid.managed'] === 'true',
       )
       .map((volume: DockerVolumeDf) => ({
         name: volume.Name,

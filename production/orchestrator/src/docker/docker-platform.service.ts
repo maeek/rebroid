@@ -53,7 +53,7 @@ export class DockerPlatformService {
         attachable: Boolean(network.Attachable),
         ingress: Boolean(network.Ingress),
         labels: network.Labels ?? {},
-        managed: network.Labels?.['com.shop-me-alone.managed'] === 'true',
+        managed: network.Labels?.['com.rebroid.managed'] === 'true',
         containers,
         subnets: ipamConfig.map((item) => item.Subnet).filter(isString),
         gateways: ipamConfig.map((item) => item.Gateway).filter(isString),
@@ -225,10 +225,10 @@ export class DockerPlatformService {
       state: container.State,
       status: container.Status,
       labels: container.Labels ?? {},
-      managed: container.Labels?.['com.shop-me-alone.managed'] === 'true',
+      managed: container.Labels?.['com.rebroid.managed'] === 'true',
       applicationId:
-        container.Labels?.['com.shop-me-alone.application-id'] ?? null,
-      component: container.Labels?.['com.shop-me-alone.component'] ?? null,
+        container.Labels?.['com.rebroid.application-id'] ?? null,
+      component: container.Labels?.['com.rebroid.component'] ?? null,
       ports: (container.Ports ?? []).map((port) => ({
         privatePort: port.PrivatePort,
         publicPort: port.PublicPort ?? null,
@@ -276,7 +276,7 @@ export class DockerPlatformService {
       attachable: Boolean(inspect.Attachable),
       ingress: Boolean(inspect.Ingress),
       labels: inspect.Labels ?? {},
-      managed: inspect.Labels?.['com.shop-me-alone.managed'] === 'true',
+      managed: inspect.Labels?.['com.rebroid.managed'] === 'true',
       containers: Object.keys(inspect.Containers ?? {}),
       subnets: ipamConfig.map((item) => item.Subnet).filter(isString),
       gateways: ipamConfig.map((item) => item.Gateway).filter(isString),
@@ -300,9 +300,9 @@ export class DockerPlatformService {
       state: inspect.State?.Status ?? 'unknown',
       status: inspect.State?.Status ?? 'unknown',
       labels,
-      managed: labels['com.shop-me-alone.managed'] === 'true',
-      applicationId: labels['com.shop-me-alone.application-id'] ?? null,
-      component: labels['com.shop-me-alone.component'] ?? null,
+      managed: labels['com.rebroid.managed'] === 'true',
+      applicationId: labels['com.rebroid.application-id'] ?? null,
+      component: labels['com.rebroid.component'] ?? null,
       ports: Object.entries(inspect.NetworkSettings?.Ports ?? {}).flatMap(
         ([key, bindings]) => {
           const [privatePort, type] = key.split('/');

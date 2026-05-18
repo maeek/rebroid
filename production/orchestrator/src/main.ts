@@ -32,7 +32,7 @@ async function bootstrap() {
   }
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('Shop Me Alone Orchestrator')
+    .setTitle('Rebroid Orchestrator')
     .setDescription(
       'Internal API for isolated app container orchestration.',
     )

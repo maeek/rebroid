@@ -267,10 +267,10 @@ export class DockerEngineService {
    */
   labels(applicationId: string, component: string) {
     return {
-      'com.shop-me-alone.managed': 'true',
-      'com.shop-me-alone.application-id': applicationId,
-      'com.shop-me-alone.component': component,
-      'com.shop-me-alone.resource-prefix': this.resourcePrefix,
+      'com.rebroid.managed': 'true',
+      'com.rebroid.application-id': applicationId,
+      'com.rebroid.component': component,
+      'com.rebroid.resource-prefix': this.resourcePrefix,
     };
   }
 

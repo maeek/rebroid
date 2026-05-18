@@ -1,4 +1,4 @@
-# Shop Me Alone
+# Rebroid
 
 Browser-managed application containers with a Next.js UI, a NestJS orchestrator, and an internal ws-scrcpy sidecar.
 
@@ -25,7 +25,7 @@ docker compose logs web
 Look for:
 
 ```text
-Initial Shop Me Alone admin credentials: username=admin password=...
+Initial Rebroid admin credentials: username=admin password=...
 ```
 
 No `NEXTAUTH_URL`, shared secret, or sidecar URL is required for the default compose setup. The containers generate and persist their own secrets in Docker volumes.
@@ -54,7 +54,7 @@ If you do not use the helper, inspect the machine socket path and pass it as `CO
 The defaults are intended to work without a `.env` file. These are the main knobs worth overriding:
 
 ```bash
-SHOP_ME_ALONE_PORT=3001
+REBROID_PORT=3001
 CONTAINER_ENGINE_SOCKET=/var/run/docker.sock
 INITIAL_ADMIN_PASSWORD=choose-a-password
 CONTAINER_IMAGE=redroid/redroid:13.0.0-latest

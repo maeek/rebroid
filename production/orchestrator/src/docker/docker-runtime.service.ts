@@ -358,7 +358,7 @@ export class DockerRuntimeService {
     return this.engine.docker.listContainers({
       all: true,
       filters: {
-        label: ['com.shop-me-alone.managed=true'],
+        label: ['com.rebroid.managed=true'],
       },
     });
   }

@@ -1,6 +1,6 @@
-# Shop Me Alone Web
+# Rebroid Web
 
-Next.js frontend and backend-for-frontend for Shop Me Alone.
+Next.js frontend and backend-for-frontend for Rebroid.
 
 ## Defaults
 

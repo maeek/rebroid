@@ -3,7 +3,7 @@ services:
     build:
       context: ..
       dockerfile: orchestrator/Dockerfile
-    container_name: shop-me-alone-orchestrator
+    container_name: rebroid-orchestrator
     restart: unless-stopped
     environment:
       NODE_ENV: production

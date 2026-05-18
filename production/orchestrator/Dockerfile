@@ -20,9 +20,9 @@ COPY package*.json ./
 COPY --from=deps /app/node_modules ./node_modules
 RUN npm prune --omit=dev && npm cache clean --force
 COPY --from=builder /app/dist ./dist
-COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/shop-me-alone-orchestrator-entrypoint
+COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/rebroid-orchestrator-entrypoint
 RUN mkdir -p /app/data /app/uploads /app/secrets && chown -R node:node /app
 USER node
 EXPOSE 4100
-ENTRYPOINT ["shop-me-alone-orchestrator-entrypoint"]
+ENTRYPOINT ["rebroid-orchestrator-entrypoint"]
 CMD ["node", "dist/src/main.js"]

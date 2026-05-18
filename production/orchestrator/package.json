@@ -1,5 +1,5 @@
 {
-  "name": "shop-me-alone-orchestrator",
+  "name": "rebroid-orchestrator",
   "version": "0.1.0",
   "description": "NestJS API for provisioning and managing isolated redroid application containers.",
   "private": true,

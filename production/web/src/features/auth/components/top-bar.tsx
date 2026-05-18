@@ -8,10 +8,8 @@ export const TopBarUnprotected = () => {
     <div className='flex justify-between h-16 w-dvw shrink-0 sticky top-0'>
       <div className={classNames(sectionClasses, 'justify-start')}>
         <Link href='/'>
-          <span className='text-xl font-black'>Shop</span>
-          <span className='text-xl font-black'>Me</span>
           <span className='text-xl font-black underline underline-offset-4 decoration-primary decoration-solid'>
-            Alone
+            Rebroid
           </span>
         </Link>
       </div>

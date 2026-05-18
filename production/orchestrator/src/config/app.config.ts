@@ -94,7 +94,7 @@ export default registerAs('app', () => {
         `${resourcePrefix}-ws-scrcpy`,
       wsScrcpyImage:
         process.env.WS_SCRCPY_IMAGE ??
-        'shop-me-alone/ws-scrcpy-sidecar:latest',
+        'rebroid/ws-scrcpy-sidecar:latest',
       wsScrcpyBuildContext: resolve(
         process.env.WS_SCRCPY_BUILD_CONTEXT ?? defaultWsScrcpyBuildContext,
       ),

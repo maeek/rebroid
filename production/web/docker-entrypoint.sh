@@ -62,7 +62,7 @@ if [ -z "${INITIAL_ADMIN_PASSWORD:-}" ] && [ ! -s "$WEB_USERS_PATH" ]; then
   initial_password_file="${INITIAL_ADMIN_PASSWORD_FILE:-/app/data/initial-admin-password}"
   ensure_secret_file "$initial_password_file"
   export INITIAL_ADMIN_PASSWORD="$(cat "$initial_password_file")"
-  echo "Initial Shop Me Alone admin credentials: username=admin password=$INITIAL_ADMIN_PASSWORD" >&2
+  echo "Initial Rebroid admin credentials: username=admin password=$INITIAL_ADMIN_PASSWORD" >&2
   echo "This password is shown only while the first users file is being created." >&2
 fi
 
