@@ -3,6 +3,7 @@ import { DefaultSession } from 'next-auth'
 declare module 'next-auth' {
   interface User {
     role?: 'admin' | 'user'
+    image?: string | null
   }
 
   interface Session extends DefaultSession {

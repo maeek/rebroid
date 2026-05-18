@@ -1,6 +1,7 @@
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Textarea } from '@/components/ui/textarea'
+import { Visible } from '@/components/ui/visible'
 import { Setting } from '@/features/settings/components/setting'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
@@ -16,6 +17,10 @@ type AppManageRuntimeSettingsProps = {
   onCpuLimitChange: (value: string) => void
   onVolumeSizeLimitChange: (value: string) => void
   onContainerArgsChange: (value: string) => void
+  canChangeSessionLimit: boolean
+  canChangeResources: boolean
+  canChangeContainerArgs: boolean
+  canViewBackendDetails: boolean
 }
 
 const verticalSettingClassName = 'flex-col items-start w-full'
@@ -31,7 +36,11 @@ export const AppManageRuntimeSettings = ({
   onMemoryLimitChange,
   onCpuLimitChange,
   onVolumeSizeLimitChange,
-  onContainerArgsChange
+  onContainerArgsChange,
+  canChangeSessionLimit,
+  canChangeResources,
+  canChangeContainerArgs,
+  canViewBackendDetails
 }: AppManageRuntimeSettingsProps) => {
   return (
     <Section
@@ -40,80 +49,88 @@ export const AppManageRuntimeSettings = ({
       titleClassName='pb-4'
       contentClassName='gap-6'
     >
-      <Setting
-        label='Image'
-        className={verticalSettingClassName}
-        variant='vertical'
-      >
-        <Input
-          value={app?.containerImage ?? ''}
-          readOnly
-        />
-      </Setting>
-      <Setting
-        label='Inactivity timeout'
-        className={verticalSettingClassName}
-        variant='vertical'
-      >
-        <Input
-          value={inactivityTimeoutSeconds}
-          min={60}
-          max={86400}
-          type='number'
-          onChange={event => onInactivityTimeoutChange(Number(event.target.value))}
-        />
-      </Setting>
-      <div className='grid grid-cols-3 gap-3 max-md:grid-cols-1'>
+      <Visible when={canViewBackendDetails}>
         <Setting
-          label='RAM limit MB'
+          label='Image'
           className={verticalSettingClassName}
           variant='vertical'
         >
           <Input
-            value={memoryLimitMb}
-            type='number'
-            min={128}
-            onChange={event => onMemoryLimitChange(event.target.value)}
+            value={app?.containerImage ?? ''}
+            readOnly
           />
         </Setting>
+      </Visible>
+      <Visible when={canChangeSessionLimit}>
         <Setting
-          label='CPU cores'
+          label='Inactivity timeout'
           className={verticalSettingClassName}
           variant='vertical'
         >
           <Input
-            value={cpuLimitCpus}
+            value={inactivityTimeoutSeconds}
+            min={60}
+            max={86400}
             type='number'
-            min={0.1}
-            step={0.1}
-            onChange={event => onCpuLimitChange(event.target.value)}
+            onChange={event => onInactivityTimeoutChange(Number(event.target.value))}
           />
         </Setting>
+      </Visible>
+      <Visible when={canChangeResources}>
+        <div className='grid grid-cols-3 gap-3 max-md:grid-cols-1'>
+          <Setting
+            label='RAM limit MB'
+            className={verticalSettingClassName}
+            variant='vertical'
+          >
+            <Input
+              value={memoryLimitMb}
+              type='number'
+              min={128}
+              onChange={event => onMemoryLimitChange(event.target.value)}
+            />
+          </Setting>
+          <Setting
+            label='CPU cores'
+            className={verticalSettingClassName}
+            variant='vertical'
+          >
+            <Input
+              value={cpuLimitCpus}
+              type='number'
+              min={0.1}
+              step={0.1}
+              onChange={event => onCpuLimitChange(event.target.value)}
+            />
+          </Setting>
+          <Setting
+            label='Volume MB'
+            className={verticalSettingClassName}
+            variant='vertical'
+          >
+            <Input
+              value={volumeSizeLimitMb}
+              type='number'
+              min={16}
+              onChange={event => onVolumeSizeLimitChange(event.target.value)}
+            />
+          </Setting>
+        </div>
+      </Visible>
+      <Visible when={canChangeContainerArgs}>
         <Setting
-          label='Volume MB'
+          label='Container arguments'
+          description='Optional Docker Cmd override. Use a long-running command for images that would otherwise exit immediately, for example sleep infinity.'
           className={verticalSettingClassName}
           variant='vertical'
         >
-          <Input
-            value={volumeSizeLimitMb}
-            type='number'
-            min={16}
-            onChange={event => onVolumeSizeLimitChange(event.target.value)}
+          <Textarea
+            value={containerArgs}
+            placeholder='sleep infinity'
+            onChange={event => onContainerArgsChange(event.target.value)}
           />
         </Setting>
-      </div>
-      <Setting
-        label='Container arguments'
-        description='Optional Docker Cmd override. Use a long-running command for images that would otherwise exit immediately, for example sleep infinity.'
-        className={verticalSettingClassName}
-        variant='vertical'
-      >
-        <Textarea
-          value={containerArgs}
-          placeholder='sleep infinity'
-          onChange={event => onContainerArgsChange(event.target.value)}
-        />
-      </Setting>
+      </Visible>
     </Section>
   )
 }

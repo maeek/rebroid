@@ -17,22 +17,30 @@ import {
 import { toast } from '@/hooks/use-toast'
 import { updateApkAction } from '@/server/orchestrator/applications/mutation-actions'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 import type { AndroidApplicationStatusDetail } from '@/server/orchestrator/applications/types'
 
 type AppManageGeneralSettingsProps = {
   app?: AppDefinition
   appId: string
   appName: string
+  initialSettings: OrchestratorUiSettings
   onAppNameChange: (value: string) => void
 }
 
 const verticalSettingClassName = 'flex-col items-start w-full'
 const formatStatusLabel = (value?: string | null) => (value ? value.replaceAll('_', ' ') : 'unknown')
 
-export const AppManageGeneralSettings = ({ app, appId, appName, onAppNameChange }: AppManageGeneralSettingsProps) => {
+export const AppManageGeneralSettings = ({
+  app,
+  appId,
+  appName,
+  initialSettings,
+  onAppNameChange
+}: AppManageGeneralSettingsProps) => {
   const [isUploadingApk, setIsUploadingApk] = useState(false)
   const apkInputRef = useRef<HTMLInputElement>(null)
-  const settings = useOrchestratorUiSettings()
+  const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
   const router = useRouter()
   const topLoader = useTopLoader()
   const lifecycleLabel = formatStatusLabel(app?.lifecycleStage)

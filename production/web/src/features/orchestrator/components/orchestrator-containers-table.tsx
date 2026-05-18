@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import {
@@ -15,7 +17,10 @@ export const OrchestratorContainersTable = ({
   busyId,
   emptyMessage = 'No containers are visible to Docker.',
   onStop,
-  onRemove
+  onRemove,
+  selectedIds,
+  onSelect,
+  onSelectPage
 }: {
   containers: PlatformContainer[]
   isLoading: boolean
@@ -23,8 +28,12 @@ export const OrchestratorContainersTable = ({
   emptyMessage?: string
   onStop: (container: PlatformContainer) => void
   onRemove: (container: PlatformContainer) => void
+  selectedIds: Set<string>
+  onSelect: (container: PlatformContainer, index: number, shiftKey: boolean) => void
+  onSelectPage: (selected: boolean) => void
 }) => {
-  const colSpan = 6
+  const colSpan = 7
+  const allPageSelected = containers.length > 0 && containers.every(container => selectedIds.has(container.id))
 
   return (
     <div className='overflow-hidden rounded-lg border border-border/60 bg-background/25'>
@@ -36,6 +45,12 @@ export const OrchestratorContainersTable = ({
           >
             <TableHeader className='bg-background/45'>
               <TableRow className='hover:bg-transparent'>
+                <TableHead className='w-12 px-4 py-3'>
+                  <Checkbox
+                    checked={allPageSelected}
+                    onCheckedChange={checked => onSelectPage(checked === true)}
+                  />
+                </TableHead>
                 <TableHead className='w-[18rem] px-4 py-3 uppercase'>Container</TableHead>
                 <TableHead className='w-32 px-4 py-3 uppercase'>State</TableHead>
                 <TableHead className='w-[24rem] px-4 py-3 uppercase'>Image</TableHead>
@@ -64,8 +79,15 @@ export const OrchestratorContainersTable = ({
                   </TableCell>
                 </TableRow>
               ) : (
-                containers.map(container => (
+                containers.map((container, index) => (
                   <TableRow key={container.id}>
+                    <TableCell className='px-4 py-3 align-top'>
+                      <Checkbox
+                        checked={selectedIds.has(container.id)}
+                        onClick={event => onSelect(container, index, event.shiftKey)}
+                        onCheckedChange={() => undefined}
+                      />
+                    </TableCell>
                     <TableCell className='px-4 py-3 align-top'>
                       <ContainerNameCell container={container} />
                     </TableCell>
@@ -81,8 +103,18 @@ export const OrchestratorContainersTable = ({
                       </div>
                     </TableCell>
                     <TableCell className='px-4 py-3 align-top'>
-                      <div className='truncate text-sm text-secondary-foreground'>
-                        {container.networks.length > 0 ? container.networks.join(', ') : 'none'}
+                      <div className='flex flex-wrap gap-1 text-sm text-secondary-foreground'>
+                        {container.networks.length > 0
+                          ? container.networks.map(network => (
+                              <Link
+                                key={network}
+                                href={`/settings/orchestrator/networks/${encodeURIComponent(network)}`}
+                                className='max-w-full truncate rounded-full bg-background/60 px-2 py-0.5 hover:text-primary'
+                              >
+                                {network}
+                              </Link>
+                            ))
+                          : 'none'}
                       </div>
                     </TableCell>
                     <TableCell className='px-4 py-3 align-top'>

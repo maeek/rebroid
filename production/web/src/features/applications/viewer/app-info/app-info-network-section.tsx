@@ -41,10 +41,17 @@ const getPolicyStatusDescription = (result?: AppDefinition['networkPolicyResult'
 
 type AppInfoNetworkSectionProps = {
   app?: AppDefinition
+  canConfigureEgress: boolean
+  canViewBackendDetails: boolean
   onAppChange: (app: AppDefinition) => void
 }
 
-export const AppInfoNetworkSection = ({ app, onAppChange }: AppInfoNetworkSectionProps) => {
+export const AppInfoNetworkSection = ({
+  app,
+  canConfigureEgress,
+  canViewBackendDetails,
+  onAppChange
+}: AppInfoNetworkSectionProps) => {
   const [allowCidrs, setAllowCidrs] = useState<string[]>(app?.networkPolicyAllowCidrs ?? [])
   const [isSaving, setIsSaving] = useState(false)
   const hasPendingLocalChangesRef = useRef(false)
@@ -108,11 +115,13 @@ export const AppInfoNetworkSection = ({ app, onAppChange }: AppInfoNetworkSectio
       titleClassName='pb-4'
       contentClassName='flex-col'
     >
-      <AppInfoRow
-        label='Network'
-        value={app?.networkName || 'Loading...'}
-        copyValue={app?.networkName}
-      />
+      <Visible when={canViewBackendDetails}>
+        <AppInfoRow
+          label='Network'
+          value={app?.networkName || 'Loading...'}
+          copyValue={app?.networkName}
+        />
+      </Visible>
       <AppInfoRow
         label='Policy'
         value={
@@ -150,35 +159,39 @@ export const AppInfoNetworkSection = ({ app, onAppChange }: AppInfoNetworkSectio
           )
         }
       />
-      <AppInfoRow
-        label='Network access'
-        value={
-          <NetworkAccessInput
-            cidrs={allowCidrs}
-            disabled={!app}
-            isBusy={isSaving}
-            onAddCidr={handleAddCidr}
-            onRemoveCidr={handleRemoveCidr}
-            onInvalidCidr={value =>
-              toast({
-                title: 'Invalid CIDR',
-                description: `${value} is not a valid IPv4 address or CIDR range.`,
-                variant: 'destructive'
-              })
-            }
-          />
-        }
-        valueClassName='w-full sm:max-w-none sm:justify-stretch sm:text-left'
-      />
-      <AppInfoRow
-        label='ADB'
-        value={app ? `${app.containerName}:${app.adbPort}` : 'Loading...'}
-        copyValue={app ? `${app.containerName}:${app.adbPort}` : undefined}
-      />
-      <AppInfoRow
-        label='Transport'
-        value={app?.scrcpyTransport || 'Loading...'}
-      />
+      <Visible when={canConfigureEgress}>
+        <AppInfoRow
+          label='Network access'
+          value={
+            <NetworkAccessInput
+              cidrs={allowCidrs}
+              disabled={!app}
+              isBusy={isSaving}
+              onAddCidr={handleAddCidr}
+              onRemoveCidr={handleRemoveCidr}
+              onInvalidCidr={value =>
+                toast({
+                  title: 'Invalid CIDR',
+                  description: `${value} is not a valid IPv4 address or CIDR range.`,
+                  variant: 'destructive'
+                })
+              }
+            />
+          }
+          valueClassName='w-full sm:max-w-none sm:justify-stretch sm:text-left'
+        />
+      </Visible>
+      <Visible when={canViewBackendDetails}>
+        <AppInfoRow
+          label='ADB'
+          value={app ? `${app.containerName}:${app.adbPort}` : 'Loading...'}
+          copyValue={app ? `${app.containerName}:${app.adbPort}` : undefined}
+        />
+        <AppInfoRow
+          label='Transport'
+          value={app?.scrcpyTransport || 'Loading...'}
+        />
+      </Visible>
       <AppInfoRow
         label='Applied'
         value={app?.networkPolicyAppliedAt ? app.networkPolicyAppliedAt.toLocaleString() : 'Not applied'}

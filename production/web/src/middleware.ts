@@ -26,6 +26,7 @@ export async function middleware(request: NextRequest) {
     }
 
     const isAdminPath =
+      request.nextUrl.pathname.startsWith('/settings/general') ||
       request.nextUrl.pathname.startsWith('/settings/orchestrator') ||
       request.nextUrl.pathname.startsWith('/settings/system') ||
       request.nextUrl.pathname.startsWith('/settings/users')

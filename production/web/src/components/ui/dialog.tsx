@@ -66,25 +66,27 @@ function DialogContent({
   return (
     <DialogPortal data-slot='dialog-portal'>
       <DialogOverlay />
-      <DialogPrimitive.Content
-        data-slot='dialog-content'
-        className={cn(
-          'fixed top-[40%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border border-white/8 bg-card/95 p-6 shadow-2xl shadow-black/45 backdrop-blur-xl duration-200 supports-backdrop-filter:bg-card/88 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:max-w-lg',
-          className
-        )}
-        {...props}
-      >
-        {children}
-        <Visible when={showCloseButton}>
-          <DialogPrimitive.Close
-            data-slot='dialog-close'
-            className="ring-offset-background focus:ring-ring absolute top-4 right-4 rounded-xs p-1 text-muted-foreground opacity-80 transition-[background-color,color,opacity] hover:bg-secondary/80 hover:text-foreground hover:opacity-100 focus:bg-secondary/80 focus:text-foreground focus:ring-2 focus:ring-offset-2 focus:outline-hidden data-[state=open]:bg-secondary/65 data-[state=open]:text-secondary-foreground disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
-          >
-            <XIcon />
-            <span className='sr-only'>Close</span>
-          </DialogPrimitive.Close>
-        </Visible>
-      </DialogPrimitive.Content>
+      <div className='fixed inset-0 z-50 grid place-items-center p-4 pointer-events-none'>
+        <DialogPrimitive.Content
+          data-slot='dialog-content'
+          className={cn(
+            'pointer-events-auto relative grid w-full max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] gap-4 overflow-y-auto rounded-lg border border-white/8 bg-card/95 p-6 shadow-2xl shadow-black/45 backdrop-blur-xl duration-200 supports-backdrop-filter:bg-card/88 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:max-w-lg',
+            className
+          )}
+          {...props}
+        >
+          {children}
+          <Visible when={showCloseButton}>
+            <DialogPrimitive.Close
+              data-slot='dialog-close'
+              className="ring-offset-background focus:ring-ring absolute top-4 right-4 rounded-xs p-1 text-muted-foreground opacity-80 transition-[background-color,color,opacity] hover:bg-secondary/80 hover:text-foreground hover:opacity-100 focus:bg-secondary/80 focus:text-foreground focus:ring-2 focus:ring-offset-2 focus:outline-hidden data-[state=open]:bg-secondary/65 data-[state=open]:text-secondary-foreground disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            >
+              <XIcon />
+              <span className='sr-only'>Close</span>
+            </DialogPrimitive.Close>
+          </Visible>
+        </DialogPrimitive.Content>
+      </div>
     </DialogPortal>
   )
 }

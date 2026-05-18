@@ -74,7 +74,7 @@ export const GeneralSettingsForm = ({ initialSettings }: { initialSettings: Orch
 
   return (
     <ProtectedStackPageLayout mainClassName='gap-2'>
-      <section className='py-4 px-6 max-sm:px-4 flex items-center justify-between gap-3 shrink-0 bg-background'>
+      <section className='py-4 px-6 max-sm:px-4 flex items-center justify-between gap-3 shrink-0'>
         <div className='flex flex-col gap-2'>
           <PageBreadcrumbs
             className='pt-0'

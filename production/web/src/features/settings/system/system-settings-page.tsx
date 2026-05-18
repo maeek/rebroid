@@ -83,7 +83,7 @@ export function SystemSettingsPage() {
     <div>Loading...</div>
   ) : (
     <ProtectedStackPageLayout mainClassName='gap-2'>
-      <section className='shrink-0 bg-background px-6 py-4 max-sm:px-4'>
+      <section className='shrink-0 px-6 py-4 max-sm:px-4'>
         <div className='flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-start'>
           <div className='flex flex-col gap-2'>
             <PageBreadcrumbs

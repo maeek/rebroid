@@ -11,25 +11,36 @@ import { resolveAppIconUrl } from '@/features/applications/icons/url'
 import { AppViewerDeleteAction } from '@/features/applications/viewer/actions/app-viewer-delete-action'
 import { AppLogsDialog } from '@/features/applications/viewer/app-logs-dialog'
 import { AppViewerHeading } from '@/features/applications/viewer/heading'
+import { BlurredImageBackdrop } from '@/features/shell/components/blurred-image-backdrop'
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
 import { ProtectedSplitPageContent, ProtectedSplitPageLayout } from '@/features/shell/components/protected-page-shell'
 import { useForegroundRefresh } from '@/hooks/use-foreground-refresh'
 import { toast } from '@/hooks/use-toast'
 import { updateApplicationAction } from '@/server/orchestrator/applications/mutation-actions'
 import { getApplicationAction } from '@/server/orchestrator/applications/read-actions'
+import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
 import { AppManageGeneralSettings } from './app-manage-general-settings'
 import { AppManageIconPanel } from './app-manage-icon-panel'
 import { AppManageNetworkPolicySettings } from './app-manage-network-policy-settings'
 import { AppManageProfileSettings } from './app-manage-profile-settings'
 import { AppManageRuntimeSettings } from './app-manage-runtime-settings'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 
 const mergeAppPreservingIcon = (nextApp: AppDefinition, currentApp?: AppDefinition) => ({
   ...nextApp,
   icon: currentApp?.icon ?? nextApp.icon
 })
 
-export default function AppManage({ app }: { app?: AppDefinition }) {
+export default function AppManage({
+  app,
+  permissions,
+  initialSettings
+}: {
+  app?: AppDefinition
+  permissions: PermissionMap
+  initialSettings: OrchestratorUiSettings
+}) {
   const [currentApp, setCurrentApp] = useState(app)
   const [appName, setAppName] = useState(app?.name || '')
   const [inactivityTimeoutSeconds, setInactivityTimeoutSeconds] = useState(app?.inactivityTimeoutSeconds ?? 900)
@@ -45,6 +56,16 @@ export default function AppManage({ app }: { app?: AppDefinition }) {
   const router = useRouter()
   const currentAppId = currentApp?.id
   const refreshIntervalMs = getAppRefreshIntervalMs(currentApp)
+  const canChangeSessionLimit = hasPermission(permissions, 'applications:change-session-limit')
+  const canChangeResources = hasPermission(permissions, 'applications:change-resources')
+  const canChangeContainerArgs = hasPermission(permissions, 'applications:change-container-args')
+  const canConfigureEgress = hasPermission(permissions, 'applications:configure-egress')
+  const canSwitchProfile = hasPermission(permissions, 'applications:switch-profile')
+  const canViewBackendDetails = hasPermission(permissions, 'applications:view-backend-details')
+  const canViewLogs = hasPermission(permissions, 'applications:view-logs')
+  const canDelete = hasPermission(permissions, 'applications:delete')
+  const showRuntimeSection =
+    canChangeSessionLimit || canChangeResources || canChangeContainerArgs || canViewBackendDetails
 
   useEffect(() => {
     if (app?.id !== previousAppIdRef.current) {
@@ -117,11 +138,11 @@ export default function AppManage({ app }: { app?: AppDefinition }) {
     try {
       const updated = await updateApplicationAction(currentApp.id, {
         name: appName,
-        inactivityTimeoutSeconds,
-        memoryLimitMb: memoryLimitMb ? Number(memoryLimitMb) : null,
-        cpuLimitCpus: cpuLimitCpus ? Number(cpuLimitCpus) : null,
-        volumeSizeLimitMb: volumeSizeLimitMb ? Number(volumeSizeLimitMb) : null,
-        containerArgs: containerArgs.trim() || null
+        inactivityTimeoutSeconds: canChangeSessionLimit ? inactivityTimeoutSeconds : undefined,
+        memoryLimitMb: canChangeResources && memoryLimitMb ? Number(memoryLimitMb) : undefined,
+        cpuLimitCpus: canChangeResources && cpuLimitCpus ? Number(cpuLimitCpus) : undefined,
+        volumeSizeLimitMb: canChangeResources && volumeSizeLimitMb ? Number(volumeSizeLimitMb) : undefined,
+        containerArgs: canChangeContainerArgs ? containerArgs.trim() || null : undefined
       })
       hasPendingAppChangesRef.current = false
       setCurrentApp(current => mergeAppPreservingIcon(mapAndroidApplicationToAppDefinition(updated), current))
@@ -140,15 +161,7 @@ export default function AppManage({ app }: { app?: AppDefinition }) {
 
   return (
     <ProtectedSplitPageLayout>
-      <div
-        className='w-screen h-screen bg-primary/80 blur-3xl fixed top-0 left-0 -z-10 pointer-events-none'
-        style={{
-          backgroundImage: displayApp.icon ? `url("${resolveAppIconUrl(displayApp.icon)}")` : undefined,
-          backgroundSize: '1000% 1000%',
-          backgroundPosition: 'top left',
-          opacity: 0.05
-        }}
-      />
+      <BlurredImageBackdrop imageSrc={displayApp.icon ? resolveAppIconUrl(displayApp.icon) : null} />
       <ProtectedSplitPageContent>
         <PageBreadcrumbs
           items={[
@@ -159,8 +172,13 @@ export default function AppManage({ app }: { app?: AppDefinition }) {
         />
         <AppViewerHeading app={displayApp}>
           <div className='flex gap-2'>
-            <AppViewerDeleteAction app={displayApp} />
-            <AppLogsDialog app={currentApp} />
+            {canDelete ? (
+              <AppViewerDeleteAction
+                app={displayApp}
+                initialSettings={initialSettings}
+              />
+            ) : null}
+            {canViewLogs ? <AppLogsDialog app={currentApp} /> : null}
             <Button
               disabled={isSaving}
               onClick={() => void handleSave()}
@@ -177,53 +195,65 @@ export default function AppManage({ app }: { app?: AppDefinition }) {
               app={currentApp}
               appId={currentApp.id}
               appName={appName}
+              initialSettings={initialSettings}
               onAppNameChange={value => {
                 hasPendingAppChangesRef.current = true
                 setAppName(value)
               }}
             />
-            <AppManageRuntimeSettings
-              app={currentApp}
-              inactivityTimeoutSeconds={inactivityTimeoutSeconds}
-              memoryLimitMb={memoryLimitMb}
-              cpuLimitCpus={cpuLimitCpus}
-              volumeSizeLimitMb={volumeSizeLimitMb}
-              containerArgs={containerArgs}
-              onInactivityTimeoutChange={value => {
-                hasPendingAppChangesRef.current = true
-                setInactivityTimeoutSeconds(value)
-              }}
-              onMemoryLimitChange={value => {
-                hasPendingAppChangesRef.current = true
-                setMemoryLimitMb(value)
-              }}
-              onCpuLimitChange={value => {
-                hasPendingAppChangesRef.current = true
-                setCpuLimitCpus(value)
-              }}
-              onVolumeSizeLimitChange={value => {
-                hasPendingAppChangesRef.current = true
-                setVolumeSizeLimitMb(value)
-              }}
-              onContainerArgsChange={value => {
-                hasPendingAppChangesRef.current = true
-                setContainerArgs(value)
-              }}
-            />
-            <AppManageProfileSettings
-              app={currentApp}
-              onUpdated={setCurrentApp}
-            />
-            <AppManageNetworkPolicySettings
-              app={currentApp}
-              onUpdated={setCurrentApp}
-            />
+            {showRuntimeSection ? (
+              <AppManageRuntimeSettings
+                app={currentApp}
+                inactivityTimeoutSeconds={inactivityTimeoutSeconds}
+                memoryLimitMb={memoryLimitMb}
+                cpuLimitCpus={cpuLimitCpus}
+                volumeSizeLimitMb={volumeSizeLimitMb}
+                containerArgs={containerArgs}
+                canChangeSessionLimit={canChangeSessionLimit}
+                canChangeResources={canChangeResources}
+                canChangeContainerArgs={canChangeContainerArgs}
+                canViewBackendDetails={canViewBackendDetails}
+                onInactivityTimeoutChange={value => {
+                  hasPendingAppChangesRef.current = true
+                  setInactivityTimeoutSeconds(value)
+                }}
+                onMemoryLimitChange={value => {
+                  hasPendingAppChangesRef.current = true
+                  setMemoryLimitMb(value)
+                }}
+                onCpuLimitChange={value => {
+                  hasPendingAppChangesRef.current = true
+                  setCpuLimitCpus(value)
+                }}
+                onVolumeSizeLimitChange={value => {
+                  hasPendingAppChangesRef.current = true
+                  setVolumeSizeLimitMb(value)
+                }}
+                onContainerArgsChange={value => {
+                  hasPendingAppChangesRef.current = true
+                  setContainerArgs(value)
+                }}
+              />
+            ) : null}
+            {canSwitchProfile ? (
+              <AppManageProfileSettings
+                app={currentApp}
+                onUpdated={setCurrentApp}
+              />
+            ) : null}
+            {canConfigureEgress ? (
+              <AppManageNetworkPolicySettings
+                app={currentApp}
+                onUpdated={setCurrentApp}
+              />
+            ) : null}
           </div>
           <div className='flex w-full min-w-0 flex-col gap-4'>
             <AppManageIconPanel
               appId={currentApp.id}
               appName={appName}
               icon={icon}
+              initialSettings={initialSettings}
               onIconChange={(nextIcon, isDirty) => {
                 isIconDirtyRef.current = isDirty
                 setIcon(nextIcon)

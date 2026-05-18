@@ -10,6 +10,7 @@ import {
   IconLibraryPlus,
   IconNetwork,
   IconServerSpark,
+  IconShield,
   IconUsers
 } from '@tabler/icons-react'
 import classNames from 'classnames'
@@ -46,9 +47,11 @@ const appSections: NavigationItem[] = [
 
 const settingsSections: NavigationItem[] = [{ name: 'General', Icon: IconAdjustments, href: '/settings/general' }]
 
-const adminSettingsSections: NavigationItem[] = [
+const adminSettingsSections: NavigationItem[] = [{ name: 'System', Icon: IconServerSpark, href: '/settings/system' }]
+
+const userManagementSubSections: NavigationItem[] = [
   { name: 'Users', Icon: IconUsers, href: '/settings/users' },
-  { name: 'System', Icon: IconServerSpark, href: '/settings/system' }
+  { name: 'Groups', Icon: IconShield, href: '/settings/users/groups' }
 ]
 
 const orchestratorSubSections: NavigationItem[] = [
@@ -160,7 +163,9 @@ export const ProtectedNavigation = ({ variant, onNavigate }: ProtectedNavigation
   const { data: session } = useSession()
   const [recentApps, setRecentApps] = useState<RecentApp[]>([])
   const isAdmin = session?.user.role === 'admin'
+  const userManagementPathIsActive = pathname.startsWith('/settings/users')
   const orchestratorPathIsActive = pathname.startsWith('/settings/orchestrator')
+  const [userManagementMenuIsOpen, setUserManagementMenuIsOpen] = useState(userManagementPathIsActive)
   const [orchestratorMenuIsOpen, setOrchestratorMenuIsOpen] = useState(orchestratorPathIsActive)
   const styles = variantStyles[variant]
 
@@ -195,6 +200,12 @@ export const ProtectedNavigation = ({ variant, onNavigate }: ProtectedNavigation
       window.removeEventListener('storage', onRecentAppsUpdated)
     }
   }, [])
+
+  useEffect(() => {
+    if (userManagementPathIsActive) {
+      setUserManagementMenuIsOpen(true)
+    }
+  }, [userManagementPathIsActive])
 
   useEffect(() => {
     if (orchestratorPathIsActive) {
@@ -242,99 +253,144 @@ export const ProtectedNavigation = ({ variant, onNavigate }: ProtectedNavigation
         ))}
       </ul>
 
-      <h6 className={styles.sectionTitle}>Settings</h6>
-      <ul className={styles.list}>
-        {settingsSections.map(({ name, Icon, href }) => (
-          <NavLink
-            key={name}
-            href={href}
-            label={name}
-            Icon={Icon}
-            isActive={isActivePath(href)}
-            variant={variant}
-            onNavigate={onNavigate}
-          />
-        ))}
-        <Visible when={isAdmin}>
-          <>
-            {adminSettingsSections.slice(0, 1).map(({ name, Icon, href }) => (
-              <NavLink
-                key={name}
-                href={href}
-                label={name}
-                Icon={Icon}
-                isActive={isActivePath(href)}
-                variant={variant}
-                onNavigate={onNavigate}
-              />
-            ))}
-            <li>
-              <div
-                className={classNames(
-                  'flex items-center rounded-sm text-foreground dark:hover:text-white',
-                  pathname === '/settings/orchestrator' && styles.activeItem
-                )}
+      <Visible when={isAdmin}>
+        <h6 className={styles.sectionTitle}>Settings</h6>
+        <ul className={styles.list}>
+          {settingsSections.map(({ name, Icon, href }) => (
+            <NavLink
+              key={name}
+              href={href}
+              label={name}
+              Icon={Icon}
+              isActive={isActivePath(href)}
+              variant={variant}
+              onNavigate={onNavigate}
+            />
+          ))}
+          <li>
+            <div
+              className={classNames(
+                'flex items-center rounded-sm text-foreground dark:hover:text-white',
+                pathname === '/settings/users' && styles.activeItem
+              )}
+            >
+              <Link
+                href='/settings/users'
+                className={classNames(styles.item, 'min-w-0 flex-1 rounded-none bg-transparent')}
+                onClick={onNavigate}
               >
-                <Link
-                  href='/settings/orchestrator'
-                  className={classNames(styles.item, 'min-w-0 flex-1 rounded-none bg-transparent')}
-                  onClick={onNavigate}
-                >
-                  <div className={styles.iconWrap}>
-                    <IconBrandDocker className={styles.icon} />
-                  </div>
-                  <span className={classNames(styles.label, 'truncate')}>Orchestrator</span>
-                </Link>
-                <button
-                  type='button'
-                  className={styles.toggleButton}
-                  aria-label={orchestratorMenuIsOpen ? 'Collapse Orchestrator menu' : 'Expand Orchestrator menu'}
-                  aria-expanded={orchestratorMenuIsOpen}
-                  onClick={() => setOrchestratorMenuIsOpen(open => !open)}
-                >
-                  <IconChevronDown
-                    className={classNames('size-4 transition-transform', orchestratorMenuIsOpen && 'rotate-180')}
-                  />
-                </button>
-              </div>
-              <div
-                className={classNames(
-                  'grid overflow-hidden transition-[grid-template-rows,opacity] duration-200 ease-out',
-                  orchestratorMenuIsOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-                )}
+                <div className={styles.iconWrap}>
+                  <IconUsers className={styles.icon} />
+                </div>
+                <span className={classNames(styles.label, 'truncate')}>User management</span>
+              </Link>
+              <button
+                type='button'
+                className={styles.toggleButton}
+                aria-label={userManagementMenuIsOpen ? 'Collapse User management menu' : 'Expand User management menu'}
+                aria-expanded={userManagementMenuIsOpen}
+                onClick={() => setUserManagementMenuIsOpen(open => !open)}
               >
-                <ul className={styles.nestedList}>
-                  {orchestratorSubSections.map(({ name, Icon, href }) => (
-                    <Link
-                      key={href}
-                      href={href}
-                      onClick={onNavigate}
+                <IconChevronDown
+                  className={classNames('size-4 transition-transform', userManagementMenuIsOpen && 'rotate-180')}
+                />
+              </button>
+            </div>
+            <div
+              className={classNames(
+                'grid overflow-hidden transition-[grid-template-rows,opacity] duration-200 ease-out',
+                userManagementMenuIsOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+              )}
+            >
+              <ul className={styles.nestedList}>
+                {userManagementSubSections.map(({ name, Icon, href }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={onNavigate}
+                  >
+                    <li
+                      className={classNames(
+                        styles.nestedItem,
+                        isActivePath(href, href === '/settings/users') && styles.nestedActiveItem
+                      )}
                     >
-                      <li className={classNames(styles.nestedItem, isActivePath(href) && styles.nestedActiveItem)}>
-                        <div className={styles.nestedIconWrap}>
-                          <Icon className={styles.nestedIcon} />
-                        </div>
-                        <span className='truncate'>{name}</span>
-                      </li>
-                    </Link>
-                  ))}
-                </ul>
-              </div>
-            </li>
-            {adminSettingsSections.slice(1).map(({ name, Icon, href }) => (
-              <NavLink
-                key={name}
-                href={href}
-                label={name}
-                Icon={Icon}
-                isActive={isActivePath(href)}
-                variant={variant}
-                onNavigate={onNavigate}
-              />
-            ))}
-          </>
-        </Visible>
-      </ul>
+                      <div className={styles.nestedIconWrap}>
+                        <Icon className={styles.nestedIcon} />
+                      </div>
+                      <span className='truncate'>{name}</span>
+                    </li>
+                  </Link>
+                ))}
+              </ul>
+            </div>
+          </li>
+          <li>
+            <div
+              className={classNames(
+                'flex items-center rounded-sm text-foreground dark:hover:text-white',
+                pathname === '/settings/orchestrator' && styles.activeItem
+              )}
+            >
+              <Link
+                href='/settings/orchestrator'
+                className={classNames(styles.item, 'min-w-0 flex-1 rounded-none bg-transparent')}
+                onClick={onNavigate}
+              >
+                <div className={styles.iconWrap}>
+                  <IconBrandDocker className={styles.icon} />
+                </div>
+                <span className={classNames(styles.label, 'truncate')}>Orchestrator</span>
+              </Link>
+              <button
+                type='button'
+                className={styles.toggleButton}
+                aria-label={orchestratorMenuIsOpen ? 'Collapse Orchestrator menu' : 'Expand Orchestrator menu'}
+                aria-expanded={orchestratorMenuIsOpen}
+                onClick={() => setOrchestratorMenuIsOpen(open => !open)}
+              >
+                <IconChevronDown
+                  className={classNames('size-4 transition-transform', orchestratorMenuIsOpen && 'rotate-180')}
+                />
+              </button>
+            </div>
+            <div
+              className={classNames(
+                'grid overflow-hidden transition-[grid-template-rows,opacity] duration-200 ease-out',
+                orchestratorMenuIsOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+              )}
+            >
+              <ul className={styles.nestedList}>
+                {orchestratorSubSections.map(({ name, Icon, href }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={onNavigate}
+                  >
+                    <li className={classNames(styles.nestedItem, isActivePath(href) && styles.nestedActiveItem)}>
+                      <div className={styles.nestedIconWrap}>
+                        <Icon className={styles.nestedIcon} />
+                      </div>
+                      <span className='truncate'>{name}</span>
+                    </li>
+                  </Link>
+                ))}
+              </ul>
+            </div>
+          </li>
+          {adminSettingsSections.map(({ name, Icon, href }) => (
+            <NavLink
+              key={name}
+              href={href}
+              label={name}
+              Icon={Icon}
+              isActive={isActivePath(href)}
+              variant={variant}
+              onNavigate={onNavigate}
+            />
+          ))}
+        </ul>
+      </Visible>
     </div>
   )
 }

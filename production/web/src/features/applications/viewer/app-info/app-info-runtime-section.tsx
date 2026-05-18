@@ -9,7 +9,13 @@ const formatResources = (app: AppDefinition) => {
   }, volume ${app.volumeSizeLimitMb ? `${app.volumeSizeLimitMb} MB advisory` : 'unlimited'}`
 }
 
-export const AppInfoRuntimeSection = ({ app }: { app?: AppDefinition }) => {
+export const AppInfoRuntimeSection = ({
+  app,
+  canViewBackendDetails
+}: {
+  app?: AppDefinition
+  canViewBackendDetails: boolean
+}) => {
   return (
     <Section
       title='Runtime'
@@ -17,26 +23,28 @@ export const AppInfoRuntimeSection = ({ app }: { app?: AppDefinition }) => {
       titleClassName='pb-4'
       contentClassName='flex-col'
     >
-      <AppInfoRow
-        label='Container name'
-        value={app?.containerName || 'Loading...'}
-        copyValue={app?.containerName}
-      />
-      <AppInfoRow
-        label='Container ID'
-        value={app?.containerId || 'Not created'}
-        copyValue={app?.containerId || undefined}
-      />
-      <AppInfoRow
-        label='Image'
-        value={app?.containerImage || 'Loading...'}
-        copyValue={app?.containerImage}
-      />
-      <AppInfoRow
-        label='Volume'
-        value={app ? (app.profileMode === 'temporary' ? 'Temporary container data' : app.volumeName) : 'Loading...'}
-        copyValue={app?.profileMode === 'temporary' ? undefined : app?.volumeName}
-      />
+      <Visible when={canViewBackendDetails}>
+        <AppInfoRow
+          label='Container name'
+          value={app?.containerName || 'Loading...'}
+          copyValue={app?.containerName}
+        />
+        <AppInfoRow
+          label='Container ID'
+          value={app?.containerId || 'Not created'}
+          copyValue={app?.containerId || undefined}
+        />
+        <AppInfoRow
+          label='Image'
+          value={app?.containerImage || 'Loading...'}
+          copyValue={app?.containerImage}
+        />
+        <AppInfoRow
+          label='Volume'
+          value={app ? (app.profileMode === 'temporary' ? 'Temporary container data' : app.volumeName) : 'Loading...'}
+          copyValue={app?.profileMode === 'temporary' ? undefined : app?.volumeName}
+        />
+      </Visible>
       <AppInfoRow
         label='Profile'
         value={app ? `${app.profileName ?? 'default'} / ${app.profileMode}` : 'Loading...'}
@@ -45,7 +53,7 @@ export const AppInfoRuntimeSection = ({ app }: { app?: AppDefinition }) => {
         label='Resources'
         value={app ? formatResources(app) : 'Loading...'}
       />
-      <Visible when={app?.containerArgs}>
+      <Visible when={canViewBackendDetails && app?.containerArgs}>
         <AppInfoRow
           label='Container args'
           value={app?.containerArgs ?? ''}

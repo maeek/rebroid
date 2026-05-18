@@ -20,11 +20,18 @@ import { toast } from '@/hooks/use-toast'
 import { removeAppIconAction } from '@/server/app-icons/actions/remove-app-icon-action'
 import { deleteApplicationAction } from '@/server/orchestrator/applications/mutation-actions'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 
-export const AppViewerDeleteAction = ({ app }: { app?: AppDefinition }) => {
+export const AppViewerDeleteAction = ({
+  app,
+  initialSettings
+}: {
+  app?: AppDefinition
+  initialSettings: OrchestratorUiSettings
+}) => {
   const [open, setOpen] = useState(false)
   const router = useRouter()
-  const settings = useOrchestratorUiSettings()
+  const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
 
   const handleDelete = async () => {
     if (!app) {

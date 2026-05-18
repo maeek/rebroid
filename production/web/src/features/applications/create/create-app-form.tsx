@@ -12,10 +12,12 @@ import {
   isFileWithinApkLimit,
   useOrchestratorUiSettings
 } from '@/features/settings/hooks/use-orchestrator-ui-settings'
+import { BlurredImageBackdrop } from '@/features/shell/components/blurred-image-backdrop'
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
 import { toast } from '@/hooks/use-toast'
 import { setAppIconAction } from '@/server/app-icons/actions/set-app-icon-action'
 import { createApplicationAction } from '@/server/orchestrator/applications/mutation-actions'
+import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
 import { CreateAppDeviceSection } from './create-app-device-section'
 import { CreateAppGeneralSection } from './create-app-general-section'
 import { CreateAppIconSection } from './create-app-icon-section'
@@ -34,7 +36,13 @@ const getInitialFormValues = (settings: OrchestratorUiSettings): CreateAppFormVa
   containerArgs: ''
 })
 
-export const CreateAppForm = ({ initialSettings }: { initialSettings: OrchestratorUiSettings }) => {
+export const CreateAppForm = ({
+  initialSettings,
+  permissions
+}: {
+  initialSettings: OrchestratorUiSettings
+  permissions: PermissionMap
+}) => {
   const topLoader = useTopLoader()
   const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
   const [formValues, setFormValues] = useState<CreateAppFormValues>(() => getInitialFormValues(settings))
@@ -46,6 +54,12 @@ export const CreateAppForm = ({ initialSettings }: { initialSettings: Orchestrat
   const router = useRouter()
   const extractedIcon = uploadedApk?.extractedIconDataUrl ?? null
   const iconPreview = manualIconPreview ?? (autoExtractIcon ? extractedIcon : null)
+  const canChangeBaseImage = hasPermission(permissions, 'applications:change-base-image')
+  const canChangeSessionLimit = hasPermission(permissions, 'applications:change-session-limit')
+  const canChangeResources = hasPermission(permissions, 'applications:change-resources')
+  const canChangeContainerArgs = hasPermission(permissions, 'applications:change-container-args')
+  const showDeviceSection = canChangeBaseImage || canChangeSessionLimit || canChangeContainerArgs
+  const showResourcesSection = canChangeResources
 
   useEffect(() => {
     setFormValues(current => ({
@@ -144,12 +158,13 @@ export const CreateAppForm = ({ initialSettings }: { initialSettings: Orchestrat
     try {
       const createdApp = await createApplicationAction({
         name: trimmedName,
-        containerImage: formValues.containerImage.trim() || undefined,
-        inactivityTimeoutSeconds: formValues.inactivityTimeoutSeconds || undefined,
-        memoryLimitMb: formValues.memoryLimitMb ? Number(formValues.memoryLimitMb) : undefined,
-        cpuLimitCpus: formValues.cpuLimitCpus ? Number(formValues.cpuLimitCpus) : undefined,
-        volumeSizeLimitMb: formValues.volumeSizeLimitMb ? Number(formValues.volumeSizeLimitMb) : undefined,
-        containerArgs: formValues.containerArgs.trim() || undefined,
+        containerImage: canChangeBaseImage ? formValues.containerImage.trim() || undefined : undefined,
+        inactivityTimeoutSeconds: canChangeSessionLimit ? formValues.inactivityTimeoutSeconds || undefined : undefined,
+        memoryLimitMb: canChangeResources && formValues.memoryLimitMb ? Number(formValues.memoryLimitMb) : undefined,
+        cpuLimitCpus: canChangeResources && formValues.cpuLimitCpus ? Number(formValues.cpuLimitCpus) : undefined,
+        volumeSizeLimitMb:
+          canChangeResources && formValues.volumeSizeLimitMb ? Number(formValues.volumeSizeLimitMb) : undefined,
+        containerArgs: canChangeContainerArgs ? formValues.containerArgs.trim() || undefined : undefined,
         uploadedApkId: uploadedApk?.id
       })
 
@@ -176,16 +191,7 @@ export const CreateAppForm = ({ initialSettings }: { initialSettings: Orchestrat
         <PageBreadcrumbs items={[{ label: 'Apps', href: '/apps' }, { label: `Create ${formValues.name.trim()}` }]} />
       </div>
       <Visible when={iconPreview}>
-        <div
-          aria-hidden='true'
-          className='w-screen h-screen bg-primary/80 blur-3xl fixed top-0 left-0 -z-10 pointer-events-none'
-          style={{
-            backgroundImage: iconPreview ? `url("${iconPreview}")` : undefined,
-            backgroundSize: '1000% 1000%',
-            backgroundPosition: 'top left',
-            opacity: 0.05
-          }}
-        />
+        <BlurredImageBackdrop imageSrc={iconPreview} />
       </Visible>
       <form
         className='grid w-full grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)] items-start gap-6 pt-2 pb-24 max-lg:grid-cols-1'
@@ -199,15 +205,24 @@ export const CreateAppForm = ({ initialSettings }: { initialSettings: Orchestrat
             isUploadingApk={isUploadingApk}
             onApkSelect={file => void handleApkSelect(file)}
           />
-          <h2 className='font-bold'>Advanced</h2>
-          <CreateAppDeviceSection
-            values={formValues}
-            onChange={updateFormValues}
-          />
-          <CreateAppResourcesSection
-            values={formValues}
-            onChange={updateFormValues}
-          />
+          <Visible when={showDeviceSection || showResourcesSection}>
+            <h2 className='font-bold'>Advanced</h2>
+          </Visible>
+          <Visible when={showDeviceSection}>
+            <CreateAppDeviceSection
+              values={formValues}
+              onChange={updateFormValues}
+              canChangeBaseImage={canChangeBaseImage}
+              canChangeSessionLimit={canChangeSessionLimit}
+              canChangeContainerArgs={canChangeContainerArgs}
+            />
+          </Visible>
+          <Visible when={showResourcesSection}>
+            <CreateAppResourcesSection
+              values={formValues}
+              onChange={updateFormValues}
+            />
+          </Visible>
           <Button
             type='submit'
             disabled={isSubmitDisabled}

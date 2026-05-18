@@ -6,7 +6,15 @@ import { startApplicationAction, stopApplicationAction } from '@/server/orchestr
 import { useAppViewerActionRunner } from './use-app-viewer-action-runner'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
-export const AppViewerPowerAction = ({ app }: { app?: AppDefinition }) => {
+export const AppViewerPowerAction = ({
+  app,
+  canStart,
+  canStop
+}: {
+  app?: AppDefinition
+  canStart: boolean
+  canStop: boolean
+}) => {
   const { isRunningAction, runAction } = useAppViewerActionRunner()
   const isBusy = app?.status === 'provisioning' || app?.status === 'removing'
 
@@ -14,7 +22,7 @@ export const AppViewerPowerAction = ({ app }: { app?: AppDefinition }) => {
     return (
       <Button
         variant='destructive'
-        disabled={isBusy || isRunningAction}
+        disabled={!canStop || isBusy || isRunningAction}
         onClick={() => void runAction(() => stopApplicationAction(app.id), 'Could not stop app')}
       >
         {isRunningAction ? (
@@ -30,7 +38,7 @@ export const AppViewerPowerAction = ({ app }: { app?: AppDefinition }) => {
   return (
     <Button
       variant='update'
-      disabled={!app || isBusy || isRunningAction}
+      disabled={!app || !canStart || isBusy || isRunningAction}
       onClick={() => app && void runAction(() => startApplicationAction(app.id), 'Could not start app')}
     >
       {isRunningAction ? <IconLoader2 className='size-4 animate-spin' /> : <IconPlayerPlayFilled className='size-4' />}

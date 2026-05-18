@@ -6,14 +6,25 @@ import { mapAndroidApplicationToAppDefinition } from '@/features/applications/do
 import { getAppRefreshIntervalMs } from '@/features/applications/domain/refresh'
 import { resolveAppIconUrl } from '@/features/applications/icons/url'
 import { rememberRecentApp } from '@/features/applications/recent/recent-apps'
+import { BlurredImageBackdrop } from '@/features/shell/components/blurred-image-backdrop'
 import { ProtectedSplitPageLayout } from '@/features/shell/components/protected-page-shell'
 import { StatusSplash } from '@/features/shell/components/status-splash'
 import { useForegroundRefresh } from '@/hooks/use-foreground-refresh'
 import { getApplicationAction } from '@/server/orchestrator/applications/read-actions'
 import { AppViewerContent } from './app-viewer-content'
 import { AppViewerPane } from './app-viewer-pane'
+import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
+import type { PermissionMap } from '@/shared/permissions/permissions'
 
-export const AppViewerPage = ({ app }: { app?: AppDefinition }) => {
+export const AppViewerPage = ({
+  app,
+  permissions,
+  initialSettings
+}: {
+  app?: AppDefinition
+  permissions: PermissionMap
+  initialSettings: OrchestratorUiSettings
+}) => {
   const [currentApp, setCurrentApp] = useState(app)
   const currentAppId = currentApp?.id
   const refreshIntervalMs = getAppRefreshIntervalMs(currentApp)
@@ -69,17 +80,11 @@ export const AppViewerPage = ({ app }: { app?: AppDefinition }) => {
       className='h-auto min-h-[calc(100vh-4rem)]'
       mainClassName='h-auto min-h-[calc(100vh-4rem)] items-start'
     >
-      <div
-        className='w-screen h-screen bg-primary/80 blur-3xl fixed top-0 left-0 -z-10 pointer-events-none'
-        style={{
-          backgroundImage: currentApp.icon ? `url("${resolveAppIconUrl(currentApp.icon)}")` : undefined,
-          backgroundSize: '1000% 1000%',
-          backgroundPosition: 'top left',
-          opacity: 0.05
-        }}
-      />
+      <BlurredImageBackdrop imageSrc={currentApp.icon ? resolveAppIconUrl(currentApp.icon) : null} />
       <AppViewerContent
         app={currentApp}
+        initialSettings={initialSettings}
+        permissions={permissions}
         onAppChange={nextApp => setCurrentApp(nextApp)}
       />
       <AppViewerPane app={currentApp} />

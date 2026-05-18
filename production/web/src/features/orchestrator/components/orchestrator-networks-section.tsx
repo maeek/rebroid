@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { IconEye, IconRefresh, IconSearch, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogClose,
@@ -21,6 +22,7 @@ import { Visible } from '@/components/ui/visible'
 import { toast } from '@/hooks/use-toast'
 import { listPlatformNetworksAction, removePlatformNetworkAction } from '@/server/orchestrator/platform/actions'
 import { PlatformGridPagination } from './platform-grid-pagination'
+import { useGridSelection } from './use-grid-selection'
 import type { PlatformNetwork } from '@/server/orchestrator/platform/types'
 
 const NetworkNameCell = ({ network }: { network: PlatformNetwork }) => (
@@ -94,6 +96,8 @@ export const OrchestratorNetworksSection = ({ refreshKey = 0 }: { refreshKey?: n
     )
   }, [search, sortedNetworks])
 
+  const selection = useGridSelection(filteredNetworks)
+
   const paginatedNetworks = useMemo(
     () => filteredNetworks.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize),
     [filteredNetworks, pageIndex, pageSize]
@@ -148,6 +152,31 @@ export const OrchestratorNetworksSection = ({ refreshKey = 0 }: { refreshKey?: n
     }
   }
 
+  const removeSelectedNetworks = async () => {
+    const targets = selection.selectedItems
+    if (targets.length === 0) {
+      return
+    }
+
+    setBusyId('bulk')
+    try {
+      for (const network of targets) {
+        await removePlatformNetworkAction(network.id)
+      }
+      selection.clearSelection()
+      toast({ title: 'Selected networks removed' })
+      await refresh()
+    } catch (caughtError) {
+      toast({
+        title: 'Could not remove selected networks',
+        description: caughtError instanceof Error ? caughtError.message : 'Unknown error',
+        variant: 'destructive'
+      })
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   const emptyMessage = search.trim() ? 'No networks match this search.' : 'No networks are visible to Docker.'
 
   return (
@@ -181,6 +210,19 @@ export const OrchestratorNetworksSection = ({ refreshKey = 0 }: { refreshKey?: n
             onChange={event => setSearch(event.target.value)}
           />
         </div>
+        <Visible when={selection.selectedItems.length > 0}>
+          <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/45 px-4 py-3'>
+            <span className='text-sm text-secondary-foreground'>{selection.selectedItems.length} selected</span>
+            <Button
+              type='button'
+              variant='destructive'
+              disabled={busyId === 'bulk' || selection.selectedItems.some(network => network.containers.length > 0)}
+              onClick={() => void removeSelectedNetworks()}
+            >
+              Remove selected
+            </Button>
+          </div>
+        </Visible>
         {error ? (
           <div className='rounded-md border border-destructive/35 bg-destructive/10 p-4 text-sm text-destructive'>
             {error}
@@ -195,6 +237,15 @@ export const OrchestratorNetworksSection = ({ refreshKey = 0 }: { refreshKey?: n
                 >
                   <TableHeader className='bg-background/45'>
                     <TableRow className='hover:bg-transparent'>
+                      <TableHead className='w-12 px-4 py-3'>
+                        <Checkbox
+                          checked={
+                            paginatedNetworks.length > 0 &&
+                            paginatedNetworks.every(network => selection.selectedIds.has(network.id))
+                          }
+                          onCheckedChange={checked => selection.selectPage(paginatedNetworks, checked === true)}
+                        />
+                      </TableHead>
                       <TableHead className='w-[22rem] px-4 py-3 uppercase'>Network</TableHead>
                       <TableHead className='w-32 px-4 py-3 uppercase'>Driver</TableHead>
                       <TableHead className='w-28 px-4 py-3 uppercase'>Scope</TableHead>
@@ -208,7 +259,7 @@ export const OrchestratorNetworksSection = ({ refreshKey = 0 }: { refreshKey?: n
                     {isLoading && networks.length === 0 ? (
                       <TableRow>
                         <TableCell
-                          colSpan={7}
+                          colSpan={8}
                           className='px-4 py-4 text-sm text-secondary-foreground'
                         >
                           Loading networks...
@@ -217,15 +268,24 @@ export const OrchestratorNetworksSection = ({ refreshKey = 0 }: { refreshKey?: n
                     ) : filteredNetworks.length === 0 ? (
                       <TableRow>
                         <TableCell
-                          colSpan={7}
+                          colSpan={8}
                           className='px-4 py-4 text-sm text-secondary-foreground'
                         >
                           {emptyMessage}
                         </TableCell>
                       </TableRow>
                     ) : (
-                      paginatedNetworks.map(network => (
+                      paginatedNetworks.map((network, index) => (
                         <TableRow key={network.id}>
+                          <TableCell className='px-4 py-3 align-top'>
+                            <Checkbox
+                              checked={selection.selectedIds.has(network.id)}
+                              onClick={event =>
+                                selection.toggleSelection(network, pageIndex * pageSize + index, event.shiftKey)
+                              }
+                              onCheckedChange={() => undefined}
+                            />
+                          </TableCell>
                           <TableCell className='px-4 py-3 align-top'>
                             <NetworkNameCell network={network} />
                           </TableCell>
@@ -261,7 +321,7 @@ export const OrchestratorNetworksSection = ({ refreshKey = 0 }: { refreshKey?: n
                               <Button
                                 type='button'
                                 variant='destructive'
-                                disabled={busyId === network.id || network.containers.length > 0}
+                                disabled={busyId === network.id || busyId === 'bulk' || network.containers.length > 0}
                                 onClick={() => setPendingRemove(network)}
                               >
                                 <IconTrash className='size-4' />

@@ -23,6 +23,7 @@ import {
   stopPlatformContainerAction
 } from '@/server/orchestrator/platform/actions'
 import { PlatformGridPagination } from './platform-grid-pagination'
+import { useGridSelection } from './use-grid-selection'
 import type { PlatformContainer } from '@/server/orchestrator/platform/types'
 
 type PendingAction = { type: 'stop' | 'remove'; container: PlatformContainer } | null
@@ -76,6 +77,8 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
         .includes(query)
     )
   }, [search, sortedContainers])
+
+  const selection = useGridSelection(filteredContainers)
 
   const paginatedContainers = useMemo(
     () => filteredContainers.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize),
@@ -136,6 +139,36 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
     }
   }
 
+  const runBulkAction = async (type: 'stop' | 'remove') => {
+    const targets = selection.selectedItems
+    if (targets.length === 0) {
+      return
+    }
+
+    setBusyId('bulk')
+    try {
+      for (const container of targets) {
+        if (type === 'stop' && container.state === 'running') {
+          await stopPlatformContainerAction(container.id)
+        }
+        if (type === 'remove') {
+          await removePlatformContainerAction(container.id)
+        }
+      }
+      selection.clearSelection()
+      toast({ title: type === 'stop' ? 'Selected containers stopped' : 'Selected containers removed' })
+      await refresh()
+    } catch (caughtError) {
+      toast({
+        title: type === 'stop' ? 'Could not stop selected containers' : 'Could not remove selected containers',
+        description: caughtError instanceof Error ? caughtError.message : 'Unknown error',
+        variant: 'destructive'
+      })
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   return (
     <>
       <Section
@@ -167,6 +200,29 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
             onChange={event => setSearch(event.target.value)}
           />
         </div>
+        <Visible when={selection.selectedItems.length > 0}>
+          <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/45 px-4 py-3'>
+            <span className='text-sm text-secondary-foreground'>{selection.selectedItems.length} selected</span>
+            <div className='flex gap-2'>
+              <Button
+                type='button'
+                variant='secondary'
+                disabled={busyId === 'bulk'}
+                onClick={() => void runBulkAction('stop')}
+              >
+                Stop selected
+              </Button>
+              <Button
+                type='button'
+                variant='destructive'
+                disabled={busyId === 'bulk'}
+                onClick={() => void runBulkAction('remove')}
+              >
+                Remove selected
+              </Button>
+            </div>
+          </div>
+        </Visible>
 
         {error ? (
           <div className='rounded-md border border-destructive/35 bg-destructive/10 p-4 text-sm text-destructive'>
@@ -180,6 +236,11 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
             emptyMessage={search.trim() ? 'No containers match this search.' : undefined}
             onStop={container => setPendingAction({ type: 'stop', container })}
             onRemove={container => setPendingAction({ type: 'remove', container })}
+            selectedIds={selection.selectedIds}
+            onSelect={(container, index, shiftKey) =>
+              selection.toggleSelection(container, pageIndex * pageSize + index, shiftKey)
+            }
+            onSelectPage={selected => selection.selectPage(paginatedContainers, selected)}
           />
         )}
         <Visible when={!error}>

@@ -5,5 +5,11 @@ import { userService } from '@/server/auth/user'
 export default async function UsersSettingsPage() {
   await requireAdmin()
   const users = await userService.listUsers()
-  return <UsersSettings initialUsers={users} />
+  const groups = await userService.listGroups()
+  return (
+    <UsersSettings
+      initialUsers={users}
+      initialGroups={groups}
+    />
+  )
 }

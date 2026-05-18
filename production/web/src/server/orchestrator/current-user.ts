@@ -1,22 +1,17 @@
-import { getServerAuthSession } from '@/server/auth/auth'
+import { getCurrentUser } from '@/server/auth/authorization'
 
 export const getCurrentOwnerUserId = async () => {
-  const session = await getServerAuthSession()
-  if (!session?.user) {
-    throw new Error('Authentication required.')
-  }
-
-  return session.user.id || session.user.email || session.user.name || 'admin'
+  const user = await getCurrentUser()
+  return user.id || user.name || 'admin'
 }
 
 export const getCurrentUserContext = async () => {
-  const session = await getServerAuthSession()
-  if (!session?.user) {
-    throw new Error('Authentication required.')
-  }
+  const user = await getCurrentUser()
 
   return {
-    ownerUserId: session.user.id || session.user.email || session.user.name || 'admin',
-    role: session.user.role ?? 'user'
+    ownerUserId: user.id || user.name || 'admin',
+    role: user.role,
+    permissions: user.effectivePermissions,
+    quotas: user.effectiveQuotas
   }
 }

@@ -12,6 +12,7 @@ import {
 import { toast } from '@/hooks/use-toast'
 import { removeAppIconAction } from '@/server/app-icons/actions/remove-app-icon-action'
 import { setAppIconAction } from '@/server/app-icons/actions/set-app-icon-action'
+import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 
 const recentAppsStorageKey = 'sma_recent_apps'
 const recentAppsUpdatedEvent = 'sma-recent-apps-updated'
@@ -27,13 +28,20 @@ type AppManageIconPanelProps = {
   appId: string
   appName: string
   icon: string | null
+  initialSettings: OrchestratorUiSettings
   onIconChange: (icon: string | null, isDirty: boolean) => void
 }
 
-export const AppManageIconPanel = ({ appId, appName, icon, onIconChange }: AppManageIconPanelProps) => {
+export const AppManageIconPanel = ({
+  appId,
+  appName,
+  icon,
+  initialSettings,
+  onIconChange
+}: AppManageIconPanelProps) => {
   const [isUploadingIcon, setIsUploadingIcon] = useState(false)
   const iconInputRef = useRef<HTMLInputElement>(null)
-  const settings = useOrchestratorUiSettings()
+  const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
 
   const syncSidebarRecentApp = (nextIcon: string | null) => {
     try {

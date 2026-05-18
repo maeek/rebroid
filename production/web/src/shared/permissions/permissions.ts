@@ -1,0 +1,203 @@
+export const permissionCategories = [
+  {
+    id: 'application-lifecycle',
+    name: 'Application lifecycle'
+  },
+  {
+    id: 'runtime-configuration',
+    name: 'Runtime configuration'
+  },
+  {
+    id: 'network-access',
+    name: 'Network access'
+  },
+  {
+    id: 'profiles-observability',
+    name: 'Profiles and observability'
+  }
+] as const
+
+export type PermissionCategoryId = (typeof permissionCategories)[number]['id']
+
+export const permissionDefinitions = [
+  {
+    id: 'applications:create',
+    category: 'application-lifecycle',
+    name: 'Create applications',
+    description: 'Create managed application containers.'
+  },
+  {
+    id: 'applications:start',
+    category: 'application-lifecycle',
+    name: 'Start applications',
+    description: 'Start application containers and open runtime sessions.'
+  },
+  {
+    id: 'applications:stop',
+    category: 'application-lifecycle',
+    name: 'Stop applications',
+    description: 'Stop owned application containers.'
+  },
+  {
+    id: 'applications:delete',
+    category: 'application-lifecycle',
+    name: 'Delete applications',
+    description: 'Delete owned applications and their managed runtime resources.'
+  },
+  {
+    id: 'applications:update-apk',
+    category: 'application-lifecycle',
+    name: 'Update APK',
+    description: 'Upload or replace APK artifacts for owned applications.'
+  },
+  {
+    id: 'applications:change-base-image',
+    category: 'runtime-configuration',
+    name: 'Change base image',
+    description: 'Choose a different base container image while creating apps.'
+  },
+  {
+    id: 'applications:use-redroid-images',
+    category: 'runtime-configuration',
+    name: 'Use Redroid images',
+    description: 'Run images whose name starts with redroid.'
+  },
+  {
+    id: 'applications:use-custom-images',
+    category: 'runtime-configuration',
+    name: 'Use custom images',
+    description: 'Run non-Redroid images such as custom Android or utility images.'
+  },
+  {
+    id: 'applications:change-resources',
+    category: 'runtime-configuration',
+    name: 'Change resources',
+    description: 'Set CPU, memory, and volume size limits.'
+  },
+  {
+    id: 'applications:change-session-limit',
+    category: 'runtime-configuration',
+    name: 'Change session limit',
+    description: 'Change inactivity timeout and session length related settings.'
+  },
+  {
+    id: 'applications:change-container-args',
+    category: 'runtime-configuration',
+    name: 'Change container arguments',
+    description: 'Override container command arguments.'
+  },
+  {
+    id: 'applications:configure-egress',
+    category: 'network-access',
+    name: 'Configure egress',
+    description: 'Edit per-application network allowlists.'
+  },
+  {
+    id: 'applications:use-internet',
+    category: 'network-access',
+    name: 'Use internet egress',
+    description: 'Allow broad outbound internet ranges such as 0.0.0.0/0.'
+  },
+  {
+    id: 'applications:switch-profile',
+    category: 'profiles-observability',
+    name: 'Switch profiles',
+    description: 'Run an app with another persistent or temporary profile.'
+  },
+  {
+    id: 'applications:view-logs',
+    category: 'profiles-observability',
+    name: 'View logs',
+    description: 'Read container and ADB logs for owned applications.'
+  },
+  {
+    id: 'applications:view-backend-details',
+    category: 'profiles-observability',
+    name: 'View backend details',
+    description: 'See container IDs, names, network names, volume names, and ADB endpoints.'
+  }
+] as const
+
+export type PermissionId = (typeof permissionDefinitions)[number]['id']
+export type PermissionMap = Partial<Record<PermissionId, boolean>>
+
+export type ResourceQuota = {
+  maxOpenApps: number | null
+  maxSessionSeconds: number | null
+  maxMemoryMb: number | null
+  maxCpuCpus: number | null
+  maxVolumeSizeMb: number | null
+}
+
+export const allPermissionIds = permissionDefinitions.map(permission => permission.id)
+
+export const fullPermissions = allPermissionIds.reduce<PermissionMap>((permissions, id) => {
+  permissions[id] = true
+  return permissions
+}, {})
+
+export const defaultUserPermissions: PermissionMap = {
+  'applications:create': true,
+  'applications:start': true,
+  'applications:stop': true,
+  'applications:delete': true,
+  'applications:update-apk': true,
+  'applications:use-redroid-images': true,
+  'applications:switch-profile': true,
+  'applications:view-logs': true
+}
+
+export const defaultUserQuota: ResourceQuota = {
+  maxOpenApps: 2,
+  maxSessionSeconds: 3600,
+  maxMemoryMb: 2048,
+  maxCpuCpus: 2,
+  maxVolumeSizeMb: 8192
+}
+
+export const unlimitedQuota: ResourceQuota = {
+  maxOpenApps: null,
+  maxSessionSeconds: null,
+  maxMemoryMb: null,
+  maxCpuCpus: null,
+  maxVolumeSizeMb: null
+}
+
+export const mergePermissions = (...maps: Array<PermissionMap | null | undefined>): PermissionMap =>
+  maps.reduce<PermissionMap>((merged, map) => {
+    if (!map) {
+      return merged
+    }
+
+    for (const id of allPermissionIds) {
+      if (map[id] !== undefined) {
+        merged[id] = map[id]
+      }
+    }
+
+    return merged
+  }, {})
+
+export const mergeQuotas = (...quotas: Array<Partial<ResourceQuota> | null | undefined>): ResourceQuota =>
+  quotas.reduce<ResourceQuota>(
+    (merged, quota) => ({
+      maxOpenApps: quota?.maxOpenApps !== undefined ? quota.maxOpenApps : merged.maxOpenApps,
+      maxSessionSeconds: quota?.maxSessionSeconds !== undefined ? quota.maxSessionSeconds : merged.maxSessionSeconds,
+      maxMemoryMb: quota?.maxMemoryMb !== undefined ? quota.maxMemoryMb : merged.maxMemoryMb,
+      maxCpuCpus: quota?.maxCpuCpus !== undefined ? quota.maxCpuCpus : merged.maxCpuCpus,
+      maxVolumeSizeMb: quota?.maxVolumeSizeMb !== undefined ? quota.maxVolumeSizeMb : merged.maxVolumeSizeMb
+    }),
+    { ...defaultUserQuota }
+  )
+
+export const hasPermission = (permissions: PermissionMap, permission: PermissionId) => permissions[permission] === true
+
+export const isBroadInternetCidr = (cidr: string) => {
+  const normalized = cidr.trim().toLowerCase()
+  return normalized === '0.0.0.0/0' || normalized === '::/0'
+}
+
+export const isRedroidImage = (image: string) => {
+  const normalized = image.trim().toLowerCase()
+  return normalized === 'redroid' || normalized.startsWith('redroid/') || normalized.includes('/redroid/')
+}

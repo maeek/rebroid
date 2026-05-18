@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { IconEye, IconRefresh, IconSearch, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogClose,
@@ -22,6 +23,7 @@ import { imageDisplayName } from '@/features/orchestrator/domain/image-display-n
 import { toast } from '@/hooks/use-toast'
 import { listPlatformImagesAction, removePlatformImageAction } from '@/server/orchestrator/platform/actions'
 import { PlatformGridPagination } from './platform-grid-pagination'
+import { useGridSelection } from './use-grid-selection'
 import type { PlatformImage } from '@/server/orchestrator/platform/types'
 
 const formatBytes = (bytes: number) => {
@@ -96,6 +98,8 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
     )
   }, [search, sortedImages])
 
+  const selection = useGridSelection(filteredImages)
+
   const paginatedImages = useMemo(
     () => filteredImages.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize),
     [filteredImages, pageIndex, pageSize]
@@ -150,6 +154,31 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
     }
   }
 
+  const removeSelectedImages = async () => {
+    const targets = selection.selectedItems
+    if (targets.length === 0) {
+      return
+    }
+
+    setBusyId('bulk')
+    try {
+      for (const image of targets) {
+        await removePlatformImageAction(image.id)
+      }
+      selection.clearSelection()
+      toast({ title: 'Selected images removed' })
+      await refresh()
+    } catch (caughtError) {
+      toast({
+        title: 'Could not remove selected images',
+        description: caughtError instanceof Error ? caughtError.message : 'Unknown error',
+        variant: 'destructive'
+      })
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   const emptyMessage = search.trim() ? 'No images match this search.' : 'No images are visible to Docker.'
 
   return (
@@ -183,6 +212,19 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
             onChange={event => setSearch(event.target.value)}
           />
         </div>
+        <Visible when={selection.selectedItems.length > 0}>
+          <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/45 px-4 py-3'>
+            <span className='text-sm text-secondary-foreground'>{selection.selectedItems.length} selected</span>
+            <Button
+              type='button'
+              variant='destructive'
+              disabled={busyId === 'bulk'}
+              onClick={() => void removeSelectedImages()}
+            >
+              Remove selected
+            </Button>
+          </div>
+        </Visible>
         {error ? (
           <div className='rounded-md border border-destructive/35 bg-destructive/10 p-4 text-sm text-destructive'>
             {error}
@@ -197,6 +239,15 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
                 >
                   <TableHeader className='bg-background/45'>
                     <TableRow className='hover:bg-transparent'>
+                      <TableHead className='w-12 px-4 py-3'>
+                        <Checkbox
+                          checked={
+                            paginatedImages.length > 0 &&
+                            paginatedImages.every(image => selection.selectedIds.has(image.id))
+                          }
+                          onCheckedChange={checked => selection.selectPage(paginatedImages, checked === true)}
+                        />
+                      </TableHead>
                       <TableHead className='w-[24rem] px-4 py-3 uppercase'>Image</TableHead>
                       <TableHead className='w-36 px-4 py-3 uppercase'>Size</TableHead>
                       <TableHead className='w-36 px-4 py-3 uppercase'>Created</TableHead>
@@ -209,7 +260,7 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
                     {isLoading && images.length === 0 ? (
                       <TableRow>
                         <TableCell
-                          colSpan={6}
+                          colSpan={7}
                           className='px-4 py-4 text-sm text-secondary-foreground'
                         >
                           Loading images...
@@ -218,15 +269,24 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
                     ) : filteredImages.length === 0 ? (
                       <TableRow>
                         <TableCell
-                          colSpan={6}
+                          colSpan={7}
                           className='px-4 py-4 text-sm text-secondary-foreground'
                         >
                           {emptyMessage}
                         </TableCell>
                       </TableRow>
                     ) : (
-                      paginatedImages.map(image => (
+                      paginatedImages.map((image, index) => (
                         <TableRow key={image.id}>
+                          <TableCell className='px-4 py-3 align-top'>
+                            <Checkbox
+                              checked={selection.selectedIds.has(image.id)}
+                              onClick={event =>
+                                selection.toggleSelection(image, pageIndex * pageSize + index, event.shiftKey)
+                              }
+                              onCheckedChange={() => undefined}
+                            />
+                          </TableCell>
                           <TableCell className='px-4 py-3 align-top'>
                             <ImageNameCell image={image} />
                           </TableCell>
@@ -255,7 +315,7 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
                               <Button
                                 type='button'
                                 variant='destructive'
-                                disabled={busyId === image.id}
+                                disabled={busyId === image.id || busyId === 'bulk'}
                                 onClick={() => setPendingRemove(image)}
                               >
                                 <IconTrash className='size-4' />

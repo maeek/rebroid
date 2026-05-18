@@ -2,36 +2,140 @@ import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import bcrypt from 'bcrypt'
+import {
+  defaultUserPermissions,
+  defaultUserQuota,
+  fullPermissions,
+  mergePermissions,
+  mergeQuotas,
+  unlimitedQuota,
+  type PermissionMap,
+  type ResourceQuota
+} from '@/shared/permissions/permissions'
 
 export type UserRole = 'admin' | 'user'
+
+export type UserGroup = {
+  id: string
+  name: string
+  description: string
+  role: UserRole
+  permissions: PermissionMap
+  quotas: ResourceQuota
+  createdAt: string
+  updatedAt: string
+}
 
 export type PublicUser = {
   id: string
   username: string
   name: string
-  email: string | null
   role: UserRole
+  groupIds: string[]
   disabled: boolean
+  avatarDataUrl: string | null
+  permissionOverrides: PermissionMap
+  effectivePermissions: PermissionMap
+  quotas: Partial<ResourceQuota>
+  effectiveQuotas: ResourceQuota
   createdAt: string
   updatedAt: string
 }
 
-type StoredUser = PublicUser & {
+export type UserEditorInput = {
+  username?: string
+  name?: string
+  password?: string
+  role?: UserRole
+  groupIds?: string[]
+  disabled?: boolean
+  avatarDataUrl?: string | null
+  permissionOverrides?: PermissionMap
+  quotas?: Partial<ResourceQuota>
+}
+
+type StoredUser = Omit<PublicUser, 'effectivePermissions' | 'effectiveQuotas'> & {
   passwordHash: string
 }
 
 type UsersFile = {
   users: StoredUser[]
+  groups: UserGroup[]
 }
 
 const bcryptRounds = 12
 const usersPath = () => process.env.WEB_USERS_PATH || join(process.cwd(), 'data', 'users.json')
 
-const toPublicUser = ({ passwordHash: _passwordHash, ...user }: StoredUser): PublicUser => user
+const nowIso = () => new Date().toISOString()
 
-const hashPassword = async (password: string) => {
-  return bcrypt.hash(password, bcryptRounds)
+const defaultGroups = (): UserGroup[] => {
+  const now = nowIso()
+  return [
+    {
+      id: 'admins',
+      name: 'Administrators',
+      description: 'Full platform access.',
+      role: 'admin',
+      permissions: fullPermissions,
+      quotas: unlimitedQuota,
+      createdAt: now,
+      updatedAt: now
+    },
+    {
+      id: 'users',
+      name: 'Users',
+      description: 'Standard app owners with bounded resources.',
+      role: 'user',
+      permissions: defaultUserPermissions,
+      quotas: defaultUserQuota,
+      createdAt: now,
+      updatedAt: now
+    }
+  ]
 }
+
+const findGroups = (file: UsersFile, groupIds: string[] | undefined, role: UserRole) => {
+  const selectedGroups = groupIds
+    ?.map(groupId => file.groups.find(group => group.id === groupId))
+    .filter((group): group is UserGroup => Boolean(group))
+
+  if (selectedGroups && selectedGroups.length > 0) {
+    return selectedGroups
+  }
+
+  const fallbackGroup =
+    file.groups.find(group => group.role === role) ?? file.groups.find(group => group.id === 'users') ?? file.groups[0]
+
+  return fallbackGroup ? [fallbackGroup] : []
+}
+
+const toPublicUser = (file: UsersFile, user: StoredUser): PublicUser => {
+  const groups = findGroups(file, user.groupIds, user.role)
+  const effectivePermissions =
+    user.role === 'admin'
+      ? fullPermissions
+      : mergePermissions(...groups.map(group => group.permissions), user.permissionOverrides)
+  const effectiveQuotas =
+    user.role === 'admin' ? unlimitedQuota : mergeQuotas(...groups.map(group => group.quotas), user.quotas)
+
+  return {
+    id: user.id,
+    username: user.username,
+    name: user.name,
+    role: user.role,
+    groupIds: groups.map(group => group.id),
+    disabled: user.disabled,
+    avatarDataUrl: user.avatarDataUrl,
+    permissionOverrides: user.permissionOverrides,
+    effectivePermissions,
+    quotas: user.quotas,
+    effectiveQuotas,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt
+  }
+}
+
+const hashPassword = async (password: string) => bcrypt.hash(password, bcryptRounds)
 
 const verifyPassword = async (password: string, passwordHash: string) => {
   if (!passwordHash.startsWith('$2')) {
@@ -42,25 +146,68 @@ const verifyPassword = async (password: string, passwordHash: string) => {
 }
 
 const defaultAdminUser = async (): Promise<StoredUser> => {
-  const now = new Date().toISOString()
+  const now = nowIso()
   return {
     id: 'admin',
     username: 'admin',
     name: 'Admin',
-    email: 'admin@example.com',
     role: 'admin',
+    groupIds: ['admins'],
     disabled: false,
+    avatarDataUrl: null,
+    permissionOverrides: {},
+    quotas: {},
     passwordHash: await hashPassword(process.env.INITIAL_ADMIN_PASSWORD || 'admin'),
     createdAt: now,
     updatedAt: now
   }
 }
 
+const normalizeUser = (
+  user: Partial<StoredUser> & Pick<StoredUser, 'id' | 'username' | 'passwordHash'>
+): StoredUser => {
+  const now = nowIso()
+  const role = user.role ?? 'user'
+  const legacyGroupId = (user as Partial<StoredUser> & { groupId?: string }).groupId
+  const groupIds = user.groupIds ?? (legacyGroupId ? [legacyGroupId] : [role === 'admin' ? 'admins' : 'users'])
+
+  return {
+    id: user.id,
+    username: user.username,
+    name: user.name ?? user.username,
+    role,
+    groupIds,
+    disabled: user.disabled ?? false,
+    avatarDataUrl: user.avatarDataUrl ?? null,
+    permissionOverrides: user.permissionOverrides ?? {},
+    quotas: user.quotas ?? {},
+    passwordHash: user.passwordHash,
+    createdAt: user.createdAt ?? now,
+    updatedAt: user.updatedAt ?? now
+  }
+}
+
+const normalizeUsersFile = async (input: Partial<UsersFile>): Promise<UsersFile> => {
+  const groups = input.groups && input.groups.length > 0 ? input.groups : defaultGroups()
+  const normalizedGroups = groups.map(group => ({
+    ...group,
+    description: group.description ?? '',
+    permissions: group.role === 'admin' ? fullPermissions : (group.permissions ?? {}),
+    quotas: group.role === 'admin' ? unlimitedQuota : mergeQuotas(group.quotas),
+    createdAt: group.createdAt ?? nowIso(),
+    updatedAt: group.updatedAt ?? nowIso()
+  }))
+  const users =
+    input.users && input.users.length > 0 ? input.users.map(user => normalizeUser(user)) : [await defaultAdminUser()]
+
+  return { groups: normalizedGroups, users }
+}
+
 const readUsersFile = async (): Promise<UsersFile> => {
   try {
-    return JSON.parse(await readFile(usersPath(), 'utf-8')) as UsersFile
+    return normalizeUsersFile(JSON.parse(await readFile(usersPath(), 'utf-8')) as Partial<UsersFile>)
   } catch {
-    const initial = { users: [await defaultAdminUser()] }
+    const initial = await normalizeUsersFile({})
     await writeUsersFile(initial)
     return initial
   }
@@ -74,7 +221,18 @@ const writeUsersFile = async (file: UsersFile) => {
 
 const listUsers = async () => {
   const file = await readUsersFile()
-  return file.users.map(toPublicUser)
+  return file.users.map(user => toPublicUser(file, user))
+}
+
+const listGroups = async () => {
+  const file = await readUsersFile()
+  return file.groups
+}
+
+const getUserById = async (id: string) => {
+  const file = await readUsersFile()
+  const user = file.users.find(item => item.id === id)
+  return user ? toPublicUser(file, user) : null
 }
 
 const authenticate = async (username: string, password: string) => {
@@ -87,83 +245,102 @@ const authenticate = async (username: string, password: string) => {
   return {
     id: user.id,
     name: user.name,
-    email: user.email,
-    image: null,
+    email: null,
+    image: user.avatarDataUrl,
     role: user.role
+  }
+}
+
+const assertCanRemoveOrDisableUser = (file: UsersFile, user: StoredUser) => {
+  if (user.role !== 'admin') {
+    return
+  }
+
+  const activeAdmins = file.users.filter(item => item.role === 'admin' && !item.disabled)
+  if (activeAdmins.length < 2) {
+    throw new Error('Cannot remove or disable the last active admin.')
   }
 }
 
 const createUser = async ({
   username,
   password,
-  role = 'user'
-}: {
-  username: string
-  password: string
-  role?: UserRole
-}) => {
+  role = 'user',
+  groupIds,
+  ...input
+}: UserEditorInput & { username: string; password: string }) => {
   const file = await readUsersFile()
   const normalizedUsername = username.trim()
-  if (!normalizedUsername || password.length < 8) {
-    throw new Error('Username is required and password must be at least 8 characters.')
+  if (!normalizedUsername || password.length < 1) {
+    throw new Error('Username is required and password must be at least 1 character.')
   }
   if (file.users.some(user => user.username === normalizedUsername)) {
     throw new Error('Username already exists.')
   }
 
-  const now = new Date().toISOString()
+  const groups = findGroups(file, groupIds, role)
+  const now = nowIso()
   const user: StoredUser = {
     id: randomUUID(),
     username: normalizedUsername,
-    name: normalizedUsername,
-    email: null,
+    name: input.name?.trim() || normalizedUsername,
     role,
-    disabled: false,
+    groupIds: groups.map(group => group.id),
+    disabled: input.disabled ?? false,
+    avatarDataUrl: input.avatarDataUrl ?? null,
+    permissionOverrides: input.permissionOverrides ?? {},
+    quotas: input.quotas ?? {},
     passwordHash: await hashPassword(password),
     createdAt: now,
     updatedAt: now
   }
   file.users.push(user)
   await writeUsersFile(file)
-  return toPublicUser(user)
+  return toPublicUser(file, user)
 }
 
-const setUserDisabled = async (id: string, disabled: boolean) => {
-  const file = await readUsersFile()
-  const user = file.users.find(item => item.id === id)
-  if (!user) {
-    throw new Error('User not found.')
-  }
-  if (
-    user.role === 'admin' &&
-    disabled &&
-    file.users.filter(item => item.role === 'admin' && !item.disabled).length < 2
-  ) {
-    throw new Error('Cannot disable the last active admin.')
-  }
-
-  user.disabled = disabled
-  user.updatedAt = new Date().toISOString()
-  await writeUsersFile(file)
-  return toPublicUser(user)
-}
-
-const resetPassword = async (id: string, password: string) => {
-  if (password.length < 8) {
-    throw new Error('Password must be at least 8 characters.')
-  }
-
+const updateUser = async (id: string, input: UserEditorInput) => {
   const file = await readUsersFile()
   const user = file.users.find(item => item.id === id)
   if (!user) {
     throw new Error('User not found.')
   }
 
-  user.passwordHash = await hashPassword(password)
-  user.updatedAt = new Date().toISOString()
+  if (input.disabled && !user.disabled) {
+    assertCanRemoveOrDisableUser(file, user)
+  }
+
+  if (input.username !== undefined) {
+    const username = input.username.trim()
+    if (!username) {
+      throw new Error('Username is required.')
+    }
+    if (file.users.some(item => item.id !== id && item.username === username)) {
+      throw new Error('Username already exists.')
+    }
+    user.username = username
+  }
+  if (input.password !== undefined && input.password.trim()) {
+    if (input.password.length < 1) {
+      throw new Error('Password must be at least 1 character.')
+    }
+    user.passwordHash = await hashPassword(input.password)
+  }
+  if (input.name !== undefined) user.name = input.name.trim() || user.username
+  if (input.role !== undefined) user.role = input.role
+  if (input.groupIds !== undefined) user.groupIds = findGroups(file, input.groupIds, user.role).map(group => group.id)
+  if (input.disabled !== undefined) user.disabled = input.disabled
+  if (input.avatarDataUrl !== undefined) user.avatarDataUrl = input.avatarDataUrl
+  if (input.permissionOverrides !== undefined) user.permissionOverrides = input.permissionOverrides
+  if (input.quotas !== undefined) user.quotas = input.quotas
+
+  user.updatedAt = nowIso()
   await writeUsersFile(file)
-  return toPublicUser(user)
+  return toPublicUser(file, user)
 }
+
+const setUserDisabled = async (id: string, disabled: boolean) => updateUser(id, { disabled })
+const resetPassword = async (id: string, password: string) => updateUser(id, { password })
 
 const deleteUser = async (id: string) => {
   const file = await readUsersFile()
@@ -171,20 +348,75 @@ const deleteUser = async (id: string) => {
   if (!user) {
     throw new Error('User not found.')
   }
-  if (user.role === 'admin' && file.users.filter(item => item.role === 'admin' && !item.disabled).length < 2) {
-    throw new Error('Cannot delete the last active admin.')
-  }
+  assertCanRemoveOrDisableUser(file, user)
 
   file.users = file.users.filter(item => item.id !== id)
   await writeUsersFile(file)
-  return toPublicUser(user)
+  return toPublicUser(file, user)
+}
+
+const updateGroup = async (
+  id: string,
+  input: Partial<Omit<UserGroup, 'id' | 'createdAt' | 'updatedAt' | 'quotas'>> & {
+    quotas?: Partial<ResourceQuota>
+  }
+) => {
+  const file = await readUsersFile()
+  const group = file.groups.find(item => item.id === id)
+  if (!group) {
+    throw new Error('Group not found.')
+  }
+
+  if (input.name !== undefined) group.name = input.name.trim() || group.name
+  if (input.description !== undefined) group.description = input.description.trim()
+  if (input.role !== undefined) group.role = input.role
+  if (input.permissions !== undefined) group.permissions = group.role === 'admin' ? fullPermissions : input.permissions
+  if (input.quotas !== undefined) group.quotas = group.role === 'admin' ? unlimitedQuota : mergeQuotas(input.quotas)
+  group.updatedAt = nowIso()
+  await writeUsersFile(file)
+  return group
+}
+
+const createGroup = async (input: {
+  name: string
+  description?: string
+  role?: UserRole
+  permissions?: PermissionMap
+  quotas?: Partial<ResourceQuota>
+}) => {
+  const file = await readUsersFile()
+  const name = input.name.trim()
+  if (!name) {
+    throw new Error('Group name is required.')
+  }
+
+  const role = input.role ?? 'user'
+  const now = nowIso()
+  const group: UserGroup = {
+    id: randomUUID(),
+    name,
+    description: input.description?.trim() ?? '',
+    role,
+    permissions: role === 'admin' ? fullPermissions : (input.permissions ?? defaultUserPermissions),
+    quotas: role === 'admin' ? unlimitedQuota : mergeQuotas(input.quotas),
+    createdAt: now,
+    updatedAt: now
+  }
+  file.groups.push(group)
+  await writeUsersFile(file)
+  return group
 }
 
 export const userService = {
   authenticate,
   createUser,
+  createGroup,
   deleteUser,
+  getUserById,
+  listGroups,
   listUsers,
   resetPassword,
-  setUserDisabled
+  setUserDisabled,
+  updateGroup,
+  updateUser
 }

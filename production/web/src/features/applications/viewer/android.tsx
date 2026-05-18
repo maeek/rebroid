@@ -21,14 +21,14 @@ export const AppViewer = ({
 }) => {
   const isBorderless = Boolean(hideOutline)
   const isBorderlessFullscreen = Boolean(hideOutline && fullscreen)
-  const isViewerReady = Boolean(app?.id && app.adbPort && app.running && app.status === 'running')
+  const isViewerReady = Boolean(app?.id && app.running && app.status === 'running')
   const viewerSrc = useMemo(() => {
-    if (!isViewerReady || !app?.id || !app.adbPort) {
+    if (!isViewerReady || !app?.id) {
       return null
     }
 
     return getProtectedViewerShellUrl(app.id)
-  }, [app?.adbPort, app?.id, isViewerReady])
+  }, [app?.id, isViewerReady])
 
   const viewerPlaceholder = useMemo(() => {
     if (!app) {

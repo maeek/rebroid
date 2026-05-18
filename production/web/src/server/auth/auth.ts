@@ -15,11 +15,18 @@ export const authOptions: NextAuthOptions = {
       if (user && 'role' in user) {
         token.role = user.role
       }
+      if (user?.image !== undefined) {
+        token.picture = user.image
+      }
       return token
     },
     async session({ session, token, user: _user }) {
+      const currentUser = token.userId ? await userService.getUserById(token.userId).catch(() => null) : null
+
       session.user.id = token.userId
-      session.user.role = token.role
+      session.user.name = currentUser?.name ?? session.user.name
+      session.user.role = currentUser?.role ?? token.role
+      session.user.image = currentUser?.avatarDataUrl ?? (typeof token.picture === 'string' ? token.picture : null)
       return session
     }
   },

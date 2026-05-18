@@ -7,3 +7,8 @@ export const listUsersAction = async () => {
   await requireAdminUser()
   return userService.listUsers()
 }
+
+export const listUserGroupsAction = async () => {
+  await requireAdminUser()
+  return userService.listGroups()
+}
