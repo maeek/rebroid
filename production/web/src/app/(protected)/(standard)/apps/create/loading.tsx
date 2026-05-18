@@ -12,7 +12,7 @@ export default function Loading() {
             {Array.from({ length: 3 }).map((_, index) => (
               <div
                 key={index}
-                className='flex w-full flex-col gap-4 rounded-lg border border-border/70 bg-card/55 p-6 backdrop-blur-md max-sm:p-4'
+                className='flex w-full flex-col gap-4 rounded-lg border border-border/70 bg-card/40 p-6 backdrop-blur-md max-sm:p-4'
               >
                 <Skeleton className='h-5 w-28' />
                 <div className='flex flex-col gap-3'>
@@ -32,7 +32,7 @@ export default function Loading() {
             <Skeleton className='h-10 w-full' />
           </div>
           <div className='flex w-full flex-col gap-4'>
-            <div className='flex w-full flex-col items-center gap-4 rounded-lg border border-border/70 bg-card/55 p-6 backdrop-blur-md max-sm:p-4'>
+            <div className='flex w-full flex-col items-center gap-4 rounded-lg border border-border/70 bg-card/40 p-6 backdrop-blur-md max-sm:p-4'>
               <Skeleton className='h-5 w-16 self-start' />
               <Skeleton className='h-3 w-full opacity-70' />
               <Skeleton className='size-56 rounded-4xl' />

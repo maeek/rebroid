@@ -94,7 +94,7 @@ export const OrchestratorContainerDetail = ({
       <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
         <Section
           boxed
-          className='bg-card/50'
+          className='bg-card/40'
           contentClassName='gap-5'
         >
           <div className='flex flex-wrap items-center justify-between gap-4'>

@@ -27,7 +27,7 @@ export const SettingsPageSkeleton = ({
       </section>
       <section className='px-6 max-sm:px-4 w-full flex flex-col gap-6 pb-16'>
         <Visible when={variant === 'orchestrator'}>
-          <div className='flex w-full flex-col gap-4 rounded-lg border border-border/70 bg-card/55 p-6 backdrop-blur-md max-sm:p-4'>
+          <div className='flex w-full flex-col gap-4 rounded-lg border border-border/70 bg-card/40 p-6 backdrop-blur-md max-sm:p-4'>
             <Skeleton className='h-5 w-28' />
             <Skeleton className='h-3 w-full max-w-3xl opacity-70' />
             <div className='grid grid-cols-4 gap-3 max-xl:grid-cols-2 max-sm:grid-cols-1'>
@@ -52,7 +52,7 @@ export const SettingsPageSkeleton = ({
           }
         >
           <div className='flex flex-col w-full gap-6'>
-            <div className='flex flex-col w-full rounded-lg border border-border/70 bg-card/55 p-6 backdrop-blur-md max-sm:p-4'>
+            <div className='flex flex-col w-full rounded-lg border border-border/70 bg-card/40 p-6 backdrop-blur-md max-sm:p-4'>
               <Skeleton className='h-5 w-36 mb-6' />
               <span className='sr-only'>{sectionTitle}</span>
               <div className='flex flex-col gap-6'>
@@ -71,7 +71,7 @@ export const SettingsPageSkeleton = ({
               </div>
             </div>
             <Visible when={variant === 'orchestrator'}>
-              <div className='flex flex-col w-full rounded-lg border border-border/70 bg-card/55 p-6 backdrop-blur-md max-sm:p-4'>
+              <div className='flex flex-col w-full rounded-lg border border-border/70 bg-card/40 p-6 backdrop-blur-md max-sm:p-4'>
                 <Skeleton className='h-5 w-32 mb-6' />
                 <div className='flex flex-col gap-6'>
                   <Skeleton className='h-4 w-40' />
@@ -81,7 +81,7 @@ export const SettingsPageSkeleton = ({
             </Visible>
           </div>
           <Visible when={variant === 'orchestrator'}>
-            <div className='flex flex-col gap-3 rounded-lg border border-border/70 bg-card/55 p-6 backdrop-blur-md max-sm:p-4'>
+            <div className='flex flex-col gap-3 rounded-lg border border-border/70 bg-card/40 p-6 backdrop-blur-md max-sm:p-4'>
               <Skeleton className='h-5 w-32' />
               <Skeleton className='h-3 w-full opacity-70' />
               {Array.from({ length: 5 }).map((_, index) => (
