@@ -12,6 +12,10 @@ import {
   ViewerTargetStatus,
 } from './docker.types';
 import { parseCommandLine } from './docker.utils';
+import {
+  calculateContainerCpuUsagePercent,
+  calculateContainerMemoryUsageBytes,
+} from './utils/docker-runtime.utils';
 
 @Injectable()
 export class DockerRuntimeService {
@@ -355,10 +359,10 @@ export class DockerRuntimeService {
         return {
           cpuUsagePercent:
             totals.cpuUsagePercent +
-            this.calculateContainerCpuUsagePercent(containerStats),
+            calculateContainerCpuUsagePercent(containerStats),
           memoryUsageBytes:
             totals.memoryUsageBytes +
-            this.calculateContainerMemoryUsageBytes(containerStats),
+            calculateContainerMemoryUsageBytes(containerStats),
         };
       },
       {
@@ -370,29 +374,6 @@ export class DockerRuntimeService {
 
   async systemDf() {
     return this.engine.docker.df();
-  }
-
-  private calculateContainerCpuUsagePercent(stats: Dockerode.ContainerStats) {
-    const cpuDelta =
-      (stats.cpu_stats?.cpu_usage?.total_usage ?? 0) -
-      (stats.precpu_stats?.cpu_usage?.total_usage ?? 0);
-    const systemDelta =
-      (stats.cpu_stats?.system_cpu_usage ?? 0) -
-      (stats.precpu_stats?.system_cpu_usage ?? 0);
-
-    if (cpuDelta <= 0 || systemDelta <= 0) {
-      return 0;
-    }
-
-    return (cpuDelta / systemDelta) * 100;
-  }
-
-  private calculateContainerMemoryUsageBytes(stats: Dockerode.ContainerStats) {
-    const inactiveFile =
-      stats.memory_stats?.stats?.total_inactive_file ??
-      stats.memory_stats?.stats?.inactive_file ??
-      0;
-    return Math.max((stats.memory_stats?.usage ?? 0) - inactiveFile, 0);
   }
 
   private async findNetworkByName(name: string) {

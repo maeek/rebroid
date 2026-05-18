@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { inflateRawSync } from 'node:zlib';
-import { unknownErrorMessage } from '../common/error-message';
+import { getErrorMessage } from '../common/error-message';
 import {
   androidIconAttr,
   androidRoundIconAttr,
@@ -24,6 +24,12 @@ import {
   ZipEntry,
 } from './apk.types';
 import { imageDimensions, imageMimeType } from './utils/apk-image.utils';
+import {
+  readBinaryXmlResourceMap,
+  readBinaryXmlStringPool,
+  readChunkHeaderSize,
+  scoreResourceIconPath,
+} from './utils/apk-resource-table.utils';
 
 @Injectable()
 export class ApkIconExtractorService {
@@ -66,7 +72,7 @@ export class ApkIconExtractorService {
         : null;
     } catch (error) {
       this.logger.warn(
-        `Could not extract APK launcher icon: ${unknownErrorMessage(error, 'unknown error')}`,
+        `Could not extract APK launcher icon: ${getErrorMessage(error, 'unknown error')}`,
       );
       return null;
     }
@@ -203,7 +209,7 @@ export class ApkIconExtractorService {
     } = {};
     let strings: string[] = [];
     let resourceMap: number[] = [];
-    let offset = this.readChunkHeaderSize(manifest, 0);
+    let offset = readChunkHeaderSize(manifest, 0);
 
     while (offset + 8 <= manifest.length) {
       const type = manifest.readUInt16LE(offset);
@@ -213,9 +219,9 @@ export class ApkIconExtractorService {
       }
 
       if (type === resStringPoolType) {
-        strings = this.readStringPool(manifest, offset).strings;
+        strings = readBinaryXmlStringPool(manifest, offset).strings;
       } else if (type === resXmlResourceMapType) {
-        resourceMap = this.readXmlResourceMap(manifest, offset, size);
+        resourceMap = readBinaryXmlResourceMap(manifest, offset, size);
       } else if (type === resXmlStartElementType && size >= 36) {
         const elementNameIndex = manifest.readUInt32LE(offset + 20);
         if (strings[elementNameIndex] === 'application') {
@@ -267,8 +273,8 @@ export class ApkIconExtractorService {
       return candidates;
     }
 
-    let offset = this.readChunkHeaderSize(resources, 0);
-    const globalStringPool = this.readStringPool(resources, offset);
+    let offset = readChunkHeaderSize(resources, 0);
+    const globalStringPool = readBinaryXmlStringPool(resources, offset);
     offset += resources.readUInt32LE(offset + 4);
 
     while (offset + 8 <= resources.length) {
@@ -374,7 +380,7 @@ export class ApkIconExtractorService {
           candidates.push({
             entryName,
             mimeType,
-            score: this.resourceIconScore(entryName, density),
+            score: scoreResourceIconPath(entryName, density),
           });
         }
       }
@@ -384,109 +390,6 @@ export class ApkIconExtractorService {
 
     return candidates;
   }
-
-  private resourceIconScore(path: string, density: number) {
-    const lowerPath = path.toLowerCase();
-    let score = 5000;
-    if (lowerPath.includes('.9.png')) score -= 2000;
-    if (lowerPath.includes('foreground')) score -= 600;
-    if (lowerPath.includes('background')) score -= 600;
-    if (lowerPath.includes('monochrome')) score -= 1000;
-    if (lowerPath.includes('mipmap')) score += 300;
-    if (lowerPath.includes('launcher')) score += 250;
-    if (lowerPath.includes('round')) score += 50;
-    if (density === 65535) score += 250;
-    if (density > 0 && density < 65535) score += Math.min(density, 640);
-    return score;
-  }
-
-  private readXmlResourceMap(buffer: Buffer, offset: number, size: number) {
-    const resourceMap: number[] = [];
-    for (
-      let cursor = offset + this.readChunkHeaderSize(buffer, offset);
-      cursor + 4 <= offset + size;
-      cursor += 4
-    ) {
-      resourceMap.push(buffer.readUInt32LE(cursor));
-    }
-    return resourceMap;
-  }
-
-  private readStringPool(buffer: Buffer, offset: number): ParsedStringPool {
-    if (
-      offset + 28 > buffer.length ||
-      buffer.readUInt16LE(offset) !== resStringPoolType
-    ) {
-      return { strings: [] };
-    }
-
-    const headerSize = this.readChunkHeaderSize(buffer, offset);
-    const chunkSize = buffer.readUInt32LE(offset + 4);
-    const stringCount = buffer.readUInt32LE(offset + 8);
-    const flags = buffer.readUInt32LE(offset + 16);
-    const stringsStart = offset + buffer.readUInt32LE(offset + 20);
-    const isUtf8 = (flags & 0x00000100) !== 0;
-    const strings: string[] = [];
-
-    for (let index = 0; index < stringCount; index += 1) {
-      const stringOffsetPosition = offset + headerSize + index * 4;
-      if (stringOffsetPosition + 4 > offset + chunkSize) {
-        break;
-      }
-
-      const stringOffset =
-        stringsStart + buffer.readUInt32LE(stringOffsetPosition);
-      strings.push(
-        isUtf8
-          ? this.readUtf8String(buffer, stringOffset)
-          : this.readUtf16String(buffer, stringOffset),
-      );
-    }
-
-    return { strings };
-  }
-
-  private readUtf8String(buffer: Buffer, offset: number) {
-    const firstLength = this.readLength8(buffer, offset);
-    const secondLength = this.readLength8(buffer, firstLength.nextOffset);
-    const start = secondLength.nextOffset;
-    return buffer.toString('utf-8', start, start + secondLength.length);
-  }
-
-  private readUtf16String(buffer: Buffer, offset: number) {
-    const length = this.readLength16(buffer, offset);
-    const start = length.nextOffset;
-    return buffer.toString('utf16le', start, start + length.length * 2);
-  }
-
-  private readLength8(buffer: Buffer, offset: number) {
-    const first = buffer.readUInt8(offset);
-    if ((first & 0x80) === 0) {
-      return { length: first, nextOffset: offset + 1 };
-    }
-
-    return {
-      length: ((first & 0x7f) << 8) | buffer.readUInt8(offset + 1),
-      nextOffset: offset + 2,
-    };
-  }
-
-  private readLength16(buffer: Buffer, offset: number) {
-    const first = buffer.readUInt16LE(offset);
-    if ((first & 0x8000) === 0) {
-      return { length: first, nextOffset: offset + 2 };
-    }
-
-    return {
-      length: ((first & 0x7fff) << 16) | buffer.readUInt16LE(offset + 2),
-      nextOffset: offset + 4,
-    };
-  }
-
-  private readChunkHeaderSize(buffer: Buffer, offset: number) {
-    return offset + 4 <= buffer.length ? buffer.readUInt16LE(offset + 2) : 8;
-  }
-
   private readCentralDirectory(apk: Buffer): ZipEntry[] {
     const eocdOffset = this.findEndOfCentralDirectory(apk);
     if (eocdOffset === -1) {

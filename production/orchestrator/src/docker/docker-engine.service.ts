@@ -5,12 +5,15 @@ import { basename } from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { PassThrough } from 'node:stream';
 import tar from 'tar-stream';
-import { unknownErrorMessage } from '../common/error-message';
+import { getErrorMessage } from '../common/error-message';
 import {
   ContainerCommandFailedException,
   ContainerCommandResult,
 } from './docker.types';
-import { hasDockerStatusCode } from './utils/docker-engine.utils';
+import {
+  formatContainerCommandFailureMessage,
+  hasDockerStatusCode,
+} from './utils/docker-engine.utils';
 
 @Injectable()
 export class DockerEngineService {
@@ -186,7 +189,7 @@ export class DockerEngineService {
 
     if (exitCode !== 0) {
       throw new ContainerCommandFailedException({
-        message: this.containerCommandFailureMessage({
+        message: formatContainerCommandFailureMessage({
           command,
           exitCode,
           stdout: stdoutText,
@@ -253,23 +256,6 @@ export class DockerEngineService {
   }
 
   errorMessage(error: unknown) {
-    return unknownErrorMessage(error, 'Unknown Docker error');
-  }
-
-  private containerCommandFailureMessage({
-    command,
-    exitCode,
-    stdout,
-    stderr,
-  }: {
-    command: string[];
-    exitCode: number | null;
-    stdout: string;
-    stderr: string;
-  }) {
-    const detail = [stderr.trim(), stdout.trim()].filter(Boolean).join(' ').trim();
-    return detail
-      ? `Container command failed with exit code ${exitCode}: ${command.join(' ')} ${detail}`
-      : `Container command failed with exit code ${exitCode}: ${command.join(' ')}`;
+    return getErrorMessage(error, 'Unknown Docker error');
   }
 }

@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { unknownErrorMessage } from '../../common/error-message';
+import { getErrorMessage } from '../../common/error-message';
 import { throwNotFound } from '../../common/not-found';
 import { DockerRuntimeService } from '../../docker/docker-runtime.service';
 import { ContainerRuntimeState } from '../../docker/docker.types';
@@ -12,6 +12,7 @@ import {
   AndroidApplicationStatus,
 } from '../android-application-status';
 import { ListAndroidApplicationsDto } from '../dto/list-android-applications.dto';
+import { shouldReconcileContainerState } from '../utils/android-apps-state.utils';
 import { AndroidAppsProvisioningTrackerService } from './android-apps-provisioning-tracker.service';
 import { AndroidAppsStatusService } from './android-apps-status.service';
 
@@ -115,7 +116,7 @@ export class AndroidAppsStateService {
   }
 
   private async reconcileContainerState(app: AndroidApplication) {
-    if (!this.shouldReconcileContainerState(app)) {
+    if (!shouldReconcileContainerState(app)) {
       return this.status.decorateApplication(app);
     }
 
@@ -129,7 +130,7 @@ export class AndroidAppsStateService {
       runtimeState = await this.docker.getContainerRuntimeState(containerId);
     } catch (error) {
       this.logger.warn(
-        `Could not inspect container state for ${app.id}: ${unknownErrorMessage(error)}`,
+        `Could not inspect container state for ${app.id}: ${getErrorMessage(error)}`,
       );
       return this.status.decorateApplication(app);
     }
@@ -193,13 +194,5 @@ export class AndroidAppsStateService {
     }
 
     return this.status.decorateApplication(app);
-  }
-
-  private shouldReconcileContainerState(app: AndroidApplication) {
-    return (
-      Boolean(app.containerId) &&
-      (app.status === AndroidApplicationStatus.Provisioning ||
-        app.status === AndroidApplicationStatus.Running)
-    );
   }
 }

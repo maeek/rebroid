@@ -1,4 +1,4 @@
-import { unknownErrorMessage } from './error-message';
+import { getErrorMessage } from './error-message';
 import { parseJsonStringArray } from './json-array';
 import {
   extractHostname,
@@ -28,9 +28,9 @@ describe('common utilities', () => {
   });
 
   it('formats unknown errors with a configurable fallback', () => {
-    expect(unknownErrorMessage(new Error('boom'))).toBe('boom');
-    expect(unknownErrorMessage('boom')).toBe('Unknown error');
-    expect(unknownErrorMessage(null, 'Unknown Docker error')).toBe(
+    expect(getErrorMessage(new Error('boom'))).toBe('boom');
+    expect(getErrorMessage('boom')).toBe('Unknown error');
+    expect(getErrorMessage(null, 'Unknown Docker error')).toBe(
       'Unknown Docker error',
     );
   });
