@@ -1,4 +1,5 @@
 import { Skeleton } from '@/components/ui/skeleton'
+import { Visible } from '@/components/ui/visible'
 
 export const PageHeaderSkeleton = ({
   titleWidth,
@@ -18,7 +19,7 @@ export const PageHeaderSkeleton = ({
           <Skeleton className='h-4 w-full max-w-3xl opacity-70' />
         </div>
       </div>
-      {actionCount > 0 ? (
+      <Visible when={actionCount > 0}>
         <div className='flex flex-wrap gap-2'>
           {Array.from({ length: actionCount }).map((_, index) => (
             <Skeleton
@@ -27,7 +28,7 @@ export const PageHeaderSkeleton = ({
             />
           ))}
         </div>
-      ) : null}
+      </Visible>
     </div>
   </section>
 )

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { IconEye, IconRefresh, IconSearch, IconTrash } from '@tabler/icons-react'
+import { IconEye, IconRefresh, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -14,7 +14,6 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -23,6 +22,7 @@ import { imageDisplayName } from '@/features/orchestrator/domain/image-display-n
 import { toast } from '@/hooks/use-toast'
 import { listPlatformImagesAction, removePlatformImageAction } from '@/server/orchestrator/platform/actions'
 import { PlatformGridPagination } from './platform-grid-pagination'
+import { PlatformSelectionToolbar } from './platform-selection-toolbar'
 import { useGridSelection } from './use-grid-selection'
 import type { PlatformImage } from '@/server/orchestrator/platform/types'
 
@@ -203,18 +203,12 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
             Refresh
           </Button>
         </div>
-        <div className='relative max-w-md'>
-          <IconSearch className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
-          <Input
-            value={search}
-            placeholder='Search images'
-            className='pl-9'
-            onChange={event => setSearch(event.target.value)}
-          />
-        </div>
-        <Visible when={selection.selectedItems.length > 0}>
-          <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/45 px-4 py-3'>
-            <span className='text-sm text-secondary-foreground'>{selection.selectedItems.length} selected</span>
+        <PlatformSelectionToolbar
+          search={search}
+          placeholder='Search images'
+          selectedCount={selection.selectedItems.length}
+          onSearchChange={setSearch}
+          actions={
             <Button
               type='button'
               variant='destructive'
@@ -223,13 +217,14 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
             >
               Remove selected
             </Button>
-          </div>
-        </Visible>
-        {error ? (
+          }
+        />
+        <Visible when={error}>
           <div className='rounded-md border border-destructive/35 bg-destructive/10 p-4 text-sm text-destructive'>
             {error}
           </div>
-        ) : (
+        </Visible>
+        <Visible when={!error}>
           <div className='overflow-hidden rounded-lg border border-border/60 bg-background/25'>
             <div className='overflow-x-auto'>
               <TooltipProvider delayDuration={150}>
@@ -257,7 +252,7 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {isLoading && images.length === 0 ? (
+                    <Visible when={isLoading && images.length === 0}>
                       <TableRow>
                         <TableCell
                           colSpan={7}
@@ -266,7 +261,8 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
                           Loading images...
                         </TableCell>
                       </TableRow>
-                    ) : filteredImages.length === 0 ? (
+                    </Visible>
+                    <Visible when={!isLoading && filteredImages.length === 0}>
                       <TableRow>
                         <TableCell
                           colSpan={7}
@@ -275,10 +271,11 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
                           {emptyMessage}
                         </TableCell>
                       </TableRow>
-                    ) : (
-                      paginatedImages.map((image, index) => (
+                    </Visible>
+                    <Visible when={filteredImages.length > 0}>
+                      {paginatedImages.map((image, index) => (
                         <TableRow key={image.id}>
-                          <TableCell className='px-4 py-3 align-top'>
+                          <TableCell className='px-4 py-3'>
                             <Checkbox
                               checked={selection.selectedIds.has(image.id)}
                               onClick={event =>
@@ -323,14 +320,14 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
                             </div>
                           </TableCell>
                         </TableRow>
-                      ))
-                    )}
+                      ))}
+                    </Visible>
                   </TableBody>
                 </Table>
               </TooltipProvider>
             </div>
           </div>
-        )}
+        </Visible>
         <Visible when={!error}>
           <PlatformGridPagination
             totalItems={filteredImages.length}

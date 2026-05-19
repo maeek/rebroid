@@ -28,39 +28,41 @@ export const AppInfoOverviewSection = ({ app }: { app?: AppDefinition }) => {
       <AppInfoRow
         label='Status'
         value={
-          app ? (
-            <div className='flex flex-wrap items-center justify-end gap-2'>
-              <Badge
-                variant={app.status === 'error' ? 'destructive' : 'status'}
-                className='capitalize'
-              >
-                {app.status}
-              </Badge>
-              <Visible when={shouldShowLifecycleBadge && lifecycleLabel}>
+          <>
+            <Visible when={app}>
+              <div className='flex flex-wrap items-center justify-end gap-2'>
                 <Badge
-                  variant='secondary'
+                  variant={app?.status === 'error' ? 'destructive' : 'status'}
                   className='capitalize'
                 >
-                  {lifecycleLabel}
+                  {app?.status}
                 </Badge>
-              </Visible>
-            </div>
-          ) : (
-            'Loading...'
-          )
+                <Visible when={shouldShowLifecycleBadge && lifecycleLabel}>
+                  <Badge
+                    variant='secondary'
+                    className='capitalize'
+                  >
+                    {lifecycleLabel}
+                  </Badge>
+                </Visible>
+              </div>
+            </Visible>
+            <Visible when={!app}>Loading...</Visible>
+          </>
         }
       />
       <AppInfoRow
         label='Progress'
         value={
-          progressDescription ? (
-            <ImagePullProgress
-              statusMessage={progressDescription}
-              progress={app?.imagePullProgress}
-            />
-          ) : (
-            'Idle'
-          )
+          <>
+            <Visible when={progressDescription}>
+              <ImagePullProgress
+                statusMessage={progressDescription}
+                progress={app?.imagePullProgress}
+              />
+            </Visible>
+            <Visible when={!progressDescription}>Idle</Visible>
+          </>
         }
         valueClassName='w-full sm:max-w-lg sm:justify-end'
       />

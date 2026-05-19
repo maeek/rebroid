@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 import type { UserGroup } from '@/server/auth/user'
 
@@ -84,9 +85,9 @@ export const GroupMembershipPicker = ({
               </label>
             )
           })}
-          {visibleGroups.length === 0 ? (
+          <Visible when={visibleGroups.length === 0}>
             <div className='px-4 py-8 text-center text-sm text-muted-foreground'>No groups match your search.</div>
-          ) : null}
+          </Visible>
         </div>
       </ScrollArea>
       <div className='pt-2 text-xs text-muted-foreground'>

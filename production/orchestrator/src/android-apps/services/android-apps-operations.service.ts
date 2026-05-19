@@ -11,6 +11,7 @@ import { SettingsService } from '../../settings/settings.service';
 import { AndroidApplication } from '../android-application.entity';
 import { ApplicationProfileMode } from '../application-profile-mode';
 import { AndroidApplicationLifecycleStage, AndroidApplicationStatus } from '../android-application-status';
+import { CloneAndroidApplicationDto } from '../dto/clone-android-application.dto';
 import { CreateAndroidApplicationDto } from '../dto/create-android-application.dto';
 import { RemoveAndroidApplicationDto } from '../dto/remove-android-application.dto';
 import { ScrcpySessionDto } from '../dto/scrcpy-session.dto';
@@ -104,6 +105,30 @@ export class AndroidAppsOperationsService {
     void this.provisioning.provision(app.id);
 
     return this.state.decorateApplication(app);
+  }
+
+  /**
+   * Creates an owner-scoped copy of an existing app definition.
+   * Runtime state, containers, volumes, and viewer sessions are never shared.
+   */
+  async clone(id: string, dto: CloneAndroidApplicationDto) {
+    const source = await this.state.get(id);
+    const ownerUserId = dto.ownerUserId?.trim() || null;
+    const uploadedApk = source.uploadedApkId
+      ? await this.apks.cloneForOwner(source.uploadedApkId, ownerUserId)
+      : null;
+
+    return this.create({
+      name: dto.name?.trim() || source.name,
+      ownerUserId: ownerUserId ?? undefined,
+      containerImage: source.containerImage,
+      inactivityTimeoutSeconds: source.inactivityTimeoutSeconds,
+      memoryLimitMb: source.memoryLimitMb ?? undefined,
+      cpuLimitCpus: source.cpuLimitCpus ?? undefined,
+      volumeSizeLimitMb: source.volumeSizeLimitMb ?? undefined,
+      containerArgs: source.containerArgs ?? undefined,
+      uploadedApkId: uploadedApk?.id,
+    });
   }
 
   /**

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { AndroidApplication } from '../android-application.entity';
+import { CloneAndroidApplicationDto } from '../dto/clone-android-application.dto';
 import { CreateAndroidApplicationDto } from '../dto/create-android-application.dto';
 import { ListAndroidApplicationsDto } from '../dto/list-android-applications.dto';
 import { RemoveAndroidApplicationDto } from '../dto/remove-android-application.dto';
@@ -21,6 +22,13 @@ export class AndroidAppsFacadeService {
 
   create(dto: CreateAndroidApplicationDto): Promise<AndroidApplication> {
     return this.operations.create(dto);
+  }
+
+  clone(
+    id: string,
+    dto: CloneAndroidApplicationDto,
+  ): Promise<AndroidApplication> {
+    return this.operations.clone(id, dto);
   }
 
   list(query: ListAndroidApplicationsDto): Promise<AndroidApplication[]> {

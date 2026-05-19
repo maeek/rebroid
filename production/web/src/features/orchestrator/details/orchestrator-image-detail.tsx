@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { Section } from '@/components/ui/section'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Visible } from '@/components/ui/visible'
 import { ContainerStateBadge } from '@/features/orchestrator/components/orchestrator-containers-table-parts'
 import {
   PlatformDetailRow,
@@ -114,7 +115,7 @@ export const OrchestratorImageDetail = ({ details }: { details: PlatformImageDet
           contentClassName='gap-4'
           titleClassName='pb-4'
         >
-          {details.relatedContainers.length > 0 ? (
+          <Visible when={details.relatedContainers.length > 0}>
             <div className='overflow-hidden rounded-lg border border-border/60 bg-background/25'>
               <Table>
                 <TableHeader>
@@ -150,9 +151,10 @@ export const OrchestratorImageDetail = ({ details }: { details: PlatformImageDet
                 </TableBody>
               </Table>
             </div>
-          ) : (
+          </Visible>
+          <Visible when={details.relatedContainers.length === 0}>
             <p className='text-sm text-secondary-foreground'>No local containers reference this image.</p>
-          )}
+          </Visible>
         </Section>
 
         <Section

@@ -20,6 +20,7 @@ export interface AppDefinition {
   statusMessage: string | null
   statusDetail: AndroidApplicationStatusDetail | null
   ownerUserId: string | null
+  ownerDisplayName?: string | null
   containerImage: string
   containerName: string
   containerId: string | null

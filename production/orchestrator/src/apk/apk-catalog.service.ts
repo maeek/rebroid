@@ -85,6 +85,35 @@ export class ApkCatalogService {
   }
 
   /**
+   * Reuses the shared APK file while creating an owner-scoped upload record.
+   * This lets admins fork an application without granting access to the
+   * original owner's upload record.
+   */
+  async cloneForOwner(id: string, ownerUserId?: string | null) {
+    const source = await this.get(id);
+    const owner = ownerUserId?.trim() || null;
+    const existing = await this.uploadedApks.findOneBy({
+      sha256: source.sha256,
+      ownerUserId: owner ?? IsNull(),
+    });
+
+    if (existing) {
+      return existing;
+    }
+
+    const upload = this.uploadedApks.create({
+      ownerUserId: owner,
+      originalName: source.originalName,
+      sha256: source.sha256,
+      sizeBytes: source.sizeBytes,
+      filePath: source.filePath,
+      extractedIconDataUrl: source.extractedIconDataUrl,
+    });
+
+    return this.uploadedApks.save(upload);
+  }
+
+  /**
    * Deletes an upload record only when no application still references it.
    */
   async remove(id: string) {

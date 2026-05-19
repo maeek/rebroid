@@ -45,6 +45,7 @@ export const OrchestratorContainerDetail = ({
   const [pendingAction, setPendingAction] = useState<'stop' | 'remove' | null>(null)
   const [isActing, setIsActing] = useState(false)
   const container = details.container
+  const relatedImage = details.relatedImage
 
   const refreshLogs = async () => {
     setIsRefreshingLogs(true)
@@ -188,31 +189,32 @@ export const OrchestratorContainerDetail = ({
             boxed
             contentClassName='gap-3'
           >
-            {details.relatedImage ? (
+            <Visible when={relatedImage}>
               <>
                 <PlatformDetailRow
                   label='Tags'
-                  value={details.relatedImage.repoTags.join(', ') || details.relatedImage.shortId}
+                  value={relatedImage?.repoTags.join(', ') || relatedImage?.shortId || 'unknown'}
                 />
                 <PlatformDetailRow
                   label='Size'
-                  value={`${(details.relatedImage.sizeBytes / 1024 / 1024).toFixed(2)} MB`}
+                  value={relatedImage ? `${(relatedImage.sizeBytes / 1024 / 1024).toFixed(2)} MB` : 'unknown'}
                 />
                 <PlatformDetailRow
                   label='Created'
-                  value={formatPlatformDate(details.relatedImage.createdAt)}
+                  value={formatPlatformDate(relatedImage?.createdAt ?? null)}
                 />
               </>
-            ) : (
+            </Visible>
+            <Visible when={!relatedImage}>
               <p className='text-sm text-secondary-foreground'>The related image is no longer present locally.</p>
-            )}
+            </Visible>
           </Section>
           <Section
             title='Related networks'
             boxed
             contentClassName='gap-3'
           >
-            {details.relatedNetworks.length > 0 ? (
+            <Visible when={details.relatedNetworks.length > 0}>
               <div className='overflow-hidden rounded-lg border border-border/60 bg-background/25'>
                 <Table>
                   <TableHeader>
@@ -235,9 +237,10 @@ export const OrchestratorContainerDetail = ({
                   </TableBody>
                 </Table>
               </div>
-            ) : (
+            </Visible>
+            <Visible when={details.relatedNetworks.length === 0}>
               <p className='text-sm text-secondary-foreground'>No related networks were found for this container.</p>
-            )}
+            </Visible>
           </Section>
         </div>
 
@@ -269,7 +272,7 @@ export const OrchestratorContainerDetail = ({
               Refresh
             </Button>
           </div>
-          <pre className='max-h-[32rem] overflow-auto rounded-lg border border-border/60 bg-black/35 p-4 font-mono text-xs leading-6 text-secondary-foreground'>
+          <pre className='max-h-128 overflow-auto rounded-lg border border-border/60 bg-black/35 p-4 font-mono text-xs leading-6 text-secondary-foreground'>
             {logs.output || 'No logs returned for this container.'}
           </pre>
         </Section>

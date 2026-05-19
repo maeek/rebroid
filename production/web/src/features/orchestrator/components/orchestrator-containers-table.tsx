@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { Visible } from '@/components/ui/visible'
 import {
   ContainerActions,
   ContainerNameCell,
@@ -60,7 +61,7 @@ export const OrchestratorContainersTable = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && containers.length === 0 ? (
+              <Visible when={isLoading && containers.length === 0}>
                 <TableRow>
                   <TableCell
                     colSpan={colSpan}
@@ -69,7 +70,8 @@ export const OrchestratorContainersTable = ({
                     Loading containers...
                   </TableCell>
                 </TableRow>
-              ) : containers.length === 0 ? (
+              </Visible>
+              <Visible when={!isLoading && containers.length === 0}>
                 <TableRow>
                   <TableCell
                     colSpan={colSpan}
@@ -78,10 +80,11 @@ export const OrchestratorContainersTable = ({
                     {emptyMessage}
                   </TableCell>
                 </TableRow>
-              ) : (
-                containers.map((container, index) => (
+              </Visible>
+              <Visible when={containers.length > 0}>
+                {containers.map((container, index) => (
                   <TableRow key={container.id}>
-                    <TableCell className='px-4 py-3 align-top'>
+                    <TableCell className='px-4 py-3'>
                       <Checkbox
                         checked={selectedIds.has(container.id)}
                         onClick={event => onSelect(container, index, event.shiftKey)}
@@ -126,8 +129,8 @@ export const OrchestratorContainersTable = ({
                       />
                     </TableCell>
                   </TableRow>
-                ))
-              )}
+                ))}
+              </Visible>
             </TableBody>
           </Table>
         </TooltipProvider>

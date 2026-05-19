@@ -21,6 +21,7 @@ import { AndroidAppsService } from './android-apps.service';
 import { AndroidNotificationDto } from './dto/android-notification.dto';
 import { AndroidApplicationResponseDto } from './dto/android-application-response.dto';
 import { ApplicationLogDto } from './dto/application-log.dto';
+import { CloneAndroidApplicationDto } from './dto/clone-android-application.dto';
 import { CreateAndroidApplicationDto } from './dto/create-android-application.dto';
 import { DeleteAndroidApplicationResponseDto } from './dto/delete-android-application-response.dto';
 import { ListAndroidApplicationsDto } from './dto/list-android-applications.dto';
@@ -70,6 +71,19 @@ export class AndroidAppsController {
   })
   create(@Body() dto: CreateAndroidApplicationDto) {
     return this.toResponse(this.androidApps.create(dto));
+  }
+
+  @Post(':id/clone')
+  @ApiOperation({
+    summary:
+      'Create a separate owner-scoped application from an existing app definition.',
+  })
+  @ApiCreatedResponse({ type: AndroidApplicationResponseDto })
+  clone(
+    @Param('id') id: string,
+    @Body() dto: CloneAndroidApplicationDto,
+  ) {
+    return this.toResponse(this.androidApps.clone(id, dto));
   }
 
   @Get()

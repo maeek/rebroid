@@ -1,3 +1,5 @@
+import { Badge } from '@/components/ui/badge'
+import { Visible } from '@/components/ui/visible'
 import { AppViewerActions } from '@/features/applications/viewer/actions'
 import { AppViewerHeading } from '@/features/applications/viewer/heading'
 import { AppInfo } from '@/features/applications/viewer/info'
@@ -13,11 +15,13 @@ export const AppViewerContent = ({
   app,
   initialSettings,
   permissions,
+  isForeignOwnedApp,
   onAppChange
 }: {
   app: AppDefinition
   initialSettings: OrchestratorUiSettings
   permissions: PermissionMap
+  isForeignOwnedApp: boolean
   onAppChange: (app: AppDefinition) => void
 }) => {
   return (
@@ -29,8 +33,17 @@ export const AppViewerContent = ({
             app={app}
             initialSettings={initialSettings}
             permissions={permissions}
+            isForeignOwnedApp={isForeignOwnedApp}
           />
         </AppViewerHeading>
+        <Visible when={isForeignOwnedApp}>
+          <Badge
+            variant='outline'
+            className='w-fit'
+          >
+            Owner: {app.ownerDisplayName ?? app.ownerUserId ?? 'Unknown'}
+          </Badge>
+        </Visible>
       </div>
       <AppViewerStatusSection app={app} />
       <AndroidNotifications app={app} />

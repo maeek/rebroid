@@ -125,38 +125,39 @@ export const AppInfoNetworkSection = ({
       <AppInfoRow
         label='Policy'
         value={
-          app ? (
-            <div className='flex flex-wrap items-center justify-end gap-2'>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Badge
-                      variant={app.networkPolicyEnabled ? 'status' : 'secondary'}
-                      className='capitalize'
-                    >
-                      {app.networkPolicyEnabled ? 'enabled' : 'disabled'}
-                    </Badge>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>{getPolicyEnabledDescription(app.networkPolicyEnabled)}</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Badge
-                      variant={app.networkPolicyResult?.status === 'error' ? 'destructive' : 'secondary'}
-                      className='capitalize'
-                    >
-                      {app.networkPolicyResult?.status ?? app.networkPolicyStatus ?? 'not applied'}
-                    </Badge>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>{getPolicyStatusDescription(app.networkPolicyResult)}</TooltipContent>
-              </Tooltip>
-            </div>
-          ) : (
-            'Loading...'
-          )
+          <>
+            <Visible when={app}>
+              <div className='flex flex-wrap items-center justify-end gap-2'>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Badge
+                        variant={app?.networkPolicyEnabled ? 'status' : 'secondary'}
+                        className='capitalize'
+                      >
+                        {app?.networkPolicyEnabled ? 'enabled' : 'disabled'}
+                      </Badge>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>{getPolicyEnabledDescription(app?.networkPolicyEnabled ?? false)}</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Badge
+                        variant={app?.networkPolicyResult?.status === 'error' ? 'destructive' : 'secondary'}
+                        className='capitalize'
+                      >
+                        {app?.networkPolicyResult?.status ?? app?.networkPolicyStatus ?? 'not applied'}
+                      </Badge>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>{getPolicyStatusDescription(app?.networkPolicyResult)}</TooltipContent>
+                </Tooltip>
+              </div>
+            </Visible>
+            <Visible when={!app}>Loading...</Visible>
+          </>
         }
       />
       <Visible when={canConfigureEgress}>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { IconRefresh, IconSearch } from '@tabler/icons-react'
+import { IconRefresh } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -12,7 +12,6 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
 import { OrchestratorContainersTable } from '@/features/orchestrator/components/orchestrator-containers-table'
@@ -23,6 +22,7 @@ import {
   stopPlatformContainerAction
 } from '@/server/orchestrator/platform/actions'
 import { PlatformGridPagination } from './platform-grid-pagination'
+import { PlatformSelectionToolbar } from './platform-selection-toolbar'
 import { useGridSelection } from './use-grid-selection'
 import type { PlatformContainer } from '@/server/orchestrator/platform/types'
 
@@ -191,18 +191,12 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
             Refresh
           </Button>
         </div>
-        <div className='relative max-w-md'>
-          <IconSearch className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
-          <Input
-            value={search}
-            placeholder='Search containers'
-            className='pl-9'
-            onChange={event => setSearch(event.target.value)}
-          />
-        </div>
-        <Visible when={selection.selectedItems.length > 0}>
-          <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/45 px-4 py-3'>
-            <span className='text-sm text-secondary-foreground'>{selection.selectedItems.length} selected</span>
+        <PlatformSelectionToolbar
+          search={search}
+          placeholder='Search containers'
+          selectedCount={selection.selectedItems.length}
+          onSearchChange={setSearch}
+          actions={
             <div className='flex gap-2'>
               <Button
                 type='button'
@@ -221,14 +215,15 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
                 Remove selected
               </Button>
             </div>
-          </div>
-        </Visible>
+          }
+        />
 
-        {error ? (
+        <Visible when={error}>
           <div className='rounded-md border border-destructive/35 bg-destructive/10 p-4 text-sm text-destructive'>
             {error}
           </div>
-        ) : (
+        </Visible>
+        <Visible when={!error}>
           <OrchestratorContainersTable
             containers={paginatedContainers}
             isLoading={isLoading}
@@ -242,7 +237,7 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
             }
             onSelectPage={selected => selection.selectPage(paginatedContainers, selected)}
           />
-        )}
+        </Visible>
         <Visible when={!error}>
           <PlatformGridPagination
             totalItems={filteredContainers.length}

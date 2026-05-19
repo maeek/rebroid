@@ -1,5 +1,6 @@
 'use server'
 
+import { getStoredAppIcon, setStoredAppIcon } from '@/server/app-icons/store'
 import { hasPermission, isBroadInternetCidr, isRedroidImage } from '@/shared/permissions/permissions'
 import { getCurrentOwnerUserId, getCurrentUserContext } from '../current-user'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../shared'
@@ -15,6 +16,34 @@ import type {
 
 const assertCanAccessApplication = async (id: string) => {
   await getApplicationAction(id)
+}
+
+const assertCanUseOwnedApplicationRuntime = async (id: string) => {
+  const user = await getCurrentUserContext()
+  const app = await orchestratorApplicationsClient.getApplication(id)
+  if (app.ownerUserId !== user.ownerUserId) {
+    throw new Error('Open this app as your own copy before starting or controlling its live session.')
+  }
+  return { app, user }
+}
+
+const assertCanOpenApplicationSlot = async (
+  user: Awaited<ReturnType<typeof getCurrentUserContext>>,
+  candidateId?: string
+) => {
+  if (user.quotas.maxOpenApps === null) {
+    return
+  }
+
+  const apps = await orchestratorApplicationsClient.listApplications(user.ownerUserId)
+  const openApps = apps.filter(app => ['running', 'provisioning'].includes(app.status.currentStatus))
+  const candidateIsAlreadyOpen = candidateId ? openApps.some(app => app.id === candidateId) : false
+
+  if (!candidateIsAlreadyOpen && openApps.length >= user.quotas.maxOpenApps) {
+    throw new Error(
+      `Open app limit reached (${openApps.length}/${user.quotas.maxOpenApps}). Stop an app before starting another.`
+    )
+  }
 }
 
 export const updateApplicationAction = async (id: string, input: UpdateAndroidApplicationInput) => {
@@ -97,6 +126,7 @@ export const createApplicationAction = async (input: CreateApplicationActionInpu
   }
   enforceResourceQuotas(input, user.quotas)
   enforceSessionQuota(input, user.quotas)
+  await assertCanOpenApplicationSlot(user)
   const ownerUserId = await getCurrentOwnerUserId()
   const app = await orchestratorApplicationsClient.createApplication({ ...input, ownerUserId })
   revalidateApplicationList()
@@ -104,21 +134,14 @@ export const createApplicationAction = async (input: CreateApplicationActionInpu
 }
 
 export const startApplicationAction = async (id: string, input?: SwitchApplicationProfileInput) => {
-  await assertCanAccessApplication(id)
-  const user = await getCurrentUserContext()
+  const { user } = await assertCanUseOwnedApplicationRuntime(id)
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:start')) {
     throw new Error('You do not have permission to start applications.')
   }
   if (input && user.role !== 'admin' && !hasPermission(user.permissions, 'applications:switch-profile')) {
     throw new Error('You do not have permission to switch profiles.')
   }
-  if (user.quotas.maxOpenApps !== null) {
-    const apps = await orchestratorApplicationsClient.listApplications(user.ownerUserId)
-    const openApps = apps.filter(app => ['running', 'provisioning'].includes(app.status.currentStatus))
-    if (!openApps.some(app => app.id === id) && openApps.length >= user.quotas.maxOpenApps) {
-      throw new Error(`You can have at most ${user.quotas.maxOpenApps} open apps.`)
-    }
-  }
+  await assertCanOpenApplicationSlot(user, id)
   const app = await orchestratorApplicationsClient.startApplication(id, input)
   revalidateApplicationList()
   revalidateApplicationDetail(id)
@@ -126,8 +149,7 @@ export const startApplicationAction = async (id: string, input?: SwitchApplicati
 }
 
 export const stopApplicationAction = async (id: string) => {
-  await assertCanAccessApplication(id)
-  const user = await getCurrentUserContext()
+  const { user } = await assertCanUseOwnedApplicationRuntime(id)
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:stop')) {
     throw new Error('You do not have permission to stop applications.')
   }
@@ -190,12 +212,32 @@ export const applyNetworkPolicyAction = async (id: string) => {
 }
 
 export const switchApplicationProfileAction = async (id: string, input: SwitchApplicationProfileInput) => {
-  await assertCanAccessApplication(id)
-  const user = await getCurrentUserContext()
+  const { user } = await assertCanUseOwnedApplicationRuntime(id)
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:switch-profile')) {
     throw new Error('You do not have permission to switch profiles.')
   }
   const app = await orchestratorApplicationsClient.switchProfile(id, input)
   revalidateApplicationDetail(id)
+  return sanitizeAndroidApplicationForUser(app, user)
+}
+
+export const cloneApplicationForCurrentUserAction = async (id: string) => {
+  await assertCanAccessApplication(id)
+  const user = await getCurrentUserContext()
+  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:create')) {
+    throw new Error('You do not have permission to create applications.')
+  }
+
+  await assertCanOpenApplicationSlot(user)
+  const app = await orchestratorApplicationsClient.cloneApplication(id, {
+    ownerUserId: user.ownerUserId
+  })
+  const sourceIcon = await getStoredAppIcon(id)
+  if (sourceIcon) {
+    await setStoredAppIcon(app.id, sourceIcon)
+  }
+  revalidateApplicationList()
+  revalidateApplicationDetail(id)
+  revalidateApplicationDetail(app.id)
   return sanitizeAndroidApplicationForUser(app, user)
 }

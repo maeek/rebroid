@@ -1,5 +1,6 @@
 'use client'
 
+import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
 import { AppInfoArtifactsSection } from './app-info/app-info-artifacts-section'
@@ -30,14 +31,14 @@ export const AppInfo = ({
         app={app}
         canViewBackendDetails={canViewBackendDetails}
       />
-      {canConfigureEgress || canViewBackendDetails ? (
+      <Visible when={canConfigureEgress || canViewBackendDetails}>
         <AppInfoNetworkSection
           app={app}
           canConfigureEgress={canConfigureEgress}
           canViewBackendDetails={canViewBackendDetails}
           onAppChange={handleAppChange}
         />
-      ) : null}
+      </Visible>
       <AppInfoArtifactsSection app={app} />
     </div>
   )

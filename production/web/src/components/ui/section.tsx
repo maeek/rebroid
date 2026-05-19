@@ -70,7 +70,7 @@ export const Section = ({
         </div>
       </Visible>
 
-      {title && collapsible ? (
+      <Visible when={title && collapsible}>
         <div
           className={cn(
             'grid overflow-hidden transition-[grid-template-rows,opacity,padding-top,padding-bottom] duration-200 ease-out',
@@ -84,9 +84,8 @@ export const Section = ({
         >
           <div className='min-h-0'>{content}</div>
         </div>
-      ) : (
-        content
-      )}
+      </Visible>
+      <Visible when={!(title && collapsible)}>{content}</Visible>
     </div>
   )
 }

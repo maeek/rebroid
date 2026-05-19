@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
+import { Visible } from '@/components/ui/visible'
 import { ProfileDialog } from './profile-dialog'
 
 export const TopBarAccount = () => {
@@ -44,13 +45,13 @@ export const TopBarAccount = () => {
           <DropdownMenuItem onClick={() => setProfileOpen(true)}>
             <IconUser className='size-4 mr-2' /> Profile
           </DropdownMenuItem>
-          {isAdmin ? (
+          <Visible when={isAdmin}>
             <DropdownMenuItem asChild>
               <Link href='/settings/general'>
                 <IconSettings className='size-4 mr-2' /> Settings
               </Link>
             </DropdownMenuItem>
-          ) : null}
+          </Visible>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => void signOut({ redirect: true })}>
             <IconLogout className='size-4 mr-2' /> Log out

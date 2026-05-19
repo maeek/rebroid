@@ -3,6 +3,7 @@ import type {
   AndroidApplication,
   AndroidNotification,
   ApplicationLog,
+  CloneApplicationInput,
   CreateAndroidApplicationInput,
   DeleteAndroidApplicationResponse,
   ScrcpySession,
@@ -39,6 +40,13 @@ export const orchestratorApplicationsClient = {
 
   getApplication(id: string) {
     return request<AndroidApplication>(`/android-applications/${id}`)
+  },
+
+  cloneApplication(id: string, input: CloneApplicationInput) {
+    return request<AndroidApplication>(`/android-applications/${id}/clone`, {
+      method: 'POST',
+      body: JSON.stringify(input)
+    })
   },
 
   updateApplication(id: string, input: UpdateAndroidApplicationInput) {

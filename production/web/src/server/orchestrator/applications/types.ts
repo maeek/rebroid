@@ -213,6 +213,11 @@ export interface CreateAndroidApplicationInput {
 
 export type CreateApplicationActionInput = Omit<CreateAndroidApplicationInput, 'ownerUserId'>
 
+export interface CloneApplicationInput {
+  ownerUserId?: string
+  name?: string
+}
+
 export interface UpdateAndroidApplicationInput {
   name?: string
   ownerUserId?: string

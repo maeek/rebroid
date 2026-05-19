@@ -22,7 +22,7 @@ export const AppsListHeader = () => {
     <>
       <div className='px-6 flex items-center justify-between gap-4 pt-2 pb-2 max-sm:px-4'>
         <AppsListTitle />
-        {isManaging ? (
+        <Visible when={isManaging}>
           <div className='flex items-center gap-2 max-sm:flex-wrap max-sm:justify-end'>
             <Button
               variant='secondary'
@@ -59,14 +59,15 @@ export const AppsListHeader = () => {
               Done
             </Button>
           </div>
-        ) : (
+        </Visible>
+        <Visible when={!isManaging}>
           <Button
             variant='ghost'
             onClick={startManaging}
           >
             Manage
           </Button>
-        )}
+        </Visible>
       </div>
       <Visible when={isManaging}>
         <div className='mx-6 mb-3 flex items-center justify-between gap-3 rounded-lg border border-input bg-card/40 px-4 py-3 text-sm max-sm:mx-4 max-sm:flex-col max-sm:items-start my-3'>

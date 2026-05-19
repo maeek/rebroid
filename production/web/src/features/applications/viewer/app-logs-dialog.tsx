@@ -100,7 +100,7 @@ export const AppLogsDialog = ({ app, triggerClassName }: AppLogsDialogProps) => 
           Logs
         </Button>
       </DialogTrigger>
-      <DialogContent className='top-1/2 flex max-h-[min(88vh,46rem)] flex-col sm:max-w-4xl'>
+      <DialogContent className='grid max-h-[calc(100dvh-2rem)] w-[min(64rem,calc(100vw-2rem))] grid-rows-[auto_auto_minmax(0,1fr)_auto] overflow-hidden sm:max-w-none'>
         <DialogHeader>
           <DialogTitle>{app ? `${app.name} logs` : 'Application logs'}</DialogTitle>
           <DialogDescription>
@@ -140,7 +140,7 @@ export const AppLogsDialog = ({ app, triggerClassName }: AppLogsDialogProps) => 
             />
           </label>
         </div>
-        <pre className='min-h-72 flex-1 overflow-auto rounded-md border border-border/60 bg-background/65 p-4 font-mono text-xs leading-5 text-secondary-foreground'>
+        <pre className='min-h-0 overflow-auto rounded-md border border-border/60 bg-background/65 p-4 font-mono text-xs leading-5 text-secondary-foreground'>
           {log?.output || 'Refresh logs to inspect container startup failures or Android logcat output.'}
         </pre>
         <Visible when={log}>

@@ -26,7 +26,16 @@ export const TopBarProtected = () => {
             open={drawerOpen}
             onOpenChange={setDrawerOpen}
           >
-            <DrawerTrigger asChild>{drawerOpen ? <IconX /> : <IconMenu2 />}</DrawerTrigger>
+            <DrawerTrigger asChild>
+              <>
+                <Visible when={drawerOpen}>
+                  <IconX />
+                </Visible>
+                <Visible when={!drawerOpen}>
+                  <IconMenu2 />
+                </Visible>
+              </>
+            </DrawerTrigger>
             <DrawerContent>
               <ProtectedNavigation
                 variant='drawer'

@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { IconDeviceFloppy } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Visible } from '@/components/ui/visible'
 import { AppViewerStatusSection } from '@/features/applications/detail/app-viewer-status-section'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { getAppRefreshIntervalMs } from '@/features/applications/domain/refresh'
@@ -22,24 +24,28 @@ import { hasPermission, type PermissionMap } from '@/shared/permissions/permissi
 import { AppManageGeneralSettings } from './app-manage-general-settings'
 import { AppManageIconPanel } from './app-manage-icon-panel'
 import { AppManageNetworkPolicySettings } from './app-manage-network-policy-settings'
-import { AppManageProfileSettings } from './app-manage-profile-settings'
 import { AppManageRuntimeSettings } from './app-manage-runtime-settings'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 
 const mergeAppPreservingIcon = (nextApp: AppDefinition, currentApp?: AppDefinition) => ({
   ...nextApp,
-  icon: currentApp?.icon ?? nextApp.icon
+  icon: currentApp?.icon ?? nextApp.icon,
+  ownerDisplayName: currentApp?.ownerDisplayName ?? nextApp.ownerDisplayName
 })
 
 export default function AppManage({
   app,
   permissions,
-  initialSettings
+  initialSettings,
+  currentOwnerUserId,
+  isAdmin
 }: {
   app?: AppDefinition
   permissions: PermissionMap
   initialSettings: OrchestratorUiSettings
+  currentOwnerUserId: string
+  isAdmin: boolean
 }) {
   const [currentApp, setCurrentApp] = useState(app)
   const [appName, setAppName] = useState(app?.name || '')
@@ -60,10 +66,10 @@ export default function AppManage({
   const canChangeResources = hasPermission(permissions, 'applications:change-resources')
   const canChangeContainerArgs = hasPermission(permissions, 'applications:change-container-args')
   const canConfigureEgress = hasPermission(permissions, 'applications:configure-egress')
-  const canSwitchProfile = hasPermission(permissions, 'applications:switch-profile')
   const canViewBackendDetails = hasPermission(permissions, 'applications:view-backend-details')
   const canViewLogs = hasPermission(permissions, 'applications:view-logs')
   const canDelete = hasPermission(permissions, 'applications:delete')
+  const isForeignOwnedApp = Boolean(isAdmin && currentApp && currentApp.ownerUserId !== currentOwnerUserId)
   const showRuntimeSection =
     canChangeSessionLimit || canChangeResources || canChangeContainerArgs || canViewBackendDetails
 
@@ -172,13 +178,15 @@ export default function AppManage({
         />
         <AppViewerHeading app={displayApp}>
           <div className='flex gap-2'>
-            {canDelete ? (
+            <Visible when={canDelete}>
               <AppViewerDeleteAction
                 app={displayApp}
                 initialSettings={initialSettings}
               />
-            ) : null}
-            {canViewLogs ? <AppLogsDialog app={currentApp} /> : null}
+            </Visible>
+            <Visible when={canViewLogs && !isForeignOwnedApp}>
+              <AppLogsDialog app={currentApp} />
+            </Visible>
             <Button
               disabled={isSaving}
               onClick={() => void handleSave()}
@@ -188,6 +196,14 @@ export default function AppManage({
             </Button>
           </div>
         </AppViewerHeading>
+        <Visible when={isForeignOwnedApp}>
+          <Badge
+            variant='outline'
+            className='w-fit'
+          >
+            Owner: {currentApp.ownerDisplayName ?? currentApp.ownerUserId ?? 'Unknown'}
+          </Badge>
+        </Visible>
         <div className='grid w-full grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)] items-start gap-6 pb-24 max-lg:grid-cols-1'>
           <div className='flex min-w-0 flex-col gap-5'>
             <AppViewerStatusSection app={currentApp} />
@@ -201,7 +217,7 @@ export default function AppManage({
                 setAppName(value)
               }}
             />
-            {showRuntimeSection ? (
+            <Visible when={showRuntimeSection}>
               <AppManageRuntimeSettings
                 app={currentApp}
                 inactivityTimeoutSeconds={inactivityTimeoutSeconds}
@@ -234,19 +250,13 @@ export default function AppManage({
                   setContainerArgs(value)
                 }}
               />
-            ) : null}
-            {canSwitchProfile ? (
-              <AppManageProfileSettings
-                app={currentApp}
-                onUpdated={setCurrentApp}
-              />
-            ) : null}
-            {canConfigureEgress ? (
+            </Visible>
+            <Visible when={canConfigureEgress}>
               <AppManageNetworkPolicySettings
                 app={currentApp}
                 onUpdated={setCurrentApp}
               />
-            ) : null}
+            </Visible>
           </div>
           <div className='flex w-full min-w-0 flex-col gap-4'>
             <AppManageIconPanel

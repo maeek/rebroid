@@ -147,7 +147,7 @@ export const OrchestratorNetworkDetail = ({ details }: OrchestratorNetworkDetail
           contentClassName='gap-4'
           titleClassName='pb-4'
         >
-          {details.relatedContainers.length > 0 ? (
+          <Visible when={details.relatedContainers.length > 0}>
             <div className='overflow-hidden rounded-lg border border-border/60 bg-background/25'>
               <Table>
                 <TableHeader>
@@ -181,9 +181,10 @@ export const OrchestratorNetworkDetail = ({ details }: OrchestratorNetworkDetail
                 </TableBody>
               </Table>
             </div>
-          ) : (
+          </Visible>
+          <Visible when={details.relatedContainers.length === 0}>
             <p className='text-sm text-secondary-foreground'>No local containers are attached to this network.</p>
-          )}
+          </Visible>
         </Section>
 
         <Section

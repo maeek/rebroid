@@ -21,18 +21,22 @@ export const getApplicationAction = async (id: string) => {
   return sanitizeAndroidApplicationForUser(app, user)
 }
 
-const assertCanAccessApplication = async (id: string) => {
-  await getApplicationAction(id)
+const assertCanUseOwnedApplicationRuntime = async (id: string) => {
+  const user = await getCurrentUserContext()
+  const app = await orchestratorApplicationsClient.getApplication(id)
+  if (app.ownerUserId !== user.ownerUserId) {
+    throw new Error('Open this app as your own copy before using its live session.')
+  }
+  return { app, user }
 }
 
 export const getAndroidNotificationsAction = async (id: string) => {
-  await assertCanAccessApplication(id)
+  await assertCanUseOwnedApplicationRuntime(id)
   return orchestratorApplicationsClient.getNotifications(id)
 }
 
 export const getApplicationLogsAction = async (id: string, source: 'container' | 'adb', tail = 300) => {
-  await assertCanAccessApplication(id)
-  const user = await getCurrentUserContext()
+  const { user } = await assertCanUseOwnedApplicationRuntime(id)
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:view-logs')) {
     throw new Error('You do not have permission to view logs.')
   }
@@ -40,11 +44,24 @@ export const getApplicationLogsAction = async (id: string, source: 'container' |
 }
 
 export const getScrcpySessionAction = async (id: string) => {
-  await assertCanAccessApplication(id)
+  await assertCanUseOwnedApplicationRuntime(id)
   return orchestratorApplicationsClient.getScrcpySession(id)
 }
 
 export const recordViewerActivityAction = async (id: string) => {
-  await assertCanAccessApplication(id)
+  await assertCanUseOwnedApplicationRuntime(id)
   return orchestratorApplicationsClient.recordViewerActivity(id)
+}
+
+export const filterAccessibleApplicationIdsAction = async (ids: string[]) => {
+  if (ids.length === 0) {
+    return []
+  }
+
+  const user = await getCurrentUserContext()
+  const ownerUserId = user.role === 'admin' ? undefined : user.ownerUserId
+  const apps = await orchestratorApplicationsClient.listApplications(ownerUserId)
+  const accessibleIds = new Set(apps.map(app => app.id))
+
+  return ids.filter(id => accessibleIds.has(id))
 }

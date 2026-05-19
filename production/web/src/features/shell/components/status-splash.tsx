@@ -67,10 +67,8 @@ export const StatusSplash = ({
         </Visible>
         <Visible when={primaryAction || secondaryAction}>
           <div className='flex flex-wrap items-center justify-center gap-3'>
-            <Visible when={primaryAction}>{primaryAction ? renderAction(primaryAction, 'default') : null}</Visible>
-            <Visible when={secondaryAction}>
-              {secondaryAction ? renderAction(secondaryAction, 'secondary') : null}
-            </Visible>
+            <Visible when={primaryAction}>{renderAction(primaryAction!, 'default')}</Visible>
+            <Visible when={secondaryAction}>{renderAction(secondaryAction!, 'secondary')}</Visible>
           </div>
         </Visible>
       </div>

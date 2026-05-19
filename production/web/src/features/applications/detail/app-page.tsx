@@ -19,15 +19,20 @@ import type { PermissionMap } from '@/shared/permissions/permissions'
 export const AppViewerPage = ({
   app,
   permissions,
-  initialSettings
+  initialSettings,
+  currentOwnerUserId,
+  isAdmin
 }: {
   app?: AppDefinition
   permissions: PermissionMap
   initialSettings: OrchestratorUiSettings
+  currentOwnerUserId: string
+  isAdmin: boolean
 }) => {
   const [currentApp, setCurrentApp] = useState(app)
   const currentAppId = currentApp?.id
   const refreshIntervalMs = getAppRefreshIntervalMs(currentApp)
+  const isForeignOwnedApp = Boolean(isAdmin && currentApp && currentApp.ownerUserId !== currentOwnerUserId)
 
   useEffect(() => {
     setCurrentApp(app)
@@ -51,7 +56,11 @@ export const AppViewerPage = ({
         const nextApp = await getApplicationAction(currentAppId)
         setCurrentApp(current => {
           const mapped = mapAndroidApplicationToAppDefinition(nextApp)
-          return { ...mapped, icon: current?.icon ?? mapped.icon }
+          return {
+            ...mapped,
+            icon: current?.icon ?? mapped.icon,
+            ownerDisplayName: current?.ownerDisplayName ?? mapped.ownerDisplayName
+          }
         })
       } catch {
         // Keep the last known app state on transient refresh failures.
@@ -85,9 +94,13 @@ export const AppViewerPage = ({
         app={currentApp}
         initialSettings={initialSettings}
         permissions={permissions}
+        isForeignOwnedApp={isForeignOwnedApp}
         onAppChange={nextApp => setCurrentApp(nextApp)}
       />
-      <AppViewerPane app={currentApp} />
+      <AppViewerPane
+        app={currentApp}
+        canAttach={!isForeignOwnedApp}
+      />
     </ProtectedSplitPageLayout>
   )
 }

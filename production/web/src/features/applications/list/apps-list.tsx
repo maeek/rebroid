@@ -1,4 +1,5 @@
 'use client'
+import { Visible } from '@/components/ui/visible'
 import { StatusSplash } from '@/features/shell/components/status-splash'
 import { AppsListBulkDialog } from './components/apps-list-bulk-dialog'
 import { AppsListProvider } from './components/apps-list-context'
@@ -11,14 +12,22 @@ import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orche
 
 export const AppsList = ({
   yourApps,
+  currentOwnerUserId,
   initialSettings,
   orchestratorError
 }: {
   yourApps: AppDefinition[]
+  currentOwnerUserId: string
   initialSettings: OrchestratorUiSettings
   orchestratorError?: string | null
 }) => {
-  const { availableApps, contextValue, hasApps } = useAppsListController({ initialSettings, yourApps })
+  const { availableApps, contextValue, hasApps } = useAppsListController({
+    currentOwnerUserId,
+    initialSettings,
+    yourApps
+  })
+  const currentUserApps = availableApps.filter(app => app.ownerUserId === currentOwnerUserId)
+  const otherUserApps = availableApps.filter(app => app.ownerUserId !== currentOwnerUserId)
 
   if (orchestratorError) {
     return (
@@ -42,14 +51,50 @@ export const AppsList = ({
     <AppsListProvider value={contextValue}>
       <AppsListHeader />
       <AppsListBulkDialog />
-      <div className='grid gap-x-5 gap-y-12 py-4 px-2 grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-7'>
-        {availableApps.map(app => (
+      <div className='flex flex-col gap-10 py-4'>
+        <AppsGridSection
+          title='My apps'
+          apps={currentUserApps}
+        />
+        <Visible when={otherUserApps.length > 0}>
+          <AppsGridSection
+            title='Other users'
+            apps={otherUserApps}
+            showOwner
+          />
+        </Visible>
+      </div>
+    </AppsListProvider>
+  )
+}
+
+const AppsGridSection = ({
+  title,
+  apps,
+  showOwner = false
+}: {
+  title: string
+  apps: AppDefinition[]
+  showOwner?: boolean
+}) => {
+  if (apps.length === 0) {
+    return null
+  }
+
+  return (
+    <section className='px-2'>
+      <div className='mb-3 px-4'>
+        <h3 className='text-sm font-semibold text-secondary-foreground'>{title}</h3>
+      </div>
+      <div className='grid grid-cols-4 gap-x-5 gap-y-12 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-7'>
+        {apps.map(app => (
           <AppsListItem
             key={app.id}
             app={app}
+            showOwner={showOwner}
           />
         ))}
       </div>
-    </AppsListProvider>
+    </section>
   )
 }

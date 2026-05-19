@@ -10,6 +10,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger
 } from '@/components/ui/dropdown-menu'
+import { Visible } from '@/components/ui/visible'
 
 export function ThemeToggle() {
   const { setTheme, theme } = useTheme()
@@ -17,13 +18,15 @@ export function ThemeToggle() {
   return (
     <DropdownMenuSub>
       <DropdownMenuSubTrigger>
-        {theme === 'light' ? (
+        <Visible when={theme === 'light'}>
           <IconSun className='mr-2 size-4' />
-        ) : theme === 'dark' ? (
+        </Visible>
+        <Visible when={theme === 'dark'}>
           <IconMoon className='mr-2 size-4' />
-        ) : (
+        </Visible>
+        <Visible when={theme !== 'light' && theme !== 'dark'}>
           <IconSunMoon className='mr-2 size-4' />
-        )}
+        </Visible>
         <span>Theme</span>
       </DropdownMenuSubTrigger>
       <DropdownMenuPortal>

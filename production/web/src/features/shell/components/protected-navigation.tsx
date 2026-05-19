@@ -26,6 +26,7 @@ import {
   type RecentApp
 } from '@/features/applications/recent/recent-apps'
 import { getAppIconsAction } from '@/server/app-icons/actions/get-app-icons-action'
+import { filterAccessibleApplicationIdsAction } from '@/server/orchestrator/applications/read-actions'
 
 type NavigationVariant = 'sidebar' | 'drawer'
 
@@ -55,6 +56,7 @@ const userManagementSubSections: NavigationItem[] = [
 ]
 
 const orchestratorSubSections: NavigationItem[] = [
+  { name: 'Overview', Icon: IconAdjustments, href: '/settings/orchestrator' },
   { name: 'Containers', Icon: IconBox, href: '/settings/orchestrator/containers' },
   { name: 'Images', Icon: IconBrandDocker, href: '/settings/orchestrator/images' },
   { name: 'Networks', Icon: IconNetwork, href: '/settings/orchestrator/networks' }
@@ -171,15 +173,26 @@ export const ProtectedNavigation = ({ variant, onNavigate }: ProtectedNavigation
 
   useEffect(() => {
     const hydrateRecentApps = async (apps: RecentApp[]) => {
-      setRecentApps(apps)
-      const appsMissingIcons = apps.filter(app => !app.icon)
+      let visibleApps = apps
+      try {
+        const visibleIds = new Set(await filterAccessibleApplicationIdsAction(apps.map(app => app.id)))
+        visibleApps = apps.filter(app => visibleIds.has(app.id))
+        if (visibleApps.length !== apps.length) {
+          window.localStorage.setItem(recentAppsStorageKey, JSON.stringify(visibleApps))
+        }
+      } catch {
+        // Keep local recent-app metadata when the orchestrator cannot validate stale ids.
+      }
+
+      setRecentApps(visibleApps)
+      const appsMissingIcons = visibleApps.filter(app => !app.icon)
       if (appsMissingIcons.length === 0) {
         return
       }
 
       try {
         const icons = await getAppIconsAction(appsMissingIcons.map(app => app.id))
-        const hydratedApps = apps.map(app => ({ ...app, icon: app.icon ?? icons[app.id] ?? null }))
+        const hydratedApps = visibleApps.map(app => ({ ...app, icon: app.icon ?? icons[app.id] ?? null }))
         setRecentApps(hydratedApps)
         window.localStorage.setItem(recentAppsStorageKey, JSON.stringify(hydratedApps))
       } catch {
@@ -268,12 +281,7 @@ export const ProtectedNavigation = ({ variant, onNavigate }: ProtectedNavigation
             />
           ))}
           <li>
-            <div
-              className={classNames(
-                'flex items-center rounded-sm text-foreground dark:hover:text-white',
-                pathname === '/settings/users' && styles.activeItem
-              )}
-            >
+            <div className='flex items-center rounded-sm text-foreground dark:hover:text-white'>
               <Link
                 href='/settings/users'
                 className={classNames(styles.item, 'min-w-0 flex-1 rounded-none bg-transparent')}
@@ -326,12 +334,7 @@ export const ProtectedNavigation = ({ variant, onNavigate }: ProtectedNavigation
             </div>
           </li>
           <li>
-            <div
-              className={classNames(
-                'flex items-center rounded-sm text-foreground dark:hover:text-white',
-                pathname === '/settings/orchestrator' && styles.activeItem
-              )}
-            >
+            <div className='flex items-center rounded-sm text-foreground dark:hover:text-white'>
               <Link
                 href='/settings/orchestrator'
                 className={classNames(styles.item, 'min-w-0 flex-1 rounded-none bg-transparent')}
@@ -367,7 +370,12 @@ export const ProtectedNavigation = ({ variant, onNavigate }: ProtectedNavigation
                     href={href}
                     onClick={onNavigate}
                   >
-                    <li className={classNames(styles.nestedItem, isActivePath(href) && styles.nestedActiveItem)}>
+                    <li
+                      className={classNames(
+                        styles.nestedItem,
+                        isActivePath(href, href === '/settings/orchestrator') && styles.nestedActiveItem
+                      )}
+                    >
                       <div className={styles.nestedIconWrap}>
                         <Icon className={styles.nestedIcon} />
                       </div>

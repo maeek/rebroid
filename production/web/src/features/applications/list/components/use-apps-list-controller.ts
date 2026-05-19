@@ -17,9 +17,11 @@ import type { AppDefinition } from '@/features/applications/domain/app-definitio
 import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 
 export const useAppsListController = ({
+  currentOwnerUserId,
   yourApps,
   initialSettings
 }: {
+  currentOwnerUserId: string
   yourApps: AppDefinition[]
   initialSettings: OrchestratorUiSettings
 }) => {
@@ -51,10 +53,15 @@ export const useAppsListController = ({
         const items = await listApplicationsAction()
         setApps(current => {
           const currentIcons = new Map(current.map(app => [app.id, app.icon]))
+          const currentOwnerNames = new Map(current.map(app => [app.id, app.ownerDisplayName]))
 
           return items.map(item => {
             const app = mapAndroidApplicationToAppDefinition(item)
-            const nextApp = { ...app, icon: currentIcons.get(app.id) ?? app.icon }
+            const nextApp = {
+              ...app,
+              icon: currentIcons.get(app.id) ?? app.icon,
+              ownerDisplayName: currentOwnerNames.get(app.id) ?? app.ownerDisplayName
+            }
             return pendingRefreshOverridesRef.current.get(nextApp.id) ?? nextApp
           })
         })
@@ -195,7 +202,9 @@ export const useAppsListController = ({
     return a.name.localeCompare(b.name)
   })
   const selectedApps = sortedApps.filter(app => selectedIds.has(app.id))
-  const stoppableSelectedApps = selectedApps.filter(app => app.running && app.status !== 'removing')
+  const stoppableSelectedApps = selectedApps.filter(
+    app => app.ownerUserId === currentOwnerUserId && app.running && app.status !== 'removing'
+  )
   const deletableSelectedApps = selectedApps.filter(app => app.status !== 'removing')
   const allSelected = sortedApps.length > 0 && selectedIds.size === sortedApps.length
   const activeBulkApps = bulkAction === 'stop' ? stoppableSelectedApps : deletableSelectedApps

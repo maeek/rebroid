@@ -1,13 +1,16 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { IconShieldLock } from '@tabler/icons-react'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { Visible } from '@/components/ui/visible'
 import { AppViewer } from '@/features/applications/viewer/android'
+import { StatusSplash } from '@/features/shell/components/status-splash'
 import { cn } from '@/lib/utils'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
-export const AppViewerPane = ({ app }: { app: AppDefinition }) => {
+export const AppViewerPane = ({ app, canAttach = true }: { app: AppDefinition; canAttach?: boolean }) => {
   const params = useSearchParams()
   const hideOutlineParam = params.get('hideOutline') === 'true'
   const [hideOutline, setHideOutline] = useState(() => hideOutlineParam)
@@ -66,29 +69,42 @@ export const AppViewerPane = ({ app }: { app: AppDefinition }) => {
           'h-full w-full bg-background p-6 max-sm:p-4': isViewerFullscreen
         })}
       >
-        <AppViewer
-          app={app}
-          hideOutline={!viewerUsesOutline}
-          fullscreen={isViewerFullscreen}
-        />
+        <Visible when={canAttach}>
+          <AppViewer
+            app={app}
+            hideOutline={!viewerUsesOutline}
+            fullscreen={isViewerFullscreen}
+          />
+        </Visible>
+        <Visible when={!canAttach}>
+          <div className='flex min-h-112 w-full items-center justify-center rounded-4xl border border-white/10 bg-card/55 p-6 backdrop-blur-xl'>
+            <StatusSplash
+              title='Separate session required'
+              description='This app belongs to another user. Open it as your own copy to start a private container and viewer session.'
+              icon={<IconShieldLock className='size-10' />}
+            />
+          </div>
+        </Visible>
       </div>
-      <div className='flex flex-wrap items-center justify-center gap-2 pb-2'>
-        <Button
-          size='sm'
-          variant={hideOutline ? 'default' : 'secondary'}
-          disabled={isViewerFullscreen}
-          onClick={() => updateHideOutline(!hideOutline)}
-        >
-          {hideOutline ? 'Borderless' : 'Device frame'}
-        </Button>
-        <Button
-          size='sm'
-          variant={isViewerFullscreen ? 'default' : 'secondary'}
-          onClick={() => void toggleViewerFullscreen()}
-        >
-          {isViewerFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-        </Button>
-      </div>
+      <Visible when={canAttach}>
+        <div className='flex flex-wrap items-center justify-center gap-2 pb-2'>
+          <Button
+            size='sm'
+            variant={hideOutline ? 'default' : 'secondary'}
+            disabled={isViewerFullscreen}
+            onClick={() => updateHideOutline(!hideOutline)}
+          >
+            {hideOutline ? 'Borderless' : 'Device frame'}
+          </Button>
+          <Button
+            size='sm'
+            variant={isViewerFullscreen ? 'default' : 'secondary'}
+            onClick={() => void toggleViewerFullscreen()}
+          >
+            {isViewerFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+          </Button>
+        </div>
+      </Visible>
     </div>
   )
 }

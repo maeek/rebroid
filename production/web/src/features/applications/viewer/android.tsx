@@ -102,14 +102,15 @@ export const AppViewer = ({
         'p-2': !hideOutline
       })}
     >
-      {viewerSrc ? (
+      <Visible when={viewerSrc}>
         <iframe
-          src={viewerSrc}
+          src={viewerSrc ?? undefined}
           className={cn('h-full w-full', {
             'rounded-lg': !isBorderless
           })}
         />
-      ) : (
+      </Visible>
+      <Visible when={!viewerSrc}>
         <div
           className={cn('relative flex w-full items-center justify-center overflow-hidden px-6', {
             'min-h-0 flex-1 self-stretch': isBorderless,
@@ -173,7 +174,7 @@ export const AppViewer = ({
             </Visible>
           </div>
         </div>
-      )}
+      </Visible>
     </div>
   )
 

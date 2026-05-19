@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Switch } from '@/components/ui/switch'
+import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 import {
   permissionCategories,
@@ -101,7 +102,7 @@ export const PermissionSwitchTable = ({
         </div>
       </div>
       <ScrollArea>
-        {permissionGroups.length > 0 ? (
+        <Visible when={permissionGroups.length > 0}>
           <div>
             {permissionGroups.map(group => {
               const enabledCount = getEnabledCount(group.allPermissions)
@@ -134,7 +135,7 @@ export const PermissionSwitchTable = ({
                         >
                           <div className='min-w-0 pl-4'>
                             <div className='flex flex-wrap items-center gap-2'>
-                              <div className='font-medium text-xs'>{permission.name}</div>
+                              <div className='font-normal text'>{permission.name}</div>
                               {inheritedFrom.map(groupName => (
                                 <Badge
                                   key={groupName}
@@ -144,16 +145,16 @@ export const PermissionSwitchTable = ({
                                   {groupName}
                                 </Badge>
                               ))}
-                              {isOverridden ? (
+                              <Visible when={isOverridden}>
                                 <Badge
                                   variant='secondary'
                                   className='text-[0.65rem]'
                                 >
                                   override
                                 </Badge>
-                              ) : null}
+                              </Visible>
                             </div>
-                            <div className='text-[10px] text-muted-foreground'>{permission.description}</div>
+                            <div className='text-xs text-muted-foreground'>{permission.description}</div>
                           </div>
                           <Switch
                             checked={getPermissionEnabled(permission.id)}
@@ -168,11 +169,12 @@ export const PermissionSwitchTable = ({
               )
             })}
           </div>
-        ) : (
+        </Visible>
+        <Visible when={permissionGroups.length === 0}>
           <div className='flex min-h-40 items-center justify-center px-6 text-center text-sm text-muted-foreground'>
             No permissions match your search.
           </div>
-        )}
+        </Visible>
       </ScrollArea>
     </div>
   )

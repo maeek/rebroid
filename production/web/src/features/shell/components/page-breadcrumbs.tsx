@@ -30,15 +30,17 @@ export const PageBreadcrumbs = ({ items, className }: { items: PageBreadcrumbIte
           return (
             <Fragment key={`${item.label}-${index}`}>
               <BreadcrumbItem>
-                {isLast ? (
+                <Visible when={isLast}>
                   <BreadcrumbPage>{item.label}</BreadcrumbPage>
-                ) : item.href ? (
+                </Visible>
+                <Visible when={!isLast && Boolean(item.href)}>
                   <BreadcrumbLink asChild>
                     <Link href={item.href}>{item.label}</Link>
                   </BreadcrumbLink>
-                ) : (
+                </Visible>
+                <Visible when={!isLast && !item.href}>
                   <span>{item.label}</span>
-                )}
+                </Visible>
               </BreadcrumbItem>
               <Visible when={!isLast}>
                 <BreadcrumbSeparator />

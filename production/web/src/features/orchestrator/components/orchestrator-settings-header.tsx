@@ -20,7 +20,11 @@ export const OrchestratorSettingsHeader = ({
         <div className='flex flex-col gap-2'>
           <PageBreadcrumbs
             className='pt-0'
-            items={[{ label: 'Settings', href: '/settings/general' }, { label: 'Orchestrator' }]}
+            items={[
+              { label: 'Settings', href: '/settings/general' },
+              { label: 'Orchestrator', href: '/settings/orchestrator' },
+              { label: 'Overview' }
+            ]}
           />
           <h2 className='pt-4 text-3xl font-medium max-sm:text-xl'>Orchestrator</h2>
         </div>
