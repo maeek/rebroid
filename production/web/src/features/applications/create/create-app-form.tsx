@@ -12,7 +12,7 @@ import {
   isFileWithinApkLimit,
   useOrchestratorUiSettings
 } from '@/features/settings/hooks/use-orchestrator-ui-settings'
-import { BlurredImageBackdrop } from '@/features/shell/components/blurred-image-backdrop'
+import { PageBackdrop } from '@/features/shell/components/page-backdrop'
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
 import { toast } from '@/hooks/use-toast'
 import { setAppIconAction } from '@/server/app-icons/actions/set-app-icon-action'
@@ -191,7 +191,7 @@ export const CreateAppForm = ({
         <PageBreadcrumbs items={[{ label: 'Apps', href: '/apps' }, { label: `Create ${formValues.name.trim()}` }]} />
       </div>
       <Visible when={iconPreview}>
-        <BlurredImageBackdrop imageSrc={iconPreview} />
+        <PageBackdrop imageSrc={iconPreview} />
       </Visible>
       <form
         className='grid w-full grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)] items-start gap-6 pt-2 pb-24 max-lg:grid-cols-1'

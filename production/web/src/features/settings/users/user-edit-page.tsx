@@ -9,12 +9,12 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Setting } from '@/features/settings/components/setting'
-import { BlurredImageBackdrop } from '@/features/shell/components/blurred-image-backdrop'
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { toast } from '@/hooks/use-toast'
 import { updateUserAction } from '@/server/users/actions/update-user-action'
 import { allPermissionIds, type PermissionMap, type ResourceQuota } from '@/shared/permissions/permissions'
+import { PageBackdrop } from '../../shell/components/page-backdrop'
 import { GroupMembershipPicker } from './components/group-membership-picker'
 import { LabeledField } from './components/labeled-field'
 import { PermissionSwitchTable, type PermissionInheritanceMap } from './components/permission-switch-table'
@@ -108,7 +108,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
 
   return (
     <ProtectedStackPageLayout mainClassName='gap-2'>
-      <BlurredImageBackdrop
+      <PageBackdrop
         imageSrc={draft.avatarDataUrl}
         opacity={0.028}
       />

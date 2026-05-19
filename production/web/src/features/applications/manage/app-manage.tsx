@@ -13,7 +13,6 @@ import { resolveAppIconUrl } from '@/features/applications/icons/url'
 import { AppViewerDeleteAction } from '@/features/applications/viewer/actions/app-viewer-delete-action'
 import { AppLogsDialog } from '@/features/applications/viewer/app-logs-dialog'
 import { AppViewerHeading } from '@/features/applications/viewer/heading'
-import { BlurredImageBackdrop } from '@/features/shell/components/blurred-image-backdrop'
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
 import { ProtectedSplitPageContent, ProtectedSplitPageLayout } from '@/features/shell/components/protected-page-shell'
 import { useForegroundRefresh } from '@/hooks/use-foreground-refresh'
@@ -21,6 +20,7 @@ import { toast } from '@/hooks/use-toast'
 import { updateApplicationAction } from '@/server/orchestrator/applications/mutation-actions'
 import { getApplicationAction } from '@/server/orchestrator/applications/read-actions'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
+import { PageBackdrop } from '../../shell/components/page-backdrop'
 import { AppManageGeneralSettings } from './app-manage-general-settings'
 import { AppManageIconPanel } from './app-manage-icon-panel'
 import { AppManageNetworkPolicySettings } from './app-manage-network-policy-settings'
@@ -167,7 +167,7 @@ export default function AppManage({
 
   return (
     <ProtectedSplitPageLayout>
-      <BlurredImageBackdrop imageSrc={displayApp.icon ? resolveAppIconUrl(displayApp.icon) : null} />
+      <PageBackdrop imageSrc={displayApp.icon ? resolveAppIconUrl(displayApp.icon) : null} />
       <ProtectedSplitPageContent>
         <PageBreadcrumbs
           items={[

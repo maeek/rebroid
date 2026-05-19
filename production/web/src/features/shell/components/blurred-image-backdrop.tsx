@@ -1,29 +1,92 @@
+'use client'
+
+import { useEffect, useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
 
-export const BlurredImageBackdrop = ({
-  imageSrc,
-  opacity = 0.05,
-  fallbackBackground = 'radial-gradient(circle at top left, hsl(var(--primary) / 0.8), transparent 42%)',
-  className
-}: {
+export type BlurredImageBackdropProps = {
   imageSrc?: string | null
   opacity?: number
   fallbackBackground?: string
   className?: string
-}) => {
+}
+
+type BackdropLayer = Required<Pick<BlurredImageBackdropProps, 'fallbackBackground' | 'opacity'>> & {
+  imageSrc?: string | null
+}
+
+const defaultFallbackBackground = 'radial-gradient(circle at top left, hsl(var(--primary) / 0.8), transparent 42%)'
+
+const toLayer = ({
+  imageSrc,
+  opacity = 0.05,
+  fallbackBackground = defaultFallbackBackground
+}: BlurredImageBackdropProps): BackdropLayer => ({
+  imageSrc,
+  opacity,
+  fallbackBackground
+})
+
+const isSameLayer = (left: BackdropLayer, right: BackdropLayer) => {
   return (
-    <div
-      aria-hidden='true'
-      className={cn(
-        'pointer-events-none fixed top-0 left-0 -z-10 h-screen w-screen bg-primary/80 blur-3xl transition-background duration-200',
-        className
-      )}
-      style={{
-        backgroundImage: imageSrc ? `url("${imageSrc}")` : fallbackBackground,
-        backgroundSize: imageSrc ? '1000% 1000%' : '100% 100%',
-        backgroundPosition: 'top left',
-        opacity
-      }}
-    />
+    left.imageSrc === right.imageSrc &&
+    left.opacity === right.opacity &&
+    left.fallbackBackground === right.fallbackBackground
+  )
+}
+
+export const BlurredImageBackdrop = ({
+  imageSrc,
+  opacity = 0.05,
+  fallbackBackground = defaultFallbackBackground,
+  className
+}: BlurredImageBackdropProps) => {
+  const targetLayer = useMemo(
+    () => toLayer({ imageSrc, opacity, fallbackBackground }),
+    [fallbackBackground, imageSrc, opacity]
+  )
+  const [layers, setLayers] = useState<[BackdropLayer, BackdropLayer]>([targetLayer, targetLayer])
+  const [activeIndex, setActiveIndex] = useState(0)
+  const activeLayer = layers[activeIndex]
+
+  useEffect(() => {
+    if (isSameLayer(activeLayer, targetLayer)) {
+      return
+    }
+
+    const nextIndex = activeIndex === 0 ? 1 : 0
+    setLayers(
+      current =>
+        current.map((layer, index) => (index === nextIndex ? targetLayer : layer)) as [BackdropLayer, BackdropLayer]
+    )
+
+    const animationFrame = window.requestAnimationFrame(() => {
+      setActiveIndex(nextIndex)
+    })
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame)
+    }
+  }, [activeIndex, activeLayer, targetLayer])
+
+  return (
+    <>
+      {layers.map((layer, index) => (
+        <div
+          key={index}
+          aria-hidden='true'
+          className={cn(
+            'pointer-events-none fixed inset-0 -z-10 bg-primary/80 blur-3xl transition-opacity duration-300 ease-out',
+            className
+          )}
+          style={{
+            backgroundImage: layer.imageSrc ? `url("${layer.imageSrc}")` : layer.fallbackBackground,
+            backgroundSize: layer.imageSrc ? '1000% 1000%' : '100% 100%',
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'top left',
+            opacity: index === activeIndex ? layer.opacity : 0
+          }}
+        />
+      ))}
+    </>
   )
 }

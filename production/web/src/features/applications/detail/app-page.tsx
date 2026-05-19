@@ -6,11 +6,11 @@ import { mapAndroidApplicationToAppDefinition } from '@/features/applications/do
 import { getAppRefreshIntervalMs } from '@/features/applications/domain/refresh'
 import { resolveAppIconUrl } from '@/features/applications/icons/url'
 import { rememberRecentApp } from '@/features/applications/recent/recent-apps'
-import { BlurredImageBackdrop } from '@/features/shell/components/blurred-image-backdrop'
 import { ProtectedSplitPageLayout } from '@/features/shell/components/protected-page-shell'
 import { StatusSplash } from '@/features/shell/components/status-splash'
 import { useForegroundRefresh } from '@/hooks/use-foreground-refresh'
 import { getApplicationAction } from '@/server/orchestrator/applications/read-actions'
+import { PageBackdrop } from '../../shell/components/page-backdrop'
 import { AppViewerContent } from './app-viewer-content'
 import { AppViewerPane } from './app-viewer-pane'
 import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
@@ -89,7 +89,7 @@ export const AppViewerPage = ({
       className='h-auto min-h-[calc(100vh-4rem)]'
       mainClassName='h-auto min-h-[calc(100vh-4rem)] items-start'
     >
-      <BlurredImageBackdrop imageSrc={currentApp.icon ? resolveAppIconUrl(currentApp.icon) : null} />
+      <PageBackdrop imageSrc={currentApp.icon ? resolveAppIconUrl(currentApp.icon) : null} />
       <AppViewerContent
         app={currentApp}
         initialSettings={initialSettings}
