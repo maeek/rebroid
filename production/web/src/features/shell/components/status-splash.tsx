@@ -43,6 +43,9 @@ export const StatusSplash = ({
     return action.href ? <Link href={action.href}>{button}</Link> : button
   }
 
+  const primaryActionContent = primaryAction ? renderAction(primaryAction, 'default') : null
+  const secondaryActionContent = secondaryAction ? renderAction(secondaryAction, 'secondary') : null
+
   return (
     <div
       className={cn(
@@ -67,8 +70,8 @@ export const StatusSplash = ({
         </Visible>
         <Visible when={primaryAction || secondaryAction}>
           <div className='flex flex-wrap items-center justify-center gap-3'>
-            <Visible when={primaryAction}>{renderAction(primaryAction!, 'default')}</Visible>
-            <Visible when={secondaryAction}>{renderAction(secondaryAction!, 'secondary')}</Visible>
+            <Visible when={primaryAction}>{primaryActionContent}</Visible>
+            <Visible when={secondaryAction}>{secondaryActionContent}</Visible>
           </div>
         </Visible>
       </div>
