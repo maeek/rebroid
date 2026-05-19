@@ -1,7 +1,6 @@
 'use client'
 
 import { Input } from '@/components/ui/input'
-import { Setting } from '@/features/settings/components/setting'
 import type { ResourceQuota } from '@/shared/permissions/permissions'
 
 type QuotaKey = keyof ResourceQuota
@@ -56,17 +55,19 @@ export const QuotaFields = ({
   }
 
   return (
-    <div className='grid gap-4 md:grid-cols-2'>
+    <div className='grid gap-5'>
       {quotaFields.map(field => (
-        <Setting
+        <div
           key={field.key}
-          label={field.label}
-          description={field.description}
-          className='flex-col items-start'
-          variant='vertical'
+          className='grid gap-3'
         >
-          <div className='flex w-full items-center gap-2'>
+          <div className='grid gap-1'>
+            <div className='font-bold text-sm text-foreground'>{field.label}</div>
+            <div className='text-xs leading-relaxed text-muted-foreground'>{field.description}</div>
+          </div>
+          <div className='flex w-full items-center gap-3'>
             <Input
+              className='min-w-0 basis-[78%] flex-none sm:basis-[calc(100%-6.5rem)]'
               value={valueToInput(quotas[field.key])}
               type='number'
               min={field.key === 'maxCpuCpus' ? 0.1 : 1}
@@ -74,9 +75,11 @@ export const QuotaFields = ({
               placeholder='Unlimited'
               onChange={event => setQuota(field.key, event.target.value)}
             />
-            <span className='min-w-16 text-sm text-secondary-foreground'>{field.suffix}</span>
+            <span className='basis-[22%] whitespace-nowrap text-sm text-secondary-foreground sm:basis-20'>
+              {field.suffix}
+            </span>
           </div>
-        </Setting>
+        </div>
       ))}
     </div>
   )

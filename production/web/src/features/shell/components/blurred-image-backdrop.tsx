@@ -14,7 +14,10 @@ export const BlurredImageBackdrop = ({
   return (
     <div
       aria-hidden='true'
-      className={cn('pointer-events-none fixed top-0 left-0 -z-10 h-screen w-screen bg-primary/80 blur-3xl', className)}
+      className={cn(
+        'pointer-events-none fixed top-0 left-0 -z-10 h-screen w-screen bg-primary/80 blur-3xl transition-background duration-200',
+        className
+      )}
       style={{
         backgroundImage: imageSrc ? `url("${imageSrc}")` : fallbackBackground,
         backgroundSize: imageSrc ? '1000% 1000%' : '100% 100%',
