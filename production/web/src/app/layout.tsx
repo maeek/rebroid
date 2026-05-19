@@ -77,7 +77,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           disableTransitionOnChange
         >
           <NextTopLoader
+            color='var(--primary)'
+            height={2}
             showSpinner={false}
+            shadow={false}
+            template='<div class="bar" role="bar"></div>'
             zIndex={9999}
           />
           <div id='modal-root' />

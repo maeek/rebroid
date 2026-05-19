@@ -75,7 +75,7 @@ export const BlurredImageBackdrop = ({
           key={index}
           aria-hidden='true'
           className={cn(
-            'pointer-events-none fixed inset-0 -z-10 bg-primary/80 blur-3xl transition-opacity duration-300 ease-out',
+            'pointer-events-none fixed inset-0 -z-10 bg-primary/80 blur-3xl transition-opacity duration-200 ease-out',
             className
           )}
           style={{

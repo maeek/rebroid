@@ -19,8 +19,12 @@ export const TopBarProtected = () => {
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   return (
-    <div className='flex justify-between h-16 w-dvw shrink-0 sticky top-0 max-w-full max-sm:px-1 backdrop-blur-2xl z-50'>
-      <div className={classNames(sectionClasses, 'justify-start items-center')}>
+    <div className='sticky top-0 z-50 flex h-16 w-dvw max-w-full shrink-0 justify-between overflow-hidden bg-transparent max-sm:px-1'>
+      <div
+        aria-hidden='true'
+        className='pointer-events-none absolute inset-x-0 bottom-0 top-2 backdrop-blur-xl'
+      />
+      <div className={classNames(sectionClasses, 'relative z-10 justify-start items-center')}>
         <div className='cursor-pointer sm:hidden active:scale-95'>
           <Drawer
             open={drawerOpen}
@@ -50,7 +54,7 @@ export const TopBarProtected = () => {
           </span>
         </Link>
       </div>
-      <div className={classNames(sectionClasses, 'justify-end')}>
+      <div className={classNames(sectionClasses, 'relative z-10 justify-end')}>
         <OrchestratorStatus />
         <Visible when={runningApps.length > 0}>
           <Popover>
