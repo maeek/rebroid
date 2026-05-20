@@ -3,6 +3,15 @@
 import { ChangeEvent, FormEvent, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTopLoader } from 'nextjs-toploader'
+import { CreateAppDeviceSection } from './create-app-device-section'
+import { CreateAppGeneralSection } from './create-app-general-section'
+import { CreateAppIconSection } from './create-app-icon-section'
+import { CreateAppResourcesSection } from './create-app-resources-section'
+import { CreateAppRuntimeKind } from './create-app-runtime-kind'
+import { CreateAppSessionSection } from './create-app-session-section'
+import type { CreateAppFormValues } from './create-app-form.types'
+import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
+import type { UploadedApk } from '@/server/orchestrator/applications/types'
 import { Button } from '@/components/ui/button'
 import { Visible } from '@/components/ui/visible'
 import { uploadApkWithProgress } from '@/features/applications/apks/upload'
@@ -17,14 +26,8 @@ import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
 import { toast } from '@/hooks/use-toast'
 import { setAppIconAction } from '@/server/app-icons/actions/set-app-icon-action'
 import { createApplicationAction } from '@/server/orchestrator/applications/mutation-actions'
-import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
-import { CreateAppDeviceSection } from './create-app-device-section'
-import { CreateAppGeneralSection } from './create-app-general-section'
-import { CreateAppIconSection } from './create-app-icon-section'
-import { CreateAppResourcesSection } from './create-app-resources-section'
-import type { CreateAppFormValues } from './create-app-form.types'
-import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
-import type { UploadedApk } from '@/server/orchestrator/applications/types'
+import { hasPermission, isRedroidImage, type PermissionMap } from '@/shared/permissions/permissions'
+import { applyRedroidDefaultContainerArgs } from '@/shared/runtime/redroid-runtime'
 
 const getInitialFormValues = (settings: OrchestratorUiSettings): CreateAppFormValues => ({
   name: '',
@@ -33,7 +36,8 @@ const getInitialFormValues = (settings: OrchestratorUiSettings): CreateAppFormVa
   memoryLimitMb: '',
   cpuLimitCpus: '',
   volumeSizeLimitMb: '',
-  containerArgs: ''
+  customContainerArgs: '',
+  redroidExtraArgs: ''
 })
 
 export const CreateAppForm = ({
@@ -58,14 +62,18 @@ export const CreateAppForm = ({
   const canChangeSessionLimit = hasPermission(permissions, 'applications:change-session-limit')
   const canChangeResources = hasPermission(permissions, 'applications:change-resources')
   const canChangeContainerArgs = hasPermission(permissions, 'applications:change-container-args')
-  const showDeviceSection = canChangeBaseImage || canChangeSessionLimit || canChangeContainerArgs
+  const isRedroidRuntime = isRedroidImage(formValues.containerImage)
+  const showDeviceSection = canChangeBaseImage || canChangeContainerArgs
+  const showSessionSection = canChangeSessionLimit
   const showResourcesSection = canChangeResources
 
   useEffect(() => {
     setFormValues(current => ({
       ...current,
       containerImage: settings.defaultContainerImage,
-      inactivityTimeoutSeconds: settings.defaultInactivityTimeoutSeconds
+      inactivityTimeoutSeconds: settings.defaultInactivityTimeoutSeconds,
+      redroidExtraArgs: '',
+      customContainerArgs: ''
     }))
   }, [settings.defaultInactivityTimeoutSeconds, settings.defaultContainerImage])
 
@@ -164,7 +172,12 @@ export const CreateAppForm = ({
         cpuLimitCpus: canChangeResources && formValues.cpuLimitCpus ? Number(formValues.cpuLimitCpus) : undefined,
         volumeSizeLimitMb:
           canChangeResources && formValues.volumeSizeLimitMb ? Number(formValues.volumeSizeLimitMb) : undefined,
-        containerArgs: canChangeContainerArgs ? formValues.containerArgs.trim() || undefined : undefined,
+        containerArgs: canChangeContainerArgs
+          ? applyRedroidDefaultContainerArgs(
+              formValues.containerImage,
+              isRedroidRuntime ? formValues.redroidExtraArgs : formValues.customContainerArgs
+            ) || undefined
+          : undefined,
         uploadedApkId: uploadedApk?.id
       })
 
@@ -187,8 +200,14 @@ export const CreateAppForm = ({
 
   return (
     <>
-      <div className='flex gap-2 flex-col'>
+      <div className='flex gap-2 justify-between items-center w-full'>
         <PageBreadcrumbs items={[{ label: 'Apps', href: '/apps' }, { label: `Create ${formValues.name.trim()}` }]} />
+        <Button
+          type='submit'
+          disabled={isSubmitDisabled}
+        >
+          Create
+        </Button>
       </div>
       <Visible when={iconPreview}>
         <PageBackdrop imageSrc={iconPreview} />
@@ -205,16 +224,23 @@ export const CreateAppForm = ({
             isUploadingApk={isUploadingApk}
             onApkSelect={file => void handleApkSelect(file)}
           />
-          <Visible when={showDeviceSection || showResourcesSection}>
-            <h2 className='font-bold'>Advanced</h2>
+          <CreateAppRuntimeKind isRedroidRuntime={isRedroidRuntime} />
+          <Visible when={showDeviceSection || showSessionSection || showResourcesSection}>
+            <h2 className='font-bold my-4'>Advanced</h2>
           </Visible>
           <Visible when={showDeviceSection}>
             <CreateAppDeviceSection
               values={formValues}
               onChange={updateFormValues}
               canChangeBaseImage={canChangeBaseImage}
-              canChangeSessionLimit={canChangeSessionLimit}
               canChangeContainerArgs={canChangeContainerArgs}
+              isRedroidRuntime={isRedroidRuntime}
+            />
+          </Visible>
+          <Visible when={showSessionSection}>
+            <CreateAppSessionSection
+              values={formValues}
+              onChange={updateFormValues}
             />
           </Visible>
           <Visible when={showResourcesSection}>
@@ -223,13 +249,6 @@ export const CreateAppForm = ({
               onChange={updateFormValues}
             />
           </Visible>
-          <Button
-            type='submit'
-            disabled={isSubmitDisabled}
-            className='w-full'
-          >
-            Create
-          </Button>
         </div>
         <div className='flex w-full flex-col gap-4'>
           <CreateAppIconSection

@@ -83,7 +83,7 @@ export const orchestratorApplicationsClient = {
     return request<AndroidNotification[]>(`/android-applications/${id}/notifications`)
   },
 
-  getApplicationLogs(id: string, source: 'container' | 'adb', tail = 300) {
+  getApplicationLogs(id: string, source: 'orchestrator' | 'container' | 'adb', tail = 300) {
     const query = new URLSearchParams({ tail: String(tail) })
     return request<ApplicationLog>(`/android-applications/${id}/logs/${source}?${query.toString()}`)
   },

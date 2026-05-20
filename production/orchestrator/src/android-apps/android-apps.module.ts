@@ -10,6 +10,7 @@ import { AndroidAppsController } from './android-apps.controller';
 import { InactivityService } from './inactivity.service';
 import { AndroidAppsService } from './android-apps.service';
 import { AndroidAppsFacadeService } from './services/android-apps-facade.service';
+import { AndroidAppsLogService } from './services/android-apps-log.service';
 import { AndroidAppsOperationsService } from './services/android-apps-operations.service';
 import { AndroidAppsProvisioningService } from './services/android-apps-provisioning.service';
 import { AndroidAppsProvisioningTrackerService } from './services/android-apps-provisioning-tracker.service';
@@ -32,6 +33,7 @@ const androidAppsServiceProvider = {
   controllers: [AndroidAppsController],
   providers: [
     AndroidAppsFacadeService,
+    AndroidAppsLogService,
     AndroidAppsOperationsService,
     androidAppsServiceProvider,
     AndroidAppsProvisioningService,

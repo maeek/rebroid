@@ -3,9 +3,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { IconDeviceFloppy } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
+import { PageBackdrop } from '../../shell/components/page-backdrop'
+import { AppManageGeneralSettings } from './app-manage-general-settings'
+import { AppManageIconPanel } from './app-manage-icon-panel'
+import { AppManageNetworkPolicySettings } from './app-manage-network-policy-settings'
+import { AppManageRuntimeSettings } from './app-manage-runtime-settings'
+import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Visible } from '@/components/ui/visible'
+import { AppNotFoundSplash } from '@/features/applications/components/app-not-found-splash'
 import { AppViewerStatusSection } from '@/features/applications/detail/app-viewer-status-section'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { getAppRefreshIntervalMs } from '@/features/applications/domain/refresh'
@@ -20,13 +28,6 @@ import { toast } from '@/hooks/use-toast'
 import { updateApplicationAction } from '@/server/orchestrator/applications/mutation-actions'
 import { getApplicationAction } from '@/server/orchestrator/applications/read-actions'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
-import { PageBackdrop } from '../../shell/components/page-backdrop'
-import { AppManageGeneralSettings } from './app-manage-general-settings'
-import { AppManageIconPanel } from './app-manage-icon-panel'
-import { AppManageNetworkPolicySettings } from './app-manage-network-policy-settings'
-import { AppManageRuntimeSettings } from './app-manage-runtime-settings'
-import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 
 const mergeAppPreservingIcon = (nextApp: AppDefinition, currentApp?: AppDefinition) => ({
   ...nextApp,
@@ -134,7 +135,7 @@ export default function AppManage({
   })
 
   if (!currentApp) {
-    return <div className='p-4'>App not found</div>
+    return <AppNotFoundSplash />
   }
 
   const displayApp = { ...currentApp, name: appName, icon }

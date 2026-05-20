@@ -23,6 +23,12 @@ export class HealthController {
             status: 'healthy',
             message: 'Docker API is reachable.',
           },
+          runtime: {
+            ok: true,
+            status: 'healthy',
+            message:
+              'Container runtime is suitable for privileged app containers.',
+          },
           scrcpy: {
             ok: true,
             status: 'healthy',
@@ -34,6 +40,14 @@ export class HealthController {
   })
   async health() {
     const docker = await this.docker.dockerHealth();
+    const runtime = docker.ok
+      ? await this.docker.runtimeSuitabilityHealth()
+      : {
+          ok: false,
+          status: 'offline' as const,
+          message:
+            'Docker is unavailable, so runtime suitability cannot be inspected.',
+        };
     const scrcpy = docker.ok
       ? await this.docker.wsScrcpyHealth()
       : {
@@ -43,8 +57,9 @@ export class HealthController {
         };
 
     return {
-      ok: docker.ok && scrcpy.ok,
+      ok: docker.ok && runtime.ok && scrcpy.ok,
       docker: docker.ok,
+      runtime: runtime.ok,
       scrcpy: scrcpy.ok,
       services: {
         orchestrator: {
@@ -53,6 +68,7 @@ export class HealthController {
           message: 'Orchestrator API is responding.',
         },
         docker,
+        runtime,
         scrcpy,
       },
     };

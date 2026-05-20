@@ -59,6 +59,10 @@ const serviceRows = (health: OrchestratorHealth | null, fallbackMessage: string)
     service: health?.services.docker ?? checkingService(fallbackMessage)
   },
   {
+    name: 'Runtime',
+    service: health?.services.runtime ?? checkingService(fallbackMessage)
+  },
+  {
     name: 'Scrcpy',
     service: health?.services.scrcpy ?? checkingService(fallbackMessage)
   }
@@ -88,10 +92,12 @@ export const OrchestratorStatus = () => {
     setHealth({
       ok: false,
       docker: false,
+      runtime: false,
       scrcpy: false,
       services: {
         orchestrator: offlineService(errorMessage),
         docker: offlineService('Cannot inspect Docker while orchestrator is offline.'),
+        runtime: offlineService('Cannot inspect runtime suitability while orchestrator is offline.'),
         scrcpy: offlineService('Cannot inspect ws-scrcpy while orchestrator is offline.')
       }
     })
@@ -189,7 +195,9 @@ export const OrchestratorStatus = () => {
         </button>
       </PopoverTrigger>
       <PopoverContent
-        align='start'
+        align='end'
+        collisionPadding={16}
+        sideOffset={8}
         className='w-80 border-border/70 bg-card/95 p-2 backdrop-blur-xl'
       >
         <div className='space-y-0'>

@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { IconDeviceMobileQuestion } from '@tabler/icons-react'
 import { AppDefinition } from '@/features/applications/domain/app-definition'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { getAppRefreshIntervalMs } from '@/features/applications/domain/refresh'
@@ -11,8 +10,8 @@ import {
   loadViewerSettings,
   saveViewerSettings
 } from '@/features/applications/viewer/viewer-settings'
+import { AppNotFoundSplash } from '@/features/applications/components/app-not-found-splash'
 import { ProtectedSplitPageLayout } from '@/features/shell/components/protected-page-shell'
-import { StatusSplash } from '@/features/shell/components/status-splash'
 import { useForegroundRefresh } from '@/hooks/use-foreground-refresh'
 import { getApplicationAction } from '@/server/orchestrator/applications/read-actions'
 import { hasPermission } from '@/shared/permissions/permissions'
@@ -90,19 +89,7 @@ export const AppViewerPage = ({
   })
 
   if (!currentApp) {
-    return (
-      <div className='pl-72 max-lg:pl-0'>
-        <section className='px-6 py-8 max-sm:px-4'>
-          <StatusSplash
-            title='App not found'
-            description='This Android app may have been deleted, or your account may not have access to it.'
-            icon={<IconDeviceMobileQuestion className='size-10' />}
-            primaryAction={{ label: 'Refresh', onClick: () => window.location.reload() }}
-            secondaryAction={{ label: 'Back to apps', href: '/apps' }}
-          />
-        </section>
-      </div>
-    )
+    return <AppNotFoundSplash />
   }
 
   return (
@@ -135,6 +122,7 @@ export const AppViewerPage = ({
         canCaptureScreenshot={canCaptureScreenshot}
         canStart={canStartCurrentApp}
         viewerSettings={viewerSettings}
+        onViewerSettingsChange={setViewerSettings}
         onAppChange={setCurrentApp}
       />
     </ProtectedSplitPageLayout>

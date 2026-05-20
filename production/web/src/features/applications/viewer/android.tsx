@@ -40,10 +40,6 @@ export const AppViewer = ({
     return getProtectedViewerShellUrl(app.id, viewerSettings)
   }, [app?.id, isViewerReady, viewerSettings])
 
-  const shouldHidePlaceholderDescription = Boolean(
-    app?.imagePullProgress && (app?.status === 'provisioning' || app?.status === 'removing')
-  )
-
   const viewerPlaceholder = useMemo(() => {
     if (!app) {
       return {
@@ -107,6 +103,8 @@ export const AppViewer = ({
       showProgress: false
     }
   }, [app])
+
+  const shouldHidePlaceholderDescription = viewerPlaceholder.showProgress
 
   const canUsePlaceholderStart = app?.status === 'stopped' && canStart && Boolean(onStart)
 

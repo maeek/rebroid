@@ -49,6 +49,8 @@ type AppLogsDialogProps = {
   hideTrigger?: boolean
 }
 
+type LogSource = 'orchestrator' | 'container' | 'adb'
+
 export const AppLogsDialog = ({
   app,
   triggerClassName,
@@ -56,7 +58,7 @@ export const AppLogsDialog = ({
   onOpenChange,
   hideTrigger = false
 }: AppLogsDialogProps) => {
-  const [source, setSource] = useState<'container' | 'adb'>('container')
+  const [source, setSource] = useState<LogSource>('orchestrator')
   const [log, setLog] = useState<ApplicationLog>()
   const [isLoading, setIsLoading] = useState(false)
   const [isLive, setIsLive] = useState(false)
@@ -149,7 +151,7 @@ export const AppLogsDialog = ({
         <DialogHeader>
           <DialogTitle>{app ? `${app.name} logs` : 'Application logs'}</DialogTitle>
           <DialogDescription>
-            Inspect recent container output. ADB logcat is available for Android-compatible runtimes after they start.
+            Inspect orchestrator lifecycle events, container output, or ADB logcat when Android is running.
           </DialogDescription>
         </DialogHeader>
         <LogsConsole
@@ -163,7 +165,9 @@ export const AppLogsDialog = ({
               <Select
                 value={source}
                 onValueChange={value => {
-                  setSource(value === 'adb' ? 'adb' : 'container')
+                  if (value === 'adb' || value === 'container' || value === 'orchestrator') {
+                    setSource(value)
+                  }
                   setLog(undefined)
                 }}
               >
@@ -171,6 +175,7 @@ export const AppLogsDialog = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value='orchestrator'>Orchestrator events</SelectItem>
                   <SelectItem value='container'>Container logs</SelectItem>
                   <SelectItem value='adb'>ADB logcat</SelectItem>
                 </SelectContent>

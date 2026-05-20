@@ -1,17 +1,21 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { basename } from 'node:path';
 import { Repository } from 'typeorm';
 import { ApkCatalogService } from '../../apk/apk-catalog.service';
 import { UploadedApk } from '../../apk/uploaded-apk.entity';
+import { getErrorMessage } from '../../common/error-message';
 import { DockerRuntimeService } from '../../docker/docker-runtime.service';
 import { NetworkIsolationService } from '../../network-isolation/network-isolation.service';
 import { NetworkPolicyService } from '../../network-policy/network-policy.service';
 import { SettingsService } from '../../settings/settings.service';
 import { AndroidApplication } from '../android-application.entity';
 import { ApplicationProfileMode } from '../application-profile-mode';
-import { AndroidApplicationLifecycleStage, AndroidApplicationStatus } from '../android-application-status';
+import {
+  AndroidApplicationLifecycleStage,
+  AndroidApplicationStatus,
+} from '../android-application-status';
 import { CloneAndroidApplicationDto } from '../dto/clone-android-application.dto';
 import { CreateAndroidApplicationDto } from '../dto/create-android-application.dto';
 import { RemoveAndroidApplicationDto } from '../dto/remove-android-application.dto';
@@ -21,13 +25,16 @@ import { SwitchApplicationProfileDto } from '../dto/switch-application-profile.d
 import { UpdateAndroidApplicationApkDto } from '../dto/update-android-application-apk.dto';
 import { UpdateAndroidApplicationDto } from '../dto/update-android-application.dto';
 import { UpdateNetworkPolicyDto } from '../dto/update-network-policy.dto';
+import { applyRedroidDefaultContainerArgs } from '../utils/redroid-runtime.utils';
 import { AndroidAppsProvisioningService } from './android-apps-provisioning.service';
 import { AndroidAppsProvisioningTrackerService } from './android-apps-provisioning-tracker.service';
+import { AndroidAppsLogService } from './android-apps-log.service';
 import { AndroidAppsStateService } from './android-apps-state.service';
 import { AndroidAppsStatusService } from './android-apps-status.service';
 
 @Injectable()
 export class AndroidAppsOperationsService {
+  private readonly logger = new Logger(AndroidAppsOperationsService.name);
   private readonly downloadDirectory = '/sdcard/Download';
 
   constructor(
@@ -41,6 +48,7 @@ export class AndroidAppsOperationsService {
     private readonly apks: ApkCatalogService,
     private readonly provisioning: AndroidAppsProvisioningService,
     private readonly tracker: AndroidAppsProvisioningTrackerService,
+    private readonly logs: AndroidAppsLogService,
     private readonly state: AndroidAppsStateService,
     private readonly status: AndroidAppsStatusService,
   ) {}
@@ -77,13 +85,17 @@ export class AndroidAppsOperationsService {
       scrcpyTransport: settings.defaultScrcpyTransport,
       adbPort: this.config.getOrThrow<number>('app.redroid.adbPort'),
       inactivityTimeoutSeconds:
-        dto.inactivityTimeoutSeconds ?? settings.defaultInactivityTimeoutSeconds,
+        dto.inactivityTimeoutSeconds ??
+        settings.defaultInactivityTimeoutSeconds,
       profileMode: ApplicationProfileMode.Persistent,
       profileName: 'default',
       memoryLimitMb: dto.memoryLimitMb ?? null,
       cpuLimitCpus: dto.cpuLimitCpus ?? null,
       volumeSizeLimitMb: dto.volumeSizeLimitMb ?? null,
-      containerArgs: dto.containerArgs?.trim() || null,
+      containerArgs: applyRedroidDefaultContainerArgs(
+        containerImage,
+        dto.containerArgs,
+      ),
       recreateContainerOnNextStart: false,
       networkPolicyEnabled: true,
       networkPolicyAllowCidrs: '[]',
@@ -100,7 +112,11 @@ export class AndroidAppsOperationsService {
 
     await this.state.save(app);
 
-    const names = this.networkIsolation.namesFor(app.id, app.name, app.profileName);
+    const names = this.networkIsolation.namesFor(
+      app.id,
+      app.name,
+      app.profileName,
+    );
     Object.assign(app, names);
 
     if (uploadedApk) {
@@ -108,6 +124,12 @@ export class AndroidAppsOperationsService {
     }
 
     await this.state.save(app);
+    await this.logs.append(app.id, 'Application record created', {
+      name: app.name,
+      ownerUserId: app.ownerUserId,
+      image: app.containerImage,
+      hasApk: Boolean(uploadedApk),
+    });
     this.tracker.reset(app.id);
 
     void this.provisioning.provision(app.id);
@@ -145,7 +167,10 @@ export class AndroidAppsOperationsService {
    */
   async update(id: string, dto: UpdateAndroidApplicationDto) {
     const app = await this.state.get(id);
-    const shouldRecreateContainer = this.shouldRecreateContainerOnUpdate(app, dto);
+    const shouldRecreateContainer = this.shouldRecreateContainerOnUpdate(
+      app,
+      dto,
+    );
 
     if (dto.name !== undefined) {
       app.name = dto.name;
@@ -166,7 +191,10 @@ export class AndroidAppsOperationsService {
       app.volumeSizeLimitMb = dto.volumeSizeLimitMb;
     }
     if (dto.containerArgs !== undefined) {
-      app.containerArgs = dto.containerArgs?.trim() || null;
+      app.containerArgs = applyRedroidDefaultContainerArgs(
+        app.containerImage,
+        dto.containerArgs,
+      );
     }
 
     if (shouldRecreateContainer) {
@@ -257,6 +285,17 @@ export class AndroidAppsOperationsService {
       statusMessage: 'Starting application container.',
       lastError: null,
     });
+    await this.logs.append(app.id, 'Start requested', {
+      profileMode: app.profileMode,
+      profileName: app.profileName,
+      existingContainerId: app.containerId,
+      image: app.containerImage,
+    });
+    await this.logs.append(
+      app.id,
+      'Container engine selected',
+      await this.docker.engineSummary(),
+    );
 
     if (!(await this.docker.imageExists(app.containerImage))) {
       await this.state.setLifecycle(app.id, {
@@ -267,6 +306,16 @@ export class AndroidAppsOperationsService {
         void this.state.setLifecycle(app.id, {
           statusMessage: message || `Pulling ${app.containerImage}.`,
         });
+        void this.logs
+          .append(app.id, 'Image pull progress', {
+            image: app.containerImage,
+            message: message || `Pulling ${app.containerImage}.`,
+          })
+          .catch((error) => {
+            this.logger.warn(
+              `Could not write image pull log for ${app.id}: ${error}`,
+            );
+          });
       });
     }
 
@@ -275,27 +324,42 @@ export class AndroidAppsOperationsService {
         await this.docker.createVolume(app.id, app.volumeName);
       }
       await this.docker.createIsolatedNetwork(app.id, app.networkName);
-      await this.docker.connectOrchestratorToNetwork(app.networkName);
       const container = await this.docker.createApplicationContainer({
         applicationId: app.id,
         containerName: app.containerName,
         networkName: app.networkName,
         volumeName: app.volumeName,
         image: app.containerImage,
-        dataMountPath: this.config.getOrThrow<string>('app.redroid.dataMountPath'),
+        dataMountPath: this.config.getOrThrow<string>(
+          'app.redroid.dataMountPath',
+        ),
         adbPort: app.adbPort,
         privileged: this.config.getOrThrow<boolean>('app.redroid.privileged'),
         profileMode: app.profileMode,
         memoryLimitMb: app.memoryLimitMb,
         cpuLimitCpus: app.cpuLimitCpus,
         containerArgs: app.containerArgs,
+        securityOptions: this.config.getOrThrow<string[]>(
+          'app.redroid.securityOptions',
+        ),
       });
       app.containerId = container.id;
       app.recreateContainerOnNextStart = false;
       await this.state.save(app);
+      await this.logs.append(app.id, 'Container created for start', {
+        containerId: container.id,
+        containerName: app.containerName,
+        image: app.containerImage,
+      });
     }
 
+    await this.docker.connectOrchestratorToNetwork(app.networkName);
+    await this.prepareViewerNetwork(app);
+
     await this.docker.startContainer(app.containerId);
+    await this.logs.append(app.id, 'Container start requested', {
+      containerId: app.containerId,
+    });
     await this.applyNetworkPolicy(app.id);
 
     app.status = AndroidApplicationStatus.Running;
@@ -303,6 +367,9 @@ export class AndroidAppsOperationsService {
     app.statusMessage = 'Application is running.';
     app.lastStartedAt = new Date();
     app.lastError = null;
+    await this.logs.append(app.id, 'Application marked running', {
+      containerId: app.containerId,
+    });
     return this.state.saveAndDecorate(app);
   }
 
@@ -317,10 +384,15 @@ export class AndroidAppsOperationsService {
     app.lifecycleStage = AndroidApplicationLifecycleStage.Stopping;
     app.statusMessage = 'Stopping application container.';
     await this.state.save(app);
+    await this.logs.append(app.id, 'Stop requested', {
+      containerId: app.containerId,
+    });
 
     if (app.containerId) {
       await this.docker.stopContainer(app.containerId);
     }
+
+    await this.releaseViewerNetwork(app);
 
     if (app.recreateContainerOnNextStart && app.containerId) {
       await this.removeManagedContainer(app);
@@ -331,6 +403,10 @@ export class AndroidAppsOperationsService {
     app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
     app.statusMessage = this.status.stoppedStatusMessage(app);
     app.lastStoppedAt = new Date();
+    await this.logs.append(app.id, 'Application stopped', {
+      containerId: app.containerId,
+      recreateContainerOnNextStart: app.recreateContainerOnNextStart,
+    });
     return this.state.saveAndDecorate(app);
   }
 
@@ -372,6 +448,12 @@ export class AndroidAppsOperationsService {
     app.lifecycleStage = AndroidApplicationLifecycleStage.Removing;
     app.statusMessage = 'Removing application container and network resources.';
     await this.state.save(app);
+    await this.logs.append(app.id, 'Remove requested', {
+      removeData: query.removeData ?? true,
+      containerId: app.containerId,
+      networkName: app.networkName,
+      volumeName: app.volumeName,
+    });
 
     if (app.containerId) {
       await this.networkPolicy.remove(app);
@@ -387,6 +469,7 @@ export class AndroidAppsOperationsService {
     }
 
     await this.applications.remove(app);
+    await this.logs.remove(id);
 
     return {
       id,
@@ -416,9 +499,10 @@ export class AndroidAppsOperationsService {
     const sidecarTarget = await this.docker.ensureWsScrcpySidecarOnNetwork(
       app.networkName,
     );
+    const adbHost = await this.resolveScrcpyAdbHost(app);
     const viewerTarget =
       sidecarTarget.configured && sidecarTarget.connected
-        ? await this.prepareScrcpyAdbTarget(app)
+        ? await this.prepareScrcpyAdbTarget(app, adbHost)
         : sidecarTarget;
     app.lastScrcpyActivityAt = new Date();
     await this.state.save(app);
@@ -433,7 +517,7 @@ export class AndroidAppsOperationsService {
       viewerTargetConnected: viewerTarget.connected,
       viewerMessage: viewerTarget.message,
       viewerError: viewerTarget.error,
-      adbHost: app.containerName,
+      adbHost,
       adbPort: app.adbPort,
     };
   }
@@ -498,6 +582,19 @@ export class AndroidAppsOperationsService {
       source: 'container' as const,
       collectedAt: new Date().toISOString(),
       output: await this.docker.getContainerLogs(app.containerId, tail),
+    };
+  }
+
+  /**
+   * Reads orchestrator-side lifecycle and runtime events for an application.
+   * This is useful when the container itself writes little or no stdout.
+   */
+  async eventLogs(id: string, tail = 300) {
+    await this.state.get(id);
+    return {
+      source: 'orchestrator' as const,
+      collectedAt: new Date().toISOString(),
+      output: await this.logs.read(id, tail),
     };
   }
 
@@ -568,10 +665,11 @@ export class AndroidAppsOperationsService {
 
     const app = await this.getRunningRuntimeApp(id);
     const fileName = this.sanitizeRuntimeFileName(file.originalname);
-    await this.docker.execInContainer(
-      app.containerId!,
-      ['sh', '-lc', `mkdir -p "${this.downloadDirectory}"`],
-    );
+    await this.docker.execInContainer(app.containerId!, [
+      'sh',
+      '-lc',
+      `mkdir -p "${this.downloadDirectory}"`,
+    ]);
     await this.docker.copyBufferToContainer(
       app.containerId!,
       file.buffer,
@@ -660,11 +758,7 @@ export class AndroidAppsOperationsService {
     const app = await this.getRunningRuntimeApp(id);
     const { stdout } = await this.docker.execInContainerWithOutput(
       app.containerId!,
-      [
-        'sh',
-        '-lc',
-        'screencap -p 2>/dev/null | base64 | tr -d "\\n" || true',
-      ],
+      ['sh', '-lc', 'screencap -p 2>/dev/null | base64 | tr -d "\\n" || true'],
     );
     const base64 = stdout.trim();
     if (!base64) {
@@ -680,9 +774,34 @@ export class AndroidAppsOperationsService {
     };
   }
 
-  private async prepareScrcpyAdbTarget(app: AndroidApplication) {
+  private async prepareScrcpyAdbTarget(
+    app: AndroidApplication,
+    adbHost: string,
+  ) {
     await this.applyNetworkPolicy(app.id);
-    return this.docker.connectWsScrcpyAdb(app.containerName, app.adbPort);
+
+    await this.logs.append(app.id, 'Preparing ws-scrcpy ADB target', {
+      networkName: app.networkName,
+      containerName: app.containerName,
+      containerId: app.containerId,
+      adbHost,
+      adbPort: app.adbPort,
+    });
+
+    return this.docker.connectWsScrcpyAdb(adbHost, app.adbPort);
+  }
+
+  private async resolveScrcpyAdbHost(app: AndroidApplication) {
+    if (!app.containerId) {
+      return app.containerName;
+    }
+
+    return (
+      (await this.docker.getContainerIpOnNetwork(
+        app.containerId,
+        app.networkName,
+      )) ?? app.containerName
+    );
   }
 
   private resolveContainerImage(image: string, registry: string | null) {
@@ -759,7 +878,8 @@ export class AndroidAppsOperationsService {
     dto: StartAndroidApplicationDto,
   ) {
     const nextProfileMode = dto.profileMode ?? app.profileMode;
-    const nextProfileName = dto.profileName?.trim() || app.profileName || 'default';
+    const nextProfileName =
+      dto.profileName?.trim() || app.profileName || 'default';
     const nextVolumeName = this.networkIsolation.namesFor(
       app.id,
       app.name,
@@ -791,8 +911,10 @@ export class AndroidAppsOperationsService {
     dto: UpdateAndroidApplicationDto,
   ) {
     return (
-      (dto.memoryLimitMb !== undefined && dto.memoryLimitMb !== app.memoryLimitMb) ||
-      (dto.cpuLimitCpus !== undefined && dto.cpuLimitCpus !== app.cpuLimitCpus) ||
+      (dto.memoryLimitMb !== undefined &&
+        dto.memoryLimitMb !== app.memoryLimitMb) ||
+      (dto.cpuLimitCpus !== undefined &&
+        dto.cpuLimitCpus !== app.cpuLimitCpus) ||
       (dto.containerArgs !== undefined &&
         (dto.containerArgs?.trim() || null) !== app.containerArgs)
     );
@@ -835,7 +957,9 @@ export class AndroidAppsOperationsService {
       return;
     }
 
-    const runtimeState = await this.docker.getContainerRuntimeState(app.containerId);
+    const runtimeState = await this.docker.getContainerRuntimeState(
+      app.containerId,
+    );
     if (runtimeState.running) {
       throw new ConflictException(
         'Runtime settings changed. Stop the app before starting it again so the managed container can be recreated.',
@@ -855,6 +979,47 @@ export class AndroidAppsOperationsService {
     await this.networkPolicy.remove(app);
     await this.docker.removeContainer(app.containerId);
     app.containerId = null;
+  }
+
+  private async prepareViewerNetwork(app: AndroidApplication) {
+    try {
+      const sidecarTarget = await this.docker.ensureWsScrcpySidecarOnNetwork(
+        app.networkName,
+      );
+      await this.logs.append(app.id, 'ws-scrcpy network prepared', {
+        networkName: app.networkName,
+        configured: sidecarTarget.configured,
+        connected: sidecarTarget.connected,
+        message: sidecarTarget.message,
+      });
+    } catch (error) {
+      const message = getErrorMessage(error);
+      this.logger.warn(
+        `Could not prepare ws-scrcpy network for ${app.id}: ${message}`,
+      );
+      await this.logs.append(app.id, 'ws-scrcpy network preparation failed', {
+        networkName: app.networkName,
+        message,
+      });
+    }
+  }
+
+  private async releaseViewerNetwork(app: AndroidApplication) {
+    try {
+      await this.docker.detachWsScrcpySidecarFromNetwork(app.networkName);
+      await this.logs.append(app.id, 'ws-scrcpy network released', {
+        networkName: app.networkName,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Could not release ws-scrcpy network for ${app.id}: ${message}`,
+      );
+      await this.logs.append(app.id, 'ws-scrcpy network release failed', {
+        networkName: app.networkName,
+        message,
+      });
+    }
   }
 
   /**

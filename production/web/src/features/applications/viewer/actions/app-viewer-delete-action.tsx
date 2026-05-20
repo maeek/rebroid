@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { IconTrash } from '@tabler/icons-react'
+import { IconLoader2, IconTrash, IconX } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import {
@@ -31,14 +31,17 @@ export const AppViewerDeleteAction = ({
   initialSettings: OrchestratorUiSettings
 }) => {
   const [open, setOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const router = useRouter()
   const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
+  const isProvisioning = app?.status === 'provisioning'
 
   const handleDelete = async () => {
     if (!app) {
       return
     }
 
+    setIsDeleting(true)
     try {
       await deleteApplicationAction(app.id, settings.removeDataOnDelete)
       await removeAppIconAction(app.id)
@@ -47,10 +50,11 @@ export const AppViewerDeleteAction = ({
       router.push('/apps')
     } catch (error) {
       toast({
-        title: 'Could not delete app',
+        title: isProvisioning ? 'Could not kill app provisioning' : 'Could not delete app',
         description: getDisplayErrorMessage(error),
         variant: 'destructive'
       })
+      setIsDeleting(false)
     }
   }
 
@@ -58,34 +62,66 @@ export const AppViewerDeleteAction = ({
     <Dialog
       modal
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={nextOpen => {
+        if (!isDeleting) {
+          setOpen(nextOpen)
+        }
+      }}
     >
       <DialogTrigger asChild>
         <Button
           variant='destructive'
-          disabled={!app || app.status === 'removing'}
+          disabled={!app || app.status === 'removing' || isDeleting}
         >
-          <IconTrash className='size-4' />
-          {app?.status === 'provisioning' ? 'Cancel' : 'Delete'}
+          {isDeleting ? (
+            <IconLoader2 className='size-4 animate-spin' />
+          ) : isProvisioning ? (
+            <IconX className='size-4' />
+          ) : (
+            <IconTrash className='size-4' />
+          )}
+          {isProvisioning ? 'Kill' : 'Delete'}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{app?.status === 'provisioning' ? 'Cancel provisioning?' : `Delete ${app?.name}?`}</DialogTitle>
+          <DialogTitle>{isProvisioning ? `Kill provisioning for ${app?.name}?` : `Delete ${app?.name}?`}</DialogTitle>
           <DialogDescription>
-            This will force-remove the managed container resources, delete preserved data, and remove the application
-            record.
+            {isProvisioning
+              ? 'This will force-stop provisioning, remove the managed container resources, delete preserved data, and remove the application record.'
+              : 'This will force-remove the managed container resources, delete preserved data, and remove the application record.'}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button
             variant='destructive'
+            disabled={isDeleting}
             onClick={() => void handleDelete()}
           >
-            {app?.status === 'provisioning' ? 'Cancel and delete' : 'Delete'}
+            {isDeleting ? (
+              <>
+                <IconLoader2 className='size-4 animate-spin' />
+                {isProvisioning ? 'Killing and deleting...' : 'Deleting...'}
+              </>
+            ) : isProvisioning ? (
+              <>
+                <IconX className='size-4' />
+                Kill and delete
+              </>
+            ) : (
+              <>
+                <IconTrash className='size-4' />
+                Delete
+              </>
+            )}
           </Button>
           <DialogClose asChild>
-            <Button variant='secondary'>Keep app</Button>
+            <Button
+              variant='secondary'
+              disabled={isDeleting}
+            >
+              {isProvisioning ? 'Keep provisioning' : 'Keep app'}
+            </Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>

@@ -14,6 +14,7 @@ export interface ApplicationContainerSpec {
   memoryLimitMb?: number | null;
   cpuLimitCpus?: number | null;
   containerArgs?: string | null;
+  securityOptions?: string[];
 }
 
 export interface ContainerRuntimeState {

@@ -14,9 +14,12 @@ describe('docker utility helpers', () => {
     expect(isTransientAdbConnectionError('FAILED TO CONNECT to device')).toBe(
       true,
     );
+    expect(
+      isTransientAdbConnectionError('unable to connect to 10.1.0.3:5555'),
+    ).toBe(true);
     expect(isTransientAdbConnectionError('device offline')).toBe(true);
-    expect(isTransientAdbConnectionError('permanent authentication failure')).toBe(
-      false,
-    );
+    expect(
+      isTransientAdbConnectionError('permanent authentication failure'),
+    ).toBe(false);
   });
 });

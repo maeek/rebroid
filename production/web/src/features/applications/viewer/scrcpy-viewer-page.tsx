@@ -3,11 +3,13 @@ import { IconAlertTriangle, IconCast, IconLoader2 } from '@tabler/icons-react'
 import { headers } from 'next/headers'
 import { Visible } from '@/components/ui/visible'
 import { getProtectedWsScrcpyUrl } from '@/features/applications/viewer/scrcpy-url'
+import { defaultViewerSettings, normalizeViewerSettings } from '@/features/applications/viewer/viewer-settings'
 import { StatusSplash } from '@/features/shell/components/status-splash'
 import { getApplicationAction, getScrcpySessionAction } from '@/server/orchestrator/applications/read-actions'
 import { createScrcpyViewerToken } from '@/server/viewer/viewer-token'
 import { getDisplayErrorMessage } from '../../../lib/error-utils'
 import { ViewerActivityKeepalive, ViewerStartupRefresh } from './viewer-activity-keepalive'
+import type { ViewerSettings } from '@/features/applications/viewer/viewer-settings'
 import type { AndroidApplication, ScrcpySession } from '@/server/orchestrator/applications/types'
 
 const redroidViewerStartupGracePeriodMs = 45_000
@@ -23,11 +25,36 @@ type ViewerErrorDetails = {
   stderr: string | null
 } | null
 
+type ViewerSearchParams = {
+  sound?: string
+  bitrateMbps?: string
+  maxFps?: string
+  maxSize?: string
+  iFrameInterval?: string
+  fitToFrame?: string
+}
+
 const getBaseUrl = async () => {
   const requestHeaders = await headers()
   const host = requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host') ?? 'localhost:3000'
   const protocol = requestHeaders.get('x-forwarded-proto') ?? 'https'
   return `${protocol}://${host}`
+}
+
+const getWsScrcpyInternalBaseUrl = () =>
+  (process.env.WS_SCRCPY_INTERNAL_BASE_URL || 'http://sma-ws-scrcpy:8000').replace(/\/$/, '')
+
+const checkWsScrcpyProxyTarget = async () => {
+  try {
+    const response = await fetch(`${getWsScrcpyInternalBaseUrl()}/viewer/ws-scrcpy/`, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(2_000)
+    })
+
+    return response.ok || response.status < 500
+  } catch {
+    return false
+  }
 }
 
 const ViewerSplash = ({
@@ -56,6 +83,70 @@ const ViewerSplash = ({
 )
 
 const isLikelyRedroidImage = (containerImage: string) => containerImage.toLowerCase().includes('redroid')
+
+const numberParam = (value: string | undefined, fallback: number) => {
+  if (!value) {
+    return fallback
+  }
+
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+const viewerSettingsFromSearchParams = (searchParams: ViewerSearchParams | undefined): ViewerSettings =>
+  normalizeViewerSettings({
+    soundEnabled: searchParams?.sound !== '0',
+    bitrateMbps: numberParam(searchParams?.bitrateMbps, defaultViewerSettings.bitrateMbps),
+    maxFps: numberParam(searchParams?.maxFps, defaultViewerSettings.maxFps),
+    maxSize: numberParam(searchParams?.maxSize, defaultViewerSettings.maxSize),
+    iFrameInterval: numberParam(searchParams?.iFrameInterval, defaultViewerSettings.iFrameInterval),
+    fitToFrame: searchParams?.fitToFrame === '1'
+  })
+
+const wsScrcpyStoragePrefixes = (player: string) => {
+  const normalizedPlayer = player.toLowerCase()
+  if (normalizedPlayer.includes('webcodecs')) {
+    return ['WebCodecsDecoder', 'WebCodecsVideoDecoder']
+  }
+  if (normalizedPlayer.includes('broadway')) {
+    return ['BroadwayDecoder']
+  }
+
+  return ['MseDecoder']
+}
+
+const createWsScrcpySettingsScript = (session: ScrcpySession, viewerSettings: ViewerSettings) => {
+  const videoSettings = {
+    bitrate: viewerSettings.bitrateMbps * 1_000_000,
+    maxFps: viewerSettings.maxFps,
+    iFrameInterval: viewerSettings.iFrameInterval,
+    lockedVideoOrientation: -1,
+    bounds:
+      viewerSettings.maxSize > 0
+        ? {
+            width: viewerSettings.maxSize,
+            height: viewerSettings.maxSize
+          }
+        : undefined,
+    sendFrameMeta: false,
+    displayId: 0
+  }
+  const prefixes = wsScrcpyStoragePrefixes(session.player)
+
+  return `
+(() => {
+  const udid = ${JSON.stringify(session.udid)};
+  const prefixes = ${JSON.stringify(prefixes)};
+  const videoSettings = ${JSON.stringify(videoSettings)};
+  const fitToFrame = ${JSON.stringify(viewerSettings.fitToFrame)};
+  const viewportKey = window.innerWidth + 'x' + window.innerHeight;
+  for (const prefix of prefixes) {
+    const key = prefix + ':' + udid + ':' + viewportKey;
+    window.localStorage.setItem(key, JSON.stringify(videoSettings));
+    window.localStorage.setItem(key + ':fit', JSON.stringify(fitToFrame));
+  }
+})();`
+}
 
 const getViewerError = (session: ScrcpySession): ViewerErrorDetails => {
   const candidate = Reflect.get(session as unknown as Record<string, unknown>, 'viewerError')
@@ -189,11 +280,11 @@ export async function ScrcpyViewerPage({
   searchParams
 }: {
   params: Promise<{ id: string }>
-  searchParams?: Promise<{ sound?: string }>
+  searchParams?: Promise<ViewerSearchParams>
 }) {
   const { id } = await params
   const resolvedSearchParams = await searchParams
-  const soundEnabled = resolvedSearchParams?.sound !== '0'
+  const viewerSettings = viewerSettingsFromSearchParams(resolvedSearchParams)
 
   let app: AndroidApplication
   let session: ScrcpySession
@@ -257,6 +348,17 @@ export async function ScrcpyViewerPage({
     )
   }
 
+  if (!(await checkWsScrcpyProxyTarget())) {
+    return (
+      <ViewerSplash
+        title='Viewer transport unavailable'
+        description='The app is running, but the web server cannot reach ws-scrcpy.'
+        detail='When using the orchestrator internal Docker daemon, the sidecar must be published back to the web container or the deployment must use the host container-engine socket.'
+        tone='danger'
+      />
+    )
+  }
+
   const viewerToken = await createScrcpyViewerToken({
     appId: session.applicationId,
     udid: session.udid
@@ -265,7 +367,8 @@ export async function ScrcpyViewerPage({
     session,
     baseUrl: await getBaseUrl(),
     viewerToken,
-    soundEnabled
+    soundEnabled: viewerSettings.soundEnabled,
+    settings: viewerSettings
   })
 
   return (
@@ -278,6 +381,7 @@ export async function ScrcpyViewerPage({
             : `ws-scrcpy could not confirm ADB connection: ${session.viewerMessage ?? 'unknown error'}`}
         </div>
       </Visible>
+      <script dangerouslySetInnerHTML={{ __html: createWsScrcpySettingsScript(session, viewerSettings) }} />
       <iframe
         title='scrcpy viewer'
         src={viewerUrl}

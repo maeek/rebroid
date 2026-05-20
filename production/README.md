@@ -51,6 +51,42 @@ docker compose up --build
 
 If you do not use the helper, inspect the machine socket path and pass it as `CONTAINER_ENGINE_SOCKET`.
 
+## Internal Docker Mode
+
+The default production compose setup uses the host/rootful Docker-compatible socket. This is the recommended mode for redroid and scrcpy because the application containers and the `ws-scrcpy` sidecar live in the same container engine and Docker networks.
+
+The orchestrator image can still start its own internal Docker daemon when no socket is mounted, but that mode needs one extra viewer wiring step: the sidecar created inside the orchestrator's internal daemon must be published back on the orchestrator container network namespace, and the web build must proxy to that published port.
+
+Use the internal compose file only when you intentionally do not mount a host engine socket:
+
+```bash
+docker compose -f docker-compose.internal.yml up --build
+```
+
+If `WS_SCRCPY_INTERNAL_BASE_URL` still points at `http://sma-ws-scrcpy:8000`, the web container is trying to reach a sidecar in the outer compose network while the app containers are inside the orchestrator's inner Docker daemon. That topology cannot stream because those networks are different.
+
+Do not point `CONTAINER_ENGINE_SOCKET` at a missing file to force internal mode. Compose can create a directory at `/var/run/docker.sock`, which prevents the internal daemon from binding its Unix socket.
+
+## Redroid Host Checks
+
+If a redroid container exits immediately with little or no container log output, verify the host before debugging the web viewer:
+
+```bash
+sudo podman info
+ls -la /dev/binderfs /dev/binder /dev/hwbinder /dev/vndbinder 2>/dev/null
+grep -E 'binder|ashmem' /proc/filesystems /proc/misc 2>/dev/null
+```
+
+For Linux hosts running Podman, start with conservative runtime arguments:
+
+```text
+androidboot.redroid_gpu_mode=guest androidboot.use_memfd=true ro.secure=0
+```
+
+`androidboot.redroid_gpu_mode=auto` can select a GPU path that is invalid inside the container. Once the container boots reliably, switch to an explicit GPU node only if the host exposes one correctly.
+
+On SELinux hosts, pass `CONTAINER_SECURITY_OPTS=label=disable` so the privileged Android runtime can access the host devices it needs.
+
 ## Optional Overrides
 
 The defaults are intended to work without a `.env` file. These are the main knobs worth overriding:
@@ -62,6 +98,7 @@ INITIAL_ADMIN_PASSWORD=choose-a-password
 CONTAINER_IMAGE=redroid/redroid:13.0.0-latest
 REDROID_PRIVILEGED=true
 MAX_APK_UPLOAD_SIZE_MB=4096
+CONTAINER_SECURITY_OPTS=label=disable
 ```
 
 Everything else is primarily for advanced deployments: custom networks, external orchestrator/web separation, sidecar image overrides, or Linux iptables policy tuning.

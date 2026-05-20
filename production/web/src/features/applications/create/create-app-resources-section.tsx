@@ -16,7 +16,6 @@ export const CreateAppResourcesSection = ({ values, onChange }: CreateAppResourc
       title='Resources'
       boxed
       contentClassName='gap-4'
-      collapsible
     >
       <Setting
         label='RAM limit'

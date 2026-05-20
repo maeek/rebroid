@@ -93,10 +93,7 @@ export class AndroidAppsController {
       'Create a separate owner-scoped application from an existing app definition.',
   })
   @ApiCreatedResponse({ type: AndroidApplicationResponseDto })
-  clone(
-    @Param('id') id: string,
-    @Body() dto: CloneAndroidApplicationDto,
-  ) {
+  clone(@Param('id') id: string, @Body() dto: CloneAndroidApplicationDto) {
     return this.toResponse(this.androidApps.clone(id, dto));
   }
 
@@ -298,6 +295,15 @@ export class AndroidAppsController {
   @ApiOkResponse({ type: ApplicationLogDto })
   containerLogs(@Param('id') id: string, @Query('tail') tail?: string) {
     return this.androidApps.containerLogs(id, tail ? Number(tail) : undefined);
+  }
+
+  @Get(':id/logs/orchestrator')
+  @ApiOperation({
+    summary: 'Read recent orchestrator lifecycle events for an application.',
+  })
+  @ApiOkResponse({ type: ApplicationLogDto })
+  orchestratorLogs(@Param('id') id: string, @Query('tail') tail?: string) {
+    return this.androidApps.eventLogs(id, tail ? Number(tail) : undefined);
   }
 
   @Get(':id/logs/adb')

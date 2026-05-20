@@ -35,7 +35,11 @@ export const getAndroidNotificationsAction = async (id: string) => {
   return orchestratorApplicationsClient.getNotifications(id)
 }
 
-export const getApplicationLogsAction = async (id: string, source: 'container' | 'adb', tail = 300) => {
+export const getApplicationLogsAction = async (
+  id: string,
+  source: 'orchestrator' | 'container' | 'adb',
+  tail = 300
+) => {
   const { user } = await assertCanUseOwnedApplicationRuntime(id)
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:view-logs')) {
     throw new Error('You do not have permission to view logs.')

@@ -41,8 +41,17 @@ export class DockerEngineService {
     await this.docker.ping();
   }
 
+  async info() {
+    return this.docker.info();
+  }
+
   async inspectContainer(containerId: string) {
     return this.docker.getContainer(containerId).inspect();
+  }
+
+  async getContainerIpOnNetwork(containerId: string, networkName: string) {
+    const inspect = await this.inspectContainer(containerId);
+    return inspect.NetworkSettings?.Networks?.[networkName]?.IPAddress || null;
   }
 
   /**
@@ -360,7 +369,10 @@ export class DockerEngineService {
   /**
    * Disconnects a container from a network and ignores already-disconnected states.
    */
-  async disconnectContainerFromNetwork(containerId: string, networkName: string) {
+  async disconnectContainerFromNetwork(
+    containerId: string,
+    networkName: string,
+  ) {
     const network = this.docker.getNetwork(networkName);
     try {
       await network.disconnect({
@@ -428,7 +440,10 @@ export class DockerEngineService {
 
   isContainerRemovalInProgress(error: unknown) {
     const message = this.errorMessage(error).toLowerCase();
-    return message.includes('removal of container') && message.includes('already in progress');
+    return (
+      message.includes('removal of container') &&
+      message.includes('already in progress')
+    );
   }
 
   /**

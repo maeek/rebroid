@@ -3,14 +3,15 @@ import { Section } from '@/components/ui/section'
 import { Textarea } from '@/components/ui/textarea'
 import { Visible } from '@/components/ui/visible'
 import { Setting } from '@/features/settings/components/setting'
+import { redroidDefaultsLabel } from '@/shared/runtime/redroid-runtime'
 import type { CreateAppFormValues } from './create-app-form.types'
 
 type CreateAppDeviceSectionProps = {
   values: CreateAppFormValues
   onChange: (patch: Partial<CreateAppFormValues>) => void
   canChangeBaseImage: boolean
-  canChangeSessionLimit: boolean
   canChangeContainerArgs: boolean
+  isRedroidRuntime: boolean
 }
 
 const verticalSettingClassName = 'flex-col items-start w-full'
@@ -19,15 +20,14 @@ export const CreateAppDeviceSection = ({
   values,
   onChange,
   canChangeBaseImage,
-  canChangeSessionLimit,
-  canChangeContainerArgs
+  canChangeContainerArgs,
+  isRedroidRuntime
 }: CreateAppDeviceSectionProps) => {
   return (
     <Section
       title='Device'
       boxed
       contentClassName='gap-4'
-      collapsible
     >
       <Visible when={canChangeBaseImage}>
         <Setting
@@ -42,23 +42,33 @@ export const CreateAppDeviceSection = ({
           />
         </Setting>
       </Visible>
-      <Visible when={canChangeSessionLimit}>
+      <Visible when={isRedroidRuntime}>
         <Setting
-          label='Inactivity timeout'
-          description='How long the app can stay idle before the orchestrator stops it automatically.'
+          label='Redroid base arguments'
+          description='Applied automatically for Redroid images. The managed ADB endpoint uses TCP port 5555. Extra arguments below can override these by using the same key.'
           variant='vertical'
           className={verticalSettingClassName}
         >
-          <Input
-            value={values.inactivityTimeoutSeconds}
-            min={60}
-            max={86400}
-            type='number'
-            onChange={event => onChange({ inactivityTimeoutSeconds: Number(event.target.value) })}
+          <div className='rounded-md border border-border/60 bg-background/40 px-3 py-2 font-mono text-xs text-secondary-foreground'>
+            {redroidDefaultsLabel}
+          </div>
+        </Setting>
+      </Visible>
+      <Visible when={isRedroidRuntime && canChangeContainerArgs}>
+        <Setting
+          label='Extra Redroid arguments'
+          description='Optional additional androidboot or property overrides, for example display size, DPI, FPS, or proxy settings.'
+          variant='vertical'
+          className={verticalSettingClassName}
+        >
+          <Textarea
+            value={values.redroidExtraArgs}
+            placeholder='androidboot.redroid_width=1080 androidboot.redroid_height=1920 androidboot.redroid_dpi=480'
+            onChange={event => onChange({ redroidExtraArgs: event.target.value })}
           />
         </Setting>
       </Visible>
-      <Visible when={canChangeContainerArgs}>
+      <Visible when={!isRedroidRuntime && canChangeContainerArgs}>
         <Setting
           label='Container arguments'
           description='Optional Docker Cmd override. Use a long-running command for images that would otherwise exit immediately, for example sleep infinity.'
@@ -66,9 +76,9 @@ export const CreateAppDeviceSection = ({
           className={verticalSettingClassName}
         >
           <Textarea
-            value={values.containerArgs}
+            value={values.customContainerArgs}
             placeholder='sleep infinity'
-            onChange={event => onChange({ containerArgs: event.target.value })}
+            onChange={event => onChange({ customContainerArgs: event.target.value })}
           />
         </Setting>
       </Visible>

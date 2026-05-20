@@ -7,6 +7,7 @@ import { revalidateApplicationDetail, revalidateApplicationList } from '../share
 import { orchestratorApplicationsClient } from './client'
 import { getApplicationAction } from './read-actions'
 import { enforceResourceQuotas, enforceSessionQuota, sanitizeAndroidApplicationForUser } from './safety'
+import { applyRedroidDefaultContainerArgs } from '@/shared/runtime/redroid-runtime'
 import type {
   CreateApplicationActionInput,
   SwitchApplicationProfileInput,
@@ -128,7 +129,14 @@ export const createApplicationAction = async (input: CreateApplicationActionInpu
   enforceSessionQuota(input, user.quotas)
   await assertCanOpenApplicationSlot(user)
   const ownerUserId = await getCurrentOwnerUserId()
-  const app = await orchestratorApplicationsClient.createApplication({ ...input, ownerUserId })
+  const containerImage = input.containerImage?.trim()
+  const app = await orchestratorApplicationsClient.createApplication({
+    ...input,
+    ownerUserId,
+    containerArgs: containerImage
+      ? applyRedroidDefaultContainerArgs(containerImage, input.containerArgs ?? '') || undefined
+      : input.containerArgs
+  })
   revalidateApplicationList()
   return sanitizeAndroidApplicationForUser(app, user)
 }

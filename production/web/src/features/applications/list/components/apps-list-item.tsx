@@ -4,7 +4,8 @@ import {
   IconLoader2,
   IconPlayerPlayFilled,
   IconPlayerStopFilled,
-  IconTrash
+  IconTrash,
+  IconX
 } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
@@ -144,8 +145,12 @@ export const AppsListItem = ({ app, showOwner = false }: { app: AppDefinition; s
           disabled={app.status === 'removing'}
           onClick={() => void deleteApp(app)}
         >
-          <IconTrash className='text-destructive' />
-          {app.status === 'provisioning' ? 'Cancel and delete' : 'Delete'}
+          {app.status === 'provisioning' ? (
+            <IconX className='text-destructive' />
+          ) : (
+            <IconTrash className='text-destructive' />
+          )}
+          {app.status === 'provisioning' ? 'Kill and delete' : 'Delete'}
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>

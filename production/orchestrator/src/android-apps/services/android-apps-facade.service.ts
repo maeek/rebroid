@@ -102,6 +102,10 @@ export class AndroidAppsFacadeService {
     return this.operations.containerLogs(id, tail);
   }
 
+  eventLogs(id: string, tail = 300) {
+    return this.operations.eventLogs(id, tail);
+  }
+
   adbLogs(id: string, tail = 300) {
     return this.operations.adbLogs(id, tail);
   }

@@ -26,6 +26,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3001
 ENV ORCHESTRATOR_API_URL=http://orchestrator:4100
+ENV WS_SCRCPY_INTERNAL_BASE_URL=http://sma-ws-scrcpy:8000
 RUN apk add --no-cache libc6-compat
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static

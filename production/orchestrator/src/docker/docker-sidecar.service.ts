@@ -32,6 +32,7 @@ export class DockerSidecarService implements OnModuleInit {
   private readonly wsScrcpyAutoStart: boolean;
   private readonly wsScrcpyPlatformNetwork?: string;
   private readonly wsScrcpyPort: number;
+  private readonly wsScrcpyPublishedHostPort: number;
   private wsScrcpyLastError: string | null = null;
 
   constructor(
@@ -56,7 +57,12 @@ export class DockerSidecarService implements OnModuleInit {
     this.wsScrcpyPlatformNetwork = this.config.get<string>(
       'app.scrcpy.wsScrcpyPlatformNetwork',
     );
-    this.wsScrcpyPort = this.config.getOrThrow<number>('app.scrcpy.wsScrcpyPort');
+    this.wsScrcpyPort = this.config.getOrThrow<number>(
+      'app.scrcpy.wsScrcpyPort',
+    );
+    this.wsScrcpyPublishedHostPort = this.config.getOrThrow<number>(
+      'app.scrcpy.wsScrcpyPublishedHostPort',
+    );
   }
 
   private get docker() {
@@ -108,12 +114,39 @@ export class DockerSidecarService implements OnModuleInit {
     }
 
     await this.engine.connectContainerToNetwork(sidecar.id, networkName);
+    const sidecarIp = await this.getSidecarIp(networkName);
+    if (!sidecarIp) {
+      return {
+        configured: true,
+        connected: false,
+        message: `ws-scrcpy sidecar could not be verified on ${networkName}.`,
+        error: {
+          code: 'adb_unreachable',
+          message: `ws-scrcpy sidecar is not attached to ${networkName}; ADB target DNS will not resolve.`,
+          retryable: true,
+          exitCode: null,
+          command: null,
+          stdout: null,
+          stderr: null,
+        },
+      };
+    }
+
     return {
       configured: true,
       connected: true,
-      message: `ws-scrcpy sidecar is attached to ${networkName}.`,
+      message: `ws-scrcpy sidecar is attached to ${networkName} as ${sidecarIp}.`,
       error: null,
     };
+  }
+
+  async detachSidecarFromNetwork(networkName: string) {
+    const sidecar = await this.findSidecar();
+    if (!sidecar) {
+      return;
+    }
+
+    await this.engine.disconnectContainerFromNetwork(sidecar.id, networkName);
   }
 
   /**
@@ -129,15 +162,76 @@ export class DockerSidecarService implements OnModuleInit {
     }
 
     try {
+      const target = `${adbHost}:${adbPort}`;
+      const tcpProbe = await this.probeTcpTarget(sidecar.id, adbHost, adbPort);
+      if (tcpProbe) {
+        return {
+          configured: true,
+          connected: false,
+          message: tcpProbe.message,
+          error: tcpProbe,
+        };
+      }
+
+      const connectCommand = [
+        'sh',
+        '-lc',
+        `timeout 10s adb connect ${this.shellQuote(target)}`,
+      ];
       const output = await this.engine.execInContainerWithOutput(sidecar.id, [
-        'adb',
-        'connect',
-        `${adbHost}:${adbPort}`,
+        ...connectCommand,
       ]);
+      const connectFailure = this.viewerTargetErrorFromOutput({
+        command: connectCommand,
+        stdout: output.stdout,
+        stderr: output.stderr,
+      });
+      if (connectFailure) {
+        return {
+          configured: true,
+          connected: false,
+          message: connectFailure.message,
+          error: connectFailure,
+        };
+      }
+
+      const stateCommand = [
+        'sh',
+        '-lc',
+        `timeout 10s adb -s ${this.shellQuote(target)} get-state`,
+      ];
+      const state = await this.engine.execInContainerWithOutput(sidecar.id, [
+        ...stateCommand,
+      ]);
+      if (state.stdout.trim().toLowerCase() !== 'device') {
+        const viewerError = this.viewerTargetErrorFromOutput({
+          command: stateCommand,
+          stdout: state.stdout,
+          stderr: state.stderr,
+          fallbackMessage: `ADB target ${target} is not ready: ${state.stdout.trim() || 'unknown state'}.`,
+        }) ?? {
+          code: 'adb_unreachable',
+          message: `ADB target ${target} is not ready.`,
+          retryable: true,
+          exitCode: 0,
+          command: stateCommand,
+          stdout: state.stdout,
+          stderr: state.stderr,
+        };
+        return {
+          configured: true,
+          connected: false,
+          message: viewerError.message,
+          error: viewerError,
+        };
+      }
+
       return {
         configured: true,
         connected: true,
-        message: [output.stdout, output.stderr].filter(Boolean).join('\n'),
+        message: [output.stdout, output.stderr, state.stdout]
+          .filter(Boolean)
+          .join('\n'),
         error: null,
       };
     } catch (error) {
@@ -190,6 +284,7 @@ export class DockerSidecarService implements OnModuleInit {
             image: this.wsScrcpyImage,
             containerName: this.wsScrcpyContainerName,
             autoStart: this.wsScrcpyAutoStart,
+            publishedHostPort: this.wsScrcpyPublishedHostPort || null,
           },
         };
       }
@@ -211,6 +306,7 @@ export class DockerSidecarService implements OnModuleInit {
           containerName: this.wsScrcpyContainerName,
           image: this.wsScrcpyImage,
           port: this.wsScrcpyPort,
+          publishedHostPort: this.wsScrcpyPublishedHostPort || null,
         },
       };
     } catch (error) {
@@ -241,9 +337,7 @@ export class DockerSidecarService implements OnModuleInit {
 
       const created = await this.ensureSidecar();
       if (!created) {
-        throw new ConflictException(
-          'ws-scrcpy sidecar autostart is disabled.',
-        );
+        throw new ConflictException('ws-scrcpy sidecar autostart is disabled.');
       }
 
       this.wsScrcpyLastError = null;
@@ -274,6 +368,17 @@ export class DockerSidecarService implements OnModuleInit {
       PublishAllPorts: false,
       RestartPolicy: { Name: 'unless-stopped' },
     };
+
+    if (this.wsScrcpyPublishedHostPort > 0) {
+      hostConfig.PortBindings = {
+        [`${this.wsScrcpyPort}/tcp`]: [
+          {
+            HostIp: '0.0.0.0',
+            HostPort: String(this.wsScrcpyPublishedHostPort),
+          },
+        ],
+      };
+    }
 
     if (this.wsScrcpyPlatformNetwork) {
       hostConfig.NetworkMode = this.wsScrcpyPlatformNetwork;
@@ -461,6 +566,110 @@ export class DockerSidecarService implements OnModuleInit {
       command: null,
       stdout: null,
       stderr: null,
+    };
+  }
+
+  private shellQuote(value: string) {
+    return `'${value.replaceAll("'", "'\\''")}'`;
+  }
+
+  private async probeTcpTarget(
+    sidecarId: string,
+    adbHost: string,
+    adbPort: number,
+  ): Promise<ViewerTargetError | null> {
+    const hostLiteral = JSON.stringify(adbHost);
+    const portLiteral = JSON.stringify(adbPort);
+    const probeCommand = [
+      'sh',
+      '-lc',
+      [
+        'node -e',
+        this.shellQuote(
+          [
+            'const net = require("node:net");',
+            `const host = ${hostLiteral};`,
+            `const port = ${portLiteral};`,
+            'const socket = net.createConnection({ host, port });',
+            'socket.setTimeout(3000);',
+            'socket.on("connect", () => {',
+            '  process.stdout.write(`tcp:${host}:${port} reachable`);',
+            '  socket.end();',
+            '});',
+            'socket.on("timeout", () => {',
+            '  process.stderr.write(`tcp probe timed out for ${host}:${port}`);',
+            '  socket.destroy();',
+            '  process.exit(124);',
+            '});',
+            'socket.on("error", (error) => {',
+            '  process.stderr.write(`tcp probe failed for ${host}:${port}: ${error.message}`);',
+            '  process.exit(1);',
+            '});',
+          ].join(' '),
+        ),
+      ].join(' '),
+    ];
+
+    try {
+      await this.engine.execInContainerWithOutput(sidecarId, probeCommand);
+      return null;
+    } catch (error) {
+      const viewerError = this.viewerTargetError(error);
+      return {
+        code: 'adb_unreachable',
+        message:
+          viewerError.stderr?.trim() ||
+          viewerError.stdout?.trim() ||
+          `TCP probe to ${adbHost}:${adbPort} failed before adb connect.`,
+        retryable: true,
+        exitCode: viewerError.exitCode,
+        command: probeCommand,
+        stdout: viewerError.stdout,
+        stderr: viewerError.stderr,
+      };
+    }
+  }
+
+  private viewerTargetErrorFromOutput({
+    command,
+    stdout,
+    stderr,
+    fallbackMessage,
+  }: {
+    command: string[];
+    stdout: string;
+    stderr: string;
+    fallbackMessage?: string;
+  }): ViewerTargetError | null {
+    const combinedOutput = [stderr, stdout].filter(Boolean).join('\n');
+
+    if (!isTransientAdbConnectionError(combinedOutput)) {
+      if (!fallbackMessage) {
+        return null;
+      }
+
+      return {
+        code: 'adb_unreachable',
+        message: fallbackMessage,
+        retryable: true,
+        exitCode: 0,
+        command,
+        stdout,
+        stderr,
+      };
+    }
+
+    return {
+      code: 'adb_unreachable',
+      message:
+        combinedOutput.trim() ||
+        fallbackMessage ||
+        'ADB target is not reachable.',
+      retryable: true,
+      exitCode: 0,
+      command,
+      stdout,
+      stderr,
     };
   }
 

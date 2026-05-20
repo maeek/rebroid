@@ -29,7 +29,7 @@ export interface AndroidNotification {
 }
 
 export interface ApplicationLog {
-  source: 'container' | 'adb'
+  source: 'orchestrator' | 'container' | 'adb'
   collectedAt: string
   output: string
 }

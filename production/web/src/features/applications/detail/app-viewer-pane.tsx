@@ -1,12 +1,21 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
-import { IconLoader2, IconPhoto, IconShieldLock } from '@tabler/icons-react'
+import {
+  IconArrowsMaximize,
+  IconArrowsMinimize,
+  IconLoader2,
+  IconPhoto,
+  IconShieldLock,
+  IconVolume,
+  IconVolumeOff
+} from '@tabler/icons-react'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Visible } from '@/components/ui/visible'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { AppViewer } from '@/features/applications/viewer/android'
+import { normalizeViewerSettings } from '@/features/applications/viewer/viewer-settings'
 import { StatusSplash } from '@/features/shell/components/status-splash'
 import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
@@ -43,6 +52,7 @@ export const AppViewerPane = ({
   canCaptureScreenshot = false,
   canStart = false,
   viewerSettings,
+  onViewerSettingsChange,
   onAppChange
 }: {
   app: AppDefinition
@@ -50,6 +60,7 @@ export const AppViewerPane = ({
   canCaptureScreenshot?: boolean
   canStart?: boolean
   viewerSettings: ViewerSettings
+  onViewerSettingsChange: (settings: ViewerSettings) => void
   onAppChange: (app: AppDefinition) => void
 }) => {
   const params = useSearchParams()
@@ -150,6 +161,15 @@ export const AppViewerPane = ({
     })
   }
 
+  const toggleSound = () => {
+    onViewerSettingsChange(
+      normalizeViewerSettings({
+        ...viewerSettings,
+        soundEnabled: !viewerSettings.soundEnabled
+      })
+    )
+  }
+
   return (
     <div className='flex w-full max-w-md flex-col items-center justify-start gap-4 lg:sticky lg:top-10 lg:self-start lg:pr-4 lg:pt-6 max-sm:max-w-full'>
       <div
@@ -181,16 +201,27 @@ export const AppViewerPane = ({
       </div>
       <Visible when={canAttach}>
         <div className='flex flex-wrap items-center justify-center gap-2 pb-2'>
-          <Visible when={canCaptureScreenshot}>
+          <Visible when={runtimeAvailable && canCaptureScreenshot}>
             <Button
               size='icon'
               variant='secondary'
-              disabled={!runtimeAvailable || isCapturing}
+              disabled={isCapturing}
               onClick={handleScreenshotCapture}
               aria-label='Capture screenshot'
               title='Capture screenshot'
             >
               {isCapturing ? <IconLoader2 className='size-4 animate-spin' /> : <IconPhoto className='size-4' />}
+            </Button>
+          </Visible>
+          <Visible when={runtimeAvailable}>
+            <Button
+              size='icon'
+              variant={viewerSettings.soundEnabled ? 'default' : 'secondary'}
+              onClick={toggleSound}
+              aria-label={viewerSettings.soundEnabled ? 'Disable sound' : 'Enable sound'}
+              title={viewerSettings.soundEnabled ? 'Disable sound' : 'Enable sound'}
+            >
+              {viewerSettings.soundEnabled ? <IconVolume className='size-4' /> : <IconVolumeOff className='size-4' />}
             </Button>
           </Visible>
           <Button
@@ -202,11 +233,13 @@ export const AppViewerPane = ({
             {hideOutline ? 'Borderless' : 'Device frame'}
           </Button>
           <Button
-            size='sm'
+            size='icon'
             variant={isViewerFullscreen ? 'default' : 'secondary'}
             onClick={() => void toggleViewerFullscreen()}
+            aria-label={isViewerFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+            title={isViewerFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
           >
-            {isViewerFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            {isViewerFullscreen ? <IconArrowsMinimize className='size-4' /> : <IconArrowsMaximize className='size-4' />}
           </Button>
         </div>
       </Visible>

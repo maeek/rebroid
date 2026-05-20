@@ -36,6 +36,7 @@ export default registerAs('app', () => {
     process.env.DATABASE_PATH ?? './data/orchestrator.sqlite';
   const settingsPath =
     process.env.SETTINGS_PATH ?? './data/orchestrator-settings.json';
+  const runtimeLogsDir = process.env.RUNTIME_LOGS_DIR ?? './data/runtime-logs';
   const sharedSecret = process.env.ORCHESTRATOR_SHARED_SECRET?.trim();
   const resourcePrefix = process.env.DOCKER_RESOURCE_PREFIX ?? 'sma';
   const defaultWsScrcpyBuildContext = existsSync('/app/ws-scrcpy-sidecar')
@@ -48,6 +49,7 @@ export default registerAs('app', () => {
     sharedSecret: sharedSecret || undefined,
     databasePath: resolve(databasePath),
     settingsPath: resolve(settingsPath),
+    runtimeLogsDir: resolve(runtimeLogsDir),
     uploadsDir: resolve(uploadsDir),
     docker: {
       socketPath: process.env.DOCKER_SOCKET_PATH ?? '/var/run/docker.sock',
@@ -86,15 +88,14 @@ export default registerAs('app', () => {
         900,
       ),
       maxApkUploadSizeMb: number(process.env.MAX_APK_UPLOAD_SIZE_MB, 4096),
+      securityOptions: csv(process.env.CONTAINER_SECURITY_OPTS, []),
     },
     scrcpy: {
       wsScrcpyContainerId: process.env.WS_SCRCPY_CONTAINER_ID || undefined,
       wsScrcpyContainerName:
-        process.env.WS_SCRCPY_CONTAINER_NAME ??
-        `${resourcePrefix}-ws-scrcpy`,
+        process.env.WS_SCRCPY_CONTAINER_NAME ?? `${resourcePrefix}-ws-scrcpy`,
       wsScrcpyImage:
-        process.env.WS_SCRCPY_IMAGE ??
-        'rebroid/ws-scrcpy-sidecar:latest',
+        process.env.WS_SCRCPY_IMAGE ?? 'rebroid/ws-scrcpy-sidecar:latest',
       wsScrcpyBuildContext: resolve(
         process.env.WS_SCRCPY_BUILD_CONTEXT ?? defaultWsScrcpyBuildContext,
       ),
@@ -102,6 +103,10 @@ export default registerAs('app', () => {
       wsScrcpyPlatformNetwork:
         process.env.WS_SCRCPY_PLATFORM_NETWORK || undefined,
       wsScrcpyPort: number(process.env.WS_SCRCPY_PORT, 8000),
+      wsScrcpyPublishedHostPort: number(
+        process.env.WS_SCRCPY_PUBLISHED_HOST_PORT,
+        0,
+      ),
       wsScrcpyPlayer: process.env.WS_SCRCPY_PLAYER ?? 'mse',
       wsScrcpyProxyRemote: process.env.WS_SCRCPY_PROXY_REMOTE || undefined,
     },

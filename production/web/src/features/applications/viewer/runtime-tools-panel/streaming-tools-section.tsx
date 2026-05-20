@@ -12,7 +12,6 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
 import { normalizeViewerSettings, viewerStreamingPresets } from '../viewer-settings'
 import { RuntimeToolField } from './field'
 import { ToolSection } from './tool-section'
@@ -97,16 +96,6 @@ export const StreamingToolsSection = ({
             <DialogDescription>These options apply when the viewer reloads or starts a new stream.</DialogDescription>
           </DialogHeader>
           <div className='grid gap-4'>
-            <div className='flex items-center justify-between rounded-md border border-border/60 bg-background/25 px-4 py-3'>
-              <div>
-                <div className='text-sm font-medium text-foreground'>Sound</div>
-                <div className='text-xs text-secondary-foreground'>Play device audio when the viewer reconnects.</div>
-              </div>
-              <Switch
-                checked={viewerSettings.soundEnabled}
-                onCheckedChange={soundEnabled => updateSettings({ soundEnabled })}
-              />
-            </div>
             <div className='grid grid-cols-2 gap-3 max-sm:grid-cols-1'>
               <RuntimeToolField label='Bitrate'>
                 <Select

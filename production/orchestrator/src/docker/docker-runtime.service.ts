@@ -31,6 +31,20 @@ export class DockerRuntimeService {
     return this.engine.inspectContainer(containerId);
   }
 
+  async engineSummary() {
+    const info = await this.engine.info();
+    return {
+      id: info.ID,
+      name: info.Name,
+      serverVersion: info.ServerVersion,
+      operatingSystem: info.OperatingSystem,
+      dockerRootDir: info.DockerRootDir,
+      cgroupVersion: info.CgroupVersion,
+      cgroupDriver: info.CgroupDriver,
+      securityOptions: info.SecurityOptions ?? [],
+    };
+  }
+
   /**
    * Returns a simplified runtime snapshot and turns Docker 404s into exists=false.
    */
@@ -108,7 +122,9 @@ export class DockerRuntimeService {
             return;
           }
 
-          const parts = [event.status, event.progress, event.id].filter(Boolean);
+          const parts = [event.status, event.progress, event.id].filter(
+            Boolean,
+          );
           onProgress(parts.join(' '));
         },
       );
@@ -188,11 +204,19 @@ export class DockerRuntimeService {
     return this.sidecar.ensureSidecarOnNetwork(networkName);
   }
 
+  async detachWsScrcpySidecarFromNetwork(networkName: string) {
+    await this.sidecar.detachSidecarFromNetwork(networkName);
+  }
+
   async connectWsScrcpyAdb(
     adbHost: string,
     adbPort: number,
   ): Promise<ViewerTargetStatus> {
     return this.sidecar.connectAdb(adbHost, adbPort);
+  }
+
+  async getContainerIpOnNetwork(containerId: string, networkName: string) {
+    return this.engine.getContainerIpOnNetwork(containerId, networkName);
   }
 
   async getWsScrcpyContainerIp(networkName: string) {
@@ -247,11 +271,19 @@ export class DockerRuntimeService {
       hostConfig.NanoCpus = Math.trunc(spec.cpuLimitCpus * 1_000_000_000);
     }
 
+    if (spec.securityOptions?.length) {
+      hostConfig.SecurityOpt = spec.securityOptions;
+    }
+
     return this.engine.docker.createContainer({
       Image: spec.image,
       name: spec.containerName,
       Cmd: parseCommandLine(spec.containerArgs),
-      Env: [`ADB_TCP_PORT=${spec.adbPort}`],
+      Env: [
+        `ADB_TCP_PORT=${spec.adbPort}`,
+        `ANDROID_ADB_SERVER_PORT=${spec.adbPort}`,
+        `PERSIST_ADB_TCP_PORT=${spec.adbPort}`,
+      ],
       ExposedPorts: {
         [`${spec.adbPort}/tcp`]: {},
       },
@@ -290,9 +322,8 @@ export class DockerRuntimeService {
   }
 
   async removeNetwork(networkName: string) {
-    const attachedContainerIds = await this.engine.listNetworkContainerIds(
-      networkName,
-    );
+    const attachedContainerIds =
+      await this.engine.listNetworkContainerIds(networkName);
 
     await Promise.all(
       attachedContainerIds.map((containerId) =>
@@ -398,7 +429,8 @@ export class DockerRuntimeService {
   async getManagedContainerResourceUsage(
     containers?: Dockerode.ContainerInfo[],
   ) {
-    const managedContainers = containers ?? (await this.listManagedContainers());
+    const managedContainers =
+      containers ?? (await this.listManagedContainers());
     const runningContainers = managedContainers.filter(
       (container) => container.State === 'running',
     );
