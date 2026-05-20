@@ -4,6 +4,7 @@ import {
   IsBoolean,
   IsEnum,
   IsInt,
+  IsOptional,
   IsString,
   Max,
   Min,
@@ -16,6 +17,17 @@ export class OrchestratorSettingsDto {
   @IsString()
   @MinLength(3)
   defaultContainerImage!: string;
+
+  @ApiProperty({
+    example: 'registry.internal.example:5000',
+    nullable: true,
+    required: false,
+    description:
+      'Optional registry prefix applied to image names without an explicit registry host.',
+  })
+  @IsOptional()
+  @IsString()
+  dockerImageRegistry!: string | null;
 
   @ApiProperty({
     enum: [ScrcpyTransport.WebSocket],

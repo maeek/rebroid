@@ -47,12 +47,7 @@ export const StatusSplash = ({
   const secondaryActionContent = secondaryAction ? renderAction(secondaryAction, 'secondary') : null
 
   return (
-    <div
-      className={cn(
-        'flex min-h-[48vh] items-center justify-center rounded-lg p-8 text-center backdrop-blur-md',
-        className
-      )}
-    >
+    <div className={cn('flex min-h-[48vh] items-center justify-center rounded-lg p-8 text-center', className)}>
       <div className='flex max-w-xl flex-col items-center gap-5'>
         <div
           className={cn('flex size-20 items-center justify-center rounded-full bg-secondary/80 text-primary', {

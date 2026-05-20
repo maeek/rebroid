@@ -13,43 +13,50 @@ import { TopBarAccount } from './account'
 import { OrchestratorStatus } from './orchestrator-status'
 
 export const TopBarProtected = () => {
-  const sectionClasses = 'flex items-center h-full px-4 gap-x-4 max-sm:px-2 sm:w-[33%]'
+  const sectionClasses = 'flex min-w-0 items-center h-full px-4 gap-x-4 max-sm:px-2 lg:w-[33%]'
   const runningApps = yourApps.filter(app => app.running)
 
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   return (
-    <div className='sticky top-0 z-50 flex h-16 w-dvw max-w-full shrink-0 justify-between overflow-hidden bg-transparent max-sm:px-1'>
+    <div className='sticky top-0 z-50 flex h-16 w-full max-w-full shrink-0 justify-between overflow-hidden bg-transparent max-sm:px-1'>
       <div
         aria-hidden='true'
         className='pointer-events-none absolute inset-x-0 bottom-0 top-2 backdrop-blur-xl'
       />
       <div className={classNames(sectionClasses, 'relative z-10 justify-start items-center')}>
-        <div className='cursor-pointer sm:hidden active:scale-95'>
-          <Drawer
-            open={drawerOpen}
-            onOpenChange={setDrawerOpen}
-          >
-            <DrawerTrigger asChild>
-              <>
-                <Visible when={drawerOpen}>
-                  <IconX />
-                </Visible>
-                <Visible when={!drawerOpen}>
-                  <IconMenu2 />
-                </Visible>
-              </>
-            </DrawerTrigger>
-            <DrawerContent>
+        <Drawer
+          open={drawerOpen}
+          onOpenChange={setDrawerOpen}
+        >
+          <DrawerTrigger asChild>
+            <button
+              type='button'
+              aria-label={drawerOpen ? 'Close navigation' : 'Open navigation'}
+              className='inline-flex size-10 shrink-0 items-center justify-center rounded-md text-secondary-foreground transition hover:bg-secondary/70 hover:text-foreground active:scale-95 lg:hidden'
+            >
+              <Visible when={drawerOpen}>
+                <IconX className='size-5' />
+              </Visible>
+              <Visible when={!drawerOpen}>
+                <IconMenu2 className='size-5' />
+              </Visible>
+            </button>
+          </DrawerTrigger>
+          <DrawerContent className='max-h-[85dvh] overflow-hidden rounded-t-xl border-border/80 bg-background/95'>
+            <div className='max-h-[80dvh] overflow-y-auto'>
               <ProtectedNavigation
                 variant='drawer'
                 onNavigate={() => setDrawerOpen(false)}
               />
-            </DrawerContent>
-          </Drawer>
-        </div>
-        <Link href='/'>
-          <span className='text-xl font-black underline underline-offset-4 decoration-primary decoration-solid'>
+            </div>
+          </DrawerContent>
+        </Drawer>
+        <Link
+          href='/'
+          className='min-w-0'
+        >
+          <span className='block truncate text-xl font-black underline underline-offset-4 decoration-primary decoration-solid'>
             Rebroid
           </span>
         </Link>

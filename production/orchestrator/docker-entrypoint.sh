@@ -19,6 +19,44 @@ export DATABASE_PATH="${DATABASE_PATH:-/app/data/orchestrator.sqlite}"
 export SETTINGS_PATH="${SETTINGS_PATH:-/app/data/orchestrator-settings.json}"
 export UPLOADS_DIR="${UPLOADS_DIR:-/app/uploads}"
 export DOCKER_SOCKET_PATH="${DOCKER_SOCKET_PATH:-/var/run/docker.sock}"
+export ORCHESTRATOR_INTERNAL_DOCKER="${ORCHESTRATOR_INTERNAL_DOCKER:-auto}"
+export DOCKER_DATA_ROOT="${DOCKER_DATA_ROOT:-/var/lib/docker}"
+export DOCKER_STORAGE_DRIVER="${DOCKER_STORAGE_DRIVER:-vfs}"
+
+start_internal_docker() {
+  socket_dir="$(dirname "$DOCKER_SOCKET_PATH")"
+  mkdir -p "$socket_dir" "$DOCKER_DATA_ROOT"
+
+  dockerd \
+    --host="unix://$DOCKER_SOCKET_PATH" \
+    --data-root="$DOCKER_DATA_ROOT" \
+    --storage-driver="$DOCKER_STORAGE_DRIVER" \
+    >/tmp/rebroid-dockerd.log 2>&1 &
+
+  echo "Starting internal dockerd on $DOCKER_SOCKET_PATH"
+
+  attempts=0
+  until docker --host "unix://$DOCKER_SOCKET_PATH" info >/dev/null 2>&1; do
+    attempts=$((attempts + 1))
+    if [ "$attempts" -ge 30 ]; then
+      echo "Internal dockerd failed to start"
+      cat /tmp/rebroid-dockerd.log >&2 || true
+      exit 1
+    fi
+    sleep 1
+  done
+}
+
+if [ -z "${DOCKER_HOST:-}" ]; then
+  if [ -S "$DOCKER_SOCKET_PATH" ]; then
+    echo "Using external container engine socket at $DOCKER_SOCKET_PATH"
+  elif [ "$ORCHESTRATOR_INTERNAL_DOCKER" = "false" ]; then
+    echo "No container engine socket found at $DOCKER_SOCKET_PATH and internal Docker is disabled" >&2
+    exit 1
+  else
+    start_internal_docker
+  fi
+fi
 
 if [ -z "${ORCHESTRATOR_SHARED_SECRET:-}" ]; then
   secret_file="${ORCHESTRATOR_SHARED_SECRET_FILE:-/app/secrets/orchestrator-secret}"

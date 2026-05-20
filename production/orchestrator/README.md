@@ -257,6 +257,7 @@ You can pass that path as `CONTAINER_ENGINE_SOCKET=/Users/you/.../podman.sock`.
 ### Podman Caveats
 
 - Redroid itself is more demanding than normal OCI containers. It usually needs privileged container behavior and Android kernel support such as binder/ashmem or binderfs. On macOS, that means the Podman machine VM must support what redroid needs; the orchestrator can create the container, but the VM kernel still decides whether redroid can boot.
+- For redroid on Linux, use a rootful Docker-compatible engine socket. A rootless Podman socket such as `/run/user/.../podman/podman.sock` can expose the API, but it still cannot launch the truly privileged container that redroid requires.
 - Podman exposes a Docker-compatible API, but it is not a byte-for-byte Docker daemon. The skeleton uses conservative Docker API features: create network, create volume, create/start/stop/remove container, copy archive, and exec.
 - Mounting the engine socket into the orchestrator is powerful. Keep this service internal, and do not expose it directly to users.
 

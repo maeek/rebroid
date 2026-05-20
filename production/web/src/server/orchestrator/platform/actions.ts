@@ -59,9 +59,9 @@ export const stopPlatformContainerAction = async (id: string) => {
   return result
 }
 
-export const removePlatformContainerAction = async (id: string) => {
+export const removePlatformContainerAction = async (id: string, force = false) => {
   await requireAdminUser()
-  const result = await orchestratorPlatformClient.removePlatformContainer(id)
+  const result = await orchestratorPlatformClient.removePlatformContainer(id, force)
   revalidateOrchestratorPages()
   return result
 }

@@ -8,9 +8,13 @@ import {
   Post,
   Put,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBody,
+  ApiConsumes,
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
@@ -20,7 +24,17 @@ import { AndroidApplication } from './android-application.entity';
 import { AndroidAppsService } from './android-apps.service';
 import { AndroidNotificationDto } from './dto/android-notification.dto';
 import { AndroidApplicationResponseDto } from './dto/android-application-response.dto';
+import {
+  ApplicationClipboardDto,
+  UpdateApplicationClipboardDto,
+} from './dto/application-clipboard.dto';
 import { ApplicationLogDto } from './dto/application-log.dto';
+import {
+  ApplicationRuntimeFileDownloadDto,
+  ApplicationRuntimeFileDto,
+  ApplicationRuntimeFileUploadDto,
+} from './dto/application-runtime-file.dto';
+import { ApplicationScreenshotDto } from './dto/application-screenshot.dto';
 import { CloneAndroidApplicationDto } from './dto/clone-android-application.dto';
 import { CreateAndroidApplicationDto } from './dto/create-android-application.dto';
 import { DeleteAndroidApplicationResponseDto } from './dto/delete-android-application-response.dto';
@@ -204,6 +218,77 @@ export class AndroidAppsController {
   @ApiOkResponse({ type: AndroidNotificationDto, isArray: true })
   notifications(@Param('id') id: string) {
     return this.androidApps.notifications(id);
+  }
+
+  @Get(':id/files/downloads')
+  @ApiOperation({
+    summary: 'List files from the application Download directory.',
+  })
+  @ApiOkResponse({ type: ApplicationRuntimeFileDto, isArray: true })
+  listDownloadFiles(@Param('id') id: string) {
+    return this.androidApps.listDownloadFiles(id);
+  }
+
+  @Post(':id/files/downloads')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({
+    summary: 'Upload a file to the application Download directory.',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @ApiOkResponse({ type: ApplicationRuntimeFileUploadDto })
+  uploadDownloadFile(
+    @Param('id') id: string,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    return this.androidApps.uploadDownloadFile(id, file);
+  }
+
+  @Get(':id/files/downloads/:fileName')
+  @ApiOperation({
+    summary: 'Read a file from the application Download directory.',
+  })
+  @ApiOkResponse({ type: ApplicationRuntimeFileDownloadDto })
+  downloadFile(@Param('id') id: string, @Param('fileName') fileName: string) {
+    return this.androidApps.downloadFile(id, fileName);
+  }
+
+  @Get(':id/clipboard')
+  @ApiOperation({
+    summary: 'Read the application clipboard when supported by the runtime.',
+  })
+  @ApiOkResponse({ type: ApplicationClipboardDto })
+  getClipboard(@Param('id') id: string) {
+    return this.androidApps.getClipboard(id);
+  }
+
+  @Put(':id/clipboard')
+  @ApiOperation({
+    summary: 'Write the application clipboard when supported by the runtime.',
+  })
+  @ApiOkResponse({ type: ApplicationClipboardDto })
+  setClipboard(
+    @Param('id') id: string,
+    @Body() dto: UpdateApplicationClipboardDto,
+  ) {
+    return this.androidApps.setClipboard(id, dto.text);
+  }
+
+  @Post(':id/screenshot')
+  @ApiOperation({
+    summary: 'Capture a PNG screenshot from the application runtime.',
+  })
+  @ApiOkResponse({ type: ApplicationScreenshotDto })
+  screenshot(@Param('id') id: string) {
+    return this.androidApps.screenshot(id);
   }
 
   @Get(':id/logs/container')

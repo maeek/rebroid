@@ -1,6 +1,11 @@
 import { request } from '../request'
 import type {
   AndroidApplication,
+  ApplicationClipboard,
+  ApplicationRuntimeFile,
+  ApplicationRuntimeFileDownload,
+  ApplicationRuntimeFileUpload,
+  ApplicationScreenshot,
   AndroidNotification,
   ApplicationLog,
   CloneApplicationInput,
@@ -81,6 +86,40 @@ export const orchestratorApplicationsClient = {
   getApplicationLogs(id: string, source: 'container' | 'adb', tail = 300) {
     const query = new URLSearchParams({ tail: String(tail) })
     return request<ApplicationLog>(`/android-applications/${id}/logs/${source}?${query.toString()}`)
+  },
+
+  listDownloadFiles(id: string) {
+    return request<ApplicationRuntimeFile[]>(`/android-applications/${id}/files/downloads`)
+  },
+
+  uploadDownloadFile(id: string, input: FormData) {
+    return request<ApplicationRuntimeFileUpload>(`/android-applications/${id}/files/downloads`, {
+      method: 'POST',
+      body: input
+    })
+  },
+
+  downloadFile(id: string, fileName: string) {
+    return request<ApplicationRuntimeFileDownload>(
+      `/android-applications/${id}/files/downloads/${encodeURIComponent(fileName)}`
+    )
+  },
+
+  getClipboard(id: string) {
+    return request<ApplicationClipboard>(`/android-applications/${id}/clipboard`)
+  },
+
+  setClipboard(id: string, text: string) {
+    return request<ApplicationClipboard>(`/android-applications/${id}/clipboard`, {
+      method: 'PUT',
+      body: JSON.stringify({ text })
+    })
+  },
+
+  captureScreenshot(id: string) {
+    return request<ApplicationScreenshot>(`/android-applications/${id}/screenshot`, {
+      method: 'POST'
+    })
   },
 
   getScrcpySession(id: string) {

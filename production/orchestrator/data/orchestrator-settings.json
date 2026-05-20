@@ -1,6 +1,9 @@
 {
   "defaultContainerImage": "redroid/redroid:13.0.0-latest",
+  "dockerImageRegistry": null,
   "defaultScrcpyTransport": "websocket",
   "defaultInactivityTimeoutSeconds": 900,
-  "maxApkUploadSizeMb": 512
+  "maxApkUploadSizeMb": 512,
+  "imagePruneIntervalHours": 24,
+  "imagePruneDanglingOnly": true
 }

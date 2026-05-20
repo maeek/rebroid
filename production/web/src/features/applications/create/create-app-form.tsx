@@ -173,7 +173,7 @@ export const CreateAppForm = ({
       }
 
       toast({ title: 'App created', description: 'Provisioning has started.' })
-      router.push(`/app/${createdApp.id}/manage`)
+      router.push(`/app/${createdApp.id}`)
     } catch (error) {
       toast({
         title: 'Could not create app',

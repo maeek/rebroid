@@ -6,13 +6,20 @@ import { mapAndroidApplicationToAppDefinition } from '@/features/applications/do
 import { getAppRefreshIntervalMs } from '@/features/applications/domain/refresh'
 import { resolveAppIconUrl } from '@/features/applications/icons/url'
 import { rememberRecentApp } from '@/features/applications/recent/recent-apps'
+import {
+  defaultViewerSettings,
+  loadViewerSettings,
+  saveViewerSettings
+} from '@/features/applications/viewer/viewer-settings'
 import { ProtectedSplitPageLayout } from '@/features/shell/components/protected-page-shell'
 import { StatusSplash } from '@/features/shell/components/status-splash'
 import { useForegroundRefresh } from '@/hooks/use-foreground-refresh'
 import { getApplicationAction } from '@/server/orchestrator/applications/read-actions'
+import { hasPermission } from '@/shared/permissions/permissions'
 import { PageBackdrop } from '../../shell/components/page-backdrop'
 import { AppViewerContent } from './app-viewer-content'
 import { AppViewerPane } from './app-viewer-pane'
+import { AppWorkspaceContent } from './app-workspace-content'
 import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 import type { PermissionMap } from '@/shared/permissions/permissions'
 
@@ -21,22 +28,36 @@ export const AppViewerPage = ({
   permissions,
   initialSettings,
   currentOwnerUserId,
-  isAdmin
+  isAdmin,
+  viewMode = 'workspace'
 }: {
   app?: AppDefinition
   permissions: PermissionMap
   initialSettings: OrchestratorUiSettings
   currentOwnerUserId: string
   isAdmin: boolean
+  viewMode?: 'workspace' | 'details'
 }) => {
   const [currentApp, setCurrentApp] = useState(app)
+  const [viewerSettings, setViewerSettings] = useState(defaultViewerSettings)
   const currentAppId = currentApp?.id
   const refreshIntervalMs = getAppRefreshIntervalMs(currentApp)
   const isForeignOwnedApp = Boolean(isAdmin && currentApp && currentApp.ownerUserId !== currentOwnerUserId)
+  const isDetailsView = viewMode === 'details'
+  const canStartCurrentApp = !isForeignOwnedApp && hasPermission(permissions, 'applications:start')
+  const canCaptureScreenshot = !isForeignOwnedApp && hasPermission(permissions, 'applications:capture-screenshot')
 
   useEffect(() => {
     setCurrentApp(app)
   }, [app])
+
+  useEffect(() => {
+    setViewerSettings(loadViewerSettings())
+  }, [])
+
+  useEffect(() => {
+    saveViewerSettings(viewerSettings)
+  }, [viewerSettings])
 
   useEffect(() => {
     if (currentApp) {
@@ -90,16 +111,31 @@ export const AppViewerPage = ({
       mainClassName='h-auto min-h-[calc(100vh-4rem)] items-start'
     >
       <PageBackdrop imageSrc={currentApp.icon ? resolveAppIconUrl(currentApp.icon) : null} />
-      <AppViewerContent
-        app={currentApp}
-        initialSettings={initialSettings}
-        permissions={permissions}
-        isForeignOwnedApp={isForeignOwnedApp}
-        onAppChange={nextApp => setCurrentApp(nextApp)}
-      />
+      {isDetailsView ? (
+        <AppViewerContent
+          app={currentApp}
+          initialSettings={initialSettings}
+          permissions={permissions}
+          isForeignOwnedApp={isForeignOwnedApp}
+          onAppChange={nextApp => setCurrentApp(nextApp)}
+        />
+      ) : (
+        <AppWorkspaceContent
+          app={currentApp}
+          initialSettings={initialSettings}
+          permissions={permissions}
+          isForeignOwnedApp={isForeignOwnedApp}
+          viewerSettings={viewerSettings}
+          onViewerSettingsChange={setViewerSettings}
+        />
+      )}
       <AppViewerPane
         app={currentApp}
         canAttach={!isForeignOwnedApp}
+        canCaptureScreenshot={canCaptureScreenshot}
+        canStart={canStartCurrentApp}
+        viewerSettings={viewerSettings}
+        onAppChange={setCurrentApp}
       />
     </ProtectedSplitPageLayout>
   )

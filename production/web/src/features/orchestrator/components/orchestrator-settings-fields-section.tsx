@@ -46,6 +46,18 @@ export const OrchestratorSettingsFieldsSection = ({
           />
         </Setting>
         <Setting
+          label='Image registry'
+          description='Optional registry prefix for unqualified image names. Images with an explicit host are left unchanged.'
+          className={verticalSettingClassName}
+          variant='vertical'
+        >
+          <Input
+            value={settings.dockerImageRegistry ?? ''}
+            placeholder='registry.internal.example:5000'
+            onChange={event => onSettingsChange({ dockerImageRegistry: event.target.value.trim() || null })}
+          />
+        </Setting>
+        <Setting
           label='Default inactivity timeout'
           description='New applications inherit this idle timeout before the orchestrator stops inactive instances.'
           className={verticalSettingClassName}

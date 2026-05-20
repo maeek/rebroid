@@ -4,6 +4,7 @@ import Dockerode from 'dockerode';
 import { basename } from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { PassThrough } from 'node:stream';
+import { setTimeout as delay } from 'node:timers/promises';
 import tar from 'tar-stream';
 import { getErrorMessage } from '../common/error-message';
 import {
@@ -100,15 +101,43 @@ export class DockerEngineService {
   }
 
   /**
-   * Force-removes a container and ignores missing-container errors.
+   * Removes a container and ignores missing-container errors.
+   * When force is enabled, Docker "removal already in progress" conflicts are retried briefly.
    */
-  async removeContainer(containerId: string) {
+  async removeContainer(
+    containerId: string,
+    options?: {
+      force?: boolean;
+      removeVolumes?: boolean;
+      maxAttempts?: number;
+      retryDelayMs?: number;
+    },
+  ) {
     const container = this.docker.getContainer(containerId);
-    try {
-      await container.remove({ force: true, v: false });
-    } catch (error) {
-      if (!this.isDockerNotFound(error)) {
-        throw error;
+    const force = options?.force ?? true;
+    const removeVolumes = options?.removeVolumes ?? false;
+    const maxAttempts = options?.maxAttempts ?? (force ? 5 : 1);
+    const retryDelayMs = options?.retryDelayMs ?? 1000;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        await container.remove({ force, v: removeVolumes });
+        return;
+      } catch (error) {
+        if (this.isDockerNotFound(error)) {
+          return;
+        }
+
+        const shouldRetry =
+          force &&
+          attempt < maxAttempts &&
+          this.isContainerRemovalInProgress(error);
+
+        if (!shouldRetry) {
+          throw error;
+        }
+
+        await delay(retryDelayMs);
       }
     }
   }
@@ -123,6 +152,23 @@ export class DockerEngineService {
       if (!this.isDockerNotFound(error)) {
         throw error;
       }
+    }
+  }
+
+  /**
+   * Lists container ids currently attached to a network.
+   * Missing networks are treated as empty to keep cleanup idempotent.
+   */
+  async listNetworkContainerIds(networkName: string) {
+    try {
+      const inspect = await this.docker.getNetwork(networkName).inspect();
+      return Object.keys(inspect.Containers ?? {});
+    } catch (error) {
+      if (this.isDockerNotFound(error)) {
+        return [];
+      }
+
+      throw error;
     }
   }
 
@@ -148,8 +194,25 @@ export class DockerEngineService {
     targetDirectory: string,
     targetFileName = basename(sourcePath),
   ) {
-    const container = this.docker.getContainer(containerId);
     const content = await readFile(sourcePath);
+    await this.copyBufferToContainer(
+      containerId,
+      content,
+      targetDirectory,
+      targetFileName,
+    );
+  }
+
+  /**
+   * Uploads an in-memory file to a container using Docker archive upload.
+   */
+  async copyBufferToContainer(
+    containerId: string,
+    content: Buffer,
+    targetDirectory: string,
+    targetFileName: string,
+  ) {
+    const container = this.docker.getContainer(containerId);
     const pack = tar.pack();
 
     await new Promise<void>((resolve, reject) => {
@@ -174,6 +237,47 @@ export class DockerEngineService {
 
     await container.putArchive(pack, {
       path: targetDirectory,
+    });
+  }
+
+  /**
+   * Reads a single file from a container archive response.
+   */
+  async readFileFromContainer(containerId: string, containerPath: string) {
+    const container = this.docker.getContainer(containerId);
+    const archive = await container.getArchive({ path: containerPath });
+    const extract = tar.extract();
+
+    return new Promise<Buffer>((resolve, reject) => {
+      let resolved = false;
+
+      extract.on('entry', (header, stream, next) => {
+        const chunks: Buffer[] = [];
+
+        stream.on('data', (chunk: Buffer) => {
+          chunks.push(Buffer.from(chunk));
+        });
+
+        stream.on('end', () => {
+          if (!resolved && header.type === 'file') {
+            resolved = true;
+            resolve(Buffer.concat(chunks));
+          }
+          next();
+        });
+
+        stream.on('error', reject);
+        stream.resume();
+      });
+
+      extract.on('finish', () => {
+        if (!resolved) {
+          reject(new Error('File was not present in the Docker archive.'));
+        }
+      });
+      extract.on('error', reject);
+      archive.on('error', reject);
+      archive.pipe(extract);
     });
   }
 
@@ -254,6 +358,28 @@ export class DockerEngineService {
   }
 
   /**
+   * Disconnects a container from a network and ignores already-disconnected states.
+   */
+  async disconnectContainerFromNetwork(containerId: string, networkName: string) {
+    const network = this.docker.getNetwork(networkName);
+    try {
+      await network.disconnect({
+        Container: containerId,
+        Force: true,
+      });
+    } catch (error) {
+      if (
+        this.isDockerNotFound(error) ||
+        this.isContainerAlreadyDisconnectedFromNetwork(error)
+      ) {
+        return;
+      }
+
+      throw error;
+    }
+  }
+
+  /**
    * Finds a container by exact Docker name, including stopped containers.
    */
   async findContainerByName(name: string) {
@@ -289,6 +415,20 @@ export class DockerEngineService {
   isContainerAlreadyConnectedToNetwork(error: unknown) {
     const message = this.errorMessage(error).toLowerCase();
     return message.includes('already connected');
+  }
+
+  isContainerAlreadyDisconnectedFromNetwork(error: unknown) {
+    const message = this.errorMessage(error).toLowerCase();
+    return (
+      message.includes('not connected') ||
+      message.includes('no such container') ||
+      message.includes('not found')
+    );
+  }
+
+  isContainerRemovalInProgress(error: unknown) {
+    const message = this.errorMessage(error).toLowerCase();
+    return message.includes('removal of container') && message.includes('already in progress');
   }
 
   /**

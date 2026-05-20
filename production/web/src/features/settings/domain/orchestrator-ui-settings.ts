@@ -4,6 +4,7 @@ import type { WebSettings as WebSettingsResponse } from '@/server/web-settings/t
 
 export interface OrchestratorUiSettings {
   defaultContainerImage: string
+  dockerImageRegistry: string | null
   defaultInactivityTimeoutSeconds: number
   maxApkUploadSizeMb: number
   imagePruneIntervalHours: number
@@ -18,6 +19,7 @@ export type GeneralUiSettings = Pick<OrchestratorUiSettings, 'appListRefreshInte
 export type RuntimeUiSettings = Pick<
   OrchestratorUiSettings,
   | 'defaultContainerImage'
+  | 'dockerImageRegistry'
   | 'defaultInactivityTimeoutSeconds'
   | 'maxApkUploadSizeMb'
   | 'imagePruneIntervalHours'
@@ -26,6 +28,7 @@ export type RuntimeUiSettings = Pick<
 
 export const defaultOrchestratorUiSettings: OrchestratorUiSettings = {
   defaultContainerImage: 'redroid/redroid:13.0.0-latest',
+  dockerImageRegistry: null,
   defaultInactivityTimeoutSeconds: 900,
   maxApkUploadSizeMb: 512,
   imagePruneIntervalHours: 24,
@@ -42,6 +45,7 @@ export const defaultWebSettingsResponse: WebSettingsResponse = {
 
 export const defaultRuntimeSettingsResponse: OrchestratorSettingsResponse = {
   defaultContainerImage: defaultOrchestratorUiSettings.defaultContainerImage,
+  dockerImageRegistry: defaultOrchestratorUiSettings.dockerImageRegistry,
   defaultScrcpyTransport: defaultOrchestratorUiSettings.scrcpyTransport,
   defaultInactivityTimeoutSeconds: defaultOrchestratorUiSettings.defaultInactivityTimeoutSeconds,
   maxApkUploadSizeMb: defaultOrchestratorUiSettings.maxApkUploadSizeMb,
@@ -61,6 +65,7 @@ export const normalizeOrchestratorUiSettings = (
       : defaultOrchestratorUiSettings.removeDataOnDelete,
   defaultContainerImage:
     orchestrator.defaultContainerImage?.trim() || defaultOrchestratorUiSettings.defaultContainerImage,
+  dockerImageRegistry: orchestrator.dockerImageRegistry?.trim() || defaultOrchestratorUiSettings.dockerImageRegistry,
   defaultInactivityTimeoutSeconds:
     Number(orchestrator.defaultInactivityTimeoutSeconds) ||
     defaultOrchestratorUiSettings.defaultInactivityTimeoutSeconds,

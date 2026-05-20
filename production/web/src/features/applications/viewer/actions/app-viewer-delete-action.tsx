@@ -19,6 +19,7 @@ import { useOrchestratorUiSettings } from '@/features/settings/hooks/use-orchest
 import { toast } from '@/hooks/use-toast'
 import { removeAppIconAction } from '@/server/app-icons/actions/remove-app-icon-action'
 import { deleteApplicationAction } from '@/server/orchestrator/applications/mutation-actions'
+import { getDisplayErrorMessage } from '../../../../lib/error-utils'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 
@@ -47,7 +48,7 @@ export const AppViewerDeleteAction = ({
     } catch (error) {
       toast({
         title: 'Could not delete app',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'destructive'
       })
     }

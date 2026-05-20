@@ -15,13 +15,17 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { DockerRuntimeService } from '../docker/docker-runtime.service';
+import { SettingsService } from '../settings/settings.service';
 import { PullContainerImageDto } from './dto/pull-container-image.dto';
 import { RemoveContainerImageDto } from './dto/remove-container-image.dto';
 
 @ApiTags('container-images')
 @Controller('container-images')
 export class ContainerImagesController {
-  constructor(private readonly docker: DockerRuntimeService) {}
+  constructor(
+    private readonly docker: DockerRuntimeService,
+    private readonly settings: SettingsService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List images available in the container engine.' })
@@ -41,9 +45,14 @@ export class ContainerImagesController {
     },
   })
   async pull(@Body() dto: PullContainerImageDto) {
-    await this.docker.pullImage(dto.image);
+    const settings = await this.settings.getSettings();
+    const image = this.resolveContainerImage(
+      dto.image,
+      settings.dockerImageRegistry,
+    );
+    await this.docker.pullImage(image);
     return {
-      image: dto.image,
+      image,
       status: 'pulled',
     };
   }
@@ -63,5 +72,22 @@ export class ContainerImagesController {
       decodeURIComponent(image),
       query.force ?? false,
     );
+  }
+
+  private resolveContainerImage(image: string, registry: string | null) {
+    const trimmedImage = image.trim();
+    if (!registry) {
+      return trimmedImage;
+    }
+
+    const firstSegment = trimmedImage.split('/')[0] ?? '';
+    const hasExplicitRegistry =
+      firstSegment === 'localhost' ||
+      firstSegment.includes('.') ||
+      firstSegment.includes(':');
+
+    return hasExplicitRegistry
+      ? trimmedImage
+      : `${registry.replace(/\/+$/, '')}/${trimmedImage}`;
   }
 }

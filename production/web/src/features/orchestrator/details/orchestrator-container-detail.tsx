@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { IconPlayerStopFilled, IconRefresh, IconTerminal2, IconTrash } from '@tabler/icons-react'
+import { IconPlayerStopFilled, IconTerminal2, IconTrash } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogClose,
@@ -23,13 +24,14 @@ import {
   PlatformJsonBlock,
   formatPlatformDate
 } from '@/features/orchestrator/components/platform-detail-parts'
+import { LogsConsole } from '@/features/orchestrator/logs/logs-console'
 import { toast } from '@/hooks/use-toast'
-import { cn } from '@/lib/utils'
 import {
   getPlatformContainerLogsAction,
   removePlatformContainerAction,
   stopPlatformContainerAction
 } from '@/server/orchestrator/platform/actions'
+import { getDisplayErrorMessage } from '../../../lib/error-utils'
 import type { PlatformContainerDetails, PlatformContainerLog } from '@/server/orchestrator/platform/types'
 
 export const OrchestratorContainerDetail = ({
@@ -40,12 +42,13 @@ export const OrchestratorContainerDetail = ({
   initialLogs: PlatformContainerLog
 }) => {
   const router = useRouter()
+  const container = details.container
+  const relatedImage = details.relatedImage
   const [logs, setLogs] = useState(initialLogs)
   const [isRefreshingLogs, setIsRefreshingLogs] = useState(false)
   const [pendingAction, setPendingAction] = useState<'stop' | 'remove' | null>(null)
   const [isActing, setIsActing] = useState(false)
-  const container = details.container
-  const relatedImage = details.relatedImage
+  const [forceRemove, setForceRemove] = useState(container.state === 'removing')
 
   const refreshLogs = async () => {
     setIsRefreshingLogs(true)
@@ -54,7 +57,7 @@ export const OrchestratorContainerDetail = ({
     } catch (error) {
       toast({
         title: 'Could not refresh logs',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'destructive'
       })
     } finally {
@@ -74,15 +77,15 @@ export const OrchestratorContainerDetail = ({
         toast({ title: 'Container stopped' })
         router.refresh()
       } else {
-        await removePlatformContainerAction(container.id)
-        toast({ title: 'Container removed' })
+        await removePlatformContainerAction(container.id, forceRemove)
+        toast({ title: forceRemove ? 'Container force-removed' : 'Container removed' })
         router.push('/settings/orchestrator/containers')
       }
       setPendingAction(null)
     } catch (error) {
       toast({
         title: pendingAction === 'stop' ? 'Could not stop container' : 'Could not remove container',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'destructive'
       })
     } finally {
@@ -254,27 +257,16 @@ export const OrchestratorContainerDetail = ({
           boxed
           contentClassName='gap-4'
         >
-          <div className='flex items-center justify-between gap-3'>
-            <p className='text-sm text-secondary-foreground'>
-              Recent Docker logs collected at {formatPlatformDate(logs.collectedAt)}.
-            </p>
-            <Button
-              type='button'
-              variant='secondary'
-              disabled={isRefreshingLogs}
-              onClick={() => void refreshLogs()}
-            >
-              <IconRefresh
-                className={cn('size-4', {
-                  'animate-spin': isRefreshingLogs
-                })}
-              />
-              Refresh
-            </Button>
-          </div>
-          <pre className='max-h-128 overflow-auto rounded-lg border border-border/60 bg-black/35 p-4 font-mono text-xs leading-6 text-secondary-foreground'>
-            {logs.output || 'No logs returned for this container.'}
-          </pre>
+          <LogsConsole
+            log={logs}
+            isRefreshing={isRefreshingLogs}
+            onRefresh={() => void refreshLogs()}
+            emptyMessage='No logs returned for this container.'
+            collectedAtPrefix='Recent Docker logs collected at'
+            formatCollectedAt={formatPlatformDate}
+            controls={<p className='text-sm text-secondary-foreground'>Recent Docker logs for this container.</p>}
+            outputClassName='max-h-128 rounded-lg bg-black/35 leading-6'
+          />
         </Section>
 
         <Section
@@ -301,6 +293,7 @@ export const OrchestratorContainerDetail = ({
         onOpenChange={open => {
           if (!open) {
             setPendingAction(null)
+            setForceRemove(container.state === 'removing')
           }
         }}
       >
@@ -310,16 +303,36 @@ export const OrchestratorContainerDetail = ({
             <DialogDescription>
               {pendingAction === 'stop'
                 ? 'This stops the selected Docker container without deleting it.'
-                : 'This force-removes the selected Docker container. Persistent volumes are not removed by this action.'}
+                : 'Remove the selected Docker container. Enable force removal when Docker reports the container as stuck in removing or when a normal removal does not complete.'}
             </DialogDescription>
           </DialogHeader>
+          <Visible when={pendingAction === 'remove'}>
+            <label className='flex items-start gap-3 rounded-lg border border-border/60 bg-background/35 px-3 py-3'>
+              <Checkbox
+                checked={forceRemove}
+                onCheckedChange={checked => setForceRemove(checked === true)}
+                disabled={isActing}
+              />
+              <div className='space-y-1 text-sm'>
+                <div className='font-medium'>Force removal</div>
+                <p className='text-secondary-foreground'>
+                  Sends Docker a forced delete request and retries briefly if removal is already in progress. Persistent
+                  volumes are not removed by this action.
+                </p>
+              </div>
+            </label>
+          </Visible>
           <DialogFooter>
             <Button
               variant={pendingAction === 'stop' ? 'secondary' : 'destructive'}
               disabled={!pendingAction || isActing}
               onClick={() => void runAction()}
             >
-              {pendingAction === 'stop' ? 'Stop container' : 'Remove container'}
+              {pendingAction === 'stop'
+                ? 'Stop container'
+                : forceRemove
+                  ? 'Force remove container'
+                  : 'Remove container'}
             </Button>
             <DialogClose asChild>
               <Button variant='secondary'>Cancel</Button>

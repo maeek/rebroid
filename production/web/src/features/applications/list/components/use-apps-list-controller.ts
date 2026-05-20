@@ -12,6 +12,7 @@ import {
   stopApplicationAction
 } from '@/server/orchestrator/applications/mutation-actions'
 import { listApplicationsAction } from '@/server/orchestrator/applications/read-actions'
+import { getDisplayErrorMessage } from '../../../../lib/error-utils'
 import type { AppsListContextValue, BulkAction } from './apps-list-context'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
@@ -110,7 +111,7 @@ export const useAppsListController = ({
       updateApp(app)
       toast({
         title: 'Could not start app',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'destructive'
       })
     }
@@ -140,7 +141,7 @@ export const useAppsListController = ({
       updateApp(app)
       toast({
         title: 'Could not stop app',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'destructive'
       })
     }
@@ -171,7 +172,7 @@ export const useAppsListController = ({
       updateApp(app)
       toast({
         title: 'Could not delete app',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'destructive'
       })
     }

@@ -55,7 +55,10 @@ export const orchestratorPlatformClient = {
     return request<{ id: string; stopped: boolean }>(`/docker-maintenance/containers/${id}/stop`, { method: 'POST' })
   },
 
-  removePlatformContainer(id: string) {
-    return request<{ id: string; removed: boolean }>(`/docker-maintenance/containers/${id}`, { method: 'DELETE' })
+  removePlatformContainer(id: string, force = false) {
+    const query = new URLSearchParams({ force: String(force) })
+    return request<{ id: string; removed: boolean }>(`/docker-maintenance/containers/${id}?${query.toString()}`, {
+      method: 'DELETE'
+    })
   }
 }

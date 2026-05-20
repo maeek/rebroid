@@ -200,6 +200,22 @@ export const updateNetworkPolicyAction = async (id: string, input: UpdateNetwork
   return sanitizeAndroidApplicationForUser(app, user)
 }
 
+export const uploadApplicationDownloadFileAction = async (id: string, input: FormData) => {
+  const { user } = await assertCanUseOwnedApplicationRuntime(id)
+  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:transfer-files')) {
+    throw new Error('You do not have permission to transfer files.')
+  }
+  return orchestratorApplicationsClient.uploadDownloadFile(id, input)
+}
+
+export const setApplicationClipboardAction = async (id: string, text: string) => {
+  const { user } = await assertCanUseOwnedApplicationRuntime(id)
+  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:sync-clipboard')) {
+    throw new Error('You do not have permission to sync clipboard.')
+  }
+  return orchestratorApplicationsClient.setClipboard(id, text)
+}
+
 export const applyNetworkPolicyAction = async (id: string) => {
   await assertCanAccessApplication(id)
   const user = await getCurrentUserContext()

@@ -109,6 +109,7 @@ export const saveOrchestratorUiSettings = async (settings: RuntimeUiSettings): P
   const web = await loadWebSettings()
   const orchestrator = await saveRuntimeSettings({
     defaultContainerImage: settings.defaultContainerImage,
+    dockerImageRegistry: settings.dockerImageRegistry,
     defaultInactivityTimeoutSeconds: settings.defaultInactivityTimeoutSeconds,
     maxApkUploadSizeMb: settings.maxApkUploadSizeMb,
     imagePruneIntervalHours: settings.imagePruneIntervalHours,

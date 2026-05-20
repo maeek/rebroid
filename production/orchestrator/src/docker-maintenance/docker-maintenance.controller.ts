@@ -54,8 +54,8 @@ export class DockerMaintenanceController {
 
   @Delete('containers/:id')
   @ApiOperation({ summary: 'Remove a Docker container.' })
-  removeContainer(@Param('id') id: string) {
-    return this.dockerAdmin.removeContainer(id);
+  removeContainer(@Param('id') id: string, @Query('force') force?: string) {
+    return this.dockerAdmin.removeContainer(id, force === 'true');
   }
 
   @Get('images')

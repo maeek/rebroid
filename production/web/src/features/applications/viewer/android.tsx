@@ -2,6 +2,7 @@
 import { useMemo } from 'react'
 import { IconAlertTriangle, IconLoader2, IconPlayerPlay } from '@tabler/icons-react'
 import Android from '@/components/ui/android'
+import { Button } from '@/components/ui/button'
 import { Visible } from '@/components/ui/visible'
 import { AppIcon } from '@/features/applications/components/app-icon'
 import { AppDefinition } from '@/features/applications/domain/app-definition'
@@ -9,15 +10,24 @@ import { resolveAppIconUrl } from '@/features/applications/icons/url'
 import { ImagePullProgress } from '@/features/applications/viewer/image-pull-progress'
 import { getProtectedViewerShellUrl } from '@/features/applications/viewer/scrcpy-url'
 import { cn } from '@/lib/utils'
+import type { ViewerSettings } from '@/features/applications/viewer/viewer-settings'
 
 export const AppViewer = ({
   app,
   hideOutline,
-  fullscreen
+  fullscreen,
+  viewerSettings,
+  canStart = false,
+  isStarting = false,
+  onStart
 }: {
   app?: AppDefinition
   hideOutline?: boolean
   fullscreen?: boolean
+  viewerSettings?: ViewerSettings
+  canStart?: boolean
+  isStarting?: boolean
+  onStart?: () => void
 }) => {
   const isBorderless = Boolean(hideOutline)
   const isBorderlessFullscreen = Boolean(hideOutline && fullscreen)
@@ -27,8 +37,12 @@ export const AppViewer = ({
       return null
     }
 
-    return getProtectedViewerShellUrl(app.id)
-  }, [app?.id, isViewerReady])
+    return getProtectedViewerShellUrl(app.id, viewerSettings)
+  }, [app?.id, isViewerReady, viewerSettings])
+
+  const shouldHidePlaceholderDescription = Boolean(
+    app?.imagePullProgress && (app?.status === 'provisioning' || app?.status === 'removing')
+  )
 
   const viewerPlaceholder = useMemo(() => {
     if (!app) {
@@ -94,6 +108,8 @@ export const AppViewer = ({
     }
   }, [app])
 
+  const canUsePlaceholderStart = app?.status === 'stopped' && canStart && Boolean(onStart)
+
   const content = (
     <div
       className={cn('flex w-full justify-center', {
@@ -108,6 +124,7 @@ export const AppViewer = ({
           className={cn('h-full w-full', {
             'rounded-lg': !isBorderless
           })}
+          allow='fullscreen; clipboard-read; clipboard-write; autoplay'
         />
       </Visible>
       <Visible when={!viewerSrc}>
@@ -152,17 +169,38 @@ export const AppViewer = ({
               />
             </Visible>
             <div className='flex flex-col items-center gap-3'>
-              <div
-                className={cn(
-                  'flex size-12 items-center justify-center rounded-full border border-border/70 bg-background/70',
-                  viewerPlaceholder.toneClassName
-                )}
-              >
-                <viewerPlaceholder.Icon className={viewerPlaceholder.showSpinner ? 'size-6 animate-spin' : 'size-6'} />
-              </div>
+              {canUsePlaceholderStart ? (
+                <Button
+                  type='button'
+                  size='icon'
+                  variant='secondary'
+                  className={cn(
+                    'size-12 rounded-full border border-border/70 bg-background/70 hover:bg-primary/20',
+                    viewerPlaceholder.toneClassName
+                  )}
+                  disabled={isStarting}
+                  onClick={onStart}
+                  aria-label={`Start ${app?.name}`}
+                >
+                  {isStarting ? <IconLoader2 className='size-6 animate-spin' /> : <IconPlayerPlay className='size-6' />}
+                </Button>
+              ) : (
+                <div
+                  className={cn(
+                    'flex size-12 items-center justify-center rounded-full border border-border/70 bg-background/70',
+                    viewerPlaceholder.toneClassName
+                  )}
+                >
+                  <viewerPlaceholder.Icon
+                    className={viewerPlaceholder.showSpinner || isStarting ? 'size-6 animate-spin' : 'size-6'}
+                  />
+                </div>
+              )}
               <div className='flex flex-col gap-2'>
                 <h3 className='text-lg font-medium text-foreground'>{viewerPlaceholder.title}</h3>
-                <p className='text-sm text-secondary-foreground'>{viewerPlaceholder.description}</p>
+                <Visible when={!shouldHidePlaceholderDescription}>
+                  <p className='text-sm text-secondary-foreground'>{viewerPlaceholder.description}</p>
+                </Visible>
               </div>
             </div>
             <Visible when={viewerPlaceholder.showProgress}>

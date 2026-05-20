@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile
     image: rebroid/orchestrator:local
     container_name: rebroid-orchestrator
+    privileged: true
     user: '0:0'
     restart: unless-stopped
     environment:
@@ -17,19 +18,23 @@ services:
       ORCHESTRATOR_SHARED_SECRET_FILE: /data/secrets/orchestrator-secret
       CONTAINER_IMAGE: ${CONTAINER_IMAGE:-redroid/redroid:13.0.0-latest}
       REDROID_PRIVILEGED: ${REDROID_PRIVILEGED:-true}
+      ORCHESTRATOR_INTERNAL_DOCKER: 'false'
+      DOCKER_STORAGE_DRIVER: ${DOCKER_STORAGE_DRIVER:-vfs}
       MAX_APK_UPLOAD_SIZE_MB: ${MAX_APK_UPLOAD_SIZE_MB:-4096}
       IPTABLES_POLICY_ENABLED: ${IPTABLES_POLICY_ENABLED:-false}
       WS_SCRCPY_IMAGE: rebroid/ws-scrcpy-sidecar:local
-      WS_SCRCPY_AUTO_START: 'false'
+      WS_SCRCPY_AUTO_START: 'true'
     cap_add:
       - NET_ADMIN
     expose:
       - '4100'
     volumes:
+      # Redroid requires a rootful Docker-compatible engine socket.
       - ${CONTAINER_ENGINE_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
       - orchestrator-data:/data/config
       - orchestrator-uploads:/data/uploads
       - shared-secrets:/data/secrets
+      - orchestrator-docker-data:/var/lib/docker
     networks:
       - platform
 
@@ -75,6 +80,7 @@ services:
 
 volumes:
   orchestrator-data:
+  orchestrator-docker-data:
   orchestrator-uploads:
   shared-secrets:
   web-data:

@@ -80,6 +80,9 @@ export class SettingsService {
     return {
       defaultContainerImage:
         value.defaultContainerImage?.trim() || defaults.defaultContainerImage,
+      dockerImageRegistry: this.normalizeRegistry(
+        value.dockerImageRegistry ?? defaults.dockerImageRegistry,
+      ),
       defaultScrcpyTransport: ScrcpyTransport.WebSocket,
       defaultInactivityTimeoutSeconds: numberInRange(
         value.defaultInactivityTimeoutSeconds,
@@ -111,6 +114,7 @@ export class SettingsService {
       defaultContainerImage: this.config.getOrThrow<string>(
         'app.container.image',
       ),
+      dockerImageRegistry: null,
       defaultScrcpyTransport: ScrcpyTransport.WebSocket,
       defaultInactivityTimeoutSeconds: this.config.getOrThrow<number>(
         'app.redroid.defaultInactivityTimeoutSeconds',
@@ -125,5 +129,10 @@ export class SettingsService {
 
   private settingsPath() {
     return this.config.getOrThrow<string>('app.settingsPath');
+  }
+
+  private normalizeRegistry(value?: string | null) {
+    const normalized = value?.trim().replace(/\/+$/, '') ?? '';
+    return normalized.length > 0 ? normalized : null;
   }
 }

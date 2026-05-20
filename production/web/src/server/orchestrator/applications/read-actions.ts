@@ -43,6 +43,38 @@ export const getApplicationLogsAction = async (id: string, source: 'container' |
   return orchestratorApplicationsClient.getApplicationLogs(id, source, tail)
 }
 
+export const listApplicationDownloadFilesAction = async (id: string) => {
+  const { user } = await assertCanUseOwnedApplicationRuntime(id)
+  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:transfer-files')) {
+    throw new Error('You do not have permission to transfer files.')
+  }
+  return orchestratorApplicationsClient.listDownloadFiles(id)
+}
+
+export const downloadApplicationFileAction = async (id: string, fileName: string) => {
+  const { user } = await assertCanUseOwnedApplicationRuntime(id)
+  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:transfer-files')) {
+    throw new Error('You do not have permission to transfer files.')
+  }
+  return orchestratorApplicationsClient.downloadFile(id, fileName)
+}
+
+export const getApplicationClipboardAction = async (id: string) => {
+  const { user } = await assertCanUseOwnedApplicationRuntime(id)
+  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:sync-clipboard')) {
+    throw new Error('You do not have permission to sync clipboard.')
+  }
+  return orchestratorApplicationsClient.getClipboard(id)
+}
+
+export const captureApplicationScreenshotAction = async (id: string) => {
+  const { user } = await assertCanUseOwnedApplicationRuntime(id)
+  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:capture-screenshot')) {
+    throw new Error('You do not have permission to capture screenshots.')
+  }
+  return orchestratorApplicationsClient.captureScreenshot(id)
+}
+
 export const getScrcpySessionAction = async (id: string) => {
   await assertCanUseOwnedApplicationRuntime(id)
   return orchestratorApplicationsClient.getScrcpySession(id)

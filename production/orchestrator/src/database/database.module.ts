@@ -6,7 +6,6 @@ import { dirname } from 'node:path';
 import { AndroidApplication } from '../android-apps/android-application.entity';
 import { UploadedApk } from '../apk/uploaded-apk.entity';
 import { InitializeSqliteSchema1715970000000 } from './migrations/1715970000000-initialize-sqlite-schema';
-import { EnsureCurrentSqliteSchema1716060000000 } from './migrations/1716060000000-ensure-current-sqlite-schema';
 
 @Module({
   imports: [
@@ -20,10 +19,7 @@ import { EnsureCurrentSqliteSchema1716060000000 } from './migrations/17160600000
           type: 'sqlite',
           database,
           entities: [AndroidApplication, UploadedApk],
-          migrations: [
-            InitializeSqliteSchema1715970000000,
-            EnsureCurrentSqliteSchema1716060000000,
-          ],
+          migrations: [InitializeSqliteSchema1715970000000],
           migrationsRun: true,
           synchronize: false,
         };

@@ -1,22 +1,66 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { IconShieldLock } from '@tabler/icons-react'
+import { useEffect, useRef, useState, useTransition } from 'react'
+import { IconLoader2, IconPhoto, IconShieldLock } from '@tabler/icons-react'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Visible } from '@/components/ui/visible'
+import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { AppViewer } from '@/features/applications/viewer/android'
 import { StatusSplash } from '@/features/shell/components/status-splash'
+import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
+import { startApplicationAction } from '@/server/orchestrator/applications/mutation-actions'
+import { captureApplicationScreenshotAction } from '@/server/orchestrator/applications/read-actions'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { ViewerSettings } from '@/features/applications/viewer/viewer-settings'
 
-export const AppViewerPane = ({ app, canAttach = true }: { app: AppDefinition; canAttach?: boolean }) => {
+const getToastErrorDescription = (error: unknown): string => {
+  const message = error instanceof Error ? error.message.trim() : ''
+  if (!message) {
+    return 'The server did not return details for this failure.'
+  }
+
+  const loweredMessage = message.toLowerCase()
+  if (
+    loweredMessage.includes('an error occurred in the server components render') ||
+    loweredMessage.includes('specific message is omitted in production builds') ||
+    loweredMessage.includes('digest property is included')
+  ) {
+    return 'The server did not return details for this failure.'
+  }
+
+  if (loweredMessage === 'failed to fetch' || loweredMessage.includes('fetch failed')) {
+    return 'Could not reach the server.'
+  }
+
+  return message
+}
+
+export const AppViewerPane = ({
+  app,
+  canAttach = true,
+  canCaptureScreenshot = false,
+  canStart = false,
+  viewerSettings,
+  onAppChange
+}: {
+  app: AppDefinition
+  canAttach?: boolean
+  canCaptureScreenshot?: boolean
+  canStart?: boolean
+  viewerSettings: ViewerSettings
+  onAppChange: (app: AppDefinition) => void
+}) => {
   const params = useSearchParams()
   const hideOutlineParam = params.get('hideOutline') === 'true'
   const [hideOutline, setHideOutline] = useState(() => hideOutlineParam)
   const [isViewerFullscreen, setIsViewerFullscreen] = useState(false)
+  const [isStarting, startTransition] = useTransition()
+  const [isCapturing, startScreenshotTransition] = useTransition()
   const viewerContainerRef = useRef<HTMLDivElement>(null)
   const viewerUsesOutline = !hideOutline && !isViewerFullscreen
+  const runtimeAvailable = app.status === 'running'
 
   useEffect(() => {
     setHideOutline(hideOutlineParam)
@@ -61,6 +105,51 @@ export const AppViewerPane = ({ app, canAttach = true }: { app: AppDefinition; c
     await viewerContainerRef.current.requestFullscreen()
   }
 
+  const handleStart = () => {
+    if (!canStart || !canAttach) {
+      return
+    }
+
+    startTransition(async () => {
+      try {
+        const nextApp = await startApplicationAction(app.id)
+        onAppChange(mapAndroidApplicationToAppDefinition(nextApp))
+      } catch (error) {
+        toast({
+          title: 'Could not start app',
+          description: getToastErrorDescription(error),
+          variant: 'destructive'
+        })
+      }
+    })
+  }
+
+  const handleScreenshotCapture = () => {
+    if (!canAttach || !canCaptureScreenshot || !runtimeAvailable) {
+      return
+    }
+
+    startScreenshotTransition(async () => {
+      try {
+        const screenshot = await captureApplicationScreenshotAction(app.id)
+        const link = document.createElement('a')
+        const timestamp = screenshot.capturedAt.replace(/[:.]/g, '-')
+
+        link.href = screenshot.dataUrl
+        link.download = `${app.name}-${timestamp}.png`
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+      } catch (error) {
+        toast({
+          title: 'Could not capture screenshot',
+          description: getToastErrorDescription(error),
+          variant: 'destructive'
+        })
+      }
+    })
+  }
+
   return (
     <div className='flex w-full max-w-md flex-col items-center justify-start gap-4 lg:sticky lg:top-10 lg:self-start lg:pr-4 lg:pt-6 max-sm:max-w-full'>
       <div
@@ -74,6 +163,10 @@ export const AppViewerPane = ({ app, canAttach = true }: { app: AppDefinition; c
             app={app}
             hideOutline={!viewerUsesOutline}
             fullscreen={isViewerFullscreen}
+            viewerSettings={viewerSettings}
+            canStart={canStart}
+            isStarting={isStarting}
+            onStart={handleStart}
           />
         </Visible>
         <Visible when={!canAttach}>
@@ -88,6 +181,18 @@ export const AppViewerPane = ({ app, canAttach = true }: { app: AppDefinition; c
       </div>
       <Visible when={canAttach}>
         <div className='flex flex-wrap items-center justify-center gap-2 pb-2'>
+          <Visible when={canCaptureScreenshot}>
+            <Button
+              size='icon'
+              variant='secondary'
+              disabled={!runtimeAvailable || isCapturing}
+              onClick={handleScreenshotCapture}
+              aria-label='Capture screenshot'
+              title='Capture screenshot'
+            >
+              {isCapturing ? <IconLoader2 className='size-4 animate-spin' /> : <IconPhoto className='size-4' />}
+            </Button>
+          </Visible>
           <Button
             size='sm'
             variant={hideOutline ? 'default' : 'secondary'}

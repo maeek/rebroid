@@ -34,6 +34,35 @@ export interface ApplicationLog {
   output: string
 }
 
+export interface ApplicationRuntimeFile {
+  name: string
+  path: string
+  sizeBytes: number
+  modifiedAt: string | null
+}
+
+export interface ApplicationRuntimeFileUpload extends ApplicationRuntimeFile {
+  uploaded: boolean
+}
+
+export interface ApplicationRuntimeFileDownload {
+  name: string
+  mimeType: string
+  dataUrl: string
+}
+
+export interface ApplicationClipboard {
+  text: string
+  supported: boolean
+  message: string | null
+}
+
+export interface ApplicationScreenshot {
+  mimeType: string
+  dataUrl: string
+  capturedAt: string
+}
+
 export type ScrcpyViewerErrorCode = 'sidecar_unavailable' | 'adb_missing' | 'adb_unreachable' | 'unknown'
 
 export interface ScrcpyViewerError {

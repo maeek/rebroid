@@ -32,11 +32,13 @@ No `NEXTAUTH_URL`, shared secret, or sidecar URL is required for the default com
 
 ## Podman Socket
 
-If your Docker-compatible socket is not `/var/run/docker.sock`, pass one variable:
+If your Docker-compatible socket is not `/var/run/docker.sock`, pass the rootful socket path explicitly:
 
 ```bash
-CONTAINER_ENGINE_SOCKET=/run/user/1000/podman/podman.sock docker compose up --build
+CONTAINER_ENGINE_SOCKET=/run/podman/podman.sock docker compose up --build
 ```
+
+Do not point this at a rootless Podman socket such as `/run/user/1000/podman/podman.sock` when you want to run redroid. Redroid needs a truly privileged container, and a rootless engine cannot provide that.
 
 On macOS with Podman Desktop, the easiest path is usually Docker socket compatibility:
 

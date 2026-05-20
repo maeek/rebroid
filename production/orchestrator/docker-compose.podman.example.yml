@@ -4,10 +4,13 @@ services:
       context: ..
       dockerfile: orchestrator/Dockerfile
     container_name: rebroid-orchestrator
+    privileged: true
+    user: '0:0'
     restart: unless-stopped
     environment:
       NODE_ENV: production
       ORCHESTRATOR_SHARED_SECRET_FILE: /app/secrets/orchestrator-secret
+      ORCHESTRATOR_INTERNAL_DOCKER: 'false'
     ports:
       - '4100:4100'
     cap_add:

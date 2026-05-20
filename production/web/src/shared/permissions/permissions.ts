@@ -111,6 +111,24 @@ export const permissionDefinitions = [
     description: 'Read container and ADB logs for owned applications.'
   },
   {
+    id: 'applications:transfer-files',
+    category: 'profiles-observability',
+    name: 'Transfer files',
+    description: 'Upload and download files through the live viewer workspace.'
+  },
+  {
+    id: 'applications:sync-clipboard',
+    category: 'profiles-observability',
+    name: 'Sync clipboard',
+    description: 'Read and write the application clipboard from the browser.'
+  },
+  {
+    id: 'applications:capture-screenshot',
+    category: 'profiles-observability',
+    name: 'Capture screenshots',
+    description: 'Save screenshots from the live viewer workspace.'
+  },
+  {
     id: 'applications:view-backend-details',
     category: 'profiles-observability',
     name: 'View backend details',
@@ -144,7 +162,10 @@ export const defaultUserPermissions: PermissionMap = {
   'applications:update-apk': true,
   'applications:use-redroid-images': true,
   'applications:switch-profile': true,
-  'applications:view-logs': true
+  'applications:view-logs': true,
+  'applications:transfer-files': true,
+  'applications:sync-clipboard': true,
+  'applications:capture-screenshot': true
 }
 
 export const defaultUserQuota: ResourceQuota = {

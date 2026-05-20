@@ -27,13 +27,16 @@ export const AppViewerContent = ({
   return (
     <ProtectedSplitPageContent className='pr-2'>
       <div className='flex w-full flex-col gap-6'>
-        <PageBreadcrumbs items={[{ label: 'Apps', href: '/apps' }, { label: app.name }]} />
+        <PageBreadcrumbs
+          items={[{ label: 'Apps', href: '/apps' }, { label: app.name, href: `/app/${app.id}` }, { label: 'Details' }]}
+        />
         <AppViewerHeading app={app}>
           <AppViewerActions
             app={app}
             initialSettings={initialSettings}
             permissions={permissions}
             isForeignOwnedApp={isForeignOwnedApp}
+            mode='details'
           />
         </AppViewerHeading>
         <Visible when={isForeignOwnedApp}>

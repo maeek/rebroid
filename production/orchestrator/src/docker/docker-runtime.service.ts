@@ -290,6 +290,16 @@ export class DockerRuntimeService {
   }
 
   async removeNetwork(networkName: string) {
+    const attachedContainerIds = await this.engine.listNetworkContainerIds(
+      networkName,
+    );
+
+    await Promise.all(
+      attachedContainerIds.map((containerId) =>
+        this.engine.disconnectContainerFromNetwork(containerId, networkName),
+      ),
+    );
+
     await this.engine.removeNetwork(networkName);
   }
 
@@ -309,6 +319,24 @@ export class DockerRuntimeService {
       targetDirectory,
       targetFileName,
     );
+  }
+
+  async copyBufferToContainer(
+    containerId: string,
+    content: Buffer,
+    targetDirectory: string,
+    targetFileName: string,
+  ) {
+    await this.engine.copyBufferToContainer(
+      containerId,
+      content,
+      targetDirectory,
+      targetFileName,
+    );
+  }
+
+  async readFileFromContainer(containerId: string, containerPath: string) {
+    return this.engine.readFileFromContainer(containerId, containerPath);
   }
 
   async execInContainer(containerId: string, command: string[]) {

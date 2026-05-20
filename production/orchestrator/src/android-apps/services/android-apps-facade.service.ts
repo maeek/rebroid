@@ -106,6 +106,30 @@ export class AndroidAppsFacadeService {
     return this.operations.adbLogs(id, tail);
   }
 
+  listDownloadFiles(id: string) {
+    return this.operations.listDownloadFiles(id);
+  }
+
+  uploadDownloadFile(id: string, file?: Express.Multer.File) {
+    return this.operations.uploadDownloadFile(id, file);
+  }
+
+  downloadFile(id: string, fileName: string) {
+    return this.operations.downloadFile(id, fileName);
+  }
+
+  getClipboard(id: string) {
+    return this.operations.getClipboard(id);
+  }
+
+  setClipboard(id: string, text: string) {
+    return this.operations.setClipboard(id, text);
+  }
+
+  screenshot(id: string) {
+    return this.operations.screenshot(id);
+  }
+
   findInactiveRunningApplications(now = new Date()) {
     return this.state.findInactiveRunningApplications(now);
   }

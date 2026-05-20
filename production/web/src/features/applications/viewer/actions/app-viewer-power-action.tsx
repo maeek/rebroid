@@ -1,7 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { IconLoader2, IconPlayerPlayFilled, IconPlayerStopFilled } from '@tabler/icons-react'
+import {
+  IconChevronDown,
+  IconLoader2,
+  IconPlayerPlayFilled,
+  IconPlayerStopFilled,
+  IconRestore
+} from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -11,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -32,67 +39,158 @@ export const AppViewerPowerAction = ({
   canSwitchProfile: boolean
 }) => {
   const { isRunningAction, runAction } = useAppViewerActionRunner()
-  const [dialogOpen, setDialogOpen] = useState(false)
+  const [startDialogOpen, setStartDialogOpen] = useState(false)
+  const [restartDialogOpen, setRestartDialogOpen] = useState(false)
   const [profileMode, setProfileMode] = useState<ApplicationProfileMode>(app?.profileMode ?? 'persistent')
   const [profileName, setProfileName] = useState(app?.profileName ?? 'default')
   const isBusy = app?.status === 'provisioning' || app?.status === 'removing'
+  const canRestart = canStart && canStop
+  const primaryVariant = app?.running ? 'secondary' : 'update'
+  const primaryLabel = app?.running ? 'Stop' : 'Start'
+  const primaryIcon = app?.running ? (
+    <IconPlayerStopFilled className='size-4' />
+  ) : (
+    <IconPlayerPlayFilled className='size-4' />
+  )
+  const canRunPrimary = app?.running ? canStop : canStart
 
   useEffect(() => {
-    if (!app || dialogOpen) {
+    if (!app || startDialogOpen) {
       return
     }
 
     setProfileMode(app.profileMode ?? 'persistent')
     setProfileName(app.profileName ?? 'default')
-  }, [app, dialogOpen])
+  }, [app, startDialogOpen])
 
-  if (app?.running) {
-    return (
-      <Button
-        variant='destructive'
-        disabled={!canStop || isBusy || isRunningAction}
-        onClick={() => void runAction(() => stopApplicationAction(app.id), 'Could not stop app')}
-      >
-        <Visible when={isRunningAction}>
-          <IconLoader2 className='size-4 animate-spin' />
-        </Visible>
-        <Visible when={!isRunningAction}>
-          <IconPlayerStopFilled className='size-4' />
-        </Visible>
-        Stop
-      </Button>
-    )
+  const handleStart = async (options?: { profileMode?: ApplicationProfileMode; profileName?: string }) => {
+    if (!app) {
+      return false
+    }
+
+    return runAction(() => startApplicationAction(app.id, options), 'Could not start app')
+  }
+
+  const handleStop = async () => {
+    if (!app) {
+      return false
+    }
+
+    return runAction(() => stopApplicationAction(app.id), 'Could not stop app')
+  }
+
+  const handlePrimaryAction = () => {
+    if (!app) {
+      return
+    }
+
+    if (app.running) {
+      void handleStop()
+      return
+    }
+
+    if (canSwitchProfile) {
+      setStartDialogOpen(true)
+      return
+    }
+
+    void handleStart()
+  }
+
+  const handleRestart = async () => {
+    if (!app) {
+      return
+    }
+
+    const didSucceed = await runAction(async () => {
+      await stopApplicationAction(app.id)
+      await startApplicationAction(app.id)
+    }, 'Could not restart app')
+
+    if (didSucceed) {
+      setRestartDialogOpen(false)
+    }
   }
 
   return (
     <>
-      <Button
-        variant='update'
-        disabled={!app || !canStart || isBusy || isRunningAction}
-        onClick={() => {
-          if (!app) {
-            return
-          }
+      <div className='inline-flex items-center'>
+        <Button
+          variant={primaryVariant}
+          disabled={!app || !canRunPrimary || isBusy || isRunningAction}
+          className='rounded-r-none border-r-0'
+          onClick={handlePrimaryAction}
+        >
+          <Visible
+            when={isRunningAction}
+            fallback={primaryIcon}
+          >
+            <IconLoader2 className='size-4 animate-spin' />
+          </Visible>
+          {primaryLabel}
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant={primaryVariant}
+              size='icon'
+              disabled={!app || isBusy || isRunningAction || (!canStart && !canStop)}
+              className='rounded-l-none px-2'
+              aria-label='Runtime actions'
+            >
+              <IconChevronDown className='size-4' />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align='end'
+            className='min-w-48'
+          >
+            <DropdownMenuItem
+              className='gap-2'
+              disabled={!app || app.running || !canStart}
+              onSelect={() => {
+                if (!app) {
+                  return
+                }
 
-          if (canSwitchProfile) {
-            setDialogOpen(true)
-            return
-          }
-
-          void runAction(() => startApplicationAction(app.id), 'Could not start app')
-        }}
-      >
-        <Visible when={isRunningAction}>
-          <IconLoader2 className='size-4 animate-spin' />
-        </Visible>
-        <Visible when={!isRunningAction}>
-          <IconPlayerPlayFilled className='size-4' />
-        </Visible>
-        Start
-      </Button>
+                void handleStart()
+              }}
+            >
+              <IconPlayerPlayFilled className='size-4' />
+              Start with defaults
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className='gap-2'
+              disabled={!app || app.running || !canStart || !canSwitchProfile}
+              onSelect={() => setStartDialogOpen(true)}
+            >
+              <IconPlayerPlayFilled className='size-4' />
+              Start with profile
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className='gap-2'
+              disabled={!app || !app.running || !canStop}
+              onSelect={() => {
+                void handleStop()
+              }}
+            >
+              <IconPlayerStopFilled className='size-4' />
+              Stop
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className='gap-2'
+              disabled={!app || !app.running || !canRestart}
+              onSelect={() => setRestartDialogOpen(true)}
+            >
+              <IconRestore className='size-4' />
+              Restart
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
       <Dialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        open={startDialogOpen}
+        onOpenChange={setStartDialogOpen}
       >
         <DialogContent className='sm:max-w-md'>
           <DialogHeader>
@@ -131,7 +229,7 @@ export const AppViewerPowerAction = ({
             <Button
               variant='secondary'
               disabled={isRunningAction}
-              onClick={() => setDialogOpen(false)}
+              onClick={() => setStartDialogOpen(false)}
             >
               Cancel
             </Button>
@@ -152,7 +250,7 @@ export const AppViewerPowerAction = ({
                   'Could not start app'
                 ).then(success => {
                   if (success) {
-                    setDialogOpen(false)
+                    setStartDialogOpen(false)
                   }
                 })
               }}
@@ -164,6 +262,39 @@ export const AppViewerPowerAction = ({
                 <IconPlayerPlayFilled className='size-4' />
               </Visible>
               Start
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={restartDialogOpen}
+        onOpenChange={setRestartDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Restart {app?.name}?</DialogTitle>
+            <DialogDescription>
+              This will stop the current managed container session and start a fresh one with the current runtime
+              settings.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant='secondary'
+              disabled={isRunningAction}
+              onClick={() => setRestartDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant='destructive'
+              disabled={!app || isBusy || isRunningAction}
+              onClick={() => void handleRestart()}
+            >
+              <Visible when={isRunningAction}>
+                <IconLoader2 className='size-4 animate-spin' />
+              </Visible>
+              Restart
             </Button>
           </DialogFooter>
         </DialogContent>

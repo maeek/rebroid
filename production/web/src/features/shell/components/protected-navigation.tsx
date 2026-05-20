@@ -249,7 +249,7 @@ export const ProtectedNavigation = ({ variant, onNavigate }: ProtectedNavigation
             key={app.id}
             app={app}
             variant={variant}
-            isActive={pathname === `/app/${app.id}`}
+            isActive={pathname === `/app/${app.id}` || pathname.startsWith(`/app/${app.id}/`)}
             onNavigate={onNavigate}
           />
         ))}

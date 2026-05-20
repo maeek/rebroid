@@ -13,10 +13,10 @@ export const ProtectedSplitPageLayout = ({
   mainClassName?: string
 }) => {
   return (
-    <div className={cn('pl-72 max-lg:pl-0 min-h-full h-[calc(100vh-4rem)] max-sm:w-full', className)}>
+    <div className={cn('min-h-full pl-72 max-lg:pl-0 max-sm:w-full lg:h-[calc(100dvh-4rem)]', className)}>
       <main
         className={cn(
-          'row-layout mx-auto flex h-full w-full justify-between gap-8 max-sm:flex-col max-sm:items-center',
+          'row-layout mx-auto flex min-h-[calc(100dvh-4rem)] w-full justify-between gap-8 max-lg:flex-col max-lg:items-center',
           protectedPageMaxWidthClassName,
           mainClassName
         )}
@@ -47,6 +47,6 @@ export const ProtectedStackPageLayout = ({
 
 export const ProtectedSplitPageContent = ({ children, className }: { children: ReactNode; className?: string }) => {
   return (
-    <div className={cn('px-6 w-full flex items-start gap-4 pt-2 pb-2 max-sm:px-4 flex-col', className)}>{children}</div>
+    <div className={cn('flex w-full flex-col items-start gap-4 px-6 pb-2 pt-2 max-sm:px-4', className)}>{children}</div>
   )
 }

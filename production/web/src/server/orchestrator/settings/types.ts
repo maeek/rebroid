@@ -7,6 +7,7 @@ export interface CleanupUploadedApksResponse {
 
 export interface OrchestratorSettingsResponse {
   defaultContainerImage: string
+  dockerImageRegistry: string | null
   defaultScrcpyTransport: ScrcpyTransport
   defaultInactivityTimeoutSeconds: number
   maxApkUploadSizeMb: number

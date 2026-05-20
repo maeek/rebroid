@@ -20,6 +20,7 @@ import type { OrchestratorUiSettings } from '@/features/settings/domain/orchestr
 type SaveOrchestratorUiSettingsInput = Pick<
   OrchestratorUiSettings,
   | 'defaultContainerImage'
+  | 'dockerImageRegistry'
   | 'defaultInactivityTimeoutSeconds'
   | 'maxApkUploadSizeMb'
   | 'imagePruneIntervalHours'
@@ -33,6 +34,7 @@ type HealthState = 'checking' | 'online' | 'offline'
 
 const toRuntimeUiSettings = (settings: OrchestratorUiSettings): SaveOrchestratorUiSettingsInput => ({
   defaultContainerImage: settings.defaultContainerImage,
+  dockerImageRegistry: settings.dockerImageRegistry,
   defaultInactivityTimeoutSeconds: settings.defaultInactivityTimeoutSeconds,
   maxApkUploadSizeMb: settings.maxApkUploadSizeMb,
   imagePruneIntervalHours: settings.imagePruneIntervalHours,

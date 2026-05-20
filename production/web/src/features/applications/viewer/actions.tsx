@@ -1,15 +1,18 @@
 'use client'
 
+import { useState } from 'react'
+import { IconDotsVertical, IconInfoCircle, IconSettings, IconTerminal2 } from '@tabler/icons-react'
 import classNames from 'classnames'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Visible } from '@/components/ui/visible'
 import { AppDefinition } from '@/features/applications/domain/app-definition'
+import { AppLogsDialog } from '@/features/applications/viewer/app-logs-dialog'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
 import { AppViewerDeleteAction } from './actions/app-viewer-delete-action'
-import { AppViewerManageAction } from './actions/app-viewer-manage-action'
 import { AppViewerOpenAsMeAction } from './actions/app-viewer-open-as-me-action'
 import { AppViewerPowerAction } from './actions/app-viewer-power-action'
-import { AppViewerRestartAction } from './actions/app-viewer-restart-action'
-import { AppLogsDialog } from './app-logs-dialog'
 import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 
 export const AppViewerActions = ({
@@ -17,52 +20,97 @@ export const AppViewerActions = ({
   app,
   initialSettings,
   permissions,
-  isForeignOwnedApp = false
+  isForeignOwnedApp = false,
+  mode = 'workspace'
 }: {
   app?: AppDefinition
   className?: string
   initialSettings: OrchestratorUiSettings
   permissions: PermissionMap
   isForeignOwnedApp?: boolean
+  mode?: 'workspace' | 'details'
 }) => {
+  const [logsOpen, setLogsOpen] = useState(false)
   const canUseRuntime = !isForeignOwnedApp
+  const canStart = hasPermission(permissions, 'applications:start')
+  const canStop = hasPermission(permissions, 'applications:stop')
+  const canViewLogs = canUseRuntime && hasPermission(permissions, 'applications:view-logs')
+  const canDelete = mode !== 'workspace' && hasPermission(permissions, 'applications:delete')
+  const showOverflowMenu = Boolean(app?.id)
 
   return (
-    <div className={classNames('flex flex-row gap-2 items-center', className)}>
-      <AppViewerManageAction appId={app?.id} />
+    <div className={classNames('flex flex-row flex-wrap justify-end gap-2 items-center', className)}>
+      <Visible when={canViewLogs}>
+        <AppLogsDialog
+          app={app}
+          open={logsOpen}
+          onOpenChange={setLogsOpen}
+          hideTrigger
+        />
+      </Visible>
       <Visible when={isForeignOwnedApp}>
         <AppViewerOpenAsMeAction app={app} />
       </Visible>
-      <Visible when={canUseRuntime && hasPermission(permissions, 'applications:view-logs')}>
-        <AppLogsDialog app={app} />
-      </Visible>
-      <Visible
-        when={
-          canUseRuntime &&
-          (hasPermission(permissions, 'applications:start') || hasPermission(permissions, 'applications:stop'))
-        }
-      >
+      <Visible when={canUseRuntime && (canStart || canStop)}>
         <AppViewerPowerAction
           app={app}
-          canStart={hasPermission(permissions, 'applications:start')}
-          canStop={hasPermission(permissions, 'applications:stop')}
+          canStart={canStart}
+          canStop={canStop}
           canSwitchProfile={hasPermission(permissions, 'applications:switch-profile')}
         />
       </Visible>
-      <Visible
-        when={
-          canUseRuntime &&
-          hasPermission(permissions, 'applications:start') &&
-          hasPermission(permissions, 'applications:stop')
-        }
-      >
-        <AppViewerRestartAction app={app} />
-      </Visible>
-      <Visible when={hasPermission(permissions, 'applications:delete')}>
+      <Visible when={canDelete}>
         <AppViewerDeleteAction
           app={app}
           initialSettings={initialSettings}
         />
+      </Visible>
+      <Visible when={showOverflowMenu}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant='secondary'
+              size='icon'
+              aria-label='Application actions'
+            >
+              <IconDotsVertical className='size-4' />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align='end'
+            className='min-w-40'
+          >
+            <Visible when={mode === 'workspace'}>
+              <DropdownMenuItem asChild>
+                <Link
+                  href={`/app/${app?.id}/details`}
+                  className='gap-2'
+                >
+                  <IconInfoCircle className='size-4' />
+                  Details
+                </Link>
+              </DropdownMenuItem>
+            </Visible>
+            <Visible when={canViewLogs}>
+              <DropdownMenuItem
+                className='gap-2'
+                onSelect={() => setLogsOpen(true)}
+              >
+                <IconTerminal2 className='size-4' />
+                Logs
+              </DropdownMenuItem>
+            </Visible>
+            <DropdownMenuItem asChild>
+              <Link
+                href={`/app/${app?.id}/manage`}
+                className='gap-2'
+              >
+                <IconSettings className='size-4' />
+                Settings
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </Visible>
     </div>
   )

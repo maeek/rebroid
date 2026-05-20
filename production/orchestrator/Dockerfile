@@ -15,13 +15,13 @@ RUN npm run build
 
 FROM base AS runner
 ENV NODE_ENV=production
-RUN apk add --no-cache docker-cli iptables ip6tables
+RUN apk add --no-cache docker iptables ip6tables
 COPY package*.json ./
 COPY --from=deps /app/node_modules ./node_modules
 RUN npm prune --omit=dev && npm cache clean --force
 COPY --from=builder /app/dist ./dist
 COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/rebroid-orchestrator-entrypoint
-RUN mkdir -p /app/data /app/uploads /app/secrets && chown -R node:node /app
+RUN mkdir -p /app/data /app/uploads /app/secrets /var/lib/docker && chown -R node:node /app
 USER node
 EXPOSE 4100
 ENTRYPOINT ["rebroid-orchestrator-entrypoint"]

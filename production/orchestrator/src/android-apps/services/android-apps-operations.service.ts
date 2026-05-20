@@ -1,6 +1,7 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
+import { basename } from 'node:path';
 import { Repository } from 'typeorm';
 import { ApkCatalogService } from '../../apk/apk-catalog.service';
 import { UploadedApk } from '../../apk/uploaded-apk.entity';
@@ -27,6 +28,8 @@ import { AndroidAppsStatusService } from './android-apps-status.service';
 
 @Injectable()
 export class AndroidAppsOperationsService {
+  private readonly downloadDirectory = '/sdcard/Download';
+
   constructor(
     @InjectRepository(AndroidApplication)
     private readonly applications: Repository<AndroidApplication>,
@@ -52,13 +55,18 @@ export class AndroidAppsOperationsService {
       ? await this.apks.get(dto.uploadedApkId)
       : null;
 
+    const containerImage = this.resolveContainerImage(
+      dto.containerImage ?? settings.defaultContainerImage,
+      settings.dockerImageRegistry,
+    );
+
     const app = this.applications.create({
       name: dto.name,
       ownerUserId: dto.ownerUserId ?? null,
       status: AndroidApplicationStatus.Provisioning,
       lifecycleStage: AndroidApplicationLifecycleStage.Queued,
       statusMessage: 'Provisioning has been queued.',
-      containerImage: dto.containerImage ?? settings.defaultContainerImage,
+      containerImage,
       containerName: 'pending',
       networkName: 'pending',
       volumeName: 'pending',
@@ -524,9 +532,222 @@ export class AndroidAppsOperationsService {
     };
   }
 
+  /**
+   * Lists files from the Android Download directory used by the viewer transfer panel.
+   */
+  async listDownloadFiles(id: string) {
+    const app = await this.getRunningRuntimeApp(id);
+    const { stdout } = await this.docker.execInContainerWithOutput(
+      app.containerId!,
+      [
+        'sh',
+        '-lc',
+        [
+          `dir="${this.downloadDirectory}"`,
+          'mkdir -p "$dir"',
+          'find "$dir" -maxdepth 1 -type f -print 2>/dev/null | while IFS= read -r file; do',
+          'name=${file##*/}',
+          'size=$(stat -c %s "$file" 2>/dev/null || wc -c < "$file" 2>/dev/null || echo 0)',
+          'modified=$(stat -c %Y "$file" 2>/dev/null || echo 0)',
+          'printf "%s\\t%s\\t%s\\n" "$name" "$size" "$modified"',
+          'done',
+        ].join('\n'),
+      ],
+    );
+
+    return this.parseDownloadFiles(stdout);
+  }
+
+  /**
+   * Uploads a browser-provided file into the app container Download directory.
+   */
+  async uploadDownloadFile(id: string, file?: Express.Multer.File) {
+    if (!file) {
+      throw new ConflictException('A file upload is required.');
+    }
+
+    const app = await this.getRunningRuntimeApp(id);
+    const fileName = this.sanitizeRuntimeFileName(file.originalname);
+    await this.docker.execInContainer(
+      app.containerId!,
+      ['sh', '-lc', `mkdir -p "${this.downloadDirectory}"`],
+    );
+    await this.docker.copyBufferToContainer(
+      app.containerId!,
+      file.buffer,
+      this.downloadDirectory,
+      fileName,
+    );
+
+    return {
+      uploaded: true,
+      name: fileName,
+      path: `${this.downloadDirectory}/${fileName}`,
+      sizeBytes: file.size,
+      modifiedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Downloads a file from the app container Download directory as a browser data URL.
+   */
+  async downloadFile(id: string, fileName: string) {
+    const app = await this.getRunningRuntimeApp(id);
+    const safeFileName = this.sanitizeRuntimeFileName(fileName);
+    const content = await this.docker.readFileFromContainer(
+      app.containerId!,
+      `${this.downloadDirectory}/${safeFileName}`,
+    );
+
+    return {
+      name: safeFileName,
+      mimeType: 'application/octet-stream',
+      dataUrl: `data:application/octet-stream;base64,${content.toString('base64')}`,
+    };
+  }
+
+  async getClipboard(id: string) {
+    const app = await this.getRunningRuntimeApp(id);
+    const { stdout } = await this.docker.execInContainerWithOutput(
+      app.containerId!,
+      [
+        'sh',
+        '-lc',
+        'if command -v cmd >/dev/null 2>&1; then cmd clipboard get 2>/dev/null || true; else echo __SMA_UNSUPPORTED__; fi',
+      ],
+    );
+    const text = stdout.replace(/\r?\n$/, '');
+    const supported = text !== '__SMA_UNSUPPORTED__';
+
+    return {
+      text: supported ? text : '',
+      supported,
+      message: supported
+        ? null
+        : 'Clipboard commands are not available in this container image.',
+    };
+  }
+
+  async setClipboard(id: string, text: string) {
+    const app = await this.getRunningRuntimeApp(id);
+    const encoded = Buffer.from(text, 'utf-8').toString('base64');
+    const { stdout } = await this.docker.execInContainerWithOutput(
+      app.containerId!,
+      [
+        'sh',
+        '-lc',
+        [
+          'if command -v cmd >/dev/null 2>&1; then',
+          `text=$(printf '%s' '${encoded}' | base64 -d 2>/dev/null)`,
+          'cmd clipboard set "$text" >/dev/null 2>&1 && echo __SMA_OK__ || echo __SMA_UNSUPPORTED__',
+          'else echo __SMA_UNSUPPORTED__',
+          'fi',
+        ].join(' '),
+      ],
+    );
+    const supported = stdout.trim() !== '__SMA_UNSUPPORTED__';
+
+    return {
+      text: supported ? text : '',
+      supported,
+      message: supported
+        ? null
+        : 'Clipboard commands are not available in this container image.',
+    };
+  }
+
+  async screenshot(id: string) {
+    const app = await this.getRunningRuntimeApp(id);
+    const { stdout } = await this.docker.execInContainerWithOutput(
+      app.containerId!,
+      [
+        'sh',
+        '-lc',
+        'screencap -p 2>/dev/null | base64 | tr -d "\\n" || true',
+      ],
+    );
+    const base64 = stdout.trim();
+    if (!base64) {
+      throw new ConflictException(
+        'Screenshot capture is not available in this container image.',
+      );
+    }
+
+    return {
+      mimeType: 'image/png',
+      dataUrl: `data:image/png;base64,${base64}`,
+      capturedAt: new Date().toISOString(),
+    };
+  }
+
   private async prepareScrcpyAdbTarget(app: AndroidApplication) {
     await this.applyNetworkPolicy(app.id);
     return this.docker.connectWsScrcpyAdb(app.containerName, app.adbPort);
+  }
+
+  private resolveContainerImage(image: string, registry: string | null) {
+    const trimmedImage = image.trim();
+    if (!registry) {
+      return trimmedImage;
+    }
+
+    const firstSegment = trimmedImage.split('/')[0] ?? '';
+    const hasExplicitRegistry =
+      firstSegment === 'localhost' ||
+      firstSegment.includes('.') ||
+      firstSegment.includes(':');
+
+    return hasExplicitRegistry
+      ? trimmedImage
+      : `${registry.replace(/\/+$/, '')}/${trimmedImage}`;
+  }
+
+  private async getRunningRuntimeApp(id: string) {
+    const app = await this.state.get(id);
+    if (!app.containerId || app.status !== AndroidApplicationStatus.Running) {
+      throw new ConflictException(
+        'Application must be running before using viewer runtime tools.',
+      );
+    }
+
+    return app;
+  }
+
+  private sanitizeRuntimeFileName(fileName: string) {
+    const normalized = basename(fileName.replace(/\\/g, '/')).trim();
+    if (
+      !normalized ||
+      normalized === '.' ||
+      normalized === '..' ||
+      normalized.includes('/') ||
+      normalized.includes('\\') ||
+      normalized.includes('\0')
+    ) {
+      throw new ConflictException('Invalid file name.');
+    }
+
+    return normalized;
+  }
+
+  private parseDownloadFiles(stdout: string) {
+    return stdout
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [name, size, modified] = line.split('\t');
+        const modifiedSeconds = Number(modified);
+        return {
+          name: name ?? '',
+          path: `${this.downloadDirectory}/${name ?? ''}`,
+          sizeBytes: Number(size) || 0,
+          modifiedAt:
+            Number.isFinite(modifiedSeconds) && modifiedSeconds > 0
+              ? new Date(modifiedSeconds * 1000).toISOString()
+              : null,
+        };
+      })
+      .filter((file) => file.name.length > 0);
   }
 
   /**

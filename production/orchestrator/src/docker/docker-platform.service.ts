@@ -114,9 +114,9 @@ export class DockerPlatformService {
     return { id: containerId, stopped: true };
   }
 
-  async removePlatformContainer(containerId: string) {
+  async removePlatformContainer(containerId: string, force = false) {
     await this.assertNotOrchestratorContainer(containerId);
-    await this.engine.removeContainer(containerId);
+    await this.engine.removeContainer(containerId, { force });
     return { id: containerId, removed: true };
   }
 

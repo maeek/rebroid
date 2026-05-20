@@ -22,8 +22,8 @@ export class DockerAdminService {
     return this.docker.stopPlatformContainer(id);
   }
 
-  removeContainer(id: string) {
-    return this.docker.removePlatformContainer(id);
+  removeContainer(id: string, force = false) {
+    return this.docker.removePlatformContainer(id, force);
   }
 
   listImages() {

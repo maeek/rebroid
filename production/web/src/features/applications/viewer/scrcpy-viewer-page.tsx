@@ -6,6 +6,7 @@ import { getProtectedWsScrcpyUrl } from '@/features/applications/viewer/scrcpy-u
 import { StatusSplash } from '@/features/shell/components/status-splash'
 import { getApplicationAction, getScrcpySessionAction } from '@/server/orchestrator/applications/read-actions'
 import { createScrcpyViewerToken } from '@/server/viewer/viewer-token'
+import { getDisplayErrorMessage } from '../../../lib/error-utils'
 import { ViewerActivityKeepalive, ViewerStartupRefresh } from './viewer-activity-keepalive'
 import type { AndroidApplication, ScrcpySession } from '@/server/orchestrator/applications/types'
 
@@ -183,8 +184,16 @@ const describeViewerIssue = ({
   }
 }
 
-export async function ScrcpyViewerPage({ params }: { params: Promise<{ id: string }> }) {
+export async function ScrcpyViewerPage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ id: string }>
+  searchParams?: Promise<{ sound?: string }>
+}) {
   const { id } = await params
+  const resolvedSearchParams = await searchParams
+  const soundEnabled = resolvedSearchParams?.sound !== '0'
 
   let app: AndroidApplication
   let session: ScrcpySession
@@ -195,7 +204,7 @@ export async function ScrcpyViewerPage({ params }: { params: Promise<{ id: strin
       <ViewerSplash
         title='Viewer unavailable'
         description='The app must be running before a scrcpy stream can be opened.'
-        detail={error instanceof Error ? error.message : 'Unknown error'}
+        detail={getDisplayErrorMessage(error)}
         tone='danger'
       />
     )
@@ -255,7 +264,8 @@ export async function ScrcpyViewerPage({ params }: { params: Promise<{ id: strin
   const viewerUrl = getProtectedWsScrcpyUrl({
     session,
     baseUrl: await getBaseUrl(),
-    viewerToken
+    viewerToken,
+    soundEnabled
   })
 
   return (
@@ -272,7 +282,7 @@ export async function ScrcpyViewerPage({ params }: { params: Promise<{ id: strin
         title='scrcpy viewer'
         src={viewerUrl}
         className='h-screen w-screen border-0 bg-black'
-        allow='fullscreen; clipboard-read; clipboard-write'
+        allow='fullscreen; clipboard-read; clipboard-write; autoplay'
       />
       <div className='pointer-events-none absolute inset-0 hidden items-center justify-center bg-background/80 text-secondary-foreground'>
         <IconLoader2 className='size-8 animate-spin' />
