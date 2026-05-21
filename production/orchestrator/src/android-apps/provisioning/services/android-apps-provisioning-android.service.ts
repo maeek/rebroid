@@ -106,7 +106,7 @@ export class AndroidAppsProvisioningAndroidService {
   private async waitForRedroidAdbFromSidecar(app: AndroidApplication) {
     this.assertContainerId(app);
 
-    const timeoutMs = 60_000;
+    const timeoutMs = 120_000;
     const intervalMs = 2_000;
     const deadline = Date.now() + timeoutMs;
     let lastProbe = 'ADB sidecar readiness was not reported.';

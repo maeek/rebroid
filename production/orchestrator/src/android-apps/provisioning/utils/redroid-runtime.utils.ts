@@ -6,8 +6,8 @@ export const redroidDefaultContainerArgs = [
   'ro.secure=0',
   'ro.debuggable=1',
   'androidboot.redroid_width=1080',
-  'androidboot.redroid_height=1920',
-  'androidboot.redroid_dpi=420',
+  'androidboot.redroid_height=2340',
+  'androidboot.redroid_dpi=440',
   'androidboot.redroid_fps=60',
 ];
 

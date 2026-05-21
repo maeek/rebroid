@@ -50,10 +50,10 @@ export const AppWorkspaceContent = ({
         </Badge>
       </Visible>
     </div>
-    <AppViewerStatusSection app={app} />
     <Visible when={viewerSlot}>
       <div className='flex w-full justify-center rounded-lg p-4 max-sm:p-3'>{viewerSlot}</div>
     </Visible>
+    <AppViewerStatusSection app={app} />
     <RuntimeToolsPanel
       app={app}
       permissions={permissions}

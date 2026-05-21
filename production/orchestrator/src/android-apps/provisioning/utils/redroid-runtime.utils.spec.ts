@@ -14,8 +14,8 @@ describe('redroid-runtime utils', () => {
       'ro.secure=0',
       'ro.debuggable=1',
       'androidboot.redroid_width=1080',
-      'androidboot.redroid_height=1920',
-      'androidboot.redroid_dpi=420',
+      'androidboot.redroid_height=2340',
+      'androidboot.redroid_dpi=440',
       'androidboot.redroid_fps=60',
     ]);
   });
@@ -31,8 +31,8 @@ describe('redroid-runtime utils', () => {
         'androidboot.redroid_gpu_mode=guest',
         'androidboot.use_memfd=true',
         'ro.debuggable=1',
-        'androidboot.redroid_height=1920',
-        'androidboot.redroid_dpi=420',
+        'androidboot.redroid_height=2340',
+        'androidboot.redroid_dpi=440',
         'androidboot.redroid_fps=60',
         'ro.secure=1',
         'androidboot.redroid_width=1080',

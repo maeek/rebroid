@@ -169,7 +169,7 @@ export const AppViewerPane = ({
     >
       <div
         ref={viewerContainerRef}
-        className={cn('flex w-full items-center justify-center', {
+        className={cn('relative flex w-full items-center justify-center', {
           'h-full w-full bg-background p-6 max-sm:p-4': isViewerFullscreen
         })}
       >
@@ -194,8 +194,24 @@ export const AppViewerPane = ({
             />
           </div>
         </Visible>
+        <Visible when={canAttach && isViewerFullscreen}>
+          <ViewerControlBar
+            appId={app.id}
+            runtimeAvailable={runtimeAvailable}
+            canControl={canControlViewer}
+            canCaptureScreenshot={canCaptureScreenshot}
+            hideOutline={hideOutline}
+            fullscreen={isViewerFullscreen}
+            isCapturing={isCapturing}
+            onCaptureScreenshot={handleScreenshotCapture}
+            onToggleFrame={() => updateHideOutline(!hideOutline)}
+            onToggleFullscreen={() => void toggleViewerFullscreen()}
+            onRotateViewer={rotateViewerShell}
+            mode='floating'
+          />
+        </Visible>
       </div>
-      <Visible when={canAttach}>
+      <Visible when={canAttach && !isViewerFullscreen}>
         <ViewerControlBar
           appId={app.id}
           runtimeAvailable={runtimeAvailable}

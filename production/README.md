@@ -49,6 +49,23 @@ podman machine start
 docker compose up --build
 ```
 
+If `podman compose` delegates to `docker-compose` and fails with a socket like `podman-machine-default-api.sock`, but `podman machine list` shows a differently named machine such as `machine`, `DOCKER_HOST` is stale. Compare the failing path with:
+
+```bash
+podman machine inspect machine --format '{{.ConnectionInfo.PodmanSocket.Path}}'
+```
+
+Then either unset `DOCKER_HOST` or export the real socket before running compose:
+
+```bash
+unset DOCKER_HOST
+# or
+export DOCKER_HOST=unix:///var/folders/.../T/podman/machine-api.sock
+podman compose up --build
+```
+
+The `Can't add file ... .dockerignore to tar: io: read/write on closed pipe` lines are a follow-on symptom of the same daemon connection failure, not a broken `.dockerignore` file.
+
 If you do not use the helper, inspect the machine socket path and pass it as `CONTAINER_ENGINE_SOCKET`.
 
 ## Internal Docker Mode

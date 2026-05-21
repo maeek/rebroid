@@ -19,7 +19,7 @@ export const ToolSection = ({
 }) => (
   <section
     className={cn(
-      'flex w-full flex-col gap-4 rounded-lg border border-border/70 bg-card/35 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md max-sm:p-4',
+      'flex w-full flex-col gap-4 rounded-lg border border-border/70 bg-card/20 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] backdrop-blur-md max-sm:p-4',
       className
     )}
   >

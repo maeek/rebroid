@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import type { ReactNode } from 'react'
+import { useRef, useState, useTransition } from 'react'
+import type { PointerEvent, ReactNode } from 'react'
 import {
   IconArrowsMaximize,
   IconArrowsMinimize,
   IconBell,
   IconDeviceMobileRotated,
+  IconGripVertical,
   IconHome,
   IconLayoutSidebarRight,
   IconLoader2,
@@ -57,6 +58,7 @@ type ViewerControlBarProps = {
   onToggleFrame: () => void
   onToggleFullscreen: () => void
   onRotateViewer?: () => void
+  mode?: 'bar' | 'floating'
 }
 
 export const ViewerControlBar = ({
@@ -70,11 +72,61 @@ export const ViewerControlBar = ({
   onCaptureScreenshot,
   onToggleFrame,
   onToggleFullscreen,
-  onRotateViewer
+  onRotateViewer,
+  mode = 'bar'
 }: ViewerControlBarProps) => {
   const [pendingCommand, setPendingCommand] = useState<ApplicationViewerControlCommand | null>(null)
+  const [floatingOpen, setFloatingOpen] = useState(false)
+  const [floatingPosition, setFloatingPosition] = useState({ x: 16, y: 96 })
   const [isPending, startTransition] = useTransition()
+  const dragState = useRef<{
+    pointerId: number
+    startX: number
+    startY: number
+    originX: number
+    originY: number
+  } | null>(null)
   const controlsDisabled = !runtimeAvailable || !canControl || isPending
+
+  const updateFloatingPosition = (nextX: number, nextY: number) => {
+    const maxX = typeof window === 'undefined' ? nextX : window.innerWidth - 72
+    const maxY = typeof window === 'undefined' ? nextY : window.innerHeight - 72
+
+    setFloatingPosition({
+      x: Math.min(Math.max(8, nextX), Math.max(8, maxX)),
+      y: Math.min(Math.max(8, nextY), Math.max(8, maxY))
+    })
+  }
+
+  const handleFloatingPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
+    dragState.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: floatingPosition.x,
+      originY: floatingPosition.y
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  const handleFloatingPointerMove = (event: PointerEvent<HTMLButtonElement>) => {
+    const state = dragState.current
+    if (!state || state.pointerId !== event.pointerId) {
+      return
+    }
+
+    updateFloatingPosition(state.originX + event.clientX - state.startX, state.originY + event.clientY - state.startY)
+  }
+
+  const handleFloatingPointerUp = (event: PointerEvent<HTMLButtonElement>) => {
+    const state = dragState.current
+    if (!state || state.pointerId !== event.pointerId) {
+      return
+    }
+
+    dragState.current = null
+    event.currentTarget.releasePointerCapture(event.pointerId)
+  }
 
   const sendControl = (command: ApplicationViewerControlCommand) => {
     if (controlsDisabled) {
@@ -103,8 +155,8 @@ export const ViewerControlBar = ({
   const controlIcon = (command: ApplicationViewerControlCommand, icon: ReactNode) =>
     pendingCommand === command ? <IconLoader2 className='size-4 animate-spin' /> : icon
 
-  return (
-    <div className='flex w-full flex-wrap items-center justify-center gap-2 pb-2'>
+  const controls = (
+    <>
       <Visible when={runtimeAvailable && canCaptureScreenshot}>
         <IconButtonTooltip label='Capture screenshot'>
           <Button
@@ -268,6 +320,45 @@ export const ViewerControlBar = ({
       <Visible when={!canControl && runtimeAvailable}>
         <div className='text-xs text-muted-foreground'>Viewer controls are disabled by permissions.</div>
       </Visible>
-    </div>
+    </>
   )
+
+  if (mode === 'floating') {
+    return (
+      <div
+        className='absolute z-30 flex items-start gap-2'
+        style={{ left: floatingPosition.x, top: floatingPosition.y }}
+      >
+        <div className='flex flex-col items-center gap-1 rounded-xl border border-border/70 bg-card/85 p-1 shadow-2xl backdrop-blur-xl'>
+          <button
+            type='button'
+            className='flex size-9 cursor-grab items-center justify-center rounded-lg text-secondary-foreground hover:bg-secondary active:cursor-grabbing'
+            aria-label='Move viewer toolbar'
+            onPointerDown={handleFloatingPointerDown}
+            onPointerMove={handleFloatingPointerMove}
+            onPointerUp={handleFloatingPointerUp}
+            onPointerCancel={handleFloatingPointerUp}
+          >
+            <IconGripVertical className='size-4' />
+          </button>
+          <Button
+            size='icon'
+            variant={floatingOpen ? 'default' : 'secondary'}
+            onClick={() => setFloatingOpen(current => !current)}
+            aria-label='Viewer toolbar'
+            className='size-9'
+          >
+            <IconLayoutSidebarRight className='size-4' />
+          </Button>
+        </div>
+        <Visible when={floatingOpen}>
+          <div className='flex max-w-[min(22rem,calc(100vw-7rem))] flex-wrap items-center gap-2 rounded-xl border border-border/70 bg-card/90 p-2 shadow-2xl backdrop-blur-xl'>
+            {controls}
+          </div>
+        </Visible>
+      </div>
+    )
+  }
+
+  return <div className='flex w-full flex-wrap items-center justify-center gap-2 pb-2'>{controls}</div>
 }

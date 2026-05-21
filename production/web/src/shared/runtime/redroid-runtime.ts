@@ -7,10 +7,18 @@ export const redroidDefaultContainerArgs = [
   'ro.debuggable=1'
 ]
 
-export type RedroidDisplayProfileId = 'phone-20-9' | 'phone-16-9' | 'tablet-16-10' | 'tablet-landscape-16-10'
+export type RedroidDisplayProfileId =
+  | 'phone-18-9'
+  | 'phone-19-5-9'
+  | 'phone-20-9'
+  | 'phone-21-9'
+  | 'phone-qhd-19-5-9'
+  | 'tablet-16-10'
+  | 'tablet-landscape-16-10'
 
 export type RedroidDisplayProfile = {
   id: RedroidDisplayProfileId
+  kind: 'phone' | 'tablet'
   label: string
   description: string
   width: number
@@ -21,16 +29,28 @@ export type RedroidDisplayProfile = {
 
 export const redroidDisplayProfiles: RedroidDisplayProfile[] = [
   {
-    id: 'phone-16-9',
-    label: 'Phone 16:9',
-    description: '1080 x 1920, 420 dpi',
+    id: 'phone-19-5-9',
+    kind: 'phone',
+    label: 'Modern phone',
+    description: '1080 x 2340, 440 dpi',
     width: 1080,
-    height: 1920,
+    height: 2340,
+    dpi: 440,
+    fps: 60
+  },
+  {
+    id: 'phone-18-9',
+    kind: 'phone',
+    label: 'Tall phone',
+    description: '1080 x 2160, 420 dpi',
+    width: 1080,
+    height: 2160,
     dpi: 420,
     fps: 60
   },
   {
     id: 'phone-20-9',
+    kind: 'phone',
     label: 'Phone 20:9',
     description: '1080 x 2400, 420 dpi',
     width: 1080,
@@ -39,7 +59,28 @@ export const redroidDisplayProfiles: RedroidDisplayProfile[] = [
     fps: 60
   },
   {
+    id: 'phone-21-9',
+    kind: 'phone',
+    label: 'Cinema phone',
+    description: '1080 x 2520, 420 dpi',
+    width: 1080,
+    height: 2520,
+    dpi: 420,
+    fps: 60
+  },
+  {
+    id: 'phone-qhd-19-5-9',
+    kind: 'phone',
+    label: 'QHD phone',
+    description: '1440 x 3120, 560 dpi',
+    width: 1440,
+    height: 3120,
+    dpi: 560,
+    fps: 60
+  },
+  {
     id: 'tablet-16-10',
+    kind: 'tablet',
     label: 'Tablet 16:10',
     description: '1600 x 2560, 320 dpi',
     width: 1600,
@@ -49,6 +90,7 @@ export const redroidDisplayProfiles: RedroidDisplayProfile[] = [
   },
   {
     id: 'tablet-landscape-16-10',
+    kind: 'tablet',
     label: 'Tablet landscape',
     description: '2560 x 1600, 320 dpi',
     width: 2560,
@@ -58,7 +100,7 @@ export const redroidDisplayProfiles: RedroidDisplayProfile[] = [
   }
 ]
 
-export const defaultRedroidDisplayProfileId: RedroidDisplayProfileId = 'phone-16-9'
+export const defaultRedroidDisplayProfileId: RedroidDisplayProfileId = 'phone-19-5-9'
 
 const splitContainerArgs = (value: string) => value.trim().split(/\s+/).filter(Boolean)
 
@@ -109,7 +151,7 @@ const positiveNumberArg = (containerArgs: string | null | undefined, key: string
 
 export const getRedroidDisplayDimensionsFromArgs = (containerArgs: string | null | undefined) => {
   const width = positiveNumberArg(containerArgs, 'androidboot.redroid_width') ?? 1080
-  const height = positiveNumberArg(containerArgs, 'androidboot.redroid_height') ?? 1920
+  const height = positiveNumberArg(containerArgs, 'androidboot.redroid_height') ?? 2340
 
   return { width, height, aspectRatio: width / height }
 }

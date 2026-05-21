@@ -223,11 +223,11 @@ export const AppViewer = ({
       <div
         className={cn('relative flex flex-col items-center overflow-hidden', {
           'h-full w-full max-h-full max-w-full': fullscreen,
-          'aspect-[16/9]': fullscreen && isLandscape,
-          'aspect-[9/16] w-auto': fullscreen && !isLandscape,
+          'aspect-[2340/1080]': fullscreen && isLandscape,
+          'aspect-[1080/2340] w-auto': fullscreen && !isLandscape,
           'w-full rounded-lg bg-card': !fullscreen,
-          'aspect-[16/9] max-h-[min(68vh,44rem)]': !fullscreen && isLandscape,
-          'aspect-[9/16] max-h-[min(72vh,52rem)] max-w-[min(100%,28rem)]': !fullscreen && !isLandscape
+          'aspect-[2340/1080] max-h-[min(68vh,44rem)]': !fullscreen && isLandscape,
+          'aspect-[1080/2340] max-h-[min(72vh,52rem)] max-w-[min(100%,24rem)]': !fullscreen && !isLandscape
         })}
       >
         {content}
@@ -240,8 +240,8 @@ export const AppViewer = ({
       className={cn(
         'relative w-full overflow-hidden rounded-[2rem] bg-neutral-800/85 p-2 shadow-[0_18px_48px_rgba(0,0,0,0.28),inset_0_0_0_1px_rgba(255,255,255,0.08)]',
         {
-          'aspect-[16/9] max-w-5xl': isLandscape,
-          'aspect-[9/16] max-w-md': !isLandscape
+          'aspect-[2340/1080] max-w-5xl': isLandscape,
+          'aspect-[1080/2340] max-w-sm': !isLandscape
         }
       )}
     >

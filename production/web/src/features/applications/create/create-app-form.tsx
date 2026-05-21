@@ -5,6 +5,7 @@ import { IconLoader2 } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { useTopLoader } from 'nextjs-toploader'
 import { CreateAppDeviceSection } from './create-app-device-section'
+import { CreateAppDisplaySection } from './create-app-display-section'
 import { CreateAppGeneralSection } from './create-app-general-section'
 import { CreateAppIconSection } from './create-app-icon-section'
 import { CreateAppResourcesSection } from './create-app-resources-section'
@@ -260,6 +261,12 @@ export const CreateAppForm = ({
             isUploadingApk={isUploadingApk}
             onApkSelect={file => void handleApkSelect(file)}
           />
+          <Visible when={isRedroidRuntime && canChangeContainerArgs}>
+            <CreateAppDisplaySection
+              values={formValues}
+              onChange={updateFormValues}
+            />
+          </Visible>
           <Visible when={showDeviceSection || showSessionSection || showResourcesSection}>
             <h2 className='font-bold my-4'>Advanced</h2>
           </Visible>

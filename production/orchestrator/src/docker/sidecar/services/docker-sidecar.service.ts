@@ -188,7 +188,10 @@ export class DockerSidecarService implements OnModuleInit {
       const connectCommand = [
         'sh',
         '-lc',
-        `timeout 10s adb connect ${this.shellQuote(target)}`,
+        [
+          `timeout 5s adb disconnect ${this.shellQuote(target)} >/dev/null 2>&1 || true`,
+          `timeout 10s adb connect ${this.shellQuote(target)}`,
+        ].join('; '),
       ];
       const output = await this.exec.execInContainerWithOutput(sidecar.id, [
         ...connectCommand,
@@ -210,25 +213,52 @@ export class DockerSidecarService implements OnModuleInit {
       const stateCommand = [
         'sh',
         '-lc',
-        `timeout 10s adb -s ${this.shellQuote(target)} get-state`,
+        `timeout 10s adb -s ${this.shellQuote(target)} get-state 2>&1 || true`,
       ];
       const state = await this.exec.execInContainerWithOutput(sidecar.id, [
         ...stateCommand,
       ]);
-      if (state.stdout.trim().toLowerCase() !== 'device') {
+      let currentState = state.stdout.trim().toLowerCase();
+      let lastStateCommand = stateCommand;
+      let lastState = state;
+
+      if (currentState.includes('offline')) {
+        const recoveryCommand = [
+          'sh',
+          '-lc',
+          [
+            `timeout 5s adb disconnect ${this.shellQuote(target)} >/dev/null 2>&1 || true`,
+            'timeout 5s adb reconnect offline >/dev/null 2>&1 || true',
+            'timeout 5s adb kill-server >/dev/null 2>&1 || true',
+            'timeout 5s adb start-server >/dev/null 2>&1 || true',
+            `timeout 10s adb connect ${this.shellQuote(target)}`,
+            `timeout 30s adb -s ${this.shellQuote(target)} wait-for-device`,
+            `timeout 10s adb -s ${this.shellQuote(target)} get-state 2>&1 || true`,
+          ].join('; '),
+        ];
+        lastStateCommand = recoveryCommand;
+        lastState = await this.exec.execInContainerWithOutput(
+          sidecar.id,
+          recoveryCommand,
+        );
+        const stateTokens = lastState.stdout.trim().toLowerCase().split(/\s+/);
+        currentState = stateTokens[stateTokens.length - 1] ?? '';
+      }
+
+      if (currentState !== 'device') {
         const viewerError = this.viewerTargetErrorFromOutput({
-          command: stateCommand,
-          stdout: state.stdout,
-          stderr: state.stderr,
-          fallbackMessage: `ADB target ${target} is not ready: ${state.stdout.trim() || 'unknown state'}.`,
+          command: lastStateCommand,
+          stdout: lastState.stdout,
+          stderr: lastState.stderr,
+          fallbackMessage: `ADB target ${target} is not ready: ${lastState.stdout.trim() || 'unknown state'}.`,
         }) ?? {
           code: 'adb_unreachable',
           message: `ADB target ${target} is not ready.`,
           retryable: true,
           exitCode: 0,
-          command: stateCommand,
-          stdout: state.stdout,
-          stderr: state.stderr,
+          command: lastStateCommand,
+          stdout: lastState.stdout,
+          stderr: lastState.stderr,
         };
         return {
           configured: true,
