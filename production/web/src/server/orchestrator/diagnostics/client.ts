@@ -7,7 +7,7 @@ export const orchestratorDiagnosticsClient = {
   },
 
   repairScrcpySidecar() {
-    return request<ServiceHealth>('/health/scrcpy/repair', { method: 'POST' })
+    return request<ServiceHealth>('/docker/sidecar/repair', { method: 'POST' })
   },
 
   getSystemResources(refreshVolumes = false) {

@@ -27,7 +27,7 @@ import { toast } from '@/hooks/use-toast'
 import { setAppIconAction } from '@/server/app-icons/actions/set-app-icon-action'
 import { createApplicationAction } from '@/server/orchestrator/applications/mutation-actions'
 import { hasPermission, isRedroidImage, type PermissionMap } from '@/shared/permissions/permissions'
-import { applyRedroidDefaultContainerArgs } from '@/shared/runtime/redroid-runtime'
+import { applyRedroidDisplayContainerArgs, defaultRedroidDisplayProfileId } from '@/shared/runtime/redroid-runtime'
 
 const getInitialFormValues = (settings: OrchestratorUiSettings): CreateAppFormValues => ({
   name: '',
@@ -37,6 +37,7 @@ const getInitialFormValues = (settings: OrchestratorUiSettings): CreateAppFormVa
   cpuLimitCpus: '',
   volumeSizeLimitMb: '',
   customContainerArgs: '',
+  redroidDisplayProfileId: defaultRedroidDisplayProfileId,
   redroidExtraArgs: ''
 })
 
@@ -181,10 +182,13 @@ export const CreateAppForm = ({
         volumeSizeLimitMb:
           canChangeResources && formValues.volumeSizeLimitMb ? Number(formValues.volumeSizeLimitMb) : undefined,
         containerArgs: canChangeContainerArgs
-          ? applyRedroidDefaultContainerArgs(
-              formValues.containerImage,
-              isRedroidRuntime ? formValues.redroidExtraArgs : formValues.customContainerArgs
-            ) || undefined
+          ? (isRedroidRuntime
+              ? applyRedroidDisplayContainerArgs(
+                  formValues.containerImage,
+                  formValues.redroidDisplayProfileId,
+                  formValues.redroidExtraArgs
+                )
+              : formValues.customContainerArgs.trim()) || undefined
           : undefined,
         uploadedApkId: uploadedApk?.id
       })

@@ -14,7 +14,7 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { DockerRuntimeService } from '../docker/docker-runtime.service';
+import { DockerImageRuntimeService } from '../docker/images/services/docker-image-runtime.service';
 import { SettingsService } from '../settings/settings.service';
 import { PullContainerImageDto } from './dto/pull-container-image.dto';
 import { RemoveContainerImageDto } from './dto/remove-container-image.dto';
@@ -23,7 +23,7 @@ import { RemoveContainerImageDto } from './dto/remove-container-image.dto';
 @Controller('container-images')
 export class ContainerImagesController {
   constructor(
-    private readonly docker: DockerRuntimeService,
+    private readonly images: DockerImageRuntimeService,
     private readonly settings: SettingsService,
   ) {}
 
@@ -31,7 +31,7 @@ export class ContainerImagesController {
   @ApiOperation({ summary: 'List images available in the container engine.' })
   @ApiOkResponse({ description: 'Container engine image summaries.' })
   list() {
-    return this.docker.listImages();
+    return this.images.listImages();
   }
 
   @Post('pull')
@@ -50,7 +50,7 @@ export class ContainerImagesController {
       dto.image,
       settings.dockerImageRegistry,
     );
-    await this.docker.pullImage(image);
+    await this.images.pullImage(image);
     return {
       image,
       status: 'pulled',
@@ -68,7 +68,7 @@ export class ContainerImagesController {
     @Param('image') image: string,
     @Query() query: RemoveContainerImageDto,
   ) {
-    return this.docker.removeImage(
+    return this.images.removeImage(
       decodeURIComponent(image),
       query.force ?? false,
     );

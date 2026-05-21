@@ -1,13 +1,15 @@
 import { Module } from '@nestjs/common';
-import { DockerModule } from '../docker/docker.module';
-import { SettingsModule } from '../settings/settings.module';
-import { DockerMaintenanceController } from './docker-maintenance.controller';
-import { DockerAdminService } from './docker-admin.service';
-import { ImagePruneService } from './image-prune.service';
+import { DockerMaintenanceContainersModule } from './containers/docker-maintenance-containers.module';
+import { DockerMaintenanceImagesModule } from './images/docker-maintenance-images.module';
+import { DockerMaintenanceNetworksModule } from './networks/docker-maintenance-networks.module';
+import { DockerMaintenancePruneModule } from './prune/docker-maintenance-prune.module';
 
 @Module({
-  imports: [DockerModule, SettingsModule],
-  controllers: [DockerMaintenanceController],
-  providers: [DockerAdminService, ImagePruneService],
+  imports: [
+    DockerMaintenanceContainersModule,
+    DockerMaintenanceImagesModule,
+    DockerMaintenanceNetworksModule,
+    DockerMaintenancePruneModule,
+  ],
 })
 export class DockerMaintenanceModule {}

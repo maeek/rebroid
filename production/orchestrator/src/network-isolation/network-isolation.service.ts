@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ApplicationProfileMode } from '../android-apps/application-profile-mode';
 import { dockerSafeName } from '../common/docker-name';
-import { DockerRuntimeService } from '../docker/docker-runtime.service';
+import { DockerNetworkRuntimeService } from '../docker/networks/services/docker-network-runtime.service';
+import { DockerResourceRuntimeService } from '../docker/resources/services/docker-resource-runtime.service';
 
 export interface IsolatedRuntimeNames {
   containerName: string;
@@ -13,7 +15,8 @@ export interface IsolatedRuntimeNames {
 export class NetworkIsolationService {
   constructor(
     private readonly config: ConfigService,
-    private readonly docker: DockerRuntimeService,
+    private readonly networks: DockerNetworkRuntimeService,
+    private readonly resources: DockerResourceRuntimeService,
   ) {}
 
   /**
@@ -44,9 +47,30 @@ export class NetworkIsolationService {
    * The orchestrator is attached so it can still reach the app over that network.
    */
   async createBoundary(applicationId: string, names: IsolatedRuntimeNames) {
-    await this.docker.createVolume(applicationId, names.volumeName);
-    await this.docker.createIsolatedNetwork(applicationId, names.networkName);
-    await this.docker.connectOrchestratorToNetwork(names.networkName);
+    await this.createRuntimeBoundary(
+      applicationId,
+      ApplicationProfileMode.Persistent,
+      names,
+    );
+  }
+
+  /**
+   * Creates the isolated runtime network and only provisions persistent storage when required.
+   */
+  async createRuntimeBoundary(
+    applicationId: string,
+    profileMode: ApplicationProfileMode,
+    names: Pick<IsolatedRuntimeNames, 'networkName' | 'volumeName'>,
+  ) {
+    if (profileMode === ApplicationProfileMode.Persistent) {
+      await this.resources.createVolume(applicationId, names.volumeName);
+    }
+    await this.networks.createIsolatedNetwork(applicationId, names.networkName);
+    await this.connectOrchestrator(names.networkName);
+  }
+
+  async connectOrchestrator(networkName: string) {
+    await this.networks.connectOrchestratorToNetwork(networkName);
   }
 
   /**
@@ -55,7 +79,7 @@ export class NetworkIsolationService {
   async removeBoundary(
     names: Pick<IsolatedRuntimeNames, 'networkName' | 'volumeName'>,
   ) {
-    await this.docker.removeNetwork(names.networkName);
-    await this.docker.removeVolume(names.volumeName);
+    await this.networks.removeNetwork(names.networkName);
+    await this.resources.removeVolume(names.volumeName);
   }
 }

@@ -1,6 +1,6 @@
-import { Controller, Get, Post } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { DockerHealthService } from '../docker/docker-health.service';
+import { DockerHealthService } from '../docker/health/services/docker-health.service';
 
 @ApiTags('health')
 @Controller('health')
@@ -72,20 +72,5 @@ export class HealthController {
         scrcpy,
       },
     };
-  }
-
-  @Post('scrcpy/repair')
-  @ApiOkResponse({
-    schema: {
-      example: {
-        ok: true,
-        status: 'healthy',
-        message: 'ws-scrcpy sidecar is running.',
-      },
-    },
-  })
-  async repairScrcpy() {
-    await this.docker.repairWsScrcpySidecar();
-    return this.docker.wsScrcpyHealth();
   }
 }

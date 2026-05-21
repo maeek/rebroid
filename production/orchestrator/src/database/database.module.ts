@@ -4,7 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { AndroidApplication } from '../android-apps/android-application.entity';
-import { UploadedApk } from '../apk/uploaded-apk.entity';
+import { UploadedApk } from '../apk/entities/uploaded-apk.entity';
 import { InitializeSqliteSchema1715970000000 } from './migrations/1715970000000-initialize-sqlite-schema';
 
 @Module({

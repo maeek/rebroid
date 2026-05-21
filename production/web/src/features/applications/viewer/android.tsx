@@ -1,7 +1,6 @@
 'use client'
 import { useMemo } from 'react'
 import { IconAlertTriangle, IconLoader2, IconPlayerPlay } from '@tabler/icons-react'
-import Android from '@/components/ui/android'
 import { Button } from '@/components/ui/button'
 import { Visible } from '@/components/ui/visible'
 import { AppIcon } from '@/features/applications/components/app-icon'
@@ -12,10 +11,13 @@ import { getProtectedViewerShellUrl } from '@/features/applications/viewer/scrcp
 import { cn } from '@/lib/utils'
 import type { ViewerSettings } from '@/features/applications/viewer/viewer-settings'
 
+export type ViewerOrientation = 'portrait' | 'landscape'
+
 export const AppViewer = ({
   app,
   hideOutline,
   fullscreen,
+  orientation = 'portrait',
   viewerSettings,
   canStart = false,
   isStarting = false,
@@ -24,6 +26,7 @@ export const AppViewer = ({
   app?: AppDefinition
   hideOutline?: boolean
   fullscreen?: boolean
+  orientation?: ViewerOrientation
   viewerSettings?: ViewerSettings
   canStart?: boolean
   isStarting?: boolean
@@ -31,6 +34,7 @@ export const AppViewer = ({
 }) => {
   const isBorderless = Boolean(hideOutline)
   const isBorderlessFullscreen = Boolean(hideOutline && fullscreen)
+  const isLandscape = orientation === 'landscape'
   const isViewerReady = Boolean(app?.id && app.running && app.status === 'running')
   const viewerSrc = useMemo(() => {
     if (!isViewerReady || !app?.id) {
@@ -218,9 +222,12 @@ export const AppViewer = ({
     return (
       <div
         className={cn('relative flex flex-col items-center overflow-hidden', {
-          'aspect-380/820 h-full w-auto max-h-full max-w-full': fullscreen,
-          'flex-1 w-full self-stretch rounded-lg bg-card lg:h-220.5 lg:min-w-108.25 max-sm:min-h-[calc(100vh-4rem)]':
-            !fullscreen
+          'h-full w-full max-h-full max-w-full': fullscreen,
+          'aspect-[16/9]': fullscreen && isLandscape,
+          'aspect-[9/16] w-auto': fullscreen && !isLandscape,
+          'w-full rounded-lg bg-card': !fullscreen,
+          'aspect-[16/9] max-h-[min(68vh,44rem)]': !fullscreen && isLandscape,
+          'aspect-[9/16] max-h-[min(72vh,52rem)] max-w-[min(100%,28rem)]': !fullscreen && !isLandscape
         })}
       >
         {content}
@@ -228,5 +235,17 @@ export const AppViewer = ({
     )
   }
 
-  return <Android className='h-auto w-full max-w-md'>{content}</Android>
+  return (
+    <div
+      className={cn(
+        'relative w-full overflow-hidden rounded-[2rem] bg-neutral-800/85 p-2 shadow-[0_18px_48px_rgba(0,0,0,0.28),inset_0_0_0_1px_rgba(255,255,255,0.08)]',
+        {
+          'aspect-[16/9] max-w-5xl': isLandscape,
+          'aspect-[9/16] max-w-md': !isLandscape
+        }
+      )}
+    >
+      <div className='h-full w-full overflow-hidden rounded-[1.55rem] bg-card ring-1 ring-white/8'>{content}</div>
+    </div>
+  )
 }

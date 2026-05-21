@@ -7,7 +7,7 @@ export type RecentApp = {
   openedAt: number
 }
 
-export const recentAppsStorageKey = 'sma_recent_apps'
+export const recentAppsStorageKey = 'rebroid_recent_apps'
 export const recentAppsUpdatedEvent = 'rebroid-recent-apps-updated'
 
 const writeRecentApps = (apps: RecentApp[]): void => {

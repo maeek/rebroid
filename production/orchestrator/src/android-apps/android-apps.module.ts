@@ -1,21 +1,14 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ApkModule } from '../apk/apk.module';
-import { DockerModule } from '../docker/docker.module';
-import { NetworkIsolationModule } from '../network-isolation/network-isolation.module';
-import { NetworkPolicyModule } from '../network-policy/network-policy.module';
-import { SettingsModule } from '../settings/settings.module';
-import { AndroidApplication } from './android-application.entity';
-import { AndroidAppsController } from './android-apps.controller';
-import { InactivityService } from './inactivity.service';
-import { AndroidAppsService } from './android-apps.service';
-import { AndroidAppsFacadeService } from './services/android-apps-facade.service';
-import { AndroidAppsLogService } from './services/android-apps-log.service';
-import { AndroidAppsOperationsService } from './services/android-apps-operations.service';
-import { AndroidAppsProvisioningService } from './services/android-apps-provisioning.service';
-import { AndroidAppsProvisioningTrackerService } from './services/android-apps-provisioning-tracker.service';
-import { AndroidAppsStateService } from './services/android-apps-state.service';
-import { AndroidAppsStatusService } from './services/android-apps-status.service';
+import { AndroidAppsCommonModule } from './common/android-apps-common.module';
+import { AndroidAppsController } from './common/controllers/android-apps.controller';
+import { AndroidAppsFacadeService } from './common/services/android-apps-facade.service';
+import { AndroidAppsService } from './common/android-apps.service';
+import { InactivityService } from './common/services/inactivity.service';
+import { AndroidAppsLifecycleModule } from './lifecycle/android-apps-lifecycle.module';
+import { AndroidAppsRuntimeNetworkModule } from './network/android-apps-runtime-network.module';
+import { AndroidAppsProvisioningModule } from './provisioning/android-apps-provisioning.module';
+import { AndroidAppsRuntimeModule } from './runtime/android-apps-runtime.module';
+import { AndroidAppsViewerModule } from './viewer/android-apps-viewer.module';
 
 const androidAppsServiceProvider = {
   provide: AndroidAppsService,
@@ -23,23 +16,17 @@ const androidAppsServiceProvider = {
 };
 @Module({
   imports: [
-    TypeOrmModule.forFeature([AndroidApplication]),
-    DockerModule,
-    NetworkIsolationModule,
-    NetworkPolicyModule,
-    SettingsModule,
-    ApkModule,
+    AndroidAppsCommonModule,
+    AndroidAppsViewerModule,
+    AndroidAppsRuntimeNetworkModule,
+    AndroidAppsProvisioningModule,
+    AndroidAppsLifecycleModule,
+    AndroidAppsRuntimeModule,
   ],
   controllers: [AndroidAppsController],
   providers: [
     AndroidAppsFacadeService,
-    AndroidAppsLogService,
-    AndroidAppsOperationsService,
     androidAppsServiceProvider,
-    AndroidAppsProvisioningService,
-    AndroidAppsProvisioningTrackerService,
-    AndroidAppsStateService,
-    AndroidAppsStatusService,
     InactivityService,
   ],
   exports: [AndroidAppsService, AndroidAppsFacadeService],

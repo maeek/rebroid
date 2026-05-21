@@ -1,5 +1,6 @@
 import { useRef, useState, type ChangeEvent } from 'react'
 import { IconUpload, IconX } from '@tabler/icons-react'
+import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
 import { AppIcon } from '@/features/applications/components/app-icon'
@@ -12,9 +13,8 @@ import {
 import { toast } from '@/hooks/use-toast'
 import { removeAppIconAction } from '@/server/app-icons/actions/remove-app-icon-action'
 import { setAppIconAction } from '@/server/app-icons/actions/set-app-icon-action'
-import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 
-const recentAppsStorageKey = 'sma_recent_apps'
+const recentAppsStorageKey = 'rebroid_recent_apps'
 const recentAppsUpdatedEvent = 'rebroid-recent-apps-updated'
 
 type RecentApp = {

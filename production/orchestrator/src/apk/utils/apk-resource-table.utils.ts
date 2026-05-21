@@ -1,4 +1,4 @@
-import { ParsedStringPool, resStringPoolType } from '../apk.types';
+import { ParsedStringPool, resStringPoolType } from '../types/apk.types';
 
 export const scoreResourceIconPath = (path: string, density: number) => {
   const lowerPath = path.toLowerCase();

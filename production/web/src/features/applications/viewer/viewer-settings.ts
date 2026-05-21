@@ -21,7 +21,7 @@ export const viewerPlayerDefinitions: ViewerPlayerDefinition[] = [
   {
     value: 'tinyh264',
     label: 'Tiny H264',
-    description: 'WASM worker decoder. Lower compatibility, useful as a fallback path.'
+    description: 'WASM worker decoder. Current default for lower latency Redroid streaming.'
   },
   {
     value: 'webcodecs',
@@ -49,7 +49,7 @@ export type ViewerSettings = ViewerStreamingSettings & {
 
 export const viewerStreamingPresets: Record<ViewerStreamingPreset, ViewerStreamingSettings> = {
   bandwidth: {
-    player: 'mse',
+    player: 'tinyh264',
     preset: 'bandwidth',
     bitrateMbps: 3,
     maxFps: 30,
@@ -58,7 +58,7 @@ export const viewerStreamingPresets: Record<ViewerStreamingPreset, ViewerStreami
     fitToFrame: false
   },
   balanced: {
-    player: 'mse',
+    player: 'tinyh264',
     preset: 'balanced',
     bitrateMbps: 7,
     maxFps: 60,
@@ -67,7 +67,7 @@ export const viewerStreamingPresets: Record<ViewerStreamingPreset, ViewerStreami
     fitToFrame: false
   },
   quality: {
-    player: 'mse',
+    player: 'tinyh264',
     preset: 'quality',
     bitrateMbps: 12,
     maxFps: 60,
@@ -82,7 +82,7 @@ export const defaultViewerSettings: ViewerSettings = {
   soundEnabled: true
 }
 
-const storageKey = 'rebroid.viewer.settings'
+const storageKey = 'rebroid.viewer.settings.v2'
 
 const isValidNumber = (value: unknown, fallback: number, min: number, max: number) => {
   if (typeof value !== 'number' || Number.isNaN(value)) {

@@ -1,0 +1,264 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { getErrorMessage } from '../../../common/error-message';
+import { DockerContainerLifecycleService } from '../../../docker/containers/services/docker-container-lifecycle.service';
+import { DockerContainerProvisioningService } from '../../../docker/containers/services/docker-container-provisioning.service';
+import { DockerImageRuntimeService } from '../../../docker/images/services/docker-image-runtime.service';
+import { DockerResourceRuntimeService } from '../../../docker/resources/services/docker-resource-runtime.service';
+import { AndroidApplication } from '../../android-application.entity';
+import {
+  AndroidApplicationLifecycleStage,
+  AndroidApplicationStatus,
+} from '../../android-application-status';
+import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
+import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
+import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
+import { AndroidAppsRuntimeNetworkService } from '../../network/services/android-apps-runtime-network.service';
+import { AndroidAppsProvisioningAndroidService } from './android-apps-provisioning-android.service';
+import { AndroidAppsProvisioningApkService } from './android-apps-provisioning-apk.service';
+
+@Injectable()
+export class AndroidAppsProvisioningService {
+  private readonly logger = new Logger(AndroidAppsProvisioningService.name);
+
+  constructor(
+    private readonly config: ConfigService,
+    private readonly lifecycle: DockerContainerLifecycleService,
+    private readonly provisioningContainers: DockerContainerProvisioningService,
+    private readonly images: DockerImageRuntimeService,
+    private readonly resources: DockerResourceRuntimeService,
+    private readonly logs: AndroidAppsLogService,
+    private readonly androidProvisioning: AndroidAppsProvisioningAndroidService,
+    private readonly apkProvisioning: AndroidAppsProvisioningApkService,
+    private readonly network: AndroidAppsRuntimeNetworkService,
+    private readonly state: AndroidAppsStateService,
+    private readonly tracker: AndroidAppsProvisioningTrackerService,
+  ) {}
+
+  /** Runs the full setup flow for a new app. */
+  async provision(applicationId: string) {
+    try {
+      const app = await this.beginProvisioning(applicationId);
+
+      await this.ensureImageAvailable(app);
+      await this.prepareRuntimeBoundary(app);
+      await this.createManagedContainer(app);
+      await this.startManagedContainer(app);
+      await this.waitForRuntimeReadiness(app);
+      await this.installInitialApk(app);
+      await this.finishProvisioning(applicationId);
+    } catch (error) {
+      if (this.tracker.isCancellationError(error)) {
+        this.logger.log(`Provisioning cancelled for ${applicationId}.`);
+        return;
+      }
+
+      if (!(error instanceof Error)) {
+        this.logger.error(error);
+      }
+      const message = getErrorMessage(error);
+      this.logger.error(`Provisioning failed for ${applicationId}: ${message}`);
+      await this.setLifecycle(applicationId, {
+        status: AndroidApplicationStatus.Error,
+        lifecycleStage: AndroidApplicationLifecycleStage.Error,
+        statusMessage: message,
+        lastError: message,
+      });
+    }
+  }
+
+  /** Installs the app APK into the running container. */
+  async installApk(
+    app: AndroidApplication,
+    statusMessage = 'Installing APK inside Android.',
+  ) {
+    return this.apkProvisioning.installApk(app, statusMessage);
+  }
+
+  /** Starts the provisioning flow and writes the first logs. */
+  private async beginProvisioning(applicationId: string) {
+    this.tracker.ensureActive(applicationId);
+    await this.setLifecycle(applicationId, {
+      status: AndroidApplicationStatus.Provisioning,
+      lifecycleStage: AndroidApplicationLifecycleStage.ImageChecking,
+      statusMessage:
+        'Checking whether the container image is available locally.',
+      provisioningStartedAt: new Date(),
+      lastError: null,
+    });
+
+    const app = await this.state.getStored(applicationId);
+    await this.logs.append(applicationId, 'Provisioning started', {
+      image: app.containerImage,
+      containerName: app.containerName,
+      networkName: app.networkName,
+      volumeName: app.volumeName,
+    });
+    await this.logs.append(
+      applicationId,
+      'Container engine selected',
+      await this.resources.engineSummary(),
+    );
+    this.tracker.ensureActive(applicationId);
+    return app;
+  }
+
+  /** Pulls the container image if it is missing. */
+  private async ensureImageAvailable(app: AndroidApplication) {
+    if (await this.images.imageExists(app.containerImage)) {
+      return;
+    }
+
+    this.tracker.ensureActive(app.id);
+    await this.setLifecycle(app.id, {
+      lifecycleStage: AndroidApplicationLifecycleStage.ImagePulling,
+      statusMessage: `Docker image "${app.containerImage}" is not available locally. Pulling it now.`,
+    });
+
+    await this.images.pullImage(app.containerImage, (message) => {
+      void this.state.setLifecycle(app.id, {
+        statusMessage: message || `Pulling ${app.containerImage}.`,
+      });
+      void this.logs
+        .append(app.id, 'Image pull progress', {
+          image: app.containerImage,
+          message: message || `Pulling ${app.containerImage}.`,
+        })
+        .catch((error) => {
+          this.logger.warn(
+            `Could not write image pull log for ${app.id}: ${getErrorMessage(error)}`,
+          );
+        });
+    });
+    this.tracker.ensureActive(app.id);
+  }
+
+  /** Creates the app network and storage boundary. */
+  private async prepareRuntimeBoundary(app: AndroidApplication) {
+    this.tracker.ensureActive(app.id);
+    await this.setLifecycle(app.id, {
+      lifecycleStage: AndroidApplicationLifecycleStage.VolumeCreating,
+      statusMessage: `Creating persistent data volume ${app.volumeName}.`,
+    });
+    await this.setLifecycle(app.id, {
+      lifecycleStage: AndroidApplicationLifecycleStage.NetworkCreating,
+      statusMessage: `Creating isolated internal network ${app.networkName}.`,
+    });
+    await this.setLifecycle(app.id, {
+      lifecycleStage:
+        AndroidApplicationLifecycleStage.OrchestratorNetworkConnecting,
+      statusMessage: 'Connecting orchestrator to the isolated app network.',
+    });
+    await this.network.createRuntimeBoundary(app);
+  }
+
+  /** Creates the managed container record in Docker. */
+  private async createManagedContainer(app: AndroidApplication) {
+    this.tracker.ensureActive(app.id);
+    await this.setLifecycle(app.id, {
+      lifecycleStage: AndroidApplicationLifecycleStage.ContainerCreating,
+      statusMessage: `Creating application container ${app.containerName}.`,
+    });
+    const container =
+      await this.provisioningContainers.createApplicationContainer({
+        applicationId: app.id,
+        containerName: app.containerName,
+        networkName: app.networkName,
+        volumeName: app.volumeName,
+        image: app.containerImage,
+        dataMountPath: this.config.getOrThrow<string>(
+          'app.redroid.dataMountPath',
+        ),
+        adbPort: app.adbPort,
+        privileged: this.config.getOrThrow<boolean>('app.redroid.privileged'),
+        profileMode: app.profileMode,
+        memoryLimitMb: app.memoryLimitMb,
+        cpuLimitCpus: app.cpuLimitCpus,
+        containerArgs: app.containerArgs,
+        securityOptions: this.config.getOrThrow<string[]>(
+          'app.redroid.securityOptions',
+        ),
+      });
+
+    this.tracker.ensureActive(app.id);
+    app.containerId = container.id;
+    await this.state.save(app);
+    await this.logs.append(app.id, 'Container created', {
+      containerId: container.id,
+      containerName: app.containerName,
+      image: app.containerImage,
+    });
+  }
+
+  /** Starts the managed container and applies network rules. */
+  private async startManagedContainer(app: AndroidApplication) {
+    this.tracker.ensureActive(app.id);
+    await this.setLifecycle(app.id, {
+      lifecycleStage: AndroidApplicationLifecycleStage.ContainerStarting,
+      statusMessage: 'Starting application container.',
+    });
+    await this.lifecycle.startContainer(app.containerId!);
+    await this.logs.append(app.id, 'Container start requested', {
+      containerId: app.containerId,
+    });
+    await this.network.reconcilePolicy(app, {
+      log: true,
+      recordLastStartedAt: true,
+    });
+    this.tracker.ensureActive(app.id);
+  }
+
+  /** Waits until Android is ready to use. */
+  private async waitForRuntimeReadiness(app: AndroidApplication) {
+    await this.setLifecycle(app.id, {
+      lifecycleStage: AndroidApplicationLifecycleStage.AndroidBooting,
+      statusMessage: 'Waiting for Android to finish booting.',
+    });
+    await this.androidProvisioning.waitForAndroidBoot(app);
+
+    if (!this.androidProvisioning.shouldPrepareRemoteAccess(app)) {
+      return;
+    }
+
+    this.tracker.ensureActive(app.id);
+    await this.setLifecycle(app.id, {
+      lifecycleStage: AndroidApplicationLifecycleStage.AndroidBooting,
+      statusMessage: 'Preparing Android remote access.',
+    });
+    await this.androidProvisioning.prepareRemoteAccess(app);
+  }
+
+  /** Installs the first APK when one is attached. */
+  private async installInitialApk(app: AndroidApplication) {
+    if (!app.apkFilePath) {
+      return;
+    }
+
+    this.tracker.ensureActive(app.id);
+    await this.apkProvisioning.installApk(
+      app,
+      'Installing APK inside Android. Viewer is available while installation finishes.',
+    );
+  }
+
+  /** Marks provisioning as finished. */
+  private async finishProvisioning(applicationId: string) {
+    this.tracker.ensureActive(applicationId);
+    await this.setLifecycle(applicationId, {
+      status: AndroidApplicationStatus.Running,
+      lifecycleStage: AndroidApplicationLifecycleStage.Ready,
+      statusMessage: 'Application is running.',
+      provisioningCompletedAt: new Date(),
+      lastError: null,
+    });
+  }
+
+  /** Writes and saves a lifecycle update. */
+  private async setLifecycle(
+    applicationId: string,
+    patch: Parameters<AndroidAppsStateService['setLifecycle']>[1],
+  ) {
+    await this.logs.appendLifecycle(applicationId, patch);
+    await this.state.setLifecycle(applicationId, patch);
+  }
+}

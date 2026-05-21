@@ -9,7 +9,10 @@ import type Dockerode from 'dockerode';
 import { join, relative, sep } from 'node:path';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import tar from 'tar-stream';
+import { DockerContainerRuntimeService } from './containers/services/docker-container-runtime.service';
 import { DockerEngineService } from './docker-engine.service';
+import { DockerImageRuntimeService } from './images/services/docker-image-runtime.service';
+import { DockerNetworkRuntimeService } from './networks/services/docker-network-runtime.service';
 import {
   ContainerCommandFailure,
   ContainerCommandFailedException,
@@ -39,6 +42,9 @@ export class DockerSidecarService implements OnModuleInit {
   constructor(
     private readonly config: ConfigService,
     private readonly engine: DockerEngineService,
+    private readonly containers: DockerContainerRuntimeService,
+    private readonly images: DockerImageRuntimeService,
+    private readonly networks: DockerNetworkRuntimeService,
   ) {
     this.wsScrcpyContainerId = this.config.get<string>(
       'app.scrcpy.wsScrcpyContainerId',
@@ -117,7 +123,7 @@ export class DockerSidecarService implements OnModuleInit {
       return this.sidecarUnavailableStatus();
     }
 
-    await this.engine.connectContainerToNetwork(sidecar.id, networkName);
+    await this.networks.connectContainerToNetwork(sidecar.id, networkName);
     const sidecarIp = await this.getSidecarIp(networkName);
     if (!sidecarIp) {
       return {
@@ -150,7 +156,7 @@ export class DockerSidecarService implements OnModuleInit {
       return;
     }
 
-    await this.engine.disconnectContainerFromNetwork(sidecar.id, networkName);
+    await this.networks.disconnectContainerFromNetwork(sidecar.id, networkName);
   }
 
   /**
@@ -182,9 +188,10 @@ export class DockerSidecarService implements OnModuleInit {
         '-lc',
         `timeout 10s adb connect ${this.shellQuote(target)}`,
       ];
-      const output = await this.engine.execInContainerWithOutput(sidecar.id, [
-        ...connectCommand,
-      ]);
+      const output = await this.containers.execInContainerWithOutput(
+        sidecar.id,
+        [...connectCommand],
+      );
       const connectFailure = this.viewerTargetErrorFromOutput({
         command: connectCommand,
         stdout: output.stdout,
@@ -204,9 +211,10 @@ export class DockerSidecarService implements OnModuleInit {
         '-lc',
         `timeout 10s adb -s ${this.shellQuote(target)} get-state`,
       ];
-      const state = await this.engine.execInContainerWithOutput(sidecar.id, [
-        ...stateCommand,
-      ]);
+      const state = await this.containers.execInContainerWithOutput(
+        sidecar.id,
+        [...stateCommand],
+      );
       if (state.stdout.trim().toLowerCase() !== 'device') {
         const viewerError = this.viewerTargetErrorFromOutput({
           command: stateCommand,
@@ -287,7 +295,7 @@ export class DockerSidecarService implements OnModuleInit {
     ];
 
     try {
-      await this.engine.execInContainerWithOutput(sidecarId, command);
+      await this.containers.execInContainerWithOutput(sidecarId, command);
     } catch (error) {
       const viewerError = this.viewerTargetError(error);
       this.logger.warn(
@@ -377,8 +385,8 @@ export class DockerSidecarService implements OnModuleInit {
     try {
       const existing = await this.findSidecar();
       if (existing) {
-        await this.engine.stopContainer(existing.id, 3);
-        await this.engine.startContainer(existing.id);
+        await this.containers.stopContainer(existing.id, 3);
+        await this.containers.startContainer(existing.id);
         await this.cleanupStaleSidecarNetworks(existing);
         this.wsScrcpyLastError = null;
         return existing.id;
@@ -403,7 +411,7 @@ export class DockerSidecarService implements OnModuleInit {
   private async ensureSidecar() {
     const existing = await this.findSidecar();
     if (existing) {
-      await this.engine.startContainer(existing.id);
+      await this.containers.startContainer(existing.id);
       return existing;
     }
 
@@ -483,7 +491,7 @@ export class DockerSidecarService implements OnModuleInit {
 
     await Promise.all(
       staleNetworkNames.map((networkName) =>
-        this.engine.disconnectContainerFromNetwork(sidecar.id, networkName),
+        this.networks.disconnectContainerFromNetwork(sidecar.id, networkName),
       ),
     );
 
@@ -513,7 +521,7 @@ export class DockerSidecarService implements OnModuleInit {
       }
     }
 
-    const existing = await this.engine.findContainerByName(
+    const existing = await this.containers.findContainerByName(
       this.wsScrcpyContainerName,
     );
     return existing ? this.docker.getContainer(existing.Id) : null;
@@ -523,7 +531,7 @@ export class DockerSidecarService implements OnModuleInit {
    * Builds the sidecar image from the local build context when it is missing.
    */
   private async ensureSidecarImage() {
-    if (await this.engine.imageExists(this.wsScrcpyImage)) {
+    if (await this.images.imageExists(this.wsScrcpyImage)) {
       return;
     }
 
@@ -707,14 +715,10 @@ export class DockerSidecarService implements OnModuleInit {
       return null;
     }
 
-    const stopCommand = [
-      'sh',
-      '-lc',
-      this.scrcpyServerStopCommand(target),
-    ];
+    const stopCommand = ['sh', '-lc', this.scrcpyServerStopCommand(target)];
 
     try {
-      await this.engine.execInContainerWithOutput(sidecarId, stopCommand);
+      await this.containers.execInContainerWithOutput(sidecarId, stopCommand);
     } catch (error) {
       const viewerError = this.viewerTargetError(error);
       this.logger.warn(
@@ -722,7 +726,8 @@ export class DockerSidecarService implements OnModuleInit {
       );
     }
 
-    const localJar = '/opt/ws-scrcpy/vendor/Genymobile/scrcpy/scrcpy-server.jar';
+    const localJar =
+      '/opt/ws-scrcpy/vendor/Genymobile/scrcpy/scrcpy-server.jar';
     const remoteJar = '/data/local/tmp/scrcpy-server.jar';
     const remoteLog = '/data/local/tmp/ws_scrcpy.log';
     const startRemoteCommand = [
@@ -754,7 +759,7 @@ export class DockerSidecarService implements OnModuleInit {
     ];
 
     try {
-      await this.engine.execInContainerWithOutput(sidecarId, startCommand);
+      await this.containers.execInContainerWithOutput(sidecarId, startCommand);
       return null;
     } catch (error) {
       const viewerError = this.viewerTargetError(error);
@@ -811,7 +816,7 @@ export class DockerSidecarService implements OnModuleInit {
     ];
 
     try {
-      await this.engine.execInContainerWithOutput(sidecarId, probeCommand);
+      await this.containers.execInContainerWithOutput(sidecarId, probeCommand);
       return null;
     } catch (error) {
       const viewerError = this.viewerTargetError(error);

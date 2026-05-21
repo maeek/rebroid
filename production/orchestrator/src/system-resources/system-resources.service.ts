@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { getErrorMessage } from '../common/error-message';
-import { DockerRuntimeService } from '../docker/docker-runtime.service';
+import { DockerResourceRuntimeService } from '../docker/resources/services/docker-resource-runtime.service';
 
 interface VolumeUsageCache {
   cachedAt: Date;
@@ -23,7 +23,7 @@ export class SystemResourcesService {
 
   constructor(
     private readonly config: ConfigService,
-    private readonly docker: DockerRuntimeService,
+    private readonly docker: DockerResourceRuntimeService,
   ) {}
 
   /**
@@ -68,7 +68,9 @@ export class SystemResourcesService {
    * Falls back to zeroed stats when Docker refuses runtime metrics collection.
    */
   private async getManagedContainerResourceUsage(
-    containers: Awaited<ReturnType<DockerRuntimeService['listManagedContainers']>>,
+    containers: Awaited<
+      ReturnType<DockerResourceRuntimeService['listManagedContainers']>
+    >,
   ) {
     try {
       return await this.docker.getManagedContainerResourceUsage(containers);

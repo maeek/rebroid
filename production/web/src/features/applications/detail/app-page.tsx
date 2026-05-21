@@ -11,7 +11,7 @@ import {
   saveViewerSettings
 } from '@/features/applications/viewer/viewer-settings'
 import { AppNotFoundSplash } from '@/features/applications/components/app-not-found-splash'
-import { ProtectedSplitPageLayout } from '@/features/shell/components/protected-page-shell'
+import { ProtectedSplitPageLayout, ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { useForegroundRefresh } from '@/hooks/use-foreground-refresh'
 import { getApplicationAction } from '@/server/orchestrator/applications/read-actions'
 import { hasPermission } from '@/shared/permissions/permissions'
@@ -45,6 +45,7 @@ export const AppViewerPage = ({
   const isDetailsView = viewMode === 'details'
   const canStartCurrentApp = !isForeignOwnedApp && hasPermission(permissions, 'applications:start')
   const canCaptureScreenshot = !isForeignOwnedApp && hasPermission(permissions, 'applications:capture-screenshot')
+  const canControlViewer = !isForeignOwnedApp && hasPermission(permissions, 'applications:control-viewer')
 
   useEffect(() => {
     setCurrentApp(app)
@@ -92,21 +93,13 @@ export const AppViewerPage = ({
     return <AppNotFoundSplash />
   }
 
-  return (
-    <ProtectedSplitPageLayout
-      className='h-auto min-h-[calc(100vh-4rem)]'
-      mainClassName='h-auto min-h-[calc(100vh-4rem)] items-start'
-    >
-      <PageBackdrop imageSrc={currentApp.icon ? resolveAppIconUrl(currentApp.icon) : null} />
-      {isDetailsView ? (
-        <AppViewerContent
-          app={currentApp}
-          initialSettings={initialSettings}
-          permissions={permissions}
-          isForeignOwnedApp={isForeignOwnedApp}
-          onAppChange={nextApp => setCurrentApp(nextApp)}
-        />
-      ) : (
+  if (!isDetailsView) {
+    return (
+      <ProtectedStackPageLayout
+        className='h-auto min-h-[calc(100vh-4rem)]'
+        mainClassName='min-h-[calc(100vh-4rem)] items-stretch'
+      >
+        <PageBackdrop imageSrc={currentApp.icon ? resolveAppIconUrl(currentApp.icon) : null} />
         <AppWorkspaceContent
           app={currentApp}
           initialSettings={initialSettings}
@@ -114,15 +107,43 @@ export const AppViewerPage = ({
           isForeignOwnedApp={isForeignOwnedApp}
           viewerSettings={viewerSettings}
           onViewerSettingsChange={setViewerSettings}
+          viewerSlot={
+            <AppViewerPane
+              app={currentApp}
+              canAttach={!isForeignOwnedApp}
+              canCaptureScreenshot={canCaptureScreenshot}
+              canControlViewer={canControlViewer}
+              canStart={canStartCurrentApp}
+              placement='top'
+              viewerSettings={viewerSettings}
+              onAppChange={setCurrentApp}
+            />
+          }
         />
-      )}
+      </ProtectedStackPageLayout>
+    )
+  }
+
+  return (
+    <ProtectedSplitPageLayout
+      className='h-auto min-h-[calc(100vh-4rem)]'
+      mainClassName='h-auto min-h-[calc(100vh-4rem)] items-start'
+    >
+      <PageBackdrop imageSrc={currentApp.icon ? resolveAppIconUrl(currentApp.icon) : null} />
+      <AppViewerContent
+        app={currentApp}
+        initialSettings={initialSettings}
+        permissions={permissions}
+        isForeignOwnedApp={isForeignOwnedApp}
+        onAppChange={nextApp => setCurrentApp(nextApp)}
+      />
       <AppViewerPane
         app={currentApp}
         canAttach={!isForeignOwnedApp}
         canCaptureScreenshot={canCaptureScreenshot}
+        canControlViewer={canControlViewer}
         canStart={canStartCurrentApp}
         viewerSettings={viewerSettings}
-        onViewerSettingsChange={setViewerSettings}
         onAppChange={setCurrentApp}
       />
     </ProtectedSplitPageLayout>

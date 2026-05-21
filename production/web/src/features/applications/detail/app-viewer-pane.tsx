@@ -1,27 +1,19 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
-import {
-  IconArrowsMaximize,
-  IconArrowsMinimize,
-  IconLoader2,
-  IconPhoto,
-  IconShieldLock,
-  IconVolume,
-  IconVolumeOff
-} from '@tabler/icons-react'
+import { IconLoader2, IconShieldLock } from '@tabler/icons-react'
 import { useSearchParams } from 'next/navigation'
-import { Button } from '@/components/ui/button'
 import { Visible } from '@/components/ui/visible'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { AppViewer } from '@/features/applications/viewer/android'
-import { normalizeViewerSettings } from '@/features/applications/viewer/viewer-settings'
+import { ViewerControlBar } from '@/features/applications/viewer/viewer-control-bar'
 import { StatusSplash } from '@/features/shell/components/status-splash'
 import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { startApplicationAction } from '@/server/orchestrator/applications/mutation-actions'
 import { captureApplicationScreenshotAction } from '@/server/orchestrator/applications/read-actions'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { ViewerOrientation } from '@/features/applications/viewer/android'
 import type { ViewerSettings } from '@/features/applications/viewer/viewer-settings'
 
 const getToastErrorDescription = (error: unknown): string => {
@@ -50,23 +42,26 @@ export const AppViewerPane = ({
   app,
   canAttach = true,
   canCaptureScreenshot = false,
+  canControlViewer = false,
   canStart = false,
+  placement = 'side',
   viewerSettings,
-  onViewerSettingsChange,
   onAppChange
 }: {
   app: AppDefinition
   canAttach?: boolean
   canCaptureScreenshot?: boolean
+  canControlViewer?: boolean
   canStart?: boolean
+  placement?: 'side' | 'top'
   viewerSettings: ViewerSettings
-  onViewerSettingsChange: (settings: ViewerSettings) => void
   onAppChange: (app: AppDefinition) => void
 }) => {
   const params = useSearchParams()
   const hideOutlineParam = params.get('hideOutline') === 'true'
   const [hideOutline, setHideOutline] = useState(() => hideOutlineParam)
   const [isViewerFullscreen, setIsViewerFullscreen] = useState(false)
+  const [orientation, setOrientation] = useState<ViewerOrientation>('portrait')
   const [isStarting, startTransition] = useTransition()
   const [isCapturing, startScreenshotTransition] = useTransition()
   const viewerContainerRef = useRef<HTMLDivElement>(null)
@@ -161,17 +156,17 @@ export const AppViewerPane = ({
     })
   }
 
-  const toggleSound = () => {
-    onViewerSettingsChange(
-      normalizeViewerSettings({
-        ...viewerSettings,
-        soundEnabled: !viewerSettings.soundEnabled
-      })
-    )
+  const rotateViewerShell = () => {
+    setOrientation(current => (current === 'portrait' ? 'landscape' : 'portrait'))
   }
 
   return (
-    <div className='flex w-full max-w-md flex-col items-center justify-start gap-4 lg:sticky lg:top-10 lg:self-start lg:pr-4 lg:pt-6 max-sm:max-w-full'>
+    <div
+      className={cn('flex w-full flex-col items-center justify-start gap-4 max-sm:max-w-full', {
+        'max-w-[min(100%,42rem)] lg:sticky lg:top-10 lg:self-start lg:pr-4 lg:pt-6': placement === 'side',
+        'max-w-none': placement === 'top'
+      })}
+    >
       <div
         ref={viewerContainerRef}
         className={cn('flex w-full items-center justify-center', {
@@ -183,6 +178,7 @@ export const AppViewerPane = ({
             app={app}
             hideOutline={!viewerUsesOutline}
             fullscreen={isViewerFullscreen}
+            orientation={orientation}
             viewerSettings={viewerSettings}
             canStart={canStart}
             isStarting={isStarting}
@@ -200,48 +196,19 @@ export const AppViewerPane = ({
         </Visible>
       </div>
       <Visible when={canAttach}>
-        <div className='flex flex-wrap items-center justify-center gap-2 pb-2'>
-          <Visible when={runtimeAvailable && canCaptureScreenshot}>
-            <Button
-              size='icon'
-              variant='secondary'
-              disabled={isCapturing}
-              onClick={handleScreenshotCapture}
-              aria-label='Capture screenshot'
-              title='Capture screenshot'
-            >
-              {isCapturing ? <IconLoader2 className='size-4 animate-spin' /> : <IconPhoto className='size-4' />}
-            </Button>
-          </Visible>
-          <Visible when={runtimeAvailable}>
-            <Button
-              size='icon'
-              variant={viewerSettings.soundEnabled ? 'default' : 'secondary'}
-              onClick={toggleSound}
-              aria-label={viewerSettings.soundEnabled ? 'Disable sound' : 'Enable sound'}
-              title={viewerSettings.soundEnabled ? 'Disable sound' : 'Enable sound'}
-            >
-              {viewerSettings.soundEnabled ? <IconVolume className='size-4' /> : <IconVolumeOff className='size-4' />}
-            </Button>
-          </Visible>
-          <Button
-            size='sm'
-            variant={hideOutline ? 'default' : 'secondary'}
-            disabled={isViewerFullscreen}
-            onClick={() => updateHideOutline(!hideOutline)}
-          >
-            {hideOutline ? 'Borderless' : 'Device frame'}
-          </Button>
-          <Button
-            size='icon'
-            variant={isViewerFullscreen ? 'default' : 'secondary'}
-            onClick={() => void toggleViewerFullscreen()}
-            aria-label={isViewerFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-            title={isViewerFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-          >
-            {isViewerFullscreen ? <IconArrowsMinimize className='size-4' /> : <IconArrowsMaximize className='size-4' />}
-          </Button>
-        </div>
+        <ViewerControlBar
+          appId={app.id}
+          runtimeAvailable={runtimeAvailable}
+          canControl={canControlViewer}
+          canCaptureScreenshot={canCaptureScreenshot}
+          hideOutline={hideOutline}
+          fullscreen={isViewerFullscreen}
+          isCapturing={isCapturing}
+          onCaptureScreenshot={handleScreenshotCapture}
+          onToggleFrame={() => updateHideOutline(!hideOutline)}
+          onToggleFullscreen={() => void toggleViewerFullscreen()}
+          onRotateViewer={rotateViewerShell}
+        />
       </Visible>
     </div>
   )

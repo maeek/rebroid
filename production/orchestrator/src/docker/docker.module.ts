@@ -1,22 +1,49 @@
 import { Module } from '@nestjs/common';
+import { DockerContainerArchiveService } from './containers/services/docker-container-archive.service';
+import { DockerContainerExecService } from './containers/services/docker-container-exec.service';
+import { DockerContainerLifecycleService } from './containers/services/docker-container-lifecycle.service';
+import { DockerContainerProvisioningService } from './containers/services/docker-container-provisioning.service';
+import { DockerPlatformContainersService } from './containers/services/docker-platform-containers.service';
 import { DockerEngineService } from './docker-engine.service';
-import { DockerHealthService } from './docker-health.service';
-import { DockerPlatformService } from './docker-platform.service';
-import { DockerRuntimeService } from './docker-runtime.service';
-import { DockerSidecarService } from './docker-sidecar.service';
+import { DockerHealthService } from './health/services/docker-health.service';
+import { DockerImageRuntimeService } from './images/services/docker-image-runtime.service';
+import { DockerPlatformImagesService } from './images/services/docker-platform-images.service';
+import { DockerNetworkRuntimeService } from './networks/services/docker-network-runtime.service';
+import { DockerPlatformNetworksService } from './networks/services/docker-platform-networks.service';
+import { DockerPlatformPruneService } from './prune/services/docker-platform-prune.service';
+import { DockerResourceRuntimeService } from './resources/services/docker-resource-runtime.service';
+import { DockerSidecarService } from './sidecar/services/docker-sidecar.service';
 
 @Module({
   providers: [
     DockerEngineService,
-    DockerRuntimeService,
-    DockerPlatformService,
+    DockerContainerArchiveService,
+    DockerContainerExecService,
+    DockerContainerLifecycleService,
+    DockerContainerProvisioningService,
+    DockerPlatformContainersService,
+    DockerImageRuntimeService,
+    DockerPlatformImagesService,
+    DockerNetworkRuntimeService,
+    DockerPlatformNetworksService,
+    DockerPlatformPruneService,
+    DockerResourceRuntimeService,
     DockerHealthService,
     DockerSidecarService,
   ],
   exports: [
     DockerEngineService,
-    DockerRuntimeService,
-    DockerPlatformService,
+    DockerContainerArchiveService,
+    DockerContainerExecService,
+    DockerContainerLifecycleService,
+    DockerContainerProvisioningService,
+    DockerPlatformContainersService,
+    DockerImageRuntimeService,
+    DockerPlatformImagesService,
+    DockerNetworkRuntimeService,
+    DockerPlatformNetworksService,
+    DockerPlatformPruneService,
+    DockerResourceRuntimeService,
     DockerHealthService,
     DockerSidecarService,
   ],

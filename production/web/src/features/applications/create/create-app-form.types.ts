@@ -6,5 +6,6 @@ export type CreateAppFormValues = {
   cpuLimitCpus: string
   volumeSizeLimitMb: string
   customContainerArgs: string
+  redroidDisplayProfileId: string
   redroidExtraArgs: string
 }

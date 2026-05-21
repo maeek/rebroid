@@ -63,6 +63,26 @@ export interface ApplicationScreenshot {
   capturedAt: string
 }
 
+export type ApplicationViewerControlCommand =
+  | 'back'
+  | 'home'
+  | 'recents'
+  | 'wake'
+  | 'power'
+  | 'volume-up'
+  | 'volume-down'
+  | 'mute'
+  | 'rotate'
+  | 'expand-notifications'
+  | 'expand-settings'
+  | 'collapse-panels'
+
+export interface ApplicationViewerControlResponse {
+  command: ApplicationViewerControlCommand
+  executed: boolean
+  message: string
+}
+
 export type ScrcpyViewerErrorCode = 'sidecar_unavailable' | 'adb_missing' | 'adb_unreachable' | 'unknown'
 
 export interface ScrcpyViewerError {

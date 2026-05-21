@@ -1,0 +1,65 @@
+import { Injectable } from '@nestjs/common';
+import { NetworkIsolationService } from '../../../network-isolation/network-isolation.service';
+import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
+import { AndroidApplication } from '../../android-application.entity';
+import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
+import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
+import { AndroidAppsViewerNetworkService } from '../../viewer/services/android-apps-viewer-network.service';
+
+@Injectable()
+export class AndroidAppsRuntimeNetworkService {
+  constructor(
+    private readonly networkIsolation: NetworkIsolationService,
+    private readonly networkPolicy: NetworkPolicyService,
+    private readonly logs: AndroidAppsLogService,
+    private readonly state: AndroidAppsStateService,
+    private readonly viewerNetwork: AndroidAppsViewerNetworkService,
+  ) {}
+
+  /** Creates the app network boundary and viewer link. */
+  async createRuntimeBoundary(app: AndroidApplication) {
+    await this.networkIsolation.createRuntimeBoundary(app.id, app.profileMode, {
+      networkName: app.networkName,
+      volumeName: app.volumeName,
+    });
+    await this.viewerNetwork.prepareNetwork(app);
+  }
+
+  /** Reattaches shared runtime network support. */
+  async attachRuntimeSupport(app: AndroidApplication) {
+    await this.networkIsolation.connectOrchestrator(app.networkName);
+    await this.viewerNetwork.prepareNetwork(app);
+  }
+
+  /** Releases shared runtime network support. */
+  async releaseRuntimeSupport(app: AndroidApplication) {
+    await this.viewerNetwork.releaseNetwork(app);
+  }
+
+  /** Applies and stores the current network policy result. */
+  async reconcilePolicy(
+    app: AndroidApplication,
+    options: {
+      log?: boolean;
+      recordLastStartedAt?: boolean;
+    } = {},
+  ) {
+    const result = await this.networkPolicy.apply(app);
+    app.networkPolicyStatus = result.status;
+    app.networkPolicyMessage = result.message;
+    app.networkPolicyAppliedAt = new Date();
+    if (options.recordLastStartedAt) {
+      app.lastStartedAt = new Date();
+    }
+    await this.state.save(app);
+
+    if (options.log) {
+      await this.logs.append(app.id, 'Network policy reconciled', {
+        status: result.status,
+        message: result.message,
+      });
+    }
+
+    return result;
+  }
+}

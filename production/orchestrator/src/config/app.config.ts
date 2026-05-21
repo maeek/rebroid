@@ -38,7 +38,7 @@ export default registerAs('app', () => {
     process.env.SETTINGS_PATH ?? './data/orchestrator-settings.json';
   const runtimeLogsDir = process.env.RUNTIME_LOGS_DIR ?? './data/runtime-logs';
   const sharedSecret = process.env.ORCHESTRATOR_SHARED_SECRET?.trim();
-  const resourcePrefix = process.env.DOCKER_RESOURCE_PREFIX ?? 'sma';
+  const resourcePrefix = process.env.DOCKER_RESOURCE_PREFIX ?? 'rebroid';
   const defaultWsScrcpyBuildContext = existsSync('/app/ws-scrcpy-sidecar')
     ? '/app/ws-scrcpy-sidecar'
     : '../ws-scrcpy-sidecar';
@@ -107,7 +107,7 @@ export default registerAs('app', () => {
         process.env.WS_SCRCPY_PUBLISHED_HOST_PORT,
         0,
       ),
-      wsScrcpyPlayer: process.env.WS_SCRCPY_PLAYER ?? 'mse',
+      wsScrcpyPlayer: process.env.WS_SCRCPY_PLAYER ?? 'tinyh264',
       wsScrcpyProxyRemote: process.env.WS_SCRCPY_PROXY_REMOTE || 'tcp:8886',
     },
   };

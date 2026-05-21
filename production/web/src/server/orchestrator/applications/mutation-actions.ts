@@ -10,6 +10,7 @@ import { enforceResourceQuotas, enforceSessionQuota, sanitizeAndroidApplicationF
 import { applyRedroidDefaultContainerArgs } from '@/shared/runtime/redroid-runtime'
 import type {
   CreateApplicationActionInput,
+  ApplicationViewerControlCommand,
   SwitchApplicationProfileInput,
   UpdateAndroidApplicationInput,
   UpdateNetworkPolicyInput
@@ -222,6 +223,14 @@ export const setApplicationClipboardAction = async (id: string, text: string) =>
     throw new Error('You do not have permission to sync clipboard.')
   }
   return orchestratorApplicationsClient.setClipboard(id, text)
+}
+
+export const sendApplicationViewerControlAction = async (id: string, command: ApplicationViewerControlCommand) => {
+  const { user } = await assertCanUseOwnedApplicationRuntime(id)
+  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:control-viewer')) {
+    throw new Error('You do not have permission to control this viewer.')
+  }
+  return orchestratorApplicationsClient.sendViewerControl(id, command)
 }
 
 export const applyNetworkPolicyAction = async (id: string) => {

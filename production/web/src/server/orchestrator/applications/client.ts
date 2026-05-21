@@ -6,6 +6,8 @@ import type {
   ApplicationRuntimeFileDownload,
   ApplicationRuntimeFileUpload,
   ApplicationScreenshot,
+  ApplicationViewerControlCommand,
+  ApplicationViewerControlResponse,
   AndroidNotification,
   ApplicationLog,
   CloneApplicationInput,
@@ -119,6 +121,13 @@ export const orchestratorApplicationsClient = {
   captureScreenshot(id: string) {
     return request<ApplicationScreenshot>(`/android-applications/${id}/screenshot`, {
       method: 'POST'
+    })
+  },
+
+  sendViewerControl(id: string, command: ApplicationViewerControlCommand) {
+    return request<ApplicationViewerControlResponse>(`/android-applications/${id}/viewer-control`, {
+      method: 'POST',
+      body: JSON.stringify({ command })
     })
   },
 

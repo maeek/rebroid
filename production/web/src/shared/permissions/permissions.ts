@@ -123,6 +123,12 @@ export const permissionDefinitions = [
     description: 'Read and write the application clipboard from the browser.'
   },
   {
+    id: 'applications:control-viewer',
+    category: 'profiles-observability',
+    name: 'Control viewer',
+    description: 'Send navigation, rotation, power, and volume commands to owned viewer sessions.'
+  },
+  {
     id: 'applications:capture-screenshot',
     category: 'profiles-observability',
     name: 'Capture screenshots',
@@ -165,6 +171,7 @@ export const defaultUserPermissions: PermissionMap = {
   'applications:view-logs': true,
   'applications:transfer-files': true,
   'applications:sync-clipboard': true,
+  'applications:control-viewer': true,
   'applications:capture-screenshot': true
 }
 

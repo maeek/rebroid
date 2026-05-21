@@ -8,7 +8,7 @@ const publicPort = Number(process.env.PORT || 3001)
 const nextPort = Number(process.env.NEXT_INTERNAL_PORT || 3101)
 const nextHost = process.env.NEXT_INTERNAL_HOST || '127.0.0.1'
 const sidecarBaseUrl = new URL(process.env.WS_SCRCPY_INTERNAL_BASE_URL || 'http://rebroid-ws-scrcpy:8000')
-const viewerTokenCookieName = 'sma_viewer_token'
+const viewerTokenCookieName = 'rebroid_viewer_token'
 const viewerPathPrefix = '/viewer/ws-scrcpy'
 const wsScrcpyViewerCss = `
 html,

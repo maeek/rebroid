@@ -1,4 +1,4 @@
-const viewerTokenParamName = 'sma_viewer_token'
+const viewerTokenParamName = 'rebroid_viewer_token'
 const tokenTtlMs = 30 * 60 * 1000
 
 type ViewerTokenPayload = {
