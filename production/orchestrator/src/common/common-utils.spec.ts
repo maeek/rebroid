@@ -19,10 +19,9 @@ describe('common utilities', () => {
   });
 
   it('parses JSON string arrays defensively', () => {
-    expect(parseJsonStringArray('["10.0.0.1/32", 123, "192.168.0.0/24"]')).toEqual([
-      '10.0.0.1/32',
-      '192.168.0.0/24',
-    ]);
+    expect(
+      parseJsonStringArray('["10.0.0.1/32", 123, "192.168.0.0/24"]'),
+    ).toEqual(['10.0.0.1/32', '192.168.0.0/24']);
     expect(parseJsonStringArray('{"cidrs":[]}')).toEqual([]);
     expect(parseJsonStringArray('invalid json')).toEqual([]);
   });
@@ -58,7 +57,7 @@ describe('common utilities', () => {
     expect(extractHostname('')).toBeNull();
     expect(uniqueStrings(['a', 'b', 'a'])).toEqual(['a', 'b']);
     expect(networkPolicyChainName('12345678-1234-1234-1234-123456789abc')).toBe(
-      'SMA-123456781234123412341234',
+      'rebroid-123456781234123412341234',
     );
   });
 });

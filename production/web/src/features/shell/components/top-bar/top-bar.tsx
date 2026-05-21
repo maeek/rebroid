@@ -4,13 +4,13 @@ import { useState } from 'react'
 import { IconMenu2, IconStackBack, IconX } from '@tabler/icons-react'
 import classNames from 'classnames'
 import Link from 'next/link'
+import { ProtectedNavigation } from '../protected-navigation'
+import { TopBarAccount } from './account'
+import { OrchestratorStatus } from './orchestrator-status'
 import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Visible } from '@/components/ui/visible'
 import { yourApps } from '@/features/applications/domain/app-definition'
-import { ProtectedNavigation } from '../protected-navigation'
-import { TopBarAccount } from './account'
-import { OrchestratorStatus } from './orchestrator-status'
 
 export const TopBarProtected = () => {
   const sectionClasses = 'flex min-w-0 items-center h-full px-4 gap-x-4 max-sm:px-2 lg:w-[33%]'
@@ -22,7 +22,7 @@ export const TopBarProtected = () => {
     <div className='sticky top-0 z-50 flex h-16 w-full max-w-full shrink-0 justify-between overflow-hidden bg-transparent max-sm:px-1'>
       <div
         aria-hidden='true'
-        className='pointer-events-none absolute inset-x-0 bottom-0 top-2 backdrop-blur-xl'
+        className='pointer-events-none absolute inset-x-0 bottom-0 backdrop-blur-xl h-full'
       />
       <div className={classNames(sectionClasses, 'relative z-10 justify-start items-center')}>
         <Drawer

@@ -1,13 +1,13 @@
 'use client'
 
-import { ChangeEvent, FormEvent, useEffect, useState } from 'react'
+import { ChangeEvent, FormEvent, useEffect, useId, useState } from 'react'
+import { IconLoader2 } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { useTopLoader } from 'nextjs-toploader'
 import { CreateAppDeviceSection } from './create-app-device-section'
 import { CreateAppGeneralSection } from './create-app-general-section'
 import { CreateAppIconSection } from './create-app-icon-section'
 import { CreateAppResourcesSection } from './create-app-resources-section'
-import { CreateAppRuntimeKind } from './create-app-runtime-kind'
 import { CreateAppSessionSection } from './create-app-session-section'
 import type { CreateAppFormValues } from './create-app-form.types'
 import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
@@ -48,6 +48,7 @@ export const CreateAppForm = ({
   permissions: PermissionMap
 }) => {
   const topLoader = useTopLoader()
+  const createFormId = useId()
   const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
   const [formValues, setFormValues] = useState<CreateAppFormValues>(() => getInitialFormValues(settings))
   const [uploadedApk, setUploadedApk] = useState<UploadedApk | null>(null)
@@ -162,7 +163,14 @@ export const CreateAppForm = ({
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
+    if (isSubmitDisabled) {
+      return
+    }
+
     setIsCreating(true)
+    topLoader.start()
+    topLoader.setProgress(0.1)
+
     try {
       const createdApp = await createApplicationAction({
         name: trimmedName,
@@ -181,13 +189,25 @@ export const CreateAppForm = ({
         uploadedApkId: uploadedApk?.id
       })
 
+      topLoader.setProgress(iconPreview ? 0.65 : 0.9)
+
       if (iconPreview) {
-        await setAppIconAction(createdApp.id, iconPreview)
+        try {
+          await setAppIconAction(createdApp.id, iconPreview)
+        } catch (error) {
+          toast({
+            title: 'App created without icon',
+            description: error instanceof Error ? error.message : 'Could not save the icon.',
+            variant: 'destructive'
+          })
+        }
       }
 
+      topLoader.setProgress(1)
       toast({ title: 'App created', description: 'Provisioning has started.' })
       router.push(`/app/${createdApp.id}`)
     } catch (error) {
+      topLoader.done(true)
       toast({
         title: 'Could not create app',
         description: error instanceof Error ? error.message : 'Unknown error',
@@ -201,18 +221,30 @@ export const CreateAppForm = ({
   return (
     <>
       <div className='flex gap-2 justify-between items-center w-full'>
-        <PageBreadcrumbs items={[{ label: 'Apps', href: '/apps' }, { label: `Create ${formValues.name.trim()}` }]} />
+        <PageBreadcrumbs
+          items={[
+            { label: 'Apps', href: '/apps' },
+            {
+              label: `Create ${formValues.name.trim()}`
+            }
+          ]}
+        />
         <Button
+          form={createFormId}
           type='submit'
           disabled={isSubmitDisabled}
         >
-          Create
+          <Visible when={isCreating}>
+            <IconLoader2 className='size-4 animate-spin' />
+          </Visible>
+          {isCreating ? 'Creating...' : 'Create'}
         </Button>
       </div>
       <Visible when={iconPreview}>
         <PageBackdrop imageSrc={iconPreview} />
       </Visible>
       <form
+        id={createFormId}
         className='grid w-full grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)] items-start gap-6 pt-2 pb-24 max-lg:grid-cols-1'
         onSubmit={event => void handleSubmit(event)}
       >
@@ -224,7 +256,6 @@ export const CreateAppForm = ({
             isUploadingApk={isUploadingApk}
             onApkSelect={file => void handleApkSelect(file)}
           />
-          <CreateAppRuntimeKind isRedroidRuntime={isRedroidRuntime} />
           <Visible when={showDeviceSection || showSessionSection || showResourcesSection}>
             <h2 className='font-bold my-4'>Advanced</h2>
           </Visible>

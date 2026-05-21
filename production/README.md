@@ -63,7 +63,7 @@ Use the internal compose file only when you intentionally do not mount a host en
 docker compose -f docker-compose.internal.yml up --build
 ```
 
-If `WS_SCRCPY_INTERNAL_BASE_URL` still points at `http://sma-ws-scrcpy:8000`, the web container is trying to reach a sidecar in the outer compose network while the app containers are inside the orchestrator's inner Docker daemon. That topology cannot stream because those networks are different.
+If `WS_SCRCPY_INTERNAL_BASE_URL` still points at `http://rebroid-ws-scrcpy:8000`, the web container is trying to reach a sidecar in the outer compose network while the app containers are inside the orchestrator's inner Docker daemon. That topology cannot stream because those networks are different.
 
 Do not point `CONTAINER_ENGINE_SOCKET` at a missing file to force internal mode. Compose can create a directory at `/var/run/docker.sock`, which prevents the internal daemon from binding its Unix socket.
 

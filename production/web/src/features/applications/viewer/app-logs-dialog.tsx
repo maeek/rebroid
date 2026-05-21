@@ -51,6 +51,40 @@ type AppLogsDialogProps = {
 
 type LogSource = 'orchestrator' | 'container' | 'adb'
 
+const isSourceUnavailableForApp = (app: AppDefinition | undefined, source: LogSource) => {
+  if (!app) {
+    return true
+  }
+
+  if (source === 'orchestrator') {
+    return false
+  }
+
+  if (source === 'adb') {
+    return !app.running
+  }
+
+  return !app.containerId || app.status === 'stopped' || app.status === 'removed'
+}
+
+const unavailableSourceMessage = (app: AppDefinition | undefined, source: LogSource) => {
+  if (!app) {
+    return 'Select an application to inspect logs.'
+  }
+
+  if (source === 'adb') {
+    return 'ADB logs are available after the Android container is running.'
+  }
+
+  if (source === 'container') {
+    return app.status === 'stopped'
+      ? 'Container logs are unavailable because the runtime container is currently stopped.'
+      : 'Container logs are unavailable because no runtime container exists yet.'
+  }
+
+  return 'Refresh logs to inspect orchestrator lifecycle events.'
+}
+
 export const AppLogsDialog = ({
   app,
   triggerClassName,
@@ -63,7 +97,9 @@ export const AppLogsDialog = ({
   const [isLoading, setIsLoading] = useState(false)
   const [isLive, setIsLive] = useState(false)
   const [internalOpen, setInternalOpen] = useState(false)
+  const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false)
   const isOpen = open ?? internalOpen
+  const sourceUnavailable = isSourceUnavailableForApp(app, source)
 
   const setDialogOpen = useCallback(
     (nextOpen: boolean) => {
@@ -81,10 +117,23 @@ export const AppLogsDialog = ({
       return
     }
 
+    if (sourceUnavailable) {
+      setLog({
+        source,
+        collectedAt: new Date().toISOString(),
+        output: unavailableSourceMessage(app, source)
+      })
+      setHasAttemptedLoad(true)
+      setIsLive(false)
+      return
+    }
+
     setIsLoading(true)
+    setHasAttemptedLoad(true)
     try {
       setLog(await getApplicationLogsAction(app.id, source, 500))
     } catch (error) {
+      setIsLive(false)
       toast({
         title: 'Could not load logs',
         description: getToastErrorDescription(error),
@@ -107,22 +156,27 @@ export const AppLogsDialog = ({
   }, [app, setDialogOpen])
 
   useEffect(() => {
-    if (!isOpen || log || isLoading) {
+    setLog(undefined)
+    setHasAttemptedLoad(false)
+  }, [app?.id, source])
+
+  useEffect(() => {
+    if (!isOpen || log || isLoading || hasAttemptedLoad) {
       return
     }
 
     void loadLogs()
-  }, [isOpen, isLoading, loadLogs, log])
+  }, [hasAttemptedLoad, isOpen, isLoading, loadLogs, log])
 
   useEffect(() => {
-    if (!isOpen || !isLive) {
+    if (!isOpen || !isLive || sourceUnavailable) {
       return
     }
 
     void loadLogs()
     const interval = window.setInterval(() => void loadLogs(), 3000)
     return () => window.clearInterval(interval)
-  }, [isLive, isOpen, loadLogs])
+  }, [isLive, isOpen, loadLogs, sourceUnavailable])
 
   return (
     <Dialog
@@ -184,6 +238,7 @@ export const AppLogsDialog = ({
                 Live
                 <Switch
                   checked={isLive}
+                  disabled={sourceUnavailable}
                   onCheckedChange={setIsLive}
                 />
               </label>

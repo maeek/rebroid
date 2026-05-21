@@ -193,7 +193,7 @@ export class AndroidApplication {
   @Column()
   containerImage!: string;
 
-  @ApiProperty({ example: 'sma-runtime-signal-android-98a530d6' })
+  @ApiProperty({ example: 'rebroid-runtime-signal-android-98a530d6' })
   @Column()
   containerName!: string;
 
@@ -204,11 +204,11 @@ export class AndroidApplication {
   @Column({ type: 'text', nullable: true })
   containerId!: string | null;
 
-  @ApiProperty({ example: 'sma-net-signal-android-98a530d6' })
+  @ApiProperty({ example: 'rebroid-net-signal-android-98a530d6' })
   @Column()
   networkName!: string;
 
-  @ApiProperty({ example: 'sma-data-signal-android-98a530d6' })
+  @ApiProperty({ example: 'rebroid-data-signal-android-98a530d6' })
   @Column()
   volumeName!: string;
 

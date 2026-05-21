@@ -187,13 +187,20 @@ export class AndroidAppsProvisioningService {
         this.tracker.ensureActive(applicationId);
         await this.setLifecycle(applicationId, {
           lifecycleStage: AndroidApplicationLifecycleStage.AndroidBooting,
-          statusMessage: `Configuring Android ADB listener on port ${app.adbPort}.`,
+          statusMessage: 'Preparing Android remote access.',
         });
         await this.configureRedroidAdbPort(app);
       }
 
       if (app.apkFilePath) {
         this.tracker.ensureActive(applicationId);
+        await this.setLifecycle(applicationId, {
+          status: AndroidApplicationStatus.Running,
+          lifecycleStage: AndroidApplicationLifecycleStage.ApkInstalling,
+          statusMessage:
+            'Installing APK inside Android. Viewer is available while installation finishes.',
+          lastError: null,
+        });
         await this.installApk(app);
       }
 
@@ -236,25 +243,73 @@ export class AndroidAppsProvisioningService {
 
     const targetDir = '/data/local/tmp';
     const targetName = `${app.id}.apk`;
+    const targetPath = `${targetDir}/${targetName}`;
 
+    await this.logs.append(app.id, 'Preparing APK install', {
+      source: app.apkFilePath,
+      target: targetPath,
+    });
+    await this.docker.execInContainer(app.containerId, [
+      'sh',
+      '-lc',
+      `mkdir -p ${targetDir}`,
+    ]);
+
+    await this.logs.append(app.id, 'Copying APK into runtime container', {
+      source: app.apkFilePath,
+      target: targetPath,
+    });
     await this.docker.copyFileToContainer(
       app.containerId,
       app.apkFilePath,
       targetDir,
       targetName,
     );
+    await this.logs.append(app.id, 'APK copied into runtime container', {
+      target: targetPath,
+    });
+
     await this.setLifecycle(app.id, {
+      status: AndroidApplicationStatus.Running,
       lifecycleStage: AndroidApplicationLifecycleStage.ApkInstalling,
       statusMessage: 'Installing APK inside Android.',
+    });
+
+    await this.logs.append(app.id, 'Starting APK install command', {
+      target: targetPath,
     });
     await this.docker.execInContainer(app.containerId, [
       'sh',
       '-lc',
-      `pm install -r ${targetDir}/${targetName}`,
+      this.pmInstallCommand(targetPath),
     ]);
     await this.logs.append(app.id, 'APK install command completed', {
-      target: `${targetDir}/${targetName}`,
+      target: targetPath,
     });
+  }
+
+  private pmInstallCommand(apkPath: string) {
+    return [
+      `apk_path=${this.shellQuote(apkPath)}`,
+      'pm install -r "$apk_path" &',
+      'pid=$!',
+      'elapsed=0',
+      'while kill -0 "$pid" 2>/dev/null; do',
+      '  if [ "$elapsed" -ge 180 ]; then',
+      '    kill "$pid" 2>/dev/null || true',
+      '    wait "$pid" 2>/dev/null || true',
+      '    echo "pm install timed out after 180s" >&2',
+      '    exit 124',
+      '  fi',
+      '  sleep 1',
+      '  elapsed=$((elapsed + 1))',
+      'done',
+      'wait "$pid"',
+    ].join('\n');
+  }
+
+  private shellQuote(value: string) {
+    return `'${value.replaceAll("'", "'\\''")}'`;
   }
 
   /**
@@ -331,48 +386,74 @@ export class AndroidAppsProvisioningService {
       '-lc',
       [
         `setprop persist.adb.tcp.port ${app.adbPort}`,
+        `setprop service.adb.tcp.port ${app.adbPort}`,
         'stop adbd',
         'start adbd',
       ].join(' && '),
     ]);
-    await this.waitForRedroidAdb(app);
-    await this.logs.append(app.id, 'Configured redroid ADB listener', {
+    await this.waitForRedroidAdbFromSidecar(app);
+    await this.logs.append(app.id, 'Prepared Android remote access', {
       adbPort: app.adbPort,
     });
   }
 
-  private async waitForRedroidAdb(app: AndroidApplication) {
+  private async waitForRedroidAdbFromSidecar(app: AndroidApplication) {
     if (!app.containerId) {
       throw new InternalServerErrorException('Container is required.');
     }
 
-    const timeoutMs = 20_000;
-    const intervalMs = 1_000;
+    const timeoutMs = 60_000;
+    const intervalMs = 2_000;
     const deadline = Date.now() + timeoutMs;
-    let lastProbe = 'ADB service state was not reported.';
+    let lastProbe = 'ADB sidecar readiness was not reported.';
 
     while (Date.now() < deadline) {
       this.tracker.ensureActive(app.id);
-
-      const { stdout, stderr } = await this.docker.execInContainerWithOutput(
+      const runtimeState = await this.docker.getContainerRuntimeState(
         app.containerId,
-        [
-          'sh',
-          '-lc',
-          [
-            'adb_port=$(getprop persist.adb.tcp.port 2>/dev/null || true)',
-            'adbd_state=$(getprop init.svc.adbd 2>/dev/null || true)',
-            'printf "%s\t%s" "$adb_port" "$adbd_state"',
-          ].join(' && '),
-        ],
       );
 
-      const [adbPort, adbdState] = stdout.trim().split('\t');
-      lastProbe =
-        stderr.trim() ||
-        `persist.adb.tcp.port=${adbPort || '<empty>'}, init.svc.adbd=${adbdState || '<empty>'}`;
+      if (!runtimeState.exists || !runtimeState.running) {
+        throw new Error(this.androidBootExitedMessage(runtimeState));
+      }
 
-      if (adbPort === String(app.adbPort) && adbdState === 'running') {
+      const sidecarTarget = await this.docker.ensureWsScrcpySidecarOnNetwork(
+        app.networkName,
+      );
+      if (!sidecarTarget.configured || !sidecarTarget.connected) {
+        lastProbe =
+          sidecarTarget.message ??
+          sidecarTarget.error?.message ??
+          'ws-scrcpy sidecar is not attached to the app network.';
+        await delay(intervalMs);
+        continue;
+      }
+
+      const adbHost =
+        (await this.docker.getContainerIpOnNetwork(
+          app.containerId,
+          app.networkName,
+        )) ?? app.containerName;
+      const adbTarget = await this.docker.connectWsScrcpyAdb(
+        adbHost,
+        app.adbPort,
+      );
+      lastProbe =
+        adbTarget.message ??
+        adbTarget.error?.message ??
+        `No ADB response from ${adbHost}:${app.adbPort}.`;
+
+      await this.logs.append(app.id, 'Redroid ADB sidecar probe', {
+        networkName: app.networkName,
+        adbHost,
+        adbPort: app.adbPort,
+        configured: adbTarget.configured,
+        connected: adbTarget.connected,
+        message: adbTarget.message,
+        error: adbTarget.error?.message ?? null,
+      });
+
+      if (adbTarget.configured && adbTarget.connected) {
         return;
       }
 
@@ -380,7 +461,7 @@ export class AndroidAppsProvisioningService {
     }
 
     throw new Error(
-      `Timed out waiting for redroid ADB after ${timeoutMs / 1000}s. Last probe: ${lastProbe}`,
+      `Timed out waiting for redroid ADB from ws-scrcpy sidecar after ${timeoutMs / 1000}s. Last probe: ${lastProbe}`,
     );
   }
 

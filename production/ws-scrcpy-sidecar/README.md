@@ -34,4 +34,4 @@ WS_SCRCPY_CONFIG=/etc/ws-scrcpy/config.yaml
 
 The service needs `adb` in `PATH`; this Dockerfile installs Debian's `android-sdk-platform-tools` package.
 
-In custom deployments, keep the sidecar on an internal network shared with Next.js and do not expose `8000` publicly. The web image defaults to `http://sma-ws-scrcpy:8000`, so only override `WS_SCRCPY_INTERNAL_BASE_URL` when you also change the sidecar service name.
+In custom deployments, keep the sidecar on an internal network shared with Next.js and do not expose `8000` publicly. The web image defaults to `http://rebroid-ws-scrcpy:8000`, so only override `WS_SCRCPY_INTERNAL_BASE_URL` when you also change the sidecar service name.

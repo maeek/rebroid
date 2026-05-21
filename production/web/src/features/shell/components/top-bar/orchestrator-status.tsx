@@ -9,6 +9,8 @@ import { getOrchestratorHealthAction, repairScrcpySidecarAction } from '@/server
 import type { OrchestratorHealth, ServiceHealth } from '@/server/orchestrator/diagnostics/types'
 
 type HealthState = 'checking' | 'online' | 'degraded' | 'offline'
+type DisplayServiceStatus = ServiceHealth['status'] | 'degraded'
+type DisplayService = Omit<ServiceHealth, 'status'> & { status: DisplayServiceStatus }
 
 const offlineService = (message: string): ServiceHealth => ({
   ok: false,
@@ -22,27 +24,50 @@ const checkingService = (message = 'Checking service health.'): ServiceHealth =>
   message
 })
 
+const mergeDockerAndRuntimeService = (health: OrchestratorHealth | null, fallbackMessage: string): DisplayService => {
+  const docker = health?.services.docker ?? checkingService(fallbackMessage)
+  const runtime = health?.services.runtime ?? checkingService(fallbackMessage)
+
+  if (!docker.ok) {
+    return docker
+  }
+
+  if (!runtime.ok) {
+    return {
+      ok: false,
+      status: 'degraded',
+      message: runtime.message,
+      details: runtime.details
+    }
+  }
+
+  return {
+    ...docker,
+    message: 'Docker API is reachable and the container runtime is suitable for privileged app containers.'
+  }
+}
+
 const getOrchestratorHealth = getOrchestratorHealthAction
 const repairScrcpySidecar = repairScrcpySidecarAction
 
-const dotTone = (status: ServiceHealth['status']) => {
+const dotTone = (status: DisplayServiceStatus) => {
   if (status === 'healthy') {
     return 'bg-green-400'
   }
 
-  if (status === 'unhealthy') {
+  if (status === 'unhealthy' || status === 'degraded') {
     return 'bg-yellow-400'
   }
 
   return 'bg-destructive'
 }
 
-const badgeTone = (status: ServiceHealth['status']) => {
+const badgeTone = (status: DisplayServiceStatus) => {
   if (status === 'healthy') {
     return 'border-green-400/30 bg-green-400/10 text-green-400'
   }
 
-  if (status === 'unhealthy') {
+  if (status === 'unhealthy' || status === 'degraded') {
     return 'border-yellow-400/35 bg-yellow-400/10 text-yellow-300'
   }
 
@@ -56,11 +81,7 @@ const serviceRows = (health: OrchestratorHealth | null, fallbackMessage: string)
   },
   {
     name: 'Docker',
-    service: health?.services.docker ?? checkingService(fallbackMessage)
-  },
-  {
-    name: 'Runtime',
-    service: health?.services.runtime ?? checkingService(fallbackMessage)
+    service: mergeDockerAndRuntimeService(health, fallbackMessage)
   },
   {
     name: 'Scrcpy',

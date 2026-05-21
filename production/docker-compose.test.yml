@@ -18,7 +18,7 @@ services:
       ORCHESTRATOR_INTERNAL_DOCKER: 'false'
       IPTABLES_POLICY_ENABLED: ${IPTABLES_POLICY_ENABLED:-false}
       WS_SCRCPY_IMAGE: rebroid/ws-scrcpy-sidecar:test
-      WS_SCRCPY_CONTAINER_NAME: sma-ws-scrcpy-test
+      WS_SCRCPY_CONTAINER_NAME: rebroid-ws-scrcpy-test
       WS_SCRCPY_AUTO_START: 'false'
       MAX_APK_UPLOAD_SIZE_MB: ${MAX_APK_UPLOAD_SIZE_MB:-4096}
     cap_add:
@@ -39,7 +39,7 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PROXY_CLIENT_MAX_BODY_SIZE: ${NEXT_PROXY_CLIENT_MAX_BODY_SIZE:-4096mb}
-        WS_SCRCPY_INTERNAL_BASE_URL: ${WS_SCRCPY_INTERNAL_BASE_URL:-http://sma-ws-scrcpy-test:8000}
+        WS_SCRCPY_INTERNAL_BASE_URL: ${WS_SCRCPY_INTERNAL_BASE_URL:-http://rebroid-ws-scrcpy-test:8000}
     image: rebroid/web:test
     container_name: rebroid-web-test
     restart: unless-stopped
@@ -51,7 +51,7 @@ services:
       ORCHESTRATOR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
       ORCHESTRATOR_SHARED_SECRET_FILE: /app/secrets/orchestrator-secret
       ORCHESTRATOR_API_URL: http://orchestrator:4100
-      WS_SCRCPY_INTERNAL_BASE_URL: http://sma-ws-scrcpy-test:8000
+      WS_SCRCPY_INTERNAL_BASE_URL: http://rebroid-ws-scrcpy-test:8000
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
     ports:
       - '${REBROID_PORT:-3001}:3001'
@@ -66,14 +66,14 @@ services:
       context: ./ws-scrcpy-sidecar
       dockerfile: Dockerfile
     image: rebroid/ws-scrcpy-sidecar:test
-    container_name: sma-ws-scrcpy-test
+    container_name: rebroid-ws-scrcpy-test
     restart: unless-stopped
     expose:
       - '8000'
     networks:
       platform:
         aliases:
-          - sma-ws-scrcpy-test
+          - rebroid-ws-scrcpy-test
 
 volumes:
   orchestrator-test-data:

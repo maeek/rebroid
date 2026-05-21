@@ -108,7 +108,7 @@ export default registerAs('app', () => {
         0,
       ),
       wsScrcpyPlayer: process.env.WS_SCRCPY_PLAYER ?? 'mse',
-      wsScrcpyProxyRemote: process.env.WS_SCRCPY_PROXY_REMOTE || undefined,
+      wsScrcpyProxyRemote: process.env.WS_SCRCPY_PROXY_REMOTE || 'tcp:8886',
     },
   };
 });

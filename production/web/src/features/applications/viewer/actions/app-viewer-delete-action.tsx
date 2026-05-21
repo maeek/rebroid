@@ -3,6 +3,9 @@
 import { useState } from 'react'
 import { IconLoader2, IconTrash, IconX } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
+import { getDisplayErrorMessage } from '../../../../lib/error-utils'
+import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -19,9 +22,6 @@ import { useOrchestratorUiSettings } from '@/features/settings/hooks/use-orchest
 import { toast } from '@/hooks/use-toast'
 import { removeAppIconAction } from '@/server/app-icons/actions/remove-app-icon-action'
 import { deleteApplicationAction } from '@/server/orchestrator/applications/mutation-actions'
-import { getDisplayErrorMessage } from '../../../../lib/error-utils'
-import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 
 export const AppViewerDeleteAction = ({
   app,
@@ -120,7 +120,7 @@ export const AppViewerDeleteAction = ({
               variant='secondary'
               disabled={isDeleting}
             >
-              {isProvisioning ? 'Keep provisioning' : 'Keep app'}
+              Cancel
             </Button>
           </DialogClose>
         </DialogFooter>

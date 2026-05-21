@@ -120,7 +120,7 @@ The first viewer integration uses one shared ws-scrcpy sidecar service. Do not e
 Default compose shape:
 
 - build `ws-scrcpy-sidecar` locally from the root compose file,
-- keep the sidecar named `sma-ws-scrcpy` on the internal platform network,
+- keep the sidecar named `rebroid-ws-scrcpy` on the internal platform network,
 - keep Next.js pointed at the default internal sidecar URL so `/viewer/ws-scrcpy/*` is proxied internally,
 - let users load `/viewer/apps/:id`, which validates their session and mints a short-lived viewer token scoped to the app/ADB target.
 

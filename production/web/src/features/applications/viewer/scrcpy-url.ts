@@ -23,6 +23,9 @@ export const getProtectedViewerShellUrl = (applicationId: string, options?: Part
   if (options?.fitToFrame !== undefined) {
     query.set('fitToFrame', options.fitToFrame ? '1' : '0')
   }
+  if (options?.player !== undefined) {
+    query.set('player', options.player)
+  }
 
   return `/viewer/apps/${applicationId}${query.size > 0 ? `?${query.toString()}` : ''}`
 }
@@ -50,7 +53,7 @@ export const getProtectedWsScrcpyUrl = ({
   baseUrl: string
   viewerToken: string
   soundEnabled?: boolean
-  settings?: Pick<ViewerSettings, 'fitToFrame'>
+  settings?: Pick<ViewerSettings, 'bitrateMbps' | 'fitToFrame' | 'iFrameInterval' | 'maxFps' | 'maxSize' | 'player'>
 }) => {
   const publicBaseUrl = trimTrailingSlash(baseUrl)
   const proxyPath = '/viewer/ws-scrcpy/'
@@ -63,11 +66,33 @@ export const getProtectedWsScrcpyUrl = ({
     sma_viewer_token: viewerToken
   })
   const proxyUrl = `${websocketBaseUrl}${proxyPath}?${proxyQuery.toString()}`
-  const viewerQuery = new URLSearchParams({ sma_viewer_token: viewerToken })
+  const viewerQuery = new URLSearchParams({
+    appId: session.applicationId,
+    udid: session.udid,
+    sma_viewer_token: viewerToken
+  })
+  if (settings?.player) {
+    viewerQuery.set('player', settings.player)
+  }
+  if (settings?.fitToFrame !== undefined) {
+    viewerQuery.set('fitToFrame', settings.fitToFrame ? '1' : '0')
+  }
+  if (settings?.bitrateMbps !== undefined) {
+    viewerQuery.set('bitrateMbps', String(settings.bitrateMbps))
+  }
+  if (settings?.maxFps !== undefined) {
+    viewerQuery.set('maxFps', String(settings.maxFps))
+  }
+  if (settings?.maxSize !== undefined) {
+    viewerQuery.set('maxSize', String(settings.maxSize))
+  }
+  if (settings?.iFrameInterval !== undefined) {
+    viewerQuery.set('iFrameInterval', String(settings.iFrameInterval))
+  }
   const hashQuery = new URLSearchParams({
     action: 'stream',
     udid: session.udid,
-    player: session.player,
+    player: settings?.player ?? session.player,
     audio: soundEnabled === false ? '0' : '1',
     ws: proxyUrl
   })

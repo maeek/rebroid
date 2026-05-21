@@ -7,7 +7,7 @@ Next.js frontend and backend-for-frontend for Rebroid.
 The Docker image is designed to run without a `.env` file:
 
 - `ORCHESTRATOR_API_URL` defaults to `http://orchestrator:4100`.
-- `WS_SCRCPY_INTERNAL_BASE_URL` defaults to `http://sma-ws-scrcpy:8000` at build time.
+- `WS_SCRCPY_INTERNAL_BASE_URL` defaults to `http://rebroid-ws-scrcpy:8000` at build time.
 - `NEXTAUTH_SECRET` and `SCRCPY_VIEWER_TOKEN_SECRET` are generated into `/app/data` when missing.
 - `ORCHESTRATOR_SHARED_SECRET` is read from `/app/secrets/orchestrator-secret`, shared with the orchestrator container.
 - `NEXTAUTH_URL` is not required for the compose setup.

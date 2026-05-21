@@ -48,7 +48,7 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PROXY_CLIENT_MAX_BODY_SIZE: ${NEXT_PROXY_CLIENT_MAX_BODY_SIZE:-4096mb}
-        WS_SCRCPY_INTERNAL_BASE_URL: ${WS_SCRCPY_INTERNAL_BASE_URL:-http://sma-ws-scrcpy:8000}
+        WS_SCRCPY_INTERNAL_BASE_URL: ${WS_SCRCPY_INTERNAL_BASE_URL:-http://rebroid-ws-scrcpy:8000}
     image: rebroid/web:local
     container_name: rebroid-web
     restart: unless-stopped
@@ -60,7 +60,7 @@ services:
       ORCHESTRATOR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
       ORCHESTRATOR_SHARED_SECRET_FILE: /data/secrets/orchestrator-secret
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
-      WS_SCRCPY_INTERNAL_BASE_URL: ${WS_SCRCPY_INTERNAL_BASE_URL:-http://sma-ws-scrcpy:8000}
+      WS_SCRCPY_INTERNAL_BASE_URL: ${WS_SCRCPY_INTERNAL_BASE_URL:-http://rebroid-ws-scrcpy:8000}
     ports:
       - "${REBROID_PORT:-3001}:3001"
     volumes:
@@ -74,14 +74,14 @@ services:
       context: ./ws-scrcpy-sidecar
       dockerfile: Dockerfile
     image: rebroid/ws-scrcpy-sidecar:local
-    container_name: sma-ws-scrcpy
+    container_name: rebroid-ws-scrcpy
     restart: unless-stopped
     expose:
       - "8000"
     networks:
       platform:
         aliases:
-          - sma-ws-scrcpy
+          - rebroid-ws-scrcpy
 
 volumes:
   orchestrator-data:

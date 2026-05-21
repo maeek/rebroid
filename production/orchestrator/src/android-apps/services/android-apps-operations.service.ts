@@ -492,14 +492,14 @@ export class AndroidAppsOperationsService {
       );
     }
 
-    const udid = `${app.containerName}:${app.adbPort}`;
     const proxyRemote =
       this.config.get<string>('app.scrcpy.wsScrcpyProxyRemote') ??
-      `tcp:${app.adbPort}`;
+      'tcp:8886';
     const sidecarTarget = await this.docker.ensureWsScrcpySidecarOnNetwork(
       app.networkName,
     );
     const adbHost = await this.resolveScrcpyAdbHost(app);
+    const udid = `${adbHost}:${app.adbPort}`;
     const viewerTarget =
       sidecarTarget.configured && sidecarTarget.connected
         ? await this.prepareScrcpyAdbTarget(app, adbHost)
@@ -578,6 +578,20 @@ export class AndroidAppsOperationsService {
       };
     }
 
+    const runtimeState = await this.docker.getContainerRuntimeState(
+      app.containerId,
+    );
+    if (!runtimeState.exists) {
+      return {
+        source: 'container' as const,
+        collectedAt: new Date().toISOString(),
+        output:
+          app.status === AndroidApplicationStatus.Stopped
+            ? 'Container logs are unavailable because the runtime container is currently stopped and has already been removed.'
+            : 'Container logs are unavailable because the runtime container no longer exists.',
+      };
+    }
+
     return {
       source: 'container' as const,
       collectedAt: new Date().toISOString(),
@@ -618,7 +632,15 @@ export class AndroidAppsOperationsService {
       [
         'sh',
         '-lc',
-        `logcat -d -t ${Math.max(1, Math.min(tail, 2000))} 2>&1 || true`,
+        [
+          'if [ -f /data/local/tmp/ws_scrcpy.log ]; then',
+          '  echo "== ws-scrcpy server ==";',
+          '  tail -n 200 /data/local/tmp/ws_scrcpy.log 2>&1;',
+          '  echo;',
+          'fi;',
+          'echo "== logcat ==";',
+          `logcat -d -t ${Math.max(1, Math.min(tail, 2000))} 2>&1 || true`,
+        ].join(' '),
       ],
     );
 

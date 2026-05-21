@@ -15,7 +15,7 @@ import { setAppIconAction } from '@/server/app-icons/actions/set-app-icon-action
 import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 
 const recentAppsStorageKey = 'sma_recent_apps'
-const recentAppsUpdatedEvent = 'sma-recent-apps-updated'
+const recentAppsUpdatedEvent = 'rebroid-recent-apps-updated'
 
 type RecentApp = {
   id: string

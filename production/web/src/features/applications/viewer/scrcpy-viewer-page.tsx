@@ -3,7 +3,11 @@ import { IconAlertTriangle, IconCast, IconLoader2 } from '@tabler/icons-react'
 import { headers } from 'next/headers'
 import { Visible } from '@/components/ui/visible'
 import { getProtectedWsScrcpyUrl } from '@/features/applications/viewer/scrcpy-url'
-import { defaultViewerSettings, normalizeViewerSettings } from '@/features/applications/viewer/viewer-settings'
+import {
+  defaultViewerSettings,
+  isViewerPlayer,
+  normalizeViewerSettings
+} from '@/features/applications/viewer/viewer-settings'
 import { StatusSplash } from '@/features/shell/components/status-splash'
 import { getApplicationAction, getScrcpySessionAction } from '@/server/orchestrator/applications/read-actions'
 import { createScrcpyViewerToken } from '@/server/viewer/viewer-token'
@@ -27,6 +31,7 @@ type ViewerErrorDetails = {
 
 type ViewerSearchParams = {
   sound?: string
+  player?: string
   bitrateMbps?: string
   maxFps?: string
   maxSize?: string
@@ -42,7 +47,7 @@ const getBaseUrl = async () => {
 }
 
 const getWsScrcpyInternalBaseUrl = () =>
-  (process.env.WS_SCRCPY_INTERNAL_BASE_URL || 'http://sma-ws-scrcpy:8000').replace(/\/$/, '')
+  (process.env.WS_SCRCPY_INTERNAL_BASE_URL || 'http://rebroid-ws-scrcpy:8000').replace(/\/$/, '')
 
 const checkWsScrcpyProxyTarget = async () => {
   try {
@@ -96,6 +101,7 @@ const numberParam = (value: string | undefined, fallback: number) => {
 const viewerSettingsFromSearchParams = (searchParams: ViewerSearchParams | undefined): ViewerSettings =>
   normalizeViewerSettings({
     soundEnabled: searchParams?.sound !== '0',
+    player: isViewerPlayer(searchParams?.player) ? searchParams.player : undefined,
     bitrateMbps: numberParam(searchParams?.bitrateMbps, defaultViewerSettings.bitrateMbps),
     maxFps: numberParam(searchParams?.maxFps, defaultViewerSettings.maxFps),
     maxSize: numberParam(searchParams?.maxSize, defaultViewerSettings.maxSize),
@@ -106,10 +112,13 @@ const viewerSettingsFromSearchParams = (searchParams: ViewerSearchParams | undef
 const wsScrcpyStoragePrefixes = (player: string) => {
   const normalizedPlayer = player.toLowerCase()
   if (normalizedPlayer.includes('webcodecs')) {
-    return ['WebCodecsDecoder', 'WebCodecsVideoDecoder']
+    return ['WebCodecsPlayer']
   }
   if (normalizedPlayer.includes('broadway')) {
     return ['BroadwayDecoder']
+  }
+  if (normalizedPlayer.includes('tinyh264')) {
+    return ['Tinyh264Decoder']
   }
 
   return ['MseDecoder']
@@ -131,7 +140,7 @@ const createWsScrcpySettingsScript = (session: ScrcpySession, viewerSettings: Vi
     sendFrameMeta: false,
     displayId: 0
   }
-  const prefixes = wsScrcpyStoragePrefixes(session.player)
+  const prefixes = wsScrcpyStoragePrefixes(viewerSettings.player)
 
   return `
 (() => {

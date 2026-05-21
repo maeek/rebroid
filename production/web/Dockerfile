@@ -12,7 +12,7 @@ RUN --mount=type=cache,target=/root/.npm npm ci
 FROM base AS builder
 RUN apk add --no-cache libc6-compat
 ARG NEXT_PROXY_CLIENT_MAX_BODY_SIZE=4096mb
-ARG WS_SCRCPY_INTERNAL_BASE_URL=http://sma-ws-scrcpy:8000
+ARG WS_SCRCPY_INTERNAL_BASE_URL=http://rebroid-ws-scrcpy:8000
 ENV NEXT_PROXY_CLIENT_MAX_BODY_SIZE=${NEXT_PROXY_CLIENT_MAX_BODY_SIZE}
 ENV WS_SCRCPY_INTERNAL_BASE_URL=${WS_SCRCPY_INTERNAL_BASE_URL}
 COPY --from=deps /app/node_modules ./node_modules
@@ -26,13 +26,14 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3001
 ENV ORCHESTRATOR_API_URL=http://orchestrator:4100
-ENV WS_SCRCPY_INTERNAL_BASE_URL=http://sma-ws-scrcpy:8000
+ENV WS_SCRCPY_INTERNAL_BASE_URL=http://rebroid-ws-scrcpy:8000
 RUN apk add --no-cache libc6-compat
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+COPY rebroid-proxy-server.mjs ./rebroid-proxy-server.mjs
 COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/rebroid-web-entrypoint
 RUN mkdir -p /app/data /app/secrets && chown -R node:node /app
 USER node
 EXPOSE 3001
 ENTRYPOINT ["rebroid-web-entrypoint"]
-CMD ["node", "server.js"]
+CMD ["node", "rebroid-proxy-server.mjs"]

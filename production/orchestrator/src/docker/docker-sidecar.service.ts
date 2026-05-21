@@ -33,6 +33,7 @@ export class DockerSidecarService implements OnModuleInit {
   private readonly wsScrcpyPlatformNetwork?: string;
   private readonly wsScrcpyPort: number;
   private readonly wsScrcpyPublishedHostPort: number;
+  private readonly wsScrcpyProxyRemote: string;
   private wsScrcpyLastError: string | null = null;
 
   constructor(
@@ -63,6 +64,9 @@ export class DockerSidecarService implements OnModuleInit {
     this.wsScrcpyPublishedHostPort = this.config.getOrThrow<number>(
       'app.scrcpy.wsScrcpyPublishedHostPort',
     );
+    this.wsScrcpyProxyRemote = this.config.getOrThrow<string>(
+      'app.scrcpy.wsScrcpyProxyRemote',
+    );
   }
 
   private get docker() {
@@ -78,7 +82,7 @@ export class DockerSidecarService implements OnModuleInit {
       return;
     }
 
-    void this.ensureSidecar().catch((error) => {
+    void this.initializeSidecarOnStartup().catch((error) => {
       this.wsScrcpyLastError = this.engine.errorMessage(error);
       this.logger.warn(
         `ws-scrcpy sidecar was not started automatically: ${this.wsScrcpyLastError}`,
@@ -226,6 +230,21 @@ export class DockerSidecarService implements OnModuleInit {
         };
       }
 
+      await this.prepareAndroidDisplay(sidecar.id, target);
+
+      const scrcpyServerError = await this.ensureScrcpyServer(
+        sidecar.id,
+        target,
+      );
+      if (scrcpyServerError) {
+        return {
+          configured: true,
+          connected: false,
+          message: scrcpyServerError.message,
+          error: scrcpyServerError,
+        };
+      }
+
       return {
         configured: true,
         connected: true,
@@ -245,6 +264,35 @@ export class DockerSidecarService implements OnModuleInit {
         message: viewerError.message,
         error: viewerError,
       };
+    }
+  }
+
+  private async prepareAndroidDisplay(
+    sidecarId: string,
+    target: string,
+  ): Promise<void> {
+    const command = [
+      'sh',
+      '-lc',
+      [
+        `timeout 10s adb -s ${this.shellQuote(target)} shell ${this.shellQuote(
+          [
+            'settings put system screen_off_timeout 2147483647 >/dev/null 2>&1 || true',
+            'svc power stayon true >/dev/null 2>&1 || true',
+            'input keyevent WAKEUP >/dev/null 2>&1 || input keyevent 224 >/dev/null 2>&1 || true',
+            'wm dismiss-keyguard >/dev/null 2>&1 || input keyevent MENU >/dev/null 2>&1 || true',
+          ].join('; '),
+        )}`,
+      ].join(' && '),
+    ];
+
+    try {
+      await this.engine.execInContainerWithOutput(sidecarId, command);
+    } catch (error) {
+      const viewerError = this.viewerTargetError(error);
+      this.logger.warn(
+        `Unable to prepare Android display for ${target}: ${viewerError.message}`,
+      );
     }
   }
 
@@ -331,6 +379,7 @@ export class DockerSidecarService implements OnModuleInit {
       if (existing) {
         await this.engine.stopContainer(existing.id, 3);
         await this.engine.startContainer(existing.id);
+        await this.cleanupStaleSidecarNetworks(existing);
         this.wsScrcpyLastError = null;
         return existing.id;
       }
@@ -408,6 +457,47 @@ export class DockerSidecarService implements OnModuleInit {
     });
     await container.start();
     return container;
+  }
+
+  private async initializeSidecarOnStartup() {
+    const sidecar = await this.ensureSidecar();
+    if (!sidecar) {
+      return null;
+    }
+
+    await this.cleanupStaleSidecarNetworks(sidecar);
+    this.wsScrcpyLastError = null;
+    return sidecar;
+  }
+
+  private async cleanupStaleSidecarNetworks(sidecar: Dockerode.Container) {
+    const inspect = await sidecar.inspect();
+    const networkNames = Object.keys(inspect.NetworkSettings?.Networks ?? {});
+    const staleNetworkNames = networkNames.filter((networkName) =>
+      this.isStaleSidecarNetwork(networkName),
+    );
+
+    if (!staleNetworkNames.length) {
+      return;
+    }
+
+    await Promise.all(
+      staleNetworkNames.map((networkName) =>
+        this.engine.disconnectContainerFromNetwork(sidecar.id, networkName),
+      ),
+    );
+
+    this.logger.log(
+      `Detached ws-scrcpy sidecar from stale networks: ${staleNetworkNames.join(', ')}`,
+    );
+  }
+
+  private isStaleSidecarNetwork(networkName: string) {
+    if (networkName === this.wsScrcpyPlatformNetwork) {
+      return false;
+    }
+
+    return networkName.startsWith(`${this.engine.resourcePrefix}-net-`);
   }
 
   private async findSidecar() {
@@ -571,6 +661,116 @@ export class DockerSidecarService implements OnModuleInit {
 
   private shellQuote(value: string) {
     return `'${value.replaceAll("'", "'\\''")}'`;
+  }
+
+  private getWsScrcpyServerPort() {
+    const match = /^tcp:(\d+)$/.exec(this.wsScrcpyProxyRemote);
+    if (!match) {
+      return null;
+    }
+
+    const port = Number(match[1]);
+    return Number.isInteger(port) && port > 0 ? port : null;
+  }
+
+  private scrcpyServerPidProbeCommand(target: string) {
+    const quotedTarget = this.shellQuote(target);
+
+    return [
+      `for pid in $(adb -s ${quotedTarget} shell 'pidof app_process 2>/dev/null' | tr -d '\\r'); do`,
+      `adb -s ${quotedTarget} shell "cat /proc/$pid/cmdline 2>/dev/null" | tr '\\000' ' ' | grep -q 'com.genymobile.scrcpy.Server 1.19-ws7' && echo "$pid" && exit 0;`,
+      'done;',
+      'exit 1',
+    ].join(' ');
+  }
+
+  private scrcpyServerStopCommand(target: string) {
+    const quotedTarget = this.shellQuote(target);
+
+    return [
+      `for pid in $(adb -s ${quotedTarget} shell 'pidof app_process 2>/dev/null' | tr -d '\\r'); do`,
+      `if adb -s ${quotedTarget} shell "cat /proc/$pid/cmdline 2>/dev/null" | tr '\\000' ' ' | grep -q 'com.genymobile.scrcpy.Server 1.19-ws7'; then`,
+      `adb -s ${quotedTarget} shell "kill $pid 2>/dev/null || true";`,
+      'fi;',
+      'done;',
+      'sleep 0.5;',
+      'exit 0',
+    ].join(' ');
+  }
+
+  private async ensureScrcpyServer(
+    sidecarId: string,
+    target: string,
+  ): Promise<ViewerTargetError | null> {
+    const serverPort = this.getWsScrcpyServerPort();
+    if (!serverPort) {
+      return null;
+    }
+
+    const stopCommand = [
+      'sh',
+      '-lc',
+      this.scrcpyServerStopCommand(target),
+    ];
+
+    try {
+      await this.engine.execInContainerWithOutput(sidecarId, stopCommand);
+    } catch (error) {
+      const viewerError = this.viewerTargetError(error);
+      this.logger.warn(
+        `Unable to stop stale ws-scrcpy server on ${target}: ${viewerError.message}`,
+      );
+    }
+
+    const localJar = '/opt/ws-scrcpy/vendor/Genymobile/scrcpy/scrcpy-server.jar';
+    const remoteJar = '/data/local/tmp/scrcpy-server.jar';
+    const remoteLog = '/data/local/tmp/ws_scrcpy.log';
+    const startRemoteCommand = [
+      `CLASSPATH=${remoteJar}`,
+      'nohup',
+      'app_process',
+      '/',
+      'com.genymobile.scrcpy.Server',
+      '1.19-ws7',
+      'web',
+      'INFO',
+      String(serverPort),
+      'false',
+      `>${remoteLog}`,
+      '2>&1',
+      '&',
+    ].join(' ');
+    const startCommand = [
+      'sh',
+      '-lc',
+      [
+        `test -f ${this.shellQuote(localJar)} || { echo "scrcpy server jar missing at ${localJar}" >&2; exit 2; }`,
+        `adb -s ${this.shellQuote(target)} push ${this.shellQuote(localJar)} ${this.shellQuote(remoteJar)}`,
+        `adb -s ${this.shellQuote(target)} shell ${this.shellQuote(`rm -f ${remoteLog}`)}`,
+        `adb -s ${this.shellQuote(target)} shell ${this.shellQuote(startRemoteCommand)}`,
+        'sleep 1',
+        this.scrcpyServerPidProbeCommand(target),
+      ].join(' && '),
+    ];
+
+    try {
+      await this.engine.execInContainerWithOutput(sidecarId, startCommand);
+      return null;
+    } catch (error) {
+      const viewerError = this.viewerTargetError(error);
+      return {
+        code: 'adb_unreachable',
+        message:
+          viewerError.stderr?.trim() ||
+          viewerError.stdout?.trim() ||
+          `Could not start ws-scrcpy server on ${target}.`,
+        retryable: true,
+        exitCode: viewerError.exitCode,
+        command: startCommand,
+        stdout: viewerError.stdout,
+        stderr: viewerError.stderr,
+      };
+    }
   }
 
   private async probeTcpTarget(

@@ -1,6 +1,40 @@
 export type ViewerStreamingPreset = 'balanced' | 'bandwidth' | 'quality'
+export type ViewerPlayer = 'mse' | 'broadway' | 'tinyh264' | 'webcodecs'
+
+export type ViewerPlayerDefinition = {
+  value: ViewerPlayer
+  label: string
+  description: string
+}
+
+export const viewerPlayerDefinitions: ViewerPlayerDefinition[] = [
+  {
+    value: 'mse',
+    label: 'MSE',
+    description: 'Media Source Extensions. Usually the most compatible option.'
+  },
+  {
+    value: 'broadway',
+    label: 'Broadway.js',
+    description: 'WASM software decoder. Useful fallback when MSE has browser-specific issues.'
+  },
+  {
+    value: 'tinyh264',
+    label: 'Tiny H264',
+    description: 'WASM worker decoder. Lower compatibility, useful as a fallback path.'
+  },
+  {
+    value: 'webcodecs',
+    label: 'WebCodecs',
+    description: 'Browser decode path when supported. Best tested in Chromium-based browsers.'
+  }
+]
+
+export const isViewerPlayer = (value: unknown): value is ViewerPlayer =>
+  typeof value === 'string' && viewerPlayerDefinitions.some(player => player.value === value)
 
 export type ViewerStreamingSettings = {
+  player: ViewerPlayer
   preset: ViewerStreamingPreset
   bitrateMbps: number
   maxFps: number
@@ -15,6 +49,7 @@ export type ViewerSettings = ViewerStreamingSettings & {
 
 export const viewerStreamingPresets: Record<ViewerStreamingPreset, ViewerStreamingSettings> = {
   bandwidth: {
+    player: 'mse',
     preset: 'bandwidth',
     bitrateMbps: 3,
     maxFps: 30,
@@ -23,6 +58,7 @@ export const viewerStreamingPresets: Record<ViewerStreamingPreset, ViewerStreami
     fitToFrame: false
   },
   balanced: {
+    player: 'mse',
     preset: 'balanced',
     bitrateMbps: 7,
     maxFps: 60,
@@ -31,6 +67,7 @@ export const viewerStreamingPresets: Record<ViewerStreamingPreset, ViewerStreami
     fitToFrame: false
   },
   quality: {
+    player: 'mse',
     preset: 'quality',
     bitrateMbps: 12,
     maxFps: 60,
@@ -57,6 +94,7 @@ const isValidNumber = (value: unknown, fallback: number, min: number, max: numbe
 
 export const normalizeViewerSettings = (value: Partial<ViewerSettings> | null | undefined): ViewerSettings => ({
   soundEnabled: typeof value?.soundEnabled === 'boolean' ? value.soundEnabled : defaultViewerSettings.soundEnabled,
+  player: isViewerPlayer(value?.player) ? value.player : defaultViewerSettings.player,
   preset:
     value?.preset && Object.hasOwn(viewerStreamingPresets, value.preset) ? value.preset : defaultViewerSettings.preset,
   bitrateMbps: isValidNumber(value?.bitrateMbps, defaultViewerSettings.bitrateMbps, 1, 32),

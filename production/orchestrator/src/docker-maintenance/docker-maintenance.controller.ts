@@ -16,13 +16,13 @@ export class DockerMaintenanceController {
         {
           id: 'f00ba4...',
           shortId: 'f00ba4',
-          names: ['sma-example-runtime'],
+          names: ['rebroid-example-runtime'],
           image: 'redroid/redroid:13.0.0-latest',
           state: 'running',
           status: 'Up 2 minutes',
           managed: true,
           applicationId: 'android-application-id',
-          networks: ['sma-example'],
+          networks: ['rebroid-example'],
         },
       ],
     },
@@ -38,7 +38,9 @@ export class DockerMaintenanceController {
   }
 
   @Get('containers/:id/logs')
-  @ApiOperation({ summary: 'Read recent Docker logs for a platform container.' })
+  @ApiOperation({
+    summary: 'Read recent Docker logs for a platform container.',
+  })
   getContainerLogs(@Param('id') id: string, @Query('tail') tail?: string) {
     return this.dockerAdmin.getContainerLogs(
       id,

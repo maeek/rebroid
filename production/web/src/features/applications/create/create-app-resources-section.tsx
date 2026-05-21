@@ -1,7 +1,7 @@
+import type { CreateAppFormValues } from './create-app-form.types'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Setting } from '@/features/settings/components/setting'
-import type { CreateAppFormValues } from './create-app-form.types'
 
 type CreateAppResourcesSectionProps = {
   values: CreateAppFormValues
@@ -16,6 +16,7 @@ export const CreateAppResourcesSection = ({ values, onChange }: CreateAppResourc
       title='Resources'
       boxed
       contentClassName='gap-4'
+      titleClassName='mb-4'
     >
       <Setting
         label='RAM limit'

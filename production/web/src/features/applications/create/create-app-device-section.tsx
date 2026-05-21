@@ -1,10 +1,11 @@
+import type { CreateAppFormValues } from './create-app-form.types'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Textarea } from '@/components/ui/textarea'
 import { Visible } from '@/components/ui/visible'
 import { Setting } from '@/features/settings/components/setting'
 import { redroidDefaultsLabel } from '@/shared/runtime/redroid-runtime'
-import type { CreateAppFormValues } from './create-app-form.types'
 
 type CreateAppDeviceSectionProps = {
   values: CreateAppFormValues
@@ -25,9 +26,15 @@ export const CreateAppDeviceSection = ({
 }: CreateAppDeviceSectionProps) => {
   return (
     <Section
-      title='Device'
+      title={
+        <div className='flex items-center gap-2'>
+          Device{' '}
+          <Badge variant={isRedroidRuntime ? 'default' : 'secondary'}>{isRedroidRuntime ? 'Redroid' : 'Custom'}</Badge>
+        </div>
+      }
       boxed
       contentClassName='gap-4'
+      titleClassName='mb-4'
     >
       <Visible when={canChangeBaseImage}>
         <Setting

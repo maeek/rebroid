@@ -8,7 +8,7 @@ export type RecentApp = {
 }
 
 export const recentAppsStorageKey = 'sma_recent_apps'
-export const recentAppsUpdatedEvent = 'sma-recent-apps-updated'
+export const recentAppsUpdatedEvent = 'rebroid-recent-apps-updated'
 
 const writeRecentApps = (apps: RecentApp[]): void => {
   window.localStorage.setItem(recentAppsStorageKey, JSON.stringify(apps))

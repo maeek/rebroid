@@ -37,6 +37,14 @@ const sign = async (value: string) => {
   return base64UrlEncode(binary)
 }
 
+const parsePayload = (encodedPayload: string) => {
+  try {
+    return JSON.parse(base64UrlDecode(encodedPayload)) as Partial<ViewerTokenPayload>
+  } catch {
+    return null
+  }
+}
+
 export const createScrcpyViewerToken = async ({ appId, udid }: { appId: string; udid: string }) => {
   const payload: ViewerTokenPayload = {
     appId,
@@ -70,8 +78,33 @@ export const verifyScrcpyViewerToken = async ({
     return false
   }
 
-  const payload = JSON.parse(base64UrlDecode(encodedPayload)) as Partial<ViewerTokenPayload>
-  return payload.appId === appId && payload.udid === udid && typeof payload.exp === 'number' && payload.exp > Date.now()
+  const payload = parsePayload(encodedPayload)
+  return Boolean(
+    payload &&
+    payload.appId === appId &&
+    payload.udid === udid &&
+    typeof payload.exp === 'number' &&
+    payload.exp > Date.now()
+  )
+}
+
+export const verifyAnyScrcpyViewerToken = async (token: string | null) => {
+  if (!token) {
+    return false
+  }
+
+  const [encodedPayload, providedSignature] = token.split('.')
+  if (!encodedPayload || !providedSignature) {
+    return false
+  }
+
+  const expectedSignature = await sign(encodedPayload)
+  if (expectedSignature !== providedSignature) {
+    return false
+  }
+
+  const payload = parsePayload(encodedPayload)
+  return Boolean(payload && typeof payload.exp === 'number' && payload.exp > Date.now())
 }
 
 export { viewerTokenParamName }

@@ -50,4 +50,4 @@ export const parseAllowCidrs = (value: string) =>
 export const uniqueStrings = (values: string[]) => [...new Set(values)];
 
 export const networkPolicyChainName = (applicationId: string) =>
-  `SMA-${applicationId.replace(/-/g, '').slice(0, 24)}`;
+  `rebroid-${applicationId.replace(/-/g, '').slice(0, 24)}`;

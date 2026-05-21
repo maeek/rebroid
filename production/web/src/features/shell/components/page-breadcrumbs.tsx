@@ -1,4 +1,4 @@
-import { Fragment } from 'react'
+import { Fragment, ReactNode } from 'react'
 import Link from 'next/link'
 import {
   Breadcrumb,
@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 
 type PageBreadcrumbItem = {
   label: string
+  badge?: ReactNode
   href?: string
 }
 
@@ -31,7 +32,12 @@ export const PageBreadcrumbs = ({ items, className }: { items: PageBreadcrumbIte
             <Fragment key={`${item.label}-${index}`}>
               <BreadcrumbItem>
                 <Visible when={isLast}>
-                  <BreadcrumbPage>{item.label}</BreadcrumbPage>
+                  <BreadcrumbPage>
+                    <div className='flex gap-2 items-center'>
+                      {item.label}
+                      {item.badge}
+                    </div>
+                  </BreadcrumbPage>
                 </Visible>
                 {!isLast && item.href ? (
                   <BreadcrumbLink asChild>
