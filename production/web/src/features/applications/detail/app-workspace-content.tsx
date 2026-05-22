@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react'
-import { AppViewerStatusSection } from './app-viewer-status-section'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { ViewerSettings } from '@/features/applications/viewer/viewer-settings'
 import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
@@ -32,7 +31,10 @@ export const AppWorkspaceContent = ({
   <ProtectedSplitPageContent className='gap-5 pr-6'>
     <div className='flex w-full flex-col gap-5'>
       <PageBreadcrumbs items={[{ label: 'Apps', href: '/apps' }, { label: app.name }]} />
-      <AppViewerHeading app={app}>
+      <AppViewerHeading
+        app={app}
+        showStatusBadge
+      >
         <AppViewerActions
           app={app}
           initialSettings={initialSettings}
@@ -51,9 +53,8 @@ export const AppWorkspaceContent = ({
       </Visible>
     </div>
     <Visible when={viewerSlot}>
-      <div className='flex w-full justify-center rounded-lg p-4 max-sm:p-3'>{viewerSlot}</div>
+      <div className='flex w-full justify-center rounded-lg p-4 max-sm:px-6 max-sm:py-5'>{viewerSlot}</div>
     </Visible>
-    <AppViewerStatusSection app={app} />
     <RuntimeToolsPanel
       app={app}
       permissions={permissions}

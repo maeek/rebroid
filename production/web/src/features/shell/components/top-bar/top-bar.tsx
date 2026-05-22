@@ -6,6 +6,7 @@ import classNames from 'classnames'
 import Link from 'next/link'
 import { ProtectedNavigation } from '../protected-navigation'
 import { TopBarAccount } from './account'
+import { TopBarNotifications } from './notifications'
 import { OrchestratorStatus } from './orchestrator-status'
 import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -84,6 +85,7 @@ export const TopBarProtected = () => {
             </PopoverContent>
           </Popover>
         </Visible>
+        <TopBarNotifications />
         <TopBarAccount />
       </div>
     </div>

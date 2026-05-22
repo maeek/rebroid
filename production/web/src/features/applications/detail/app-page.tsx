@@ -99,7 +99,10 @@ export const AppViewerPage = ({
         className='h-auto min-h-[calc(100vh-4rem)]'
         mainClassName='min-h-[calc(100vh-4rem)] items-stretch'
       >
-        <PageBackdrop imageSrc={currentApp.icon ? resolveAppIconUrl(currentApp.icon) : null} />
+        <PageBackdrop
+          imageSrc={currentApp.icon ? resolveAppIconUrl(currentApp.icon) : null}
+          opacity={0.022}
+        />
         <AppWorkspaceContent
           app={currentApp}
           initialSettings={initialSettings}
@@ -117,6 +120,7 @@ export const AppViewerPage = ({
               placement='top'
               viewerSettings={viewerSettings}
               onAppChange={setCurrentApp}
+              onViewerSettingsChange={setViewerSettings}
             />
           }
         />
@@ -129,7 +133,10 @@ export const AppViewerPage = ({
       className='h-auto min-h-[calc(100vh-4rem)]'
       mainClassName='h-auto min-h-[calc(100vh-4rem)] items-start'
     >
-      <PageBackdrop imageSrc={currentApp.icon ? resolveAppIconUrl(currentApp.icon) : null} />
+      <PageBackdrop
+        imageSrc={currentApp.icon ? resolveAppIconUrl(currentApp.icon) : null}
+        opacity={0.022}
+      />
       <AppViewerContent
         app={currentApp}
         initialSettings={initialSettings}
@@ -145,6 +152,7 @@ export const AppViewerPage = ({
         canStart={canStartCurrentApp}
         viewerSettings={viewerSettings}
         onAppChange={setCurrentApp}
+        onViewerSettingsChange={setViewerSettings}
       />
     </ProtectedSplitPageLayout>
   )

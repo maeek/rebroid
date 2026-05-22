@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { IconAlertTriangle, IconCast, IconLoader2 } from '@tabler/icons-react'
 import { headers } from 'next/headers'
 import { Visible } from '@/components/ui/visible'
+import { ScrcpyViewerFrame } from '@/features/applications/viewer/scrcpy-viewer-frame'
 import { getProtectedWsScrcpyUrl } from '@/features/applications/viewer/scrcpy-url'
 import {
   defaultViewerSettings,
@@ -30,6 +31,7 @@ type ViewerErrorDetails = {
 } | null
 
 type ViewerSearchParams = {
+  keyboard?: string
   sound?: string
   player?: string
   bitrateMbps?: string
@@ -100,6 +102,7 @@ const numberParam = (value: string | undefined, fallback: number) => {
 
 const viewerSettingsFromSearchParams = (searchParams: ViewerSearchParams | undefined): ViewerSettings =>
   normalizeViewerSettings({
+    keyboardCaptureEnabled: searchParams?.keyboard === '1',
     soundEnabled: searchParams?.sound !== '0',
     player: isViewerPlayer(searchParams?.player) ? searchParams.player : undefined,
     bitrateMbps: numberParam(searchParams?.bitrateMbps, defaultViewerSettings.bitrateMbps),
@@ -391,11 +394,9 @@ export async function ScrcpyViewerPage({
         </div>
       </Visible>
       <script dangerouslySetInnerHTML={{ __html: createWsScrcpySettingsScript(session, viewerSettings) }} />
-      <iframe
-        title='scrcpy viewer'
+      <ScrcpyViewerFrame
         src={viewerUrl}
-        className='h-screen w-screen border-0 bg-black'
-        allow='fullscreen; clipboard-read; clipboard-write; autoplay'
+        keyboardCaptureEnabled={viewerSettings.keyboardCaptureEnabled}
       />
       <div className='pointer-events-none absolute inset-0 hidden items-center justify-center bg-background/80 text-secondary-foreground'>
         <IconLoader2 className='size-8 animate-spin' />

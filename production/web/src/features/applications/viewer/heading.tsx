@@ -1,17 +1,36 @@
 import { ReactNode } from 'react'
+import { Badge } from '@/components/ui/badge'
 import { Visible } from '@/components/ui/visible'
 import { AppIcon } from '@/features/applications/components/app-icon'
 import { AppDefinition } from '@/features/applications/domain/app-definition'
 import { cn } from '@/lib/utils'
 
+const appStatusBadgeVariant = (status?: AppDefinition['status']) => {
+  if (status === 'error') {
+    return 'destructive'
+  }
+
+  if (status === 'provisioning' || status === 'removing') {
+    return 'warning'
+  }
+
+  if (status === 'running') {
+    return 'status'
+  }
+
+  return 'secondary'
+}
+
 export const AppViewerHeading = ({
   app,
   children,
-  className
+  className,
+  showStatusBadge = false
 }: {
   app?: AppDefinition
   children?: ReactNode
   className?: string
+  showStatusBadge?: boolean
 }) => {
   return (
     <div
@@ -32,6 +51,14 @@ export const AppViewerHeading = ({
         <span className='text-ellipsis text-nowrap overflow-hidden max-w-[calc(100%-3rem)]'>
           {app?.name || '<App Name>'}
         </span>
+        <Visible when={showStatusBadge && app}>
+          <Badge
+            variant={appStatusBadgeVariant(app?.status)}
+            className='shrink-0 capitalize'
+          >
+            {app?.status}
+          </Badge>
+        </Visible>
       </div>
       <div className='shrink-0'>{children}</div>
     </div>

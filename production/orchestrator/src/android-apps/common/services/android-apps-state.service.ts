@@ -5,6 +5,7 @@ import { getErrorMessage } from '../../../common/error-message';
 import { throwNotFound } from '../../../common/not-found';
 import { DockerContainerLifecycleService } from '../../../docker/containers/services/docker-container-lifecycle.service';
 import { ContainerRuntimeState } from '../../../docker/docker.types';
+import { DockerSidecarService } from '../../../docker/sidecar/services/docker-sidecar.service';
 import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
 import { AndroidApplication } from '../../android-application.entity';
 import {
@@ -25,6 +26,7 @@ export class AndroidAppsStateService {
     private readonly applications: Repository<AndroidApplication>,
     private readonly lifecycle: DockerContainerLifecycleService,
     private readonly networkPolicy: NetworkPolicyService,
+    private readonly sidecar: DockerSidecarService,
     private readonly tracker: AndroidAppsProvisioningTrackerService,
     private readonly status: AndroidAppsStatusService,
   ) {}
@@ -100,6 +102,7 @@ export class AndroidAppsStateService {
     }
 
     await this.networkPolicy.remove(app);
+    await this.releaseViewerNetwork(app);
     app.containerId = null;
     app.status = AndroidApplicationStatus.Stopped;
     app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
@@ -157,6 +160,8 @@ export class AndroidAppsStateService {
       : 'Managed container no longer exists.';
 
     if (app.status === AndroidApplicationStatus.Provisioning) {
+      await this.releaseViewerNetwork(app);
+
       if (runtimeState.exists && runtimeState.exitCode === 0) {
         app.status = AndroidApplicationStatus.Stopped;
         app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
@@ -183,6 +188,8 @@ export class AndroidAppsStateService {
     }
 
     if (app.status === AndroidApplicationStatus.Running) {
+      await this.releaseViewerNetwork(app);
+
       if (runtimeState.exists && runtimeState.exitCode === 0) {
         app.status = AndroidApplicationStatus.Stopped;
         app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
@@ -207,5 +214,20 @@ export class AndroidAppsStateService {
     }
 
     return this.status.decorateApplication(app);
+  }
+
+  /** Detaches ws-scrcpy from an app network after external runtime exits. */
+  private async releaseViewerNetwork(app: AndroidApplication) {
+    if (!app.networkName || app.networkName === 'pending') {
+      return;
+    }
+
+    try {
+      await this.sidecar.detachSidecarFromNetwork(app.networkName);
+    } catch (error) {
+      this.logger.warn(
+        `Could not detach ws-scrcpy from ${app.networkName} for ${app.id}: ${getErrorMessage(error)}`,
+      );
+    }
   }
 }

@@ -168,7 +168,10 @@ export default function AppManage({
 
   return (
     <ProtectedSplitPageLayout>
-      <PageBackdrop imageSrc={displayApp.icon ? resolveAppIconUrl(displayApp.icon) : null} />
+      <PageBackdrop
+        imageSrc={displayApp.icon ? resolveAppIconUrl(displayApp.icon) : null}
+        opacity={0.022}
+      />
       <ProtectedSplitPageContent>
         <PageBreadcrumbs
           items={[

@@ -1,5 +1,5 @@
 'use client'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { IconAlertTriangle, IconLoader2, IconPlayerPlay } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Visible } from '@/components/ui/visible'
@@ -9,13 +9,29 @@ import { resolveAppIconUrl } from '@/features/applications/icons/url'
 import { ImagePullProgress } from '@/features/applications/viewer/image-pull-progress'
 import { getProtectedViewerShellUrl } from '@/features/applications/viewer/scrcpy-url'
 import { cn } from '@/lib/utils'
+import { getRedroidDisplayDimensionsFromArgs } from '@/shared/runtime/redroid-runtime'
 import type { ViewerSettings } from '@/features/applications/viewer/viewer-settings'
 
 export type ViewerOrientation = 'portrait' | 'landscape'
 
+const keyboardCaptureMessageType = 'rebroid-viewer-keyboard-capture'
+const keyboardEventMessageType = 'rebroid-viewer-keyboard-event'
+
+const isEditableKeyboardTarget = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) {
+    return false
+  }
+
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    target.isContentEditable
+  )
+}
+
 export const AppViewer = ({
   app,
-  hideOutline,
   fullscreen,
   orientation = 'portrait',
   viewerSettings,
@@ -24,7 +40,6 @@ export const AppViewer = ({
   onStart
 }: {
   app?: AppDefinition
-  hideOutline?: boolean
   fullscreen?: boolean
   orientation?: ViewerOrientation
   viewerSettings?: ViewerSettings
@@ -32,10 +47,22 @@ export const AppViewer = ({
   isStarting?: boolean
   onStart?: () => void
 }) => {
-  const isBorderless = Boolean(hideOutline)
-  const isBorderlessFullscreen = Boolean(hideOutline && fullscreen)
+  const viewerFrameRef = useRef<HTMLIFrameElement>(null)
+  const display = getRedroidDisplayDimensionsFromArgs(app?.containerArgs)
+  const naturalLandscape = display.width >= display.height
   const isLandscape = orientation === 'landscape'
+  const width = isLandscape === naturalLandscape ? display.width : display.height
+  const height = isLandscape === naturalLandscape ? display.height : display.width
+  const aspectRatio = `${width} / ${height}`
+  const aspectRatioValue = width / height
+  const isWide = width > height
   const isViewerReady = Boolean(app?.id && app.running && app.status === 'running')
+  const nonFullscreenMaxHeight = isWide ? 'min(70vh, 42rem)' : 'min(72vh, 54rem)'
+  const nonFullscreenMaxWidth = isWide ? '68rem' : '28rem'
+  const nonFullscreenWidth = `min(100%, ${nonFullscreenMaxWidth}, calc(${nonFullscreenMaxHeight} * ${aspectRatioValue}))`
+  const fullscreenMaxHeight = '100dvh'
+  const fullscreenMaxWidth = '100dvw'
+  const fullscreenWidth = `min(${fullscreenMaxWidth}, calc(${fullscreenMaxHeight} * ${aspectRatioValue}))`
   const viewerSrc = useMemo(() => {
     if (!isViewerReady || !app?.id) {
       return null
@@ -43,6 +70,83 @@ export const AppViewer = ({
 
     return getProtectedViewerShellUrl(app.id, viewerSettings)
   }, [app?.id, isViewerReady, viewerSettings])
+
+  useEffect(() => {
+    if (!viewerSrc || typeof window === 'undefined') {
+      return
+    }
+
+    const enabled = Boolean(viewerSettings?.keyboardCaptureEnabled)
+    const targetWindow = viewerFrameRef.current?.contentWindow
+
+    if (!targetWindow) {
+      return
+    }
+
+    const attempts = [0, 150, 400, 900]
+    const timers = attempts.map(delay =>
+      window.setTimeout(() => {
+        viewerFrameRef.current?.contentWindow?.postMessage(
+          {
+            type: keyboardCaptureMessageType,
+            enabled
+          },
+          window.location.origin
+        )
+      }, delay)
+    )
+
+    return () => {
+      timers.forEach(timer => window.clearTimeout(timer))
+    }
+  }, [viewerSrc, viewerSettings?.keyboardCaptureEnabled])
+
+  useEffect(() => {
+    if (!viewerSrc || !viewerSettings?.keyboardCaptureEnabled || typeof window === 'undefined') {
+      return
+    }
+
+    const relayKeyboardEvent = (event: KeyboardEvent) => {
+      if (isEditableKeyboardTarget(event.target)) {
+        return
+      }
+
+      const targetWindow = viewerFrameRef.current?.contentWindow
+      if (!targetWindow) {
+        return
+      }
+
+      event.preventDefault()
+      event.stopPropagation()
+
+      targetWindow.postMessage(
+        {
+          type: keyboardEventMessageType,
+          eventType: event.type,
+          key: event.key,
+          code: event.code,
+          location: event.location,
+          repeat: event.repeat,
+          altKey: event.altKey,
+          ctrlKey: event.ctrlKey,
+          metaKey: event.metaKey,
+          shiftKey: event.shiftKey,
+          capsLock: event.getModifierState('CapsLock'),
+          numLock: event.getModifierState('NumLock'),
+          scrollLock: event.getModifierState('ScrollLock')
+        },
+        window.location.origin
+      )
+    }
+
+    window.addEventListener('keydown', relayKeyboardEvent, true)
+    window.addEventListener('keyup', relayKeyboardEvent, true)
+
+    return () => {
+      window.removeEventListener('keydown', relayKeyboardEvent, true)
+      window.removeEventListener('keyup', relayKeyboardEvent, true)
+    }
+  }, [viewerSrc, viewerSettings?.keyboardCaptureEnabled])
 
   const viewerPlaceholder = useMemo(() => {
     if (!app) {
@@ -112,44 +216,47 @@ export const AppViewer = ({
 
   const canUsePlaceholderStart = app?.status === 'stopped' && canStart && Boolean(onStart)
 
-  const content = (
+  return (
     <div
-      className={cn('flex w-full justify-center', {
-        'min-h-0 flex-1 items-stretch self-stretch bg-transparent': isBorderless,
-        'h-full items-center bg-card': !isBorderless,
-        'p-2': !hideOutline
+      className={cn('relative flex w-full items-center justify-center overflow-hidden bg-black', {
+        'h-full max-h-full max-w-full': fullscreen,
+        'rounded-2xl shadow-[0_18px_48px_rgba(0,0,0,0.28)]': !fullscreen
       })}
+      style={{
+        aspectRatio,
+        maxHeight: fullscreen ? fullscreenMaxHeight : nonFullscreenMaxHeight,
+        maxWidth: fullscreen ? fullscreenMaxWidth : nonFullscreenMaxWidth,
+        width: fullscreen ? fullscreenWidth : nonFullscreenWidth
+      }}
     >
       <Visible when={viewerSrc}>
         <iframe
+          ref={viewerFrameRef}
           src={viewerSrc ?? undefined}
-          className={cn('h-full w-full', {
-            'rounded-lg': !isBorderless
-          })}
+          key={viewerSrc}
+          className='h-full w-full border-0 bg-black'
           allow='fullscreen; clipboard-read; clipboard-write; autoplay'
+          onLoad={() => {
+            viewerFrameRef.current?.contentWindow?.postMessage(
+              {
+                type: keyboardCaptureMessageType,
+                enabled: Boolean(viewerSettings?.keyboardCaptureEnabled)
+              },
+              window.location.origin
+            )
+          }}
         />
       </Visible>
       <Visible when={!viewerSrc}>
-        <div
-          className={cn('relative flex w-full items-center justify-center overflow-hidden px-6', {
-            'min-h-0 flex-1 self-stretch': isBorderless,
-            'h-full': !isBorderless,
-            'bg-transparent': isBorderless,
-            'rounded-lg border border-dashed border-border/60 bg-muted/30': !isBorderless
-          })}
-        >
+        <div className='relative flex h-full w-full items-center justify-center overflow-hidden px-6'>
           <Visible when={app?.icon}>
             <div
-              className={cn('absolute inset-0 bg-center bg-cover blur-3xl', {
-                'scale-110': isBorderless,
-                'opacity-20': isBorderlessFullscreen,
-                'opacity-10': !isBorderlessFullscreen
-              })}
+              className='absolute inset-0 scale-110 bg-cover bg-center opacity-[0.08] blur-3xl'
               style={{ backgroundImage: `url("${resolveAppIconUrl(app?.icon ?? '')}")` }}
             />
           </Visible>
-          <Visible when={!isBorderless && app}>
-            <div className='absolute inset-0 opacity-10 blur-3xl'>
+          <Visible when={app}>
+            <div className='absolute inset-0 opacity-5 blur-3xl'>
               <AppIcon
                 appId={app!.id}
                 appName={app!.name}
@@ -158,9 +265,7 @@ export const AppViewer = ({
               />
             </div>
           </Visible>
-          <Visible when={isBorderlessFullscreen}>
-            <div className='absolute inset-0 bg-background/40' />
-          </Visible>
+          <div className='absolute inset-0 bg-background/68' />
           <div className='relative z-10 flex w-full max-w-sm flex-col items-center gap-5 text-center'>
             <Visible when={app}>
               <AppIcon
@@ -215,37 +320,6 @@ export const AppViewer = ({
           </div>
         </div>
       </Visible>
-    </div>
-  )
-
-  if (hideOutline) {
-    return (
-      <div
-        className={cn('relative flex flex-col items-center overflow-hidden', {
-          'h-full w-full max-h-full max-w-full': fullscreen,
-          'aspect-[2340/1080]': fullscreen && isLandscape,
-          'aspect-[1080/2340] w-auto': fullscreen && !isLandscape,
-          'w-full rounded-lg bg-card': !fullscreen,
-          'aspect-[2340/1080] max-h-[min(68vh,44rem)]': !fullscreen && isLandscape,
-          'aspect-[1080/2340] max-h-[min(72vh,52rem)] max-w-[min(100%,24rem)]': !fullscreen && !isLandscape
-        })}
-      >
-        {content}
-      </div>
-    )
-  }
-
-  return (
-    <div
-      className={cn(
-        'relative w-full overflow-hidden rounded-[2rem] bg-neutral-800/85 p-2 shadow-[0_18px_48px_rgba(0,0,0,0.28),inset_0_0_0_1px_rgba(255,255,255,0.08)]',
-        {
-          'aspect-[2340/1080] max-w-5xl': isLandscape,
-          'aspect-[1080/2340] max-w-sm': !isLandscape
-        }
-      )}
-    >
-      <div className='h-full w-full overflow-hidden rounded-[1.55rem] bg-card ring-1 ring-white/8'>{content}</div>
     </div>
   )
 }

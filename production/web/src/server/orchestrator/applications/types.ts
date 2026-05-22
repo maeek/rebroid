@@ -28,6 +28,12 @@ export interface AndroidNotification {
   raw: string
 }
 
+export interface RunningApplicationNotifications {
+  appId: string
+  appName: string
+  notifications: AndroidNotification[]
+}
+
 export interface ApplicationLog {
   source: 'orchestrator' | 'container' | 'adb'
   collectedAt: string
@@ -242,6 +248,7 @@ export interface AndroidApplication {
   apk: {
     filePath: string | null
     originalName: string | null
+    packageName: string | null
     uploadedApkId: string | null
   }
   createdAt: string

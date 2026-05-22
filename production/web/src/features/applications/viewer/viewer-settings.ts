@@ -44,6 +44,7 @@ export type ViewerStreamingSettings = {
 }
 
 export type ViewerSettings = ViewerStreamingSettings & {
+  keyboardCaptureEnabled: boolean
   soundEnabled: boolean
 }
 
@@ -79,6 +80,7 @@ export const viewerStreamingPresets: Record<ViewerStreamingPreset, ViewerStreami
 
 export const defaultViewerSettings: ViewerSettings = {
   ...viewerStreamingPresets.balanced,
+  keyboardCaptureEnabled: false,
   soundEnabled: true
 }
 
@@ -93,6 +95,10 @@ const isValidNumber = (value: unknown, fallback: number, min: number, max: numbe
 }
 
 export const normalizeViewerSettings = (value: Partial<ViewerSettings> | null | undefined): ViewerSettings => ({
+  keyboardCaptureEnabled:
+    typeof value?.keyboardCaptureEnabled === 'boolean'
+      ? value.keyboardCaptureEnabled
+      : defaultViewerSettings.keyboardCaptureEnabled,
   soundEnabled: typeof value?.soundEnabled === 'boolean' ? value.soundEnabled : defaultViewerSettings.soundEnabled,
   player: isViewerPlayer(value?.player) ? value.player : defaultViewerSettings.player,
   preset:

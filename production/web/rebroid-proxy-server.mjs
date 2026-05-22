@@ -85,6 +85,9 @@ const createWsScrcpyViewerBootstrap = requestUrl => {
   return `
 (() => {
   const udid = ${JSON.stringify(udid)};
+  const keyboardCaptureMessageType = 'rebroid-viewer-keyboard-capture';
+  const keyboardEventMessageType = 'rebroid-viewer-keyboard-event';
+  let keyboardCaptureEnabled = false;
   if (!udid || !window.localStorage) {
     return;
   }
@@ -101,11 +104,143 @@ const createWsScrcpyViewerBootstrap = requestUrl => {
   const videoSettings = ${JSON.stringify(settings)};
   const fitToFrame = ${JSON.stringify(fitToFrame)};
   const viewportKey = window.innerWidth + 'x' + window.innerHeight;
-  for (const prefix of prefixes) {
-    const key = prefix + ':' + udid + ':' + viewportKey;
-    window.localStorage.setItem(key, JSON.stringify(videoSettings));
-    window.localStorage.setItem(key + ':fit', JSON.stringify(fitToFrame));
+  if (window.localStorage) {
+    for (const prefix of prefixes) {
+      const key = prefix + ':' + udid + ':' + viewportKey;
+      window.localStorage.setItem(key, JSON.stringify(videoSettings));
+      window.localStorage.setItem(key + ':fit', JSON.stringify(fitToFrame));
+    }
   }
+
+  const focusViewer = () => {
+    const focusTarget =
+      document.querySelector('.touch-layer') ||
+      document.querySelector('.video-layer canvas') ||
+      document.querySelector('.video-layer video') ||
+      document.body;
+
+    if (focusTarget instanceof HTMLElement) {
+      if (!focusTarget.hasAttribute('tabindex')) {
+        focusTarget.setAttribute('tabindex', '-1');
+      }
+      focusTarget.focus({ preventScroll: true });
+    }
+
+    if (document.body instanceof HTMLElement) {
+      if (!document.body.hasAttribute('tabindex')) {
+        document.body.setAttribute('tabindex', '-1');
+      }
+      document.body.focus({ preventScroll: true });
+    }
+
+    window.focus();
+  };
+
+  const dispatchKeyboardEvent = (data) => {
+    if (!keyboardCaptureEnabled) {
+      return;
+    }
+
+    const eventType = data && data.eventType;
+    if (eventType !== 'keydown' && eventType !== 'keyup') {
+      return;
+    }
+
+    const keyboardEvent = new KeyboardEvent(eventType, {
+      key: typeof data.key === 'string' ? data.key : '',
+      code: typeof data.code === 'string' ? data.code : '',
+      location: typeof data.location === 'number' ? data.location : 0,
+      repeat: Boolean(data.repeat),
+      altKey: Boolean(data.altKey),
+      ctrlKey: Boolean(data.ctrlKey),
+      metaKey: Boolean(data.metaKey),
+      shiftKey: Boolean(data.shiftKey),
+      bubbles: true,
+      cancelable: true
+    });
+    const modifierState = {
+      Alt: Boolean(data.altKey),
+      AltGraph: false,
+      CapsLock: Boolean(data.capsLock),
+      Control: Boolean(data.ctrlKey),
+      Meta: Boolean(data.metaKey),
+      NumLock: Boolean(data.numLock),
+      ScrollLock: Boolean(data.scrollLock),
+      Shift: Boolean(data.shiftKey)
+    };
+
+    Object.defineProperty(keyboardEvent, 'getModifierState', {
+      value: (key) => Boolean(modifierState[key]),
+      configurable: true
+    });
+
+    document.body.dispatchEvent(keyboardEvent);
+  };
+
+  const syncKeyboardCapture = () => {
+    const keyboardToggle = document.querySelector(
+      'input[id^="input_capture_keyboard_"], input[id^="capture_keyboard_"], input[id*="capture_keyboard"]'
+    );
+    if (!(keyboardToggle instanceof HTMLInputElement)) {
+      return false;
+    }
+
+    if (keyboardToggle.checked !== keyboardCaptureEnabled) {
+      keyboardToggle.click();
+    }
+
+    return true;
+  };
+
+  const applyKeyboardCapturePreference = (enabled) => {
+    keyboardCaptureEnabled = enabled;
+
+    const trySync = () => {
+      if (!syncKeyboardCapture()) {
+        window.setTimeout(trySync, 150);
+        return;
+      }
+
+      if (keyboardCaptureEnabled) {
+        focusViewer();
+      }
+    };
+
+    trySync();
+  };
+
+  const handleViewerPointerDown = () => {
+    if (keyboardCaptureEnabled) {
+      focusViewer();
+    }
+  };
+
+  const handleKeyboardCaptureMessage = (event) => {
+    if (event.origin !== window.location.origin) {
+      return;
+    }
+
+    const data = event.data;
+    if (!data || typeof data !== 'object') {
+      return;
+    }
+
+    if (data.type === keyboardEventMessageType) {
+      dispatchKeyboardEvent(data);
+      return;
+    }
+
+    if (data.type !== keyboardCaptureMessageType || typeof data.enabled !== 'boolean') {
+      return;
+    }
+
+    applyKeyboardCapturePreference(data.enabled);
+  };
+
+  document.addEventListener('pointerdown', handleViewerPointerDown, true);
+  document.addEventListener('mousedown', handleViewerPointerDown, true);
+  document.addEventListener('touchstart', handleViewerPointerDown, true);
+  window.addEventListener('message', handleKeyboardCaptureMessage);
 })();`
 }
 

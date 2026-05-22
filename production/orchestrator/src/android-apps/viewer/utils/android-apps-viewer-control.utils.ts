@@ -32,9 +32,9 @@ export const viewerControlShellCommand = (
   }
 
   return [
-    'current="$(settings get system user_rotation 2>/dev/null || echo 0)"',
+    'current="$(cmd window get-user-rotation 2>/dev/null | grep -Eo "[0-3]" | tail -n 1)"',
+    'if [ -z "$current" ]; then current="$(settings get system user_rotation 2>/dev/null || echo 0)"; fi',
     'case "$current" in 0) next=1;; 1) next=0;; 2) next=3;; 3) next=0;; *) next=1;; esac',
-    'settings put system accelerometer_rotation 0',
-    'settings put system user_rotation "$next"',
+    'cmd window set-user-rotation lock "$next" 2>/dev/null || { settings put system accelerometer_rotation 0 && settings put system user_rotation "$next"; }',
   ].join('; ');
 };

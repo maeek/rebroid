@@ -44,7 +44,7 @@ export class AndroidAppsProvisioningService {
       await this.prepareRuntimeBoundary(app);
       await this.createManagedContainer(app);
       await this.startManagedContainer(app);
-      await this.waitForRuntimeReadiness(app);
+      await this.prepareRuntimeReadiness(app);
       await this.installInitialApk(app);
       await this.finishProvisioning(applicationId);
     } catch (error) {
@@ -58,12 +58,29 @@ export class AndroidAppsProvisioningService {
       }
       const message = getErrorMessage(error);
       this.logger.error(`Provisioning failed for ${applicationId}: ${message}`);
+      await this.releaseViewerNetworkAfterFailure(applicationId);
       await this.setLifecycle(applicationId, {
         status: AndroidApplicationStatus.Error,
         lifecycleStage: AndroidApplicationLifecycleStage.Error,
         statusMessage: message,
         lastError: message,
       });
+    }
+  }
+
+  /** Releases viewer-only network attachments after failed provisioning. */
+  private async releaseViewerNetworkAfterFailure(applicationId: string) {
+    try {
+      const app = await this.state.getStored(applicationId);
+      if (!app.networkName || app.networkName === 'pending') {
+        return;
+      }
+
+      await this.network.releaseRuntimeSupport(app);
+    } catch (error) {
+      this.logger.warn(
+        `Could not release viewer network after failed provisioning for ${applicationId}: ${getErrorMessage(error)}`,
+      );
     }
   }
 
@@ -209,16 +226,20 @@ export class AndroidAppsProvisioningService {
   }
 
   /** Waits until Android is ready to use. */
-  private async waitForRuntimeReadiness(app: AndroidApplication) {
+  async prepareRuntimeReadiness(app: AndroidApplication) {
+    if (!this.androidProvisioning.shouldPrepareRemoteAccess(app)) {
+      await this.logs.append(app.id, 'Runtime readiness skipped', {
+        image: app.containerImage,
+        reason: 'Image is not identified as a Redroid runtime.',
+      });
+      return;
+    }
+
     await this.setLifecycle(app.id, {
       lifecycleStage: AndroidApplicationLifecycleStage.AndroidBooting,
       statusMessage: 'Waiting for Android to finish booting.',
     });
     await this.androidProvisioning.waitForAndroidBoot(app);
-
-    if (!this.androidProvisioning.shouldPrepareRemoteAccess(app)) {
-      return;
-    }
 
     this.tracker.ensureActive(app.id);
     await this.setLifecycle(app.id, {
@@ -239,6 +260,7 @@ export class AndroidAppsProvisioningService {
       app,
       'Installing APK inside Android. Viewer is available while installation finishes.',
     );
+    await this.apkProvisioning.launchInstalledApk(app);
   }
 
   /** Marks provisioning as finished. */

@@ -150,6 +150,9 @@ export class AndroidApplicationApkDto {
   originalName!: string | null;
 
   @ApiPropertyOptional({ nullable: true })
+  packageName!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
   uploadedApkId!: string | null;
 }
 
@@ -242,6 +245,7 @@ export class AndroidApplicationResponseDto {
       apk: {
         filePath: app.apkFilePath,
         originalName: app.apkOriginalName,
+        packageName: app.apkPackageName,
         uploadedApkId: app.uploadedApkId,
       },
       createdAt: toIso(app.createdAt) ?? new Date().toISOString(),

@@ -85,6 +85,7 @@ export class AndroidAppsLifecycleService {
       containerId: null,
       apkFilePath: null,
       apkOriginalName: null,
+      apkPackageName: null,
       uploadedApkId: null,
       scrcpyTransport: settings.defaultScrcpyTransport,
       adbPort: this.config.getOrThrow<number>('app.redroid.adbPort'),
@@ -322,6 +323,14 @@ export class AndroidAppsLifecycleService {
     await this.runtimeNetwork.reconcilePolicy(app, {
       recordLastStartedAt: true,
     });
+    await this.provisioning.prepareRuntimeReadiness(app);
+    if (app.apkFilePath && !app.apkPackageName) {
+      await this.apkProvisioning.installApk(
+        app,
+        'Installing APK inside Android before launch.',
+      );
+    }
+    await this.apkProvisioning.launchInstalledApk(app);
 
     app.status = AndroidApplicationStatus.Running;
     app.lifecycleStage = AndroidApplicationLifecycleStage.Ready;
@@ -378,6 +387,7 @@ export class AndroidAppsLifecycleService {
 
     if (app.status === AndroidApplicationStatus.Running) {
       await this.apkProvisioning.installApk(app, 'Installing updated APK.');
+      await this.apkProvisioning.launchInstalledApk(app);
       await this.state.setLifecycle(app.id, {
         lifecycleStage: AndroidApplicationLifecycleStage.Ready,
         statusMessage: 'Application is running.',
@@ -544,6 +554,7 @@ export class AndroidAppsLifecycleService {
     app.uploadedApkId = uploadedApk.id;
     app.apkFilePath = uploadedApk.filePath;
     app.apkOriginalName = uploadedApk.originalName;
+    app.apkPackageName = null;
   }
 
   /** Blocks actions on removed apps. */

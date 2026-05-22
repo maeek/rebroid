@@ -12,7 +12,15 @@ import { runtimeActionErrorToast } from './runtime-tools-panel.utils'
 import { ToolSection } from './tool-section'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
-export const ClipboardToolsSection = ({ app, permissions }: { app: AppDefinition; permissions: PermissionMap }) => {
+export const ClipboardToolsSection = ({
+  app,
+  permissions,
+  className
+}: {
+  app: AppDefinition
+  permissions: PermissionMap
+  className?: string
+}) => {
   const runtimeAvailable = app.status === 'running'
   const canSyncClipboard = hasPermission(permissions, 'applications:sync-clipboard')
   const [clipboardText, setClipboardText] = useState('')
@@ -66,6 +74,7 @@ export const ClipboardToolsSection = ({ app, permissions }: { app: AppDefinition
     <ToolSection
       title='Clipboard'
       icon={<IconClipboard className='size-5' />}
+      className={className}
       actions={
         <>
           <Button

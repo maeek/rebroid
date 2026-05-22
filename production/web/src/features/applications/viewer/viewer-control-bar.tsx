@@ -9,6 +9,7 @@ import {
   IconDeviceMobileRotated,
   IconGripVertical,
   IconHome,
+  IconKeyboard,
   IconLayoutSidebarRight,
   IconLoader2,
   IconPhoto,
@@ -51,11 +52,11 @@ type ViewerControlBarProps = {
   runtimeAvailable: boolean
   canControl: boolean
   canCaptureScreenshot: boolean
-  hideOutline: boolean
   fullscreen: boolean
   isCapturing: boolean
+  keyboardCaptureEnabled?: boolean
   onCaptureScreenshot: () => void
-  onToggleFrame: () => void
+  onToggleKeyboardCapture?: () => void
   onToggleFullscreen: () => void
   onRotateViewer?: () => void
   mode?: 'bar' | 'floating'
@@ -66,11 +67,11 @@ export const ViewerControlBar = ({
   runtimeAvailable,
   canControl,
   canCaptureScreenshot,
-  hideOutline,
   fullscreen,
   isCapturing,
+  keyboardCaptureEnabled = false,
   onCaptureScreenshot,
-  onToggleFrame,
+  onToggleKeyboardCapture,
   onToggleFullscreen,
   onRotateViewer,
   mode = 'bar'
@@ -261,6 +262,21 @@ export const ViewerControlBar = ({
         </Button>
       </IconButtonTooltip>
 
+      <Visible when={mode !== 'floating'}>
+        <IconButtonTooltip label={keyboardCaptureEnabled ? 'Disable keyboard capture' : 'Enable keyboard capture'}>
+          <Button
+            size='icon'
+            variant={keyboardCaptureEnabled ? 'default' : 'secondary'}
+            disabled={controlsDisabled}
+            onClick={onToggleKeyboardCapture}
+            aria-label={keyboardCaptureEnabled ? 'Disable keyboard capture' : 'Enable keyboard capture'}
+            className={cn({ 'bg-primary/80': keyboardCaptureEnabled })}
+          >
+            <IconKeyboard className='size-4' />
+          </Button>
+        </IconButtonTooltip>
+      </Visible>
+
       <IconButtonTooltip label='Wake display'>
         <Button
           size='icon'
@@ -298,25 +314,18 @@ export const ViewerControlBar = ({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Button
-        size='sm'
-        variant={hideOutline ? 'default' : 'secondary'}
-        disabled={fullscreen}
-        onClick={onToggleFrame}
-      >
-        {hideOutline ? 'Borderless' : 'Device frame'}
-      </Button>
-      <IconButtonTooltip label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}>
-        <Button
-          size='icon'
-          variant={fullscreen ? 'default' : 'secondary'}
-          onClick={onToggleFullscreen}
-          aria-label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-          className={cn({ 'bg-primary/80': fullscreen })}
-        >
-          {fullscreen ? <IconArrowsMinimize className='size-4' /> : <IconArrowsMaximize className='size-4' />}
-        </Button>
-      </IconButtonTooltip>
+      <Visible when={mode !== 'floating'}>
+        <IconButtonTooltip label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}>
+          <Button
+            size='icon'
+            variant='secondary'
+            onClick={onToggleFullscreen}
+            aria-label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+          >
+            {fullscreen ? <IconArrowsMinimize className='size-4' /> : <IconArrowsMaximize className='size-4' />}
+          </Button>
+        </IconButtonTooltip>
+      </Visible>
       <Visible when={!canControl && runtimeAvailable}>
         <div className='text-xs text-muted-foreground'>Viewer controls are disabled by permissions.</div>
       </Visible>
@@ -350,6 +359,28 @@ export const ViewerControlBar = ({
           >
             <IconLayoutSidebarRight className='size-4' />
           </Button>
+          <IconButtonTooltip label={keyboardCaptureEnabled ? 'Disable keyboard capture' : 'Enable keyboard capture'}>
+            <Button
+              size='icon'
+              variant={keyboardCaptureEnabled ? 'default' : 'secondary'}
+              disabled={controlsDisabled}
+              onClick={onToggleKeyboardCapture}
+              aria-label={keyboardCaptureEnabled ? 'Disable keyboard capture' : 'Enable keyboard capture'}
+              className={cn({ 'bg-primary/80': keyboardCaptureEnabled })}
+            >
+              <IconKeyboard className='size-4' />
+            </Button>
+          </IconButtonTooltip>
+          <IconButtonTooltip label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}>
+            <Button
+              size='icon'
+              variant='secondary'
+              onClick={onToggleFullscreen}
+              aria-label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+            >
+              {fullscreen ? <IconArrowsMinimize className='size-4' /> : <IconArrowsMaximize className='size-4' />}
+            </Button>
+          </IconButtonTooltip>
         </div>
         <Visible when={floatingOpen}>
           <div className='flex max-w-[min(22rem,calc(100vw-7rem))] flex-wrap items-center gap-2 rounded-xl border border-border/70 bg-card/90 p-2 shadow-2xl backdrop-blur-xl'>

@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
-import { IconLoader2, IconShieldLock } from '@tabler/icons-react'
-import { useSearchParams } from 'next/navigation'
+import { IconShieldLock } from '@tabler/icons-react'
 import { Visible } from '@/components/ui/visible'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { AppViewer } from '@/features/applications/viewer/android'
@@ -12,6 +11,7 @@ import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { startApplicationAction } from '@/server/orchestrator/applications/mutation-actions'
 import { captureApplicationScreenshotAction } from '@/server/orchestrator/applications/read-actions'
+import { getRedroidDisplayDimensionsFromArgs } from '@/shared/runtime/redroid-runtime'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { ViewerOrientation } from '@/features/applications/viewer/android'
 import type { ViewerSettings } from '@/features/applications/viewer/viewer-settings'
@@ -46,7 +46,8 @@ export const AppViewerPane = ({
   canStart = false,
   placement = 'side',
   viewerSettings,
-  onAppChange
+  onAppChange,
+  onViewerSettingsChange
 }: {
   app: AppDefinition
   canAttach?: boolean
@@ -56,21 +57,22 @@ export const AppViewerPane = ({
   placement?: 'side' | 'top'
   viewerSettings: ViewerSettings
   onAppChange: (app: AppDefinition) => void
+  onViewerSettingsChange?: (settings: ViewerSettings) => void
 }) => {
-  const params = useSearchParams()
-  const hideOutlineParam = params.get('hideOutline') === 'true'
-  const [hideOutline, setHideOutline] = useState(() => hideOutlineParam)
   const [isViewerFullscreen, setIsViewerFullscreen] = useState(false)
-  const [orientation, setOrientation] = useState<ViewerOrientation>('portrait')
+  const [orientation, setOrientation] = useState<ViewerOrientation>(() => {
+    const display = getRedroidDisplayDimensionsFromArgs(app.containerArgs)
+    return display.width >= display.height ? 'landscape' : 'portrait'
+  })
   const [isStarting, startTransition] = useTransition()
   const [isCapturing, startScreenshotTransition] = useTransition()
   const viewerContainerRef = useRef<HTMLDivElement>(null)
-  const viewerUsesOutline = !hideOutline && !isViewerFullscreen
   const runtimeAvailable = app.status === 'running'
 
   useEffect(() => {
-    setHideOutline(hideOutlineParam)
-  }, [hideOutlineParam])
+    const display = getRedroidDisplayDimensionsFromArgs(app.containerArgs)
+    setOrientation(display.width >= display.height ? 'landscape' : 'portrait')
+  }, [app.containerArgs, app.id])
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -83,20 +85,6 @@ export const AppViewerPane = ({
       document.removeEventListener('fullscreenchange', handleFullscreenChange)
     }
   }, [])
-
-  const updateHideOutline = (nextHideOutline: boolean) => {
-    setHideOutline(nextHideOutline)
-
-    const url = new URL(window.location.href)
-
-    if (nextHideOutline) {
-      url.searchParams.set('hideOutline', 'true')
-    } else {
-      url.searchParams.delete('hideOutline')
-    }
-
-    window.history.replaceState({}, '', url.toString())
-  }
 
   const toggleViewerFullscreen = async () => {
     if (!viewerContainerRef.current) {
@@ -160,23 +148,45 @@ export const AppViewerPane = ({
     setOrientation(current => (current === 'portrait' ? 'landscape' : 'portrait'))
   }
 
+  const toggleKeyboardCapture = () => {
+    if (!onViewerSettingsChange) {
+      return
+    }
+
+    const nextEnabled = !viewerSettings.keyboardCaptureEnabled
+    onViewerSettingsChange({
+      ...viewerSettings,
+      keyboardCaptureEnabled: nextEnabled
+    })
+
+    toast({
+      title: nextEnabled ? 'Keyboard capture enabled' : 'Keyboard capture disabled',
+      description: nextEnabled
+        ? 'Click inside the viewer, then type to send keys to Android.'
+        : 'Keyboard input will stay in the web UI until you enable capture again.'
+    })
+  }
+
   return (
     <div
-      className={cn('flex w-full flex-col items-center justify-start gap-4 max-sm:max-w-full', {
-        'max-w-[min(100%,42rem)] lg:sticky lg:top-10 lg:self-start lg:pr-4 lg:pt-6': placement === 'side',
-        'max-w-none': placement === 'top'
-      })}
+      className={cn(
+        'flex w-full flex-col items-center justify-start gap-4 max-sm:max-w-full',
+        {
+          'max-w-[min(100%,42rem)] lg:sticky lg:top-10 lg:self-start lg:pr-4 lg:pt-6': placement === 'side',
+          'max-w-none': placement === 'top'
+        },
+        'max-sm:px-3'
+      )}
     >
       <div
         ref={viewerContainerRef}
         className={cn('relative flex w-full items-center justify-center', {
-          'h-full w-full bg-background p-6 max-sm:p-4': isViewerFullscreen
+          'h-full w-full bg-black p-0': isViewerFullscreen
         })}
       >
         <Visible when={canAttach}>
           <AppViewer
             app={app}
-            hideOutline={!viewerUsesOutline}
             fullscreen={isViewerFullscreen}
             orientation={orientation}
             viewerSettings={viewerSettings}
@@ -200,11 +210,11 @@ export const AppViewerPane = ({
             runtimeAvailable={runtimeAvailable}
             canControl={canControlViewer}
             canCaptureScreenshot={canCaptureScreenshot}
-            hideOutline={hideOutline}
             fullscreen={isViewerFullscreen}
             isCapturing={isCapturing}
+            keyboardCaptureEnabled={Boolean(viewerSettings.keyboardCaptureEnabled)}
             onCaptureScreenshot={handleScreenshotCapture}
-            onToggleFrame={() => updateHideOutline(!hideOutline)}
+            onToggleKeyboardCapture={toggleKeyboardCapture}
             onToggleFullscreen={() => void toggleViewerFullscreen()}
             onRotateViewer={rotateViewerShell}
             mode='floating'
@@ -217,11 +227,11 @@ export const AppViewerPane = ({
           runtimeAvailable={runtimeAvailable}
           canControl={canControlViewer}
           canCaptureScreenshot={canCaptureScreenshot}
-          hideOutline={hideOutline}
           fullscreen={isViewerFullscreen}
           isCapturing={isCapturing}
+          keyboardCaptureEnabled={Boolean(viewerSettings.keyboardCaptureEnabled)}
           onCaptureScreenshot={handleScreenshotCapture}
-          onToggleFrame={() => updateHideOutline(!hideOutline)}
+          onToggleKeyboardCapture={toggleKeyboardCapture}
           onToggleFullscreen={() => void toggleViewerFullscreen()}
           onRotateViewer={rotateViewerShell}
         />

@@ -35,7 +35,13 @@ export class AndroidAppsRuntimeAccessService {
       [
         'sh',
         '-lc',
-        'cmd notification list --noredact 2>/dev/null || dumpsys notification --noredact 2>/dev/null | head -n 200',
+        [
+          'output="$(cmd notification list --noredact 2>/dev/null || true)"',
+          'if [ -z "$output" ]; then output="$(cmd notification list 2>/dev/null || true)"; fi',
+          'if [ -z "$output" ]; then output="$(dumpsys notification --noredact 2>/dev/null || true)"; fi',
+          'if [ -z "$output" ]; then output="$(dumpsys notification 2>/dev/null || true)"; fi',
+          'printf "%s\\n" "$output" | sed -n "1,240p"',
+        ].join('; '),
       ],
     );
 

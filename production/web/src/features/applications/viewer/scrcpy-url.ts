@@ -2,6 +2,7 @@ import type { ViewerSettings } from './viewer-settings'
 import type { ScrcpySession } from '@/server/orchestrator/applications/types'
 
 const trimTrailingSlash = (value: string) => value.replace(/\/$/, '')
+const viewerTokenParamName = 'rebroid_viewer_token'
 
 export const getProtectedViewerShellUrl = (applicationId: string, options?: Partial<ViewerSettings>) => {
   const query = new URLSearchParams()
@@ -63,13 +64,13 @@ export const getProtectedWsScrcpyUrl = ({
     appId: session.applicationId,
     remote: session.proxyRemote,
     udid: session.udid,
-    sma_viewer_token: viewerToken
+    [viewerTokenParamName]: viewerToken
   })
   const proxyUrl = `${websocketBaseUrl}${proxyPath}?${proxyQuery.toString()}`
   const viewerQuery = new URLSearchParams({
     appId: session.applicationId,
     udid: session.udid,
-    sma_viewer_token: viewerToken
+    [viewerTokenParamName]: viewerToken
   })
   if (settings?.player) {
     viewerQuery.set('player', settings.player)

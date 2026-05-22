@@ -296,6 +296,10 @@ export class AndroidApplication {
   @Column({ type: 'text', nullable: true })
   apkOriginalName!: string | null;
 
+  @ApiPropertyOptional({ example: 'org.thoughtcrime.securesms', nullable: true })
+  @Column({ type: 'text', nullable: true })
+  apkPackageName!: string | null;
+
   @ApiPropertyOptional({
     example: '98a530d6-a45d-466a-9cb4-c023067c4971',
     nullable: true,

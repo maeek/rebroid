@@ -1,9 +1,10 @@
 services:
   orchestrator:
+    platform: linux/amd64
     build:
       context: ./orchestrator
       dockerfile: Dockerfile
-    image: rebroid/orchestrator:local
+    image: localhost/rebroid/orchestrator:local
     container_name: rebroid-orchestrator
     privileged: true
     user: "0:0"
@@ -24,7 +25,7 @@ services:
       MAX_APK_UPLOAD_SIZE_MB: ${MAX_APK_UPLOAD_SIZE_MB:-4096}
       CONTAINER_SECURITY_OPTS: ${CONTAINER_SECURITY_OPTS:-}
       IPTABLES_POLICY_ENABLED: ${IPTABLES_POLICY_ENABLED:-false}
-      WS_SCRCPY_IMAGE: rebroid/ws-scrcpy-sidecar:local
+      WS_SCRCPY_IMAGE: localhost/rebroid/ws-scrcpy-sidecar:local
       WS_SCRCPY_AUTO_START: "true"
       WS_SCRCPY_PUBLISHED_HOST_PORT: ${WS_SCRCPY_PUBLISHED_HOST_PORT:-}
     cap_add:
@@ -43,13 +44,14 @@ services:
       - platform
 
   web:
+    platform: linux/amd64
     build:
       context: ./web
       dockerfile: Dockerfile
       args:
         NEXT_PROXY_CLIENT_MAX_BODY_SIZE: ${NEXT_PROXY_CLIENT_MAX_BODY_SIZE:-4096mb}
         WS_SCRCPY_INTERNAL_BASE_URL: ${WS_SCRCPY_INTERNAL_BASE_URL:-http://rebroid-ws-scrcpy:8000}
-    image: rebroid/web:local
+    image: localhost/rebroid/web:local
     container_name: rebroid-web
     restart: unless-stopped
     depends_on:
@@ -70,10 +72,11 @@ services:
       - platform
 
   ws-scrcpy:
+    platform: linux/amd64
     build:
       context: ./ws-scrcpy-sidecar
       dockerfile: Dockerfile
-    image: rebroid/ws-scrcpy-sidecar:local
+    image: localhost/rebroid/ws-scrcpy-sidecar:local
     container_name: rebroid-ws-scrcpy
     restart: unless-stopped
     expose:

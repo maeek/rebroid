@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner, Table } from 'typeorm'
+import { MigrationInterface, QueryRunner, Table, TableColumn } from 'typeorm'
 
 export class InitializeSqliteSchema1715970000000 implements MigrationInterface {
   name = 'InitializeSqliteSchema1715970000000'
@@ -35,6 +35,7 @@ export class InitializeSqliteSchema1715970000000 implements MigrationInterface {
             { name: 'networkPolicyAppliedAt', type: 'datetime', isNullable: true },
             { name: 'apkFilePath', type: 'text', isNullable: true },
             { name: 'apkOriginalName', type: 'text', isNullable: true },
+            { name: 'apkPackageName', type: 'text', isNullable: true },
             { name: 'uploadedApkId', type: 'text', isNullable: true },
             { name: 'scrcpyTransport', type: 'varchar', isNullable: false, default: "'websocket'" },
             { name: 'adbPort', type: 'integer', isNullable: false, default: '5555' },
@@ -49,6 +50,16 @@ export class InitializeSqliteSchema1715970000000 implements MigrationInterface {
             { name: 'updatedAt', type: 'datetime', isNullable: false, default: "datetime('now')" },
           ],
         }),
+      )
+    }
+
+    if (
+      hasAndroidApplicationsTable &&
+      !(await queryRunner.hasColumn('android_applications', 'apkPackageName'))
+    ) {
+      await queryRunner.addColumn(
+        'android_applications',
+        new TableColumn({ name: 'apkPackageName', type: 'text', isNullable: true }),
       )
     }
 

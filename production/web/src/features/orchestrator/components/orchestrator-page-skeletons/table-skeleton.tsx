@@ -10,14 +10,14 @@ export const TableSkeleton = ({
   minWidth: string
   rows?: number
 }) => (
-  <div className='overflow-hidden rounded-lg border border-border/60 bg-background/25'>
+  <div className='overflow-hidden rounded-lg bg-background/20'>
     <div className='overflow-x-auto'>
       <div
         className='min-w-full'
         style={{ minWidth }}
       >
         <div
-          className='grid items-center gap-3 border-b border-border/60 bg-background/45 px-4 py-3'
+          className='grid items-center gap-3 bg-background/30 px-4 py-3'
           style={{ gridTemplateColumns: columns.map(column => column.width).join(' ') }}
         >
           {columns.map((column, index) => (
@@ -33,7 +33,7 @@ export const TableSkeleton = ({
         {Array.from({ length: rows }).map((_, rowIndex) => (
           <div
             key={rowIndex}
-            className='grid items-start gap-3 border-b border-border/50 px-4 py-3 last:border-b-0'
+            className='grid items-start gap-3 px-4 py-3'
             style={{ gridTemplateColumns: columns.map(column => column.width).join(' ') }}
           >
             {columns.map((column, columnIndex) => {

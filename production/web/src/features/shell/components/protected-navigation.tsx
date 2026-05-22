@@ -304,12 +304,7 @@ export const ProtectedNavigation = ({ variant, onNavigate }: ProtectedNavigation
                 />
               </button>
             </div>
-            <div
-              className={classNames(
-                'grid overflow-hidden transition-[grid-template-rows,opacity] duration-200 ease-out',
-                userManagementMenuIsOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-              )}
-            >
+            <Visible when={userManagementMenuIsOpen}>
               <ul className={styles.nestedList}>
                 {userManagementSubSections.map(({ name, Icon, href }) => (
                   <Link
@@ -331,7 +326,7 @@ export const ProtectedNavigation = ({ variant, onNavigate }: ProtectedNavigation
                   </Link>
                 ))}
               </ul>
-            </div>
+            </Visible>
           </li>
           <li>
             <div className='flex items-center rounded-sm text-foreground dark:hover:text-white'>
@@ -357,12 +352,7 @@ export const ProtectedNavigation = ({ variant, onNavigate }: ProtectedNavigation
                 />
               </button>
             </div>
-            <div
-              className={classNames(
-                'grid overflow-hidden transition-[grid-template-rows,opacity] duration-200 ease-out',
-                orchestratorMenuIsOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-              )}
-            >
+            <Visible when={orchestratorMenuIsOpen}>
               <ul className={styles.nestedList}>
                 {orchestratorSubSections.map(({ name, Icon, href }) => (
                   <Link
@@ -384,7 +374,7 @@ export const ProtectedNavigation = ({ variant, onNavigate }: ProtectedNavigation
                   </Link>
                 ))}
               </ul>
-            </div>
+            </Visible>
           </li>
           {adminSettingsSections.map(({ name, Icon, href }) => (
             <NavLink
