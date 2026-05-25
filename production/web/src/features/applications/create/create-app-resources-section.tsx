@@ -1,7 +1,7 @@
-import type { CreateAppFormValues } from './create-app-form.types'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Setting } from '@/features/settings/components/setting'
+import type { CreateAppFormValues } from './create-app-form.types'
 
 type CreateAppResourcesSectionProps = {
   values: CreateAppFormValues

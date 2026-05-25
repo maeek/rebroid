@@ -12,9 +12,9 @@ RUN --mount=type=cache,target=/root/.npm npm ci
 FROM base AS builder
 RUN apk add --no-cache libc6-compat
 ARG NEXT_PROXY_CLIENT_MAX_BODY_SIZE=4096mb
-ARG WS_SCRCPY_INTERNAL_BASE_URL=http://rebroid-ws-scrcpy:8000
+ARG DISPLAY_SIDECAR_INTERNAL_BASE_URL=http://rebroid-display-sidecar:8000
 ENV NEXT_PROXY_CLIENT_MAX_BODY_SIZE=${NEXT_PROXY_CLIENT_MAX_BODY_SIZE}
-ENV WS_SCRCPY_INTERNAL_BASE_URL=${WS_SCRCPY_INTERNAL_BASE_URL}
+ENV DISPLAY_SIDECAR_INTERNAL_BASE_URL=${DISPLAY_SIDECAR_INTERNAL_BASE_URL}
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
@@ -23,17 +23,19 @@ FROM node:24-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV HOSTNAME=0.0.0.0
-ENV PORT=3001
+ENV HOSTNAME=127.0.0.1
+ENV PORT=3443
+ENV NEXT_INTERNAL_PORT=3101
 ENV ORCHESTRATOR_API_URL=http://orchestrator:4100
-ENV WS_SCRCPY_INTERNAL_BASE_URL=http://rebroid-ws-scrcpy:8000
-RUN apk add --no-cache libc6-compat
+ENV DISPLAY_SIDECAR_INTERNAL_BASE_URL=http://rebroid-display-sidecar:8000
+ENV REBROID_TLS_HOSTS=localhost,127.0.0.1
+RUN apk add --no-cache libc6-compat openssl
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY rebroid-proxy-server.mjs ./rebroid-proxy-server.mjs
+COPY --from=builder /app/rebroid-proxy-server.mjs ./rebroid-proxy-server.mjs
 COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/rebroid-web-entrypoint
 RUN mkdir -p /app/data /app/secrets && chown -R node:node /app
 USER node
-EXPOSE 3001
+EXPOSE 3443
 ENTRYPOINT ["rebroid-web-entrypoint"]
 CMD ["node", "rebroid-proxy-server.mjs"]

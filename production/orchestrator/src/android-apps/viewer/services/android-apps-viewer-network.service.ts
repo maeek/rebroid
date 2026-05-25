@@ -25,7 +25,7 @@ export class AndroidAppsViewerNetworkService {
       const sidecarTarget = await this.sidecar.ensureSidecarOnNetwork(
         app.networkName,
       );
-      await this.logs.append(app.id, 'ws-scrcpy network prepared', {
+      await this.logs.append(app.id, 'Display sidecar network prepared', {
         networkName: app.networkName,
         configured: sidecarTarget.configured,
         connected: sidecarTarget.connected,
@@ -34,9 +34,9 @@ export class AndroidAppsViewerNetworkService {
     } catch (error) {
       const message = getErrorMessage(error);
       this.logger.warn(
-        `Could not prepare ws-scrcpy network for ${app.id}: ${message}`,
+        `Could not prepare display sidecar network for ${app.id}: ${message}`,
       );
-      await this.logs.append(app.id, 'ws-scrcpy network preparation failed', {
+      await this.logs.append(app.id, 'Display sidecar network preparation failed', {
         networkName: app.networkName,
         message,
       });
@@ -47,15 +47,15 @@ export class AndroidAppsViewerNetworkService {
   async releaseNetwork(app: AndroidApplication) {
     try {
       await this.sidecar.detachSidecarFromNetwork(app.networkName);
-      await this.logs.append(app.id, 'ws-scrcpy network released', {
+      await this.logs.append(app.id, 'Display sidecar network released', {
         networkName: app.networkName,
       });
     } catch (error) {
       const message = getErrorMessage(error);
       this.logger.warn(
-        `Could not release ws-scrcpy network for ${app.id}: ${message}`,
+        `Could not release display sidecar network for ${app.id}: ${message}`,
       );
-      await this.logs.append(app.id, 'ws-scrcpy network release failed', {
+      await this.logs.append(app.id, 'Display sidecar network release failed', {
         networkName: app.networkName,
         message,
       });
@@ -80,7 +80,7 @@ export class AndroidAppsViewerNetworkService {
   async prepareScrcpyAdbTarget(app: AndroidApplication, adbHost: string) {
     await this.reapplyNetworkPolicy(app);
 
-    await this.logs.append(app.id, 'Preparing ws-scrcpy ADB target', {
+    await this.logs.append(app.id, 'Preparing display sidecar ADB target', {
       networkName: app.networkName,
       containerName: app.containerName,
       containerId: app.containerId,

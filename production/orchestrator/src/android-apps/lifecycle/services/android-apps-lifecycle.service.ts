@@ -9,6 +9,7 @@ import { DockerContainerProvisioningService } from '../../../docker/containers/s
 import { DockerImageRuntimeService } from '../../../docker/images/services/docker-image-runtime.service';
 import { DockerNetworkRuntimeService } from '../../../docker/networks/services/docker-network-runtime.service';
 import { DockerResourceRuntimeService } from '../../../docker/resources/services/docker-resource-runtime.service';
+import { getErrorMessage } from '../../../common/error-message';
 import { NetworkIsolationService } from '../../../network-isolation/network-isolation.service';
 import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
 import { SettingsService } from '../../../settings/settings.service';
@@ -235,6 +236,20 @@ export class AndroidAppsLifecycleService {
     const app = await this.state.get(id);
     this.assertRunnable(app);
 
+    if (app.status === AndroidApplicationStatus.Provisioning) {
+      return this.state.decorateApplication(app);
+    }
+
+    if (app.status === AndroidApplicationStatus.Running) {
+      return this.state.decorateApplication(app);
+    }
+
+    if (app.status === AndroidApplicationStatus.Removing) {
+      throw new ConflictException(
+        'Application is being removed and cannot be started.',
+      );
+    }
+
     if (dto.profileMode !== undefined || dto.profileName !== undefined) {
       await this.prepareRuntimeProfile(app, dto);
     }
@@ -242,25 +257,92 @@ export class AndroidAppsLifecycleService {
     await this.state.clearMissingContainerReference(app);
     await this.prepareContainerForRecreationOnStart(app);
 
-    await this.state.setLifecycle(app.id, {
-      status: AndroidApplicationStatus.Provisioning,
-      lifecycleStage: AndroidApplicationLifecycleStage.ContainerStarting,
-      statusMessage: 'Starting application container.',
-      lastError: null,
-    });
+    this.tracker.reset(app.id);
+    app.status = AndroidApplicationStatus.Provisioning;
+    app.lifecycleStage = AndroidApplicationLifecycleStage.ContainerStarting;
+    app.statusMessage = 'Starting application container.';
+    app.lastError = null;
+    app.provisioningStartedAt = new Date();
+    app.provisioningCompletedAt = null;
+    await this.state.save(app);
     await this.logs.append(app.id, 'Start requested', {
       profileMode: app.profileMode,
       profileName: app.profileName,
       existingContainerId: app.containerId,
       image: app.containerImage,
     });
-    await this.logs.append(
-      app.id,
-      'Container engine selected',
-      await this.resources.engineSummary(),
-    );
+
+    void this.startInBackground(app.id);
+
+    return this.state.decorateApplication(app);
+  }
+
+  /** Runs the long start flow outside the HTTP request. */
+  private async startInBackground(id: string) {
+    try {
+      const app = await this.state.getStored(id);
+      this.tracker.ensureActive(app.id);
+
+      await this.logs.append(
+        app.id,
+        'Container engine selected',
+        await this.resources.engineSummary(),
+      );
+
+      await this.state.setLifecycle(app.id, {
+        lifecycleStage: AndroidApplicationLifecycleStage.ImageChecking,
+        statusMessage:
+          'Checking whether the container image is available locally.',
+      });
+      this.tracker.ensureActive(app.id);
+
+      await this.startPreparedApplication(app);
+    } catch (error) {
+      if (this.tracker.isCancellationError(error)) {
+        this.logger.log(`Start cancelled for ${id}.`);
+        return;
+      }
+
+      const message = getErrorMessage(error);
+      this.logger.error(`Start failed for ${id}: ${message}`);
+      await this.releaseRuntimeSupportAfterFailedStart(id);
+      await this.state.setLifecycle(id, {
+        status: AndroidApplicationStatus.Error,
+        lifecycleStage: AndroidApplicationLifecycleStage.Error,
+        statusMessage: message,
+        lastError: message,
+      });
+      await this.logs.append(id, 'Start failed', { error: message });
+    }
+  }
+
+  /** Releases viewer/runtime support after a failed asynchronous start. */
+  private async releaseRuntimeSupportAfterFailedStart(id: string) {
+    try {
+      const app = await this.state.getStored(id);
+      if (!app.networkName || app.networkName === 'pending') {
+        return;
+      }
+
+      await this.runtimeNetwork.releaseRuntimeSupport(app);
+    } catch (error) {
+      this.logger.warn(
+        `Could not release runtime support after failed start for ${id}: ${getErrorMessage(error)}`,
+      );
+    }
+  }
+
+  /** Continues a start request after the response has been returned. */
+  private async startPreparedApplication(app: AndroidApplication) {
+    await this.logs.append(app.id, 'Container start preparing', {
+      profileMode: app.profileMode,
+      profileName: app.profileName,
+      existingContainerId: app.containerId,
+      image: app.containerImage,
+    });
 
     if (!(await this.images.imageExists(app.containerImage))) {
+      this.tracker.ensureActive(app.id);
       await this.state.setLifecycle(app.id, {
         lifecycleStage: AndroidApplicationLifecycleStage.ImagePulling,
         statusMessage: `Docker image "${app.containerImage}" is not available locally. Pulling it now.`,
@@ -281,9 +363,15 @@ export class AndroidAppsLifecycleService {
           });
       });
     }
+    this.tracker.ensureActive(app.id);
 
     if (!app.containerId) {
+      await this.state.setLifecycle(app.id, {
+        lifecycleStage: AndroidApplicationLifecycleStage.ContainerCreating,
+        statusMessage: `Creating application container ${app.containerName}.`,
+      });
       await this.runtimeNetwork.createRuntimeBoundary(app);
+      this.tracker.ensureActive(app.id);
       const container =
         await this.provisioningContainers.createApplicationContainer({
           applicationId: app.id,
@@ -313,9 +401,18 @@ export class AndroidAppsLifecycleService {
         image: app.containerImage,
       });
     } else {
+      await this.state.setLifecycle(app.id, {
+        lifecycleStage: AndroidApplicationLifecycleStage.ContainerStarting,
+        statusMessage: 'Starting application container.',
+      });
       await this.runtimeNetwork.attachRuntimeSupport(app);
     }
+    this.tracker.ensureActive(app.id);
 
+    await this.state.setLifecycle(app.id, {
+      lifecycleStage: AndroidApplicationLifecycleStage.ContainerStarting,
+      statusMessage: 'Starting application container.',
+    });
     await this.lifecycle.startContainer(app.containerId);
     await this.logs.append(app.id, 'Container start requested', {
       containerId: app.containerId,
@@ -323,28 +420,33 @@ export class AndroidAppsLifecycleService {
     await this.runtimeNetwork.reconcilePolicy(app, {
       recordLastStartedAt: true,
     });
+    this.tracker.ensureActive(app.id);
     await this.provisioning.prepareRuntimeReadiness(app);
     if (app.apkFilePath && !app.apkPackageName) {
+      this.tracker.ensureActive(app.id);
       await this.apkProvisioning.installApk(
         app,
         'Installing APK inside Android before launch.',
       );
     }
+    this.tracker.ensureActive(app.id);
     await this.apkProvisioning.launchInstalledApk(app);
 
     app.status = AndroidApplicationStatus.Running;
     app.lifecycleStage = AndroidApplicationLifecycleStage.Ready;
     app.statusMessage = 'Application is running.';
     app.lastError = null;
+    app.provisioningCompletedAt = new Date();
     await this.logs.append(app.id, 'Application marked running', {
       containerId: app.containerId,
     });
-    return this.state.saveAndDecorate(app);
+    await this.state.save(app);
   }
 
   /** Stops an app container. */
   async stop(id: string) {
     const app = await this.state.get(id);
+    this.tracker.cancel(id);
 
     app.status = AndroidApplicationStatus.Stopped;
     app.lifecycleStage = AndroidApplicationLifecycleStage.Stopping;

@@ -1,8 +1,4 @@
 import type { ReactNode } from 'react'
-import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { ViewerSettings } from '@/features/applications/viewer/viewer-settings'
-import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
-import type { PermissionMap } from '@/shared/permissions/permissions'
 import { Badge } from '@/components/ui/badge'
 import { Visible } from '@/components/ui/visible'
 import { AppViewerActions } from '@/features/applications/viewer/actions'
@@ -10,6 +6,10 @@ import { AppViewerHeading } from '@/features/applications/viewer/heading'
 import { RuntimeToolsPanel } from '@/features/applications/viewer/runtime-tools-panel'
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
 import { ProtectedSplitPageContent } from '@/features/shell/components/protected-page-shell'
+import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { ViewerSettings } from '@/features/applications/viewer/viewer-settings'
+import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
+import type { PermissionMap } from '@/shared/permissions/permissions'
 
 export const AppWorkspaceContent = ({
   app,

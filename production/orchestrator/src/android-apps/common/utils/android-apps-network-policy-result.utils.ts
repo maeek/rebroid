@@ -23,7 +23,7 @@ export const deriveNetworkPolicyResult = (
       status,
       code: 'applied',
       message,
-      hint: 'Outbound access is restricted to the API, the scrcpy sidecar, and any CIDR ranges in the allowlist.',
+      hint: 'Outbound access is restricted to the API, the display sidecar, and any CIDR ranges in the allowlist.',
     };
   }
 

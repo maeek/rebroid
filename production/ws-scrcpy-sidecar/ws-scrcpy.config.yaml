@@ -1,8 +1,0 @@
-server:
-  - secure: false
-    port: 8000
-runGoogTracker: false
-announceGoogTracker: false
-runApplTracker: false
-announceApplTracker: false
-remoteHostList: []

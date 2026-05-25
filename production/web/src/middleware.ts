@@ -2,48 +2,10 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
-import { verifyAnyScrcpyViewerToken, verifyScrcpyViewerToken, viewerTokenParamName } from '@/server/viewer/viewer-token'
 
 export async function middleware(request: NextRequest) {
   const headers = new Headers(request.headers)
   headers.set('x-current-path', request.nextUrl.pathname)
-  const isScrcpyProxyPath = request.nextUrl.pathname.startsWith('/viewer/ws-scrcpy')
-  const scrcpyAction = request.nextUrl.searchParams.get('action')
-  if (isScrcpyProxyPath) {
-    if (scrcpyAction && scrcpyAction !== 'proxy-adb') {
-      return NextResponse.json({ message: 'Viewer action is not allowed.' }, { status: 403 })
-    }
-
-    const viewerToken = request.nextUrl.searchParams.get(viewerTokenParamName)
-    if (viewerToken) {
-      const isViewerTokenValid = await verifyScrcpyViewerToken({
-        token: viewerToken,
-        appId: request.nextUrl.searchParams.get('appId'),
-        udid: request.nextUrl.searchParams.get('udid')
-      })
-
-      if (!isViewerTokenValid) {
-        return NextResponse.json({ message: 'Viewer token is invalid or expired.' }, { status: 403 })
-      }
-
-      const response = NextResponse.next({ request: { headers } })
-      response.cookies.set({
-        name: viewerTokenParamName,
-        value: viewerToken,
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: request.nextUrl.protocol === 'https:',
-        path: '/viewer/ws-scrcpy',
-        maxAge: 30 * 60
-      })
-      return response
-    }
-
-    const viewerCookie = request.cookies.get(viewerTokenParamName)?.value ?? null
-    if (!scrcpyAction && (await verifyAnyScrcpyViewerToken(viewerCookie))) {
-      return NextResponse.next({ request: { headers } })
-    }
-  }
 
   const isProtectedPath =
     request.nextUrl.pathname.startsWith('/apps') ||
@@ -72,8 +34,8 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/apps', request.url))
     }
 
-    // /viewer/ws-scrcpy is normally authorized by short-lived viewer tokens above.
-    // If a token is absent, it falls back to the regular app session check.
+    // Viewer shell pages are authenticated here. The display sidecar validates
+    // its own short-lived display-session tokens on the separate viewer origin.
   }
 
   return NextResponse.next({ request: { headers } })

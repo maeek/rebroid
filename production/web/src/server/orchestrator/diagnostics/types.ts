@@ -23,11 +23,11 @@ export interface OrchestratorHealth {
   ok: boolean
   docker: boolean
   runtime: boolean
-  scrcpy: boolean
+  display: boolean
   services: {
     orchestrator: ServiceHealth
     docker: ServiceHealth
     runtime: ServiceHealth
-    scrcpy: ServiceHealth
+    display: ServiceHealth
   }
 }

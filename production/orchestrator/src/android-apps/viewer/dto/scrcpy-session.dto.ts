@@ -26,6 +26,41 @@ export class ScrcpyViewerErrorDto {
   stderr!: string | null;
 }
 
+export class DisplaySessionDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  appId?: string;
+
+  @ApiProperty()
+  udid!: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  ownerUserId?: string;
+
+  @ApiProperty({ enum: ['created', 'active', 'released', 'expired'] })
+  status!: 'created' | 'active' | 'released' | 'expired';
+
+  @ApiProperty()
+  createdAt!: string;
+
+  @ApiProperty()
+  lastActivityAt!: string;
+
+  @ApiProperty()
+  expiresAt!: string;
+
+  @ApiProperty({ type: [String] })
+  capabilities!: string[];
+
+  @ApiProperty()
+  streamPath!: string;
+
+  @ApiProperty()
+  viewerPath!: string;
+}
+
 export class ScrcpySessionDto {
   @ApiProperty()
   applicationId!: string;
@@ -59,4 +94,7 @@ export class ScrcpySessionDto {
 
   @ApiProperty()
   adbPort!: number;
+
+  @ApiPropertyOptional({ type: DisplaySessionDto, nullable: true })
+  displaySession!: DisplaySessionDto | null;
 }

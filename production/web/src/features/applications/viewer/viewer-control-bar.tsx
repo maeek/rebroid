@@ -37,7 +37,20 @@ import type { ApplicationViewerControlCommand } from '@/server/orchestrator/appl
 
 const controlErrorDescription = (error: unknown) => {
   const message = error instanceof Error ? error.message.trim() : ''
-  return message || 'The server did not return details for this failure.'
+  const lowerMessage = message.toLowerCase()
+  if (
+    !message ||
+    lowerMessage.includes('sidecar') ||
+    lowerMessage.includes('adb') ||
+    lowerMessage.includes('nestjs') ||
+    lowerMessage.includes('nextjs') ||
+    lowerMessage.includes('next.js') ||
+    lowerMessage.includes('fetch failed')
+  ) {
+    return 'The viewer could not send that command. Refresh the viewer or restart the app, then try again.'
+  }
+
+  return message
 }
 
 const IconButtonTooltip = ({ label, children }: { label: string; children: ReactNode }) => (

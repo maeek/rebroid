@@ -1,7 +1,7 @@
 import { Skeleton } from '@/components/ui/skeleton'
 import { Visible } from '@/components/ui/visible'
-import { ProtectedSplitPageContent, ProtectedSplitPageLayout } from '@/features/shell/components/protected-page-shell'
 import { PageBreadcrumbsSkeleton } from '@/features/shell/components/page-breadcrumbs-skeleton'
+import { ProtectedSplitPageContent, ProtectedSplitPageLayout } from '@/features/shell/components/protected-page-shell'
 
 export default function Loading() {
   return (

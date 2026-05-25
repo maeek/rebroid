@@ -216,7 +216,7 @@ export class AndroidAppsStateService {
     return this.status.decorateApplication(app);
   }
 
-  /** Detaches ws-scrcpy from an app network after external runtime exits. */
+  /** Detaches the display sidecar from an app network after external runtime exits. */
   private async releaseViewerNetwork(app: AndroidApplication) {
     if (!app.networkName || app.networkName === 'pending') {
       return;
@@ -226,7 +226,7 @@ export class AndroidAppsStateService {
       await this.sidecar.detachSidecarFromNetwork(app.networkName);
     } catch (error) {
       this.logger.warn(
-        `Could not detach ws-scrcpy from ${app.networkName} for ${app.id}: ${getErrorMessage(error)}`,
+        `Could not detach display sidecar from ${app.networkName} for ${app.id}: ${getErrorMessage(error)}`,
       );
     }
   }

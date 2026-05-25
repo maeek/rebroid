@@ -6,7 +6,7 @@ export const orchestratorDiagnosticsClient = {
     return request<OrchestratorHealth>('/health')
   },
 
-  repairScrcpySidecar() {
+  repairDisplaySidecar() {
     return request<ServiceHealth>('/docker/sidecar/repair', { method: 'POST' })
   },
 

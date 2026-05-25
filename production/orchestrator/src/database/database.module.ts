@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { TypeOrmModule, type TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { AndroidApplication } from '../android-apps/android-application.entity';
@@ -12,12 +12,12 @@ import { AddApkPackageName1716060000000 } from './migrations/1716060000000-add-a
   imports: [
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
+      useFactory: (config: ConfigService): TypeOrmModuleOptions => {
         const database = config.getOrThrow<string>('app.databasePath');
         mkdirSync(dirname(database), { recursive: true });
 
         return {
-          type: 'sqlite',
+          type: 'better-sqlite3',
           database,
           entities: [AndroidApplication, UploadedApk],
           migrations: [

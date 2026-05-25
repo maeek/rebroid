@@ -5,7 +5,7 @@ import { IconAlertTriangle, IconCircleCheck, IconLoader2 } from '@tabler/icons-r
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
-import { getOrchestratorHealthAction, repairScrcpySidecarAction } from '@/server/orchestrator/diagnostics/actions'
+import { getOrchestratorHealthAction, repairDisplaySidecarAction } from '@/server/orchestrator/diagnostics/actions'
 import type { OrchestratorHealth, ServiceHealth } from '@/server/orchestrator/diagnostics/types'
 
 type HealthState = 'checking' | 'online' | 'degraded' | 'offline'
@@ -48,7 +48,7 @@ const mergeDockerAndRuntimeService = (health: OrchestratorHealth | null, fallbac
 }
 
 const getOrchestratorHealth = getOrchestratorHealthAction
-const repairScrcpySidecar = repairScrcpySidecarAction
+const repairDisplaySidecar = repairDisplaySidecarAction
 
 const dotTone = (status: DisplayServiceStatus) => {
   if (status === 'healthy') {
@@ -84,8 +84,8 @@ const serviceRows = (health: OrchestratorHealth | null, fallbackMessage: string)
     service: mergeDockerAndRuntimeService(health, fallbackMessage)
   },
   {
-    name: 'Scrcpy',
-    service: health?.services.scrcpy ?? checkingService(fallbackMessage)
+    name: 'Display',
+    service: health?.services.display ?? checkingService(fallbackMessage)
   }
 ]
 
@@ -93,7 +93,7 @@ export const OrchestratorStatus = () => {
   const [state, setState] = useState<HealthState>('checking')
   const [message, setMessage] = useState('Checking')
   const [health, setHealth] = useState<OrchestratorHealth | null>(null)
-  const [isRepairingScrcpy, setIsRepairingScrcpy] = useState(false)
+  const [isRepairingDisplay, setIsRepairingDisplay] = useState(false)
 
   const applyHealth = useCallback((nextHealth: OrchestratorHealth) => {
     setHealth(nextHealth)
@@ -114,12 +114,12 @@ export const OrchestratorStatus = () => {
       ok: false,
       docker: false,
       runtime: false,
-      scrcpy: false,
+      display: false,
       services: {
         orchestrator: offlineService(errorMessage),
         docker: offlineService('Cannot inspect Docker while orchestrator is offline.'),
         runtime: offlineService('Cannot inspect runtime suitability while orchestrator is offline.'),
-        scrcpy: offlineService('Cannot inspect ws-scrcpy while orchestrator is offline.')
+        display: offlineService('Cannot inspect display sidecar while orchestrator is offline.')
       }
     })
   }, [])
@@ -150,14 +150,14 @@ export const OrchestratorStatus = () => {
     }
   }, [check])
 
-  const canRepairScrcpy = Boolean(
-    health?.services.orchestrator.ok && health.services.docker.ok && !health.services.scrcpy.ok
+  const canRepairDisplay = Boolean(
+    health?.services.orchestrator.ok && health.services.docker.ok && !health.services.display.ok
   )
 
-  const repairScrcpy = async () => {
-    setIsRepairingScrcpy(true)
+  const repairDisplay = async () => {
+    setIsRepairingDisplay(true)
     try {
-      await repairScrcpySidecar()
+      await repairDisplaySidecar()
       await check()
     } catch (error) {
       setHealth(current => {
@@ -167,15 +167,15 @@ export const OrchestratorStatus = () => {
 
         return {
           ...current,
-          scrcpy: false,
+          display: false,
           ok: false,
           services: {
             ...current.services,
-            scrcpy: {
-              ...current.services.scrcpy,
+            display: {
+              ...current.services.display,
               ok: false,
               status: 'offline',
-              message: error instanceof Error ? error.message : 'Could not repair ws-scrcpy.'
+              message: error instanceof Error ? error.message : 'Could not repair display sidecar.'
             }
           }
         }
@@ -183,7 +183,7 @@ export const OrchestratorStatus = () => {
       setState('degraded')
       setMessage('Degraded')
     } finally {
-      setIsRepairingScrcpy(false)
+      setIsRepairingDisplay(false)
     }
   }
 
@@ -242,19 +242,19 @@ export const OrchestratorStatus = () => {
                   {service.status}
                 </span>
               </div>
-              <Visible when={name === 'Scrcpy' && canRepairScrcpy}>
+              <Visible when={name === 'Display' && canRepairDisplay}>
                 <button
                   type='button'
                   className='ml-auto inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-md border border-border/70 bg-secondary/70 px-2 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-70'
-                  disabled={isRepairingScrcpy}
-                  aria-label='Repair scrcpy sidecar'
+                  disabled={isRepairingDisplay}
+                  aria-label='Repair display sidecar'
                   onClick={event => {
                     event.preventDefault()
                     event.stopPropagation()
-                    void repairScrcpy()
+                    void repairDisplay()
                   }}
                 >
-                  {isRepairingScrcpy ? <IconLoader2 className='size-3.5 animate-spin' /> : 'Fix'}
+                  {isRepairingDisplay ? <IconLoader2 className='size-3.5 animate-spin' /> : 'Fix'}
                 </button>
               </Visible>
             </div>

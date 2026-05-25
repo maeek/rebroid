@@ -1,5 +1,5 @@
 export type ViewerStreamingPreset = 'balanced' | 'bandwidth' | 'quality'
-export type ViewerPlayer = 'mse' | 'broadway' | 'tinyh264' | 'webcodecs'
+export type ViewerPlayer = 'webcodecs'
 
 export type ViewerPlayerDefinition = {
   value: ViewerPlayer
@@ -9,24 +9,9 @@ export type ViewerPlayerDefinition = {
 
 export const viewerPlayerDefinitions: ViewerPlayerDefinition[] = [
   {
-    value: 'mse',
-    label: 'MSE',
-    description: 'Media Source Extensions. Usually the most compatible option.'
-  },
-  {
-    value: 'broadway',
-    label: 'Broadway.js',
-    description: 'WASM software decoder. Useful fallback when MSE has browser-specific issues.'
-  },
-  {
-    value: 'tinyh264',
-    label: 'Tiny H264',
-    description: 'WASM worker decoder. Current default for lower latency Redroid streaming.'
-  },
-  {
     value: 'webcodecs',
     label: 'WebCodecs',
-    description: 'Browser decode path when supported. Best tested in Chromium-based browsers.'
+    description: 'Low-latency live display playback. Best tested in Chromium-based browsers.'
   }
 ]
 
@@ -50,30 +35,30 @@ export type ViewerSettings = ViewerStreamingSettings & {
 
 export const viewerStreamingPresets: Record<ViewerStreamingPreset, ViewerStreamingSettings> = {
   bandwidth: {
-    player: 'tinyh264',
+    player: 'webcodecs',
     preset: 'bandwidth',
-    bitrateMbps: 3,
-    maxFps: 30,
-    maxSize: 720,
-    iFrameInterval: 5,
+    bitrateMbps: 1.5,
+    maxFps: 24,
+    maxSize: 1080,
+    iFrameInterval: 1,
     fitToFrame: false
   },
   balanced: {
-    player: 'tinyh264',
+    player: 'webcodecs',
     preset: 'balanced',
-    bitrateMbps: 7,
-    maxFps: 60,
+    bitrateMbps: 3,
+    maxFps: 30,
     maxSize: 1080,
-    iFrameInterval: 10,
+    iFrameInterval: 1,
     fitToFrame: false
   },
   quality: {
-    player: 'tinyh264',
+    player: 'webcodecs',
     preset: 'quality',
-    bitrateMbps: 12,
-    maxFps: 60,
-    maxSize: 1440,
-    iFrameInterval: 10,
+    bitrateMbps: 7,
+    maxFps: 30,
+    maxSize: 1080,
+    iFrameInterval: 1,
     fitToFrame: false
   }
 }
@@ -84,7 +69,7 @@ export const defaultViewerSettings: ViewerSettings = {
   soundEnabled: true
 }
 
-const storageKey = 'rebroid.viewer.settings.v2'
+const storageKey = 'rebroid.viewer.settings.v5'
 
 const isValidNumber = (value: unknown, fallback: number, min: number, max: number) => {
   if (typeof value !== 'number' || Number.isNaN(value)) {
@@ -105,7 +90,7 @@ export const normalizeViewerSettings = (value: Partial<ViewerSettings> | null | 
     value?.preset && Object.hasOwn(viewerStreamingPresets, value.preset) ? value.preset : defaultViewerSettings.preset,
   bitrateMbps: isValidNumber(value?.bitrateMbps, defaultViewerSettings.bitrateMbps, 1, 32),
   maxFps: isValidNumber(value?.maxFps, defaultViewerSettings.maxFps, 1, 120),
-  maxSize: isValidNumber(value?.maxSize, defaultViewerSettings.maxSize, 0, 4096),
+  maxSize: value?.maxSize === 0 ? 0 : isValidNumber(value?.maxSize, defaultViewerSettings.maxSize, 1080, 4096),
   iFrameInterval: isValidNumber(value?.iFrameInterval, defaultViewerSettings.iFrameInterval, 1, 30),
   fitToFrame: typeof value?.fitToFrame === 'boolean' ? value.fitToFrame : defaultViewerSettings.fitToFrame
 })

@@ -5,7 +5,8 @@ import { DockerContainerLifecycleService } from '../../../docker/containers/serv
 import { AndroidApplicationStatus } from '../../android-application-status';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
-import { parseAndroidNotifications } from '../utils/android-apps-notification.utils';
+import { AndroidAppsDisplaySidecarService } from '../../viewer/services/android-apps-display-sidecar.service';
+import { AndroidAppsSidecarAdbService } from '../../viewer/services/android-apps-sidecar-adb.service';
 import {
   parseDownloadFiles,
   sanitizeRuntimeFileName,
@@ -20,6 +21,8 @@ export class AndroidAppsRuntimeAccessService {
     private readonly exec: DockerContainerExecService,
     private readonly lifecycle: DockerContainerLifecycleService,
     private readonly logs: AndroidAppsLogService,
+    private readonly displaySidecar: AndroidAppsDisplaySidecarService,
+    private readonly sidecarAdb: AndroidAppsSidecarAdbService,
     private readonly state: AndroidAppsStateService,
   ) {}
 
@@ -30,22 +33,7 @@ export class AndroidAppsRuntimeAccessService {
       return [];
     }
 
-    const { stdout } = await this.exec.execInContainerWithOutput(
-      app.containerId,
-      [
-        'sh',
-        '-lc',
-        [
-          'output="$(cmd notification list --noredact 2>/dev/null || true)"',
-          'if [ -z "$output" ]; then output="$(cmd notification list 2>/dev/null || true)"; fi',
-          'if [ -z "$output" ]; then output="$(dumpsys notification --noredact 2>/dev/null || true)"; fi',
-          'if [ -z "$output" ]; then output="$(dumpsys notification 2>/dev/null || true)"; fi',
-          'printf "%s\\n" "$output" | sed -n "1,240p"',
-        ].join('; '),
-      ],
-    );
-
-    return parseAndroidNotifications(stdout);
+    return this.sidecarAdb.notifications(app);
   }
 
   /** Reads recent logs from the app container. */
@@ -90,7 +78,7 @@ export class AndroidAppsRuntimeAccessService {
     };
   }
 
-  /** Reads recent ADB and ws-scrcpy logs. */
+  /** Reads recent ADB logs from the display sidecar. */
   async adbLogs(id: string, tail = 300) {
     const app = await this.state.get(id);
     if (!app.containerId || app.status !== AndroidApplicationStatus.Running) {
@@ -102,28 +90,7 @@ export class AndroidAppsRuntimeAccessService {
       };
     }
 
-    const { stdout, stderr } = await this.exec.execInContainerWithOutput(
-      app.containerId,
-      [
-        'sh',
-        '-lc',
-        [
-          'if [ -f /data/local/tmp/ws_scrcpy.log ]; then',
-          '  echo "== ws-scrcpy server ==";',
-          '  tail -n 200 /data/local/tmp/ws_scrcpy.log 2>&1;',
-          '  echo;',
-          'fi;',
-          'echo "== logcat ==";',
-          `logcat -d -t ${Math.max(1, Math.min(tail, 2000))} 2>&1 || true`,
-        ].join(' '),
-      ],
-    );
-
-    return {
-      source: 'adb' as const,
-      collectedAt: new Date().toISOString(),
-      output: stdout || stderr,
-    };
+    return this.sidecarAdb.logcat(app, tail);
   }
 
   /** Lists files in the Android Download folder. */
@@ -198,21 +165,12 @@ export class AndroidAppsRuntimeAccessService {
   /** Reads the Android clipboard. */
   async getClipboard(id: string) {
     const app = await this.getRunningRuntimeApp(id);
-    const { stdout } = await this.exec.execInContainerWithOutput(
-      app.containerId!,
-      [
-        'sh',
-        '-lc',
-        'if command -v cmd >/dev/null 2>&1; then cmd clipboard get 2>/dev/null || true; else echo __REBROID_UNSUPPORTED__; fi',
-      ],
-    );
-    const text = stdout.replace(/\r?\n$/, '');
-    const supported = text !== '__REBROID_UNSUPPORTED__';
+    const clipboard = await this.sidecarAdb.getClipboard(app);
 
     return {
-      text: supported ? text : '',
-      supported,
-      message: supported
+      text: clipboard.text,
+      supported: clipboard.supported,
+      message: clipboard.supported
         ? null
         : 'Clipboard commands are not available in this container image.',
     };
@@ -221,27 +179,14 @@ export class AndroidAppsRuntimeAccessService {
   /** Writes text to the Android clipboard. */
   async setClipboard(id: string, text: string) {
     const app = await this.getRunningRuntimeApp(id);
-    const encoded = Buffer.from(text, 'utf-8').toString('base64');
-    const { stdout } = await this.exec.execInContainerWithOutput(
-      app.containerId!,
-      [
-        'sh',
-        '-lc',
-        [
-          'if command -v cmd >/dev/null 2>&1; then',
-          `text=$(printf '%s' '${encoded}' | base64 -d 2>/dev/null)`,
-          'cmd clipboard set "$text" >/dev/null 2>&1 && echo __SMA_OK__ || echo __REBROID_UNSUPPORTED__',
-          'else echo __REBROID_UNSUPPORTED__',
-          'fi',
-        ].join(' '),
-      ],
-    );
-    const supported = stdout.trim() !== '__REBROID_UNSUPPORTED__';
+    const clipboard = await this.displaySidecar
+      .setClipboard(app, text)
+      .catch(() => this.sidecarAdb.setClipboard(app, text));
 
     return {
-      text: supported ? text : '',
-      supported,
-      message: supported
+      text: clipboard.text,
+      supported: clipboard.supported,
+      message: clipboard.supported
         ? null
         : 'Clipboard commands are not available in this container image.',
     };
@@ -250,22 +195,7 @@ export class AndroidAppsRuntimeAccessService {
   /** Captures a screenshot from the running app. */
   async screenshot(id: string) {
     const app = await this.getRunningRuntimeApp(id);
-    const { stdout } = await this.exec.execInContainerWithOutput(
-      app.containerId!,
-      ['sh', '-lc', 'screencap -p 2>/dev/null | base64 | tr -d "\\n" || true'],
-    );
-    const base64 = stdout.trim();
-    if (!base64) {
-      throw new ConflictException(
-        'Screenshot capture is not available in this container image.',
-      );
-    }
-
-    return {
-      mimeType: 'image/png',
-      dataUrl: `data:image/png;base64,${base64}`,
-      capturedAt: new Date().toISOString(),
-    };
+    return this.sidecarAdb.screenshot(app);
   }
 
   /** Loads one running app for runtime actions. */

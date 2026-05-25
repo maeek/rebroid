@@ -8,9 +8,9 @@ export const getOrchestratorHealthAction = async () => {
   return orchestratorDiagnosticsClient.health()
 }
 
-export const repairScrcpySidecarAction = async () => {
+export const repairDisplaySidecarAction = async () => {
   await requireAdminUser()
-  return orchestratorDiagnosticsClient.repairScrcpySidecar()
+  return orchestratorDiagnosticsClient.repairDisplaySidecar()
 }
 
 export const getSystemResourcesAction = async (refreshVolumes = false) => {

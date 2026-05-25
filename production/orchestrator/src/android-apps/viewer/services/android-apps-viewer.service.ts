@@ -1,20 +1,22 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DockerContainerExecService } from '../../../docker/containers/services/docker-container-exec.service';
 import { DockerSidecarService } from '../../../docker/sidecar/services/docker-sidecar.service';
+import { getErrorMessage } from '../../../common/error-message';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
 import { AndroidApplicationStatus } from '../../android-application-status';
 import type { ApplicationViewerControlCommand } from '../dto/application-viewer-control.dto';
 import { ScrcpySessionDto } from '../dto/scrcpy-session.dto';
-import { viewerControlShellCommand } from '../utils/android-apps-viewer-control.utils';
+import { AndroidAppsDisplaySidecarService } from './android-apps-display-sidecar.service';
+import { AndroidAppsSidecarAdbService } from './android-apps-sidecar-adb.service';
 import { AndroidAppsViewerNetworkService } from './android-apps-viewer-network.service';
 
 @Injectable()
 export class AndroidAppsViewerService {
   constructor(
     private readonly config: ConfigService,
-    private readonly exec: DockerContainerExecService,
     private readonly sidecar: DockerSidecarService,
+    private readonly displaySidecar: AndroidAppsDisplaySidecarService,
+    private readonly sidecarAdb: AndroidAppsSidecarAdbService,
     private readonly state: AndroidAppsStateService,
     private readonly viewerNetwork: AndroidAppsViewerNetworkService,
   ) {}
@@ -23,7 +25,7 @@ export class AndroidAppsViewerService {
   async scrcpySession(id: string): Promise<ScrcpySessionDto> {
     const app = await this.getRunningRuntimeApp(id);
     const proxyRemote =
-      this.config.get<string>('app.scrcpy.wsScrcpyProxyRemote') ?? 'tcp:8886';
+      this.config.get<string>('app.displaySidecar.proxyRemote') ?? 'tcp:8886';
     const sidecarTarget = await this.sidecar.ensureSidecarOnNetwork(
       app.networkName,
     );
@@ -33,6 +35,10 @@ export class AndroidAppsViewerService {
       sidecarTarget.configured && sidecarTarget.connected
         ? await this.viewerNetwork.prepareScrcpyAdbTarget(app, adbHost)
         : sidecarTarget;
+    const displaySession =
+      viewerTarget.configured && viewerTarget.connected
+        ? await this.displaySidecar.tryCreateSessionForPreparedTarget(app, udid)
+        : null;
     app.lastScrcpyActivityAt = new Date();
     await this.state.save(app);
 
@@ -41,13 +47,14 @@ export class AndroidAppsViewerService {
       transport: app.scrcpyTransport,
       udid,
       proxyRemote,
-      player: this.config.getOrThrow<string>('app.scrcpy.wsScrcpyPlayer'),
+      player: this.config.getOrThrow<string>('app.displaySidecar.player'),
       viewerServiceConfigured: viewerTarget.configured,
       viewerTargetConnected: viewerTarget.connected,
       viewerMessage: viewerTarget.message,
       viewerError: viewerTarget.error,
       adbHost,
       adbPort: app.adbPort,
+      displaySession,
     };
   }
 
@@ -66,17 +73,16 @@ export class AndroidAppsViewerService {
   /** Sends one control action to the viewer runtime. */
   async viewerControl(id: string, command: ApplicationViewerControlCommand) {
     const app = await this.getRunningRuntimeApp(id);
-    await this.exec.execInContainerWithOutput(app.containerId!, [
-      'sh',
-      '-lc',
-      viewerControlShellCommand(command),
-    ]);
+    const sidecarPath = await this.tryDisplaySidecarControl(app, command);
     await this.recordViewerActivity(id);
 
     return {
       command,
       executed: true,
-      message: 'Viewer control command executed.',
+      message:
+        sidecarPath === 'display'
+          ? 'Viewer control command executed through display sidecar.'
+          : 'Viewer control command executed through display sidecar ADB endpoint.',
     };
   }
 
@@ -90,5 +96,24 @@ export class AndroidAppsViewerService {
     }
 
     return app;
+  }
+
+  private async tryDisplaySidecarControl(
+    app: Awaited<ReturnType<AndroidAppsViewerService['getRunningRuntimeApp']>>,
+    command: ApplicationViewerControlCommand,
+  ) {
+    try {
+      await this.displaySidecar.viewerControl(app, command);
+      return 'display' as const;
+    } catch (error) {
+      await this.sidecarAdb.viewerControl(app, command).catch((legacyError) => {
+        throw new ConflictException(
+          `Viewer control command failed. Display sidecar: ${getErrorMessage(
+            error,
+          )}. Display sidecar ADB endpoint: ${getErrorMessage(legacyError)}.`,
+        );
+      });
+      return 'adb' as const;
+    }
   }
 }

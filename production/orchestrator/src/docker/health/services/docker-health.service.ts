@@ -105,7 +105,7 @@ export class DockerHealthService {
     }
   }
 
-  async wsScrcpyHealth(): Promise<ServiceHealth> {
+  async displaySidecarHealth(): Promise<ServiceHealth> {
     return this.sidecar.health();
   }
 }

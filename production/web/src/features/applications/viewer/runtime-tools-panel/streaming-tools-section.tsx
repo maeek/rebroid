@@ -16,7 +16,7 @@ import type { ViewerSettings, ViewerStreamingPreset } from '../viewer-settings'
 
 const bitrateOptions = [2, 3, 5, 7, 10, 12, 16]
 const fpsOptions = [15, 24, 30, 45, 60]
-const maxSizeOptions = [0, 720, 1080, 1440, 1920]
+const maxSizeOptions = [0, 1080, 1440, 1920]
 const iFrameOptions = [1, 2, 5, 10]
 
 const StreamingSetting = ({ label, children }: { label: string; children: ReactNode }) => (
@@ -83,7 +83,7 @@ export const StreamingToolsSection = ({
               value={viewerSettings.player}
               onValueChange={value =>
                 updateSettings({
-                  player: isViewerPlayer(value) ? value : 'tinyh264'
+                  player: isViewerPlayer(value) ? value : 'webcodecs'
                 })
               }
             >

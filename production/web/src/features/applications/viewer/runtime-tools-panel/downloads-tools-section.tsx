@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import type { DragEvent } from 'react'
 import { IconDownload, IconFileDownload, IconFolderUp, IconLoader2, IconRefresh, IconUpload } from '@tabler/icons-react'
+import classNames from 'classnames'
+import { useTopLoader } from 'nextjs-toploader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/hooks/use-toast'
-import { uploadApplicationDownloadFileAction } from '@/server/orchestrator/applications/mutation-actions'
 import {
   downloadApplicationFileAction,
   listApplicationDownloadFilesAction
@@ -14,6 +15,7 @@ import {
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
 import { downloadDataUrl, formatBytes, runtimeActionErrorToast } from './runtime-tools-panel.utils'
 import { ToolSection } from './tool-section'
+import { uploadDownloadFileWithProgress } from './upload-download-file'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { ApplicationRuntimeFile } from '@/server/orchestrator/applications/types'
 
@@ -29,10 +31,13 @@ export const DownloadsToolsSection = ({
   const runtimeAvailable = app.status === 'running'
   const canTransferFiles = hasPermission(permissions, 'applications:transfer-files')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const topLoader = useTopLoader()
   const [files, setFiles] = useState<ApplicationRuntimeFile[]>([])
   const [isDragging, setIsDragging] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
+  const [uploadFileName, setUploadFileName] = useState('')
   const [isRefreshingFiles, startRefreshFilesTransition] = useTransition()
-  const [isUploading, startUploadTransition] = useTransition()
+  const isUploading = uploadProgress !== null
 
   const refreshFiles = useCallback(() => {
     if (!runtimeAvailable || !canTransferFiles) {
@@ -57,22 +62,35 @@ export const DownloadsToolsSection = ({
       return
     }
 
-    const formData = new FormData()
-    formData.append('file', file)
+    setUploadFileName(file.name)
+    setUploadProgress(0)
+    topLoader.start()
+    topLoader.setProgress(0.08)
 
-    startUploadTransition(async () => {
-      try {
-        await uploadApplicationDownloadFileAction(app.id, formData)
+    uploadDownloadFileWithProgress({
+      appId: app.id,
+      file,
+      onProgress: progress => {
+        setUploadProgress(progress)
+        topLoader.setProgress(Math.min(Math.max(progress / 100, 0.08), 0.95))
+      }
+    })
+      .then(() => {
+        topLoader.setProgress(1)
         toast({ title: 'File uploaded', description: `${file.name} is available in Files.` })
         refreshFiles()
-      } catch (error) {
+      })
+      .catch(error => {
         runtimeActionErrorToast('Could not upload file', error)
-      } finally {
+      })
+      .finally(() => {
+        topLoader.done(true)
+        setUploadProgress(null)
+        setUploadFileName('')
         if (fileInputRef.current) {
           fileInputRef.current.value = ''
         }
-      }
-    })
+      })
   }
 
   const handleDrop = (event: DragEvent<HTMLButtonElement>) => {
@@ -149,15 +167,24 @@ export const DownloadsToolsSection = ({
           }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
-          className={`flex min-h-28 flex-col items-center justify-center gap-2 rounded-lg border border-dashed px-4 py-6 text-center transition ${
-            isDragging
-              ? 'border-primary/70 bg-primary/10 text-foreground'
-              : 'border-border/70 bg-background/25 text-secondary-foreground'
-          } ${!runtimeAvailable ? 'cursor-not-allowed opacity-60' : 'hover:border-primary/55 hover:bg-background/35'}`}
+          className={classNames(
+            // eslint-disable-next-line max-len
+            `flex min-h-28 flex-col items-center justify-center gap-2 rounded-lg border border-dashed px-4 py-6 text-center transition`,
+            {
+              'border-primary/70 bg-primary/10 text-foreground': isDragging,
+              'border-border/70 bg-background/25 text-secondary-foreground': !isDragging,
+              'cursor-not-allowed opacity-60': !runtimeAvailable,
+              'hover:border-primary/55 hover:bg-background/35': runtimeAvailable
+            }
+          )}
         >
           {isUploading ? <IconLoader2 className='size-6 animate-spin' /> : <IconFolderUp className='size-6' />}
           <span className='font-medium text-foreground'>
-            {runtimeAvailable ? 'Drop a file here or choose one' : 'Start the app to transfer files'}
+            {isUploading
+              ? `Uploading ${uploadFileName || 'file'}${uploadProgress === null ? '' : ` (${uploadProgress}%)`}`
+              : runtimeAvailable
+                ? 'Drop a file here or choose one'
+                : 'Start the app to transfer files'}
           </span>
           <span className='text-xs'>Files are copied to the Android Download folder.</span>
         </button>

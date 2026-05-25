@@ -1,3 +1,3 @@
-import { ScrcpyViewerPage } from '@/features/applications/viewer/scrcpy-viewer-page'
+import { DisplayViewerPage } from '@/features/applications/viewer/display-viewer-page'
 
-export default ScrcpyViewerPage
+export default DisplayViewerPage

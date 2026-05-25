@@ -2,8 +2,11 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { signOut } from 'next-auth/react'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '../../../../lib/error-utils'
+
+const isSessionError = (message: string) => /session|sign in|unauthenticated|unauthorized|authentication/i.test(message)
 
 export const useAppViewerActionRunner = () => {
   const router = useRouter()
@@ -16,7 +19,13 @@ export const useAppViewerActionRunner = () => {
       router.refresh()
       return true
     } catch (error) {
-      toast({ title, description: getDisplayErrorMessage(error), variant: 'destructive' })
+      const message = getDisplayErrorMessage(error)
+      if (isSessionError(message)) {
+        await signOut({ callbackUrl: '/login', redirect: true })
+        return false
+      }
+
+      toast({ title, description: message, variant: 'destructive' })
       return false
     } finally {
       setIsRunningAction(false)

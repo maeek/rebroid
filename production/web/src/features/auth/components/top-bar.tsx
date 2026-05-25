@@ -1,3 +1,4 @@
+import { GitHubLogoIcon } from '@radix-ui/react-icons'
 import classNames from 'classnames'
 import Link from 'next/link'
 
@@ -5,15 +6,24 @@ export const TopBarUnprotected = () => {
   const sectionClasses = 'flex items-center h-full px-4 gap-x-4'
 
   return (
-    <div className='flex justify-between h-16 w-dvw shrink-0 sticky top-0'>
+    <div className='flex justify-between h-16 w-dvw shrink-0 sticky top-0 z-10'>
       <div className={classNames(sectionClasses, 'justify-start')}>
         <Link href='/'>
-          <span className='text-xl font-black underline underline-offset-4 decoration-primary decoration-solid'>
+          <span className='text-xl font-black underline underline-offset-4 decoration-primary decoration-solid z-99 text-foreground'>
             Rebroid
           </span>
         </Link>
       </div>
-      <div className={classNames(sectionClasses, 'justify-center flex-initial w-full max-w-(--breakpoint-sm)')}></div>
+      <div className={classNames(sectionClasses, 'justify-end flex-initial w-full max-w-(--breakpoint-sm)')}>
+        <a
+          href='https://github.com/maeek/rebroid'
+          target='_blank'
+          rel='noopener noreferrer'
+          className='text-foreground transition-colors duration-200 flex items-center gap-x-1 hover:text-primary'
+        >
+          <GitHubLogoIcon className='w-6 h-6' />
+        </a>
+      </div>
     </div>
   )
 }

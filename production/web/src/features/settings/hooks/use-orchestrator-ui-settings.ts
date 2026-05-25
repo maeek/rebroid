@@ -3,13 +3,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment */
 
 import { useEffect, useState } from 'react'
-import type {
-  GeneralUiSettings,
-  OrchestratorUiSettings,
-  RuntimeUiSettings
-} from '@/features/settings/domain/orchestrator-ui-settings'
-import type { OrchestratorSettingsResponse } from '@/server/orchestrator/settings/types'
-import type { WebSettings as WebSettingsResponse } from '@/server/web-settings/types'
 import {
   defaultOrchestratorUiSettings,
   defaultRuntimeSettingsResponse,
@@ -24,6 +17,13 @@ import {
 import { getWebSettingsAction } from '@/server/web-settings/actions/get-web-settings-action'
 import { resetWebSettingsAction } from '@/server/web-settings/actions/reset-web-settings-action'
 import { saveWebSettingsAction } from '@/server/web-settings/actions/save-web-settings-action'
+import type {
+  GeneralUiSettings,
+  OrchestratorUiSettings,
+  RuntimeUiSettings
+} from '@/features/settings/domain/orchestrator-ui-settings'
+import type { OrchestratorSettingsResponse } from '@/server/orchestrator/settings/types'
+import type { WebSettings as WebSettingsResponse } from '@/server/web-settings/types'
 
 export { defaultOrchestratorUiSettings } from '@/features/settings/domain/orchestrator-ui-settings'
 export type {

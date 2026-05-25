@@ -29,15 +29,15 @@ import {
 @Injectable()
 export class DockerSidecarService implements OnModuleInit {
   private readonly logger = new Logger(DockerSidecarService.name);
-  private readonly wsScrcpyContainerId?: string;
-  private readonly wsScrcpyContainerName: string;
-  private readonly wsScrcpyImage: string;
-  private readonly wsScrcpyBuildContext: string;
-  private readonly wsScrcpyAutoStart: boolean;
-  private readonly wsScrcpyPlatformNetwork?: string;
-  private readonly wsScrcpyPort: number;
-  private readonly wsScrcpyPublishedHostPort: number;
-  private wsScrcpyLastError: string | null = null;
+  private readonly displaySidecarContainerId?: string;
+  private readonly displaySidecarContainerName: string;
+  private readonly displaySidecarImage: string;
+  private readonly displaySidecarBuildContext: string;
+  private readonly displaySidecarAutoStart: boolean;
+  private readonly displaySidecarPlatformNetwork?: string;
+  private readonly displaySidecarPort: number;
+  private readonly displaySidecarPublishedHostPort: number;
+  private displaySidecarLastError: string | null = null;
 
   constructor(
     private readonly config: ConfigService,
@@ -47,29 +47,29 @@ export class DockerSidecarService implements OnModuleInit {
     private readonly images: DockerImageRuntimeService,
     private readonly networks: DockerNetworkRuntimeService,
   ) {
-    this.wsScrcpyContainerId = this.config.get<string>(
-      'app.scrcpy.wsScrcpyContainerId',
+    this.displaySidecarContainerId = this.config.get<string>(
+      'app.displaySidecar.containerId',
     );
-    this.wsScrcpyContainerName = this.config.getOrThrow<string>(
-      'app.scrcpy.wsScrcpyContainerName',
+    this.displaySidecarContainerName = this.config.getOrThrow<string>(
+      'app.displaySidecar.containerName',
     );
-    this.wsScrcpyImage = this.config.getOrThrow<string>(
-      'app.scrcpy.wsScrcpyImage',
+    this.displaySidecarImage = this.config.getOrThrow<string>(
+      'app.displaySidecar.image',
     );
-    this.wsScrcpyBuildContext = this.config.getOrThrow<string>(
-      'app.scrcpy.wsScrcpyBuildContext',
+    this.displaySidecarBuildContext = this.config.getOrThrow<string>(
+      'app.displaySidecar.buildContext',
     );
-    this.wsScrcpyAutoStart = this.config.getOrThrow<boolean>(
-      'app.scrcpy.wsScrcpyAutoStart',
+    this.displaySidecarAutoStart = this.config.getOrThrow<boolean>(
+      'app.displaySidecar.autoStart',
     );
-    this.wsScrcpyPlatformNetwork = this.config.get<string>(
-      'app.scrcpy.wsScrcpyPlatformNetwork',
+    this.displaySidecarPlatformNetwork = this.config.get<string>(
+      'app.displaySidecar.platformNetwork',
     );
-    this.wsScrcpyPort = this.config.getOrThrow<number>(
-      'app.scrcpy.wsScrcpyPort',
+    this.displaySidecarPort = this.config.getOrThrow<number>(
+      'app.displaySidecar.port',
     );
-    this.wsScrcpyPublishedHostPort = this.config.getOrThrow<number>(
-      'app.scrcpy.wsScrcpyPublishedHostPort',
+    this.displaySidecarPublishedHostPort = this.config.getOrThrow<number>(
+      'app.displaySidecar.publishedHostPort',
     );
   }
 
@@ -78,18 +78,18 @@ export class DockerSidecarService implements OnModuleInit {
   }
 
   /**
-   * Starts the ws-scrcpy sidecar lazily on module init when autostart is enabled.
+   * Starts the display sidecar lazily on module init when autostart is enabled.
    * Startup failures are logged and cached for health responses instead of crashing boot.
    */
   onModuleInit() {
-    if (!this.wsScrcpyAutoStart) {
+    if (!this.displaySidecarAutoStart) {
       return;
     }
 
     void this.initializeSidecarOnStartup().catch((error) => {
-      this.wsScrcpyLastError = this.engine.errorMessage(error);
+      this.displaySidecarLastError = this.engine.errorMessage(error);
       this.logger.warn(
-        `ws-scrcpy sidecar was not started automatically: ${this.wsScrcpyLastError}`,
+        `Display sidecar was not started automatically: ${this.displaySidecarLastError}`,
       );
     });
   }
@@ -127,10 +127,10 @@ export class DockerSidecarService implements OnModuleInit {
       return {
         configured: true,
         connected: false,
-        message: `ws-scrcpy sidecar could not be verified on ${networkName}.`,
+        message: `Display sidecar could not be verified on ${networkName}.`,
         error: {
           code: 'adb_unreachable',
-          message: `ws-scrcpy sidecar is not attached to ${networkName}; ADB target DNS will not resolve.`,
+          message: `Display sidecar is not attached to ${networkName}; ADB target DNS will not resolve.`,
           retryable: true,
           exitCode: null,
           command: null,
@@ -143,7 +143,7 @@ export class DockerSidecarService implements OnModuleInit {
     return {
       configured: true,
       connected: true,
-      message: `ws-scrcpy sidecar is attached to ${networkName} as ${sidecarIp}.`,
+      message: `Display sidecar is attached to ${networkName} as ${sidecarIp}.`,
       error: null,
     };
   }
@@ -277,7 +277,7 @@ export class DockerSidecarService implements OnModuleInit {
     } catch (error) {
       const viewerError = this.viewerTargetError(error);
       this.logger.warn(
-        `Unable to prepare ws-scrcpy adb target ${adbHost}:${adbPort}: ${viewerError.message}`,
+        `Unable to prepare display sidecar ADB target ${adbHost}:${adbPort}: ${viewerError.message}`,
       );
       return {
         configured: true,
@@ -345,15 +345,15 @@ export class DockerSidecarService implements OnModuleInit {
         return {
           ok: false,
           status: 'offline',
-          message: this.wsScrcpyAutoStart
-            ? (this.wsScrcpyLastError ??
-              `Sidecar container ${this.wsScrcpyContainerName} is not created yet.`)
+          message: this.displaySidecarAutoStart
+            ? (this.displaySidecarLastError ??
+              `Sidecar container ${this.displaySidecarContainerName} is not created yet.`)
             : 'Sidecar autostart is disabled.',
           details: {
-            image: this.wsScrcpyImage,
-            containerName: this.wsScrcpyContainerName,
-            autoStart: this.wsScrcpyAutoStart,
-            publishedHostPort: this.wsScrcpyPublishedHostPort || null,
+            image: this.displaySidecarImage,
+            containerName: this.displaySidecarContainerName,
+            autoStart: this.displaySidecarAutoStart,
+            publishedHostPort: this.displaySidecarPublishedHostPort || null,
           },
         };
       }
@@ -361,21 +361,21 @@ export class DockerSidecarService implements OnModuleInit {
       const inspect = await sidecar.inspect();
       const running = Boolean(inspect.State?.Running);
       if (running) {
-        this.wsScrcpyLastError = null;
+        this.displaySidecarLastError = null;
       }
 
       return {
         ok: running,
         status: running ? 'healthy' : 'unhealthy',
         message: running
-          ? 'ws-scrcpy sidecar is running.'
-          : `ws-scrcpy sidecar is ${inspect.State?.Status ?? 'not running'}.`,
+          ? 'Display sidecar is running.'
+          : `Display sidecar is ${inspect.State?.Status ?? 'not running'}.`,
         details: {
           containerId: inspect.Id.slice(0, 12),
-          containerName: this.wsScrcpyContainerName,
-          image: this.wsScrcpyImage,
-          port: this.wsScrcpyPort,
-          publishedHostPort: this.wsScrcpyPublishedHostPort || null,
+          containerName: this.displaySidecarContainerName,
+          image: this.displaySidecarImage,
+          port: this.displaySidecarPort,
+          publishedHostPort: this.displaySidecarPublishedHostPort || null,
         },
       };
     } catch (error) {
@@ -384,8 +384,8 @@ export class DockerSidecarService implements OnModuleInit {
         status: 'offline',
         message: this.engine.errorMessage(error),
         details: {
-          image: this.wsScrcpyImage,
-          containerName: this.wsScrcpyContainerName,
+          image: this.displaySidecarImage,
+          containerName: this.displaySidecarContainerName,
         },
       };
     }
@@ -401,19 +401,19 @@ export class DockerSidecarService implements OnModuleInit {
         await this.lifecycle.stopContainer(existing.id, 3);
         await this.lifecycle.startContainer(existing.id);
         await this.cleanupStaleSidecarNetworks(existing);
-        this.wsScrcpyLastError = null;
+        this.displaySidecarLastError = null;
         return existing.id;
       }
 
       const created = await this.ensureSidecar();
       if (!created) {
-        throw new ConflictException('ws-scrcpy sidecar autostart is disabled.');
+        throw new ConflictException('Display sidecar autostart is disabled.');
       }
 
-      this.wsScrcpyLastError = null;
+      this.displaySidecarLastError = null;
       return created.id;
     } catch (error) {
-      this.wsScrcpyLastError = this.engine.errorMessage(error);
+      this.displaySidecarLastError = this.engine.errorMessage(error);
       throw error;
     }
   }
@@ -428,7 +428,7 @@ export class DockerSidecarService implements OnModuleInit {
       return existing;
     }
 
-    if (!this.wsScrcpyAutoStart) {
+    if (!this.displaySidecarAutoStart) {
       return null;
     }
 
@@ -439,40 +439,44 @@ export class DockerSidecarService implements OnModuleInit {
       RestartPolicy: { Name: 'unless-stopped' },
     };
 
-    if (this.wsScrcpyPublishedHostPort > 0) {
+    if (this.displaySidecarPublishedHostPort > 0) {
       hostConfig.PortBindings = {
-        [`${this.wsScrcpyPort}/tcp`]: [
+        [`${this.displaySidecarPort}/tcp`]: [
           {
             HostIp: '0.0.0.0',
-            HostPort: String(this.wsScrcpyPublishedHostPort),
+            HostPort: String(this.displaySidecarPublishedHostPort),
           },
         ],
       };
     }
 
-    if (this.wsScrcpyPlatformNetwork) {
-      hostConfig.NetworkMode = this.wsScrcpyPlatformNetwork;
+    if (this.displaySidecarPlatformNetwork) {
+      hostConfig.NetworkMode = this.displaySidecarPlatformNetwork;
     }
 
-    const networkingConfig = this.wsScrcpyPlatformNetwork
+    const networkingConfig = this.displaySidecarPlatformNetwork
       ? {
           EndpointsConfig: {
-            [this.wsScrcpyPlatformNetwork]: {},
+            [this.displaySidecarPlatformNetwork]: {},
           },
         }
       : undefined;
 
     const container = await this.docker.createContainer({
-      Image: this.wsScrcpyImage,
-      name: this.wsScrcpyContainerName,
+      Image: this.displaySidecarImage,
+      name: this.displaySidecarContainerName,
       Env: [
-        'WS_SCRCPY_PATHNAME=/viewer/ws-scrcpy',
-        'WS_SCRCPY_CONFIG=/etc/ws-scrcpy/config.yaml',
+        `PORT=${this.displaySidecarPort}`,
+        ...(this.config.get<string>('app.sharedSecret')
+          ? [
+              `ORCHESTRATOR_SHARED_SECRET=${this.config.get<string>('app.sharedSecret')}`,
+            ]
+          : []),
       ],
       ExposedPorts: {
-        [`${this.wsScrcpyPort}/tcp`]: {},
+        [`${this.displaySidecarPort}/tcp`]: {},
       },
-      Labels: this.engine.labels('platform', 'scrcpy-sidecar'),
+      Labels: this.engine.labels('platform', 'display-sidecar'),
       HostConfig: hostConfig,
       NetworkingConfig: networkingConfig,
     });
@@ -487,7 +491,7 @@ export class DockerSidecarService implements OnModuleInit {
     }
 
     await this.cleanupStaleSidecarNetworks(sidecar);
-    this.wsScrcpyLastError = null;
+    this.displaySidecarLastError = null;
     return sidecar;
   }
 
@@ -509,12 +513,12 @@ export class DockerSidecarService implements OnModuleInit {
     );
 
     this.logger.log(
-      `Detached ws-scrcpy sidecar from stale networks: ${staleNetworkNames.join(', ')}`,
+      `Detached display sidecar from stale networks: ${staleNetworkNames.join(', ')}`,
     );
   }
 
   private isStaleSidecarNetwork(networkName: string) {
-    if (networkName === this.wsScrcpyPlatformNetwork) {
+    if (networkName === this.displaySidecarPlatformNetwork) {
       return false;
     }
 
@@ -522,9 +526,9 @@ export class DockerSidecarService implements OnModuleInit {
   }
 
   private async findSidecar() {
-    if (this.wsScrcpyContainerId) {
+    if (this.displaySidecarContainerId) {
       try {
-        const container = this.docker.getContainer(this.wsScrcpyContainerId);
+        const container = this.docker.getContainer(this.displaySidecarContainerId);
         await container.inspect();
         return container;
       } catch (error) {
@@ -535,7 +539,7 @@ export class DockerSidecarService implements OnModuleInit {
     }
 
     const existing = await this.lifecycle.findContainerByName(
-      this.wsScrcpyContainerName,
+      this.displaySidecarContainerName,
     );
     return existing ? this.docker.getContainer(existing.Id) : null;
   }
@@ -544,16 +548,16 @@ export class DockerSidecarService implements OnModuleInit {
    * Builds the sidecar image from the local build context when it is missing.
    */
   private async ensureSidecarImage() {
-    if (await this.images.imageExists(this.wsScrcpyImage)) {
+    if (await this.images.imageExists(this.displaySidecarImage)) {
       return;
     }
 
     this.logger.log(
-      `Building missing ws-scrcpy sidecar image ${this.wsScrcpyImage} from ${this.wsScrcpyBuildContext}.`,
+      `Building missing display sidecar image ${this.displaySidecarImage} from ${this.displaySidecarBuildContext}.`,
     );
-    const context = await this.createBuildContextTar(this.wsScrcpyBuildContext);
+    const context = await this.createBuildContextTar(this.displaySidecarBuildContext);
     const stream = await this.docker.buildImage(context, {
-      t: this.wsScrcpyImage,
+      t: this.displaySidecarImage,
     });
     await new Promise<void>((resolve, reject) => {
       this.docker.modem.followProgress(
@@ -569,7 +573,7 @@ export class DockerSidecarService implements OnModuleInit {
         (event) => {
           const message = event.stream?.trim() || event.errorDetail?.message;
           if (message) {
-            this.logger.debug(`[ws-scrcpy build] ${message}`);
+            this.logger.debug(`[display-sidecar build] ${message}`);
           }
         },
       );
@@ -583,7 +587,7 @@ export class DockerSidecarService implements OnModuleInit {
     const directoryStat = await stat(directory);
     if (!directoryStat.isDirectory()) {
       throw new ConflictException(
-        `ws-scrcpy build context is not a directory: ${directory}`,
+        `Display sidecar build context is not a directory: ${directory}`,
       );
     }
 
@@ -645,7 +649,7 @@ export class DockerSidecarService implements OnModuleInit {
    */
   private sidecarUnavailableStatus(): ViewerTargetStatus {
     const message =
-      'ws-scrcpy sidecar is not available. Build the sidecar image or disable WS_SCRCPY_AUTO_START.';
+      'Display sidecar is not available. Build the sidecar image or disable DISPLAY_SIDECAR_AUTO_START.';
 
     return {
       configured: false,

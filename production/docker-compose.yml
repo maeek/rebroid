@@ -15,19 +15,27 @@ services:
       DATABASE_PATH: /data/config/orchestrator.sqlite
       SETTINGS_PATH: /data/config/orchestrator-settings.json
       UPLOADS_DIR: /data/uploads
+
       ORCHESTRATOR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
       ORCHESTRATOR_SHARED_SECRET_FILE: /data/secrets/orchestrator-secret
+      
       CONTAINER_IMAGE: ${CONTAINER_IMAGE:-redroid/redroid:13.0.0-latest}
       REDROID_ADB_PORT: ${REDROID_ADB_PORT:-5555}
       REDROID_PRIVILEGED: ${REDROID_PRIVILEGED:-true}
+      
       ORCHESTRATOR_INTERNAL_DOCKER: ${ORCHESTRATOR_INTERNAL_DOCKER:-false}
+      
       DOCKER_STORAGE_DRIVER: ${DOCKER_STORAGE_DRIVER:-vfs}
+      
       MAX_APK_UPLOAD_SIZE_MB: ${MAX_APK_UPLOAD_SIZE_MB:-4096}
+
       CONTAINER_SECURITY_OPTS: ${CONTAINER_SECURITY_OPTS:-}
       IPTABLES_POLICY_ENABLED: ${IPTABLES_POLICY_ENABLED:-false}
-      WS_SCRCPY_IMAGE: localhost/rebroid/ws-scrcpy-sidecar:local
-      WS_SCRCPY_AUTO_START: "true"
-      WS_SCRCPY_PUBLISHED_HOST_PORT: ${WS_SCRCPY_PUBLISHED_HOST_PORT:-}
+
+      DISPLAY_SIDECAR_IMAGE: localhost/rebroid/display-sidecar:local
+      DISPLAY_SIDECAR_AUTO_START: "true"
+      DISPLAY_SIDECAR_INTERNAL_BASE_URL: ${DISPLAY_SIDECAR_INTERNAL_BASE_URL:-http://rebroid-display-sidecar:8000}
+      DISPLAY_SIDECAR_PUBLISHED_HOST_PORT: ${DISPLAY_SIDECAR_PUBLISHED_HOST_PORT:-}
     cap_add:
       - NET_ADMIN
     expose:
@@ -50,41 +58,48 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PROXY_CLIENT_MAX_BODY_SIZE: ${NEXT_PROXY_CLIENT_MAX_BODY_SIZE:-4096mb}
-        WS_SCRCPY_INTERNAL_BASE_URL: ${WS_SCRCPY_INTERNAL_BASE_URL:-http://rebroid-ws-scrcpy:8000}
+        DISPLAY_SIDECAR_INTERNAL_BASE_URL: ${DISPLAY_SIDECAR_INTERNAL_BASE_URL:-http://rebroid-display-sidecar:8000}
     image: localhost/rebroid/web:local
     container_name: rebroid-web
     restart: unless-stopped
     depends_on:
       - orchestrator
-      - ws-scrcpy
+      - display-sidecar
     environment:
       NODE_ENV: production
       ORCHESTRATOR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
       ORCHESTRATOR_SHARED_SECRET_FILE: /data/secrets/orchestrator-secret
-      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
-      WS_SCRCPY_INTERNAL_BASE_URL: ${WS_SCRCPY_INTERNAL_BASE_URL:-http://rebroid-ws-scrcpy:8000}
+      INITIAL_ADMIN_PASSWORD: admin
+      # ${INITIAL_ADMIN_PASSWORD:-}
+      REBROID_TLS_HOSTS: ${REBROID_TLS_HOSTS:-localhost,127.0.0.1}
+      DISPLAY_SIDECAR_INTERNAL_BASE_URL: ${DISPLAY_SIDECAR_INTERNAL_BASE_URL:-http://rebroid-display-sidecar:8000}
     ports:
-      - "${REBROID_PORT:-3001}:3001"
+      - "${REBROID_HTTPS_PORT:-3443}:3443"
     volumes:
       - web-data:/data
       - shared-secrets:/data/secrets
     networks:
       - platform
 
-  ws-scrcpy:
+  display-sidecar:
     platform: linux/amd64
     build:
-      context: ./ws-scrcpy-sidecar
+      context: ./display-sidecar
       dockerfile: Dockerfile
-    image: localhost/rebroid/ws-scrcpy-sidecar:local
-    container_name: rebroid-ws-scrcpy
+    image: localhost/rebroid/display-sidecar:local
+    container_name: rebroid-display-sidecar
     restart: unless-stopped
+    environment:
+      ORCHESTRATOR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
+      ORCHESTRATOR_SHARED_SECRET_FILE: /data/secrets/orchestrator-secret
     expose:
       - "8000"
+    volumes:
+      - shared-secrets:/data/secrets
     networks:
       platform:
         aliases:
-          - rebroid-ws-scrcpy
+          - rebroid-display-sidecar
 
 volumes:
   orchestrator-data:

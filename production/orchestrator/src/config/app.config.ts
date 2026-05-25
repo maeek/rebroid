@@ -39,9 +39,13 @@ export default registerAs('app', () => {
   const runtimeLogsDir = process.env.RUNTIME_LOGS_DIR ?? './data/runtime-logs';
   const sharedSecret = process.env.ORCHESTRATOR_SHARED_SECRET?.trim();
   const resourcePrefix = process.env.DOCKER_RESOURCE_PREFIX ?? 'rebroid';
-  const defaultWsScrcpyBuildContext = existsSync('/app/ws-scrcpy-sidecar')
-    ? '/app/ws-scrcpy-sidecar'
-    : '../ws-scrcpy-sidecar';
+  const defaultDisplaySidecarBuildContext = existsSync('/app/display-sidecar')
+    ? '/app/display-sidecar'
+    : '../display-sidecar';
+  const displaySidecarContainerName =
+    process.env.DISPLAY_SIDECAR_CONTAINER_NAME ??
+    `${resourcePrefix}-display-sidecar`;
+  const displaySidecarPort = number(process.env.DISPLAY_SIDECAR_PORT, 8000);
 
   return {
     nodeEnv: process.env.NODE_ENV ?? 'development',
@@ -90,25 +94,27 @@ export default registerAs('app', () => {
       maxApkUploadSizeMb: number(process.env.MAX_APK_UPLOAD_SIZE_MB, 4096),
       securityOptions: csv(process.env.CONTAINER_SECURITY_OPTS, []),
     },
-    scrcpy: {
-      wsScrcpyContainerId: process.env.WS_SCRCPY_CONTAINER_ID || undefined,
-      wsScrcpyContainerName:
-        process.env.WS_SCRCPY_CONTAINER_NAME ?? `${resourcePrefix}-ws-scrcpy`,
-      wsScrcpyImage:
-        process.env.WS_SCRCPY_IMAGE ?? 'rebroid/ws-scrcpy-sidecar:latest',
-      wsScrcpyBuildContext: resolve(
-        process.env.WS_SCRCPY_BUILD_CONTEXT ?? defaultWsScrcpyBuildContext,
+    displaySidecar: {
+      containerId: process.env.DISPLAY_SIDECAR_CONTAINER_ID || undefined,
+      containerName: displaySidecarContainerName,
+      image: process.env.DISPLAY_SIDECAR_IMAGE ?? 'rebroid/display-sidecar:latest',
+      buildContext: resolve(
+        process.env.DISPLAY_SIDECAR_BUILD_CONTEXT ??
+          defaultDisplaySidecarBuildContext,
       ),
-      wsScrcpyAutoStart: bool(process.env.WS_SCRCPY_AUTO_START, true),
-      wsScrcpyPlatformNetwork:
-        process.env.WS_SCRCPY_PLATFORM_NETWORK || undefined,
-      wsScrcpyPort: number(process.env.WS_SCRCPY_PORT, 8000),
-      wsScrcpyPublishedHostPort: number(
-        process.env.WS_SCRCPY_PUBLISHED_HOST_PORT,
+      autoStart: bool(process.env.DISPLAY_SIDECAR_AUTO_START, true),
+      platformNetwork:
+        process.env.DISPLAY_SIDECAR_PLATFORM_NETWORK || undefined,
+      port: displaySidecarPort,
+      publishedHostPort: number(
+        process.env.DISPLAY_SIDECAR_PUBLISHED_HOST_PORT,
         0,
       ),
-      wsScrcpyPlayer: process.env.WS_SCRCPY_PLAYER ?? 'tinyh264',
-      wsScrcpyProxyRemote: process.env.WS_SCRCPY_PROXY_REMOTE || 'tcp:8886',
+      internalBaseUrl:
+        process.env.DISPLAY_SIDECAR_INTERNAL_BASE_URL ??
+        `http://${displaySidecarContainerName}:${displaySidecarPort}`,
+      player: process.env.DISPLAY_SIDECAR_PLAYER ?? 'webcodecs',
+      proxyRemote: process.env.DISPLAY_SIDECAR_PROXY_REMOTE ?? 'tcp:8886',
     },
   };
 });

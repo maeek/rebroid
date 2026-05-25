@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rebroid Display</title>
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; background: #020617; color: #f8fafc; font: 14px system-ui, sans-serif; overflow: hidden; }
+    main { width: 100%; height: 100%; display: grid; place-items: center; background: radial-gradient(circle at 50% 42%, rgba(34, 197, 94, .14), transparent 34%), #020617; }
+    canvas { display: block; max-width: 100%; max-height: 100%; object-fit: contain; background: #000; touch-action: none; cursor: crosshair; }
+    section { width: min(420px, calc(100% - 32px)); box-sizing: border-box; text-align: center; }
+    .device { position: relative; margin: 0 auto 22px; width: 116px; height: 156px; border: 2px solid rgba(148, 163, 184, .38); border-radius: 28px; background: linear-gradient(160deg, #111827, #020617 72%); box-shadow: 0 24px 70px rgba(0, 0, 0, .36); }
+    .device::before { content: ""; position: absolute; left: 42px; top: 9px; width: 32px; height: 4px; border-radius: 999px; background: rgba(148, 163, 184, .48); }
+    .device::after { content: ""; position: absolute; left: 42px; bottom: 13px; width: 32px; height: 32px; border-radius: 50%; background: rgba(34, 197, 94, .18); box-shadow: 0 0 0 10px rgba(34, 197, 94, .08); }
+    .face { position: absolute; left: 23px; right: 23px; top: 54px; display: flex; justify-content: space-between; }
+    .eye { width: 12px; height: 12px; border-radius: 50%; background: #22c55e; }
+    .signal { position: absolute; right: -13px; top: 40px; width: 28px; height: 28px; border: 2px solid rgba(34, 197, 94, .6); border-left: 0; border-bottom: 0; border-radius: 0 24px 0 0; }
+    h1 { margin: 0 0 8px; font-size: 20px; letter-spacing: 0; }
+    p { margin: 8px 0 0; color: #cbd5e1; line-height: 1.45; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <main>
+    <canvas id="screen" class="hidden"></canvas>
+    <section id="message">
+      <div class="device" aria-hidden="true">
+        <div class="signal"></div>
+        <div class="face"><span class="eye"></span><span class="eye"></span></div>
+      </div>
+      <h1 id="message-title">Starting live display</h1>
+      <p id="message-copy">Rebroid is opening the app screen.</p>
+      <p id="status">Connecting...</p>
+    </section>
+  </main>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const sessionId = params.get('sessionId');
+    const token = params.get('token');
+    const title = document.getElementById('message-title');
+    const copy = document.getElementById('message-copy');
+    const status = document.getElementById('status');
+    const message = document.getElementById('message');
+    const canvas = document.getElementById('screen');
+    const ctx = canvas.getContext('2d', { alpha: false });
+    const keyboardEventMessageType = 'rebroid-viewer-keyboard-event';
+    const keyboardCaptureMessageType = 'rebroid-viewer-keyboard-capture';
+    let keyboardCaptureEnabled = false;
+    let decoder = null;
+    let configured = false;
+    let codecName = null;
+    let sps = null;
+    let pps = null;
+    let pendingNals = [];
+    let streamBuffer = new Uint8Array(0);
+    let streamQueue = Promise.resolve();
+    let timestamp = 0;
+    let flushTimer = 0;
+    let framesDecoded = 0;
+    let needsKeyFrame = true;
+    let activeWs = null;
+    let reconnectTimer = 0;
+    let reconnectAttempt = 0;
+    let streamGeneration = 0;
+    let closedByPage = false;
+
+    function showStatus(text, nextTitle, nextCopy) {
+      if (nextTitle) title.textContent = nextTitle;
+      if (nextCopy) copy.textContent = nextCopy;
+      status.textContent = text;
+      message.classList.remove('hidden');
+    }
+
+    function showFailure(text) {
+      showStatus(text, 'Live display paused', 'The app screen did not start cleanly.');
+    }
+
+    function showCanvas() {
+      canvas.classList.remove('hidden');
+      message.classList.add('hidden');
+    }
+
+    function resetStreamState() {
+      clearTimeout(flushTimer);
+      pendingNals = [];
+      streamBuffer = new Uint8Array(0);
+      streamQueue = Promise.resolve();
+      timestamp = 0;
+      needsKeyFrame = true;
+      configured = false;
+      codecName = null;
+      sps = null;
+      pps = null;
+
+      if (decoder) {
+        try {
+          decoder.close();
+        } catch {
+          // Decoder may already be closed after an async WebCodecs error.
+        }
+        decoder = null;
+      }
+    }
+
+    function scheduleReconnect(event) {
+      if (closedByPage || reconnectTimer) {
+        return;
+      }
+
+      streamGeneration += 1;
+      resetStreamState();
+      const hadFrames = framesDecoded > 0;
+      if (!hadFrames && reconnectAttempt >= 8) {
+        console.warn('Display stream closed before video was decoded.', {
+          code: event?.code,
+          reason: event?.reason,
+        });
+        showFailure('Refresh the viewer or restart the app.');
+        return;
+      }
+
+      const delay = Math.min(300 * 2 ** reconnectAttempt, 2_500);
+      reconnectAttempt += 1;
+      if (!hadFrames) {
+        showStatus('Reconnecting...', 'Starting live display', 'Rebroid is opening the app screen.');
+      } else {
+        console.warn('Display stream closed; reconnecting.', {
+          code: event?.code,
+          reason: event?.reason,
+        });
+      }
+
+      reconnectTimer = window.setTimeout(() => {
+        reconnectTimer = 0;
+        connectStream().catch(error => {
+          console.warn('Could not reconnect display stream.', error);
+          scheduleReconnect();
+        });
+      }, delay);
+    }
+
+    window.addEventListener('pagehide', () => {
+      closedByPage = true;
+      if (activeWs && activeWs.readyState === WebSocket.OPEN) {
+        activeWs.close(1000, 'viewer closed');
+      }
+    });
+
+    async function postPublic(path, payload) {
+      if (!sessionId || !token) {
+        return;
+      }
+
+      await fetch('/rebroid/display/public/sessions/' + encodeURIComponent(sessionId) + '/' + path, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ token, ...payload }),
+      });
+    }
+
+    window.addEventListener('message', event => {
+      const data = event.data || {};
+      if (data.type === keyboardCaptureMessageType && typeof data.enabled === 'boolean') {
+        keyboardCaptureEnabled = data.enabled;
+        return;
+      }
+
+      if (data.type !== keyboardEventMessageType || !keyboardCaptureEnabled) {
+        return;
+      }
+
+      postPublic('keyboard', {
+        eventType: data.eventType,
+        key: data.key,
+        code: data.code,
+        repeat: data.repeat,
+        altKey: data.altKey,
+        ctrlKey: data.ctrlKey,
+        metaKey: data.metaKey,
+        shiftKey: data.shiftKey,
+      }).catch(() => undefined);
+    });
+
+    function canvasPoint(event) {
+      const rect = canvas.getBoundingClientRect();
+      if (!rect.width || !rect.height || !canvas.width || !canvas.height) {
+        return null;
+      }
+
+      return {
+        x: Math.round(((event.clientX - rect.left) / rect.width) * canvas.width),
+        y: Math.round(((event.clientY - rect.top) / rect.height) * canvas.height),
+      };
+    }
+
+    function postTouch(payload) {
+      return postPublic('touch', {
+        ...payload,
+        videoWidth: canvas.width,
+        videoHeight: canvas.height,
+      });
+    }
+
+    let pointerStart = null;
+    canvas.addEventListener('pointerdown', event => {
+      if (canvas.classList.contains('hidden') || (event.pointerType === 'mouse' && event.button !== 0)) {
+        return;
+      }
+
+      const point = canvasPoint(event);
+      if (!point) {
+        return;
+      }
+
+      event.preventDefault();
+      canvas.setPointerCapture(event.pointerId);
+      pointerStart = {
+        id: event.pointerId,
+        point,
+        startedAt: performance.now(),
+      };
+    });
+
+    canvas.addEventListener('pointerup', event => {
+      if (!pointerStart || pointerStart.id !== event.pointerId) {
+        return;
+      }
+
+      const point = canvasPoint(event);
+      const start = pointerStart;
+      pointerStart = null;
+      if (!point) {
+        return;
+      }
+
+      event.preventDefault();
+      const durationMs = Math.max(50, Math.round(performance.now() - start.startedAt));
+      const distance = Math.hypot(point.x - start.point.x, point.y - start.point.y);
+      if (distance < 8 && durationMs < 500) {
+        postTouch({ action: 'tap', x: point.x, y: point.y }).catch(() => undefined);
+        return;
+      }
+
+      postTouch({
+        action: 'swipe',
+        x1: start.point.x,
+        y1: start.point.y,
+        x2: point.x,
+        y2: point.y,
+        durationMs,
+      }).catch(() => undefined);
+    });
+
+    canvas.addEventListener('pointercancel', event => {
+      if (pointerStart?.id === event.pointerId) {
+        pointerStart = null;
+      }
+    });
+
+    function concatBytes(parts) {
+      const total = parts.reduce((sum, part) => sum + part.byteLength, 0);
+      const output = new Uint8Array(total);
+      let offset = 0;
+      for (const part of parts) {
+        output.set(part, offset);
+        offset += part.byteLength;
+      }
+      return output;
+    }
+
+    function findStartCodes(bytes) {
+      const offsets = [];
+      for (let i = 0; i < bytes.length - 3; i += 1) {
+        if (bytes[i] === 0 && bytes[i + 1] === 0 && bytes[i + 2] === 1) {
+          offsets.push({ index: i, length: 3 });
+          i += 2;
+        } else if (bytes[i] === 0 && bytes[i + 1] === 0 && bytes[i + 2] === 0 && bytes[i + 3] === 1) {
+          offsets.push({ index: i, length: 4 });
+          i += 3;
+        }
+      }
+      return offsets;
+    }
+
+    async function appendStreamBytes(bytes) {
+      streamBuffer = concatBytes([streamBuffer, bytes]);
+      const starts = findStartCodes(streamBuffer);
+      if (starts.length < 2) {
+        return;
+      }
+
+      for (let i = 0; i < starts.length - 1; i += 1) {
+        const current = starts[i];
+        const next = starts[i + 1];
+        const nal = streamBuffer.slice(current.index + current.length, next.index);
+        if (nal.byteLength > 0) {
+          await handleNal(nal);
+        }
+      }
+
+      streamBuffer = streamBuffer.slice(starts[starts.length - 1].index);
+    }
+
+    function h264CodecFromSps(spsBytes) {
+      if (spsBytes.byteLength < 4) {
+        return 'avc1.42E01F';
+      }
+      return 'avc1.' + [spsBytes[1], spsBytes[2], spsBytes[3]]
+        .map(value => value.toString(16).padStart(2, '0'))
+        .join('')
+        .toUpperCase();
+    }
+
+    async function configureDecoder(nextCodec) {
+      if (configured && codecName === nextCodec) {
+        return;
+      }
+
+      if (decoder) {
+        try {
+          decoder.close();
+        } catch {
+          // Decoder may already be closed after an async WebCodecs error.
+        }
+      }
+
+      configured = false;
+      needsKeyFrame = true;
+      codecName = nextCodec;
+      const config = { codec: nextCodec, optimizeForLatency: true };
+      const support = await VideoDecoder.isConfigSupported(config).catch(() => ({ supported: false }));
+      if (!support.supported) {
+        console.warn('Display decoder config is not supported.', { codec: nextCodec });
+        throw new Error('This browser cannot play the live display.');
+      }
+
+      decoder = new VideoDecoder({
+        output(frame) {
+          canvas.width = frame.displayWidth || frame.codedWidth;
+          canvas.height = frame.displayHeight || frame.codedHeight;
+          ctx.drawImage(frame, 0, 0, canvas.width, canvas.height);
+          frame.close();
+          framesDecoded += 1;
+          reconnectAttempt = 0;
+          showCanvas();
+        },
+        error(error) {
+          console.warn('Display decoder failed.', error);
+          configured = false;
+          decoder = null;
+          needsKeyFrame = true;
+          pendingNals = [];
+          if (sps) {
+            configureDecoder(h264CodecFromSps(sps)).catch(reconfigureError => {
+              console.warn('Could not reconfigure display decoder.', reconfigureError);
+            });
+          }
+          if (framesDecoded === 0) {
+            showStatus('Waiting for a clean frame...', 'Starting live display', 'Rebroid is opening the app screen.');
+          }
+        },
+      });
+      decoder.configure(config);
+      configured = true;
+    }
+
+    function h264NalType(nal) {
+      return nal[0] & 0x1f;
+    }
+
+    function isH264Slice(type) {
+      return type === 1 || type === 5;
+    }
+
+    function scheduleFlush() {
+      clearTimeout(flushTimer);
+      flushTimer = window.setTimeout(() => flushAccessUnit(), 12);
+    }
+
+    async function flushAccessUnit() {
+      clearTimeout(flushTimer);
+      if (!pendingNals.length) {
+        return;
+      }
+
+      if (!decoder || !configured) {
+        pendingNals = [];
+        return;
+      }
+
+      const hasIdr = pendingNals.some(nal => h264NalType(nal) === 5);
+      if (needsKeyFrame && !hasIdr) {
+        pendingNals = [];
+        return;
+      }
+
+      if (hasIdr && (!sps || !pps)) {
+        pendingNals = [];
+        needsKeyFrame = true;
+        return;
+      }
+
+      const nals = hasIdr ? [sps, pps, ...pendingNals] : pendingNals;
+      pendingNals = [];
+      const chunkBytes = concatBytes(nals.map(nal => concatBytes([new Uint8Array([0, 0, 0, 1]), nal])));
+      const chunk = new EncodedVideoChunk({
+        type: hasIdr ? 'key' : 'delta',
+        timestamp,
+        data: chunkBytes,
+      });
+      timestamp += 16_667;
+      try {
+        decoder.decode(chunk);
+        if (hasIdr) {
+          needsKeyFrame = false;
+        }
+      } catch (error) {
+        console.warn('Could not decode display chunk.', error);
+        needsKeyFrame = true;
+      }
+    }
+
+    async function handleNal(nal) {
+      const type = h264NalType(nal);
+      if (type === 7) {
+        if (pendingNals.length) {
+          await flushAccessUnit();
+        }
+        sps = nal;
+        await configureDecoder(h264CodecFromSps(nal));
+        return;
+      }
+
+      if (type === 8) {
+        if (pendingNals.length) {
+          await flushAccessUnit();
+        }
+        pps = nal;
+        return;
+      }
+
+      if (isH264Slice(type) && pendingNals.some(existing => isH264Slice(h264NalType(existing)))) {
+        await flushAccessUnit();
+      }
+
+      pendingNals.push(nal);
+      scheduleFlush();
+    }
+
+    async function connectStream() {
+      if (!sessionId || !token) {
+        showFailure('Open the viewer again from the app page.');
+        return;
+      }
+
+      if (!('VideoDecoder' in window) || !('EncodedVideoChunk' in window)) {
+        showFailure('Open Rebroid over HTTPS in a compatible browser and try again.');
+        return;
+      }
+
+      const generation = ++streamGeneration;
+      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const streamParams = new URLSearchParams(location.search);
+      streamParams.set('sessionId', sessionId);
+      streamParams.set('token', token);
+      if (!streamParams.has('codec')) streamParams.set('codec', 'h264');
+      if (!streamParams.has('maxSize')) streamParams.set('maxSize', '1080');
+      if (!streamParams.has('maxFps')) streamParams.set('maxFps', '60');
+      if (!streamParams.has('bitrate')) streamParams.set('bitrate', '7000000');
+      if (!streamParams.has('iFrameInterval')) streamParams.set('iFrameInterval', '1');
+
+      const ws = new WebSocket(protocol + '//' + location.host + '/rebroid/display/stream?' + streamParams.toString());
+      activeWs = ws;
+      ws.binaryType = 'arraybuffer';
+      ws.addEventListener('open', () => {
+        if (generation !== streamGeneration) {
+          return;
+        }
+        if (framesDecoded === 0) {
+          showStatus('Waiting for the first frame...', 'Starting live display', 'Rebroid is opening the app screen.');
+        }
+      });
+      ws.addEventListener('message', async event => {
+        if (generation !== streamGeneration) {
+          return;
+        }
+        if (typeof event.data === 'string') {
+          try {
+            const payload = JSON.parse(event.data);
+            if (payload.type === 'reconnecting') {
+              resetStreamState();
+              if (framesDecoded === 0) {
+                showStatus(payload.message || 'Reconnecting live display...');
+              }
+              return;
+            }
+
+            if (framesDecoded === 0) {
+              showStatus(payload.message || 'Preparing live display...');
+            }
+          } catch {
+            if (framesDecoded === 0) {
+              showStatus('Preparing live display...');
+            }
+          }
+          return;
+        }
+        streamQueue = streamQueue
+          .then(() => appendStreamBytes(new Uint8Array(event.data)))
+          .catch(error => {
+            console.warn('Could not process display bytes.', error);
+            needsKeyFrame = true;
+          });
+        await streamQueue;
+      });
+      ws.addEventListener('close', event => {
+        if (generation !== streamGeneration) {
+          return;
+        }
+        if (activeWs === ws) {
+          activeWs = null;
+        }
+        scheduleReconnect(event);
+      });
+      ws.addEventListener('error', event => {
+        if (generation !== streamGeneration) {
+          return;
+        }
+        if (framesDecoded === 0) {
+          showStatus('Reconnecting...', 'Starting live display', 'Rebroid is opening the app screen.');
+        }
+        console.warn('Display stream socket error.', event);
+      });
+    }
+
+    connectStream().catch(() => scheduleReconnect());
+  </script>
+</body>
+</html>

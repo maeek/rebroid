@@ -40,7 +40,7 @@ const isEditableKeyboardTarget = (target: EventTarget | null) => {
   )
 }
 
-export const ScrcpyViewerFrame = ({
+export const DisplayViewerFrame = ({
   src,
   keyboardCaptureEnabled
 }: {
@@ -49,6 +49,9 @@ export const ScrcpyViewerFrame = ({
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const enabledRef = useRef(keyboardCaptureEnabled)
+  const viewerOriginRef = useRef<string | null>(null)
+
+  const getViewerOrigin = () => viewerOriginRef.current ?? window.location.origin
 
   const postKeyboardCapturePreference = (enabled: boolean) => {
     const targetWindow = iframeRef.current?.contentWindow
@@ -61,7 +64,7 @@ export const ScrcpyViewerFrame = ({
         type: keyboardCaptureMessageType,
         enabled
       },
-      window.location.origin
+      getViewerOrigin()
     )
   }
 
@@ -80,10 +83,19 @@ export const ScrcpyViewerFrame = ({
   }, [keyboardCaptureEnabled])
 
   useEffect(() => {
+    try {
+      viewerOriginRef.current = new URL(src, window.location.href).origin
+    } catch {
+      viewerOriginRef.current = window.location.origin
+    }
+  }, [src])
+
+  useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin || !isKeyboardCaptureMessage(event.data)) {
-        if (event.origin === window.location.origin && isKeyboardEventMessage(event.data)) {
-          iframeRef.current?.contentWindow?.postMessage(event.data, window.location.origin)
+      const viewerOrigin = getViewerOrigin()
+      if (event.origin !== viewerOrigin || !isKeyboardCaptureMessage(event.data)) {
+        if (event.origin === viewerOrigin && isKeyboardEventMessage(event.data)) {
+          iframeRef.current?.contentWindow?.postMessage(event.data, viewerOrigin)
         }
         return
       }
@@ -129,7 +141,7 @@ export const ScrcpyViewerFrame = ({
           numLock: event.getModifierState('NumLock'),
           scrollLock: event.getModifierState('ScrollLock')
         },
-        window.location.origin
+        getViewerOrigin()
       )
     }
 
@@ -145,7 +157,7 @@ export const ScrcpyViewerFrame = ({
   return (
     <iframe
       ref={iframeRef}
-      title='scrcpy viewer'
+      title='display viewer'
       src={src}
       className='h-screen w-screen border-0 bg-black'
       allow='fullscreen; clipboard-read; clipboard-write; autoplay'

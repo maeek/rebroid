@@ -8,7 +8,7 @@
     "format": "prettier --check --ignore-path .gitignore .",
     "format:fix": "prettier --write --ignore-path .gitignore .",
     "eslint": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
-    "lint": "next lint",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "start": "next start -p 3001"
   },
   "dependencies": {
@@ -54,7 +54,7 @@
     "react-dom": "^19",
     "react-i18next": "^17",
     "react-monaco-editor": "^0.59.0",
-    "react-resizable-panels": "^4.11.1",
+    "react-resizable-panels": "^4.11.2",
     "recharts": "^3.8.1",
     "tailwind-merge": "^3.6.0",
     "tailwindcss-animate": "^1.0.7",
@@ -94,9 +94,9 @@
     "jest-resolve": "30.4.1",
     "jest-watch-typeahead": "3.0.1",
     "msw": "^2.14.6",
-    "postcss": "^8.5.14",
+    "postcss": "^8.5.15",
     "prettier": "^3.8.3",
-    "sass": "^1.99.0",
+    "sass": "^1.100.0",
     "tailwindcss": "^4.3.0",
     "typescript": "^5",
     "whatwg-fetch": "^3.6.20"

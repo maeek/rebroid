@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { AppNotFoundSplash } from '@/features/applications/components/app-not-found-splash'
 import { AppDefinition } from '@/features/applications/domain/app-definition'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { getAppRefreshIntervalMs } from '@/features/applications/domain/refresh'
@@ -10,7 +11,6 @@ import {
   loadViewerSettings,
   saveViewerSettings
 } from '@/features/applications/viewer/viewer-settings'
-import { AppNotFoundSplash } from '@/features/applications/components/app-not-found-splash'
 import { ProtectedSplitPageLayout, ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { useForegroundRefresh } from '@/hooks/use-foreground-refresh'
 import { getApplicationAction } from '@/server/orchestrator/applications/read-actions'

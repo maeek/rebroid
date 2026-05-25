@@ -9,7 +9,13 @@ const normalizeNotificationValue = (value?: string | null) => {
     .replace(/\\n/g, ' ')
     .replace(/\s+/g, ' ');
 
-  if (!normalized || normalized === 'null' || normalized === '[]') {
+  if (
+    !normalized ||
+    normalized === 'null' ||
+    normalized === '[]' ||
+    normalized === '0' ||
+    normalized.length > 300
+  ) {
     return null;
   }
 
@@ -59,6 +65,10 @@ const splitNotificationBlocks = (output: string) => {
 };
 
 const parseNotificationBlock = (raw: string) => {
+  if (!/(NotificationRecord|StatusBarNotification)/.test(raw)) {
+    return null;
+  }
+
   const packageName =
     extractNotificationValue(raw, [
       /(?:^|[\s\(])pkg=([^\s,\)]+)/m,
@@ -67,6 +77,7 @@ const parseNotificationBlock = (raw: string) => {
   const title =
     extractNotificationValue(raw, [
       /^\s*android\.title=(.+)$/m,
+      /android\.title=String \((.*?)\)/m,
       /(?:^|\s)title=([^,\n]+)/,
       /^\s*title=(.+)$/m,
       /(?:^|\s)tickerText=([^,\n]+)/,
@@ -76,36 +87,40 @@ const parseNotificationBlock = (raw: string) => {
     extractNotificationValue(raw, [
       /^\s*android\.bigText=(.+)$/m,
       /^\s*android\.text=(.+)$/m,
+      /android\.bigText=String \((.*?)\)/m,
+      /android\.text=String \((.*?)\)/m,
       /(?:^|\s)text=([^,\n]+)/,
       /^\s*text=(.+)$/m,
       /(?:^|\s)content(?:Text)?=([^,\n]+)/,
       /^\s*content(?:Text)?=(.+)$/m,
       /(?:^|\s)tickerText=([^,\n]+)/,
       /^\s*tickerText=(.+)$/m,
-    ]) ??
-    normalizeNotificationValue(raw.split('\n')[0]) ??
-    raw;
+    ]) ?? null;
 
-  return { packageName, title, text, raw };
-};
+  if (!title && !text) {
+    return null;
+  }
 
-const parseSingleLineNotifications = (output: string) => {
-  return output
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .filter((line) => /Notification|pkg=|package=/i.test(line))
-    .map(parseNotificationBlock);
+  return {
+    packageName,
+    title: title ?? packageName,
+    text: text ?? title ?? packageName,
+    raw,
+  };
 };
 
 export const parseAndroidNotifications = (output: string) => {
   const blocks = splitNotificationBlocks(output);
-  const parsed = (
-    blocks.length > 0
-      ? blocks.map(parseNotificationBlock)
-      : parseSingleLineNotifications(output)
-  ).filter(
-    (notification) =>
+  const parsed = blocks.map(parseNotificationBlock).filter(
+    (
+      notification,
+    ): notification is {
+      packageName: string;
+      title: string;
+      text: string;
+      raw: string;
+    } =>
+      notification !== null &&
       Boolean(notification.packageName) &&
       Boolean(notification.title) &&
       Boolean(notification.text),

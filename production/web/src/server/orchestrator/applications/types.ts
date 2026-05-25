@@ -101,6 +101,22 @@ export interface ScrcpyViewerError {
   stderr: string | null
 }
 
+export type DisplaySessionStatus = 'created' | 'active' | 'released' | 'expired'
+
+export interface DisplaySession {
+  id: string
+  appId?: string | null
+  udid: string
+  ownerUserId?: string | null
+  status: DisplaySessionStatus
+  createdAt: string
+  lastActivityAt: string
+  expiresAt: string
+  capabilities: string[]
+  streamPath: string
+  viewerPath: string
+}
+
 export interface AndroidImagePullProgress {
   status: string
   current: string
@@ -180,6 +196,7 @@ export interface ScrcpySession {
   viewerError: ScrcpyViewerError | null
   adbHost: string
   adbPort: number
+  displaySession: DisplaySession | null
 }
 
 export interface UploadedApk {

@@ -10,7 +10,7 @@ NestJS backend for provisioning isolated application containers and preparing br
 - `DockerMaintenanceModule`: prune unused containers, networks, images, and volumes.
 - `NetworkIsolationModule`: per-application Docker names, volume, and internal network boundary.
 - `SettingsModule`: JSON-backed runtime defaults and APK upload limits.
-- Viewer session API: `GET /android-applications/:id/scrcpy-session` prepares the shared internal ws-scrcpy sidecar and returns app-scoped connection metadata for the Next.js viewer proxy.
+- Viewer session API: `GET /android-applications/:id/scrcpy-session` prepares the shared display sidecar and returns app-scoped connection metadata for the browser viewer.
 - `HealthModule`: Docker socket health check.
 
 ## Isolation Model
@@ -23,7 +23,7 @@ Each Android application receives:
 
 The redroid container is attached only to its own network. When the orchestrator runs in a container, it discovers its own container id from `HOSTNAME` and attaches itself to each app network as needed. You can still override this with `ORCHESTRATOR_CONTAINER_ID` in unusual runtimes.
 
-The frontend should call the orchestrator API and the authenticated Next.js viewer proxy. It should not connect directly to a redroid container or a public ws-scrcpy port.
+The frontend should call the orchestrator API and the authenticated viewer page. It should not connect directly to a redroid container or accept raw ADB targets from the browser.
 
 ## Local Development
 
@@ -108,21 +108,21 @@ Settings are stored in `SETTINGS_PATH`, defaulting to `./data/orchestrator-setti
 The orchestrator settings currently own:
 
 - default container image,
-- default scrcpy transport,
+- default viewer transport,
 - default inactivity timeout,
 - max APK upload size.
 - scheduled image pruning interval and dangling-only mode.
 
 ## Browser Viewer
 
-The first viewer integration uses one shared ws-scrcpy sidecar service. Do not expose ws-scrcpy directly to users; the service has no built-in authorization.
+The viewer integration uses one shared display sidecar service. The sidecar owns ADB-facing viewer operations and exposes short-lived, token-scoped browser sessions.
 
 Default compose shape:
 
-- build `ws-scrcpy-sidecar` locally from the root compose file,
-- keep the sidecar named `rebroid-ws-scrcpy` on the internal platform network,
-- keep Next.js pointed at the default internal sidecar URL so `/viewer/ws-scrcpy/*` is proxied internally,
-- let users load `/viewer/apps/:id`, which validates their session and mints a short-lived viewer token scoped to the app/ADB target.
+- build `display-sidecar` locally from the root compose file,
+- keep the sidecar named `rebroid-display-sidecar` on the internal platform network for server-to-server checks,
+- publish the sidecar viewer port so browser iframes can connect directly with a short-lived display-session token,
+- let users load `/viewer/apps/:id`, which validates their session and asks the orchestrator to create a scoped display session.
 
 The orchestrator prepares a viewer session at:
 
@@ -130,7 +130,7 @@ The orchestrator prepares a viewer session at:
 GET /android-applications/:id/scrcpy-session
 ```
 
-That endpoint validates that the app is running, creates/starts the singleton ws-scrcpy sidecar if needed, connects it to the app's isolated Docker network, re-applies the app egress policy so replies to the sidecar are allowed, and attempts `adb connect <containerName>:<adbPort>` inside the sidecar. The frontend then opens the ws-scrcpy stream through the authenticated Next.js proxy path rather than through a raw public ws-scrcpy URL.
+That endpoint validates that the app is running, creates/starts the singleton display sidecar if needed, connects it to the app's isolated Docker network, re-applies the app egress policy so replies to the sidecar are allowed, and creates a short-lived display session for the app ADB target. The frontend opens the sidecar viewer URL directly with that token; raw ADB targets are never accepted without a scoped session.
 
 While the viewer shell is open, Next.js sends an authenticated keepalive to:
 
@@ -197,7 +197,7 @@ From the repository root:
 docker compose up --build
 ```
 
-The default compose file generates the internal shared secret, NextAuth secret, viewer token secret, and initial admin password automatically. The orchestrator container still needs a Docker-compatible socket mounted:
+The default compose file generates the internal shared secret, NextAuth secret, display sidecar secret, and initial admin password automatically. The orchestrator container still needs a Docker-compatible socket mounted:
 
 ```text
 /var/run/docker.sock:/var/run/docker.sock
@@ -265,5 +265,5 @@ You can pass that path as `CONTAINER_ENGINE_SOCKET=/Users/you/.../podman.sock`.
 
 - APK upload is persisted in the orchestrator uploads directory.
 - When a container is running, APK install currently uses `docker cp`-style archive upload plus `pm install -r` inside the redroid container.
-- The current viewer slice embeds the ws-scrcpy browser stream through an authenticated Next.js proxy. Input/control hardening is still a later slice.
+- The current viewer slice creates token-scoped display sessions through the display sidecar. The sidecar owns ADB viewer actions and the browser preview stream.
 - SQLite bootstraps through TypeORM migrations on startup. The initial schema migration runs automatically when the database is empty.

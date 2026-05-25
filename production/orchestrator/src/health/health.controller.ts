@@ -29,10 +29,10 @@ export class HealthController {
             message:
               'Container runtime is suitable for privileged app containers.',
           },
-          scrcpy: {
+          display: {
             ok: true,
             status: 'healthy',
-            message: 'ws-scrcpy sidecar is running.',
+            message: 'Display sidecar is running.',
           },
         },
       },
@@ -48,19 +48,20 @@ export class HealthController {
           message:
             'Docker is unavailable, so runtime suitability cannot be inspected.',
         };
-    const scrcpy = docker.ok
-      ? await this.docker.wsScrcpyHealth()
+    const display = docker.ok
+      ? await this.docker.displaySidecarHealth()
       : {
           ok: false,
           status: 'offline' as const,
-          message: 'Docker is unavailable, so ws-scrcpy cannot be inspected.',
+          message:
+            'Docker is unavailable, so the display sidecar cannot be inspected.',
         };
 
     return {
-      ok: docker.ok && runtime.ok && scrcpy.ok,
+      ok: docker.ok && runtime.ok && display.ok,
       docker: docker.ok,
       runtime: runtime.ok,
-      scrcpy: scrcpy.ok,
+      display: display.ok,
       services: {
         orchestrator: {
           ok: true,
@@ -69,7 +70,7 @@ export class HealthController {
         },
         docker,
         runtime,
-        scrcpy,
+        display,
       },
     };
   }

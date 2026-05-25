@@ -4,6 +4,8 @@ import { NetworkPolicyModule } from '../../network-policy/network-policy.module'
 import { SettingsModule } from '../../settings/settings.module';
 import { AndroidAppsCommonModule } from '../common/android-apps-common.module';
 import { AndroidAppsViewerController } from './controllers/android-apps-viewer.controller';
+import { AndroidAppsDisplaySidecarService } from './services/android-apps-display-sidecar.service';
+import { AndroidAppsSidecarAdbService } from './services/android-apps-sidecar-adb.service';
 import { AndroidAppsViewerNetworkService } from './services/android-apps-viewer-network.service';
 import { AndroidAppsViewerService } from './services/android-apps-viewer.service';
 
@@ -15,7 +17,17 @@ import { AndroidAppsViewerService } from './services/android-apps-viewer.service
     AndroidAppsCommonModule,
   ],
   controllers: [AndroidAppsViewerController],
-  providers: [AndroidAppsViewerNetworkService, AndroidAppsViewerService],
-  exports: [AndroidAppsViewerNetworkService, AndroidAppsViewerService],
+  providers: [
+    AndroidAppsViewerNetworkService,
+    AndroidAppsDisplaySidecarService,
+    AndroidAppsSidecarAdbService,
+    AndroidAppsViewerService,
+  ],
+  exports: [
+    AndroidAppsViewerNetworkService,
+    AndroidAppsDisplaySidecarService,
+    AndroidAppsSidecarAdbService,
+    AndroidAppsViewerService,
+  ],
 })
 export class AndroidAppsViewerModule {}

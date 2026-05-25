@@ -6,8 +6,8 @@ import { Visible } from '@/components/ui/visible'
 import { AppIcon } from '@/features/applications/components/app-icon'
 import { AppDefinition } from '@/features/applications/domain/app-definition'
 import { resolveAppIconUrl } from '@/features/applications/icons/url'
+import { getProtectedViewerShellUrl } from '@/features/applications/viewer/display-viewer-url'
 import { ImagePullProgress } from '@/features/applications/viewer/image-pull-progress'
-import { getProtectedViewerShellUrl } from '@/features/applications/viewer/scrcpy-url'
 import { cn } from '@/lib/utils'
 import { getRedroidDisplayDimensionsFromArgs } from '@/shared/runtime/redroid-runtime'
 import type { ViewerSettings } from '@/features/applications/viewer/viewer-settings'
@@ -59,10 +59,17 @@ export const AppViewer = ({
   const isViewerReady = Boolean(app?.id && app.running && app.status === 'running')
   const nonFullscreenMaxHeight = isWide ? 'min(70vh, 42rem)' : 'min(72vh, 54rem)'
   const nonFullscreenMaxWidth = isWide ? '68rem' : '28rem'
-  const nonFullscreenWidth = `min(100%, ${nonFullscreenMaxWidth}, calc(${nonFullscreenMaxHeight} * ${aspectRatioValue}))`
+  const nonFullscreenWidth = `min(100%, ${
+    nonFullscreenMaxWidth
+  }, calc(${nonFullscreenMaxHeight} * ${aspectRatioValue}))`
   const fullscreenMaxHeight = '100dvh'
   const fullscreenMaxWidth = '100dvw'
-  const fullscreenWidth = `min(${fullscreenMaxWidth}, calc(${fullscreenMaxHeight} * ${aspectRatioValue}))`
+  const fullscreenHeight = isWide
+    ? `min(${fullscreenMaxHeight}, calc(${fullscreenMaxWidth} / ${aspectRatioValue}))`
+    : fullscreenMaxHeight
+  const fullscreenWidth = isWide
+    ? fullscreenMaxWidth
+    : `min(${fullscreenMaxWidth}, calc(${fullscreenMaxHeight} * ${aspectRatioValue}))`
   const viewerSrc = useMemo(() => {
     if (!isViewerReady || !app?.id) {
       return null
@@ -164,9 +171,7 @@ export const AppViewer = ({
       return {
         title: app.statusDetail?.title ?? 'App failed to start',
         description:
-          app.statusDetail?.description ??
-          app.statusMessage ??
-          'The orchestrator reported an error while preparing the viewer.',
+          app.statusDetail?.description ?? app.statusMessage ?? 'Rebroid reported an error while preparing the viewer.',
         toneClassName: 'text-destructive',
         Icon: IconAlertTriangle,
         showSpinner: false,
@@ -202,9 +207,7 @@ export const AppViewer = ({
     return {
       title: app.statusDetail?.title ?? 'Viewer unavailable',
       description:
-        app.statusDetail?.description ??
-        app.statusMessage ??
-        'Scrcpy viewer URL is not available for this environment.',
+        app.statusDetail?.description ?? app.statusMessage ?? 'The live viewer is not available for this environment.',
       toneClassName: 'text-secondary-foreground',
       Icon: IconAlertTriangle,
       showSpinner: false,
@@ -224,6 +227,7 @@ export const AppViewer = ({
       })}
       style={{
         aspectRatio,
+        height: fullscreen ? fullscreenHeight : undefined,
         maxHeight: fullscreen ? fullscreenMaxHeight : nonFullscreenMaxHeight,
         maxWidth: fullscreen ? fullscreenMaxWidth : nonFullscreenMaxWidth,
         width: fullscreen ? fullscreenWidth : nonFullscreenWidth

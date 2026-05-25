@@ -128,7 +128,7 @@ export class AndroidAppsProvisioningAndroidService {
         lastProbe =
           sidecarTarget.message ??
           sidecarTarget.error?.message ??
-          'ws-scrcpy sidecar is not attached to the app network.';
+          'Display sidecar is not attached to the app network.';
         await delay(intervalMs);
         continue;
       }
@@ -158,7 +158,7 @@ export class AndroidAppsProvisioningAndroidService {
     }
 
     throw new Error(
-      `Timed out waiting for redroid ADB from ws-scrcpy sidecar after ${timeoutMs / 1000}s. Last probe: ${lastProbe}`,
+      `Timed out waiting for redroid ADB from display sidecar after ${timeoutMs / 1000}s. Last probe: ${lastProbe}`,
     );
   }
 

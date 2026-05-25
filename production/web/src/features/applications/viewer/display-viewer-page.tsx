@@ -2,8 +2,8 @@ import type { ReactNode } from 'react'
 import { IconAlertTriangle, IconCast, IconLoader2 } from '@tabler/icons-react'
 import { headers } from 'next/headers'
 import { Visible } from '@/components/ui/visible'
-import { ScrcpyViewerFrame } from '@/features/applications/viewer/scrcpy-viewer-frame'
-import { getProtectedWsScrcpyUrl } from '@/features/applications/viewer/scrcpy-url'
+import { DisplayViewerFrame } from '@/features/applications/viewer/display-viewer-frame'
+import { getProtectedDisplaySidecarUrl } from '@/features/applications/viewer/display-viewer-url'
 import {
   defaultViewerSettings,
   isViewerPlayer,
@@ -11,8 +11,6 @@ import {
 } from '@/features/applications/viewer/viewer-settings'
 import { StatusSplash } from '@/features/shell/components/status-splash'
 import { getApplicationAction, getScrcpySessionAction } from '@/server/orchestrator/applications/read-actions'
-import { createScrcpyViewerToken } from '@/server/viewer/viewer-token'
-import { getDisplayErrorMessage } from '../../../lib/error-utils'
 import { ViewerActivityKeepalive, ViewerStartupRefresh } from './viewer-activity-keepalive'
 import type { ViewerSettings } from '@/features/applications/viewer/viewer-settings'
 import type { AndroidApplication, ScrcpySession } from '@/server/orchestrator/applications/types'
@@ -44,16 +42,16 @@ type ViewerSearchParams = {
 const getBaseUrl = async () => {
   const requestHeaders = await headers()
   const host = requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host') ?? 'localhost:3000'
-  const protocol = requestHeaders.get('x-forwarded-proto') ?? 'https'
+  const protocol = requestHeaders.get('x-forwarded-proto')?.split(',')[0]?.trim() || 'http'
   return `${protocol}://${host}`
 }
 
-const getWsScrcpyInternalBaseUrl = () =>
-  (process.env.WS_SCRCPY_INTERNAL_BASE_URL || 'http://rebroid-ws-scrcpy:8000').replace(/\/$/, '')
+const getDisplaySidecarInternalBaseUrl = () =>
+  (process.env.DISPLAY_SIDECAR_INTERNAL_BASE_URL || 'http://rebroid-display-sidecar:8000').replace(/\/$/, '')
 
-const checkWsScrcpyProxyTarget = async () => {
+const checkDisplaySidecarTarget = async () => {
   try {
-    const response = await fetch(`${getWsScrcpyInternalBaseUrl()}/viewer/ws-scrcpy/`, {
+    const response = await fetch(`${getDisplaySidecarInternalBaseUrl()}/rebroid/display/health`, {
       cache: 'no-store',
       signal: AbortSignal.timeout(2_000)
     })
@@ -77,17 +75,32 @@ const ViewerSplash = ({
   tone?: 'default' | 'danger'
   icon?: ReactNode
 }) => (
-  <main className='flex min-h-screen items-center justify-center bg-background p-6'>
-    <StatusSplash
-      title={title}
-      description={description}
-      detail={detail}
-      tone={tone}
-      icon={icon ?? (tone === 'danger' ? <IconAlertTriangle className='size-10' /> : <IconCast className='size-10' />)}
-      className='min-h-[70vh] w-full'
-    />
+  <main className='flex min-h-screen items-center justify-center overflow-hidden bg-background p-6'>
+    <div className='relative flex min-h-[70vh] w-full max-w-2xl flex-col items-center justify-center gap-5 text-center'>
+      <div className='relative h-44 w-32 rounded-[2rem] border border-border/80 bg-gradient-to-b from-slate-900 to-black shadow-2xl'>
+        <div className='absolute left-1/2 top-3 h-1 w-9 -translate-x-1/2 rounded-full bg-slate-500/80' />
+        <div className='absolute left-7 right-7 top-16 flex justify-between'>
+          <span className='size-3 rounded-full bg-primary shadow-[0_0_18px_hsl(var(--primary))]' />
+          <span className='size-3 rounded-full bg-primary shadow-[0_0_18px_hsl(var(--primary))]' />
+        </div>
+        <div className='absolute bottom-5 left-1/2 size-9 -translate-x-1/2 rounded-full bg-primary/15 ring-8 ring-primary/5' />
+        <div className='absolute -right-5 top-11 h-12 w-12 rounded-tr-full border-r-2 border-t-2 border-primary/60' />
+      </div>
+      <StatusSplash
+        title={title}
+        description={description}
+        detail={detail}
+        tone={tone}
+        icon={
+          icon ?? (tone === 'danger' ? <IconAlertTriangle className='size-10' /> : <IconCast className='size-10' />)
+        }
+        className='min-h-0 w-full'
+      />
+    </div>
   </main>
 )
+
+const viewerUnavailableDetail = 'Refresh the viewer or restart the app, then try again.'
 
 const isLikelyRedroidImage = (containerImage: string) => containerImage.toLowerCase().includes('redroid')
 
@@ -111,54 +124,6 @@ const viewerSettingsFromSearchParams = (searchParams: ViewerSearchParams | undef
     iFrameInterval: numberParam(searchParams?.iFrameInterval, defaultViewerSettings.iFrameInterval),
     fitToFrame: searchParams?.fitToFrame === '1'
   })
-
-const wsScrcpyStoragePrefixes = (player: string) => {
-  const normalizedPlayer = player.toLowerCase()
-  if (normalizedPlayer.includes('webcodecs')) {
-    return ['WebCodecsPlayer']
-  }
-  if (normalizedPlayer.includes('broadway')) {
-    return ['BroadwayDecoder']
-  }
-  if (normalizedPlayer.includes('tinyh264')) {
-    return ['Tinyh264Decoder']
-  }
-
-  return ['MseDecoder']
-}
-
-const createWsScrcpySettingsScript = (session: ScrcpySession, viewerSettings: ViewerSettings) => {
-  const videoSettings = {
-    bitrate: viewerSettings.bitrateMbps * 1_000_000,
-    maxFps: viewerSettings.maxFps,
-    iFrameInterval: viewerSettings.iFrameInterval,
-    lockedVideoOrientation: -1,
-    bounds:
-      viewerSettings.maxSize > 0
-        ? {
-            width: viewerSettings.maxSize,
-            height: viewerSettings.maxSize
-          }
-        : undefined,
-    sendFrameMeta: false,
-    displayId: 0
-  }
-  const prefixes = wsScrcpyStoragePrefixes(viewerSettings.player)
-
-  return `
-(() => {
-  const udid = ${JSON.stringify(session.udid)};
-  const prefixes = ${JSON.stringify(prefixes)};
-  const videoSettings = ${JSON.stringify(videoSettings)};
-  const fitToFrame = ${JSON.stringify(viewerSettings.fitToFrame)};
-  const viewportKey = window.innerWidth + 'x' + window.innerHeight;
-  for (const prefix of prefixes) {
-    const key = prefix + ':' + udid + ':' + viewportKey;
-    window.localStorage.setItem(key, JSON.stringify(videoSettings));
-    window.localStorage.setItem(key + ':fit', JSON.stringify(fitToFrame));
-  }
-})();`
-}
 
 const getViewerError = (session: ScrcpySession): ViewerErrorDetails => {
   const candidate = Reflect.get(session as unknown as Record<string, unknown>, 'viewerError')
@@ -231,7 +196,7 @@ const describeViewerIssue = ({
       return {
         kind: 'pending' as const,
         title: 'Starting Android viewer',
-        description: 'The redroid container is running, but ADB is still coming online for scrcpy.',
+        description: 'The app is running, but the Android display is still getting ready.',
         detail: `Retrying automatically for up to ${secondsRemaining} more seconds.`,
         deadlineAt: startupDeadline.toISOString()
       }
@@ -249,7 +214,7 @@ const describeViewerIssue = ({
       kind: 'fatal' as const,
       title: 'Viewer not supported for this app',
       description: 'This app image does not expose the Android tools needed for live screen streaming.',
-      detail: ''
+      detail: 'Use an Android image that supports live display access.'
     }
   }
 
@@ -263,7 +228,7 @@ const describeViewerIssue = ({
     return {
       kind: 'pending' as const,
       title: 'Starting Android viewer',
-      description: 'The redroid container has started, but ADB is not ready for scrcpy just yet.',
+      description: 'The app has started, but the Android display is not ready just yet.',
       detail:
         `Retrying every ${Math.round(redroidViewerRefreshIntervalMs / 1000)} seconds ` +
         `for up to ${secondsRemaining} more seconds.`,
@@ -275,19 +240,18 @@ const describeViewerIssue = ({
     return {
       kind: 'fatal' as const,
       title: 'Viewer could not reach the app',
-      description: 'ws-scrcpy could not find a reachable Android ADB endpoint inside this container.',
-      detail:
-        'Make sure the image starts an Android environment with ADB listening on port 5555 before opening the viewer.'
+      description: 'The live Android display could not connect to this app.',
+      detail: viewerUnavailableDetail
     }
   }
 
   return {
     kind: 'warning' as const,
-    banner: `Viewer connection could not be confirmed: ${compactMessage}`
+    banner: compactMessage ? 'Viewer connection could not be confirmed yet.' : 'Viewer connection is still starting.'
   }
 }
 
-export async function ScrcpyViewerPage({
+export async function DisplayViewerPage({
   params,
   searchParams
 }: {
@@ -302,12 +266,12 @@ export async function ScrcpyViewerPage({
   let session: ScrcpySession
   try {
     ;[app, session] = await Promise.all([getApplicationAction(id), getScrcpySessionAction(id)])
-  } catch (error) {
+  } catch {
     return (
       <ViewerSplash
         title='Viewer unavailable'
-        description='The app must be running before a scrcpy stream can be opened.'
-        detail={getDisplayErrorMessage(error)}
+        description='The app must be running before a display viewer stream can be opened.'
+        detail={viewerUnavailableDetail}
         tone='danger'
       />
     )
@@ -316,9 +280,9 @@ export async function ScrcpyViewerPage({
   if (!session.viewerServiceConfigured) {
     return (
       <ViewerSplash
-        title='Viewer sidecar not connected'
-        description='The orchestrator is running, but the shared ws-scrcpy service is not configured.'
-        detail='Build the ws-scrcpy sidecar image or check the orchestrator scrcpy health status.'
+        title='Viewer unavailable'
+        description='The live display service is not ready.'
+        detail={viewerUnavailableDetail}
       />
     )
   }
@@ -360,25 +324,20 @@ export async function ScrcpyViewerPage({
     )
   }
 
-  if (!(await checkWsScrcpyProxyTarget())) {
+  if (!(await checkDisplaySidecarTarget())) {
     return (
       <ViewerSplash
         title='Viewer transport unavailable'
-        description='The app is running, but the web server cannot reach ws-scrcpy.'
-        detail='When using the orchestrator internal Docker daemon, the sidecar must be published back to the web container or the deployment must use the host container-engine socket.'
+        description='The app is running, but the live display cannot be reached.'
+        detail={viewerUnavailableDetail}
         tone='danger'
       />
     )
   }
 
-  const viewerToken = await createScrcpyViewerToken({
-    appId: session.applicationId,
-    udid: session.udid
-  })
-  const viewerUrl = getProtectedWsScrcpyUrl({
+  const viewerUrl = getProtectedDisplaySidecarUrl({
     session,
     baseUrl: await getBaseUrl(),
-    viewerToken,
     soundEnabled: viewerSettings.soundEnabled,
     settings: viewerSettings
   })
@@ -388,13 +347,10 @@ export async function ScrcpyViewerPage({
       <ViewerActivityKeepalive applicationId={session.applicationId} />
       <Visible when={!session.viewerTargetConnected}>
         <div className='absolute left-3 right-3 top-3 z-10 rounded-md border border-destructive/35 bg-destructive/20 px-3 py-2 text-xs text-foreground backdrop-blur-md'>
-          {viewerIssue?.kind === 'warning'
-            ? viewerIssue.banner
-            : `ws-scrcpy could not confirm ADB connection: ${session.viewerMessage ?? 'unknown error'}`}
+          {viewerIssue?.kind === 'warning' ? viewerIssue.banner : 'Viewer connection could not be confirmed yet.'}
         </div>
       </Visible>
-      <script dangerouslySetInnerHTML={{ __html: createWsScrcpySettingsScript(session, viewerSettings) }} />
-      <ScrcpyViewerFrame
+      <DisplayViewerFrame
         src={viewerUrl}
         keyboardCaptureEnabled={viewerSettings.keyboardCaptureEnabled}
       />

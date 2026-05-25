@@ -7,8 +7,9 @@ Next.js frontend and backend-for-frontend for Rebroid.
 The Docker image is designed to run without a `.env` file:
 
 - `ORCHESTRATOR_API_URL` defaults to `http://orchestrator:4100`.
-- `WS_SCRCPY_INTERNAL_BASE_URL` defaults to `http://rebroid-ws-scrcpy:8000` at build time.
-- `NEXTAUTH_SECRET` and `SCRCPY_VIEWER_TOKEN_SECRET` are generated into `/app/data` when missing.
+- `DISPLAY_SIDECAR_INTERNAL_BASE_URL` defaults to `http://rebroid-display-sidecar:8000` for server-side health and session checks.
+- Browser viewer traffic is same-origin through the web container. The display sidecar is addressed only by `DISPLAY_SIDECAR_INTERNAL_BASE_URL`.
+- `NEXTAUTH_SECRET` is generated into `/app/data` when missing.
 - `ORCHESTRATOR_SHARED_SECRET` is read from `/app/secrets/orchestrator-secret`, shared with the orchestrator container.
 - `NEXTAUTH_URL` is not required for the compose setup.
 
@@ -37,6 +38,6 @@ The app defaults the Next.js transport ceiling to `4096mb`. The effective APK li
 NEXT_PROXY_CLIENT_MAX_BODY_SIZE=8192mb docker compose build web
 ```
 
-## Viewer Proxy
+## Viewer
 
-The browser never connects directly to ws-scrcpy. Next.js proxies authenticated `/viewer/ws-scrcpy/*` requests to the internal sidecar URL and requires a short-lived app-scoped viewer token for the raw ADB websocket.
+The browser connects to the display sidecar viewer URL using a short-lived app-scoped display-session token. Next.js still performs authorization before creating that session, while the sidecar owns ADB viewer actions and streaming.

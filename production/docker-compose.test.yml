@@ -17,9 +17,10 @@ services:
       REDROID_PRIVILEGED: ${REDROID_PRIVILEGED:-true}
       ORCHESTRATOR_INTERNAL_DOCKER: 'false'
       IPTABLES_POLICY_ENABLED: ${IPTABLES_POLICY_ENABLED:-false}
-      WS_SCRCPY_IMAGE: rebroid/ws-scrcpy-sidecar:test
-      WS_SCRCPY_CONTAINER_NAME: rebroid-ws-scrcpy-test
-      WS_SCRCPY_AUTO_START: 'false'
+      DISPLAY_SIDECAR_IMAGE: rebroid/display-sidecar:test
+      DISPLAY_SIDECAR_CONTAINER_NAME: rebroid-display-sidecar-test
+      DISPLAY_SIDECAR_INTERNAL_BASE_URL: http://rebroid-display-sidecar-test:8000
+      DISPLAY_SIDECAR_AUTO_START: 'false'
       MAX_APK_UPLOAD_SIZE_MB: ${MAX_APK_UPLOAD_SIZE_MB:-4096}
     cap_add:
       - NET_ADMIN
@@ -39,19 +40,19 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PROXY_CLIENT_MAX_BODY_SIZE: ${NEXT_PROXY_CLIENT_MAX_BODY_SIZE:-4096mb}
-        WS_SCRCPY_INTERNAL_BASE_URL: ${WS_SCRCPY_INTERNAL_BASE_URL:-http://rebroid-ws-scrcpy-test:8000}
+        DISPLAY_SIDECAR_INTERNAL_BASE_URL: ${DISPLAY_SIDECAR_INTERNAL_BASE_URL:-http://rebroid-display-sidecar-test:8000}
     image: rebroid/web:test
     container_name: rebroid-web-test
     restart: unless-stopped
     depends_on:
       - orchestrator
-      - ws-scrcpy
+      - display-sidecar
     environment:
       NODE_ENV: production
       ORCHESTRATOR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
       ORCHESTRATOR_SHARED_SECRET_FILE: /app/secrets/orchestrator-secret
       ORCHESTRATOR_API_URL: http://orchestrator:4100
-      WS_SCRCPY_INTERNAL_BASE_URL: http://rebroid-ws-scrcpy-test:8000
+      DISPLAY_SIDECAR_INTERNAL_BASE_URL: http://rebroid-display-sidecar-test:8000
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
     ports:
       - '${REBROID_PORT:-3001}:3001'
@@ -61,19 +62,24 @@ services:
     networks:
       - platform
 
-  ws-scrcpy:
+  display-sidecar:
     build:
-      context: ./ws-scrcpy-sidecar
+      context: ./display-sidecar
       dockerfile: Dockerfile
-    image: rebroid/ws-scrcpy-sidecar:test
-    container_name: rebroid-ws-scrcpy-test
+    image: rebroid/display-sidecar:test
+    container_name: rebroid-display-sidecar-test
     restart: unless-stopped
+    environment:
+      ORCHESTRATOR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
+      ORCHESTRATOR_SHARED_SECRET_FILE: /app/secrets/orchestrator-secret
     expose:
       - '8000'
+    volumes:
+      - shared-test-secrets:/app/secrets
     networks:
       platform:
         aliases:
-          - rebroid-ws-scrcpy-test
+          - rebroid-display-sidecar-test
 
 volumes:
   orchestrator-test-data:

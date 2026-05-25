@@ -1,6 +1,6 @@
 # Rebroid
 
-Browser-managed application containers with a Next.js UI, a NestJS orchestrator, and an internal ws-scrcpy sidecar.
+Browser-managed application containers with a Next.js UI, a NestJS orchestrator, and a dedicated display sidecar.
 
 ## Quick Start
 
@@ -13,8 +13,10 @@ docker compose up --build
 Open:
 
 ```text
-http://localhost:3001
+https://localhost:3443
 ```
+
+The web container now terminates HTTPS itself. On first boot it generates a self-signed certificate and stores it in the persistent `web-data` volume.
 
 The first admin user is created automatically. Check the web logs for the generated password:
 
@@ -29,6 +31,54 @@ Initial Rebroid admin credentials: username=admin password=...
 ```
 
 No `NEXTAUTH_URL`, shared secret, or sidecar URL is required for the default compose setup. The containers generate and persist their own secrets in Docker volumes.
+
+## Local HTTPS
+
+The web service starts its own HTTPS listener and auto-generates a self-signed certificate on first boot. The certificate is persisted under `/app/data/certificates` inside the `web` container.
+
+For LAN testing, run the stack normally:
+
+```bash
+docker compose up --build
+```
+
+Then open the same host or IP through the HTTPS port:
+
+```text
+https://<host-or-ip>:3443
+```
+
+If you open the stack from another machine or via a LAN IP, set the certificate host list before starting the stack so the generated certificate includes that IP or hostname:
+
+```bash
+export REBROID_TLS_HOSTS="192.168.1.11,localhost,127.0.0.1"
+docker compose up --build
+```
+
+Without that override, the default certificate only covers `localhost` and `127.0.0.1`.
+
+WebSocket viewer traffic is proxied through the same endpoint; no separate WebSocket proxy configuration is required.
+
+To trust the generated certificate, start the stack once and export it from the web container:
+
+```bash
+docker compose cp web:/app/data/certificates/rebroid-web.crt ./rebroid-web.crt
+```
+
+On Linux:
+
+```bash
+sudo cp rebroid-web.crt /usr/local/share/ca-certificates/rebroid-web.crt
+sudo update-ca-certificates
+```
+
+On macOS:
+
+```bash
+sudo security add-trusted-cert -d -r trustAsRoot -k /Library/Keychains/System.keychain rebroid-web.crt
+```
+
+Restart the browser after trusting the certificate. You can change the published HTTPS port with `REBROID_HTTPS_PORT`, for example `REBROID_HTTPS_PORT=443`.
 
 ## Podman Socket
 
@@ -70,9 +120,9 @@ If you do not use the helper, inspect the machine socket path and pass it as `CO
 
 ## Internal Docker Mode
 
-The default production compose setup uses the host/rootful Docker-compatible socket. This is the recommended mode for redroid and scrcpy because the application containers and the `ws-scrcpy` sidecar live in the same container engine and Docker networks.
+The default production compose setup uses the host/rootful Docker-compatible socket. This is the recommended mode for redroid and scrcpy because the application containers and the display sidecar live in the same container engine and Docker networks.
 
-The orchestrator image can still start its own internal Docker daemon when no socket is mounted, but that mode needs one extra viewer wiring step: the sidecar created inside the orchestrator's internal daemon must be published back on the orchestrator container network namespace, and the web build must proxy to that published port.
+The orchestrator image can still start its own internal Docker daemon when no socket is mounted, but that mode needs one extra viewer wiring step: the sidecar created inside the orchestrator's internal daemon must be published back on the orchestrator container network namespace, and the browser must use that published sidecar port.
 
 Use the internal compose file only when you intentionally do not mount a host engine socket:
 
@@ -80,7 +130,7 @@ Use the internal compose file only when you intentionally do not mount a host en
 docker compose -f docker-compose.internal.yml up --build
 ```
 
-If `WS_SCRCPY_INTERNAL_BASE_URL` still points at `http://rebroid-ws-scrcpy:8000`, the web container is trying to reach a sidecar in the outer compose network while the app containers are inside the orchestrator's inner Docker daemon. That topology cannot stream because those networks are different.
+If the browser cannot reach the display sidecar port, set `WS_SCRCPY_PUBLIC_BASE_URL` to the externally reachable sidecar URL or set `WS_SCRCPY_PUBLIC_PORT` to the published port.
 
 Do not point `CONTAINER_ENGINE_SOCKET` at a missing file to force internal mode. Compose can create a directory at `/var/run/docker.sock`, which prevents the internal daemon from binding its Unix socket.
 
@@ -109,7 +159,8 @@ On SELinux hosts, pass `CONTAINER_SECURITY_OPTS=label=disable` so the privileged
 The defaults are intended to work without a `.env` file. These are the main knobs worth overriding:
 
 ```bash
-REBROID_PORT=3001
+REBROID_HTTPS_PORT=3443
+REBROID_TLS_HOSTS=localhost,127.0.0.1
 CONTAINER_ENGINE_SOCKET=/var/run/docker.sock
 INITIAL_ADMIN_PASSWORD=choose-a-password
 CONTAINER_IMAGE=redroid/redroid:13.0.0-latest
@@ -122,9 +173,9 @@ Everything else is primarily for advanced deployments: custom networks, external
 
 ## Services
 
-- `web`: Next.js UI and authenticated viewer proxy.
+- `web`: Next.js UI, backend-for-frontend, and built-in HTTPS proxy for secure browser APIs such as WebCodecs.
 - `orchestrator`: NestJS API that manages containers through the Docker-compatible socket.
-- `ws-scrcpy`: internal viewer sidecar. It is intentionally not published to the host.
+- `display-sidecar`: display service for ADB viewer sessions and streaming.
 
 ## Stored Data
 

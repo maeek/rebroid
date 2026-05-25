@@ -8,13 +8,13 @@ export class DockerSidecarController {
   constructor(private readonly sidecar: DockerSidecarService) {}
 
   @Get('health')
-  @ApiOperation({ summary: 'Read ws-scrcpy sidecar health.' })
+  @ApiOperation({ summary: 'Read display sidecar health.' })
   @ApiOkResponse({
     schema: {
       example: {
         ok: true,
         status: 'healthy',
-        message: 'ws-scrcpy sidecar is running.',
+        message: 'Display sidecar is running.',
       },
     },
   })
@@ -23,13 +23,13 @@ export class DockerSidecarController {
   }
 
   @Post('repair')
-  @ApiOperation({ summary: 'Restart or create the ws-scrcpy sidecar.' })
+  @ApiOperation({ summary: 'Restart or create the display sidecar.' })
   @ApiOkResponse({
     schema: {
       example: {
         ok: true,
         status: 'healthy',
-        message: 'ws-scrcpy sidecar is running.',
+        message: 'Display sidecar is running.',
       },
     },
   })

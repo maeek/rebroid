@@ -1,8 +1,8 @@
 import { IconDeviceMobile, IconDeviceTablet } from '@tabler/icons-react'
-import type { CreateAppFormValues } from './create-app-form.types'
 import { Section } from '@/components/ui/section'
 import { cn } from '@/lib/utils'
 import { redroidDisplayProfiles } from '@/shared/runtime/redroid-runtime'
+import type { CreateAppFormValues } from './create-app-form.types'
 
 type CreateAppDisplaySectionProps = {
   values: CreateAppFormValues
