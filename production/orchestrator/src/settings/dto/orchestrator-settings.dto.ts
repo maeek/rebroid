@@ -36,10 +36,15 @@ export class OrchestratorSettingsDto {
   @IsEnum(ScrcpyTransport)
   defaultScrcpyTransport!: ScrcpyTransport;
 
-  @ApiProperty({ example: 900, minimum: 60, maximum: 86400 })
+  @ApiProperty({
+    example: 900,
+    minimum: -1,
+    maximum: 86400,
+    description: 'Use -1 to keep sessions running until manually stopped.',
+  })
   @Type(() => Number)
   @IsInt()
-  @Min(60)
+  @Min(-1)
   @Max(86400)
   defaultInactivityTimeoutSeconds!: number;
 

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ApkModule } from '../../apk/apk.module';
 import { DockerModule } from '../../docker/docker.module';
 import { AndroidAppsCommonModule } from '../common/android-apps-common.module';
 import { AndroidAppsRuntimeNetworkModule } from '../network/android-apps-runtime-network.module';
@@ -9,6 +10,7 @@ import { AndroidAppsProvisioningService } from './services/android-apps-provisio
 
 @Module({
   imports: [
+    ApkModule,
     DockerModule,
     AndroidAppsCommonModule,
     AndroidAppsRuntimeNetworkModule,

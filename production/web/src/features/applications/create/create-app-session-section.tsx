@@ -18,13 +18,13 @@ export const CreateAppSessionSection = ({ values, onChange }: CreateAppSessionSe
     >
       <Setting
         label='Inactivity timeout'
-        description='How long the app can stay idle before the orchestrator stops it automatically.'
+        description='How long the app can stay idle before it stops automatically. Use -1 for no automatic stop.'
         variant='vertical'
         className='flex-col items-start w-full'
       >
         <Input
           value={values.inactivityTimeoutSeconds}
-          min={60}
+          min={-1}
           max={86400}
           type='number'
           onChange={event => onChange({ inactivityTimeoutSeconds: Number(event.target.value) })}

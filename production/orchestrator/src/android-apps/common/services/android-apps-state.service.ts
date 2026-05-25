@@ -120,6 +120,10 @@ export class AndroidAppsStateService {
     });
 
     return running.filter((app) => {
+      if (app.inactivityTimeoutSeconds < 0) {
+        return false;
+      }
+
       const lastActivity = app.lastScrcpyActivityAt ?? app.lastStartedAt;
       if (!lastActivity) {
         return false;
@@ -152,6 +156,13 @@ export class AndroidAppsStateService {
     }
 
     if (runtimeState.exists && runtimeState.running) {
+      return this.status.decorateApplication(app);
+    }
+
+    if (
+      app.status === AndroidApplicationStatus.Provisioning &&
+      this.isContainerStartOwnedByProvisioning(app)
+    ) {
       return this.status.decorateApplication(app);
     }
 
@@ -214,6 +225,24 @@ export class AndroidAppsStateService {
     }
 
     return this.status.decorateApplication(app);
+  }
+
+  /**
+   * While the background start/provisioning flow is still preparing or starting
+   * the container, the saved Docker state may still reflect a previous stop.
+   * Let the active flow own failures until Android readiness begins.
+   */
+  private isContainerStartOwnedByProvisioning(app: AndroidApplication) {
+    return [
+      AndroidApplicationLifecycleStage.Queued,
+      AndroidApplicationLifecycleStage.ImageChecking,
+      AndroidApplicationLifecycleStage.ImagePulling,
+      AndroidApplicationLifecycleStage.VolumeCreating,
+      AndroidApplicationLifecycleStage.NetworkCreating,
+      AndroidApplicationLifecycleStage.OrchestratorNetworkConnecting,
+      AndroidApplicationLifecycleStage.ContainerCreating,
+      AndroidApplicationLifecycleStage.ContainerStarting,
+    ].includes(app.lifecycleStage);
   }
 
   /** Detaches the display sidecar from an app network after external runtime exits. */

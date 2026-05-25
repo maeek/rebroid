@@ -223,6 +223,10 @@ export class AndroidApplication {
   @Column({ type: 'text', nullable: true })
   profileName!: string | null;
 
+  @ApiPropertyOptional({ example: '[{"mode":"persistent","name":"default"}]' })
+  @Column({ type: 'text', default: "'[]'" })
+  savedProfilesJson!: string;
+
   @ApiPropertyOptional({ example: 2048, nullable: true })
   @Column({ type: 'integer', nullable: true })
   memoryLimitMb!: number | null;

@@ -5,16 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Rebroid Display</title>
   <style>
-    html, body { margin: 0; width: 100%; height: 100%; background: #020617; color: #f8fafc; font: 14px system-ui, sans-serif; overflow: hidden; }
-    main { width: 100%; height: 100%; display: grid; place-items: center; background: radial-gradient(circle at 50% 42%, rgba(34, 197, 94, .14), transparent 34%), #020617; }
+    html, body { margin: 0; width: 100%; height: 100%; background: #000; color: #f8fafc; font: 14px system-ui, sans-serif; overflow: hidden; }
+    main { width: 100%; height: 100%; display: grid; place-items: center; background: #000; }
     canvas { display: block; max-width: 100%; max-height: 100%; object-fit: contain; background: #000; touch-action: none; cursor: crosshair; }
     section { width: min(420px, calc(100% - 32px)); box-sizing: border-box; text-align: center; }
     .device { position: relative; margin: 0 auto 22px; width: 116px; height: 156px; border: 2px solid rgba(148, 163, 184, .38); border-radius: 28px; background: linear-gradient(160deg, #111827, #020617 72%); box-shadow: 0 24px 70px rgba(0, 0, 0, .36); }
     .device::before { content: ""; position: absolute; left: 42px; top: 9px; width: 32px; height: 4px; border-radius: 999px; background: rgba(148, 163, 184, .48); }
-    .device::after { content: ""; position: absolute; left: 42px; bottom: 13px; width: 32px; height: 32px; border-radius: 50%; background: rgba(34, 197, 94, .18); box-shadow: 0 0 0 10px rgba(34, 197, 94, .08); }
-    .face { position: absolute; left: 23px; right: 23px; top: 54px; display: flex; justify-content: space-between; }
-    .eye { width: 12px; height: 12px; border-radius: 50%; background: #22c55e; }
-    .signal { position: absolute; right: -13px; top: 40px; width: 28px; height: 28px; border: 2px solid rgba(34, 197, 94, .6); border-left: 0; border-bottom: 0; border-radius: 0 24px 0 0; }
+    .device::after { content: ""; position: absolute; left: 22px; right: 22px; bottom: 16px; height: 6px; border-radius: 999px; background: rgba(34, 197, 94, .72); box-shadow: 0 0 18px rgba(34, 197, 94, .48); }
+    .screen { position: absolute; left: 18px; right: 18px; top: 34px; bottom: 36px; border-radius: 16px; border: 1px solid rgba(148, 163, 184, .28); background: rgba(15, 23, 42, .82); overflow: hidden; }
+    .screen::before, .screen::after { content: ""; position: absolute; border: 2px solid rgba(34, 197, 94, .72); border-left: 0; border-bottom: 0; border-radius: 0 24px 0 0; }
+    .screen::before { left: 34px; top: 42px; width: 24px; height: 24px; }
+    .screen::after { left: 34px; top: 54px; width: 10px; height: 10px; }
+    .signal { position: absolute; left: 52px; top: 91px; width: 7px; height: 7px; border-radius: 50%; background: rgba(34, 197, 94, .82); }
     h1 { margin: 0 0 8px; font-size: 20px; letter-spacing: 0; }
     p { margin: 8px 0 0; color: #cbd5e1; line-height: 1.45; }
     .hidden { display: none; }
@@ -26,7 +28,7 @@
     <section id="message">
       <div class="device" aria-hidden="true">
         <div class="signal"></div>
-        <div class="face"><span class="eye"></span><span class="eye"></span></div>
+        <div class="screen"></div>
       </div>
       <h1 id="message-title">Starting live display</h1>
       <p id="message-copy">Rebroid is opening the app screen.</p>
@@ -45,6 +47,7 @@
     const ctx = canvas.getContext('2d', { alpha: false });
     const keyboardEventMessageType = 'rebroid-viewer-keyboard-event';
     const keyboardCaptureMessageType = 'rebroid-viewer-keyboard-capture';
+    const viewerControlMessageType = 'rebroid-viewer-control-event';
     let keyboardCaptureEnabled = false;
     let decoder = null;
     let configured = false;
@@ -63,6 +66,8 @@
     let reconnectAttempt = 0;
     let streamGeneration = 0;
     let closedByPage = false;
+    let controlWs = null;
+    let controlRequestSeq = 0;
 
     function showStatus(text, nextTitle, nextCopy) {
       if (nextTitle) title.textContent = nextTitle;
@@ -144,6 +149,9 @@
       if (activeWs && activeWs.readyState === WebSocket.OPEN) {
         activeWs.close(1000, 'viewer closed');
       }
+      if (controlWs && controlWs.readyState === WebSocket.OPEN) {
+        controlWs.close(1000, 'viewer closed');
+      }
     });
 
     async function postPublic(path, payload) {
@@ -158,6 +166,49 @@
       });
     }
 
+    function connectControlWs() {
+      if (!sessionId || !token) {
+        return null;
+      }
+
+      if (controlWs && (controlWs.readyState === WebSocket.OPEN || controlWs.readyState === WebSocket.CONNECTING)) {
+        return controlWs;
+      }
+
+      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const controlParams = new URLSearchParams({ sessionId, token });
+      controlWs = new WebSocket(protocol + '//' + location.host + '/rebroid/display/control?' + controlParams.toString());
+      controlWs.onclose = () => {
+        controlWs = null;
+      };
+      controlWs.onerror = () => undefined;
+      return controlWs;
+    }
+
+    function sendControlMessage(messagePayload, fallbackPath, fallbackPayload) {
+      const ws = connectControlWs();
+      const payload = {
+        id: String(++controlRequestSeq),
+        ...messagePayload,
+      };
+
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(payload));
+        return Promise.resolve();
+      }
+
+      if (ws && ws.readyState === WebSocket.CONNECTING) {
+        ws.addEventListener('open', () => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify(payload));
+          }
+        }, { once: true });
+        return Promise.resolve();
+      }
+
+      return postPublic(fallbackPath, fallbackPayload ?? messagePayload);
+    }
+
     window.addEventListener('message', event => {
       const data = event.data || {};
       if (data.type === keyboardCaptureMessageType && typeof data.enabled === 'boolean') {
@@ -165,11 +216,20 @@
         return;
       }
 
+      if (data.type === viewerControlMessageType && typeof data.command === 'string') {
+        sendControlMessage(
+          { type: 'action', command: data.command },
+          'actions',
+          { command: data.command },
+        ).catch(() => undefined);
+        return;
+      }
+
       if (data.type !== keyboardEventMessageType || !keyboardCaptureEnabled) {
         return;
       }
 
-      postPublic('keyboard', {
+      const keyboardPayload = {
         eventType: data.eventType,
         key: data.key,
         code: data.code,
@@ -178,7 +238,8 @@
         ctrlKey: data.ctrlKey,
         metaKey: data.metaKey,
         shiftKey: data.shiftKey,
-      }).catch(() => undefined);
+      };
+      sendControlMessage({ type: 'keyboard', ...keyboardPayload }, 'keyboard', keyboardPayload).catch(() => undefined);
     });
 
     function canvasPoint(event) {
@@ -194,11 +255,12 @@
     }
 
     function postTouch(payload) {
-      return postPublic('touch', {
+      const touchPayload = {
         ...payload,
         videoWidth: canvas.width,
         videoHeight: canvas.height,
-      });
+      };
+      return sendControlMessage({ type: 'touch', ...touchPayload }, 'touch', touchPayload);
     }
 
     let pointerStart = null;
@@ -495,6 +557,14 @@
               return;
             }
 
+            if (payload.type === 'clipboard' && typeof payload.text === 'string') {
+              window.parent.postMessage({ type: 'rebroid-viewer-clipboard', text: payload.text }, '*');
+              if (navigator.clipboard && document.visibilityState === 'visible') {
+                await navigator.clipboard.writeText(payload.text).catch(() => undefined);
+              }
+              return;
+            }
+
             if (framesDecoded === 0) {
               showStatus(payload.message || 'Preparing live display...');
             }
@@ -533,6 +603,7 @@
       });
     }
 
+    connectControlWs();
     connectStream().catch(() => scheduleReconnect());
   </script>
 </body>

@@ -50,6 +50,18 @@ export class DockerResourceRuntimeService {
     }
   }
 
+  async inspectVolume(volumeName: string) {
+    try {
+      return await this.engine.docker.getVolume(volumeName).inspect();
+    } catch (error) {
+      if (this.engine.isDockerNotFound(error)) {
+        return null;
+      }
+
+      throw error;
+    }
+  }
+
   async listManagedContainers() {
     return this.engine.docker.listContainers({
       all: true,

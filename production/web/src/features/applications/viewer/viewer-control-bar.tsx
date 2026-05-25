@@ -1,12 +1,11 @@
 'use client'
 
-import { useRef, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import type { PointerEvent, ReactNode } from 'react'
 import {
   IconArrowsMaximize,
   IconArrowsMinimize,
   IconBell,
-  IconDeviceMobileRotated,
   IconGripVertical,
   IconHome,
   IconKeyboard,
@@ -15,6 +14,7 @@ import {
   IconPhoto,
   IconPlayerTrackNext,
   IconPower,
+  IconRotateClockwise2,
   IconVolume,
   IconVolume2,
   IconVolumeOff
@@ -33,6 +33,7 @@ import { Visible } from '@/components/ui/visible'
 import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { sendApplicationViewerControlAction } from '@/server/orchestrator/applications/mutation-actions'
+import { viewerControlCommandEventType } from './android'
 import type { ApplicationViewerControlCommand } from '@/server/orchestrator/applications/types'
 
 const controlErrorDescription = (error: unknown) => {
@@ -58,6 +59,35 @@ const IconButtonTooltip = ({ label, children }: { label: string; children: React
     <TooltipTrigger asChild>{children}</TooltipTrigger>
     <TooltipContent>{label}</TooltipContent>
   </Tooltip>
+)
+
+const ControlButton = ({
+  label,
+  disabled,
+  active = false,
+  onClick,
+  children,
+  className
+}: {
+  label: string
+  disabled?: boolean
+  active?: boolean
+  onClick?: () => void
+  children: ReactNode
+  className?: string
+}) => (
+  <IconButtonTooltip label={label}>
+    <Button
+      size='icon'
+      variant={active ? 'default' : 'secondary'}
+      disabled={disabled}
+      onClick={onClick}
+      aria-label={label}
+      className={className}
+    >
+      {children}
+    </Button>
+  </IconButtonTooltip>
 )
 
 type ViewerControlBarProps = {
@@ -93,6 +123,7 @@ export const ViewerControlBar = ({
   const [floatingOpen, setFloatingOpen] = useState(false)
   const [floatingPosition, setFloatingPosition] = useState({ x: 16, y: 96 })
   const [isPending, startTransition] = useTransition()
+  const localPendingTimer = useRef<number | null>(null)
   const dragState = useRef<{
     pointerId: number
     startX: number
@@ -101,6 +132,14 @@ export const ViewerControlBar = ({
     originY: number
   } | null>(null)
   const controlsDisabled = !runtimeAvailable || !canControl || isPending
+
+  useEffect(() => {
+    return () => {
+      if (localPendingTimer.current !== null) {
+        window.clearTimeout(localPendingTimer.current)
+      }
+    }
+  }, [])
 
   const updateFloatingPosition = (nextX: number, nextY: number) => {
     const maxX = typeof window === 'undefined' ? nextX : window.innerWidth - 72
@@ -148,6 +187,29 @@ export const ViewerControlBar = ({
     }
 
     setPendingCommand(command)
+    if (typeof window !== 'undefined') {
+      const locallyHandled = !window.dispatchEvent(
+        new CustomEvent(viewerControlCommandEventType, {
+          cancelable: true,
+          detail: { command }
+        })
+      )
+
+      if (locallyHandled) {
+        if (command === 'rotate') {
+          onRotateViewer?.()
+        }
+        if (localPendingTimer.current !== null) {
+          window.clearTimeout(localPendingTimer.current)
+        }
+        localPendingTimer.current = window.setTimeout(() => {
+          setPendingCommand(null)
+          localPendingTimer.current = null
+        }, 160)
+        return
+      }
+    }
+
     startTransition(async () => {
       try {
         await sendApplicationViewerControlAction(appId, command)
@@ -172,17 +234,13 @@ export const ViewerControlBar = ({
   const controls = (
     <>
       <Visible when={runtimeAvailable && canCaptureScreenshot}>
-        <IconButtonTooltip label='Capture screenshot'>
-          <Button
-            size='icon'
-            variant='secondary'
-            disabled={isCapturing}
-            onClick={onCaptureScreenshot}
-            aria-label='Capture screenshot'
-          >
-            {isCapturing ? <IconLoader2 className='size-4 animate-spin' /> : <IconPhoto className='size-4' />}
-          </Button>
-        </IconButtonTooltip>
+        <ControlButton
+          label='Capture screenshot'
+          disabled={isCapturing}
+          onClick={onCaptureScreenshot}
+        >
+          {isCapturing ? <IconLoader2 className='size-4 animate-spin' /> : <IconPhoto className='size-4' />}
+        </ControlButton>
       </Visible>
 
       <div className='flex items-center rounded-md border border-border/60 bg-secondary/35 p-1'>
@@ -263,44 +321,33 @@ export const ViewerControlBar = ({
         </IconButtonTooltip>
       </div>
 
-      <IconButtonTooltip label='Rotate display'>
-        <Button
-          size='icon'
-          variant='secondary'
-          disabled={controlsDisabled}
-          onClick={() => sendControl('rotate')}
-          aria-label='Rotate display'
-        >
-          {controlIcon('rotate', <IconDeviceMobileRotated className='size-4' />)}
-        </Button>
-      </IconButtonTooltip>
+      <ControlButton
+        label='Auto-rotate display'
+        disabled={controlsDisabled}
+        onClick={() => sendControl('rotate')}
+      >
+        {controlIcon('rotate', <IconRotateClockwise2 className='size-4' />)}
+      </ControlButton>
 
       <Visible when={mode !== 'floating'}>
-        <IconButtonTooltip label={keyboardCaptureEnabled ? 'Disable keyboard capture' : 'Enable keyboard capture'}>
-          <Button
-            size='icon'
-            variant={keyboardCaptureEnabled ? 'default' : 'secondary'}
-            disabled={controlsDisabled}
-            onClick={onToggleKeyboardCapture}
-            aria-label={keyboardCaptureEnabled ? 'Disable keyboard capture' : 'Enable keyboard capture'}
-            className={cn({ 'bg-primary/80': keyboardCaptureEnabled })}
-          >
-            <IconKeyboard className='size-4' />
-          </Button>
-        </IconButtonTooltip>
+        <ControlButton
+          label={keyboardCaptureEnabled ? 'Disable keyboard capture' : 'Enable keyboard capture'}
+          active={keyboardCaptureEnabled}
+          disabled={controlsDisabled}
+          onClick={onToggleKeyboardCapture}
+          className={cn({ 'bg-primary/80': keyboardCaptureEnabled })}
+        >
+          <IconKeyboard className='size-4' />
+        </ControlButton>
       </Visible>
 
-      <IconButtonTooltip label='Wake display'>
-        <Button
-          size='icon'
-          variant='secondary'
-          disabled={controlsDisabled}
-          onClick={() => sendControl('wake')}
-          aria-label='Wake display'
-        >
-          {controlIcon('wake', <IconPower className='size-4' />)}
-        </Button>
-      </IconButtonTooltip>
+      <ControlButton
+        label='Wake display'
+        disabled={controlsDisabled}
+        onClick={() => sendControl('wake')}
+      >
+        {controlIcon('wake', <IconPower className='size-4' />)}
+      </ControlButton>
 
       <DropdownMenu>
         <Tooltip>
@@ -345,13 +392,109 @@ export const ViewerControlBar = ({
     </>
   )
 
+  const floatingPrimaryControls = (
+    <>
+      <Visible when={runtimeAvailable && canCaptureScreenshot}>
+        <ControlButton
+          label='Capture screenshot'
+          disabled={isCapturing}
+          onClick={onCaptureScreenshot}
+          className='size-9'
+        >
+          {isCapturing ? <IconLoader2 className='size-4 animate-spin' /> : <IconPhoto className='size-4' />}
+        </ControlButton>
+      </Visible>
+      <ControlButton
+        label='Volume down'
+        disabled={controlsDisabled}
+        onClick={() => sendControl('volume-down')}
+        className='size-9'
+      >
+        {controlIcon('volume-down', <IconVolume className='size-4' />)}
+      </ControlButton>
+      <ControlButton
+        label='Mute device'
+        disabled={controlsDisabled}
+        onClick={() => sendControl('mute')}
+        className='size-9'
+      >
+        {controlIcon('mute', <IconVolumeOff className='size-4' />)}
+      </ControlButton>
+      <ControlButton
+        label='Volume up'
+        disabled={controlsDisabled}
+        onClick={() => sendControl('volume-up')}
+        className='size-9'
+      >
+        {controlIcon('volume-up', <IconVolume2 className='size-4' />)}
+      </ControlButton>
+      <ControlButton
+        label='Auto-rotate display'
+        disabled={controlsDisabled}
+        onClick={() => sendControl('rotate')}
+        className='size-9'
+      >
+        {controlIcon('rotate', <IconRotateClockwise2 className='size-4' />)}
+      </ControlButton>
+      <ControlButton
+        label='Wake display'
+        disabled={controlsDisabled}
+        onClick={() => sendControl('wake')}
+        className='size-9'
+      >
+        {controlIcon('wake', <IconPower className='size-4' />)}
+      </ControlButton>
+      <ControlButton
+        label={keyboardCaptureEnabled ? 'Disable keyboard capture' : 'Enable keyboard capture'}
+        active={keyboardCaptureEnabled}
+        disabled={controlsDisabled}
+        onClick={onToggleKeyboardCapture}
+        className={cn('size-9', { 'bg-primary/80': keyboardCaptureEnabled })}
+      >
+        <IconKeyboard className='size-4' />
+      </ControlButton>
+      <DropdownMenu>
+        <Tooltip>
+          <DropdownMenuTrigger asChild>
+            <TooltipTrigger asChild>
+              <Button
+                size='icon'
+                variant='secondary'
+                disabled={controlsDisabled}
+                aria-label='Android panels'
+                className='size-9'
+              >
+                <IconBell className='size-4' />
+              </Button>
+            </TooltipTrigger>
+          </DropdownMenuTrigger>
+          <TooltipContent>Android panels</TooltipContent>
+        </Tooltip>
+        <DropdownMenuContent align='center'>
+          <DropdownMenuLabel>Panels</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => sendControl('expand-notifications')}>Notifications</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => sendControl('expand-settings')}>Quick settings</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => sendControl('collapse-panels')}>Collapse panels</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <ControlButton
+        label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+        onClick={onToggleFullscreen}
+        className='size-9'
+      >
+        {fullscreen ? <IconArrowsMinimize className='size-4' /> : <IconArrowsMaximize className='size-4' />}
+      </ControlButton>
+    </>
+  )
+
   if (mode === 'floating') {
     return (
       <div
-        className='absolute z-30 flex items-start gap-2'
+        className='absolute z-30'
         style={{ left: floatingPosition.x, top: floatingPosition.y }}
       >
-        <div className='flex flex-col items-center gap-1 rounded-xl border border-border/70 bg-card/85 p-1 shadow-2xl backdrop-blur-xl'>
+        <div className='flex max-h-[calc(100dvh-1rem)] flex-col items-center gap-1 overflow-y-auto rounded-xl border border-border/70 bg-card/90 p-1 shadow-2xl backdrop-blur-xl'>
           <button
             type='button'
             className='flex size-9 cursor-grab items-center justify-center rounded-lg text-secondary-foreground hover:bg-secondary active:cursor-grabbing'
@@ -363,43 +506,57 @@ export const ViewerControlBar = ({
           >
             <IconGripVertical className='size-4' />
           </button>
+          {floatingPrimaryControls}
           <Button
             size='icon'
             variant={floatingOpen ? 'default' : 'secondary'}
             onClick={() => setFloatingOpen(current => !current)}
-            aria-label='Viewer toolbar'
+            aria-label='Navigation controls'
             className='size-9'
           >
             <IconLayoutSidebarRight className='size-4' />
           </Button>
-          <IconButtonTooltip label={keyboardCaptureEnabled ? 'Disable keyboard capture' : 'Enable keyboard capture'}>
-            <Button
-              size='icon'
-              variant={keyboardCaptureEnabled ? 'default' : 'secondary'}
-              disabled={controlsDisabled}
-              onClick={onToggleKeyboardCapture}
-              aria-label={keyboardCaptureEnabled ? 'Disable keyboard capture' : 'Enable keyboard capture'}
-              className={cn({ 'bg-primary/80': keyboardCaptureEnabled })}
-            >
-              <IconKeyboard className='size-4' />
-            </Button>
-          </IconButtonTooltip>
-          <IconButtonTooltip label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}>
-            <Button
-              size='icon'
-              variant='secondary'
-              onClick={onToggleFullscreen}
-              aria-label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-            >
-              {fullscreen ? <IconArrowsMinimize className='size-4' /> : <IconArrowsMaximize className='size-4' />}
-            </Button>
-          </IconButtonTooltip>
+          <Visible when={floatingOpen}>
+            <div className='mt-1 flex flex-col items-center gap-1 border-t border-border/60 pt-1'>
+              <IconButtonTooltip label='Back'>
+                <Button
+                  size='icon'
+                  variant='ghost'
+                  disabled={controlsDisabled}
+                  onClick={() => sendControl('back')}
+                  aria-label='Back'
+                  className='size-8'
+                >
+                  {controlIcon('back', <IconPlayerTrackNext className='size-4 rotate-180' />)}
+                </Button>
+              </IconButtonTooltip>
+              <IconButtonTooltip label='Home'>
+                <Button
+                  size='icon'
+                  variant='ghost'
+                  disabled={controlsDisabled}
+                  onClick={() => sendControl('home')}
+                  aria-label='Home'
+                  className='size-8'
+                >
+                  {controlIcon('home', <IconHome className='size-4' />)}
+                </Button>
+              </IconButtonTooltip>
+              <IconButtonTooltip label='Recent apps'>
+                <Button
+                  size='icon'
+                  variant='ghost'
+                  disabled={controlsDisabled}
+                  onClick={() => sendControl('recents')}
+                  aria-label='Recent apps'
+                  className='size-8'
+                >
+                  {controlIcon('recents', <IconLayoutSidebarRight className='size-4' />)}
+                </Button>
+              </IconButtonTooltip>
+            </div>
+          </Visible>
         </div>
-        <Visible when={floatingOpen}>
-          <div className='flex max-w-[min(22rem,calc(100vw-7rem))] flex-wrap items-center gap-2 rounded-xl border border-border/70 bg-card/90 p-2 shadow-2xl backdrop-blur-xl'>
-            {controls}
-          </div>
-        </Visible>
       </div>
     )
   }

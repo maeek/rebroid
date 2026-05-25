@@ -20,6 +20,7 @@ export const mapAndroidApplicationToAppDefinition = (app: AndroidApplication): A
   volumeName: app.storage.volumeName,
   profileMode: app.storage.profileMode,
   profileName: app.storage.profileName,
+  savedProfiles: app.storage.savedProfiles ?? [],
   memoryLimitMb: app.runtime.resources.memoryLimitMb,
   cpuLimitCpus: app.runtime.resources.cpuLimitCpus,
   volumeSizeLimitMb: app.runtime.resources.volumeSizeLimitMb,

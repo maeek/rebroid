@@ -121,3 +121,24 @@ export const saveViewerSettings = (settings: ViewerSettings) => {
 
   window.localStorage.setItem(storageKey, JSON.stringify(settings))
 }
+
+export const viewerSettingsFromDefaults = (settings: {
+  defaultViewerPreset: ViewerStreamingPreset
+  defaultViewerBitrateMbps: number
+  defaultViewerMaxFps: number
+  defaultViewerMaxSize: number
+  defaultViewerIFrameInterval: number
+  defaultViewerKeyboardCaptureEnabled: boolean
+  defaultViewerSoundEnabled: boolean
+}): ViewerSettings =>
+  normalizeViewerSettings({
+    ...viewerStreamingPresets[settings.defaultViewerPreset],
+    preset: settings.defaultViewerPreset,
+    bitrateMbps: settings.defaultViewerBitrateMbps,
+    maxFps: settings.defaultViewerMaxFps,
+    maxSize: settings.defaultViewerMaxSize,
+    iFrameInterval: settings.defaultViewerIFrameInterval,
+    fitToFrame: settings.defaultViewerMaxSize === 0,
+    keyboardCaptureEnabled: settings.defaultViewerKeyboardCaptureEnabled,
+    soundEnabled: settings.defaultViewerSoundEnabled
+  })

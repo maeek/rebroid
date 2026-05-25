@@ -4,7 +4,7 @@ import { hasPermission } from '@/shared/permissions/permissions'
 import { getCurrentUserContext } from '../current-user'
 import { orchestratorApplicationsClient } from './client'
 import { sanitizeAndroidApplicationForUser } from './safety'
-import type { RunningApplicationNotifications } from './types'
+import type { RunningApplicationNotifications, ApplicationRuntimeFilesProfileInput } from './types'
 
 export const listApplicationsAction = async () => {
   const user = await getCurrentUserContext()
@@ -74,20 +74,24 @@ export const getApplicationLogsAction = async (
   return orchestratorApplicationsClient.getApplicationLogs(id, source, tail)
 }
 
-export const listApplicationDownloadFilesAction = async (id: string) => {
+export const listApplicationDownloadFilesAction = async (id: string, profile?: ApplicationRuntimeFilesProfileInput) => {
   const { user } = await assertCanUseOwnedApplicationRuntime(id)
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:transfer-files')) {
     throw new Error('You do not have permission to transfer files.')
   }
-  return orchestratorApplicationsClient.listDownloadFiles(id)
+  return orchestratorApplicationsClient.listDownloadFiles(id, profile)
 }
 
-export const downloadApplicationFileAction = async (id: string, fileName: string) => {
+export const downloadApplicationFileAction = async (
+  id: string,
+  fileName: string,
+  profile?: ApplicationRuntimeFilesProfileInput
+) => {
   const { user } = await assertCanUseOwnedApplicationRuntime(id)
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:transfer-files')) {
     throw new Error('You do not have permission to transfer files.')
   }
-  return orchestratorApplicationsClient.downloadFile(id, fileName)
+  return orchestratorApplicationsClient.downloadFile(id, fileName, profile)
 }
 
 export const getApplicationClipboardAction = async (id: string) => {

@@ -18,10 +18,12 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Visible } from '@/components/ui/visible'
+import {
+  loadSavedApplicationProfiles,
+  rememberApplicationProfile
+} from '@/features/applications/profiles/profile-history'
+import { ApplicationProfilePicker } from '@/features/applications/profiles/profile-picker'
 import { startApplicationAction, stopApplicationAction } from '@/server/orchestrator/applications/mutation-actions'
 import { useAppViewerActionRunner } from './use-app-viewer-action-runner'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
@@ -43,6 +45,15 @@ export const AppViewerPowerAction = ({
   const [restartDialogOpen, setRestartDialogOpen] = useState(false)
   const [profileMode, setProfileMode] = useState<ApplicationProfileMode>(app?.profileMode ?? 'persistent')
   const [profileName, setProfileName] = useState(app?.profileName ?? 'default')
+  const [savedProfiles, setSavedProfiles] = useState(() =>
+    app
+      ? loadSavedApplicationProfiles(
+          app.id,
+          { mode: app.profileMode ?? 'persistent', name: app.profileName ?? 'default' },
+          app.savedProfiles
+        )
+      : []
+  )
   const isBusy = app?.status === 'provisioning' || app?.status === 'removing'
   const canRestart = canStart && canStop
   const primaryVariant = app?.running ? 'secondary' : 'update'
@@ -61,6 +72,13 @@ export const AppViewerPowerAction = ({
 
     setProfileMode(app.profileMode ?? 'persistent')
     setProfileName(app.profileName ?? 'default')
+    setSavedProfiles(
+      loadSavedApplicationProfiles(
+        app.id,
+        { mode: app.profileMode ?? 'persistent', name: app.profileName ?? 'default' },
+        app.savedProfiles
+      )
+    )
   }, [app, startDialogOpen])
 
   const handleStart = async (options?: { profileMode?: ApplicationProfileMode; profileName?: string }) => {
@@ -68,7 +86,31 @@ export const AppViewerPowerAction = ({
       return false
     }
 
-    return runAction(() => startApplicationAction(app.id, options), 'Could not start app')
+    const started = await runAction(() => startApplicationAction(app.id, options), 'Could not start app')
+    if (started && options?.profileMode) {
+      rememberApplicationProfile(app.id, {
+        mode: options.profileMode,
+        name: options.profileName?.trim() || 'default'
+      })
+      setSavedProfiles(
+        loadSavedApplicationProfiles(app.id, {
+          mode: options.profileMode,
+          name: options.profileName?.trim() || 'default'
+        })
+      )
+    }
+    return started
+  }
+
+  const handleProfileModeChange = (mode: ApplicationProfileMode) => {
+    setProfileMode(mode)
+    setProfileName(current => {
+      if (mode === 'temporary') {
+        return 'temporary'
+      }
+
+      return current === 'temporary' ? 'default' : current
+    })
   }
 
   const handleStop = async () => {
@@ -195,36 +237,16 @@ export const AppViewerPowerAction = ({
         <DialogContent className='sm:max-w-md'>
           <DialogHeader>
             <DialogTitle>Start app</DialogTitle>
-            <DialogDescription>
-              Choose the runtime profile for this session before the container starts.
-            </DialogDescription>
+            <DialogDescription>Choose the saved profile for this session before the app starts.</DialogDescription>
           </DialogHeader>
-          <div className='grid gap-4'>
-            <div className='grid gap-2'>
-              <Label>Profile storage</Label>
-              <Select
-                value={profileMode}
-                onValueChange={value => setProfileMode(value === 'temporary' ? 'temporary' : 'persistent')}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='persistent'>Persistent volume</SelectItem>
-                  <SelectItem value='temporary'>Temporary data</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className='grid gap-2'>
-              <Label>Profile name</Label>
-              <Input
-                value={profileName}
-                disabled={profileMode === 'temporary'}
-                placeholder='default'
-                onChange={event => setProfileName(event.target.value)}
-              />
-            </div>
-          </div>
+          <ApplicationProfilePicker
+            mode={profileMode}
+            name={profileName}
+            savedProfiles={savedProfiles}
+            disabled={isRunningAction}
+            onModeChange={handleProfileModeChange}
+            onNameChange={setProfileName}
+          />
           <DialogFooter>
             <Button
               variant='secondary'
@@ -241,14 +263,10 @@ export const AppViewerPowerAction = ({
                   return
                 }
 
-                void runAction(
-                  () =>
-                    startApplicationAction(app.id, {
-                      profileMode,
-                      profileName: profileMode === 'temporary' ? 'temporary' : profileName.trim() || 'default'
-                    }),
-                  'Could not start app'
-                ).then(success => {
+                void handleStart({
+                  profileMode,
+                  profileName: profileMode === 'temporary' ? 'temporary' : profileName.trim() || 'default'
+                }).then(success => {
                   if (success) {
                     setStartDialogOpen(false)
                   }
@@ -274,8 +292,7 @@ export const AppViewerPowerAction = ({
           <DialogHeader>
             <DialogTitle>Restart {app?.name}?</DialogTitle>
             <DialogDescription>
-              This will stop the current managed container session and start a fresh one with the current runtime
-              settings.
+              This will stop the current session and start a fresh one with the current settings.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

@@ -4,6 +4,7 @@ import type {
   ApplicationClipboard,
   ApplicationRuntimeFile,
   ApplicationRuntimeFileDownload,
+  ApplicationRuntimeFilesProfileInput,
   ApplicationRuntimeFileUpload,
   ApplicationScreenshot,
   ApplicationViewerControlCommand,
@@ -38,6 +39,14 @@ export const orchestratorApplicationsClient = {
   listUploadedApks(ownerUserId?: string) {
     const query = ownerUserId ? `?${new URLSearchParams({ ownerUserId }).toString()}` : ''
     return request<UploadedApk[]>(`/apks${query}`)
+  },
+
+  lookupUploadedApk(sha256: string, ownerUserId?: string) {
+    const query = new URLSearchParams({
+      sha256,
+      ...(ownerUserId ? { ownerUserId } : {})
+    })
+    return request<UploadedApk | null>(`/apks/lookup?${query.toString()}`)
   },
 
   listApplications(ownerUserId?: string) {
@@ -90,20 +99,32 @@ export const orchestratorApplicationsClient = {
     return request<ApplicationLog>(`/android-applications/${id}/logs/${source}?${query.toString()}`)
   },
 
-  listDownloadFiles(id: string) {
-    return request<ApplicationRuntimeFile[]>(`/android-applications/${id}/files/downloads`)
+  listDownloadFiles(id: string, input: ApplicationRuntimeFilesProfileInput = {}) {
+    const query = new URLSearchParams()
+    if (input.profileMode) query.set('profileMode', input.profileMode)
+    if (input.profileName) query.set('profileName', input.profileName)
+    const suffix = query.size > 0 ? `?${query.toString()}` : ''
+    return request<ApplicationRuntimeFile[]>(`/android-applications/${id}/files/downloads${suffix}`)
   },
 
-  uploadDownloadFile(id: string, input: FormData) {
-    return request<ApplicationRuntimeFileUpload>(`/android-applications/${id}/files/downloads`, {
+  uploadDownloadFile(id: string, input: FormData, profile: ApplicationRuntimeFilesProfileInput = {}) {
+    const query = new URLSearchParams()
+    if (profile.profileMode) query.set('profileMode', profile.profileMode)
+    if (profile.profileName) query.set('profileName', profile.profileName)
+    const suffix = query.size > 0 ? `?${query.toString()}` : ''
+    return request<ApplicationRuntimeFileUpload>(`/android-applications/${id}/files/downloads${suffix}`, {
       method: 'POST',
       body: input
     })
   },
 
-  downloadFile(id: string, fileName: string) {
+  downloadFile(id: string, fileName: string, input: ApplicationRuntimeFilesProfileInput = {}) {
+    const query = new URLSearchParams()
+    if (input.profileMode) query.set('profileMode', input.profileMode)
+    if (input.profileName) query.set('profileName', input.profileName)
+    const suffix = query.size > 0 ? `?${query.toString()}` : ''
     return request<ApplicationRuntimeFileDownload>(
-      `/android-applications/${id}/files/downloads/${encodeURIComponent(fileName)}`
+      `/android-applications/${id}/files/downloads/${encodeURIComponent(fileName)}${suffix}`
     )
   },
 

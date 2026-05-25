@@ -2,7 +2,6 @@
 
 import { useMemo, type ReactNode } from 'react'
 import { IconCast } from '@tabler/icons-react'
-import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { getViewerPlayerCapabilities } from '../viewer-player-capabilities'
 import {
@@ -29,11 +28,13 @@ const StreamingSetting = ({ label, children }: { label: string; children: ReactN
 export const StreamingToolsSection = ({
   viewerSettings,
   onViewerSettingsChange,
-  className
+  className,
+  hideHeader
 }: {
   viewerSettings: ViewerSettings
   onViewerSettingsChange: (settings: ViewerSettings) => void
   className?: string
+  hideHeader?: boolean
 }) => {
   const playerCapabilities = useMemo(() => getViewerPlayerCapabilities(), [])
   const selectedPlayer = viewerPlayerDefinitions.find(player => player.value === viewerSettings.player)
@@ -56,28 +57,26 @@ export const StreamingToolsSection = ({
       description='Changes apply when the viewer reloads or starts a new stream.'
       icon={<IconCast className='size-5' />}
       className={className}
+      hideHeader={hideHeader}
     >
       <div className='grid gap-4'>
-        <div className='grid grid-cols-3 gap-2 max-sm:grid-cols-1'>
-          {(
-            [
-              ['bandwidth', 'Bandwidth'],
-              ['balanced', 'Balanced'],
-              ['quality', 'Quality']
-            ] as Array<[ViewerStreamingPreset, string]>
-          ).map(([preset, label]) => (
-            <Button
-              key={preset}
-              type='button'
-              variant={viewerSettings.preset === preset ? 'default' : 'outline'}
-              onClick={() => applyPreset(preset)}
+        <div className='grid gap-x-6 gap-y-4 md:grid-cols-2'>
+          <StreamingSetting label='Preset'>
+            <Select
+              value={viewerSettings.preset}
+              onValueChange={value => applyPreset(value as ViewerStreamingPreset)}
             >
-              {label}
-            </Button>
-          ))}
-        </div>
+              <SelectTrigger className='w-full'>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='bandwidth'>Bandwidth</SelectItem>
+                <SelectItem value='balanced'>Balanced</SelectItem>
+                <SelectItem value='quality'>Quality</SelectItem>
+              </SelectContent>
+            </Select>
+          </StreamingSetting>
 
-        <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-5'>
           <StreamingSetting label='Renderer'>
             <Select
               value={viewerSettings.player}

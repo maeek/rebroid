@@ -20,6 +20,7 @@ import {
 import { CleanupUploadedApksResponseDto } from '../dto/cleanup-uploaded-apks-response.dto';
 import { CleanupUploadedApksDto } from '../dto/cleanup-uploaded-apks.dto';
 import { ListUploadedApksDto } from '../dto/list-uploaded-apks.dto';
+import { LookupUploadedApkDto } from '../dto/lookup-uploaded-apk.dto';
 import { UploadApkDto } from '../dto/upload-apk.dto';
 import { UploadedApk } from '../entities/uploaded-apk.entity';
 import { ApkCatalogService } from '../services/apk-catalog.service';
@@ -51,6 +52,12 @@ export class ApkController {
   @ApiOkResponse({ type: UploadedApk, isArray: true })
   list(@Query() query: ListUploadedApksDto) {
     return this.apk.list(query.ownerUserId);
+  }
+
+  @Get('lookup')
+  @ApiOkResponse({ type: UploadedApk })
+  lookup(@Query() query: LookupUploadedApkDto) {
+    return this.apk.findBySha256(query.sha256, query.ownerUserId);
   }
 
   @Delete(':id')

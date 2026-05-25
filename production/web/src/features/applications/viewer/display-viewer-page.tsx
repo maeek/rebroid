@@ -75,16 +75,16 @@ const ViewerSplash = ({
   tone?: 'default' | 'danger'
   icon?: ReactNode
 }) => (
-  <main className='flex min-h-screen items-center justify-center overflow-hidden bg-background p-6'>
+  <main className='flex min-h-screen items-center justify-center overflow-hidden bg-black p-6'>
     <div className='relative flex min-h-[70vh] w-full max-w-2xl flex-col items-center justify-center gap-5 text-center'>
-      <div className='relative h-44 w-32 rounded-[2rem] border border-border/80 bg-gradient-to-b from-slate-900 to-black shadow-2xl'>
+      <div className='relative h-44 w-32 rounded-[2rem] border border-border/80 bg-black shadow-2xl'>
         <div className='absolute left-1/2 top-3 h-1 w-9 -translate-x-1/2 rounded-full bg-slate-500/80' />
-        <div className='absolute left-7 right-7 top-16 flex justify-between'>
-          <span className='size-3 rounded-full bg-primary shadow-[0_0_18px_hsl(var(--primary))]' />
-          <span className='size-3 rounded-full bg-primary shadow-[0_0_18px_hsl(var(--primary))]' />
+        <div className='absolute inset-x-5 bottom-10 top-9 overflow-hidden rounded-2xl border border-border/60 bg-slate-950'>
+          <span className='absolute left-9 top-12 size-8 rounded-tr-3xl border-r-2 border-t-2 border-primary/70' />
+          <span className='absolute left-9 top-16 size-4 rounded-tr-2xl border-r-2 border-t-2 border-primary/70' />
+          <span className='absolute left-9 top-20 size-2 rounded-full bg-primary/80' />
         </div>
-        <div className='absolute bottom-5 left-1/2 size-9 -translate-x-1/2 rounded-full bg-primary/15 ring-8 ring-primary/5' />
-        <div className='absolute -right-5 top-11 h-12 w-12 rounded-tr-full border-r-2 border-t-2 border-primary/60' />
+        <div className='absolute bottom-5 left-1/2 h-1.5 w-16 -translate-x-1/2 rounded-full bg-primary/70 shadow-[0_0_18px_hsl(var(--primary))]' />
       </div>
       <StatusSplash
         title={title}

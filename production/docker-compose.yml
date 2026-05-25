@@ -76,7 +76,7 @@ services:
     ports:
       - "${REBROID_HTTPS_PORT:-3443}:3443"
     volumes:
-      - web-data:/data
+      - web-data:/app/data
       - shared-secrets:/data/secrets
     networks:
       - platform

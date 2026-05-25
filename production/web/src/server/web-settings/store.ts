@@ -4,7 +4,14 @@ import type { WebSettings } from './types'
 
 export const defaultWebSettings: WebSettings = {
   appListRefreshIntervalSeconds: 5,
-  removeDataOnDelete: true
+  removeDataOnDelete: true,
+  defaultViewerPreset: 'balanced',
+  defaultViewerBitrateMbps: 3,
+  defaultViewerMaxFps: 30,
+  defaultViewerMaxSize: 1080,
+  defaultViewerIFrameInterval: 1,
+  defaultViewerKeyboardCaptureEnabled: false,
+  defaultViewerSoundEnabled: true
 }
 
 const settingsPath = () => process.env.WEB_SETTINGS_PATH || join(process.cwd(), 'data', 'web-settings.json')
@@ -23,7 +30,38 @@ const normalize = (value: Partial<WebSettings>): WebSettings => ({
     120
   ),
   removeDataOnDelete:
-    typeof value.removeDataOnDelete === 'boolean' ? value.removeDataOnDelete : defaultWebSettings.removeDataOnDelete
+    typeof value.removeDataOnDelete === 'boolean' ? value.removeDataOnDelete : defaultWebSettings.removeDataOnDelete,
+  defaultViewerPreset:
+    value.defaultViewerPreset === 'bandwidth' ||
+    value.defaultViewerPreset === 'balanced' ||
+    value.defaultViewerPreset === 'quality'
+      ? value.defaultViewerPreset
+      : defaultWebSettings.defaultViewerPreset,
+  defaultViewerBitrateMbps: numberInRange(
+    value.defaultViewerBitrateMbps,
+    defaultWebSettings.defaultViewerBitrateMbps,
+    1,
+    32
+  ),
+  defaultViewerMaxFps: numberInRange(value.defaultViewerMaxFps, defaultWebSettings.defaultViewerMaxFps, 1, 120),
+  defaultViewerMaxSize:
+    value.defaultViewerMaxSize === 0
+      ? 0
+      : numberInRange(value.defaultViewerMaxSize, defaultWebSettings.defaultViewerMaxSize, 1080, 4096),
+  defaultViewerIFrameInterval: numberInRange(
+    value.defaultViewerIFrameInterval,
+    defaultWebSettings.defaultViewerIFrameInterval,
+    1,
+    30
+  ),
+  defaultViewerKeyboardCaptureEnabled:
+    typeof value.defaultViewerKeyboardCaptureEnabled === 'boolean'
+      ? value.defaultViewerKeyboardCaptureEnabled
+      : defaultWebSettings.defaultViewerKeyboardCaptureEnabled,
+  defaultViewerSoundEnabled:
+    typeof value.defaultViewerSoundEnabled === 'boolean'
+      ? value.defaultViewerSoundEnabled
+      : defaultWebSettings.defaultViewerSoundEnabled
 })
 
 export const getWebSettings = async () => {

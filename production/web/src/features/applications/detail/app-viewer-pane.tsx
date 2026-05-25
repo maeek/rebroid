@@ -76,7 +76,14 @@ export const AppViewerPane = ({
 
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsViewerFullscreen(document.fullscreenElement === viewerContainerRef.current)
+      const fullscreenActive = document.fullscreenElement === viewerContainerRef.current
+      setIsViewerFullscreen(fullscreenActive)
+      if (fullscreenActive && onViewerSettingsChange && !viewerSettings.keyboardCaptureEnabled) {
+        onViewerSettingsChange({
+          ...viewerSettings,
+          keyboardCaptureEnabled: true
+        })
+      }
     }
 
     document.addEventListener('fullscreenchange', handleFullscreenChange)
@@ -84,7 +91,7 @@ export const AppViewerPane = ({
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange)
     }
-  }, [])
+  }, [onViewerSettingsChange, viewerSettings])
 
   const toggleViewerFullscreen = async () => {
     if (!viewerContainerRef.current) {
@@ -199,7 +206,7 @@ export const AppViewerPane = ({
           <div className='flex min-h-112 w-full items-center justify-center rounded-4xl border border-white/10 bg-card/55 p-6 backdrop-blur-xl'>
             <StatusSplash
               title='Separate session required'
-              description='This app belongs to another user. Open it as your own copy to start a private container and viewer session.'
+              description='This app belongs to another user. Open it as your own copy to start a private viewer session.'
               icon={<IconShieldLock className='size-10' />}
             />
           </div>

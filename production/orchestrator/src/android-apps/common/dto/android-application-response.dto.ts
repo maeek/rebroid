@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { parseJsonStringArray } from '../../../common/json-array';
 import { AndroidApplication } from '../../android-application.entity';
 import { ApplicationProfileMode } from '../../application-profile-mode';
+import { parseSavedProfiles } from '../utils/android-apps-profile-history.utils';
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
@@ -109,6 +110,9 @@ export class AndroidApplicationStorageDto {
 
   @ApiPropertyOptional({ nullable: true })
   profileName!: string | null;
+
+  @ApiProperty({ type: 'array', items: { type: 'object' } })
+  savedProfiles!: Array<{ mode: ApplicationProfileMode; name: string }>;
 }
 
 export class AndroidApplicationNetworkPolicyDto {
@@ -230,6 +234,7 @@ export class AndroidApplicationResponseDto {
         volumeName: app.volumeName,
         profileMode: app.profileMode,
         profileName: app.profileName,
+        savedProfiles: parseSavedProfiles(app.savedProfilesJson),
       },
       network: {
         networkName: app.networkName,

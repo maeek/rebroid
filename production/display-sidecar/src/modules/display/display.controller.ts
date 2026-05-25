@@ -15,6 +15,7 @@ import { Response } from "express";
 import { createReadStream } from "node:fs";
 import { join } from "node:path";
 import { AdbService, ViewerCommand } from "../adb/adb.service";
+import { VIEWER_CONTROL_COMMANDS } from "../scrcpy/scrcpy-control-codec";
 import { ScrcpyService } from "../scrcpy/scrcpy.service";
 import { SidecarAuthGuard } from "../shared/sidecar-auth.guard";
 import {
@@ -28,22 +29,6 @@ import {
 import { DisplaySessionService } from "./display-session.service";
 
 const VIEWER_DISPLAY_HTML_PATH = join(__dirname, "display-viewer.html");
-
-const viewerCommands = new Set<ViewerCommand>([
-  "back",
-  "home",
-  "recents",
-  "power",
-  "wake",
-  "sleep",
-  "volume-up",
-  "volume-down",
-  "mute",
-  "rotate",
-  "expand-notifications",
-  "expand-settings",
-  "collapse-panels",
-]);
 
 @Controller()
 export class DisplayController {
@@ -251,7 +236,7 @@ export class DisplayController {
       };
     }
 
-    if (!viewerCommands.has(command as ViewerCommand)) {
+    if (!VIEWER_CONTROL_COMMANDS.has(command as ViewerCommand)) {
       return {
         ok: false,
         message: `Unsupported display action command: ${command}`,

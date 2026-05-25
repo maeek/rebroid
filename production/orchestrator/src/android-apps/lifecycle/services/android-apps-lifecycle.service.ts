@@ -27,6 +27,7 @@ import { AndroidAppsLogService } from '../../common/services/android-apps-log.se
 import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
 import { resolveContainerImage } from '../../common/utils/android-apps-container-image.utils';
+import { rememberSavedProfile } from '../../common/utils/android-apps-profile-history.utils';
 import { stoppedStatusMessage } from '../../common/utils/android-apps-status-message.utils';
 import { AndroidAppsRuntimeNetworkService } from '../../network/services/android-apps-runtime-network.service';
 import { AndroidAppsProvisioningApkService } from '../../provisioning/services/android-apps-provisioning-apk.service';
@@ -95,6 +96,10 @@ export class AndroidAppsLifecycleService {
         settings.defaultInactivityTimeoutSeconds,
       profileMode: ApplicationProfileMode.Persistent,
       profileName: 'default',
+      savedProfilesJson: rememberSavedProfile(null, {
+        mode: ApplicationProfileMode.Persistent,
+        name: 'default',
+      }),
       memoryLimitMb: dto.memoryLimitMb ?? null,
       cpuLimitCpus: dto.cpuLimitCpus ?? null,
       volumeSizeLimitMb: dto.volumeSizeLimitMb ?? null,
@@ -422,12 +427,31 @@ export class AndroidAppsLifecycleService {
     });
     this.tracker.ensureActive(app.id);
     await this.provisioning.prepareRuntimeReadiness(app);
-    if (app.apkFilePath && !app.apkPackageName) {
+    await this.logs.append(app.id, 'APK startup check', {
+      hasApk: Boolean(app.apkFilePath),
+      apkOriginalName: app.apkOriginalName,
+      apkPackageName: app.apkPackageName,
+      uploadedApkId: app.uploadedApkId,
+      containerId: app.containerId,
+    });
+    if (!app.apkFilePath) {
+      await this.logs.append(app.id, 'APK startup skipped', {
+        reason: 'No APK is attached to this app.',
+      });
+    } else if (await this.apkProvisioning.isInstalled(app)) {
+      await this.logs.append(app.id, 'APK startup install skipped', {
+        reason: 'APK package is already installed.',
+        apkPackageName: app.apkPackageName,
+      });
+    } else {
       this.tracker.ensureActive(app.id);
       await this.apkProvisioning.installApk(
         app,
         'Installing APK inside Android before launch.',
       );
+      await this.logs.append(app.id, 'APK startup install finished', {
+        apkPackageName: app.apkPackageName,
+      });
     }
     this.tracker.ensureActive(app.id);
     await this.apkProvisioning.launchInstalledApk(app);
@@ -554,8 +578,16 @@ export class AndroidAppsLifecycleService {
       nextProfileMode !== app.profileMode ||
       nextProfileName !== app.profileName ||
       nextVolumeName !== app.volumeName;
+    const nextSavedProfilesJson = rememberSavedProfile(app.savedProfilesJson, {
+      mode: nextProfileMode,
+      name: nextProfileName,
+    });
 
     if (!profileChanged) {
+      if (nextSavedProfilesJson !== app.savedProfilesJson) {
+        app.savedProfilesJson = nextSavedProfilesJson;
+        await this.state.save(app);
+      }
       return;
     }
 
@@ -567,6 +599,7 @@ export class AndroidAppsLifecycleService {
 
     app.profileMode = nextProfileMode;
     app.profileName = nextProfileName;
+    app.savedProfilesJson = nextSavedProfilesJson;
     app.volumeName = nextVolumeName;
     await this.state.save(app);
   }

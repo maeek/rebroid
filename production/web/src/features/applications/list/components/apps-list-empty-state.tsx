@@ -21,7 +21,7 @@ export const AppsListEmptyState = () => {
             <div className='flex flex-col gap-2'>
               <h3 className='text-2xl font-medium'>No Android apps yet</h3>
               <p className='text-secondary-foreground'>
-                Create your first isolated app, upload an APK if needed, and let the orchestrator start provisioning it.
+                Create your first isolated app, upload an APK if needed, and Rebroid will prepare it.
               </p>
             </div>
             <Link href='/apps/create'>

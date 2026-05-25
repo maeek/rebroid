@@ -77,7 +77,7 @@ export default registerAs('app', () => {
       apiCidrs: csv(process.env.NETWORK_POLICY_API_CIDRS, []),
       defaultAllowDestinations: csv(
         process.env.NETWORK_POLICY_DEFAULT_ALLOW_DESTINATIONS,
-        ['API_IP', 'GATEWAY_IP'],
+        ['API_IP', 'GATEWAY_IP', 'INTERNET'],
       ),
     },
     container: {

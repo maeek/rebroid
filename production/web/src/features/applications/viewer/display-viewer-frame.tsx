@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 
 const keyboardCaptureMessageType = 'rebroid-viewer-keyboard-capture'
 const keyboardEventMessageType = 'rebroid-viewer-keyboard-event'
+const viewerControlMessageType = 'rebroid-viewer-control-event'
 
 const isKeyboardCaptureMessage = (value: unknown): value is { type: string; enabled: boolean } => {
   if (!value || typeof value !== 'object') {
@@ -25,6 +26,15 @@ const isKeyboardEventMessage = (value: unknown): value is { type: string; eventT
     (record.eventType === 'keydown' || record.eventType === 'keyup') &&
     typeof record.code === 'string'
   )
+}
+
+const isViewerControlMessage = (value: unknown): value is { type: string; command: string } => {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const record = value as Record<string, unknown>
+  return record.type === viewerControlMessageType && typeof record.command === 'string'
 }
 
 const isEditableKeyboardTarget = (target: EventTarget | null) => {
@@ -94,7 +104,10 @@ export const DisplayViewerFrame = ({
     const handleMessage = (event: MessageEvent) => {
       const viewerOrigin = getViewerOrigin()
       if (event.origin !== viewerOrigin || !isKeyboardCaptureMessage(event.data)) {
-        if (event.origin === viewerOrigin && isKeyboardEventMessage(event.data)) {
+        if (
+          event.origin === viewerOrigin &&
+          (isKeyboardEventMessage(event.data) || isViewerControlMessage(event.data))
+        ) {
           iframeRef.current?.contentWindow?.postMessage(event.data, viewerOrigin)
         }
         return

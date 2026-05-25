@@ -1,10 +1,20 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { EventEmitter } from 'node:events';
 import { createServer, Server, Socket } from 'node:net';
 import { WebSocket } from 'ws';
-import { AdbChildProcess, AdbService } from '../adb/adb.service';
+import { AdbService } from '../adb/adb.service';
+import type { AdbChildProcess, ViewerCommand } from '../adb/adb.service';
 import { SidecarConfigService } from '../shared/sidecar-config.service';
-import { ScrcpyKeyboardEventPayload, ScrcpyStreamOptions, ScrcpyTouchEventPayload } from './scrcpy.types';
+import { DirectAdbConnection } from './direct-adb-connection';
+import { ScrcpyControlCodec } from './scrcpy-control-codec';
+import {
+  ForwardedVideoSocket,
+  ScrcpyAttemptResult,
+  ScrcpyKeyboardEventPayload,
+  ScrcpySocket,
+  ScrcpyStreamOptions,
+  ScrcpyTouchEventPayload,
+  ScrcpyTunnelMode,
+} from './scrcpy.types';
 
 const LOCALHOST = '127.0.0.1';
 const SOCKET_CONNECT_TIMEOUT_MS = 10_000;
@@ -26,11 +36,8 @@ const SCRCPY_STABLE_BITRATE = Number(process.env.SCRCPY_STABLE_BITRATE ?? 3_000_
 const SCRCPY_STABLE_MAX_FPS = Number(process.env.SCRCPY_STABLE_MAX_FPS ?? 24);
 const SCRCPY_STABLE_MAX_SIZE = Number(process.env.SCRCPY_STABLE_MAX_SIZE ?? 720);
 const SCRCPY_STABLE_I_FRAME_INTERVAL = Number(process.env.SCRCPY_STABLE_I_FRAME_INTERVAL ?? 2);
-
-interface ForwardedVideoSocket {
-  socket: ScrcpySocket;
-  initialPayload: Buffer;
-}
+const DEVICE_MESSAGE_CLIPBOARD = 0;
+const DEVICE_MESSAGE_ACK_CLIPBOARD = 1;
 
 interface ActiveControlSocket {
   socket: ScrcpySocket;
@@ -40,17 +47,6 @@ interface ActiveControlSocket {
 interface QueuedControlMessage {
   payloads: Buffer[];
   queuedAt: number;
-}
-
-interface DirectAdbReadMessage {
-  payload: Buffer;
-  remoteId: number;
-}
-
-interface ScrcpyAttemptResult {
-  reason: string;
-  durationMs: number;
-  bytesForwarded: number;
 }
 
 interface ScrcpyServerLaunch {
@@ -64,487 +60,10 @@ interface ReverseSocketAcceptor {
   close: () => Promise<void>;
 }
 
-type ScrcpyTunnelMode = 'direct' | 'reverse' | 'forward';
-interface ScrcpySocket {
-  destroyed: boolean;
-  writable: boolean;
-  destroy: (error?: Error) => ScrcpySocket;
-  on: (event: string, listener: (...args: any[]) => void) => ScrcpySocket;
-  once: (event: string, listener: (...args: any[]) => void) => ScrcpySocket;
-  removeListener: (event: string, listener: (...args: any[]) => void) => ScrcpySocket;
-  pause: () => ScrcpySocket;
-  resume: () => ScrcpySocket;
-  setNoDelay: (noDelay?: boolean) => ScrcpySocket;
-  write: (payload: Buffer | Uint8Array | string) => boolean;
-}
-
-const CONTROL_MESSAGE = {
-  INJECT_KEYCODE: 0,
-  INJECT_TEXT: 1,
-  INJECT_TOUCH_EVENT: 2,
-  BACK_OR_SCREEN_ON: 4,
-  EXPAND_NOTIFICATION_PANEL: 5,
-  EXPAND_SETTINGS_PANEL: 6,
-  COLLAPSE_PANELS: 7,
-  SET_CLIPBOARD: 9,
-  SET_DISPLAY_POWER: 10,
-  ROTATE_DEVICE: 11,
-} as const;
-
-const KEY_EVENT_ACTION_DOWN = 0;
-const KEY_EVENT_ACTION_UP = 1;
-const MOTION_EVENT_ACTION_DOWN = 0;
-const MOTION_EVENT_ACTION_UP = 1;
-const MOTION_EVENT_ACTION_MOVE = 2;
-const POINTER_ID_GENERIC_FINGER = -2n;
-
-const CONTROL_KEY_CODES: Partial<Record<string, number>> = {
-  back: 4,
-  home: 3,
-  recents: 187,
-  power: 26,
-  wake: 224,
-  sleep: 223,
-  'volume-up': 24,
-  'volume-down': 25,
-  mute: 164,
-};
-
-const BROWSER_CONTROL_KEY_CODES: Record<string, number> = {
-  Enter: 66,
-  Backspace: 67,
-  Delete: 112,
-  Escape: 4,
-  Tab: 61,
-  ArrowUp: 19,
-  ArrowDown: 20,
-  ArrowLeft: 21,
-  ArrowRight: 22,
-  PageUp: 92,
-  PageDown: 93,
-  Home: 122,
-  End: 123,
-};
-
-const ADB_COMMAND = {
-  AUTH: 0x48545541,
-  CLSE: 0x45534c43,
-  CNXN: 0x4e584e43,
-  OKAY: 0x59414b4f,
-  OPEN: 0x4e45504f,
-  WRTE: 0x45545257,
-} as const;
-
-const ADB_VERSION = 0x01000000;
-const ADB_MAX_PAYLOAD = 1024 * 1024;
-
-class DirectAdbConnection {
-  private readonly transport = new Socket();
-  private buffer = Buffer.alloc(0);
-  private closed = false;
-  private connected = false;
-  private nextLocalId = Math.floor(Math.random() * 0x3fffffff) + 1;
-  private readonly streams = new Map<number, DirectAdbSocket>();
-  private readonly pendingStreams = new Map<number, DirectAdbSocket>();
-  private openResolve: ((connection: DirectAdbConnection) => void) | null = null;
-  private openReject: ((error: Error) => void) | null = null;
-
-  constructor(private readonly debugLog: (message: string) => void = () => undefined) {}
-
-  get destroyed() {
-    return this.closed || this.transport.destroyed;
-  }
-
-  connect(host: string, port: number, timeoutMs = SOCKET_CONNECT_TIMEOUT_MS) {
-    return new Promise<DirectAdbConnection>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.destroy();
-        reject(new Error(`Timed out connecting direct ADB transport ${host}:${port}`));
-      }, timeoutMs);
-
-      this.openResolve = (connection) => {
-        clearTimeout(timer);
-        resolve(connection);
-      };
-      this.openReject = (error) => {
-        clearTimeout(timer);
-        reject(error);
-      };
-
-      this.transport.on('data', (chunk: Buffer) => this.handleTransportData(chunk));
-      this.transport.once('connect', () => {
-        this.transport.setNoDelay(true);
-        this.debug('direct adb transport connected');
-        this.sendPacket(ADB_COMMAND.CNXN, ADB_VERSION, ADB_MAX_PAYLOAD, Buffer.from('host::rebroid\0'));
-      });
-      this.transport.once('error', (error) => {
-        this.debug(`direct adb transport failed: ${error.message}`);
-        this.failOpen(error);
-        this.closeStreams(error);
-      });
-      this.transport.once('close', () => {
-        this.closed = true;
-        this.debug(`direct adb transport closed; openStreams=${this.streams.size}; pendingStreams=${this.pendingStreams.size}`);
-        const error = new Error('Direct ADB transport closed');
-        this.failOpen(error);
-        this.closeStreams(error);
-      });
-      this.transport.connect(port, host);
-    });
-  }
-
-  setNoDelay(noDelay = true) {
-    this.transport.setNoDelay(noDelay);
-  }
-
-  debug(message: string) {
-    this.debugLog(message);
-  }
-
-  open(destination: string, label: string, timeoutMs = SOCKET_CONNECT_TIMEOUT_MS) {
-    if (!this.connected || this.destroyed) {
-      return Promise.reject(new Error(`Direct ADB transport is not connected for ${destination}`));
-    }
-
-    const socket = new DirectAdbSocket(this, destination, label, this.allocateLocalId());
-    this.pendingStreams.set(socket.localId, socket);
-    socket.once('close', () => {
-      this.pendingStreams.delete(socket.localId);
-      this.streams.delete(socket.localId);
-    });
-    this.sendPacket(ADB_COMMAND.OPEN, socket.localId, 0, Buffer.from(`${destination}\0`));
-    const timer = setTimeout(() => {
-      socket.destroy(new Error(`Timed out opening ADB local socket ${destination}`));
-    }, timeoutMs);
-    return socket.waitUntilOpen().finally(() => clearTimeout(timer));
-  }
-
-  closeStream(socket: DirectAdbSocket) {
-    this.pendingStreams.delete(socket.localId);
-    this.streams.delete(socket.localId);
-  }
-
-  sendPacket(command: number, arg0: number, arg1: number, payload: Uint8Array = Buffer.alloc(0)) {
-    if (this.transport.destroyed) {
-      return;
-    }
-
-    const data = Buffer.from(payload);
-    const header = Buffer.alloc(24);
-    header.writeUInt32LE(command, 0);
-    header.writeUInt32LE(arg0, 4);
-    header.writeUInt32LE(arg1, 8);
-    header.writeUInt32LE(data.byteLength, 12);
-    header.writeUInt32LE(this.checksum(data), 16);
-    header.writeUInt32LE((command ^ 0xffffffff) >>> 0, 20);
-    this.transport.write(data.byteLength ? Buffer.concat([header, data]) : header);
-  }
-
-  destroy(error?: Error) {
-    if (this.closed) {
-      return;
-    }
-
-    this.closed = true;
-    this.closeStreams(error ?? new Error('Direct ADB transport closed'));
-    this.transport.destroy(error);
-  }
-
-  private allocateLocalId() {
-    const localId = this.nextLocalId;
-    this.nextLocalId = this.nextLocalId >= 0x7fffffff ? 1 : this.nextLocalId + 1;
-    return localId;
-  }
-
-  private handleTransportData(chunk: Buffer) {
-    this.buffer = Buffer.concat([this.buffer, chunk]);
-    while (this.buffer.length >= 24) {
-      const length = this.buffer.readUInt32LE(12);
-      if (this.buffer.length < 24 + length) {
-        return;
-      }
-
-      const header = this.buffer.subarray(0, 24);
-      const payload = this.buffer.subarray(24, 24 + length);
-      this.buffer = this.buffer.subarray(24 + length);
-      this.handlePacket(header.readUInt32LE(0), header.readUInt32LE(4), header.readUInt32LE(8), payload);
-    }
-  }
-
-  private handlePacket(command: number, arg0: number, arg1: number, payload: Buffer) {
-    if (command === ADB_COMMAND.AUTH) {
-      const error = new Error('ADB authentication is required for direct scrcpy sockets');
-      this.failOpen(error);
-      this.destroy(error);
-      return;
-    }
-
-    if (command === ADB_COMMAND.CNXN) {
-      this.connected = true;
-      this.debug('direct adb transport handshake completed');
-      this.openResolve?.(this);
-      this.openResolve = null;
-      this.openReject = null;
-      return;
-    }
-
-    if (command === ADB_COMMAND.OKAY) {
-      const pending = this.pendingStreams.get(arg1);
-      if (pending) {
-        this.pendingStreams.delete(arg1);
-        this.streams.set(arg1, pending);
-        pending.setOpened(arg0);
-        return;
-      }
-
-      this.streams.get(arg1)?.handleOkay();
-      return;
-    }
-
-    if (command === ADB_COMMAND.WRTE) {
-      this.streams.get(arg1)?.handleWrite(arg0, payload);
-      return;
-    }
-
-    if (command === ADB_COMMAND.CLSE) {
-      const socket = this.streams.get(arg1) ?? this.pendingStreams.get(arg1);
-      socket?.handleRemoteClose();
-    }
-  }
-
-  private checksum(payload: Uint8Array) {
-    let checksum = 0;
-    for (const byte of payload) {
-      checksum = (checksum + byte) >>> 0;
-    }
-    return checksum;
-  }
-
-  private closeStreams(error: Error) {
-    const sockets = [...this.pendingStreams.values(), ...this.streams.values()];
-    this.pendingStreams.clear();
-    this.streams.clear();
-    for (const socket of sockets) {
-      socket.handleTransportClose(error);
-    }
-  }
-
-  private failOpen(error: Error) {
-    if (!this.openResolve && !this.openReject) {
-      return;
-    }
-    this.openReject?.(error);
-    this.openResolve = null;
-    this.openReject = null;
-  }
-}
-
-class DirectAdbSocket extends EventEmitter implements ScrcpySocket {
-  private remoteId = 0;
-  private opened = false;
-  private pendingWriteOk = false;
-  private paused = false;
-  private closed = false;
-  private readonly readQueue: DirectAdbReadMessage[] = [];
-  private readonly pendingReadAcks: number[] = [];
-  private readonly writeQueue: Buffer[] = [];
-  private openResolve: ((socket: DirectAdbSocket) => void) | null = null;
-  private openReject: ((error: Error) => void) | null = null;
-
-  get destroyed() {
-    return this.closed || this.connection.destroyed;
-  }
-
-  get writable() {
-    return this.opened && !this.destroyed;
-  }
-
-  constructor(
-    private readonly connection: DirectAdbConnection,
-    private readonly destination: string,
-    private readonly label: string,
-    readonly localId: number,
-  ) {
-    super();
-  }
-
-  waitUntilOpen() {
-    return new Promise<DirectAdbSocket>((resolve, reject) => {
-      this.openResolve = resolve;
-      this.openReject = reject;
-    });
-  }
-
-  setOpened(remoteId: number) {
-    if (this.closed) {
-      return;
-    }
-
-    this.remoteId = remoteId;
-    this.opened = true;
-    this.debug(`direct ${this.label} socket opened; localId=${this.localId}; remoteId=${this.remoteId}`);
-    this.openResolve?.(this);
-    this.openResolve = null;
-    this.openReject = null;
-  }
-
-  handleOkay() {
-    if (!this.opened || this.closed) {
-      return;
-    }
-
-    this.pendingWriteOk = false;
-    this.flushWrites();
-  }
-
-  handleWrite(remoteId: number, payload: Buffer) {
-    if (!this.opened || this.closed) {
-      return;
-    }
-
-    const message = {
-      payload: Buffer.from(payload),
-      remoteId,
-    };
-    if (this.paused) {
-      this.readQueue.push(message);
-    } else {
-      this.emitReadable(message);
-    }
-  }
-
-  handleRemoteClose() {
-    if (this.opened || this.label !== 'video') {
-      this.debug(
-        `direct ${this.label} socket closed by device; opened=${this.opened}; localId=${this.localId}; remoteId=${this.remoteId}; queuedReads=${this.readQueue.length}; pendingReadAcks=${this.pendingReadAcks.length}; queuedWrites=${this.writeQueue.length}; pendingWrite=${this.pendingWriteOk}`,
-      );
-    }
-    this.failOpen(new Error(`ADB local socket ${this.destination} closed before opening`));
-    if (this.opened && this.remoteId && !this.destroyed) {
-      this.connection.sendPacket(ADB_COMMAND.CLSE, this.localId, this.remoteId);
-    }
-    this.close();
-  }
-
-  handleTransportClose(error: Error) {
-    this.failOpen(error);
-    this.close(error);
-  }
-
-  setNoDelay(noDelay = true) {
-    this.connection.setNoDelay(noDelay);
-    return this;
-  }
-
-  pause() {
-    this.paused = true;
-    return this;
-  }
-
-  resume() {
-    this.paused = false;
-    this.flushReadable();
-    return this;
-  }
-
-  write(payload: Buffer | Uint8Array | string) {
-    const buffer = typeof payload === 'string' ? Buffer.from(payload) : Buffer.from(payload);
-    this.writeQueue.push(buffer);
-    this.flushWrites();
-    return true;
-  }
-
-  destroy(error?: Error) {
-    if (this.closed) {
-      return this;
-    }
-    this.closed = true;
-    if (error) {
-      this.debug(`destroying direct ${this.label} socket: ${error.message}`);
-    }
-    if (this.opened && this.remoteId) {
-      this.connection.sendPacket(ADB_COMMAND.CLSE, this.localId, this.remoteId);
-    }
-    this.connection.closeStream(this);
-    this.failOpen(error ?? new Error(`ADB local socket ${this.destination} closed before opening`));
-    if (error && this.listenerCount('error') > 0) {
-      this.emit('error', error);
-    }
-    this.emit('close');
-    return this;
-  }
-
-  private flushWrites() {
-    if (!this.opened || this.pendingWriteOk || !this.writeQueue.length || this.destroyed) {
-      return;
-    }
-
-    const payload = this.writeQueue.shift()!;
-    this.pendingWriteOk = true;
-    this.connection.sendPacket(ADB_COMMAND.WRTE, this.localId, this.remoteId, payload);
-  }
-
-  private flushReadable() {
-    while (!this.paused && this.pendingReadAcks.length) {
-      this.ackReadable(this.pendingReadAcks.shift()!);
-    }
-
-    while (!this.paused && this.readQueue.length) {
-      this.emitReadable(this.readQueue.shift()!);
-    }
-  }
-
-  private emitReadable(message: DirectAdbReadMessage) {
-    this.emit('data', message.payload);
-
-    if (this.destroyed) {
-      return;
-    }
-
-    if (this.paused) {
-      this.pendingReadAcks.push(message.remoteId);
-      return;
-    }
-
-    this.ackReadable(message.remoteId);
-  }
-
-  private ackReadable(remoteId: number) {
-    if (this.opened && !this.destroyed) {
-      this.connection.sendPacket(ADB_COMMAND.OKAY, this.localId, remoteId);
-    }
-  }
-
-  private failOpen(error: Error) {
-    if (!this.openResolve && !this.openReject) {
-      return;
-    }
-    this.openReject?.(error);
-    this.openResolve = null;
-    this.openReject = null;
-  }
-
-  private close(error?: Error) {
-    if (this.closed) {
-      return;
-    }
-
-    this.closed = true;
-    this.connection.closeStream(this);
-    if (error && this.listenerCount('error') > 0) {
-      this.emit('error', error);
-    }
-    this.emit('close');
-  }
-
-  private debug(message: string) {
-    this.connection.debug(message);
-  }
-}
-
 @Injectable()
 export class ScrcpyService {
   private readonly logger = new Logger(ScrcpyService.name);
+  private readonly controlCodec = new ScrcpyControlCodec();
   private readonly controlSockets = new Map<string, ActiveControlSocket>();
   private readonly streamingSessions = new Set<string>();
   private readonly queuedControlMessages = new Map<string, QueuedControlMessage[]>();
@@ -843,6 +362,10 @@ export class ScrcpyService {
         forwardVideoPayload(connectedVideo.initialPayload);
         streamSocket?.on('data', forwardVideoPayload);
         streamSocket?.resume();
+        let controlReadBuffer = Buffer.alloc(0);
+        controlSocket?.on('data', (chunk: Buffer) => {
+          controlReadBuffer = this.forwardDeviceControlMessages(options.client, options.sessionId, controlReadBuffer, chunk);
+        });
 
         streamSocket?.once('close', () => {
           void cleanup('display stream socket closed');
@@ -885,95 +408,23 @@ export class ScrcpyService {
     return this.streamingSessions.has(sessionId);
   }
 
-  sendViewerAction(sessionId: string, command: string) {
-    if (command === 'expand-notifications') {
-      return this.writeControlMessages(sessionId, [Buffer.from([CONTROL_MESSAGE.EXPAND_NOTIFICATION_PANEL])]);
-    }
-
-    if (command === 'expand-settings') {
-      return this.writeControlMessages(sessionId, [Buffer.from([CONTROL_MESSAGE.EXPAND_SETTINGS_PANEL])]);
-    }
-
-    if (command === 'collapse-panels') {
-      return this.writeControlMessages(sessionId, [Buffer.from([CONTROL_MESSAGE.COLLAPSE_PANELS])]);
-    }
-
-    if (command === 'rotate') {
-      return this.writeControlMessages(sessionId, [Buffer.from([CONTROL_MESSAGE.ROTATE_DEVICE])]);
-    }
-
-    if (command === 'wake') {
-      return this.writeControlMessages(sessionId, [Buffer.from([CONTROL_MESSAGE.SET_DISPLAY_POWER, 1])]);
-    }
-
-    if (command === 'sleep') {
-      return this.writeControlMessages(sessionId, [Buffer.from([CONTROL_MESSAGE.SET_DISPLAY_POWER, 0])]);
-    }
-
-    if (command === 'back') {
-      return this.writeControlMessages(sessionId, [
-        this.serializeBackOrScreenOn(KEY_EVENT_ACTION_DOWN),
-        this.serializeBackOrScreenOn(KEY_EVENT_ACTION_UP),
-      ]);
-    }
-
-    const keyCode = CONTROL_KEY_CODES[command];
-    if (!keyCode) {
-      return false;
-    }
-
-    return this.writeControlMessages(sessionId, [
-      this.serializeKeycode(KEY_EVENT_ACTION_DOWN, keyCode),
-      this.serializeKeycode(KEY_EVENT_ACTION_UP, keyCode),
-    ]);
+  sendViewerAction(sessionId: string, command: ViewerCommand) {
+    const payloads = this.controlCodec.viewerActionPayloads(command);
+    return payloads ? this.writeControlMessages(sessionId, payloads) : false;
   }
 
   sendKeyboardEvent(sessionId: string, event: ScrcpyKeyboardEventPayload) {
-    if (event.eventType !== 'keydown' || event.metaKey || event.ctrlKey || event.altKey) {
-      return true;
-    }
-
-    const keyCode = event.key ? BROWSER_CONTROL_KEY_CODES[event.key] : null;
-    if (keyCode) {
-      return this.writeControlMessages(sessionId, [
-        this.serializeKeycode(KEY_EVENT_ACTION_DOWN, keyCode),
-        this.serializeKeycode(KEY_EVENT_ACTION_UP, keyCode),
-      ]);
-    }
-
-    if (event.key && event.key.length === 1) {
-      return this.writeControlMessages(sessionId, [this.serializeText(event.key)]);
-    }
-
-    return true;
+    const payloads = this.controlCodec.keyboardEventPayloads(event);
+    return payloads ? this.writeControlMessages(sessionId, payloads) : true;
   }
 
   sendTouchEvent(sessionId: string, event: ScrcpyTouchEventPayload) {
-    const videoWidth = this.clampUInt16(event.videoWidth);
-    const videoHeight = this.clampUInt16(event.videoHeight);
-    if (!videoWidth || !videoHeight) {
-      return false;
-    }
-
-    if (event.action === 'swipe') {
-      const from = this.touchPoint(event.x1, event.y1);
-      const to = this.touchPoint(event.x2, event.y2);
-      return this.writeControlMessages(sessionId, [
-        this.serializeTouch(MOTION_EVENT_ACTION_DOWN, from.x, from.y, videoWidth, videoHeight, 1),
-        this.serializeTouch(MOTION_EVENT_ACTION_MOVE, to.x, to.y, videoWidth, videoHeight, 1),
-        this.serializeTouch(MOTION_EVENT_ACTION_UP, to.x, to.y, videoWidth, videoHeight, 0),
-      ]);
-    }
-
-    const point = this.touchPoint(event.x ?? event.x1, event.y ?? event.y1);
-    return this.writeControlMessages(sessionId, [
-      this.serializeTouch(MOTION_EVENT_ACTION_DOWN, point.x, point.y, videoWidth, videoHeight, 1),
-      this.serializeTouch(MOTION_EVENT_ACTION_UP, point.x, point.y, videoWidth, videoHeight, 0),
-    ]);
+    const payloads = this.controlCodec.touchEventPayloads(event);
+    return payloads ? this.writeControlMessages(sessionId, payloads) : false;
   }
 
   sendClipboard(sessionId: string, text: string) {
-    return this.writeControlMessages(sessionId, [this.serializeClipboard(text)]);
+    return this.writeControlMessages(sessionId, [this.controlCodec.clipboardPayload(text)]);
   }
 
   private startServer(
@@ -989,7 +440,7 @@ export class ScrcpyService {
       'video=true',
       'audio=false',
       `control=${SCRCPY_CONTROL_CHANNEL ? 'true' : 'false'}`,
-      'clipboard_autosync=false',
+      'clipboard_autosync=true',
       'cleanup=false',
       'keep_active=true',
       'power_on=true',
@@ -1506,6 +957,53 @@ export class ScrcpyService {
     return true;
   }
 
+  private forwardDeviceControlMessages(
+    client: WebSocket,
+    sessionId: string,
+    pending: Buffer,
+    chunk: Buffer,
+  ) {
+    let buffer = Buffer.concat([pending, chunk]);
+
+    while (buffer.length > 0) {
+      const type = buffer.readUInt8(0);
+
+      if (type === DEVICE_MESSAGE_CLIPBOARD) {
+        if (buffer.length < 5) {
+          return buffer;
+        }
+
+        const length = buffer.readUInt32BE(1);
+        if (buffer.length < 5 + length) {
+          return buffer;
+        }
+
+        const text = buffer.subarray(5, 5 + length).toString('utf8');
+        buffer = buffer.subarray(5 + length);
+        this.sendJson(client, {
+          type: 'clipboard',
+          sessionId,
+          text,
+        });
+        continue;
+      }
+
+      if (type === DEVICE_MESSAGE_ACK_CLIPBOARD) {
+        if (buffer.length < 9) {
+          return buffer;
+        }
+
+        buffer = buffer.subarray(9);
+        continue;
+      }
+
+      this.logger.debug(`[scrcpy:${sessionId}] unsupported device control message ${type}; dropping ${buffer.length} bytes`);
+      return Buffer.alloc(0);
+    }
+
+    return buffer;
+  }
+
   private enqueueControlMessages(sessionId: string, payloads: Buffer[]) {
     const now = Date.now();
     const queue = (this.queuedControlMessages.get(sessionId) ?? []).filter(
@@ -1546,74 +1044,6 @@ export class ScrcpyService {
     if (flushed > 0) {
       this.logger.debug(`[scrcpy:${active.udid}:${sessionId}] flushed ${flushed} queued control messages`);
     }
-  }
-
-  private serializeKeycode(action: number, keyCode: number) {
-    const payload = Buffer.alloc(14);
-    payload.writeUInt8(CONTROL_MESSAGE.INJECT_KEYCODE, 0);
-    payload.writeUInt8(action, 1);
-    payload.writeInt32BE(keyCode, 2);
-    payload.writeInt32BE(0, 6);
-    payload.writeInt32BE(0, 10);
-    return payload;
-  }
-
-  private serializeBackOrScreenOn(action: number) {
-    return Buffer.from([CONTROL_MESSAGE.BACK_OR_SCREEN_ON, action]);
-  }
-
-  private serializeText(text: string) {
-    const textBytes = Buffer.from(text, 'utf8');
-    const payload = Buffer.alloc(5 + textBytes.byteLength);
-    payload.writeUInt8(CONTROL_MESSAGE.INJECT_TEXT, 0);
-    payload.writeUInt32BE(textBytes.byteLength, 1);
-    textBytes.copy(payload, 5);
-    return payload;
-  }
-
-  private serializeClipboard(text: string) {
-    const textBytes = Buffer.from(text, 'utf8');
-    const payload = Buffer.alloc(14 + textBytes.byteLength);
-    payload.writeUInt8(CONTROL_MESSAGE.SET_CLIPBOARD, 0);
-    payload.writeBigInt64BE(0n, 1);
-    payload.writeUInt8(0, 9);
-    payload.writeUInt32BE(textBytes.byteLength, 10);
-    textBytes.copy(payload, 14);
-    return payload;
-  }
-
-  private serializeTouch(action: number, x: number, y: number, videoWidth: number, videoHeight: number, pressure: number) {
-    const payload = Buffer.alloc(32);
-    payload.writeUInt8(CONTROL_MESSAGE.INJECT_TOUCH_EVENT, 0);
-    payload.writeUInt8(action, 1);
-    payload.writeBigInt64BE(POINTER_ID_GENERIC_FINGER, 2);
-    payload.writeInt32BE(x, 10);
-    payload.writeInt32BE(y, 14);
-    payload.writeUInt16BE(videoWidth, 18);
-    payload.writeUInt16BE(videoHeight, 20);
-    payload.writeUInt16BE(pressure > 0 ? 0xffff : 0, 22);
-    payload.writeInt32BE(0, 24);
-    payload.writeInt32BE(0, 28);
-    return payload;
-  }
-
-  private touchPoint(x: number | undefined, y: number | undefined) {
-    return {
-      x: Math.max(0, Math.round(this.finiteNumber(x))),
-      y: Math.max(0, Math.round(this.finiteNumber(y))),
-    };
-  }
-
-  private clampUInt16(value: number | undefined) {
-    const parsed = this.finiteNumber(value);
-    if (parsed <= 0) {
-      return 0;
-    }
-    return Math.min(Math.round(parsed), 0xffff);
-  }
-
-  private finiteNumber(value: number | undefined) {
-    return typeof value === 'number' && Number.isFinite(value) ? value : 0;
   }
 
   private shellQuote(value: string) {

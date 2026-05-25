@@ -86,9 +86,9 @@ export const AppManageIconPanel = ({
     setIsUploadingIcon(true)
     try {
       const optimizedIcon = await optimizeIconFile(file)
-      await setAppIconAction(appId, optimizedIcon)
-      syncSidebarRecentApp(optimizedIcon)
-      onIconChange(optimizedIcon, true)
+      const storedIcon = await setAppIconAction(appId, optimizedIcon)
+      syncSidebarRecentApp(storedIcon)
+      onIconChange(storedIcon, true)
       toast({ title: 'Icon updated' })
     } catch (error) {
       toast({

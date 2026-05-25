@@ -7,9 +7,9 @@ import { getAppRefreshIntervalMs } from '@/features/applications/domain/refresh'
 import { resolveAppIconUrl } from '@/features/applications/icons/url'
 import { rememberRecentApp } from '@/features/applications/recent/recent-apps'
 import {
-  defaultViewerSettings,
   loadViewerSettings,
-  saveViewerSettings
+  saveViewerSettings,
+  viewerSettingsFromDefaults
 } from '@/features/applications/viewer/viewer-settings'
 import { ProtectedSplitPageLayout, ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { useForegroundRefresh } from '@/hooks/use-foreground-refresh'
@@ -38,7 +38,8 @@ export const AppViewerPage = ({
   viewMode?: 'workspace' | 'details'
 }) => {
   const [currentApp, setCurrentApp] = useState(app)
-  const [viewerSettings, setViewerSettings] = useState(defaultViewerSettings)
+  const [viewerSettings, setViewerSettings] = useState(() => viewerSettingsFromDefaults(initialSettings))
+  const [viewerSettingsHydrated, setViewerSettingsHydrated] = useState(false)
   const currentAppId = currentApp?.id
   const refreshIntervalMs = getAppRefreshIntervalMs(currentApp)
   const isForeignOwnedApp = Boolean(isAdmin && currentApp && currentApp.ownerUserId !== currentOwnerUserId)
@@ -52,12 +53,18 @@ export const AppViewerPage = ({
   }, [app])
 
   useEffect(() => {
-    setViewerSettings(loadViewerSettings())
-  }, [])
+    const hasStoredSettings = window.localStorage.getItem('rebroid.viewer.settings.v5') !== null
+    setViewerSettings(hasStoredSettings ? loadViewerSettings() : viewerSettingsFromDefaults(initialSettings))
+    setViewerSettingsHydrated(true)
+  }, [initialSettings])
 
   useEffect(() => {
+    if (!viewerSettingsHydrated) {
+      return
+    }
+
     saveViewerSettings(viewerSettings)
-  }, [viewerSettings])
+  }, [viewerSettings, viewerSettingsHydrated])
 
   useEffect(() => {
     if (currentApp) {

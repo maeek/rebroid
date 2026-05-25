@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { readFile } from 'node:fs/promises';
 import { basename } from 'node:path';
+import type { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import tar from 'tar-stream';
 import { DockerEngineService } from '../../docker-engine.service';
 
@@ -55,6 +57,37 @@ export class DockerContainerArchiveService {
     await container.putArchive(pack, {
       path: targetDirectory,
     });
+  }
+
+  async copyStreamToContainer(
+    containerId: string,
+    content: Readable,
+    targetDirectory: string,
+    targetFileName: string,
+  ) {
+    const container = this.engine.docker.getContainer(containerId);
+    const pack = tar.pack();
+    const archiveUpload = container
+      .putArchive(pack, {
+        path: targetDirectory,
+      })
+      .catch((error: unknown) => {
+        pack.destroy(error instanceof Error ? error : new Error(String(error)));
+        throw error;
+      });
+    const entry = pack.entry({
+      name: targetFileName,
+      mode: 0o644,
+    });
+
+    try {
+      await pipeline(content, entry);
+      pack.finalize();
+      await archiveUpload;
+    } catch (error) {
+      pack.destroy(error instanceof Error ? error : new Error(String(error)));
+      throw error;
+    }
   }
 
   async readFileFromContainer(containerId: string, containerPath: string) {

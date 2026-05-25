@@ -87,7 +87,7 @@ export class SettingsService {
       defaultInactivityTimeoutSeconds: numberInRange(
         value.defaultInactivityTimeoutSeconds,
         defaults.defaultInactivityTimeoutSeconds,
-        60,
+        -1,
         86400,
       ),
       maxApkUploadSizeMb: numberInRange(

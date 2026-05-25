@@ -12,9 +12,27 @@ export interface OrchestratorUiSettings {
   appListRefreshIntervalSeconds: number
   removeDataOnDelete: boolean
   scrcpyTransport: ScrcpyTransport
+  defaultViewerPreset: 'bandwidth' | 'balanced' | 'quality'
+  defaultViewerBitrateMbps: number
+  defaultViewerMaxFps: number
+  defaultViewerMaxSize: number
+  defaultViewerIFrameInterval: number
+  defaultViewerKeyboardCaptureEnabled: boolean
+  defaultViewerSoundEnabled: boolean
 }
 
-export type GeneralUiSettings = Pick<OrchestratorUiSettings, 'appListRefreshIntervalSeconds' | 'removeDataOnDelete'>
+export type GeneralUiSettings = Pick<
+  OrchestratorUiSettings,
+  | 'appListRefreshIntervalSeconds'
+  | 'removeDataOnDelete'
+  | 'defaultViewerPreset'
+  | 'defaultViewerBitrateMbps'
+  | 'defaultViewerMaxFps'
+  | 'defaultViewerMaxSize'
+  | 'defaultViewerIFrameInterval'
+  | 'defaultViewerKeyboardCaptureEnabled'
+  | 'defaultViewerSoundEnabled'
+>
 
 export type RuntimeUiSettings = Pick<
   OrchestratorUiSettings,
@@ -35,12 +53,26 @@ export const defaultOrchestratorUiSettings: OrchestratorUiSettings = {
   imagePruneDanglingOnly: true,
   appListRefreshIntervalSeconds: 5,
   removeDataOnDelete: true,
-  scrcpyTransport: 'websocket'
+  scrcpyTransport: 'websocket',
+  defaultViewerPreset: 'balanced',
+  defaultViewerBitrateMbps: 3,
+  defaultViewerMaxFps: 30,
+  defaultViewerMaxSize: 1080,
+  defaultViewerIFrameInterval: 1,
+  defaultViewerKeyboardCaptureEnabled: false,
+  defaultViewerSoundEnabled: true
 }
 
 export const defaultWebSettingsResponse: WebSettingsResponse = {
   appListRefreshIntervalSeconds: defaultOrchestratorUiSettings.appListRefreshIntervalSeconds,
-  removeDataOnDelete: defaultOrchestratorUiSettings.removeDataOnDelete
+  removeDataOnDelete: defaultOrchestratorUiSettings.removeDataOnDelete,
+  defaultViewerPreset: defaultOrchestratorUiSettings.defaultViewerPreset,
+  defaultViewerBitrateMbps: defaultOrchestratorUiSettings.defaultViewerBitrateMbps,
+  defaultViewerMaxFps: defaultOrchestratorUiSettings.defaultViewerMaxFps,
+  defaultViewerMaxSize: defaultOrchestratorUiSettings.defaultViewerMaxSize,
+  defaultViewerIFrameInterval: defaultOrchestratorUiSettings.defaultViewerIFrameInterval,
+  defaultViewerKeyboardCaptureEnabled: defaultOrchestratorUiSettings.defaultViewerKeyboardCaptureEnabled,
+  defaultViewerSoundEnabled: defaultOrchestratorUiSettings.defaultViewerSoundEnabled
 }
 
 export const defaultRuntimeSettingsResponse: OrchestratorSettingsResponse = {
@@ -63,12 +95,36 @@ export const normalizeOrchestratorUiSettings = (
     typeof web.removeDataOnDelete === 'boolean'
       ? web.removeDataOnDelete
       : defaultOrchestratorUiSettings.removeDataOnDelete,
+  defaultViewerPreset:
+    web.defaultViewerPreset === 'bandwidth' ||
+    web.defaultViewerPreset === 'quality' ||
+    web.defaultViewerPreset === 'balanced'
+      ? web.defaultViewerPreset
+      : defaultOrchestratorUiSettings.defaultViewerPreset,
+  defaultViewerBitrateMbps:
+    Number(web.defaultViewerBitrateMbps) || defaultOrchestratorUiSettings.defaultViewerBitrateMbps,
+  defaultViewerMaxFps: Number(web.defaultViewerMaxFps) || defaultOrchestratorUiSettings.defaultViewerMaxFps,
+  defaultViewerMaxSize:
+    typeof web.defaultViewerMaxSize === 'number'
+      ? web.defaultViewerMaxSize
+      : defaultOrchestratorUiSettings.defaultViewerMaxSize,
+  defaultViewerIFrameInterval:
+    Number(web.defaultViewerIFrameInterval) || defaultOrchestratorUiSettings.defaultViewerIFrameInterval,
+  defaultViewerKeyboardCaptureEnabled:
+    typeof web.defaultViewerKeyboardCaptureEnabled === 'boolean'
+      ? web.defaultViewerKeyboardCaptureEnabled
+      : defaultOrchestratorUiSettings.defaultViewerKeyboardCaptureEnabled,
+  defaultViewerSoundEnabled:
+    typeof web.defaultViewerSoundEnabled === 'boolean'
+      ? web.defaultViewerSoundEnabled
+      : defaultOrchestratorUiSettings.defaultViewerSoundEnabled,
   defaultContainerImage:
     orchestrator.defaultContainerImage?.trim() || defaultOrchestratorUiSettings.defaultContainerImage,
   dockerImageRegistry: orchestrator.dockerImageRegistry?.trim() || defaultOrchestratorUiSettings.dockerImageRegistry,
   defaultInactivityTimeoutSeconds:
-    Number(orchestrator.defaultInactivityTimeoutSeconds) ||
-    defaultOrchestratorUiSettings.defaultInactivityTimeoutSeconds,
+    typeof orchestrator.defaultInactivityTimeoutSeconds === 'number'
+      ? orchestrator.defaultInactivityTimeoutSeconds
+      : defaultOrchestratorUiSettings.defaultInactivityTimeoutSeconds,
   maxApkUploadSizeMb: Number(orchestrator.maxApkUploadSizeMb) || defaultOrchestratorUiSettings.maxApkUploadSizeMb,
   imagePruneIntervalHours:
     Number(orchestrator.imagePruneIntervalHours) || defaultOrchestratorUiSettings.imagePruneIntervalHours,

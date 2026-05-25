@@ -111,5 +111,10 @@
   }
   body {
     @apply bg-background text-foreground;
+    backface-visibility: hidden;
+  }
+  .main-layout {
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
   }
 }

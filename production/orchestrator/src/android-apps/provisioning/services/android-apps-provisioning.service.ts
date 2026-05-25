@@ -251,7 +251,18 @@ export class AndroidAppsProvisioningService {
 
   /** Installs the first APK when one is attached. */
   private async installInitialApk(app: AndroidApplication) {
+    await this.logs.append(app.id, 'Initial APK provisioning check', {
+      hasApk: Boolean(app.apkFilePath),
+      apkOriginalName: app.apkOriginalName,
+      apkPackageName: app.apkPackageName,
+      uploadedApkId: app.uploadedApkId,
+      containerId: app.containerId,
+    });
+
     if (!app.apkFilePath) {
+      await this.logs.append(app.id, 'Initial APK provisioning skipped', {
+        reason: 'No APK is attached to this app.',
+      });
       return;
     }
 
@@ -260,6 +271,9 @@ export class AndroidAppsProvisioningService {
       app,
       'Installing APK inside Android. Viewer is available while installation finishes.',
     );
+    await this.logs.append(app.id, 'Initial APK provisioning install finished', {
+      apkPackageName: app.apkPackageName,
+    });
     await this.apkProvisioning.launchInstalledApk(app);
   }
 

@@ -5,6 +5,7 @@ import { IconDeviceFloppy, IconRotateClockwise } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Setting } from '@/features/settings/components/setting'
 import { resetGeneralUiSettings, saveGeneralUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
@@ -15,14 +16,32 @@ import type { OrchestratorUiSettings } from '@/features/settings/domain/orchestr
 
 const numberValue = (value: number, fallback: number) => (Number.isFinite(value) ? value : fallback)
 
-type SaveGeneralUiSettingsInput = Pick<OrchestratorUiSettings, 'appListRefreshIntervalSeconds' | 'removeDataOnDelete'>
+type SaveGeneralUiSettingsInput = Pick<
+  OrchestratorUiSettings,
+  | 'appListRefreshIntervalSeconds'
+  | 'removeDataOnDelete'
+  | 'defaultViewerPreset'
+  | 'defaultViewerBitrateMbps'
+  | 'defaultViewerMaxFps'
+  | 'defaultViewerMaxSize'
+  | 'defaultViewerIFrameInterval'
+  | 'defaultViewerKeyboardCaptureEnabled'
+  | 'defaultViewerSoundEnabled'
+>
 
 const persistGeneralUiSettings = saveGeneralUiSettings
 const restoreGeneralUiSettings = resetGeneralUiSettings
 
 const toGeneralUiSettings = (settings: OrchestratorUiSettings): SaveGeneralUiSettingsInput => ({
   appListRefreshIntervalSeconds: settings.appListRefreshIntervalSeconds,
-  removeDataOnDelete: settings.removeDataOnDelete
+  removeDataOnDelete: settings.removeDataOnDelete,
+  defaultViewerPreset: settings.defaultViewerPreset,
+  defaultViewerBitrateMbps: settings.defaultViewerBitrateMbps,
+  defaultViewerMaxFps: settings.defaultViewerMaxFps,
+  defaultViewerMaxSize: settings.defaultViewerMaxSize,
+  defaultViewerIFrameInterval: settings.defaultViewerIFrameInterval,
+  defaultViewerKeyboardCaptureEnabled: settings.defaultViewerKeyboardCaptureEnabled,
+  defaultViewerSoundEnabled: settings.defaultViewerSoundEnabled
 })
 
 export const GeneralSettingsForm = ({ initialSettings }: { initialSettings: OrchestratorUiSettings }) => {
@@ -140,6 +159,117 @@ export const GeneralSettingsForm = ({ initialSettings }: { initialSettings: Orch
             <Switch
               checked={settings.removeDataOnDelete}
               onCheckedChange={checked => updateSettings({ removeDataOnDelete: checked })}
+            />
+          </Setting>
+        </Section>
+        <Section
+          orientation='vertical'
+          title='Streaming defaults'
+          boxed
+          titleClassName='pb-4'
+          contentClassName='gap-6'
+        >
+          <div className='grid gap-4 md:grid-cols-3'>
+            <Setting
+              label='Preset'
+              description='Default quality profile for new viewer sessions.'
+              className='flex-col items-start w-full'
+              variant='vertical'
+            >
+              <Select
+                value={settings.defaultViewerPreset}
+                onValueChange={value =>
+                  updateSettings({
+                    defaultViewerPreset:
+                      value === 'bandwidth' || value === 'quality' || value === 'balanced' ? value : 'balanced'
+                  })
+                }
+              >
+                <SelectTrigger className='w-full'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='bandwidth'>Bandwidth</SelectItem>
+                  <SelectItem value='balanced'>Balanced</SelectItem>
+                  <SelectItem value='quality'>Quality</SelectItem>
+                </SelectContent>
+              </Select>
+            </Setting>
+            <Setting
+              label='Bitrate'
+              description='Default stream bitrate in Mbps.'
+              className='flex-col items-start w-full'
+              variant='vertical'
+            >
+              <Input
+                value={settings.defaultViewerBitrateMbps}
+                min={1}
+                max={32}
+                type='number'
+                onChange={event => updateSettings({ defaultViewerBitrateMbps: Number(event.target.value) })}
+              />
+            </Setting>
+            <Setting
+              label='Max FPS'
+              description='Default frame rate limit.'
+              className='flex-col items-start w-full'
+              variant='vertical'
+            >
+              <Input
+                value={settings.defaultViewerMaxFps}
+                min={1}
+                max={120}
+                type='number'
+                onChange={event => updateSettings({ defaultViewerMaxFps: Number(event.target.value) })}
+              />
+            </Setting>
+            <Setting
+              label='Max size'
+              description='Use 0 to fit the stream to the frame.'
+              className='flex-col items-start w-full'
+              variant='vertical'
+            >
+              <Input
+                value={settings.defaultViewerMaxSize}
+                min={0}
+                max={4096}
+                type='number'
+                onChange={event => updateSettings({ defaultViewerMaxSize: Number(event.target.value) })}
+              />
+            </Setting>
+            <Setting
+              label='I-frame interval'
+              description='Default keyframe interval in seconds.'
+              className='flex-col items-start w-full'
+              variant='vertical'
+            >
+              <Input
+                value={settings.defaultViewerIFrameInterval}
+                min={1}
+                max={30}
+                type='number'
+                onChange={event => updateSettings({ defaultViewerIFrameInterval: Number(event.target.value) })}
+              />
+            </Setting>
+          </div>
+          <Setting
+            label='Enable keyboard in fullscreen'
+            description='Fullscreen viewer sessions start with keyboard input captured.'
+            className='w-full rounded-md bg-background/45 px-4 py-3'
+          >
+            <Switch
+              checked={settings.defaultViewerKeyboardCaptureEnabled}
+              onCheckedChange={checked => updateSettings({ defaultViewerKeyboardCaptureEnabled: checked })}
+            />
+          </Setting>
+          <Setting
+            label='Enable sound'
+            description='Request audio when the viewer stream supports it.'
+            className='w-full rounded-md bg-background/45 px-4 py-3'
+          >
+            <Switch
+              checked={settings.defaultViewerSoundEnabled}
+              onCheckedChange={checked => updateSettings({ defaultViewerSoundEnabled: checked })}
             />
           </Setting>
         </Section>

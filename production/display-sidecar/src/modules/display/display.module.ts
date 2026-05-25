@@ -3,6 +3,7 @@ import { AdbModule } from '../adb/adb.module';
 import { ScrcpyModule } from '../scrcpy/scrcpy.module';
 import { SidecarAuthGuard } from '../shared/sidecar-auth.guard';
 import { SidecarConfigService } from '../shared/sidecar-config.service';
+import { DisplayControlGateway } from './display-control.gateway';
 import { DisplayController } from './display.controller';
 import { DisplayGateway } from './display.gateway';
 import { DisplaySessionService } from './display-session.service';
@@ -10,7 +11,7 @@ import { DisplaySessionService } from './display-session.service';
 @Module({
   imports: [AdbModule, ScrcpyModule],
   controllers: [DisplayController],
-  providers: [DisplayGateway, DisplaySessionService, SidecarAuthGuard, SidecarConfigService],
+  providers: [DisplayControlGateway, DisplayGateway, DisplaySessionService, SidecarAuthGuard, SidecarConfigService],
   exports: [DisplaySessionService],
 })
 export class DisplayModule {}

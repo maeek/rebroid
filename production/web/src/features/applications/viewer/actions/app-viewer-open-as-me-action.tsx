@@ -32,7 +32,7 @@ export const AppViewerOpenAsMeAction = ({ app }: AppViewerOpenAsMeActionProps) =
           const mapped = mapAndroidApplicationToAppDefinition(cloned)
           toast({
             title: 'Opening your own copy',
-            description: 'A separate application container is being provisioned for your profile.'
+            description: 'A separate app session is being prepared for your profile.'
           })
           router.push(`/app/${mapped.id}`)
         }, 'Could not open app as your copy')

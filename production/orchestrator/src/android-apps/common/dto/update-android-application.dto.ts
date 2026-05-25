@@ -23,11 +23,15 @@ export class UpdateAndroidApplicationDto {
   @IsString()
   ownerUserId?: string;
 
-  @ApiPropertyOptional({ minimum: 60, maximum: 86400 })
+  @ApiPropertyOptional({
+    minimum: -1,
+    maximum: 86400,
+    description: 'Use -1 to keep the session running until manually stopped.',
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  @Min(60)
+  @Min(-1)
   @Max(86400)
   inactivityTimeoutSeconds?: number;
 

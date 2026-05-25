@@ -21,6 +21,11 @@ export type AndroidApplicationLifecycleStage =
 export type ScrcpyTransport = 'websocket'
 export type ApplicationProfileMode = 'persistent' | 'temporary'
 
+export interface ApplicationRuntimeFilesProfileInput {
+  profileMode?: ApplicationProfileMode
+  profileName?: string
+}
+
 export interface AndroidNotification {
   packageName: string
   title: string
@@ -207,6 +212,8 @@ export interface UploadedApk {
   sizeBytes: number
   filePath: string
   extractedIconDataUrl: string | null
+  displayName: string | null
+  packageName: string | null
   createdAt: string
   updatedAt: string
 }
@@ -250,6 +257,7 @@ export interface AndroidApplication {
     volumeName: string
     profileMode: ApplicationProfileMode
     profileName: string | null
+    savedProfiles: Array<{ mode: ApplicationProfileMode; name: string }>
   }
   network: {
     networkName: string

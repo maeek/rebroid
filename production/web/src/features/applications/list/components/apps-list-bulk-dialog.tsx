@@ -22,10 +22,10 @@ export const AppsListBulkDialog = () => {
       : `Delete ${activeBulkApps.length} selected app${activeBulkApps.length === 1 ? '' : 's'}?`
   const activeBulkDescription =
     bulkAction === 'stop'
-      ? 'The containers will stop, but their persisted volumes and database records will remain.'
+      ? 'The selected apps will stop, but their saved data and records will remain.'
       : removeDataOnDelete
-        ? 'This removes the selected app records and asks the orchestrator to remove their containers and persisted data.'
-        : 'This removes the selected app records and containers, while preserving their Docker volumes when the orchestrator can.'
+        ? 'This removes the selected apps and their saved data.'
+        : 'This removes the selected apps while preserving saved data when possible.'
 
   return (
     <Dialog

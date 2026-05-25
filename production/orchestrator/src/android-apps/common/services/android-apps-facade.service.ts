@@ -142,7 +142,10 @@ export class AndroidAppsFacadeService {
 
   /** Uploads one file into the Download folder. */
   uploadDownloadFile(id: string, file?: Express.Multer.File) {
-    return this.runtime.uploadDownloadFile(id, file);
+    const app = this.state.get(id);
+    return app.then((storedApp) =>
+      this.runtime.uploadDownloadFileBuffer(storedApp, file),
+    );
   }
 
   /** Downloads one file from the Download folder. */

@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
+import {
+  loadSavedApplicationProfiles,
+  rememberApplicationProfile
+} from '@/features/applications/profiles/profile-history'
+import { ApplicationProfilePicker } from '@/features/applications/profiles/profile-picker'
 import { Setting } from '@/features/settings/components/setting'
 import { toast } from '@/hooks/use-toast'
 import { switchApplicationProfileAction } from '@/server/orchestrator/applications/mutation-actions'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { ApplicationProfileMode } from '@/server/orchestrator/applications/types'
 
 type AppManageProfileSettingsProps = {
   app: AppDefinition
@@ -17,8 +21,15 @@ type AppManageProfileSettingsProps = {
 const verticalSettingClassName = 'flex-col items-start w-full'
 
 export const AppManageProfileSettings = ({ app, onUpdated }: AppManageProfileSettingsProps) => {
-  const [profileMode, setProfileMode] = useState<'persistent' | 'temporary'>(app.profileMode ?? 'persistent')
+  const [profileMode, setProfileMode] = useState<ApplicationProfileMode>(app.profileMode ?? 'persistent')
   const [profileName, setProfileName] = useState(app.profileName ?? 'default')
+  const [savedProfiles, setSavedProfiles] = useState(() =>
+    loadSavedApplicationProfiles(
+      app.id,
+      { mode: app.profileMode ?? 'persistent', name: app.profileName ?? 'default' },
+      app.savedProfiles
+    )
+  )
   const [isSaving, setIsSaving] = useState(false)
   const isDirtyRef = useRef(false)
   const previousAppIdRef = useRef(app.id)
@@ -32,6 +43,16 @@ export const AppManageProfileSettings = ({ app, onUpdated }: AppManageProfileSet
     if (!isDirtyRef.current) {
       setProfileMode(app.profileMode ?? 'persistent')
       setProfileName(app.profileName ?? 'default')
+      setSavedProfiles(
+        loadSavedApplicationProfiles(
+          app.id,
+          {
+            mode: app.profileMode ?? 'persistent',
+            name: app.profileName ?? 'default'
+          },
+          app.savedProfiles
+        )
+      )
     }
   }, [app])
 
@@ -41,6 +62,20 @@ export const AppManageProfileSettings = ({ app, onUpdated }: AppManageProfileSet
       const updated = await switchApplicationProfileAction(app.id, { profileMode, profileName })
       const mapped = mapAndroidApplicationToAppDefinition(updated)
       onUpdated(mapped)
+      rememberApplicationProfile(app.id, {
+        mode: mapped.profileMode ?? 'persistent',
+        name: mapped.profileName ?? 'default'
+      })
+      setSavedProfiles(
+        loadSavedApplicationProfiles(
+          app.id,
+          {
+            mode: mapped.profileMode ?? 'persistent',
+            name: mapped.profileName ?? 'default'
+          },
+          mapped.savedProfiles
+        )
+      )
       isDirtyRef.current = false
       setProfileMode(mapped.profileMode ?? 'persistent')
       setProfileName(mapped.profileName ?? 'default')
@@ -56,6 +91,18 @@ export const AppManageProfileSettings = ({ app, onUpdated }: AppManageProfileSet
     }
   }
 
+  const handleProfileModeChange = (mode: ApplicationProfileMode) => {
+    isDirtyRef.current = true
+    setProfileMode(mode)
+    setProfileName(current => {
+      if (mode === 'temporary') {
+        return 'temporary'
+      }
+
+      return current === 'temporary' ? 'default' : current
+    })
+  }
+
   return (
     <Section
       title='Profile'
@@ -69,30 +116,17 @@ export const AppManageProfileSettings = ({ app, onUpdated }: AppManageProfileSet
         className={verticalSettingClassName}
         variant='vertical'
       >
-        <div className='grid w-full grid-cols-2 gap-3 max-sm:grid-cols-1'>
-          <Select
-            value={profileMode}
-            onValueChange={value => {
-              isDirtyRef.current = true
-              setProfileMode(value === 'temporary' ? 'temporary' : 'persistent')
-            }}
-          >
-            <SelectTrigger className='w-full'>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value='persistent'>Persistent volume</SelectItem>
-              <SelectItem value='temporary'>Temporary data</SelectItem>
-            </SelectContent>
-          </Select>
-          <Input
-            value={profileName}
-            onChange={event => {
-              isDirtyRef.current = true
-              setProfileName(event.target.value)
-            }}
-          />
-        </div>
+        <ApplicationProfilePicker
+          mode={profileMode}
+          name={profileName}
+          savedProfiles={savedProfiles}
+          disabled={isSaving}
+          onModeChange={handleProfileModeChange}
+          onNameChange={value => {
+            isDirtyRef.current = true
+            setProfileName(value)
+          }}
+        />
       </Setting>
       <Button
         type='button'

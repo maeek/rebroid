@@ -6,10 +6,9 @@ import {
   Post,
   Put,
   Query,
-  UploadedFile,
-  UseInterceptors,
+  Req,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import type { Request } from 'express';
 import {
   ApiBody,
   ApiConsumes,
@@ -28,6 +27,7 @@ import {
   ApplicationRuntimeFileDto,
   ApplicationRuntimeFileUploadDto,
 } from '../dto/application-runtime-file.dto';
+import { ApplicationRuntimeFilesQueryDto } from '../dto/application-runtime-files-query.dto';
 import { ApplicationScreenshotDto } from '../dto/application-screenshot.dto';
 import { AndroidAppsRuntimeAccessService } from '../services/android-apps-runtime-access.service';
 
@@ -47,12 +47,14 @@ export class AndroidAppsRuntimeController {
     summary: 'List files from the application Download directory.',
   })
   @ApiOkResponse({ type: ApplicationRuntimeFileDto, isArray: true })
-  listDownloadFiles(@Param('id') id: string) {
-    return this.runtime.listDownloadFiles(id);
+  listDownloadFiles(
+    @Param('id') id: string,
+    @Query() query: ApplicationRuntimeFilesQueryDto,
+  ) {
+    return this.runtime.listDownloadFiles(id, query);
   }
 
   @Post(':id/files/downloads')
-  @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({
     summary: 'Upload a file to the application Download directory.',
   })
@@ -69,9 +71,10 @@ export class AndroidAppsRuntimeController {
   @ApiOkResponse({ type: ApplicationRuntimeFileUploadDto })
   uploadDownloadFile(
     @Param('id') id: string,
-    @UploadedFile() file?: Express.Multer.File,
+    @Query() query: ApplicationRuntimeFilesQueryDto,
+    @Req() request: Request,
   ) {
-    return this.runtime.uploadDownloadFile(id, file);
+    return this.runtime.uploadDownloadFile(id, request, query);
   }
 
   @Get(':id/files/downloads/:fileName')
@@ -79,8 +82,12 @@ export class AndroidAppsRuntimeController {
     summary: 'Read a file from the application Download directory.',
   })
   @ApiOkResponse({ type: ApplicationRuntimeFileDownloadDto })
-  downloadFile(@Param('id') id: string, @Param('fileName') fileName: string) {
-    return this.runtime.downloadFile(id, fileName);
+  downloadFile(
+    @Param('id') id: string,
+    @Param('fileName') fileName: string,
+    @Query() query: ApplicationRuntimeFilesQueryDto,
+  ) {
+    return this.runtime.downloadFile(id, fileName, query);
   }
 
   @Get(':id/clipboard')

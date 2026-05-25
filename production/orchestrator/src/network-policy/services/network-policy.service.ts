@@ -206,6 +206,10 @@ export class NetworkPolicyService {
         : { cidrs: [], unresolved: [token] };
     }
 
+    if (token === 'INTERNET') {
+      return { cidrs: ['0.0.0.0/0'], unresolved: [] };
+    }
+
     const cidr = normalizeIpv4Cidr(normalized);
     return cidr
       ? { cidrs: [cidr], unresolved: [] }

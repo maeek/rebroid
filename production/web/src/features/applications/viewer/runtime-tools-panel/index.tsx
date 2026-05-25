@@ -52,8 +52,7 @@ export const RuntimeToolsPanel = ({
       ].filter((tool): tool is NonNullable<typeof tool> => Boolean(tool)),
     [permissions, viewerSettings.bitrateMbps, viewerSettings.player]
   )
-  const [activeTool, setActiveTool] = useState<RuntimeToolId>(() => tools[0]?.id ?? 'streaming')
-  const resolvedActiveTool = tools.some(tool => tool.id === activeTool) ? activeTool : (tools[0]?.id ?? 'streaming')
+  const [activeTool, setActiveTool] = useState<RuntimeToolId | null>(() => tools[0]?.id ?? 'streaming')
 
   const renderToolContent = (toolId: RuntimeToolId, inline = false) => {
     const sectionClassName = inline
@@ -66,6 +65,7 @@ export const RuntimeToolsPanel = ({
           app={app}
           permissions={permissions}
           className={sectionClassName}
+          hideHeader={inline}
         />
       )
     }
@@ -76,6 +76,7 @@ export const RuntimeToolsPanel = ({
           app={app}
           permissions={permissions}
           className={sectionClassName}
+          hideHeader={inline}
         />
       )
     }
@@ -85,6 +86,7 @@ export const RuntimeToolsPanel = ({
         viewerSettings={viewerSettings}
         onViewerSettingsChange={onViewerSettingsChange}
         className={sectionClassName}
+        hideHeader={inline}
       />
     )
   }
@@ -93,7 +95,7 @@ export const RuntimeToolsPanel = ({
     <div className='flex w-full flex-col gap-4'>
       <div className='grid gap-3 md:hidden'>
         {tools.map(tool => {
-          const selected = resolvedActiveTool === tool.id
+          const selected = activeTool === tool.id
 
           return (
             <div
@@ -109,7 +111,7 @@ export const RuntimeToolsPanel = ({
                   'flex w-full items-center gap-3 px-4 py-4 text-left transition-colors',
                   selected ? 'bg-card/55' : 'hover:bg-card/40'
                 )}
-                onClick={() => setActiveTool(tool.id)}
+                onClick={() => setActiveTool(current => (current === tool.id ? null : tool.id))}
               >
                 <span
                   className={cn(
@@ -146,41 +148,11 @@ export const RuntimeToolsPanel = ({
         })}
       </div>
 
-      <div className='hidden grid-cols-3 gap-3 md:grid'>
-        {tools.map(tool => {
-          const selected = resolvedActiveTool === tool.id
-
-          return (
-            <button
-              key={tool.id}
-              type='button'
-              className={cn(
-                'flex items-center gap-3 rounded-lg border p-4 text-left transition-colors',
-                'bg-card/25 hover:border-primary/55 hover:bg-card/45',
-                selected ? 'border-primary/75 ring-1 ring-primary/25' : 'border-border/70'
-              )}
-              onClick={() => setActiveTool(tool.id)}
-            >
-              <span
-                className={cn(
-                  'flex size-10 shrink-0 items-center justify-center rounded-lg border',
-                  selected
-                    ? 'border-primary/40 bg-primary/20 text-primary'
-                    : 'border-border/70 bg-background/40 text-secondary-foreground'
-                )}
-              >
-                <tool.Icon className='size-5' />
-              </span>
-              <span className='min-w-0'>
-                <span className='block font-medium'>{tool.title}</span>
-                <span className='mt-1 block truncate text-xs text-secondary-foreground'>{tool.description}</span>
-              </span>
-            </button>
-          )
-        })}
+      <div className='hidden flex-col gap-4 md:flex'>
+        {tools.map(tool => (
+          <div key={tool.id}>{renderToolContent(tool.id)}</div>
+        ))}
       </div>
-
-      <div className='hidden md:block'>{renderToolContent(resolvedActiveTool)}</div>
     </div>
   )
 }

@@ -1,12 +1,32 @@
 import { ConflictException, Injectable } from '@nestjs/common';
+import Busboy from 'busboy';
+import { createWriteStream } from 'node:fs';
+import {
+  mkdir,
+  readdir,
+  readFile,
+  stat,
+  unlink,
+  writeFile,
+} from 'node:fs/promises';
+import { join } from 'node:path';
+import { Readable, Transform, type TransformCallback } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
+import type { Request } from 'express';
+import { ApplicationProfileMode } from '../../application-profile-mode';
 import { DockerContainerArchiveService } from '../../../docker/containers/services/docker-container-archive.service';
 import { DockerContainerExecService } from '../../../docker/containers/services/docker-container-exec.service';
 import { DockerContainerLifecycleService } from '../../../docker/containers/services/docker-container-lifecycle.service';
+import { DockerResourceRuntimeService } from '../../../docker/resources/services/docker-resource-runtime.service';
+import { NetworkIsolationService } from '../../../network-isolation/network-isolation.service';
 import { AndroidApplicationStatus } from '../../android-application-status';
+import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
 import { AndroidAppsDisplaySidecarService } from '../../viewer/services/android-apps-display-sidecar.service';
 import { AndroidAppsSidecarAdbService } from '../../viewer/services/android-apps-sidecar-adb.service';
+import { ApplicationRuntimeFileUploadDto } from '../dto/application-runtime-file.dto';
+import { ApplicationRuntimeFilesQueryDto } from '../dto/application-runtime-files-query.dto';
 import {
   parseDownloadFiles,
   sanitizeRuntimeFileName,
@@ -14,12 +34,14 @@ import {
 
 @Injectable()
 export class AndroidAppsRuntimeAccessService {
-  private readonly downloadDirectory = '/sdcard/Download';
+  private readonly downloadDirectory = '/data/media/0/Download';
 
   constructor(
     private readonly archive: DockerContainerArchiveService,
     private readonly exec: DockerContainerExecService,
     private readonly lifecycle: DockerContainerLifecycleService,
+    private readonly networkIsolation: NetworkIsolationService,
+    private readonly resources: DockerResourceRuntimeService,
     private readonly logs: AndroidAppsLogService,
     private readonly displaySidecar: AndroidAppsDisplaySidecarService,
     private readonly sidecarAdb: AndroidAppsSidecarAdbService,
@@ -94,8 +116,24 @@ export class AndroidAppsRuntimeAccessService {
   }
 
   /** Lists files in the Android Download folder. */
-  async listDownloadFiles(id: string) {
-    const app = await this.getRunningRuntimeApp(id);
+  async listDownloadFiles(
+    id: string,
+    query: ApplicationRuntimeFilesQueryDto = {},
+  ) {
+    const app = await this.state.get(id);
+    if (this.shouldUseRunningContainer(app, query)) {
+      return this.listRunningDownloadFiles(app);
+    }
+
+    const directory = await this.getPersistentDownloadDirectory(app, query);
+    if (!directory) {
+      return [];
+    }
+
+    return this.listVolumeDownloadFiles(directory);
+  }
+
+  private async listRunningDownloadFiles(app: AndroidApplication) {
     const { stdout } = await this.exec.execInContainerWithOutput(
       app.containerId!,
       [
@@ -118,17 +156,50 @@ export class AndroidAppsRuntimeAccessService {
   }
 
   /** Uploads one file into the Download folder. */
-  async uploadDownloadFile(id: string, file?: Express.Multer.File) {
+  async uploadDownloadFile(
+    id: string,
+    request: Request,
+    query: ApplicationRuntimeFilesQueryDto = {},
+  ) {
+    const app = await this.state.get(id);
+    return this.consumeDownloadFileUpload(app, request, query);
+  }
+
+  async uploadDownloadFileBuffer(
+    app: AndroidApplication,
+    file?: Express.Multer.File,
+    query: ApplicationRuntimeFilesQueryDto = {},
+  ) {
     if (!file) {
       throw new ConflictException('A file upload is required.');
     }
 
-    const app = await this.getRunningRuntimeApp(id);
     const fileName = sanitizeRuntimeFileName(file.originalname);
+    if (!this.shouldUseRunningContainer(app, query)) {
+      const directory = await this.getPersistentDownloadDirectory(app, query, {
+        create: true,
+      });
+      if (!directory) {
+        throw new ConflictException(
+          'Temporary profiles can only transfer files while the app is running.',
+        );
+      }
+
+      await mkdir(directory, { recursive: true });
+      await writeFile(join(directory, fileName), file.buffer, { mode: 0o644 });
+      return {
+        uploaded: true,
+        name: fileName,
+        path: `${this.downloadDirectory}/${fileName}`,
+        sizeBytes: file.size,
+        modifiedAt: new Date().toISOString(),
+      };
+    }
+
     await this.exec.execInContainer(app.containerId!, [
       'sh',
       '-lc',
-      `mkdir -p "${this.downloadDirectory}"`,
+      `mkdir -p ${this.shellQuote(this.downloadDirectory)}`,
     ]);
     await this.archive.copyBufferToContainer(
       app.containerId!,
@@ -136,6 +207,13 @@ export class AndroidAppsRuntimeAccessService {
       this.downloadDirectory,
       fileName,
     );
+    await this.prepareRunningDownloadFile(app, fileName);
+    void this.scanRunningDownloadFile(app, fileName).catch((error) => {
+      void this.logs.append(app.id, 'Uploaded file media scan failed', {
+        fileName,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
 
     return {
       uploaded: true,
@@ -146,10 +224,217 @@ export class AndroidAppsRuntimeAccessService {
     };
   }
 
+  private async consumeDownloadFileUpload(
+    app: AndroidApplication,
+    request: Request,
+    query: ApplicationRuntimeFilesQueryDto,
+  ) {
+    if (!request.is('multipart/form-data')) {
+      throw new ConflictException('A multipart file upload is required.');
+    }
+
+    const parser = Busboy({
+      headers: request.headers,
+      limits: {
+        files: 1,
+      },
+    });
+
+    return new Promise<ApplicationRuntimeFileUploadDto>((resolve, reject) => {
+      let upload: Promise<ApplicationRuntimeFileUploadDto> | null = null;
+      let settled = false;
+
+      const finish = (callback: () => void) => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        callback();
+      };
+
+      const fail = (error: unknown) => {
+        finish(() => {
+          reject(error);
+        });
+      };
+
+      parser.on('file', (fieldName, stream, info) => {
+        if (fieldName !== 'file' || upload) {
+          stream.resume();
+          return;
+        }
+
+        upload = this.storeDownloadFileStream(
+          app,
+          stream,
+          info.filename || 'upload',
+          query,
+        );
+        upload.catch(fail);
+      });
+
+      parser.on('error', fail);
+      request.on('aborted', () => {
+        fail(new ConflictException('File upload was cancelled.'));
+      });
+      request.on('error', fail);
+      parser.on('finish', () => {
+        if (!upload) {
+          fail(new ConflictException('A file upload is required.'));
+          return;
+        }
+
+        upload.then((result) => {
+          finish(() => {
+            resolve(result);
+          });
+        }, fail);
+      });
+
+      request.pipe(parser);
+    });
+  }
+
+  private async storeDownloadFileStream(
+    app: AndroidApplication,
+    stream: Readable,
+    originalName: string,
+    query: ApplicationRuntimeFilesQueryDto,
+  ) {
+    const fileName = sanitizeRuntimeFileName(originalName);
+    if (!this.shouldUseRunningContainer(app, query)) {
+      return this.storePersistentDownloadFileStream(
+        app,
+        stream,
+        fileName,
+        query,
+      );
+    }
+
+    return this.storeRunningDownloadFileStream(app, stream, fileName);
+  }
+
+  private async storePersistentDownloadFileStream(
+    app: AndroidApplication,
+    stream: Readable,
+    fileName: string,
+    query: ApplicationRuntimeFilesQueryDto,
+  ) {
+    const directory = await this.getPersistentDownloadDirectory(app, query, {
+      create: true,
+    });
+    if (!directory) {
+      stream.resume();
+      throw new ConflictException(
+        'Temporary profiles can only transfer files while the app is running.',
+      );
+    }
+
+    await mkdir(directory, { recursive: true });
+    const targetPath = join(directory, fileName);
+    let sizeBytes = 0;
+    const counter = this.createByteCounter((bytes) => {
+      sizeBytes += bytes;
+    });
+
+    try {
+      await pipeline(
+        stream,
+        counter,
+        createWriteStream(targetPath, { mode: 0o644 }),
+      );
+    } catch (error) {
+      await unlink(targetPath).catch(() => undefined);
+      throw error;
+    }
+
+    return {
+      uploaded: true,
+      name: fileName,
+      path: `${this.downloadDirectory}/${fileName}`,
+      sizeBytes,
+      modifiedAt: new Date().toISOString(),
+    };
+  }
+
+  private async storeRunningDownloadFileStream(
+    app: AndroidApplication,
+    stream: Readable,
+    fileName: string,
+  ) {
+    let sizeBytes = 0;
+    const counter = this.createByteCounter((bytes) => {
+      sizeBytes += bytes;
+    });
+
+    await this.exec.execInContainer(app.containerId!, [
+      'sh',
+      '-lc',
+      `mkdir -p ${this.shellQuote(this.downloadDirectory)}`,
+    ]);
+    await this.archive.copyStreamToContainer(
+      app.containerId!,
+      stream.pipe(counter),
+      this.downloadDirectory,
+      fileName,
+    );
+    await this.prepareRunningDownloadFile(app, fileName);
+    void this.scanRunningDownloadFile(app, fileName).catch((error) => {
+      void this.logs.append(app.id, 'Uploaded file media scan failed', {
+        fileName,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+
+    return {
+      uploaded: true,
+      name: fileName,
+      path: `${this.downloadDirectory}/${fileName}`,
+      sizeBytes,
+      modifiedAt: new Date().toISOString(),
+    };
+  }
+
+  private createByteCounter(onBytes: (bytes: number) => void) {
+    return new Transform({
+      transform(
+        chunk: Buffer,
+        _encoding: BufferEncoding,
+        callback: TransformCallback,
+      ) {
+        onBytes(
+          Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk),
+        );
+        callback(null, chunk);
+      },
+    });
+  }
+
   /** Downloads one file from the Download folder. */
-  async downloadFile(id: string, fileName: string) {
-    const app = await this.getRunningRuntimeApp(id);
+  async downloadFile(
+    id: string,
+    fileName: string,
+    query: ApplicationRuntimeFilesQueryDto = {},
+  ) {
+    const app = await this.state.get(id);
     const safeFileName = sanitizeRuntimeFileName(fileName);
+    if (!this.shouldUseRunningContainer(app, query)) {
+      const directory = await this.getPersistentDownloadDirectory(app, query);
+      if (!directory) {
+        throw new ConflictException(
+          'Temporary profiles can only transfer files while the app is running.',
+        );
+      }
+
+      const content = await readFile(join(directory, safeFileName));
+      return {
+        name: safeFileName,
+        mimeType: 'application/octet-stream',
+        dataUrl: `data:application/octet-stream;base64,${content.toString('base64')}`,
+      };
+    }
+
     const content = await this.archive.readFileFromContainer(
       app.containerId!,
       `${this.downloadDirectory}/${safeFileName}`,
@@ -208,5 +493,143 @@ export class AndroidAppsRuntimeAccessService {
     }
 
     return app;
+  }
+
+  private shouldUseRunningContainer(
+    app: AndroidApplication,
+    query: ApplicationRuntimeFilesQueryDto,
+  ) {
+    const profileMode = query.profileMode ?? app.profileMode;
+    const profileName =
+      query.profileName?.trim() || app.profileName || 'default';
+
+    return (
+      app.containerId &&
+      app.status === AndroidApplicationStatus.Running &&
+      profileMode === app.profileMode &&
+      profileName === (app.profileName || 'default')
+    );
+  }
+
+  private async prepareRunningDownloadFile(
+    app: AndroidApplication,
+    fileName: string,
+  ) {
+    const filePath = `${this.downloadDirectory}/${fileName}`;
+
+    await this.exec.execInContainer(app.containerId!, [
+      'sh',
+      '-lc',
+      [
+        `file_path=${this.shellQuote(filePath)}`,
+        'chown 1023:1023 "$file_path" 2>/dev/null || true',
+        'chmod 0644 "$file_path" 2>/dev/null || true',
+        'sync "$file_path" 2>/dev/null || sync',
+      ].join('\n'),
+    ]);
+  }
+
+  private async scanRunningDownloadFile(
+    app: AndroidApplication,
+    fileName: string,
+  ) {
+    const filePath = `${this.downloadDirectory}/${fileName}`;
+    const publicPath = `/sdcard/Download/${fileName}`;
+
+    await this.exec.execInContainer(app.containerId!, [
+      'sh',
+      '-lc',
+      [
+        `file_path=${this.shellQuote(filePath)}`,
+        `public_path=${this.shellQuote(publicPath)}`,
+        'run_with_timeout() {',
+        '  timeout_seconds="$1"',
+        '  shift',
+        '  "$@" &',
+        '  pid=$!',
+        '  elapsed=0',
+        '  while kill -0 "$pid" 2>/dev/null; do',
+        '    if [ "$elapsed" -ge "$timeout_seconds" ]; then',
+        '      kill "$pid" 2>/dev/null || true',
+        '      wait "$pid" 2>/dev/null || true',
+        '      return 124',
+        '    fi',
+        '    sleep 1',
+        '    elapsed=$((elapsed + 1))',
+        '  done',
+        '  wait "$pid"',
+        '}',
+        'scan_file() {',
+        '  cmd media scan-file "$file_path" >/dev/null 2>&1 || true',
+        '  am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file://${public_path}" >/dev/null 2>&1 || true',
+        '}',
+        'run_with_timeout 20 scan_file || true',
+      ].join('\n'),
+    ]);
+  }
+
+  private async getPersistentDownloadDirectory(
+    app: AndroidApplication,
+    query: ApplicationRuntimeFilesQueryDto,
+    options: { create?: boolean } = {},
+  ) {
+    const profileMode = query.profileMode ?? app.profileMode;
+    if (profileMode !== ApplicationProfileMode.Persistent) {
+      return null;
+    }
+
+    const profileName =
+      query.profileName?.trim() || app.profileName || 'default';
+    const volumeName = this.networkIsolation.namesFor(
+      app.id,
+      app.name,
+      profileName,
+    ).volumeName;
+
+    if (options.create) {
+      await this.resources.createVolume(app.id, volumeName);
+    }
+
+    const volume = await this.resources.inspectVolume(volumeName);
+    if (!volume?.Mountpoint) {
+      return null;
+    }
+
+    return join(volume.Mountpoint, 'media', '0', 'Download');
+  }
+
+  private async listVolumeDownloadFiles(directory: string) {
+    let entries: string[];
+    try {
+      entries = await readdir(directory);
+    } catch {
+      return [];
+    }
+
+    const files = await Promise.all(
+      entries.map(async (name) => {
+        const safeName = sanitizeRuntimeFileName(name);
+        const path = join(directory, safeName);
+        const fileStat = await stat(path).catch(() => null);
+        if (!fileStat?.isFile()) {
+          return null;
+        }
+
+        return {
+          name: safeName,
+          path: `${this.downloadDirectory}/${safeName}`,
+          sizeBytes: fileStat.size,
+          modifiedAt: fileStat.mtime.toISOString(),
+        };
+      }),
+    );
+
+    return files
+      .filter((file): file is NonNullable<typeof file> => Boolean(file))
+      .sort((left, right) => left.name.localeCompare(right.name));
+  }
+
+  private shellQuote(value: string) {
+    return `'${value.replaceAll("'", "'\\''")}'`;
   }
 }

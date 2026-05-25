@@ -88,8 +88,8 @@ export const AppViewerDeleteAction = ({
           <DialogTitle>{isProvisioning ? `Kill provisioning for ${app?.name}?` : `Delete ${app?.name}?`}</DialogTitle>
           <DialogDescription>
             {isProvisioning
-              ? 'This will force-stop provisioning, remove the managed container resources, delete preserved data, and remove the application record.'
-              : 'This will force-remove the managed container resources, delete preserved data, and remove the application record.'}
+              ? 'This will stop setup, delete preserved data, and remove the app.'
+              : 'This will stop the app, delete preserved data, and remove it.'}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

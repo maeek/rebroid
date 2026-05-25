@@ -35,6 +35,7 @@ export const resTablePackageType = 0x0200;
 export const resTableTypeType = 0x0201;
 export const typedValueReference = 0x01;
 export const typedValueString = 0x03;
+export const androidLabelAttr = 0x01010001;
 export const androidIconAttr = 0x01010002;
 export const androidRoundIconAttr = 0x0101052c;
 export const noEntry = 0xffffffff;

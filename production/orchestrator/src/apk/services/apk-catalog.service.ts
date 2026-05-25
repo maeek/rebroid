@@ -29,6 +29,7 @@ export class ApkCatalogService {
       throw new ConflictException('An APK file is required.');
     }
 
+    await this.ensureMetadataColumns();
     await this.settings.assertApkSizeAllowed(apk);
 
     const sha256 = createHash('sha256').update(apk.buffer).digest('hex');
@@ -40,11 +41,18 @@ export class ApkCatalogService {
     if (existing) {
       const extractedIconDataUrl =
         this.iconExtractor.extractLauncherIconDataUrl(apk.buffer);
+      const displayName = this.iconExtractor.extractDisplayName(apk.buffer);
+      const packageName = this.iconExtractor.extractPackageName(apk.buffer);
       if (
-        extractedIconDataUrl &&
-        extractedIconDataUrl !== existing.extractedIconDataUrl
+        (extractedIconDataUrl &&
+          extractedIconDataUrl !== existing.extractedIconDataUrl) ||
+        (displayName && displayName !== existing.displayName) ||
+        (packageName && packageName !== existing.packageName)
       ) {
-        existing.extractedIconDataUrl = extractedIconDataUrl;
+        existing.extractedIconDataUrl =
+          extractedIconDataUrl ?? existing.extractedIconDataUrl;
+        existing.displayName = displayName ?? existing.displayName;
+        existing.packageName = packageName ?? existing.packageName;
         await this.uploadedApks.save(existing);
       }
       return existing;
@@ -53,6 +61,8 @@ export class ApkCatalogService {
     const extractedIconDataUrl = this.iconExtractor.extractLauncherIconDataUrl(
       apk.buffer,
     );
+    const displayName = this.iconExtractor.extractDisplayName(apk.buffer);
+    const packageName = this.iconExtractor.extractPackageName(apk.buffer);
     const filePath = await this.storage.persistApk(sha256, apk.buffer);
     const uploaded = this.uploadedApks.create({
       ownerUserId: owner,
@@ -61,12 +71,24 @@ export class ApkCatalogService {
       sizeBytes: apk.size,
       filePath,
       extractedIconDataUrl,
+      displayName,
+      packageName,
     });
 
     return this.uploadedApks.save(uploaded);
   }
 
-  list(ownerUserId?: string) {
+  async findBySha256(sha256: string, ownerUserId?: string | null) {
+    await this.ensureMetadataColumns();
+    const owner = ownerUserId?.trim() || null;
+    return this.uploadedApks.findOneBy({
+      sha256,
+      ownerUserId: owner ?? IsNull(),
+    });
+  }
+
+  async list(ownerUserId?: string) {
+    await this.ensureMetadataColumns();
     return this.uploadedApks.find({
       where: ownerUserId ? { ownerUserId } : {},
       order: { createdAt: 'DESC' },
@@ -77,6 +99,7 @@ export class ApkCatalogService {
    * Loads an uploaded APK or throws when the id does not exist.
    */
   async get(id: string) {
+    await this.ensureMetadataColumns();
     const uploaded = await this.uploadedApks.findOneBy({ id });
     if (!uploaded) {
       throw new ConflictException(`Uploaded APK "${id}" was not found.`);
@@ -109,6 +132,8 @@ export class ApkCatalogService {
       sizeBytes: source.sizeBytes,
       filePath: source.filePath,
       extractedIconDataUrl: source.extractedIconDataUrl,
+      displayName: source.displayName,
+      packageName: source.packageName,
     });
 
     return this.uploadedApks.save(upload);
@@ -135,6 +160,7 @@ export class ApkCatalogService {
    * Removes unreferenced uploads and deletes shared files only after the last reference is gone.
    */
   async cleanupUnused(ownerUserId?: string | null) {
+    await this.ensureMetadataColumns();
     const owner = ownerUserId?.trim();
     const uploads = await this.uploadedApks.find({
       where: owner ? { ownerUserId: owner } : {},
@@ -162,5 +188,24 @@ export class ApkCatalogService {
     }
 
     return { deletedRecords: unused.length, removedFiles };
+  }
+
+  private async ensureMetadataColumns() {
+    const columns = (await this.uploadedApks.query(
+      `PRAGMA table_info('uploaded_apks')`,
+    )) as Array<{ name: string }>;
+    const columnNames = new Set(columns.map((column) => column.name));
+
+    if (!columnNames.has('displayName')) {
+      await this.uploadedApks.query(
+        `ALTER TABLE uploaded_apks ADD COLUMN displayName text`,
+      );
+    }
+
+    if (!columnNames.has('packageName')) {
+      await this.uploadedApks.query(
+        `ALTER TABLE uploaded_apks ADD COLUMN packageName text`,
+      );
+    }
   }
 }

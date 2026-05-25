@@ -3,6 +3,7 @@ import { inflateRawSync } from 'node:zlib';
 import { getErrorMessage } from '../../common/error-message';
 import {
   androidIconAttr,
+  androidLabelAttr,
   androidRoundIconAttr,
   centralFileHeaderSignature,
   eocdSignature,
@@ -34,6 +35,70 @@ import {
 @Injectable()
 export class ApkIconExtractorService {
   private readonly logger = new Logger(ApkIconExtractorService.name);
+
+  /** Reads the manifest package name from an APK, best-effort. */
+  extractPackageName(apk: Buffer) {
+    try {
+      const entries = this.readCentralDirectory(apk);
+      const manifestEntry = entries.find(
+        (entry) => entry.name === 'AndroidManifest.xml',
+      );
+      if (!manifestEntry) {
+        return null;
+      }
+
+      const manifest = this.readEntry(apk, manifestEntry);
+      return manifest ? this.readManifestPackageName(manifest) : null;
+    } catch (error) {
+      this.logger.warn(
+        `Could not extract APK package name: ${getErrorMessage(error, 'unknown error')}`,
+      );
+      return null;
+    }
+  }
+
+  /** Reads the best user-facing application label from an APK, best-effort. */
+  extractDisplayName(apk: Buffer) {
+    try {
+      const entries = this.readCentralDirectory(apk);
+      const entriesByName = new Map(
+        entries.map((entry) => [entry.name, entry]),
+      );
+      const manifestEntry = entriesByName.get('AndroidManifest.xml');
+      if (!manifestEntry) {
+        return null;
+      }
+
+      const manifest = this.readEntry(apk, manifestEntry);
+      if (!manifest) {
+        return null;
+      }
+
+      const label = this.readManifestApplicationLabel(manifest);
+      if (label.value) {
+        return this.normalizeDisplayName(label.value);
+      }
+
+      if (typeof label.resourceId !== 'number') {
+        return null;
+      }
+
+      const resourcesEntry = entriesByName.get('resources.arsc');
+      const resources = resourcesEntry
+        ? this.readEntry(apk, resourcesEntry)
+        : null;
+      const resolvedLabel = resources
+        ? this.readResourceString(resources, label.resourceId)
+        : null;
+
+      return resolvedLabel ? this.normalizeDisplayName(resolvedLabel) : null;
+    } catch (error) {
+      this.logger.warn(
+        `Could not extract APK display name: ${getErrorMessage(error, 'unknown error')}`,
+      );
+      return null;
+    }
+  }
 
   /**
    * Extracts the best launcher icon candidate from an APK and returns it as a data URL.
@@ -275,6 +340,222 @@ export class ApkIconExtractorService {
     }
 
     return result;
+  }
+
+  private readManifestPackageName(manifest: Buffer) {
+    let strings: string[] = [];
+    let offset = readChunkHeaderSize(manifest, 0);
+
+    while (offset + 8 <= manifest.length) {
+      const type = manifest.readUInt16LE(offset);
+      const size = manifest.readUInt32LE(offset + 4);
+      if (size < 8 || offset + size > manifest.length) {
+        break;
+      }
+
+      if (type === resStringPoolType) {
+        strings = readBinaryXmlStringPool(manifest, offset).strings;
+      } else if (type === resXmlStartElementType && size >= 36) {
+        const elementNameIndex = manifest.readUInt32LE(offset + 20);
+        if (strings[elementNameIndex] === 'manifest') {
+          const attrsStart = offset + 16 + manifest.readUInt16LE(offset + 24);
+          const attrSize = manifest.readUInt16LE(offset + 26);
+          const attrCount = manifest.readUInt16LE(offset + 28);
+          for (let index = 0; index < attrCount; index += 1) {
+            const attrOffset = attrsStart + index * attrSize;
+            if (attrOffset + 20 > offset + size) {
+              continue;
+            }
+
+            const nameIndex = manifest.readUInt32LE(attrOffset + 4);
+            const rawValueIndex = manifest.readUInt32LE(attrOffset + 8);
+            const dataType = manifest.readUInt8(attrOffset + 15);
+            const data = manifest.readUInt32LE(attrOffset + 16);
+            if (strings[nameIndex] !== 'package') {
+              continue;
+            }
+
+            const rawValue =
+              rawValueIndex !== noEntry ? strings[rawValueIndex] : undefined;
+            const typedValue =
+              dataType === typedValueString ? strings[data] : undefined;
+            return rawValue || typedValue || null;
+          }
+        }
+      }
+
+      offset += size;
+    }
+
+    return null;
+  }
+
+  private readManifestApplicationLabel(manifest: Buffer) {
+    const result: { value?: string; resourceId?: number } = {};
+    let strings: string[] = [];
+    let resourceMap: number[] = [];
+    let offset = readChunkHeaderSize(manifest, 0);
+
+    while (offset + 8 <= manifest.length) {
+      const type = manifest.readUInt16LE(offset);
+      const size = manifest.readUInt32LE(offset + 4);
+      if (size < 8 || offset + size > manifest.length) {
+        break;
+      }
+
+      if (type === resStringPoolType) {
+        strings = readBinaryXmlStringPool(manifest, offset).strings;
+      } else if (type === resXmlResourceMapType) {
+        resourceMap = readBinaryXmlResourceMap(manifest, offset, size);
+      } else if (type === resXmlStartElementType && size >= 36) {
+        const elementNameIndex = manifest.readUInt32LE(offset + 20);
+        if (strings[elementNameIndex] === 'application') {
+          const attrsStart = offset + 16 + manifest.readUInt16LE(offset + 24);
+          const attrSize = manifest.readUInt16LE(offset + 26);
+          const attrCount = manifest.readUInt16LE(offset + 28);
+          for (let index = 0; index < attrCount; index += 1) {
+            const attrOffset = attrsStart + index * attrSize;
+            if (attrOffset + 20 > offset + size) {
+              continue;
+            }
+
+            const nameIndex = manifest.readUInt32LE(attrOffset + 4);
+            const rawValueIndex = manifest.readUInt32LE(attrOffset + 8);
+            const dataType = manifest.readUInt8(attrOffset + 15);
+            const data = manifest.readUInt32LE(attrOffset + 16);
+            const name = strings[nameIndex];
+            const resourceId = resourceMap[nameIndex];
+            if (name !== 'label' && resourceId !== androidLabelAttr) {
+              continue;
+            }
+
+            const rawValue =
+              rawValueIndex !== noEntry ? strings[rawValueIndex] : undefined;
+            if (dataType === typedValueReference) {
+              result.resourceId = data;
+            } else if (dataType === typedValueString) {
+              result.value = rawValue || strings[data];
+            }
+          }
+        }
+      }
+
+      offset += size;
+    }
+
+    return result;
+  }
+
+  private readResourceString(resources: Buffer, resourceId: number) {
+    if (resources.length < 12 || resources.readUInt16LE(0) !== resTableType) {
+      return null;
+    }
+
+    let offset = readChunkHeaderSize(resources, 0);
+    const globalStringPool = readBinaryXmlStringPool(resources, offset);
+    offset += resources.readUInt32LE(offset + 4);
+
+    while (offset + 8 <= resources.length) {
+      const type = resources.readUInt16LE(offset);
+      const size = resources.readUInt32LE(offset + 4);
+      if (size < 8 || offset + size > resources.length) {
+        break;
+      }
+
+      if (type === resTablePackageType) {
+        const value = this.readPackageStringResource(
+          resources,
+          offset,
+          size,
+          globalStringPool,
+          resourceId,
+        );
+        if (value) {
+          return value;
+        }
+      }
+
+      offset += size;
+    }
+
+    return null;
+  }
+
+  private readPackageStringResource(
+    resources: Buffer,
+    packageOffset: number,
+    packageSize: number,
+    globalStringPool: ParsedStringPool,
+    targetResourceId: number,
+  ) {
+    if (packageOffset + 284 > resources.length) {
+      return null;
+    }
+
+    const packageId = resources.readUInt32LE(packageOffset + 8);
+    const packageEnd = packageOffset + packageSize;
+    let offset = packageOffset + resources.readUInt16LE(packageOffset + 2);
+
+    while (offset + 8 <= packageEnd) {
+      const type = resources.readUInt16LE(offset);
+      const headerSize = resources.readUInt16LE(offset + 2);
+      const size = resources.readUInt32LE(offset + 4);
+      if (size < 8 || offset + size > packageEnd) {
+        break;
+      }
+
+      if (type === resTableTypeType && headerSize >= 20) {
+        const typeId = resources.readUInt8(offset + 8);
+        const entryCount = resources.readUInt32LE(offset + 12);
+        const entriesStart = resources.readUInt32LE(offset + 16);
+        const entriesOffset = offset + headerSize;
+
+        for (let entryIndex = 0; entryIndex < entryCount; entryIndex += 1) {
+          const resourceId =
+            packageId * 0x01000000 + typeId * 0x00010000 + entryIndex;
+          if (resourceId !== targetResourceId) {
+            continue;
+          }
+
+          const entryOffsetPosition = entriesOffset + entryIndex * 4;
+          if (entryOffsetPosition + 4 > offset + size) {
+            break;
+          }
+
+          const entryOffset = resources.readUInt32LE(entryOffsetPosition);
+          if (entryOffset === noEntry) {
+            continue;
+          }
+
+          const valueOffset = offset + entriesStart + entryOffset;
+          if (valueOffset + 16 > offset + size) {
+            continue;
+          }
+
+          const flags = resources.readUInt16LE(valueOffset + 2);
+          if ((flags & 0x0001) !== 0) {
+            continue;
+          }
+
+          const dataType = resources.readUInt8(valueOffset + 11);
+          const data = resources.readUInt32LE(valueOffset + 12);
+          if (dataType !== typedValueString) {
+            continue;
+          }
+
+          return globalStringPool.strings[data] ?? null;
+        }
+      }
+
+      offset += size;
+    }
+
+    return null;
+  }
+
+  private normalizeDisplayName(value: string) {
+    const normalized = value.replace(/\s+/g, ' ').trim();
+    return normalized.length > 0 ? normalized.slice(0, 120) : null;
   }
 
   private readResourceIconCandidates(resources: Buffer, resourceIds: number[]) {

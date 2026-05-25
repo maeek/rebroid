@@ -8,7 +8,8 @@ export const ToolSection = ({
   icon,
   actions,
   children,
-  className
+  className,
+  hideHeader
 }: {
   title: string
   description?: string
@@ -16,6 +17,7 @@ export const ToolSection = ({
   actions?: ReactNode
   children: ReactNode
   className?: string
+  hideHeader?: boolean
 }) => (
   <section
     className={cn(
@@ -23,22 +25,24 @@ export const ToolSection = ({
       className
     )}
   >
-    <div className='flex flex-wrap items-start justify-between gap-3'>
-      <div className='flex min-w-0 items-start gap-3'>
-        <div className='mt-0.5 text-primary'>{icon}</div>
-        <div className='min-w-0'>
-          <h3 className='font-medium'>{title}</h3>
-          <Visible when={description}>
-            <p className='mt-1 text-sm text-secondary-foreground'>{description}</p>
-          </Visible>
+    <Visible when={!hideHeader || actions}>
+      <div className='flex flex-wrap items-start justify-between gap-3'>
+        <div className={cn('flex min-w-0 items-start gap-3', hideHeader && 'sr-only')}>
+          <div className='mt-0.5 text-primary'>{icon}</div>
+          <div className='min-w-0'>
+            <h3 className='font-medium'>{title}</h3>
+            <Visible when={description}>
+              <p className='mt-1 text-sm text-secondary-foreground'>{description}</p>
+            </Visible>
+          </div>
         </div>
+        <Visible when={actions}>
+          <div className='flex shrink-0 flex-wrap items-center justify-end gap-2 max-sm:w-full max-sm:justify-start'>
+            {actions}
+          </div>
+        </Visible>
       </div>
-      <Visible when={actions}>
-        <div className='flex shrink-0 flex-wrap items-center justify-end gap-2 max-sm:w-full max-sm:justify-start'>
-          {actions}
-        </div>
-      </Visible>
-    </div>
+    </Visible>
     {children}
   </section>
 )

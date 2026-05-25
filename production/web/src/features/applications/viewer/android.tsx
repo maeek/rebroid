@@ -16,6 +16,8 @@ export type ViewerOrientation = 'portrait' | 'landscape'
 
 const keyboardCaptureMessageType = 'rebroid-viewer-keyboard-capture'
 const keyboardEventMessageType = 'rebroid-viewer-keyboard-event'
+const viewerControlMessageType = 'rebroid-viewer-control-event'
+export const viewerControlCommandEventType = 'rebroid-viewer-control-command'
 
 const isEditableKeyboardTarget = (target: EventTarget | null) => {
   if (!(target instanceof HTMLElement)) {
@@ -77,6 +79,36 @@ export const AppViewer = ({
 
     return getProtectedViewerShellUrl(app.id, viewerSettings)
   }, [app?.id, isViewerReady, viewerSettings])
+
+  useEffect(() => {
+    if (!viewerSrc || typeof window === 'undefined') {
+      return
+    }
+
+    const relayControlCommand = (event: Event) => {
+      const customEvent = event as CustomEvent<{ command?: string }>
+      const command = customEvent.detail?.command
+      const targetWindow = viewerFrameRef.current?.contentWindow
+      if (!command || !targetWindow) {
+        return
+      }
+
+      customEvent.preventDefault()
+      targetWindow.postMessage(
+        {
+          type: viewerControlMessageType,
+          command
+        },
+        window.location.origin
+      )
+    }
+
+    window.addEventListener(viewerControlCommandEventType, relayControlCommand)
+
+    return () => {
+      window.removeEventListener(viewerControlCommandEventType, relayControlCommand)
+    }
+  }, [viewerSrc])
 
   useEffect(() => {
     if (!viewerSrc || typeof window === 'undefined') {

@@ -64,12 +64,13 @@ export const AppManageRuntimeSettings = ({
       <Visible when={canChangeSessionLimit}>
         <Setting
           label='Inactivity timeout'
+          description='Use -1 for no automatic stop.'
           className={verticalSettingClassName}
           variant='vertical'
         >
           <Input
             value={inactivityTimeoutSeconds}
-            min={60}
+            min={-1}
             max={86400}
             type='number'
             onChange={event => onInactivityTimeoutChange(Number(event.target.value))}

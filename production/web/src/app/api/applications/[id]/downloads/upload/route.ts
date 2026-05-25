@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { orchestratorApplicationsClient } from '@/server/orchestrator/applications/client'
+import { getOrchestratorBaseUrl } from '@/server/orchestrator/config'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { hasPermission } from '@/shared/permissions/permissions'
 
@@ -10,6 +11,17 @@ type RouteContext = {
 }
 
 const errorMessage = (error: unknown) => (error instanceof Error ? error.message : 'File upload failed.')
+const secretHeaderName = 'x-orchestrator-secret'
+const orchestratorSharedSecret = process.env.ORCHESTRATOR_SHARED_SECRET?.trim()
+
+export const runtime = 'nodejs'
+
+const upstreamErrorMessage = async (response: Response) => {
+  const error = (await response.json().catch(() => null)) as { message?: unknown } | null
+  const message = error?.message
+  if (Array.isArray(message)) return message.join(', ')
+  return typeof message === 'string' ? message : response.statusText || 'File upload failed.'
+}
 
 export const POST = async (request: NextRequest, context: RouteContext) => {
   const { id } = await context.params
@@ -32,14 +44,38 @@ export const POST = async (request: NextRequest, context: RouteContext) => {
       )
     }
 
-    const body = await request.formData()
-    const file = body.get('file')
-    if (!(file instanceof File)) {
+    if (!request.body) {
       return NextResponse.json({ message: 'File is required.' }, { status: 400 })
     }
 
-    const uploaded = await orchestratorApplicationsClient.uploadDownloadFile(id, body)
-    return NextResponse.json(uploaded)
+    const profileMode = request.nextUrl.searchParams.get('profileMode')
+    const profileName = request.nextUrl.searchParams.get('profileName')
+    const query = new URLSearchParams()
+    if (profileMode === 'temporary' || profileMode === 'persistent') query.set('profileMode', profileMode)
+    if (profileName) query.set('profileName', profileName)
+    const upstreamUrl =
+      `${getOrchestratorBaseUrl().replace(/\/$/, '')}/android-applications/${encodeURIComponent(id)}/files/downloads` +
+      (query.size > 0 ? `?${query.toString()}` : '')
+    const headers = new Headers()
+    const contentType = request.headers.get('content-type')
+    const contentLength = request.headers.get('content-length')
+    if (contentType) headers.set('content-type', contentType)
+    if (contentLength) headers.set('content-length', contentLength)
+    headers.set('accept', 'application/json')
+    if (orchestratorSharedSecret) headers.set(secretHeaderName, orchestratorSharedSecret)
+
+    const response = await fetch(upstreamUrl, {
+      method: 'POST',
+      headers,
+      body: request.body,
+      duplex: 'half'
+    } as RequestInit & { duplex: 'half' })
+
+    if (!response.ok) {
+      return NextResponse.json({ message: await upstreamErrorMessage(response) }, { status: response.status })
+    }
+
+    return NextResponse.json(await response.json())
   } catch (error) {
     return NextResponse.json({ message: errorMessage(error) }, { status: 500 })
   }

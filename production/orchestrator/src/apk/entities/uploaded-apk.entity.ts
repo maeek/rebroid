@@ -42,6 +42,14 @@ export class UploadedApk {
   @Column({ type: 'text', nullable: true })
   extractedIconDataUrl!: string | null;
 
+  @ApiPropertyOptional({ example: 'Signal', nullable: true })
+  @Column({ type: 'text', nullable: true })
+  displayName!: string | null;
+
+  @ApiPropertyOptional({ example: 'org.thoughtcrime.securesms', nullable: true })
+  @Column({ type: 'text', nullable: true })
+  packageName!: string | null;
+
   @ApiProperty({ example: '2026-05-16T20:39:29.000Z' })
   @CreateDateColumn()
   createdAt!: Date;

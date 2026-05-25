@@ -7,6 +7,8 @@ import { AndroidApplication } from '../android-apps/android-application.entity';
 import { UploadedApk } from '../apk/entities/uploaded-apk.entity';
 import { InitializeSqliteSchema1715970000000 } from './migrations/1715970000000-initialize-sqlite-schema';
 import { AddApkPackageName1716060000000 } from './migrations/1716060000000-add-apk-package-name';
+import { AddUploadedApkMetadata1716070000000 } from './migrations/1716070000000-add-uploaded-apk-metadata';
+import { AddApplicationSavedProfiles1716080000000 } from './migrations/1716080000000-add-application-saved-profiles';
 
 @Module({
   imports: [
@@ -23,6 +25,8 @@ import { AddApkPackageName1716060000000 } from './migrations/1716060000000-add-a
           migrations: [
             InitializeSqliteSchema1715970000000,
             AddApkPackageName1716060000000,
+            AddUploadedApkMetadata1716070000000,
+            AddApplicationSavedProfiles1716080000000,
           ],
           migrationsRun: true,
           synchronize: false,
