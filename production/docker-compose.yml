@@ -90,6 +90,8 @@ services:
     container_name: rebroid-display-sidecar
     restart: unless-stopped
     environment:
+      DISPLAY_SIDECAR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
+      DISPLAY_SIDECAR_SHARED_SECRET_FILE: /data/secrets/orchestrator-secret
       ORCHESTRATOR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
       ORCHESTRATOR_SHARED_SECRET_FILE: /data/secrets/orchestrator-secret
     expose:

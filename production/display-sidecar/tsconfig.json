@@ -19,5 +19,6 @@
     "forceConsistentCasingInFileNames": true,
     "ignoreDeprecations": "6.0"
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/modules/display/viewer/src/**/*.ts"]
 }

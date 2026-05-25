@@ -14,12 +14,16 @@ export class SidecarConfigService {
   }
 
   private readSecret() {
-    const inline = process.env.ORCHESTRATOR_SHARED_SECRET?.trim();
+    const inline =
+      process.env.DISPLAY_SIDECAR_SHARED_SECRET?.trim() ||
+      process.env.ORCHESTRATOR_SHARED_SECRET?.trim();
     if (inline) {
       return inline;
     }
 
-    const filePath = process.env.ORCHESTRATOR_SHARED_SECRET_FILE?.trim();
+    const filePath =
+      process.env.DISPLAY_SIDECAR_SHARED_SECRET_FILE?.trim() ||
+      process.env.ORCHESTRATOR_SHARED_SECRET_FILE?.trim();
     if (filePath && existsSync(filePath)) {
       return readFileSync(filePath, 'utf8').trim();
     }

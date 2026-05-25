@@ -469,6 +469,7 @@ export class DockerSidecarService implements OnModuleInit {
         `PORT=${this.displaySidecarPort}`,
         ...(this.config.get<string>('app.sharedSecret')
           ? [
+              `DISPLAY_SIDECAR_SHARED_SECRET=${this.config.get<string>('app.sharedSecret')}`,
               `ORCHESTRATOR_SHARED_SECRET=${this.config.get<string>('app.sharedSecret')}`,
             ]
           : []),

@@ -6,6 +6,8 @@ import {
   IconArrowsMaximize,
   IconArrowsMinimize,
   IconBell,
+  IconChevronLeft,
+  IconChevronRight,
   IconGripVertical,
   IconHome,
   IconKeyboard,
@@ -121,6 +123,7 @@ export const ViewerControlBar = ({
 }: ViewerControlBarProps) => {
   const [pendingCommand, setPendingCommand] = useState<ApplicationViewerControlCommand | null>(null)
   const [floatingOpen, setFloatingOpen] = useState(false)
+  const [floatingCollapsed, setFloatingCollapsed] = useState(false)
   const [floatingPosition, setFloatingPosition] = useState({ x: 16, y: 96 })
   const [isPending, startTransition] = useTransition()
   const localPendingTimer = useRef<number | null>(null)
@@ -489,6 +492,42 @@ export const ViewerControlBar = ({
   )
 
   if (mode === 'floating') {
+    const collapseTowardLeft = floatingPosition.x < 160
+
+    if (floatingCollapsed) {
+      return (
+        <div
+          className='absolute z-30'
+          style={{ left: floatingPosition.x, top: floatingPosition.y }}
+        >
+          <div className='flex flex-col items-center gap-1 rounded-xl border border-border/70 bg-card/90 p-1 shadow-2xl backdrop-blur-xl'>
+            <button
+              type='button'
+              className='flex size-9 cursor-grab items-center justify-center rounded-lg text-secondary-foreground hover:bg-secondary active:cursor-grabbing'
+              aria-label='Move viewer toolbar'
+              onPointerDown={handleFloatingPointerDown}
+              onPointerMove={handleFloatingPointerMove}
+              onPointerUp={handleFloatingPointerUp}
+              onPointerCancel={handleFloatingPointerUp}
+            >
+              <IconGripVertical className='size-4' />
+            </button>
+            <IconButtonTooltip label='Show toolbar'>
+              <Button
+                size='icon'
+                variant='secondary'
+                onClick={() => setFloatingCollapsed(false)}
+                aria-label='Show toolbar'
+                className='size-9'
+              >
+                {collapseTowardLeft ? <IconChevronRight className='size-4' /> : <IconChevronLeft className='size-4' />}
+              </Button>
+            </IconButtonTooltip>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div
         className='absolute z-30'
@@ -506,6 +545,17 @@ export const ViewerControlBar = ({
           >
             <IconGripVertical className='size-4' />
           </button>
+          <IconButtonTooltip label='Hide toolbar'>
+            <Button
+              size='icon'
+              variant='ghost'
+              onClick={() => setFloatingCollapsed(true)}
+              aria-label='Hide toolbar'
+              className='size-9'
+            >
+              {collapseTowardLeft ? <IconChevronLeft className='size-4' /> : <IconChevronRight className='size-4' />}
+            </Button>
+          </IconButtonTooltip>
           {floatingPrimaryControls}
           <Button
             size='icon'

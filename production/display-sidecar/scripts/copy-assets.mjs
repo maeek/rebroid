@@ -3,8 +3,12 @@ import { dirname, join } from 'node:path';
 
 const assets = [
   {
-    from: 'src/modules/display/display-viewer.html',
-    to: 'dist/modules/display/display-viewer.html',
+    from: 'src/modules/display/viewer/index.html',
+    to: 'dist/modules/display/viewer/index.html',
+  },
+  {
+    from: 'src/modules/display/viewer/styles.css',
+    to: 'dist/modules/display/viewer/assets/styles.css',
   },
 ];
 
