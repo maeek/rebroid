@@ -69,13 +69,15 @@ export const BlurredImageBackdrop = ({
   }, [activeIndex, activeLayer, targetLayer])
 
   return (
-    <>
+    <div
+      aria-hidden='true'
+      className='pointer-events-none fixed inset-0 z-0 isolate overflow-hidden'
+    >
       {layers.map((layer, index) => (
         <div
           key={index}
-          aria-hidden='true'
           className={cn(
-            'pointer-events-none fixed inset-0 -z-10 bg-primary/80 blur-3xl transition-opacity duration-200 ease-out',
+            'absolute inset-0 bg-primary/80 blur-3xl transition-opacity duration-200 ease-out will-change-opacity',
             className
           )}
           style={{
@@ -87,6 +89,6 @@ export const BlurredImageBackdrop = ({
           }}
         />
       ))}
-    </>
+    </div>
   )
 }

@@ -34,10 +34,23 @@ export class DockerResourceRuntimeService {
       return existing;
     }
 
-    return this.engine.docker.createVolume({
-      Name: volumeName,
-      Labels: this.engine.labels(applicationId, 'volume'),
-    });
+    try {
+      return await this.engine.docker.createVolume({
+        Name: volumeName,
+        Labels: this.engine.labels(applicationId, 'volume'),
+      });
+    } catch (error) {
+      if (!this.engine.isResourceAlreadyExists(error)) {
+        throw error;
+      }
+
+      const duplicate = await this.findVolumeByName(volumeName);
+      if (duplicate) {
+        return duplicate;
+      }
+
+      throw error;
+    }
   }
 
   async removeVolume(volumeName: string) {

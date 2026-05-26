@@ -1,4 +1,5 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { setTimeout as delay } from 'node:timers/promises';
 import { getErrorMessage } from '../../../common/error-message';
 import { DockerContainerExecService } from '../../../docker/containers/services/docker-container-exec.service';
@@ -19,13 +20,15 @@ export class AndroidAppsProvisioningAndroidService {
     private readonly logs: AndroidAppsLogService,
     private readonly tracker: AndroidAppsProvisioningTrackerService,
     private readonly viewerNetwork: AndroidAppsViewerNetworkService,
+    private readonly config: ConfigService,
   ) {}
 
   /** Waits until Android reports that boot is done. */
   async waitForAndroidBoot(app: AndroidApplication) {
     this.assertContainerId(app);
 
-    const timeoutMs = 120_000;
+    const timeoutMs =
+      this.config.getOrThrow<number>('app.redroid.bootTimeoutSeconds') * 1000;
     const intervalMs = 2_000;
     const deadline = Date.now() + timeoutMs;
     let lastProbe = 'sys.boot_completed was not reported.';
@@ -106,7 +109,8 @@ export class AndroidAppsProvisioningAndroidService {
   private async waitForRedroidAdbFromSidecar(app: AndroidApplication) {
     this.assertContainerId(app);
 
-    const timeoutMs = 120_000;
+    const timeoutMs =
+      this.config.getOrThrow<number>('app.redroid.adbTimeoutSeconds') * 1000;
     const intervalMs = 2_000;
     const deadline = Date.now() + timeoutMs;
     let lastProbe = 'ADB sidecar readiness was not reported.';

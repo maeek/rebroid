@@ -87,6 +87,10 @@ export class DockerEngineService {
     return hasDockerStatusCode(error, 409);
   }
 
+  isDockerForbidden(error: unknown) {
+    return hasDockerStatusCode(error, 403);
+  }
+
   isDockerNotFound(error: unknown) {
     return hasDockerStatusCode(error, 404);
   }
@@ -114,6 +118,16 @@ export class DockerEngineService {
     return (
       message.includes('removal of container') &&
       message.includes('already in progress')
+    );
+  }
+
+  isResourceAlreadyExists(error: unknown) {
+    const message = this.errorMessage(error).toLowerCase();
+    return (
+      this.isDockerConflict(error) ||
+      this.isDockerForbidden(error) ||
+      message.includes('already exists') ||
+      message.includes('is already in use')
     );
   }
 

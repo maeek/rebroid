@@ -87,6 +87,12 @@ export default registerAs('app', () => {
       dataMountPath: process.env.REDROID_DATA_MOUNT_PATH ?? '/data',
       adbPort: number(process.env.REDROID_ADB_PORT, 5555),
       privileged: bool(process.env.REDROID_PRIVILEGED, true),
+      bootTimeoutSeconds: number(process.env.REDROID_BOOT_TIMEOUT_SECONDS, 120),
+      adbTimeoutSeconds: number(process.env.REDROID_ADB_TIMEOUT_SECONDS, 120),
+      provisioningStaleTimeoutSeconds: number(
+        process.env.REDROID_PROVISIONING_STALE_TIMEOUT_SECONDS,
+        600,
+      ),
       defaultInactivityTimeoutSeconds: number(
         process.env.DEFAULT_INACTIVITY_TIMEOUT_SECONDS,
         900,

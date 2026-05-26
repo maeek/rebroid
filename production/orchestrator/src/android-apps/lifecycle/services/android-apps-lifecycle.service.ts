@@ -242,7 +242,9 @@ export class AndroidAppsLifecycleService {
     this.assertRunnable(app);
 
     if (app.status === AndroidApplicationStatus.Provisioning) {
-      return this.state.decorateApplication(app);
+      if (!(await this.recoverStaleProvisioningForStart(app))) {
+        return this.state.decorateApplication(app);
+      }
     }
 
     if (app.status === AndroidApplicationStatus.Running) {
@@ -260,6 +262,7 @@ export class AndroidAppsLifecycleService {
     }
 
     await this.state.clearMissingContainerReference(app);
+    await this.prepareFailedContainerForRestart(app);
     await this.prepareContainerForRecreationOnStart(app);
 
     this.tracker.reset(app.id);
@@ -662,6 +665,63 @@ export class AndroidAppsLifecycleService {
 
     await this.removeManagedContainer(app);
     app.recreateContainerOnNextStart = false;
+    await this.state.save(app);
+  }
+
+  /** Lets a new start request take over a provisioning record left by a dead run. */
+  private async recoverStaleProvisioningForStart(app: AndroidApplication) {
+    const startedAt = app.provisioningStartedAt?.getTime();
+    const staleTimeoutMs =
+      this.config.getOrThrow<number>(
+        'app.redroid.provisioningStaleTimeoutSeconds',
+      ) * 1000;
+
+    if (!startedAt || Date.now() - startedAt < staleTimeoutMs) {
+      return false;
+    }
+
+    await this.logs.append(app.id, 'Recovering stale provisioning run', {
+      containerId: app.containerId,
+      containerName: app.containerName,
+      lifecycleStage: app.lifecycleStage,
+      staleAfterSeconds: staleTimeoutMs / 1000,
+    });
+    this.tracker.cancel(app.id);
+    await this.releaseRuntimeSupportAfterFailedStart(app.id);
+    if (app.containerId) {
+      await this.removeManagedContainer(app);
+    }
+    this.tracker.reset(app.id);
+    app.status = AndroidApplicationStatus.Stopped;
+    app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
+    app.statusMessage =
+      'Previous provisioning run was stale. A fresh start will be attempted.';
+    app.provisioningCompletedAt = new Date();
+    app.lastStoppedAt = new Date();
+    await this.state.save(app);
+    return true;
+  }
+
+  /** Removes a failed runtime container so retries do not reuse a wedged Redroid boot. */
+  private async prepareFailedContainerForRestart(app: AndroidApplication) {
+    if (
+      app.status !== AndroidApplicationStatus.Error ||
+      !app.containerId
+    ) {
+      return;
+    }
+
+    await this.logs.append(app.id, 'Removing failed container before restart', {
+      containerId: app.containerId,
+      containerName: app.containerName,
+      lastError: app.lastError,
+    });
+    await this.removeManagedContainer(app);
+    app.recreateContainerOnNextStart = false;
+    app.status = AndroidApplicationStatus.Stopped;
+    app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
+    app.statusMessage =
+      'Previous runtime container failed. A fresh container will be created.';
     await this.state.save(app);
   }
 

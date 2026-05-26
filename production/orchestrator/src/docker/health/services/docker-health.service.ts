@@ -60,9 +60,17 @@ export class DockerHealthService {
         ['Host', 'MemoryLimit'],
         ['host', 'memoryLimit'],
       ]);
+      const operatingSystem = readFirstString(info, [['OperatingSystem']]);
+      const osType = readFirstString(info, [['OSType']]);
+      const architecture = readFirstString(info, [['Architecture']]);
+      const kernelVersion = readFirstString(info, [['KernelVersion']]);
       const rootless = isRootlessContainerEngine(info);
       const details = {
         rootless,
+        operatingSystem,
+        osType,
+        architecture,
+        kernelVersion,
         graphRoot,
         cgroupVersion,
         cgroupManager,
@@ -86,6 +94,16 @@ export class DockerHealthService {
           status: 'unhealthy',
           message:
             'Container engine reports that memory limits are unavailable. Disable app memory limits or fix host cgroups before starting redroid.',
+          details,
+        };
+      }
+
+      if (operatingSystem?.toLowerCase().includes('docker desktop')) {
+        return {
+          ok: false,
+          status: 'unhealthy',
+          message:
+            'Docker Desktop runs containers inside a VM. Redroid usually needs a native Linux host with binder devices exposed to a rootful privileged engine.',
           details,
         };
       }

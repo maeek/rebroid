@@ -56,25 +56,40 @@ export class DockerContainerProvisioningService {
       hostConfig.SecurityOpt = spec.securityOptions;
     }
 
-    return this.engine.docker.createContainer({
-      Image: spec.image,
-      name: spec.containerName,
-      Cmd: parseCommandLine(spec.containerArgs),
-      Env: [
-        `ADB_TCP_PORT=${spec.adbPort}`,
-        `ANDROID_ADB_SERVER_PORT=${spec.adbPort}`,
-        `PERSIST_ADB_TCP_PORT=${spec.adbPort}`,
-      ],
-      ExposedPorts: {
-        [`${spec.adbPort}/tcp`]: {},
-      },
-      Labels: this.engine.labels(spec.applicationId, 'runtime'),
-      HostConfig: hostConfig,
-      NetworkingConfig: {
-        EndpointsConfig: {
-          [spec.networkName]: {},
+    try {
+      return await this.engine.docker.createContainer({
+        Image: spec.image,
+        name: spec.containerName,
+        Cmd: parseCommandLine(spec.containerArgs),
+        Env: [
+          `ADB_TCP_PORT=${spec.adbPort}`,
+          `ANDROID_ADB_SERVER_PORT=${spec.adbPort}`,
+          `PERSIST_ADB_TCP_PORT=${spec.adbPort}`,
+        ],
+        ExposedPorts: {
+          [`${spec.adbPort}/tcp`]: {},
         },
-      },
-    });
+        Labels: this.engine.labels(spec.applicationId, 'runtime'),
+        HostConfig: hostConfig,
+        NetworkingConfig: {
+          EndpointsConfig: {
+            [spec.networkName]: {},
+          },
+        },
+      });
+    } catch (error) {
+      if (!this.engine.isResourceAlreadyExists(error)) {
+        throw error;
+      }
+
+      const duplicate = await this.lifecycle.findContainerByName(
+        spec.containerName,
+      );
+      if (duplicate) {
+        return this.engine.docker.getContainer(duplicate.Id);
+      }
+
+      throw error;
+    }
   }
 }

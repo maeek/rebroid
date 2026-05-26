@@ -21,12 +21,25 @@ export class DockerNetworkRuntimeService {
       return existing;
     }
 
-    return this.engine.docker.createNetwork({
-      Name: networkName,
-      Internal: !this.config.getOrThrow<boolean>('app.docker.iptablesEnabled'),
-      CheckDuplicate: true,
-      Labels: this.engine.labels(applicationId, 'network'),
-    });
+    try {
+      return await this.engine.docker.createNetwork({
+        Name: networkName,
+        Internal: !this.config.getOrThrow<boolean>('app.docker.iptablesEnabled'),
+        CheckDuplicate: true,
+        Labels: this.engine.labels(applicationId, 'network'),
+      });
+    } catch (error) {
+      if (!this.engine.isResourceAlreadyExists(error)) {
+        throw error;
+      }
+
+      const duplicate = await this.findNetworkByName(networkName);
+      if (duplicate) {
+        return duplicate;
+      }
+
+      throw error;
+    }
   }
 
   /**

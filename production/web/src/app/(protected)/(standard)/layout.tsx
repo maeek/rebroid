@@ -16,7 +16,7 @@ export default async function FilesLayout({ children }: { children: React.ReactN
           opacity: 0.028
         }}
       >
-        <div className='main-layout'>
+        <div className='main-layout relative z-10'>
           <TopBarProtected />
           <div className='h-[calc(100%-4rem)] w-full'>
             <Sidebar />
