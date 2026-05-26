@@ -1,11 +1,9 @@
 import { UserEditPage } from '@/features/settings/users/user-edit-page'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { StatusSplash } from '@/features/shell/components/status-splash'
-import { requireAdmin } from '@/server/auth/authorization'
 import { userService } from '@/server/auth/user'
 
 export default async function UserSettingsDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin()
   const { id } = await params
   const [user, groups] = await Promise.all([userService.getUserById(id), userService.listGroups()])
 

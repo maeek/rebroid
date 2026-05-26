@@ -3,11 +3,9 @@ import { OrchestratorImageDetail } from '@/features/orchestrator/details/orchest
 import { imageDisplayName } from '@/features/orchestrator/domain/image-display-name'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { StatusSplash } from '@/features/shell/components/status-splash'
-import { requireAdmin } from '@/server/auth/authorization'
 import { getPlatformImageAction } from '@/server/orchestrator/platform/actions'
 
 export default async function OrchestratorImageDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin()
   const { id } = await params
 
   try {

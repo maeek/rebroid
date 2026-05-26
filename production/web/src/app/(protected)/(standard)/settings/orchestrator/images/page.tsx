@@ -1,11 +1,8 @@
 import { OrchestratorImagesSection } from '@/features/orchestrator/components/orchestrator-images-section'
 import { PlatformPageHeader } from '@/features/orchestrator/components/platform-page-header'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
-import { requireAdmin } from '@/server/auth/authorization'
 
-export default async function OrchestratorImagesPage() {
-  await requireAdmin()
-
+export default function OrchestratorImagesPage() {
   return (
     <ProtectedStackPageLayout mainClassName='gap-2'>
       <PlatformPageHeader

@@ -1,11 +1,9 @@
 import { GroupEditPage } from '@/features/settings/users/group-edit-page'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { StatusSplash } from '@/features/shell/components/status-splash'
-import { requireAdmin } from '@/server/auth/authorization'
 import { userService } from '@/server/auth/user'
 
 export default async function UserGroupSettingsDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin()
   const { id } = await params
   const groups = await userService.listGroups()
   const group = groups.find(item => item.id === id)

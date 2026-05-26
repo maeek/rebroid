@@ -2,11 +2,9 @@ import { PlatformPageHeader } from '@/features/orchestrator/components/platform-
 import { OrchestratorContainerDetail } from '@/features/orchestrator/details/orchestrator-container-detail'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { StatusSplash } from '@/features/shell/components/status-splash'
-import { requireAdmin } from '@/server/auth/authorization'
 import { getPlatformContainerAction, getPlatformContainerLogsAction } from '@/server/orchestrator/platform/actions'
 
 export default async function OrchestratorContainerDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin()
   const { id } = await params
 
   try {

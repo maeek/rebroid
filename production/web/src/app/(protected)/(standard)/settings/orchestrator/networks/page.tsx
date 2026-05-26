@@ -1,11 +1,8 @@
 import { OrchestratorNetworksSection } from '@/features/orchestrator/components/orchestrator-networks-section'
 import { PlatformPageHeader } from '@/features/orchestrator/components/platform-page-header'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
-import { requireAdmin } from '@/server/auth/authorization'
 
-export default async function OrchestratorNetworksPage() {
-  await requireAdmin()
-
+export default function OrchestratorNetworksPage() {
   return (
     <ProtectedStackPageLayout mainClassName='gap-2'>
       <PlatformPageHeader
