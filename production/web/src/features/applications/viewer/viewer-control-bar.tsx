@@ -127,6 +127,7 @@ export const ViewerControlBar = ({
   const [floatingPosition, setFloatingPosition] = useState({ x: 16, y: 96 })
   const [isPending, startTransition] = useTransition()
   const localPendingTimer = useRef<number | null>(null)
+  const floatingDragCleanup = useRef<(() => void) | null>(null)
   const dragState = useRef<{
     pointerId: number
     startX: number
@@ -141,6 +142,7 @@ export const ViewerControlBar = ({
       if (localPendingTimer.current !== null) {
         window.clearTimeout(localPendingTimer.current)
       }
+      floatingDragCleanup.current?.()
     }
   }, [])
 
@@ -155,6 +157,9 @@ export const ViewerControlBar = ({
   }
 
   const handleFloatingPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    floatingDragCleanup.current?.()
     dragState.current = {
       pointerId: event.pointerId,
       startX: event.clientX,
@@ -162,7 +167,48 @@ export const ViewerControlBar = ({
       originX: floatingPosition.x,
       originY: floatingPosition.y
     }
-    event.currentTarget.setPointerCapture(event.pointerId)
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId)
+    } catch {
+      // Some mobile browsers do not retain capture when the dragged element moves.
+    }
+
+    const handleWindowPointerMove = (moveEvent: globalThis.PointerEvent) => {
+      const state = dragState.current
+      if (!state || state.pointerId !== moveEvent.pointerId) {
+        return
+      }
+
+      moveEvent.preventDefault()
+      updateFloatingPosition(
+        state.originX + moveEvent.clientX - state.startX,
+        state.originY + moveEvent.clientY - state.startY
+      )
+    }
+
+    const finishWindowDrag = (upEvent: globalThis.PointerEvent) => {
+      const state = dragState.current
+      if (!state || state.pointerId !== upEvent.pointerId) {
+        return
+      }
+
+      upEvent.preventDefault()
+      dragState.current = null
+      window.removeEventListener('pointermove', handleWindowPointerMove)
+      window.removeEventListener('pointerup', finishWindowDrag)
+      window.removeEventListener('pointercancel', finishWindowDrag)
+      floatingDragCleanup.current = null
+    }
+
+    window.addEventListener('pointermove', handleWindowPointerMove, { passive: false })
+    window.addEventListener('pointerup', finishWindowDrag, { passive: false })
+    window.addEventListener('pointercancel', finishWindowDrag, { passive: false })
+    floatingDragCleanup.current = () => {
+      window.removeEventListener('pointermove', handleWindowPointerMove)
+      window.removeEventListener('pointerup', finishWindowDrag)
+      window.removeEventListener('pointercancel', finishWindowDrag)
+      floatingDragCleanup.current = null
+    }
   }
 
   const handleFloatingPointerMove = (event: PointerEvent<HTMLButtonElement>) => {
@@ -181,7 +227,12 @@ export const ViewerControlBar = ({
     }
 
     dragState.current = null
-    event.currentTarget.releasePointerCapture(event.pointerId)
+    floatingDragCleanup.current?.()
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    } catch {
+      // Pointer capture may already be gone on mobile browsers.
+    }
   }
 
   const sendControl = (command: ApplicationViewerControlCommand) => {
@@ -503,7 +554,7 @@ export const ViewerControlBar = ({
           <div className='flex flex-col items-center gap-1 rounded-xl border border-border/70 bg-card/90 p-1 shadow-2xl backdrop-blur-xl'>
             <button
               type='button'
-              className='flex size-9 cursor-grab items-center justify-center rounded-lg text-secondary-foreground hover:bg-secondary active:cursor-grabbing'
+              className='flex size-9 touch-none select-none items-center justify-center rounded-lg text-secondary-foreground hover:bg-secondary active:cursor-grabbing'
               aria-label='Move viewer toolbar'
               onPointerDown={handleFloatingPointerDown}
               onPointerMove={handleFloatingPointerMove}
@@ -536,7 +587,7 @@ export const ViewerControlBar = ({
         <div className='flex max-h-[calc(100dvh-1rem)] flex-col items-center gap-1 overflow-y-auto rounded-xl border border-border/70 bg-card/90 p-1 shadow-2xl backdrop-blur-xl'>
           <button
             type='button'
-            className='flex size-9 cursor-grab items-center justify-center rounded-lg text-secondary-foreground hover:bg-secondary active:cursor-grabbing'
+            className='flex size-9 touch-none select-none items-center justify-center rounded-lg text-secondary-foreground hover:bg-secondary active:cursor-grabbing'
             aria-label='Move viewer toolbar'
             onPointerDown={handleFloatingPointerDown}
             onPointerMove={handleFloatingPointerMove}
