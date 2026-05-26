@@ -1,6 +1,23 @@
 #!/bin/sh
 set -eu
 
+ensure_runtime_permissions() {
+  if [ "$(id -u)" != "0" ]; then
+    return
+  fi
+
+  mkdir -p /app/data /app/secrets /data/secrets
+  chown -R node:node /app/data /app/secrets /data/secrets 2>/dev/null || true
+}
+
+run_as_node() {
+  if [ "$(id -u)" = "0" ]; then
+    exec su-exec node "$@"
+  fi
+
+  exec "$@"
+}
+
 normalize_tls_hosts() {
   printf '%s' "${REBROID_TLS_HOSTS:-localhost,127.0.0.1}" \
     | tr ',' '\n' \
@@ -143,6 +160,7 @@ export WEB_SETTINGS_PATH="${WEB_SETTINGS_PATH:-/app/data/web-settings.json}"
 export WEB_USERS_PATH="${WEB_USERS_PATH:-/app/data/users.json}"
 export WEB_APP_ICONS_PATH="${WEB_APP_ICONS_PATH:-/app/data/app-icons}"
 
+ensure_runtime_permissions
 ensure_tls_certificate
 read_shared_orchestrator_secret
 read_or_create_secret NEXTAUTH_SECRET "${NEXTAUTH_SECRET_FILE:-/app/data/nextauth-secret}"
@@ -155,4 +173,5 @@ if [ -z "${INITIAL_ADMIN_PASSWORD:-}" ] && [ ! -s "$WEB_USERS_PATH" ]; then
   echo "This password is shown only while the first users file is being created." >&2
 fi
 
-exec "$@"
+ensure_runtime_permissions
+run_as_node "$@"

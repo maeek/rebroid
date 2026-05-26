@@ -29,13 +29,12 @@ ENV NEXT_INTERNAL_PORT=3101
 ENV ORCHESTRATOR_API_URL=http://orchestrator:4100
 ENV DISPLAY_SIDECAR_INTERNAL_BASE_URL=http://rebroid-display-sidecar:8000
 ENV REBROID_TLS_HOSTS=localhost,127.0.0.1
-RUN apk add --no-cache libc6-compat openssl
+RUN apk add --no-cache libc6-compat openssl su-exec
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/rebroid-proxy-server.mjs ./rebroid-proxy-server.mjs
 COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/rebroid-web-entrypoint
-RUN mkdir -p /app/data /app/secrets && chown -R node:node /app
-USER node
+RUN mkdir -p /app/data /app/secrets /data/secrets && chown -R node:node /app /data
 EXPOSE 3443
 ENTRYPOINT ["rebroid-web-entrypoint"]
 CMD ["node", "rebroid-proxy-server.mjs"]
