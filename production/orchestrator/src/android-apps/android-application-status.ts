@@ -28,4 +28,5 @@ export enum AndroidApplicationLifecycleStage {
 
 export enum ScrcpyTransport {
   WebSocket = 'websocket',
+  WebRTC = 'webrtc',
 }

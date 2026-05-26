@@ -212,19 +212,24 @@ const forwardedPort = (req, host) => {
 }
 
 const proxyHeaders = (req, target) => {
+  const publicHost = firstHeaderValue(req.headers['x-forwarded-host']) ?? firstHeaderValue(req.headers.host) ?? ''
+  const proto = forwardedProto(req)
   if (target.kind === 'sidecar') {
     return {
       ...req.headers,
-      host: target.baseUrl.host
+      host: target.baseUrl.host,
+      'x-forwarded-host': publicHost,
+      'x-forwarded-proto': proto,
+      'x-forwarded-port': forwardedPort(req, publicHost),
+      'x-rebroid-viewer-host': publicHost
     }
   }
 
-  const publicHost = firstHeaderValue(req.headers['x-forwarded-host']) ?? firstHeaderValue(req.headers.host) ?? ''
   return {
     ...req.headers,
     host: publicHost,
     'x-forwarded-host': publicHost,
-    'x-forwarded-proto': forwardedProto(req),
+    'x-forwarded-proto': proto,
     'x-forwarded-port': forwardedPort(req, publicHost)
   }
 }

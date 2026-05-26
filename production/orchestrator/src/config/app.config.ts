@@ -115,6 +115,9 @@ export default registerAs('app', () => {
         `http://${displaySidecarContainerName}:${displaySidecarPort}`,
       player: process.env.DISPLAY_SIDECAR_PLAYER ?? 'webcodecs',
       proxyRemote: process.env.DISPLAY_SIDECAR_PROXY_REMOTE ?? 'tcp:8886',
+      webrtcUdpPortRange:
+        process.env.DISPLAY_WEBRTC_UDP_PORT_RANGE ?? '40000-40100',
+      webrtcIceHost: process.env.DISPLAY_WEBRTC_ICE_HOST ?? '',
     },
   };
 });

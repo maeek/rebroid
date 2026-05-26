@@ -18,7 +18,7 @@ export type AndroidApplicationLifecycleStage =
   | 'removed'
   | 'error'
 
-export type ScrcpyTransport = 'websocket'
+export type ScrcpyTransport = 'websocket' | 'webrtc'
 export type ApplicationProfileMode = 'persistent' | 'temporary'
 
 export interface ApplicationRuntimeFilesProfileInput {
@@ -120,6 +120,7 @@ export interface DisplaySession {
   capabilities: string[]
   streamPath: string
   viewerPath: string
+  webrtcOfferPath: string
 }
 
 export interface AndroidImagePullProgress {

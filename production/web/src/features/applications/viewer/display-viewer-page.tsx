@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { IconAlertTriangle, IconCast, IconLoader2 } from '@tabler/icons-react'
+import { IconAlertTriangle, IconDeviceDesktop, IconLoader2 } from '@tabler/icons-react'
 import { headers } from 'next/headers'
 import { Visible } from '@/components/ui/visible'
 import { DisplayViewerFrame } from '@/features/applications/viewer/display-viewer-frame'
@@ -32,6 +32,7 @@ type ViewerSearchParams = {
   keyboard?: string
   sound?: string
   player?: string
+  transport?: string
   bitrateMbps?: string
   maxFps?: string
   maxSize?: string
@@ -80,7 +81,7 @@ const ViewerSplash = ({
       <div className='relative h-44 w-32 rounded-[2rem] border border-border/80 bg-black shadow-2xl'>
         <div className='absolute left-1/2 top-3 h-1 w-9 -translate-x-1/2 rounded-full bg-slate-500/80' />
         <div className='absolute inset-x-5 bottom-10 top-9 flex items-center justify-center overflow-hidden rounded-2xl border border-border/60 bg-slate-950'>
-          <IconCast
+          <IconDeviceDesktop
             className='size-14 text-primary drop-shadow-[0_0_14px_hsl(var(--primary)/0.55)]'
             stroke={1.75}
           />
@@ -93,7 +94,8 @@ const ViewerSplash = ({
         detail={detail}
         tone={tone}
         icon={
-          icon ?? (tone === 'danger' ? <IconAlertTriangle className='size-10' /> : <IconCast className='size-10' />)
+          icon ??
+          (tone === 'danger' ? <IconAlertTriangle className='size-10' /> : <IconDeviceDesktop className='size-10' />)
         }
         className='min-h-0 w-full'
       />
@@ -119,6 +121,7 @@ const viewerSettingsFromSearchParams = (searchParams: ViewerSearchParams | undef
     keyboardCaptureEnabled: searchParams?.keyboard === '1',
     soundEnabled: searchParams?.sound !== '0',
     player: isViewerPlayer(searchParams?.player) ? searchParams.player : undefined,
+    transport: searchParams?.transport === 'websocket' ? 'websocket' : 'webrtc',
     bitrateMbps: numberParam(searchParams?.bitrateMbps, defaultViewerSettings.bitrateMbps),
     maxFps: numberParam(searchParams?.maxFps, defaultViewerSettings.maxFps),
     maxSize: numberParam(searchParams?.maxSize, defaultViewerSettings.maxSize),

@@ -27,12 +27,16 @@ services:
       DISPLAY_SIDECAR_IMAGE: rebroid/display-sidecar:local
       DISPLAY_SIDECAR_AUTO_START: "true"
       DISPLAY_SIDECAR_PUBLISHED_HOST_PORT: 8000
+      DISPLAY_WEBRTC_UDP_PORT_RANGE: ${DISPLAY_WEBRTC_UDP_PORT_RANGE:-40000-40100}
+      DISPLAY_WEBRTC_ICE_HOST: ${DISPLAY_WEBRTC_ICE_HOST:-}
       DISPLAY_SIDECAR_BUILD_CONTEXT: /app/display-sidecar
     cap_add:
       - NET_ADMIN
     expose:
       - "4100"
       - "8000"
+    ports:
+      - "${DISPLAY_WEBRTC_UDP_PORT_RANGE:-40000-40100}:${DISPLAY_WEBRTC_UDP_PORT_RANGE:-40000-40100}/udp"
     volumes:
       - orchestrator-data:/data/config
       - orchestrator-uploads:/data/uploads

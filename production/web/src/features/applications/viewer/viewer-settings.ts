@@ -1,5 +1,6 @@
 export type ViewerStreamingPreset = 'balanced' | 'bandwidth' | 'quality'
 export type ViewerPlayer = 'webcodecs'
+export type ViewerTransport = 'webrtc' | 'websocket'
 
 export type ViewerPlayerDefinition = {
   value: ViewerPlayer
@@ -20,6 +21,7 @@ export const isViewerPlayer = (value: unknown): value is ViewerPlayer =>
 
 export type ViewerStreamingSettings = {
   player: ViewerPlayer
+  transport: ViewerTransport
   preset: ViewerStreamingPreset
   bitrateMbps: number
   maxFps: number
@@ -36,6 +38,7 @@ export type ViewerSettings = ViewerStreamingSettings & {
 export const viewerStreamingPresets: Record<ViewerStreamingPreset, ViewerStreamingSettings> = {
   bandwidth: {
     player: 'webcodecs',
+    transport: 'webrtc',
     preset: 'bandwidth',
     bitrateMbps: 1.5,
     maxFps: 24,
@@ -45,6 +48,7 @@ export const viewerStreamingPresets: Record<ViewerStreamingPreset, ViewerStreami
   },
   balanced: {
     player: 'webcodecs',
+    transport: 'webrtc',
     preset: 'balanced',
     bitrateMbps: 3,
     maxFps: 30,
@@ -54,6 +58,7 @@ export const viewerStreamingPresets: Record<ViewerStreamingPreset, ViewerStreami
   },
   quality: {
     player: 'webcodecs',
+    transport: 'webrtc',
     preset: 'quality',
     bitrateMbps: 7,
     maxFps: 30,
@@ -69,7 +74,9 @@ export const defaultViewerSettings: ViewerSettings = {
   soundEnabled: true
 }
 
-const storageKey = 'rebroid.viewer.settings.v5'
+export const viewerSettingsStorageKey = 'rebroid.viewer.settings.v6'
+
+export const isViewerTransport = (value: unknown): value is ViewerTransport => value === 'webrtc' || value === 'websocket'
 
 const isValidNumber = (value: unknown, fallback: number, min: number, max: number) => {
   if (typeof value !== 'number' || Number.isNaN(value)) {
@@ -86,6 +93,7 @@ export const normalizeViewerSettings = (value: Partial<ViewerSettings> | null | 
       : defaultViewerSettings.keyboardCaptureEnabled,
   soundEnabled: typeof value?.soundEnabled === 'boolean' ? value.soundEnabled : defaultViewerSettings.soundEnabled,
   player: isViewerPlayer(value?.player) ? value.player : defaultViewerSettings.player,
+  transport: isViewerTransport(value?.transport) ? value.transport : defaultViewerSettings.transport,
   preset:
     value?.preset && Object.hasOwn(viewerStreamingPresets, value.preset) ? value.preset : defaultViewerSettings.preset,
   bitrateMbps: isValidNumber(value?.bitrateMbps, defaultViewerSettings.bitrateMbps, 1, 32),
@@ -101,7 +109,7 @@ export const loadViewerSettings = () => {
   }
 
   try {
-    const raw = window.localStorage.getItem(storageKey)
+    const raw = window.localStorage.getItem(viewerSettingsStorageKey)
     const parsed: unknown = raw ? JSON.parse(raw) : null
 
     if (!parsed || typeof parsed !== 'object') {
@@ -119,7 +127,7 @@ export const saveViewerSettings = (settings: ViewerSettings) => {
     return
   }
 
-  window.localStorage.setItem(storageKey, JSON.stringify(settings))
+  window.localStorage.setItem(viewerSettingsStorageKey, JSON.stringify(settings))
 }
 
 export const viewerSettingsFromDefaults = (settings: {

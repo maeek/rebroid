@@ -94,8 +94,12 @@ services:
       DISPLAY_SIDECAR_SHARED_SECRET_FILE: /data/secrets/orchestrator-secret
       ORCHESTRATOR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
       ORCHESTRATOR_SHARED_SECRET_FILE: /data/secrets/orchestrator-secret
+      DISPLAY_WEBRTC_UDP_PORT_RANGE: ${DISPLAY_WEBRTC_UDP_PORT_RANGE:-40000-40100}
+      DISPLAY_WEBRTC_ICE_HOST: ${DISPLAY_WEBRTC_ICE_HOST:-}
     expose:
       - "8000"
+    ports:
+      - "${DISPLAY_WEBRTC_UDP_PORT_RANGE:-40000-40100}:${DISPLAY_WEBRTC_UDP_PORT_RANGE:-40000-40100}/udp"
     volumes:
       - shared-secrets:/data/secrets
     networks:

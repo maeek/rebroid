@@ -30,8 +30,8 @@ export class OrchestratorSettingsDto {
   dockerImageRegistry!: string | null;
 
   @ApiProperty({
-    enum: [ScrcpyTransport.WebSocket],
-    default: ScrcpyTransport.WebSocket,
+    enum: [ScrcpyTransport.WebRTC, ScrcpyTransport.WebSocket],
+    default: ScrcpyTransport.WebRTC,
   })
   @IsEnum(ScrcpyTransport)
   defaultScrcpyTransport!: ScrcpyTransport;

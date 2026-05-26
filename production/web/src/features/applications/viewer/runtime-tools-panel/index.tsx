@@ -46,11 +46,11 @@ export const RuntimeToolsPanel = ({
         {
           id: 'streaming' as const,
           title: 'Streaming',
-          description: `${viewerSettings.player} • ${viewerSettings.bitrateMbps} Mbps`,
+          description: `${viewerSettings.transport.toUpperCase()} • ${viewerSettings.bitrateMbps} Mbps`,
           Icon: IconCast
         }
       ].filter((tool): tool is NonNullable<typeof tool> => Boolean(tool)),
-    [permissions, viewerSettings.bitrateMbps, viewerSettings.player]
+    [permissions, viewerSettings.bitrateMbps, viewerSettings.transport]
   )
   const [activeTool, setActiveTool] = useState<RuntimeToolId | null>(() => tools[0]?.id ?? 'streaming')
 

@@ -59,6 +59,9 @@ export class DisplaySessionDto {
 
   @ApiProperty()
   viewerPath!: string;
+
+  @ApiProperty()
+  webrtcOfferPath!: string;
 }
 
 export class ScrcpySessionDto {

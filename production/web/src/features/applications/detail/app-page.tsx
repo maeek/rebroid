@@ -9,6 +9,7 @@ import { rememberRecentApp } from '@/features/applications/recent/recent-apps'
 import {
   loadViewerSettings,
   saveViewerSettings,
+  viewerSettingsStorageKey,
   viewerSettingsFromDefaults
 } from '@/features/applications/viewer/viewer-settings'
 import { ProtectedSplitPageLayout, ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
@@ -53,7 +54,7 @@ export const AppViewerPage = ({
   }, [app])
 
   useEffect(() => {
-    const hasStoredSettings = window.localStorage.getItem('rebroid.viewer.settings.v5') !== null
+    const hasStoredSettings = window.localStorage.getItem(viewerSettingsStorageKey) !== null
     setViewerSettings(hasStoredSettings ? loadViewerSettings() : viewerSettingsFromDefaults(initialSettings))
     setViewerSettingsHydrated(true)
   }, [initialSettings])

@@ -38,7 +38,7 @@ export class InitializeSqliteSchema1715970000000 implements MigrationInterface {
             { name: 'apkOriginalName', type: 'text', isNullable: true },
             { name: 'apkPackageName', type: 'text', isNullable: true },
             { name: 'uploadedApkId', type: 'text', isNullable: true },
-            { name: 'scrcpyTransport', type: 'varchar', isNullable: false, default: "'websocket'" },
+            { name: 'scrcpyTransport', type: 'varchar', isNullable: false, default: "'webrtc'" },
             { name: 'adbPort', type: 'integer', isNullable: false, default: '5555' },
             { name: 'inactivityTimeoutSeconds', type: 'integer', isNullable: false, default: '900' },
             { name: 'lastScrcpyActivityAt', type: 'datetime', isNullable: true },

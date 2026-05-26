@@ -53,7 +53,7 @@ export const defaultOrchestratorUiSettings: OrchestratorUiSettings = {
   imagePruneDanglingOnly: true,
   appListRefreshIntervalSeconds: 5,
   removeDataOnDelete: true,
-  scrcpyTransport: 'websocket',
+  scrcpyTransport: 'webrtc',
   defaultViewerPreset: 'balanced',
   defaultViewerBitrateMbps: 3,
   defaultViewerMaxFps: 30,
@@ -132,5 +132,8 @@ export const normalizeOrchestratorUiSettings = (
     typeof orchestrator.imagePruneDanglingOnly === 'boolean'
       ? orchestrator.imagePruneDanglingOnly
       : defaultOrchestratorUiSettings.imagePruneDanglingOnly,
-  scrcpyTransport: 'websocket'
+  scrcpyTransport:
+    orchestrator.defaultScrcpyTransport === 'websocket' || orchestrator.defaultScrcpyTransport === 'webrtc'
+      ? orchestrator.defaultScrcpyTransport
+      : defaultOrchestratorUiSettings.scrcpyTransport
 })

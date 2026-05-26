@@ -311,8 +311,8 @@ export class AndroidApplication {
   @Column({ type: 'text', nullable: true })
   uploadedApkId!: string | null;
 
-  @ApiProperty({ enum: ScrcpyTransport, example: ScrcpyTransport.WebSocket })
-  @Column({ default: ScrcpyTransport.WebSocket })
+  @ApiProperty({ enum: ScrcpyTransport, example: ScrcpyTransport.WebRTC })
+  @Column({ default: ScrcpyTransport.WebRTC })
   scrcpyTransport!: ScrcpyTransport;
 
   @ApiProperty({ example: 5555 })

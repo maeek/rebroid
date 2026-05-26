@@ -2,6 +2,7 @@
 
 import { useMemo, type ReactNode } from 'react'
 import { IconCast } from '@tabler/icons-react'
+import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { getViewerPlayerCapabilities } from '../viewer-player-capabilities'
 import {
@@ -49,7 +50,12 @@ export const StreamingToolsSection = ({
   }
 
   const rendererNote = selectedCapability.reason ?? selectedPlayer?.description
-  const streamingSummary = `${selectedPlayer?.label ?? viewerSettings.player} • ${viewerSettings.bitrateMbps} Mbps • ${viewerSettings.maxFps} fps • ${viewerSettings.maxSize === 0 ? 'Fit frame' : `${viewerSettings.maxSize}px`}`
+  const streamingSummary = `${viewerSettings.transport.toUpperCase()} • ${selectedPlayer?.label ?? viewerSettings.player} • ${viewerSettings.bitrateMbps} Mbps • ${viewerSettings.maxFps} fps • ${viewerSettings.maxSize === 0 ? 'Fit frame' : `${viewerSettings.maxSize}px`}`
+  const transportLabel = viewerSettings.transport === 'webrtc' ? 'WebRTC' : 'WebSocket'
+  const transportDetail =
+    viewerSettings.transport === 'webrtc'
+      ? 'WebRTC selected: video and controls use the low-latency peer connection when the viewer reloads.'
+      : 'WebSocket selected: video and controls use the legacy websocket stream when the viewer reloads.'
 
   return (
     <ToolSection
@@ -60,6 +66,16 @@ export const StreamingToolsSection = ({
       hideHeader={hideHeader}
     >
       <div className='grid gap-4'>
+        <div className='flex flex-wrap items-center gap-2 rounded-md border border-border/70 bg-muted/30 px-3 py-2'>
+          <Badge
+            variant={viewerSettings.transport === 'webrtc' ? 'status' : 'secondary'}
+            className='uppercase tracking-wide'
+          >
+            {transportLabel}
+          </Badge>
+          <span className='text-xs text-muted-foreground'>{transportDetail}</span>
+        </div>
+
         <div className='grid gap-x-6 gap-y-4 md:grid-cols-2'>
           <StreamingSetting label='Preset'>
             <Select
@@ -104,6 +120,21 @@ export const StreamingToolsSection = ({
                     </SelectItem>
                   )
                 })}
+              </SelectContent>
+            </Select>
+          </StreamingSetting>
+
+          <StreamingSetting label='Transport'>
+            <Select
+              value={viewerSettings.transport}
+              onValueChange={value => updateSettings({ transport: value === 'websocket' ? 'websocket' : 'webrtc' })}
+            >
+              <SelectTrigger className='w-full'>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='webrtc'>WebRTC</SelectItem>
+                <SelectItem value='websocket'>WebSocket</SelectItem>
               </SelectContent>
             </Select>
           </StreamingSetting>

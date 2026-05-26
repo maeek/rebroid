@@ -37,6 +37,8 @@ export class DockerSidecarService implements OnModuleInit {
   private readonly displaySidecarPlatformNetwork?: string;
   private readonly displaySidecarPort: number;
   private readonly displaySidecarPublishedHostPort: number;
+  private readonly displaySidecarWebrtcUdpPortRange: string;
+  private readonly displaySidecarWebrtcIceHost: string;
   private displaySidecarLastError: string | null = null;
 
   constructor(
@@ -70,6 +72,12 @@ export class DockerSidecarService implements OnModuleInit {
     );
     this.displaySidecarPublishedHostPort = this.config.getOrThrow<number>(
       'app.displaySidecar.publishedHostPort',
+    );
+    this.displaySidecarWebrtcUdpPortRange = this.config.getOrThrow<string>(
+      'app.displaySidecar.webrtcUdpPortRange',
+    );
+    this.displaySidecarWebrtcIceHost = this.config.getOrThrow<string>(
+      'app.displaySidecar.webrtcIceHost',
     );
   }
 
@@ -449,6 +457,13 @@ export class DockerSidecarService implements OnModuleInit {
         ],
       };
     }
+    const webrtcPortBinding = this.webrtcUdpPortBinding();
+    if (webrtcPortBinding) {
+      hostConfig.PortBindings = {
+        ...(hostConfig.PortBindings ?? {}),
+        ...webrtcPortBinding.portBindings,
+      };
+    }
 
     if (this.displaySidecarPlatformNetwork) {
       hostConfig.NetworkMode = this.displaySidecarPlatformNetwork;
@@ -473,9 +488,14 @@ export class DockerSidecarService implements OnModuleInit {
               `ORCHESTRATOR_SHARED_SECRET=${this.config.get<string>('app.sharedSecret')}`,
             ]
           : []),
+        `DISPLAY_WEBRTC_UDP_PORT_RANGE=${this.displaySidecarWebrtcUdpPortRange}`,
+        ...(this.displaySidecarWebrtcIceHost
+          ? [`DISPLAY_WEBRTC_ICE_HOST=${this.displaySidecarWebrtcIceHost}`]
+          : []),
       ],
       ExposedPorts: {
         [`${this.displaySidecarPort}/tcp`]: {},
+        ...(webrtcPortBinding?.exposedPorts ?? {}),
       },
       Labels: this.engine.labels('platform', 'display-sidecar'),
       HostConfig: hostConfig,
@@ -483,6 +503,24 @@ export class DockerSidecarService implements OnModuleInit {
     });
     await container.start();
     return container;
+  }
+
+  private webrtcUdpPortBinding() {
+    const [start, end] = this.displaySidecarWebrtcUdpPortRange
+      .split('-')
+      .map((value) => Number(value));
+    if (!Number.isInteger(start) || !Number.isInteger(end) || start <= 0 || end < start) {
+      return null;
+    }
+
+    const portBindings: NonNullable<Dockerode.HostConfig['PortBindings']> = {};
+    const exposedPorts: Record<string, Record<string, never>> = {};
+    for (let port = start; port <= end; port += 1) {
+      const key = `${port}/udp`;
+      portBindings[key] = [{ HostIp: '0.0.0.0', HostPort: String(port) }];
+      exposedPorts[key] = {};
+    }
+    return { portBindings, exposedPorts };
   }
 
   private async initializeSidecarOnStartup() {

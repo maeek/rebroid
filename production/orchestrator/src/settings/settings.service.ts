@@ -83,7 +83,7 @@ export class SettingsService {
       dockerImageRegistry: this.normalizeRegistry(
         value.dockerImageRegistry ?? defaults.dockerImageRegistry,
       ),
-      defaultScrcpyTransport: ScrcpyTransport.WebSocket,
+      defaultScrcpyTransport: ScrcpyTransport.WebRTC,
       defaultInactivityTimeoutSeconds: numberInRange(
         value.defaultInactivityTimeoutSeconds,
         defaults.defaultInactivityTimeoutSeconds,
@@ -115,7 +115,7 @@ export class SettingsService {
         'app.container.image',
       ),
       dockerImageRegistry: null,
-      defaultScrcpyTransport: ScrcpyTransport.WebSocket,
+      defaultScrcpyTransport: ScrcpyTransport.WebRTC,
       defaultInactivityTimeoutSeconds: this.config.getOrThrow<number>(
         'app.redroid.defaultInactivityTimeoutSeconds',
       ),

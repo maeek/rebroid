@@ -28,6 +28,9 @@ export const getProtectedViewerShellUrl = (applicationId: string, options?: Part
   if (options?.player !== undefined) {
     query.set('player', options.player)
   }
+  if (options?.transport !== undefined) {
+    query.set('transport', options.transport)
+  }
 
   return `/viewer/apps/${applicationId}${query.size > 0 ? `?${query.toString()}` : ''}`
 }
@@ -41,7 +44,10 @@ export const getProtectedDisplaySidecarUrl = ({
   session: ScrcpySession
   baseUrl: string
   soundEnabled?: boolean
-  settings?: Pick<ViewerSettings, 'bitrateMbps' | 'fitToFrame' | 'iFrameInterval' | 'maxFps' | 'maxSize' | 'player'>
+  settings?: Pick<
+    ViewerSettings,
+    'bitrateMbps' | 'fitToFrame' | 'iFrameInterval' | 'maxFps' | 'maxSize' | 'player' | 'transport'
+  >
 }) => {
   if (!session.displaySession?.viewerPath) {
     throw new Error('The live viewer is not ready yet.')
@@ -49,6 +55,7 @@ export const getProtectedDisplaySidecarUrl = ({
 
   const viewerUrl = new URL(session.displaySession.viewerPath, `${trimTrailingSlash(baseUrl)}/`)
   viewerUrl.searchParams.set('player', settings?.player ?? session.player)
+  viewerUrl.searchParams.set('transport', settings?.transport ?? 'webrtc')
   viewerUrl.searchParams.set('audio', soundEnabled === false ? '0' : '1')
   viewerUrl.searchParams.set(
     'bitrate',
