@@ -11,13 +11,18 @@ import { formatContainerCommandFailureMessage } from '../../utils/docker-engine.
 export class DockerContainerExecService {
   constructor(private readonly engine: DockerEngineService) {}
 
-  async execInContainer(containerId: string, command: string[]) {
-    await this.execInContainerWithOutput(containerId, command);
+  async execInContainer(
+    containerId: string,
+    command: string[],
+    options: { timeoutMs?: number } = {},
+  ) {
+    await this.execInContainerWithOutput(containerId, command, options);
   }
 
   async execInContainerWithOutput(
     containerId: string,
     command: string[],
+    options: { timeoutMs?: number } = {},
   ): Promise<ContainerCommandResult> {
     const container = this.engine.docker.getContainer(containerId);
     const exec = await container.exec({
@@ -36,8 +41,26 @@ export class DockerContainerExecService {
     this.engine.docker.modem.demuxStream(stream, stdout, stderr);
 
     await new Promise<void>((resolve, reject) => {
-      stream.on('end', resolve);
-      stream.on('error', reject);
+      const timeout =
+        options.timeoutMs && options.timeoutMs > 0
+          ? setTimeout(() => {
+              stream.destroy(new Error(`Container exec timed out after ${options.timeoutMs}ms: ${command.join(' ')}`));
+            }, options.timeoutMs)
+          : null;
+      const cleanup = () => {
+        if (timeout) {
+          clearTimeout(timeout);
+        }
+      };
+
+      stream.on('end', () => {
+        cleanup();
+        resolve();
+      });
+      stream.on('error', (error) => {
+        cleanup();
+        reject(error);
+      });
     });
 
     const result = await exec.inspect();

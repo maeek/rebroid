@@ -47,6 +47,7 @@ export class AndroidAppsProvisioningAndroidService {
         const { stdout, stderr } = await this.exec.execInContainerWithOutput(
           app.containerId,
           ['sh', '-lc', 'getprop sys.boot_completed 2>/dev/null || true'],
+          { timeoutMs: 10_000 },
         );
         const bootCompleted = stdout.trim();
         lastProbe =
@@ -75,8 +76,17 @@ export class AndroidAppsProvisioningAndroidService {
       await delay(intervalMs);
     }
 
+    const diagnostics = await this.collectBootDiagnostics(app);
+    await this.logs.append(app.id, 'Android boot diagnostics', diagnostics);
+
     throw new Error(
-      `Timed out waiting for Android to finish booting after ${timeoutMs / 1000}s. Last probe: ${lastProbe}`,
+      [
+        `Timed out waiting for Android to finish booting after ${timeoutMs / 1000}s.`,
+        `Last probe: ${lastProbe}`,
+        diagnostics.summary ? `Diagnostics: ${diagnostics.summary}` : null,
+      ]
+        .filter(Boolean)
+        .join(' '),
     );
   }
 
@@ -196,5 +206,85 @@ export class AndroidAppsProvisioningAndroidService {
       : '';
 
     return `Managed container ${runtimeState.status ?? 'exited'}${exitCode} before Android finished booting.${dockerError}`;
+  }
+
+  private async collectBootDiagnostics(app: AndroidApplication) {
+    this.assertContainerId(app);
+    const command = [
+      'sh',
+      '-lc',
+      [
+        'echo "== props =="',
+        'getprop sys.boot_completed init.svc.zygote init.svc.surfaceflinger init.svc.servicemanager init.svc.hwservicemanager init.svc.adbd ro.hardware 2>&1 || true',
+        'echo "== binder devices =="',
+        'ls -la /dev/binder /dev/hwbinder /dev/vndbinder /dev/binderfs 2>&1 || true',
+        'echo "== binder proc =="',
+        'cat /proc/filesystems /proc/misc 2>/dev/null | grep -E "binder|ashmem" || true',
+        'echo "== mounts =="',
+        'mount | grep -E "binder|ashmem|/data" || true',
+        'echo "== processes =="',
+        'ps -A 2>/dev/null | head -80 || ps 2>/dev/null | head -80 || true',
+        'echo "== data =="',
+        'df -h /data 2>&1 || true',
+        'ls -la /data 2>&1 | head -40 || true',
+      ].join('; '),
+    ];
+
+    let probe = '';
+    try {
+      const { stdout, stderr } = await this.exec.execInContainerWithOutput(
+        app.containerId,
+        command,
+        { timeoutMs: 15_000 },
+      );
+      probe = [stdout.trim(), stderr.trim()].filter(Boolean).join('\n');
+    } catch (error) {
+      probe = getErrorMessage(error);
+    }
+
+    let containerLogs = '';
+    try {
+      containerLogs = await this.lifecycle.getContainerLogs(app.containerId, 200);
+    } catch (error) {
+      containerLogs = getErrorMessage(error);
+    }
+
+    const combined = `${probe}\n${containerLogs}`.toLowerCase();
+    const summary = this.bootDiagnosticSummary(combined);
+
+    return {
+      summary,
+      probe: this.truncate(probe, 12_000),
+      containerLogs: this.truncate(containerLogs, 12_000),
+    };
+  }
+
+  private bootDiagnosticSummary(text: string) {
+    const reasons: string[] = [];
+    if (text.includes('binder') && text.match(/no such file|not found|cannot access/)) {
+      reasons.push('binder devices may be missing inside the runtime container');
+    }
+    if (text.includes('permission denied')) {
+      reasons.push('container permissions or security profile may be blocking Redroid');
+    }
+    if (text.includes('avc:') || text.includes('apparmor') || text.includes('seccomp')) {
+      reasons.push('host security policy may be blocking Redroid');
+    }
+    if (text.includes('no space left')) {
+      reasons.push('runtime data volume or Docker storage may be full');
+    }
+    if (text.includes('zygote') && !text.includes('init.svc.zygote=running')) {
+      reasons.push('Android zygote service is not running');
+    }
+
+    return reasons.join('; ') || 'no obvious boot blocker detected from container diagnostics';
+  }
+
+  private truncate(value: string, maxLength: number) {
+    if (value.length <= maxLength) {
+      return value;
+    }
+
+    return `${value.slice(0, maxLength)}\n... truncated ${value.length - maxLength} chars`;
   }
 }
