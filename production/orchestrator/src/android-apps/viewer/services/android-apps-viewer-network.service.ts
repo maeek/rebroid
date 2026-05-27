@@ -122,22 +122,33 @@ export class AndroidAppsViewerNetworkService {
     }
 
     try {
-      await this.exec.execInContainer(
+      const result = await this.exec.execInContainerWithOutput(
         app.containerId,
         [
           'sh',
           '-lc',
           [
-            `setprop persist.adb.tcp.port ${app.adbPort}`,
-            `setprop service.adb.tcp.port ${app.adbPort}`,
-            'stop adbd',
+            'set -e',
+            `port=${app.adbPort}`,
+            'persist_port="$(getprop persist.adb.tcp.port 2>/dev/null || true)"',
+            'service_port="$(getprop service.adb.tcp.port 2>/dev/null || true)"',
+            'adbd_state="$(getprop init.svc.adbd 2>/dev/null || true)"',
+            'if { [ "$persist_port" = "$port" ] || [ "$service_port" = "$port" ]; } && [ "$adbd_state" = "running" ]; then',
+            '  echo "Redroid TCP ADB already enabled."',
+            '  exit 0',
+            'fi',
+            'setprop persist.adb.tcp.port "$port"',
+            'setprop service.adb.tcp.port "$port"',
+            '[ "$adbd_state" != "running" ] || stop adbd',
             'start adbd',
-          ].join(' && '),
+            'echo "Redroid TCP ADB enabled and adbd restarted."',
+          ].join('\n'),
         ],
         { timeoutMs: 10_000 },
       );
       await this.logs.append(app.id, 'Redroid TCP ADB ensured for viewer', {
         adbPort: app.adbPort,
+        message: result.stdout.trim(),
       });
     } catch (error) {
       const message = getErrorMessage(error);
