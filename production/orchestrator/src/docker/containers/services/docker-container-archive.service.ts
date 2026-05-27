@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { readFile } from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
+import { readFile, stat } from 'node:fs/promises';
 import { basename } from 'node:path';
 import type { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -16,12 +17,13 @@ export class DockerContainerArchiveService {
     targetDirectory: string,
     targetFileName?: string,
   ) {
-    const content = await readFile(sourcePath);
-    await this.copyBufferToContainer(
+    const { size } = await stat(sourcePath);
+    await this.copyStreamToContainer(
       containerId,
-      content,
+      createReadStream(sourcePath),
       targetDirectory,
       targetFileName ?? basename(sourcePath),
+      size,
     );
   }
 
@@ -64,6 +66,7 @@ export class DockerContainerArchiveService {
     content: Readable,
     targetDirectory: string,
     targetFileName: string,
+    size?: number,
   ) {
     const container = this.engine.docker.getContainer(containerId);
     const pack = tar.pack();
@@ -78,6 +81,7 @@ export class DockerContainerArchiveService {
     const entry = pack.entry({
       name: targetFileName,
       mode: 0o644,
+      size,
     });
 
     try {

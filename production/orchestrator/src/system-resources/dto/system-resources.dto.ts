@@ -23,6 +23,15 @@ export class ManagedVolumeUsageDto {
 }
 
 export class SystemResourcesDto {
+  @ApiProperty({ nullable: true })
+  hostMemoryBytes!: number | null;
+
+  @ApiProperty({ nullable: true })
+  hostCpuCores!: number | null;
+
+  @ApiProperty({ nullable: true })
+  dockerRootAvailableBytes!: number | null;
+
   @ApiProperty()
   containersTotal!: number;
 

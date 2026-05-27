@@ -25,6 +25,19 @@ export class DockerResourceRuntimeService {
     };
   }
 
+  async hostCapacity() {
+    const info = await this.engine.info();
+
+    return {
+      memoryBytes: typeof info.MemTotal === 'number' ? info.MemTotal : null,
+      cpuCores: typeof info.NCPU === 'number' ? info.NCPU : null,
+      dockerRootDir:
+        typeof info.DockerRootDir === 'string' && info.DockerRootDir.trim()
+          ? info.DockerRootDir
+          : null,
+    };
+  }
+
   /**
    * Creates the persistent app volume if it does not exist already.
    */

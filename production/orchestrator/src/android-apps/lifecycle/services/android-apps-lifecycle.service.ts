@@ -457,14 +457,11 @@ export class AndroidAppsLifecycleService {
         apkPackageName: app.apkPackageName,
       });
     } else {
-      this.tracker.ensureActive(app.id);
-      await this.apkProvisioning.installApk(
+      await this.startApkInstallInBackground(
         app,
-        'Installing APK inside Android before launch.',
+        'Installing APK inside Android before launch. Viewer is available while installation finishes.',
       );
-      await this.logs.append(app.id, 'APK startup install finished', {
-        apkPackageName: app.apkPackageName,
-      });
+      return;
     }
     this.tracker.ensureActive(app.id);
     await this.apkProvisioning.launchInstalledApk(app);
@@ -478,6 +475,77 @@ export class AndroidAppsLifecycleService {
       containerId: app.containerId,
     });
     await this.state.save(app);
+  }
+
+  /** Keeps the viewer available while a missing APK is installed after startup. */
+  private async startApkInstallInBackground(
+    app: AndroidApplication,
+    statusMessage: string,
+  ) {
+    this.tracker.ensureActive(app.id);
+    app.status = AndroidApplicationStatus.Running;
+    app.lifecycleStage = AndroidApplicationLifecycleStage.ApkInstalling;
+    app.statusMessage = statusMessage;
+    app.lastError = null;
+    await this.logs.appendLifecycle(app.id, {
+      status: AndroidApplicationStatus.Running,
+      lifecycleStage: AndroidApplicationLifecycleStage.ApkInstalling,
+      statusMessage,
+    });
+    await this.state.setLifecycle(app.id, {
+      status: AndroidApplicationStatus.Running,
+      lifecycleStage: AndroidApplicationLifecycleStage.ApkInstalling,
+      statusMessage,
+      lastError: null,
+    });
+    void this.completeApkInstallInBackground(app.id, statusMessage);
+  }
+
+  /** Finishes an APK install after the runtime has been exposed. */
+  private async completeApkInstallInBackground(
+    applicationId: string,
+    statusMessage: string,
+  ) {
+    try {
+      const app = await this.state.getStored(applicationId);
+      this.tracker.ensureActive(applicationId);
+      await this.apkProvisioning.installApk(app, statusMessage);
+      await this.logs.append(app.id, 'Background APK install finished', {
+        apkPackageName: app.apkPackageName,
+      });
+      this.tracker.ensureActive(applicationId);
+      await this.apkProvisioning.launchInstalledApk(app);
+      app.status = AndroidApplicationStatus.Running;
+      app.lifecycleStage = AndroidApplicationLifecycleStage.Ready;
+      app.statusMessage = 'Application is running.';
+      app.lastError = null;
+      app.provisioningCompletedAt = new Date();
+      await this.logs.append(app.id, 'Application marked running', {
+        containerId: app.containerId,
+      });
+      await this.state.save(app);
+    } catch (error) {
+      if (this.tracker.isCancellationError(error)) {
+        this.logger.log(
+          `Background APK install cancelled for ${applicationId}.`,
+        );
+        return;
+      }
+
+      const message = getErrorMessage(error);
+      this.logger.error(
+        `Background APK install failed for ${applicationId}: ${message}`,
+      );
+      await this.state.setLifecycle(applicationId, {
+        status: AndroidApplicationStatus.Running,
+        lifecycleStage: AndroidApplicationLifecycleStage.Error,
+        statusMessage: `APK install failed: ${message}`,
+        lastError: message,
+      });
+      await this.logs.append(applicationId, 'Background APK install failed', {
+        error: message,
+      });
+    }
   }
 
   /** Stops an app container. */
@@ -525,12 +593,11 @@ export class AndroidAppsLifecycleService {
     await this.state.save(app);
 
     if (app.status === AndroidApplicationStatus.Running) {
-      await this.apkProvisioning.installApk(app, 'Installing updated APK.');
-      await this.apkProvisioning.launchInstalledApk(app);
-      await this.state.setLifecycle(app.id, {
-        lifecycleStage: AndroidApplicationLifecycleStage.Ready,
-        statusMessage: 'Application is running.',
-      });
+      await this.startApkInstallInBackground(
+        app,
+        'Installing updated APK. Viewer is available while installation finishes.',
+      );
+      return this.state.get(id);
     }
 
     return this.state.saveAndDecorate(app);

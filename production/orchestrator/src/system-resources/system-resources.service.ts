@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { statfs } from 'node:fs/promises';
 import { getErrorMessage } from '../common/error-message';
 import { DockerResourceRuntimeService } from '../docker/resources/services/docker-resource-runtime.service';
 
@@ -20,6 +21,7 @@ interface DockerVolumeDf {
 export class SystemResourcesService {
   private readonly logger = new Logger(SystemResourcesService.name);
   private volumeCache: VolumeUsageCache | null = null;
+  private dockerRootStatfsWarningShown = false;
 
   constructor(
     private readonly config: ConfigService,
@@ -30,6 +32,7 @@ export class SystemResourcesService {
    * Aggregates managed container counts, live resource usage, and cached volume sizes.
    */
   async getUsage(refreshVolumes = false) {
+    const hostCapacity = await this.docker.hostCapacity();
     const containers = await this.docker.listManagedContainers();
     const volumes = await this.getVolumeUsage(refreshVolumes);
     const running = containers.filter(
@@ -39,6 +42,11 @@ export class SystemResourcesService {
       await this.getManagedContainerResourceUsage(containers);
 
     return {
+      hostMemoryBytes: hostCapacity.memoryBytes,
+      hostCpuCores: hostCapacity.cpuCores,
+      dockerRootAvailableBytes: await this.getAvailableBytes(
+        hostCapacity.dockerRootDir,
+      ),
       containersTotal: containers.length,
       containersRunning: running,
       containersStopped: containers.length - running,
@@ -62,6 +70,25 @@ export class SystemResourcesService {
       })),
       volumes,
     };
+  }
+
+  private async getAvailableBytes(path: string | null) {
+    if (!path) {
+      return null;
+    }
+
+    try {
+      const stats = await statfs(path);
+      return stats.bavail * stats.bsize;
+    } catch (error) {
+      if (!this.dockerRootStatfsWarningShown) {
+        this.dockerRootStatfsWarningShown = true;
+        this.logger.warn(
+          `Unable to collect available Docker root storage: ${getErrorMessage(error)}`,
+        );
+      }
+      return null;
+    }
   }
 
   /**

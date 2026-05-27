@@ -45,8 +45,9 @@ export class AndroidAppsProvisioningService {
       await this.createManagedContainer(app);
       await this.startManagedContainer(app);
       await this.prepareRuntimeReadiness(app);
-      await this.installInitialApk(app);
-      await this.finishProvisioning(applicationId);
+      if (!(await this.startInitialApkInstall(app))) {
+        await this.finishProvisioning(applicationId);
+      }
     } catch (error) {
       if (this.tracker.isCancellationError(error)) {
         this.logger.log(`Provisioning cancelled for ${applicationId}.`);
@@ -254,8 +255,8 @@ export class AndroidAppsProvisioningService {
     await this.androidProvisioning.prepareRemoteAccess(app);
   }
 
-  /** Installs the first APK when one is attached. */
-  private async installInitialApk(app: AndroidApplication) {
+  /** Starts the first APK install without blocking viewer availability. */
+  private async startInitialApkInstall(app: AndroidApplication) {
     await this.logs.append(app.id, 'Initial APK provisioning check', {
       hasApk: Boolean(app.apkFilePath),
       apkOriginalName: app.apkOriginalName,
@@ -268,18 +269,66 @@ export class AndroidAppsProvisioningService {
       await this.logs.append(app.id, 'Initial APK provisioning skipped', {
         reason: 'No APK is attached to this app.',
       });
-      return;
+      return false;
     }
 
     this.tracker.ensureActive(app.id);
-    await this.apkProvisioning.installApk(
-      app,
-      'Installing APK inside Android. Viewer is available while installation finishes.',
-    );
-    await this.logs.append(app.id, 'Initial APK provisioning install finished', {
-      apkPackageName: app.apkPackageName,
+    const statusMessage =
+      'Installing APK inside Android. Viewer is available while installation finishes.';
+    await this.logs.appendLifecycle(app.id, {
+      status: AndroidApplicationStatus.Running,
+      lifecycleStage: AndroidApplicationLifecycleStage.ApkInstalling,
+      statusMessage,
     });
-    await this.apkProvisioning.launchInstalledApk(app);
+    await this.state.setLifecycle(app.id, {
+      status: AndroidApplicationStatus.Running,
+      lifecycleStage: AndroidApplicationLifecycleStage.ApkInstalling,
+      statusMessage,
+      lastError: null,
+    });
+    void this.installInitialApkInBackground(app.id, statusMessage);
+    return true;
+  }
+
+  /** Completes the initial APK install after the runtime is already reachable. */
+  private async installInitialApkInBackground(
+    applicationId: string,
+    statusMessage: string,
+  ) {
+    try {
+      const app = await this.state.getStored(applicationId);
+      this.tracker.ensureActive(applicationId);
+      await this.apkProvisioning.installApk(app, statusMessage);
+      await this.logs.append(
+        app.id,
+        'Initial APK provisioning install finished',
+        {
+          apkPackageName: app.apkPackageName,
+        },
+      );
+      this.tracker.ensureActive(applicationId);
+      await this.apkProvisioning.launchInstalledApk(app);
+      await this.finishProvisioning(applicationId);
+    } catch (error) {
+      if (this.tracker.isCancellationError(error)) {
+        this.logger.log(`Initial APK install cancelled for ${applicationId}.`);
+        return;
+      }
+
+      const message = getErrorMessage(error);
+      this.logger.error(
+        `Initial APK install failed for ${applicationId}: ${message}`,
+      );
+      await this.state.setLifecycle(applicationId, {
+        status: AndroidApplicationStatus.Running,
+        lifecycleStage: AndroidApplicationLifecycleStage.Error,
+        statusMessage: `APK install failed: ${message}`,
+        lastError: message,
+      });
+      await this.logs.append(applicationId, 'Initial APK provisioning failed', {
+        error: message,
+      });
+    }
   }
 
   /** Marks provisioning as finished. */
