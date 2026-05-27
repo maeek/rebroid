@@ -3,12 +3,15 @@ import Busboy from 'busboy';
 import { createWriteStream } from 'node:fs';
 import {
   mkdir,
+  mkdtemp,
   readdir,
   readFile,
+  rm,
   stat,
   unlink,
   writeFile,
 } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable, Transform, type TransformCallback } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -363,29 +366,43 @@ export class AndroidAppsRuntimeAccessService {
     stream: Readable,
     fileName: string,
   ) {
-    let sizeBytes = 0;
-    const counter = this.createByteCounter((bytes) => {
-      sizeBytes += bytes;
-    });
-
     await this.exec.execInContainer(app.containerId!, [
       'sh',
       '-lc',
       `mkdir -p ${this.shellQuote(this.downloadDirectory)}`,
     ]);
-    await this.archive.copyStreamToContainer(
-      app.containerId!,
-      stream.pipe(counter),
-      this.downloadDirectory,
-      fileName,
-    );
-    await this.prepareRunningDownloadFile(app, fileName);
-    void this.scanRunningDownloadFile(app, fileName).catch((error) => {
-      void this.logs.append(app.id, 'Uploaded file media scan failed', {
-        fileName,
-        error: error instanceof Error ? error.message : String(error),
-      });
+
+    const tempDir = await mkdtemp(join(tmpdir(), 'rebroid-download-upload-'));
+    const tempPath = join(tempDir, fileName);
+    let sizeBytes = 0;
+    const counter = this.createByteCounter((bytes) => {
+      sizeBytes += bytes;
     });
+
+    try {
+      await pipeline(
+        stream,
+        counter,
+        createWriteStream(tempPath, { mode: 0o600 }),
+      );
+      await this.archive.copyFileToContainer(
+        app.containerId!,
+        tempPath,
+        this.downloadDirectory,
+        fileName,
+      );
+      await this.prepareRunningDownloadFile(app, fileName);
+      void this.scanRunningDownloadFile(app, fileName).catch((error) => {
+        void this.logs.append(app.id, 'Uploaded file media scan failed', {
+          fileName,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true }).catch(
+        () => undefined,
+      );
+    }
 
     return {
       uploaded: true,
