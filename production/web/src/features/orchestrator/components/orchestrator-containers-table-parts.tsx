@@ -38,6 +38,9 @@ export const ContainerNameCell = ({ container, className }: { container: Platfor
         <Visible when={container.managed}>
           <span className='shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary'>managed</span>
         </Visible>
+        <Visible when={container.orphaned}>
+          <span className='shrink-0 rounded-full bg-destructive/15 px-2 py-0.5 text-xs text-destructive'>orphaned</span>
+        </Visible>
       </div>
       <div className='truncate text-xs text-muted-foreground'>{container.shortId}</div>
     </div>
@@ -70,7 +73,7 @@ export const ContainerActions = ({
         <IconEye className='size-4' />
       </Link>
     </Button>
-    <Visible when={container.applicationId}>
+    <Visible when={container.applicationId && !container.orphaned}>
       <Button
         asChild
         variant='secondary'

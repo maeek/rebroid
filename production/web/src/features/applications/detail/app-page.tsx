@@ -23,6 +23,19 @@ import { AppWorkspaceContent } from './app-workspace-content'
 import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 import type { PermissionMap } from '@/shared/permissions/permissions'
 
+const isEditableElement = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) {
+    return false
+  }
+
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    target.isContentEditable
+  )
+}
+
 export const AppViewerPage = ({
   app,
   permissions,
@@ -72,6 +85,36 @@ export const AppViewerPage = ({
       rememberRecentApp(currentApp)
     }
   }, [currentApp])
+
+  useEffect(() => {
+    const blurFocusedEditorOutsideEditableTarget = (target: EventTarget | null) => {
+      const activeElement = document.activeElement
+      if (!(activeElement instanceof HTMLElement) || !isEditableElement(activeElement) || isEditableElement(target)) {
+        return false
+      }
+
+      activeElement.blur()
+      return true
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      blurFocusedEditorOutsideEditableTarget(event.target)
+    }
+
+    const handleContextMenu = (event: MouseEvent) => {
+      if (blurFocusedEditorOutsideEditableTarget(event.target)) {
+        event.preventDefault()
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown, true)
+    document.addEventListener('contextmenu', handleContextMenu, true)
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown, true)
+      document.removeEventListener('contextmenu', handleContextMenu, true)
+    }
+  }, [])
 
   useForegroundRefresh({
     enabled: Boolean(currentAppId),

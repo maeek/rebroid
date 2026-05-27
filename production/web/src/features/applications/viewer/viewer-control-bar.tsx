@@ -544,12 +544,14 @@ export const ViewerControlBar = ({
 
   if (mode === 'floating') {
     const collapseTowardLeft = floatingPosition.x < 160
+    const preventContextMenu = (event: { preventDefault: () => void }) => event.preventDefault()
 
     if (floatingCollapsed) {
       return (
         <div
           className='absolute z-30'
           style={{ left: floatingPosition.x, top: floatingPosition.y }}
+          onContextMenu={preventContextMenu}
         >
           <div className='flex flex-col items-center gap-1 rounded-xl border border-border/70 bg-card/90 p-1 shadow-2xl backdrop-blur-xl'>
             <button
@@ -560,6 +562,7 @@ export const ViewerControlBar = ({
               onPointerMove={handleFloatingPointerMove}
               onPointerUp={handleFloatingPointerUp}
               onPointerCancel={handleFloatingPointerUp}
+              onContextMenu={preventContextMenu}
             >
               <IconGripVertical className='size-4' />
             </button>
@@ -583,6 +586,7 @@ export const ViewerControlBar = ({
       <div
         className='absolute z-30'
         style={{ left: floatingPosition.x, top: floatingPosition.y }}
+        onContextMenu={preventContextMenu}
       >
         <div className='flex max-h-[calc(100dvh-1rem)] flex-col items-center gap-1 overflow-y-auto rounded-xl border border-border/70 bg-card/90 p-1 shadow-2xl backdrop-blur-xl'>
           <button
@@ -593,6 +597,7 @@ export const ViewerControlBar = ({
             onPointerMove={handleFloatingPointerMove}
             onPointerUp={handleFloatingPointerUp}
             onPointerCancel={handleFloatingPointerUp}
+            onContextMenu={preventContextMenu}
           >
             <IconGripVertical className='size-4' />
           </button>

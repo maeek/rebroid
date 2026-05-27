@@ -173,7 +173,8 @@ export const DisplayViewerFrame = ({
       title='display viewer'
       src={src}
       className='h-screen w-screen border-0 bg-black'
-      allow='fullscreen; clipboard-read; clipboard-write; autoplay'
+      allow='fullscreen; clipboard-write; autoplay'
+      onContextMenu={event => event.preventDefault()}
       onLoad={() => {
         scheduleKeyboardCaptureSync(enabledRef.current)
       }}

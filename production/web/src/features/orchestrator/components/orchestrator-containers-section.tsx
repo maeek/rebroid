@@ -41,6 +41,9 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
   const sortedContainers = useMemo(
     () =>
       [...containers].sort((a, b) => {
+        if (a.orphaned !== b.orphaned) {
+          return a.orphaned ? -1 : 1
+        }
         if (a.managed !== b.managed) {
           return a.managed ? -1 : 1
         }
@@ -68,6 +71,7 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
         container.command,
         container.state,
         container.status,
+        container.orphaned ? 'orphaned' : '',
         container.applicationId ?? '',
         container.component ?? '',
         ...container.networks
@@ -79,6 +83,7 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
   }, [search, sortedContainers])
 
   const selection = useGridSelection(filteredContainers)
+  const orphanedContainers = useMemo(() => containers.filter(container => container.orphaned), [containers])
 
   const paginatedContainers = useMemo(
     () => filteredContainers.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize),
@@ -191,6 +196,25 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
             Refresh
           </Button>
         </div>
+        <Visible when={orphanedContainers.length > 0}>
+          <div className='flex flex-wrap items-center justify-between gap-3 rounded-md border border-destructive/35 bg-destructive/10 p-3 text-sm'>
+            <span className='text-destructive'>
+              {orphanedContainers.length} managed Rebroid container{orphanedContainers.length === 1 ? '' : 's'} no
+              longer have an app record.
+            </span>
+            <Button
+              type='button'
+              variant='destructive'
+              disabled={busyId === 'bulk'}
+              onClick={() => {
+                selection.clearSelection()
+                selection.selectPage(orphanedContainers, true)
+              }}
+            >
+              Select orphaned
+            </Button>
+          </div>
+        </Visible>
         <PlatformSelectionToolbar
           search={search}
           placeholder='Search containers'

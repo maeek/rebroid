@@ -27,7 +27,6 @@ export const ClipboardToolsSection = ({
   const canSyncClipboard = hasPermission(permissions, 'applications:sync-clipboard')
   const [clipboardText, setClipboardText] = useState('')
   const [isClipboardBusy, startClipboardTransition] = useTransition()
-  const lastHostClipboardRef = useRef('')
   const lastAppClipboardRef = useRef('')
   const autoSyncInFlightRef = useRef(false)
 
@@ -91,28 +90,6 @@ export const ClipboardToolsSection = ({
 
     let cancelled = false
 
-    const syncHostClipboardToApp = async () => {
-      if (cancelled || document.visibilityState !== 'visible' || autoSyncInFlightRef.current) {
-        return
-      }
-
-      autoSyncInFlightRef.current = true
-      try {
-        const hostText = await navigator.clipboard.readText()
-        if (cancelled || hostText === lastHostClipboardRef.current || hostText === lastAppClipboardRef.current) {
-          return
-        }
-
-        lastHostClipboardRef.current = hostText
-        setClipboardText(hostText)
-        await pushClipboardText(hostText, false)
-      } catch {
-        // Browser clipboard reads can be denied until the user interacts with the page.
-      } finally {
-        autoSyncInFlightRef.current = false
-      }
-    }
-
     const syncAppClipboardToHost = async () => {
       if (cancelled || document.visibilityState !== 'visible' || autoSyncInFlightRef.current) {
         return
@@ -126,7 +103,6 @@ export const ClipboardToolsSection = ({
         }
 
         lastAppClipboardRef.current = clipboard.text
-        lastHostClipboardRef.current = clipboard.text
         setClipboardText(clipboard.text)
         await navigator.clipboard.writeText(clipboard.text).catch(() => undefined)
       } catch {
@@ -137,20 +113,11 @@ export const ClipboardToolsSection = ({
     }
 
     const syncVisibleClipboard = () => {
-      void syncHostClipboardToApp()
-      window.setTimeout(() => {
-        void syncAppClipboardToHost()
-      }, 400)
+      void syncAppClipboardToHost()
     }
 
     window.addEventListener('focus', syncVisibleClipboard)
     document.addEventListener('visibilitychange', syncVisibleClipboard)
-    document.addEventListener('copy', syncVisibleClipboard)
-    document.addEventListener('cut', syncVisibleClipboard)
-    document.addEventListener('paste', syncVisibleClipboard)
-    const hostInterval = window.setInterval(() => {
-      void syncHostClipboardToApp()
-    }, 2500)
     const appInterval = window.setInterval(() => {
       void syncAppClipboardToHost()
     }, 5000)
@@ -160,10 +127,6 @@ export const ClipboardToolsSection = ({
       cancelled = true
       window.removeEventListener('focus', syncVisibleClipboard)
       document.removeEventListener('visibilitychange', syncVisibleClipboard)
-      document.removeEventListener('copy', syncVisibleClipboard)
-      document.removeEventListener('cut', syncVisibleClipboard)
-      document.removeEventListener('paste', syncVisibleClipboard)
-      window.clearInterval(hostInterval)
       window.clearInterval(appInterval)
     }
   }, [app.id, canSyncClipboard, pushClipboardText, runtimeAvailable])
@@ -180,7 +143,6 @@ export const ClipboardToolsSection = ({
       }
 
       lastAppClipboardRef.current = payload.text
-      lastHostClipboardRef.current = payload.text
       setClipboardText(payload.text)
     }
 
@@ -231,7 +193,6 @@ export const ClipboardToolsSection = ({
         disabled={!runtimeAvailable}
         onChange={event => {
           setClipboardText(event.target.value)
-          lastHostClipboardRef.current = event.target.value
         }}
       />
     </ToolSection>

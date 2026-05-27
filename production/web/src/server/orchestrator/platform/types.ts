@@ -10,6 +10,7 @@ export interface PlatformContainer {
   status: string
   labels: Record<string, string>
   managed: boolean
+  orphaned: boolean
   applicationId: string | null
   component: string | null
   ports: Array<{ privatePort: number; publicPort: number | null; type: string; ip: string | null }>

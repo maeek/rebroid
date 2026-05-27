@@ -257,6 +257,7 @@ export const AppViewer = ({
         'h-full max-h-full max-w-full': fullscreen,
         'rounded-2xl shadow-[0_18px_48px_rgba(0,0,0,0.28)]': !fullscreen
       })}
+      onContextMenu={event => event.preventDefault()}
       style={{
         aspectRatio,
         height: fullscreen ? fullscreenHeight : undefined,
@@ -271,7 +272,8 @@ export const AppViewer = ({
           src={viewerSrc ?? undefined}
           key={viewerSrc}
           className='h-full w-full border-0 bg-black'
-          allow='fullscreen; clipboard-read; clipboard-write; autoplay'
+          allow='fullscreen; clipboard-write; autoplay'
+          onContextMenu={event => event.preventDefault()}
           onLoad={() => {
             viewerFrameRef.current?.contentWindow?.postMessage(
               {

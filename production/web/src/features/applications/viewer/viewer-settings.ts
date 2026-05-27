@@ -76,7 +76,8 @@ export const defaultViewerSettings: ViewerSettings = {
 
 export const viewerSettingsStorageKey = 'rebroid.viewer.settings.v6'
 
-export const isViewerTransport = (value: unknown): value is ViewerTransport => value === 'webrtc' || value === 'websocket'
+export const isViewerTransport = (value: unknown): value is ViewerTransport =>
+  value === 'webrtc' || value === 'websocket'
 
 const isValidNumber = (value: unknown, fallback: number, min: number, max: number) => {
   if (typeof value !== 'number' || Number.isNaN(value)) {

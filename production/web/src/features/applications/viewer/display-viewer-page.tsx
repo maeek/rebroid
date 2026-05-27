@@ -339,6 +339,35 @@ export async function DisplayViewerPage({
     )
   }
 
+  if (!session.displaySession?.viewerPath) {
+    const startupDeadline = getViewerStartupDeadline(app.status.lastStartedAt)
+    if (startupDeadline && isLikelyRedroidImage(app.runtime.image) && Date.now() < startupDeadline.getTime()) {
+      return (
+        <>
+          <ViewerStartupRefresh
+            deadlineAt={startupDeadline.toISOString()}
+            intervalMs={redroidViewerRefreshIntervalMs}
+          />
+          <ViewerSplash
+            title='Starting Android viewer'
+            description='The app is running, but the live display session is still getting ready.'
+            detail={`Retrying every ${Math.round(redroidViewerRefreshIntervalMs / 1000)} seconds.`}
+            icon={<IconLoader2 className='size-10 animate-spin' />}
+          />
+        </>
+      )
+    }
+
+    return (
+      <ViewerSplash
+        title='Viewer session unavailable'
+        description='The app is running, but the live display session could not be created.'
+        detail={viewerUnavailableDetail}
+        tone='danger'
+      />
+    )
+  }
+
   const viewerUrl = getProtectedDisplaySidecarUrl({
     session,
     baseUrl: await getBaseUrl(),
