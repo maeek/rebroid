@@ -297,6 +297,13 @@ export class AndroidAppsProvisioningApkService {
   private launchPackageCommand(packageName: string) {
     return [
       `package_name=${this.shellQuote(packageName)}`,
+      'input keyevent KEYCODE_WAKEUP 2>/dev/null || true',
+      'wm dismiss-keyguard 2>/dev/null || true',
+      'launcher_activity=$(cmd package resolve-activity --brief "$package_name" 2>/dev/null | tail -n 1 || true)',
+      'if printf "%s" "$launcher_activity" | grep -q "/"; then',
+      '  am start -n "$launcher_activity"',
+      '  exit 0',
+      'fi',
       'monkey -p "$package_name" -c android.intent.category.LAUNCHER 1',
     ].join('\n');
   }

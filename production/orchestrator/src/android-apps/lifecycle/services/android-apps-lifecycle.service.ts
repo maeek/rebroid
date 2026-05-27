@@ -251,6 +251,10 @@ export class AndroidAppsLifecycleService {
     }
 
     if (app.status === AndroidApplicationStatus.Running) {
+      if (app.apkFilePath) {
+        await this.apkProvisioning.launchInstalledApk(app);
+      }
+
       return this.state.decorateApplication(app);
     }
 
