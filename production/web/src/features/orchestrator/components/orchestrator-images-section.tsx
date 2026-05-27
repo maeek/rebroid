@@ -20,6 +20,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Visible } from '@/components/ui/visible'
 import { imageDisplayName } from '@/features/orchestrator/domain/image-display-name'
 import { toast } from '@/hooks/use-toast'
+import { formatUtcDate } from '@/lib/format'
 import { listPlatformImagesAction, removePlatformImageAction } from '@/server/orchestrator/platform/actions'
 import { PlatformGridPagination } from './platform-grid-pagination'
 import { PlatformSelectionToolbar } from './platform-selection-toolbar'
@@ -291,7 +292,7 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
                             {formatBytes(image.sizeBytes)}
                           </TableCell>
                           <TableCell className='px-4 py-3 align-top text-sm text-secondary-foreground'>
-                            {new Date(image.createdAt).toLocaleDateString()}
+                            {formatUtcDate(image.createdAt)}
                           </TableCell>
                           <TableCell className='px-4 py-3 align-top text-sm text-secondary-foreground'>
                             {image.containers < 0 ? 'unknown' : image.containers}

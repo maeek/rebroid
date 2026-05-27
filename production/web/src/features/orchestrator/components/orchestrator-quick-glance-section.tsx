@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Visible } from '@/components/ui/visible'
 import { QuickGlanceCard } from '@/features/settings/components/quick-glance-card'
+import { formatUtcDateTime } from '@/lib/format'
 import { getSystemResourcesAction } from '@/server/orchestrator/diagnostics/actions'
 import type { SystemResources } from '@/server/orchestrator/diagnostics/types'
 
@@ -123,10 +124,10 @@ export const OrchestratorQuickGlanceSection = ({ refreshKey = 0 }: { refreshKey?
       <div className='text-xs text-secondary-foreground'>
         Container stats are sampled live when this panel refreshes.
         {resources?.containerStatsCollectedAt
-          ? ` Last sample: ${new Date(resources.containerStatsCollectedAt).toLocaleString()}`
+          ? ` Last sample: ${formatUtcDateTime(resources.containerStatsCollectedAt)}`
           : ''}
         {resources?.volumeUsageCachedAt
-          ? ` • Volume sizes cached at ${new Date(resources.volumeUsageCachedAt).toLocaleString()}`
+          ? ` • Volume sizes cached at ${formatUtcDateTime(resources.volumeUsageCachedAt)}`
           : ''}
       </div>
     </>

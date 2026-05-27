@@ -1,9 +1,11 @@
 import { Input } from '@/components/ui/input'
+import { NumberSliderField } from '@/components/ui/number-slider-field'
 import { Section } from '@/components/ui/section'
 import { Textarea } from '@/components/ui/textarea'
 import { Visible } from '@/components/ui/visible'
 import { Setting } from '@/features/settings/components/setting'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { ResourceLimitBounds } from '@/server/orchestrator/diagnostics/resource-limits'
 
 type AppManageRuntimeSettingsProps = {
   app?: AppDefinition
@@ -11,6 +13,7 @@ type AppManageRuntimeSettingsProps = {
   memoryLimitMb: string
   cpuLimitCpus: string
   volumeSizeLimitMb: string
+  resourceLimits: ResourceLimitBounds | null
   containerArgs: string
   onInactivityTimeoutChange: (value: number) => void
   onMemoryLimitChange: (value: string) => void
@@ -31,6 +34,7 @@ export const AppManageRuntimeSettings = ({
   memoryLimitMb,
   cpuLimitCpus,
   volumeSizeLimitMb,
+  resourceLimits,
   containerArgs,
   onInactivityTimeoutChange,
   onMemoryLimitChange,
@@ -84,11 +88,14 @@ export const AppManageRuntimeSettings = ({
             className={verticalSettingClassName}
             variant='vertical'
           >
-            <Input
+            <NumberSliderField
               value={memoryLimitMb}
-              type='number'
               min={128}
-              onChange={event => onMemoryLimitChange(event.target.value)}
+              max={resourceLimits?.maxMemoryMb}
+              suffix=' MB'
+              rangeLabel='RAM limit range'
+              allowEmpty
+              onValueChange={onMemoryLimitChange}
             />
           </Setting>
           <Setting
@@ -96,12 +103,15 @@ export const AppManageRuntimeSettings = ({
             className={verticalSettingClassName}
             variant='vertical'
           >
-            <Input
+            <NumberSliderField
               value={cpuLimitCpus}
-              type='number'
               min={0.1}
+              max={resourceLimits?.maxCpuCpus}
               step={0.1}
-              onChange={event => onCpuLimitChange(event.target.value)}
+              suffix=' cores'
+              rangeLabel='CPU limit range'
+              allowEmpty
+              onValueChange={onCpuLimitChange}
             />
           </Setting>
           <Setting
@@ -109,11 +119,14 @@ export const AppManageRuntimeSettings = ({
             className={verticalSettingClassName}
             variant='vertical'
           >
-            <Input
+            <NumberSliderField
               value={volumeSizeLimitMb}
-              type='number'
               min={16}
-              onChange={event => onVolumeSizeLimitChange(event.target.value)}
+              max={resourceLimits?.maxVolumeSizeMb}
+              suffix=' MB'
+              rangeLabel='Volume limit range'
+              allowEmpty
+              onValueChange={onVolumeSizeLimitChange}
             />
           </Setting>
         </div>

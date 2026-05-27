@@ -1,5 +1,6 @@
 'use client'
 
+import { formatUtcDateTime } from '@/lib/format'
 import type { SystemResources } from '@/server/orchestrator/diagnostics/types'
 
 const formatBytes = (bytes: number) => {
@@ -25,7 +26,7 @@ export function ManagedContainerDetailsTable({ resources }: { resources?: System
       <li className='p-2 flex justify-between gap-2 text-right text-sm'>
         <span className='font-semibold'>Last Sample:</span>{' '}
         {resources.containerStatsCollectedAt
-          ? new Date(resources.containerStatsCollectedAt).toLocaleString()
+          ? formatUtcDateTime(resources.containerStatsCollectedAt)
           : 'Unavailable'}
       </li>
     </ul>

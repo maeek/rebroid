@@ -1,16 +1,18 @@
-import { Input } from '@/components/ui/input'
+import { NumberSliderField } from '@/components/ui/number-slider-field'
 import { Section } from '@/components/ui/section'
 import { Setting } from '@/features/settings/components/setting'
 import type { CreateAppFormValues } from './create-app-form.types'
+import type { ResourceLimitBounds } from '@/server/orchestrator/diagnostics/resource-limits'
 
 type CreateAppResourcesSectionProps = {
   values: CreateAppFormValues
+  resourceLimits: ResourceLimitBounds | null
   onChange: (patch: Partial<CreateAppFormValues>) => void
 }
 
 const verticalSettingClassName = 'flex-col items-start w-full'
 
-export const CreateAppResourcesSection = ({ values, onChange }: CreateAppResourcesSectionProps) => {
+export const CreateAppResourcesSection = ({ values, resourceLimits, onChange }: CreateAppResourcesSectionProps) => {
   return (
     <Section
       title='Resources'
@@ -24,12 +26,15 @@ export const CreateAppResourcesSection = ({ values, onChange }: CreateAppResourc
         variant='vertical'
         className={verticalSettingClassName}
       >
-        <Input
+        <NumberSliderField
           value={values.memoryLimitMb}
           min={128}
-          type='number'
+          max={resourceLimits?.maxMemoryMb}
           placeholder='MB'
-          onChange={event => onChange({ memoryLimitMb: event.target.value })}
+          suffix=' MB'
+          rangeLabel='RAM limit range'
+          allowEmpty
+          onValueChange={value => onChange({ memoryLimitMb: value })}
         />
       </Setting>
       <Setting
@@ -38,13 +43,16 @@ export const CreateAppResourcesSection = ({ values, onChange }: CreateAppResourc
         variant='vertical'
         className={verticalSettingClassName}
       >
-        <Input
+        <NumberSliderField
           value={values.cpuLimitCpus}
           min={0.1}
+          max={resourceLimits?.maxCpuCpus}
           step={0.1}
-          type='number'
           placeholder='cores'
-          onChange={event => onChange({ cpuLimitCpus: event.target.value })}
+          suffix=' cores'
+          rangeLabel='CPU limit range'
+          allowEmpty
+          onValueChange={value => onChange({ cpuLimitCpus: value })}
         />
       </Setting>
       <Setting
@@ -53,12 +61,15 @@ export const CreateAppResourcesSection = ({ values, onChange }: CreateAppResourc
         variant='vertical'
         className={verticalSettingClassName}
       >
-        <Input
+        <NumberSliderField
           value={values.volumeSizeLimitMb}
           min={16}
-          type='number'
+          max={resourceLimits?.maxVolumeSizeMb}
           placeholder='MB advisory'
-          onChange={event => onChange({ volumeSizeLimitMb: event.target.value })}
+          suffix=' MB'
+          rangeLabel='Volume limit range'
+          allowEmpty
+          onValueChange={value => onChange({ volumeSizeLimitMb: value })}
         />
       </Setting>
     </Section>

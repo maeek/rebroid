@@ -126,7 +126,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
           <div className='flex min-w-0 items-center gap-4'>
             <Avatar className='size-12'>
               <AvatarImage src={draft.avatarDataUrl ?? ''} />
-              <AvatarFallback>{draft.name.slice(0, 2).toLocaleUpperCase()}</AvatarFallback>
+              <AvatarFallback>{draft.name.slice(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
             <div className='min-w-0'>
               <h2 className='truncate text-3xl font-medium max-sm:text-xl'>{draft.name || draft.username}</h2>

@@ -37,7 +37,7 @@ export const UserAvatarInput = ({
     <div className='flex items-center gap-4'>
       <Avatar className='size-16'>
         <AvatarImage src={avatar ?? ''} />
-        <AvatarFallback>{name.slice(0, 2).toLocaleUpperCase()}</AvatarFallback>
+        <AvatarFallback>{name.slice(0, 2).toUpperCase()}</AvatarFallback>
       </Avatar>
       <div className='flex flex-wrap gap-2'>
         <Button

@@ -33,7 +33,7 @@ export const TopBarAccount = () => {
         <DropdownMenuTrigger>
           <Avatar>
             <AvatarImage src={avatar ?? ''} />
-            <AvatarFallback>{displayName.slice(0, 2).toLocaleUpperCase()}</AvatarFallback>
+            <AvatarFallback>{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
         </DropdownMenuTrigger>
         <DropdownMenuContent

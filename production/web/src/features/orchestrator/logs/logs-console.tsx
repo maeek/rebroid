@@ -5,6 +5,7 @@ import { IconCopy, IconRefresh } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Visible } from '@/components/ui/visible'
 import { toast } from '@/hooks/use-toast'
+import { formatUtcDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 type LogsConsoleEntry = {
@@ -95,7 +96,7 @@ export const LogsConsole = ({
           {log?.collectedAt
             ? formatCollectedAt
               ? formatCollectedAt(log.collectedAt)
-              : new Date(log.collectedAt).toLocaleString()
+              : formatUtcDateTime(log.collectedAt)
             : ''}
         </p>
       </Visible>

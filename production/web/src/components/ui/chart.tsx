@@ -3,6 +3,7 @@
 import * as React from 'react'
 import * as RechartsPrimitive from 'recharts'
 import { Visible } from '@/components/ui/visible'
+import { formatDisplayNumber } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { LegendPayload, TooltipContentProps } from 'recharts'
 
@@ -233,7 +234,7 @@ const ChartTooltipContent = React.forwardRef<
                       </div>
                       <Visible when={item.value}>
                         <span className='font-mono font-medium tabular-nums text-foreground'>
-                          {item.value != null ? item.value.toLocaleString() : ''}
+                          {typeof item.value === 'number' ? formatDisplayNumber(item.value) : item.value}
                         </span>
                       </Visible>
                     </div>

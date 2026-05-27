@@ -3,6 +3,7 @@
 import { useMemo, type ReactNode } from 'react'
 import { IconCast } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
+import { NumberSliderField } from '@/components/ui/number-slider-field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { getViewerPlayerCapabilities } from '../viewer-player-capabilities'
 import {
@@ -14,10 +15,7 @@ import {
 import { ToolSection } from './tool-section'
 import type { ViewerSettings, ViewerStreamingPreset } from '../viewer-settings'
 
-const bitrateOptions = [2, 3, 5, 7, 10, 12, 16]
-const fpsOptions = [15, 24, 30, 45, 60]
 const maxSizeOptions = [0, 1080, 1440, 1920]
-const iFrameOptions = [1, 2, 5, 10]
 
 const StreamingSetting = ({ label, children }: { label: string; children: ReactNode }) => (
   <label className='grid min-w-0 gap-2'>
@@ -66,14 +64,14 @@ export const StreamingToolsSection = ({
       hideHeader={hideHeader}
     >
       <div className='grid gap-4'>
-        <div className='flex flex-wrap items-center gap-2 rounded-md border border-border/70 bg-muted/30 px-3 py-2'>
+        <div className='flex min-w-0 flex-wrap items-center gap-2 rounded-md border border-border/70 bg-muted/30 px-3 py-2'>
           <Badge
             variant={viewerSettings.transport === 'webrtc' ? 'status' : 'secondary'}
             className='uppercase tracking-wide'
           >
             {transportLabel}
           </Badge>
-          <span className='text-xs text-muted-foreground'>{transportDetail}</span>
+          <span className='min-w-0 flex-1 text-xs leading-relaxed text-muted-foreground'>{transportDetail}</span>
         </div>
 
         <div className='grid gap-x-6 gap-y-4 md:grid-cols-2'>
@@ -140,45 +138,26 @@ export const StreamingToolsSection = ({
           </StreamingSetting>
 
           <StreamingSetting label='Bitrate'>
-            <Select
+            <NumberSliderField
               value={String(viewerSettings.bitrateMbps)}
+              min={1}
+              max={32}
+              step={0.5}
+              suffix=' Mbps'
+              rangeLabel='Bitrate range'
               onValueChange={value => updateSettings({ bitrateMbps: Number(value), preset: viewerSettings.preset })}
-            >
-              <SelectTrigger className='w-full'>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {bitrateOptions.map(value => (
-                  <SelectItem
-                    key={value}
-                    value={String(value)}
-                  >
-                    {value} Mbps
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
           </StreamingSetting>
 
           <StreamingSetting label='Max FPS'>
-            <Select
+            <NumberSliderField
               value={String(viewerSettings.maxFps)}
+              min={1}
+              max={120}
+              suffix=' fps'
+              rangeLabel='Max FPS range'
               onValueChange={value => updateSettings({ maxFps: Number(value), preset: viewerSettings.preset })}
-            >
-              <SelectTrigger className='w-full'>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {fpsOptions.map(value => (
-                  <SelectItem
-                    key={value}
-                    value={String(value)}
-                  >
-                    {value} fps
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
           </StreamingSetting>
 
           <StreamingSetting label='Max size'>
@@ -203,24 +182,14 @@ export const StreamingToolsSection = ({
           </StreamingSetting>
 
           <StreamingSetting label='I-frame interval'>
-            <Select
+            <NumberSliderField
               value={String(viewerSettings.iFrameInterval)}
+              min={1}
+              max={30}
+              suffix='s'
+              rangeLabel='I-frame interval range'
               onValueChange={value => updateSettings({ iFrameInterval: Number(value), preset: viewerSettings.preset })}
-            >
-              <SelectTrigger className='w-full'>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {iFrameOptions.map(value => (
-                  <SelectItem
-                    key={value}
-                    value={String(value)}
-                  >
-                    {value}s
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
           </StreamingSetting>
         </div>
 

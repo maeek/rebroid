@@ -30,7 +30,7 @@ Look for:
 Initial Rebroid admin credentials: username=admin password=...
 ```
 
-No `NEXTAUTH_URL`, shared secret, or sidecar URL is required for the default compose setup. The containers generate and persist their own secrets in Docker volumes.
+No `.env` file, `NEXTAUTH_URL`, shared secret, Redroid device mapping, or sidecar URL is required for the default Docker compose setup. The containers generate and persist their own secrets in Docker volumes, and the orchestrator applies the Redroid runtime defaults internally.
 
 ## Local HTTPS
 
@@ -82,7 +82,7 @@ Restart the browser after trusting the certificate. You can change the published
 
 ## Podman Socket
 
-If your Docker-compatible socket is not `/var/run/docker.sock`, pass the rootful socket path explicitly:
+The default compose file targets Docker. If your Docker-compatible socket is not `/var/run/docker.sock`, pass the rootful socket path explicitly:
 
 ```bash
 CONTAINER_ENGINE_SOCKET=/run/podman/podman.sock docker compose up --build
@@ -139,38 +139,57 @@ Do not point `CONTAINER_ENGINE_SOCKET` at a missing file to force internal mode.
 If a redroid container exits immediately with little or no container log output, verify the host before debugging the web viewer:
 
 ```bash
-sudo podman info
+docker info
+# or: podman info
 ls -la /dev/binderfs /dev/binder /dev/hwbinder /dev/vndbinder 2>/dev/null
 grep -E 'binder|ashmem' /proc/filesystems /proc/misc 2>/dev/null
 ```
 
-For Linux hosts running Podman, start with conservative runtime arguments:
+Docker hosts that expose `/dev/ashmem` after `sudo modprobe ashmem_linux` do not need a compose variable. Rebroid tries to pass `/dev/ashmem` to managed Redroid containers by default. If the device is missing, container creation is retried without it so Podman hosts that only use `androidboot.use_memfd=true` still work.
+
+For Linux hosts, the built-in Redroid base arguments use conservative runtime defaults:
 
 ```text
-androidboot.redroid_gpu_mode=guest androidboot.use_memfd=true ro.secure=0
+androidboot.redroid_gpu_mode=guest androidboot.use_memfd=true ro.secure=0 ro.debuggable=1
 ```
 
 `androidboot.redroid_gpu_mode=auto` can select a GPU path that is invalid inside the container. Once the container boots reliably, switch to an explicit GPU node only if the host exposes one correctly.
 
 On SELinux hosts, pass `CONTAINER_SECURITY_OPTS=label=disable` so the privileged Android runtime can access the host devices it needs.
 
-## Optional Overrides
+## Configuration Surface
 
-The defaults are intended to work without a `.env` file. These are the main knobs worth overriding:
+The defaults are intended to work without a `.env` file. For a normal admin install, these are the only compose-level knobs worth knowing:
 
 ```bash
 REBROID_HTTPS_PORT=3443
 REBROID_TLS_HOSTS=localhost,127.0.0.1
 CONTAINER_ENGINE_SOCKET=/var/run/docker.sock
-INITIAL_ADMIN_PASSWORD=choose-a-password
-CONTAINER_IMAGE=redroid/redroid:13.0.0-latest
-REDROID_PRIVILEGED=true
-REDROID_BOOT_TIMEOUT_SECONDS=120
-REDROID_ADB_TIMEOUT_SECONDS=120
-REDROID_PROVISIONING_STALE_TIMEOUT_SECONDS=600
-MAX_APK_UPLOAD_SIZE_MB=4096
-CONTAINER_SECURITY_OPTS=label=disable
+DISPLAY_WEBRTC_UDP_PORT_RANGE=40000-40100
+DISPLAY_WEBRTC_ICE_HOST=
 ```
+
+Everything below should usually be handled from the UI instead of compose:
+
+- default Redroid image
+- APK upload limit
+- default app inactivity timeout
+- viewer quality defaults
+- image pruning policy
+
+For unusual hosts, use a compose override rather than expanding the default compose file. Examples include SELinux label handling, extra Redroid devices, a custom Redroid image, or changing Redroid boot timeouts:
+
+```yaml
+services:
+  orchestrator:
+    environment:
+      CONTAINER_SECURITY_OPTS: label=disable
+      CONTAINER_IMAGE: redroid/redroid:15.0.0-latest
+      REDROID_BOOT_TIMEOUT_SECONDS: 420
+      REDROID_DEVICES: /dev/dri:/dev/dri:rwm
+```
+
+`REDROID_CGROUPNS_MODE=host` and `REDROID_OPTIONAL_DEVICES=/dev/ashmem:/dev/ashmem:rwm` are already the built-in defaults. `REDROID_DEVICES` is for required mappings and will fail container creation if the host path is missing; `REDROID_OPTIONAL_DEVICES` is for best-effort mappings such as ashmem.
 
 Everything else is primarily for advanced deployments: custom networks, external orchestrator/web separation, sidecar image overrides, or Linux iptables policy tuning.
 

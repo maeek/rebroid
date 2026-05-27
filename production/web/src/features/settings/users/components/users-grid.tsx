@@ -47,7 +47,7 @@ export const UsersGrid = ({
                   <div className='flex min-w-0 items-center gap-3'>
                     <Avatar className='size-9'>
                       <AvatarImage src={user.avatarDataUrl ?? ''} />
-                      <AvatarFallback>{user.name.slice(0, 2).toLocaleUpperCase()}</AvatarFallback>
+                      <AvatarFallback>{user.name.slice(0, 2).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div className='min-w-0'>
                       <div className='truncate font-medium'>{user.name}</div>

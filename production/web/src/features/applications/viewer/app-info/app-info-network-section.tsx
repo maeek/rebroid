@@ -7,6 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Visible } from '@/components/ui/visible'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { toast } from '@/hooks/use-toast'
+import { formatUtcDateTime } from '@/lib/format'
 import { updateNetworkPolicyAction } from '@/server/orchestrator/applications/mutation-actions'
 import { AppInfoRow } from './app-info-row'
 import { NetworkAccessInput } from './network-access-input'
@@ -195,7 +196,7 @@ export const AppInfoNetworkSection = ({
       </Visible>
       <AppInfoRow
         label='Applied'
-        value={app?.networkPolicyAppliedAt ? app.networkPolicyAppliedAt.toLocaleString() : 'Not applied'}
+        value={app?.networkPolicyAppliedAt ? formatUtcDateTime(app.networkPolicyAppliedAt) : 'Not applied'}
       />
       <Visible when={app?.networkPolicyResult?.hint}>
         <AppInfoRow

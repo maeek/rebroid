@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { QuickGlanceCard } from '@/features/settings/components/quick-glance-card'
+import { formatUtcDateTime } from '@/lib/format'
 import type { SystemResources } from '@/server/orchestrator/diagnostics/types'
 
 const formatBytes = (bytes: number) => {
@@ -24,7 +25,7 @@ export const OrchestratorResources = ({
   onRefresh?: (refreshVolumes?: boolean) => Promise<void>
 }) => {
   const volumeCacheLabel = resources?.volumeUsageCachedAt
-    ? new Date(resources.volumeUsageCachedAt).toLocaleString()
+    ? formatUtcDateTime(resources.volumeUsageCachedAt)
     : 'never'
 
   return (

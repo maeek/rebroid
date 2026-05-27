@@ -28,6 +28,7 @@ import { AppManageNetworkPolicySettings } from './app-manage-network-policy-sett
 import { AppManageRuntimeSettings } from './app-manage-runtime-settings'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
+import type { ResourceLimitBounds } from '@/server/orchestrator/diagnostics/resource-limits'
 
 const mergeAppPreservingIcon = (nextApp: AppDefinition, currentApp?: AppDefinition) => ({
   ...nextApp,
@@ -39,12 +40,14 @@ export default function AppManage({
   app,
   permissions,
   initialSettings,
+  resourceLimits,
   currentOwnerUserId,
   isAdmin
 }: {
   app?: AppDefinition
   permissions: PermissionMap
   initialSettings: OrchestratorUiSettings
+  resourceLimits: ResourceLimitBounds | null
   currentOwnerUserId: string
   isAdmin: boolean
 }) {
@@ -228,6 +231,7 @@ export default function AppManage({
                 memoryLimitMb={memoryLimitMb}
                 cpuLimitCpus={cpuLimitCpus}
                 volumeSizeLimitMb={volumeSizeLimitMb}
+                resourceLimits={resourceLimits}
                 containerArgs={containerArgs}
                 canChangeSessionLimit={canChangeSessionLimit}
                 canChangeResources={canChangeResources}

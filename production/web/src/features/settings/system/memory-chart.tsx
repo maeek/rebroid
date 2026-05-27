@@ -2,6 +2,7 @@
 
 import { Label, PolarGrid, PolarRadiusAxis, RadialBar, RadialBarChart } from 'recharts'
 import { ChartContainer } from '@/components/ui/chart'
+import { formatDisplayNumber } from '@/lib/format'
 
 export const description = 'A radial chart with text'
 
@@ -61,7 +62,7 @@ export function MemoryChart({ totalMemory, freeMemory }: { totalMemory: number; 
                       y={viewBox.cy}
                       className='fill-foreground text-5xl font-bold'
                     >
-                      {chartData[0].memory.toLocaleString()}
+                      {formatDisplayNumber(chartData[0].memory)}
                     </tspan>
                     <tspan
                       x={viewBox.cx}

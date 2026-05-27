@@ -8,6 +8,7 @@ import {
   ChartTooltip,
   ChartTooltipContent
 } from '@/components/ui/chart'
+import { formatUtcTime } from '@/lib/format'
 
 const chartConfig = {
   cpu: {
@@ -23,7 +24,7 @@ export const SystemChart = ({ cpuData }: { cpuData?: [string, number][] }) => {
   if (!cpuData) return null
 
   const chartData = cpuData.map(([time, cpu]) => ({
-    time: new Date(time).toLocaleString('en', { hour12: false, hour: 'numeric', minute: '2-digit', second: '2-digit' }),
+    time: formatUtcTime(time),
     cpu
   }))
 

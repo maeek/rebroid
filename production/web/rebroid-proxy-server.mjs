@@ -173,6 +173,15 @@ const targetForRequest = req => {
 }
 
 const writeProxyError = (res, statusCode, message) => {
+  if (res.writableEnded) {
+    return
+  }
+
+  if (res.headersSent) {
+    res.destroy()
+    return
+  }
+
   res.writeHead(statusCode, {
     'content-type': 'application/json; charset=utf-8',
     'cache-control': 'no-store'

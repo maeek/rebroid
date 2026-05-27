@@ -1,4 +1,7 @@
 export interface SystemResources {
+  hostMemoryBytes: number | null
+  hostCpuCores: number | null
+  dockerRootAvailableBytes: number | null
   containersTotal: number
   containersRunning: number
   containersStopped: number

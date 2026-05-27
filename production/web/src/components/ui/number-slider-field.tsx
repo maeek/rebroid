@@ -1,0 +1,107 @@
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Visible } from '@/components/ui/visible'
+import { cn } from '@/lib/utils'
+
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
+
+type NumberSliderFieldProps = {
+  value: string
+  onValueChange: (value: string) => void
+  min: number
+  max?: number | null
+  step?: number
+  placeholder?: string
+  suffix?: string
+  rangeLabel: string
+  allowEmpty?: boolean
+  clearLabel?: string
+  className?: string
+}
+
+export const NumberSliderField = ({
+  value,
+  onValueChange,
+  min,
+  max,
+  step = 1,
+  placeholder,
+  suffix,
+  rangeLabel,
+  allowEmpty,
+  clearLabel = 'Default',
+  className
+}: NumberSliderFieldProps) => {
+  const hasMax = typeof max === 'number' && Number.isFinite(max) && max >= min
+  const sliderMax = hasMax ? Number(max) : undefined
+  const numericValue = value.trim() === '' ? NaN : Number(value)
+  const sliderValue =
+    Number.isFinite(numericValue) && sliderMax !== undefined ? clamp(numericValue, min, sliderMax) : min
+
+  const normalizeOnBlur = () => {
+    if (value.trim() === '') {
+      return
+    }
+
+    const nextValue = Number(value)
+
+    if (!Number.isFinite(nextValue)) {
+      onValueChange(allowEmpty ? '' : String(min))
+      return
+    }
+
+    onValueChange(String(sliderMax !== undefined ? clamp(nextValue, min, sliderMax) : Math.max(nextValue, min)))
+  }
+
+  return (
+    <div className={cn('grid w-full gap-3', className)}>
+      <div className='flex w-full min-w-0 gap-2'>
+        <Input
+          value={value}
+          min={min}
+          max={hasMax ? max : undefined}
+          step={step}
+          type='number'
+          placeholder={placeholder}
+          onBlur={normalizeOnBlur}
+          onChange={event => onValueChange(event.target.value)}
+        />
+        <Visible when={allowEmpty}>
+          <Button
+            type='button'
+            variant='outline'
+            size='sm'
+            className='h-9'
+            onClick={() => onValueChange('')}
+          >
+            {clearLabel}
+          </Button>
+        </Visible>
+      </div>
+      <Visible when={hasMax}>
+        <div className='grid w-full gap-2'>
+          <input
+            aria-label={rangeLabel}
+            type='range'
+            min={min}
+            max={sliderMax}
+            step={step}
+            value={sliderValue}
+            className='h-2 w-full cursor-pointer appearance-none rounded-full bg-border/70 accent-primary outline-none transition-opacity focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50'
+            onChange={event => onValueChange(event.target.value)}
+          />
+          <div className='flex items-center justify-between text-[11px] leading-none text-muted-foreground'>
+            <span>
+              {min}
+              {suffix}
+            </span>
+            <span>
+              {sliderMax}
+              {suffix}
+            </span>
+          </div>
+        </div>
+      </Visible>
+    </div>
+  )
+}

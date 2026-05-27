@@ -1,7 +1,9 @@
 'use server'
 
+import { getCurrentUserContext } from '../current-user'
 import { requireAdminUser, requireUser } from '../shared'
 import { orchestratorDiagnosticsClient } from './client'
+import { buildResourceLimitBounds } from './resource-limits'
 
 export const getOrchestratorHealthAction = async () => {
   await requireUser()
@@ -16,4 +18,11 @@ export const repairDisplaySidecarAction = async () => {
 export const getSystemResourcesAction = async (refreshVolumes = false) => {
   await requireAdminUser()
   return orchestratorDiagnosticsClient.getSystemResources(refreshVolumes)
+}
+
+export const getResourceLimitBoundsAction = async () => {
+  const user = await getCurrentUserContext()
+  const resources = await orchestratorDiagnosticsClient.getSystemResources(false)
+
+  return buildResourceLimitBounds(resources, user.quotas)
 }
