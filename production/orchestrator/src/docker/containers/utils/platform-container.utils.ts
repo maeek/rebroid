@@ -15,6 +15,7 @@ export const platformContainerFromInfo = (
   status: container.Status,
   labels: container.Labels ?? {},
   managed: container.Labels?.['com.rebroid.managed'] === 'true',
+  orphaned: false,
   applicationId: container.Labels?.['com.rebroid.application-id'] ?? null,
   component: container.Labels?.['com.rebroid.component'] ?? null,
   ports: (container.Ports ?? []).map((port) => ({
@@ -44,6 +45,7 @@ export const platformContainerFromInspect = (
     status: inspect.State?.Status ?? 'unknown',
     labels,
     managed: labels['com.rebroid.managed'] === 'true',
+    orphaned: false,
     applicationId: labels['com.rebroid.application-id'] ?? null,
     component: labels['com.rebroid.component'] ?? null,
     ports: Object.entries(inspect.NetworkSettings?.Ports ?? {}).flatMap(

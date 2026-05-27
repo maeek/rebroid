@@ -87,8 +87,9 @@ export default registerAs('app', () => {
       dataMountPath: process.env.REDROID_DATA_MOUNT_PATH ?? '/data',
       adbPort: number(process.env.REDROID_ADB_PORT, 5555),
       privileged: bool(process.env.REDROID_PRIVILEGED, true),
-      bootTimeoutSeconds: number(process.env.REDROID_BOOT_TIMEOUT_SECONDS, 120),
+      bootTimeoutSeconds: number(process.env.REDROID_BOOT_TIMEOUT_SECONDS, 300),
       adbTimeoutSeconds: number(process.env.REDROID_ADB_TIMEOUT_SECONDS, 120),
+      cgroupnsMode: process.env.REDROID_CGROUPNS_MODE ?? 'host',
       provisioningStaleTimeoutSeconds: number(
         process.env.REDROID_PROVISIONING_STALE_TIMEOUT_SECONDS,
         600,
@@ -99,6 +100,10 @@ export default registerAs('app', () => {
       ),
       maxApkUploadSizeMb: number(process.env.MAX_APK_UPLOAD_SIZE_MB, 4096),
       securityOptions: csv(process.env.CONTAINER_SECURITY_OPTS, []),
+      devices: csv(process.env.REDROID_DEVICES, []),
+      optionalDevices: csv(process.env.REDROID_OPTIONAL_DEVICES, [
+        '/dev/ashmem:/dev/ashmem:rwm',
+      ]),
     },
     displaySidecar: {
       containerId: process.env.DISPLAY_SIDECAR_CONTAINER_ID || undefined,

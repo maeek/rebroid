@@ -199,7 +199,7 @@ export class DockerSidecarService implements OnModuleInit {
       ];
       const output = await this.exec.execInContainerWithOutput(sidecar.id, [
         ...connectCommand,
-      ]);
+      ], { timeoutMs: 20_000 });
       const connectFailure = this.viewerTargetErrorFromOutput({
         command: connectCommand,
         stdout: output.stdout,
@@ -221,7 +221,7 @@ export class DockerSidecarService implements OnModuleInit {
       ];
       const state = await this.exec.execInContainerWithOutput(sidecar.id, [
         ...stateCommand,
-      ]);
+      ], { timeoutMs: 15_000 });
       let currentState = state.stdout.trim().toLowerCase();
       let lastStateCommand = stateCommand;
       let lastState = state;
@@ -244,6 +244,7 @@ export class DockerSidecarService implements OnModuleInit {
         lastState = await this.exec.execInContainerWithOutput(
           sidecar.id,
           recoveryCommand,
+          { timeoutMs: 45_000 },
         );
         const stateTokens = lastState.stdout.trim().toLowerCase().split(/\s+/);
         currentState = stateTokens[stateTokens.length - 1] ?? '';
@@ -316,7 +317,9 @@ export class DockerSidecarService implements OnModuleInit {
     ];
 
     try {
-      await this.exec.execInContainerWithOutput(sidecarId, command);
+      await this.exec.execInContainerWithOutput(sidecarId, command, {
+        timeoutMs: 15_000,
+      });
     } catch (error) {
       const viewerError = this.viewerTargetError(error);
       this.logger.warn(
@@ -485,7 +488,6 @@ export class DockerSidecarService implements OnModuleInit {
         ...(this.config.get<string>('app.sharedSecret')
           ? [
               `DISPLAY_SIDECAR_SHARED_SECRET=${this.config.get<string>('app.sharedSecret')}`,
-              `ORCHESTRATOR_SHARED_SECRET=${this.config.get<string>('app.sharedSecret')}`,
             ]
           : []),
         `DISPLAY_WEBRTC_UDP_PORT_RANGE=${this.displaySidecarWebrtcUdpPortRange}`,
@@ -765,7 +767,9 @@ export class DockerSidecarService implements OnModuleInit {
     ];
 
     try {
-      await this.exec.execInContainerWithOutput(sidecarId, probeCommand);
+      await this.exec.execInContainerWithOutput(sidecarId, probeCommand, {
+        timeoutMs: 5_000,
+      });
       return null;
     } catch (error) {
       const viewerError = this.viewerTargetError(error);

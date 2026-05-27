@@ -195,6 +195,11 @@ export class AndroidAppsProvisioningService {
         securityOptions: this.config.getOrThrow<string[]>(
           'app.redroid.securityOptions',
         ),
+        cgroupnsMode: this.config.get<string>('app.redroid.cgroupnsMode'),
+        devices: this.config.getOrThrow<string[]>('app.redroid.devices'),
+        optionalDevices: this.config.getOrThrow<string[]>(
+          'app.redroid.optionalDevices',
+        ),
       });
 
     this.tracker.ensureActive(app.id);

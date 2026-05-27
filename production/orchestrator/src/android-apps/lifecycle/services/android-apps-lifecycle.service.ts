@@ -32,7 +32,10 @@ import { stoppedStatusMessage } from '../../common/utils/android-apps-status-mes
 import { AndroidAppsRuntimeNetworkService } from '../../network/services/android-apps-runtime-network.service';
 import { AndroidAppsProvisioningApkService } from '../../provisioning/services/android-apps-provisioning-apk.service';
 import { AndroidAppsProvisioningService } from '../../provisioning/services/android-apps-provisioning.service';
-import { applyRedroidDefaultContainerArgs } from '../../provisioning/utils/redroid-runtime.utils';
+import {
+  applyRedroidDefaultContainerArgs,
+  isRedroidImageName,
+} from '../../provisioning/utils/redroid-runtime.utils';
 import { StartAndroidApplicationDto } from '../dto/start-android-application.dto';
 import { SwitchApplicationProfileDto } from '../dto/switch-application-profile.dto';
 import { UpdateAndroidApplicationApkDto } from '../dto/update-android-application-apk.dto';
@@ -261,8 +264,10 @@ export class AndroidAppsLifecycleService {
       await this.prepareRuntimeProfile(app, dto);
     }
 
+    await this.prepareRuntimeDefaults(app);
     await this.state.clearMissingContainerReference(app);
     await this.prepareFailedContainerForRestart(app);
+    await this.prepareContainerForRuntimeHostConfig(app);
     await this.prepareContainerForRecreationOnStart(app);
 
     this.tracker.reset(app.id);
@@ -398,6 +403,11 @@ export class AndroidAppsLifecycleService {
           containerArgs: app.containerArgs,
           securityOptions: this.config.getOrThrow<string[]>(
             'app.redroid.securityOptions',
+          ),
+          cgroupnsMode: this.config.get<string>('app.redroid.cgroupnsMode'),
+          devices: this.config.getOrThrow<string[]>('app.redroid.devices'),
+          optionalDevices: this.config.getOrThrow<string[]>(
+            'app.redroid.optionalDevices',
           ),
         });
       app.containerId = container.id;
@@ -668,6 +678,157 @@ export class AndroidAppsLifecycleService {
     await this.state.save(app);
   }
 
+  /** Recreates stopped containers when Docker-only host config defaults changed. */
+  private async prepareContainerForRuntimeHostConfig(app: AndroidApplication) {
+    if (!app.containerId || !isRedroidImageName(app.containerImage)) {
+      return;
+    }
+
+    const desiredCgroupnsMode = this.normalizedHostConfigValue(
+      this.config.get<string>('app.redroid.cgroupnsMode'),
+    );
+    const desiredDevices = this.normalizedDeviceMappings(
+      this.config.getOrThrow<string[]>('app.redroid.devices'),
+    );
+    if (!desiredCgroupnsMode && desiredDevices.length === 0) {
+      return;
+    }
+
+    const inspect = await this.lifecycle.inspectContainer(app.containerId);
+    const hostConfig = inspect.HostConfig as
+      | (Record<string, unknown> & { CgroupnsMode?: unknown })
+      | undefined;
+    const currentCgroupnsMode =
+      typeof hostConfig?.CgroupnsMode === 'string'
+        ? this.normalizedHostConfigValue(hostConfig.CgroupnsMode)
+        : null;
+    const currentDevices = Array.isArray(hostConfig?.Devices)
+      ? hostConfig.Devices.filter(
+          (
+            device,
+          ): device is {
+            PathOnHost?: unknown;
+            PathInContainer?: unknown;
+            CgroupPermissions?: unknown;
+          } => Boolean(device) && typeof device === 'object',
+        )
+          .map((device) =>
+            [
+              typeof device.PathOnHost === 'string' ? device.PathOnHost : '',
+              typeof device.PathInContainer === 'string'
+                ? device.PathInContainer
+                : '',
+              typeof device.CgroupPermissions === 'string'
+                ? device.CgroupPermissions
+                : '',
+            ].join(':'),
+          )
+          .sort()
+      : [];
+
+    if (
+      currentCgroupnsMode === desiredCgroupnsMode &&
+      this.sameStringArray(currentDevices, desiredDevices)
+    ) {
+      return;
+    }
+
+    const runtimeState = await this.lifecycle.getContainerRuntimeState(
+      app.containerId,
+    );
+    if (runtimeState.running) {
+      app.recreateContainerOnNextStart = true;
+      app.statusMessage =
+        'Runtime host configuration changed. Stop and start the app to recreate the managed container.';
+      await this.state.save(app);
+      return;
+    }
+
+    await this.logs.append(
+      app.id,
+      'Recreating container for runtime host config',
+      {
+        containerId: app.containerId,
+        containerName: app.containerName,
+        currentCgroupnsMode,
+        desiredCgroupnsMode,
+        currentDevices,
+        desiredDevices,
+      },
+    );
+    await this.removeManagedContainer(app);
+    app.recreateContainerOnNextStart = false;
+    app.statusMessage =
+      'Runtime host configuration changed. A new container will be created on next start.';
+    await this.state.save(app);
+  }
+
+  private normalizedHostConfigValue(value: string | null | undefined) {
+    const trimmed = value?.trim();
+    return trimmed || null;
+  }
+
+  private normalizedDeviceMappings(devices: string[]) {
+    return devices
+      .map((device) => device.trim())
+      .filter(Boolean)
+      .map((device) => {
+        const [hostPath, containerPath = hostPath, permissions = 'rwm'] =
+          device.split(':').map((part) => part.trim());
+        return [hostPath, containerPath, permissions || 'rwm'].join(':');
+      })
+      .sort();
+  }
+
+  private sameStringArray(left: string[], right: string[]) {
+    return (
+      left.length === right.length &&
+      left.every((value, index) => value === right[index])
+    );
+  }
+
+  /** Applies current Redroid boot defaults to older app records before start. */
+  private async prepareRuntimeDefaults(app: AndroidApplication) {
+    const nextContainerArgs = applyRedroidDefaultContainerArgs(
+      app.containerImage,
+      app.containerArgs,
+    );
+    if (nextContainerArgs === app.containerArgs) {
+      return;
+    }
+
+    const previousContainerArgs = app.containerArgs;
+    app.containerArgs = nextContainerArgs;
+
+    if (!app.containerId) {
+      await this.state.save(app);
+      return;
+    }
+
+    const runtimeState = await this.lifecycle.getContainerRuntimeState(
+      app.containerId,
+    );
+    if (runtimeState.running) {
+      app.recreateContainerOnNextStart = true;
+      app.statusMessage =
+        'Runtime boot defaults changed. Stop and start the app to recreate the managed container.';
+      await this.state.save(app);
+      return;
+    }
+
+    await this.logs.append(app.id, 'Recreating container for runtime defaults', {
+      containerId: app.containerId,
+      containerName: app.containerName,
+      previousContainerArgs,
+      nextContainerArgs,
+    });
+    await this.removeManagedContainer(app);
+    app.recreateContainerOnNextStart = false;
+    app.statusMessage =
+      'Runtime boot defaults changed. A new container will be created on next start.';
+    await this.state.save(app);
+  }
+
   /** Lets a new start request take over a provisioning record left by a dead run. */
   private async recoverStaleProvisioningForStart(app: AndroidApplication) {
     const startedAt = app.provisioningStartedAt?.getTime();
@@ -704,10 +865,7 @@ export class AndroidAppsLifecycleService {
 
   /** Removes a failed runtime container so retries do not reuse a wedged Redroid boot. */
   private async prepareFailedContainerForRestart(app: AndroidApplication) {
-    if (
-      app.status !== AndroidApplicationStatus.Error ||
-      !app.containerId
-    ) {
+    if (app.status !== AndroidApplicationStatus.Error || !app.containerId) {
       return;
     }
 

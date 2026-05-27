@@ -156,6 +156,19 @@ export class AndroidAppsStateService {
     }
 
     if (runtimeState.exists && runtimeState.running) {
+      if (
+        app.status === AndroidApplicationStatus.Stopped ||
+        app.status === AndroidApplicationStatus.Error
+      ) {
+        app.status = AndroidApplicationStatus.Running;
+        app.lifecycleStage = AndroidApplicationLifecycleStage.Ready;
+        app.statusMessage =
+          'Runtime container is running. State recovered from Docker.';
+        app.lastError = null;
+        app.lastStartedAt = app.lastStartedAt ?? new Date();
+        return this.saveAndDecorate(app);
+      }
+
       return this.status.decorateApplication(app);
     }
 

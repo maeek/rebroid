@@ -59,7 +59,12 @@ if [ -z "${DOCKER_HOST:-}" ]; then
 fi
 
 if [ -z "${ORCHESTRATOR_SHARED_SECRET:-}" ]; then
-  secret_file="${ORCHESTRATOR_SHARED_SECRET_FILE:-/app/secrets/orchestrator-secret}"
+  secret_file="${ORCHESTRATOR_SHARED_SECRET_FILE:-/app/secrets/rebroid-shared-secret}"
+  legacy_secret_file="/app/secrets/orchestrator-secret"
+  if [ ! -s "$secret_file" ] && [ -s "$legacy_secret_file" ]; then
+    mkdir -p "$(dirname "$secret_file")"
+    cp "$legacy_secret_file" "$secret_file"
+  fi
   ensure_secret_file "$secret_file"
   chmod 644 "$secret_file" 2>/dev/null || true
   export ORCHESTRATOR_SHARED_SECRET="$(cat "$secret_file")"

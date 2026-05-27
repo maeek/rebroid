@@ -6,4 +6,6 @@ export const shouldReconcileContainerState = (
 ) =>
   Boolean(app.containerId) &&
   (app.status === AndroidApplicationStatus.Provisioning ||
-    app.status === AndroidApplicationStatus.Running);
+    app.status === AndroidApplicationStatus.Running ||
+    app.status === AndroidApplicationStatus.Stopped ||
+    app.status === AndroidApplicationStatus.Error);

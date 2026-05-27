@@ -9,26 +9,7 @@ services:
     user: "0:0"
     restart: unless-stopped
     environment:
-      NODE_ENV: production
-      PORT: 4100
-      DATABASE_PATH: /data/config/orchestrator.sqlite
-      SETTINGS_PATH: /data/config/orchestrator-settings.json
-      UPLOADS_DIR: /data/uploads
-      ORCHESTRATOR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
-      ORCHESTRATOR_SHARED_SECRET_FILE: /data/secrets/orchestrator-secret
-      CONTAINER_IMAGE: ${CONTAINER_IMAGE:-redroid/redroid:13.0.0-latest}
-      REDROID_ADB_PORT: ${REDROID_ADB_PORT:-5555}
-      REDROID_PRIVILEGED: ${REDROID_PRIVILEGED:-true}
-      REDROID_BOOT_TIMEOUT_SECONDS: ${REDROID_BOOT_TIMEOUT_SECONDS:-120}
-      REDROID_ADB_TIMEOUT_SECONDS: ${REDROID_ADB_TIMEOUT_SECONDS:-120}
-      REDROID_PROVISIONING_STALE_TIMEOUT_SECONDS: ${REDROID_PROVISIONING_STALE_TIMEOUT_SECONDS:-600}
-      ORCHESTRATOR_INTERNAL_DOCKER: auto
-      DOCKER_STORAGE_DRIVER: ${DOCKER_STORAGE_DRIVER:-vfs}
-      MAX_APK_UPLOAD_SIZE_MB: ${MAX_APK_UPLOAD_SIZE_MB:-4096}
-      CONTAINER_SECURITY_OPTS: ${CONTAINER_SECURITY_OPTS:-}
-      IPTABLES_POLICY_ENABLED: ${IPTABLES_POLICY_ENABLED:-false}
       DISPLAY_SIDECAR_IMAGE: rebroid/display-sidecar:local
-      DISPLAY_SIDECAR_AUTO_START: "true"
       DISPLAY_SIDECAR_PUBLISHED_HOST_PORT: 8000
       DISPLAY_WEBRTC_UDP_PORT_RANGE: ${DISPLAY_WEBRTC_UDP_PORT_RANGE:-40000-40100}
       DISPLAY_WEBRTC_ICE_HOST: ${DISPLAY_WEBRTC_ICE_HOST:-}
@@ -41,9 +22,9 @@ services:
     ports:
       - "${DISPLAY_WEBRTC_UDP_PORT_RANGE:-40000-40100}:${DISPLAY_WEBRTC_UDP_PORT_RANGE:-40000-40100}/udp"
     volumes:
-      - orchestrator-data:/data/config
-      - orchestrator-uploads:/data/uploads
-      - shared-secrets:/data/secrets
+      - orchestrator-data:/app/data
+      - orchestrator-uploads:/app/uploads
+      - shared-secrets:/app/secrets
       - orchestrator-docker-data:/var/lib/docker
       - ./display-sidecar:/app/display-sidecar:ro
     networks:
@@ -54,7 +35,6 @@ services:
       context: ./web
       dockerfile: Dockerfile
       args:
-        NEXT_PROXY_CLIENT_MAX_BODY_SIZE: ${NEXT_PROXY_CLIENT_MAX_BODY_SIZE:-4096mb}
         DISPLAY_SIDECAR_INTERNAL_BASE_URL: http://orchestrator:8000
     image: rebroid/web:local
     container_name: rebroid-web
@@ -62,17 +42,13 @@ services:
     depends_on:
       - orchestrator
     environment:
-      NODE_ENV: production
-      ORCHESTRATOR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
-      ORCHESTRATOR_SHARED_SECRET_FILE: /data/secrets/orchestrator-secret
-      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
       REBROID_TLS_HOSTS: ${REBROID_TLS_HOSTS:-localhost,127.0.0.1}
       DISPLAY_SIDECAR_INTERNAL_BASE_URL: http://orchestrator:8000
     ports:
       - "${REBROID_HTTPS_PORT:-3443}:3443"
     volumes:
       - web-data:/app/data
-      - shared-secrets:/data/secrets
+      - shared-secrets:/app/secrets
     networks:
       - platform
 

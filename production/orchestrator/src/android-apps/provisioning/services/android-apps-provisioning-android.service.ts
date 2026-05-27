@@ -215,9 +215,9 @@ export class AndroidAppsProvisioningAndroidService {
       '-lc',
       [
         'echo "== props =="',
-        'getprop sys.boot_completed init.svc.zygote init.svc.surfaceflinger init.svc.servicemanager init.svc.hwservicemanager init.svc.adbd ro.hardware 2>&1 || true',
+        'for prop in sys.boot_completed dev.bootcomplete init.svc.bootanim init.svc.zygote init.svc.zygote64 init.svc.surfaceflinger init.svc.servicemanager init.svc.hwservicemanager init.svc.adbd ro.hardware ro.boot.use_memfd sys.use_memfd; do printf "%s=" "$prop"; getprop "$prop" 2>/dev/null || true; done',
         'echo "== binder devices =="',
-        'ls -la /dev/binder /dev/hwbinder /dev/vndbinder /dev/binderfs 2>&1 || true',
+        'ls -la /dev/binder /dev/hwbinder /dev/vndbinder /dev/ashmem /dev/binderfs 2>&1 || true',
         'echo "== binder proc =="',
         'cat /proc/filesystems /proc/misc 2>/dev/null | grep -E "binder|ashmem" || true',
         'echo "== mounts =="',
@@ -275,6 +275,20 @@ export class AndroidAppsProvisioningAndroidService {
     }
     if (text.includes('zygote') && !text.includes('init.svc.zygote=running')) {
       reasons.push('Android zygote service is not running');
+    }
+    if (
+      text.includes('ashmem') &&
+      text.match(/no such file|not found|cannot access|couldn't create ashmem/)
+    ) {
+      if (text.includes('ro.boot.use_memfd=true') || text.includes('sys.use_memfd=true')) {
+        reasons.push(
+          'Android display stack is still trying to use ashmem even though memfd is enabled; host /dev/ashmem support may still be required for this image',
+        );
+      } else {
+        reasons.push(
+          'Android display stack is trying to use ashmem; recreate the container with androidboot.use_memfd=true',
+        );
+      }
     }
 
     return reasons.join('; ') || 'no obvious boot blocker detected from container diagnostics';

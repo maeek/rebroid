@@ -10,35 +10,8 @@ services:
     user: "0:0"
     restart: unless-stopped
     environment:
-      NODE_ENV: production
-      PORT: 4100
-      DATABASE_PATH: /data/config/orchestrator.sqlite
-      SETTINGS_PATH: /data/config/orchestrator-settings.json
-      UPLOADS_DIR: /data/uploads
-
-      ORCHESTRATOR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
-      ORCHESTRATOR_SHARED_SECRET_FILE: /data/secrets/orchestrator-secret
-      
-      CONTAINER_IMAGE: ${CONTAINER_IMAGE:-redroid/redroid:13.0.0-latest}
-      REDROID_ADB_PORT: ${REDROID_ADB_PORT:-5555}
-      REDROID_PRIVILEGED: ${REDROID_PRIVILEGED:-true}
-      REDROID_BOOT_TIMEOUT_SECONDS: ${REDROID_BOOT_TIMEOUT_SECONDS:-120}
-      REDROID_ADB_TIMEOUT_SECONDS: ${REDROID_ADB_TIMEOUT_SECONDS:-120}
-      REDROID_PROVISIONING_STALE_TIMEOUT_SECONDS: ${REDROID_PROVISIONING_STALE_TIMEOUT_SECONDS:-600}
-      
-      ORCHESTRATOR_INTERNAL_DOCKER: ${ORCHESTRATOR_INTERNAL_DOCKER:-false}
-      
-      DOCKER_STORAGE_DRIVER: ${DOCKER_STORAGE_DRIVER:-vfs}
-      
-      MAX_APK_UPLOAD_SIZE_MB: ${MAX_APK_UPLOAD_SIZE_MB:-4096}
-
-      CONTAINER_SECURITY_OPTS: ${CONTAINER_SECURITY_OPTS:-}
-      IPTABLES_POLICY_ENABLED: ${IPTABLES_POLICY_ENABLED:-false}
-
-      DISPLAY_SIDECAR_IMAGE: localhost/rebroid/display-sidecar:local
-      DISPLAY_SIDECAR_AUTO_START: "true"
-      DISPLAY_SIDECAR_INTERNAL_BASE_URL: ${DISPLAY_SIDECAR_INTERNAL_BASE_URL:-http://rebroid-display-sidecar:8000}
-      DISPLAY_SIDECAR_PUBLISHED_HOST_PORT: ${DISPLAY_SIDECAR_PUBLISHED_HOST_PORT:-}
+      ORCHESTRATOR_INTERNAL_DOCKER: "false"
+      DISPLAY_SIDECAR_AUTO_START: "false"
     cap_add:
       - NET_ADMIN
     expose:
@@ -46,10 +19,10 @@ services:
       - "8000"
     volumes:
       # Redroid requires a rootful Docker-compatible engine socket.
-      - ${CONTAINER_ENGINE_SOCKET:-/run/podman/podman.sock}:/var/run/docker.sock
-      - orchestrator-data:/data/config
-      - orchestrator-uploads:/data/uploads
-      - shared-secrets:/data/secrets
+      - ${CONTAINER_ENGINE_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
+      - orchestrator-data:/app/data
+      - orchestrator-uploads:/app/uploads
+      - shared-secrets:/app/secrets
       - orchestrator-docker-data:/var/lib/docker
     networks:
       - platform
@@ -59,9 +32,6 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
-      args:
-        NEXT_PROXY_CLIENT_MAX_BODY_SIZE: ${NEXT_PROXY_CLIENT_MAX_BODY_SIZE:-4096mb}
-        DISPLAY_SIDECAR_INTERNAL_BASE_URL: ${DISPLAY_SIDECAR_INTERNAL_BASE_URL:-http://rebroid-display-sidecar:8000}
     image: localhost/rebroid/web:local
     container_name: rebroid-web
     restart: unless-stopped
@@ -69,18 +39,12 @@ services:
       - orchestrator
       - display-sidecar
     environment:
-      NODE_ENV: production
-      ORCHESTRATOR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
-      ORCHESTRATOR_SHARED_SECRET_FILE: /data/secrets/orchestrator-secret
-      INITIAL_ADMIN_PASSWORD: admin
-      # ${INITIAL_ADMIN_PASSWORD:-}
       REBROID_TLS_HOSTS: ${REBROID_TLS_HOSTS:-localhost,127.0.0.1}
-      DISPLAY_SIDECAR_INTERNAL_BASE_URL: ${DISPLAY_SIDECAR_INTERNAL_BASE_URL:-http://rebroid-display-sidecar:8000}
     ports:
       - "${REBROID_HTTPS_PORT:-3443}:3443"
     volumes:
       - web-data:/app/data
-      - shared-secrets:/data/secrets
+      - shared-secrets:/app/secrets
     networks:
       - platform
 
@@ -93,10 +57,7 @@ services:
     container_name: rebroid-display-sidecar
     restart: unless-stopped
     environment:
-      DISPLAY_SIDECAR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
-      DISPLAY_SIDECAR_SHARED_SECRET_FILE: /data/secrets/orchestrator-secret
-      ORCHESTRATOR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
-      ORCHESTRATOR_SHARED_SECRET_FILE: /data/secrets/orchestrator-secret
+      DISPLAY_SIDECAR_SHARED_SECRET_FILE: /app/secrets/rebroid-shared-secret
       DISPLAY_WEBRTC_UDP_PORT_RANGE: ${DISPLAY_WEBRTC_UDP_PORT_RANGE:-40000-40100}
       DISPLAY_WEBRTC_ICE_HOST: ${DISPLAY_WEBRTC_ICE_HOST:-}
     expose:
@@ -104,7 +65,7 @@ services:
     ports:
       - "${DISPLAY_WEBRTC_UDP_PORT_RANGE:-40000-40100}:${DISPLAY_WEBRTC_UDP_PORT_RANGE:-40000-40100}/udp"
     volumes:
-      - shared-secrets:/data/secrets
+      - shared-secrets:/app/secrets
     networks:
       platform:
         aliases:

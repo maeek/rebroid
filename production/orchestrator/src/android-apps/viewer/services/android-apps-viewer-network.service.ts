@@ -1,11 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { getErrorMessage } from '../../../common/error-message';
+import { DockerContainerExecService } from '../../../docker/containers/services/docker-container-exec.service';
 import { DockerNetworkRuntimeService } from '../../../docker/networks/services/docker-network-runtime.service';
 import { DockerSidecarService } from '../../../docker/sidecar/services/docker-sidecar.service';
 import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
+import { isRedroidImageName } from '../../provisioning/utils/redroid-runtime.utils';
 
 @Injectable()
 export class AndroidAppsViewerNetworkService {
@@ -14,6 +16,7 @@ export class AndroidAppsViewerNetworkService {
   constructor(
     private readonly networks: DockerNetworkRuntimeService,
     private readonly sidecar: DockerSidecarService,
+    private readonly exec: DockerContainerExecService,
     private readonly networkPolicy: NetworkPolicyService,
     private readonly logs: AndroidAppsLogService,
     private readonly state: AndroidAppsStateService,
@@ -79,6 +82,7 @@ export class AndroidAppsViewerNetworkService {
   /** Prepares the viewer sidecar to reach the app over ADB. */
   async prepareScrcpyAdbTarget(app: AndroidApplication, adbHost: string) {
     await this.reapplyNetworkPolicy(app);
+    await this.ensureRedroidTcpAdb(app);
 
     await this.logs.append(app.id, 'Preparing display sidecar ADB target', {
       networkName: app.networkName,
@@ -88,7 +92,18 @@ export class AndroidAppsViewerNetworkService {
       adbPort: app.adbPort,
     });
 
-    return this.sidecar.connectAdb(adbHost, app.adbPort);
+    const result = await this.sidecar.connectAdb(adbHost, app.adbPort);
+    await this.logs.append(app.id, 'Display sidecar ADB target prepared', {
+      adbHost,
+      adbPort: app.adbPort,
+      configured: result.configured,
+      connected: result.connected,
+      message: result.message,
+      error: result.error?.message ?? null,
+      errorCode: result.error?.code ?? null,
+    });
+
+    return result;
   }
 
   /** Reapplies policy before opening viewer access. */
@@ -98,5 +113,41 @@ export class AndroidAppsViewerNetworkService {
     app.networkPolicyMessage = result.message;
     app.networkPolicyAppliedAt = new Date();
     await this.state.save(app);
+  }
+
+  /** Recovered Redroid containers may be running before provisioning enabled TCP ADB. */
+  private async ensureRedroidTcpAdb(app: AndroidApplication) {
+    if (!app.containerId || !isRedroidImageName(app.containerImage)) {
+      return;
+    }
+
+    try {
+      await this.exec.execInContainer(
+        app.containerId,
+        [
+          'sh',
+          '-lc',
+          [
+            `setprop persist.adb.tcp.port ${app.adbPort}`,
+            `setprop service.adb.tcp.port ${app.adbPort}`,
+            'stop adbd',
+            'start adbd',
+          ].join(' && '),
+        ],
+        { timeoutMs: 10_000 },
+      );
+      await this.logs.append(app.id, 'Redroid TCP ADB ensured for viewer', {
+        adbPort: app.adbPort,
+      });
+    } catch (error) {
+      const message = getErrorMessage(error);
+      this.logger.warn(
+        `Could not ensure Redroid TCP ADB for viewer ${app.id}: ${message}`,
+      );
+      await this.logs.append(app.id, 'Redroid TCP ADB ensure failed for viewer', {
+        adbPort: app.adbPort,
+        message,
+      });
+    }
   }
 }

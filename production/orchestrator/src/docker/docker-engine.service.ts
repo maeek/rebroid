@@ -101,7 +101,12 @@ export class DockerEngineService {
 
   isContainerAlreadyConnectedToNetwork(error: unknown) {
     const message = this.errorMessage(error).toLowerCase();
-    return message.includes('already connected');
+    return (
+      message.includes('already connected') ||
+      (message.includes('endpoint with name') &&
+        message.includes('already exists') &&
+        message.includes('network'))
+    );
   }
 
   isContainerAlreadyDisconnectedFromNetwork(error: unknown) {

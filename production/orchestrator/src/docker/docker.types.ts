@@ -15,6 +15,9 @@ export interface ApplicationContainerSpec {
   cpuLimitCpus?: number | null;
   containerArgs?: string | null;
   securityOptions?: string[];
+  cgroupnsMode?: string | null;
+  devices?: string[];
+  optionalDevices?: string[];
 }
 
 export interface ContainerRuntimeState {
@@ -43,6 +46,7 @@ export interface PlatformContainer {
   status: string;
   labels: Record<string, string>;
   managed: boolean;
+  orphaned: boolean;
   applicationId: string | null;
   component: string | null;
   ports: {
