@@ -3,7 +3,6 @@
 import { useMemo, type ReactNode } from 'react'
 import { IconCast } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
-import { NumberSliderField } from '@/components/ui/number-slider-field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { getViewerPlayerCapabilities } from '../viewer-player-capabilities'
 import {
@@ -12,6 +11,7 @@ import {
   viewerPlayerDefinitions,
   viewerStreamingPresets
 } from '../viewer-settings'
+import { ViewerStreamingSliderFields } from '../viewer-streaming-slider-fields'
 import { ToolSection } from './tool-section'
 import type { ViewerSettings, ViewerStreamingPreset } from '../viewer-settings'
 
@@ -137,28 +137,11 @@ export const StreamingToolsSection = ({
             </Select>
           </StreamingSetting>
 
-          <StreamingSetting label='Bitrate'>
-            <NumberSliderField
-              value={String(viewerSettings.bitrateMbps)}
-              min={1}
-              max={32}
-              step={0.5}
-              suffix=' Mbps'
-              rangeLabel='Bitrate range'
-              onValueChange={value => updateSettings({ bitrateMbps: Number(value), preset: viewerSettings.preset })}
-            />
-          </StreamingSetting>
-
-          <StreamingSetting label='Max FPS'>
-            <NumberSliderField
-              value={String(viewerSettings.maxFps)}
-              min={1}
-              max={120}
-              suffix=' fps'
-              rangeLabel='Max FPS range'
-              onValueChange={value => updateSettings({ maxFps: Number(value), preset: viewerSettings.preset })}
-            />
-          </StreamingSetting>
+          <ViewerStreamingSliderFields
+            values={viewerSettings}
+            onChange={patch => updateSettings({ ...patch, preset: viewerSettings.preset })}
+            SettingComponent={StreamingSetting}
+          />
 
           <StreamingSetting label='Max size'>
             <Select
@@ -179,17 +162,6 @@ export const StreamingToolsSection = ({
                 ))}
               </SelectContent>
             </Select>
-          </StreamingSetting>
-
-          <StreamingSetting label='I-frame interval'>
-            <NumberSliderField
-              value={String(viewerSettings.iFrameInterval)}
-              min={1}
-              max={30}
-              suffix='s'
-              rangeLabel='I-frame interval range'
-              onValueChange={value => updateSettings({ iFrameInterval: Number(value), preset: viewerSettings.preset })}
-            />
           </StreamingSetting>
         </div>
 

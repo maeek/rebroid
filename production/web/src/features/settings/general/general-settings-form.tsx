@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react'
 import { IconDeviceFloppy, IconRotateClockwise } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { NumberSliderField } from '@/components/ui/number-slider-field'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { ViewerStreamingSliderFields } from '@/features/applications/viewer/viewer-streaming-slider-fields'
 import { Setting } from '@/features/settings/components/setting'
 import { resetGeneralUiSettings, saveGeneralUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
@@ -31,6 +33,8 @@ type SaveGeneralUiSettingsInput = Pick<
 
 const persistGeneralUiSettings = saveGeneralUiSettings
 const restoreGeneralUiSettings = resetGeneralUiSettings
+
+const verticalSettingClassName = 'flex-col items-start w-full'
 
 const toGeneralUiSettings = (settings: OrchestratorUiSettings): SaveGeneralUiSettingsInput => ({
   appListRefreshIntervalSeconds: settings.appListRefreshIntervalSeconds,
@@ -133,23 +137,19 @@ export const GeneralSettingsForm = ({ initialSettings }: { initialSettings: Orch
             className='flex-col items-start w-full'
             variant='vertical'
           >
-            <div className='flex items-center gap-2 w-full'>
-              <Input
-                value={settings.appListRefreshIntervalSeconds}
-                min={2}
-                max={120}
-                type='number'
-                onChange={event =>
-                  updateSettings({
-                    appListRefreshIntervalSeconds: numberValue(
-                      Number(event.target.value),
-                      settings.appListRefreshIntervalSeconds
-                    )
-                  })
-                }
-              />
-              <span className='text-secondary-foreground text-sm pl-2'>seconds</span>
-            </div>
+            <NumberSliderField
+              value={String(settings.appListRefreshIntervalSeconds)}
+              min={2}
+              max={120}
+              inputSuffix='seconds'
+              suffix='s'
+              rangeLabel='List refresh interval range'
+              onValueChange={value =>
+                updateSettings({
+                  appListRefreshIntervalSeconds: numberValue(Number(value), settings.appListRefreshIntervalSeconds)
+                })
+              }
+            />
           </Setting>
           <Setting
             label='Remove data on delete'
@@ -173,7 +173,7 @@ export const GeneralSettingsForm = ({ initialSettings }: { initialSettings: Orch
             <Setting
               label='Preset'
               description='Default quality profile for new viewer sessions.'
-              className='flex-col items-start w-full'
+              className={verticalSettingClassName}
               variant='vertical'
             >
               <Select
@@ -195,38 +195,34 @@ export const GeneralSettingsForm = ({ initialSettings }: { initialSettings: Orch
                 </SelectContent>
               </Select>
             </Setting>
-            <Setting
-              label='Bitrate'
-              description='Default stream bitrate in Mbps.'
-              className='flex-col items-start w-full'
-              variant='vertical'
-            >
-              <Input
-                value={settings.defaultViewerBitrateMbps}
-                min={1}
-                max={32}
-                type='number'
-                onChange={event => updateSettings({ defaultViewerBitrateMbps: Number(event.target.value) })}
-              />
-            </Setting>
-            <Setting
-              label='Max FPS'
-              description='Default frame rate limit.'
-              className='flex-col items-start w-full'
-              variant='vertical'
-            >
-              <Input
-                value={settings.defaultViewerMaxFps}
-                min={1}
-                max={120}
-                type='number'
-                onChange={event => updateSettings({ defaultViewerMaxFps: Number(event.target.value) })}
-              />
-            </Setting>
+            <ViewerStreamingSliderFields
+              values={{
+                bitrateMbps: settings.defaultViewerBitrateMbps,
+                maxFps: settings.defaultViewerMaxFps,
+                iFrameInterval: settings.defaultViewerIFrameInterval
+              }}
+              onChange={patch =>
+                updateSettings({
+                  defaultViewerBitrateMbps: patch.bitrateMbps ?? settings.defaultViewerBitrateMbps,
+                  defaultViewerMaxFps: patch.maxFps ?? settings.defaultViewerMaxFps,
+                  defaultViewerIFrameInterval: patch.iFrameInterval ?? settings.defaultViewerIFrameInterval
+                })
+              }
+              SettingComponent={({ label, description, children }) => (
+                <Setting
+                  label={label}
+                  description={description}
+                  className={verticalSettingClassName}
+                  variant='vertical'
+                >
+                  {children}
+                </Setting>
+              )}
+            />
             <Setting
               label='Max size'
               description='Use 0 to fit the stream to the frame.'
-              className='flex-col items-start w-full'
+              className={verticalSettingClassName}
               variant='vertical'
             >
               <Input
@@ -235,20 +231,6 @@ export const GeneralSettingsForm = ({ initialSettings }: { initialSettings: Orch
                 max={4096}
                 type='number'
                 onChange={event => updateSettings({ defaultViewerMaxSize: Number(event.target.value) })}
-              />
-            </Setting>
-            <Setting
-              label='I-frame interval'
-              description='Default keyframe interval in seconds.'
-              className='flex-col items-start w-full'
-              variant='vertical'
-            >
-              <Input
-                value={settings.defaultViewerIFrameInterval}
-                min={1}
-                max={30}
-                type='number'
-                onChange={event => updateSettings({ defaultViewerIFrameInterval: Number(event.target.value) })}
               />
             </Setting>
           </div>

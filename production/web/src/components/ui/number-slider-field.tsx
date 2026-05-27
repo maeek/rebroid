@@ -13,6 +13,7 @@ type NumberSliderFieldProps = {
   step?: number
   placeholder?: string
   suffix?: string
+  inputSuffix?: string
   rangeLabel: string
   allowEmpty?: boolean
   clearLabel?: string
@@ -27,6 +28,7 @@ export const NumberSliderField = ({
   step = 1,
   placeholder,
   suffix,
+  inputSuffix,
   rangeLabel,
   allowEmpty,
   clearLabel = 'Default',
@@ -55,8 +57,9 @@ export const NumberSliderField = ({
 
   return (
     <div className={cn('grid w-full gap-3', className)}>
-      <div className='flex w-full min-w-0 gap-2'>
+      <div className='flex w-full min-w-0 items-center gap-2'>
         <Input
+          className='min-w-0'
           value={value}
           min={min}
           max={hasMax ? max : undefined}
@@ -66,6 +69,9 @@ export const NumberSliderField = ({
           onBlur={normalizeOnBlur}
           onChange={event => onValueChange(event.target.value)}
         />
+        <Visible when={inputSuffix}>
+          <span className='shrink-0 whitespace-nowrap text-sm text-secondary-foreground'>{inputSuffix}</span>
+        </Visible>
         <Visible when={allowEmpty}>
           <Button
             type='button'

@@ -15,6 +15,7 @@ import { LabeledField } from './components/labeled-field'
 import { PermissionSwitchTable } from './components/permission-switch-table'
 import { QuotaFields } from './components/quota-fields'
 import type { UserGroup, UserRole } from '@/server/auth/user'
+import type { ResourceLimitBounds } from '@/server/orchestrator/diagnostics/resource-limits'
 import type { PermissionMap, ResourceQuota } from '@/shared/permissions/permissions'
 
 type GroupDraft = {
@@ -33,7 +34,13 @@ const toDraft = (group: UserGroup): GroupDraft => ({
   quotas: group.quotas
 })
 
-export const GroupEditPage = ({ group }: { group: UserGroup }) => {
+export const GroupEditPage = ({
+  group,
+  resourceLimits
+}: {
+  group: UserGroup
+  resourceLimits: ResourceLimitBounds | null
+}) => {
   const router = useRouter()
   const [draft, setDraft] = useState(() => toDraft(group))
   const [isSaving, setIsSaving] = useState(false)
@@ -129,6 +136,7 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
             <h3 className='text-lg font-medium'>Quotas</h3>
             <QuotaFields
               quotas={draft.quotas}
+              resourceLimits={resourceLimits}
               onChange={quotas => updateDraft({ quotas })}
             />
           </section>

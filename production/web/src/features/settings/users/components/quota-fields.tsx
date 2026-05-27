@@ -1,40 +1,68 @@
 'use client'
 
-import { Input } from '@/components/ui/input'
+import { NumberSliderField } from '@/components/ui/number-slider-field'
+import type { ResourceLimitBounds } from '@/server/orchestrator/diagnostics/resource-limits'
 import type { ResourceQuota } from '@/shared/permissions/permissions'
 
 type QuotaKey = keyof ResourceQuota
 
-const quotaFields: Array<{ key: QuotaKey; label: string; description: string; suffix: string }> = [
+type QuotaField = {
+  key: QuotaKey
+  label: string
+  description: string
+  suffix: string
+  inputSuffix: string
+  min: number
+  max: number
+  step?: number
+}
+
+const quotaFields: QuotaField[] = [
   {
     key: 'maxOpenApps',
     label: 'Max Open Apps',
     description: 'Maximum running or provisioning apps for the user.',
-    suffix: 'apps'
+    suffix: ' apps',
+    inputSuffix: 'apps',
+    min: 1,
+    max: 20
   },
   {
     key: 'maxSessionSeconds',
     label: 'Max Session Limit',
     description: 'Maximum inactivity timeout the user can request.',
-    suffix: 'seconds'
+    suffix: 's',
+    inputSuffix: 'seconds',
+    min: 60,
+    max: 86400
   },
   {
     key: 'maxMemoryMb',
     label: 'Max RAM',
     description: 'Maximum per-container memory limit.',
-    suffix: 'MB'
+    suffix: ' MB',
+    inputSuffix: 'MB',
+    min: 128,
+    max: 65536
   },
   {
     key: 'maxCpuCpus',
     label: 'Max CPU',
     description: 'Maximum per-container CPU limit.',
-    suffix: 'cores'
+    suffix: ' cores',
+    inputSuffix: 'cores',
+    min: 0.1,
+    max: 64,
+    step: 0.1
   },
   {
     key: 'maxVolumeSizeMb',
     label: 'Max Volume',
     description: 'Maximum requested volume size.',
-    suffix: 'MB'
+    suffix: ' MB',
+    inputSuffix: 'MB',
+    min: 16,
+    max: 1048576
   }
 ]
 
@@ -42,9 +70,11 @@ const valueToInput = (value: number | null | undefined) => (value === null || va
 
 export const QuotaFields = ({
   quotas,
+  resourceLimits,
   onChange
 }: {
   quotas: Partial<ResourceQuota>
+  resourceLimits?: ResourceLimitBounds | null
   onChange: (quotas: Partial<ResourceQuota>) => void
 }) => {
   const setQuota = (key: QuotaKey, value: string) => {
@@ -52,6 +82,22 @@ export const QuotaFields = ({
       ...quotas,
       [key]: value.trim() === '' ? null : Number(value)
     })
+  }
+
+  const maxForField = (field: QuotaField) => {
+    if (field.key === 'maxMemoryMb') {
+      return resourceLimits?.maxMemoryMb ?? field.max
+    }
+
+    if (field.key === 'maxCpuCpus') {
+      return resourceLimits?.maxCpuCpus ?? field.max
+    }
+
+    if (field.key === 'maxVolumeSizeMb') {
+      return resourceLimits?.maxVolumeSizeMb ?? field.max
+    }
+
+    return field.max
   }
 
   return (
@@ -65,19 +111,20 @@ export const QuotaFields = ({
             <div className='font-bold text-sm text-foreground'>{field.label}</div>
             <div className='text-xs leading-relaxed text-muted-foreground'>{field.description}</div>
           </div>
-          <div className='flex w-full items-center gap-3'>
-            <Input
-              className='min-w-0 basis-[78%] flex-none sm:basis-[calc(100%-6.5rem)]'
+          <div className='w-full'>
+            <NumberSliderField
               value={valueToInput(quotas[field.key])}
-              type='number'
-              min={field.key === 'maxCpuCpus' ? 0.1 : 1}
-              step={field.key === 'maxCpuCpus' ? 0.1 : 1}
+              min={field.min}
+              max={maxForField(field)}
+              step={field.step}
               placeholder='Unlimited'
-              onChange={event => setQuota(field.key, event.target.value)}
+              suffix={field.suffix}
+              inputSuffix={field.inputSuffix}
+              rangeLabel={`${field.label} range`}
+              allowEmpty
+              clearLabel='Unlimited'
+              onValueChange={value => setQuota(field.key, value)}
             />
-            <span className='basis-[22%] whitespace-nowrap text-sm text-secondary-foreground sm:basis-20'>
-              {field.suffix}
-            </span>
           </div>
         </div>
       ))}

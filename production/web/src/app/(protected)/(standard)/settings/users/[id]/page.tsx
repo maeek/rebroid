@@ -2,10 +2,15 @@ import { UserEditPage } from '@/features/settings/users/user-edit-page'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { StatusSplash } from '@/features/shell/components/status-splash'
 import { userService } from '@/server/auth/user'
+import { getResourceLimitBoundsAction } from '@/server/orchestrator/diagnostics/actions'
 
 export default async function UserSettingsDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const [user, groups] = await Promise.all([userService.getUserById(id), userService.listGroups()])
+  const [user, groups, resourceLimits] = await Promise.all([
+    userService.getUserById(id),
+    userService.listGroups(),
+    getResourceLimitBoundsAction().catch(() => null)
+  ])
 
   if (!user) {
     return (
@@ -29,6 +34,7 @@ export default async function UserSettingsDetailPage({ params }: { params: Promi
     <UserEditPage
       user={user}
       groups={groups}
+      resourceLimits={resourceLimits}
     />
   )
 }

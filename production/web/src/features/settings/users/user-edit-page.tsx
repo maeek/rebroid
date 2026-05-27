@@ -21,6 +21,7 @@ import { PermissionSwitchTable, type PermissionInheritanceMap } from './componen
 import { QuotaFields } from './components/quota-fields'
 import { UserAvatarInput } from './components/user-avatar-input'
 import type { PublicUser, UserGroup, UserRole } from '@/server/auth/user'
+import type { ResourceLimitBounds } from '@/server/orchestrator/diagnostics/resource-limits'
 
 type UserDraft = {
   username: string
@@ -66,7 +67,15 @@ const getInheritanceMap = (groups: UserGroup[], groupIds: string[], role: UserRo
   }, {})
 }
 
-export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserGroup[] }) => {
+export const UserEditPage = ({
+  user,
+  groups,
+  resourceLimits
+}: {
+  user: PublicUser
+  groups: UserGroup[]
+  resourceLimits: ResourceLimitBounds | null
+}) => {
   const router = useRouter()
   const [draft, setDraft] = useState(() => toDraft(user))
   const [isSaving, setIsSaving] = useState(false)
@@ -210,6 +219,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
             <h3 className='text-lg font-medium'>Quotas</h3>
             <QuotaFields
               quotas={draft.quotas}
+              resourceLimits={resourceLimits}
               onChange={quotas => updateDraft({ quotas })}
             />
           </section>
