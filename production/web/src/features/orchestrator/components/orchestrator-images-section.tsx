@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { IconEye, IconRefresh, IconTrash } from '@tabler/icons-react'
+import { IconEye, IconLoader2, IconRefresh, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -194,15 +194,6 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
           <p className='text-sm text-secondary-foreground'>
             Docker images available to start application containers or custom runtimes.
           </p>
-          <Button
-            type='button'
-            variant='secondary'
-            disabled={isLoading}
-            onClick={() => void refresh()}
-          >
-            <IconRefresh className={isLoading ? 'size-4 animate-spin' : 'size-4'} />
-            Refresh
-          </Button>
         </div>
         <PlatformSelectionToolbar
           search={search}
@@ -210,14 +201,25 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
           selectedCount={selection.selectedItems.length}
           onSearchChange={setSearch}
           actions={
-            <Button
-              type='button'
-              variant='destructive'
-              disabled={busyId === 'bulk'}
-              onClick={() => void removeSelectedImages()}
-            >
-              Remove selected
-            </Button>
+            <>
+              <Button
+                type='button'
+                variant='ghost'
+                disabled={isLoading}
+                onClick={() => void refresh()}
+              >
+                {isLoading ? <IconLoader2 className='size-4 animate-spin' /> : <IconRefresh className='size-4' />}
+                Refresh
+              </Button>
+              <Button
+                type='button'
+                variant='ghost'
+                disabled={busyId === 'bulk' || selection.selectedItems.length === 0}
+                onClick={() => void removeSelectedImages()}
+              >
+                Remove selected
+              </Button>
+            </>
           }
         />
         <Visible when={error}>

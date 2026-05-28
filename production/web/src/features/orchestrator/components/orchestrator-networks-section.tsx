@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { IconEye, IconRefresh, IconTrash } from '@tabler/icons-react'
+import { IconEye, IconLoader2, IconRefresh, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -191,15 +191,6 @@ export const OrchestratorNetworksSection = ({ refreshKey = 0 }: { refreshKey?: n
           <p className='text-sm text-secondary-foreground'>
             Docker networks visible to the platform, including per-application isolation networks.
           </p>
-          <Button
-            type='button'
-            variant='secondary'
-            disabled={isLoading}
-            onClick={() => void refresh()}
-          >
-            <IconRefresh className={isLoading ? 'size-4 animate-spin' : 'size-4'} />
-            Refresh
-          </Button>
         </div>
         <PlatformSelectionToolbar
           search={search}
@@ -207,14 +198,29 @@ export const OrchestratorNetworksSection = ({ refreshKey = 0 }: { refreshKey?: n
           selectedCount={selection.selectedItems.length}
           onSearchChange={setSearch}
           actions={
-            <Button
-              type='button'
-              variant='destructive'
-              disabled={busyId === 'bulk' || selection.selectedItems.some(network => network.containers.length > 0)}
-              onClick={() => void removeSelectedNetworks()}
-            >
-              Remove selected
-            </Button>
+            <>
+              <Button
+                type='button'
+                variant='ghost'
+                disabled={isLoading}
+                onClick={() => void refresh()}
+              >
+                {isLoading ? <IconLoader2 className='size-4 animate-spin' /> : <IconRefresh className='size-4' />}
+                Refresh
+              </Button>
+              <Button
+                type='button'
+                variant='ghost'
+                disabled={
+                  busyId === 'bulk' ||
+                  selection.selectedItems.some(network => network.containers.length > 0) ||
+                  selection.selectedItems.length === 0
+                }
+                onClick={() => void removeSelectedNetworks()}
+              >
+                Remove selected
+              </Button>
+            </>
           }
         />
         <Visible when={error}>

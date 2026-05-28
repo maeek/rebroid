@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { IconRefresh } from '@tabler/icons-react'
+import { IconLoader2, IconRefresh } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -186,15 +186,6 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
           <p className='text-sm text-secondary-foreground'>
             Docker containers visible to the platform. Managed application containers are shown first.
           </p>
-          <Button
-            type='button'
-            variant='secondary'
-            disabled={isLoading}
-            onClick={() => void refresh()}
-          >
-            <IconRefresh className={isLoading ? 'size-4 animate-spin' : 'size-4'} />
-            Refresh
-          </Button>
         </div>
         <Visible when={orphanedContainers.length > 0}>
           <div className='flex flex-wrap items-center justify-between gap-3 rounded-md border border-destructive/35 bg-destructive/10 p-3 text-sm'>
@@ -221,24 +212,35 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
           selectedCount={selection.selectedItems.length}
           onSearchChange={setSearch}
           actions={
-            <div className='flex gap-2'>
+            <>
               <Button
                 type='button'
-                variant='secondary'
-                disabled={busyId === 'bulk'}
-                onClick={() => void runBulkAction('stop')}
+                variant='ghost'
+                disabled={isLoading}
+                onClick={() => void refresh()}
               >
-                Stop selected
+                {isLoading ? <IconLoader2 className='size-4 animate-spin' /> : <IconRefresh className='size-4' />}
+                Refresh
               </Button>
-              <Button
-                type='button'
-                variant='destructive'
-                disabled={busyId === 'bulk'}
-                onClick={() => void runBulkAction('remove')}
-              >
-                Remove selected
-              </Button>
-            </div>
+              <div className='flex gap-2'>
+                <Button
+                  type='button'
+                  variant='ghost'
+                  disabled={busyId === 'bulk' || selection.selectedItems.length === 0}
+                  onClick={() => void runBulkAction('stop')}
+                >
+                  Stop selected
+                </Button>
+                <Button
+                  type='button'
+                  variant='ghost'
+                  disabled={busyId === 'bulk' || selection.selectedItems.length === 0}
+                  onClick={() => void runBulkAction('remove')}
+                >
+                  Remove selected
+                </Button>
+              </div>
+            </>
           }
         />
 

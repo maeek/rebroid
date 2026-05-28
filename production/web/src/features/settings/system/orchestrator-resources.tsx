@@ -1,6 +1,6 @@
 'use client'
 
-import { IconRefresh } from '@tabler/icons-react'
+import { IconLoader2, IconRefresh } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -65,7 +65,11 @@ export const OrchestratorResources = ({
                     disabled={isRefreshing}
                     onClick={() => void onRefresh?.(true)}
                   >
-                    <IconRefresh className={isRefreshing ? 'size-4 animate-spin' : 'size-4'} />
+                    {isRefreshing ? (
+                      <IconLoader2 className='size-4 animate-spin' />
+                    ) : (
+                      <IconRefresh className='size-4' />
+                    )}
                   </Button>
                 </span>
               </TooltipTrigger>

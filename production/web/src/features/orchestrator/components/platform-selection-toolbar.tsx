@@ -31,7 +31,7 @@ export const PlatformSelectionToolbar = ({
         <Visible when={selectedCount > 0}>
           <span className='text-sm text-secondary-foreground'>{selectedCount} selected</span>
         </Visible>
-        <Visible when={selectedCount > 0}>{actions}</Visible>
+        {actions}
       </div>
     </div>
   )

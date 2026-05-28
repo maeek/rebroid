@@ -1,7 +1,7 @@
 'use client'
 
 import { ReactNode } from 'react'
-import { IconCopy, IconRefresh } from '@tabler/icons-react'
+import { IconCopy, IconLoader2, IconRefresh } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Visible } from '@/components/ui/visible'
 import { toast } from '@/hooks/use-toast'
@@ -77,7 +77,7 @@ export const LogsConsole = ({
             disabled={refreshDisabled || isRefreshing}
             onClick={onRefresh}
           >
-            <IconRefresh className={cn('size-4', { 'animate-spin': isRefreshing })} />
+            {isRefreshing ? <IconLoader2 className='size-4 animate-spin' /> : <IconRefresh className='size-4' />}
             Refresh
           </Button>
         </div>
