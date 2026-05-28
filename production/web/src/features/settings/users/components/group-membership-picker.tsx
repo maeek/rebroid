@@ -63,7 +63,7 @@ export const GroupMembershipPicker = ({
             return (
               <label
                 key={group.id}
-                className='grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] gap-3 px-3 py-3 transition-colors hover:bg-background/45'
+                className='flex items-center cursor-pointer gap-4 px-0 py-3 transition-colors hover:bg-background/45'
               >
                 <Checkbox
                   checked={checked}

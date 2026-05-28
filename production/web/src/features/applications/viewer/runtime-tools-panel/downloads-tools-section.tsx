@@ -7,7 +7,7 @@ import classNames from 'classnames'
 import { useTopLoader } from 'nextjs-toploader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Visible } from '@/components/ui/visible'
 import { ApplicationProfilePicker } from '@/features/applications/profiles/profile-picker'
 import { toast } from '@/hooks/use-toast'
 import { formatUtcDateTime } from '@/lib/format'
@@ -43,7 +43,7 @@ export const DownloadsToolsSection = ({
   const [isDragging, setIsDragging] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<number | null>(null)
   const [uploadFileName, setUploadFileName] = useState('')
-  const [fileListWarning, setFileListWarning] = useState<string | null>(null)
+  const [isUnavailableWarningVisible, setIsUnavailableWarningVisible] = useState(false)
   const [isRefreshingFiles, startRefreshFilesTransition] = useTransition()
   const isUploading = uploadProgress !== null
   const savedProfiles = app.savedProfiles ?? []
@@ -70,10 +70,9 @@ export const DownloadsToolsSection = ({
       startRefreshFilesTransition(async () => {
         try {
           setFiles(await listApplicationDownloadFilesAction(app.id, selectedProfileQuery()))
-          setFileListWarning(null)
         } catch (error) {
           setFiles([])
-          setFileListWarning('Files are unavailable for this profile right now.')
+          setIsUnavailableWarningVisible(true)
           if (options.notifyOnError) {
             runtimeActionErrorToast('Could not list files', error)
           }
@@ -177,21 +176,6 @@ export const DownloadsToolsSection = ({
       icon={<IconFileDownload className='size-6' />}
       className={className}
       hideHeader={hideHeader}
-      actions={
-        <Select
-          value={profileMode}
-          disabled={isUploading}
-          onValueChange={value => handleProfileModeChange(value === 'temporary' ? 'temporary' : 'persistent')}
-        >
-          <SelectTrigger className='w-full sm:w-56'>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value='persistent'>Persistent volume</SelectItem>
-            <SelectItem value='temporary'>Temporary data</SelectItem>
-          </SelectContent>
-        </Select>
-      }
     >
       <div className='grid gap-4'>
         <Input
@@ -206,98 +190,92 @@ export const DownloadsToolsSection = ({
           savedProfiles={savedProfiles}
           disabled={isUploading}
           allowCustomName={false}
-          emptyDescription='Start the app with a persistent profile before browsing or uploading files.'
+          onModeChange={handleProfileModeChange}
           onNameChange={setProfileName}
         />
 
-        {!selectedProfileCanUseFiles ? null : (
-          <>
-            <button
-              type='button'
-              disabled={isUploading}
-              onClick={() => fileInputRef.current?.click()}
-              onDragOver={event => {
-                event.preventDefault()
-                setIsDragging(true)
-              }}
-              onDragLeave={() => setIsDragging(false)}
-              onDrop={handleDrop}
-              className={classNames(
-                // eslint-disable-next-line max-len
-                `flex min-h-28 flex-col items-center justify-center gap-2 rounded-lg border border-dashed px-4 py-6 text-center transition`,
-                {
-                  'border-primary/70 bg-primary/10 text-foreground': isDragging,
-                  'border-border/90 bg-secondary/35 text-secondary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]':
-                    !isDragging,
-                  'hover:border-primary/55 hover:bg-secondary/45': !isUploading
-                }
-              )}
-            >
-              {isUploading ? <IconLoader2 className='size-6 animate-spin' /> : <IconFolderUp className='size-6' />}
-              <span className='font-medium text-foreground'>
-                {isUploading
-                  ? `Uploading ${uploadFileName || 'file'}${uploadProgress === null ? '' : ` (${uploadProgress}%)`}`
-                  : 'Drop a file here or choose one'}
-              </span>
-              <span className='text-xs'>Files are copied to the Android Download folder.</span>
-            </button>
-
-            <div className='overflow-hidden rounded-md border border-border/65 bg-secondary/20'>
-              <div className='flex items-center justify-between gap-3 border-b border-border/60 px-4 py-3'>
-                <div className='min-w-0'>
-                  <p className='text-sm font-semibold'>Files</p>
-                  <p className='text-xs text-muted-foreground'>Android Download folder</p>
-                </div>
-                <Button
-                  type='button'
-                  size='sm'
-                  variant='secondary'
-                  disabled={isRefreshingFiles}
-                  onClick={() => refreshFiles({ notifyOnError: true })}
-                >
-                  {isRefreshingFiles ? (
-                    <IconLoader2 className='size-4 animate-spin' />
-                  ) : (
-                    <IconRefresh className='size-4' />
-                  )}
-                  Refresh
-                </Button>
+        <Visible when={selectedProfileCanUseFiles && !isUnavailableWarningVisible}>
+          <div className='overflow-hidden rounded-md border border-border/65 bg-secondary/20'>
+            <div className='flex items-center justify-between gap-3 border-b border-border/60 px-4 py-3'>
+              <div className='min-w-0'>
+                <p className='text-sm font-semibold'>Files</p>
+                <p className='text-xs text-muted-foreground'>Downloads folder</p>
               </div>
-
-              {files.length === 0 ? (
-                <div className='px-4 py-5 text-center text-sm text-secondary-foreground'>
-                  {fileListWarning ?? 'No files in this profile yet.'}
-                </div>
-              ) : (
-                <div className='divide-y divide-border/55'>
-                  {files.map(file => (
-                    <div
-                      key={file.path}
-                      className='grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 text-sm max-sm:grid-cols-1'
-                    >
-                      <div className='min-w-0'>
-                        <div className='truncate font-medium'>{file.name}</div>
-                        <div className='text-xs text-secondary-foreground'>
-                          {formatBytes(file.sizeBytes)}
-                          {file.modifiedAt ? ` • ${formatUtcDateTime(file.modifiedAt)}` : ''}
-                        </div>
-                      </div>
-                      <Button
-                        type='button'
-                        size='sm'
-                        variant='secondary'
-                        onClick={() => handleDownload(file.name)}
-                      >
-                        <IconDownload className='size-4' />
-                        Download
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <Button
+                type='button'
+                size='sm'
+                variant='ghost'
+                disabled={isRefreshingFiles}
+                onClick={() => refreshFiles({ notifyOnError: true })}
+              >
+                {isRefreshingFiles ? (
+                  <IconLoader2 className='size-4 animate-spin' />
+                ) : (
+                  <IconRefresh className='size-4' />
+                )}
+                Refresh
+              </Button>
             </div>
-          </>
-        )}
+            <div className='divide-y divide-border/55'>
+              {files.map(file => (
+                <div
+                  key={file.path}
+                  className='grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 text-sm max-sm:grid-cols-1'
+                >
+                  <div className='min-w-0'>
+                    <button
+                      className='truncate font-medium hover:underline cursor-pointer'
+                      onClick={() => handleDownload(file.name)}
+                    >
+                      {file.name}
+                    </button>
+                    <div className='text-xs text-secondary-foreground'>
+                      {formatBytes(file.sizeBytes)}
+                      {file.modifiedAt ? ` • ${formatUtcDateTime(file.modifiedAt)}` : ''}
+                    </div>
+                  </div>
+                  <Button
+                    type='button'
+                    size='sm'
+                    variant='outline'
+                    onClick={() => handleDownload(file.name)}
+                  >
+                    <IconDownload className='size-4' />
+                  </Button>
+                </div>
+              ))}
+              <button
+                type='button'
+                disabled={isUploading}
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={event => {
+                  event.preventDefault()
+                  setIsDragging(true)
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDrop}
+                className={classNames(
+                  // eslint-disable-next-line max-len
+                  `flex min-h-28 flex-col items-center justify-center gap-2 rounded-lg rounded-tl-none! rounded-tr-none! border border-dashed px-4 py-6 text-center transition w-full`,
+                  {
+                    'border-primary/70 bg-primary/10 text-foreground': isDragging,
+                    'border-border/90 bg-secondary/35 text-secondary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]':
+                      !isDragging,
+                    'hover:border-primary/55 hover:bg-secondary/45': !isUploading
+                  }
+                )}
+              >
+                {isUploading ? <IconLoader2 className='size-6 animate-spin' /> : <IconFolderUp className='size-6' />}
+                <span className='font-medium text-foreground'>
+                  {isUploading
+                    ? `Uploading ${uploadFileName || 'file'}${uploadProgress === null ? '' : ` (${uploadProgress}%)`}`
+                    : 'Drop files here'}
+                </span>
+                <span className='text-xs'>Files are copied to the Android Downloads folder.</span>
+              </button>
+            </div>
+          </div>
+        </Visible>
       </div>
     </ToolSection>
   )

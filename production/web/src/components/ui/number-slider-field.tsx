@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
+import { Slider } from './slider'
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 
@@ -86,15 +87,13 @@ export const NumberSliderField = ({
       </div>
       <Visible when={hasMax}>
         <div className='grid w-full gap-2'>
-          <input
+          <Slider
             aria-label={rangeLabel}
-            type='range'
             min={min}
             max={sliderMax}
             step={step}
-            value={sliderValue}
-            className='h-2 w-full cursor-pointer appearance-none rounded-full bg-border/70 accent-primary outline-none transition-opacity focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50'
-            onChange={event => onValueChange(event.target.value)}
+            value={[sliderValue]}
+            onValueChange={v => onValueChange(String(v[0]))}
           />
           <div className='flex items-center justify-between text-[11px] leading-none text-muted-foreground'>
             <span>

@@ -168,7 +168,7 @@ export const ClipboardToolsSection = ({
           <Button
             type='button'
             size='sm'
-            variant='secondary'
+            variant='ghost'
             disabled={!runtimeAvailable || isClipboardBusy}
             onClick={pullClipboard}
           >
@@ -178,6 +178,7 @@ export const ClipboardToolsSection = ({
           <Button
             type='button'
             size='sm'
+            variant='ghost'
             disabled={!runtimeAvailable || isClipboardBusy}
             onClick={pushClipboard}
           >
@@ -194,6 +195,11 @@ export const ClipboardToolsSection = ({
         disabled={!runtimeAvailable}
         onChange={event => {
           setClipboardText(event.target.value)
+        }}
+        onBlur={() => {
+          if (clipboardText !== lastAppClipboardRef.current) {
+            void pushClipboard()
+          }
         }}
       />
     </ToolSection>

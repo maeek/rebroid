@@ -15,7 +15,7 @@ export const LabeledField = ({
   className?: string
 }) => (
   <div className={cn('grid gap-2', className)}>
-    <span className='grid gap-1'>
+    <span className='grid gap-1.5'>
       <Label>{label}</Label>
       <Visible when={description}>
         <span className='text-xs text-muted-foreground'>{description}</span>

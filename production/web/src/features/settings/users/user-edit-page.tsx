@@ -6,9 +6,9 @@ import { useRouter } from 'next/navigation'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { Setting } from '@/features/settings/components/setting'
 import { useResourceLimitBounds } from '@/features/settings/hooks/use-resource-limit-bounds'
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
@@ -135,13 +135,22 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
               <p className='text-sm text-secondary-foreground'>Account settings, quotas, groups, and permissions.</p>
             </div>
           </div>
-          <Button
-            disabled={isSaving}
-            onClick={() => void saveUser()}
-          >
-            <IconDeviceFloppy className='size-4' />
-            Save User
-          </Button>
+          <div className='flex gap-4 items-center'>
+            <Label className='flex items-center gap-2 cursor-pointer select-none font-normal'>
+              Active Account
+              <Switch
+                checked={!draft.disabled}
+                onCheckedChange={checked => updateDraft({ disabled: !checked })}
+              />
+            </Label>
+            <Button
+              disabled={isSaving}
+              onClick={() => void saveUser()}
+            >
+              <IconDeviceFloppy className='size-4' />
+              Save User
+            </Button>
+          </div>
         </div>
       </section>
       <section className='grid w-full gap-6 px-6 pb-16 max-sm:px-4 xl:grid-cols-[minmax(0,1fr)_minmax(28rem,0.85fr)]'>
@@ -180,7 +189,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
                   onValueChange={value => updateDraft({ role: value === 'admin' ? 'admin' : 'user' })}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue className='w-auto' />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value='user'>User</SelectItem>
@@ -189,7 +198,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
                 </Select>
               </LabeledField>
             </div>
-            <Setting
+            {/* <Setting
               label='Active Account'
               description='Disabled users cannot sign in and their future actions are denied.'
               className='rounded-lg bg-background/45 px-4 py-3'
@@ -198,7 +207,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
                 checked={!draft.disabled}
                 onCheckedChange={checked => updateDraft({ disabled: !checked })}
               />
-            </Setting>
+            </Setting> */}
           </section>
           <section className='grid gap-5 rounded-lg border border-border/60 bg-card/35 p-6 backdrop-blur-md'>
             <h3 className='text-lg font-medium'>Groups</h3>

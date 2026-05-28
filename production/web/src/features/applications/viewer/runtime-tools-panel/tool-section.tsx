@@ -28,7 +28,7 @@ export const ToolSection = ({
     <Visible when={!hideHeader || actions}>
       <div className='flex flex-wrap items-start justify-between gap-3'>
         <div className={cn('flex min-w-0 items-center gap-3', hideHeader && 'sr-only')}>
-          <div className='mt-0.5 text-primary/60 flex size-10 shrink-0 items-center justify-center rounded-lg border transition-colors border-border/70 bg-background/40'>
+          <div className='text-primary flex size-10 shrink-0 items-center justify-center rounded-lg border transition-colors border-border/70 bg-background/40'>
             {icon}
           </div>
           <div className='min-w-0'>

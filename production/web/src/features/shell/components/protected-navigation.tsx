@@ -52,7 +52,7 @@ const adminSettingsSections: NavigationItem[] = [{ name: 'System', Icon: IconSer
 
 const userManagementSubSections: NavigationItem[] = [
   { name: 'Users', Icon: IconUsers, href: '/settings/users' },
-  { name: 'Groups', Icon: IconShield, href: '/settings/users/groups' }
+  { name: 'Groups', Icon: IconShield, href: '/settings/groups' }
 ]
 
 const orchestratorSubSections: NavigationItem[] = [

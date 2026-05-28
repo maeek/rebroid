@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { IconEdit, IconPlus } from '@tabler/icons-react'
+import { IconPlus } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -73,29 +73,18 @@ export const GroupsSection = ({
               <TableRow className='hover:bg-transparent'>
                 <TableHead className='px-4 py-3 uppercase'>Group</TableHead>
                 <TableHead className='w-32 px-4 py-3 uppercase'>Role</TableHead>
-                <TableHead className='w-32 px-4 py-3 text-right uppercase'>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {groups.map(group => (
                 <TableRow key={group.id}>
                   <TableCell className='px-4 py-3'>
-                    <div className='font-medium'>{group.name}</div>
-                    <div className='text-xs text-muted-foreground'>{group.description}</div>
+                    <Link href={`/settings/groups/${group.id}`}>
+                      <div className='font-medium hover:underline hover:text-primary'>{group.name}</div>
+                      <div className='text-xs text-muted-foreground'>{group.description}</div>
+                    </Link>
                   </TableCell>
                   <TableCell className='px-4 py-3 capitalize text-secondary-foreground'>{group.role}</TableCell>
-                  <TableCell className='px-4 py-3 text-right'>
-                    <Button
-                      type='button'
-                      variant='secondary'
-                      asChild
-                    >
-                      <Link href={`/settings/users/groups/${group.id}`}>
-                        <IconEdit className='size-4' />
-                        Edit
-                      </Link>
-                    </Button>
-                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

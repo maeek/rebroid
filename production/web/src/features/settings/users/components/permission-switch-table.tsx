@@ -131,7 +131,7 @@ export const PermissionSwitchTable = ({
                       return (
                         <div
                           key={permission.id}
-                          className='grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 py-3 pl-4'
+                          className='grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 py-3 pl-2'
                         >
                           <div className='min-w-0 pl-4'>
                             <div className='flex flex-wrap items-center gap-2'>

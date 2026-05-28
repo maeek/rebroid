@@ -48,7 +48,7 @@ export const StreamingToolsSection = ({
   }
 
   const rendererNote = selectedCapability.reason ?? selectedPlayer?.description
-  const streamingSummary = `${viewerSettings.transport.toUpperCase()} • ${selectedPlayer?.label ?? viewerSettings.player} • ${viewerSettings.bitrateMbps} Mbps • ${viewerSettings.maxFps} fps • ${viewerSettings.maxSize === 0 ? 'Fit frame' : `${viewerSettings.maxSize}px`}`
+  const streamingSummary = `${selectedPlayer?.label ?? viewerSettings.player} • ${viewerSettings.bitrateMbps} Mbps • ${viewerSettings.maxFps} fps • ${viewerSettings.maxSize === 0 ? 'Fit frame' : `${viewerSettings.maxSize}px`}`
 
   return (
     <ToolSection
@@ -64,9 +64,9 @@ export const StreamingToolsSection = ({
         </div>
       }
       description={
-        <div className='flex flex-wrap items-center gap-x-2 text-xs text-secondary-foreground'>
+        <div className='flex flex-wrap items-center gap-x-1 text-xs text-secondary-foreground'>
           <span>{streamingSummary}</span>
-          <span className='hidden text-border sm:inline'>/</span>
+          <span>•</span>
           <span>{rendererNote}</span>
         </div>
       }
@@ -76,18 +76,17 @@ export const StreamingToolsSection = ({
     >
       <div className='grid gap-4'>
         <div className='grid gap-x-6 gap-y-4 md:grid-cols-2'>
-          <StreamingSetting label='Preset'>
+          <StreamingSetting label='Transport'>
             <Select
-              value={viewerSettings.preset}
-              onValueChange={value => applyPreset(value as ViewerStreamingPreset)}
+              value={viewerSettings.transport}
+              onValueChange={value => updateSettings({ transport: value === 'websocket' ? 'websocket' : 'webrtc' })}
             >
               <SelectTrigger className='w-full'>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value='bandwidth'>Bandwidth</SelectItem>
-                <SelectItem value='balanced'>Balanced</SelectItem>
-                <SelectItem value='quality'>Quality</SelectItem>
+                <SelectItem value='webrtc'>WebRTC</SelectItem>
+                <SelectItem value='websocket'>WebSocket</SelectItem>
               </SelectContent>
             </Select>
           </StreamingSetting>
@@ -123,17 +122,18 @@ export const StreamingToolsSection = ({
             </Select>
           </StreamingSetting>
 
-          <StreamingSetting label='Transport'>
+          <StreamingSetting label='Preset'>
             <Select
-              value={viewerSettings.transport}
-              onValueChange={value => updateSettings({ transport: value === 'websocket' ? 'websocket' : 'webrtc' })}
+              value={viewerSettings.preset}
+              onValueChange={value => applyPreset(value as ViewerStreamingPreset)}
             >
               <SelectTrigger className='w-full'>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value='webrtc'>WebRTC</SelectItem>
-                <SelectItem value='websocket'>WebSocket</SelectItem>
+                <SelectItem value='bandwidth'>Bandwidth</SelectItem>
+                <SelectItem value='balanced'>Balanced</SelectItem>
+                <SelectItem value='quality'>Quality</SelectItem>
               </SelectContent>
             </Select>
           </StreamingSetting>

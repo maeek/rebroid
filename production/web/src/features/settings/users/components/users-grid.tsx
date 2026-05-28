@@ -1,15 +1,12 @@
 'use client'
 
-import { IconEdit, IconPower, IconTrash } from '@tabler/icons-react'
+import { IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { PublicUser, UserGroup } from '@/server/auth/user'
-
-const groupNames = (groups: UserGroup[], groupIds: string[]) =>
-  groupIds.map(groupId => groups.find(group => group.id === groupId)?.name ?? groupId)
 
 export const UsersGrid = ({
   users,
@@ -44,55 +41,52 @@ export const UsersGrid = ({
             {users.map(user => (
               <TableRow key={user.id}>
                 <TableCell className='px-4 py-3'>
-                  <div className='flex min-w-0 items-center gap-3'>
-                    <Avatar className='size-9'>
-                      <AvatarImage src={user.avatarDataUrl ?? ''} />
-                      <AvatarFallback>{user.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div className='min-w-0'>
-                      <div className='truncate font-medium'>{user.name}</div>
-                      <div className='truncate text-xs text-muted-foreground'>{user.username}</div>
+                  <Link href={`/settings/users/${user.id}`}>
+                    <div className='flex min-w-0 items-center gap-3'>
+                      <Avatar className='size-9'>
+                        <AvatarImage src={user.avatarDataUrl ?? ''} />
+                        <AvatarFallback>{user.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div className='min-w-0'>
+                        <div className='truncate font-medium hover:underline cursor-pointer focus:underline hover:text-primary'>
+                          {user.name}
+                        </div>
+                        <div className='truncate text-xs text-muted-foreground'>{user.username}</div>
+                      </div>
                     </div>
-                  </div>
+                  </Link>
                 </TableCell>
                 <TableCell className='px-4 py-3 capitalize text-secondary-foreground'>{user.role}</TableCell>
                 <TableCell className='px-4 py-3 text-secondary-foreground'>
                   <div className='flex flex-wrap gap-1.5'>
-                    {groupNames(groups, user.groupIds).map(groupName => (
-                      <Badge
-                        key={groupName}
-                        variant='secondary'
-                        className='max-w-full truncate'
+                    {user.groupIds.map(groupId => (
+                      <Link
+                        href={`/settings/groups/${groupId}`}
+                        key={groupId}
                       >
-                        {groupName}
-                      </Badge>
+                        <Badge
+                          variant='secondary'
+                          className='max-w-full truncate'
+                        >
+                          {groups.find(group => group.id === groupId)?.name ?? groupId}
+                        </Badge>
+                      </Link>
                     ))}
                   </div>
                 </TableCell>
                 <TableCell className={user.disabled ? 'px-4 py-3 text-destructive' : 'px-4 py-3 text-primary'}>
-                  {user.disabled ? 'Disabled' : 'Active'}
+                  {/* {user.disabled ? 'Disabled' : 'Active'} */}
+                  <Button
+                    type='button'
+                    variant='link'
+                    disabled={busyUserId === user.id}
+                    onClick={() => onToggleDisabled(user)}
+                  >
+                    {user.disabled ? 'Disabled' : 'Active'}
+                  </Button>
                 </TableCell>
                 <TableCell className='px-4 py-3'>
                   <div className='flex justify-end gap-2'>
-                    <Link href={`/settings/users/${user.id}`}>
-                      <Button
-                        type='button'
-                        variant='secondary'
-                        disabled={busyUserId === user.id}
-                      >
-                        <IconEdit className='size-4' />
-                        Edit
-                      </Button>
-                    </Link>
-                    <Button
-                      type='button'
-                      variant='secondary'
-                      disabled={busyUserId === user.id}
-                      onClick={() => onToggleDisabled(user)}
-                    >
-                      <IconPower className='size-4' />
-                      {user.disabled ? 'Enable' : 'Disable'}
-                    </Button>
                     <Button
                       type='button'
                       variant='destructive'
