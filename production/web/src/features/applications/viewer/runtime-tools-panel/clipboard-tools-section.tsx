@@ -159,7 +159,8 @@ export const ClipboardToolsSection = ({
   return (
     <ToolSection
       title='Clipboard'
-      icon={<IconClipboard className='size-5' />}
+      icon={<IconClipboard className='size-6' />}
+      description='Sync text between the runtime and your device clipboard.'
       className={className}
       hideHeader={hideHeader}
       actions={

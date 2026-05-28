@@ -4,6 +4,7 @@ import { IconCheck, IconDatabase, IconSparkles } from '@tabler/icons-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 import type { SavedApplicationProfile } from './profile-history'
 import type { ApplicationProfileMode } from '@/server/orchestrator/applications/types'
@@ -12,7 +13,7 @@ type ApplicationProfilePickerProps = {
   mode: ApplicationProfileMode
   name: string
   savedProfiles: SavedApplicationProfile[]
-  onModeChange: (mode: ApplicationProfileMode) => void
+  onModeChange?: (mode: ApplicationProfileMode) => void
   onNameChange: (name: string) => void
   disabled?: boolean
   allowCustomName?: boolean
@@ -34,22 +35,24 @@ export const ApplicationProfilePicker = ({
 
   return (
     <div className='grid gap-4'>
-      <div className='grid gap-2'>
-        <Label>Profile storage</Label>
-        <Select
-          value={mode}
-          disabled={disabled}
-          onValueChange={value => onModeChange(value === 'temporary' ? 'temporary' : 'persistent')}
-        >
-          <SelectTrigger className='w-full sm:w-56'>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value='persistent'>Persistent volume</SelectItem>
-            <SelectItem value='temporary'>Temporary data</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <Visible when={!!onModeChange}>
+        <div className='grid gap-2'>
+          <Label>Profile storage</Label>
+          <Select
+            value={mode}
+            disabled={disabled}
+            onValueChange={value => onModeChange!(value === 'temporary' ? 'temporary' : 'persistent')}
+          >
+            <SelectTrigger className='w-full sm:w-56'>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value='persistent'>Persistent volume</SelectItem>
+              <SelectItem value='temporary'>Temporary data</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </Visible>
 
       {mode === 'persistent' ? (
         <>

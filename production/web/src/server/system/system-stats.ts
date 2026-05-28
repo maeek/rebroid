@@ -18,42 +18,76 @@ export interface SystemStats {
   cpuUsagePercentLast50Entrires: [string, number][]
 }
 
-const cpuUsagePercentLast50Entrires: [Date, number][] = []
+type CpuTimes = ReturnType<typeof os.cpus>[number]['times']
 
-function getCPUUsageOverInterval(interval = 1000) {
-  const startTimes = os.cpus().map(cpu => cpu.times)
-
-  setTimeout(() => {
-    const endTimes = os.cpus().map(cpu => cpu.times)
-    let totalStartIdle = 0
-    let totalStartTick = 0
-    let totalEndIdle = 0
-    let totalEndTick = 0
-
-    startTimes.forEach((start, index) => {
-      const end = endTimes[index]
-
-      totalStartIdle += start.idle
-      totalStartTick += start.user + start.nice + start.sys + start.idle + start.irq
-      totalEndIdle += end.idle
-      totalEndTick += end.user + end.nice + end.sys + end.idle + end.irq
-    })
-
-    const idleDifference = totalEndIdle - totalStartIdle
-    const totalDifference = totalEndTick - totalStartTick
-    const cpuUsage = (1 - idleDifference / totalDifference) * 100
-
-    cpuUsagePercentLast50Entrires.push([new Date(), +cpuUsage.toFixed(2)])
-
-    if (cpuUsagePercentLast50Entrires.length > 50) {
-      cpuUsagePercentLast50Entrires.shift()
-    }
-  }, interval)
+interface SystemStatsSampler {
+  previousCpuTimes?: CpuTimes[]
+  samples: [Date, number][]
+  interval?: ReturnType<typeof setInterval>
 }
 
-setInterval(() => {
-  getCPUUsageOverInterval(1000)
-}, 1000)
+declare global {
+  // Keep one sampler across Next dev module reloads.
+  // eslint-disable-next-line no-var
+  var __rebroidSystemStatsSampler: SystemStatsSampler | undefined
+}
+
+const sampler = (globalThis.__rebroidSystemStatsSampler ??= {
+  samples: []
+})
+
+function totalCpuTicks(times: CpuTimes) {
+  return times.user + times.nice + times.sys + times.idle + times.irq
+}
+
+function sampleCpuUsage() {
+  const currentCpuTimes = os.cpus().map(cpu => cpu.times)
+  const previousCpuTimes = sampler.previousCpuTimes
+  sampler.previousCpuTimes = currentCpuTimes
+
+  if (!previousCpuTimes) {
+    return
+  }
+
+  let totalPreviousIdle = 0
+  let totalPreviousTick = 0
+  let totalCurrentIdle = 0
+  let totalCurrentTick = 0
+
+  previousCpuTimes.forEach((previous, index) => {
+    const current = currentCpuTimes[index]
+
+    if (!current) {
+      return
+    }
+
+    totalPreviousIdle += previous.idle
+    totalPreviousTick += totalCpuTicks(previous)
+    totalCurrentIdle += current.idle
+    totalCurrentTick += totalCpuTicks(current)
+  })
+
+  const idleDifference = totalCurrentIdle - totalPreviousIdle
+  const totalDifference = totalCurrentTick - totalPreviousTick
+
+  if (totalDifference <= 0) {
+    return
+  }
+
+  const cpuUsage = (1 - idleDifference / totalDifference) * 100
+
+  sampler.samples.push([new Date(), +cpuUsage.toFixed(2)])
+
+  if (sampler.samples.length > 50) {
+    sampler.samples.shift()
+  }
+}
+
+if (!sampler.interval) {
+  sampleCpuUsage()
+  sampler.interval = setInterval(sampleCpuUsage, 1000)
+  sampler.interval.unref?.()
+}
 
 function formatBytes(bytes: number, decimals = 2) {
   if (bytes === 0) return '0 Bytes'
@@ -87,7 +121,7 @@ export function getSystemStats(): SystemStats {
     networkInterfaces: os.networkInterfaces(),
     homeDirectory: os.homedir(),
     hostname: os.hostname(),
-    cpuUsagePercentLast50Entrires: cpuUsagePercentLast50Entrires.map(([time, cpuUsagePercent]) => [
+    cpuUsagePercentLast50Entrires: sampler.samples.map(([time, cpuUsagePercent]) => [
       time.toISOString(),
       cpuUsagePercent
     ])

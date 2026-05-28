@@ -7,6 +7,7 @@ import classNames from 'classnames'
 import { useTopLoader } from 'nextjs-toploader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ApplicationProfilePicker } from '@/features/applications/profiles/profile-picker'
 import { toast } from '@/hooks/use-toast'
 import { formatUtcDateTime } from '@/lib/format'
@@ -173,9 +174,24 @@ export const DownloadsToolsSection = ({
     <ToolSection
       title='Files'
       description='Upload files into the runtime Download folder and fetch generated files back.'
-      icon={<IconFileDownload className='size-5' />}
+      icon={<IconFileDownload className='size-6' />}
       className={className}
       hideHeader={hideHeader}
+      actions={
+        <Select
+          value={profileMode}
+          disabled={isUploading}
+          onValueChange={value => handleProfileModeChange(value === 'temporary' ? 'temporary' : 'persistent')}
+        >
+          <SelectTrigger className='w-full sm:w-56'>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value='persistent'>Persistent volume</SelectItem>
+            <SelectItem value='temporary'>Temporary data</SelectItem>
+          </SelectContent>
+        </Select>
+      }
     >
       <div className='grid gap-4'>
         <Input
@@ -191,7 +207,6 @@ export const DownloadsToolsSection = ({
           disabled={isUploading}
           allowCustomName={false}
           emptyDescription='Start the app with a persistent profile before browsing or uploading files.'
-          onModeChange={handleProfileModeChange}
           onNameChange={setProfileName}
         />
 

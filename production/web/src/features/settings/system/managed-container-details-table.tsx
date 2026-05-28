@@ -25,9 +25,7 @@ export function ManagedContainerDetailsTable({ resources }: { resources?: System
       </li>
       <li className='p-2 flex justify-between gap-2 text-right text-sm'>
         <span className='font-semibold'>Last Sample:</span>{' '}
-        {resources.containerStatsCollectedAt
-          ? formatUtcDateTime(resources.containerStatsCollectedAt)
-          : 'Unavailable'}
+        {resources.containerStatsCollectedAt ? formatUtcDateTime(resources.containerStatsCollectedAt) : 'Unavailable'}
       </li>
     </ul>
   )

@@ -65,3 +65,11 @@ export class SystemResourcesDto {
   @ApiProperty({ type: [ManagedVolumeUsageDto] })
   volumes!: ManagedVolumeUsageDto[];
 }
+
+export class SystemResourceCapacityDto {
+  @ApiProperty({ nullable: true })
+  hostMemoryBytes!: number | null;
+
+  @ApiProperty({ nullable: true })
+  hostCpuCores!: number | null;
+}

@@ -22,7 +22,7 @@ export const getSystemResourcesAction = async (refreshVolumes = false) => {
 
 export const getResourceLimitBoundsAction = async () => {
   const user = await getCurrentUserContext()
-  const resources = await orchestratorDiagnosticsClient.getSystemResources(false)
+  const resources = await orchestratorDiagnosticsClient.getSystemResourceCapacity()
 
   return buildResourceLimitBounds(resources, user.quotas)
 }

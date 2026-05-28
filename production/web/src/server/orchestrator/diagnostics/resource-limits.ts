@@ -1,4 +1,4 @@
-import type { SystemResources } from './types'
+import type { SystemResourceCapacity } from './types'
 import type { ResourceQuota } from '@/shared/permissions/permissions'
 
 export type ResourceLimitBounds = {
@@ -23,10 +23,10 @@ const boundedMax = (quotaMax: number | null, resourceMax: number | null) => {
 }
 
 export const buildResourceLimitBounds = (
-  resources: Pick<SystemResources, 'dockerRootAvailableBytes' | 'hostCpuCores' | 'hostMemoryBytes'> | null,
+  resources: SystemResourceCapacity | null,
   quotas: ResourceQuota
 ): ResourceLimitBounds => ({
   maxMemoryMb: boundedMax(quotas.maxMemoryMb, bytesToWholeMb(resources?.hostMemoryBytes)),
   maxCpuCpus: boundedMax(quotas.maxCpuCpus, resources?.hostCpuCores ?? null),
-  maxVolumeSizeMb: boundedMax(quotas.maxVolumeSizeMb, bytesToWholeMb(resources?.dockerRootAvailableBytes))
+  maxVolumeSizeMb: quotas.maxVolumeSizeMb
 })

@@ -13,6 +13,7 @@ import {
   isFileWithinApkLimit,
   useOrchestratorUiSettings
 } from '@/features/settings/hooks/use-orchestrator-ui-settings'
+import { useResourceLimitBounds } from '@/features/settings/hooks/use-resource-limit-bounds'
 import { PageBackdrop } from '@/features/shell/components/page-backdrop'
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
 import { toast } from '@/hooks/use-toast'
@@ -29,7 +30,6 @@ import { CreateAppSessionSection } from './create-app-session-section'
 import type { CreateAppFormValues } from './create-app-form.types'
 import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 import type { UploadedApk } from '@/server/orchestrator/applications/types'
-import type { ResourceLimitBounds } from '@/server/orchestrator/diagnostics/resource-limits'
 
 const getInitialFormValues = (settings: OrchestratorUiSettings): CreateAppFormValues => ({
   name: '',
@@ -53,11 +53,9 @@ const appNameFromApk = (file: File, uploaded?: UploadedApk | null) =>
 
 export const CreateAppForm = ({
   initialSettings,
-  resourceLimits,
   permissions
 }: {
   initialSettings: OrchestratorUiSettings
-  resourceLimits: ResourceLimitBounds | null
   permissions: PermissionMap
 }) => {
   const topLoader = useTopLoader()
@@ -80,6 +78,7 @@ export const CreateAppForm = ({
   const showDeviceSection = canChangeBaseImage || canChangeContainerArgs
   const showSessionSection = canChangeSessionLimit
   const showResourcesSection = canChangeResources
+  const resourceLimits = useResourceLimitBounds(showResourcesSection)
 
   useEffect(() => {
     setFormValues(current => ({

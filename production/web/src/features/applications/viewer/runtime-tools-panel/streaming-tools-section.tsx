@@ -18,7 +18,7 @@ import type { ViewerSettings, ViewerStreamingPreset } from '../viewer-settings'
 const maxSizeOptions = [0, 1080, 1440, 1920]
 
 const StreamingSetting = ({ label, children }: { label: string; children: ReactNode }) => (
-  <label className='grid min-w-0 gap-2'>
+  <label className='flex flex-col gap-1.5 min-w-0 gap-2'>
     <span className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>{label}</span>
     {children}
   </label>
@@ -49,31 +49,32 @@ export const StreamingToolsSection = ({
 
   const rendererNote = selectedCapability.reason ?? selectedPlayer?.description
   const streamingSummary = `${viewerSettings.transport.toUpperCase()} • ${selectedPlayer?.label ?? viewerSettings.player} • ${viewerSettings.bitrateMbps} Mbps • ${viewerSettings.maxFps} fps • ${viewerSettings.maxSize === 0 ? 'Fit frame' : `${viewerSettings.maxSize}px`}`
-  const transportLabel = viewerSettings.transport === 'webrtc' ? 'WebRTC' : 'WebSocket'
-  const transportDetail =
-    viewerSettings.transport === 'webrtc'
-      ? 'WebRTC selected: video and controls use the low-latency peer connection when the viewer reloads.'
-      : 'WebSocket selected: video and controls use the legacy websocket stream when the viewer reloads.'
 
   return (
     <ToolSection
-      title='Streaming'
-      description='Changes apply when the viewer reloads or starts a new stream.'
-      icon={<IconCast className='size-5' />}
-      className={className}
-      hideHeader={hideHeader}
-    >
-      <div className='grid gap-4'>
-        <div className='flex min-w-0 flex-wrap items-center gap-2 rounded-md border border-border/70 bg-muted/30 px-3 py-2'>
+      title={
+        <div className='flex items-center gap-x-2'>
+          Streaming
           <Badge
             variant={viewerSettings.transport === 'webrtc' ? 'status' : 'secondary'}
             className='uppercase tracking-wide'
           >
-            {transportLabel}
+            {viewerSettings.transport === 'webrtc' ? 'WebRTC' : 'WebSocket'}
           </Badge>
-          <span className='min-w-0 flex-1 text-xs leading-relaxed text-muted-foreground'>{transportDetail}</span>
         </div>
-
+      }
+      description={
+        <div className='flex flex-wrap items-center gap-x-2 text-xs text-secondary-foreground'>
+          <span>{streamingSummary}</span>
+          <span className='hidden text-border sm:inline'>/</span>
+          <span>{rendererNote}</span>
+        </div>
+      }
+      icon={<IconCast className='size-6' />}
+      className={className}
+      hideHeader={hideHeader}
+    >
+      <div className='grid gap-4'>
         <div className='grid gap-x-6 gap-y-4 md:grid-cols-2'>
           <StreamingSetting label='Preset'>
             <Select
@@ -163,12 +164,6 @@ export const StreamingToolsSection = ({
               </SelectContent>
             </Select>
           </StreamingSetting>
-        </div>
-
-        <div className='flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground'>
-          <span>{streamingSummary}</span>
-          <span className='hidden text-border sm:inline'>/</span>
-          <span>{rendererNote}</span>
         </div>
       </div>
     </ToolSection>

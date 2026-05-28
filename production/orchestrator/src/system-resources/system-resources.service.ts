@@ -72,6 +72,15 @@ export class SystemResourcesService {
     };
   }
 
+  async getCapacity() {
+    const hostCapacity = await this.docker.hostCapacity();
+
+    return {
+      hostMemoryBytes: hostCapacity.memoryBytes,
+      hostCpuCores: hostCapacity.cpuCores,
+    };
+  }
+
   private async getAvailableBytes(path: string | null) {
     if (!path) {
       return null;

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Setting } from '@/features/settings/components/setting'
+import { useResourceLimitBounds } from '@/features/settings/hooks/use-resource-limit-bounds'
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { toast } from '@/hooks/use-toast'
@@ -21,7 +22,6 @@ import { PermissionSwitchTable, type PermissionInheritanceMap } from './componen
 import { QuotaFields } from './components/quota-fields'
 import { UserAvatarInput } from './components/user-avatar-input'
 import type { PublicUser, UserGroup, UserRole } from '@/server/auth/user'
-import type { ResourceLimitBounds } from '@/server/orchestrator/diagnostics/resource-limits'
 
 type UserDraft = {
   username: string
@@ -67,18 +67,11 @@ const getInheritanceMap = (groups: UserGroup[], groupIds: string[], role: UserRo
   }, {})
 }
 
-export const UserEditPage = ({
-  user,
-  groups,
-  resourceLimits
-}: {
-  user: PublicUser
-  groups: UserGroup[]
-  resourceLimits: ResourceLimitBounds | null
-}) => {
+export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserGroup[] }) => {
   const router = useRouter()
   const [draft, setDraft] = useState(() => toDraft(user))
   const [isSaving, setIsSaving] = useState(false)
+  const resourceLimits = useResourceLimitBounds(true)
   const inheritedPermissions = useMemo(
     () => getInheritanceMap(groups, draft.groupIds, draft.role),
     [draft.groupIds, draft.role, groups]

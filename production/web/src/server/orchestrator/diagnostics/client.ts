@@ -1,5 +1,5 @@
 import { request } from '../request'
-import type { OrchestratorHealth, ServiceHealth, SystemResources } from './types'
+import type { OrchestratorHealth, ServiceHealth, SystemResourceCapacity, SystemResources } from './types'
 
 export const orchestratorDiagnosticsClient = {
   health() {
@@ -13,5 +13,9 @@ export const orchestratorDiagnosticsClient = {
   getSystemResources(refreshVolumes = false) {
     const query = new URLSearchParams({ refreshVolumes: String(refreshVolumes) })
     return request<SystemResources>(`/system-resources?${query.toString()}`)
+  },
+
+  getSystemResourceCapacity() {
+    return request<SystemResourceCapacity>('/system-resources/capacity')
   }
 }

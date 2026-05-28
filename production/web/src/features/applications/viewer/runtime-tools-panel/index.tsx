@@ -39,7 +39,7 @@ export const RuntimeToolsPanel = ({
           ? {
               id: 'files' as const,
               title: 'Files',
-              description: 'Upload and fetch files',
+              description: 'Upload and download files',
               Icon: IconFolder
             }
           : null,
@@ -102,7 +102,7 @@ export const RuntimeToolsPanel = ({
               key={tool.id}
               className={cn(
                 'overflow-hidden rounded-2xl border bg-card/25 transition-colors',
-                selected ? 'border-primary/75 ring-1 ring-primary/20' : 'border-border/70'
+                selected ? 'ring-1 ring-primary/20' : 'border-border/70'
               )}
             >
               <button
@@ -140,7 +140,7 @@ export const RuntimeToolsPanel = ({
                 })}
               >
                 <div className='min-h-0 overflow-hidden'>
-                  <div className='border-t border-border/60 px-4 py-4'>{renderToolContent(tool.id, true)}</div>
+                  <div className='border-t border-border/60 py-4'>{renderToolContent(tool.id, true)}</div>
                 </div>
               </div>
             </div>

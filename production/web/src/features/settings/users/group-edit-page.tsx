@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { useResourceLimitBounds } from '@/features/settings/hooks/use-resource-limit-bounds'
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { toast } from '@/hooks/use-toast'
@@ -15,7 +16,6 @@ import { LabeledField } from './components/labeled-field'
 import { PermissionSwitchTable } from './components/permission-switch-table'
 import { QuotaFields } from './components/quota-fields'
 import type { UserGroup, UserRole } from '@/server/auth/user'
-import type { ResourceLimitBounds } from '@/server/orchestrator/diagnostics/resource-limits'
 import type { PermissionMap, ResourceQuota } from '@/shared/permissions/permissions'
 
 type GroupDraft = {
@@ -34,16 +34,11 @@ const toDraft = (group: UserGroup): GroupDraft => ({
   quotas: group.quotas
 })
 
-export const GroupEditPage = ({
-  group,
-  resourceLimits
-}: {
-  group: UserGroup
-  resourceLimits: ResourceLimitBounds | null
-}) => {
+export const GroupEditPage = ({ group }: { group: UserGroup }) => {
   const router = useRouter()
   const [draft, setDraft] = useState(() => toDraft(group))
   const [isSaving, setIsSaving] = useState(false)
+  const resourceLimits = useResourceLimitBounds(true)
 
   const updateDraft = (patch: Partial<GroupDraft>) => {
     setDraft(current => ({ ...current, ...patch }))

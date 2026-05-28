@@ -24,9 +24,7 @@ export const OrchestratorResources = ({
   isRefreshing?: boolean
   onRefresh?: (refreshVolumes?: boolean) => Promise<void>
 }) => {
-  const volumeCacheLabel = resources?.volumeUsageCachedAt
-    ? formatUtcDateTime(resources.volumeUsageCachedAt)
-    : 'never'
+  const volumeCacheLabel = resources?.volumeUsageCachedAt ? formatUtcDateTime(resources.volumeUsageCachedAt) : 'never'
 
   return (
     <Section

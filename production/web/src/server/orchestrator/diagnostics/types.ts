@@ -15,6 +15,11 @@ export interface SystemResources {
   volumes: Array<{ name: string; sizeBytes: number | null }>
 }
 
+export interface SystemResourceCapacity {
+  hostMemoryBytes: number | null
+  hostCpuCores: number | null
+}
+
 export interface ServiceHealth {
   ok: boolean
   status: 'healthy' | 'unhealthy' | 'offline'
