@@ -22,7 +22,9 @@ describe('apk image utilities', () => {
   });
 
   it('returns null for unsupported content', () => {
-    expect(imageDimensions(Buffer.from('not-an-image'), 'image/png')).toBeNull();
+    expect(
+      imageDimensions(Buffer.from('not-an-image'), 'image/png'),
+    ).toBeNull();
     expect(imageDimensions(Buffer.from('nope'), 'image/jpeg')).toBeNull();
   });
 });

@@ -39,10 +39,14 @@ export class AndroidAppsViewerNetworkService {
       this.logger.warn(
         `Could not prepare display sidecar network for ${app.id}: ${message}`,
       );
-      await this.logs.append(app.id, 'Display sidecar network preparation failed', {
-        networkName: app.networkName,
-        message,
-      });
+      await this.logs.append(
+        app.id,
+        'Display sidecar network preparation failed',
+        {
+          networkName: app.networkName,
+          message,
+        },
+      );
     }
   }
 
@@ -155,10 +159,14 @@ export class AndroidAppsViewerNetworkService {
       this.logger.warn(
         `Could not ensure Redroid TCP ADB for viewer ${app.id}: ${message}`,
       );
-      await this.logs.append(app.id, 'Redroid TCP ADB ensure failed for viewer', {
-        adbPort: app.adbPort,
-        message,
-      });
+      await this.logs.append(
+        app.id,
+        'Redroid TCP ADB ensure failed for viewer',
+        {
+          adbPort: app.adbPort,
+          message,
+        },
+      );
     }
   }
 }

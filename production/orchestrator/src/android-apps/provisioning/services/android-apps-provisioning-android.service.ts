@@ -244,7 +244,10 @@ export class AndroidAppsProvisioningAndroidService {
 
     let containerLogs = '';
     try {
-      containerLogs = await this.lifecycle.getContainerLogs(app.containerId, 200);
+      containerLogs = await this.lifecycle.getContainerLogs(
+        app.containerId,
+        200,
+      );
     } catch (error) {
       containerLogs = getErrorMessage(error);
     }
@@ -261,13 +264,24 @@ export class AndroidAppsProvisioningAndroidService {
 
   private bootDiagnosticSummary(text: string) {
     const reasons: string[] = [];
-    if (text.includes('binder') && text.match(/no such file|not found|cannot access/)) {
-      reasons.push('binder devices may be missing inside the runtime container');
+    if (
+      text.includes('binder') &&
+      text.match(/no such file|not found|cannot access/)
+    ) {
+      reasons.push(
+        'binder devices may be missing inside the runtime container',
+      );
     }
     if (text.includes('permission denied')) {
-      reasons.push('container permissions or security profile may be blocking Redroid');
+      reasons.push(
+        'container permissions or security profile may be blocking Redroid',
+      );
     }
-    if (text.includes('avc:') || text.includes('apparmor') || text.includes('seccomp')) {
+    if (
+      text.includes('avc:') ||
+      text.includes('apparmor') ||
+      text.includes('seccomp')
+    ) {
       reasons.push('host security policy may be blocking Redroid');
     }
     if (text.includes('no space left')) {
@@ -280,7 +294,10 @@ export class AndroidAppsProvisioningAndroidService {
       text.includes('ashmem') &&
       text.match(/no such file|not found|cannot access|couldn't create ashmem/)
     ) {
-      if (text.includes('ro.boot.use_memfd=true') || text.includes('sys.use_memfd=true')) {
+      if (
+        text.includes('ro.boot.use_memfd=true') ||
+        text.includes('sys.use_memfd=true')
+      ) {
         reasons.push(
           'Android display stack is still trying to use ashmem even though memfd is enabled; host /dev/ashmem support may still be required for this image',
         );
@@ -291,7 +308,10 @@ export class AndroidAppsProvisioningAndroidService {
       }
     }
 
-    return reasons.join('; ') || 'no obvious boot blocker detected from container diagnostics';
+    return (
+      reasons.join('; ') ||
+      'no obvious boot blocker detected from container diagnostics'
+    );
   }
 
   private truncate(value: string, maxLength: number) {

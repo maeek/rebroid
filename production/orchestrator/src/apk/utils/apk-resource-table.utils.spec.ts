@@ -28,8 +28,7 @@ describe('apk resource table utilities', () => {
     expect(readChunkHeaderSize(chunk, 0)).toBe(8);
     expect(readChunkHeaderSize(Buffer.alloc(2), 0)).toBe(8);
     expect(readBinaryXmlResourceMap(chunk, 0, 16)).toEqual([
-      0x01020304,
-      0x05060708,
+      0x01020304, 0x05060708,
     ]);
   });
 

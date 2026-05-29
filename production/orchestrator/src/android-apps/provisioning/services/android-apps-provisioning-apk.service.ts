@@ -347,7 +347,9 @@ export class AndroidAppsProvisioningApkService {
     }
 
     const before = new Set(packagesBefore);
-    const newlyInstalled = packagesAfter.filter((packageName) => !before.has(packageName));
+    const newlyInstalled = packagesAfter.filter(
+      (packageName) => !before.has(packageName),
+    );
     if (newlyInstalled.length === 1) {
       return newlyInstalled[0];
     }

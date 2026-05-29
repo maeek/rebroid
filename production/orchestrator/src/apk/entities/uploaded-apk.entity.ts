@@ -46,7 +46,10 @@ export class UploadedApk {
   @Column({ type: 'text', nullable: true })
   displayName!: string | null;
 
-  @ApiPropertyOptional({ example: 'org.thoughtcrime.securesms', nullable: true })
+  @ApiPropertyOptional({
+    example: 'org.thoughtcrime.securesms',
+    nullable: true,
+  })
   @Column({ type: 'text', nullable: true })
   packageName!: string | null;
 

@@ -1,9 +1,8 @@
 export const shortDockerId = (id: string) =>
   id.replace(/^sha256:/, '').slice(0, 12);
 
-export const isString = (
-  value: string | undefined,
-): value is string => typeof value === 'string' && value.length > 0;
+export const isString = (value: string | undefined): value is string =>
+  typeof value === 'string' && value.length > 0;
 
 export const parseCommandLine = (value?: string | null) => {
   if (!value?.trim()) {

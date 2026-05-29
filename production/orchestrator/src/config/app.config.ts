@@ -108,7 +108,8 @@ export default registerAs('app', () => {
     displaySidecar: {
       containerId: process.env.DISPLAY_SIDECAR_CONTAINER_ID || undefined,
       containerName: displaySidecarContainerName,
-      image: process.env.DISPLAY_SIDECAR_IMAGE ?? 'rebroid/display-sidecar:latest',
+      image:
+        process.env.DISPLAY_SIDECAR_IMAGE ?? 'rebroid/display-sidecar:latest',
       buildContext: resolve(
         process.env.DISPLAY_SIDECAR_BUILD_CONTEXT ??
           defaultDisplaySidecarBuildContext,

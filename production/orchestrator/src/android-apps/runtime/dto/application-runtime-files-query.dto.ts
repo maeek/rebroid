@@ -13,7 +13,8 @@ export class ApplicationRuntimeFilesQueryDto {
 
   @ApiPropertyOptional({
     example: 'default',
-    description: 'Persistent profile name to browse when profileMode is persistent.',
+    description:
+      'Persistent profile name to browse when profileMode is persistent.',
   })
   @IsOptional()
   @IsString()

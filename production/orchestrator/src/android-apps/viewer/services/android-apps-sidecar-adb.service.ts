@@ -49,7 +49,10 @@ export class AndroidAppsSidecarAdbService {
   }
 
   async notifications(app: AndroidApplication) {
-    const result = await this.request<{ output: string }>(app, '/notifications');
+    const result = await this.request<{ output: string }>(
+      app,
+      '/notifications',
+    );
     return parseAndroidNotifications(result.output);
   }
 

@@ -197,9 +197,11 @@ export class DockerSidecarService implements OnModuleInit {
           `timeout 10s adb connect ${this.shellQuote(target)}`,
         ].join('; '),
       ];
-      const output = await this.exec.execInContainerWithOutput(sidecar.id, [
-        ...connectCommand,
-      ], { timeoutMs: 20_000 });
+      const output = await this.exec.execInContainerWithOutput(
+        sidecar.id,
+        [...connectCommand],
+        { timeoutMs: 20_000 },
+      );
       const connectFailure = this.viewerTargetErrorFromOutput({
         command: connectCommand,
         stdout: output.stdout,
@@ -219,9 +221,11 @@ export class DockerSidecarService implements OnModuleInit {
         '-lc',
         `timeout 10s adb -s ${this.shellQuote(target)} get-state 2>&1 || true`,
       ];
-      const state = await this.exec.execInContainerWithOutput(sidecar.id, [
-        ...stateCommand,
-      ], { timeoutMs: 15_000 });
+      const state = await this.exec.execInContainerWithOutput(
+        sidecar.id,
+        [...stateCommand],
+        { timeoutMs: 15_000 },
+      );
       let currentState = state.stdout.trim().toLowerCase();
       let lastStateCommand = stateCommand;
       let lastState = state;
@@ -511,7 +515,12 @@ export class DockerSidecarService implements OnModuleInit {
     const [start, end] = this.displaySidecarWebrtcUdpPortRange
       .split('-')
       .map((value) => Number(value));
-    if (!Number.isInteger(start) || !Number.isInteger(end) || start <= 0 || end < start) {
+    if (
+      !Number.isInteger(start) ||
+      !Number.isInteger(end) ||
+      start <= 0 ||
+      end < start
+    ) {
       return null;
     }
 
@@ -569,7 +578,9 @@ export class DockerSidecarService implements OnModuleInit {
   private async findSidecar() {
     if (this.displaySidecarContainerId) {
       try {
-        const container = this.docker.getContainer(this.displaySidecarContainerId);
+        const container = this.docker.getContainer(
+          this.displaySidecarContainerId,
+        );
         await container.inspect();
         return container;
       } catch (error) {
@@ -596,7 +607,9 @@ export class DockerSidecarService implements OnModuleInit {
     this.logger.log(
       `Building missing display sidecar image ${this.displaySidecarImage} from ${this.displaySidecarBuildContext}.`,
     );
-    const context = await this.createBuildContextTar(this.displaySidecarBuildContext);
+    const context = await this.createBuildContextTar(
+      this.displaySidecarBuildContext,
+    );
     const stream = await this.docker.buildImage(context, {
       t: this.displaySidecarImage,
     });

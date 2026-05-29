@@ -1,12 +1,12 @@
-import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm'
+import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
 
 export class AddApplicationSavedProfiles1716080000000 implements MigrationInterface {
-  name = 'AddApplicationSavedProfiles1716080000000'
+  name = 'AddApplicationSavedProfiles1716080000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const table = await queryRunner.getTable('android_applications')
+    const table = await queryRunner.getTable('android_applications');
     if (!table || table.findColumnByName('savedProfilesJson')) {
-      return
+      return;
     }
 
     await queryRunner.addColumn(
@@ -17,7 +17,7 @@ export class AddApplicationSavedProfiles1716080000000 implements MigrationInterf
         isNullable: false,
         default: "'[]'",
       }),
-    )
+    );
 
     await queryRunner.query(`
       UPDATE android_applications
@@ -27,13 +27,13 @@ export class AddApplicationSavedProfiles1716080000000 implements MigrationInterf
         'name',
         COALESCE(NULLIF(profileName, ''), 'default')
       ))
-    `)
+    `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    const table = await queryRunner.getTable('android_applications')
+    const table = await queryRunner.getTable('android_applications');
     if (table?.findColumnByName('savedProfilesJson')) {
-      await queryRunner.dropColumn('android_applications', 'savedProfilesJson')
+      await queryRunner.dropColumn('android_applications', 'savedProfilesJson');
     }
   }
 }

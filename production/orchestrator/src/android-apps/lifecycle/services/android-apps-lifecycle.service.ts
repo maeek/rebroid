@@ -844,8 +844,9 @@ export class AndroidAppsLifecycleService {
       .map((device) => device.trim())
       .filter(Boolean)
       .map((device) => {
-        const [hostPath, containerPath = hostPath, permissions = 'rwm'] =
-          device.split(':').map((part) => part.trim());
+        const [hostPath, containerPath = hostPath, permissions = 'rwm'] = device
+          .split(':')
+          .map((part) => part.trim());
         return [hostPath, containerPath, permissions || 'rwm'].join(':');
       })
       .sort();
@@ -887,12 +888,16 @@ export class AndroidAppsLifecycleService {
       return;
     }
 
-    await this.logs.append(app.id, 'Recreating container for runtime defaults', {
-      containerId: app.containerId,
-      containerName: app.containerName,
-      previousContainerArgs,
-      nextContainerArgs,
-    });
+    await this.logs.append(
+      app.id,
+      'Recreating container for runtime defaults',
+      {
+        containerId: app.containerId,
+        containerName: app.containerName,
+        previousContainerArgs,
+        nextContainerArgs,
+      },
+    );
     await this.removeManagedContainer(app);
     app.recreateContainerOnNextStart = false;
     app.statusMessage =

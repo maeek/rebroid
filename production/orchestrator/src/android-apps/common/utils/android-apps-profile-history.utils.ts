@@ -41,10 +41,7 @@ export const rememberSavedProfile = (
   profile: AndroidApplicationSavedProfile,
 ) => {
   const name = profile.name.trim() || 'default';
-  const profiles = [
-    { mode: profile.mode, name },
-    ...parseSavedProfiles(raw),
-  ];
+  const profiles = [{ mode: profile.mode, name }, ...parseSavedProfiles(raw)];
   const seen = new Set<string>();
   return JSON.stringify(
     profiles

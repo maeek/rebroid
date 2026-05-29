@@ -11,7 +11,8 @@ export class CloneAndroidApplicationDto {
   ownerUserId?: string;
 
   @ApiPropertyOptional({
-    description: 'Display name for the cloned application. Defaults to the source app name.',
+    description:
+      'Display name for the cloned application. Defaults to the source app name.',
     example: 'Signal Android',
   })
   @IsOptional()

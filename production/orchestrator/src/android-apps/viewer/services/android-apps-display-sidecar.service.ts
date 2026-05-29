@@ -67,10 +67,13 @@ export class AndroidAppsDisplaySidecarService {
     command: ApplicationViewerControlCommand,
   ): Promise<DisplayActionResponse> {
     const session = await this.ensureSession(app);
-    return this.request<DisplayActionResponse>(`/sessions/${session.id}/actions`, {
-      method: 'POST',
-      body: JSON.stringify({ action: command }),
-    });
+    return this.request<DisplayActionResponse>(
+      `/sessions/${session.id}/actions`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ action: command }),
+      },
+    );
   }
 
   async setClipboard(

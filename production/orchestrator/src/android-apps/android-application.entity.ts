@@ -300,7 +300,10 @@ export class AndroidApplication {
   @Column({ type: 'text', nullable: true })
   apkOriginalName!: string | null;
 
-  @ApiPropertyOptional({ example: 'org.thoughtcrime.securesms', nullable: true })
+  @ApiPropertyOptional({
+    example: 'org.thoughtcrime.securesms',
+    nullable: true,
+  })
   @Column({ type: 'text', nullable: true })
   apkPackageName!: string | null;
 

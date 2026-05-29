@@ -15,7 +15,10 @@ export const formatContainerCommandFailureMessage = ({
   stdout: string;
   stderr: string;
 }) => {
-  const detail = [stderr.trim(), stdout.trim()].filter(Boolean).join(' ').trim();
+  const detail = [stderr.trim(), stdout.trim()]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
   return detail
     ? `Container command failed with exit code ${exitCode}: ${command.join(' ')} ${detail}`
     : `Container command failed with exit code ${exitCode}: ${command.join(' ')}`;

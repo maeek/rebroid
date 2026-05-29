@@ -24,7 +24,9 @@ export class DockerNetworkRuntimeService {
     try {
       return await this.engine.docker.createNetwork({
         Name: networkName,
-        Internal: !this.config.getOrThrow<boolean>('app.docker.iptablesEnabled'),
+        Internal: !this.config.getOrThrow<boolean>(
+          'app.docker.iptablesEnabled',
+        ),
         CheckDuplicate: true,
         Labels: this.engine.labels(applicationId, 'network'),
       });

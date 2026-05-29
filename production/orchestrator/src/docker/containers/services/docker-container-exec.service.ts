@@ -44,7 +44,11 @@ export class DockerContainerExecService {
       const timeout =
         options.timeoutMs && options.timeoutMs > 0
           ? setTimeout(() => {
-              stream.destroy(new Error(`Container exec timed out after ${options.timeoutMs}ms: ${command.join(' ')}`));
+              stream.destroy(
+                new Error(
+                  `Container exec timed out after ${options.timeoutMs}ms: ${command.join(' ')}`,
+                ),
+              );
             }, options.timeoutMs)
           : null;
       const cleanup = () => {
