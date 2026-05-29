@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import type { DragEvent } from 'react'
-import { IconDownload, IconFileDownload, IconFolderUp, IconLoader2, IconRefresh } from '@tabler/icons-react'
+import { IconDownload, IconFolderUp, IconLoader2, IconRefresh } from '@tabler/icons-react'
 import classNames from 'classnames'
 import { useTopLoader } from 'nextjs-toploader'
 import { Button } from '@/components/ui/button'
@@ -178,7 +178,6 @@ export const DownloadsToolsSection = ({
     <ToolSection
       title='Files'
       description='Upload files into the runtime Download folder and fetch generated files back.'
-      icon={<IconFileDownload className='size-6' />}
       className={className}
       hideHeader={hideHeader}
     >

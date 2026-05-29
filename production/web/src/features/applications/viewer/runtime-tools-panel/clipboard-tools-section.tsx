@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
-import { IconClipboard, IconDownload, IconLoader2, IconUpload } from '@tabler/icons-react'
+import { IconDevicesCheck, IconLoader2 } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/hooks/use-toast'
@@ -159,33 +159,20 @@ export const ClipboardToolsSection = ({
   return (
     <ToolSection
       title='Clipboard'
-      icon={<IconClipboard className='size-6' />}
       description='Sync text between the runtime and your device clipboard.'
       className={className}
       hideHeader={hideHeader}
       actions={
-        <>
-          <Button
-            type='button'
-            size='sm'
-            variant='ghost'
-            disabled={!runtimeAvailable || isClipboardBusy}
-            onClick={pullClipboard}
-          >
-            {isClipboardBusy ? <IconLoader2 className='size-4 animate-spin' /> : <IconDownload className='size-4' />}
-            Pull
-          </Button>
-          <Button
-            type='button'
-            size='sm'
-            variant='ghost'
-            disabled={!runtimeAvailable || isClipboardBusy}
-            onClick={pushClipboard}
-          >
-            {isClipboardBusy ? <IconLoader2 className='size-4 animate-spin' /> : <IconUpload className='size-4' />}
-            Push
-          </Button>
-        </>
+        <Button
+          type='button'
+          size='sm'
+          variant='ghost'
+          disabled={!runtimeAvailable || isClipboardBusy}
+          onClick={pullClipboard}
+        >
+          {isClipboardBusy ? <IconLoader2 className='size-4 animate-spin' /> : <IconDevicesCheck className='size-4' />}
+          Read from device
+        </Button>
       }
     >
       <Textarea

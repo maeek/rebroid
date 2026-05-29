@@ -287,16 +287,6 @@ export const ViewerControlBar = ({
 
   const controls = (
     <>
-      <Visible when={runtimeAvailable && canCaptureScreenshot}>
-        <ControlButton
-          label='Capture screenshot'
-          disabled={isCapturing}
-          onClick={onCaptureScreenshot}
-        >
-          {isCapturing ? <IconLoader2 className='size-4 animate-spin' /> : <IconPhoto className='size-4' />}
-        </ControlButton>
-      </Visible>
-
       <div className='flex items-center rounded-md border border-border/60 bg-secondary/35 p-1'>
         <IconButtonTooltip label='Back'>
           <Button
@@ -427,6 +417,16 @@ export const ViewerControlBar = ({
           <DropdownMenuItem onClick={() => sendControl('collapse-panels')}>Collapse panels</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <Visible when={runtimeAvailable && canCaptureScreenshot}>
+        <ControlButton
+          label='Capture screenshot'
+          disabled={isCapturing}
+          onClick={onCaptureScreenshot}
+        >
+          {isCapturing ? <IconLoader2 className='size-4 animate-spin' /> : <IconPhoto className='size-4' />}
+        </ControlButton>
+      </Visible>
 
       <Visible when={mode !== 'floating'}>
         <IconButtonTooltip label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}>

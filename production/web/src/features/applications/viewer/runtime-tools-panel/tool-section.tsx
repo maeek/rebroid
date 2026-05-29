@@ -13,7 +13,7 @@ export const ToolSection = ({
 }: {
   title: ReactNode
   description?: ReactNode
-  icon: ReactNode
+  icon?: ReactNode
   actions?: ReactNode
   children: ReactNode
   className?: string
@@ -21,16 +21,22 @@ export const ToolSection = ({
 }) => (
   <section
     className={cn(
-      'flex w-full flex-col gap-4 rounded-lg border border-border/70 bg-card/20 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] backdrop-blur-md max-md:p-4',
+      'flex w-full flex-col gap-4 px-5 max-md:px-4',
+      {
+        'rounded-lg border border-border/70 bg-card/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] backdrop-blur-md':
+          hideHeader
+      },
       className
     )}
   >
     <Visible when={!hideHeader || actions}>
       <div className='flex flex-wrap items-start justify-between gap-3'>
         <div className={cn('flex min-w-0 items-center gap-3', hideHeader && 'sr-only')}>
-          <div className='text-primary flex size-10 shrink-0 items-center justify-center rounded-lg border transition-colors border-border/70 bg-background/40'>
-            {icon}
-          </div>
+          <Visible when={icon}>
+            <div className='text-primary flex size-10 shrink-0 items-center justify-center rounded-lg border transition-colors border-border/70 bg-background/40'>
+              {icon}
+            </div>
+          </Visible>
           <div className='min-w-0'>
             <h3 className='font-medium'>{title}</h3>
             <Visible when={!!description}>

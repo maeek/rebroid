@@ -1,7 +1,6 @@
 'use client'
 
 import { useMemo, useState, type ReactNode } from 'react'
-import { IconCast } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -68,7 +67,6 @@ export const StreamingToolsSection = ({
           <span>{rendererNote}</span>
         </div>
       }
-      icon={<IconCast className='size-6' />}
       className={className}
       hideHeader={hideHeader}
     >

@@ -143,12 +143,12 @@ export function SystemSettingsPage() {
                 onRefresh={refreshResources}
               />
             </Visible>
-            <div className='grid gap-6 xl:grid-cols-[minmax(20rem,24rem)_minmax(0,1fr)]'>
+            <div className='grid gap-6 xl:grid-cols-[minmax(20rem,24rem)_minmax(0,1fr)] min-w-0'>
               <Section
                 title='Host memory'
                 boxed
                 titleClassName='pb-4'
-                className='h-full'
+                className='h-full min-w-0'
               >
                 <MemoryChart
                   totalMemory={systemUtilization?.totalMemoryBytes ?? 0}
@@ -159,7 +159,7 @@ export function SystemSettingsPage() {
                 title='Host CPU history'
                 boxed
                 titleClassName='pb-4'
-                className='h-full'
+                className='h-full min-w-0'
               >
                 <div className='h-160 w-full max-lg:h-96'>
                   <SystemChart cpuData={systemUtilization?.cpuUsagePercentLast50Entrires} />

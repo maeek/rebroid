@@ -229,9 +229,9 @@ export const OrchestratorStatus = () => {
             >
               <span className={cn('mt-1 size-2.5 shrink-0 rounded-full', dotTone(service.status))} />
               <div className='min-w-0 grow shrink flex justify-between gap-2 items-center'>
-                <div>
+                <div className='min-w-0'>
                   <p className='text-xs font-normal text-foreground'>{name}</p>
-                  <p className='mt-0.5 line-clamp-2 text-[10px] text-secondary-foreground'>{service.message}</p>
+                  <p className='mt-0.5 line-clamp-2 text-[10px] text-secondary-foreground min-w-0'>{service.message}</p>
                 </div>
                 <span
                   className={cn(

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { IconCast, IconChevronDown, IconClipboard, IconFolder } from '@tabler/icons-react'
+import { IconCast, IconChevronDown, IconClipboard, IconFolder, IconLogs } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { ClipboardToolsSection } from './clipboard-tools-section'
@@ -11,7 +11,7 @@ import type { AppDefinition } from '@/features/applications/domain/app-definitio
 import type { ViewerSettings } from '@/features/applications/viewer/viewer-settings'
 import type { PermissionMap } from '@/shared/permissions/permissions'
 
-type RuntimeToolId = 'clipboard' | 'files' | 'streaming'
+type RuntimeToolId = 'clipboard' | 'files' | 'streaming' | 'logs'
 
 export const RuntimeToolsPanel = ({
   app,
@@ -27,7 +27,7 @@ export const RuntimeToolsPanel = ({
   const tools = useMemo(
     () =>
       [
-        hasPermission(permissions, 'applications:sync-clipboard') && app.running
+        hasPermission(permissions, 'applications:sync-clipboard') // && app.running
           ? {
               id: 'clipboard' as const,
               title: 'Clipboard',
@@ -41,12 +41,20 @@ export const RuntimeToolsPanel = ({
           description: `${viewerSettings.transport.toUpperCase()} • ${viewerSettings.bitrateMbps} Mbps`,
           Icon: IconCast
         },
-        hasPermission(permissions, 'applications:transfer-files') && app.running
+        hasPermission(permissions, 'applications:transfer-files') // && app.running
           ? {
               id: 'files' as const,
               title: 'Files',
               description: 'Upload and download files',
               Icon: IconFolder
+            }
+          : null,
+        hasPermission(permissions, 'applications:view-logs') // && app.running
+          ? {
+              id: 'logs' as const,
+              title: 'Logs',
+              description: 'View application logs',
+              Icon: IconLogs
             }
           : null
       ].filter((tool): tool is NonNullable<typeof tool> => Boolean(tool)),
@@ -79,6 +87,10 @@ export const RuntimeToolsPanel = ({
           hideHeader={inline}
         />
       )
+    }
+
+    if (toolId === 'logs') {
+      return <div className='min-h-30' />
     }
 
     return (
@@ -148,10 +160,26 @@ export const RuntimeToolsPanel = ({
         })}
       </div>
 
-      <div className='hidden flex-col gap-4 md:flex'>
-        {tools.map(tool => (
-          <div key={tool.id}>{renderToolContent(tool.id)}</div>
-        ))}
+      <div className='hidden flex-col gap-4 md:flex rounded-lg border border-border/70 bg-card/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] backdrop-blur-md'>
+        <div className='w-full flex gap-6 border-b-2 border-border/70 px-4'>
+          {tools.map(tool => (
+            <button
+              key={tool.id}
+              type='button'
+              onClick={() => setActiveTool(tool.id)}
+              className={cn('p-4 flex gap-2 items-center translate-y-0.5', {
+                'border-b-2 border-primary': activeTool === tool.id
+              })}
+            >
+              <tool.Icon className={cn('size-5', { 'text-primary': activeTool === tool.id })} />
+              {tool.title}
+            </button>
+          ))}
+        </div>
+        <div className='pb-4'>
+          {tools.find(tool => tool.id === activeTool)?.id &&
+            renderToolContent(tools.find(tool => tool.id === activeTool)!.id)}
+        </div>
       </div>
     </div>
   )
