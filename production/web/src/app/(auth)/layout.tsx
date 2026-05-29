@@ -10,19 +10,13 @@ export default function FilesLayout({ children }: { children: React.ReactNode })
           <PixelBlast
             className='w-full h-full'
             variant='square'
-            pixelSize={3}
-            color='#10B981'
-            patternScale={3.75}
+            pixelSize={5}
+            color='#34A853'
+            patternScale={4}
             patternDensity={1}
             pixelSizeJitter={0.75}
             enableRipples={false}
-            rippleSpeed={0.4}
-            rippleThickness={0.12}
-            rippleIntensityScale={1.5}
             liquid={false}
-            liquidStrength={0.12}
-            liquidRadius={1.2}
-            liquidWobbleSpeed={5}
             speed={1.35}
             edgeFade={0.38}
             transparent
