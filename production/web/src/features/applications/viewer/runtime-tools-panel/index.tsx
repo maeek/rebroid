@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { IconCast, IconChevronDown, IconClipboard, IconFolder, IconLogs } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
 import { hasPermission } from '@/shared/permissions/permissions'
+import { AppLogsContent } from '../app-logs-content'
 import { ClipboardToolsSection } from './clipboard-tools-section'
 import { DownloadsToolsSection } from './downloads-tools-section'
 import { StreamingToolsSection } from './streaming-tools-section'
@@ -27,7 +28,7 @@ export const RuntimeToolsPanel = ({
   const tools = useMemo(
     () =>
       [
-        hasPermission(permissions, 'applications:sync-clipboard') // && app.running
+        hasPermission(permissions, 'applications:sync-clipboard') && app.running
           ? {
               id: 'clipboard' as const,
               title: 'Clipboard',
@@ -41,7 +42,7 @@ export const RuntimeToolsPanel = ({
           description: `${viewerSettings.transport.toUpperCase()} • ${viewerSettings.bitrateMbps} Mbps`,
           Icon: IconCast
         },
-        hasPermission(permissions, 'applications:transfer-files') // && app.running
+        hasPermission(permissions, 'applications:transfer-files') && app.running
           ? {
               id: 'files' as const,
               title: 'Files',
@@ -49,7 +50,7 @@ export const RuntimeToolsPanel = ({
               Icon: IconFolder
             }
           : null,
-        hasPermission(permissions, 'applications:view-logs') // && app.running
+        hasPermission(permissions, 'applications:view-logs') && app.running
           ? {
               id: 'logs' as const,
               title: 'Logs',
@@ -90,7 +91,11 @@ export const RuntimeToolsPanel = ({
     }
 
     if (toolId === 'logs') {
-      return <div className='min-h-30' />
+      return (
+        <div className='min-h-30 px-4'>
+          <AppLogsContent app={app} />
+        </div>
+      )
     }
 
     return (
