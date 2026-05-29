@@ -112,7 +112,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
     <ProtectedStackPageLayout mainClassName='gap-2'>
       <PageBackdrop
         imageSrc={draft.avatarDataUrl}
-        opacity={0.028}
+        opacity={0.08}
       />
       <section className='shrink-0 px-6 py-4 max-sm:px-4'>
         <PageBreadcrumbs

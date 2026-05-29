@@ -13,7 +13,7 @@ export default async function FilesLayout({ children }: { children: React.ReactN
       <PageBackdropProvider
         defaultBackdrop={{
           imageSrc: user.avatarDataUrl,
-          opacity: 0.028
+          opacity: 0.08
         }}
       >
         <div className='main-layout relative z-10'>

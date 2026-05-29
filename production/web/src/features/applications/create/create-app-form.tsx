@@ -274,7 +274,7 @@ export const CreateAppForm = ({
       <Visible when={iconPreview}>
         <PageBackdrop
           imageSrc={iconPreview}
-          opacity={0.022}
+          opacity={0.08}
         />
       </Visible>
       <form

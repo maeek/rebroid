@@ -152,7 +152,7 @@ export const AppViewerPage = ({
       >
         <PageBackdrop
           imageSrc={currentApp.icon ? resolveAppIconUrl(currentApp.icon) : null}
-          opacity={0.022}
+          opacity={0.08}
         />
         <AppWorkspaceContent
           app={currentApp}
@@ -186,7 +186,7 @@ export const AppViewerPage = ({
     >
       <PageBackdrop
         imageSrc={currentApp.icon ? resolveAppIconUrl(currentApp.icon) : null}
-        opacity={0.022}
+        opacity={0.08}
       />
       <AppViewerContent
         app={currentApp}

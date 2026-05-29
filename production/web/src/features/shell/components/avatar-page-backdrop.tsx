@@ -4,7 +4,7 @@ export const AvatarPageBackdrop = ({ avatarSrc }: { avatarSrc?: string | null })
   return (
     <BlurredImageBackdrop
       imageSrc={avatarSrc}
-      opacity={0.028}
+      opacity={0.08}
     />
   )
 }

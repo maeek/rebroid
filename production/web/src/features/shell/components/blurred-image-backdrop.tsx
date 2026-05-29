@@ -18,7 +18,7 @@ const defaultFallbackBackground = 'radial-gradient(circle at top left, hsl(var(-
 
 const toLayer = ({
   imageSrc,
-  opacity = 0.05,
+  opacity = 0.08,
   fallbackBackground = defaultFallbackBackground
 }: BlurredImageBackdropProps): BackdropLayer => ({
   imageSrc,
@@ -36,7 +36,7 @@ const isSameLayer = (left: BackdropLayer, right: BackdropLayer) => {
 
 export const BlurredImageBackdrop = ({
   imageSrc,
-  opacity = 0.05,
+  opacity = 0.08,
   fallbackBackground = defaultFallbackBackground,
   className
 }: BlurredImageBackdropProps) => {
