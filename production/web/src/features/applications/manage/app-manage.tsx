@@ -184,14 +184,14 @@ export default function AppManage({
         />
         <AppViewerHeading app={displayApp}>
           <div className='flex gap-2'>
+            <Visible when={canViewLogs && !isForeignOwnedApp}>
+              <AppLogsDialog app={currentApp} />
+            </Visible>
             <Visible when={canDelete}>
               <AppViewerDeleteAction
                 app={displayApp}
                 initialSettings={initialSettings}
               />
-            </Visible>
-            <Visible when={canViewLogs && !isForeignOwnedApp}>
-              <AppLogsDialog app={currentApp} />
             </Visible>
             <Button
               disabled={isSaving}

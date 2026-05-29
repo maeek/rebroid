@@ -192,7 +192,7 @@ export const AppLogsDialog = ({
         <DialogTrigger asChild>
           <Button
             type='button'
-            variant='secondary'
+            variant='ghost'
             disabled={!app}
             className={triggerClassName}
           >

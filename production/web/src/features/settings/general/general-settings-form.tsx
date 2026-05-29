@@ -107,7 +107,7 @@ export const GeneralSettingsForm = ({ initialSettings }: { initialSettings: Orch
         </div>
         <div className='flex gap-2'>
           <Button
-            variant='secondary'
+            variant='ghost'
             disabled={isSaving}
             onClick={() => void resetSettings()}
           >

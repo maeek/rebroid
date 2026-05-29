@@ -1,5 +1,4 @@
 import { type ChangeEvent, useRef } from 'react'
-import { IconX } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
@@ -78,11 +77,10 @@ export const CreateAppIconSection = ({
           <Visible when={iconPreview}>
             <Button
               type='button'
-              variant='outline'
+              variant='ghost'
               className='shrink-0'
               onClick={handleClearIcon}
             >
-              <IconX className='size-4' />
               Clear icon
             </Button>
           </Visible>

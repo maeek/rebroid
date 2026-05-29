@@ -1,7 +1,7 @@
 'use client'
 
 import { ChangeEvent } from 'react'
-import { IconUpload, IconX } from '@tabler/icons-react'
+import { IconUpload } from '@tabler/icons-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { optimizeIconFile } from '@/features/applications/icons/icon-metadata'
@@ -58,12 +58,11 @@ export const UserAvatarInput = ({
         </Button>
         <Button
           type='button'
-          variant='secondary'
+          variant='ghost'
           disabled={!avatar}
           onClick={() => onChange(null)}
         >
-          <IconX className='size-4' />
-          Clear
+          Clear avatar
         </Button>
       </div>
     </div>

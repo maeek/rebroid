@@ -144,7 +144,6 @@ export const StreamingToolsSection = ({
           <Button
             className='my-2'
             variant='ghost'
-            size='sm'
             onClick={() => setShowAdvanced(current => !current)}
           >
             {showAdvanced ? 'Hide advanced settings' : 'Show advanced settings'}

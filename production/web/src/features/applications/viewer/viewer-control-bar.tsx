@@ -667,5 +667,5 @@ export const ViewerControlBar = ({
     )
   }
 
-  return <div className='flex w-full flex-wrap items-center justify-center gap-2 pb-2'>{controls}</div>
+  return <div className='flex w-full flex-wrap items-center justify-center gap-2 pb-2 z-50'>{controls}</div>
 }

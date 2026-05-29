@@ -64,7 +64,7 @@ export const LogsConsole = ({
         <div className='flex shrink-0 items-center gap-2'>
           <Button
             type='button'
-            variant='secondary'
+            variant='ghost'
             disabled={!output}
             onClick={() => void copyOutput()}
           >
@@ -73,7 +73,7 @@ export const LogsConsole = ({
           </Button>
           <Button
             type='button'
-            variant='secondary'
+            variant='ghost'
             disabled={refreshDisabled || isRefreshing}
             onClick={onRefresh}
           >

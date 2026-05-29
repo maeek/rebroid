@@ -31,7 +31,7 @@ export const OrchestratorSettingsHeader = ({
         <Visible when={showActions}>
           <div className='flex gap-2 max-sm:w-full'>
             <Button
-              variant='secondary'
+              variant='ghost'
               disabled={isSaving}
               onClick={onReset}
             >

@@ -1,5 +1,5 @@
 import { useRef, useState, type ChangeEvent } from 'react'
-import { IconUpload, IconX } from '@tabler/icons-react'
+import { IconUpload } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
 import { AppIcon } from '@/features/applications/components/app-icon'
@@ -159,12 +159,11 @@ export const AppManageIconPanel = ({
           </Button>
           <Button
             type='button'
-            variant='secondary'
+            variant='ghost'
             className='flex-1'
             disabled={isUploadingIcon}
             onClick={() => void handleClearIcon()}
           >
-            <IconX className='size-4' />
             Clear icon
           </Button>
         </div>

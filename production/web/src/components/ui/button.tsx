@@ -8,16 +8,21 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'border-primary/20 bg-primary/80 text-primary-foreground hover:bg-primary/92',
-        destructive: 'border-destructive/25 bg-destructive/65 text-foreground hover:bg-destructive/78',
+        default:
+          'border-primary/20 bg-primary/80 text-primary-foreground hover:bg-primary/92 dark:shadow-[inset_0_0_10px_0_rgba(255,255,255,0.2)]! shadow-[inset_0_0_15px_0_rgba(0,0,0,0.2)]!',
+        destructive:
+          'border-destructive/25 bg-destructive/65 text-foreground hover:bg-destructive/78 dark:shadow-[inset_0_0_10px_0_rgba(255,255,255,0.2)]! shadow-[inset_0_0_15px_0_rgba(0,0,0,0.2)]!',
         outline:
-          'border-border/70 bg-background/55 hover:bg-accent/70 hover:text-accent-foreground dark:bg-card/35 dark:hover:bg-card/55',
+          'border-border/70 bg-background/55 hover:bg-accent/70 hover:text-accent-foreground dark:bg-card/35 dark:hover:bg-card/55 shadow-[inset_0_0_20px_0_rgba(0,0,0,0.05)] dark:shadow-[inset_0_0_20px_0_rgba(255,255,255,0.05)]',
         secondary:
-          'border-border/70 bg-secondary/72 text-secondary-foreground hover:bg-secondary/86 hover:text-foreground',
-        input: 'border-border/70 bg-input/72 text-foreground hover:bg-input/88',
-        ghost: 'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50',
+          'border-border/70 bg-secondary/72 text-secondary-foreground hover:bg-secondary/86 hover:text-foreground shadow-[inset_0_0_20px_0_rgba(0,0,0,0.05)] dark:shadow-[inset_0_0_20px_0_rgba(255,255,255,0.05)]',
+        input:
+          'border-border/70 bg-input/72 text-foreground hover:bg-input/88 shadow-[inset_0_0_20px_0_rgba(0,0,0,0.05)] dark:shadow-[inset_0_0_20px_0_rgba(255,255,255,0.05)]',
+        ghost:
+          'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 shadow-[inset_0_0_20px_0_rgba(0,0,0,0.05)] dark:shadow-[inset_0_0_20px_0_rgba(255,255,255,0.05)]',
         link: 'text-primary underline-offset-4 hover:underline border-none',
-        update: 'border-green-500/20 bg-green-500/22 text-foreground underline-offset-4 hover:bg-green-500/30'
+        update:
+          'border-green-500/20 bg-green-500/22 text-foreground underline-offset-4 hover:bg-green-500/30 shadow-[inset_0_0_20px_0_rgba(0,0,0,0.05)] dark:shadow-[inset_0_0_20px_0_rgba(255,255,255,0.05)]'
       },
       size: {
         default: 'h-9 px-4 py-2 has-[>svg]:px-3',
