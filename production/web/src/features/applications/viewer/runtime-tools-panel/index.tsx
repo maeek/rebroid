@@ -92,7 +92,7 @@ export const RuntimeToolsPanel = ({
 
     if (toolId === 'logs') {
       return (
-        <div className='min-h-30 px-4'>
+        <div className='min-h-30 px-4 max-h-300 overflow-auto'>
           <AppLogsContent app={app} />
         </div>
       )
