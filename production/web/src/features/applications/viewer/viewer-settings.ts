@@ -43,7 +43,7 @@ export const viewerStreamingPresets: Record<ViewerStreamingPreset, ViewerStreami
     bitrateMbps: 1.5,
     maxFps: 24,
     maxSize: 1080,
-    iFrameInterval: 1,
+    iFrameInterval: 2,
     fitToFrame: false
   },
   balanced: {
@@ -60,11 +60,11 @@ export const viewerStreamingPresets: Record<ViewerStreamingPreset, ViewerStreami
     player: 'webcodecs',
     transport: 'webrtc',
     preset: 'quality',
-    bitrateMbps: 7,
-    maxFps: 30,
-    maxSize: 1080,
+    bitrateMbps: 15,
+    maxFps: 60,
+    maxSize: 0,
     iFrameInterval: 1,
-    fitToFrame: false
+    fitToFrame: true
   }
 }
 

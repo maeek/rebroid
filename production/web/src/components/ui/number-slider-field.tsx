@@ -57,8 +57,30 @@ export const NumberSliderField = ({
   }
 
   return (
-    <div className={cn('grid w-full gap-3', className)}>
-      <div className='flex w-full min-w-0 items-center gap-2'>
+    <div className={cn('flex  w-full gap-3', className)}>
+      <Visible when={hasMax}>
+        <div className='grid w-full gap-2'>
+          <Slider
+            aria-label={rangeLabel}
+            min={min}
+            max={sliderMax}
+            step={step}
+            value={[sliderValue]}
+            onValueChange={v => onValueChange(String(v[0]))}
+          />
+          <div className='flex items-center justify-between text-[11px] leading-none text-muted-foreground'>
+            <span>
+              {min}
+              {suffix}
+            </span>
+            <span>
+              {sliderMax}
+              {suffix}
+            </span>
+          </div>
+        </div>
+      </Visible>
+      <div className='flex flex-1/3 min-w-0 items-center gap-2'>
         <Input
           className='min-w-0'
           value={value}
@@ -85,28 +107,6 @@ export const NumberSliderField = ({
           </Button>
         </Visible>
       </div>
-      <Visible when={hasMax}>
-        <div className='grid w-full gap-2'>
-          <Slider
-            aria-label={rangeLabel}
-            min={min}
-            max={sliderMax}
-            step={step}
-            value={[sliderValue]}
-            onValueChange={v => onValueChange(String(v[0]))}
-          />
-          <div className='flex items-center justify-between text-[11px] leading-none text-muted-foreground'>
-            <span>
-              {min}
-              {suffix}
-            </span>
-            <span>
-              {sliderMax}
-              {suffix}
-            </span>
-          </div>
-        </div>
-      </Visible>
     </div>
   )
 }

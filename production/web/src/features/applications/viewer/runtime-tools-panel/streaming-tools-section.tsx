@@ -1,16 +1,13 @@
 'use client'
 
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { IconCast } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { cn } from '@/lib/utils'
 import { getViewerPlayerCapabilities } from '../viewer-player-capabilities'
-import {
-  isViewerPlayer,
-  normalizeViewerSettings,
-  viewerPlayerDefinitions,
-  viewerStreamingPresets
-} from '../viewer-settings'
+import { normalizeViewerSettings, viewerPlayerDefinitions, viewerStreamingPresets } from '../viewer-settings'
 import { ViewerStreamingSliderFields } from '../viewer-streaming-slider-fields'
 import { ToolSection } from './tool-section'
 import type { ViewerSettings, ViewerStreamingPreset } from '../viewer-settings'
@@ -18,8 +15,8 @@ import type { ViewerSettings, ViewerStreamingPreset } from '../viewer-settings'
 const maxSizeOptions = [0, 1080, 1440, 1920]
 
 const StreamingSetting = ({ label, children }: { label: string; children: ReactNode }) => (
-  <label className='flex flex-col gap-1.5 min-w-0 gap-2'>
-    <span className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>{label}</span>
+  <label className='flex flex-col gap-1.5 min-w-0 lg:flex-row lg:py-1 lg:items-center'>
+    <span className='text-xs font-medium uppercase tracking-wide lg:flex-1/4'>{label}</span>
     {children}
   </label>
 )
@@ -38,6 +35,7 @@ export const StreamingToolsSection = ({
   const playerCapabilities = useMemo(() => getViewerPlayerCapabilities(), [])
   const selectedPlayer = viewerPlayerDefinitions.find(player => player.value === viewerSettings.player)
   const selectedCapability = playerCapabilities[viewerSettings.player]
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   const updateSettings = (patch: Partial<ViewerSettings>) => {
     onViewerSettingsChange(normalizeViewerSettings({ ...viewerSettings, ...patch }))
@@ -57,7 +55,7 @@ export const StreamingToolsSection = ({
           Streaming
           <Badge
             variant={viewerSettings.transport === 'webrtc' ? 'status' : 'secondary'}
-            className='uppercase tracking-wide'
+            className='uppercase tracking-wide px-1.5 py-0.5 text-[10px] font-medium'
           >
             {viewerSettings.transport === 'webrtc' ? 'WebRTC' : 'WebSocket'}
           </Badge>
@@ -74,96 +72,85 @@ export const StreamingToolsSection = ({
       className={className}
       hideHeader={hideHeader}
     >
-      <div className='grid gap-4'>
-        <div className='grid gap-x-6 gap-y-4 md:grid-cols-2'>
-          <StreamingSetting label='Transport'>
-            <Select
-              value={viewerSettings.transport}
-              onValueChange={value => updateSettings({ transport: value === 'websocket' ? 'websocket' : 'webrtc' })}
-            >
-              <SelectTrigger className='w-full'>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='webrtc'>WebRTC</SelectItem>
-                <SelectItem value='websocket'>WebSocket</SelectItem>
-              </SelectContent>
-            </Select>
-          </StreamingSetting>
+      <div className='flex flex-col gap-4'>
+        <StreamingSetting label='Transport'>
+          <Select
+            value={viewerSettings.transport}
+            onValueChange={value => updateSettings({ transport: value === 'websocket' ? 'websocket' : 'webrtc' })}
+          >
+            <SelectTrigger className='w-full lg:max-w-100'>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value='webrtc'>WebRTC</SelectItem>
+              <SelectItem value='websocket'>WebSocket</SelectItem>
+            </SelectContent>
+          </Select>
+        </StreamingSetting>
 
-          <StreamingSetting label='Renderer'>
-            <Select
-              value={viewerSettings.player}
-              onValueChange={value =>
-                updateSettings({
-                  player: isViewerPlayer(value) ? value : 'webcodecs'
-                })
+        <StreamingSetting label='Preset'>
+          <Select
+            value={viewerSettings.preset}
+            onValueChange={value => applyPreset(value as ViewerStreamingPreset)}
+          >
+            <SelectTrigger className='w-full lg:max-w-100'>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value='bandwidth'>Bandwidth</SelectItem>
+              <SelectItem value='balanced'>Balanced</SelectItem>
+              <SelectItem value='quality'>Quality</SelectItem>
+            </SelectContent>
+          </Select>
+        </StreamingSetting>
+
+        <div className='flex flex-col gap-2'>
+          <div
+            className={cn(
+              'grid overflow-hidden transition-[grid-template-rows,opacity,padding-top,padding-bottom] duration-200 ease-out',
+              {
+                'grid-rows-[1fr] opacity-100': showAdvanced,
+                'grid-rows-[0fr] opacity-0 pt-0 pb-0': !showAdvanced
               }
-            >
-              <SelectTrigger className='w-full'>
-                <SelectValue>{selectedPlayer?.label ?? viewerSettings.player}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {viewerPlayerDefinitions.map(option => {
-                  const capability = playerCapabilities[option.value]
+            )}
+          >
+            <div className='min-h-0 flex flex-col gap-4'>
+              <StreamingSetting label='Max size'>
+                <Select
+                  value={String(viewerSettings.maxSize)}
+                  onValueChange={value => updateSettings({ maxSize: Number(value), fitToFrame: value === '0' })}
+                >
+                  <SelectTrigger className='w-full lg:max-w-100'>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {maxSizeOptions.map(value => (
+                      <SelectItem
+                        key={value}
+                        value={String(value)}
+                      >
+                        {value === 0 ? 'Fit frame' : `${value}px`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </StreamingSetting>
 
-                  return (
-                    <SelectItem
-                      key={option.value}
-                      value={option.value}
-                      disabled={!capability.supported}
-                    >
-                      {option.label}
-                      {!capability.supported ? ' (unavailable)' : ''}
-                    </SelectItem>
-                  )
-                })}
-              </SelectContent>
-            </Select>
-          </StreamingSetting>
-
-          <StreamingSetting label='Preset'>
-            <Select
-              value={viewerSettings.preset}
-              onValueChange={value => applyPreset(value as ViewerStreamingPreset)}
-            >
-              <SelectTrigger className='w-full'>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='bandwidth'>Bandwidth</SelectItem>
-                <SelectItem value='balanced'>Balanced</SelectItem>
-                <SelectItem value='quality'>Quality</SelectItem>
-              </SelectContent>
-            </Select>
-          </StreamingSetting>
-
-          <ViewerStreamingSliderFields
-            values={viewerSettings}
-            onChange={patch => updateSettings({ ...patch, preset: viewerSettings.preset })}
-            SettingComponent={StreamingSetting}
-          />
-
-          <StreamingSetting label='Max size'>
-            <Select
-              value={String(viewerSettings.maxSize)}
-              onValueChange={value => updateSettings({ maxSize: Number(value), fitToFrame: value === '0' })}
-            >
-              <SelectTrigger className='w-full'>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {maxSizeOptions.map(value => (
-                  <SelectItem
-                    key={value}
-                    value={String(value)}
-                  >
-                    {value === 0 ? 'Fit frame' : `${value}px`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </StreamingSetting>
+              <ViewerStreamingSliderFields
+                values={viewerSettings}
+                onChange={patch => updateSettings({ ...patch, preset: viewerSettings.preset })}
+                SettingComponent={StreamingSetting}
+              />
+            </div>
+          </div>
+          <Button
+            className='my-2'
+            variant='ghost'
+            size='sm'
+            onClick={() => setShowAdvanced(current => !current)}
+          >
+            {showAdvanced ? 'Hide advanced settings' : 'Show advanced settings'}
+          </Button>
         </div>
       </div>
     </ToolSection>

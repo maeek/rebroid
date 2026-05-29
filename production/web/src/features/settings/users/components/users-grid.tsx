@@ -89,7 +89,7 @@ export const UsersGrid = ({
                   <div className='flex justify-end gap-2'>
                     <Button
                       type='button'
-                      variant='destructive'
+                      variant='ghost'
                       disabled={busyUserId === user.id}
                       onClick={() => onDelete(user)}
                     >

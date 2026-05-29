@@ -1,8 +1,10 @@
 'use client'
 
-import { IconDatabase, IconSparkles } from '@tabler/icons-react'
+import { useState } from 'react'
+import { IconDatabase, IconDatabasePlus, IconSparkles } from '@tabler/icons-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Visible } from '@/components/ui/visible'
 import { ProfileTile } from './profile-tile'
 import type { SavedApplicationProfile } from './profile-history'
 import type { ApplicationProfileMode } from '@/server/orchestrator/applications/types'
@@ -15,6 +17,7 @@ type ApplicationProfilePickerProps = {
   onNameChange: (name: string) => void
   disabled?: boolean
   allowCustomName?: boolean
+  selectedProfile?: { mode: ApplicationProfileMode; name: string }
 }
 
 export const ApplicationProfilePicker = ({
@@ -24,22 +27,28 @@ export const ApplicationProfilePicker = ({
   onModeChange,
   onNameChange,
   disabled,
-  allowCustomName = true
+  allowCustomName = true,
+  selectedProfile
 }: ApplicationProfilePickerProps) => {
+  const [editNewProfileName, setEditNewProfileName] = useState(false)
   const persistentProfiles = savedProfiles.filter(profile => profile.mode === 'persistent')
-  const selectedName = name.trim() || 'default'
+  const selectedName = name.trim()
 
   return (
     <div className='grid gap-4'>
       <Label>Profiles</Label>
-      <div className='flex gap-2 flex-wrap'>
+      <div className='grid grid-cols-2 gap-2'>
         <ProfileTile
           name='Temporary'
           selected={mode === 'temporary'}
+          isActive={selectedProfile?.mode === 'temporary'}
           disabled={disabled}
           icon={<IconSparkles className='size-4' />}
-          onChange={() => onModeChange?.('temporary')}
-          className='min-w-0 flex-1/3 shrink'
+          onChange={() => {
+            onModeChange?.('temporary')
+            setEditNewProfileName(false)
+          }}
+          className='min-w-0'
           description='No data will be saved after the session ends'
         />
         {persistentProfiles.map(profile => {
@@ -50,22 +59,37 @@ export const ApplicationProfilePicker = ({
               key={profile.name}
               name={profile.name}
               selected={selected}
+              isActive={selectedProfile?.mode === 'persistent' && selectedProfile.name === profile.name}
               disabled={disabled}
               icon={<IconDatabase className='size-4' />}
-              className='min-w-0 flex-1/3 shrink'
+              className='min-w-0'
               onChange={() => {
                 onModeChange?.('persistent')
                 onNameChange(profile.name)
+                setEditNewProfileName(false)
               }}
               description={selected ? 'Currently active profile' : 'Persistent data'}
             />
           )
         })}
+        <Visible when={allowCustomName && !editNewProfileName}>
+          <ProfileTile
+            name='New profile'
+            disabled={disabled}
+            icon={<IconDatabasePlus className='size-4' />}
+            className='min-w-0'
+            description='No data will be saved after the session ends'
+            onChange={() => {
+              setEditNewProfileName(true)
+              onNameChange('')
+            }}
+          />
+        </Visible>
       </div>
 
-      {allowCustomName ? (
+      <Visible when={allowCustomName && editNewProfileName}>
         <div className='grid gap-2'>
-          <Label>Profile name</Label>
+          <Label>New profile</Label>
           <Input
             value={name}
             disabled={disabled}
@@ -73,7 +97,7 @@ export const ApplicationProfilePicker = ({
             onChange={event => onNameChange(event.target.value)}
           />
         </div>
-      ) : null}
+      </Visible>
     </div>
   )
 }

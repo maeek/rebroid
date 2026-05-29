@@ -27,7 +27,7 @@ export const RuntimeToolsPanel = ({
   const tools = useMemo(
     () =>
       [
-        hasPermission(permissions, 'applications:sync-clipboard')
+        hasPermission(permissions, 'applications:sync-clipboard') && app.running
           ? {
               id: 'clipboard' as const,
               title: 'Clipboard',
@@ -35,22 +35,22 @@ export const RuntimeToolsPanel = ({
               Icon: IconClipboard
             }
           : null,
-        hasPermission(permissions, 'applications:transfer-files')
+        {
+          id: 'streaming' as const,
+          title: 'Streaming',
+          description: `${viewerSettings.transport.toUpperCase()} • ${viewerSettings.bitrateMbps} Mbps`,
+          Icon: IconCast
+        },
+        hasPermission(permissions, 'applications:transfer-files') && app.running
           ? {
               id: 'files' as const,
               title: 'Files',
               description: 'Upload and download files',
               Icon: IconFolder
             }
-          : null,
-        {
-          id: 'streaming' as const,
-          title: 'Streaming',
-          description: `${viewerSettings.transport.toUpperCase()} • ${viewerSettings.bitrateMbps} Mbps`,
-          Icon: IconCast
-        }
+          : null
       ].filter((tool): tool is NonNullable<typeof tool> => Boolean(tool)),
-    [permissions, viewerSettings.bitrateMbps, viewerSettings.transport]
+    [app.running, permissions, viewerSettings.bitrateMbps, viewerSettings.transport]
   )
   const [activeTool, setActiveTool] = useState<RuntimeToolId | null>(() => tools[0]?.id ?? 'streaming')
 

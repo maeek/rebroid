@@ -37,6 +37,7 @@ export const DownloadsToolsSection = ({
   const canTransferFiles = hasPermission(permissions, 'applications:transfer-files')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const topLoader = useTopLoader()
+
   const [files, setFiles] = useState<ApplicationRuntimeFile[]>([])
   const [profileMode, setProfileMode] = useState<ApplicationProfileMode>(app.profileMode ?? 'persistent')
   const [profileName, setProfileName] = useState(app.profileName ?? 'default')
@@ -44,6 +45,7 @@ export const DownloadsToolsSection = ({
   const [uploadProgress, setUploadProgress] = useState<number | null>(null)
   const [uploadFileName, setUploadFileName] = useState('')
   const [isUnavailableWarningVisible, setIsUnavailableWarningVisible] = useState(false)
+
   const [isRefreshingFiles, startRefreshFilesTransition] = useTransition()
   const isUploading = uploadProgress !== null
   const savedProfiles = app.savedProfiles ?? []
@@ -52,7 +54,10 @@ export const DownloadsToolsSection = ({
     profileMode === 'persistent' &&
     persistentProfiles.some(profile => profile.name === (profileName.trim() || 'default'))
   const selectedProfileCanUseFiles = profileMode === 'temporary' ? runtimeAvailable : selectedPersistentProfileExists
-
+  const currentProfile: { mode: ApplicationProfileMode; name: string } =
+    app.profileMode === 'temporary'
+      ? { mode: 'temporary', name: 'temporary' }
+      : (savedProfiles.find(p => p.name === app.profileName) ?? { mode: 'persistent', name: 'default' })
   const selectedProfileQuery = useCallback(
     () => ({
       profileMode,
@@ -185,6 +190,7 @@ export const DownloadsToolsSection = ({
           onChange={event => handleFileUpload(event.target.files?.[0])}
         />
         <ApplicationProfilePicker
+          selectedProfile={app.running ? currentProfile : undefined}
           mode={profileMode}
           name={profileName}
           savedProfiles={savedProfiles}
