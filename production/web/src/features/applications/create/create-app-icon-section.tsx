@@ -52,21 +52,7 @@ export const CreateAppIconSection = ({
           icon={iconPreview}
           className='size-44 text-4xl shadow-[0_18px_60px_rgba(0,0,0,0.24)] max-sm:size-40'
         />
-        <div className='flex w-full items-center justify-between gap-4 rounded-lg border border-border/70 bg-secondary/55 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]'>
-          <div className='flex min-w-0 flex-col'>
-            <span className='text-sm font-medium'>Auto extract from APK</span>
-            <span className='text-xs text-secondary-foreground'>
-              {hasExtractedIcon
-                ? 'A launcher icon was found during APK upload.'
-                : 'Upload an APK to extract its launcher icon.'}
-            </span>
-          </div>
-          <Switch
-            checked={autoExtractIcon}
-            disabled={!hasExtractedIcon}
-            onCheckedChange={onAutoExtractIconChange}
-          />
-        </div>
+
         <div className='flex w-full gap-2 max-sm:flex-col'>
           <Input
             ref={inputRef}
@@ -84,6 +70,21 @@ export const CreateAppIconSection = ({
               Clear icon
             </Button>
           </Visible>
+        </div>
+        <div className='flex w-full items-center justify-between gap-4'>
+          <div className='flex min-w-0 flex-col'>
+            <span className='text-sm font-medium'>Auto extract from APK</span>
+            <span className='text-xs text-secondary-foreground'>
+              {hasExtractedIcon
+                ? 'A launcher icon was found during APK upload.'
+                : 'Upload an APK to extract its launcher icon.'}
+            </span>
+          </div>
+          <Switch
+            checked={autoExtractIcon}
+            disabled={!hasExtractedIcon}
+            onCheckedChange={onAutoExtractIconChange}
+          />
         </div>
       </div>
     </Section>

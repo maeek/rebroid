@@ -89,7 +89,7 @@ export default registerAs('app', () => {
       privileged: bool(process.env.REDROID_PRIVILEGED, true),
       bootTimeoutSeconds: number(process.env.REDROID_BOOT_TIMEOUT_SECONDS, 300),
       adbTimeoutSeconds: number(process.env.REDROID_ADB_TIMEOUT_SECONDS, 120),
-      cgroupnsMode: process.env.REDROID_CGROUPNS_MODE ?? 'host',
+      cgroupnsMode: process.env.REDROID_CGROUPNS_MODE ?? 'private',
       provisioningStaleTimeoutSeconds: number(
         process.env.REDROID_PROVISIONING_STALE_TIMEOUT_SECONDS,
         600,
