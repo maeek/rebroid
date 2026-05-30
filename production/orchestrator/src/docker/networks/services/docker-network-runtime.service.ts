@@ -1,35 +1,25 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { DockerEngineService } from '../../docker-engine.service';
 
 @Injectable()
 export class DockerNetworkRuntimeService {
   private readonly logger = new Logger(DockerNetworkRuntimeService.name);
 
-  constructor(
-    private readonly config: ConfigService,
-    private readonly engine: DockerEngineService,
-  ) {}
+  constructor(private readonly engine: DockerEngineService) {}
 
   /**
    * Creates the app network if it does not exist already.
-   * The network stays Docker-internal only when host-side iptables enforcement is disabled.
+   * App networks are routable so host Docker can provide normal DNS and NAT egress.
+   * Outbound restriction is handled separately by NetworkPolicyService when enabled.
    */
   async createIsolatedNetwork(applicationId: string, networkName: string) {
     const existing = await this.findNetworkByName(networkName);
     if (existing) {
-      return existing;
+      return this.ensureRoutableNetwork(applicationId, networkName, existing);
     }
 
     try {
-      return await this.engine.docker.createNetwork({
-        Name: networkName,
-        Internal: !this.config.getOrThrow<boolean>(
-          'app.docker.iptablesEnabled',
-        ),
-        CheckDuplicate: true,
-        Labels: this.engine.labels(applicationId, 'network'),
-      });
+      return await this.createNetwork(applicationId, networkName);
     } catch (error) {
       if (!this.engine.isResourceAlreadyExists(error)) {
         throw error;
@@ -37,7 +27,11 @@ export class DockerNetworkRuntimeService {
 
       const duplicate = await this.findNetworkByName(networkName);
       if (duplicate) {
-        return duplicate;
+        return this.ensureRoutableNetwork(
+          applicationId,
+          networkName,
+          duplicate,
+        );
       }
 
       throw error;
@@ -186,5 +180,49 @@ export class DockerNetworkRuntimeService {
     });
     const network = networks.find((item) => item.Name === name);
     return network ? this.engine.docker.getNetwork(network.Id) : undefined;
+  }
+
+  private async createNetwork(applicationId: string, networkName: string) {
+    return this.engine.docker.createNetwork({
+      Name: networkName,
+      Internal: false,
+      CheckDuplicate: true,
+      Labels: this.engine.labels(applicationId, 'network'),
+    });
+  }
+
+  private async ensureRoutableNetwork(
+    applicationId: string,
+    networkName: string,
+    network: ReturnType<DockerEngineService['docker']['getNetwork']>,
+  ) {
+    const inspect = await network.inspect();
+    if (!inspect.Internal) {
+      return network;
+    }
+
+    const labels = inspect.Labels ?? {};
+    const isManagedNetwork =
+      labels['com.rebroid.managed'] === 'true' &&
+      labels['com.rebroid.application-id'] === applicationId &&
+      labels['com.rebroid.component'] === 'network';
+    if (!isManagedNetwork) {
+      throw new Error(
+        `Docker network ${networkName} is internal and is not managed by this application. Remove or rename it before provisioning so containers can use normal Docker egress.`,
+      );
+    }
+
+    const attachedContainerIds = Object.keys(inspect.Containers ?? {});
+    if (attachedContainerIds.length > 0) {
+      throw new Error(
+        `Docker network ${networkName} is internal, so containers on it cannot use internet or external DNS. Stop and recreate this app so Rebroid can create a routable network.`,
+      );
+    }
+
+    this.logger.warn(
+      `Recreating stale internal app network ${networkName} so containers can use normal Docker egress.`,
+    );
+    await network.remove();
+    return this.createNetwork(applicationId, networkName);
   }
 }

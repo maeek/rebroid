@@ -50,7 +50,7 @@ export const deriveNetworkPolicyResult = (
       status,
       code: 'iptables_disabled',
       message,
-      hint: 'Enable IPTABLES_POLICY_ENABLED on the Linux host if you want the orchestrator to enforce outbound restrictions.',
+      hint: 'Outbound internet and DNS use normal Docker egress. Per-app allowlists are not enforced unless IPTABLES_POLICY_ENABLED is enabled in a supported host firewall setup.',
     };
   }
 

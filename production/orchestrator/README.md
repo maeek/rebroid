@@ -8,7 +8,7 @@ NestJS backend for provisioning isolated application containers and preparing br
 - `DockerModule`: low-level Docker socket wrapper.
 - `ContainerImagesModule`: list, pull/update, and remove images.
 - `DockerMaintenanceModule`: prune unused containers, networks, images, and volumes.
-- `NetworkIsolationModule`: per-application Docker names, volume, and internal network boundary.
+- `NetworkIsolationModule`: per-application Docker names, volume, and network boundary.
 - `SettingsModule`: JSON-backed runtime defaults and APK upload limits.
 - Viewer session API: `GET /android-applications/:id/scrcpy-session` prepares the shared display sidecar and returns app-scoped connection metadata for the browser viewer.
 - `HealthModule`: Docker socket health check.
@@ -19,7 +19,7 @@ Each Android application receives:
 
 - one redroid container,
 - one persistent Docker volume mounted at `/data`,
-- one Docker network created with `Internal: true`.
+- one dedicated Docker network.
 
 The redroid container is attached only to its own network. When the orchestrator runs in a container, it discovers its own container id from `HOSTNAME` and attaches itself to each app network as needed. You can still override this with `ORCHESTRATOR_CONTAINER_ID` in unusual runtimes.
 
@@ -162,9 +162,9 @@ Create or update applications by referencing the uploaded APK:
 
 ## Network Policy
 
-Each app still receives its own Docker network. When `IPTABLES_POLICY_ENABLED=false`, those networks are created as Docker `Internal` networks for a hard no-egress default.
+Each app still receives its own Docker network. When `IPTABLES_POLICY_ENABLED=false`, those networks use normal Docker routing so host Docker provides outbound internet and DNS. In this mode, per-app allowlists are skipped and outbound traffic is not restricted by Rebroid.
 
-When `IPTABLES_POLICY_ENABLED=true`, the app network is routable and the orchestrator applies per-container `DOCKER-USER` rules:
+When `IPTABLES_POLICY_ENABLED=true`, the orchestrator applies per-container `DOCKER-USER` rules:
 
 - allow backend-owned default destinations,
 - allow the app-specific CIDR allowlist,
@@ -186,6 +186,8 @@ This mode is meant for Linux hosts where the orchestrator has permission to run 
 PATCH /android-applications/:id/network-policy
 POST  /android-applications/:id/network-policy/apply
 ```
+
+Existing app networks created by older versions as Docker `Internal` networks must be recreated before those apps get internet or external DNS. Stop and recreate the affected app if policy status reports that its Docker network is internal.
 
 Resource/profile options are stored per app. RAM and CPU are applied to new containers. Named Docker volume size is currently advisory because the default local volume driver does not enforce quota cleanly across hosts.
 

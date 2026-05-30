@@ -40,7 +40,7 @@ export class NetworkPolicyService {
       return {
         status: 'skipped',
         message:
-          'IPTables policy is disabled. Set IPTABLES_POLICY_ENABLED=true on the Linux host.',
+          'IPTables policy is disabled. Containers use normal Docker internet and DNS egress, and per-app outbound allowlists are not enforced.',
       };
     }
 
