@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { getErrorMessage } from '../../../common/error-message';
 import { DockerContainerExecService } from '../../../docker/containers/services/docker-container-exec.service';
+import { DockerContainerLifecycleService } from '../../../docker/containers/services/docker-container-lifecycle.service';
 import { DockerNetworkRuntimeService } from '../../../docker/networks/services/docker-network-runtime.service';
 import { DockerSidecarService } from '../../../docker/sidecar/services/docker-sidecar.service';
 import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
@@ -17,6 +18,7 @@ export class AndroidAppsViewerNetworkService {
     private readonly networks: DockerNetworkRuntimeService,
     private readonly sidecar: DockerSidecarService,
     private readonly exec: DockerContainerExecService,
+    private readonly containers: DockerContainerLifecycleService,
     private readonly networkPolicy: NetworkPolicyService,
     private readonly logs: AndroidAppsLogService,
     private readonly state: AndroidAppsStateService,
@@ -117,6 +119,12 @@ export class AndroidAppsViewerNetworkService {
     app.networkPolicyMessage = result.message;
     app.networkPolicyAppliedAt = new Date();
     await this.state.save(app);
+    if (app.networkPolicyEnabled && result.status !== 'applied') {
+      if (app.containerId) {
+        await this.containers.stopContainer(app.containerId);
+      }
+      throw new Error(`Outbound policy enforcement failed: ${result.message}`);
+    }
   }
 
   /** Recovered Redroid containers may be running before provisioning enabled TCP ADB. */

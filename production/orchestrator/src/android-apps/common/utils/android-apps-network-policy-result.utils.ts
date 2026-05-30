@@ -5,7 +5,6 @@ import {
 
 export const deriveNetworkPolicyResult = (
   app: AndroidApplication,
-  iptablesEnabled: boolean,
 ): AndroidNetworkPolicyResult | null => {
   const status = app.networkPolicyStatus as
     | 'applied'
@@ -28,11 +27,17 @@ export const deriveNetworkPolicyResult = (
   }
 
   if (status === 'error') {
+    const code = message.toLowerCase().includes('unavailable')
+      ? 'agent_unavailable'
+      : message.toLowerCase().includes('unsupported') ||
+          message.toLowerCase().includes('no supported')
+        ? 'unsupported_host'
+        : 'apply_failed';
     return {
       status,
-      code: 'apply_failed',
+      code,
       message,
-      hint: 'Check the orchestrator logs and host iptables configuration, then apply the policy again.',
+      hint: 'Check firewall agent health and host firewall configuration, then apply the policy again.',
     };
   }
 
@@ -42,15 +47,6 @@ export const deriveNetworkPolicyResult = (
       code: 'unknown',
       message,
       hint: null,
-    };
-  }
-
-  if (!iptablesEnabled) {
-    return {
-      status,
-      code: 'iptables_disabled',
-      message,
-      hint: 'Outbound internet and DNS use normal Docker egress. Per-app allowlists are not enforced unless IPTABLES_POLICY_ENABLED is enabled in a supported host firewall setup.',
     };
   }
 

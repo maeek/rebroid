@@ -29,8 +29,10 @@ const getPolicyStatusDescription = (result?: AppDefinition['networkPolicyResult'
       return result.hint ?? 'The container is not ready on its network yet, so the policy could not be attached.'
     case 'container_not_created':
       return result.hint ?? 'The app must create its managed container before policy rules can be applied.'
-    case 'iptables_disabled':
-      return result.hint ?? 'Policy enforcement is disabled on the host.'
+    case 'agent_unavailable':
+      return result.hint ?? 'The firewall agent is unavailable.'
+    case 'unsupported_host':
+      return result.hint ?? 'The host firewall backend is unsupported.'
     case 'policy_disabled':
       return result.hint ?? 'Network policy restrictions are disabled for this app.'
     case 'unknown':

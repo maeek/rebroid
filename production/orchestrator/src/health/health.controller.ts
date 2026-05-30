@@ -1,11 +1,15 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { DockerHealthService } from '../docker/health/services/docker-health.service';
+import { FirewallAgentClientService } from '../network-policy/services/firewall-agent-client.service';
 
 @ApiTags('health')
 @Controller('health')
 export class HealthController {
-  constructor(private readonly docker: DockerHealthService) {}
+  constructor(
+    private readonly docker: DockerHealthService,
+    private readonly firewallAgent: FirewallAgentClientService,
+  ) {}
 
   @Get()
   @ApiOkResponse({
@@ -56,12 +60,21 @@ export class HealthController {
           message:
             'Docker is unavailable, so the display sidecar cannot be inspected.',
         };
+    const firewall = await this.firewallAgent.health().catch((error) => ({
+      ok: false,
+      status: 'offline',
+      message:
+        error instanceof Error
+          ? error.message
+          : 'Firewall agent is unavailable.',
+    }));
 
     return {
-      ok: docker.ok && runtime.ok && display.ok,
+      ok: docker.ok && runtime.ok && display.ok && firewall.ok,
       docker: docker.ok,
       runtime: runtime.ok,
       display: display.ok,
+      firewall: Boolean(firewall.ok),
       services: {
         orchestrator: {
           ok: true,
@@ -71,6 +84,7 @@ export class HealthController {
         docker,
         runtime,
         display,
+        firewall,
       },
     };
   }

@@ -1,25 +1,22 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { execFile } from 'node:child_process';
 import { lookup } from 'node:dns/promises';
-import { promisify } from 'node:util';
 import { AndroidApplication } from '../../android-apps/android-application.entity';
-import {
-  extractHostname,
-  networkPolicyChainName,
-  normalizeIpv4Cidr,
-  parseAllowCidrs,
-  uniqueStrings,
-} from '../utils/network-policy.utils';
 import { DockerNetworkRuntimeService } from '../../docker/networks/services/docker-network-runtime.service';
 import { DockerSidecarService } from '../../docker/sidecar/services/docker-sidecar.service';
+import { DockerEngineService } from '../../docker/docker-engine.service';
 import {
   AllowedDestinations,
   AppliedNetworkPolicy,
   ResolvedDefaultDestinations,
 } from '../types/network-policy.types';
-
-const execFileAsync = promisify(execFile);
+import {
+  extractHostname,
+  normalizeIpv4Cidr,
+  parseAllowCidrs,
+  uniqueStrings,
+} from '../utils/network-policy.utils';
+import { FirewallAgentClientService } from './firewall-agent-client.service';
 
 @Injectable()
 export class NetworkPolicyService {
@@ -27,30 +24,19 @@ export class NetworkPolicyService {
 
   constructor(
     private readonly config: ConfigService,
+    private readonly engine: DockerEngineService,
     private readonly networks: DockerNetworkRuntimeService,
     private readonly sidecar: DockerSidecarService,
+    private readonly agent: FirewallAgentClientService,
   ) {}
 
-  /**
-   * Creates or refreshes the per-app iptables chain and DOCKER-USER jump.
-   * Returns skipped until iptables, the container, and its IP are all available.
-   */
   async apply(app: AndroidApplication): Promise<AppliedNetworkPolicy> {
-    if (!this.config.getOrThrow<boolean>('app.docker.iptablesEnabled')) {
-      return {
-        status: 'skipped',
-        message:
-          'IPTables policy is disabled. Containers use normal Docker internet and DNS egress, and per-app outbound allowlists are not enforced.',
-      };
-    }
-
     if (!app.containerId) {
       return {
         status: 'skipped',
         message: 'Container has not been created yet.',
       };
     }
-
     if (!app.networkPolicyEnabled) {
       await this.remove(app);
       return {
@@ -59,96 +45,112 @@ export class NetworkPolicyService {
       };
     }
 
-    const containerIp = await this.networks.getContainerIp(
-      app.containerId,
-      app.networkName,
-    );
-    if (!containerIp) {
+    const policy = await this.resolvePolicy(app);
+    if (!policy) {
       return {
         status: 'skipped',
-        message: 'Container IP address is not available yet.',
+        message: 'Container network address is not available yet.',
       };
     }
 
-    const destinations = await this.allowedDestinations(app);
-    const chain = networkPolicyChainName(app.id);
-
     try {
-      await this.run(['-N', chain], true);
-      await this.run(['-F', chain]);
-
-      for (const destination of destinations.cidrs) {
-        await this.run(['-A', chain, '-d', destination, '-j', 'ACCEPT']);
-      }
-
-      await this.run(['-A', chain, '-j', 'REJECT']);
-      await this.ensureDockerUserJump(containerIp, chain);
-
+      await this.agent.apply(app.id, policy.agentPolicy);
       return {
         status: 'applied',
-        message: this.appliedMessage(containerIp, destinations),
+        message: this.appliedMessage(policy.destinations),
       };
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'Unknown iptables error';
-      this.logger.error(message);
+        error instanceof Error
+          ? error.message
+          : 'Firewall agent request failed.';
+      this.logger.error(
+        `Could not apply firewall policy for ${app.id}: ${message}`,
+      );
       return { status: 'error', message };
     }
   }
 
-  /**
-   * Removes the app-specific iptables chain and jump rule when they exist.
-   * Cleanup is best-effort so repeated calls remain safe.
-   */
-  async remove(
-    app: Pick<AndroidApplication, 'id' | 'containerId' | 'networkName'>,
-  ) {
-    if (!this.config.get<boolean>('app.docker.iptablesEnabled')) {
-      return;
-    }
-
-    const chain = networkPolicyChainName(app.id);
-    if (app.containerId) {
-      const containerIp = await this.networks
-        .getContainerIp(app.containerId, app.networkName)
-        .catch(() => null);
-      if (containerIp) {
-        await this.run(
-          ['-D', 'DOCKER-USER', '-s', containerIp, '-j', chain],
-          true,
-        );
-      }
-    }
-    await this.run(['-F', chain], true);
-    await this.run(['-X', chain], true);
+  async reconcile(apps: AndroidApplication[]) {
+    const policies = (
+      await Promise.all(
+        apps
+          .filter((app) => app.containerId && app.networkPolicyEnabled)
+          .map(async (app) => {
+            const policy = await this.resolvePolicy(app);
+            return policy
+              ? { applicationId: app.id, ...policy.agentPolicy }
+              : null;
+          }),
+      )
+    ).filter((policy): policy is NonNullable<typeof policy> => Boolean(policy));
+    await this.agent.reconcile(policies);
   }
 
-  /**
-   * Merges default, sidecar, and custom allowlist CIDRs into the final rule set.
-   */
+  async remove(app: Pick<AndroidApplication, 'id'>) {
+    await this.agent.remove(app.id).catch((error) => {
+      this.logger.warn(
+        `Could not remove firewall policy for ${app.id}: ${
+          error instanceof Error
+            ? error.message
+            : 'unknown firewall agent error'
+        }`,
+      );
+    });
+  }
+
+  private async validatedContainerIp(app: AndroidApplication) {
+    const inspect = await this.engine.docker
+      .getContainer(app.containerId!)
+      .inspect();
+    const labels = inspect.Config?.Labels ?? {};
+    if (
+      labels['com.rebroid.managed'] !== 'true' ||
+      labels['com.rebroid.application-id'] !== app.id ||
+      labels['com.rebroid.component'] !== 'runtime'
+    ) {
+      throw new Error('Managed container identity validation failed.');
+    }
+    return (
+      inspect.NetworkSettings?.Networks?.[app.networkName]?.IPAddress || null
+    );
+  }
+
+  private async resolvePolicy(app: AndroidApplication) {
+    const containerIp = await this.validatedContainerIp(app);
+    if (!containerIp || !app.containerId) {
+      return null;
+    }
+    const destinations = await this.allowedDestinations(app);
+    return {
+      destinations,
+      agentPolicy: {
+        containerId: app.containerId,
+        containerIp,
+        enabled: true,
+        allowCidrs: destinations.cidrs,
+        generation: Date.now(),
+      },
+    };
+  }
+
   private async allowedDestinations(
     app: AndroidApplication,
   ): Promise<AllowedDestinations> {
     const customCidrs = parseAllowCidrs(app.networkPolicyAllowCidrs);
     const defaultDestinations = await this.resolveDefaultDestinations(app);
-    const sidecarCidrs = await this.resolveScrcpySidecarCidrs(app);
-    const cidrs = uniqueStrings([
-      ...defaultDestinations.cidrs,
-      ...sidecarCidrs,
-      ...customCidrs,
-    ]);
-
+    const sidecarIp = await this.sidecar.getSidecarIp(app.networkName);
+    const sidecarCidrs = sidecarIp ? [`${sidecarIp}/32`] : [];
     return {
-      cidrs,
+      cidrs: uniqueStrings([
+        ...defaultDestinations.cidrs,
+        ...sidecarCidrs,
+        ...customCidrs,
+      ]),
       customCidrs,
       defaultCidrsCount: defaultDestinations.cidrs.length + sidecarCidrs.length,
       unresolvedDefaults: defaultDestinations.unresolved,
     };
-  }
-
-  private async resolveScrcpySidecarCidrs(app: AndroidApplication) {
-    const sidecarIp = await this.sidecar.getSidecarIp(app.networkName);
-    return sidecarIp ? [`${sidecarIp}/32`] : [];
   }
 
   private async resolveDefaultDestinations(
@@ -157,25 +159,17 @@ export class NetworkPolicyService {
     const destinations = this.config.get<string[]>(
       'app.networkPolicy.defaultAllowDestinations',
     ) ?? ['API_IP', 'GATEWAY_IP'];
-    const cidrs: string[] = [];
-    const unresolved: string[] = [];
-
-    for (const destination of destinations) {
-      const resolved = await this.resolveDefaultDestination(app, destination);
-      cidrs.push(...resolved.cidrs);
-      unresolved.push(...resolved.unresolved);
-    }
-
+    const resolved = await Promise.all(
+      destinations.map((destination) =>
+        this.resolveDefaultDestination(app, destination),
+      ),
+    );
     return {
-      cidrs: uniqueStrings(cidrs),
-      unresolved: uniqueStrings(unresolved),
+      cidrs: uniqueStrings(resolved.flatMap((item) => item.cidrs)),
+      unresolved: uniqueStrings(resolved.flatMap((item) => item.unresolved)),
     };
   }
 
-  /**
-   * Expands built-in tokens like API_IP and GATEWAY_IP, or normalizes literal CIDRs.
-   * Unknown tokens are reported back as unresolved instead of throwing.
-   */
   private async resolveDefaultDestination(
     app: AndroidApplication,
     destination: string,
@@ -184,8 +178,10 @@ export class NetworkPolicyService {
     const token = normalized.toUpperCase();
 
     if (token === 'DEFAULT') {
-      const api = await this.resolveDefaultDestination(app, 'API_IP');
-      const gateway = await this.resolveDefaultDestination(app, 'GATEWAY_IP');
+      const [api, gateway] = await Promise.all([
+        this.resolveDefaultDestination(app, 'API_IP'),
+        this.resolveDefaultDestination(app, 'GATEWAY_IP'),
+      ]);
       return {
         cidrs: uniqueStrings([...api.cidrs, ...gateway.cidrs]),
         unresolved: uniqueStrings([...api.unresolved, ...gateway.unresolved]),
@@ -194,21 +190,19 @@ export class NetworkPolicyService {
 
     if (token === 'API_IP' || token === 'ORCHESTRATOR_IP') {
       const cidrs = await this.resolveApiCidrs(app);
-      return cidrs.length > 0
+      return cidrs.length
         ? { cidrs, unresolved: [] }
         : { cidrs: [], unresolved: [token] };
     }
 
     if (token === 'GATEWAY_IP') {
-      const gatewayIp = await this.networks.getNetworkGateway(app.networkName);
-      return gatewayIp
-        ? { cidrs: [`${gatewayIp}/32`], unresolved: [] }
+      const ip = await this.networks.getNetworkGateway(app.networkName);
+      return ip
+        ? { cidrs: [`${ip}/32`], unresolved: [] }
         : { cidrs: [], unresolved: [token] };
     }
 
-    if (token === 'INTERNET') {
-      return { cidrs: ['0.0.0.0/0'], unresolved: [] };
-    }
+    if (token === 'INTERNET') return { cidrs: ['0.0.0.0/0'], unresolved: [] };
 
     const cidr = normalizeIpv4Cidr(normalized);
     return cidr
@@ -216,106 +210,47 @@ export class NetworkPolicyService {
       : { cidrs: [], unresolved: [normalized] };
   }
 
-  /**
-   * Resolves all orchestrator/API endpoints that must remain reachable under the policy.
-   */
-  private async resolveApiCidrs(app: AndroidApplication): Promise<string[]> {
-    const configuredCidrs = (
+  private async resolveApiCidrs(app: AndroidApplication) {
+    const configured = (
       this.config.get<string[]>('app.networkPolicy.apiCidrs') ?? []
     )
-      .map((value) => normalizeIpv4Cidr(value))
+      .map(normalizeIpv4Cidr)
       .filter((value): value is string => Boolean(value));
-    const apiHostCidrs = await this.resolveApiHostCidrs();
-    const attachedOrchestratorIp = await this.networks.getOrchestratorIp(
+    const host = extractHostname(
+      this.config.get<string>('app.networkPolicy.apiHost'),
+    );
+    let hostCidrs: string[] = [];
+    if (host) {
+      const direct = normalizeIpv4Cidr(host);
+      if (direct) {
+        hostCidrs = [direct];
+      } else {
+        try {
+          hostCidrs = (await lookup(host, { all: true, family: 4 })).map(
+            ({ address }) => `${address}/32`,
+          );
+        } catch (error) {
+          this.logger.warn(
+            `Could not resolve NETWORK_POLICY_API_HOST: ${error instanceof Error ? error.message : 'DNS error'}`,
+          );
+        }
+      }
+    }
+
+    const orchestratorIp = await this.networks.getOrchestratorIp(
       app.networkName,
     );
-    const attachedOrchestratorCidr = attachedOrchestratorIp
-      ? `${attachedOrchestratorIp}/32`
-      : null;
-
     return uniqueStrings([
-      ...configuredCidrs,
-      ...apiHostCidrs,
-      ...(attachedOrchestratorCidr ? [attachedOrchestratorCidr] : []),
+      ...configured,
+      ...hostCidrs,
+      ...(orchestratorIp ? [`${orchestratorIp}/32`] : []),
     ]);
   }
 
-  /**
-   * Resolves NETWORK_POLICY_API_HOST to IPv4 /32 entries.
-   * Hostnames that do not resolve are logged and ignored.
-   */
-  private async resolveApiHostCidrs(): Promise<string[]> {
-    const apiHost = this.config.get<string>('app.networkPolicy.apiHost');
-    const hostname = extractHostname(apiHost);
-    if (!hostname) {
-      return [];
-    }
-
-    const directCidr = normalizeIpv4Cidr(hostname);
-    if (directCidr) {
-      return [directCidr];
-    }
-
-    try {
-      const addresses = await lookup(hostname, { all: true, family: 4 });
-      return uniqueStrings(addresses.map((address) => `${address.address}/32`));
-    } catch (error) {
-      this.logger.warn(
-        `Could not resolve NETWORK_POLICY_API_HOST "${hostname}": ${
-          error instanceof Error ? error.message : 'unknown DNS error'
-        }`,
-      );
-      return [];
-    }
-  }
-
-  /**
-   * Ensures DOCKER-USER forwards container traffic into the app-specific chain exactly once.
-   */
-  private async ensureDockerUserJump(containerIp: string, chain: string) {
-    const rule = ['DOCKER-USER', '-s', containerIp, '-j', chain];
-    const exists = await this.run(['-C', ...rule], true);
-    if (!exists.ok) {
-      await this.run(['-I', ...rule]);
-    }
-  }
-
-  /**
-   * Summarizes the applied policy, including unresolved defaults for operator visibility.
-   */
-  private appliedMessage(
-    containerIp: string,
-    destinations: AllowedDestinations,
-  ) {
-    const customCount = destinations.customCidrs.length;
-    const defaultSummary =
-      destinations.defaultCidrsCount > 0
-        ? `${destinations.defaultCidrsCount} default destination${destinations.defaultCidrsCount === 1 ? '' : 's'}`
-        : 'no resolved default destinations';
-    const customSummary = `${customCount} custom CIDR${customCount === 1 ? '' : 's'}`;
-    const unresolvedSummary =
-      destinations.unresolvedDefaults.length > 0
-        ? ` Unresolved defaults: ${destinations.unresolvedDefaults.join(', ')}.`
-        : '';
-
-    return `Applied policy for ${containerIp}. Allowed ${defaultSummary} plus ${customSummary}.${unresolvedSummary}`;
-  }
-
-  /**
-   * Executes the configured iptables binary.
-   * Some cleanup paths intentionally ignore failures to keep rule removal idempotent.
-   */
-  private async run(args: string[], ignoreFailure = false) {
-    const binary = this.config.getOrThrow<string>('app.docker.iptablesBinary');
-    try {
-      await execFileAsync(binary, args);
-      return { ok: true };
-    } catch (error) {
-      if (ignoreFailure) {
-        return { ok: false };
-      }
-
-      throw error;
-    }
+  private appliedMessage(destinations: AllowedDestinations) {
+    const unresolved = destinations.unresolvedDefaults.length
+      ? ` Unresolved defaults: ${destinations.unresolvedDefaults.join(', ')}.`
+      : '';
+    return `Applied outbound policy with ${destinations.defaultCidrsCount} default destination(s) and ${destinations.customCidrs.length} custom CIDR(s).${unresolved}`;
   }
 }

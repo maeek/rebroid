@@ -162,9 +162,7 @@ Create or update applications by referencing the uploaded APK:
 
 ## Network Policy
 
-Each app still receives its own Docker network. When `IPTABLES_POLICY_ENABLED=false`, those networks use normal Docker routing so host Docker provides outbound internet and DNS. In this mode, per-app allowlists are skipped and outbound traffic is not restricted by Rebroid.
-
-When `IPTABLES_POLICY_ENABLED=true`, the orchestrator applies per-container `DOCKER-USER` rules:
+Each app receives its own routable network. The orchestrator resolves policy destinations and sends them to the required `rebroid-firewall-agent` over `/run/rebroid-firewall/agent.sock`. The agent applies per-container host firewall rules:
 
 - allow backend-owned default destinations,
 - allow the app-specific CIDR allowlist,
@@ -180,14 +178,12 @@ Default destinations are configured by `NETWORK_POLICY_DEFAULT_ALLOW_DESTINATION
 
 If the API is running outside the per-app Docker network, set `NETWORK_POLICY_API_HOST` or `NETWORK_POLICY_API_CIDRS` so `API_IP` resolves to the current API destination dynamically when policies are applied.
 
-This mode is meant for Linux hosts where the orchestrator has permission to run `iptables`, usually by running with `NET_ADMIN` or equivalent host privileges. Policy can be reconciled without restarting the Android container:
+The firewall agent supports native rootful Docker and rootful Podman with Netavark by selecting Docker `DOCKER-USER`, a Rebroid-owned nftables table, or a Rebroid-owned `FORWARD` chain hook. Rootless engines and VM-based desktop engines are unsupported. Policy can be reconciled without restarting the Android container:
 
 ```text
 PATCH /android-applications/:id/network-policy
 POST  /android-applications/:id/network-policy/apply
 ```
-
-Existing app networks created by older versions as Docker `Internal` networks must be recreated before those apps get internet or external DNS. Stop and recreate the affected app if policy status reports that its Docker network is internal.
 
 Resource/profile options are stored per app. RAM and CPU are applied to new containers. Named Docker volume size is currently advisory because the default local volume driver does not enforce quota cleanly across hosts.
 
@@ -211,55 +207,19 @@ If your engine socket is elsewhere, pass one variable:
 CONTAINER_ENGINE_SOCKET=/path/to/docker-compatible.sock docker compose up --build
 ```
 
-## Podman on macOS
+## Podman
 
-The orchestrator talks to a Docker-compatible API through `dockerode`. It does not require Docker Desktop, but it does require a Docker-compatible socket mounted into the orchestrator container.
-
-Recommended Podman Desktop setup:
+Podman support requires native Linux rootful Podman with Netavark and a Docker-compatible API socket mounted into the orchestrator container:
 
 ```bash
-podman machine init --cpus 4 --memory 8192 --disk-size 60
-podman machine start
-sudo podman-mac-helper install
-podman machine stop
-podman machine start
+CONTAINER_ENGINE_SOCKET=/run/podman/podman.sock docker compose up --build
 ```
-
-Verify that Podman is exposing the Docker-compatible socket:
-
-```bash
-ls -la /var/run/docker.sock
-curl --unix-socket /var/run/docker.sock http://d/_ping
-```
-
-Then start the orchestrator with the Podman compose example:
-
-```bash
-CONTAINER_ENGINE_SOCKET=/var/run/docker.sock podman compose -f docker-compose.podman.example.yml up --build
-```
-
-If `/var/run/docker.sock` is not available, check Podman Desktop's Docker Compatibility settings or run:
-
-```bash
-sudo podman-mac-helper install
-podman machine stop
-podman machine start
-```
-
-If you prefer not to use the helper, find the Podman socket on the macOS host:
-
-```bash
-podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}'
-```
-
-Then mount that host path to `/var/run/docker.sock` inside the orchestrator container and keep `DOCKER_SOCKET_PATH=/var/run/docker.sock`.
-
-You can pass that path as `CONTAINER_ENGINE_SOCKET=/Users/you/.../podman.sock`.
 
 ### Podman Caveats
 
-- Redroid itself is more demanding than normal OCI containers. It usually needs privileged container behavior and Android kernel support such as binder/ashmem or binderfs. On macOS, that means the Podman machine VM must support what redroid needs; the orchestrator can create the container, but the VM kernel still decides whether redroid can boot.
+- Redroid itself is more demanding than normal OCI containers. It usually needs privileged container behavior and Android kernel support such as binder/ashmem or binderfs.
 - For redroid on Linux, use a rootful Docker-compatible engine socket. A rootless Podman socket such as `/run/user/.../podman/podman.sock` can expose the API, but it still cannot launch the truly privileged container that redroid requires.
+- Podman machine, Podman Desktop VM deployments, and CNI-era Podman networking are unsupported.
 - Podman exposes a Docker-compatible API, but it is not a byte-for-byte Docker daemon. The skeleton uses conservative Docker API features: create network, create volume, create/start/stop/remove container, copy archive, and exec.
 - Mounting the engine socket into the orchestrator is powerful. Keep this service internal, and do not expose it directly to users.
 

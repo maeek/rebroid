@@ -227,6 +227,7 @@ export class AndroidAppsProvisioningService {
     await this.network.reconcilePolicy(app, {
       log: true,
       recordLastStartedAt: true,
+      failClosed: true,
     });
     this.tracker.ensureActive(app.id);
   }

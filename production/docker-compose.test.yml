@@ -5,7 +5,6 @@ services:
       dockerfile: Dockerfile
     image: rebroid/orchestrator:test
     container_name: rebroid-orchestrator-test
-    privileged: true
     user: '0:0'
     restart: unless-stopped
     environment:
@@ -15,15 +14,12 @@ services:
       CONTAINER_IMAGE: ${CONTAINER_IMAGE:-redroid/redroid:13.0.0-latest}
       REDROID_ADB_PORT: ${REDROID_ADB_PORT:-5555}
       REDROID_PRIVILEGED: ${REDROID_PRIVILEGED:-true}
-      ORCHESTRATOR_INTERNAL_DOCKER: 'false'
-      IPTABLES_POLICY_ENABLED: ${IPTABLES_POLICY_ENABLED:-false}
+      FIREWALL_AGENT_SOCKET: /run/rebroid-firewall/agent.sock
       DISPLAY_SIDECAR_IMAGE: rebroid/display-sidecar:test
       DISPLAY_SIDECAR_CONTAINER_NAME: rebroid-display-sidecar-test
       DISPLAY_SIDECAR_INTERNAL_BASE_URL: http://rebroid-display-sidecar-test:8000
       DISPLAY_SIDECAR_AUTO_START: 'false'
       MAX_APK_UPLOAD_SIZE_MB: ${MAX_APK_UPLOAD_SIZE_MB:-4096}
-    cap_add:
-      - NET_ADMIN
     expose:
       - '4100'
     volumes:
@@ -31,8 +27,26 @@ services:
       - orchestrator-test-data:/app/data
       - orchestrator-test-uploads:/app/uploads
       - shared-test-secrets:/app/secrets
+      - firewall-agent-test-run:/run/rebroid-firewall
     networks:
       - platform
+
+  firewall-agent:
+    build:
+      context: ./firewall-agent
+      dockerfile: Dockerfile
+    image: rebroid/firewall-agent:test
+    container_name: rebroid-firewall-agent-test
+    network_mode: host
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    environment:
+      FIREWALL_AGENT_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
+      FIREWALL_AGENT_SHARED_SECRET_FILE: /app/secrets/orchestrator-secret
+    volumes:
+      - shared-test-secrets:/app/secrets:ro
+      - firewall-agent-test-run:/run/rebroid-firewall
 
   web:
     build:
@@ -88,6 +102,7 @@ volumes:
   orchestrator-test-uploads:
   shared-test-secrets:
   web-test-data:
+  firewall-agent-test-run:
 
 networks:
   platform:

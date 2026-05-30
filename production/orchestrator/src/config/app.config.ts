@@ -62,12 +62,16 @@ export default registerAs('app', () => {
         process.env.ORCHESTRATOR_CONTAINER_ID ||
         process.env.HOSTNAME ||
         undefined,
-      iptablesEnabled: bool(process.env.IPTABLES_POLICY_ENABLED, false),
-      iptablesBinary: process.env.IPTABLES_BINARY ?? 'iptables',
       volumeUsageCacheTtlSeconds: number(
         process.env.VOLUME_USAGE_CACHE_TTL_SECONDS,
         300,
       ),
+    },
+    firewallAgent: {
+      socketPath:
+        process.env.FIREWALL_AGENT_SOCKET ?? '/run/rebroid-firewall/agent.sock',
+      sharedSecret:
+        process.env.FIREWALL_AGENT_SHARED_SECRET || sharedSecret || '',
     },
     networkPolicy: {
       apiHost:
@@ -77,7 +81,7 @@ export default registerAs('app', () => {
       apiCidrs: csv(process.env.NETWORK_POLICY_API_CIDRS, []),
       defaultAllowDestinations: csv(
         process.env.NETWORK_POLICY_DEFAULT_ALLOW_DESTINATIONS,
-        ['API_IP', 'GATEWAY_IP', 'INTERNET'],
+        ['API_IP', 'GATEWAY_IP'],
       ),
     },
     container: {

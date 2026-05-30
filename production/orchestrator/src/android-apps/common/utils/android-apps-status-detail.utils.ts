@@ -78,7 +78,7 @@ export const deriveStatusDetail = (
         title: 'Creating network',
         description:
           description ??
-          `Creating isolated internal network ${app.networkName}.`,
+          `Creating isolated managed network ${app.networkName}.`,
         tone: 'progress',
       };
     case AndroidApplicationLifecycleStage.OrchestratorNetworkConnecting:

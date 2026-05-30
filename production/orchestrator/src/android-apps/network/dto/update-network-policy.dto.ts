@@ -6,7 +6,10 @@ import {
   IsOptional,
   IsString,
   MaxLength,
+  ValidateBy,
+  ValidationOptions,
 } from 'class-validator';
+import { normalizeIpv4Cidr } from '../../../network-policy/utils/network-policy.utils';
 
 const toStringArray = (value: unknown) => {
   if (Array.isArray(value)) {
@@ -22,6 +25,20 @@ const toStringArray = (value: unknown) => {
 
   return value;
 };
+
+const IsIpv4Cidr = (validationOptions?: ValidationOptions) =>
+  ValidateBy(
+    {
+      name: 'isIpv4Cidr',
+      validator: {
+        validate: (value: unknown) =>
+          typeof value === 'string' && Boolean(normalizeIpv4Cidr(value)),
+        defaultMessage: () =>
+          'Each allowlist entry must be an IPv4 address or CIDR.',
+      },
+    },
+    validationOptions,
+  );
 
 export class UpdateNetworkPolicyDto {
   @ApiPropertyOptional({ example: true })
@@ -40,5 +57,6 @@ export class UpdateNetworkPolicyDto {
   @IsArray()
   @IsString({ each: true })
   @MaxLength(64, { each: true })
+  @IsIpv4Cidr({ each: true })
   networkPolicyAllowCidrs?: string[];
 }

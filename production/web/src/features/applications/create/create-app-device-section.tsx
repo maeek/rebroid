@@ -1,3 +1,4 @@
+import { Fragment } from 'react/jsx-runtime'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
@@ -60,10 +61,10 @@ export const CreateAppDeviceSection = ({
             {`${redroidDefaultsLabel} ${redroidDisplayArgsForProfile(values.redroidDisplayProfileId)}`
               .split(' ')
               .map((word, index) => (
-                <>
-                  <span key={index}>{word}</span>
+                <Fragment key={index + word}>
+                  <span>{word}</span>
                   <br />
-                </>
+                </Fragment>
               ))}
           </div>
         </Setting>

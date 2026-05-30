@@ -1,5 +1,11 @@
 import { hasPermission, type PermissionMap, type ResourceQuota } from '@/shared/permissions/permissions'
-import type { AndroidApplication, CreateApplicationActionInput, UpdateAndroidApplicationInput } from './types'
+import type {
+  AndroidApplication,
+  ApplicationLog,
+  CreateApplicationActionInput,
+  ScrcpySession,
+  UpdateAndroidApplicationInput
+} from './types'
 
 type AppSafetyContext = {
   role: 'admin' | 'user'
@@ -9,6 +15,9 @@ type AppSafetyContext = {
 
 const canViewBackendDetails = (context: AppSafetyContext) =>
   context.role === 'admin' || hasPermission(context.permissions, 'applications:view-backend-details')
+
+const redactBackendAddresses = (value: string) =>
+  value.replace(/\b(?:25[0-5]|2[0-4]\d|1?\d?\d)(?:\.(?:25[0-5]|2[0-4]\d|1?\d?\d)){3}\b/g, '[redacted address]')
 
 export const sanitizeAndroidApplicationForUser = (app: AndroidApplication, context: AppSafetyContext) => {
   if (canViewBackendDetails(context)) {
@@ -35,6 +44,46 @@ export const sanitizeAndroidApplicationForUser = (app: AndroidApplication, conte
       ...app.apk,
       filePath: null
     }
+  }
+}
+
+export const sanitizeScrcpySessionForUser = (session: ScrcpySession, context: AppSafetyContext): ScrcpySession => {
+  if (canViewBackendDetails(context)) {
+    return session
+  }
+
+  return {
+    ...session,
+    adbHost: 'Managed container',
+    adbPort: 0,
+    udid: 'Managed container',
+    viewerMessage: session.viewerMessage ? redactBackendAddresses(session.viewerMessage) : null,
+    viewerError: session.viewerError
+      ? {
+          ...session.viewerError,
+          message: redactBackendAddresses(session.viewerError.message),
+          command: session.viewerError.command?.map(redactBackendAddresses) ?? null,
+          stdout: session.viewerError.stdout ? redactBackendAddresses(session.viewerError.stdout) : null,
+          stderr: session.viewerError.stderr ? redactBackendAddresses(session.viewerError.stderr) : null
+        }
+      : null,
+    displaySession: session.displaySession
+      ? {
+          ...session.displaySession,
+          udid: 'Managed container'
+        }
+      : null
+  }
+}
+
+export const sanitizeApplicationLogForUser = (log: ApplicationLog, context: AppSafetyContext): ApplicationLog => {
+  if (canViewBackendDetails(context)) {
+    return log
+  }
+
+  return {
+    ...log,
+    output: redactBackendAddresses(log.output)
   }
 }
 

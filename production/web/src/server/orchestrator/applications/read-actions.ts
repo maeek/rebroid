@@ -3,7 +3,11 @@
 import { hasPermission } from '@/shared/permissions/permissions'
 import { getCurrentUserContext } from '../current-user'
 import { orchestratorApplicationsClient } from './client'
-import { sanitizeAndroidApplicationForUser } from './safety'
+import {
+  sanitizeAndroidApplicationForUser,
+  sanitizeApplicationLogForUser,
+  sanitizeScrcpySessionForUser
+} from './safety'
 import type { RunningApplicationNotifications, ApplicationRuntimeFilesProfileInput } from './types'
 
 export const listApplicationsAction = async () => {
@@ -71,7 +75,8 @@ export const getApplicationLogsAction = async (
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:view-logs')) {
     throw new Error('You do not have permission to view logs.')
   }
-  return orchestratorApplicationsClient.getApplicationLogs(id, source, tail)
+  const log = await orchestratorApplicationsClient.getApplicationLogs(id, source, tail)
+  return sanitizeApplicationLogForUser(log, user)
 }
 
 export const listApplicationDownloadFilesAction = async (id: string, profile?: ApplicationRuntimeFilesProfileInput) => {
@@ -111,8 +116,9 @@ export const captureApplicationScreenshotAction = async (id: string) => {
 }
 
 export const getScrcpySessionAction = async (id: string) => {
-  await assertCanUseOwnedApplicationRuntime(id)
-  return orchestratorApplicationsClient.getScrcpySession(id)
+  const { user } = await assertCanUseOwnedApplicationRuntime(id)
+  const session = await orchestratorApplicationsClient.getScrcpySession(id)
+  return sanitizeScrcpySessionForUser(session, user)
 }
 
 export const recordViewerActivityAction = async (id: string) => {

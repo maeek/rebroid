@@ -5,6 +5,7 @@ import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
 import { AndroidAppsViewerNetworkService } from '../../viewer/services/android-apps-viewer-network.service';
+import { DockerContainerLifecycleService } from '../../../docker/containers/services/docker-container-lifecycle.service';
 
 @Injectable()
 export class AndroidAppsRuntimeNetworkService {
@@ -14,6 +15,7 @@ export class AndroidAppsRuntimeNetworkService {
     private readonly logs: AndroidAppsLogService,
     private readonly state: AndroidAppsStateService,
     private readonly viewerNetwork: AndroidAppsViewerNetworkService,
+    private readonly containers: DockerContainerLifecycleService,
   ) {}
 
   /** Creates the app network boundary and viewer link. */
@@ -42,9 +44,18 @@ export class AndroidAppsRuntimeNetworkService {
     options: {
       log?: boolean;
       recordLastStartedAt?: boolean;
+      failClosed?: boolean;
     } = {},
   ) {
-    const result = await this.networkPolicy.apply(app);
+    let result;
+    try {
+      result = await this.networkPolicy.apply(app);
+    } catch (error) {
+      if (options.failClosed && app.networkPolicyEnabled && app.containerId) {
+        await this.containers.stopContainer(app.containerId);
+      }
+      throw error;
+    }
     app.networkPolicyStatus = result.status;
     app.networkPolicyMessage = result.message;
     app.networkPolicyAppliedAt = new Date();
@@ -52,6 +63,17 @@ export class AndroidAppsRuntimeNetworkService {
       app.lastStartedAt = new Date();
     }
     await this.state.save(app);
+
+    if (
+      options.failClosed &&
+      app.networkPolicyEnabled &&
+      result.status !== 'applied'
+    ) {
+      if (app.containerId) {
+        await this.containers.stopContainer(app.containerId);
+      }
+      throw new Error(`Outbound policy enforcement failed: ${result.message}`);
+    }
 
     if (options.log) {
       await this.logs.append(app.id, 'Network policy reconciled', {

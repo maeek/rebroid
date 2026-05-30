@@ -441,6 +441,7 @@ export class AndroidAppsLifecycleService {
     });
     await this.runtimeNetwork.reconcilePolicy(app, {
       recordLastStartedAt: true,
+      failClosed: true,
     });
     this.tracker.ensureActive(app.id);
     await this.provisioning.prepareRuntimeReadiness(app);

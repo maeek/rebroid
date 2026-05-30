@@ -90,49 +90,13 @@ CONTAINER_ENGINE_SOCKET=/run/podman/podman.sock docker compose up --build
 
 Do not point this at a rootless Podman socket such as `/run/user/1000/podman/podman.sock` when you want to run redroid. Redroid needs a truly privileged container, and a rootless engine cannot provide that.
 
-On macOS with Podman Desktop, the easiest path is usually Docker socket compatibility:
+Podman support requires native Linux rootful Podman with Netavark. Podman machine and Podman Desktop VM deployments are unsupported because the firewall agent must administer the same Linux host network namespace used by application containers.
 
-```bash
-sudo podman-mac-helper install
-podman machine stop
-podman machine start
-docker compose up --build
-```
+## External Container Engine
 
-If `podman compose` delegates to `docker-compose` and fails with a socket like `podman-machine-default-api.sock`, but `podman machine list` shows a differently named machine such as `machine`, `DOCKER_HOST` is stale. Compare the failing path with:
+Rebroid requires a native Linux rootful Docker-compatible engine socket. Embedded Docker is not supported. The orchestrator uses the socket for app lifecycle operations and fails startup when the socket is missing.
 
-```bash
-podman machine inspect machine --format '{{.ConnectionInfo.PodmanSocket.Path}}'
-```
-
-Then either unset `DOCKER_HOST` or export the real socket before running compose:
-
-```bash
-unset DOCKER_HOST
-# or
-export DOCKER_HOST=unix:///var/folders/.../T/podman/machine-api.sock
-podman compose up --build
-```
-
-The `Can't add file ... .dockerignore to tar: io: read/write on closed pipe` lines are a follow-on symptom of the same daemon connection failure, not a broken `.dockerignore` file.
-
-If you do not use the helper, inspect the machine socket path and pass it as `CONTAINER_ENGINE_SOCKET`.
-
-## Internal Docker Mode
-
-The default production compose setup uses the host/rootful Docker-compatible socket. This is the recommended mode for redroid and scrcpy because the application containers and the display sidecar live in the same container engine and Docker networks.
-
-The orchestrator image can still start its own internal Docker daemon when no socket is mounted, but that mode needs one extra viewer wiring step: the sidecar created inside the orchestrator's internal daemon must be published back on the orchestrator container network namespace, and the browser must use that published sidecar port.
-
-Use the internal compose file only when you intentionally do not mount a host engine socket:
-
-```bash
-docker compose -f docker-compose.internal.yml up --build
-```
-
-If the browser cannot reach the display sidecar port, set `WS_SCRCPY_PUBLIC_BASE_URL` to the externally reachable sidecar URL or set `WS_SCRCPY_PUBLIC_PORT` to the published port.
-
-Do not point `CONTAINER_ENGINE_SOCKET` at a missing file to force internal mode. Compose can create a directory at `/var/run/docker.sock`, which prevents the internal daemon from binding its Unix socket.
+The `firewall-agent` service runs with host networking and `NET_ADMIN`. It administers Rebroid-owned host firewall rules and communicates with the orchestrator only through the shared `/run/rebroid-firewall/agent.sock` Unix socket. It does not expose a public port.
 
 ## Redroid Host Checks
 
@@ -191,12 +155,15 @@ services:
 
 `REDROID_CGROUPNS_MODE=private` and `REDROID_OPTIONAL_DEVICES=/dev/ashmem:/dev/ashmem:rwm` are already the built-in defaults. Keep the cgroup namespace private when you use CPU or memory limits so Android runtime processes stay inside the Docker-accounted cgroup. `REDROID_CGROUPNS_MODE=host` is available as an escape hatch for unusual hosts, but it can make privileged redroid processes visible in host process monitors while Docker/Portainer stats only report a small outer-container load. `REDROID_DEVICES` is for required mappings and will fail container creation if the host path is missing; `REDROID_OPTIONAL_DEVICES` is for best-effort mappings such as ashmem.
 
-Everything else is primarily for advanced deployments: custom networks, external orchestrator/web separation, sidecar image overrides, or Linux iptables policy tuning.
+Everything else is primarily for advanced deployments: custom networks, external orchestrator/web separation, sidecar image overrides, or firewall adapter tuning.
+
+Network allowlists are applied by the firewall agent while apps are running. Docker `DOCKER-USER`, nftables, and rootful Podman Netavark hosts are supported. Rootless engines, Docker Desktop VM mode, Podman machine VM mode, and CNI-era Podman networking are unsupported deployment targets.
 
 ## Services
 
 - `web`: Next.js UI, backend-for-frontend, and built-in HTTPS proxy for secure browser APIs such as WebCodecs.
 - `orchestrator`: NestJS API that manages containers through the Docker-compatible socket.
+- `firewall-agent`: host-network service that applies Rebroid-owned outbound firewall rules.
 - `display-sidecar`: display service for ADB viewer sessions and streaming.
 
 ## Stored Data

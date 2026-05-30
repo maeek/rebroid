@@ -9,19 +9,21 @@ const appWithPolicyStatus = (
     containerId: 'container-1',
     networkPolicyEnabled: true,
     networkPolicyStatus: 'skipped',
-    networkPolicyMessage:
-      'IPTables policy is disabled. Containers use normal Docker internet and DNS egress, and per-app outbound allowlists are not enforced.',
+    networkPolicyMessage: 'Firewall agent is unavailable.',
     ...overrides,
   }) as AndroidApplication;
 
 describe('deriveNetworkPolicyResult', () => {
-  it('explains that disabled iptables allows normal Docker egress', () => {
-    expect(deriveNetworkPolicyResult(appWithPolicyStatus({}), false)).toEqual({
-      status: 'skipped',
-      code: 'iptables_disabled',
-      message:
-        'IPTables policy is disabled. Containers use normal Docker internet and DNS egress, and per-app outbound allowlists are not enforced.',
-      hint: 'Outbound internet and DNS use normal Docker egress. Per-app allowlists are not enforced unless IPTABLES_POLICY_ENABLED is enabled in a supported host firewall setup.',
+  it('reports an unavailable firewall agent safely', () => {
+    expect(
+      deriveNetworkPolicyResult(
+        appWithPolicyStatus({ networkPolicyStatus: 'error' }),
+      ),
+    ).toEqual({
+      status: 'error',
+      code: 'agent_unavailable',
+      message: 'Firewall agent is unavailable.',
+      hint: 'Check firewall agent health and host firewall configuration, then apply the policy again.',
     });
   });
 });

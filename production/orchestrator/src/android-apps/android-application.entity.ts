@@ -73,7 +73,8 @@ export class AndroidNetworkPolicyResult {
       'apply_failed',
       'container_ip_unavailable',
       'container_not_created',
-      'iptables_disabled',
+      'agent_unavailable',
+      'unsupported_host',
       'policy_disabled',
       'unknown',
     ],
@@ -83,7 +84,8 @@ export class AndroidNetworkPolicyResult {
     | 'apply_failed'
     | 'container_ip_unavailable'
     | 'container_not_created'
-    | 'iptables_disabled'
+    | 'agent_unavailable'
+    | 'unsupported_host'
     | 'policy_disabled'
     | 'unknown';
 
