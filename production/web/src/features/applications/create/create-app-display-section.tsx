@@ -1,7 +1,9 @@
-import { IconDeviceMobile, IconDeviceTablet } from '@tabler/icons-react'
+import { IconAdjustmentsHorizontal, IconDeviceMobile, IconDeviceTablet } from '@tabler/icons-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Section } from '@/components/ui/section'
 import { cn } from '@/lib/utils'
-import { redroidDisplayProfiles } from '@/shared/runtime/redroid-runtime'
+import { getRedroidDisplayProfile, redroidDisplayProfiles } from '@/shared/runtime/redroid-runtime'
 import type { CreateAppFormValues } from './create-app-form.types'
 
 type CreateAppDisplaySectionProps = {
@@ -51,6 +53,85 @@ export const CreateAppDisplaySection = ({ values, onChange }: CreateAppDisplaySe
           </button>
         )
       })}
+      <button
+        type='button'
+        className={cn(
+          'flex min-h-10 items-center gap-3 rounded-lg border p-2 text-left transition-all duration-150',
+          'bg-card/35 hover:border-primary/55 hover:bg-card/55 dark:shadow-[inset_0_0_10px_0_rgba(255,255,255,0.025)] shadow-[inset_0_0_10px_0_rgba(0,0,0,0.025)]',
+          values.redroidDisplayProfileId === 'custom'
+            ? 'border-primary/80 ring-1 ring-primary/30 shadow-[inset_0_0_10px_0_color-mix(in_srgb,var(--primary)_30%,rgba(0,0,0,0))]! dark:shadow-[inset_0_0_20px_0_color-mix(in_srgb,var(--primary)_30%,rgba(0,0,0,0))]!'
+            : 'border-border/70'
+        )}
+        onClick={() => {
+          const profile = getRedroidDisplayProfile(values.redroidDisplayProfileId)
+          const isCustomSelected = values.redroidDisplayProfileId === 'custom'
+
+          onChange({
+            redroidDisplayProfileId: 'custom',
+            redroidCustomDisplayWidth: isCustomSelected ? values.redroidCustomDisplayWidth : String(profile.width),
+            redroidCustomDisplayHeight: isCustomSelected ? values.redroidCustomDisplayHeight : String(profile.height),
+            redroidCustomDisplayDpi: isCustomSelected ? values.redroidCustomDisplayDpi : String(profile.dpi)
+          })
+        }}
+      >
+        <span
+          className={cn(
+            'flex size-10 shrink-0 items-center justify-center rounded-lg border transition-all duration-150',
+            values.redroidDisplayProfileId === 'custom'
+              ? 'border-primary/40 bg-primary/20 text-primary'
+              : 'border-border/70 bg-background/40 text-secondary-foreground'
+          )}
+        >
+          <IconAdjustmentsHorizontal className='size-5' />
+        </span>
+        <span className='min-w-0'>
+          <span className='block font-medium text-sm'>Custom</span>
+          <span className='mt-1 block text-xs text-secondary-foreground'>
+            {values.redroidCustomDisplayWidth || 'Width'} x {values.redroidCustomDisplayHeight || 'height'},{' '}
+            {values.redroidCustomDisplayDpi || 'DPI'} dpi
+          </span>
+        </span>
+      </button>
     </div>
+    {values.redroidDisplayProfileId === 'custom' ? (
+      <div className='grid grid-cols-3 gap-3 rounded-lg border border-border/70 bg-card/30 p-3 max-sm:grid-cols-1'>
+        <div className='space-y-2'>
+          <Label htmlFor='redroid-custom-display-width'>Width</Label>
+          <Input
+            id='redroid-custom-display-width'
+            inputMode='numeric'
+            min={1}
+            placeholder='1080'
+            type='number'
+            value={values.redroidCustomDisplayWidth}
+            onChange={event => onChange({ redroidCustomDisplayWidth: event.target.value })}
+          />
+        </div>
+        <div className='space-y-2'>
+          <Label htmlFor='redroid-custom-display-height'>Height</Label>
+          <Input
+            id='redroid-custom-display-height'
+            inputMode='numeric'
+            min={1}
+            placeholder='1920'
+            type='number'
+            value={values.redroidCustomDisplayHeight}
+            onChange={event => onChange({ redroidCustomDisplayHeight: event.target.value })}
+          />
+        </div>
+        <div className='space-y-2'>
+          <Label htmlFor='redroid-custom-display-dpi'>DPI</Label>
+          <Input
+            id='redroid-custom-display-dpi'
+            inputMode='numeric'
+            min={1}
+            placeholder='420'
+            type='number'
+            value={values.redroidCustomDisplayDpi}
+            onChange={event => onChange({ redroidCustomDisplayDpi: event.target.value })}
+          />
+        </div>
+      </div>
+    ) : null}
   </Section>
 )

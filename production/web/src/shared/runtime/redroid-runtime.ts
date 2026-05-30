@@ -27,6 +27,10 @@ export type RedroidDisplayProfile = {
   fps: number
 }
 
+export type RedroidDisplayConfig = Pick<RedroidDisplayProfile, 'width' | 'height' | 'dpi'> & {
+  fps?: number
+}
+
 export const redroidDisplayProfiles: RedroidDisplayProfile[] = [
   {
     id: 'phone-19-5-9',
@@ -123,20 +127,33 @@ export const getRedroidDisplayProfile = (id: string) =>
 export const redroidDisplayArgsForProfile = (id: string) => {
   const profile = getRedroidDisplayProfile(id)
 
+  return redroidDisplayArgsForConfig(profile)
+}
+
+export const redroidDisplayArgsForConfig = (config: RedroidDisplayConfig) => {
   return [
-    `androidboot.redroid_width=${profile.width}`,
-    `androidboot.redroid_height=${profile.height}`,
-    `androidboot.redroid_dpi=${profile.dpi}`,
-    `androidboot.redroid_fps=${profile.fps}`
+    `androidboot.redroid_width=${config.width}`,
+    `androidboot.redroid_height=${config.height}`,
+    `androidboot.redroid_dpi=${config.dpi}`,
+    `androidboot.redroid_fps=${config.fps ?? 60}`
   ].join(' ')
 }
 
-export const applyRedroidDisplayContainerArgs = (image: string, displayProfileId: string, extraArgs = '') => {
+export const applyRedroidDisplayContainerArgs = (
+  image: string,
+  displayProfileId: string,
+  extraArgs = '',
+  displayConfig?: RedroidDisplayConfig
+) => {
   if (!isRedroidImage(image)) {
     return extraArgs.trim()
   }
 
-  return applyRedroidDefaultContainerArgs(image, `${redroidDisplayArgsForProfile(displayProfileId)} ${extraArgs}`)
+  const displayArgs = displayConfig
+    ? redroidDisplayArgsForConfig(displayConfig)
+    : redroidDisplayArgsForProfile(displayProfileId)
+
+  return applyRedroidDefaultContainerArgs(image, `${displayArgs} ${extraArgs}`)
 }
 
 const findArgValue = (containerArgs: string | null | undefined, key: string) => {

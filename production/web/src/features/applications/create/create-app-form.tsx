@@ -40,6 +40,9 @@ const getInitialFormValues = (settings: OrchestratorUiSettings): CreateAppFormVa
   volumeSizeLimitMb: '',
   customContainerArgs: '',
   redroidDisplayProfileId: defaultRedroidDisplayProfileId,
+  redroidCustomDisplayWidth: '1080',
+  redroidCustomDisplayHeight: '2340',
+  redroidCustomDisplayDpi: '440',
   redroidExtraArgs: ''
 })
 
@@ -50,6 +53,20 @@ const appNameFromApk = (file: File, uploaded?: UploadedApk | null) =>
     .replace(/[_-]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
+
+const parseCustomDisplayValue = (value: string) => {
+  const parsed = Number(value)
+
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null
+}
+
+const getCustomDisplayConfig = (values: CreateAppFormValues) => {
+  const width = parseCustomDisplayValue(values.redroidCustomDisplayWidth)
+  const height = parseCustomDisplayValue(values.redroidCustomDisplayHeight)
+  const dpi = parseCustomDisplayValue(values.redroidCustomDisplayDpi)
+
+  return width && height && dpi ? { width, height, dpi } : null
+}
 
 export const CreateAppForm = ({
   initialSettings,
@@ -79,6 +96,8 @@ export const CreateAppForm = ({
   const showSessionSection = canChangeSessionLimit
   const showResourcesSection = canChangeResources
   const resourceLimits = useResourceLimitBounds(showResourcesSection)
+  const customDisplayConfig =
+    formValues.redroidDisplayProfileId === 'custom' ? getCustomDisplayConfig(formValues) : undefined
 
   useEffect(() => {
     setFormValues(current => ({
@@ -95,7 +114,14 @@ export const CreateAppForm = ({
   }
 
   const trimmedName = formValues.name.trim()
-  const isSubmitDisabled = isCreating || isUploadingApk || trimmedName.length < 2
+  const isSubmitDisabled =
+    isCreating ||
+    isUploadingApk ||
+    trimmedName.length < 2 ||
+    (isRedroidRuntime &&
+      canChangeContainerArgs &&
+      formValues.redroidDisplayProfileId === 'custom' &&
+      !customDisplayConfig)
 
   const handleIconChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null
@@ -213,7 +239,8 @@ export const CreateAppForm = ({
               ? applyRedroidDisplayContainerArgs(
                   formValues.containerImage,
                   formValues.redroidDisplayProfileId,
-                  formValues.redroidExtraArgs
+                  formValues.redroidExtraArgs,
+                  customDisplayConfig ?? undefined
                 )
               : formValues.customContainerArgs.trim()) || undefined
           : undefined,
