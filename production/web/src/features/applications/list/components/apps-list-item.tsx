@@ -34,7 +34,7 @@ export const AppsListItem = ({ app, showOwner = false }: { app: AppDefinition; s
               data-selected={isSelected}
               onClick={() => toggleSelected(app.id)}
             >
-              <div className='relative size-24 hover:saturate-150 transition-all hover:scale-95'>
+              <div className='relative size-20 transition-all hover:scale-95 hover:saturate-150 min-[360px]:size-24'>
                 <span
                   className='absolute left-1 top-1 z-20 flex size-5 items-center justify-center rounded-sm border border-primary bg-background text-primary data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground'
                   data-selected={isSelected}
@@ -60,7 +60,7 @@ export const AppsListItem = ({ app, showOwner = false }: { app: AppDefinition; s
                   appId={app.id}
                   appName={app.name}
                   icon={app.icon}
-                  className='absolute top-[50%] left-[50%] translate-y-[-50%] translate-x-[-50%] size-20'
+                  className='absolute top-[50%] left-[50%] size-16 translate-x-[-50%] translate-y-[-50%] min-[360px]:size-20'
                 />
               </div>
               <span className='text-sm text-ellipsis w-full text-nowrap overflow-hidden text-center lg:px-2'>
@@ -80,7 +80,7 @@ export const AppsListItem = ({ app, showOwner = false }: { app: AppDefinition; s
           <Visible when={!isManaging}>
             <Link href={`/app/${app.id}`}>
               <div className='flex flex-col items-center justify-center cursor-pointer gap-2 overflow-hidden p-2'>
-                <div className='relative size-24 hover:saturate-150 transition-all hover:scale-95'>
+                <div className='relative size-20 transition-all hover:scale-95 hover:saturate-150 min-[360px]:size-24'>
                   <Visible when={app.running}>
                     <>
                       <div className='absolute top-2 right-2 rounded-2xl size-4 bg-primary/95 z-10' />
@@ -97,7 +97,7 @@ export const AppsListItem = ({ app, showOwner = false }: { app: AppDefinition; s
                     appId={app.id}
                     appName={app.name}
                     icon={app.icon}
-                    className='absolute top-[50%] left-[50%] translate-y-[-50%] translate-x-[-50%] size-20'
+                    className='absolute top-[50%] left-[50%] size-16 translate-x-[-50%] translate-y-[-50%] min-[360px]:size-20'
                   />
                 </div>
                 <span className='text-sm text-ellipsis w-full text-nowrap overflow-hidden text-center lg:px-2'>

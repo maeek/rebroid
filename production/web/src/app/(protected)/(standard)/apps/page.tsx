@@ -1,14 +1,16 @@
+import { Suspense } from 'react'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { withStoredAppIcons } from '@/features/applications/icons/enrich'
 import { AppsList } from '@/features/applications/list/apps-list'
+import { AppsPageSkeleton } from '@/features/applications/list/apps-page-skeleton'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { userService } from '@/server/auth/user'
 import { orchestratorApplicationsClient } from '@/server/orchestrator/applications/client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { getServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
 
-export default async function Apps() {
-  const initialSettings = await getServerOrchestratorUiSettings()
+const AppsPageContent = async () => {
+  const initialSettingsPromise = getServerOrchestratorUiSettings()
   const user = await getCurrentUserContext()
   const ownerUserId = user.role === 'admin' ? undefined : user.ownerUserId
   const ownerNames =
@@ -30,15 +32,24 @@ export default async function Apps() {
       orchestratorError = error instanceof Error ? error.message : 'The orchestrator API is not responding.'
       return []
     })
+  const initialSettings = await initialSettingsPromise
 
   return (
+    <AppsList
+      yourApps={apps}
+      currentOwnerUserId={user.ownerUserId}
+      initialSettings={initialSettings}
+      orchestratorError={orchestratorError}
+    />
+  )
+}
+
+export default function Apps() {
+  return (
     <ProtectedStackPageLayout>
-      <AppsList
-        yourApps={apps}
-        currentOwnerUserId={user.ownerUserId}
-        initialSettings={initialSettings}
-        orchestratorError={orchestratorError}
-      />
+      <Suspense fallback={<AppsPageSkeleton withLayout={false} />}>
+        <AppsPageContent />
+      </Suspense>
     </ProtectedStackPageLayout>
   )
 }

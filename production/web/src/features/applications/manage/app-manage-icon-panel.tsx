@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
 import { AppIcon } from '@/features/applications/components/app-icon'
 import { optimizeIconFile } from '@/features/applications/icons/icon-metadata'
+import { notifyRecentAppsUpdated } from '@/features/applications/recent/recent-apps'
 import {
   apkSizeLabel,
   isFileWithinApkLimit,
@@ -13,16 +14,6 @@ import { toast } from '@/hooks/use-toast'
 import { removeAppIconAction } from '@/server/app-icons/actions/remove-app-icon-action'
 import { setAppIconAction } from '@/server/app-icons/actions/set-app-icon-action'
 import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
-
-const recentAppsStorageKey = 'rebroid_recent_apps'
-const recentAppsUpdatedEvent = 'rebroid-recent-apps-updated'
-
-type RecentApp = {
-  id: string
-  name: string
-  icon?: string | null
-  openedAt: number
-}
 
 type AppManageIconPanelProps = {
   appId: string
@@ -43,32 +34,6 @@ export const AppManageIconPanel = ({
   const iconInputRef = useRef<HTMLInputElement>(null)
   const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
 
-  const syncSidebarRecentApp = (nextIcon: string | null) => {
-    try {
-      const raw = window.localStorage.getItem(recentAppsStorageKey)
-      const currentApps = raw ? (JSON.parse(raw) as RecentApp[]) : []
-      let didUpdate = false
-
-      const nextApps = currentApps.map(app => {
-        if (app.id !== appId) {
-          return app
-        }
-
-        didUpdate = true
-        return { ...app, name: appName, icon: nextIcon }
-      })
-
-      if (!didUpdate) {
-        return
-      }
-
-      window.localStorage.setItem(recentAppsStorageKey, JSON.stringify(nextApps))
-      window.dispatchEvent(new CustomEvent(recentAppsUpdatedEvent, { detail: nextApps }))
-    } catch {
-      // Keep the local UI responsive even if recent-app metadata cannot be updated.
-    }
-  }
-
   const handleIconUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
@@ -87,7 +52,7 @@ export const AppManageIconPanel = ({
     try {
       const optimizedIcon = await optimizeIconFile(file)
       const storedIcon = await setAppIconAction(appId, optimizedIcon)
-      syncSidebarRecentApp(storedIcon)
+      notifyRecentAppsUpdated([{ id: appId, name: appName, icon: storedIcon, openedAt: Date.now() }])
       onIconChange(storedIcon, true)
       toast({ title: 'Icon updated' })
     } catch (error) {
@@ -110,7 +75,7 @@ export const AppManageIconPanel = ({
     setIsUploadingIcon(true)
     try {
       await removeAppIconAction(appId)
-      syncSidebarRecentApp(null)
+      notifyRecentAppsUpdated([{ id: appId, name: appName, icon: null, openedAt: Date.now() }])
       onIconChange(null, true)
       toast({ title: 'Icon cleared' })
     } catch (error) {

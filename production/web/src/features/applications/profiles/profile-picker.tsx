@@ -93,6 +93,7 @@ export const ApplicationProfilePicker = ({
           <Input
             value={name}
             disabled={disabled}
+            autoFocus
             placeholder='default'
             onChange={event => onNameChange(event.target.value)}
           />

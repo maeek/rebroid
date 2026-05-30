@@ -5,7 +5,7 @@ import { AppDefinition } from '@/features/applications/domain/app-definition'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { getAppRefreshIntervalMs } from '@/features/applications/domain/refresh'
 import { resolveAppIconUrl } from '@/features/applications/icons/url'
-import { rememberRecentApp } from '@/features/applications/recent/recent-apps'
+import { notifyRecentAppsUpdated } from '@/features/applications/recent/recent-apps'
 import {
   loadViewerSettings,
   saveViewerSettings,
@@ -15,6 +15,7 @@ import {
 import { ProtectedSplitPageLayout, ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { useForegroundRefresh } from '@/hooks/use-foreground-refresh'
 import { getApplicationAction } from '@/server/orchestrator/applications/read-actions'
+import { rememberRecentAppAction } from '@/server/recent-apps/actions'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { PageBackdrop } from '../../shell/components/page-backdrop'
 import { AppViewerContent } from './app-viewer-content'
@@ -82,9 +83,11 @@ export const AppViewerPage = ({
 
   useEffect(() => {
     if (currentApp) {
-      rememberRecentApp(currentApp)
+      void rememberRecentAppAction(currentApp.id)
+        .then(notifyRecentAppsUpdated)
+        .catch(() => undefined)
     }
-  }, [currentApp])
+  }, [currentApp?.id])
 
   useEffect(() => {
     const blurFocusedEditorOutsideEditableTarget = (target: EventTarget | null) => {

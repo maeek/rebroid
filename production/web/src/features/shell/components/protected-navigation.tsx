@@ -19,14 +19,8 @@ import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Visible } from '@/components/ui/visible'
 import { AppIcon } from '@/features/applications/components/app-icon'
-import {
-  readRecentApps,
-  recentAppsStorageKey,
-  recentAppsUpdatedEvent,
-  type RecentApp
-} from '@/features/applications/recent/recent-apps'
-import { getAppIconsAction } from '@/server/app-icons/actions/get-app-icons-action'
-import { filterAccessibleApplicationIdsAction } from '@/server/orchestrator/applications/read-actions'
+import { recentAppsUpdatedEvent, type RecentApp } from '@/features/applications/recent/recent-apps'
+import { listRecentAppsAction } from '@/server/recent-apps/actions'
 
 type NavigationVariant = 'sidebar' | 'drawer'
 
@@ -172,45 +166,21 @@ export const ProtectedNavigation = ({ variant, onNavigate }: ProtectedNavigation
   const styles = variantStyles[variant]
 
   useEffect(() => {
-    const hydrateRecentApps = async (apps: RecentApp[]) => {
-      let visibleApps = apps
+    const hydrateRecentApps = async () => {
       try {
-        const visibleIds = new Set(await filterAccessibleApplicationIdsAction(apps.map(app => app.id)))
-        visibleApps = apps.filter(app => visibleIds.has(app.id))
-        if (visibleApps.length !== apps.length) {
-          window.localStorage.setItem(recentAppsStorageKey, JSON.stringify(visibleApps))
-        }
+        setRecentApps(await listRecentAppsAction())
       } catch {
-        // Keep local recent-app metadata when the orchestrator cannot validate stale ids.
-      }
-
-      setRecentApps(visibleApps)
-      const appsMissingIcons = visibleApps.filter(app => !app.icon)
-      if (appsMissingIcons.length === 0) {
-        return
-      }
-
-      try {
-        const icons = await getAppIconsAction(appsMissingIcons.map(app => app.id))
-        const hydratedApps = visibleApps.map(app => ({ ...app, icon: app.icon ?? icons[app.id] ?? null }))
-        setRecentApps(hydratedApps)
-        window.localStorage.setItem(recentAppsStorageKey, JSON.stringify(hydratedApps))
-      } catch {
-        // Keep local recent-app metadata when the server icon store is unavailable.
+        // Keep the current navigation list on transient server failures.
       }
     }
 
-    void hydrateRecentApps(readRecentApps())
+    void hydrateRecentApps()
 
-    const onRecentAppsUpdated = (event: Event) => {
-      void hydrateRecentApps((event as CustomEvent<RecentApp[]>).detail ?? readRecentApps())
-    }
+    const onRecentAppsUpdated = () => void hydrateRecentApps()
 
     window.addEventListener(recentAppsUpdatedEvent, onRecentAppsUpdated)
-    window.addEventListener('storage', onRecentAppsUpdated)
     return () => {
       window.removeEventListener(recentAppsUpdatedEvent, onRecentAppsUpdated)
-      window.removeEventListener('storage', onRecentAppsUpdated)
     }
   }, [])
 

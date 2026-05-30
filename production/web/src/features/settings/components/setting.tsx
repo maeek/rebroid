@@ -14,7 +14,8 @@ export const Setting = ({
   variant = 'horizontal',
   className,
   withLabel,
-  contentClassName
+  contentClassName,
+  required
 }: {
   label: string
   description?: ReactNode
@@ -23,6 +24,7 @@ export const Setting = ({
   variant?: keyof typeof variants
   withLabel?: boolean
   contentClassName?: string
+  required?: boolean
 }) => {
   const content = (
     <div className={cn('flex gap-4', variants[variant], className)}>
@@ -32,7 +34,12 @@ export const Setting = ({
           'flex-1': variant !== 'vertical'
         })}
       >
-        <div className='font-bold text-sm text-foreground'>{label}</div>
+        <div className='font-bold text-sm text-foreground'>
+          {label}
+          <Visible when={required}>
+            <span className='ml-1 text-xs font-medium text-muted-foreground'>* (Required)</span>
+          </Visible>
+        </div>
         <Visible when={description}>
           <div className='text-xs leading-relaxed text-muted-foreground'>{description}</div>
         </Visible>

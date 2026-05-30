@@ -98,13 +98,21 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
           <section className='grid gap-5 rounded-lg border border-border/60 bg-card/35 p-6 backdrop-blur-md'>
             <h3 className='text-lg font-medium'>Group Details</h3>
             <div className='grid gap-4 md:grid-cols-2'>
-              <LabeledField label='Name'>
+              <LabeledField
+                label='Name'
+                required
+              >
                 <Input
                   value={draft.name}
+                  required
+                  aria-required='true'
                   onChange={event => updateDraft({ name: event.target.value })}
                 />
               </LabeledField>
-              <LabeledField label='Role Template'>
+              <LabeledField
+                label='Role Template'
+                required
+              >
                 <Select
                   value={draft.role}
                   onValueChange={value => updateDraft({ role: value === 'admin' ? 'admin' : 'user' })}

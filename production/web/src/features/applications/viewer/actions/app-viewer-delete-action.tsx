@@ -14,11 +14,12 @@ import {
   DialogTitle,
   DialogTrigger
 } from '@/components/ui/dialog'
-import { forgetRecentApp } from '@/features/applications/recent/recent-apps'
+import { notifyRecentAppsUpdated } from '@/features/applications/recent/recent-apps'
 import { useOrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 import { toast } from '@/hooks/use-toast'
 import { removeAppIconAction } from '@/server/app-icons/actions/remove-app-icon-action'
 import { deleteApplicationAction } from '@/server/orchestrator/applications/mutation-actions'
+import { forgetRecentAppAction } from '@/server/recent-apps/actions'
 import { getDisplayErrorMessage } from '../../../../lib/error-utils'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
@@ -45,7 +46,7 @@ export const AppViewerDeleteAction = ({
     try {
       await deleteApplicationAction(app.id, settings.removeDataOnDelete)
       await removeAppIconAction(app.id)
-      forgetRecentApp(app.id)
+      await forgetRecentAppAction(app.id).then(notifyRecentAppsUpdated)
       setOpen(false)
       router.push('/apps')
     } catch (error) {

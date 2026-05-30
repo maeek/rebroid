@@ -50,7 +50,15 @@ const readMetadata = async (appId: string): Promise<StoredIconMetadata | null> =
 
 export const getStoredAppIcon = async (appId: string) => {
   const metadata = await readMetadata(appId)
-  return typeof metadata?.icon === 'string' ? metadata.icon : null
+  if (typeof metadata?.icon !== 'string') {
+    return null
+  }
+
+  if (!metadata.icon.startsWith('data:')) {
+    return metadata.icon
+  }
+
+  return setStoredAppIcon(appId, metadata.icon)
 }
 
 export const setStoredAppIcon = async (appId: string, icon: string) => {

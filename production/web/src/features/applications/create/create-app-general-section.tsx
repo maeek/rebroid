@@ -34,10 +34,12 @@ export const CreateAppGeneralSection = ({
         description='Display name shown in the UI for this app. Minimum 2 characters.'
         variant='vertical'
         className={verticalSettingClassName}
+        required
       >
         <Input
           value={values.name}
           required
+          aria-required='true'
           minLength={2}
           onChange={event => onChange({ name: event.target.value })}
         />

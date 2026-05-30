@@ -27,10 +27,11 @@ export const ProfileTile = ({
       type='button'
       disabled={disabled}
       className={cn(
-        'flex min-h-14 w-full items-center gap-3 rounded-lg border border-border/80 bg-secondary/35 px-3 text-left transition-[background-color,border-color,color] hover:border-primary/60 hover:bg-primary/8 disabled:cursor-not-allowed disabled:opacity-55 relative',
-        {
-          'border-primary/75 bg-primary/14 text-foreground': selected
-        },
+        'flex min-h-10 items-center gap-3 rounded-lg border p-2 text-left transition-all duration-150',
+        'bg-card/35 hover:border-primary/55 hover:bg-card/55 dark:shadow-[inset_0_0_10px_0_rgba(255,255,255,0.025)] shadow-[inset_0_0_10px_0_rgba(0,0,0,0.025)]',
+        selected
+          ? 'border-primary/80 ring-1 ring-primary/30 shadow-[inset_0_0_10px_0_color-mix(in_srgb,var(--primary)_30%,rgba(0,0,0,0))]! dark:shadow-[inset_0_0_20px_0_color-mix(in_srgb,var(--primary)_30%,rgba(0,0,0,0))]!'
+          : 'border-border/70',
         className
       )}
       onClick={onChange}

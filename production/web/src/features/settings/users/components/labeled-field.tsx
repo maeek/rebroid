@@ -7,16 +7,23 @@ export const LabeledField = ({
   label,
   description,
   children,
-  className
+  className,
+  required
 }: {
   label: string
   description?: string
   children: ReactNode
   className?: string
+  required?: boolean
 }) => (
   <div className={cn('grid gap-2', className)}>
     <span className='grid gap-1.5'>
-      <Label>{label}</Label>
+      <Label>
+        {label}
+        <Visible when={required}>
+          <span className='ml-1 text-xs font-medium text-muted-foreground'>* (Required)</span>
+        </Visible>
+      </Label>
       <Visible when={description}>
         <span className='text-xs text-muted-foreground'>{description}</span>
       </Visible>

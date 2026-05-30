@@ -78,24 +78,35 @@ export const CreateUserDialog = ({
         </DialogHeader>
         <div className='grid gap-4'>
           <label className='grid gap-2'>
-            <Label>Username</Label>
+            <Label>
+              Username <span className='text-xs font-medium text-muted-foreground'>* (Required)</span>
+            </Label>
             <Input
               value={username}
+              required
+              aria-required='true'
               placeholder='admin'
               onChange={event => setUsername(event.target.value)}
             />
           </label>
           <label className='grid gap-2'>
-            <Label>Temporary Password</Label>
+            <Label>
+              Temporary Password <span className='text-xs font-medium text-muted-foreground'>* (Required)</span>
+            </Label>
             <Input
               value={password}
               type='password'
+              required
+              aria-required='true'
               placeholder='Minimum 1 character'
               onChange={event => setPassword(event.target.value)}
             />
           </label>
           <div className='grid gap-3 sm:grid-cols-2'>
-            <LabeledField label='Role'>
+            <LabeledField
+              label='Role'
+              required
+            >
               <Select
                 value={role}
                 onValueChange={value => setRole(value === 'admin' ? 'admin' : 'user')}
@@ -111,7 +122,9 @@ export const CreateUserDialog = ({
             </LabeledField>
           </div>
           <section className='grid gap-2'>
-            <Label>Groups</Label>
+            <Label>
+              Groups <span className='text-xs font-medium text-muted-foreground'>* (Required)</span>
+            </Label>
             <GroupMembershipPicker
               groups={groups}
               selectedGroupIds={groupIds}

@@ -58,9 +58,9 @@ export const NumberSliderField = ({
   }
 
   return (
-    <div className={cn('flex  w-full gap-3 justify-between max-lg:flex-col', className)}>
+    <div className={cn('flex  w-full gap-3 flex-col', className)}>
       <Visible when={hasMax}>
-        <div className='grid w-full gap-2 min-w-0 flex-3/5'>
+        <div className='grid w-full gap-2 min-w-0'>
           <Slider
             aria-label={rangeLabel}
             min={min}
@@ -85,9 +85,9 @@ export const NumberSliderField = ({
           </div>
         </div>
       </Visible>
-      <div className='flex flex-1/3 min-w-0 items-center gap-2'>
+      <div className='flex min-w-0 items-center gap-2'>
         <Input
-          className='min-w-0 lg:w-20'
+          className='min-w-0'
           value={value}
           min={min}
           max={hasMax ? max : undefined}

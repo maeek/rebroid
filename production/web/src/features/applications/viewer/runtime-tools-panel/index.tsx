@@ -28,7 +28,7 @@ export const RuntimeToolsPanel = ({
   const tools = useMemo(
     () =>
       [
-        hasPermission(permissions, 'applications:sync-clipboard') && app.running
+        hasPermission(permissions, 'applications:sync-clipboard') // && app.running
           ? {
               id: 'clipboard' as const,
               title: 'Clipboard',
@@ -42,7 +42,7 @@ export const RuntimeToolsPanel = ({
           description: `${viewerSettings.transport.toUpperCase()} • ${viewerSettings.bitrateMbps} Mbps`,
           Icon: IconCast
         },
-        hasPermission(permissions, 'applications:transfer-files') && app.running
+        hasPermission(permissions, 'applications:transfer-files') // && app.running
           ? {
               id: 'files' as const,
               title: 'Files',
@@ -50,7 +50,7 @@ export const RuntimeToolsPanel = ({
               Icon: IconFolder
             }
           : null,
-        hasPermission(permissions, 'applications:view-logs') && app.running
+        hasPermission(permissions, 'applications:view-logs') // && app.running
           ? {
               id: 'logs' as const,
               title: 'Logs',
@@ -166,15 +166,18 @@ export const RuntimeToolsPanel = ({
       </div>
 
       <div className='hidden flex-col gap-4 md:flex rounded-lg border border-border/70 bg-card/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] backdrop-blur-md'>
-        <div className='w-full flex gap-6 border-b-2 border-border/70 px-4'>
+        <div className='w-full flex items-center gap-2 border-b-2 border-border/70 pt-1 pb-2 px-2'>
           {tools.map(tool => (
             <button
               key={tool.id}
               type='button'
               onClick={() => setActiveTool(tool.id)}
-              className={cn('p-4 flex gap-2 items-center translate-y-0.5', {
-                'border-b-2 border-primary': activeTool === tool.id
-              })}
+              className={cn(
+                'py-3 px-5 flex gap-2 items-center translate-y-0.5 text-sm rounded-md hover:text-primary transition-all duration-100 cursor-pointer',
+                {
+                  'bg-primary/10': activeTool === tool.id
+                }
+              )}
             >
               <tool.Icon className={cn('size-5', { 'text-primary': activeTool === tool.id })} />
               {tool.title}

@@ -104,9 +104,13 @@ export const AppManageGeneralSettings = ({
         label='Name'
         className={verticalSettingClassName}
         variant='vertical'
+        required
       >
         <Input
           value={appName}
+          required
+          aria-required='true'
+          minLength={2}
           onChange={event => onAppNameChange(event.target.value)}
         />
       </Setting>

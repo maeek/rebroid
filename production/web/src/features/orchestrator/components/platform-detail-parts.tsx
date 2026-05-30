@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react'
-import { formatUtcDateTime } from '@/lib/format'
+import { formatDateLocale } from '@/lib/format'
 
 export const formatPlatformDate = (value: string | null | undefined) => {
   if (!value) {
     return 'unknown'
   }
 
-  return formatUtcDateTime(value)
+  return formatDateLocale(value)
 }
 
 export const formatPlatformBytes = (bytes: number) => {

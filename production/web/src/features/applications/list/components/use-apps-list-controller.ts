@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { getAppsRefreshIntervalMs } from '@/features/applications/domain/refresh'
-import { forgetRecentApp } from '@/features/applications/recent/recent-apps'
+import { notifyRecentAppsUpdated } from '@/features/applications/recent/recent-apps'
 import { useOrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 import { useForegroundRefresh } from '@/hooks/use-foreground-refresh'
 import { toast } from '@/hooks/use-toast'
@@ -12,6 +12,7 @@ import {
   stopApplicationAction
 } from '@/server/orchestrator/applications/mutation-actions'
 import { listApplicationsAction } from '@/server/orchestrator/applications/read-actions'
+import { forgetRecentAppAction } from '@/server/recent-apps/actions'
 import { getDisplayErrorMessage } from '../../../../lib/error-utils'
 import type { AppsListContextValue, BulkAction } from './apps-list-context'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
@@ -166,7 +167,7 @@ export const useAppsListController = ({
       )
       await deleteApplicationAction(app.id, settings.removeDataOnDelete)
       await removeAppIconAction(app.id)
-      forgetRecentApp(app.id)
+      await forgetRecentAppAction(app.id).then(notifyRecentAppsUpdated)
       removeApp(app.id)
     } catch (error) {
       updateApp(app)
@@ -302,7 +303,7 @@ export const useAppsListController = ({
       appsToDelete.map(async app => {
         await deleteApplicationAction(app.id, settings.removeDataOnDelete)
         await removeAppIconAction(app.id)
-        forgetRecentApp(app.id)
+        await forgetRecentAppAction(app.id).then(notifyRecentAppsUpdated)
         return app.id
       })
     )

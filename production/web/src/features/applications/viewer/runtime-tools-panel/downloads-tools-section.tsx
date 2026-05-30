@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Visible } from '@/components/ui/visible'
 import { ApplicationProfilePicker } from '@/features/applications/profiles/profile-picker'
 import { toast } from '@/hooks/use-toast'
-import { formatUtcDateTime } from '@/lib/format'
+import { formatDateLocale } from '@/lib/format'
 import {
   downloadApplicationFileAction,
   listApplicationDownloadFilesAction
@@ -236,7 +236,7 @@ export const DownloadsToolsSection = ({
                     </button>
                     <div className='text-xs text-secondary-foreground'>
                       {formatBytes(file.sizeBytes)}
-                      {file.modifiedAt ? ` • ${formatUtcDateTime(file.modifiedAt)}` : ''}
+                      {file.modifiedAt ? ` • ${formatDateLocale(file.modifiedAt)}` : ''}
                     </div>
                   </div>
                   <Button

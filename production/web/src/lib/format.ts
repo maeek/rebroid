@@ -22,13 +22,13 @@ export const formatUtcTime = (value: Date | string | number, fallback = 'unknown
   return `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`
 }
 
-export const formatUtcDateTime = (value: Date | string | number, fallback = 'unknown') => {
+export const formatDateLocale = (value: Date | string | number, fallback = 'unknown') => {
   const date = toDate(value)
   if (!isValidDate(date)) {
     return fallback
   }
 
-  return `${formatUtcDate(date, fallback)} ${formatUtcTime(date, fallback)} UTC`
+  return new Date(value).toLocaleString()
 }
 
 export const formatDisplayNumber = (value: number) => new Intl.NumberFormat('en-US').format(value)

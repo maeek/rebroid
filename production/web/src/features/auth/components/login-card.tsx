@@ -65,11 +65,13 @@ export default function LoginCard() {
               className='text-md'
               htmlFor='username'
             >
-              Username
+              Username <span className='text-xs font-medium text-muted-foreground'>* (Required)</span>
             </Label>
             <Input
               id='username'
               placeholder='Username'
+              required
+              aria-required='true'
               onChange={e => setUsername(e.target.value)}
               value={username}
               onKeyDown={e => {
@@ -84,11 +86,13 @@ export default function LoginCard() {
               className='text-md'
               htmlFor='password'
             >
-              Password
+              Password <span className='text-xs font-medium text-muted-foreground'>* (Required)</span>
             </Label>
             <Input
               id='password'
               type='password'
+              required
+              aria-required='true'
               placeholder='········'
               className='placeholder:text-lg placeholder:font-bold'
               onChange={e => setPassword(e.target.value)}

@@ -171,9 +171,14 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
               onChange={avatarDataUrl => updateDraft({ avatarDataUrl })}
             />
             <div className='grid gap-4 md:grid-cols-2'>
-              <LabeledField label='Username'>
+              <LabeledField
+                label='Username'
+                required
+              >
                 <Input
                   value={draft.username}
+                  required
+                  aria-required='true'
                   onChange={event => updateDraft({ username: event.target.value })}
                 />
               </LabeledField>
@@ -191,7 +196,10 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
                   onChange={event => updateDraft({ password: event.target.value })}
                 />
               </LabeledField>
-              <LabeledField label='Role'>
+              <LabeledField
+                label='Role'
+                required
+              >
                 <Select
                   value={draft.role}
                   onValueChange={value => updateDraft({ role: value === 'admin' ? 'admin' : 'user' })}

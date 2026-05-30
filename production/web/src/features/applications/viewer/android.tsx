@@ -306,7 +306,7 @@ export const AppViewer = ({
               />
             </div>
           </Visible>
-          <div className='absolute inset-0 bg-background/68' />
+          <div className='absolute inset-0 bg-background/60 dark:bg-background/68' />
           <div className='relative z-10 flex w-full max-w-sm flex-col items-center gap-5 text-center'>
             <Visible when={app}>
               <AppIcon

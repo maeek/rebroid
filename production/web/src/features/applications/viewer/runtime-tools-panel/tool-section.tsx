@@ -40,7 +40,7 @@ export const ToolSection = ({
           <div className='min-w-0'>
             <h3 className='font-medium'>{title}</h3>
             <Visible when={!!description}>
-              <p className='text-xs text-secondary-foreground'>{description}</p>
+              <div className='text-xs text-secondary-foreground'>{description}</div>
             </Visible>
           </div>
         </div>
