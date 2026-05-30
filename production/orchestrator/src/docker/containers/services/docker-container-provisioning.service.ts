@@ -67,7 +67,14 @@ export class DockerContainerProvisioningService {
     }
 
     if (spec.cpuLimitCpus) {
-      hostConfig.NanoCpus = Math.trunc(spec.cpuLimitCpus * 1_000_000_000);
+      const cpuPeriod = 100_000;
+
+      hostConfig.CpuPeriod = cpuPeriod;
+      hostConfig.CpuQuota = Math.max(
+        1,
+        Math.trunc(spec.cpuLimitCpus * cpuPeriod),
+      );
+      hostConfig.CpuShares = Math.max(2, Math.trunc(spec.cpuLimitCpus * 1024));
     }
 
     if (spec.securityOptions?.length) {
