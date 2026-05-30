@@ -253,10 +253,13 @@ export const AppViewer = ({
 
   return (
     <div
-      className={cn('relative flex w-full items-center justify-center overflow-hidden bg-black', {
-        'h-full max-h-full max-w-full': fullscreen,
-        'rounded-2xl shadow-[0_18px_48px_rgba(0,0,0,0.28)]': !fullscreen
-      })}
+      className={cn(
+        'relative flex w-full items-center justify-center overflow-hidden bg-black transition-all duration-150',
+        {
+          'h-full max-h-full max-w-full': fullscreen,
+          'rounded-2xl shadow-[0_18px_48px_rgba(0,0,0,0.28)]': !fullscreen
+        }
+      )}
       onContextMenu={event => event.preventDefault()}
       style={{
         aspectRatio,

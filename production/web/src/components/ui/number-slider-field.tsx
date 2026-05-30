@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Visible } from '@/components/ui/visible'
+import { safeVibrate } from '@/lib/safe-vibrate'
 import { cn } from '@/lib/utils'
 import { Slider } from './slider'
 
@@ -66,7 +67,10 @@ export const NumberSliderField = ({
             max={sliderMax}
             step={step}
             value={[sliderValue]}
-            onValueChange={v => onValueChange(String(v[0]))}
+            onValueChange={v => {
+              onValueChange(String(v[0]))
+              safeVibrate(30)
+            }}
           />
           <div className='flex items-center justify-between text-[11px] leading-none text-muted-foreground'>
             <span>
