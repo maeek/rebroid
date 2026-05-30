@@ -83,7 +83,7 @@ const AppsGridSection = ({
 
   return (
     <section className='px-2'>
-      <div className='mb-3 px-4'>
+      <div className='mb-3 px-4 max-sm:px-2'>
         <h3 className='text-sm font-semibold text-secondary-foreground'>{title}</h3>
       </div>
       <div className='grid grid-cols-4 gap-x-5 gap-y-12 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-7'>

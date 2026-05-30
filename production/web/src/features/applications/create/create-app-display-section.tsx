@@ -26,8 +26,8 @@ export const CreateAppDisplaySection = ({ values, onChange }: CreateAppDisplaySe
             key={profile.id}
             type='button'
             className={cn(
-              'flex min-h-20 items-center gap-3 rounded-lg border p-4 text-left transition-all',
-              'bg-card/35 hover:border-primary/55 hover:bg-card/55 dark:shadow-[inset_0_0_30px_0_rgba(255,255,255,0.025)] duration-100',
+              'flex min-h-20 items-center gap-3 rounded-lg border p-4 text-left transition-all duration-150',
+              'bg-card/35 hover:border-primary/55 hover:bg-card/55 dark:shadow-[inset_0_0_30px_0_rgba(255,255,255,0.025)]',
               selected
                 ? 'border-primary/80 ring-1 ring-primary/30 dark:shadow-[inset_0_0_30px_0_color-mix(in_srgb,var(--primary)_30%,rgba(0,0,0,0))]'
                 : 'border-border/70'
@@ -36,7 +36,7 @@ export const CreateAppDisplaySection = ({ values, onChange }: CreateAppDisplaySe
           >
             <span
               className={cn(
-                'flex size-10 shrink-0 items-center justify-center rounded-lg border',
+                'flex size-10 shrink-0 items-center justify-center rounded-lg border transition-all duration-150',
                 selected
                   ? 'border-primary/40 bg-primary/20 text-primary'
                   : 'border-border/70 bg-background/40 text-secondary-foreground'

@@ -58,7 +58,7 @@ export const NumberSliderField = ({
   }
 
   return (
-    <div className={cn('flex  w-full gap-3', className)}>
+    <div className={cn('flex  w-full gap-3 max-sm:flex-col', className)}>
       <Visible when={hasMax}>
         <div className='grid w-full gap-2'>
           <Slider
