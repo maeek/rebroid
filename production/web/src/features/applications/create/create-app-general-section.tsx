@@ -24,7 +24,7 @@ export const CreateAppGeneralSection = ({
 }: CreateAppGeneralSectionProps) => {
   return (
     <Section
-      title='General'
+      title='Application'
       boxed
       titleClassName='pb-4'
       contentClassName='gap-4'

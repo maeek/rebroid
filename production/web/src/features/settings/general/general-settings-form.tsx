@@ -154,7 +154,7 @@ export const GeneralSettingsForm = ({ initialSettings }: { initialSettings: Orch
           <Setting
             label='Remove data on delete'
             description='When enabled, deleting an app also removes its persistent storage volume and stored APK data.'
-            className='w-full rounded-md bg-background/45 px-4 py-3'
+            className='w-full py-3'
           >
             <Switch
               checked={settings.removeDataOnDelete}
@@ -237,7 +237,7 @@ export const GeneralSettingsForm = ({ initialSettings }: { initialSettings: Orch
           <Setting
             label='Enable keyboard in fullscreen'
             description='Fullscreen viewer sessions start with keyboard input captured.'
-            className='w-full rounded-md bg-background/45 px-4 py-3'
+            className='w-full py-3'
           >
             <Switch
               checked={settings.defaultViewerKeyboardCaptureEnabled}
@@ -247,7 +247,7 @@ export const GeneralSettingsForm = ({ initialSettings }: { initialSettings: Orch
           <Setting
             label='Enable sound'
             description='Request audio when the viewer stream supports it.'
-            className='w-full rounded-md bg-background/45 px-4 py-3'
+            className='w-full py-3'
           >
             <Switch
               checked={settings.defaultViewerSoundEnabled}

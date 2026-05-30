@@ -26,10 +26,10 @@ export const CreateAppDisplaySection = ({ values, onChange }: CreateAppDisplaySe
             key={profile.id}
             type='button'
             className={cn(
-              'flex min-h-20 items-center gap-3 rounded-lg border p-4 text-left transition-all duration-150',
-              'bg-card/35 hover:border-primary/55 hover:bg-card/55 dark:shadow-[inset_0_0_30px_0_rgba(255,255,255,0.025)]',
+              'flex min-h-10 items-center gap-3 rounded-lg border p-2 text-left transition-all duration-150',
+              'bg-card/35 hover:border-primary/55 hover:bg-card/55 dark:shadow-[inset_0_0_10px_0_rgba(255,255,255,0.025)] shadow-[inset_0_0_10px_0_rgba(0,0,0,0.025)]',
               selected
-                ? 'border-primary/80 ring-1 ring-primary/30 dark:shadow-[inset_0_0_30px_0_color-mix(in_srgb,var(--primary)_30%,rgba(0,0,0,0))]'
+                ? 'border-primary/80 ring-1 ring-primary/30 shadow-[inset_0_0_10px_0_color-mix(in_srgb,var(--primary)_30%,rgba(0,0,0,0))]! dark:shadow-[inset_0_0_20px_0_color-mix(in_srgb,var(--primary)_30%,rgba(0,0,0,0))]!'
                 : 'border-border/70'
             )}
             onClick={() => onChange({ redroidDisplayProfileId: profile.id })}
@@ -45,7 +45,7 @@ export const CreateAppDisplaySection = ({ values, onChange }: CreateAppDisplaySe
               <Icon className='size-5' />
             </span>
             <span className='min-w-0'>
-              <span className='block font-medium'>{profile.label}</span>
+              <span className='block font-medium text-sm'>{profile.label}</span>
               <span className='mt-1 block text-xs text-secondary-foreground'>{profile.description}</span>
             </span>
           </button>

@@ -54,7 +54,7 @@ export const TopBarNotifications = () => {
         </button>
       </PopoverTrigger>
       <PopoverContent
-        align='end'
+        align='start'
         collisionPadding={16}
         sideOffset={8}
         className='w-[min(24rem,calc(100vw-2rem))] border-border/70 bg-card/95 p-3 backdrop-blur-xl'

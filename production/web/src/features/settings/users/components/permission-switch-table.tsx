@@ -135,7 +135,7 @@ export const PermissionSwitchTable = ({
                         >
                           <div className='min-w-0 pl-4'>
                             <div className='flex flex-wrap items-center gap-2'>
-                              <div className='font-normal text'>{permission.name}</div>
+                              <div className='font-normal text-sm'>{permission.name}</div>
                               {inheritedFrom.map(groupName => (
                                 <Badge
                                   key={groupName}

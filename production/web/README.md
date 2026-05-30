@@ -32,7 +32,7 @@ NEXTAUTH_SECRET=dev-secret
 
 ## Upload Limits
 
-The app defaults the Next.js transport ceiling to `4096mb`. The effective APK limit shown in the UI is owned by orchestrator settings. If you need a larger transport ceiling, rebuild the web image with:
+The app defaults the Next.js transport ceiling to `512mb`. The effective APK limit shown in the UI is owned by orchestrator settings. If you need a larger transport ceiling, rebuild the web image with:
 
 ```bash
 NEXT_PROXY_CLIENT_MAX_BODY_SIZE=8192mb docker compose build web

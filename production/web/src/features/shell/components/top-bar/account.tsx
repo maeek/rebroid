@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { Visible } from '@/components/ui/visible'
+import { getHslColorFromCharCode, getHslColorFromCharCodeForeground } from '@/utils/hsl-from-text'
 import { ProfileDialog } from './profile-dialog'
 
 export const TopBarAccount = () => {
@@ -33,7 +34,14 @@ export const TopBarAccount = () => {
         <DropdownMenuTrigger>
           <Avatar>
             <AvatarImage src={avatar ?? ''} />
-            <AvatarFallback>{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
+            <AvatarFallback
+              style={{
+                backgroundColor: getHslColorFromCharCode(displayName),
+                color: getHslColorFromCharCodeForeground(displayName)
+              }}
+            >
+              {displayName.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
           </Avatar>
         </DropdownMenuTrigger>
         <DropdownMenuContent

@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { getHslColorFromCharCode, getHslColorFromCharCodeForeground } from '@/utils/hsl-from-text'
 import type { PublicUser, UserGroup } from '@/server/auth/user'
 
 export const UsersGrid = ({
@@ -45,7 +46,14 @@ export const UsersGrid = ({
                     <div className='flex min-w-0 items-center gap-3'>
                       <Avatar className='size-9'>
                         <AvatarImage src={user.avatarDataUrl ?? ''} />
-                        <AvatarFallback>{user.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                        <AvatarFallback
+                          style={{
+                            backgroundColor: getHslColorFromCharCode(user.name),
+                            color: getHslColorFromCharCodeForeground(user.name)
+                          }}
+                        >
+                          {user.name.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
                       </Avatar>
                       <div className='min-w-0'>
                         <div className='truncate font-medium hover:underline cursor-pointer focus:underline hover:text-primary'>

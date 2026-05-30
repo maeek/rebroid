@@ -216,7 +216,7 @@ export const OrchestratorStatus = () => {
         </button>
       </PopoverTrigger>
       <PopoverContent
-        align='end'
+        align='start'
         collisionPadding={16}
         sideOffset={8}
         className='w-80 border-border/70 bg-card/95 p-2 backdrop-blur-xl'

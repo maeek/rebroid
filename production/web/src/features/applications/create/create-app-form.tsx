@@ -283,6 +283,7 @@ export const CreateAppForm = ({
         onSubmit={event => void handleSubmit(event)}
       >
         <div className='flex w-full flex-col gap-5'>
+          <h2 className='font-bold my-4'>General</h2>
           <CreateAppGeneralSection
             values={formValues}
             onChange={updateFormValues}

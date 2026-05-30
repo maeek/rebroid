@@ -56,14 +56,21 @@ export const CreateAppDeviceSection = ({
           variant='vertical'
           className={verticalSettingClassName}
         >
-          <div className='rounded-md border border-border/60 bg-background/40 px-3 py-2 font-mono text-xs text-secondary-foreground'>
-            {redroidDefaultsLabel} {redroidDisplayArgsForProfile(values.redroidDisplayProfileId)}
+          <div className='py-2 font-mono text-xs text-muted-foreground'>
+            {`${redroidDefaultsLabel} ${redroidDisplayArgsForProfile(values.redroidDisplayProfileId)}`
+              .split(' ')
+              .map((word, index) => (
+                <>
+                  <span key={index}>{word}</span>
+                  <br />
+                </>
+              ))}
           </div>
         </Setting>
       </Visible>
       <Visible when={isRedroidRuntime && canChangeContainerArgs}>
         <Setting
-          label='Extra Redroid arguments'
+          label='Additional Redroid arguments'
           description='Optional additional androidboot or property overrides, for example display size, DPI, FPS, or proxy settings.'
           variant='vertical'
           className={verticalSettingClassName}

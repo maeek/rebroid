@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { optimizeIconFile } from '@/features/applications/icons/icon-metadata'
 import { toast } from '@/hooks/use-toast'
+import { getHslColorFromCharCode, getHslColorFromCharCodeForeground } from '@/utils/hsl-from-text'
 
 export const UserAvatarInput = ({
   name,
@@ -37,7 +38,14 @@ export const UserAvatarInput = ({
     <div className='flex items-center gap-4'>
       <Avatar className='size-16'>
         <AvatarImage src={avatar ?? ''} />
-        <AvatarFallback>{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+        <AvatarFallback
+          style={{
+            backgroundColor: getHslColorFromCharCode(name),
+            color: getHslColorFromCharCodeForeground(name)
+          }}
+        >
+          {name.slice(0, 2).toUpperCase()}
+        </AvatarFallback>
       </Avatar>
       <div className='flex flex-wrap gap-2'>
         <Button

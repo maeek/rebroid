@@ -15,6 +15,7 @@ import { ProtectedStackPageLayout } from '@/features/shell/components/protected-
 import { toast } from '@/hooks/use-toast'
 import { updateUserAction } from '@/server/users/actions/update-user-action'
 import { allPermissionIds, type PermissionMap, type ResourceQuota } from '@/shared/permissions/permissions'
+import { getHslColorFromCharCode, getHslColorFromCharCodeForeground } from '@/utils/hsl-from-text'
 import { PageBackdrop } from '../../shell/components/page-backdrop'
 import { GroupMembershipPicker } from './components/group-membership-picker'
 import { LabeledField } from './components/labeled-field'
@@ -128,7 +129,14 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
           <div className='flex min-w-0 items-center gap-4'>
             <Avatar className='size-12'>
               <AvatarImage src={draft.avatarDataUrl ?? ''} />
-              <AvatarFallback>{draft.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+              <AvatarFallback
+                style={{
+                  backgroundColor: getHslColorFromCharCode(draft.name),
+                  color: getHslColorFromCharCodeForeground(draft.name)
+                }}
+              >
+                {draft.name.slice(0, 2).toUpperCase()}
+              </AvatarFallback>
             </Avatar>
             <div className='min-w-0'>
               <h2 className='truncate text-3xl font-medium max-sm:text-xl'>{draft.name || draft.username}</h2>
@@ -228,7 +236,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
         </div>
         <section className='grid content-start gap-4 rounded-lg border border-border/60 bg-card/35 p-6 backdrop-blur-md xl:sticky xl:top-4'>
           <div>
-            <h3 className='text-lg font-medium'>Permissions</h3>
+            <h3 className='font-medium'>Permissions</h3>
             <p className='text-sm text-secondary-foreground'>
               Group permissions are inherited. Toggling a permission here creates a user-level override.
             </p>

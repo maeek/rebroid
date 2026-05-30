@@ -39,7 +39,7 @@ services:
       context: ./web
       dockerfile: Dockerfile
       args:
-        NEXT_PROXY_CLIENT_MAX_BODY_SIZE: ${NEXT_PROXY_CLIENT_MAX_BODY_SIZE:-4096mb}
+        NEXT_PROXY_CLIENT_MAX_BODY_SIZE: ${NEXT_PROXY_CLIENT_MAX_BODY_SIZE:-512mb}
         DISPLAY_SIDECAR_INTERNAL_BASE_URL: ${DISPLAY_SIDECAR_INTERNAL_BASE_URL:-http://rebroid-display-sidecar-test:8000}
     image: rebroid/web:test
     container_name: rebroid-web-test
