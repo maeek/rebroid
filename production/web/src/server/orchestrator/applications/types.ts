@@ -30,13 +30,26 @@ export interface AndroidNotification {
   packageName: string
   title: string
   text: string
+  appName: string | null
   raw: string
 }
 
 export interface RunningApplicationNotifications {
   appId: string
   appName: string
+  appIcon: string | null
+  appPackageName: string | null
   notifications: AndroidNotification[]
+}
+
+export interface AndroidApplicationSummary {
+  id: string
+  name: string
+  ownerUserId: string | null
+  currentStatus: AndroidApplicationStatus
+  lifecycleStage: AndroidApplicationLifecycleStage
+  detail: AndroidApplicationStatusDetail | null
+  apkPackageName: string | null
 }
 
 export interface ApplicationLog {

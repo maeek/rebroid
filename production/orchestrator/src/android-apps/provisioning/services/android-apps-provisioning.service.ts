@@ -112,11 +112,16 @@ export class AndroidAppsProvisioningService {
       networkName: app.networkName,
       volumeName: app.volumeName,
     });
-    await this.logs.append(
-      applicationId,
-      'Container engine selected',
-      await this.resources.engineSummary(),
-    );
+    void this.resources
+      .engineSummary()
+      .then((summary) =>
+        this.logs.append(applicationId, 'Container engine selected', summary),
+      )
+      .catch((error) => {
+        this.logger.warn(
+          `Could not collect container engine summary for ${applicationId}: ${getErrorMessage(error)}`,
+        );
+      });
     this.tracker.ensureActive(applicationId);
     return app;
   }
@@ -221,14 +226,16 @@ export class AndroidAppsProvisioningService {
       statusMessage: 'Starting application container.',
     });
     await this.lifecycle.startContainer(app.containerId!);
-    await this.logs.append(app.id, 'Container start requested', {
-      containerId: app.containerId,
-    });
-    await this.network.reconcilePolicy(app, {
-      log: true,
-      recordLastStartedAt: true,
-      failClosed: true,
-    });
+    await Promise.all([
+      this.logs.append(app.id, 'Container start requested', {
+        containerId: app.containerId,
+      }),
+      this.network.reconcilePolicy(app, {
+        log: true,
+        recordLastStartedAt: true,
+        failClosed: true,
+      }),
+    ]);
     this.tracker.ensureActive(app.id);
   }
 
@@ -349,7 +356,9 @@ export class AndroidAppsProvisioningService {
     applicationId: string,
     patch: Parameters<AndroidAppsStateService['setLifecycle']>[1],
   ) {
-    await this.logs.appendLifecycle(applicationId, patch);
-    await this.state.setLifecycle(applicationId, patch);
+    await Promise.all([
+      this.logs.appendLifecycle(applicationId, patch),
+      this.state.setLifecycle(applicationId, patch),
+    ]);
   }
 }

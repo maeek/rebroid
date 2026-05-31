@@ -1,6 +1,7 @@
 import { request } from '../request'
 import type {
   AndroidApplication,
+  AndroidApplicationSummary,
   ApplicationClipboard,
   ApplicationRuntimeFile,
   ApplicationRuntimeFileDownload,
@@ -49,9 +50,17 @@ export const orchestratorApplicationsClient = {
     return request<UploadedApk | null>(`/apks/lookup?${query.toString()}`)
   },
 
-  listApplications(ownerUserId?: string) {
+  listApplications(ownerUserId?: string, reconcile = true) {
+    const query = new URLSearchParams()
+    if (ownerUserId) query.set('ownerUserId', ownerUserId)
+    if (!reconcile) query.set('reconcile', 'false')
+    const suffix = query.size > 0 ? `?${query.toString()}` : ''
+    return request<AndroidApplication[]>(`/android-applications${suffix}`)
+  },
+
+  listApplicationSummaries(ownerUserId?: string) {
     const query = ownerUserId ? `?${new URLSearchParams({ ownerUserId }).toString()}` : ''
-    return request<AndroidApplication[]>(`/android-applications${query}`)
+    return request<AndroidApplicationSummary[]>(`/android-applications/summaries${query}`)
   },
 
   getApplication(id: string) {

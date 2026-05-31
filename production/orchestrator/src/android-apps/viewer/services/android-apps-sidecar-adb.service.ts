@@ -8,6 +8,11 @@ import { AndroidAppsViewerNetworkService } from './android-apps-viewer-network.s
 
 @Injectable()
 export class AndroidAppsSidecarAdbService {
+  private readonly preparedTargets = new Map<
+    string,
+    { udid: string; expiresAt: number }
+  >();
+
   constructor(
     private readonly config: ConfigService,
     private readonly viewerNetwork: AndroidAppsViewerNetworkService,
@@ -86,19 +91,21 @@ export class AndroidAppsSidecarAdbService {
         signal: AbortSignal.timeout(20_000),
       },
     ).catch((error) => {
+      this.preparedTargets.delete(app.id);
       throw new ConflictException(
         `Display sidecar ADB API is not reachable: ${getErrorMessage(error)}`,
       );
     });
 
     const text = await response.text();
-    let payload: (T & { message?: string }) | null = null;
+    let payload: (T & { message?: string }) | null;
     try {
       payload = text ? (JSON.parse(text) as T & { message?: string }) : null;
     } catch {
       payload = { message: text } as T & { message?: string };
     }
     if (!response.ok) {
+      this.preparedTargets.delete(app.id);
       throw new ConflictException(
         payload?.message ??
           `Display sidecar ADB API returned ${response.status}.`,
@@ -109,6 +116,11 @@ export class AndroidAppsSidecarAdbService {
   }
 
   private async prepareUdid(app: AndroidApplication) {
+    const cached = this.preparedTargets.get(app.id);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.udid;
+    }
+
     await this.viewerNetwork.prepareNetwork(app);
     const adbHost = await this.viewerNetwork.resolveScrcpyAdbHost(app);
     const adbTarget = await this.viewerNetwork.prepareScrcpyAdbTarget(
@@ -119,6 +131,11 @@ export class AndroidAppsSidecarAdbService {
       throw new ConflictException(adbTarget.message);
     }
 
-    return `${adbHost}:${app.adbPort}`;
+    const udid = `${adbHost}:${app.adbPort}`;
+    this.preparedTargets.set(app.id, {
+      udid,
+      expiresAt: Date.now() + 60_000,
+    });
+    return udid;
   }
 }

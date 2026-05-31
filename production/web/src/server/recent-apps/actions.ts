@@ -10,6 +10,8 @@ export type RecentApp = {
   name: string
   icon?: string | null
   openedAt: number
+  status?: 'provisioning' | 'running' | 'stopped' | 'error' | 'removing' | 'removed'
+  statusLabel?: string | null
 }
 
 const visibleRecentApps = async (userId: string): Promise<RecentApp[]> => {
@@ -17,7 +19,7 @@ const visibleRecentApps = async (userId: string): Promise<RecentApp[]> => {
   const ownerUserId = user.role === 'admin' ? undefined : user.ownerUserId
   const [recent, apps] = await Promise.all([
     listStoredRecentApps(userId),
-    orchestratorApplicationsClient.listApplications(ownerUserId)
+    orchestratorApplicationsClient.listApplicationSummaries(ownerUserId)
   ])
   const appsById = new Map(apps.map(app => [app.id, app]))
 
@@ -32,7 +34,9 @@ const visibleRecentApps = async (userId: string): Promise<RecentApp[]> => {
         id: app.id,
         name: app.name,
         icon: await getStoredAppIcon(app.id),
-        openedAt: item.openedAt
+        openedAt: item.openedAt,
+        status: app.currentStatus,
+        statusLabel: app.detail?.title ?? null
       }
     })
   )

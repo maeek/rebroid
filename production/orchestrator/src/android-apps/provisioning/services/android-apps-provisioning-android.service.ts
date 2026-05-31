@@ -29,26 +29,34 @@ export class AndroidAppsProvisioningAndroidService {
 
     const timeoutMs =
       this.config.getOrThrow<number>('app.redroid.bootTimeoutSeconds') * 1000;
-    const intervalMs = 2_000;
+    const intervalMs = 1_000;
     const deadline = Date.now() + timeoutMs;
     let lastProbe = 'sys.boot_completed was not reported.';
 
     while (Date.now() < deadline) {
       this.tracker.ensureActive(app.id);
-      const runtimeState = await this.lifecycle.getContainerRuntimeState(
-        app.containerId,
-      );
-
-      if (!runtimeState.exists || !runtimeState.running) {
-        throw new Error(this.androidBootExitedMessage(runtimeState));
-      }
-
-      try {
-        const { stdout, stderr } = await this.exec.execInContainerWithOutput(
+      const [probeResult, runtimeStateResult] = await Promise.allSettled([
+        this.exec.execInContainerWithOutput(
           app.containerId,
           ['sh', '-lc', 'getprop sys.boot_completed 2>/dev/null || true'],
           { timeoutMs: 10_000 },
+        ),
+        this.lifecycle.getContainerRuntimeState(app.containerId),
+      ]);
+      if (runtimeStateResult.status === 'rejected') {
+        throw runtimeStateResult.reason;
+      }
+      if (
+        !runtimeStateResult.value.exists ||
+        !runtimeStateResult.value.running
+      ) {
+        throw new Error(
+          this.androidBootExitedMessage(runtimeStateResult.value),
         );
+      }
+
+      if (probeResult.status === 'fulfilled') {
+        const { stdout, stderr } = probeResult.value;
         const bootCompleted = stdout.trim();
         lastProbe =
           stderr.trim() ||
@@ -62,15 +70,8 @@ export class AndroidAppsProvisioningAndroidService {
           });
           return;
         }
-      } catch (error) {
-        const runtimeStateAfterExec =
-          await this.lifecycle.getContainerRuntimeState(app.containerId);
-
-        if (!runtimeStateAfterExec.exists || !runtimeStateAfterExec.running) {
-          throw new Error(this.androidBootExitedMessage(runtimeStateAfterExec));
-        }
-
-        lastProbe = getErrorMessage(error);
+      } else {
+        lastProbe = getErrorMessage(probeResult.reason);
       }
 
       await delay(intervalMs);
@@ -103,9 +104,14 @@ export class AndroidAppsProvisioningAndroidService {
       'sh',
       '-lc',
       [
+        `port=${app.adbPort}`,
+        'persist_port="$(getprop persist.adb.tcp.port 2>/dev/null || true)"',
+        'service_port="$(getprop service.adb.tcp.port 2>/dev/null || true)"',
+        'adbd_state="$(getprop init.svc.adbd 2>/dev/null || true)"',
+        'if { [ "$persist_port" = "$port" ] || [ "$service_port" = "$port" ]; } && [ "$adbd_state" = "running" ]; then exit 0; fi',
         `setprop persist.adb.tcp.port ${app.adbPort}`,
         `setprop service.adb.tcp.port ${app.adbPort}`,
-        'stop adbd',
+        '[ "$adbd_state" != "running" ] || stop adbd',
         'start adbd',
       ].join(' && '),
     ]);
@@ -121,23 +127,22 @@ export class AndroidAppsProvisioningAndroidService {
 
     const timeoutMs =
       this.config.getOrThrow<number>('app.redroid.adbTimeoutSeconds') * 1000;
-    const intervalMs = 2_000;
+    const intervalMs = 1_000;
     const deadline = Date.now() + timeoutMs;
     let lastProbe = 'ADB sidecar readiness was not reported.';
 
     while (Date.now() < deadline) {
       this.tracker.ensureActive(app.id);
-      const runtimeState = await this.lifecycle.getContainerRuntimeState(
-        app.containerId,
-      );
+      const [runtimeState, sidecarTarget, adbHost] = await Promise.all([
+        this.lifecycle.getContainerRuntimeState(app.containerId),
+        this.sidecar.ensureSidecarOnNetwork(app.networkName),
+        this.viewerNetwork.resolveScrcpyAdbHost(app),
+      ]);
 
       if (!runtimeState.exists || !runtimeState.running) {
         throw new Error(this.androidBootExitedMessage(runtimeState));
       }
 
-      const sidecarTarget = await this.sidecar.ensureSidecarOnNetwork(
-        app.networkName,
-      );
       if (!sidecarTarget.configured || !sidecarTarget.connected) {
         lastProbe =
           sidecarTarget.message ??
@@ -147,7 +152,6 @@ export class AndroidAppsProvisioningAndroidService {
         continue;
       }
 
-      const adbHost = await this.viewerNetwork.resolveScrcpyAdbHost(app);
       const adbTarget = await this.sidecar.connectAdb(adbHost, app.adbPort);
       lastProbe =
         adbTarget.message ??
@@ -230,7 +234,7 @@ export class AndroidAppsProvisioningAndroidService {
       ].join('; '),
     ];
 
-    let probe = '';
+    let probe: string;
     try {
       const { stdout, stderr } = await this.exec.execInContainerWithOutput(
         app.containerId,
@@ -242,7 +246,7 @@ export class AndroidAppsProvisioningAndroidService {
       probe = getErrorMessage(error);
     }
 
-    let containerLogs = '';
+    let containerLogs: string;
     try {
       containerLogs = await this.lifecycle.getContainerLogs(
         app.containerId,

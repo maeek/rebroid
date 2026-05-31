@@ -5,6 +5,7 @@ import { IconBell } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Visible } from '@/components/ui/visible'
+import { NotificationCard } from '@/features/applications/viewer/notification-card'
 import { useForegroundRefresh } from '@/hooks/use-foreground-refresh'
 import { cn } from '@/lib/utils'
 import { listRunningApplicationNotificationsAction } from '@/server/orchestrator/applications/read-actions'
@@ -95,18 +96,15 @@ export const TopBarNotifications = () => {
                 </div>
                 <div className='grid gap-2'>
                   {app.notifications.slice(0, 3).map((notification, index) => (
-                    <div
+                    <NotificationCard
                       key={`${app.appId}-${notification.packageName}-${notification.raw}-${index}`}
-                      className='rounded-xl border border-border/70 bg-secondary/35 px-3 py-2'
-                    >
-                      <div className='flex items-start justify-between gap-3'>
-                        <div className='min-w-0'>
-                          <p className='truncate text-sm font-medium text-foreground'>{notification.title}</p>
-                          <p className='mt-1 line-clamp-2 text-sm text-secondary-foreground'>{notification.text}</p>
-                        </div>
-                      </div>
-                      <p className='mt-2 truncate text-[11px] text-muted-foreground'>{notification.packageName}</p>
-                    </div>
+                      notification={notification}
+                      appId={app.appId}
+                      appName={app.appName}
+                      appIcon={app.appIcon}
+                      appPackageName={app.appPackageName}
+                      compact
+                    />
                   ))}
                 </div>
               </div>

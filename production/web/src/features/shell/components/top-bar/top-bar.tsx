@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { IconMenu2, IconStackBack, IconX } from '@tabler/icons-react'
 import classNames from 'classnames'
 import Link from 'next/link'
-import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer'
+import { Drawer, DrawerContent, DrawerDescription, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Visible } from '@/components/ui/visible'
 import { yourApps } from '@/features/applications/domain/app-definition'
@@ -45,10 +45,12 @@ export const TopBarProtected = () => {
             </button>
           </DrawerTrigger>
           <DrawerContent className='max-h-[85dvh] overflow-hidden rounded-t-xl border-border/80 bg-background/95'>
+            <DrawerTitle className='sr-only'>Navigation</DrawerTitle>
+            <DrawerDescription className='sr-only'>Navigate between apps and settings pages.</DrawerDescription>
             <div className='max-h-[80dvh] overflow-y-auto'>
               <ProtectedNavigation
                 variant='drawer'
-                onNavigate={() => setDrawerOpen(false)}
+                onNavigate={() => window.setTimeout(() => setDrawerOpen(false), 0)}
               />
             </div>
           </DrawerContent>

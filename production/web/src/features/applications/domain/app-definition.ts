@@ -39,6 +39,7 @@ export interface AppDefinition {
   networkPolicyResult: AndroidNetworkPolicyResult | null
   networkPolicyAppliedAt: Date | null
   apkOriginalName: string | null
+  apkPackageName: string | null
   apkFilePath: string | null
   uploadedApkId: string | null
   scrcpyTransport: ScrcpyTransport
@@ -73,7 +74,7 @@ export const yourApps = [] as AppDefinition[]
 
 export const appsSections = [
   { name: 'Installed Apps', Icon: IconApps, href: '/apps' },
-  { name: 'Add New App', Icon: IconLibraryPlusFilled, href: '/apps/create' }
+  { name: 'Create', Icon: IconLibraryPlusFilled, href: '/apps/create' }
 ] as const
 
 export const settingsSections = [

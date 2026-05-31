@@ -1,5 +1,6 @@
 'use server'
 
+import { getStoredAppIcon } from '@/server/app-icons/store'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { getCurrentUserContext } from '../current-user'
 import { orchestratorApplicationsClient } from './client'
@@ -15,6 +16,13 @@ export const listApplicationsAction = async () => {
   const ownerUserId = user.role === 'admin' ? undefined : user.ownerUserId
   const apps = await orchestratorApplicationsClient.listApplications(ownerUserId)
   return apps.map(app => sanitizeAndroidApplicationForUser(app, user))
+}
+
+export const listApplicationSummariesAction = async () => {
+  const user = await getCurrentUserContext()
+  const ownerUserId = user.role === 'admin' ? undefined : user.ownerUserId
+  const apps = await orchestratorApplicationsClient.listApplicationSummaries(ownerUserId)
+  return apps.filter(app => user.role === 'admin' || app.ownerUserId === user.ownerUserId)
 }
 
 export const getApplicationAction = async (id: string) => {
@@ -47,13 +55,15 @@ export const listRunningApplicationNotificationsAction = async (): Promise<Runni
     return []
   }
 
-  const apps = await orchestratorApplicationsClient.listApplications(user.ownerUserId)
-  const runningApps = apps.filter(app => app.ownerUserId === user.ownerUserId && app.status.currentStatus === 'running')
+  const apps = await orchestratorApplicationsClient.listApplicationSummaries(user.ownerUserId)
+  const runningApps = apps.filter(app => app.ownerUserId === user.ownerUserId && app.currentStatus === 'running')
 
   const notifications = await Promise.all(
     runningApps.map(async app => ({
       appId: app.id,
       appName: app.name,
+      appIcon: await getStoredAppIcon(app.id),
+      appPackageName: app.apkPackageName,
       notifications: await orchestratorApplicationsClient.getNotifications(app.id).catch(() => [])
     }))
   )

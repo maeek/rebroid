@@ -6,6 +6,7 @@ const normalizeNotificationValue = (value?: string | null) => {
   const normalized = value
     .trim()
     .replace(/^"+|"+$/g, '')
+    .replace(/^(?:String|CharSequence)\s*\((.*)\)$/i, '$1')
     .replace(/\\n/g, ' ')
     .replace(/\s+/g, ' ');
 
@@ -14,6 +15,7 @@ const normalizeNotificationValue = (value?: string | null) => {
     normalized === 'null' ||
     normalized === '[]' ||
     normalized === '0' ||
+    /^(?:CONTENT_TYPE_|USAGE_)[A-Z_]+(?:\s|$)/.test(normalized) ||
     normalized.length > 300
   ) {
     return null;
@@ -71,31 +73,29 @@ const parseNotificationBlock = (raw: string) => {
 
   const packageName =
     extractNotificationValue(raw, [
-      /(?:^|[\s\(])pkg=([^\s,\)]+)/m,
-      /(?:^|[\s\(])package=([^\s,\)]+)/m,
+      /(?:^|[\s(])pkg=([^\s,)]+)/m,
+      /(?:^|[\s(])package=([^\s,)]+)/m,
     ]) ?? 'android';
-  const title =
-    extractNotificationValue(raw, [
-      /^\s*android\.title=(.+)$/m,
-      /android\.title=String \((.*?)\)/m,
-      /(?:^|\s)title=([^,\n]+)/,
-      /^\s*title=(.+)$/m,
-      /(?:^|\s)tickerText=([^,\n]+)/,
-      /^\s*tickerText=(.+)$/m,
-    ]) ?? packageName;
-  const text =
-    extractNotificationValue(raw, [
-      /^\s*android\.bigText=(.+)$/m,
-      /^\s*android\.text=(.+)$/m,
-      /android\.bigText=String \((.*?)\)/m,
-      /android\.text=String \((.*?)\)/m,
-      /(?:^|\s)text=([^,\n]+)/,
-      /^\s*text=(.+)$/m,
-      /(?:^|\s)content(?:Text)?=([^,\n]+)/,
-      /^\s*content(?:Text)?=(.+)$/m,
-      /(?:^|\s)tickerText=([^,\n]+)/,
-      /^\s*tickerText=(.+)$/m,
-    ]) ?? null;
+  const title = extractNotificationValue(raw, [
+    /android\.title=String \((.*?)\)/m,
+    /^\s*android\.title=(.+)$/m,
+    /(?:^|\s)title=([^,\n]+)/,
+    /^\s*title=(.+)$/m,
+    /(?:^|\s)tickerText=([^,\n]+)/,
+    /^\s*tickerText=(.+)$/m,
+  ]);
+  const text = extractNotificationValue(raw, [
+    /android\.bigText=String \((.*?)\)/m,
+    /android\.text=String \((.*?)\)/m,
+    /^\s*android\.bigText=(.+)$/m,
+    /^\s*android\.text=(.+)$/m,
+    /(?:^|\s)text=([^,\n]+)/,
+    /^\s*text=(.+)$/m,
+    /(?:^|\s)contentText=([^,\n]+)/,
+    /^\s*contentText=(.+)$/m,
+    /(?:^|\s)tickerText=([^,\n]+)/,
+    /^\s*tickerText=(.+)$/m,
+  ]);
 
   if (!title && !text) {
     return null;
@@ -105,26 +105,26 @@ const parseNotificationBlock = (raw: string) => {
     packageName,
     title: title ?? packageName,
     text: text ?? title ?? packageName,
+    appName: null,
     raw,
   };
 };
 
 export const parseAndroidNotifications = (output: string) => {
   const blocks = splitNotificationBlocks(output);
-  const parsed = blocks.map(parseNotificationBlock).filter(
-    (
-      notification,
-    ): notification is {
-      packageName: string;
-      title: string;
-      text: string;
-      raw: string;
-    } =>
-      notification !== null &&
-      Boolean(notification.packageName) &&
-      Boolean(notification.title) &&
-      Boolean(notification.text),
-  );
+  const parsed = blocks
+    .map(parseNotificationBlock)
+    .filter(
+      (
+        notification,
+      ): notification is NonNullable<
+        ReturnType<typeof parseNotificationBlock>
+      > =>
+        notification !== null &&
+        Boolean(notification.packageName) &&
+        Boolean(notification.title) &&
+        Boolean(notification.text),
+    );
 
   const seen = new Set<string>();
 

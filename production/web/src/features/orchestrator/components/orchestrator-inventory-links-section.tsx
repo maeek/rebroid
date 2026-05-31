@@ -1,4 +1,4 @@
-import { IconBox, IconBrandDocker, IconDeviceDesktop, IconNetwork, IconShieldLock } from '@tabler/icons-react'
+import { IconBox, IconBrandDocker, IconNetwork } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Section } from '@/components/ui/section'
 
@@ -20,18 +20,6 @@ const inventoryLinks = [
     description: 'Review platform networks and per-application isolation networks.',
     href: '/settings/orchestrator/networks',
     Icon: IconNetwork
-  },
-  {
-    title: 'Casting',
-    description: 'Inspect display-sidecar health and terminate active viewer sessions.',
-    href: '/settings/casting',
-    Icon: IconDeviceDesktop
-  },
-  {
-    title: 'Firewall',
-    description: 'Review and change outbound network restrictions for application containers.',
-    href: '/settings/firewall',
-    Icon: IconShieldLock
   }
 ]
 

@@ -37,7 +37,18 @@ export class AndroidAppsStateService {
       where: query.ownerUserId ? { ownerUserId: query.ownerUserId } : {},
       order: { createdAt: 'DESC' },
     });
-    return Promise.all(apps.map((app) => this.reconcileContainerState(app)));
+    return query.reconcile === false
+      ? apps.map((app) => this.status.decorateApplication(app))
+      : Promise.all(apps.map((app) => this.reconcileContainerState(app)));
+  }
+
+  /** Lists stored app summaries without waiting for Docker reconciliation. */
+  async listSummaries(query: ListAndroidApplicationsDto) {
+    const apps = await this.applications.find({
+      where: query.ownerUserId ? { ownerUserId: query.ownerUserId } : {},
+      order: { createdAt: 'DESC' },
+    });
+    return apps.map((app) => this.status.decorateApplication(app));
   }
 
   /** Loads one app and refreshes its runtime state. */

@@ -8,11 +8,20 @@ export const notifyRecentAppsUpdated = (apps?: RecentApp[]): void => {
 }
 
 export const rememberRecentApp = (app: AppDefinition): void => {
-  notifyRecentAppsUpdated([{ id: app.id, name: app.name, icon: app.icon, openedAt: Date.now() }])
+  notifyRecentAppsUpdated([
+    {
+      id: app.id,
+      name: app.name,
+      icon: app.icon,
+      openedAt: Date.now(),
+      status: app.status,
+      statusLabel: app.statusDetail?.title ?? null
+    }
+  ])
 }
 
 export const forgetRecentApp = (appId: string): void => {
-  notifyRecentAppsUpdated([{ id: appId, name: '', icon: null, openedAt: 0 }])
+  notifyRecentAppsUpdated([{ id: appId, name: '', icon: null, openedAt: 0, status: 'removed', statusLabel: null }])
 }
 
 export type { RecentApp }

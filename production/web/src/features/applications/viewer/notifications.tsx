@@ -1,13 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { IconBell } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
 import { AppDefinition } from '@/features/applications/domain/app-definition'
 import { getAndroidNotificationsAction } from '@/server/orchestrator/applications/read-actions'
+import { NotificationCard } from './notification-card'
 import type { AndroidNotification } from '@/server/orchestrator/applications/types'
 
 export const AndroidNotifications = ({ app }: { app: AppDefinition }) => {
@@ -42,19 +42,14 @@ export const AndroidNotifications = ({ app }: { app: AppDefinition }) => {
   }
 
   const renderNotificationCard = (notification: AndroidNotification) => (
-    <div
+    <NotificationCard
       key={`${notification.packageName}-${notification.raw}`}
-      className='flex flex-row rounded-md border border-border/70 bg-secondary/40 px-4 py-3 transition-colors hover:bg-secondary/58'
-    >
-      <IconBell className='mr-4 mt-0.5 size-6 shrink-0 text-secondary-foreground' />
-      <div className='flex w-full grow flex-col gap-1'>
-        <div className='flex items-center gap-2'>
-          <span className='text-sm font-medium text-foreground'>{notification.title}</span>
-        </div>
-        <p className='text-sm text-secondary-foreground'>{notification.text}</p>
-        <div className='text-xs text-muted-foreground'>{notification.packageName}</div>
-      </div>
-    </div>
+      notification={notification}
+      appId={app.id}
+      appName={app.name}
+      appIcon={app.icon}
+      appPackageName={app.apkPackageName}
+    />
   )
 
   return (

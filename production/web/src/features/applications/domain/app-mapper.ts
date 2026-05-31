@@ -33,6 +33,7 @@ export const mapAndroidApplicationToAppDefinition = (app: AndroidApplication): A
   networkPolicyResult: app.network.policy.result,
   networkPolicyAppliedAt: app.network.policy.appliedAt ? new Date(app.network.policy.appliedAt) : null,
   apkOriginalName: app.apk.originalName,
+  apkPackageName: app.apk.packageName,
   apkFilePath: app.apk.filePath,
   uploadedApkId: app.apk.uploadedApkId,
   scrcpyTransport: app.runtime.scrcpyTransport,

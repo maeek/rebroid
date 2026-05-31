@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class AndroidNotificationDto {
   @ApiProperty({ example: 'android' })
@@ -9,6 +9,9 @@ export class AndroidNotificationDto {
 
   @ApiProperty({ example: 'VPN is active' })
   text!: string;
+
+  @ApiPropertyOptional({ example: 'Clock', nullable: true })
+  appName!: string | null;
 
   @ApiProperty({ example: 'NotificationRecord(...)' })
   raw!: string;

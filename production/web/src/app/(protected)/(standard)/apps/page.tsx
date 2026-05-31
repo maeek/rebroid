@@ -13,14 +13,24 @@ const AppsPageContent = async () => {
   const initialSettingsPromise = getServerOrchestratorUiSettings()
   const user = await getCurrentUserContext()
   const ownerUserId = user.role === 'admin' ? undefined : user.ownerUserId
-  const ownerNames =
+  const ownerNamesPromise =
     user.role === 'admin'
-      ? new Map((await userService.listUsers()).map(owner => [owner.id, owner.name || owner.username]))
-      : new Map<string, string>()
+      ? userService.listUsers().then(owners => new Map(owners.map(owner => [owner.id, owner.name || owner.username])))
+      : Promise.resolve(new Map<string, string>())
   let orchestratorError: string | null = null
-  const apps = await orchestratorApplicationsClient
-    .listApplications(ownerUserId)
+  const appsPromise = orchestratorApplicationsClient
+    .listApplications(ownerUserId, false)
     .then(items => items.map(mapAndroidApplicationToAppDefinition))
+    .catch(error => {
+      orchestratorError = error instanceof Error ? error.message : 'The orchestrator API is not responding.'
+      return []
+    })
+  const [initialSettings, ownerNames, baseApps] = await Promise.all([
+    initialSettingsPromise,
+    ownerNamesPromise,
+    appsPromise
+  ])
+  const apps = await Promise.resolve(baseApps)
     .then(items =>
       items.map(app => ({
         ...app,
@@ -32,7 +42,6 @@ const AppsPageContent = async () => {
       orchestratorError = error instanceof Error ? error.message : 'The orchestrator API is not responding.'
       return []
     })
-  const initialSettings = await initialSettingsPromise
 
   return (
     <AppsList

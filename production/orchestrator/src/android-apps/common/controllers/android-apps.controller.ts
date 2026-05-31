@@ -16,6 +16,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { AndroidApplicationResponseDto } from '../dto/android-application-response.dto';
+import { AndroidApplicationSummaryResponseDto } from '../dto/android-application-summary-response.dto';
 import { CloneAndroidApplicationDto } from '../dto/clone-android-application.dto';
 import { CreateAndroidApplicationDto } from '../dto/create-android-application.dto';
 import { DeleteAndroidApplicationResponseDto } from '../dto/delete-android-application-response.dto';
@@ -86,6 +87,18 @@ export class AndroidAppsController {
   @ApiOkResponse({ type: AndroidApplicationResponseDto, isArray: true })
   list(@Query() query: ListAndroidApplicationsDto) {
     return toAndroidApplicationResponseList(this.state.list(query));
+  }
+
+  @Get('summaries')
+  @ApiOperation({
+    summary:
+      'List lightweight app state for navigation and polling without Docker reconciliation.',
+  })
+  @ApiOkResponse({ type: AndroidApplicationSummaryResponseDto, isArray: true })
+  async listSummaries(@Query() query: ListAndroidApplicationsDto) {
+    return (await this.state.listSummaries(query)).map((app) =>
+      AndroidApplicationSummaryResponseDto.fromEntity(app),
+    );
   }
 
   @Get(':id')

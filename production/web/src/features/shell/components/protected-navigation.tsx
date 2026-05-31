@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type ElementType } from 'react'
+import { useCallback, useEffect, useState, type ElementType } from 'react'
 import {
   IconAdjustments,
   IconApps,
@@ -9,7 +9,9 @@ import {
   IconChevronDown,
   IconDeviceDesktop,
   IconLibraryPlus,
+  IconLoader2,
   IconNetwork,
+  IconPlayerPlayFilled,
   IconServerSpark,
   IconShield,
   IconShieldLock,
@@ -17,11 +19,12 @@ import {
 } from '@tabler/icons-react'
 import classNames from 'classnames'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Visible } from '@/components/ui/visible'
 import { AppIcon } from '@/features/applications/components/app-icon'
 import { recentAppsUpdatedEvent, type RecentApp } from '@/features/applications/recent/recent-apps'
+import { startApplicationAction } from '@/server/orchestrator/applications/mutation-actions'
 import { listRecentAppsAction } from '@/server/recent-apps/actions'
 
 type NavigationVariant = 'sidebar' | 'drawer'
@@ -39,7 +42,7 @@ type ProtectedNavigationProps = {
 
 const appSections: NavigationItem[] = [
   { name: 'Installed Apps', Icon: IconApps, href: '/apps' },
-  { name: 'Add New App', Icon: IconLibraryPlus, href: '/apps/create' }
+  { name: 'Create', Icon: IconLibraryPlus, href: '/apps/create' }
 ]
 
 const settingsSections: NavigationItem[] = [{ name: 'General', Icon: IconAdjustments, href: '/settings/general' }]
@@ -135,17 +138,39 @@ type RecentAppLinkProps = {
   variant: NavigationVariant
   isActive: boolean
   onNavigate?: () => void
+  onStarted: () => void
 }
 
-const RecentAppLink = ({ app, variant, isActive, onNavigate }: RecentAppLinkProps) => {
+const RecentAppLink = ({ app, variant, isActive, onNavigate, onStarted }: RecentAppLinkProps) => {
   const styles = variantStyles[variant]
+  const router = useRouter()
+  const [isStarting, setIsStarting] = useState(false)
+  const isOperating = app.status === 'provisioning' || app.status === 'removing' || isStarting
+  const canStart = app.status === 'stopped' || app.status === 'error'
+
+  const startAndOpen = async () => {
+    if (isStarting) return
+
+    setIsStarting(true)
+    router.push(`/app/${app.id}`)
+    onNavigate?.()
+    try {
+      await startApplicationAction(app.id)
+      onStarted()
+    } catch {
+      // The destination page surfaces the runtime error state after navigation.
+    } finally {
+      setIsStarting(false)
+    }
+  }
 
   return (
-    <Link
-      href={`/app/${app.id}`}
-      onClick={onNavigate}
-    >
-      <li className={classNames(styles.item, isActive && styles.activeItem)}>
+    <li className={classNames(styles.item, 'group', isActive && styles.activeItem)}>
+      <Link
+        href={`/app/${app.id}`}
+        onClick={onNavigate}
+        className='flex min-w-0 flex-1 items-center gap-2'
+      >
         <div className={styles.iconWrap}>
           <AppIcon
             appId={app.id}
@@ -155,8 +180,33 @@ const RecentAppLink = ({ app, variant, isActive, onNavigate }: RecentAppLinkProp
           />
         </div>
         <span className={classNames(styles.label, 'truncate')}>{app.name}</span>
-      </li>
-    </Link>
+      </Link>
+      <Visible when={app.status === 'running'}>
+        <span
+          title='Running'
+          aria-label='Running'
+          className='mr-2 size-2 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]'
+        />
+      </Visible>
+      <Visible when={isOperating}>
+        <IconLoader2
+          title={app.statusLabel ?? 'Working'}
+          aria-label={app.statusLabel ?? 'Working'}
+          className='mr-1.5 size-4 shrink-0 animate-spin text-primary'
+        />
+      </Visible>
+      <Visible when={canStart && !isStarting}>
+        <button
+          type='button'
+          title={`Start ${app.name}`}
+          aria-label={`Start ${app.name}`}
+          className='mr-0.5 flex size-7 shrink-0 items-center justify-center rounded-full text-secondary-foreground opacity-0 transition hover:bg-primary/15 hover:text-primary focus:opacity-100 group-hover:opacity-100'
+          onClick={() => void startAndOpen()}
+        >
+          <IconPlayerPlayFilled className='size-4' />
+        </button>
+      </Visible>
+    </li>
   )
 }
 
@@ -171,24 +221,26 @@ export const ProtectedNavigation = ({ variant, onNavigate }: ProtectedNavigation
   const [orchestratorMenuIsOpen, setOrchestratorMenuIsOpen] = useState(orchestratorPathIsActive)
   const styles = variantStyles[variant]
 
-  useEffect(() => {
-    const hydrateRecentApps = async () => {
-      try {
-        setRecentApps(await listRecentAppsAction())
-      } catch {
-        // Keep the current navigation list on transient server failures.
-      }
+  const hydrateRecentApps = useCallback(async () => {
+    try {
+      setRecentApps(await listRecentAppsAction())
+    } catch {
+      // Keep the current navigation list on transient server failures.
     }
+  }, [])
 
+  useEffect(() => {
     void hydrateRecentApps()
 
     const onRecentAppsUpdated = () => void hydrateRecentApps()
+    const interval = window.setInterval(() => void hydrateRecentApps(), 5000)
 
     window.addEventListener(recentAppsUpdatedEvent, onRecentAppsUpdated)
     return () => {
+      window.clearInterval(interval)
       window.removeEventListener(recentAppsUpdatedEvent, onRecentAppsUpdated)
     }
-  }, [])
+  }, [hydrateRecentApps])
 
   useEffect(() => {
     if (userManagementPathIsActive) {
@@ -227,6 +279,7 @@ export const ProtectedNavigation = ({ variant, onNavigate }: ProtectedNavigation
             variant={variant}
             isActive={pathname === `/app/${app.id}` || pathname.startsWith(`/app/${app.id}/`)}
             onNavigate={onNavigate}
+            onStarted={() => void hydrateRecentApps()}
           />
         ))}
         {appSections.slice(1).map(({ name, Icon, href }) => (

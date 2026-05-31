@@ -67,10 +67,12 @@ export class AndroidAppsLifecycleService {
 
   /** Creates a new app and starts provisioning. */
   async create(dto: CreateAndroidApplicationDto) {
-    const settings = await this.settings.getSettings();
-    const uploadedApk = dto.uploadedApkId
-      ? await this.apks.get(dto.uploadedApkId)
-      : null;
+    const [settings, uploadedApk] = await Promise.all([
+      this.settings.getSettings(),
+      dto.uploadedApkId
+        ? this.apks.get(dto.uploadedApkId)
+        : Promise.resolve(null),
+    ]);
 
     const containerImage = resolveContainerImage(
       dto.containerImage ?? settings.defaultContainerImage,
@@ -300,11 +302,16 @@ export class AndroidAppsLifecycleService {
       const app = await this.state.getStored(id);
       this.tracker.ensureActive(app.id);
 
-      await this.logs.append(
-        app.id,
-        'Container engine selected',
-        await this.resources.engineSummary(),
-      );
+      void this.resources
+        .engineSummary()
+        .then((summary) =>
+          this.logs.append(app.id, 'Container engine selected', summary),
+        )
+        .catch((error) => {
+          this.logger.warn(
+            `Could not collect container engine summary for ${app.id}: ${getErrorMessage(error)}`,
+          );
+        });
 
       await this.state.setLifecycle(app.id, {
         lifecycleStage: AndroidApplicationLifecycleStage.ImageChecking,
@@ -436,13 +443,15 @@ export class AndroidAppsLifecycleService {
       statusMessage: 'Starting application container.',
     });
     await this.lifecycle.startContainer(app.containerId);
-    await this.logs.append(app.id, 'Container start requested', {
-      containerId: app.containerId,
-    });
-    await this.runtimeNetwork.reconcilePolicy(app, {
-      recordLastStartedAt: true,
-      failClosed: true,
-    });
+    await Promise.all([
+      this.logs.append(app.id, 'Container start requested', {
+        containerId: app.containerId,
+      }),
+      this.runtimeNetwork.reconcilePolicy(app, {
+        recordLastStartedAt: true,
+        failClosed: true,
+      }),
+    ]);
     this.tracker.ensureActive(app.id);
     await this.provisioning.prepareRuntimeReadiness(app);
     await this.logs.append(app.id, 'APK startup check', {

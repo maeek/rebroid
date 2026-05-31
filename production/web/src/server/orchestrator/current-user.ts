@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { getCurrentUser } from '@/server/auth/authorization'
 
 export const getCurrentOwnerUserId = async () => {
@@ -5,7 +6,7 @@ export const getCurrentOwnerUserId = async () => {
   return user.id || user.name || 'admin'
 }
 
-export const getCurrentUserContext = async () => {
+export const getCurrentUserContext = cache(async () => {
   const user = await getCurrentUser()
 
   return {
@@ -14,4 +15,4 @@ export const getCurrentUserContext = async () => {
     permissions: user.effectivePermissions,
     quotas: user.effectiveQuotas
   }
-}
+})
