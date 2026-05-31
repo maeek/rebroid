@@ -1,6 +1,5 @@
 import { CSSProperties } from 'react'
 import localFont from 'next/font/local'
-import Head from 'next/head'
 // eslint-disable-next-line import/order
 import Providers from './providers'
 // eslint-disable-next-line import/order
@@ -74,13 +73,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         } as CSSProperties
       }
     >
-      <Head>
-        <meta charSet='utf-8' />
-        <meta
-          name='Content-Security-Policy'
-          content="worker-src: 'self'"
-        />
-      </Head>
       <body>
         <ThemeProvider
           attribute='class'

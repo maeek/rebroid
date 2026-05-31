@@ -18,11 +18,6 @@ export class UpdateAndroidApplicationDto {
   @MinLength(2)
   name?: string;
 
-  @ApiPropertyOptional({ example: 'user_123' })
-  @IsOptional()
-  @IsString()
-  ownerUserId?: string;
-
   @ApiPropertyOptional({
     minimum: -1,
     maximum: 86400,

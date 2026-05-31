@@ -35,6 +35,14 @@ export class AndroidAppsDisplaySidecarService {
   async createSessionForPreparedTarget(
     app: AndroidApplication,
     udid: string,
+    capabilities = [
+      'video',
+      'audio',
+      'control',
+      'clipboard',
+      'files',
+      'diagnostics',
+    ],
   ): Promise<DisplaySessionDto> {
     const result = await this.request<DisplaySessionResponse>('/sessions', {
       method: 'POST',
@@ -42,7 +50,7 @@ export class AndroidAppsDisplaySidecarService {
         appId: app.id,
         udid,
         ownerUserId: app.ownerUserId,
-        capabilities: ['video', 'audio', 'control', 'clipboard', 'files', 'diagnostics'],
+        capabilities,
       }),
     });
 
@@ -53,9 +61,10 @@ export class AndroidAppsDisplaySidecarService {
   async tryCreateSessionForPreparedTarget(
     app: AndroidApplication,
     udid: string,
+    capabilities?: string[],
   ): Promise<DisplaySessionDto | null> {
     try {
-      return await this.createSessionForPreparedTarget(app, udid);
+      return await this.createSessionForPreparedTarget(app, udid, capabilities);
     } catch {
       return null;
     }
@@ -88,6 +97,12 @@ export class AndroidAppsDisplaySidecarService {
         body: JSON.stringify({ text }),
       },
     );
+  }
+
+  async releaseSessionsForApp(appId: string) {
+    await this.request(`/sessions/apps/${encodeURIComponent(appId)}`, {
+      method: 'DELETE',
+    });
   }
 
   private async ensureSession(app: AndroidApplication) {

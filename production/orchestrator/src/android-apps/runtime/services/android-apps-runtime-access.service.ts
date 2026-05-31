@@ -38,6 +38,7 @@ import {
 @Injectable()
 export class AndroidAppsRuntimeAccessService {
   private readonly downloadDirectory = '/data/media/0/Download';
+  private readonly maxUploadBytes = 256 * 1024 * 1024;
 
   constructor(
     private readonly archive: DockerContainerArchiveService,
@@ -240,6 +241,7 @@ export class AndroidAppsRuntimeAccessService {
       headers: request.headers,
       limits: {
         files: 1,
+        fileSize: this.maxUploadBytes,
       },
     });
 
@@ -267,6 +269,14 @@ export class AndroidAppsRuntimeAccessService {
           stream.resume();
           return;
         }
+
+        stream.on('limit', () => {
+          fail(
+            new ConflictException(
+              `File upload exceeds the ${this.maxUploadBytes / 1024 / 1024} MB limit.`,
+            ),
+          );
+        });
 
         upload = this.storeDownloadFileStream(
           app,
@@ -339,7 +349,7 @@ export class AndroidAppsRuntimeAccessService {
     let sizeBytes = 0;
     const counter = this.createByteCounter((bytes) => {
       sizeBytes += bytes;
-    });
+    }, this.maxUploadBytes);
 
     try {
       await pipeline(
@@ -377,7 +387,7 @@ export class AndroidAppsRuntimeAccessService {
     let sizeBytes = 0;
     const counter = this.createByteCounter((bytes) => {
       sizeBytes += bytes;
-    });
+    }, this.maxUploadBytes);
 
     try {
       await pipeline(
@@ -413,16 +423,30 @@ export class AndroidAppsRuntimeAccessService {
     };
   }
 
-  private createByteCounter(onBytes: (bytes: number) => void) {
+  private createByteCounter(
+    onBytes: (bytes: number) => void,
+    maxBytes: number,
+  ) {
+    let totalBytes = 0;
     return new Transform({
       transform(
         chunk: Buffer,
         _encoding: BufferEncoding,
         callback: TransformCallback,
       ) {
-        onBytes(
-          Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk),
-        );
+        const bytes = Buffer.isBuffer(chunk)
+          ? chunk.length
+          : Buffer.byteLength(chunk);
+        totalBytes += bytes;
+        if (totalBytes > maxBytes) {
+          callback(
+            new ConflictException(
+              `File upload exceeds the ${maxBytes / 1024 / 1024} MB limit.`,
+            ),
+          );
+          return;
+        }
+        onBytes(bytes);
         callback(null, chunk);
       },
     });

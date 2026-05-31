@@ -156,7 +156,7 @@ read_shared_orchestrator_secret() {
     ensure_secret_file "$secret_file"
   fi
 
-  chmod 644 "$secret_file" 2>/dev/null || true
+  chmod 600 "$secret_file" 2>/dev/null || true
   export ORCHESTRATOR_SHARED_SECRET="$(cat "$secret_file")"
 }
 

@@ -1,7 +1,7 @@
 'use server'
 
-import { getStoredAppIcon, setStoredAppIcon } from '@/server/app-icons/store'
-import { hasPermission, isBroadInternetCidr, isRedroidImage } from '@/shared/permissions/permissions'
+import { cloneStoredAppIcon } from '@/server/app-icons/store'
+import { allowsBroadInternetAccess, hasPermission, isRedroidImage } from '@/shared/permissions/permissions'
 import { applyRedroidDefaultContainerArgs } from '@/shared/runtime/redroid-runtime'
 import { getCurrentOwnerUserId, getCurrentUserContext } from '../current-user'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../shared'
@@ -199,7 +199,7 @@ export const updateNetworkPolicyAction = async (id: string, input: UpdateNetwork
   }
   if (
     user.role !== 'admin' &&
-    input.networkPolicyAllowCidrs?.some(cidr => isBroadInternetCidr(cidr)) &&
+    (input.networkPolicyEnabled === false || allowsBroadInternetAccess(input.networkPolicyAllowCidrs ?? [])) &&
     !hasPermission(user.permissions, 'applications:use-internet')
   ) {
     throw new Error('You do not have permission to allow broad internet access.')
@@ -266,10 +266,7 @@ export const cloneApplicationForCurrentUserAction = async (id: string) => {
   const app = await orchestratorApplicationsClient.cloneApplication(id, {
     ownerUserId: user.ownerUserId
   })
-  const sourceIcon = await getStoredAppIcon(id)
-  if (sourceIcon) {
-    await setStoredAppIcon(app.id, sourceIcon)
-  }
+  await cloneStoredAppIcon(id, app.id)
   revalidateApplicationList()
   revalidateApplicationDetail(id)
   revalidateApplicationDetail(app.id)

@@ -22,7 +22,10 @@ export class AndroidAppsViewerService {
   ) {}
 
   /** Builds the viewer session data for scrcpy. */
-  async scrcpySession(id: string): Promise<ScrcpySessionDto> {
+  async scrcpySession(
+    id: string,
+    access: { control?: boolean; clipboard?: boolean } = {},
+  ): Promise<ScrcpySessionDto> {
     const app = await this.getRunningRuntimeApp(id);
     const proxyRemote =
       this.config.get<string>('app.displaySidecar.proxyRemote') ?? 'tcp:8886';
@@ -37,7 +40,16 @@ export class AndroidAppsViewerService {
         : sidecarTarget;
     const displaySession =
       viewerTarget.configured && viewerTarget.connected
-        ? await this.displaySidecar.tryCreateSessionForPreparedTarget(app, udid)
+        ? await this.displaySidecar.tryCreateSessionForPreparedTarget(
+            app,
+            udid,
+            [
+              'video',
+              'audio',
+              ...(access.control ? ['control'] : []),
+              ...(access.clipboard ? ['clipboard'] : []),
+            ],
+          )
         : null;
     app.lastScrcpyActivityAt = new Date();
     await this.state.save(app);

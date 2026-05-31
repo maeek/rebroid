@@ -68,11 +68,6 @@ export const sanitizeScrcpySessionForUser = (session: ScrcpySession, context: Ap
         }
       : null,
     displaySession: session.displaySession
-      ? {
-          ...session.displaySession,
-          udid: 'Managed container'
-        }
-      : null
   }
 }
 

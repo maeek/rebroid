@@ -33,12 +33,6 @@ export class DisplaySessionDto {
   @ApiPropertyOptional({ nullable: true })
   appId?: string;
 
-  @ApiProperty()
-  udid!: string;
-
-  @ApiPropertyOptional({ nullable: true })
-  ownerUserId?: string;
-
   @ApiProperty({ enum: ['created', 'active', 'released', 'expired'] })
   status!: 'created' | 'active' | 'released' | 'expired';
 
@@ -50,6 +44,9 @@ export class DisplaySessionDto {
 
   @ApiProperty()
   expiresAt!: string;
+
+  @ApiProperty()
+  maxExpiresAt!: string;
 
   @ApiProperty({ type: [String] })
   capabilities!: string[];

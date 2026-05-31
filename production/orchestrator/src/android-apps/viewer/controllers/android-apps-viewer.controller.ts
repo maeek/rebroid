@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   ApplicationViewerControlDto,
@@ -14,8 +14,15 @@ export class AndroidAppsViewerController {
 
   @Get(':id/scrcpy-session')
   @ApiOkResponse({ type: ScrcpySessionDto })
-  scrcpySession(@Param('id') id: string) {
-    return this.viewer.scrcpySession(id);
+  scrcpySession(
+    @Param('id') id: string,
+    @Query('control') control?: string,
+    @Query('clipboard') clipboard?: string,
+  ) {
+    return this.viewer.scrcpySession(id, {
+      control: control === 'true',
+      clipboard: clipboard === 'true',
+    });
   }
 
   @Post(':id/viewer-activity')

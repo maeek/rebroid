@@ -15,6 +15,9 @@ export const authOptions: NextAuthOptions = {
       if (user && 'role' in user) {
         token.role = user.role
       }
+      if (user && 'sessionVersion' in user) {
+        token.sessionVersion = user.sessionVersion
+      }
       if (user?.image !== undefined) {
         token.picture = user.image
       }
@@ -26,6 +29,7 @@ export const authOptions: NextAuthOptions = {
       session.user.id = token.userId
       session.user.name = currentUser?.name ?? session.user.name
       session.user.role = currentUser?.role ?? token.role
+      session.user.sessionVersion = token.sessionVersion
       session.user.image = currentUser?.avatarDataUrl ?? (typeof token.picture === 'string' ? token.picture : null)
       return session
     }

@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server'
-import { getServerAuthSession } from '@/server/auth/auth'
+import { getCurrentUser } from '@/server/auth/authorization'
 import { getSystemStats } from '@/server/system/system-stats'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const session = await getServerAuthSession()
-
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Authentication required.' }, { status: 401 })
+  const user = await getCurrentUser()
+  if (user.role !== 'admin') {
+    return NextResponse.json({ error: 'Administrator access required.' }, { status: 403 })
   }
 
   return NextResponse.json(getSystemStats(), {

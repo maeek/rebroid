@@ -36,11 +36,11 @@ const session: ScrcpySession = {
   adbPort: 5555,
   displaySession: {
     id: 'display-1',
-    udid: '172.18.0.2:5555',
     status: 'created',
     createdAt: '2026-01-01T00:00:00.000Z',
     lastActivityAt: '2026-01-01T00:00:00.000Z',
     expiresAt: '2026-01-01T00:01:00.000Z',
+    maxExpiresAt: '2026-01-01T01:00:00.000Z',
     capabilities: [],
     streamPath: '/stream',
     viewerPath: '/viewer',

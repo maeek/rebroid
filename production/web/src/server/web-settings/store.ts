@@ -78,13 +78,13 @@ export const saveWebSettings = async (settings: Partial<WebSettings>) => {
   const normalized = normalize({ ...current, ...settings })
   const path = settingsPath()
   await mkdir(dirname(path), { recursive: true })
-  await writeFile(path, `${JSON.stringify(normalized, null, 2)}\n`, 'utf-8')
+  await writeFile(path, `${JSON.stringify(normalized, null, 2)}\n`, { encoding: 'utf-8', mode: 0o600 })
   return normalized
 }
 
 export const resetWebSettings = async () => {
   const path = settingsPath()
   await mkdir(dirname(path), { recursive: true })
-  await writeFile(path, `${JSON.stringify(defaultWebSettings, null, 2)}\n`, 'utf-8')
+  await writeFile(path, `${JSON.stringify(defaultWebSettings, null, 2)}\n`, { encoding: 'utf-8', mode: 0o600 })
   return defaultWebSettings
 }

@@ -11,7 +11,7 @@ export const getCurrentUser = cache(async () => {
   }
 
   const user = await userService.getUserById(session.user.id)
-  if (!user || user.disabled) {
+  if (!user || user.disabled || user.sessionVersion !== session.user.sessionVersion) {
     redirect('/login')
   }
 

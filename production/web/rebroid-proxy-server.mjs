@@ -223,9 +223,12 @@ const forwardedPort = (req, host) => {
 const proxyHeaders = (req, target) => {
   const publicHost = firstHeaderValue(req.headers['x-forwarded-host']) ?? firstHeaderValue(req.headers.host) ?? ''
   const proto = forwardedProto(req)
+  const headers = { ...req.headers }
+  delete headers['x-rebroid-sidecar-secret']
+  delete headers['x-orchestrator-secret']
   if (target.kind === 'sidecar') {
     return {
-      ...req.headers,
+      ...headers,
       host: target.baseUrl.host,
       'x-forwarded-host': publicHost,
       'x-forwarded-proto': proto,
@@ -235,7 +238,7 @@ const proxyHeaders = (req, target) => {
   }
 
   return {
-    ...req.headers,
+    ...headers,
     host: publicHost,
     'x-forwarded-host': publicHost,
     'x-forwarded-proto': proto,
@@ -264,6 +267,12 @@ const proxyHttp = (req, res, target) => {
     },
     proxyRes => {
       const headers = { ...proxyRes.headers }
+      headers['referrer-policy'] = 'no-referrer'
+      headers['x-content-type-options'] = 'nosniff'
+      headers['strict-transport-security'] = 'max-age=31536000; includeSubDomains'
+      if (target.kind === 'sidecar') {
+        headers['content-security-policy'] = "frame-ancestors 'self'; object-src 'none'; base-uri 'none'"
+      }
       const location = proxyRes.headers.location
       if (location) {
         headers.location = rewriteLocation(location, target)

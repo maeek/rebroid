@@ -4,6 +4,7 @@ import { getCurrentOwnerUserId } from '@/server/orchestrator/current-user'
 import { OrchestratorRequestError } from '@/server/orchestrator/request'
 
 export const runtime = 'nodejs'
+const maxApkUploadBytes = 512 * 1024 * 1024
 
 export const POST = async (request: NextRequest) => {
   let ownerUserId: string
@@ -14,10 +15,17 @@ export const POST = async (request: NextRequest) => {
   }
 
   try {
+    const contentLength = Number(request.headers.get('content-length'))
+    if (Number.isFinite(contentLength) && contentLength > maxApkUploadBytes) {
+      return NextResponse.json({ message: 'APK upload exceeds the 512 MB limit.' }, { status: 413 })
+    }
     const body = await request.formData()
     const apk = body.get('apk')
     if (!(apk instanceof File)) {
       return NextResponse.json({ message: 'APK file is required' }, { status: 400 })
+    }
+    if (apk.size > maxApkUploadBytes) {
+      return NextResponse.json({ message: 'APK upload exceeds the 512 MB limit.' }, { status: 413 })
     }
 
     body.set('ownerUserId', ownerUserId)

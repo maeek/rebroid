@@ -43,6 +43,11 @@ const assertCanUseOwnedApplicationRuntime = async (id: string) => {
   return { app, user }
 }
 
+export const getOwnedApplicationAction = async (id: string) => {
+  const { app, user } = await assertCanUseOwnedApplicationRuntime(id)
+  return sanitizeAndroidApplicationForUser(app, user)
+}
+
 export const getAndroidNotificationsAction = async (id: string) => {
   await assertCanUseOwnedApplicationRuntime(id)
   return orchestratorApplicationsClient.getNotifications(id)
@@ -127,7 +132,10 @@ export const captureApplicationScreenshotAction = async (id: string) => {
 
 export const getScrcpySessionAction = async (id: string) => {
   const { user } = await assertCanUseOwnedApplicationRuntime(id)
-  const session = await orchestratorApplicationsClient.getScrcpySession(id)
+  const session = await orchestratorApplicationsClient.getScrcpySession(id, {
+    control: user.role === 'admin' || hasPermission(user.permissions, 'applications:control-viewer'),
+    clipboard: user.role === 'admin' || hasPermission(user.permissions, 'applications:sync-clipboard')
+  })
   return sanitizeScrcpySessionForUser(session, user)
 }
 

@@ -27,7 +27,7 @@ fi
 if [ -z "${ORCHESTRATOR_SHARED_SECRET:-}" ]; then
   secret_file="${ORCHESTRATOR_SHARED_SECRET_FILE:-/app/secrets/rebroid-shared-secret}"
   ensure_secret_file "$secret_file"
-  chmod 644 "$secret_file" 2>/dev/null || true
+  chmod 600 "$secret_file" 2>/dev/null || true
   export ORCHESTRATOR_SHARED_SECRET="$(cat "$secret_file")"
 fi
 export FIREWALL_AGENT_SHARED_SECRET="${FIREWALL_AGENT_SHARED_SECRET:-$ORCHESTRATOR_SHARED_SECRET}"

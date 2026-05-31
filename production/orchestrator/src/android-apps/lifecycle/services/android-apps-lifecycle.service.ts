@@ -27,7 +27,10 @@ import { AndroidAppsLogService } from '../../common/services/android-apps-log.se
 import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
 import { resolveContainerImage } from '../../common/utils/android-apps-container-image.utils';
-import { rememberSavedProfile } from '../../common/utils/android-apps-profile-history.utils';
+import {
+  parseSavedProfiles,
+  rememberSavedProfile,
+} from '../../common/utils/android-apps-profile-history.utils';
 import { stoppedStatusMessage } from '../../common/utils/android-apps-status-message.utils';
 import { AndroidAppsRuntimeNetworkService } from '../../network/services/android-apps-runtime-network.service';
 import { AndroidAppsProvisioningApkService } from '../../provisioning/services/android-apps-provisioning-apk.service';
@@ -39,6 +42,7 @@ import {
 import { StartAndroidApplicationDto } from '../dto/start-android-application.dto';
 import { SwitchApplicationProfileDto } from '../dto/switch-application-profile.dto';
 import { UpdateAndroidApplicationApkDto } from '../dto/update-android-application-apk.dto';
+import { AndroidAppsDisplaySidecarService } from '../../viewer/services/android-apps-display-sidecar.service';
 
 @Injectable()
 export class AndroidAppsLifecycleService {
@@ -63,6 +67,7 @@ export class AndroidAppsLifecycleService {
     private readonly logs: AndroidAppsLogService,
     private readonly runtimeNetwork: AndroidAppsRuntimeNetworkService,
     private readonly state: AndroidAppsStateService,
+    private readonly displaySidecar: AndroidAppsDisplaySidecarService,
   ) {}
 
   /** Creates a new app and starts provisioning. */
@@ -184,9 +189,6 @@ export class AndroidAppsLifecycleService {
 
     if (dto.name !== undefined) {
       app.name = dto.name;
-    }
-    if (dto.ownerUserId !== undefined) {
-      app.ownerUserId = dto.ownerUserId;
     }
     if (dto.inactivityTimeoutSeconds !== undefined) {
       app.inactivityTimeoutSeconds = dto.inactivityTimeoutSeconds;
@@ -579,6 +581,9 @@ export class AndroidAppsLifecycleService {
       await this.lifecycle.stopContainer(app.containerId);
     }
 
+    await this.displaySidecar
+      .releaseSessionsForApp(app.id)
+      .catch(() => undefined);
     await this.runtimeNetwork.releaseRuntimeSupport(app);
 
     if (app.recreateContainerOnNextStart && app.containerId) {
@@ -638,11 +643,26 @@ export class AndroidAppsLifecycleService {
       app.containerId = null;
     }
     await this.lifecycle.removeContainerByName(app.containerName);
+    await this.displaySidecar
+      .releaseSessionsForApp(app.id)
+      .catch(() => undefined);
 
     await this.networks.removeNetwork(app.networkName);
     const removeData = query.removeData ?? true;
     if (removeData) {
-      await this.resources.removeVolume(app.volumeName);
+      const volumeNames = new Set([
+        app.volumeName,
+        ...parseSavedProfiles(app.savedProfilesJson).map(
+          (profile) =>
+            this.networkIsolation.namesFor(app.id, app.name, profile.name)
+              .volumeName,
+        ),
+      ]);
+      await Promise.all(
+        [...volumeNames].map((volumeName) =>
+          this.resources.removeVolume(volumeName),
+        ),
+      );
     }
 
     await this.applications.remove(app);

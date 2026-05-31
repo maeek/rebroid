@@ -33,6 +33,7 @@ export type PublicUser = {
   role: UserRole
   groupIds: string[]
   disabled: boolean
+  sessionVersion: number
   avatarDataUrl: string | null
   permissionOverrides: PermissionMap
   effectivePermissions: PermissionMap
@@ -64,9 +65,21 @@ type UsersFile = {
 }
 
 const bcryptRounds = 12
+const minimumPasswordLength = 12
+const maxAvatarBytes = 2 * 1024 * 1024
 const usersPath = () => process.env.WEB_USERS_PATH || join(process.cwd(), 'data', 'users.json')
 
 const nowIso = () => new Date().toISOString()
+
+const validateAvatarDataUrl = (avatarDataUrl: string | null | undefined) => {
+  if (!avatarDataUrl) {
+    return
+  }
+  const match = avatarDataUrl.match(/^data:(image\/(?:png|jpeg|webp));base64,([\s\S]+)$/)
+  if (!match || Buffer.from(match[2], 'base64').length > maxAvatarBytes) {
+    throw new Error('Avatar must be a PNG, JPEG, or WebP image no larger than 2 MB.')
+  }
+}
 
 const defaultGroups = (): UserGroup[] => {
   const now = nowIso()
@@ -125,6 +138,7 @@ const toPublicUser = (file: UsersFile, user: StoredUser): PublicUser => {
     role: user.role,
     groupIds: groups.map(group => group.id),
     disabled: user.disabled,
+    sessionVersion: user.sessionVersion,
     avatarDataUrl: user.avatarDataUrl,
     permissionOverrides: user.permissionOverrides,
     effectivePermissions,
@@ -154,6 +168,7 @@ const defaultAdminUser = async (): Promise<StoredUser> => {
     role: 'admin',
     groupIds: ['admins'],
     disabled: false,
+    sessionVersion: 1,
     avatarDataUrl: null,
     permissionOverrides: {},
     quotas: {},
@@ -178,6 +193,7 @@ const normalizeUser = (
     role,
     groupIds,
     disabled: user.disabled ?? false,
+    sessionVersion: user.sessionVersion ?? 1,
     avatarDataUrl: user.avatarDataUrl ?? null,
     permissionOverrides: user.permissionOverrides ?? {},
     quotas: user.quotas ?? {},
@@ -216,7 +232,7 @@ const readUsersFile = async (): Promise<UsersFile> => {
 const writeUsersFile = async (file: UsersFile) => {
   const path = usersPath()
   await mkdir(dirname(path), { recursive: true })
-  await writeFile(path, `${JSON.stringify(file, null, 2)}\n`, 'utf-8')
+  await writeFile(path, `${JSON.stringify(file, null, 2)}\n`, { encoding: 'utf-8', mode: 0o600 })
 }
 
 const listUsers = async () => {
@@ -247,7 +263,8 @@ const authenticate = async (username: string, password: string) => {
     name: user.name,
     email: null,
     image: user.avatarDataUrl,
-    role: user.role
+    role: user.role,
+    sessionVersion: user.sessionVersion
   }
 }
 
@@ -271,9 +288,10 @@ const createUser = async ({
 }: UserEditorInput & { username: string; password: string }) => {
   const file = await readUsersFile()
   const normalizedUsername = username.trim()
-  if (!normalizedUsername || password.length < 1) {
-    throw new Error('Username is required and password must be at least 1 character.')
+  if (!normalizedUsername || password.length < minimumPasswordLength) {
+    throw new Error(`Username is required and password must be at least ${minimumPasswordLength} characters.`)
   }
+  validateAvatarDataUrl(input.avatarDataUrl)
   if (file.users.some(user => user.username === normalizedUsername)) {
     throw new Error('Username already exists.')
   }
@@ -287,6 +305,7 @@ const createUser = async ({
     role,
     groupIds: groups.map(group => group.id),
     disabled: input.disabled ?? false,
+    sessionVersion: 1,
     avatarDataUrl: input.avatarDataUrl ?? null,
     permissionOverrides: input.permissionOverrides ?? {},
     quotas: input.quotas ?? {},
@@ -321,16 +340,23 @@ const updateUser = async (id: string, input: UserEditorInput) => {
     user.username = username
   }
   if (input.password !== undefined && input.password.trim()) {
-    if (input.password.length < 1) {
-      throw new Error('Password must be at least 1 character.')
+    if (input.password.length < minimumPasswordLength) {
+      throw new Error(`Password must be at least ${minimumPasswordLength} characters.`)
     }
     user.passwordHash = await hashPassword(input.password)
+    user.sessionVersion += 1
   }
   if (input.name !== undefined) user.name = input.name.trim() || user.username
   if (input.role !== undefined) user.role = input.role
   if (input.groupIds !== undefined) user.groupIds = findGroups(file, input.groupIds, user.role).map(group => group.id)
-  if (input.disabled !== undefined) user.disabled = input.disabled
-  if (input.avatarDataUrl !== undefined) user.avatarDataUrl = input.avatarDataUrl
+  if (input.disabled !== undefined && input.disabled !== user.disabled) {
+    user.disabled = input.disabled
+    user.sessionVersion += 1
+  }
+  if (input.avatarDataUrl !== undefined) {
+    validateAvatarDataUrl(input.avatarDataUrl)
+    user.avatarDataUrl = input.avatarDataUrl
+  }
   if (input.permissionOverrides !== undefined) user.permissionOverrides = input.permissionOverrides
   if (input.quotas !== undefined) user.quotas = input.quotas
 

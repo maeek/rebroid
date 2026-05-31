@@ -10,6 +10,7 @@ import { AndroidAppsCommonModule } from '../common/android-apps-common.module';
 import { AndroidAppsLifecycleController } from './controllers/android-apps-lifecycle.controller';
 import { AndroidAppsRuntimeNetworkModule } from '../network/android-apps-runtime-network.module';
 import { AndroidAppsProvisioningModule } from '../provisioning/android-apps-provisioning.module';
+import { AndroidAppsViewerModule } from '../viewer/android-apps-viewer.module';
 import { AndroidAppsLifecycleService } from './services/android-apps-lifecycle.service';
 
 @Module({
@@ -23,6 +24,7 @@ import { AndroidAppsLifecycleService } from './services/android-apps-lifecycle.s
     AndroidAppsCommonModule,
     AndroidAppsRuntimeNetworkModule,
     AndroidAppsProvisioningModule,
+    AndroidAppsViewerModule,
   ],
   controllers: [AndroidAppsLifecycleController],
   providers: [AndroidAppsLifecycleService],

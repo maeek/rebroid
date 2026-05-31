@@ -162,4 +162,4 @@ const server = createServer(async (request, response) => {
 
 mkdirSync(dirname(socketPath), { recursive: true });
 rmSync(socketPath, { force: true });
-server.listen(socketPath, () => chmodSync(socketPath, 0o666));
+server.listen(socketPath, () => chmodSync(socketPath, 0o660));

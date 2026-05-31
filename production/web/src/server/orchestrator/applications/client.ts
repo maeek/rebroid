@@ -16,6 +16,7 @@ import type {
   CreateAndroidApplicationInput,
   DeleteAndroidApplicationResponse,
   ScrcpySession,
+  ScrcpySessionAccess,
   SwitchApplicationProfileInput,
   UpdateAndroidApplicationInput,
   UpdateNetworkPolicyInput,
@@ -161,8 +162,12 @@ export const orchestratorApplicationsClient = {
     })
   },
 
-  getScrcpySession(id: string) {
-    return request<ScrcpySession>(`/android-applications/${id}/scrcpy-session`)
+  getScrcpySession(id: string, access: ScrcpySessionAccess = {}) {
+    const query = new URLSearchParams()
+    if (access.control) query.set('control', 'true')
+    if (access.clipboard) query.set('clipboard', 'true')
+    const suffix = query.size > 0 ? `?${query.toString()}` : ''
+    return request<ScrcpySession>(`/android-applications/${id}/scrcpy-session${suffix}`)
   },
 
   recordViewerActivity(id: string) {

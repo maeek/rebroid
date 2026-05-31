@@ -69,7 +69,10 @@ export class SettingsService {
   private async writeSettings(settings: OrchestratorSettingsDto) {
     const path = this.settingsPath();
     await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, `${JSON.stringify(settings, null, 2)}\n`, 'utf-8');
+    await writeFile(path, `${JSON.stringify(settings, null, 2)}\n`, {
+      encoding: 'utf-8',
+      mode: 0o600,
+    });
   }
 
   /**

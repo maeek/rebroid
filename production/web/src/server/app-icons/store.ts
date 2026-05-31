@@ -14,6 +14,7 @@ type StoredIconMetadata = {
 }
 
 const dataUrlPattern = /^data:([^;,]+);base64,([\s\S]+)$/
+const maxIconBytes = 2 * 1024 * 1024
 
 const extensionForMimeType = (mimeType: string) => {
   if (mimeType === 'image/jpeg') return 'jpg'
@@ -54,11 +55,15 @@ export const getStoredAppIcon = async (appId: string) => {
     return null
   }
 
-  if (!metadata.icon.startsWith('data:')) {
+  if (metadata.icon === iconUrl(appId)) {
     return metadata.icon
   }
 
-  return setStoredAppIcon(appId, metadata.icon)
+  if (metadata.icon.startsWith('data:')) {
+    return setStoredAppIcon(appId, metadata.icon)
+  }
+
+  return null
 }
 
 export const setStoredAppIcon = async (appId: string, icon: string) => {
@@ -67,18 +72,19 @@ export const setStoredAppIcon = async (appId: string, icon: string) => {
   const parsed = parseIconDataUrl(icon)
 
   if (!parsed) {
-    await writeFile(path, `${JSON.stringify({ icon }, null, 2)}\n`, 'utf-8')
-    return icon
+    throw new Error('App icons must be PNG, JPEG, or WebP image data.')
+  }
+  if (parsed.buffer.length > maxIconBytes) {
+    throw new Error('App icons must not exceed 2 MB.')
   }
 
   const fileName = `${safeId(appId)}.${parsed.extension}`
-  await writeFile(iconFilePath(appId, parsed.extension), parsed.buffer)
+  await writeFile(iconFilePath(appId, parsed.extension), parsed.buffer, { mode: 0o600 })
   const storedIcon = iconUrl(appId)
-  await writeFile(
-    path,
-    `${JSON.stringify({ icon: storedIcon, fileName, mimeType: parsed.mimeType }, null, 2)}\n`,
-    'utf-8'
-  )
+  await writeFile(path, `${JSON.stringify({ icon: storedIcon, fileName, mimeType: parsed.mimeType }, null, 2)}\n`, {
+    encoding: 'utf-8',
+    mode: 0o600
+  })
   return storedIcon
 }
 
@@ -89,6 +95,16 @@ export const removeStoredAppIcon = async (appId: string) => {
     unlink(iconFilePath(appId, 'jpg')).catch(() => undefined),
     unlink(iconFilePath(appId, 'webp')).catch(() => undefined)
   ])
+}
+
+export const cloneStoredAppIcon = async (sourceAppId: string, targetAppId: string) => {
+  const source = await getStoredAppIconFile(sourceAppId)
+  if (!source) {
+    return null
+  }
+
+  const content = await readFile(source.path)
+  return setStoredAppIcon(targetAppId, `data:${source.mimeType};base64,${content.toString('base64')}`)
 }
 
 export const getStoredAppIconFile = async (appId: string) => {

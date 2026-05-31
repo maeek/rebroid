@@ -1,12 +1,8 @@
 import { revalidatePath } from 'next/cache'
-import { getServerAuthSession } from '@/server/auth/auth'
-import { requireAdmin } from '@/server/auth/authorization'
+import { getCurrentUser, requireAdmin } from '@/server/auth/authorization'
 
 export const requireUser = async () => {
-  const session = await getServerAuthSession()
-  if (!session?.user) {
-    throw new Error('Authentication required.')
-  }
+  return getCurrentUser()
 }
 
 export const requireAdminUser = async () => {

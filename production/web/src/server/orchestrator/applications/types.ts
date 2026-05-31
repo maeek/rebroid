@@ -124,12 +124,11 @@ export type DisplaySessionStatus = 'created' | 'active' | 'released' | 'expired'
 export interface DisplaySession {
   id: string
   appId?: string | null
-  udid: string
-  ownerUserId?: string | null
   status: DisplaySessionStatus
   createdAt: string
   lastActivityAt: string
   expiresAt: string
+  maxExpiresAt: string
   capabilities: string[]
   streamPath: string
   viewerPath: string
@@ -316,7 +315,6 @@ export interface CloneApplicationInput {
 
 export interface UpdateAndroidApplicationInput {
   name?: string
-  ownerUserId?: string
   inactivityTimeoutSeconds?: number
   memoryLimitMb?: number | null
   cpuLimitCpus?: number | null
@@ -327,6 +325,11 @@ export interface UpdateAndroidApplicationInput {
 export interface UpdateNetworkPolicyInput {
   networkPolicyEnabled?: boolean
   networkPolicyAllowCidrs?: string[]
+}
+
+export interface ScrcpySessionAccess {
+  control?: boolean
+  clipboard?: boolean
 }
 
 export interface SwitchApplicationProfileInput {

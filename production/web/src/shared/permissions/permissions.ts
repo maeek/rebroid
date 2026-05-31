@@ -225,6 +225,49 @@ export const isBroadInternetCidr = (cidr: string) => {
   return normalized === '0.0.0.0/0' || normalized === '::/0'
 }
 
+const ipv4Range = (cidr: string) => {
+  const [address, rawPrefix] = cidr.trim().split('/')
+  const octets = address.split('.').map(Number)
+  const prefix = rawPrefix === undefined ? 32 : Number(rawPrefix)
+  if (
+    octets.length !== 4 ||
+    octets.some(octet => !Number.isInteger(octet) || octet < 0 || octet > 255) ||
+    !Number.isInteger(prefix) ||
+    prefix < 0 ||
+    prefix > 32
+  ) {
+    return null
+  }
+
+  const value = octets.reduce((result, octet) => result * 256 + octet, 0)
+  const size = 2 ** (32 - prefix)
+  const start = Math.floor(value / size) * size
+  return { start, end: start + size - 1 }
+}
+
+export const allowsBroadInternetAccess = (cidrs: string[]) => {
+  if (cidrs.some(isBroadInternetCidr)) {
+    return true
+  }
+
+  const ranges = cidrs
+    .map(ipv4Range)
+    .filter((range): range is NonNullable<typeof range> => Boolean(range))
+    .sort((left, right) => left.start - right.start)
+  let coveredThrough = -1
+  for (const range of ranges) {
+    if (range.start > coveredThrough + 1) {
+      return false
+    }
+    coveredThrough = Math.max(coveredThrough, range.end)
+    if (coveredThrough >= 2 ** 32 - 1) {
+      return true
+    }
+  }
+
+  return false
+}
+
 export const isRedroidImage = (image: string) => {
   const normalized = image.trim().toLowerCase()
   return normalized === 'redroid' || normalized.startsWith('redroid/') || normalized.includes('/redroid/')
