@@ -6,7 +6,6 @@ import { getErrorMessage } from '../../../common/error-message';
 import { throwNotFound } from '../../../common/not-found';
 import { DockerContainerLifecycleService } from '../../../docker/containers/services/docker-container-lifecycle.service';
 import { ContainerRuntimeState } from '../../../docker/docker.types';
-import { DockerSidecarService } from '../../../docker/sidecar/services/docker-sidecar.service';
 import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
 import { AndroidApplication } from '../../android-application.entity';
 import {
@@ -28,7 +27,6 @@ export class AndroidAppsStateService {
     private readonly config: ConfigService,
     private readonly lifecycle: DockerContainerLifecycleService,
     private readonly networkPolicy: NetworkPolicyService,
-    private readonly sidecar: DockerSidecarService,
     private readonly tracker: AndroidAppsProvisioningTrackerService,
     private readonly status: AndroidAppsStatusService,
   ) {}
@@ -115,7 +113,6 @@ export class AndroidAppsStateService {
     }
 
     await this.networkPolicy.remove(app);
-    await this.releaseViewerNetwork(app);
     app.containerId = null;
     app.status = AndroidApplicationStatus.Stopped;
     app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
@@ -202,10 +199,11 @@ export class AndroidAppsStateService {
     const message = runtimeState.exists
       ? this.status.containerExitedMessage(app, runtimeState)
       : 'Managed container no longer exists.';
+    this.logger.warn(
+      `Managed container stopped for ${app.id}: ${JSON.stringify(runtimeState)}`,
+    );
 
     if (app.status === AndroidApplicationStatus.Provisioning) {
-      await this.releaseViewerNetwork(app);
-
       if (runtimeState.exists && runtimeState.exitCode === 0) {
         app.status = AndroidApplicationStatus.Stopped;
         app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
@@ -232,8 +230,6 @@ export class AndroidAppsStateService {
     }
 
     if (app.status === AndroidApplicationStatus.Running) {
-      await this.releaseViewerNetwork(app);
-
       if (runtimeState.exists && runtimeState.exitCode === 0) {
         app.status = AndroidApplicationStatus.Stopped;
         app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
@@ -286,7 +282,6 @@ export class AndroidAppsStateService {
       app.containerId = null;
     }
 
-    void this.releaseViewerNetwork(app);
     app.status = AndroidApplicationStatus.Stopped;
     app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
     app.statusMessage = this.status.stoppedStatusMessage(app);
@@ -320,20 +315,5 @@ export class AndroidAppsStateService {
       AndroidApplicationLifecycleStage.ContainerCreating,
       AndroidApplicationLifecycleStage.ContainerStarting,
     ].includes(app.lifecycleStage);
-  }
-
-  /** Detaches the display sidecar from an app network after external runtime exits. */
-  private async releaseViewerNetwork(app: AndroidApplication) {
-    if (!app.networkName || app.networkName === 'pending') {
-      return;
-    }
-
-    try {
-      await this.sidecar.detachSidecarFromNetwork(app.networkName);
-    } catch (error) {
-      this.logger.warn(
-        `Could not detach display sidecar from ${app.networkName} for ${app.id}: ${getErrorMessage(error)}`,
-      );
-    }
   }
 }

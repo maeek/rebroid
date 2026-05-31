@@ -43,7 +43,18 @@ export class HealthController {
     },
   })
   async health() {
-    const docker = await this.docker.dockerHealth();
+    const [docker, display, firewall] = await Promise.all([
+      this.docker.dockerHealth(),
+      this.docker.displaySidecarHealth(),
+      this.firewallAgent.health().catch((error) => ({
+        ok: false,
+        status: 'offline',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Firewall agent is unavailable.',
+      })),
+    ]);
     const runtime = docker.ok
       ? await this.docker.runtimeSuitabilityHealth()
       : {
@@ -52,22 +63,6 @@ export class HealthController {
           message:
             'Docker is unavailable, so runtime suitability cannot be inspected.',
         };
-    const display = docker.ok
-      ? await this.docker.displaySidecarHealth()
-      : {
-          ok: false,
-          status: 'offline' as const,
-          message:
-            'Docker is unavailable, so the display sidecar cannot be inspected.',
-        };
-    const firewall = await this.firewallAgent.health().catch((error) => ({
-      ok: false,
-      status: 'offline',
-      message:
-        error instanceof Error
-          ? error.message
-          : 'Firewall agent is unavailable.',
-    }));
 
     return {
       ok: docker.ok && runtime.ok && display.ok && firewall.ok,

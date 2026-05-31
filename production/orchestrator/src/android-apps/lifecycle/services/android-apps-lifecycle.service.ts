@@ -347,7 +347,6 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
 
       const message = getErrorMessage(error);
       this.logger.error(`Start failed for ${id}: ${message}`);
-      await this.releaseRuntimeSupportAfterFailedStart(id);
       await this.state.setLifecycle(id, {
         status: AndroidApplicationStatus.Error,
         lifecycleStage: AndroidApplicationLifecycleStage.Error,
@@ -355,22 +354,6 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
         lastError: message,
       });
       await this.logs.append(id, 'Start failed', { error: message });
-    }
-  }
-
-  /** Releases viewer/runtime support after a failed asynchronous start. */
-  private async releaseRuntimeSupportAfterFailedStart(id: string) {
-    try {
-      const app = await this.state.getStored(id);
-      if (!app.networkName || app.networkName === 'pending') {
-        return;
-      }
-
-      await this.runtimeNetwork.releaseRuntimeSupport(app);
-    } catch (error) {
-      this.logger.warn(
-        `Could not release runtime support after failed start for ${id}: ${getErrorMessage(error)}`,
-      );
     }
   }
 
@@ -461,15 +444,13 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
       statusMessage: 'Starting application container.',
     });
     await this.lifecycle.startContainer(app.containerId);
-    await Promise.all([
-      this.logs.append(app.id, 'Container start requested', {
-        containerId: app.containerId,
-      }),
-      this.runtimeNetwork.reconcilePolicy(app, {
-        recordLastStartedAt: true,
-        failClosed: true,
-      }),
-    ]);
+    await this.runtimeNetwork.enforcePolicyAfterStart(app, {
+      recordLastStartedAt: true,
+      retryAttempts: 10,
+    });
+    await this.logs.append(app.id, 'Container start requested', {
+      containerId: app.containerId,
+    });
     this.tracker.ensureActive(app.id);
     await this.provisioning.prepareRuntimeReadiness(app);
     await this.logs.append(app.id, 'APK startup check', {
@@ -604,7 +585,6 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     }
 
     this.releaseDisplaySessionsInBackground(app.id, 'stopping');
-    await this.runtimeNetwork.releaseRuntimeSupport(app);
 
     if (app.recreateContainerOnNextStart && app.containerId) {
       await this.removeManagedContainer(app);
@@ -719,6 +699,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     }
     await this.lifecycle.removeContainerByName(app.containerName);
     this.releaseDisplaySessionsInBackground(app.id, 'removing');
+    await this.runtimeNetwork.releaseRuntimeSupport(app);
     await this.networks.removeNetwork(app.networkName);
 
     if (!removeData) {
@@ -1030,7 +1011,6 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
       staleAfterSeconds: staleTimeoutMs / 1000,
     });
     this.tracker.cancel(app.id);
-    await this.releaseRuntimeSupportAfterFailedStart(app.id);
     if (app.containerId) {
       await this.removeManagedContainer(app);
     }

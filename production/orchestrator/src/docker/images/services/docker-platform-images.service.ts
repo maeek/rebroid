@@ -17,7 +17,10 @@ export class DockerPlatformImagesService {
   ) {}
 
   async listPlatformImages(): Promise<PlatformImage[]> {
-    const images = await this.engine.docker.listImages({ all: true });
+    const images = await this.engine.read(
+      () => this.engine.docker.listImages({ all: true }),
+      'List platform images',
+    );
     return images.map((image) => platformImageFromSummary(image));
   }
 
@@ -25,11 +28,17 @@ export class DockerPlatformImagesService {
     imageId: string,
   ): Promise<PlatformImageDetails> {
     const image = this.engine.docker.getImage(imageId);
-    const inspect = await image.inspect();
+    const inspect = await this.engine.read(
+      () => image.inspect(),
+      `Inspect platform image ${imageId}`,
+    );
     const [images, containers] = await Promise.all([
       this.listPlatformImages(),
-      this.engine.docker
-        .listContainers({ all: true })
+      this.engine
+        .read(
+          () => this.engine.docker.listContainers({ all: true }),
+          'List containers for platform image details',
+        )
         .then((items) => items.map((item) => platformContainerFromInfo(item))),
     ]);
     const listItem =

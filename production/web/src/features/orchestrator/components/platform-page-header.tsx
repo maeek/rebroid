@@ -6,12 +6,14 @@ export const PlatformPageHeader = ({
   title,
   description,
   actions,
-  parent
+  parent,
+  includeOrchestratorBreadcrumb = true
 }: {
   title: string
   description?: string
   actions?: ReactNode
   parent?: { label: string; href: string }
+  includeOrchestratorBreadcrumb?: boolean
 }) => (
   <section className='shrink-0 px-6 py-4 max-sm:px-4'>
     <div className='flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-start'>
@@ -20,7 +22,7 @@ export const PlatformPageHeader = ({
           className='pt-0'
           items={[
             { label: 'Settings', href: '/settings/general' },
-            { label: 'Orchestrator', href: '/settings/orchestrator' },
+            ...(includeOrchestratorBreadcrumb ? [{ label: 'Orchestrator', href: '/settings/orchestrator' }] : []),
             ...(parent ? [parent] : []),
             { label: title }
           ]}

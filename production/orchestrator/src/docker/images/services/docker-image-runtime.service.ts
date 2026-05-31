@@ -7,9 +7,15 @@ export class DockerImageRuntimeService {
 
   async imageExists(image: string) {
     try {
-      await this.engine.docker.getImage(image).inspect();
+      await this.engine.read(
+        () => this.engine.docker.getImage(image).inspect(),
+        `Inspect image ${image}`,
+      );
       return true;
-    } catch {
+    } catch (error) {
+      if (!this.engine.isDockerNotFound(error)) {
+        throw error;
+      }
       return false;
     }
   }
@@ -58,10 +64,16 @@ export class DockerImageRuntimeService {
   }
 
   async listImages() {
-    return this.engine.docker.listImages();
+    return this.engine.read(
+      () => this.engine.docker.listImages(),
+      'List images',
+    );
   }
 
   async removeImage(image: string, force = false) {
-    return this.engine.docker.getImage(image).remove({ force });
+    return this.engine.mutate(
+      () => this.engine.docker.getImage(image).remove({ force }),
+      `Remove image ${image}`,
+    );
   }
 }

@@ -43,6 +43,17 @@ export const deriveApplicationError = (
     };
   }
 
+  if (message.includes('OOM-killed')) {
+    return {
+      code: 'container_oom_killed',
+      phase,
+      message,
+      retryable: true,
+      exitCode,
+      hint: 'The Docker host killed the runtime because it ran out of available memory. Check host memory pressure and the app memory limit before restarting.',
+    };
+  }
+
   if (message.startsWith('Managed container ')) {
     return {
       code: 'container_exited',
@@ -88,6 +99,10 @@ export const errorStatusTitle = (app: AndroidApplication) => {
 
   if (app.applicationError?.code === 'container_missing') {
     return 'App container is missing';
+  }
+
+  if (app.applicationError?.code === 'container_oom_killed') {
+    return 'App stopped due to memory pressure';
   }
 
   if (app.applicationError?.code === 'container_exited') {

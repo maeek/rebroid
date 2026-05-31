@@ -125,7 +125,7 @@ export const OrchestratorStatus = () => {
         orchestrator: offlineService(errorMessage),
         docker: offlineService('Cannot inspect Docker while orchestrator is offline.'),
         runtime: offlineService('Cannot inspect runtime suitability while orchestrator is offline.'),
-        display: offlineService('Cannot inspect display sidecar while orchestrator is offline.'),
+        display: offlineService('Cannot inspect casting sidecar while orchestrator is offline.'),
         firewall: offlineService('Cannot inspect firewall agent while orchestrator is offline.')
       }
     })

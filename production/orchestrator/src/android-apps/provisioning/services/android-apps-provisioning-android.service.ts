@@ -208,8 +208,11 @@ export class AndroidAppsProvisioningAndroidService {
     const dockerError = runtimeState.error
       ? ` Docker reported: ${runtimeState.error}`
       : '';
+    const oomKilled = runtimeState.oomKilled
+      ? ' Docker reported that the container was OOM-killed.'
+      : '';
 
-    return `Managed container ${runtimeState.status ?? 'exited'}${exitCode} before Android finished booting.${dockerError}`;
+    return `Managed container ${runtimeState.status ?? 'exited'}${exitCode} before Android finished booting.${oomKilled}${dockerError}`;
   }
 
   private async collectBootDiagnostics(app: AndroidApplication) {

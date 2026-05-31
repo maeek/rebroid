@@ -62,12 +62,10 @@ export class NetworkIsolationService {
     profileMode: ApplicationProfileMode,
     names: Pick<IsolatedRuntimeNames, 'networkName' | 'volumeName'>,
   ) {
-    await Promise.all([
-      profileMode === ApplicationProfileMode.Persistent
-        ? this.resources.createVolume(applicationId, names.volumeName)
-        : Promise.resolve(),
-      this.networks.createIsolatedNetwork(applicationId, names.networkName),
-    ]);
+    if (profileMode === ApplicationProfileMode.Persistent) {
+      await this.resources.createVolume(applicationId, names.volumeName);
+    }
+    await this.networks.createIsolatedNetwork(applicationId, names.networkName);
     await this.connectOrchestrator(names.networkName);
   }
 

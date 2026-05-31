@@ -17,6 +17,8 @@ const createEngine = () => {
 
   return {
     docker,
+    read: jest.fn((operation: () => Promise<unknown>) => operation()),
+    mutate: jest.fn((operation: () => Promise<unknown>) => operation()),
     labels: jest.fn((applicationId: string, component: string) => ({
       'com.rebroid.managed': 'true',
       'com.rebroid.application-id': applicationId,

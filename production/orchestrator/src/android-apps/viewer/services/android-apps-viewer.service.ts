@@ -1,7 +1,8 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DockerSidecarService } from '../../../docker/sidecar/services/docker-sidecar.service';
+import { setTimeout as delay } from 'node:timers/promises';
 import { getErrorMessage } from '../../../common/error-message';
+import { ViewerTargetStatus } from '../../../docker/docker.types';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
 import { AndroidApplicationStatus } from '../../android-application-status';
 import type { ApplicationViewerControlCommand } from '../dto/application-viewer-control.dto';
@@ -12,9 +13,10 @@ import { AndroidAppsViewerNetworkService } from './android-apps-viewer-network.s
 
 @Injectable()
 export class AndroidAppsViewerService {
+  private readonly logger = new Logger(AndroidAppsViewerService.name);
+
   constructor(
     private readonly config: ConfigService,
-    private readonly sidecar: DockerSidecarService,
     private readonly displaySidecar: AndroidAppsDisplaySidecarService,
     private readonly sidecarAdb: AndroidAppsSidecarAdbService,
     private readonly state: AndroidAppsStateService,
@@ -29,15 +31,8 @@ export class AndroidAppsViewerService {
     const app = await this.getRunningRuntimeApp(id);
     const proxyRemote =
       this.config.get<string>('app.displaySidecar.proxyRemote') ?? 'tcp:8886';
-    const sidecarTarget = await this.sidecar.ensureSidecarOnNetwork(
-      app.networkName,
-    );
-    const adbHost = await this.viewerNetwork.resolveScrcpyAdbHost(app);
+    const { adbHost, viewerTarget } = await this.prepareViewerTarget(app);
     const udid = `${adbHost}:${app.adbPort}`;
-    const viewerTarget =
-      sidecarTarget.configured && sidecarTarget.connected
-        ? await this.viewerNetwork.prepareScrcpyAdbTarget(app, adbHost)
-        : sidecarTarget;
     const displaySession =
       viewerTarget.configured && viewerTarget.connected
         ? await this.displaySidecar.tryCreateSessionForPreparedTarget(
@@ -68,6 +63,54 @@ export class AndroidAppsViewerService {
       adbPort: app.adbPort,
       displaySession,
     };
+  }
+
+  /** Retries the lazy sidecar attachment while a freshly started runtime settles. */
+  private async prepareViewerTarget(app: Awaited<ReturnType<AndroidAppsViewerService['getRunningRuntimeApp']>>) {
+    const maxAttempts = 3;
+    let adbHost = app.containerName;
+    let viewerTarget: ViewerTargetStatus | null = null;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        const sidecarTarget =
+          await this.viewerNetwork.ensureNetworkPrepared(app);
+        adbHost = await this.viewerNetwork.resolveScrcpyAdbHost(app);
+        viewerTarget =
+          sidecarTarget.configured && sidecarTarget.connected
+            ? await this.viewerNetwork.prepareScrcpyAdbTarget(app, adbHost)
+            : sidecarTarget;
+      } catch (error) {
+        const message = getErrorMessage(error);
+        viewerTarget = {
+          configured: true,
+          connected: false,
+          message,
+          error: {
+            code: 'unknown',
+            message,
+            retryable: true,
+            exitCode: null,
+            command: null,
+            stdout: null,
+            stderr: null,
+          },
+        };
+      }
+
+      if (viewerTarget.connected || !viewerTarget.error?.retryable) {
+        return { adbHost, viewerTarget };
+      }
+
+      if (attempt < maxAttempts) {
+        this.logger.warn(
+          `Viewer bootstrap for ${app.id} is not ready. Retrying ${attempt}/${maxAttempts - 1}: ${viewerTarget.message}`,
+        );
+        await delay(1_000);
+      }
+    }
+
+    return { adbHost, viewerTarget: viewerTarget! };
   }
 
   /** Saves the latest viewer activity time. */

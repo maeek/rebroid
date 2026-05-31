@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { getErrorMessage } from '../../../common/error-message';
 import { DockerContainerExecService } from '../../../docker/containers/services/docker-container-exec.service';
-import { DockerContainerLifecycleService } from '../../../docker/containers/services/docker-container-lifecycle.service';
 import { DockerNetworkRuntimeService } from '../../../docker/networks/services/docker-network-runtime.service';
 import { DockerSidecarService } from '../../../docker/sidecar/services/docker-sidecar.service';
 import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
@@ -13,12 +12,13 @@ import { isRedroidImageName } from '../../provisioning/utils/redroid-runtime.uti
 @Injectable()
 export class AndroidAppsViewerNetworkService {
   private readonly logger = new Logger(AndroidAppsViewerNetworkService.name);
+  private readonly networkPreparations = new Map<string, Promise<unknown>>();
+  private readonly adbTargetPreparations = new Map<string, Promise<unknown>>();
 
   constructor(
     private readonly networks: DockerNetworkRuntimeService,
     private readonly sidecar: DockerSidecarService,
     private readonly exec: DockerContainerExecService,
-    private readonly containers: DockerContainerLifecycleService,
     private readonly networkPolicy: NetworkPolicyService,
     private readonly logs: AndroidAppsLogService,
     private readonly state: AndroidAppsStateService,
@@ -27,15 +27,7 @@ export class AndroidAppsViewerNetworkService {
   /** Makes sure the viewer sidecar is on the app network. */
   async prepareNetwork(app: AndroidApplication) {
     try {
-      const sidecarTarget = await this.sidecar.ensureSidecarOnNetwork(
-        app.networkName,
-      );
-      await this.logs.append(app.id, 'Display sidecar network prepared', {
-        networkName: app.networkName,
-        configured: sidecarTarget.configured,
-        connected: sidecarTarget.connected,
-        message: sidecarTarget.message,
-      });
+      await this.ensureNetworkPrepared(app);
     } catch (error) {
       const message = getErrorMessage(error);
       this.logger.warn(
@@ -50,6 +42,26 @@ export class AndroidAppsViewerNetworkService {
         },
       );
     }
+  }
+
+  /** Coalesces concurrent viewer requests that need the same sidecar attachment. */
+  async ensureNetworkPrepared(app: AndroidApplication) {
+    return this.coalesce(
+      this.networkPreparations,
+      app.networkName,
+      async () => {
+        const sidecarTarget = await this.sidecar.ensureSidecarOnNetwork(
+          app.networkName,
+        );
+        await this.logs.append(app.id, 'Display sidecar network prepared', {
+          networkName: app.networkName,
+          configured: sidecarTarget.configured,
+          connected: sidecarTarget.connected,
+          message: sidecarTarget.message,
+        });
+        return sidecarTarget;
+      },
+    );
   }
 
   /** Removes the viewer sidecar from the app network. */
@@ -87,6 +99,17 @@ export class AndroidAppsViewerNetworkService {
 
   /** Prepares the viewer sidecar to reach the app over ADB. */
   async prepareScrcpyAdbTarget(app: AndroidApplication, adbHost: string) {
+    return this.coalesce(
+      this.adbTargetPreparations,
+      `${app.containerId ?? app.containerName}:${adbHost}:${app.adbPort}`,
+      () => this.prepareScrcpyAdbTargetOnce(app, adbHost),
+    );
+  }
+
+  private async prepareScrcpyAdbTargetOnce(
+    app: AndroidApplication,
+    adbHost: string,
+  ) {
     await this.reapplyNetworkPolicy(app);
     await this.ensureRedroidTcpAdb(app);
 
@@ -112,6 +135,25 @@ export class AndroidAppsViewerNetworkService {
     return result;
   }
 
+  private coalesce<T>(
+    pendingOperations: Map<string, Promise<unknown>>,
+    key: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const existing = pendingOperations.get(key);
+    if (existing) {
+      return existing as Promise<T>;
+    }
+
+    const pending = operation().finally(() => {
+      if (pendingOperations.get(key) === pending) {
+        pendingOperations.delete(key);
+      }
+    });
+    pendingOperations.set(key, pending);
+    return pending;
+  }
+
   /** Reapplies policy before opening viewer access. */
   private async reapplyNetworkPolicy(app: AndroidApplication) {
     const result = await this.networkPolicy.apply(app);
@@ -120,9 +162,6 @@ export class AndroidAppsViewerNetworkService {
     app.networkPolicyAppliedAt = new Date();
     await this.state.save(app);
     if (app.networkPolicyEnabled && result.status !== 'applied') {
-      if (app.containerId) {
-        await this.containers.stopContainer(app.containerId);
-      }
       throw new Error(`Outbound policy enforcement failed: ${result.message}`);
     }
   }

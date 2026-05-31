@@ -48,10 +48,14 @@ export class DockerResourceRuntimeService {
     }
 
     try {
-      return await this.engine.docker.createVolume({
-        Name: volumeName,
-        Labels: this.engine.labels(applicationId, 'volume'),
-      });
+      return await this.engine.mutate(
+        () =>
+          this.engine.docker.createVolume({
+            Name: volumeName,
+            Labels: this.engine.labels(applicationId, 'volume'),
+          }),
+        `Create volume ${volumeName}`,
+      );
     } catch (error) {
       if (!this.engine.isResourceAlreadyExists(error)) {
         throw error;
@@ -68,7 +72,10 @@ export class DockerResourceRuntimeService {
 
   async removeVolume(volumeName: string) {
     try {
-      await this.engine.docker.getVolume(volumeName).remove();
+      await this.engine.mutate(
+        () => this.engine.docker.getVolume(volumeName).remove(),
+        `Remove volume ${volumeName}`,
+      );
     } catch (error) {
       if (!this.engine.isDockerNotFound(error)) {
         throw error;
@@ -78,7 +85,10 @@ export class DockerResourceRuntimeService {
 
   async inspectVolume(volumeName: string) {
     try {
-      return await this.engine.docker.getVolume(volumeName).inspect();
+      return await this.engine.read(
+        () => this.engine.docker.getVolume(volumeName).inspect(),
+        `Inspect volume ${volumeName}`,
+      );
     } catch (error) {
       if (this.engine.isDockerNotFound(error)) {
         return null;
@@ -89,12 +99,16 @@ export class DockerResourceRuntimeService {
   }
 
   async listManagedContainers() {
-    return this.engine.docker.listContainers({
-      all: true,
-      filters: {
-        label: ['com.rebroid.managed=true'],
-      },
-    });
+    return this.engine.read(
+      () =>
+        this.engine.docker.listContainers({
+          all: true,
+          filters: {
+            label: ['com.rebroid.managed=true'],
+          },
+        }),
+      'List managed containers',
+    );
   }
 
   /**
@@ -113,9 +127,13 @@ export class DockerResourceRuntimeService {
     const stats = await Promise.all(
       runningContainers.map(async (container) => {
         try {
-          return await this.engine.docker
-            .getContainer(container.Id)
-            .stats({ stream: false });
+          return await this.engine.read(
+            () =>
+              this.engine.docker
+                .getContainer(container.Id)
+                .stats({ stream: false }),
+            `Collect resource usage for container ${container.Id}`,
+          );
         } catch (error) {
           if (this.engine.isDockerNotFound(error)) {
             return null;
@@ -152,13 +170,17 @@ export class DockerResourceRuntimeService {
    * Returns Docker disk-usage data for callers that need volume sizing details.
    */
   async systemDf() {
-    return this.engine.docker.df();
+    return this.engine.read(() => this.engine.docker.df(), 'Collect Docker df');
   }
 
   private async findVolumeByName(name: string) {
-    const volumes = await this.engine.docker.listVolumes({
-      filters: { name: [name] },
-    });
+    const volumes = await this.engine.read(
+      () =>
+        this.engine.docker.listVolumes({
+          filters: { name: [name] },
+        }),
+      `List volumes while finding ${name}`,
+    );
     const volume = volumes.Volumes?.find((item) => item.Name === name);
     return volume ? this.engine.docker.getVolume(volume.Name) : undefined;
   }

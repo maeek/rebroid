@@ -4,8 +4,9 @@ export default function Loading() {
   return (
     <OperationalSettingsPageSkeleton
       titleWidth='w-36 max-sm:w-24'
-      sectionTitle='Display sidecar'
+      sectionTitle='Casting sidecar'
       minWidth='52rem'
+      includeOrchestratorBreadcrumb={false}
       columns={[
         { width: '12rem', headerWidth: 'w-20', kind: 'text' },
         { width: '12rem', headerWidth: 'w-14', kind: 'text' },

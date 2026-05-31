@@ -100,9 +100,10 @@ export class NetworkPolicyService {
   }
 
   private async validatedContainerIp(app: AndroidApplication) {
-    const inspect = await this.engine.docker
-      .getContainer(app.containerId!)
-      .inspect();
+    const inspect = await this.engine.read(
+      () => this.engine.docker.getContainer(app.containerId!).inspect(),
+      `Inspect runtime container ${app.containerId} for network policy`,
+    );
     const labels = inspect.Config?.Labels ?? {};
     if (
       labels['com.rebroid.managed'] !== 'true' ||

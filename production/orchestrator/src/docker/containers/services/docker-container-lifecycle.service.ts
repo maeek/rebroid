@@ -8,11 +8,17 @@ export class DockerContainerLifecycleService {
   constructor(private readonly engine: DockerEngineService) {}
 
   async inspectContainer(containerId: string) {
-    return this.engine.docker.getContainer(containerId).inspect();
+    return this.engine.read(
+      () => this.engine.docker.getContainer(containerId).inspect(),
+      `Inspect container ${containerId}`,
+    );
   }
 
   async findContainerByName(name: string) {
-    const containers = await this.engine.docker.listContainers({ all: true });
+    const containers = await this.engine.read(
+      () => this.engine.docker.listContainers({ all: true }),
+      `List containers while finding ${name}`,
+    );
     const dockerName = `/${name}`;
     return containers.find((container) => container.Names.includes(dockerName));
   }
@@ -30,6 +36,7 @@ export class DockerContainerLifecycleService {
           typeof inspect.State?.ExitCode === 'number'
             ? inspect.State.ExitCode
             : null,
+        oomKilled: Boolean(inspect.State?.OOMKilled),
         error: inspect.State?.Error || null,
         finishedAt: inspect.State?.FinishedAt || null,
       };
@@ -40,6 +47,7 @@ export class DockerContainerLifecycleService {
           running: false,
           status: null,
           exitCode: null,
+          oomKilled: false,
           error: null,
           finishedAt: null,
         };
@@ -51,12 +59,16 @@ export class DockerContainerLifecycleService {
 
   async getContainerLogs(containerId: string, tail = 300) {
     const container = this.engine.docker.getContainer(containerId);
-    const stream = await container.logs({
-      stdout: true,
-      stderr: true,
-      timestamps: true,
-      tail,
-    });
+    const stream = await this.engine.read(
+      () =>
+        container.logs({
+          stdout: true,
+          stderr: true,
+          timestamps: true,
+          tail,
+        }),
+      `Read logs for container ${containerId}`,
+    );
 
     return Buffer.isBuffer(stream) ? stream.toString('utf-8') : String(stream);
   }
@@ -64,7 +76,10 @@ export class DockerContainerLifecycleService {
   async startContainer(containerId: string) {
     const container = this.engine.docker.getContainer(containerId);
     try {
-      await container.start();
+      await this.engine.mutate(
+        () => container.start(),
+        `Start container ${containerId}`,
+      );
     } catch (error) {
       if (!this.engine.isDockerNotModified(error)) {
         throw error;
@@ -75,7 +90,10 @@ export class DockerContainerLifecycleService {
   async stopContainer(containerId: string, timeoutSeconds = 0) {
     const container = this.engine.docker.getContainer(containerId);
     try {
-      await container.stop({ t: timeoutSeconds });
+      await this.engine.mutate(
+        () => container.stop({ t: timeoutSeconds }),
+        `Stop container ${containerId}`,
+      );
     } catch (error) {
       if (
         !this.engine.isDockerNotModified(error) &&
@@ -103,7 +121,10 @@ export class DockerContainerLifecycleService {
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
-        await container.remove({ force, v: removeVolumes });
+        await this.engine.mutate(
+          () => container.remove({ force, v: removeVolumes }),
+          `Remove container ${containerId}`,
+        );
         return;
       } catch (error) {
         if (this.engine.isDockerNotFound(error)) {

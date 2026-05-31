@@ -21,7 +21,10 @@ export class DockerPlatformContainersService {
   ) {}
 
   async listPlatformContainers(): Promise<PlatformContainer[]> {
-    const containers = await this.engine.docker.listContainers({ all: true });
+    const containers = await this.engine.read(
+      () => this.engine.docker.listContainers({ all: true }),
+      'List platform containers',
+    );
     return containers.map((container) => platformContainerFromInfo(container));
   }
 
@@ -29,16 +32,19 @@ export class DockerPlatformContainersService {
     containerId: string,
   ): Promise<PlatformContainerDetails> {
     const container = this.engine.docker.getContainer(containerId);
-    const inspect = await container.inspect();
+    const inspect = await this.engine.read(
+      () => container.inspect(),
+      `Inspect platform container ${containerId}`,
+    );
     const listItem =
       (await this.findContainerByIdOrName(containerId)) ??
       platformContainerFromInspect(inspect);
     const [images, networks] = await Promise.all([
-      this.engine.docker
-        .listImages({ all: true })
+      this.engine
+        .read(() => this.engine.docker.listImages({ all: true }), 'List images')
         .then((items) => items.map((item) => platformImageFromSummary(item))),
-      this.engine.docker
-        .listNetworks()
+      this.engine
+        .read(() => this.engine.docker.listNetworks(), 'List networks')
         .then((items) =>
           items.map((item) => platformNetworkFromSummary(item as never)),
         ),
@@ -86,7 +92,10 @@ export class DockerPlatformContainersService {
   }
 
   private async findContainerByIdOrName(idOrName: string) {
-    const containers = await this.engine.docker.listContainers({ all: true });
+    const containers = await this.engine.read(
+      () => this.engine.docker.listContainers({ all: true }),
+      `Find platform container ${idOrName}`,
+    );
     const dockerName = `/${idOrName}`;
     const found = containers.find(
       (container) =>

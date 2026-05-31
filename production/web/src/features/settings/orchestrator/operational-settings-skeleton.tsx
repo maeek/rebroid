@@ -39,15 +39,20 @@ export const OperationalSettingsPageSkeleton = ({
   titleWidth,
   sectionTitle,
   columns,
-  minWidth
+  minWidth,
+  includeOrchestratorBreadcrumb = true
 }: {
   titleWidth: string
   sectionTitle: string
   columns: ListColumn[]
   minWidth: string
+  includeOrchestratorBreadcrumb?: boolean
 }) => (
   <ProtectedStackPageLayout mainClassName='gap-2'>
-    <PageHeaderSkeleton titleWidth={titleWidth} />
+    <PageHeaderSkeleton
+      titleWidth={titleWidth}
+      includeOrchestratorBreadcrumb={includeOrchestratorBreadcrumb}
+    />
     <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
       <OperationalSettingsSkeleton
         title={sectionTitle}

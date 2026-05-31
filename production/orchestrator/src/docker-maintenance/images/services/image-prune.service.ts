@@ -6,7 +6,7 @@ import { SettingsService } from '../../../settings/settings.service';
 @Injectable()
 export class ImagePruneService {
   private readonly logger = new Logger(ImagePruneService.name);
-  private lastPrunedAt: Date | null = null;
+  private lastPrunedAt: Date | null = new Date();
 
   constructor(
     private readonly prune: DockerPlatformPruneService,
@@ -18,6 +18,10 @@ export class ImagePruneService {
    */
   @Interval(60_000)
   async pruneOnSchedule() {
+    if (this.prune.isBusy()) {
+      return;
+    }
+
     const settings = await this.settings.getSettings();
     if (settings.imagePruneIntervalHours <= 0) {
       return;

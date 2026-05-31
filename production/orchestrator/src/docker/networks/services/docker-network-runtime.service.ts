@@ -57,9 +57,10 @@ export class DockerNetworkRuntimeService {
   }
 
   async getContainerIpOnNetwork(containerId: string, networkName: string) {
-    const inspect = await this.engine.docker
-      .getContainer(containerId)
-      .inspect();
+    const inspect = await this.engine.read(
+      () => this.engine.docker.getContainer(containerId).inspect(),
+      `Inspect container ${containerId} on network ${networkName}`,
+    );
     return inspect.NetworkSettings?.Networks?.[networkName]?.IPAddress || null;
   }
 
@@ -67,9 +68,10 @@ export class DockerNetworkRuntimeService {
    * Reads the container IP from a specific Docker network attachment.
    */
   async getContainerIp(containerId: string, networkName: string) {
-    const inspect = await this.engine.docker
-      .getContainer(containerId)
-      .inspect();
+    const inspect = await this.engine.read(
+      () => this.engine.docker.getContainer(containerId).inspect(),
+      `Inspect container ${containerId} on network ${networkName}`,
+    );
     return inspect.NetworkSettings.Networks?.[networkName]?.IPAddress || null;
   }
 
@@ -77,7 +79,10 @@ export class DockerNetworkRuntimeService {
    * Returns the gateway IP advertised by the app network, if Docker exposed one.
    */
   async getNetworkGateway(networkName: string) {
-    const network = await this.engine.docker.getNetwork(networkName).inspect();
+    const network = await this.engine.read(
+      () => this.engine.docker.getNetwork(networkName).inspect(),
+      `Inspect network ${networkName}`,
+    );
     return network.IPAM?.Config?.find((item) => item.Gateway)?.Gateway ?? null;
   }
 
@@ -91,9 +96,13 @@ export class DockerNetworkRuntimeService {
     }
 
     try {
-      const inspect = await this.engine.docker
-        .getContainer(this.engine.orchestratorContainerId)
-        .inspect();
+      const inspect = await this.engine.read(
+        () =>
+          this.engine.docker
+            .getContainer(this.engine.orchestratorContainerId!)
+            .inspect(),
+        `Inspect orchestrator container on network ${networkName}`,
+      );
       return inspect.NetworkSettings.Networks?.[networkName]?.IPAddress || null;
     } catch {
       return null;
@@ -103,9 +112,13 @@ export class DockerNetworkRuntimeService {
   async connectContainerToNetwork(containerId: string, networkName: string) {
     const network = this.engine.docker.getNetwork(networkName);
     try {
-      await network.connect({
-        Container: containerId,
-      });
+      await this.engine.mutate(
+        () =>
+          network.connect({
+            Container: containerId,
+          }),
+        `Connect container ${containerId} to network ${networkName}`,
+      );
     } catch (error) {
       if (
         this.engine.isDockerConflict(error) ||
@@ -124,10 +137,14 @@ export class DockerNetworkRuntimeService {
   ) {
     const network = this.engine.docker.getNetwork(networkName);
     try {
-      await network.disconnect({
-        Container: containerId,
-        Force: true,
-      });
+      await this.engine.mutate(
+        () =>
+          network.disconnect({
+            Container: containerId,
+            Force: true,
+          }),
+        `Disconnect container ${containerId} from network ${networkName}`,
+      );
     } catch (error) {
       if (
         this.engine.isDockerNotFound(error) ||
@@ -151,7 +168,10 @@ export class DockerNetworkRuntimeService {
     );
 
     try {
-      await this.engine.docker.getNetwork(networkName).remove();
+      await this.engine.mutate(
+        () => this.engine.docker.getNetwork(networkName).remove(),
+        `Remove network ${networkName}`,
+      );
     } catch (error) {
       if (!this.engine.isDockerNotFound(error)) {
         throw error;
@@ -161,9 +181,10 @@ export class DockerNetworkRuntimeService {
 
   async listNetworkContainerIds(networkName: string) {
     try {
-      const inspect = await this.engine.docker
-        .getNetwork(networkName)
-        .inspect();
+      const inspect = await this.engine.read(
+        () => this.engine.docker.getNetwork(networkName).inspect(),
+        `Inspect network ${networkName}`,
+      );
       return Object.keys(inspect.Containers ?? {});
     } catch (error) {
       if (this.engine.isDockerNotFound(error)) {
@@ -175,20 +196,28 @@ export class DockerNetworkRuntimeService {
   }
 
   private async findNetworkByName(name: string) {
-    const networks = await this.engine.docker.listNetworks({
-      filters: { name: [name] },
-    });
+    const networks = await this.engine.read(
+      () =>
+        this.engine.docker.listNetworks({
+          filters: { name: [name] },
+        }),
+      `List networks while finding ${name}`,
+    );
     const network = networks.find((item) => item.Name === name);
     return network ? this.engine.docker.getNetwork(network.Id) : undefined;
   }
 
   private async createNetwork(applicationId: string, networkName: string) {
-    return this.engine.docker.createNetwork({
-      Name: networkName,
-      Internal: false,
-      CheckDuplicate: true,
-      Labels: this.engine.labels(applicationId, 'network'),
-    });
+    return this.engine.mutate(
+      () =>
+        this.engine.docker.createNetwork({
+          Name: networkName,
+          Internal: false,
+          CheckDuplicate: true,
+          Labels: this.engine.labels(applicationId, 'network'),
+        }),
+      `Create network ${networkName}`,
+    );
   }
 
   private async ensureRoutableNetwork(
@@ -196,7 +225,10 @@ export class DockerNetworkRuntimeService {
     networkName: string,
     network: ReturnType<DockerEngineService['docker']['getNetwork']>,
   ) {
-    const inspect = await network.inspect();
+    const inspect = await this.engine.read(
+      () => network.inspect(),
+      `Inspect network ${networkName}`,
+    );
     if (!inspect.Internal) {
       return network;
     }
@@ -222,7 +254,10 @@ export class DockerNetworkRuntimeService {
     this.logger.warn(
       `Recreating stale internal app network ${networkName} so containers can use normal Docker egress.`,
     );
-    await network.remove();
+    await this.engine.mutate(
+      () => network.remove(),
+      `Remove stale network ${networkName}`,
+    );
     return this.createNetwork(applicationId, networkName);
   }
 }

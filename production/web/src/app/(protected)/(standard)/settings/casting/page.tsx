@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { PlatformPageHeader } from '@/features/orchestrator/components/platform-page-header'
-import { DisplaySidecarSettings } from '@/features/settings/orchestrator/display-sidecar-settings'
+import { CastingSidecarSettings } from '@/features/settings/casting/casting-sidecar-settings'
 import { OperationalSettingsSkeleton } from '@/features/settings/orchestrator/operational-settings-skeleton'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { requireAdmin } from '@/server/auth/authorization'
@@ -23,27 +23,28 @@ const CastingSettingsContent = async () => {
   const sessions = health.services.display.ok ? await listDisplaySidecarSessionsAction().catch(() => []) : []
 
   return (
-    <DisplaySidecarSettings
+    <CastingSidecarSettings
       initialHealth={health.services.display}
       initialSessions={sessions}
     />
   )
 }
 
-export default async function OrchestratorDisplaySettingsPage() {
+export default async function CastingSettingsPage() {
   await requireAdmin()
 
   return (
     <ProtectedStackPageLayout mainClassName='gap-2'>
       <PlatformPageHeader
-        title='Display'
-        description='Inspect the display sidecar and terminate active viewer sessions.'
+        title='Casting'
+        description='Inspect the casting sidecar and terminate active viewer sessions.'
+        includeOrchestratorBreadcrumb={false}
       />
       <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
         <Suspense
           fallback={
             <OperationalSettingsSkeleton
-              title='Display sidecar'
+              title='Casting sidecar'
               columns={[...castingColumns]}
               minWidth='52rem'
             />

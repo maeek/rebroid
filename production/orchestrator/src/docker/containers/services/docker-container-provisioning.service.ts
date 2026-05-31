@@ -123,26 +123,30 @@ export class DockerContainerProvisioningService {
     spec: ApplicationContainerSpec,
     hostConfig: import('dockerode').HostConfig,
   ) {
-    return this.engine.docker.createContainer({
-      Image: spec.image,
-      name: spec.containerName,
-      Cmd: parseCommandLine(spec.containerArgs),
-      Env: [
-        `ADB_TCP_PORT=${spec.adbPort}`,
-        `ANDROID_ADB_SERVER_PORT=${spec.adbPort}`,
-        `PERSIST_ADB_TCP_PORT=${spec.adbPort}`,
-      ],
-      ExposedPorts: {
-        [`${spec.adbPort}/tcp`]: {},
-      },
-      Labels: this.engine.labels(spec.applicationId, 'runtime'),
-      HostConfig: hostConfig,
-      NetworkingConfig: {
-        EndpointsConfig: {
-          [spec.networkName]: {},
-        },
-      },
-    });
+    return this.engine.mutate(
+      () =>
+        this.engine.docker.createContainer({
+          Image: spec.image,
+          name: spec.containerName,
+          Cmd: parseCommandLine(spec.containerArgs),
+          Env: [
+            `ADB_TCP_PORT=${spec.adbPort}`,
+            `ANDROID_ADB_SERVER_PORT=${spec.adbPort}`,
+            `PERSIST_ADB_TCP_PORT=${spec.adbPort}`,
+          ],
+          ExposedPorts: {
+            [`${spec.adbPort}/tcp`]: {},
+          },
+          Labels: this.engine.labels(spec.applicationId, 'runtime'),
+          HostConfig: hostConfig,
+          NetworkingConfig: {
+            EndpointsConfig: {
+              [spec.networkName]: {},
+            },
+          },
+        }),
+      `Create application container ${spec.containerName}`,
+    );
   }
 
   private deviceMappings(devices: string[] | undefined) {

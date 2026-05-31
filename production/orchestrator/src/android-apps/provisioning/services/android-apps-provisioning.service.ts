@@ -62,7 +62,6 @@ export class AndroidAppsProvisioningService {
       }
       const message = getErrorMessage(error);
       this.logger.error(`Provisioning failed for ${applicationId}: ${message}`);
-      await this.releaseViewerNetworkAfterFailure(applicationId);
       await this.setLifecycle(applicationId, {
         status: AndroidApplicationStatus.Error,
         lifecycleStage: AndroidApplicationLifecycleStage.Error,
@@ -85,22 +84,6 @@ export class AndroidAppsProvisioningService {
     } catch (error) {
       this.logger.warn(
         `Could not remove cancelled provisioning container ${app.containerName}: ${getErrorMessage(error)}`,
-      );
-    }
-  }
-
-  /** Releases viewer-only network attachments after failed provisioning. */
-  private async releaseViewerNetworkAfterFailure(applicationId: string) {
-    try {
-      const app = await this.state.getStored(applicationId);
-      if (!app.networkName || app.networkName === 'pending') {
-        return;
-      }
-
-      await this.network.releaseRuntimeSupport(app);
-    } catch (error) {
-      this.logger.warn(
-        `Could not release viewer network after failed provisioning for ${applicationId}: ${getErrorMessage(error)}`,
       );
     }
   }
@@ -246,16 +229,14 @@ export class AndroidAppsProvisioningService {
       statusMessage: 'Starting application container.',
     });
     await this.lifecycle.startContainer(app.containerId!);
-    await Promise.all([
-      this.logs.append(app.id, 'Container start requested', {
-        containerId: app.containerId,
-      }),
-      this.network.reconcilePolicy(app, {
-        log: true,
-        recordLastStartedAt: true,
-        failClosed: true,
-      }),
-    ]);
+    await this.network.enforcePolicyAfterStart(app, {
+      log: true,
+      recordLastStartedAt: true,
+      retryAttempts: 10,
+    });
+    await this.logs.append(app.id, 'Container start requested', {
+      containerId: app.containerId,
+    });
     this.tracker.ensureActive(app.id);
   }
 

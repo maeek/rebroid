@@ -5,8 +5,10 @@ import { IconLoader2, IconRefresh, IconRestore, IconTrash } from '@tabler/icons-
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
+import { PlatformDetailRow } from '@/features/orchestrator/components/platform-detail-parts'
 import { toast } from '@/hooks/use-toast'
 import {
+  getOrchestratorHealthAction,
   listDisplaySidecarSessionsAction,
   releaseDisplaySidecarSessionAction,
   repairDisplaySidecarAction
@@ -15,7 +17,24 @@ import type { DisplaySidecarSession, ServiceHealth } from '@/server/orchestrator
 
 const formatTimestamp = (value: string) => new Date(value).toLocaleString()
 
-export const DisplaySidecarSettings = ({
+const castingDetailLabels: Record<string, string> = {
+  autoStart: 'Auto start',
+  containerId: 'Container ID',
+  containerName: 'Container name',
+  error: 'Error',
+  exitCode: 'Exit code',
+  finishedAt: 'Finished at',
+  image: 'Image',
+  port: 'Port',
+  publishedHostPort: 'Published host port',
+  recentLogs: 'Recent logs',
+  restartCount: 'Restart count'
+}
+
+const castingMessage = (message: string) => message.replace(/display sidecar/gi, 'casting sidecar')
+const castingErrorMessage = (error: unknown) => castingMessage(error instanceof Error ? error.message : 'Unknown error')
+
+export const CastingSidecarSettings = ({
   initialHealth,
   initialSessions
 }: {
@@ -29,11 +48,13 @@ export const DisplaySidecarSettings = ({
   const refresh = async () => {
     setBusy('refresh')
     try {
-      setSessions(await listDisplaySidecarSessionsAction())
+      const nextHealth = await getOrchestratorHealthAction()
+      setHealth(nextHealth.services.display)
+      setSessions(nextHealth.services.display.ok ? await listDisplaySidecarSessionsAction() : [])
     } catch (error) {
       toast({
-        title: 'Could not load display sessions',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        title: 'Could not load casting sessions',
+        description: castingErrorMessage(error),
         variant: 'destructive'
       })
     } finally {
@@ -47,11 +68,11 @@ export const DisplaySidecarSettings = ({
       const nextHealth = await repairDisplaySidecarAction()
       setHealth(nextHealth)
       setSessions([])
-      toast({ title: 'Display sidecar restarted' })
+      toast({ title: 'Casting sidecar restarted' })
     } catch (error) {
       toast({
-        title: 'Could not restart display sidecar',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        title: 'Could not restart casting sidecar',
+        description: castingErrorMessage(error),
         variant: 'destructive'
       })
     } finally {
@@ -64,11 +85,11 @@ export const DisplaySidecarSettings = ({
     try {
       const released = await releaseDisplaySidecarSessionAction(session.id)
       setSessions(current => current.map(item => (item.id === released.id ? released : item)))
-      toast({ title: 'Display session terminated' })
+      toast({ title: 'Casting session terminated' })
     } catch (error) {
       toast({
-        title: 'Could not terminate display session',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        title: 'Could not terminate casting session',
+        description: castingErrorMessage(error),
         variant: 'destructive'
       })
     } finally {
@@ -80,7 +101,7 @@ export const DisplaySidecarSettings = ({
 
   return (
     <Section
-      title='Display sidecar'
+      title='Casting sidecar'
       boxed
       titleClassName='pb-4'
       contentClassName='gap-5'
@@ -88,7 +109,7 @@ export const DisplaySidecarSettings = ({
       <div className='flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-4'>
         <div className='flex items-center gap-3'>
           <Badge variant={health.ok ? 'status' : 'warning'}>{health.status}</Badge>
-          <span className='text-sm text-secondary-foreground'>{health.message}</span>
+          <span className='text-sm text-secondary-foreground'>{castingMessage(health.message)}</span>
         </div>
         <div className='flex gap-2'>
           <Button
@@ -111,6 +132,20 @@ export const DisplaySidecarSettings = ({
           </Button>
         </div>
       </div>
+
+      {health.details ? (
+        <div className='rounded-lg border border-border/60 bg-background/25 px-4'>
+          <div className='grid gap-x-8 xl:grid-cols-2'>
+            {Object.entries(health.details).map(([key, value]) => (
+              <PlatformDetailRow
+                key={key}
+                label={castingDetailLabels[key] ?? key}
+                value={value === null ? 'none' : String(value)}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className='overflow-x-auto'>
         <table className='w-full min-w-[52rem] text-left text-sm'>
@@ -160,7 +195,7 @@ export const DisplaySidecarSettings = ({
       </div>
 
       {sessions.length === 0 ? (
-        <p className='text-sm text-secondary-foreground'>No display sessions are known to the sidecar.</p>
+        <p className='text-sm text-secondary-foreground'>No casting sessions are known to the sidecar.</p>
       ) : (
         <p className='text-xs text-secondary-foreground'>
           {activeSessions.length} active session{activeSessions.length === 1 ? '' : 's'}.

@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import type Dockerode from 'dockerode';
 import { join, relative, sep } from 'node:path';
 import { readdir, readFile, stat } from 'node:fs/promises';
+import { setTimeout as delay } from 'node:timers/promises';
 import tar from 'tar-stream';
 import { DockerContainerExecService } from '../../containers/services/docker-container-exec.service';
 import { DockerContainerLifecycleService } from '../../containers/services/docker-container-lifecycle.service';
@@ -41,6 +42,12 @@ interface DisplaySidecarSessionListResponse {
   items: DisplaySidecarSession[];
 }
 
+interface CachedSidecarNetwork {
+  containerId: string;
+  ipAddress: string;
+  expiresAt: number;
+}
+
 @Injectable()
 export class DockerSidecarService implements OnModuleInit {
   private readonly logger = new Logger(DockerSidecarService.name);
@@ -55,6 +62,8 @@ export class DockerSidecarService implements OnModuleInit {
   private readonly displaySidecarWebrtcUdpPortRange: string;
   private readonly displaySidecarWebrtcIceHost: string;
   private displaySidecarLastError: string | null = null;
+  private sidecarMutation = Promise.resolve();
+  private readonly sidecarNetworks = new Map<string, CachedSidecarNetwork>();
 
   constructor(
     private readonly config: ConfigService,
@@ -139,45 +148,64 @@ export class DockerSidecarService implements OnModuleInit {
   async ensureSidecarOnNetwork(
     networkName: string,
   ): Promise<ViewerTargetStatus> {
-    const sidecar = await this.ensureSidecar();
-    if (!sidecar) {
-      return this.sidecarUnavailableStatus();
-    }
+    return this.queueSidecarMutation(async () => {
+      const sidecar = await this.ensureSidecarUnlocked();
+      if (!sidecar) {
+        return this.sidecarUnavailableStatus();
+      }
 
-    await this.networks.connectContainerToNetwork(sidecar.id, networkName);
-    const sidecarIp = await this.getSidecarIp(networkName);
-    if (!sidecarIp) {
-      return {
-        configured: true,
-        connected: false,
-        message: `Display sidecar could not be verified on ${networkName}.`,
-        error: {
-          code: 'adb_unreachable',
-          message: `Display sidecar is not attached to ${networkName}; ADB target DNS will not resolve.`,
-          retryable: true,
-          exitCode: null,
-          command: null,
-          stdout: null,
-          stderr: null,
-        },
-      };
-    }
+      const cached = this.sidecarNetworks.get(networkName);
+      if (cached?.containerId === sidecar.id && cached.expiresAt > Date.now()) {
+        return this.sidecarNetworkStatus(networkName, cached.ipAddress);
+      }
 
-    return {
-      configured: true,
-      connected: true,
-      message: `Display sidecar is attached to ${networkName} as ${sidecarIp}.`,
-      error: null,
-    };
+      const currentIp = await this.getContainerIpOnNetwork(
+        sidecar,
+        networkName,
+      );
+      if (currentIp) {
+        return this.cacheSidecarNetwork(sidecar.id, networkName, currentIp);
+      }
+
+      await this.networks.connectContainerToNetwork(sidecar.id, networkName);
+      const sidecarIp = await this.getContainerIpOnNetwork(
+        sidecar,
+        networkName,
+      );
+      if (!sidecarIp) {
+        return {
+          configured: true,
+          connected: false,
+          message: `Display sidecar could not be verified on ${networkName}.`,
+          error: {
+            code: 'adb_unreachable' as const,
+            message: `Display sidecar is not attached to ${networkName}; ADB target DNS will not resolve.`,
+            retryable: true,
+            exitCode: null,
+            command: null,
+            stdout: null,
+            stderr: null,
+          },
+        };
+      }
+
+      return this.cacheSidecarNetwork(sidecar.id, networkName, sidecarIp);
+    });
   }
 
   async detachSidecarFromNetwork(networkName: string) {
-    const sidecar = await this.findSidecar();
-    if (!sidecar) {
-      return;
-    }
+    await this.queueSidecarMutation(async () => {
+      this.sidecarNetworks.delete(networkName);
+      const sidecar = await this.findSidecar();
+      if (!sidecar) {
+        return;
+      }
 
-    await this.networks.disconnectContainerFromNetwork(sidecar.id, networkName);
+      await this.networks.disconnectContainerFromNetwork(
+        sidecar.id,
+        networkName,
+      );
+    });
   }
 
   /**
@@ -357,8 +385,7 @@ export class DockerSidecarService implements OnModuleInit {
     }
 
     try {
-      const inspect = await sidecar.inspect();
-      return inspect.NetworkSettings.Networks?.[networkName]?.IPAddress || null;
+      return await this.getContainerIpOnNetwork(sidecar, networkName);
     } catch {
       return null;
     }
@@ -369,6 +396,22 @@ export class DockerSidecarService implements OnModuleInit {
    * Cached startup errors are surfaced when autostart failed earlier.
    */
   async health(): Promise<ServiceHealth> {
+    const apiError = await this.probeDisplaySidecarApi();
+    if (!apiError) {
+      this.displaySidecarLastError = null;
+      return {
+        ok: true,
+        status: 'healthy',
+        message: 'Display sidecar API is responding.',
+        details: {
+          containerName: this.displaySidecarContainerName,
+          image: this.displaySidecarImage,
+          port: this.displaySidecarPort,
+          publishedHostPort: this.displaySidecarPublishedHostPort || null,
+        },
+      };
+    }
+
     try {
       const sidecar = await this.findSidecar();
       if (!sidecar) {
@@ -388,24 +431,30 @@ export class DockerSidecarService implements OnModuleInit {
         };
       }
 
-      const inspect = await sidecar.inspect();
+      const inspect = await this.engine.read(
+        () => sidecar.inspect(),
+        'Inspect display sidecar health',
+      );
       const running = Boolean(inspect.State?.Running);
-      if (running) {
-        this.displaySidecarLastError = null;
-      }
+      const recentLogs = await this.getRecentSidecarLogs(sidecar.id);
 
       return {
-        ok: running,
-        status: running ? 'healthy' : 'unhealthy',
+        ok: false,
+        status: 'unhealthy',
         message: running
-          ? 'Display sidecar is running.'
-          : `Display sidecar is ${inspect.State?.Status ?? 'not running'}.`,
+          ? `Display sidecar container is running, but its API is not reachable: ${apiError}`
+          : `Display sidecar is ${inspect.State?.Status ?? 'not running'}; exit code ${inspect.State?.ExitCode ?? 'unknown'}${inspect.State?.Error ? `; Docker error: ${inspect.State.Error}` : ''}.`,
         details: {
           containerId: inspect.Id.slice(0, 12),
           containerName: this.displaySidecarContainerName,
           image: this.displaySidecarImage,
           port: this.displaySidecarPort,
           publishedHostPort: this.displaySidecarPublishedHostPort || null,
+          exitCode: inspect.State?.ExitCode ?? null,
+          error: inspect.State?.Error || null,
+          finishedAt: inspect.State?.FinishedAt || null,
+          restartCount: inspect.RestartCount ?? null,
+          recentLogs,
         },
       };
     } catch (error) {
@@ -441,36 +490,50 @@ export class DockerSidecarService implements OnModuleInit {
    * Restarts an existing sidecar or creates it if autostart is enabled.
    */
   async repair() {
-    try {
-      const existing = await this.findSidecar();
-      if (existing) {
-        await this.lifecycle.stopContainer(existing.id, 3);
-        await this.lifecycle.startContainer(existing.id);
-        await this.cleanupStaleSidecarNetworks(existing);
+    return this.queueSidecarMutation(async () => {
+      try {
+        const existing = await this.findSidecar();
+        if (existing) {
+          await this.lifecycle.stopContainer(existing.id, 3);
+          await this.lifecycle.startContainer(existing.id);
+          await this.waitForDisplaySidecarApi();
+          await this.cleanupStaleSidecarNetworks(existing);
+          this.displaySidecarLastError = null;
+          return existing.id;
+        }
+
+        const created = await this.ensureSidecarUnlocked();
+        if (!created) {
+          throw new ConflictException('Display sidecar autostart is disabled.');
+        }
+
         this.displaySidecarLastError = null;
-        return existing.id;
+        return created.id;
+      } catch (error) {
+        this.displaySidecarLastError = this.engine.errorMessage(error);
+        throw error;
       }
-
-      const created = await this.ensureSidecar();
-      if (!created) {
-        throw new ConflictException('Display sidecar autostart is disabled.');
-      }
-
-      this.displaySidecarLastError = null;
-      return created.id;
-    } catch (error) {
-      this.displaySidecarLastError = this.engine.errorMessage(error);
-      throw error;
-    }
+    });
   }
 
   /**
    * Returns a started sidecar container, creating one only when autostart is enabled.
    */
   private async ensureSidecar() {
+    return this.queueSidecarMutation(() => this.ensureSidecarUnlocked());
+  }
+
+  private async ensureSidecarUnlocked() {
     const existing = await this.findSidecar();
     if (existing) {
-      await this.lifecycle.startContainer(existing.id);
+      const inspect = await this.engine.read(
+        () => existing.inspect(),
+        'Inspect display sidecar before start',
+      );
+      if (!inspect.State?.Running) {
+        await this.lifecycle.startContainer(existing.id);
+        await this.waitForDisplaySidecarApi();
+      }
       return existing;
     }
 
@@ -515,30 +578,38 @@ export class DockerSidecarService implements OnModuleInit {
         }
       : undefined;
 
-    const container = await this.docker.createContainer({
-      Image: this.displaySidecarImage,
-      name: this.displaySidecarContainerName,
-      Env: [
-        `PORT=${this.displaySidecarPort}`,
-        ...(this.config.get<string>('app.sharedSecret')
-          ? [
-              `DISPLAY_SIDECAR_SHARED_SECRET=${this.config.get<string>('app.sharedSecret')}`,
-            ]
-          : []),
-        `DISPLAY_WEBRTC_UDP_PORT_RANGE=${this.displaySidecarWebrtcUdpPortRange}`,
-        ...(this.displaySidecarWebrtcIceHost
-          ? [`DISPLAY_WEBRTC_ICE_HOST=${this.displaySidecarWebrtcIceHost}`]
-          : []),
-      ],
-      ExposedPorts: {
-        [`${this.displaySidecarPort}/tcp`]: {},
-        ...(webrtcPortBinding?.exposedPorts ?? {}),
-      },
-      Labels: this.engine.labels('platform', 'display-sidecar'),
-      HostConfig: hostConfig,
-      NetworkingConfig: networkingConfig,
-    });
-    await container.start();
+    const container = await this.engine.mutate(
+      () =>
+        this.docker.createContainer({
+          Image: this.displaySidecarImage,
+          name: this.displaySidecarContainerName,
+          Env: [
+            `PORT=${this.displaySidecarPort}`,
+            ...(this.config.get<string>('app.sharedSecret')
+              ? [
+                  `DISPLAY_SIDECAR_SHARED_SECRET=${this.config.get<string>('app.sharedSecret')}`,
+                ]
+              : []),
+            `DISPLAY_WEBRTC_UDP_PORT_RANGE=${this.displaySidecarWebrtcUdpPortRange}`,
+            ...(this.displaySidecarWebrtcIceHost
+              ? [`DISPLAY_WEBRTC_ICE_HOST=${this.displaySidecarWebrtcIceHost}`]
+              : []),
+          ],
+          ExposedPorts: {
+            [`${this.displaySidecarPort}/tcp`]: {},
+            ...(webrtcPortBinding?.exposedPorts ?? {}),
+          },
+          Labels: this.engine.labels('platform', 'display-sidecar'),
+          HostConfig: hostConfig,
+          NetworkingConfig: networkingConfig,
+        }),
+      `Create display sidecar ${this.displaySidecarContainerName}`,
+    );
+    await this.engine.mutate(
+      () => container.start(),
+      `Start display sidecar ${container.id}`,
+    );
+    await this.waitForDisplaySidecarApi();
     return container;
   }
 
@@ -610,18 +681,75 @@ export class DockerSidecarService implements OnModuleInit {
   }
 
   private async initializeSidecarOnStartup() {
-    const sidecar = await this.ensureSidecar();
-    if (!sidecar) {
-      return null;
+    return this.queueSidecarMutation(async () => {
+      const sidecar = await this.ensureSidecarUnlocked();
+      if (!sidecar) {
+        return null;
+      }
+
+      await this.cleanupStaleSidecarNetworks(sidecar);
+      this.displaySidecarLastError = null;
+      return sidecar;
+    });
+  }
+
+  private queueSidecarMutation<T>(operation: () => Promise<T>) {
+    const queued = this.sidecarMutation.then(operation, operation);
+    this.sidecarMutation = queued.then(
+      () => undefined,
+      () => undefined,
+    );
+    return queued;
+  }
+
+  private async waitForDisplaySidecarApi(timeoutMs = 10_000) {
+    const deadline = Date.now() + timeoutMs;
+    let lastError = 'Display sidecar API did not respond.';
+
+    while (Date.now() < deadline) {
+      const error = await this.probeDisplaySidecarApi();
+      if (!error) {
+        return;
+      }
+
+      lastError = error;
+      await delay(250);
     }
 
-    await this.cleanupStaleSidecarNetworks(sidecar);
-    this.displaySidecarLastError = null;
-    return sidecar;
+    throw new ConflictException(
+      `Display sidecar API did not become ready: ${lastError}`,
+    );
+  }
+
+  private async probeDisplaySidecarApi() {
+    const baseUrl = this.config
+      .getOrThrow<string>('app.displaySidecar.internalBaseUrl')
+      .replace(/\/$/, '');
+    try {
+      const response = await fetch(`${baseUrl}/rebroid/display/health`, {
+        signal: AbortSignal.timeout(2_000),
+      });
+      return response.ok
+        ? null
+        : `Display sidecar API returned ${response.status}.`;
+    } catch (error) {
+      return this.engine.errorMessage(error);
+    }
+  }
+
+  private async getRecentSidecarLogs(containerId: string) {
+    try {
+      return (await this.lifecycle.getContainerLogs(containerId, 120)).trim();
+    } catch (error) {
+      return `Could not read display sidecar logs: ${this.engine.errorMessage(error)}`;
+    }
   }
 
   private async cleanupStaleSidecarNetworks(sidecar: Dockerode.Container) {
-    const inspect = await sidecar.inspect();
+    const inspect = await this.engine.read(
+      () => sidecar.inspect(),
+      'Inspect display sidecar networks',
+    );
     const networkNames = Object.keys(inspect.NetworkSettings?.Networks ?? {});
     const staleNetworkNames = networkNames.filter((networkName) =>
       this.isStaleSidecarNetwork(networkName),
@@ -636,10 +764,49 @@ export class DockerSidecarService implements OnModuleInit {
         this.networks.disconnectContainerFromNetwork(sidecar.id, networkName),
       ),
     );
+    staleNetworkNames.forEach((networkName) =>
+      this.sidecarNetworks.delete(networkName),
+    );
 
     this.logger.log(
       `Detached display sidecar from stale networks: ${staleNetworkNames.join(', ')}`,
     );
+  }
+
+  private async getContainerIpOnNetwork(
+    sidecar: Dockerode.Container,
+    networkName: string,
+  ) {
+    const inspect = await this.engine.read(
+      () => sidecar.inspect(),
+      `Inspect display sidecar on network ${networkName}`,
+    );
+    return inspect.NetworkSettings.Networks?.[networkName]?.IPAddress || null;
+  }
+
+  private cacheSidecarNetwork(
+    containerId: string,
+    networkName: string,
+    ipAddress: string,
+  ) {
+    this.sidecarNetworks.set(networkName, {
+      containerId,
+      ipAddress,
+      expiresAt: Date.now() + 30_000,
+    });
+    return this.sidecarNetworkStatus(networkName, ipAddress);
+  }
+
+  private sidecarNetworkStatus(
+    networkName: string,
+    ipAddress: string,
+  ): ViewerTargetStatus {
+    return {
+      configured: true,
+      connected: true,
+      message: `Display sidecar is attached to ${networkName} as ${ipAddress}.`,
+      error: null,
+    };
   }
 
   private isStaleSidecarNetwork(networkName: string) {
@@ -656,7 +823,10 @@ export class DockerSidecarService implements OnModuleInit {
         const container = this.docker.getContainer(
           this.displaySidecarContainerId,
         );
-        await container.inspect();
+        await this.engine.read(
+          () => container.inspect(),
+          'Inspect configured display sidecar',
+        );
         return container;
       } catch (error) {
         if (!this.engine.isDockerNotFound(error)) {

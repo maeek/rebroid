@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Dockerode from 'dockerode';
+import { setTimeout as delay } from 'node:timers/promises';
 import { getErrorMessage } from '../common/error-message';
 import { hasDockerStatusCode } from './utils/docker-engine.utils';
 
@@ -47,6 +48,9 @@ const dockerConnectionOptions = (
 
 @Injectable()
 export class DockerEngineService {
+  private readonly logger = new Logger(DockerEngineService.name);
+  private mutationQueue = Promise.resolve();
+  private pendingMutations = 0;
   readonly docker: Dockerode;
   readonly resourcePrefix: string;
   readonly orchestratorContainerId?: string;
@@ -70,11 +74,43 @@ export class DockerEngineService {
   }
 
   async ping() {
-    await this.docker.ping();
+    await this.read(() => this.docker.ping());
   }
 
   async info() {
-    return this.docker.info();
+    return this.read(() => this.docker.info());
+  }
+
+  get hasPendingMutations() {
+    return this.pendingMutations > 0;
+  }
+
+  async read<T>(operation: () => Promise<T>, description = 'Docker read') {
+    return this.retryTransient(operation, description);
+  }
+
+  async mutate<T>(
+    operation: () => Promise<T>,
+    description = 'Docker mutation',
+  ) {
+    this.pendingMutations += 1;
+    // A socket reset does not prove that Docker rejected a mutation. Replaying
+    // start, stop, remove, or network connect requests can duplicate side
+    // effects and amplify daemon stalls.
+    const queued = this.mutationQueue.then(operation, operation);
+    this.mutationQueue = queued.then(
+      () => undefined,
+      () => undefined,
+    );
+
+    try {
+      return await queued;
+    } catch (error) {
+      this.logger.warn(`${description} failed: ${this.errorMessage(error)}`);
+      throw error;
+    } finally {
+      this.pendingMutations -= 1;
+    }
   }
 
   /**
@@ -142,10 +178,53 @@ export class DockerEngineService {
     );
   }
 
+  isTransientDockerTransportError(error: unknown) {
+    const code =
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      typeof error.code === 'string'
+        ? error.code
+        : '';
+    const message = this.errorMessage(error).toLowerCase();
+    return (
+      ['ECONNRESET', 'EPIPE', 'ETIMEDOUT'].includes(code) ||
+      message.includes('socket hang up') ||
+      message.includes('connection reset') ||
+      message.includes('broken pipe')
+    );
+  }
+
   /**
    * Normalizes Docker and transport errors into a single readable message.
    */
   errorMessage(error: unknown) {
     return getErrorMessage(error, 'Unknown Docker error');
+  }
+
+  private async retryTransient<T>(
+    operation: () => Promise<T>,
+    description: string,
+  ) {
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        return await operation();
+      } catch (error) {
+        if (
+          attempt === maxAttempts ||
+          !this.isTransientDockerTransportError(error)
+        ) {
+          throw error;
+        }
+
+        this.logger.warn(
+          `${description} failed with a transient Docker transport error. Retrying ${attempt}/${maxAttempts - 1}: ${this.errorMessage(error)}`,
+        );
+        await delay(250 * attempt);
+      }
+    }
+
+    throw new Error(`${description} failed.`);
   }
 }

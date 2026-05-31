@@ -5,10 +5,12 @@ import { PageBreadcrumbsSkeleton } from '@/features/shell/components/page-breadc
 export const PageHeaderSkeleton = ({
   titleWidth,
   hasParent = false,
+  includeOrchestratorBreadcrumb = true,
   actionCount = 0
 }: {
   titleWidth: string
   hasParent?: boolean
+  includeOrchestratorBreadcrumb?: boolean
   actionCount?: number
 }) => (
   <section className='shrink-0 px-6 py-4 max-sm:px-4'>
@@ -16,7 +18,12 @@ export const PageHeaderSkeleton = ({
       <div className='flex flex-col gap-2'>
         <PageBreadcrumbsSkeleton
           className='pt-0'
-          itemWidths={hasParent ? ['w-16', 'w-24', 'w-20', 'w-28'] : ['w-16', 'w-24', 'w-28']}
+          itemWidths={[
+            'w-16',
+            ...(includeOrchestratorBreadcrumb ? ['w-24'] : []),
+            ...(hasParent ? ['w-20'] : []),
+            'w-28'
+          ]}
         />
         <div className='flex flex-col gap-2 pt-4'>
           <Skeleton className={`h-10 ${titleWidth} max-sm:h-8`} />

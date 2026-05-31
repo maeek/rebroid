@@ -35,6 +35,7 @@ export class AndroidApplicationError {
     enum: [
       'container_command_failed',
       'container_exited',
+      'container_oom_killed',
       'container_missing',
       'startup_command_finished',
       'unknown',
@@ -43,6 +44,7 @@ export class AndroidApplicationError {
   code!:
     | 'container_command_failed'
     | 'container_exited'
+    | 'container_oom_killed'
     | 'container_missing'
     | 'startup_command_finished'
     | 'unknown';

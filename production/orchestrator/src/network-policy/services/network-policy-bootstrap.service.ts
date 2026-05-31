@@ -35,19 +35,6 @@ export class NetworkPolicyBootstrapService implements OnApplicationBootstrap {
             error instanceof Error ? error.message : 'unknown error'
           }`,
         );
-        if (attempt === 1) {
-          await this.stopApplicationsWithUnverifiedPolicies().catch(
-            (stopError) => {
-              this.logger.error(
-                `Could not stop applications with unverified firewall policies: ${
-                  stopError instanceof Error
-                    ? stopError.message
-                    : 'unknown error'
-                }`,
-              );
-            },
-          );
-        }
         if (attempt < 30) {
           await delay(1000);
         }
@@ -56,6 +43,13 @@ export class NetworkPolicyBootstrapService implements OnApplicationBootstrap {
     this.logger.error(
       'Firewall policies could not be restored during startup.',
     );
+    await this.stopApplicationsWithUnverifiedPolicies().catch((stopError) => {
+      this.logger.error(
+        `Could not stop applications with unverified firewall policies: ${
+          stopError instanceof Error ? stopError.message : 'unknown error'
+        }`,
+      );
+    });
   }
 
   private async stopApplicationsWithUnverifiedPolicies() {

@@ -25,6 +25,7 @@ export interface ContainerRuntimeState {
   running: boolean;
   status: string | null;
   exitCode: number | null;
+  oomKilled: boolean;
   error: string | null;
   finishedAt: string | null;
 }

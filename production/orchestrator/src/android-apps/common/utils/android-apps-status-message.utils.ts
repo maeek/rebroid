@@ -24,6 +24,9 @@ export const containerExitedMessage = (
   const dockerError = runtimeState.error
     ? ` Docker reported: ${runtimeState.error}`
     : '';
+  const oomKilled = runtimeState.oomKilled
+    ? ' Docker reported that the container was OOM-killed.'
+    : '';
   const context =
     app.status === AndroidApplicationStatus.Provisioning
       ? ' before provisioning completed'
@@ -37,5 +40,5 @@ export const containerExitedMessage = (
         : ' The image likely finished its default command immediately. Managed apps need a long-running primary process, so plain images such as ubuntu usually require container arguments like "sleep infinity".'
       : '';
 
-  return `Managed container ${status}${exitCode}${context}.${startupHint}${dockerError}`;
+  return `Managed container ${status}${exitCode}${context}.${startupHint}${oomKilled}${dockerError}`;
 };
