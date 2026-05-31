@@ -42,7 +42,7 @@ export class AndroidAppsDisplaySidecarService {
         appId: app.id,
         udid,
         ownerUserId: app.ownerUserId,
-        capabilities: ['video', 'control', 'clipboard', 'files', 'diagnostics'],
+        capabilities: ['video', 'audio', 'control', 'clipboard', 'files', 'diagnostics'],
       }),
     });
 
