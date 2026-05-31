@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import Dockerode from 'dockerode';
 import { DockerEngineService } from '../../docker-engine.service';
-import { ManagedContainerResourceUsage } from '../../docker.types';
+import {
+  ContainerResourceUsage,
+  ManagedContainerResourceUsage,
+} from '../../docker.types';
 import {
   calculateContainerCpuUsagePercent,
   calculateContainerMemoryUsageBytes,
+  calculateContainerNetworkUsageBytes,
 } from '../../utils/docker-runtime.utils';
 
 @Injectable()
@@ -111,6 +115,26 @@ export class DockerResourceRuntimeService {
     );
   }
 
+  async getContainerResourceUsage(
+    containerId: string,
+  ): Promise<ContainerResourceUsage> {
+    const stats = await this.engine.read(
+      () =>
+        this.engine.docker.getContainer(containerId).stats({ stream: false }),
+      `Collect resource usage for container ${containerId}`,
+    );
+    const networkUsage = calculateContainerNetworkUsageBytes(stats);
+
+    return {
+      cpuUsagePercent: calculateContainerCpuUsagePercent(stats),
+      memoryUsageBytes: calculateContainerMemoryUsageBytes(stats),
+      memoryLimitBytes: stats.memory_stats?.limit ?? null,
+      networkRxBytes: networkUsage.rxBytes,
+      networkTxBytes: networkUsage.txBytes,
+      collectedAt: new Date().toISOString(),
+    };
+  }
+
   /**
    * Aggregates CPU and memory usage across currently running managed containers.
    * Containers that disappear during stats collection are skipped.
@@ -127,13 +151,7 @@ export class DockerResourceRuntimeService {
     const stats = await Promise.all(
       runningContainers.map(async (container) => {
         try {
-          return await this.engine.read(
-            () =>
-              this.engine.docker
-                .getContainer(container.Id)
-                .stats({ stream: false }),
-            `Collect resource usage for container ${container.Id}`,
-          );
+          return await this.getContainerResourceUsage(container.Id);
         } catch (error) {
           if (this.engine.isDockerNotFound(error)) {
             return null;
@@ -152,11 +170,9 @@ export class DockerResourceRuntimeService {
 
         return {
           cpuUsagePercent:
-            totals.cpuUsagePercent +
-            calculateContainerCpuUsagePercent(containerStats),
+            totals.cpuUsagePercent + containerStats.cpuUsagePercent,
           memoryUsageBytes:
-            totals.memoryUsageBytes +
-            calculateContainerMemoryUsageBytes(containerStats),
+            totals.memoryUsageBytes + containerStats.memoryUsageBytes,
         };
       },
       {

@@ -57,6 +57,12 @@ export class DockerMaintenanceContainersController {
     );
   }
 
+  @Get(':id/stats')
+  @ApiOperation({ summary: 'Read live Docker stats for a platform container.' })
+  getContainerStats(@Param('id') id: string) {
+    return this.containers.getPlatformContainerStats(id);
+  }
+
   @Post(':id/stop')
   @ApiOperation({ summary: 'Stop a Docker container.' })
   stopContainer(@Param('id') id: string) {

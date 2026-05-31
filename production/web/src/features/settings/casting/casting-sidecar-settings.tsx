@@ -212,8 +212,8 @@ export const CastingSidecarSettings = ({
                     onCheckedChange={checked => selection.selectPage(paginatedSessions, checked === true)}
                   />
                 </TableHead>
-                <TableHead className='w-[22rem] px-4 py-3 uppercase'>Application and user</TableHead>
-                <TableHead className='w-[14rem] px-4 py-3 uppercase'>Session ID</TableHead>
+                <TableHead className='w-88 px-4 py-3 uppercase'>Application and user</TableHead>
+                <TableHead className='w-56 px-4 py-3 uppercase'>Session ID</TableHead>
                 <TableHead className='w-28 px-4 py-3 uppercase'>Status</TableHead>
                 <TableHead className='w-48 px-4 py-3 uppercase'>Last activity</TableHead>
                 <TableHead className='w-48 px-4 py-3 uppercase'>Expires</TableHead>

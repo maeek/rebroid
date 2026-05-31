@@ -33,8 +33,8 @@ export const AppIcon = ({
         maskImage: squircleMask,
         maskRepeat: 'no-repeat',
         maskSize: '100% 100%',
-        color: displayIcon ? getHslColorFromCharCodeForeground(appName) : undefined,
-        backgroundColor: displayIcon ? getHslColorFromCharCode(appName) : undefined,
+        color: displayIcon ? undefined : getHslColorFromCharCodeForeground(appName),
+        backgroundColor: displayIcon ? undefined : getHslColorFromCharCode(appName),
         backgroundImage: displayIcon ? `url("${resolveAppIconUrl(displayIcon)}")` : undefined,
         backgroundSize: 'cover',
         backgroundPosition: 'center'

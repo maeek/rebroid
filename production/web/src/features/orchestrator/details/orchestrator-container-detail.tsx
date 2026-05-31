@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { IconPlayerStopFilled, IconTerminal2, IconTrash } from '@tabler/icons-react'
+import { useCallback, useEffect, useState } from 'react'
+import { IconLoader2, IconPlayerStopFilled, IconRefresh, IconTerminal2, IconTrash } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -22,17 +22,29 @@ import { ContainerStateBadge } from '@/features/orchestrator/components/orchestr
 import {
   PlatformDetailRow,
   PlatformJsonBlock,
+  formatPlatformBytes,
   formatPlatformDate
 } from '@/features/orchestrator/components/platform-detail-parts'
 import { LogsConsole } from '@/features/orchestrator/logs/logs-console'
+import { QuickGlanceCard } from '@/features/settings/components/quick-glance-card'
+import { useForegroundRefresh } from '@/hooks/use-foreground-refresh'
 import { toast } from '@/hooks/use-toast'
 import {
   getPlatformContainerLogsAction,
+  getPlatformContainerStatsAction,
   removePlatformContainerAction,
   stopPlatformContainerAction
 } from '@/server/orchestrator/platform/actions'
 import { getDisplayErrorMessage } from '../../../lib/error-utils'
-import type { PlatformContainerDetails, PlatformContainerLog } from '@/server/orchestrator/platform/types'
+import type {
+  PlatformContainerDetails,
+  PlatformContainerLog,
+  PlatformContainerStats
+} from '@/server/orchestrator/platform/types'
+
+const containerStatsRefreshIntervalMs = 15_000
+
+const formatPercent = (value: number) => `${value.toFixed(1)}%`
 
 export const OrchestratorContainerDetail = ({
   details,
@@ -45,10 +57,39 @@ export const OrchestratorContainerDetail = ({
   const container = details.container
   const relatedImage = details.relatedImage
   const [logs, setLogs] = useState(initialLogs)
+  const [stats, setStats] = useState<PlatformContainerStats>()
+  const [statsError, setStatsError] = useState<string | null>(null)
+  const [isRefreshingStats, setIsRefreshingStats] = useState(false)
   const [isRefreshingLogs, setIsRefreshingLogs] = useState(false)
   const [pendingAction, setPendingAction] = useState<'stop' | 'remove' | null>(null)
   const [isActing, setIsActing] = useState(false)
   const [forceRemove, setForceRemove] = useState(container.state === 'removing')
+
+  const refreshStats = useCallback(async () => {
+    if (container.state !== 'running') {
+      return
+    }
+
+    setIsRefreshingStats(true)
+    try {
+      setStats(await getPlatformContainerStatsAction(container.id))
+      setStatsError(null)
+    } catch (error) {
+      setStatsError(getDisplayErrorMessage(error, 'Could not collect live container stats.'))
+    } finally {
+      setIsRefreshingStats(false)
+    }
+  }, [container.id, container.state])
+
+  useEffect(() => {
+    void refreshStats()
+  }, [refreshStats])
+
+  useForegroundRefresh({
+    enabled: container.state === 'running',
+    intervalMs: containerStatsRefreshIntervalMs,
+    refresh: refreshStats
+  })
 
   const refreshLogs = async () => {
     setIsRefreshingLogs(true)
@@ -183,6 +224,66 @@ export const OrchestratorContainerDetail = ({
                 value={container.names.join(', ')}
               />
             </div>
+          </div>
+        </Section>
+
+        <Section
+          boxed
+          contentClassName='gap-4'
+        >
+          <div className='flex flex-wrap items-center justify-between gap-3'>
+            <div>
+              <h3 className='font-medium'>Live resources</h3>
+              <p className='mt-1 text-sm text-secondary-foreground'>Docker stats sampled for this container.</p>
+            </div>
+            <Button
+              type='button'
+              variant='secondary'
+              size='sm'
+              disabled={container.state !== 'running' || isRefreshingStats}
+              onClick={() => void refreshStats()}
+            >
+              {isRefreshingStats ? <IconLoader2 className='size-4 animate-spin' /> : <IconRefresh className='size-4' />}
+              Refresh
+            </Button>
+          </div>
+          <Visible when={statsError}>
+            <div className='rounded-lg border border-destructive/35 bg-destructive/10 p-3 text-sm text-destructive'>
+              {statsError}
+            </div>
+          </Visible>
+          <div className='grid grid-cols-4 gap-3 max-xl:grid-cols-2 max-sm:grid-cols-1'>
+            <QuickGlanceCard
+              label='CPU'
+              value={stats ? formatPercent(stats.cpuUsagePercent) : 'Unavailable'}
+              hint={container.state === 'running' ? 'Live Docker CPU usage' : 'Container is not running'}
+            />
+            <QuickGlanceCard
+              label='Memory'
+              value={stats ? formatPlatformBytes(stats.memoryUsageBytes) : 'Unavailable'}
+              hint={
+                stats?.memoryLimitBytes
+                  ? `${formatPlatformBytes(stats.memoryLimitBytes)} Docker limit`
+                  : 'Working-set memory from Docker stats'
+              }
+            />
+            <QuickGlanceCard
+              label='Network received'
+              value={stats ? formatPlatformBytes(stats.networkRxBytes) : 'Unavailable'}
+              hint='Summed across container interfaces'
+            />
+            <QuickGlanceCard
+              label='Network transmitted'
+              value={stats ? formatPlatformBytes(stats.networkTxBytes) : 'Unavailable'}
+              hint='Summed across container interfaces'
+            />
+          </div>
+          <div className='text-xs text-secondary-foreground'>
+            {stats
+              ? `Last sample: ${formatPlatformDate(stats.collectedAt)}`
+              : container.state === 'running'
+                ? 'Collecting live Docker stats...'
+                : 'Live Docker stats are available while the container is running.'}
           </div>
         </Section>
 

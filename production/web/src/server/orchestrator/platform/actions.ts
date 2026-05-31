@@ -18,6 +18,11 @@ export const getPlatformContainerLogsAction = async (id: string, tail = 500) => 
   return orchestratorPlatformClient.getPlatformContainerLogs(id, tail)
 }
 
+export const getPlatformContainerStatsAction = async (id: string) => {
+  await requireAdminUser()
+  return orchestratorPlatformClient.getPlatformContainerStats(id)
+}
+
 export const listPlatformImagesAction = async () => {
   await requireAdminUser()
   return orchestratorPlatformClient.listPlatformImages()

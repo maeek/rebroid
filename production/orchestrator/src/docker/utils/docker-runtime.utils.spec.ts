@@ -1,6 +1,7 @@
 import {
   calculateContainerCpuUsagePercent,
   calculateContainerMemoryUsageBytes,
+  calculateContainerNetworkUsageBytes,
 } from './docker-runtime.utils';
 
 describe('docker runtime utilities', () => {
@@ -46,5 +47,16 @@ describe('docker runtime utilities', () => {
         },
       } as never),
     ).toBe(0);
+  });
+
+  it('sums received and transmitted bytes across container networks', () => {
+    expect(
+      calculateContainerNetworkUsageBytes({
+        networks: {
+          eth0: { rx_bytes: 1024, tx_bytes: 512 },
+          eth1: { rx_bytes: 256, tx_bytes: 128 },
+        },
+      } as never),
+    ).toEqual({ rxBytes: 1280, txBytes: 640 });
   });
 });

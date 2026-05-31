@@ -32,7 +32,7 @@ export const PlatformSelectionToolbar = ({
         </div>
         {filters}
       </div>
-      <div className='flex min-h-9 shrink-0 flex-wrap items-end justify-end gap-3'>
+      <div className='flex min-h-9 shrink-0 flex-wrap items-center justify-end gap-3'>
         <Visible when={selectedCount > 0}>
           <span className='text-sm text-secondary-foreground'>{selectedCount} selected</span>
         </Visible>

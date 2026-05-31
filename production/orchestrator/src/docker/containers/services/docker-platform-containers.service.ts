@@ -12,12 +12,14 @@ import {
 import { platformImageFromSummary } from '../../images/utils/platform-image.utils';
 import { platformNetworkFromSummary } from '../../networks/utils/platform-network.utils';
 import { DockerContainerLifecycleService } from './docker-container-lifecycle.service';
+import { DockerResourceRuntimeService } from '../../resources/services/docker-resource-runtime.service';
 
 @Injectable()
 export class DockerPlatformContainersService {
   constructor(
     private readonly engine: DockerEngineService,
     private readonly lifecycle: DockerContainerLifecycleService,
+    private readonly resources: DockerResourceRuntimeService,
   ) {}
 
   async listPlatformContainers(): Promise<PlatformContainer[]> {
@@ -77,6 +79,10 @@ export class DockerPlatformContainersService {
       collectedAt: new Date().toISOString(),
       output: await this.lifecycle.getContainerLogs(containerId, tail),
     };
+  }
+
+  getPlatformContainerStats(containerId: string) {
+    return this.resources.getContainerResourceUsage(containerId);
   }
 
   async stopPlatformContainer(containerId: string) {

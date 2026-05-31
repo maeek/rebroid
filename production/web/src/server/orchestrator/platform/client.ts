@@ -3,6 +3,7 @@ import type {
   PlatformContainer,
   PlatformContainerDetails,
   PlatformContainerLog,
+  PlatformContainerStats,
   PlatformImage,
   PlatformImageDetails,
   PlatformNetwork,
@@ -21,6 +22,10 @@ export const orchestratorPlatformClient = {
   getPlatformContainerLogs(id: string, tail = 500) {
     const query = new URLSearchParams({ tail: String(tail) })
     return request<PlatformContainerLog>(`/docker-maintenance/containers/${id}/logs?${query.toString()}`)
+  },
+
+  getPlatformContainerStats(id: string) {
+    return request<PlatformContainerStats>(`/docker-maintenance/containers/${id}/stats`)
   },
 
   listPlatformImages() {

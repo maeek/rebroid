@@ -26,3 +26,14 @@ export const calculateContainerMemoryUsageBytes = (
     0;
   return Math.max((stats.memory_stats?.usage ?? 0) - inactiveFile, 0);
 };
+
+export const calculateContainerNetworkUsageBytes = (
+  stats: Dockerode.ContainerStats,
+) =>
+  Object.values(stats.networks ?? {}).reduce(
+    (usage, network) => ({
+      rxBytes: usage.rxBytes + (network.rx_bytes ?? 0),
+      txBytes: usage.txBytes + (network.tx_bytes ?? 0),
+    }),
+    { rxBytes: 0, txBytes: 0 },
+  );

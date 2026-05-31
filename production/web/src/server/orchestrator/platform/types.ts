@@ -23,6 +23,15 @@ export interface PlatformContainerLog {
   output: string
 }
 
+export interface PlatformContainerStats {
+  cpuUsagePercent: number
+  memoryUsageBytes: number
+  memoryLimitBytes: number | null
+  networkRxBytes: number
+  networkTxBytes: number
+  collectedAt: string
+}
+
 export interface PlatformImage {
   id: string
   shortId: string

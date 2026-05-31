@@ -35,6 +35,13 @@ export interface ManagedContainerResourceUsage {
   memoryUsageBytes: number;
 }
 
+export interface ContainerResourceUsage extends ManagedContainerResourceUsage {
+  memoryLimitBytes: number | null;
+  networkRxBytes: number;
+  networkTxBytes: number;
+  collectedAt: string;
+}
+
 export interface PlatformContainer {
   id: string;
   shortId: string;

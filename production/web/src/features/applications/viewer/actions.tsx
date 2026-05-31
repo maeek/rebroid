@@ -1,11 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { IconDotsVertical, IconSettings, IconTerminal2 } from '@tabler/icons-react'
+import { IconSettings, IconTerminal2 } from '@tabler/icons-react'
 import classNames from 'classnames'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Visible } from '@/components/ui/visible'
 import { AppDefinition } from '@/features/applications/domain/app-definition'
@@ -37,7 +36,6 @@ export const AppViewerActions = ({
   const canStop = hasPermission(permissions, 'applications:stop')
   const canViewLogs = canUseRuntime && hasPermission(permissions, 'applications:view-logs')
   const canDelete = mode !== 'workspace' && hasPermission(permissions, 'applications:delete')
-  const showOverflowMenu = Boolean(app?.id) && mode === 'workspace'
   const showDetailsAction = Boolean(app?.id) && mode === 'workspace'
   const showLogsAction = canViewLogs && mode === 'details'
   const showSettingsAction = Boolean(app?.id) && mode === 'details'
@@ -128,51 +126,10 @@ export const AppViewerActions = ({
               aria-label='View application logs'
               onClick={() => setLogsOpen(true)}
             >
-              <IconTerminal2 className='size-4' />
+              <IconTerminal2 className='size-4!' />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Logs</TooltipContent>
-        </Tooltip>
-      </Visible>
-      <Visible when={showOverflowMenu}>
-        <Tooltip>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <TooltipTrigger asChild>
-                <Button
-                  variant='secondary'
-                  size='icon'
-                  aria-label='Application actions'
-                >
-                  <IconDotsVertical className='size-4' />
-                </Button>
-              </TooltipTrigger>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align='end'
-              className='min-w-40'
-            >
-              <Visible when={canViewLogs}>
-                <DropdownMenuItem
-                  className='gap-2'
-                  onSelect={() => setLogsOpen(true)}
-                >
-                  <IconTerminal2 className='size-4' />
-                  Logs
-                </DropdownMenuItem>
-              </Visible>
-              <DropdownMenuItem asChild>
-                <Link
-                  href={`/app/${app?.id}/manage`}
-                  className='gap-2'
-                >
-                  <IconSettings className='size-4' />
-                  Settings
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <TooltipContent>More actions</TooltipContent>
         </Tooltip>
       </Visible>
     </div>
