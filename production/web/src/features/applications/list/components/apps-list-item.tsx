@@ -17,7 +17,7 @@ import { getAppStatusLabel, isAppBusy } from './apps-list.utils'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
 export const AppsListItem = ({ app, showOwner = false }: { app: AppDefinition; showOwner?: boolean }) => {
-  const { deleteApp, isManaging, selectedIds, startApp, stopApp, toggleSelected } = useAppsListContext()
+  const { isManaging, openPendingAppAction, selectedIds, startApp, toggleSelected } = useAppsListContext()
   const isSelected = selectedIds.has(app.id)
   const busy = isAppBusy(app)
   const itemStatus = getAppStatusLabel(app)
@@ -121,7 +121,7 @@ export const AppsListItem = ({ app, showOwner = false }: { app: AppDefinition; s
         <Visible when={canControlRuntime && app.running}>
           <ContextMenuItem
             disabled={app.status === 'removing'}
-            onClick={() => void stopApp(app)}
+            onClick={() => openPendingAppAction({ action: 'stop', app })}
           >
             <IconPlayerStopFilled /> Stop
           </ContextMenuItem>
@@ -143,7 +143,7 @@ export const AppsListItem = ({ app, showOwner = false }: { app: AppDefinition; s
         <ContextMenuItem
           variant='destructive'
           disabled={app.status === 'removing'}
-          onClick={() => void deleteApp(app)}
+          onClick={() => openPendingAppAction({ action: 'delete', app })}
         >
           {app.status === 'provisioning' ? (
             <IconX className='text-destructive' />

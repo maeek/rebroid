@@ -163,9 +163,7 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
 
     setBusyId('bulk')
     try {
-      for (const image of targets) {
-        await removePlatformImageAction(image.id)
-      }
+      await Promise.all(targets.map(image => removePlatformImageAction(image.id)))
       selection.clearSelection()
       toast({ title: 'Selected images removed' })
       await refresh()

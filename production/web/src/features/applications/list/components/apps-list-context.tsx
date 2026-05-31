@@ -2,6 +2,7 @@ import { createContext, useContext } from 'react'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
 export type BulkAction = 'stop' | 'delete'
+export type PendingAppAction = { action: BulkAction; app: AppDefinition }
 
 export type AppsListContextValue = {
   activeBulkApps: AppDefinition[]
@@ -15,6 +16,10 @@ export type AppsListContextValue = {
   isBulkWorking: boolean
   isManaging: boolean
   openBulkAction: (action: BulkAction) => void
+  openPendingAppAction: (pendingAction: PendingAppAction) => void
+  pendingAppAction: PendingAppAction | null
+  closePendingAppAction: () => void
+  confirmPendingAppAction: () => Promise<void>
   removeDataOnDelete: boolean
   selectedIds: Set<string>
   selectionCount: number

@@ -17,11 +17,13 @@ export class InactivityService {
     const inactiveApplications =
       await this.androidApps.findInactiveRunningApplications();
 
-    for (const app of inactiveApplications) {
-      this.logger.log(
-        `Stopping inactive application container ${app.containerName} for application ${app.id}.`,
-      );
-      await this.androidApps.stop(app.id);
-    }
+    await Promise.allSettled(
+      inactiveApplications.map(async (app) => {
+        this.logger.log(
+          `Stopping inactive application container ${app.containerName} for application ${app.id}.`,
+        );
+        await this.androidApps.stop(app.id);
+      }),
+    );
   }
 }

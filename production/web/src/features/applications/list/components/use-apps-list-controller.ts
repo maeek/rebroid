@@ -14,7 +14,7 @@ import {
 import { listApplicationsAction } from '@/server/orchestrator/applications/read-actions'
 import { forgetRecentAppAction } from '@/server/recent-apps/actions'
 import { getDisplayErrorMessage } from '../../../../lib/error-utils'
-import type { AppsListContextValue, BulkAction } from './apps-list-context'
+import type { AppsListContextValue, BulkAction, PendingAppAction } from './apps-list-context'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 
@@ -31,6 +31,7 @@ export const useAppsListController = ({
   const [isManaging, setIsManaging] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [bulkAction, setBulkAction] = useState<BulkAction | null>(null)
+  const [pendingAppAction, setPendingAppAction] = useState<PendingAppAction | null>(null)
   const [isBulkWorking, setIsBulkWorking] = useState(false)
   const pendingRefreshOverridesRef = useRef<Map<string, AppDefinition>>(new Map())
   const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
@@ -359,6 +360,26 @@ export const useAppsListController = ({
     isBulkWorking,
     isManaging,
     openBulkAction: setBulkAction,
+    openPendingAppAction: setPendingAppAction,
+    pendingAppAction,
+    closePendingAppAction: () => {
+      if (!isBulkWorking) {
+        setPendingAppAction(null)
+      }
+    },
+    confirmPendingAppAction: async () => {
+      if (!pendingAppAction) {
+        return
+      }
+
+      setPendingAppAction(null)
+      if (pendingAppAction.action === 'stop') {
+        await stopApp(pendingAppAction.app)
+        return
+      }
+
+      await deleteApp(pendingAppAction.app)
+    },
     removeDataOnDelete: settings.removeDataOnDelete,
     selectedIds,
     selectionCount: selectedIds.size,

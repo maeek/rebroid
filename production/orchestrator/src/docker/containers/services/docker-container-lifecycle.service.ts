@@ -72,7 +72,7 @@ export class DockerContainerLifecycleService {
     }
   }
 
-  async stopContainer(containerId: string, timeoutSeconds = 10) {
+  async stopContainer(containerId: string, timeoutSeconds = 0) {
     const container = this.engine.docker.getContainer(containerId);
     try {
       await container.stop({ t: timeoutSeconds });

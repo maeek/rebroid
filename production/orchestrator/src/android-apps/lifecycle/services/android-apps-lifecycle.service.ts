@@ -578,12 +578,10 @@ export class AndroidAppsLifecycleService {
     });
 
     if (app.containerId) {
-      await this.lifecycle.stopContainer(app.containerId);
+      await this.lifecycle.stopContainer(app.containerId, 0);
     }
 
-    await this.displaySidecar
-      .releaseSessionsForApp(app.id)
-      .catch(() => undefined);
+    this.releaseDisplaySessionsInBackground(app.id, 'stopping');
     await this.runtimeNetwork.releaseRuntimeSupport(app);
 
     if (app.recreateContainerOnNextStart && app.containerId) {
@@ -643,9 +641,7 @@ export class AndroidAppsLifecycleService {
       app.containerId = null;
     }
     await this.lifecycle.removeContainerByName(app.containerName);
-    await this.displaySidecar
-      .releaseSessionsForApp(app.id)
-      .catch(() => undefined);
+    this.releaseDisplaySessionsInBackground(app.id, 'removing');
 
     await this.networks.removeNetwork(app.networkName);
     const removeData = query.removeData ?? true;
@@ -998,6 +994,20 @@ export class AndroidAppsLifecycleService {
     await this.networkPolicy.remove(app);
     await this.lifecycle.removeContainer(app.containerId);
     app.containerId = null;
+  }
+
+  /** Releases optional viewer state without delaying container lifecycle operations. */
+  private releaseDisplaySessionsInBackground(
+    applicationId: string,
+    operation: string,
+  ) {
+    void this.displaySidecar
+      .releaseSessionsForApp(applicationId)
+      .catch((error) => {
+        this.logger.warn(
+          `Could not release display sessions while ${operation} ${applicationId}: ${getErrorMessage(error)}`,
+        );
+      });
   }
 
   /** Copies uploaded APK data onto the app record. */

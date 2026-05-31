@@ -160,9 +160,7 @@ export const OrchestratorNetworksSection = ({ refreshKey = 0 }: { refreshKey?: n
 
     setBusyId('bulk')
     try {
-      for (const network of targets) {
-        await removePlatformNetworkAction(network.id)
-      }
+      await Promise.all(targets.map(network => removePlatformNetworkAction(network.id)))
       selection.clearSelection()
       toast({ title: 'Selected networks removed' })
       await refresh()

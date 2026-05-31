@@ -14,6 +14,7 @@ import {
   DialogTitle,
   DialogTrigger
 } from '@/components/ui/dialog'
+import { AppActionDialogSummary } from '@/features/applications/components/app-action-dialog-summary'
 import { notifyRecentAppsUpdated } from '@/features/applications/recent/recent-apps'
 import { useOrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 import { toast } from '@/hooks/use-toast'
@@ -84,15 +85,31 @@ export const AppViewerDeleteAction = ({
           {isProvisioning ? 'Kill' : 'Delete'}
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className='sm:max-w-md'>
         <DialogHeader>
           <DialogTitle>{isProvisioning ? `Kill provisioning for ${app?.name}?` : `Delete ${app?.name}?`}</DialogTitle>
           <DialogDescription>
             {isProvisioning
-              ? 'This will stop setup, delete preserved data, and remove the app.'
-              : 'This will stop the app, delete preserved data, and remove it.'}
+              ? 'This stops setup and removes the partially created runtime resources.'
+              : 'This stops the app and removes its runtime resources.'}
           </DialogDescription>
         </DialogHeader>
+        <AppActionDialogSummary
+          icon={isProvisioning ? <IconX className='size-4' /> : <IconTrash className='size-4' />}
+          title={isProvisioning ? 'Cancel provisioning and delete the app' : 'Delete the app permanently'}
+          description={
+            settings.removeDataOnDelete
+              ? 'The app record, container, network resources, and saved profile data are removed.'
+              : 'The app record, container, and network resources are removed. Saved profile data is preserved when possible.'
+          }
+          details={[
+            'This action cannot be undone from the web UI.',
+            settings.removeDataOnDelete
+              ? 'Saved profiles will no longer be available.'
+              : 'Preserved data may be reused manually.'
+          ]}
+          tone='destructive'
+        />
         <DialogFooter>
           <Button
             variant='destructive'

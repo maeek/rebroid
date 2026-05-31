@@ -81,7 +81,9 @@ export class NetworkIsolationService {
   async removeBoundary(
     names: Pick<IsolatedRuntimeNames, 'networkName' | 'volumeName'>,
   ) {
-    await this.networks.removeNetwork(names.networkName);
-    await this.resources.removeVolume(names.volumeName);
+    await Promise.all([
+      this.networks.removeNetwork(names.networkName),
+      this.resources.removeVolume(names.volumeName),
+    ]);
   }
 }

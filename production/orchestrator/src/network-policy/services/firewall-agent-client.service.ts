@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { request } from 'node:http';
 
+const FIREWALL_AGENT_TIMEOUT_MS = 5_000;
+
 export interface FirewallAgentPolicy {
   containerId: string;
   containerIp: string;
@@ -84,7 +86,7 @@ export class FirewallAgentClientService {
             responseBody += chunk;
           });
           response.on('end', () => {
-            let parsed: FirewallAgentResponse = {};
+            let parsed: FirewallAgentResponse;
             try {
               parsed = responseBody ? JSON.parse(responseBody) : {};
             } catch {
@@ -102,8 +104,15 @@ export class FirewallAgentClientService {
           });
         },
       );
-      operation.on('error', () => {
-        reject(new Error('Firewall agent is unavailable.'));
+      operation.on('error', (error) => {
+        reject(new Error(error.message || 'Firewall agent is unavailable.'));
+      });
+      operation.setTimeout(FIREWALL_AGENT_TIMEOUT_MS, () => {
+        operation.destroy(
+          new Error(
+            `Firewall agent request timed out after ${FIREWALL_AGENT_TIMEOUT_MS}ms.`,
+          ),
+        );
       });
       if (payload) {
         operation.write(payload);

@@ -152,14 +152,16 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
 
     setBusyId('bulk')
     try {
-      for (const container of targets) {
-        if (type === 'stop' && container.state === 'running') {
-          await stopPlatformContainerAction(container.id)
-        }
-        if (type === 'remove') {
-          await removePlatformContainerAction(container.id)
-        }
-      }
+      await Promise.all(
+        targets.map(async container => {
+          if (type === 'stop' && container.state === 'running') {
+            await stopPlatformContainerAction(container.id)
+          }
+          if (type === 'remove') {
+            await removePlatformContainerAction(container.id)
+          }
+        })
+      )
       selection.clearSelection()
       toast({ title: type === 'stop' ? 'Selected containers stopped' : 'Selected containers removed' })
       await refresh()
