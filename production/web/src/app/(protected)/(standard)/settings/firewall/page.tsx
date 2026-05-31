@@ -33,8 +33,8 @@ export default async function OrchestratorFirewallSettingsPage() {
   return (
     <ProtectedStackPageLayout mainClassName='gap-2'>
       <PlatformPageHeader
-        title='Firewall'
-        description='Apply outbound network restrictions to application containers through the firewall agent.'
+        title='Network access'
+        description='Apply outbound network restrictions to application containers.'
       />
       <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
         <Suspense

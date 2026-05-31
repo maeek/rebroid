@@ -10,6 +10,15 @@ import { AndroidAppsNetworkPolicyService } from '../services/android-apps-networ
 export class AndroidAppsNetworkController {
   constructor(private readonly network: AndroidAppsNetworkPolicyService) {}
 
+  @Post('network-policy/reconcile')
+  @ApiOperation({
+    summary:
+      'Rebuild firewall agent rules from stored applications and prune stale rules.',
+  })
+  reconcileNetworkPolicies() {
+    return this.network.reconcileNetworkPolicies();
+  }
+
   @Patch(':id/network-policy')
   @ApiOperation({
     summary: 'Update and reconcile the app container egress allowlist.',

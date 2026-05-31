@@ -6,15 +6,14 @@ import {
   IconApps,
   IconBox,
   IconBrandDocker,
+  IconCast,
   IconChevronDown,
-  IconDeviceDesktop,
   IconLibraryPlus,
   IconLoader2,
   IconNetwork,
   IconPlayerPlayFilled,
   IconServerSpark,
   IconShield,
-  IconShieldLock,
   IconUsers
 } from '@tabler/icons-react'
 import classNames from 'classnames'
@@ -48,8 +47,8 @@ const appSections: NavigationItem[] = [
 const settingsSections: NavigationItem[] = [{ name: 'General', Icon: IconAdjustments, href: '/settings/general' }]
 
 const adminSettingsSections: NavigationItem[] = [
-  { name: 'Casting', Icon: IconDeviceDesktop, href: '/settings/casting' },
-  { name: 'Firewall', Icon: IconShieldLock, href: '/settings/firewall' },
+  { name: 'Casting', Icon: IconCast, href: '/settings/casting' },
+  { name: 'Network access', Icon: IconNetwork, href: '/settings/firewall' },
   { name: 'System', Icon: IconServerSpark, href: '/settings/system' }
 ]
 

@@ -93,6 +93,10 @@ export const orchestratorApplicationsClient = {
     return request<AndroidApplication>(`/android-applications/${id}/network-policy/apply`, { method: 'POST' })
   },
 
+  reconcileNetworkPolicies() {
+    return request<{ reconciled: number }>('/android-applications/network-policy/reconcile', { method: 'POST' })
+  },
+
   switchProfile(id: string, input: SwitchApplicationProfileInput) {
     return request<AndroidApplication>(`/android-applications/${id}/profile`, {
       method: 'POST',

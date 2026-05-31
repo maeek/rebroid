@@ -89,7 +89,7 @@ const serviceRows = (health: OrchestratorHealth | null, fallbackMessage: string)
     service: health?.services.display ?? checkingService(fallbackMessage)
   },
   {
-    name: 'Firewall',
+    name: 'Network access',
     href: '/settings/firewall',
     service: health?.services.firewall ?? checkingService(fallbackMessage)
   }

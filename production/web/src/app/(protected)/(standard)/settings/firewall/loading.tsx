@@ -4,7 +4,7 @@ export default function Loading() {
   return (
     <OperationalSettingsPageSkeleton
       titleWidth='w-36 max-sm:w-24'
-      sectionTitle='Firewall agent'
+      sectionTitle='Network access policies'
       minWidth='58rem'
       columns={[
         { width: '14rem', headerWidth: 'w-20', kind: 'text' },

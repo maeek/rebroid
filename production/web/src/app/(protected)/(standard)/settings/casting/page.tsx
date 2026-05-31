@@ -1,9 +1,12 @@
 import { Suspense } from 'react'
 import { PlatformPageHeader } from '@/features/orchestrator/components/platform-page-header'
+import { CastingHeaderActions } from '@/features/settings/casting/casting-header-actions'
 import { CastingSidecarSettings } from '@/features/settings/casting/casting-sidecar-settings'
 import { OperationalSettingsSkeleton } from '@/features/settings/orchestrator/operational-settings-skeleton'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { requireAdmin } from '@/server/auth/authorization'
+import { userService } from '@/server/auth/user'
+import { listApplicationsAction } from '@/server/orchestrator/applications/read-actions'
 import {
   getOrchestratorHealthAction,
   listDisplaySidecarSessionsAction
@@ -19,13 +22,19 @@ const castingColumns = [
 ] as const
 
 const CastingSettingsContent = async () => {
-  const health = await getOrchestratorHealthAction()
+  const [health, applications, users] = await Promise.all([
+    getOrchestratorHealthAction(),
+    listApplicationsAction(),
+    userService.listUsers()
+  ])
   const sessions = health.services.display.ok ? await listDisplaySidecarSessionsAction().catch(() => []) : []
 
   return (
     <CastingSidecarSettings
       initialHealth={health.services.display}
       initialSessions={sessions}
+      applications={applications}
+      owners={users.map(user => ({ id: user.id, name: user.name || user.username }))}
     />
   )
 }
@@ -39,6 +48,7 @@ export default async function CastingSettingsPage() {
         title='Casting'
         description='Inspect the casting sidecar and terminate active viewer sessions.'
         includeOrchestratorBreadcrumb={false}
+        actions={<CastingHeaderActions />}
       />
       <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
         <Suspense

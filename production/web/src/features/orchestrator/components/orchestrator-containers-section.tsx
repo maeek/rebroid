@@ -22,6 +22,7 @@ import {
   stopPlatformContainerAction
 } from '@/server/orchestrator/platform/actions'
 import { PlatformGridPagination } from './platform-grid-pagination'
+import { PlatformResourceScopeFilter, type PlatformResourceScope } from './platform-resource-scope-filter'
 import { PlatformSelectionToolbar } from './platform-selection-toolbar'
 import { useGridSelection } from './use-grid-selection'
 import type { PlatformContainer } from '@/server/orchestrator/platform/types'
@@ -35,6 +36,7 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
   const [pendingAction, setPendingAction] = useState<PendingAction>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [resourceScope, setResourceScope] = useState<PlatformResourceScope>('managed')
   const [pageIndex, setPageIndex] = useState(0)
   const [pageSize, setPageSize] = useState(20)
 
@@ -57,11 +59,11 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
 
   const filteredContainers = useMemo(() => {
     const query = search.trim().toLowerCase()
-    if (!query) {
-      return sortedContainers
-    }
+    const scopedContainers =
+      resourceScope === 'managed' ? sortedContainers.filter(container => container.managed) : sortedContainers
+    if (!query) return scopedContainers
 
-    return sortedContainers.filter(container =>
+    return scopedContainers.filter(container =>
       [
         container.id,
         container.shortId,
@@ -80,7 +82,7 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
         .toLowerCase()
         .includes(query)
     )
-  }, [search, sortedContainers])
+  }, [resourceScope, search, sortedContainers])
 
   const selection = useGridSelection(filteredContainers)
   const orphanedContainers = useMemo(() => containers.filter(container => container.orphaned), [containers])
@@ -108,7 +110,7 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
 
   useEffect(() => {
     setPageIndex(0)
-  }, [search])
+  }, [resourceScope, search])
 
   useEffect(() => {
     const pageCount = Math.max(Math.ceil(filteredContainers.length / pageSize), 1)
@@ -212,6 +214,12 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
           search={search}
           placeholder='Search containers'
           selectedCount={selection.selectedItems.length}
+          filters={
+            <PlatformResourceScopeFilter
+              value={resourceScope}
+              onValueChange={setResourceScope}
+            />
+          }
           onSearchChange={setSearch}
           actions={
             <>
@@ -231,7 +239,11 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
                   disabled={busyId === 'bulk' || selection.selectedItems.length === 0}
                   onClick={() => void runBulkAction('stop')}
                 >
-                  Stop selected
+                  Stop
+                  <Visible when={selection.selectedIds.size > 0}>
+                    {' '}
+                    {selection.selectedIds.size} container{selection.selectedIds.size === 1 ? '' : 's'}
+                  </Visible>
                 </Button>
                 <Button
                   type='button'
@@ -239,7 +251,11 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
                   disabled={busyId === 'bulk' || selection.selectedItems.length === 0}
                   onClick={() => void runBulkAction('remove')}
                 >
-                  Remove selected
+                  Remove
+                  <Visible when={selection.selectedIds.size > 0}>
+                    {' '}
+                    {selection.selectedIds.size} container{selection.selectedIds.size === 1 ? '' : 's'}
+                  </Visible>
                 </Button>
               </div>
             </>

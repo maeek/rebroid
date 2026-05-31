@@ -4,12 +4,14 @@ import { AndroidAppsStateService } from '../../common/services/android-apps-stat
 import { UpdateNetworkPolicyDto } from '../dto/update-network-policy.dto';
 import { AndroidAppsRuntimeNetworkService } from './android-apps-runtime-network.service';
 import { AndroidApplicationStatus } from '../../android-application-status';
+import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
 
 @Injectable()
 export class AndroidAppsNetworkPolicyService {
   constructor(
     private readonly runtimeNetwork: AndroidAppsRuntimeNetworkService,
     private readonly state: AndroidAppsStateService,
+    private readonly networkPolicy: NetworkPolicyService,
   ) {}
 
   /** Saves network policy settings and reapplies them. */
@@ -33,5 +35,12 @@ export class AndroidAppsNetworkPolicyService {
       failClosed: app.status === AndroidApplicationStatus.Running,
     });
     return this.state.decorateApplication(app);
+  }
+
+  /** Rebuilds the agent rule set from stored apps, pruning stale rules. */
+  async reconcileNetworkPolicies() {
+    const apps = await this.state.list({ reconcile: false });
+    await this.networkPolicy.reconcile(apps);
+    return { reconciled: apps.length };
   }
 }

@@ -21,6 +21,7 @@ import { Visible } from '@/components/ui/visible'
 import { toast } from '@/hooks/use-toast'
 import { listPlatformNetworksAction, removePlatformNetworkAction } from '@/server/orchestrator/platform/actions'
 import { PlatformGridPagination } from './platform-grid-pagination'
+import { PlatformResourceScopeFilter, type PlatformResourceScope } from './platform-resource-scope-filter'
 import { PlatformSelectionToolbar } from './platform-selection-toolbar'
 import { useGridSelection } from './use-grid-selection'
 import type { PlatformNetwork } from '@/server/orchestrator/platform/types'
@@ -57,6 +58,7 @@ export const OrchestratorNetworksSection = ({ refreshKey = 0 }: { refreshKey?: n
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [resourceScope, setResourceScope] = useState<PlatformResourceScope>('managed')
   const [pendingRemove, setPendingRemove] = useState<PlatformNetwork | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [pageIndex, setPageIndex] = useState(0)
@@ -75,11 +77,11 @@ export const OrchestratorNetworksSection = ({ refreshKey = 0 }: { refreshKey?: n
 
   const filteredNetworks = useMemo(() => {
     const query = search.trim().toLowerCase()
-    if (!query) {
-      return sortedNetworks
-    }
+    const scopedNetworks =
+      resourceScope === 'managed' ? sortedNetworks.filter(network => network.managed) : sortedNetworks
+    if (!query) return scopedNetworks
 
-    return sortedNetworks.filter(network =>
+    return scopedNetworks.filter(network =>
       [
         network.id,
         network.shortId,
@@ -94,7 +96,7 @@ export const OrchestratorNetworksSection = ({ refreshKey = 0 }: { refreshKey?: n
         .toLowerCase()
         .includes(query)
     )
-  }, [search, sortedNetworks])
+  }, [resourceScope, search, sortedNetworks])
 
   const selection = useGridSelection(filteredNetworks)
 
@@ -121,7 +123,7 @@ export const OrchestratorNetworksSection = ({ refreshKey = 0 }: { refreshKey?: n
 
   useEffect(() => {
     setPageIndex(0)
-  }, [search])
+  }, [resourceScope, search])
 
   useEffect(() => {
     const pageCount = Math.max(Math.ceil(filteredNetworks.length / pageSize), 1)
@@ -194,6 +196,12 @@ export const OrchestratorNetworksSection = ({ refreshKey = 0 }: { refreshKey?: n
           search={search}
           placeholder='Search networks'
           selectedCount={selection.selectedItems.length}
+          filters={
+            <PlatformResourceScopeFilter
+              value={resourceScope}
+              onValueChange={setResourceScope}
+            />
+          }
           onSearchChange={setSearch}
           actions={
             <>

@@ -245,6 +245,14 @@ export const applyNetworkPolicyAction = async (id: string) => {
   return sanitizeAndroidApplicationForUser(app, user)
 }
 
+export const reconcileNetworkPoliciesAction = async () => {
+  const user = await getCurrentUserContext()
+  if (user.role !== 'admin') {
+    throw new Error('You do not have permission to reconcile all network policies.')
+  }
+  return orchestratorApplicationsClient.reconcileNetworkPolicies()
+}
+
 export const switchApplicationProfileAction = async (id: string, input: SwitchApplicationProfileInput) => {
   const { user } = await assertCanUseOwnedApplicationRuntime(id)
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:switch-profile')) {

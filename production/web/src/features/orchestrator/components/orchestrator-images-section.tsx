@@ -23,6 +23,7 @@ import { toast } from '@/hooks/use-toast'
 import { formatUtcDate } from '@/lib/format'
 import { listPlatformImagesAction, removePlatformImageAction } from '@/server/orchestrator/platform/actions'
 import { PlatformGridPagination } from './platform-grid-pagination'
+import { PlatformResourceScopeFilter, type PlatformResourceScope } from './platform-resource-scope-filter'
 import { PlatformSelectionToolbar } from './platform-selection-toolbar'
 import { useGridSelection } from './use-grid-selection'
 import type { PlatformImage } from '@/server/orchestrator/platform/types'
@@ -36,6 +37,8 @@ const formatBytes = (bytes: number) => {
   const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
   return `${(bytes / 1024 ** index).toFixed(2)} ${units[index]}`
 }
+
+const isManagedImage = (image: PlatformImage) => image.labels['com.rebroid.managed'] === 'true'
 
 const ImageNameCell = ({ image }: { image: PlatformImage }) => {
   const name = imageDisplayName(image)
@@ -64,6 +67,7 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [resourceScope, setResourceScope] = useState<PlatformResourceScope>('managed')
   const [pendingRemove, setPendingRemove] = useState<PlatformImage | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [pageIndex, setPageIndex] = useState(0)
@@ -80,11 +84,10 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
 
   const filteredImages = useMemo(() => {
     const query = search.trim().toLowerCase()
-    if (!query) {
-      return sortedImages
-    }
+    const scopedImages = resourceScope === 'managed' ? sortedImages.filter(isManagedImage) : sortedImages
+    if (!query) return scopedImages
 
-    return sortedImages.filter(image =>
+    return scopedImages.filter(image =>
       [
         image.id,
         image.shortId,
@@ -97,7 +100,7 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
         .toLowerCase()
         .includes(query)
     )
-  }, [search, sortedImages])
+  }, [resourceScope, search, sortedImages])
 
   const selection = useGridSelection(filteredImages)
 
@@ -124,7 +127,7 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
 
   useEffect(() => {
     setPageIndex(0)
-  }, [search])
+  }, [resourceScope, search])
 
   useEffect(() => {
     const pageCount = Math.max(Math.ceil(filteredImages.length / pageSize), 1)
@@ -197,6 +200,12 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
           search={search}
           placeholder='Search images'
           selectedCount={selection.selectedItems.length}
+          filters={
+            <PlatformResourceScopeFilter
+              value={resourceScope}
+              onValueChange={setResourceScope}
+            />
+          }
           onSearchChange={setSearch}
           actions={
             <>
