@@ -42,6 +42,53 @@ export class AndroidAppsRuntimeController {
     return this.runtime.notifications(id);
   }
 
+  @Get(':id/files')
+  @ApiOperation({
+    summary: 'List entries from the active application data volume.',
+  })
+  @ApiOkResponse({ type: ApplicationRuntimeFileDto, isArray: true })
+  listFiles(
+    @Param('id') id: string,
+    @Query() query: ApplicationRuntimeFilesQueryDto,
+  ) {
+    return this.runtime.listFiles(id, query.path);
+  }
+
+  @Post(':id/files')
+  @ApiOperation({
+    summary: 'Upload a file into a directory in the active data volume.',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @ApiOkResponse({ type: ApplicationRuntimeFileUploadDto })
+  uploadFile(
+    @Param('id') id: string,
+    @Query() query: ApplicationRuntimeFilesQueryDto,
+    @Req() request: Request,
+  ) {
+    return this.runtime.uploadFile(id, request, query.path);
+  }
+
+  @Get(':id/files/download')
+  @ApiOperation({
+    summary: 'Read a file from the active application data volume.',
+  })
+  @ApiOkResponse({ type: ApplicationRuntimeFileDownloadDto })
+  downloadRuntimeFile(
+    @Param('id') id: string,
+    @Query() query: ApplicationRuntimeFilesQueryDto,
+  ) {
+    return this.runtime.downloadRuntimeFile(id, query.path);
+  }
+
   @Get(':id/files/downloads')
   @ApiOperation({
     summary: 'List files from the application Download directory.',

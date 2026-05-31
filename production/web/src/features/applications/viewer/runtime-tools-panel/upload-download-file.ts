@@ -1,10 +1,9 @@
-import type { ApplicationRuntimeFileUpload, ApplicationProfileMode } from '@/server/orchestrator/applications/types'
+import type { ApplicationRuntimeFileUpload } from '@/server/orchestrator/applications/types'
 
 type UploadDownloadFileOptions = {
   appId: string
   file: File
-  profileMode?: ApplicationProfileMode
-  profileName?: string
+  path: string
   onProgress?: (progress: number) => void
 }
 
@@ -17,23 +16,14 @@ const errorMessage = (value: unknown) => {
   return Array.isArray(message) ? message.join(', ') : typeof message === 'string' ? message : 'File upload failed.'
 }
 
-export const uploadDownloadFileWithProgress = ({
-  appId,
-  file,
-  profileMode,
-  profileName,
-  onProgress
-}: UploadDownloadFileOptions) =>
+export const uploadDownloadFileWithProgress = ({ appId, file, path, onProgress }: UploadDownloadFileOptions) =>
   new Promise<ApplicationRuntimeFileUpload>((resolve, reject) => {
     const body = new FormData()
     body.set('file', file)
-    const query = new URLSearchParams()
-    if (profileMode) query.set('profileMode', profileMode)
-    if (profileName) query.set('profileName', profileName)
-    const suffix = query.size > 0 ? `?${query.toString()}` : ''
+    const query = new URLSearchParams({ path })
 
     const request = new XMLHttpRequest()
-    request.open('POST', `/api/applications/${encodeURIComponent(appId)}/downloads/upload${suffix}`)
+    request.open('POST', `/api/applications/${encodeURIComponent(appId)}/downloads/upload?${query.toString()}`)
     request.responseType = 'json'
     request.timeout = 5 * 60 * 1000
     request.upload.onprogress = event => {

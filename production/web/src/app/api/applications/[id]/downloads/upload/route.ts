@@ -48,14 +48,10 @@ export const POST = async (request: NextRequest, context: RouteContext) => {
       return NextResponse.json({ message: 'File is required.' }, { status: 400 })
     }
 
-    const profileMode = request.nextUrl.searchParams.get('profileMode')
-    const profileName = request.nextUrl.searchParams.get('profileName')
-    const query = new URLSearchParams()
-    if (profileMode === 'temporary' || profileMode === 'persistent') query.set('profileMode', profileMode)
-    if (profileName) query.set('profileName', profileName)
+    const query = new URLSearchParams({ path: request.nextUrl.searchParams.get('path') || '/data' })
     const upstreamUrl =
-      `${getOrchestratorBaseUrl().replace(/\/$/, '')}/android-applications/${encodeURIComponent(id)}/files/downloads` +
-      (query.size > 0 ? `?${query.toString()}` : '')
+      `${getOrchestratorBaseUrl().replace(/\/$/, '')}/android-applications/${encodeURIComponent(id)}/files?` +
+      query.toString()
     const headers = new Headers()
     const contentType = request.headers.get('content-type')
     const contentLength = request.headers.get('content-length')

@@ -121,6 +121,16 @@ export const orchestratorApplicationsClient = {
     return request<ApplicationRuntimeFile[]>(`/android-applications/${id}/files/downloads${suffix}`)
   },
 
+  listFiles(id: string, path = '/data') {
+    const query = new URLSearchParams({ path })
+    return request<ApplicationRuntimeFile[]>(`/android-applications/${id}/files?${query.toString()}`)
+  },
+
+  downloadRuntimeFile(id: string, path: string) {
+    const query = new URLSearchParams({ path })
+    return request<ApplicationRuntimeFileDownload>(`/android-applications/${id}/files/download?${query.toString()}`)
+  },
+
   uploadDownloadFile(id: string, input: FormData, profile: ApplicationRuntimeFilesProfileInput = {}) {
     const query = new URLSearchParams()
     if (profile.profileMode) query.set('profileMode', profile.profileMode)

@@ -7,8 +7,14 @@ export class ApplicationRuntimeFileDto {
   @ApiProperty({ example: '/sdcard/Download/report.pdf' })
   path!: string;
 
-  @ApiProperty({ example: 1572864 })
-  sizeBytes!: number;
+  @ApiProperty({ enum: ['file', 'directory'], example: 'file' })
+  type!: 'file' | 'directory';
+
+  @ApiProperty({ example: 1572864, nullable: true })
+  sizeBytes!: number | null;
+
+  @ApiProperty({ example: 12, nullable: true })
+  itemCount!: number | null;
 
   @ApiProperty({ example: '2026-05-19T10:15:30.000Z', nullable: true })
   modifiedAt!: string | null;

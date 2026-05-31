@@ -61,7 +61,9 @@ export interface ApplicationLog {
 export interface ApplicationRuntimeFile {
   name: string
   path: string
-  sizeBytes: number
+  type: 'file' | 'directory'
+  sizeBytes: number | null
+  itemCount: number | null
   modifiedAt: string | null
 }
 

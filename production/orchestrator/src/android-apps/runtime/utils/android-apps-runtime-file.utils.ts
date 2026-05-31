@@ -31,7 +31,9 @@ export const parseDownloadFiles = (
       return {
         name: name ?? '',
         path: `${downloadDirectory}/${name ?? ''}`,
+        type: 'file' as const,
         sizeBytes: Number(size) || 0,
+        itemCount: null,
         modifiedAt:
           Number.isFinite(modifiedSeconds) && modifiedSeconds > 0
             ? new Date(modifiedSeconds * 1000).toISOString()

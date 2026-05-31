@@ -102,6 +102,22 @@ export const listApplicationDownloadFilesAction = async (id: string, profile?: A
   return orchestratorApplicationsClient.listDownloadFiles(id, profile)
 }
 
+export const listApplicationFilesAction = async (id: string, path: string) => {
+  const { user } = await assertCanUseOwnedApplicationRuntime(id)
+  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:transfer-files')) {
+    throw new Error('You do not have permission to transfer files.')
+  }
+  return orchestratorApplicationsClient.listFiles(id, path)
+}
+
+export const downloadApplicationRuntimeFileAction = async (id: string, path: string) => {
+  const { user } = await assertCanUseOwnedApplicationRuntime(id)
+  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:transfer-files')) {
+    throw new Error('You do not have permission to transfer files.')
+  }
+  return orchestratorApplicationsClient.downloadRuntimeFile(id, path)
+}
+
 export const downloadApplicationFileAction = async (
   id: string,
   fileName: string,
