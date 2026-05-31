@@ -1,11 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { IconAlertTriangle, IconCircleCheck, IconLoader2 } from '@tabler/icons-react'
+import { IconAlertTriangle, IconChevronRight, IconCircleCheck, IconLoader2 } from '@tabler/icons-react'
+import Link from 'next/link'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
-import { getOrchestratorHealthAction, repairDisplaySidecarAction } from '@/server/orchestrator/diagnostics/actions'
+import { getOrchestratorHealthAction } from '@/server/orchestrator/diagnostics/actions'
 import type { OrchestratorHealth, ServiceHealth } from '@/server/orchestrator/diagnostics/types'
 
 type HealthState = 'checking' | 'online' | 'degraded' | 'offline'
@@ -48,8 +48,6 @@ const mergeDockerAndRuntimeService = (health: OrchestratorHealth | null, fallbac
 }
 
 const getOrchestratorHealth = getOrchestratorHealthAction
-const repairDisplaySidecar = repairDisplaySidecarAction
-
 const dotTone = (status: DisplayServiceStatus) => {
   if (status === 'healthy') {
     return 'bg-green-400'
@@ -77,15 +75,23 @@ const badgeTone = (status: DisplayServiceStatus) => {
 const serviceRows = (health: OrchestratorHealth | null, fallbackMessage: string) => [
   {
     name: 'Orchestrator',
+    href: '/settings/orchestrator',
     service: health?.services.orchestrator ?? checkingService(fallbackMessage)
   },
   {
     name: 'Docker',
+    href: '/settings/orchestrator/containers',
     service: mergeDockerAndRuntimeService(health, fallbackMessage)
   },
   {
-    name: 'Display',
+    name: 'Casting',
+    href: '/settings/casting',
     service: health?.services.display ?? checkingService(fallbackMessage)
+  },
+  {
+    name: 'Firewall',
+    href: '/settings/firewall',
+    service: health?.services.firewall ?? checkingService(fallbackMessage)
   }
 ]
 
@@ -93,7 +99,6 @@ export const OrchestratorStatus = () => {
   const [state, setState] = useState<HealthState>('checking')
   const [message, setMessage] = useState('Checking')
   const [health, setHealth] = useState<OrchestratorHealth | null>(null)
-  const [isRepairingDisplay, setIsRepairingDisplay] = useState(false)
 
   const applyHealth = useCallback((nextHealth: OrchestratorHealth) => {
     setHealth(nextHealth)
@@ -115,11 +120,13 @@ export const OrchestratorStatus = () => {
       docker: false,
       runtime: false,
       display: false,
+      firewall: false,
       services: {
         orchestrator: offlineService(errorMessage),
         docker: offlineService('Cannot inspect Docker while orchestrator is offline.'),
         runtime: offlineService('Cannot inspect runtime suitability while orchestrator is offline.'),
-        display: offlineService('Cannot inspect display sidecar while orchestrator is offline.')
+        display: offlineService('Cannot inspect display sidecar while orchestrator is offline.'),
+        firewall: offlineService('Cannot inspect firewall agent while orchestrator is offline.')
       }
     })
   }, [])
@@ -149,43 +156,6 @@ export const OrchestratorStatus = () => {
       window.clearInterval(interval)
     }
   }, [check])
-
-  const canRepairDisplay = Boolean(
-    health?.services.orchestrator.ok && health.services.docker.ok && !health.services.display.ok
-  )
-
-  const repairDisplay = async () => {
-    setIsRepairingDisplay(true)
-    try {
-      await repairDisplaySidecar()
-      await check()
-    } catch (error) {
-      setHealth(current => {
-        if (!current) {
-          return current
-        }
-
-        return {
-          ...current,
-          display: false,
-          ok: false,
-          services: {
-            ...current.services,
-            display: {
-              ...current.services.display,
-              ok: false,
-              status: 'offline',
-              message: error instanceof Error ? error.message : 'Could not repair display sidecar.'
-            }
-          }
-        }
-      })
-      setState('degraded')
-      setMessage('Degraded')
-    } finally {
-      setIsRepairingDisplay(false)
-    }
-  }
 
   const icon =
     state === 'checking' ? (
@@ -222,17 +192,16 @@ export const OrchestratorStatus = () => {
         className='w-80 border-border/70 bg-card/95 p-2 backdrop-blur-xl'
       >
         <div className='space-y-0'>
-          {serviceRows(health, message).map(({ name, service }) => (
-            <div
+          {serviceRows(health, message).map(({ name, href, service }) => (
+            <Link
               key={name}
-              className='flex gap-3 rounded-md px-3 py-2 hover:bg-secondary/40 items-center'
+              href={href}
+              title={service.message}
+              className='flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-secondary/55'
             >
-              <span className={cn('mt-1 size-2.5 shrink-0 rounded-full', dotTone(service.status))} />
-              <div className='min-w-0 grow shrink flex justify-between gap-2 items-center'>
-                <div className='min-w-0'>
-                  <p className='text-xs font-normal text-foreground'>{name}</p>
-                  <p className='mt-0.5 line-clamp-2 text-[10px] text-secondary-foreground min-w-0'>{service.message}</p>
-                </div>
+              <span className={cn('size-2.5 shrink-0 rounded-full', dotTone(service.status))} />
+              <div className='flex min-w-0 grow items-center justify-between gap-2'>
+                <p className='truncate text-xs font-medium text-foreground'>{name}</p>
                 <span
                   className={cn(
                     'rounded-full border px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-normal',
@@ -242,22 +211,8 @@ export const OrchestratorStatus = () => {
                   {service.status}
                 </span>
               </div>
-              <Visible when={name === 'Display' && canRepairDisplay}>
-                <button
-                  type='button'
-                  className='ml-auto inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-md border border-border/70 bg-secondary/70 px-2 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-70'
-                  disabled={isRepairingDisplay}
-                  aria-label='Repair display sidecar'
-                  onClick={event => {
-                    event.preventDefault()
-                    event.stopPropagation()
-                    void repairDisplay()
-                  }}
-                >
-                  {isRepairingDisplay ? <IconLoader2 className='size-3.5 animate-spin' /> : 'Fix'}
-                </button>
-              </Visible>
-            </div>
+              <IconChevronRight className='size-4 shrink-0 text-secondary-foreground' />
+            </Link>
           ))}
         </div>
       </PopoverContent>

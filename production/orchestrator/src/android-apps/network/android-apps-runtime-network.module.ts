@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { DockerModule } from '../../docker/docker.module';
 import { NetworkIsolationModule } from '../../network-isolation/network-isolation.module';
 import { NetworkPolicyModule } from '../../network-policy/network-policy.module';
 import { AndroidAppsCommonModule } from '../common/android-apps-common.module';
@@ -9,6 +10,7 @@ import { AndroidAppsRuntimeNetworkService } from './services/android-apps-runtim
 
 @Module({
   imports: [
+    DockerModule,
     NetworkIsolationModule,
     NetworkPolicyModule,
     AndroidAppsCommonModule,

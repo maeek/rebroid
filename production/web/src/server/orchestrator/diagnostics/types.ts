@@ -32,10 +32,23 @@ export interface OrchestratorHealth {
   docker: boolean
   runtime: boolean
   display: boolean
+  firewall: boolean
   services: {
     orchestrator: ServiceHealth
     docker: ServiceHealth
     runtime: ServiceHealth
     display: ServiceHealth
+    firewall: ServiceHealth
   }
+}
+
+export interface DisplaySidecarSession {
+  id: string
+  applicationId: string | null
+  ownerUserId: string | null
+  status: 'created' | 'active' | 'released' | 'expired'
+  createdAt: string
+  lastActivityAt: string
+  expiresAt: string
+  capabilities: string[]
 }

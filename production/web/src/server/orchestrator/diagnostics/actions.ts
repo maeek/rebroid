@@ -15,6 +15,16 @@ export const repairDisplaySidecarAction = async () => {
   return orchestratorDiagnosticsClient.repairDisplaySidecar()
 }
 
+export const listDisplaySidecarSessionsAction = async () => {
+  await requireAdminUser()
+  return orchestratorDiagnosticsClient.listDisplaySidecarSessions()
+}
+
+export const releaseDisplaySidecarSessionAction = async (id: string) => {
+  await requireAdminUser()
+  return orchestratorDiagnosticsClient.releaseDisplaySidecarSession(id)
+}
+
 export const getSystemResourcesAction = async (refreshVolumes = false) => {
   await requireAdminUser()
   return orchestratorDiagnosticsClient.getSystemResources(refreshVolumes)

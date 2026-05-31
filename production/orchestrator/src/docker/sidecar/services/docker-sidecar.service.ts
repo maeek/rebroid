@@ -26,6 +26,21 @@ import {
   shouldIgnoreBuildContextEntry,
 } from '../utils/docker-sidecar.utils';
 
+interface DisplaySidecarSession {
+  id: string;
+  appId?: string;
+  ownerUserId?: string;
+  status: 'created' | 'active' | 'released' | 'expired';
+  createdAt: string;
+  lastActivityAt: string;
+  expiresAt: string;
+  capabilities: string[];
+}
+
+interface DisplaySidecarSessionListResponse {
+  items: DisplaySidecarSession[];
+}
+
 @Injectable()
 export class DockerSidecarService implements OnModuleInit {
   private readonly logger = new Logger(DockerSidecarService.name);
@@ -406,6 +421,22 @@ export class DockerSidecarService implements OnModuleInit {
     }
   }
 
+  async listDisplaySessions() {
+    const response =
+      await this.requestDisplaySidecar<DisplaySidecarSessionListResponse>(
+        '/sessions',
+      );
+    return response.items.map((session) => this.toAdminDisplaySession(session));
+  }
+
+  async releaseDisplaySession(id: string) {
+    const session = await this.requestDisplaySidecar<DisplaySidecarSession>(
+      `/sessions/${encodeURIComponent(id)}`,
+      { method: 'DELETE' },
+    );
+    return this.toAdminDisplaySession(session);
+  }
+
   /**
    * Restarts an existing sidecar or creates it if autostart is enabled.
    */
@@ -509,6 +540,50 @@ export class DockerSidecarService implements OnModuleInit {
     });
     await container.start();
     return container;
+  }
+
+  private async requestDisplaySidecar<T>(
+    path: string,
+    init: RequestInit = {},
+  ): Promise<T> {
+    const baseUrl = this.config
+      .getOrThrow<string>('app.displaySidecar.internalBaseUrl')
+      .replace(/\/$/, '');
+    const secret = this.config.get<string>('app.sharedSecret');
+    const response = await fetch(`${baseUrl}/rebroid/display${path}`, {
+      ...init,
+      headers: {
+        accept: 'application/json',
+        ...(secret ? { 'x-rebroid-sidecar-secret': secret } : {}),
+        ...(init.headers ?? {}),
+      },
+      signal: AbortSignal.timeout(10_000),
+    }).catch((error) => {
+      throw new ConflictException(
+        `Display sidecar API is not reachable: ${this.engine.errorMessage(error)}`,
+      );
+    });
+
+    if (!response.ok) {
+      throw new ConflictException(
+        `Display sidecar API returned ${response.status}.`,
+      );
+    }
+
+    return response.json() as Promise<T>;
+  }
+
+  private toAdminDisplaySession(session: DisplaySidecarSession) {
+    return {
+      id: session.id,
+      applicationId: session.appId ?? null,
+      ownerUserId: session.ownerUserId ?? null,
+      status: session.status,
+      createdAt: session.createdAt,
+      lastActivityAt: session.lastActivityAt,
+      expiresAt: session.expiresAt,
+      capabilities: session.capabilities,
+    };
   }
 
   private webrtcUdpPortBinding() {

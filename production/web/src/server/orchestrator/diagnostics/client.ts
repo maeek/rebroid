@@ -1,5 +1,11 @@
 import { request } from '../request'
-import type { OrchestratorHealth, ServiceHealth, SystemResourceCapacity, SystemResources } from './types'
+import type {
+  DisplaySidecarSession,
+  OrchestratorHealth,
+  ServiceHealth,
+  SystemResourceCapacity,
+  SystemResources
+} from './types'
 
 export const orchestratorDiagnosticsClient = {
   health() {
@@ -8,6 +14,14 @@ export const orchestratorDiagnosticsClient = {
 
   repairDisplaySidecar() {
     return request<ServiceHealth>('/docker/sidecar/repair', { method: 'POST' })
+  },
+
+  listDisplaySidecarSessions() {
+    return request<DisplaySidecarSession[]>('/docker/sidecar/sessions')
+  },
+
+  releaseDisplaySidecarSession(id: string) {
+    return request<DisplaySidecarSession>(`/docker/sidecar/sessions/${encodeURIComponent(id)}`, { method: 'DELETE' })
   },
 
   getSystemResources(refreshVolumes = false) {

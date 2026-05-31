@@ -1,4 +1,4 @@
-import { Controller, Get, Post } from '@nestjs/common';
+import { Controller, Delete, Get, Param, Post } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { DockerSidecarService } from '../services/docker-sidecar.service';
 
@@ -36,5 +36,19 @@ export class DockerSidecarController {
   async repair() {
     await this.sidecar.repair();
     return this.sidecar.health();
+  }
+
+  @Get('sessions')
+  @ApiOperation({
+    summary: 'List display sidecar sessions for administration.',
+  })
+  listSessions() {
+    return this.sidecar.listDisplaySessions();
+  }
+
+  @Delete('sessions/:id')
+  @ApiOperation({ summary: 'Release one display sidecar session.' })
+  releaseSession(@Param('id') id: string) {
+    return this.sidecar.releaseDisplaySession(id);
   }
 }

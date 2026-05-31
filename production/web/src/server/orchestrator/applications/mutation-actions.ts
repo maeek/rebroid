@@ -205,6 +205,7 @@ export const updateNetworkPolicyAction = async (id: string, input: UpdateNetwork
     throw new Error('You do not have permission to allow broad internet access.')
   }
   const app = await orchestratorApplicationsClient.updateNetworkPolicy(id, input)
+  revalidateApplicationList()
   revalidateApplicationDetail(id)
   return sanitizeAndroidApplicationForUser(app, user)
 }

@@ -28,7 +28,7 @@ export const RuntimeToolsPanel = ({
   const tools = useMemo(
     () =>
       [
-        hasPermission(permissions, 'applications:sync-clipboard') // && app.running
+        hasPermission(permissions, 'applications:sync-clipboard') && app.running
           ? {
               id: 'clipboard' as const,
               title: 'Clipboard',
@@ -42,7 +42,7 @@ export const RuntimeToolsPanel = ({
           description: `${viewerSettings.transport.toUpperCase()} • ${viewerSettings.bitrateMbps} Mbps`,
           Icon: IconCast
         },
-        hasPermission(permissions, 'applications:transfer-files') // && app.running
+        hasPermission(permissions, 'applications:transfer-files') && app.running
           ? {
               id: 'files' as const,
               title: 'Files',
@@ -50,7 +50,7 @@ export const RuntimeToolsPanel = ({
               Icon: IconFolder
             }
           : null,
-        hasPermission(permissions, 'applications:view-logs') // && app.running
+        hasPermission(permissions, 'applications:view-logs') && app.running
           ? {
               id: 'logs' as const,
               title: 'Logs',
