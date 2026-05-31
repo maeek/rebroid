@@ -5,8 +5,12 @@ import { chainName, validatePolicies, validatePolicy } from "./firewall";
 test("creates deterministic owned chain names", () => {
   assert.equal(
     chainName("12345678-1234-1234-1234-123456789abc"),
-    "REBROID_APP_1234567812341234",
+    "RB_APP_1234567812341234",
   );
+});
+
+test("keeps atomic iptables replacement chains within the compatibility limit", () => {
+  assert.ok(`${chainName("12345678-1234-1234-1234-123456789abc")}_NEXT`.length < 29);
 });
 
 test("validates and deduplicates IPv4 policies", () => {

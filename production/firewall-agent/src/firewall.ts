@@ -2,6 +2,8 @@ import { execFileSync } from "node:child_process";
 
 const ROOT_CHAIN = "REBROID_FW";
 const NEXT_SUFFIX = "_NEXT";
+const APP_CHAIN_PREFIX = "RB_APP_";
+const LEGACY_APP_CHAIN_PREFIX = "REBROID_APP_";
 const NFT_TABLE = "rebroid_fw";
 const MAX_ALLOW_CIDRS = 256;
 const APPLICATION_ID = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,63}$/;
@@ -37,6 +39,7 @@ const run = (
       output: execFileSync(binary, args, {
         encoding: "utf8",
         input: options.input,
+        stdio: ["pipe", "pipe", "pipe"],
       }),
     };
   } catch (error) {
@@ -46,7 +49,7 @@ const run = (
 };
 
 export const chainName = (applicationId: string) =>
-  `REBROID_APP_${applicationId.replace(/-/g, "").slice(0, 16).toUpperCase()}`;
+  `${APP_CHAIN_PREFIX}${applicationId.replace(/-/g, "").slice(0, 16).toUpperCase()}`;
 
 export const validatePolicy = (
   applicationId: string,
@@ -215,7 +218,11 @@ export class IptablesAdapter implements FirewallAdapter {
   private removeStaleOwnedChains(activeChains: Set<string>) {
     const chains = run("iptables", ["-S"], { ignoreFailure: true })
       .output.split("\n")
-      .filter((rule) => rule.startsWith("-N REBROID_APP_"))
+      .filter(
+        (rule) =>
+          rule.startsWith(`-N ${APP_CHAIN_PREFIX}`) ||
+          rule.startsWith(`-N ${LEGACY_APP_CHAIN_PREFIX}`),
+      )
       .map((rule) => rule.slice("-N ".length).trim());
     for (const chain of chains) {
       if (!activeChains.has(chain)) {
