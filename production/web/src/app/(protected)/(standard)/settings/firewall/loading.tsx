@@ -6,6 +6,7 @@ export default function Loading() {
       titleWidth='w-36 max-sm:w-24'
       sectionTitle='Network access policies'
       minWidth='58rem'
+      includeOrchestratorBreadcrumb={false}
       columns={[
         { width: '14rem', headerWidth: 'w-20', kind: 'text' },
         { width: '8rem', headerWidth: 'w-14', kind: 'text' },

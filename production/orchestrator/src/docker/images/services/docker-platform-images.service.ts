@@ -17,11 +17,26 @@ export class DockerPlatformImagesService {
   ) {}
 
   async listPlatformImages(): Promise<PlatformImage[]> {
-    const images = await this.engine.read(
-      () => this.engine.docker.listImages({ all: true }),
-      'List platform images',
+    const [images, containers] = await Promise.all([
+      this.engine.read(
+        () => this.engine.docker.listImages({ all: true }),
+        'List platform images',
+      ),
+      this.engine.read(
+        () => this.engine.docker.listContainers({ all: true }),
+        'List containers for platform image ownership',
+      ),
+    ]);
+    const managedImageIds = new Set(
+      containers
+        .filter(
+          (container) => container.Labels?.['com.rebroid.managed'] === 'true',
+        )
+        .map((container) => container.ImageID),
     );
-    return images.map((image) => platformImageFromSummary(image));
+    return images.map((image) =>
+      platformImageFromSummary(image, managedImageIds.has(image.Id)),
+    );
   }
 
   async getPlatformImageDetails(

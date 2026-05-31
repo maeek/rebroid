@@ -10,6 +10,7 @@ import { OrchestratorResources } from '@/features/settings/system/orchestrator-r
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { StatusSplash } from '@/features/shell/components/status-splash'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { getSystemResourcesAction } from '@/server/orchestrator/diagnostics/actions'
 import type { SystemResources } from '@/server/orchestrator/diagnostics/types'
 import type { SystemStats } from '@/server/system/system-stats'
@@ -39,7 +40,7 @@ export function SystemSettingsPage() {
       setResources(await getSystemResourcesAction(refreshVolumes))
       setResourcesError(null)
     } catch (error) {
-      setResourcesError(error instanceof Error ? error.message : 'Could not load orchestrator resources.')
+      setResourcesError(getDisplayErrorMessage(error, 'Could not load orchestrator resources.'))
     } finally {
       setIsRefreshingResources(false)
     }

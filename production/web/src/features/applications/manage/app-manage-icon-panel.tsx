@@ -1,8 +1,5 @@
-import { useRef, useState, type ChangeEvent } from 'react'
-import { IconUpload } from '@tabler/icons-react'
-import { Button } from '@/components/ui/button'
-import { Section } from '@/components/ui/section'
-import { AppIcon } from '@/features/applications/components/app-icon'
+import { useState, type ChangeEvent } from 'react'
+import { AppFormIconSection } from '@/features/applications/create/create-app-icon-section'
 import { optimizeIconFile } from '@/features/applications/icons/icon-metadata'
 import { notifyRecentAppsUpdated } from '@/features/applications/recent/recent-apps'
 import {
@@ -31,7 +28,6 @@ export const AppManageIconPanel = ({
   onIconChange
 }: AppManageIconPanelProps) => {
   const [isUploadingIcon, setIsUploadingIcon] = useState(false)
-  const iconInputRef = useRef<HTMLInputElement>(null)
   const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
 
   const handleIconUpload = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -68,10 +64,6 @@ export const AppManageIconPanel = ({
   }
 
   const handleClearIcon = async () => {
-    if (iconInputRef.current) {
-      iconInputRef.current.value = ''
-    }
-
     setIsUploadingIcon(true)
     try {
       await removeAppIconAction(appId)
@@ -90,49 +82,17 @@ export const AppManageIconPanel = ({
   }
 
   return (
-    <Section
-      title='Icon'
-      boxed
-      contentClassName='gap-5'
-    >
-      <p className='text-xs leading-relaxed text-muted-foreground'>
-        This icon is stored in the web app metadata for display.
-      </p>
-      <div className='flex w-full flex-col items-center gap-5'>
-        <AppIcon
-          appId={appId}
-          appName={appName}
-          icon={icon}
-          className='shrink-0 size-56 text-4xl shadow-[0_18px_60px_rgba(0,0,0,0.24)] max-sm:size-48'
-        />
-        <input
-          ref={iconInputRef}
-          type='file'
-          accept='image/*'
-          className='hidden'
-          onChange={event => void handleIconUpload(event)}
-        />
-        <div className='flex w-full gap-2 max-sm:flex-col'>
-          <Button
-            type='button'
-            className='flex-1'
-            disabled={isUploadingIcon}
-            onClick={() => iconInputRef.current?.click()}
-          >
-            <IconUpload className='size-4' />
-            Upload icon
-          </Button>
-          <Button
-            type='button'
-            variant='ghost'
-            className='flex-1'
-            disabled={isUploadingIcon}
-            onClick={() => void handleClearIcon()}
-          >
-            Clear icon
-          </Button>
-        </div>
-      </div>
-    </Section>
+    <AppFormIconSection
+      appId={appId}
+      appName={appName}
+      iconPreview={icon}
+      autoExtractIcon={false}
+      hasExtractedIcon={false}
+      disabled={isUploadingIcon}
+      showAutoExtract={false}
+      onIconChange={event => void handleIconUpload(event)}
+      onClearIcon={() => void handleClearIcon()}
+      onAutoExtractIconChange={() => undefined}
+    />
   )
 }

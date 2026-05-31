@@ -38,7 +38,7 @@ const formatBytes = (bytes: number) => {
   return `${(bytes / 1024 ** index).toFixed(2)} ${units[index]}`
 }
 
-const isManagedImage = (image: PlatformImage) => image.labels['com.rebroid.managed'] === 'true'
+const isManagedImage = (image: PlatformImage) => image.managed
 
 const ImageNameCell = ({ image }: { image: PlatformImage }) => {
   const name = imageDisplayName(image)

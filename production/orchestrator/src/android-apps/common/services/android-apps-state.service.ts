@@ -14,6 +14,7 @@ import {
 } from '../../android-application-status';
 import { ListAndroidApplicationsDto } from '../dto/list-android-applications.dto';
 import { shouldReconcileContainerState } from '../utils/android-apps-state.utils';
+import { latestRuntimeActivity } from '../utils/android-apps-inactivity.utils';
 import { AndroidAppsProvisioningTrackerService } from './android-apps-provisioning-tracker.service';
 import { AndroidAppsStatusService } from './android-apps-status.service';
 
@@ -134,7 +135,10 @@ export class AndroidAppsStateService {
         return false;
       }
 
-      const lastActivity = app.lastScrcpyActivityAt ?? app.lastStartedAt;
+      const lastActivity = latestRuntimeActivity(
+        app.lastScrcpyActivityAt,
+        app.lastStartedAt,
+      );
       if (!lastActivity) {
         return false;
       }

@@ -33,6 +33,7 @@ export interface PlatformImage {
   virtualSizeBytes: number
   createdAt: string
   labels: Record<string, string>
+  managed: boolean
   containers: number
 }
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Visible } from '@/components/ui/visible'
 import { QuickGlanceCard } from '@/features/settings/components/quick-glance-card'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { formatDateLocale } from '@/lib/format'
 import { getSystemResourcesAction } from '@/server/orchestrator/diagnostics/actions'
 import type { SystemResources } from '@/server/orchestrator/diagnostics/types'
@@ -73,7 +74,7 @@ export const OrchestratorQuickGlanceSection = ({ refreshKey = 0 }: { refreshKey?
         setResources(await getSystemResourcesAction(refreshVolumes))
         setError(null)
       } catch (caughtError) {
-        setError(caughtError instanceof Error ? caughtError.message : 'Could not load orchestrator resources.')
+        setError(getDisplayErrorMessage(caughtError, 'Could not load orchestrator resources.'))
       }
     }
 

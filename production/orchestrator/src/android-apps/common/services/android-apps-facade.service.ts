@@ -88,8 +88,11 @@ export class AndroidAppsFacadeService {
   }
 
   /** Stops an app container. */
-  stop(id: string): Promise<AndroidApplication> {
-    return this.lifecycle.stop(id);
+  stop(
+    id: string,
+    options: { reason?: string; details?: Record<string, unknown> } = {},
+  ): Promise<AndroidApplication> {
+    return this.lifecycle.stop(id, options);
   }
 
   /** Replaces the APK used by an app. */

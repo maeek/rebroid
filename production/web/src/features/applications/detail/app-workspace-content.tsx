@@ -18,6 +18,7 @@ export const AppWorkspaceContent = ({
   isForeignOwnedApp,
   viewerSettings,
   viewerSlot,
+  onAppChange,
   onViewerSettingsChange
 }: {
   app: AppDefinition
@@ -26,6 +27,7 @@ export const AppWorkspaceContent = ({
   isForeignOwnedApp: boolean
   viewerSettings: ViewerSettings
   viewerSlot?: ReactNode
+  onAppChange: (app: AppDefinition) => void
   onViewerSettingsChange: (settings: ViewerSettings) => void
 }) => (
   <ProtectedSplitPageContent className='gap-5 pr-6'>
@@ -59,6 +61,7 @@ export const AppWorkspaceContent = ({
       app={app}
       permissions={permissions}
       viewerSettings={viewerSettings}
+      onAppChange={onAppChange}
       onViewerSettingsChange={onViewerSettingsChange}
     />
   </ProtectedSplitPageContent>

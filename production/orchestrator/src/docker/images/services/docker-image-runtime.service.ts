@@ -1,5 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { DockerEngineService } from '../../docker-engine.service';
+import { managedImageTag } from '../../docker.utils';
 
 @Injectable()
 export class DockerImageRuntimeService {
@@ -61,6 +62,19 @@ export class DockerImageRuntimeService {
         },
       );
     });
+    await this.markPulledImageAsManaged(image);
+  }
+
+  private async markPulledImageAsManaged(image: string) {
+    const inspect = await this.engine.read(
+      () => this.engine.docker.getImage(image).inspect(),
+      `Inspect pulled image ${image}`,
+    );
+    const [repo, tag] = managedImageTag(inspect.Id).split(':');
+    await this.engine.mutate(
+      () => this.engine.docker.getImage(inspect.Id).tag({ repo, tag }),
+      `Mark pulled image ${inspect.Id} as managed`,
+    );
   }
 
   async listImages() {

@@ -6,25 +6,31 @@ import { Switch } from '@/components/ui/switch'
 import { Visible } from '@/components/ui/visible'
 import { AppIcon } from '@/features/applications/components/app-icon'
 
-type CreateAppIconSectionProps = {
+type AppFormIconSectionProps = {
+  appId?: string
   appName: string
   iconPreview: string | null
   autoExtractIcon: boolean
   hasExtractedIcon: boolean
+  disabled?: boolean
+  showAutoExtract?: boolean
   onIconChange: (event: ChangeEvent<HTMLInputElement>) => void
   onClearIcon: () => void
   onAutoExtractIconChange: (checked: boolean) => void
 }
 
-export const CreateAppIconSection = ({
+export const AppFormIconSection = ({
+  appId = 'new',
   appName,
   iconPreview,
   autoExtractIcon,
   hasExtractedIcon,
+  disabled = false,
+  showAutoExtract = true,
   onIconChange,
   onClearIcon,
   onAutoExtractIconChange
-}: CreateAppIconSectionProps) => {
+}: AppFormIconSectionProps) => {
   const inputRef = useRef<HTMLInputElement>(null)
 
   const handleClearIcon = () => {
@@ -47,7 +53,7 @@ export const CreateAppIconSection = ({
       </p>
       <div className='flex w-full flex-col items-center gap-5'>
         <AppIcon
-          appId='new'
+          appId={appId}
           appName={appName || 'App'}
           icon={iconPreview}
           className='size-44 text-4xl shadow-[0_18px_60px_rgba(0,0,0,0.24)] max-sm:size-40'
@@ -58,6 +64,7 @@ export const CreateAppIconSection = ({
             ref={inputRef}
             type='file'
             accept='image/*'
+            disabled={disabled}
             onChange={event => onIconChange(event)}
           />
           <Visible when={iconPreview}>
@@ -65,27 +72,30 @@ export const CreateAppIconSection = ({
               type='button'
               variant='ghost'
               className='shrink-0'
+              disabled={disabled}
               onClick={handleClearIcon}
             >
               Clear icon
             </Button>
           </Visible>
         </div>
-        <div className='flex w-full items-center justify-between gap-4'>
-          <div className='flex min-w-0 flex-col'>
-            <span className='text-sm font-medium'>Auto extract from APK</span>
-            <span className='text-xs text-secondary-foreground'>
-              {hasExtractedIcon
-                ? 'A launcher icon was found during APK upload.'
-                : 'Upload an APK to extract its launcher icon.'}
-            </span>
+        <Visible when={showAutoExtract}>
+          <div className='flex w-full items-center justify-between gap-4'>
+            <div className='flex min-w-0 flex-col'>
+              <span className='text-sm font-medium'>Auto extract from APK</span>
+              <span className='text-xs text-secondary-foreground'>
+                {hasExtractedIcon
+                  ? 'A launcher icon was found during APK upload.'
+                  : 'Upload an APK to extract its launcher icon.'}
+              </span>
+            </div>
+            <Switch
+              checked={autoExtractIcon}
+              disabled={!hasExtractedIcon}
+              onCheckedChange={onAutoExtractIconChange}
+            />
           </div>
-          <Switch
-            checked={autoExtractIcon}
-            disabled={!hasExtractedIcon}
-            onCheckedChange={onAutoExtractIconChange}
-          />
-        </div>
+        </Visible>
       </div>
     </Section>
   )

@@ -562,7 +562,10 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
   }
 
   /** Stops an app container. */
-  async stop(id: string) {
+  async stop(
+    id: string,
+    options: { reason?: string; details?: Record<string, unknown> } = {},
+  ) {
     const app = await this.state.get(id);
     this.tracker.cancel(id);
 
@@ -572,6 +575,8 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     await this.state.save(app);
     await this.logs.append(app.id, 'Stop requested', {
       containerId: app.containerId,
+      reason: options.reason ?? 'user_request',
+      ...(options.details ?? {}),
     });
 
     if (app.containerId) {

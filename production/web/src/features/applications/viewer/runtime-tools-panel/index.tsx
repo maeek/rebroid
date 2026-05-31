@@ -1,28 +1,31 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { IconCast, IconChevronDown, IconClipboard, IconFolder, IconLogs } from '@tabler/icons-react'
+import { IconCast, IconChevronDown, IconClipboard, IconFolder, IconLogs, IconWorld } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { AppLogsContent } from '../app-logs-content'
 import { ClipboardToolsSection } from './clipboard-tools-section'
 import { DownloadsToolsSection } from './downloads-tools-section'
+import { NetworkAccessToolsSection } from './network-access-tools-section'
 import { StreamingToolsSection } from './streaming-tools-section'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { ViewerSettings } from '@/features/applications/viewer/viewer-settings'
 import type { PermissionMap } from '@/shared/permissions/permissions'
 
-type RuntimeToolId = 'clipboard' | 'files' | 'streaming' | 'logs'
+type RuntimeToolId = 'clipboard' | 'files' | 'streaming' | 'network-access' | 'logs'
 
 export const RuntimeToolsPanel = ({
   app,
   permissions,
   viewerSettings,
+  onAppChange,
   onViewerSettingsChange
 }: {
   app: AppDefinition
   permissions: PermissionMap
   viewerSettings: ViewerSettings
+  onAppChange: (app: AppDefinition) => void
   onViewerSettingsChange: (settings: ViewerSettings) => void
 }) => {
   const tools = useMemo(
@@ -42,6 +45,14 @@ export const RuntimeToolsPanel = ({
           description: `${viewerSettings.transport.toUpperCase()} • ${viewerSettings.bitrateMbps} Mbps`,
           Icon: IconCast
         },
+        hasPermission(permissions, 'applications:configure-egress')
+          ? {
+              id: 'network-access' as const,
+              title: 'Network access',
+              description: app.networkPolicyEnabled ? 'Restricted outbound access' : 'Unrestricted outbound access',
+              Icon: IconWorld
+            }
+          : null,
         hasPermission(permissions, 'applications:transfer-files') && app.running
           ? {
               id: 'files' as const,
@@ -59,7 +70,7 @@ export const RuntimeToolsPanel = ({
             }
           : null
       ].filter((tool): tool is NonNullable<typeof tool> => Boolean(tool)),
-    [app.running, permissions, viewerSettings.bitrateMbps, viewerSettings.transport]
+    [app.networkPolicyEnabled, app.running, permissions, viewerSettings.bitrateMbps, viewerSettings.transport]
   )
   const [activeTool, setActiveTool] = useState<RuntimeToolId | null>(() => tools[0]?.id ?? 'streaming')
 
@@ -95,6 +106,18 @@ export const RuntimeToolsPanel = ({
         <div className='min-h-30 px-4 max-h-300 overflow-auto'>
           <AppLogsContent app={app} />
         </div>
+      )
+    }
+
+    if (toolId === 'network-access') {
+      return (
+        <NetworkAccessToolsSection
+          app={app}
+          permissions={permissions}
+          onAppChange={onAppChange}
+          className={sectionClassName}
+          hideHeader={inline}
+        />
       )
     }
 

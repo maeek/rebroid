@@ -250,7 +250,7 @@ export const CastingSidecarSettings = ({
                         {session.applicationId ? (
                           <Link
                             className='truncate font-medium hover:text-primary'
-                            href={`/app/${session.applicationId}/details`}
+                            href={`/app/${session.applicationId}/manage`}
                           >
                             {app?.name ?? session.applicationId}
                           </Link>

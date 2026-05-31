@@ -2,6 +2,7 @@
 
 import { resolveAppIconUrl } from '@/features/applications/icons/url'
 import { cn } from '@/lib/utils'
+import { getHslColorFromCharCode, getHslColorFromCharCodeForeground } from '@/utils/hsl-from-text'
 
 const squircleMask =
   'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Cpath fill=%27black%27 d=%27M50 0C14 0 0 14 0 50s14 50 50 50 50-14 50-50S86 0 50 0Z%27/%3E%3C/svg%3E")'
@@ -32,6 +33,8 @@ export const AppIcon = ({
         maskImage: squircleMask,
         maskRepeat: 'no-repeat',
         maskSize: '100% 100%',
+        color: displayIcon ? getHslColorFromCharCodeForeground(appName) : undefined,
+        backgroundColor: displayIcon ? getHslColorFromCharCode(appName) : undefined,
         backgroundImage: displayIcon ? `url("${resolveAppIconUrl(displayIcon)}")` : undefined,
         backgroundSize: 'cover',
         backgroundPosition: 'center'

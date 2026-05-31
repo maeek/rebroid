@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { IconDotsVertical, IconInfoCircle, IconSettings, IconTerminal2 } from '@tabler/icons-react'
+import { IconDotsVertical, IconSettings, IconTerminal2 } from '@tabler/icons-react'
 import classNames from 'classnames'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -76,14 +76,14 @@ export const AppViewerActions = ({
               asChild
               variant='secondary'
               size='icon'
-              aria-label='View application details'
+              aria-label='Manage application settings'
             >
-              <Link href={`/app/${app?.id}/details`}>
-                <IconInfoCircle className='size-4' />
+              <Link href={`/app/${app?.id}/manage`}>
+                <IconSettings className='size-4' />
               </Link>
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Details</TooltipContent>
+          <TooltipContent>Settings</TooltipContent>
         </Tooltip>
       </Visible>
       <Visible when={showLogsAction}>

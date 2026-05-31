@@ -14,6 +14,8 @@ import { resolveAppIconUrl } from '@/features/applications/icons/url'
 import { AppViewerDeleteAction } from '@/features/applications/viewer/actions/app-viewer-delete-action'
 import { AppLogsDialog } from '@/features/applications/viewer/app-logs-dialog'
 import { AppViewerHeading } from '@/features/applications/viewer/heading'
+import { AppInfo } from '@/features/applications/viewer/info'
+import { AndroidNotifications } from '@/features/applications/viewer/notifications'
 import { useResourceLimitBounds } from '@/features/settings/hooks/use-resource-limit-bounds'
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
 import { ProtectedSplitPageContent, ProtectedSplitPageLayout } from '@/features/shell/components/protected-page-shell'
@@ -27,6 +29,7 @@ import { AppManageGeneralSettings } from './app-manage-general-settings'
 import { AppManageIconPanel } from './app-manage-icon-panel'
 import { AppManageNetworkPolicySettings } from './app-manage-network-policy-settings'
 import { AppManageRuntimeSettings } from './app-manage-runtime-settings'
+import type { AppFormValues } from '@/features/applications/create/create-app-form.types'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 
@@ -141,6 +144,30 @@ export default function AppManage({
   }
 
   const displayApp = { ...currentApp, name: appName, icon }
+  const formValues: AppFormValues = {
+    name: appName,
+    containerImage: currentApp.containerImage,
+    inactivityTimeoutSeconds,
+    memoryLimitMb,
+    cpuLimitCpus,
+    volumeSizeLimitMb,
+    customContainerArgs: containerArgs,
+    redroidDisplayProfileId: 'custom',
+    redroidCustomDisplayWidth: '',
+    redroidCustomDisplayHeight: '',
+    redroidCustomDisplayDpi: '',
+    redroidExtraArgs: ''
+  }
+
+  const handleFormChange = (patch: Partial<AppFormValues>) => {
+    hasPendingAppChangesRef.current = true
+    if (patch.name !== undefined) setAppName(patch.name)
+    if (patch.inactivityTimeoutSeconds !== undefined) setInactivityTimeoutSeconds(patch.inactivityTimeoutSeconds)
+    if (patch.memoryLimitMb !== undefined) setMemoryLimitMb(patch.memoryLimitMb)
+    if (patch.cpuLimitCpus !== undefined) setCpuLimitCpus(patch.cpuLimitCpus)
+    if (patch.volumeSizeLimitMb !== undefined) setVolumeSizeLimitMb(patch.volumeSizeLimitMb)
+    if (patch.customContainerArgs !== undefined) setContainerArgs(patch.customContainerArgs)
+  }
 
   const handleSave = async () => {
     setIsSaving(true)
@@ -216,7 +243,7 @@ export default function AppManage({
             <AppManageGeneralSettings
               app={currentApp}
               appId={currentApp.id}
-              appName={appName}
+              values={formValues}
               initialSettings={initialSettings}
               onAppNameChange={value => {
                 hasPendingAppChangesRef.current = true
@@ -226,36 +253,13 @@ export default function AppManage({
             <Visible when={showRuntimeSection}>
               <AppManageRuntimeSettings
                 app={currentApp}
-                inactivityTimeoutSeconds={inactivityTimeoutSeconds}
-                memoryLimitMb={memoryLimitMb}
-                cpuLimitCpus={cpuLimitCpus}
-                volumeSizeLimitMb={volumeSizeLimitMb}
+                values={formValues}
                 resourceLimits={resourceLimits}
-                containerArgs={containerArgs}
                 canChangeSessionLimit={canChangeSessionLimit}
                 canChangeResources={canChangeResources}
                 canChangeContainerArgs={canChangeContainerArgs}
                 canViewBackendDetails={canViewBackendDetails}
-                onInactivityTimeoutChange={value => {
-                  hasPendingAppChangesRef.current = true
-                  setInactivityTimeoutSeconds(value)
-                }}
-                onMemoryLimitChange={value => {
-                  hasPendingAppChangesRef.current = true
-                  setMemoryLimitMb(value)
-                }}
-                onCpuLimitChange={value => {
-                  hasPendingAppChangesRef.current = true
-                  setCpuLimitCpus(value)
-                }}
-                onVolumeSizeLimitChange={value => {
-                  hasPendingAppChangesRef.current = true
-                  setVolumeSizeLimitMb(value)
-                }}
-                onContainerArgsChange={value => {
-                  hasPendingAppChangesRef.current = true
-                  setContainerArgs(value)
-                }}
+                onChange={handleFormChange}
               />
             </Visible>
             <Visible when={canConfigureEgress}>
@@ -276,6 +280,15 @@ export default function AppManage({
                 setIcon(nextIcon)
               }}
             />
+            <div className='flex flex-col gap-4'>
+              <h2 className='font-bold'>Details</h2>
+              <AndroidNotifications app={currentApp} />
+              <AppInfo
+                app={currentApp}
+                permissions={permissions}
+                onAppChange={setCurrentApp}
+              />
+            </div>
           </div>
         </div>
       </ProtectedSplitPageContent>

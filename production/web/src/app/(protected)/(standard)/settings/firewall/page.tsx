@@ -35,6 +35,7 @@ export default async function OrchestratorFirewallSettingsPage() {
       <PlatformPageHeader
         title='Network access'
         description='Apply outbound network restrictions to application containers.'
+        includeOrchestratorBreadcrumb={false}
       />
       <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
         <Suspense

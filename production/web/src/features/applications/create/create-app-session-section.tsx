@@ -1,14 +1,14 @@
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Setting } from '@/features/settings/components/setting'
-import type { CreateAppFormValues } from './create-app-form.types'
+import type { AppFormValues } from './create-app-form.types'
 
-type CreateAppSessionSectionProps = {
-  values: CreateAppFormValues
-  onChange: (patch: Partial<CreateAppFormValues>) => void
+type AppFormSessionSectionProps = {
+  values: AppFormValues
+  onChange: (patch: Partial<AppFormValues>) => void
 }
 
-export const CreateAppSessionSection = ({ values, onChange }: CreateAppSessionSectionProps) => {
+export const AppFormSessionSection = ({ values, onChange }: AppFormSessionSectionProps) => {
   return (
     <Section
       title='Session'

@@ -163,6 +163,7 @@ export const AppViewerPage = ({
           permissions={permissions}
           isForeignOwnedApp={isForeignOwnedApp}
           viewerSettings={viewerSettings}
+          onAppChange={setCurrentApp}
           onViewerSettingsChange={setViewerSettings}
           viewerSlot={
             <AppViewerPane

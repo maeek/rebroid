@@ -31,7 +31,7 @@ export const CreateAppDisplaySection = ({ values, onChange }: CreateAppDisplaySe
               'flex min-h-10 items-center gap-3 rounded-lg border p-2 text-left transition-all duration-150',
               'bg-card/35 hover:border-primary/55 hover:bg-card/55 dark:shadow-[inset_0_0_10px_0_rgba(255,255,255,0.025)] shadow-[inset_0_0_10px_0_rgba(0,0,0,0.025)]',
               selected
-                ? 'border-primary/80 ring-1 ring-primary/30 shadow-[inset_0_0_10px_0_color-mix(in_srgb,var(--primary)_30%,rgba(0,0,0,0))]! dark:shadow-[inset_0_0_20px_0_color-mix(in_srgb,var(--primary)_30%,rgba(0,0,0,0))]!'
+                ? 'border-primary/80 ring-1 ring-primary/30 shadow-[inset_0_0_10px_0_color-mix(in_srgb,var(--primary)_30%,rgba(0,0,0,0))]! dark:shadow-[inset_0_0_10px_0_color-mix(in_srgb,var(--primary)_10%,rgba(0,0,0,0))]!'
                 : 'border-border/70'
             )}
             onClick={() => onChange({ redroidDisplayProfileId: profile.id })}
@@ -59,7 +59,7 @@ export const CreateAppDisplaySection = ({ values, onChange }: CreateAppDisplaySe
           'flex min-h-10 items-center gap-3 rounded-lg border p-2 text-left transition-all duration-150',
           'bg-card/35 hover:border-primary/55 hover:bg-card/55 dark:shadow-[inset_0_0_10px_0_rgba(255,255,255,0.025)] shadow-[inset_0_0_10px_0_rgba(0,0,0,0.025)]',
           values.redroidDisplayProfileId === 'custom'
-            ? 'border-primary/80 ring-1 ring-primary/30 shadow-[inset_0_0_10px_0_color-mix(in_srgb,var(--primary)_30%,rgba(0,0,0,0))]! dark:shadow-[inset_0_0_20px_0_color-mix(in_srgb,var(--primary)_30%,rgba(0,0,0,0))]!'
+            ? 'border-primary/80 ring-1 ring-primary/30 shadow-[inset_0_0_10px_0_color-mix(in_srgb,var(--primary)_30%,rgba(0,0,0,0))]! dark:shadow-[inset_0_0_10px_0_color-mix(in_srgb,var(--primary)_10%,rgba(0,0,0,0))]!'
             : 'border-border/70'
         )}
         onClick={() => {

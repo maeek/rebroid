@@ -1,4 +1,4 @@
-export type CreateAppFormValues = {
+export type AppFormValues = {
   name: string
   containerImage: string
   inactivityTimeoutSeconds: number
@@ -12,3 +12,5 @@ export type CreateAppFormValues = {
   redroidCustomDisplayDpi: string
   redroidExtraArgs: string
 }
+
+export type CreateAppFormValues = AppFormValues

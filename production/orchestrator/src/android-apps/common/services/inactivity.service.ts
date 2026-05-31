@@ -22,7 +22,15 @@ export class InactivityService {
         this.logger.log(
           `Stopping inactive application container ${app.containerName} for application ${app.id}.`,
         );
-        await this.androidApps.stop(app.id);
+        await this.androidApps.stop(app.id, {
+          reason: 'inactivity_timeout',
+          details: {
+            inactivityTimeoutSeconds: app.inactivityTimeoutSeconds,
+            lastScrcpyActivityAt:
+              app.lastScrcpyActivityAt?.toISOString() ?? null,
+            lastStartedAt: app.lastStartedAt?.toISOString() ?? null,
+          },
+        });
       }),
     );
   }

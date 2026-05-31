@@ -257,7 +257,7 @@ export const FirewallSettings = ({
                     <TableCell className='px-4 py-3'>
                       <Link
                         className='font-medium hover:text-primary'
-                        href={`/app/${application.id}/details`}
+                        href={`/app/${application.id}/manage`}
                       >
                         {application.name}
                       </Link>

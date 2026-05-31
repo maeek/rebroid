@@ -23,10 +23,10 @@ import { hasPermission, isRedroidImage, type PermissionMap } from '@/shared/perm
 import { applyRedroidDisplayContainerArgs, defaultRedroidDisplayProfileId } from '@/shared/runtime/redroid-runtime'
 import { CreateAppDeviceSection } from './create-app-device-section'
 import { CreateAppDisplaySection } from './create-app-display-section'
-import { CreateAppGeneralSection } from './create-app-general-section'
-import { CreateAppIconSection } from './create-app-icon-section'
-import { CreateAppResourcesSection } from './create-app-resources-section'
-import { CreateAppSessionSection } from './create-app-session-section'
+import { AppFormGeneralSection } from './create-app-general-section'
+import { AppFormIconSection } from './create-app-icon-section'
+import { AppFormResourcesSection } from './create-app-resources-section'
+import { AppFormSessionSection } from './create-app-session-section'
 import type { CreateAppFormValues } from './create-app-form.types'
 import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 import type { UploadedApk } from '@/server/orchestrator/applications/types'
@@ -311,7 +311,7 @@ export const CreateAppForm = ({
       >
         <div className='flex w-full flex-col gap-5'>
           <h2 className='font-bold my-4'>General</h2>
-          <CreateAppGeneralSection
+          <AppFormGeneralSection
             values={formValues}
             onChange={updateFormValues}
             uploadedApk={uploadedApk}
@@ -337,13 +337,13 @@ export const CreateAppForm = ({
             />
           </Visible>
           <Visible when={showSessionSection}>
-            <CreateAppSessionSection
+            <AppFormSessionSection
               values={formValues}
               onChange={updateFormValues}
             />
           </Visible>
           <Visible when={showResourcesSection}>
-            <CreateAppResourcesSection
+            <AppFormResourcesSection
               values={formValues}
               resourceLimits={resourceLimits}
               onChange={updateFormValues}
@@ -351,7 +351,7 @@ export const CreateAppForm = ({
           </Visible>
         </div>
         <div className='flex w-full flex-col gap-4 lg:mt-19'>
-          <CreateAppIconSection
+          <AppFormIconSection
             appName={trimmedName}
             iconPreview={iconPreview}
             autoExtractIcon={autoExtractIcon}

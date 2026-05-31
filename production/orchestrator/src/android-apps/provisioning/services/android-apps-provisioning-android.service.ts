@@ -1,9 +1,14 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { setTimeout as delay } from 'node:timers/promises';
 import { getErrorMessage } from '../../../common/error-message';
 import { DockerContainerExecService } from '../../../docker/containers/services/docker-container-exec.service';
 import { DockerContainerLifecycleService } from '../../../docker/containers/services/docker-container-lifecycle.service';
+import { DockerEngineService } from '../../../docker/docker-engine.service';
 import { DockerSidecarService } from '../../../docker/sidecar/services/docker-sidecar.service';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
@@ -13,9 +18,14 @@ import { isRedroidImageName } from '../utils/redroid-runtime.utils';
 
 @Injectable()
 export class AndroidAppsProvisioningAndroidService {
+  private readonly logger = new Logger(
+    AndroidAppsProvisioningAndroidService.name,
+  );
+
   constructor(
     private readonly exec: DockerContainerExecService,
     private readonly lifecycle: DockerContainerLifecycleService,
+    private readonly engine: DockerEngineService,
     private readonly sidecar: DockerSidecarService,
     private readonly logs: AndroidAppsLogService,
     private readonly tracker: AndroidAppsProvisioningTrackerService,
@@ -100,7 +110,7 @@ export class AndroidAppsProvisioningAndroidService {
   async prepareRemoteAccess(app: AndroidApplication) {
     this.assertContainerId(app);
 
-    await this.exec.execInContainer(app.containerId, [
+    await this.retryTransientRemoteAccessSetup(app.containerId, [
       'sh',
       '-lc',
       [
@@ -133,11 +143,27 @@ export class AndroidAppsProvisioningAndroidService {
 
     while (Date.now() < deadline) {
       this.tracker.ensureActive(app.id);
-      const [runtimeState, sidecarTarget, adbHost] = await Promise.all([
-        this.lifecycle.getContainerRuntimeState(app.containerId),
-        this.sidecar.ensureSidecarOnNetwork(app.networkName),
-        this.viewerNetwork.resolveScrcpyAdbHost(app),
-      ]);
+      let runtimeState;
+      let sidecarTarget;
+      let adbHost;
+      try {
+        [runtimeState, sidecarTarget, adbHost] = await Promise.all([
+          this.lifecycle.getContainerRuntimeState(app.containerId),
+          this.sidecar.ensureSidecarOnNetwork(app.networkName),
+          this.viewerNetwork.resolveScrcpyAdbHost(app),
+        ]);
+      } catch (error) {
+        if (!this.engine.isTransientDockerTransportError(error)) {
+          throw error;
+        }
+
+        lastProbe = getErrorMessage(error);
+        this.logger.warn(
+          `Redroid ADB sidecar readiness for ${app.id} hit a transient Docker transport error: ${lastProbe}`,
+        );
+        await delay(intervalMs);
+        continue;
+      }
 
       if (!runtimeState.exists || !runtimeState.running) {
         throw new Error(this.androidBootExitedMessage(runtimeState));
@@ -178,6 +204,31 @@ export class AndroidAppsProvisioningAndroidService {
     throw new Error(
       `Timed out waiting for redroid ADB from display sidecar after ${timeoutMs / 1000}s. Last probe: ${lastProbe}`,
     );
+  }
+
+  private async retryTransientRemoteAccessSetup(
+    containerId: string,
+    command: string[],
+  ) {
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        await this.exec.execInContainer(containerId, command);
+        return;
+      } catch (error) {
+        if (
+          attempt === maxAttempts ||
+          !this.engine.isTransientDockerTransportError(error)
+        ) {
+          throw error;
+        }
+
+        this.logger.warn(
+          `Redroid remote ADB setup hit a transient Docker transport error. Retrying ${attempt}/${maxAttempts - 1}: ${getErrorMessage(error)}`,
+        );
+        await delay(500 * attempt);
+      }
+    }
   }
 
   /** Makes sure the app has a container id first. */

@@ -368,6 +368,25 @@ const updateUser = async (id: string, input: UserEditorInput) => {
 const setUserDisabled = async (id: string, disabled: boolean) => updateUser(id, { disabled })
 const resetPassword = async (id: string, password: string) => updateUser(id, { password })
 
+const changeOwnPassword = async (id: string, currentPassword: string, newPassword: string) => {
+  const file = await readUsersFile()
+  const user = file.users.find(item => item.id === id)
+  if (!user) {
+    throw new Error('User not found.')
+  }
+  if (!(await verifyPassword(currentPassword, user.passwordHash))) {
+    throw new Error('Current password is incorrect.')
+  }
+  if (newPassword.length < minimumPasswordLength) {
+    throw new Error(`Password must be at least ${minimumPasswordLength} characters.`)
+  }
+
+  user.passwordHash = await hashPassword(newPassword)
+  user.sessionVersion += 1
+  user.updatedAt = nowIso()
+  await writeUsersFile(file)
+}
+
 const deleteUser = async (id: string) => {
   const file = await readUsersFile()
   const user = file.users.find(item => item.id === id)
@@ -435,6 +454,7 @@ const createGroup = async (input: {
 
 export const userService = {
   authenticate,
+  changeOwnPassword,
   createUser,
   createGroup,
   deleteUser,

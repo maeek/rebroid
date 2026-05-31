@@ -1,18 +1,18 @@
 import { NumberSliderField } from '@/components/ui/number-slider-field'
 import { Section } from '@/components/ui/section'
 import { Setting } from '@/features/settings/components/setting'
-import type { CreateAppFormValues } from './create-app-form.types'
+import type { AppFormValues } from './create-app-form.types'
 import type { ResourceLimitBounds } from '@/server/orchestrator/diagnostics/resource-limits'
 
-type CreateAppResourcesSectionProps = {
-  values: CreateAppFormValues
+type AppFormResourcesSectionProps = {
+  values: AppFormValues
   resourceLimits: ResourceLimitBounds | null
-  onChange: (patch: Partial<CreateAppFormValues>) => void
+  onChange: (patch: Partial<AppFormValues>) => void
 }
 
 const verticalSettingClassName = 'flex-col items-start w-full'
 
-export const CreateAppResourcesSection = ({ values, resourceLimits, onChange }: CreateAppResourcesSectionProps) => {
+export const AppFormResourcesSection = ({ values, resourceLimits, onChange }: AppFormResourcesSectionProps) => {
   return (
     <Section
       title='Resources'

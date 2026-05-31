@@ -2,26 +2,28 @@ import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
 import { Setting } from '@/features/settings/components/setting'
-import type { CreateAppFormValues } from './create-app-form.types'
+import type { AppFormValues } from './create-app-form.types'
 import type { UploadedApk } from '@/server/orchestrator/applications/types'
 
-type CreateAppGeneralSectionProps = {
-  values: CreateAppFormValues
-  onChange: (patch: Partial<CreateAppFormValues>) => void
-  uploadedApk: UploadedApk | null
+type AppFormGeneralSectionProps = {
+  values: AppFormValues
+  onChange: (patch: Partial<AppFormValues>) => void
+  uploadedApk?: UploadedApk | null
+  apkLabel?: string | null
   isUploadingApk: boolean
   onApkSelect: (file: File | null) => void
 }
 
 const verticalSettingClassName = 'flex-col items-start w-full'
 
-export const CreateAppGeneralSection = ({
+export const AppFormGeneralSection = ({
   values,
   onChange,
   uploadedApk,
+  apkLabel,
   isUploadingApk,
   onApkSelect
-}: CreateAppGeneralSectionProps) => {
+}: AppFormGeneralSectionProps) => {
   return (
     <Section
       title='Application'
@@ -55,11 +57,16 @@ export const CreateAppGeneralSection = ({
             type='file'
             accept='.apk,application/vnd.android.package-archive'
             disabled={isUploadingApk}
-            onChange={event => onApkSelect(event.target.files?.[0] ?? null)}
+            onChange={event => {
+              onApkSelect(event.target.files?.[0] ?? null)
+              event.target.value = ''
+            }}
           />
-          <Visible when={uploadedApk}>
+          <Visible when={uploadedApk || apkLabel}>
             <p className='text-sm text-secondary-foreground'>
-              Uploaded {uploadedApk?.originalName ?? ''} · {((uploadedApk?.sizeBytes ?? 0) / 1024 / 1024).toFixed(2)} MB
+              {uploadedApk
+                ? `Uploaded ${uploadedApk.originalName} · ${(uploadedApk.sizeBytes / 1024 / 1024).toFixed(2)} MB`
+                : apkLabel}
             </p>
           </Visible>
         </div>

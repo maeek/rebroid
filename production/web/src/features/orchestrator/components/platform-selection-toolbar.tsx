@@ -19,8 +19,8 @@ export const PlatformSelectionToolbar = ({
   onSearchChange: (value: string) => void
 }) => {
   return (
-    <div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'>
-      <div className='flex w-full flex-wrap items-center gap-2'>
+    <div className='flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between'>
+      <div className='flex w-full flex-wrap items-end gap-2 lg:min-w-0 lg:flex-1'>
         <div className='relative w-full max-w-md'>
           <IconSearch className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
           <Input
@@ -32,7 +32,7 @@ export const PlatformSelectionToolbar = ({
         </div>
         {filters}
       </div>
-      <div className='flex min-h-9 flex-wrap items-center justify-end gap-3'>
+      <div className='flex min-h-9 shrink-0 flex-wrap items-end justify-end gap-3'>
         <Visible when={selectedCount > 0}>
           <span className='text-sm text-secondary-foreground'>{selectedCount} selected</span>
         </Visible>

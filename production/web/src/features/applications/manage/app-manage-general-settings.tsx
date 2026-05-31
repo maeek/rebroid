@@ -1,13 +1,11 @@
-import { useRef, useState, type ChangeEvent } from 'react'
-import { IconUpload } from '@tabler/icons-react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTopLoader } from 'nextjs-toploader'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
 import { uploadApkWithProgress } from '@/features/applications/apks/upload'
+import { AppFormGeneralSection } from '@/features/applications/create/create-app-general-section'
 import { Setting } from '@/features/settings/components/setting'
 import {
   apkSizeLabel,
@@ -16,6 +14,7 @@ import {
 } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 import { toast } from '@/hooks/use-toast'
 import { updateApkAction } from '@/server/orchestrator/applications/mutation-actions'
+import type { AppFormValues } from '@/features/applications/create/create-app-form.types'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 import type { AndroidApplicationStatusDetail } from '@/server/orchestrator/applications/types'
@@ -23,7 +22,7 @@ import type { AndroidApplicationStatusDetail } from '@/server/orchestrator/appli
 type AppManageGeneralSettingsProps = {
   app?: AppDefinition
   appId: string
-  appName: string
+  values: AppFormValues
   initialSettings: OrchestratorUiSettings
   onAppNameChange: (value: string) => void
 }
@@ -34,12 +33,11 @@ const formatStatusLabel = (value?: string | null) => (value ? value.replaceAll('
 export const AppManageGeneralSettings = ({
   app,
   appId,
-  appName,
+  values,
   initialSettings,
   onAppNameChange
 }: AppManageGeneralSettingsProps) => {
   const [isUploadingApk, setIsUploadingApk] = useState(false)
-  const apkInputRef = useRef<HTMLInputElement>(null)
   const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
   const router = useRouter()
   const topLoader = useTopLoader()
@@ -51,8 +49,7 @@ export const AppManageGeneralSettings = ({
   const statusDescription = statusDetail?.description ?? app?.statusMessage
   const shouldShowLifecycleBadge = lifecycleLabel.toLowerCase() !== statusLabel.toLowerCase()
 
-  const handleApkUpload = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
+  const handleApkUpload = async (file: File | null) => {
     if (!file) return
 
     if (!isFileWithinApkLimit(file, settings.maxApkUploadSizeMb)) {
@@ -61,7 +58,6 @@ export const AppManageGeneralSettings = ({
         description: `The configured upload limit is ${apkSizeLabel(settings.maxApkUploadSizeMb)}.`,
         variant: 'destructive'
       })
-      event.target.value = ''
       return
     }
 
@@ -89,80 +85,54 @@ export const AppManageGeneralSettings = ({
     } finally {
       topLoader.done(true)
       setIsUploadingApk(false)
-      event.target.value = ''
     }
   }
 
   return (
-    <Section
-      title='General'
-      boxed
-      titleClassName='pb-4'
-      contentClassName='gap-5'
-    >
-      <Setting
-        label='Name'
-        className={verticalSettingClassName}
-        variant='vertical'
-        required
+    <>
+      <AppFormGeneralSection
+        values={values}
+        apkLabel={app?.apkOriginalName ? `Current APK: ${app.apkOriginalName}` : 'No APK uploaded'}
+        isUploadingApk={isUploadingApk}
+        onChange={patch => {
+          if (patch.name !== undefined) {
+            onAppNameChange(patch.name)
+          }
+        }}
+        onApkSelect={file => void handleApkUpload(file)}
+      />
+      <Section
+        title='Current state'
+        boxed
+        titleClassName='pb-4'
+        contentClassName='gap-5'
       >
-        <Input
-          value={appName}
-          required
-          aria-required='true'
-          minLength={2}
-          onChange={event => onAppNameChange(event.target.value)}
-        />
-      </Setting>
-      <Setting
-        label='State'
-        className={verticalSettingClassName}
-        variant='vertical'
-      >
-        <div className='flex flex-wrap gap-2'>
-          <Badge
-            variant={app?.status === 'error' ? 'destructive' : 'status'}
-            className='capitalize'
-          >
-            {statusLabel}
-          </Badge>
-          <Visible when={shouldShowLifecycleBadge}>
+        <Setting
+          label='State'
+          className={verticalSettingClassName}
+          variant='vertical'
+        >
+          <div className='flex flex-wrap gap-2'>
             <Badge
+              variant={app?.status === 'error' ? 'destructive' : 'status'}
               className='capitalize'
-              variant='secondary'
             >
-              {lifecycleLabel}
+              {statusLabel}
             </Badge>
+            <Visible when={shouldShowLifecycleBadge}>
+              <Badge
+                className='capitalize'
+                variant='secondary'
+              >
+                {lifecycleLabel}
+              </Badge>
+            </Visible>
+          </div>
+          <Visible when={statusDescription}>
+            <p className='mt-2 text-sm text-secondary-foreground'>{statusDescription}</p>
           </Visible>
-        </div>
-        <Visible when={statusDescription}>
-          <p className='mt-2 text-sm text-secondary-foreground'>{statusDescription}</p>
-        </Visible>
-      </Setting>
-      <Setting
-        label='APK'
-        className={verticalSettingClassName}
-        variant='vertical'
-      >
-        <div className='flex w-full flex-col gap-3'>
-          <p className='text-secondary-foreground'>{app?.apkOriginalName || 'No APK uploaded'}</p>
-          <input
-            ref={apkInputRef}
-            type='file'
-            accept='.apk,application/vnd.android.package-archive'
-            className='hidden'
-            onChange={event => void handleApkUpload(event)}
-          />
-          <Button
-            type='button'
-            disabled={isUploadingApk}
-            onClick={() => apkInputRef.current?.click()}
-          >
-            <IconUpload className='size-4' />
-            Upload APK
-          </Button>
-        </div>
-      </Setting>
-    </Section>
+        </Setting>
+      </Section>
+    </>
   )
 }

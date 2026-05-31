@@ -139,7 +139,16 @@ export class SystemResourcesService {
       return this.volumeCache.volumes;
     }
 
-    const df = await this.docker.systemDf();
+    let df: Awaited<ReturnType<DockerResourceRuntimeService['systemDf']>>;
+    try {
+      df = await this.docker.systemDf();
+    } catch (error) {
+      this.logger.warn(
+        `Unable to collect managed volume usage: ${getErrorMessage(error)}`,
+      );
+      return this.volumeCache?.volumes ?? [];
+    }
+
     const dockerVolumes = (df.Volumes ?? []) as DockerVolumeDf[];
     const volumes = dockerVolumes
       .filter(
