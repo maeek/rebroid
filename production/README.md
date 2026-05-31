@@ -151,9 +151,15 @@ services:
       CONTAINER_IMAGE: redroid/redroid:15.0.0-latest
       REDROID_BOOT_TIMEOUT_SECONDS: 420
       REDROID_DEVICES: /dev/dri:/dev/dri:rwm
+      DOCKER_STOPPING_STALE_TIMEOUT_SECONDS: 60
+      DOCKER_REQUEST_TIMEOUT_MS: 15000
 ```
 
 `REDROID_CGROUPNS_MODE=private` and `REDROID_OPTIONAL_DEVICES=/dev/ashmem:/dev/ashmem:rwm` are already the built-in defaults. Keep the cgroup namespace private when you use CPU or memory limits so Android runtime processes stay inside the Docker-accounted cgroup. `REDROID_CGROUPNS_MODE=host` is available as an escape hatch for unusual hosts, but it can make privileged redroid processes visible in host process monitors while Docker/Portainer stats only report a small outer-container load. `REDROID_DEVICES` is for required mappings and will fail container creation if the host path is missing; `REDROID_OPTIONAL_DEVICES` is for best-effort mappings such as ashmem.
+
+`DOCKER_STOPPING_STALE_TIMEOUT_SECONDS` controls how long an interrupted stop may remain visibly in progress before the orchestrator trusts Docker's current runtime state and recovers the app to either running or stopped. The built-in default is `60`.
+
+`DOCKER_REQUEST_TIMEOUT_MS` bounds ordinary Docker API requests so inventory and cleanup calls fail fast when the container engine is blocked. Background removal retries cleanup after failures. The built-in default is `15000`.
 
 Everything else is primarily for advanced deployments: custom networks, external orchestrator/web separation, sidecar image overrides, or firewall adapter tuning.
 

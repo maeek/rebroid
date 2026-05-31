@@ -340,5 +340,6 @@ export interface SwitchApplicationProfileInput {
 export interface DeleteAndroidApplicationResponse {
   id: string
   deleted: boolean
+  cleanupQueued: boolean
   removedData: boolean
 }

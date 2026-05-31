@@ -32,21 +32,24 @@ export class SystemResourcesService {
    * Aggregates managed container counts, live resource usage, and cached volume sizes.
    */
   async getUsage(refreshVolumes = false) {
-    const hostCapacity = await this.docker.hostCapacity();
-    const containers = await this.docker.listManagedContainers();
-    const volumes = await this.getVolumeUsage(refreshVolumes);
+    const [hostCapacity, containers, volumes] = await Promise.all([
+      this.docker.hostCapacity(),
+      this.docker.listManagedContainers(),
+      this.getVolumeUsage(refreshVolumes),
+    ]);
     const running = containers.filter(
       (container) => container.State === 'running',
     ).length;
-    const managedContainerResourceUsage =
-      await this.getManagedContainerResourceUsage(containers);
+    const [managedContainerResourceUsage, dockerRootAvailableBytes] =
+      await Promise.all([
+        this.getManagedContainerResourceUsage(containers),
+        this.getAvailableBytes(hostCapacity.dockerRootDir),
+      ]);
 
     return {
       hostMemoryBytes: hostCapacity.memoryBytes,
       hostCpuCores: hostCapacity.cpuCores,
-      dockerRootAvailableBytes: await this.getAvailableBytes(
-        hostCapacity.dockerRootDir,
-      ),
+      dockerRootAvailableBytes,
       containersTotal: containers.length,
       containersRunning: running,
       containersStopped: containers.length - running,

@@ -1,6 +1,12 @@
-import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
+import { setTimeout as delay } from 'node:timers/promises';
 import { Repository } from 'typeorm';
 import { UploadedApk } from '../../../apk/entities/uploaded-apk.entity';
 import { ApkCatalogService } from '../../../apk/services/apk-catalog.service';
@@ -45,8 +51,9 @@ import { UpdateAndroidApplicationApkDto } from '../dto/update-android-applicatio
 import { AndroidAppsDisplaySidecarService } from '../../viewer/services/android-apps-display-sidecar.service';
 
 @Injectable()
-export class AndroidAppsLifecycleService {
+export class AndroidAppsLifecycleService implements OnModuleInit {
   private readonly logger = new Logger(AndroidAppsLifecycleService.name);
+  private readonly removalJobs = new Set<string>();
 
   constructor(
     @InjectRepository(AndroidApplication)
@@ -69,6 +76,14 @@ export class AndroidAppsLifecycleService {
     private readonly state: AndroidAppsStateService,
     private readonly displaySidecar: AndroidAppsDisplaySidecarService,
   ) {}
+
+  onModuleInit() {
+    void this.resumeInterruptedRemovals().catch((error) => {
+      this.logger.warn(
+        `Could not resume interrupted removals: ${getErrorMessage(error)}`,
+      );
+    });
+  }
 
   /** Creates a new app and starts provisioning. */
   async create(dto: CreateAndroidApplicationDto) {
@@ -578,7 +593,13 @@ export class AndroidAppsLifecycleService {
     });
 
     if (app.containerId) {
-      await this.lifecycle.stopContainer(app.containerId, 0);
+      try {
+        await this.lifecycle.stopContainer(app.containerId, 0);
+      } catch (error) {
+        if (!(await this.recoverAfterFailedStop(app, error))) {
+          throw error;
+        }
+      }
     }
 
     this.releaseDisplaySessionsInBackground(app.id, 'stopping');
@@ -635,40 +656,97 @@ export class AndroidAppsLifecycleService {
       volumeName: app.volumeName,
     });
 
+    const removeData = query.removeData ?? true;
+    this.scheduleRemoval(app, removeData);
+
+    return {
+      id,
+      deleted: false,
+      cleanupQueued: true,
+      removedData: removeData,
+    };
+  }
+
+  /** Finishes removal outside the request so Docker container locks cannot block the UI. */
+  private scheduleRemoval(app: AndroidApplication, removeData: boolean) {
+    if (this.removalJobs.has(app.id)) {
+      return;
+    }
+
+    this.removalJobs.add(app.id);
+    void this.removeInBackground(app, removeData).finally(() => {
+      this.removalJobs.delete(app.id);
+    });
+  }
+
+  private async removeInBackground(
+    app: AndroidApplication,
+    removeData: boolean,
+  ) {
+    const maxAttempts = 12;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        await this.cleanupRemovedApplication(app, removeData);
+        await this.applications.remove(app);
+        await this.logs.remove(app.id);
+        return;
+      } catch (error) {
+        const message = getErrorMessage(error);
+        this.logger.warn(
+          `Removal cleanup attempt ${attempt}/${maxAttempts} failed for ${app.id}: ${message}`,
+        );
+        if (attempt === maxAttempts) {
+          await this.logs
+            .append(app.id, 'Removal cleanup paused', { error: message })
+            .catch(() => undefined);
+          return;
+        }
+        await delay(5_000);
+      }
+    }
+  }
+
+  private async cleanupRemovedApplication(
+    app: AndroidApplication,
+    removeData: boolean,
+  ) {
+    await this.networkPolicy.remove(app);
     if (app.containerId) {
-      await this.networkPolicy.remove(app);
       await this.lifecycle.removeContainer(app.containerId);
       app.containerId = null;
     }
     await this.lifecycle.removeContainerByName(app.containerName);
     this.releaseDisplaySessionsInBackground(app.id, 'removing');
-
     await this.networks.removeNetwork(app.networkName);
-    const removeData = query.removeData ?? true;
-    if (removeData) {
-      const volumeNames = new Set([
-        app.volumeName,
-        ...parseSavedProfiles(app.savedProfilesJson).map(
-          (profile) =>
-            this.networkIsolation.namesFor(app.id, app.name, profile.name)
-              .volumeName,
-        ),
-      ]);
-      await Promise.all(
-        [...volumeNames].map((volumeName) =>
-          this.resources.removeVolume(volumeName),
-        ),
-      );
+
+    if (!removeData) {
+      return;
     }
 
-    await this.applications.remove(app);
-    await this.logs.remove(id);
+    const volumeNames = new Set([
+      app.volumeName,
+      ...parseSavedProfiles(app.savedProfilesJson).map(
+        (profile) =>
+          this.networkIsolation.namesFor(app.id, app.name, profile.name)
+            .volumeName,
+      ),
+    ]);
+    await Promise.all(
+      [...volumeNames].map((volumeName) =>
+        this.resources.removeVolume(volumeName),
+      ),
+    );
+  }
 
-    return {
-      id,
-      deleted: true,
-      removedData: removeData,
-    };
+  private async resumeInterruptedRemovals() {
+    const apps = await this.applications.findBy({
+      status: AndroidApplicationStatus.Removing,
+    });
+    for (const app of apps) {
+      this.logger.warn(`Resuming interrupted removal cleanup for ${app.id}.`);
+      this.tracker.cancel(app.id);
+      this.scheduleRemoval(app, false);
+    }
   }
 
   /** Applies profile changes before starting the app. */
@@ -1008,6 +1086,45 @@ export class AndroidAppsLifecycleService {
           `Could not release display sessions while ${operation} ${applicationId}: ${getErrorMessage(error)}`,
         );
       });
+  }
+
+  /**
+   * A transport error does not prove the container stayed running. Inspect Docker
+   * once so definite failures recover immediately and accepted stops can continue.
+   */
+  private async recoverAfterFailedStop(
+    app: AndroidApplication,
+    error: unknown,
+  ) {
+    if (!app.containerId) {
+      return true;
+    }
+
+    const message = getErrorMessage(error);
+    try {
+      const runtimeState = await this.lifecycle.getContainerRuntimeState(
+        app.containerId,
+      );
+      if (!runtimeState.exists) {
+        app.containerId = null;
+        return true;
+      }
+      if (!runtimeState.running) {
+        return true;
+      }
+
+      app.status = AndroidApplicationStatus.Running;
+      app.lifecycleStage = AndroidApplicationLifecycleStage.Ready;
+      app.statusMessage = 'Stop failed. Runtime container is still running.';
+      await this.logs.append(app.id, 'Stop failed', { error: message });
+      await this.state.save(app);
+      return false;
+    } catch (inspectError) {
+      this.logger.warn(
+        `Could not verify container state after stop failed for ${app.id}: ${getErrorMessage(inspectError)}`,
+      );
+      return false;
+    }
   }
 
   /** Copies uploaded APK data onto the app record. */

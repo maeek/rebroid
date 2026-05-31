@@ -27,13 +27,15 @@ export const useAppsListController = ({
   yourApps: AppDefinition[]
   initialSettings: OrchestratorUiSettings
 }) => {
+  const stoppingOverrideTimeoutMs = 60_000
   const [apps, setApps] = useState(yourApps)
   const [isManaging, setIsManaging] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [bulkAction, setBulkAction] = useState<BulkAction | null>(null)
   const [pendingAppAction, setPendingAppAction] = useState<PendingAppAction | null>(null)
   const [isBulkWorking, setIsBulkWorking] = useState(false)
-  const pendingRefreshOverridesRef = useRef<Map<string, AppDefinition>>(new Map())
+  const pendingRefreshOverridesRef = useRef<Map<string, { app: AppDefinition; expiresAt: number | null }>>(new Map())
+  const hiddenRemovingIdsRef = useRef<Set<string>>(new Set())
   const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
   const refreshIntervalMs = getAppsRefreshIntervalMs(apps, settings.appListRefreshIntervalSeconds * 1000)
 
@@ -58,15 +60,25 @@ export const useAppsListController = ({
           const currentIcons = new Map(current.map(app => [app.id, app.icon]))
           const currentOwnerNames = new Map(current.map(app => [app.id, app.ownerDisplayName]))
 
-          return items.map(item => {
-            const app = mapAndroidApplicationToAppDefinition(item)
-            const nextApp = {
-              ...app,
-              icon: currentIcons.get(app.id) ?? app.icon,
-              ownerDisplayName: currentOwnerNames.get(app.id) ?? app.ownerDisplayName
-            }
-            return pendingRefreshOverridesRef.current.get(nextApp.id) ?? nextApp
-          })
+          return items
+            .filter(item => !hiddenRemovingIdsRef.current.has(item.id))
+            .map(item => {
+              const app = mapAndroidApplicationToAppDefinition(item)
+              const nextApp = {
+                ...app,
+                icon: currentIcons.get(app.id) ?? app.icon,
+                ownerDisplayName: currentOwnerNames.get(app.id) ?? app.ownerDisplayName
+              }
+              const override = pendingRefreshOverridesRef.current.get(nextApp.id)
+              if (!override) {
+                return nextApp
+              }
+              if (override.expiresAt !== null && override.expiresAt <= Date.now()) {
+                pendingRefreshOverridesRef.current.delete(nextApp.id)
+                return nextApp
+              }
+              return override.app
+            })
         })
       } catch {
         // Keep the current list on transient refresh failures.
@@ -76,7 +88,10 @@ export const useAppsListController = ({
 
   const updateApp = (updatedApp: AppDefinition, preserveDuringRefresh = false) => {
     if (preserveDuringRefresh) {
-      pendingRefreshOverridesRef.current.set(updatedApp.id, updatedApp)
+      pendingRefreshOverridesRef.current.set(updatedApp.id, {
+        app: updatedApp,
+        expiresAt: updatedApp.lifecycleStage === 'stopping' ? Date.now() + stoppingOverrideTimeoutMs : null
+      })
     } else {
       pendingRefreshOverridesRef.current.delete(updatedApp.id)
     }
@@ -86,6 +101,7 @@ export const useAppsListController = ({
 
   const removeApp = (appId: string) => {
     pendingRefreshOverridesRef.current.delete(appId)
+    hiddenRemovingIdsRef.current.add(appId)
     setApps(current => current.filter(item => item.id !== appId))
   }
 

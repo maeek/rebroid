@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { getErrorMessage } from '../../../common/error-message';
@@ -24,6 +25,7 @@ export class AndroidAppsStateService {
   constructor(
     @InjectRepository(AndroidApplication)
     private readonly applications: Repository<AndroidApplication>,
+    private readonly config: ConfigService,
     private readonly lifecycle: DockerContainerLifecycleService,
     private readonly networkPolicy: NetworkPolicyService,
     private readonly sidecar: DockerSidecarService,
@@ -166,6 +168,13 @@ export class AndroidAppsStateService {
       return this.status.decorateApplication(app);
     }
 
+    if (
+      app.lifecycleStage === AndroidApplicationLifecycleStage.Stopping &&
+      this.isStoppingStateStale(app)
+    ) {
+      return this.recoverStaleStoppingState(app, runtimeState);
+    }
+
     if (runtimeState.exists && runtimeState.running) {
       if (
         app.status === AndroidApplicationStatus.Stopped ||
@@ -249,6 +258,50 @@ export class AndroidAppsStateService {
     }
 
     return this.status.decorateApplication(app);
+  }
+
+  /**
+   * Stops can be interrupted after Docker accepted the request but before cleanup
+   * completed. Once the stopping marker is stale, trust Docker as the source of truth.
+   */
+  private async recoverStaleStoppingState(
+    app: AndroidApplication,
+    runtimeState: ContainerRuntimeState,
+  ) {
+    this.logger.warn(
+      `Recovering stale stopping state for ${app.id} from Docker runtime state.`,
+    );
+
+    if (runtimeState.exists && runtimeState.running) {
+      app.status = AndroidApplicationStatus.Running;
+      app.lifecycleStage = AndroidApplicationLifecycleStage.Ready;
+      app.statusMessage =
+        'Stop did not complete. Runtime container is still running.';
+      app.lastError = null;
+      return this.saveAndDecorate(app);
+    }
+
+    if (!runtimeState.exists) {
+      void this.networkPolicy.remove(app);
+      app.containerId = null;
+    }
+
+    void this.releaseViewerNetwork(app);
+    app.status = AndroidApplicationStatus.Stopped;
+    app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
+    app.statusMessage = this.status.stoppedStatusMessage(app);
+    app.lastError = null;
+    app.lastStoppedAt = runtimeState.finishedAt
+      ? new Date(runtimeState.finishedAt)
+      : new Date();
+    return this.saveAndDecorate(app);
+  }
+
+  private isStoppingStateStale(app: AndroidApplication) {
+    const timeoutMs =
+      this.config.getOrThrow<number>('app.docker.stoppingStaleTimeoutSeconds') *
+      1000;
+    return Date.now() - app.updatedAt.getTime() >= timeoutMs;
   }
 
   /**

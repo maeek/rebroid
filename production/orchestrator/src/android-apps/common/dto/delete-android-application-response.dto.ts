@@ -8,5 +8,8 @@ export class DeleteAndroidApplicationResponseDto {
   deleted!: boolean;
 
   @ApiProperty({ example: true })
+  cleanupQueued!: boolean;
+
+  @ApiProperty({ example: true })
   removedData!: boolean;
 }

@@ -2,7 +2,7 @@ import { AndroidApplicationStatus } from '../../android-application-status';
 import { shouldReconcileContainerState } from './android-apps-state.utils';
 
 describe('android apps state utilities', () => {
-  it('reconciles only provisioned or running apps with a container', () => {
+  it('reconciles runtime-backed app states with a container', () => {
     expect(
       shouldReconcileContainerState({
         containerId: 'container-1',
@@ -29,6 +29,6 @@ describe('android apps state utilities', () => {
         containerId: 'container-1',
         status: AndroidApplicationStatus.Stopped,
       } as never),
-    ).toBe(false);
+    ).toBe(true);
   });
 });

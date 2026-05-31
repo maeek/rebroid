@@ -7,15 +7,18 @@ import { hasDockerStatusCode } from './utils/docker-engine.utils';
 const dockerConnectionOptions = (
   dockerHost: string | undefined,
   socketPath: string,
+  timeout: number,
+  connectionTimeout: number,
 ): Dockerode.DockerOptions => {
+  const requestOptions = { timeout, connectionTimeout };
   const normalizedHost = dockerHost?.trim();
   if (!normalizedHost) {
-    return { socketPath };
+    return { socketPath, ...requestOptions };
   }
 
   if (normalizedHost.startsWith('unix://')) {
     const url = new URL(normalizedHost);
-    return { socketPath: decodeURIComponent(url.pathname) };
+    return { socketPath: decodeURIComponent(url.pathname), ...requestOptions };
   }
 
   if (
@@ -35,10 +38,11 @@ const dockerConnectionOptions = (
       protocol,
       host: url.hostname,
       port: url.port ? Number(url.port) : undefined,
+      ...requestOptions,
     };
   }
 
-  return { host: normalizedHost };
+  return { host: normalizedHost, ...requestOptions };
 };
 
 @Injectable()
@@ -53,6 +57,8 @@ export class DockerEngineService {
       dockerConnectionOptions(
         dockerHost,
         this.config.getOrThrow<string>('app.docker.socketPath'),
+        this.config.getOrThrow<number>('app.docker.requestTimeoutMs'),
+        this.config.getOrThrow<number>('app.docker.connectionTimeoutMs'),
       ),
     );
     this.resourcePrefix = this.config.getOrThrow<string>(
