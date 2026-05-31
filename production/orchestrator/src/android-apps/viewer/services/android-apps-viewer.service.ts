@@ -14,6 +14,10 @@ import { AndroidAppsViewerNetworkService } from './android-apps-viewer-network.s
 @Injectable()
 export class AndroidAppsViewerService {
   private readonly logger = new Logger(AndroidAppsViewerService.name);
+  private readonly viewerTargetPreparations = new Map<
+    string,
+    Promise<{ adbHost: string; viewerTarget: ViewerTargetStatus }>
+  >();
 
   constructor(
     private readonly config: ConfigService,
@@ -65,8 +69,29 @@ export class AndroidAppsViewerService {
     };
   }
 
+  /** Coalesces concurrent viewer refreshes while the sidecar target is settling. */
+  private async prepareViewerTarget(
+    app: Awaited<ReturnType<AndroidAppsViewerService['getRunningRuntimeApp']>>,
+  ) {
+    const key = `${app.id}:${app.containerId}`;
+    const existing = this.viewerTargetPreparations.get(key);
+    if (existing) {
+      return existing;
+    }
+
+    const pending = this.prepareViewerTargetOnce(app).finally(() => {
+      if (this.viewerTargetPreparations.get(key) === pending) {
+        this.viewerTargetPreparations.delete(key);
+      }
+    });
+    this.viewerTargetPreparations.set(key, pending);
+    return pending;
+  }
+
   /** Retries the lazy sidecar attachment while a freshly started runtime settles. */
-  private async prepareViewerTarget(app: Awaited<ReturnType<AndroidAppsViewerService['getRunningRuntimeApp']>>) {
+  private async prepareViewerTargetOnce(
+    app: Awaited<ReturnType<AndroidAppsViewerService['getRunningRuntimeApp']>>,
+  ) {
     const maxAttempts = 3;
     let adbHost = app.containerName;
     let viewerTarget: ViewerTargetStatus | null = null;
@@ -143,7 +168,9 @@ export class AndroidAppsViewerService {
 
   /** Loads one running app for viewer actions. */
   private async getRunningRuntimeApp(id: string) {
-    const app = await this.state.get(id);
+    // Viewer bootstrap already probes the runtime and sidecar. Avoid adding a
+    // Docker reconciliation read to every iframe refresh and activity ping.
+    const app = await this.state.getStored(id);
     if (!app.containerId || app.status !== AndroidApplicationStatus.Running) {
       throw new ConflictException(
         'Application must be running before using viewer runtime tools.',
