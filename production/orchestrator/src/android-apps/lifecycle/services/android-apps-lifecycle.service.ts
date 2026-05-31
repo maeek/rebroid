@@ -133,6 +133,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
         dto.containerArgs,
       ),
       recreateContainerOnNextStart: false,
+      removeDataOnRemoval: false,
       networkPolicyEnabled: true,
       networkPolicyAllowCidrs: '[]',
       networkPolicyStatus: null,
@@ -648,6 +649,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     app.status = AndroidApplicationStatus.Removing;
     app.lifecycleStage = AndroidApplicationLifecycleStage.Removing;
     app.statusMessage = 'Removing application container and network resources.';
+    app.removeDataOnRemoval = query.removeData ?? true;
     await this.state.save(app);
     await this.logs.append(app.id, 'Remove requested', {
       removeData: query.removeData ?? true,
@@ -656,7 +658,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
       volumeName: app.volumeName,
     });
 
-    const removeData = query.removeData ?? true;
+    const removeData = app.removeDataOnRemoval;
     this.scheduleRemoval(app, removeData);
 
     return {
@@ -745,7 +747,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     for (const app of apps) {
       this.logger.warn(`Resuming interrupted removal cleanup for ${app.id}.`);
       this.tracker.cancel(app.id);
-      this.scheduleRemoval(app, false);
+      this.scheduleRemoval(app, app.removeDataOnRemoval);
     }
   }
 

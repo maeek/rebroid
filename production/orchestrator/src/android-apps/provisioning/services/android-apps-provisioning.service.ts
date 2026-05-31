@@ -37,8 +37,10 @@ export class AndroidAppsProvisioningService {
 
   /** Runs the full setup flow for a new app. */
   async provision(applicationId: string) {
+    let app: AndroidApplication | null = null;
+
     try {
-      const app = await this.beginProvisioning(applicationId);
+      app = await this.beginProvisioning(applicationId);
 
       await this.ensureImageAvailable(app);
       await this.prepareRuntimeBoundary(app);
@@ -51,6 +53,7 @@ export class AndroidAppsProvisioningService {
     } catch (error) {
       if (this.tracker.isCancellationError(error)) {
         this.logger.log(`Provisioning cancelled for ${applicationId}.`);
+        await this.removeCancelledProvisioningContainer(app);
         return;
       }
 
@@ -66,6 +69,23 @@ export class AndroidAppsProvisioningService {
         statusMessage: message,
         lastError: message,
       });
+    }
+  }
+
+  /** Mops up a container created while a concurrent delete cancelled setup. */
+  private async removeCancelledProvisioningContainer(
+    app: AndroidApplication | null,
+  ) {
+    if (!app) {
+      return;
+    }
+
+    try {
+      await this.lifecycle.removeContainerByName(app.containerName);
+    } catch (error) {
+      this.logger.warn(
+        `Could not remove cancelled provisioning container ${app.containerName}: ${getErrorMessage(error)}`,
+      );
     }
   }
 

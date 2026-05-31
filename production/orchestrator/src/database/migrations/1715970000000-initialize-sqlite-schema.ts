@@ -57,6 +57,12 @@ export class InitializeSqliteSchema1715970000000 implements MigrationInterface {
               default: '0',
             },
             {
+              name: 'removeDataOnRemoval',
+              type: 'boolean',
+              isNullable: false,
+              default: '0',
+            },
+            {
               name: 'networkPolicyEnabled',
               type: 'boolean',
               isNullable: false,

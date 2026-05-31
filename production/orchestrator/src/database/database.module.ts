@@ -9,6 +9,7 @@ import { InitializeSqliteSchema1715970000000 } from './migrations/1715970000000-
 import { AddApkPackageName1716060000000 } from './migrations/1716060000000-add-apk-package-name';
 import { AddUploadedApkMetadata1716070000000 } from './migrations/1716070000000-add-uploaded-apk-metadata';
 import { AddApplicationSavedProfiles1716080000000 } from './migrations/1716080000000-add-application-saved-profiles';
+import { AddApplicationRemovalDataIntent1716090000000 } from './migrations/1716090000000-add-application-removal-data-intent';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { AddApplicationSavedProfiles1716080000000 } from './migrations/171608000
             AddApkPackageName1716060000000,
             AddUploadedApkMetadata1716070000000,
             AddApplicationSavedProfiles1716080000000,
+            AddApplicationRemovalDataIntent1716090000000,
           ],
           migrationsRun: true,
           synchronize: false,

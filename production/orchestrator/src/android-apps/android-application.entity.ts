@@ -257,6 +257,9 @@ export class AndroidApplication {
   @Column({ default: false })
   recreateContainerOnNextStart!: boolean;
 
+  @Column({ default: false })
+  removeDataOnRemoval!: boolean;
+
   @ApiProperty({ example: true })
   @Column({ default: true })
   networkPolicyEnabled!: boolean;
