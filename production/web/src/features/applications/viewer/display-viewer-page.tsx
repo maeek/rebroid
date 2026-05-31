@@ -267,14 +267,50 @@ export async function DisplayViewerPage({
   const viewerSettings = viewerSettingsFromSearchParams(resolvedSearchParams)
 
   let app: AndroidApplication
-  let session: ScrcpySession
   try {
-    ;[app, session] = await Promise.all([getApplicationAction(id), getScrcpySessionAction(id)])
+    app = await getApplicationAction(id)
   } catch {
     return (
       <ViewerSplash
         title='Viewer unavailable'
         description='The app must be running before a display viewer stream can be opened.'
+        detail={viewerUnavailableDetail}
+        tone='danger'
+      />
+    )
+  }
+
+  let session: ScrcpySession
+  try {
+    session = await getScrcpySessionAction(id)
+  } catch {
+    const startupDeadline = getViewerStartupDeadline(app.status.lastStartedAt)
+    if (
+      app.status.currentStatus === 'running' &&
+      startupDeadline &&
+      isLikelyRedroidImage(app.runtime.image) &&
+      Date.now() < startupDeadline.getTime()
+    ) {
+      return (
+        <>
+          <ViewerStartupRefresh
+            deadlineAt={startupDeadline.toISOString()}
+            intervalMs={redroidViewerRefreshIntervalMs}
+          />
+          <ViewerSplash
+            title='Starting Android viewer'
+            description='The app is running, but the live display connection is still getting ready.'
+            detail={`Retrying every ${Math.round(redroidViewerRefreshIntervalMs / 1000)} seconds.`}
+            icon={<IconLoader2 className='size-10 animate-spin' />}
+          />
+        </>
+      )
+    }
+
+    return (
+      <ViewerSplash
+        title='Viewer unavailable'
+        description='The live display session could not be opened.'
         detail={viewerUnavailableDetail}
         tone='danger'
       />
