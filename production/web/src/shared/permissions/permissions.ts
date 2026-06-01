@@ -51,6 +51,12 @@ export const permissionDefinitions = [
     description: 'Upload or replace APK artifacts for owned applications.'
   },
   {
+    id: 'applications:upload-apk',
+    category: 'application-lifecycle',
+    name: 'Upload APK',
+    description: 'Upload APK artifacts into owned application storage.'
+  },
+  {
     id: 'applications:change-base-image',
     category: 'runtime-configuration',
     name: 'Change base image',
@@ -166,6 +172,7 @@ export const defaultUserPermissions: PermissionMap = {
   'applications:stop': true,
   'applications:delete': true,
   'applications:update-apk': true,
+  'applications:upload-apk': true,
   'applications:use-redroid-images': true,
   'applications:switch-profile': true,
   'applications:view-logs': true,

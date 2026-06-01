@@ -1,15 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Post,
-  Query,
-  UploadedFile,
-  UseInterceptors,
-} from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { Body, Controller, Delete, Get, Param, Post, Query, Req } from '@nestjs/common';
 import {
   ApiBody,
   ApiConsumes,
@@ -17,6 +6,7 @@ import {
   ApiOkResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import type { Request } from 'express';
 import { CleanupUploadedApksResponseDto } from '../dto/cleanup-uploaded-apks-response.dto';
 import { CleanupUploadedApksDto } from '../dto/cleanup-uploaded-apks.dto';
 import { ListUploadedApksDto } from '../dto/list-uploaded-apks.dto';
@@ -31,7 +21,6 @@ export class ApkController {
   constructor(private readonly apk: ApkCatalogService) {}
 
   @Post()
-  @UseInterceptors(FileInterceptor('apk'))
   @ApiConsumes('multipart/form-data')
   @ApiCreatedResponse({ type: UploadedApk })
   @ApiBody({
@@ -39,13 +28,12 @@ export class ApkController {
       type: 'object',
       required: ['apk'],
       properties: {
-        ownerUserId: { type: 'string', example: 'admin' },
         apk: { type: 'string', format: 'binary' },
       },
     },
   })
-  upload(@Body() dto: UploadApkDto, @UploadedFile() apk: Express.Multer.File) {
-    return this.apk.upload(apk, dto.ownerUserId);
+  upload(@Req() request: Request, @Query() dto: UploadApkDto) {
+    return this.apk.upload(request, dto.ownerUserId);
   }
 
   @Get()

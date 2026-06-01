@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Dockerode from 'dockerode';
 import { setTimeout as delay } from 'node:timers/promises';
+import pLimit from 'p-limit';
 import { getErrorMessage } from '../common/error-message';
 import { hasDockerStatusCode } from './utils/docker-engine.utils';
 
@@ -49,6 +50,7 @@ const dockerConnectionOptions = (
 @Injectable()
 export class DockerEngineService {
   private readonly logger = new Logger(DockerEngineService.name);
+  private readonly limitRead: ReturnType<typeof pLimit>;
   private mutationQueue = Promise.resolve();
   private pendingMutations = 0;
   readonly docker: Dockerode;
@@ -71,6 +73,9 @@ export class DockerEngineService {
     this.orchestratorContainerId = this.config.get<string>(
       'app.docker.orchestratorContainerId',
     );
+    this.limitRead = pLimit(
+      this.config.getOrThrow<number>('app.docker.maxConcurrentReads'),
+    );
   }
 
   async ping() {
@@ -86,7 +91,7 @@ export class DockerEngineService {
   }
 
   async read<T>(operation: () => Promise<T>, description = 'Docker read') {
-    return this.retryTransient(operation, description);
+    return this.limitRead(() => this.retryTransient(operation, description));
   }
 
   async mutate<T>(

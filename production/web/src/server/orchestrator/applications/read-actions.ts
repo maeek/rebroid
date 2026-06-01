@@ -11,10 +11,10 @@ import {
 } from './safety'
 import type { RunningApplicationNotifications, ApplicationRuntimeFilesProfileInput } from './types'
 
-export const listApplicationsAction = async () => {
+export const listApplicationsAction = async ({ reconcile = false }: { reconcile?: boolean } = {}) => {
   const user = await getCurrentUserContext()
   const ownerUserId = user.role === 'admin' ? undefined : user.ownerUserId
-  const apps = await orchestratorApplicationsClient.listApplications(ownerUserId)
+  const apps = await orchestratorApplicationsClient.listApplications(ownerUserId, reconcile)
   return apps.map(app => sanitizeAndroidApplicationForUser(app, user))
 }
 
@@ -167,7 +167,7 @@ export const filterAccessibleApplicationIdsAction = async (ids: string[]) => {
 
   const user = await getCurrentUserContext()
   const ownerUserId = user.role === 'admin' ? undefined : user.ownerUserId
-  const apps = await orchestratorApplicationsClient.listApplications(ownerUserId)
+  const apps = await orchestratorApplicationsClient.listApplicationSummaries(ownerUserId)
   const accessibleIds = new Set(apps.map(app => app.id))
 
   return ids.filter(id => accessibleIds.has(id))

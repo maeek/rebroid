@@ -1,8 +1,8 @@
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-// eslint-disable-next-line import/no-extraneous-dependencies
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals'
+import { resetWebDatabaseForTests, writeWebState } from '@/server/storage/database'
 import { userService } from './user'
 
 describe('userService.changeOwnPassword', () => {
@@ -10,11 +10,14 @@ describe('userService.changeOwnPassword', () => {
 
   beforeEach(async () => {
     tempDirectory = await mkdtemp(join(tmpdir(), 'rebroid-users-'))
-    process.env.WEB_USERS_PATH = join(tempDirectory, 'users.json')
+    process.env.WEB_DATABASE_PATH = join(tempDirectory, 'web.sqlite')
+    process.env.INITIAL_ADMIN_PASSWORD = 'initial-admin-password'
   })
 
   afterEach(async () => {
-    delete process.env.WEB_USERS_PATH
+    delete process.env.WEB_DATABASE_PATH
+    delete process.env.INITIAL_ADMIN_PASSWORD
+    resetWebDatabaseForTests()
     await rm(tempDirectory, { recursive: true, force: true })
   })
 
@@ -44,5 +47,26 @@ describe('userService.changeOwnPassword', () => {
     await expect(userService.authenticate('user', 'original-password')).resolves.toBeNull()
     await expect(userService.authenticate('user', 'replacement-password')).resolves.not.toBeNull()
     await expect(userService.getUserById(user.id)).resolves.toMatchObject({ sessionVersion: user.sessionVersion + 1 })
+  })
+
+  it('fails closed when the users state is malformed', async () => {
+    writeWebState('users', '{malformed')
+
+    await expect(userService.listUsers()).rejects.toThrow()
+    await expect(userService.authenticate('admin', 'initial-admin-password')).rejects.toThrow()
+  })
+
+  it('preserves concurrent user creations', async () => {
+    await Promise.all([
+      userService.createUser({ username: 'user-one', password: 'original-password' }),
+      userService.createUser({ username: 'user-two', password: 'original-password' })
+    ])
+
+    await expect(userService.listUsers()).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ username: 'user-one' }),
+        expect.objectContaining({ username: 'user-two' })
+      ])
+    )
   })
 })

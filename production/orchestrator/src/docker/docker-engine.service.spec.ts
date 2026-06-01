@@ -8,6 +8,7 @@ const createEngine = () =>
         'app.docker.socketPath': '/var/run/docker.sock',
         'app.docker.requestTimeoutMs': 15_000,
         'app.docker.connectionTimeoutMs': 5_000,
+        'app.docker.maxConcurrentReads': 2,
         'app.docker.resourcePrefix': 'rebroid',
       };
       return values[key];
@@ -61,6 +62,29 @@ describe('DockerEngineService', () => {
     await Promise.all([first, second]);
     expect(events).toEqual(['first-start', 'first-end', 'second']);
     expect(engine.hasPendingMutations).toBe(false);
+  });
+
+  it('limits concurrent Docker reads', async () => {
+    const engine = createEngine();
+    let active = 0;
+    let maxActive = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const reads = Array.from({ length: 4 }, () =>
+      engine.read(async () => {
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        await gate;
+        active -= 1;
+      }),
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(maxActive).toBe(2);
+    release();
+    await Promise.all(reads);
   });
 
   it('does not retry Docker mutations after a transient transport error', async () => {

@@ -31,10 +31,147 @@ import {
   readChunkHeaderSize,
   scoreResourceIconPath,
 } from '../utils/apk-resource-table.utils';
+import { ApkArchiveService } from './apk-archive.service';
 
 @Injectable()
 export class ApkIconExtractorService {
   private readonly logger = new Logger(ApkIconExtractorService.name);
+  private readonly maxMetadataEntryBytes = 64 * 1024 * 1024;
+
+  constructor(private readonly archive: ApkArchiveService) {}
+
+  async extractMetadataFromFile(filePath: string) {
+    try {
+      const entries = await this.archive.listEntries(filePath);
+      const entriesByName = new Map(
+        entries.map((entry) => [entry.name, entry]),
+      );
+      const manifest = await this.archive.readEntry(
+        filePath,
+        'AndroidManifest.xml',
+        this.maxMetadataEntryBytes,
+      );
+      if (!manifest) {
+        return {
+          extractedIconDataUrl: null,
+          displayName: null,
+          packageName: null,
+        };
+      }
+
+      const packageName = this.readManifestPackageName(manifest);
+      const label = this.readManifestApplicationLabel(manifest);
+      const declaredIcons = this.readManifestIconReferences(manifest);
+      let resources: Buffer | null | undefined;
+      const getResources = async () => {
+        if (resources === undefined) {
+          resources = entriesByName.has('resources.arsc')
+            ? await this.archive.readEntry(
+                filePath,
+                'resources.arsc',
+                this.maxMetadataEntryBytes,
+              )
+            : null;
+        }
+        return resources;
+      };
+
+      let displayName = label.value
+        ? this.normalizeDisplayName(label.value)
+        : null;
+      if (!displayName && typeof label.resourceId === 'number') {
+        const content = await getResources();
+        const resolved = content
+          ? this.readResourceString(content, label.resourceId)
+          : null;
+        displayName = resolved ? this.normalizeDisplayName(resolved) : null;
+      }
+
+      let extractedIconDataUrl: string | null = null;
+      const directPaths = [
+        declaredIcons.iconPath,
+        declaredIcons.roundIconPath,
+      ].filter((value): value is string => Boolean(value));
+      for (const path of directPaths) {
+        extractedIconDataUrl = await this.readIconPathFromArchive(
+          filePath,
+          entriesByName,
+          path,
+          10_000,
+        );
+        if (extractedIconDataUrl) {
+          break;
+        }
+      }
+
+      const resourceIds = [
+        declaredIcons.iconResourceId,
+        declaredIcons.roundIconResourceId,
+      ].filter((value): value is number => typeof value === 'number');
+      if (!extractedIconDataUrl && resourceIds.length > 0) {
+        const content = await getResources();
+        const candidates = content
+          ? this.readResourceIconCandidates(content, resourceIds).sort(
+              (left, right) => right.score - left.score,
+            )
+          : [];
+        for (const candidate of candidates) {
+          extractedIconDataUrl = await this.readIconPathFromArchive(
+            filePath,
+            entriesByName,
+            candidate.entryName,
+            candidate.score,
+          );
+          if (extractedIconDataUrl) {
+            break;
+          }
+        }
+      }
+
+      if (!extractedIconDataUrl) {
+        const candidates = entries
+          .map((entry) => this.toIconCandidate(entry))
+          .filter((candidate): candidate is IconCandidate => Boolean(candidate))
+          .sort((left, right) => right.score - left.score)
+          .slice(0, maxCandidatesToRead);
+        let best: { score: number; mimeType: string; content: Buffer } | null =
+          null;
+        for (const candidate of candidates) {
+          const content = await this.archive.readEntry(
+            filePath,
+            candidate.entry.name,
+            maxIconBytes,
+          );
+          if (!content || content.length === 0) {
+            continue;
+          }
+          const dimensions = imageDimensions(content, candidate.mimeType);
+          const score =
+            candidate.score +
+            (dimensions
+              ? Math.min(Math.max(dimensions.width, dimensions.height), 512)
+              : 0);
+          if (!best || score > best.score) {
+            best = { score, mimeType: candidate.mimeType, content };
+          }
+        }
+        extractedIconDataUrl = best
+          ? `data:${best.mimeType};base64,${best.content.toString('base64')}`
+          : null;
+      }
+
+      return { extractedIconDataUrl, displayName, packageName };
+    } catch (error) {
+      this.logger.warn(
+        `Could not extract APK metadata: ${getErrorMessage(error, 'unknown error')}`,
+      );
+      return {
+        extractedIconDataUrl: null,
+        displayName: null,
+        packageName: null,
+      };
+    }
+  }
 
   /** Reads the manifest package name from an APK, best-effort. */
   extractPackageName(apk: Buffer) {
@@ -148,6 +285,40 @@ export class ApkIconExtractorService {
       );
       return null;
     }
+  }
+
+  private async readIconPathFromArchive(
+    filePath: string,
+    entriesByName: Map<string, ZipEntry>,
+    path: string,
+    score: number,
+  ) {
+    const normalizedPath = path.replace(/^\/+/, '');
+    const entry = entriesByName.get(normalizedPath);
+    const mimeType = imageMimeType(normalizedPath.toLowerCase());
+    if (!entry || !mimeType || entry.uncompressedSize > maxIconBytes) {
+      return null;
+    }
+
+    const content = await this.archive.readEntry(
+      filePath,
+      normalizedPath,
+      maxIconBytes,
+    );
+    if (!content || content.length === 0) {
+      return null;
+    }
+
+    const dimensions = imageDimensions(content, mimeType);
+    if (
+      score < 10_000 &&
+      dimensions &&
+      (dimensions.width < 24 || dimensions.height < 24)
+    ) {
+      return null;
+    }
+
+    return `data:${mimeType};base64,${content.toString('base64')}`;
   }
 
   private toIconCandidate(entry: ZipEntry): IconCandidate | null {

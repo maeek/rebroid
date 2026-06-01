@@ -48,11 +48,11 @@ export class OrchestratorSettingsDto {
   @Max(86400)
   defaultInactivityTimeoutSeconds!: number;
 
-  @ApiProperty({ example: 512, minimum: 1, maximum: 4096 })
+  @ApiProperty({ example: 512, minimum: 1, maximum: 512 })
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(4096)
+  @Max(512)
   maxApkUploadSizeMb!: number;
 
   @ApiProperty({ example: 24, minimum: 0, maximum: 8760 })

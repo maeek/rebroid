@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useTopLoader } from 'nextjs-toploader'
 import { Button } from '@/components/ui/button'
 import { Visible } from '@/components/ui/visible'
-import { lookupUploadedApk, sha256File, uploadApkWithProgress } from '@/features/applications/apks/upload'
+import { uploadApkWithProgress } from '@/features/applications/apks/upload'
 import { optimizeIconFile } from '@/features/applications/icons/icon-metadata'
 import {
   apkSizeLabel,
@@ -172,19 +172,6 @@ export const CreateAppForm = ({
     topLoader.setProgress(0.08)
 
     try {
-      const sha256 = await sha256File(file)
-      topLoader.setProgress(0.16)
-      const existing = await lookupUploadedApk(sha256)
-      if (existing) {
-        topLoader.setProgress(1)
-        setUploadedApk(existing)
-        if (!formValues.name.trim()) {
-          updateFormValues({ name: appNameFromApk(file, existing) })
-        }
-        toast({ title: 'APK already uploaded', description: 'Using the existing upload.' })
-        return
-      }
-
       const uploaded = await uploadApkWithProgress({
         file,
         onProgress: progress => {

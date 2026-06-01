@@ -1,5 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { readWebState, updateWebState, writeWebState } from '@/server/storage/database'
 
 export type StoredRecentApp = {
   id: string
@@ -11,21 +10,18 @@ type RecentAppsFile = {
 }
 
 const maxRecentApps = 3
-const recentAppsPath = () => process.env.WEB_RECENT_APPS_PATH || join(process.cwd(), 'data', 'recent-apps.json')
+const recentAppsStateKey = 'recent-apps'
 
-const readRecentAppsFile = async (): Promise<RecentAppsFile> => {
-  try {
-    const parsed = JSON.parse(await readFile(recentAppsPath(), 'utf-8')) as Partial<RecentAppsFile>
-    return { users: parsed.users && typeof parsed.users === 'object' ? parsed.users : {} }
-  } catch {
-    return { users: {} }
+const readRecentAppsFile = (): Promise<RecentAppsFile> => {
+  const stored = readWebState(recentAppsStateKey)
+  if (stored !== null) {
+    const parsed = JSON.parse(stored) as Partial<RecentAppsFile>
+    return Promise.resolve({ users: parsed.users && typeof parsed.users === 'object' ? parsed.users : {} })
   }
-}
 
-const writeRecentAppsFile = async (file: RecentAppsFile) => {
-  const path = recentAppsPath()
-  await mkdir(dirname(path), { recursive: true })
-  await writeFile(path, `${JSON.stringify(file, null, 2)}\n`, 'utf-8')
+  const initial: RecentAppsFile = { users: {} }
+  writeWebState(recentAppsStateKey, JSON.stringify(initial))
+  return Promise.resolve(initial)
 }
 
 const sanitizeRecentApps = (apps: StoredRecentApp[]) =>
@@ -40,18 +36,22 @@ export const listStoredRecentApps = async (userId: string) => {
 }
 
 export const rememberStoredRecentApp = async (userId: string, appId: string) => {
-  const file = await readRecentAppsFile()
-  file.users[userId] = sanitizeRecentApps([
-    { id: appId, openedAt: Date.now() },
-    ...(file.users[userId] ?? []).filter(app => app.id !== appId)
-  ])
-  await writeRecentAppsFile(file)
-  return file.users[userId]
+  await readRecentAppsFile()
+  return updateWebState(recentAppsStateKey, current => {
+    const file = JSON.parse(current ?? '{"users":{}}') as RecentAppsFile
+    file.users[userId] = sanitizeRecentApps([
+      { id: appId, openedAt: Date.now() },
+      ...(file.users[userId] ?? []).filter(app => app.id !== appId)
+    ])
+    return [JSON.stringify(file), file.users[userId]]
+  })
 }
 
 export const forgetStoredRecentApp = async (userId: string, appId: string) => {
-  const file = await readRecentAppsFile()
-  file.users[userId] = sanitizeRecentApps((file.users[userId] ?? []).filter(app => app.id !== appId))
-  await writeRecentAppsFile(file)
-  return file.users[userId]
+  await readRecentAppsFile()
+  return updateWebState(recentAppsStateKey, current => {
+    const file = JSON.parse(current ?? '{"users":{}}') as RecentAppsFile
+    file.users[userId] = sanitizeRecentApps((file.users[userId] ?? []).filter(app => app.id !== appId))
+    return [JSON.stringify(file), file.users[userId]]
+  })
 }

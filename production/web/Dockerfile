@@ -36,5 +36,6 @@ COPY --from=builder /app/rebroid-proxy-server.mjs ./rebroid-proxy-server.mjs
 COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/rebroid-web-entrypoint
 RUN mkdir -p /app/data /app/secrets /data/secrets && chown -R node:node /app /data
 EXPOSE 3443
+HEALTHCHECK --interval=15s --timeout=5s --retries=5 CMD node -e "process.env.NODE_TLS_REJECT_UNAUTHORIZED='0';fetch('https://127.0.0.1:3443/login').then(r=>{if(r.status>=500)process.exit(1)}).catch(()=>process.exit(1))"
 ENTRYPOINT ["rebroid-web-entrypoint"]
 CMD ["node", "rebroid-proxy-server.mjs"]

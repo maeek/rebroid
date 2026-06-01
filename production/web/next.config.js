@@ -19,9 +19,6 @@ const nextConfig = {
       bodySizeLimit: apkUploadBodySizeLimit
     }
   },
-  compiler: {
-    styledComponents: true
-  },
   headers: async () => [
     {
       source: '/:path*',

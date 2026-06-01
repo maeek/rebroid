@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
 import bcrypt from 'bcrypt'
+import { readWebState, writeWebState } from '@/server/storage/database'
 import {
   defaultUserPermissions,
   defaultUserQuota,
@@ -67,7 +66,8 @@ type UsersFile = {
 const bcryptRounds = 12
 const minimumPasswordLength = 12
 const maxAvatarBytes = 2 * 1024 * 1024
-const usersPath = () => process.env.WEB_USERS_PATH || join(process.cwd(), 'data', 'users.json')
+const usersStateKey = 'users'
+let usersMutationQueue = Promise.resolve()
 
 const nowIso = () => new Date().toISOString()
 
@@ -160,6 +160,11 @@ const verifyPassword = async (password: string, passwordHash: string) => {
 }
 
 const defaultAdminUser = async (): Promise<StoredUser> => {
+  const initialPassword = process.env.INITIAL_ADMIN_PASSWORD
+  if (!initialPassword) {
+    throw new Error('INITIAL_ADMIN_PASSWORD is required when creating the first administrator.')
+  }
+
   const now = nowIso()
   return {
     id: 'admin',
@@ -172,7 +177,7 @@ const defaultAdminUser = async (): Promise<StoredUser> => {
     avatarDataUrl: null,
     permissionOverrides: {},
     quotas: {},
-    passwordHash: await hashPassword(process.env.INITIAL_ADMIN_PASSWORD || 'admin'),
+    passwordHash: await hashPassword(initialPassword),
     createdAt: now,
     updatedAt: now
   }
@@ -220,19 +225,43 @@ const normalizeUsersFile = async (input: Partial<UsersFile>): Promise<UsersFile>
 }
 
 const readUsersFile = async (): Promise<UsersFile> => {
-  try {
-    return normalizeUsersFile(JSON.parse(await readFile(usersPath(), 'utf-8')) as Partial<UsersFile>)
-  } catch {
-    const initial = await normalizeUsersFile({})
-    await writeUsersFile(initial)
-    return initial
+  const stored = readWebState(usersStateKey)
+  if (stored !== null) {
+    return normalizeUsersFile(parseUsersFile(stored))
   }
+
+  const initial = await normalizeUsersFile({})
+  await writeUsersFile(initial)
+  return initial
 }
 
-const writeUsersFile = async (file: UsersFile) => {
-  const path = usersPath()
-  await mkdir(dirname(path), { recursive: true })
-  await writeFile(path, `${JSON.stringify(file, null, 2)}\n`, { encoding: 'utf-8', mode: 0o600 })
+const writeUsersFile = (file: UsersFile) => {
+  return Promise.resolve(writeWebState(usersStateKey, JSON.stringify(file)))
+}
+
+const parseUsersFile = (content: string): Partial<UsersFile> => {
+  const parsed = JSON.parse(content) as Partial<UsersFile>
+  if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.users) || !Array.isArray(parsed.groups)) {
+    throw new Error(
+      'The users store is malformed. Restore it from backup or repair it before starting the web service.'
+    )
+  }
+
+  return parsed
+}
+
+const mutateUsersFile = async <Result>(mutation: (file: UsersFile) => Promise<Result> | Result) => {
+  const pending = usersMutationQueue.then(async () => {
+    const file = await readUsersFile()
+    const result = await mutation(file)
+    await writeUsersFile(file)
+    return result
+  })
+  usersMutationQueue = pending.then(
+    () => undefined,
+    () => undefined
+  )
+  return pending
 }
 
 const listUsers = async () => {
@@ -285,142 +314,138 @@ const createUser = async ({
   role = 'user',
   groupIds,
   ...input
-}: UserEditorInput & { username: string; password: string }) => {
-  const file = await readUsersFile()
-  const normalizedUsername = username.trim()
-  if (!normalizedUsername || password.length < minimumPasswordLength) {
-    throw new Error(`Username is required and password must be at least ${minimumPasswordLength} characters.`)
-  }
-  validateAvatarDataUrl(input.avatarDataUrl)
-  if (file.users.some(user => user.username === normalizedUsername)) {
-    throw new Error('Username already exists.')
-  }
-
-  const groups = findGroups(file, groupIds, role)
-  const now = nowIso()
-  const user: StoredUser = {
-    id: randomUUID(),
-    username: normalizedUsername,
-    name: input.name?.trim() || normalizedUsername,
-    role,
-    groupIds: groups.map(group => group.id),
-    disabled: input.disabled ?? false,
-    sessionVersion: 1,
-    avatarDataUrl: input.avatarDataUrl ?? null,
-    permissionOverrides: input.permissionOverrides ?? {},
-    quotas: input.quotas ?? {},
-    passwordHash: await hashPassword(password),
-    createdAt: now,
-    updatedAt: now
-  }
-  file.users.push(user)
-  await writeUsersFile(file)
-  return toPublicUser(file, user)
-}
-
-const updateUser = async (id: string, input: UserEditorInput) => {
-  const file = await readUsersFile()
-  const user = file.users.find(item => item.id === id)
-  if (!user) {
-    throw new Error('User not found.')
-  }
-
-  if (input.disabled && !user.disabled) {
-    assertCanRemoveOrDisableUser(file, user)
-  }
-
-  if (input.username !== undefined) {
-    const username = input.username.trim()
-    if (!username) {
-      throw new Error('Username is required.')
+}: UserEditorInput & { username: string; password: string }) =>
+  mutateUsersFile(async file => {
+    const normalizedUsername = username.trim()
+    if (!normalizedUsername || password.length < minimumPasswordLength) {
+      throw new Error(`Username is required and password must be at least ${minimumPasswordLength} characters.`)
     }
-    if (file.users.some(item => item.id !== id && item.username === username)) {
+    validateAvatarDataUrl(input.avatarDataUrl)
+    if (file.users.some(user => user.username === normalizedUsername)) {
       throw new Error('Username already exists.')
     }
-    user.username = username
-  }
-  if (input.password !== undefined && input.password.trim()) {
-    if (input.password.length < minimumPasswordLength) {
-      throw new Error(`Password must be at least ${minimumPasswordLength} characters.`)
-    }
-    user.passwordHash = await hashPassword(input.password)
-    user.sessionVersion += 1
-  }
-  if (input.name !== undefined) user.name = input.name.trim() || user.username
-  if (input.role !== undefined) user.role = input.role
-  if (input.groupIds !== undefined) user.groupIds = findGroups(file, input.groupIds, user.role).map(group => group.id)
-  if (input.disabled !== undefined && input.disabled !== user.disabled) {
-    user.disabled = input.disabled
-    user.sessionVersion += 1
-  }
-  if (input.avatarDataUrl !== undefined) {
-    validateAvatarDataUrl(input.avatarDataUrl)
-    user.avatarDataUrl = input.avatarDataUrl
-  }
-  if (input.permissionOverrides !== undefined) user.permissionOverrides = input.permissionOverrides
-  if (input.quotas !== undefined) user.quotas = input.quotas
 
-  user.updatedAt = nowIso()
-  await writeUsersFile(file)
-  return toPublicUser(file, user)
-}
+    const groups = findGroups(file, groupIds, role)
+    const now = nowIso()
+    const user: StoredUser = {
+      id: randomUUID(),
+      username: normalizedUsername,
+      name: input.name?.trim() || normalizedUsername,
+      role,
+      groupIds: groups.map(group => group.id),
+      disabled: input.disabled ?? false,
+      sessionVersion: 1,
+      avatarDataUrl: input.avatarDataUrl ?? null,
+      permissionOverrides: input.permissionOverrides ?? {},
+      quotas: input.quotas ?? {},
+      passwordHash: await hashPassword(password),
+      createdAt: now,
+      updatedAt: now
+    }
+    file.users.push(user)
+    return toPublicUser(file, user)
+  })
+
+const updateUser = async (id: string, input: UserEditorInput) =>
+  mutateUsersFile(async file => {
+    const user = file.users.find(item => item.id === id)
+    if (!user) {
+      throw new Error('User not found.')
+    }
+
+    if (input.disabled && !user.disabled) {
+      assertCanRemoveOrDisableUser(file, user)
+    }
+
+    if (input.username !== undefined) {
+      const username = input.username.trim()
+      if (!username) {
+        throw new Error('Username is required.')
+      }
+      if (file.users.some(item => item.id !== id && item.username === username)) {
+        throw new Error('Username already exists.')
+      }
+      user.username = username
+    }
+    if (input.password !== undefined && input.password.trim()) {
+      if (input.password.length < minimumPasswordLength) {
+        throw new Error(`Password must be at least ${minimumPasswordLength} characters.`)
+      }
+      user.passwordHash = await hashPassword(input.password)
+      user.sessionVersion += 1
+    }
+    if (input.name !== undefined) user.name = input.name.trim() || user.username
+    if (input.role !== undefined) user.role = input.role
+    if (input.groupIds !== undefined) user.groupIds = findGroups(file, input.groupIds, user.role).map(group => group.id)
+    if (input.disabled !== undefined && input.disabled !== user.disabled) {
+      user.disabled = input.disabled
+      user.sessionVersion += 1
+    }
+    if (input.avatarDataUrl !== undefined) {
+      validateAvatarDataUrl(input.avatarDataUrl)
+      user.avatarDataUrl = input.avatarDataUrl
+    }
+    if (input.permissionOverrides !== undefined) user.permissionOverrides = input.permissionOverrides
+    if (input.quotas !== undefined) user.quotas = input.quotas
+
+    user.updatedAt = nowIso()
+    return toPublicUser(file, user)
+  })
 
 const setUserDisabled = async (id: string, disabled: boolean) => updateUser(id, { disabled })
 const resetPassword = async (id: string, password: string) => updateUser(id, { password })
 
-const changeOwnPassword = async (id: string, currentPassword: string, newPassword: string) => {
-  const file = await readUsersFile()
-  const user = file.users.find(item => item.id === id)
-  if (!user) {
-    throw new Error('User not found.')
-  }
-  if (!(await verifyPassword(currentPassword, user.passwordHash))) {
-    throw new Error('Current password is incorrect.')
-  }
-  if (newPassword.length < minimumPasswordLength) {
-    throw new Error(`Password must be at least ${minimumPasswordLength} characters.`)
-  }
+const changeOwnPassword = async (id: string, currentPassword: string, newPassword: string) =>
+  mutateUsersFile(async file => {
+    const user = file.users.find(item => item.id === id)
+    if (!user) {
+      throw new Error('User not found.')
+    }
+    if (!(await verifyPassword(currentPassword, user.passwordHash))) {
+      throw new Error('Current password is incorrect.')
+    }
+    if (newPassword.length < minimumPasswordLength) {
+      throw new Error(`Password must be at least ${minimumPasswordLength} characters.`)
+    }
 
-  user.passwordHash = await hashPassword(newPassword)
-  user.sessionVersion += 1
-  user.updatedAt = nowIso()
-  await writeUsersFile(file)
-}
+    user.passwordHash = await hashPassword(newPassword)
+    user.sessionVersion += 1
+    user.updatedAt = nowIso()
+  })
 
-const deleteUser = async (id: string) => {
-  const file = await readUsersFile()
-  const user = file.users.find(item => item.id === id)
-  if (!user) {
-    throw new Error('User not found.')
-  }
-  assertCanRemoveOrDisableUser(file, user)
+const deleteUser = async (id: string) =>
+  mutateUsersFile(file => {
+    const user = file.users.find(item => item.id === id)
+    if (!user) {
+      throw new Error('User not found.')
+    }
+    assertCanRemoveOrDisableUser(file, user)
 
-  file.users = file.users.filter(item => item.id !== id)
-  await writeUsersFile(file)
-  return toPublicUser(file, user)
-}
+    file.users = file.users.filter(item => item.id !== id)
+    return toPublicUser(file, user)
+  })
 
 const updateGroup = async (
   id: string,
   input: Partial<Omit<UserGroup, 'id' | 'createdAt' | 'updatedAt' | 'quotas'>> & {
     quotas?: Partial<ResourceQuota>
   }
-) => {
-  const file = await readUsersFile()
-  const group = file.groups.find(item => item.id === id)
-  if (!group) {
-    throw new Error('Group not found.')
-  }
+) =>
+  mutateUsersFile(file => {
+    const group = file.groups.find(item => item.id === id)
+    if (!group) {
+      throw new Error('Group not found.')
+    }
 
-  if (input.name !== undefined) group.name = input.name.trim() || group.name
-  if (input.description !== undefined) group.description = input.description.trim()
-  if (input.role !== undefined) group.role = input.role
-  if (input.permissions !== undefined) group.permissions = group.role === 'admin' ? fullPermissions : input.permissions
-  if (input.quotas !== undefined) group.quotas = group.role === 'admin' ? unlimitedQuota : mergeQuotas(input.quotas)
-  group.updatedAt = nowIso()
-  await writeUsersFile(file)
-  return group
-}
+    if (input.name !== undefined) group.name = input.name.trim() || group.name
+    if (input.description !== undefined) group.description = input.description.trim()
+    if (input.role !== undefined) group.role = input.role
+    if (input.permissions !== undefined)
+      group.permissions = group.role === 'admin' ? fullPermissions : input.permissions
+    if (input.quotas !== undefined) group.quotas = group.role === 'admin' ? unlimitedQuota : mergeQuotas(input.quotas)
+    group.updatedAt = nowIso()
+    return group
+  })
 
 const createGroup = async (input: {
   name: string
@@ -428,29 +453,28 @@ const createGroup = async (input: {
   role?: UserRole
   permissions?: PermissionMap
   quotas?: Partial<ResourceQuota>
-}) => {
-  const file = await readUsersFile()
-  const name = input.name.trim()
-  if (!name) {
-    throw new Error('Group name is required.')
-  }
+}) =>
+  mutateUsersFile(file => {
+    const name = input.name.trim()
+    if (!name) {
+      throw new Error('Group name is required.')
+    }
 
-  const role = input.role ?? 'user'
-  const now = nowIso()
-  const group: UserGroup = {
-    id: randomUUID(),
-    name,
-    description: input.description?.trim() ?? '',
-    role,
-    permissions: role === 'admin' ? fullPermissions : (input.permissions ?? defaultUserPermissions),
-    quotas: role === 'admin' ? unlimitedQuota : mergeQuotas(input.quotas),
-    createdAt: now,
-    updatedAt: now
-  }
-  file.groups.push(group)
-  await writeUsersFile(file)
-  return group
-}
+    const role = input.role ?? 'user'
+    const now = nowIso()
+    const group: UserGroup = {
+      id: randomUUID(),
+      name,
+      description: input.description?.trim() ?? '',
+      role,
+      permissions: role === 'admin' ? fullPermissions : (input.permissions ?? defaultUserPermissions),
+      quotas: role === 'admin' ? unlimitedQuota : mergeQuotas(input.quotas),
+      createdAt: now,
+      updatedAt: now
+    }
+    file.groups.push(group)
+    return group
+  })
 
 export const userService = {
   authenticate,

@@ -31,11 +31,14 @@ export const orchestratorApplicationsClient = {
     })
   },
 
-  uploadApk(input: FormData) {
-    return request<UploadedApk>('/apks', {
+  uploadApk(input: ReadableStream<Uint8Array>, ownerUserId: string, contentType: string) {
+    const query = new URLSearchParams({ ownerUserId })
+    return request<UploadedApk>(`/apks?${query.toString()}`, {
       method: 'POST',
-      body: input
-    })
+      body: input,
+      headers: { 'content-type': contentType },
+      duplex: 'half'
+    } as RequestInit & { duplex: 'half' })
   },
 
   listUploadedApks(ownerUserId?: string) {

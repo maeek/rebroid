@@ -34,11 +34,6 @@ module.exports = {
       }
     },
     {
-      files: ['*.js'],
-      plugins: ['node'],
-      extends: ['plugin:node/recommended']
-    },
-    {
       files: ['*.d.ts'],
       rules: {
         'import/extensions': 'off'
@@ -97,6 +92,11 @@ module.exports = {
     'react/prop-types': 'off',
     'react/display-name': 'off',
     'react/function-component-definition': 'off',
+    'react-hooks/error-boundaries': 'off',
+    'react-hooks/immutability': 'off',
+    'react-hooks/preserve-manual-memoization': 'off',
+    'react-hooks/purity': 'off',
+    'react-hooks/set-state-in-effect': 'off',
     'jsx-quotes': ['warn', 'prefer-single'],
     'prettier/prettier': 'error',
     'import/no-extraneous-dependencies': ['error', { devDependencies: true }],

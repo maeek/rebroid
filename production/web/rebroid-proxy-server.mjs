@@ -283,7 +283,7 @@ const proxyHttp = (req, res, target) => {
         if (token) {
           headers['set-cookie'] =
             `${viewerTokenCookieName}=${encodeURIComponent(token)}; ` +
-            `Path=${viewerPathPrefix}; HttpOnly; SameSite=Lax; Max-Age=1800`
+            `Path=${viewerPathPrefix}; HttpOnly; Secure; SameSite=Lax; Max-Age=1800`
         }
       }
 

@@ -78,9 +78,9 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    void this.resumeInterruptedRemovals().catch((error) => {
+    void this.resumeInterruptedJobs().catch((error) => {
       this.logger.warn(
-        `Could not resume interrupted removals: ${getErrorMessage(error)}`,
+        `Could not resume interrupted application jobs: ${getErrorMessage(error)}`,
       );
     });
   }
@@ -734,6 +734,31 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
       this.logger.warn(`Resuming interrupted removal cleanup for ${app.id}.`);
       this.tracker.cancel(app.id);
       this.scheduleRemoval(app, app.removeDataOnRemoval);
+    }
+  }
+
+  private async resumeInterruptedJobs() {
+    await this.resumeInterruptedRemovals();
+    const apps = await this.applications.find();
+    for (const app of apps) {
+      if (app.status === AndroidApplicationStatus.Provisioning) {
+        this.logger.warn(`Resuming interrupted provisioning for ${app.id}.`);
+        this.tracker.reset(app.id);
+        void this.provisioning.provision(app.id);
+        continue;
+      }
+
+      if (
+        app.status === AndroidApplicationStatus.Running &&
+        app.lifecycleStage === AndroidApplicationLifecycleStage.ApkInstalling
+      ) {
+        this.logger.warn(`Resuming interrupted APK install for ${app.id}.`);
+        this.tracker.reset(app.id);
+        void this.completeApkInstallInBackground(
+          app.id,
+          'Resuming APK installation after orchestrator restart.',
+        );
+      }
     }
   }
 

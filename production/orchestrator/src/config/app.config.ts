@@ -1,13 +1,54 @@
 import { registerAs } from '@nestjs/config';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { z } from 'zod';
+
+const optionalInteger = (minimum: number, maximum: number) =>
+  z.coerce.number().int().min(minimum).max(maximum).optional();
+
+const environmentSchema = z.object({
+  PORT: optionalInteger(1, 65_535),
+  VOLUME_USAGE_CACHE_TTL_SECONDS: optionalInteger(0, 86_400),
+  VOLUME_USAGE_RETRY_DELAY_SECONDS: optionalInteger(0, 86_400),
+  DOCKER_STOPPING_STALE_TIMEOUT_SECONDS: optionalInteger(1, 86_400),
+  DOCKER_REQUEST_TIMEOUT_MS: optionalInteger(1, 300_000),
+  DOCKER_CONNECTION_TIMEOUT_MS: optionalInteger(1, 300_000),
+  DOCKER_MAX_CONCURRENT_READS: optionalInteger(1, 64),
+  REDROID_ADB_PORT: optionalInteger(1, 65_535),
+  REDROID_BOOT_TIMEOUT_SECONDS: optionalInteger(1, 3_600),
+  REDROID_ADB_TIMEOUT_SECONDS: optionalInteger(1, 3_600),
+  REDROID_PROVISIONING_STALE_TIMEOUT_SECONDS: optionalInteger(1, 86_400),
+  DEFAULT_INACTIVITY_TIMEOUT_SECONDS: optionalInteger(-1, 86_400),
+  MAX_APK_UPLOAD_SIZE_MB: optionalInteger(1, 512),
+  DISPLAY_SIDECAR_PORT: optionalInteger(1, 65_535),
+  DISPLAY_SIDECAR_PUBLISHED_HOST_PORT: optionalInteger(0, 65_535),
+  DISPLAY_WEBRTC_UDP_PORT_RANGE: z
+    .string()
+    .regex(
+      /^\d{1,5}-\d{1,5}$/,
+      'Expected a UDP port range such as 40000-40100.',
+    )
+    .refine((value) => {
+      const [first, last] = value.split('-').map(Number);
+      return first >= 1 && first <= last && last <= 65_535;
+    }, 'UDP port range must be ordered and contain valid ports.')
+    .optional(),
+});
 
 const bool = (value: string | undefined, fallback: boolean) => {
   if (value === undefined) {
     return fallback;
   }
 
-  return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
+  const normalized = value.toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) {
+    return true;
+  }
+  if (['0', 'false', 'no', 'off'].includes(normalized)) {
+    return false;
+  }
+
+  throw new Error(`Expected a boolean environment value, received "${value}".`);
 };
 
 const number = (value: string | undefined, fallback: number) => {
@@ -31,6 +72,7 @@ const csv = (value: string | undefined, fallback: string[]) => {
 };
 
 export default registerAs('app', () => {
+  environmentSchema.parse(process.env);
   const uploadsDir = process.env.UPLOADS_DIR ?? './uploads';
   const databasePath =
     process.env.DATABASE_PATH ?? './data/orchestrator.sqlite';
@@ -51,6 +93,7 @@ export default registerAs('app', () => {
     nodeEnv: process.env.NODE_ENV ?? 'development',
     port: number(process.env.PORT, 4100),
     sharedSecret: sharedSecret || undefined,
+    corsOrigins: csv(process.env.ORCHESTRATOR_CORS_ORIGINS, []),
     databasePath: resolve(databasePath),
     settingsPath: resolve(settingsPath),
     runtimeLogsDir: resolve(runtimeLogsDir),
@@ -79,6 +122,7 @@ export default registerAs('app', () => {
         process.env.DOCKER_CONNECTION_TIMEOUT_MS,
         5_000,
       ),
+      maxConcurrentReads: number(process.env.DOCKER_MAX_CONCURRENT_READS, 8),
     },
     firewallAgent: {
       socketPath:
@@ -115,7 +159,7 @@ export default registerAs('app', () => {
         process.env.DEFAULT_INACTIVITY_TIMEOUT_SECONDS,
         900,
       ),
-      maxApkUploadSizeMb: number(process.env.MAX_APK_UPLOAD_SIZE_MB, 4096),
+      maxApkUploadSizeMb: number(process.env.MAX_APK_UPLOAD_SIZE_MB, 512),
       securityOptions: csv(process.env.CONTAINER_SECURITY_OPTS, []),
       devices: csv(process.env.REDROID_DEVICES, []),
       optionalDevices: csv(process.env.REDROID_OPTIONAL_DEVICES, [

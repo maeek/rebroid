@@ -1,5 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { readWebState, updateWebState, writeWebState } from '@/server/storage/database'
 import type { WebSettings } from './types'
 
 export const defaultWebSettings: WebSettings = {
@@ -14,7 +13,7 @@ export const defaultWebSettings: WebSettings = {
   defaultViewerSoundEnabled: true
 }
 
-const settingsPath = () => process.env.WEB_SETTINGS_PATH || join(process.cwd(), 'data', 'web-settings.json')
+const settingsStateKey = 'web-settings'
 
 const numberInRange = (value: unknown, fallback: number, minimum: number, maximum: number) => {
   const parsed = Number(value)
@@ -64,27 +63,26 @@ const normalize = (value: Partial<WebSettings>): WebSettings => ({
       : defaultWebSettings.defaultViewerSoundEnabled
 })
 
-export const getWebSettings = async () => {
-  try {
-    const content = await readFile(settingsPath(), 'utf-8')
-    return normalize(JSON.parse(content) as Partial<WebSettings>)
-  } catch {
-    return defaultWebSettings
-  }
-}
+export const getWebSettings = () =>
+  Promise.resolve().then(() => {
+    const stored = readWebState(settingsStateKey)
+    if (stored !== null) {
+      return normalize(JSON.parse(stored) as Partial<WebSettings>)
+    }
+
+    writeWebState(settingsStateKey, JSON.stringify(defaultWebSettings))
+    return { ...defaultWebSettings }
+  })
 
 export const saveWebSettings = async (settings: Partial<WebSettings>) => {
-  const current = await getWebSettings()
-  const normalized = normalize({ ...current, ...settings })
-  const path = settingsPath()
-  await mkdir(dirname(path), { recursive: true })
-  await writeFile(path, `${JSON.stringify(normalized, null, 2)}\n`, { encoding: 'utf-8', mode: 0o600 })
-  return normalized
+  await getWebSettings()
+  return updateWebState(settingsStateKey, current => {
+    const normalized = normalize({ ...(current ? (JSON.parse(current) as Partial<WebSettings>) : {}), ...settings })
+    return [JSON.stringify(normalized), normalized]
+  })
 }
 
-export const resetWebSettings = async () => {
-  const path = settingsPath()
-  await mkdir(dirname(path), { recursive: true })
-  await writeFile(path, `${JSON.stringify(defaultWebSettings, null, 2)}\n`, { encoding: 'utf-8', mode: 0o600 })
-  return defaultWebSettings
+export const resetWebSettings = () => {
+  writeWebState(settingsStateKey, JSON.stringify(defaultWebSettings))
+  return Promise.resolve({ ...defaultWebSettings })
 }

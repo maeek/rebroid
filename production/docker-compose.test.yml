@@ -19,7 +19,7 @@ services:
       DISPLAY_SIDECAR_CONTAINER_NAME: rebroid-display-sidecar-test
       DISPLAY_SIDECAR_INTERNAL_BASE_URL: http://rebroid-display-sidecar-test:8000
       DISPLAY_SIDECAR_AUTO_START: 'false'
-      MAX_APK_UPLOAD_SIZE_MB: ${MAX_APK_UPLOAD_SIZE_MB:-4096}
+      MAX_APK_UPLOAD_SIZE_MB: ${MAX_APK_UPLOAD_SIZE_MB:-512}
     expose:
       - '4100'
     volumes:

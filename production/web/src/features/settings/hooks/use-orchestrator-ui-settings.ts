@@ -1,7 +1,5 @@
 'use client'
 
-/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment */
-
 import { useEffect, useState } from 'react'
 import {
   defaultOrchestratorUiSettings,

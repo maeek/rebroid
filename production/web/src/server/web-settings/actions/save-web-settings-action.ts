@@ -1,10 +1,10 @@
 'use server'
 
-import { requireUser } from '../shared'
+import { requireAdminUser } from '../shared'
 import { saveWebSettings } from '../store'
 import type { WebSettings } from '../types'
 
 export const saveWebSettingsAction = async (settings: Partial<WebSettings>) => {
-  await requireUser()
+  await requireAdminUser()
   return saveWebSettings(settings)
 }

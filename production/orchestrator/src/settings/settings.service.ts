@@ -1,6 +1,6 @@
 import { Injectable, PayloadTooLargeException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { ScrcpyTransport } from '../android-apps/android-application-status';
 import { numberInRange } from '../common/number-range';
@@ -57,22 +57,32 @@ export class SettingsService {
     }
   }
 
+  async getMaxApkUploadBytes() {
+    const settings = await this.getSettings();
+    return settings.maxApkUploadSizeMb * 1024 * 1024;
+  }
+
   private async readStoredSettings() {
     try {
       const content = await readFile(this.settingsPath(), 'utf-8');
       return JSON.parse(content) as Partial<OrchestratorSettingsDto>;
-    } catch {
-      return {};
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return {};
+      }
+      throw error;
     }
   }
 
   private async writeSettings(settings: OrchestratorSettingsDto) {
     const path = this.settingsPath();
+    const temporaryPath = `${path}.tmp`;
     await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, `${JSON.stringify(settings, null, 2)}\n`, {
+    await writeFile(temporaryPath, `${JSON.stringify(settings, null, 2)}\n`, {
       encoding: 'utf-8',
       mode: 0o600,
     });
+    await rename(temporaryPath, path);
   }
 
   /**
@@ -97,7 +107,7 @@ export class SettingsService {
         value.maxApkUploadSizeMb,
         defaults.maxApkUploadSizeMb,
         1,
-        4096,
+        512,
       ),
       imagePruneIntervalHours: numberInRange(
         value.imagePruneIntervalHours,

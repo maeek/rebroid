@@ -1,7 +1,14 @@
 /* eslint-disable @typescript-eslint/require-await */
 import { getServerSession, type NextAuthOptions } from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
+import { z } from 'zod'
+import { consumeRateLimit } from '@/server/rate-limit/in-memory'
 import { userService } from './user'
+
+const credentialsSchema = z.object({
+  username: z.string().trim().min(1).max(128),
+  password: z.string().min(1).max(1024)
+})
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -45,9 +52,13 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials, _req) {
-        const { username, password } = credentials as {
-          username: string
-          password: string
+        const parsed = credentialsSchema.safeParse(credentials)
+        if (!parsed.success) {
+          return null
+        }
+        const { username, password } = parsed.data
+        if (!consumeRateLimit(`login:${username.toLowerCase()}`, 10, 15 * 60 * 1000)) {
+          return null
         }
 
         const user = await userService.authenticate(username, password)

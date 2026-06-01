@@ -1,6 +1,11 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  PayloadTooLargeException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { createHash } from 'node:crypto';
+import Busboy from 'busboy';
+import type { Request } from 'express';
 import { In, IsNull, Repository } from 'typeorm';
 import { AndroidApplication } from '../../android-apps/android-application.entity';
 import { SettingsService } from '../../settings/settings.service';
@@ -20,66 +25,125 @@ export class ApkCatalogService {
     private readonly iconExtractor: ApkIconExtractorService,
   ) {}
 
-  /**
-   * Deduplicates APK uploads by hash and owner before persisting the shared file.
-   * Existing records may still get an updated extracted icon.
-   */
-  async upload(apk: Express.Multer.File, ownerUserId?: string | null) {
-    if (!apk) {
-      throw new ConflictException('An APK file is required.');
+  async upload(request: Request, ownerUserId?: string | null) {
+    if (!request.is('multipart/form-data')) {
+      throw new ConflictException('A multipart APK upload is required.');
     }
 
-    await this.ensureMetadataColumns();
-    await this.settings.assertApkSizeAllowed(apk);
+    const maxBytes = await this.settings.getMaxApkUploadBytes();
+    const parser = Busboy({
+      headers: request.headers,
+      limits: { files: 1, fileSize: maxBytes },
+    });
 
-    const sha256 = createHash('sha256').update(apk.buffer).digest('hex');
+    return new Promise<UploadedApk>((resolve, reject) => {
+      let upload: Promise<UploadedApk> | null = null;
+      let settled = false;
+      const finish = (callback: () => void) => {
+        if (!settled) {
+          settled = true;
+          callback();
+        }
+      };
+      const fail = (error: unknown) => finish(() => reject(error));
+
+      parser.on('file', (fieldName, stream, info) => {
+        if (fieldName !== 'apk' || upload) {
+          stream.resume();
+          return;
+        }
+        let exceededLimit = false;
+        stream.on('limit', () => {
+          exceededLimit = true;
+          fail(
+            new PayloadTooLargeException(
+              `APK exceeds configured upload limit of ${maxBytes / 1024 / 1024} MB.`,
+            ),
+          );
+        });
+        upload = this.storage
+          .persistApkStream(stream, maxBytes)
+          .then(async (stored) => {
+            if (exceededLimit) {
+              await this.storage.removeSharedFileIfUnreferenced(stored);
+              throw new PayloadTooLargeException(
+                `APK exceeds configured upload limit of ${maxBytes / 1024 / 1024} MB.`,
+              );
+            }
+
+            return this.saveUploadedApk(
+              stored,
+              info.filename || `${stored.sha256}.apk`,
+              ownerUserId,
+            ).catch(async (error) => {
+              await this.storage.removeSharedFileIfUnreferenced(stored);
+              throw error;
+            });
+          });
+        upload.catch(fail);
+      });
+      parser.on('error', fail);
+      request.on('aborted', () =>
+        fail(new ConflictException('APK upload was cancelled.')),
+      );
+      request.on('error', fail);
+      parser.on('finish', () => {
+        if (!upload) {
+          fail(new ConflictException('An APK file is required.'));
+          return;
+        }
+        upload.then((result) => finish(() => resolve(result)), fail);
+      });
+      request.pipe(parser);
+    });
+  }
+
+  /**
+   * Deduplicates APK uploads by hash and owner after the stream is persisted.
+   * Existing records may still get updated extracted metadata.
+   */
+  private async saveUploadedApk(
+    stored: { filePath: string; sha256: string; sizeBytes: number },
+    originalName: string,
+    ownerUserId?: string | null,
+  ) {
+    const { filePath, sha256, sizeBytes } = stored;
     const owner = ownerUserId?.trim() || null;
+    const metadata = await this.iconExtractor.extractMetadataFromFile(filePath);
     const existing = await this.uploadedApks.findOneBy({
       sha256,
       ownerUserId: owner ?? IsNull(),
     });
     if (existing) {
-      const extractedIconDataUrl =
-        this.iconExtractor.extractLauncherIconDataUrl(apk.buffer);
-      const displayName = this.iconExtractor.extractDisplayName(apk.buffer);
-      const packageName = this.iconExtractor.extractPackageName(apk.buffer);
       if (
-        (extractedIconDataUrl &&
-          extractedIconDataUrl !== existing.extractedIconDataUrl) ||
-        (displayName && displayName !== existing.displayName) ||
-        (packageName && packageName !== existing.packageName)
+        (metadata.extractedIconDataUrl &&
+          metadata.extractedIconDataUrl !== existing.extractedIconDataUrl) ||
+        (metadata.displayName &&
+          metadata.displayName !== existing.displayName) ||
+        (metadata.packageName && metadata.packageName !== existing.packageName)
       ) {
         existing.extractedIconDataUrl =
-          extractedIconDataUrl ?? existing.extractedIconDataUrl;
-        existing.displayName = displayName ?? existing.displayName;
-        existing.packageName = packageName ?? existing.packageName;
+          metadata.extractedIconDataUrl ?? existing.extractedIconDataUrl;
+        existing.displayName = metadata.displayName ?? existing.displayName;
+        existing.packageName = metadata.packageName ?? existing.packageName;
         await this.uploadedApks.save(existing);
       }
       return existing;
     }
 
-    const extractedIconDataUrl = this.iconExtractor.extractLauncherIconDataUrl(
-      apk.buffer,
-    );
-    const displayName = this.iconExtractor.extractDisplayName(apk.buffer);
-    const packageName = this.iconExtractor.extractPackageName(apk.buffer);
-    const filePath = await this.storage.persistApk(sha256, apk.buffer);
     const uploaded = this.uploadedApks.create({
       ownerUserId: owner,
-      originalName: apk.originalname || `${sha256}.apk`,
+      originalName,
       sha256,
-      sizeBytes: apk.size,
+      sizeBytes,
       filePath,
-      extractedIconDataUrl,
-      displayName,
-      packageName,
+      ...metadata,
     });
 
     return this.uploadedApks.save(uploaded);
   }
 
   async findBySha256(sha256: string, ownerUserId?: string | null) {
-    await this.ensureMetadataColumns();
     const owner = ownerUserId?.trim() || null;
     return this.uploadedApks.findOneBy({
       sha256,
@@ -88,7 +152,6 @@ export class ApkCatalogService {
   }
 
   async list(ownerUserId?: string) {
-    await this.ensureMetadataColumns();
     return this.uploadedApks.find({
       where: ownerUserId ? { ownerUserId } : {},
       order: { createdAt: 'DESC' },
@@ -99,7 +162,6 @@ export class ApkCatalogService {
    * Loads an uploaded APK or throws when the id does not exist.
    */
   async get(id: string) {
-    await this.ensureMetadataColumns();
     const uploaded = await this.uploadedApks.findOneBy({ id });
     if (!uploaded) {
       throw new ConflictException(`Uploaded APK "${id}" was not found.`);
@@ -160,14 +222,16 @@ export class ApkCatalogService {
    * Removes unreferenced uploads and deletes shared files only after the last reference is gone.
    */
   async cleanupUnused(ownerUserId?: string | null) {
-    await this.ensureMetadataColumns();
     const owner = ownerUserId?.trim();
     const uploads = await this.uploadedApks.find({
       where: owner ? { ownerUserId: owner } : {},
     });
     const ids = uploads.map((upload) => upload.id);
     if (ids.length === 0) {
-      return { deletedRecords: 0, removedFiles: 0 };
+      return {
+        deletedRecords: 0,
+        removedFiles: await this.storage.cleanupOrphanedFiles(),
+      };
     }
 
     const used = await this.applications.find({
@@ -187,25 +251,7 @@ export class ApkCatalogService {
       }
     }
 
+    removedFiles += await this.storage.cleanupOrphanedFiles();
     return { deletedRecords: unused.length, removedFiles };
-  }
-
-  private async ensureMetadataColumns() {
-    const columns = (await this.uploadedApks.query(
-      `PRAGMA table_info('uploaded_apks')`,
-    )) as Array<{ name: string }>;
-    const columnNames = new Set(columns.map((column) => column.name));
-
-    if (!columnNames.has('displayName')) {
-      await this.uploadedApks.query(
-        `ALTER TABLE uploaded_apks ADD COLUMN displayName text`,
-      );
-    }
-
-    if (!columnNames.has('packageName')) {
-      await this.uploadedApks.query(
-        `ALTER TABLE uploaded_apks ADD COLUMN packageName text`,
-      );
-    }
   }
 }

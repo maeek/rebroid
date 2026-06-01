@@ -1,16 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 type PollingQueryKey = string | readonly unknown[] | null
-
-interface PollingQueryCacheEntry<Data = unknown, Error = unknown> {
-  data?: Data
-  error?: Error
-  isValidating: boolean
-  listeners: Set<() => void>
-  updatedAt: number
-}
 
 interface MutateOptions {
   revalidate?: boolean
@@ -23,14 +16,6 @@ interface UsePollingQueryOptions<Error = unknown> {
   revalidateOnMount?: boolean
 }
 
-const dedupingIntervalMs = 2000
-const errorRetryIntervalMs = 2000
-const errorRetryCount = 2
-const focusThrottleIntervalMs = 5000
-const cache = new Map<string, PollingQueryCacheEntry>()
-const requests = new Map<string, Promise<unknown>>()
-let lastFocusRefreshAt = 0
-
 const serializeKey = (key: PollingQueryKey) => {
   if (!key) {
     return null
@@ -39,170 +24,57 @@ const serializeKey = (key: PollingQueryKey) => {
   return typeof key === 'string' ? key : JSON.stringify(key)
 }
 
-const getCacheEntry = <Data, Error>(key: string) => {
-  const existing = cache.get(key)
-  if (existing) {
-    return existing as PollingQueryCacheEntry<Data, Error>
-  }
-
-  const created: PollingQueryCacheEntry<Data, Error> = {
-    isValidating: false,
-    listeners: new Set(),
-    updatedAt: 0
-  }
-  cache.set(key, created)
-  return created
-}
-
-const notify = (entry: PollingQueryCacheEntry) => {
-  entry.listeners.forEach(listener => listener())
-}
-
-const fetchQuery = async <Data, Error>(
-  key: string,
-  fetcher: () => Promise<Data>,
-  onError?: (error: Error) => void,
-  force = false
-) => {
-  const entry = getCacheEntry<Data, Error>(key)
-  if (!force && entry.updatedAt > 0 && Date.now() - entry.updatedAt < dedupingIntervalMs) {
-    return entry.data
-  }
-
-  const existing = requests.get(key)
-  if (existing) {
-    return existing as Promise<Data>
-  }
-
-  entry.isValidating = true
-  notify(entry)
-  const pending = fetcher()
-    .then(data => {
-      entry.data = data
-      entry.error = undefined
-      entry.updatedAt = Date.now()
-      return data
-    })
-    .catch((error: Error) => {
-      entry.error = error
-      onError?.(error)
-      throw error
-    })
-    .finally(() => {
-      entry.isValidating = false
-      requests.delete(key)
-      notify(entry)
-    })
-  requests.set(key, pending)
-  return pending
-}
-
 export const usePollingQuery = <Data, Error = unknown>(
   key: PollingQueryKey,
   fetcher: () => Promise<Data>,
   { enabled = true, intervalMs = null, onError, revalidateOnMount = true }: UsePollingQueryOptions<Error> = {}
 ) => {
+  const queryClient = useQueryClient()
   const serializedKey = useMemo(() => serializeKey(key), [key])
-  const fetcherRef = useRef(fetcher)
+  const queryKey = useMemo(() => ['polling-query', serializedKey ?? 'disabled'] as const, [serializedKey])
   const onErrorRef = useRef(onError)
-  const [, render] = useState(0)
-
-  useEffect(() => {
-    fetcherRef.current = fetcher
-  }, [fetcher])
 
   useEffect(() => {
     onErrorRef.current = onError
   }, [onError])
 
-  const run = useCallback(
-    (force = false, overrideFetcher?: () => Promise<Data>) => {
-      if (!enabled || !serializedKey) {
-        return Promise.resolve(undefined)
-      }
-
-      return fetchQuery<Data, Error>(serializedKey, overrideFetcher ?? fetcherRef.current, onErrorRef.current, force)
-    },
-    [enabled, serializedKey]
-  )
-
-  const mutate = useCallback(
-    async (overrideFetcher?: () => Promise<Data>, _options?: MutateOptions) => {
-      return run(true, overrideFetcher)
-    },
-    [run]
-  )
+  const query = useQuery<Data, Error>({
+    queryKey,
+    queryFn: fetcher,
+    enabled: enabled && serializedKey !== null,
+    refetchInterval: intervalMs ?? false,
+    refetchIntervalInBackground: false,
+    refetchOnMount: revalidateOnMount ? 'always' : false
+  })
 
   useEffect(() => {
-    if (!enabled || !serializedKey) {
-      return
+    if (query.error !== null) {
+      onErrorRef.current?.(query.error)
     }
+  }, [query.error])
 
-    const entry = getCacheEntry<Data, Error>(serializedKey)
-    const rerender = () => render(value => value + 1)
-    const retryTimers = new Set<number>()
-    entry.listeners.add(rerender)
-
-    const isForeground = () =>
-      document.visibilityState === 'visible' && (typeof navigator === 'undefined' || navigator.onLine !== false)
-
-    const schedule = (attempt = 0) => {
-      if (!isForeground()) {
-        return
+  const mutate = useCallback(
+    async (overrideFetcher?: () => Promise<Data>, options?: MutateOptions) => {
+      if (!enabled || serializedKey === null) {
+        return undefined
+      }
+      if (options?.revalidate === false) {
+        return queryClient.getQueryData<Data>(queryKey)
+      }
+      if (overrideFetcher) {
+        return queryClient.fetchQuery({ queryKey, queryFn: overrideFetcher, staleTime: 0 })
       }
 
-      void run().catch(() => {
-        if (attempt >= errorRetryCount) {
-          return
-        }
+      return query.refetch().then(result => result.data)
+    },
+    [enabled, query, queryClient, queryKey, serializedKey]
+  )
 
-        const timer = window.setTimeout(
-          () => {
-            retryTimers.delete(timer)
-            schedule(attempt + 1)
-          },
-          errorRetryIntervalMs * 2 ** attempt
-        )
-        retryTimers.add(timer)
-      })
-    }
-
-    const refreshAfterFocus = () => {
-      if (Date.now() - lastFocusRefreshAt < focusThrottleIntervalMs) {
-        return
-      }
-
-      lastFocusRefreshAt = Date.now()
-      schedule()
-    }
-
-    if (revalidateOnMount) {
-      schedule()
-    }
-
-    const intervalId = intervalMs ? window.setInterval(() => schedule(), intervalMs) : null
-    window.addEventListener('focus', refreshAfterFocus)
-    window.addEventListener('online', refreshAfterFocus)
-    document.addEventListener('visibilitychange', refreshAfterFocus)
-
-    return () => {
-      entry.listeners.delete(rerender)
-      if (intervalId) {
-        window.clearInterval(intervalId)
-      }
-      retryTimers.forEach(timer => window.clearTimeout(timer))
-      window.removeEventListener('focus', refreshAfterFocus)
-      window.removeEventListener('online', refreshAfterFocus)
-      document.removeEventListener('visibilitychange', refreshAfterFocus)
-    }
-  }, [enabled, intervalMs, revalidateOnMount, run, serializedKey])
-
-  const entry = serializedKey ? getCacheEntry<Data, Error>(serializedKey) : undefined
   return {
-    data: entry?.data,
-    error: entry?.error,
-    isLoading: Boolean(enabled && serializedKey && entry?.data === undefined && entry?.error === undefined),
-    isValidating: entry?.isValidating ?? false,
+    data: query.data,
+    error: query.error ?? undefined,
+    isLoading: query.isLoading,
+    isValidating: query.isFetching,
     mutate
   }
 }

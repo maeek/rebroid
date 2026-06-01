@@ -11,7 +11,7 @@ import { Toaster } from '@/components/ui/toaster'
 import { getServerAuthSession } from '@/server/auth/auth'
 // eslint-disable-next-line import/order
 import './globals.scss'
-// eslint-disable-next-line import/order
+
 import './globals.css'
 
 const ubuntu = localFont({

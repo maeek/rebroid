@@ -12,10 +12,13 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
 
-  app.enableCors({
-    origin: true,
-    credentials: true,
-  });
+  const corsOrigins = config.get<string[]>('app.corsOrigins') ?? [];
+  if (corsOrigins.length > 0) {
+    app.enableCors({
+      origin: corsOrigins,
+      credentials: true,
+    });
+  }
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
