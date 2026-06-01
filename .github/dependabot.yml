@@ -1,0 +1,14 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /production/web
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /production/orchestrator
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /production/firewall-agent
+    schedule:
+      interval: weekly
