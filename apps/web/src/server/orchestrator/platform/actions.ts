@@ -1,5 +1,6 @@
 'use server'
 
+import { recordAuditEvent } from '@/server/audit/events'
 import { revalidateOrchestratorPages, requireAdminUser } from '../shared'
 import { orchestratorPlatformClient } from './client'
 
@@ -34,8 +35,9 @@ export const getPlatformImageAction = async (id: string) => {
 }
 
 export const removePlatformImageAction = async (id: string, force = false) => {
-  await requireAdminUser()
+  const admin = await requireAdminUser()
   const result = await orchestratorPlatformClient.removePlatformImage(id, force)
+  recordAuditEvent(admin.id, 'docker.image.remove', id, { force })
   revalidateOrchestratorPages()
   return result
 }
@@ -51,22 +53,25 @@ export const getPlatformNetworkAction = async (id: string) => {
 }
 
 export const removePlatformNetworkAction = async (id: string) => {
-  await requireAdminUser()
+  const admin = await requireAdminUser()
   const result = await orchestratorPlatformClient.removePlatformNetwork(id)
+  recordAuditEvent(admin.id, 'docker.network.remove', id)
   revalidateOrchestratorPages()
   return result
 }
 
 export const stopPlatformContainerAction = async (id: string) => {
-  await requireAdminUser()
+  const admin = await requireAdminUser()
   const result = await orchestratorPlatformClient.stopPlatformContainer(id)
+  recordAuditEvent(admin.id, 'docker.container.stop', id)
   revalidateOrchestratorPages()
   return result
 }
 
 export const removePlatformContainerAction = async (id: string, force = false) => {
-  await requireAdminUser()
+  const admin = await requireAdminUser()
   const result = await orchestratorPlatformClient.removePlatformContainer(id, force)
+  recordAuditEvent(admin.id, 'docker.container.remove', id, { force })
   revalidateOrchestratorPages()
   return result
 }

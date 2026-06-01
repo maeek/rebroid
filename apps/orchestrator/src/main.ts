@@ -17,6 +17,16 @@ async function bootstrap() {
   app.use(helmet());
   app.use(
     pinoHttp({
+      redact: {
+        paths: [
+          'req.headers.authorization',
+          'req.headers.cookie',
+          'req.headers["x-orchestrator-secret"]',
+          'req.headers["x-rebroid-sidecar-secret"]',
+          'res.headers["set-cookie"]',
+        ],
+        censor: '[redacted]',
+      },
       genReqId: (request, response) => {
         const requestId =
           typeof request.headers['x-request-id'] === 'string'

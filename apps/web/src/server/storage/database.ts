@@ -195,6 +195,40 @@ export const appendAuditEvent = (
     )
 }
 
+export type AuditEvent = {
+  id: number
+  actorUserId: string | null
+  action: string
+  subject: string | null
+  details: Record<string, unknown>
+  createdAt: string
+}
+
+export const listAuditEvents = (limit = 500): AuditEvent[] => {
+  const boundedLimit = Math.min(Math.max(Math.trunc(limit), 1), 1000)
+  const rows = openDatabase()
+    .client.prepare(
+      'SELECT id, actor_user_id, action, subject, details_json, created_at FROM audit_events ORDER BY id DESC LIMIT ?'
+    )
+    .all(boundedLimit) as Array<{
+    id: number
+    actor_user_id: string | null
+    action: string
+    subject: string | null
+    details_json: string
+    created_at: string
+  }>
+
+  return rows.map(row => ({
+    id: row.id,
+    actorUserId: row.actor_user_id,
+    action: row.action,
+    subject: row.subject,
+    details: JSON.parse(row.details_json) as Record<string, unknown>,
+    createdAt: row.created_at
+  }))
+}
+
 export const corruptWebStateForTests = (key: 'users' | 'web-settings', value: string) => {
   const { client } = openDatabase()
   if (key === 'users') {

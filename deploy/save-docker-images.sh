@@ -19,6 +19,7 @@ build_image() {
   echo "Building ${image_name} for ${platform}"
   "${podman_bin}" build \
     --platform "${platform}" \
+    --format docker \
     -t "${image_name}" \
     -f "${dockerfile_path}" \
     "$@" \
@@ -35,9 +36,7 @@ build_image \
   "${repo_dir}" \
   "${repo_dir}/apps/web/Dockerfile" \
   --build-arg "NEXT_PROXY_CLIENT_MAX_BODY_SIZE=${NEXT_PROXY_CLIENT_MAX_BODY_SIZE:-512mb}" \
-  --build-arg "DISPLAY_SIDECAR_INTERNAL_BASE_URL=${DISPLAY_SIDECAR_INTERNAL_BASE_URL:-http://rebroid-display-sidecar:8000}" \
-  --build-arg "DISPLAY_SIDECAR_PUBLIC_BASE_URL=${DISPLAY_SIDECAR_PUBLIC_BASE_URL:-}" \
-  --build-arg "DISPLAY_SIDECAR_PUBLIC_PORT=${DISPLAY_SIDECAR_PUBLIC_PORT:-3002}"
+  --build-arg "DISPLAY_SIDECAR_INTERNAL_BASE_URL=${DISPLAY_SIDECAR_INTERNAL_BASE_URL:-http://rebroid-display-sidecar:8000}"
 
 build_image \
   "localhost/rebroid/display-sidecar:local" \
@@ -77,24 +76,3 @@ localhost/rebroid/firewall-agent:local rebroid-firewall-agent-local.tar
 EOF
 
 echo "Saved Rebroid images to ${output_dir}"
-
-# rsync -avz --prune-empty-dirs --delete \
-#   --exclude='.dockerignore' \
-#   --exclude='**/node_modules/' \
-#   --exclude='**/dist/' \
-#   --exclude='**/data/' \
-#   --exclude='**/uploads/' \
-#   --exclude='**/.next/' \
-#   --exclude='**/.git/' \
-#   --exclude='**/npm-debug.log' \
-#   --exclude='**/coverage/' \
-#   --exclude='**/certificates/' \
-#   --exclude='**/README.md' \
-#   --exclude='**/.env*' \
-#   /Users/maek/Projects/rebroid/production \
-#   maek@192.168.1.11:/home/maek/Documents/shop-me-alone
-
-
-rsync -avz --prune-empty-dirs --delete \
-  "${output_dir}" \
-  maek@10.20.0.4:/home/maek/DockerData/build-files/rebroid

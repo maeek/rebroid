@@ -4,7 +4,13 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals'
 import { forgetStoredRecentApp, listStoredRecentApps, rememberStoredRecentApp } from '@/server/recent-apps/store'
 import { getWebSettings, saveWebSettings } from '@/server/web-settings/store'
-import { corruptWebStateForTests, readWebState, resetWebDatabaseForTests } from './database'
+import {
+  appendAuditEvent,
+  corruptWebStateForTests,
+  listAuditEvents,
+  readWebState,
+  resetWebDatabaseForTests
+} from './database'
 
 describe('web state database', () => {
   let tempDirectory: string
@@ -50,5 +56,18 @@ describe('web state database', () => {
 
     await expect(getWebSettings()).rejects.toThrow()
     expect(readWebState('web-settings')).toBe('{malformed')
+  })
+
+  it('lists recent audit events newest first with a bounded limit', () => {
+    appendAuditEvent('application.start', { actorUserId: 'user-1', subject: 'app-1' })
+    appendAuditEvent('docker.prune.images', { actorUserId: 'admin-1', details: { danglingOnly: true } })
+
+    expect(listAuditEvents(1)).toEqual([
+      expect.objectContaining({
+        actorUserId: 'admin-1',
+        action: 'docker.prune.images',
+        details: { danglingOnly: true }
+      })
+    ])
   })
 })

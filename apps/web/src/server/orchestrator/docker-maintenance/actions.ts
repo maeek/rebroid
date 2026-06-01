@@ -1,39 +1,45 @@
 'use server'
 
+import { recordAuditEvent } from '@/server/audit/events'
 import { revalidateOrchestratorPages, requireAdminUser } from '../shared'
 import { orchestratorDockerMaintenanceClient } from './client'
 
 export const pruneImagesAction = async (danglingOnly = true) => {
-  await requireAdminUser()
+  const admin = await requireAdminUser()
   const result = await orchestratorDockerMaintenanceClient.pruneImages(danglingOnly)
+  recordAuditEvent(admin.id, 'docker.prune.images', undefined, { danglingOnly })
   revalidateOrchestratorPages()
   return result
 }
 
 export const pruneContainersAction = async () => {
-  await requireAdminUser()
+  const admin = await requireAdminUser()
   const result = await orchestratorDockerMaintenanceClient.pruneContainers()
+  recordAuditEvent(admin.id, 'docker.prune.containers')
   revalidateOrchestratorPages()
   return result
 }
 
 export const pruneNetworksAction = async () => {
-  await requireAdminUser()
+  const admin = await requireAdminUser()
   const result = await orchestratorDockerMaintenanceClient.pruneNetworks()
+  recordAuditEvent(admin.id, 'docker.prune.networks')
   revalidateOrchestratorPages()
   return result
 }
 
 export const pruneVolumesAction = async () => {
-  await requireAdminUser()
+  const admin = await requireAdminUser()
   const result = await orchestratorDockerMaintenanceClient.pruneVolumes()
+  recordAuditEvent(admin.id, 'docker.prune.volumes')
   revalidateOrchestratorPages()
   return result
 }
 
 export const pruneAllDockerResourcesAction = async () => {
-  await requireAdminUser()
+  const admin = await requireAdminUser()
   const result = await orchestratorDockerMaintenanceClient.pruneAllDockerResources()
+  recordAuditEvent(admin.id, 'docker.prune.all')
   revalidateOrchestratorPages()
   return result
 }

@@ -8,6 +8,7 @@ import {
   IconBrandDocker,
   IconCast,
   IconChevronDown,
+  IconHistory,
   IconLibraryPlus,
   IconLoader2,
   IconNetwork,
@@ -50,6 +51,7 @@ const settingsSections: NavigationItem[] = [{ name: 'General', Icon: IconAdjustm
 const adminSettingsSections: NavigationItem[] = [
   { name: 'Casting', Icon: IconCast, href: '/settings/casting' },
   { name: 'Network access', Icon: IconNetwork, href: '/settings/firewall' },
+  { name: 'Activity', Icon: IconHistory, href: '/settings/activity' },
   { name: 'System', Icon: IconServerSpark, href: '/settings/system' }
 ]
 
