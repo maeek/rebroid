@@ -1,0 +1,25 @@
+{
+  "name": "rebroid",
+  "private": true,
+  "packageManager": "pnpm@10.12.4",
+  "scripts": {
+    "build": "turbo run build",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm openapi:check && pnpm boundaries && pnpm deadcode && pnpm build",
+    "deadcode": "knip --no-exit-code",
+    "dev": "turbo run dev --parallel",
+    "format:check": "turbo run format:check",
+    "lint": "turbo run lint",
+    "openapi:check": "node scripts/openapi-generate.mjs --check",
+    "openapi:generate": "node scripts/openapi-generate.mjs",
+    "boundaries": "depcruise --config .dependency-cruiser.cjs apps packages",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "dependency-cruiser": "^16.10.4",
+    "knip": "^5.63.1",
+    "openapi-typescript": "^7.9.1",
+    "turbo": "^2.5.4",
+    "typescript": "^5.9.3"
+  }
+}

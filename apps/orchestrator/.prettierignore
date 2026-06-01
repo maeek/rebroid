@@ -1,0 +1,4 @@
+# Existing formatting debt; normalize when each area is changed deliberately.
+src/android-apps/common/services/android-apps-state.service.spec.ts
+src/android-apps/network/services/android-apps-runtime-network.service.spec.ts
+src/android-apps/runtime/services/android-apps-runtime-access.service.ts

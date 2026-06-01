@@ -1,3 +1,0 @@
-[submodule "production/display-sidecar"]
-	path = production/display-sidecar
-	url = git@github.com:maeek/scrcpy-browser.git

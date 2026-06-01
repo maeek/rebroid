@@ -1,0 +1,10 @@
+packages:
+  - apps/*
+  - packages/*
+
+injectWorkspacePackages: true
+
+onlyBuiltDependencies:
+  - '@nestjs/core'
+  - bcrypt
+  - better-sqlite3

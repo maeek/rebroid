@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rebroid Display</title>
+  <link rel="stylesheet" href="/viewer/display/assets/styles.css" />
+</head>
+<body>
+  <main>
+    <video id="screen-video" class="hidden" autoplay playsinline muted></video>
+    <canvas id="screen" class="hidden"></canvas>
+    <section id="message">
+      <div class="device" aria-hidden="true">
+        <div class="screen-art">
+          <svg class="display-mark" viewBox="0 0 64 64" focusable="false" aria-hidden="true">
+            <rect x="13" y="12" width="38" height="34" rx="5" />
+            <path d="M24 53h16" />
+            <path d="M32 46v7" />
+            <path d="M22 23h20" />
+            <path d="M22 32h12" />
+          </svg>
+        </div>
+      </div>
+      <h1 id="message-title">Starting live display</h1>
+      <p id="message-copy">Rebroid is opening the app screen.</p>
+      <p id="status">Connecting...</p>
+    </section>
+  </main>
+  <script type="module" src="/viewer/display/assets/app.js"></script>
+</body>
+</html>

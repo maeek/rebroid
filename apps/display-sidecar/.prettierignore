@@ -1,0 +1,9 @@
+# Preserve the existing formatting of fragile or legacy files until they are
+# changed deliberately with behavioral verification.
+src/modules/display/display.types.ts
+src/modules/display/viewer/src/control-channel.ts
+src/modules/display/viewer/src/display-stream.ts
+src/modules/scrcpy/scrcpy.service.ts
+scripts/clean-viewer-assets.mjs
+scripts/copy-assets.mjs
+scripts/rewrite-viewer-imports.mjs

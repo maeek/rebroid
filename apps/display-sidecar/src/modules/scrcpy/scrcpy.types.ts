@@ -1,0 +1,89 @@
+import { WebSocket } from "ws";
+
+export const SCRCPY_WS_OPEN = WebSocket.OPEN;
+
+export type ScrcpyVideoCodec = "h264" | "h265";
+export type ScrcpyTunnelMode = "direct" | "reverse" | "forward";
+
+export interface ScrcpyAudioPacket {
+  data: Buffer;
+  timestampUs: bigint;
+  config: boolean;
+}
+
+export interface ScrcpyStreamClient {
+  readyState: number;
+  bufferedAmount: number;
+  once: (event: "close", listener: () => void) => unknown;
+  send: (...args: any[]) => unknown;
+  sendAudio?: (
+    packet: ScrcpyAudioPacket,
+    callback?: (error?: Error) => void,
+  ) => unknown;
+  close?: (code?: number, reason?: string) => unknown;
+}
+
+export interface ScrcpyStreamOptions {
+  sessionId: string;
+  udid: string;
+  client: ScrcpyStreamClient;
+  codec: ScrcpyVideoCodec;
+  maxSize: number;
+  maxFps: number;
+  bitrate: number;
+  audio: boolean;
+  iFrameInterval?: number;
+  onActivity?: () => void;
+}
+
+export interface ScrcpyKeyboardEventPayload {
+  eventType?: "keydown" | "keyup";
+  key?: string;
+  code?: string;
+  repeat?: boolean;
+  altKey?: boolean;
+  ctrlKey?: boolean;
+  metaKey?: boolean;
+  shiftKey?: boolean;
+}
+
+export interface ScrcpyTouchEventPayload {
+  action?: "tap" | "swipe" | "pointer";
+  eventType?: "down" | "move" | "up" | "cancel";
+  x?: number;
+  y?: number;
+  x1?: number;
+  y1?: number;
+  x2?: number;
+  y2?: number;
+  videoWidth?: number;
+  videoHeight?: number;
+  durationMs?: number;
+}
+
+export interface ScrcpySocket {
+  destroyed: boolean;
+  writable: boolean;
+  destroy: (error?: Error) => ScrcpySocket;
+  on: (event: string, listener: (...args: any[]) => void) => ScrcpySocket;
+  once: (event: string, listener: (...args: any[]) => void) => ScrcpySocket;
+  removeListener: (
+    event: string,
+    listener: (...args: any[]) => void,
+  ) => ScrcpySocket;
+  pause: () => ScrcpySocket;
+  resume: () => ScrcpySocket;
+  setNoDelay: (noDelay?: boolean) => ScrcpySocket;
+  write: (payload: Buffer | Uint8Array | string) => boolean;
+}
+
+export interface ForwardedVideoSocket {
+  socket: ScrcpySocket;
+  initialPayload: Buffer;
+}
+
+export interface ScrcpyAttemptResult {
+  reason: string;
+  durationMs: number;
+  bytesForwarded: number;
+}

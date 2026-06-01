@@ -1,14 +1,18 @@
 version: 2
 updates:
   - package-ecosystem: npm
-    directory: /production/web
+    directory: /apps/web
     schedule:
       interval: weekly
   - package-ecosystem: npm
-    directory: /production/orchestrator
+    directory: /apps/orchestrator
     schedule:
       interval: weekly
   - package-ecosystem: npm
-    directory: /production/firewall-agent
+    directory: /apps/firewall-agent
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /apps/display-sidecar
     schedule:
       interval: weekly
