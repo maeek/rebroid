@@ -1,5 +1,6 @@
 import { CSSProperties } from 'react'
 import localFont from 'next/font/local'
+import { headers } from 'next/headers'
 // eslint-disable-next-line import/order
 import Providers from './providers'
 // eslint-disable-next-line import/order
@@ -60,6 +61,7 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerAuthSession()
+  const nonce = (await headers()).get('x-nonce') ?? undefined
 
   return (
     <html
@@ -76,9 +78,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <ThemeProvider
           attribute='class'
-          defaultTheme='system'
+          defaultTheme='dark'
           enableSystem
           disableTransitionOnChange
+          nonce={nonce}
         >
           <NextTopLoader
             color='var(--primary)'
