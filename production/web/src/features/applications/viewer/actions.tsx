@@ -116,22 +116,6 @@ export const AppViewerActions = ({
           <TooltipContent>Settings</TooltipContent>
         </Tooltip>
       </Visible>
-      <Visible when={canViewLogs}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              asChild
-              variant='secondary'
-              size='icon'
-              aria-label='View application logs'
-              onClick={() => setLogsOpen(true)}
-            >
-              <IconTerminal2 className='size-4!' />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Logs</TooltipContent>
-        </Tooltip>
-      </Visible>
     </div>
   )
 }
