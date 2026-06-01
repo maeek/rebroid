@@ -5,6 +5,7 @@ import { IconDevicesCheck, IconLoader2 } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/hooks/use-toast'
+import { useVisibilityAwareInterval } from '@/hooks/use-visibility-aware-interval'
 import { setApplicationClipboardAction } from '@/server/orchestrator/applications/mutation-actions'
 import { getApplicationClipboardAction } from '@/server/orchestrator/applications/read-actions'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
@@ -28,7 +29,6 @@ export const ClipboardToolsSection = ({
   const [clipboardText, setClipboardText] = useState('')
   const [isClipboardBusy, startClipboardTransition] = useTransition()
   const lastAppClipboardRef = useRef('')
-  const autoSyncInFlightRef = useRef(false)
 
   const pullClipboard = useCallback(() => {
     startClipboardTransition(async () => {
@@ -83,53 +83,27 @@ export const ClipboardToolsSection = ({
     })
   }
 
-  useEffect(() => {
-    if (!runtimeAvailable || !canSyncClipboard || typeof navigator === 'undefined' || !navigator.clipboard) {
-      return
-    }
-
-    let cancelled = false
-
-    const syncAppClipboardToHost = async () => {
-      if (cancelled || document.visibilityState !== 'visible' || autoSyncInFlightRef.current) {
+  const syncAppClipboardToHost = useCallback(async () => {
+    try {
+      const clipboard = await getApplicationClipboardAction(app.id)
+      if (!clipboard.supported || clipboard.text === lastAppClipboardRef.current) {
         return
       }
 
-      autoSyncInFlightRef.current = true
-      try {
-        const clipboard = await getApplicationClipboardAction(app.id)
-        if (cancelled || !clipboard.supported || clipboard.text === lastAppClipboardRef.current) {
-          return
-        }
-
-        lastAppClipboardRef.current = clipboard.text
-        setClipboardText(clipboard.text)
-        await navigator.clipboard.writeText(clipboard.text).catch(() => undefined)
-      } catch {
-        // Keep automatic sync quiet; manual buttons still surface errors.
-      } finally {
-        autoSyncInFlightRef.current = false
-      }
+      lastAppClipboardRef.current = clipboard.text
+      setClipboardText(clipboard.text)
+      await navigator.clipboard.writeText(clipboard.text).catch(() => undefined)
+    } catch {
+      // Keep automatic sync quiet; manual buttons still surface errors.
     }
+  }, [app.id])
 
-    const syncVisibleClipboard = () => {
-      void syncAppClipboardToHost()
-    }
-
-    window.addEventListener('focus', syncVisibleClipboard)
-    document.addEventListener('visibilitychange', syncVisibleClipboard)
-    const appInterval = window.setInterval(() => {
-      void syncAppClipboardToHost()
-    }, 5000)
-    syncVisibleClipboard()
-
-    return () => {
-      cancelled = true
-      window.removeEventListener('focus', syncVisibleClipboard)
-      document.removeEventListener('visibilitychange', syncVisibleClipboard)
-      window.clearInterval(appInterval)
-    }
-  }, [app.id, canSyncClipboard, pushClipboardText, runtimeAvailable])
+  useVisibilityAwareInterval({
+    enabled: runtimeAvailable && canSyncClipboard && typeof navigator !== 'undefined' && Boolean(navigator.clipboard),
+    immediate: true,
+    intervalMs: 5000,
+    task: syncAppClipboardToHost
+  })
 
   useEffect(() => {
     const handleViewerClipboard = (event: MessageEvent) => {

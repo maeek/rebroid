@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { IconLoader2, IconPlayerStopFilled, IconRefresh, IconTerminal2, IconTrash } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
@@ -27,7 +27,7 @@ import {
 } from '@/features/orchestrator/components/platform-detail-parts'
 import { LogsConsole } from '@/features/orchestrator/logs/logs-console'
 import { QuickGlanceCard } from '@/features/settings/components/quick-glance-card'
-import { useForegroundRefresh } from '@/hooks/use-foreground-refresh'
+import { usePollingQuery } from '@/hooks/use-polling-query'
 import { toast } from '@/hooks/use-toast'
 import {
   getPlatformContainerLogsAction,
@@ -57,39 +57,27 @@ export const OrchestratorContainerDetail = ({
   const container = details.container
   const relatedImage = details.relatedImage
   const [logs, setLogs] = useState(initialLogs)
-  const [stats, setStats] = useState<PlatformContainerStats>()
-  const [statsError, setStatsError] = useState<string | null>(null)
-  const [isRefreshingStats, setIsRefreshingStats] = useState(false)
   const [isRefreshingLogs, setIsRefreshingLogs] = useState(false)
   const [pendingAction, setPendingAction] = useState<'stop' | 'remove' | null>(null)
   const [isActing, setIsActing] = useState(false)
   const [forceRemove, setForceRemove] = useState(container.state === 'removing')
 
-  const refreshStats = useCallback(async () => {
-    if (container.state !== 'running') {
-      return
+  const {
+    data: stats,
+    error: caughtStatsError,
+    isValidating: isRefreshingStats,
+    mutate: refreshStats
+  } = usePollingQuery<PlatformContainerStats>(
+    ['orchestrator', 'containers', container.id, 'stats'],
+    () => getPlatformContainerStatsAction(container.id),
+    {
+      enabled: container.state === 'running',
+      intervalMs: containerStatsRefreshIntervalMs
     }
-
-    setIsRefreshingStats(true)
-    try {
-      setStats(await getPlatformContainerStatsAction(container.id))
-      setStatsError(null)
-    } catch (error) {
-      setStatsError(getDisplayErrorMessage(error, 'Could not collect live container stats.'))
-    } finally {
-      setIsRefreshingStats(false)
-    }
-  }, [container.id, container.state])
-
-  useEffect(() => {
-    void refreshStats()
-  }, [refreshStats])
-
-  useForegroundRefresh({
-    enabled: container.state === 'running',
-    intervalMs: containerStatsRefreshIntervalMs,
-    refresh: refreshStats
-  })
+  )
+  const statsError = caughtStatsError
+    ? getDisplayErrorMessage(caughtStatsError, 'Could not collect live container stats.')
+    : null
 
   const refreshLogs = async () => {
     setIsRefreshingLogs(true)

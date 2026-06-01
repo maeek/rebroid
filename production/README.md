@@ -154,6 +154,7 @@ services:
       DOCKER_STOPPING_STALE_TIMEOUT_SECONDS: 60
       DOCKER_REQUEST_TIMEOUT_MS: 15000
       DOCKER_CONNECTION_TIMEOUT_MS: 5000
+      VOLUME_USAGE_RETRY_DELAY_SECONDS: 60
 ```
 
 `REDROID_CGROUPNS_MODE=private` and `REDROID_OPTIONAL_DEVICES=/dev/ashmem:/dev/ashmem:rwm` are already the built-in defaults. Keep the cgroup namespace private when you use CPU or memory limits so Android runtime processes stay inside the Docker-accounted cgroup. `REDROID_CGROUPNS_MODE=host` is available as an escape hatch for unusual hosts, but it can make privileged redroid processes visible in host process monitors while Docker/Portainer stats only report a small outer-container load. `REDROID_DEVICES` is for required mappings and will fail container creation if the host path is missing; `REDROID_OPTIONAL_DEVICES` is for best-effort mappings such as ashmem.
@@ -161,6 +162,8 @@ services:
 `DOCKER_STOPPING_STALE_TIMEOUT_SECONDS` controls how long an interrupted stop may remain visibly in progress before the orchestrator trusts Docker's current runtime state and recovers the app to either running or stopped. The built-in default is `60`.
 
 `DOCKER_REQUEST_TIMEOUT_MS` bounds ordinary Docker API requests so inventory and cleanup calls fail fast when the container engine is blocked. `DOCKER_CONNECTION_TIMEOUT_MS` separately bounds connection setup. Background removal retries cleanup after failures. The built-in defaults are `15000` and `5000`.
+
+`VOLUME_USAGE_RETRY_DELAY_SECONDS` controls how long dashboard storage diagnostics wait before retrying an expensive Docker disk-usage request after a failure. While Docker cleanup is active, the dashboard serves the last successful volume usage snapshot instead of starting a competing disk-usage request. The built-in default is `60`.
 
 Everything else is primarily for advanced deployments: custom networks, external orchestrator/web separation, sidecar image overrides, or firewall adapter tuning.
 

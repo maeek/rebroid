@@ -203,9 +203,14 @@ export class AndroidAppsStateService {
     const message = runtimeState.exists
       ? this.status.containerExitedMessage(app, runtimeState)
       : 'Managed container no longer exists.';
-    this.logger.warn(
-      `Managed container stopped for ${app.id}: ${JSON.stringify(runtimeState)}`,
-    );
+    if (
+      app.status === AndroidApplicationStatus.Provisioning ||
+      app.status === AndroidApplicationStatus.Running
+    ) {
+      this.logger.warn(
+        `Managed container stopped for ${app.id}: ${JSON.stringify(runtimeState)}`,
+      );
+    }
 
     if (app.status === AndroidApplicationStatus.Provisioning) {
       if (runtimeState.exists && runtimeState.exitCode === 0) {

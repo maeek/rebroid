@@ -15,6 +15,10 @@ import {
 export class DockerResourceRuntimeService {
   constructor(private readonly engine: DockerEngineService) {}
 
+  get hasPendingMutations() {
+    return this.engine.hasPendingMutations;
+  }
+
   async engineSummary() {
     const info = await this.engine.info();
     return {

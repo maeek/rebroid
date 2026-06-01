@@ -8,8 +8,11 @@ const createService = (
   new SystemResourcesService(
     {
       getOrThrow: (key: string) => {
-        if (key === 'app.docker.volumeUsageCacheTtlSeconds') {
-          return 300;
+        if (
+          key === 'app.docker.volumeUsageCacheTtlSeconds' ||
+          key === 'app.docker.volumeUsageRetryDelaySeconds'
+        ) {
+          return key === 'app.docker.volumeUsageCacheTtlSeconds' ? 300 : 60;
         }
 
         throw new Error(`Unexpected config key: ${key}`);
@@ -19,6 +22,7 @@ const createService = (
   );
 
 const baseDocker = {
+  hasPendingMutations: false,
   hostCapacity: jest.fn().mockResolvedValue({
     memoryBytes: 1024,
     cpuCores: 2,
@@ -68,5 +72,58 @@ describe('SystemResourcesService', () => {
       managedVolumesSizeBytes: 512,
       volumes: [{ name: 'managed-volume', sizeBytes: 512 }],
     });
+  });
+
+  it('coalesces concurrent resource snapshots and Docker df requests', async () => {
+    let resolveDf!: (value: { Volumes: [] }) => void;
+    const dfGate = new Promise<{ Volumes: [] }>((resolve) => {
+      resolveDf = resolve;
+    });
+    const systemDf = jest.fn().mockReturnValue(dfGate);
+    const service = createService({ ...baseDocker, systemDf });
+
+    const first = service.getUsage();
+    const second = service.getUsage();
+    await Promise.resolve();
+
+    expect(systemDf).toHaveBeenCalledTimes(1);
+
+    resolveDf({ Volumes: [] });
+    await expect(Promise.all([first, second])).resolves.toHaveLength(2);
+  });
+
+  it('waits for the retry cooldown before repeating a failed Docker df request', async () => {
+    const systemDf = jest.fn().mockRejectedValue(new Error('docker df failed'));
+    const service = createService({ ...baseDocker, systemDf });
+
+    await service.getUsage();
+    await service.getUsage(true);
+
+    expect(systemDf).toHaveBeenCalledTimes(1);
+  });
+
+  it('serves stale volume usage while a Docker mutation is pending', async () => {
+    const docker = {
+      ...baseDocker,
+      hasPendingMutations: false,
+      systemDf: jest.fn().mockResolvedValue({
+        Volumes: [
+          {
+            Name: 'managed-volume',
+            Labels: { 'com.rebroid.managed': 'true' },
+            UsageData: { Size: 512 },
+          },
+        ],
+      }),
+    };
+    const service = createService(docker);
+
+    await service.getUsage();
+    docker.hasPendingMutations = true;
+
+    await expect(service.getUsage(true)).resolves.toMatchObject({
+      volumes: [{ name: 'managed-volume', sizeBytes: 512 }],
+    });
+    expect(docker.systemDf).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,12 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { IconBell } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Visible } from '@/components/ui/visible'
 import { NotificationCard } from '@/features/applications/viewer/notification-card'
-import { useForegroundRefresh } from '@/hooks/use-foreground-refresh'
+import { usePollingQuery } from '@/hooks/use-polling-query'
 import { cn } from '@/lib/utils'
 import { listRunningApplicationNotificationsAction } from '@/server/orchestrator/applications/read-actions'
 import type { RunningApplicationNotifications } from '@/server/orchestrator/applications/types'
@@ -14,24 +13,13 @@ import type { RunningApplicationNotifications } from '@/server/orchestrator/appl
 const refreshIntervalMs = 10000
 
 export const TopBarNotifications = () => {
-  const [notifications, setNotifications] = useState<RunningApplicationNotifications[]>([])
-  const [hasLoaded, setHasLoaded] = useState(false)
+  const { data, isLoading } = usePollingQuery<RunningApplicationNotifications[]>(
+    'applications:running-notifications',
+    () => listRunningApplicationNotificationsAction(),
+    { intervalMs: refreshIntervalMs }
+  )
+  const notifications = data ?? []
   const totalCount = notifications.reduce((sum, app) => sum + app.notifications.length, 0)
-
-  const load = async () => {
-    const next = await listRunningApplicationNotificationsAction().catch(() => [])
-    setNotifications(next)
-    setHasLoaded(true)
-  }
-
-  useEffect(() => {
-    void load()
-  }, [])
-
-  useForegroundRefresh({
-    intervalMs: refreshIntervalMs,
-    refresh: load
-  })
 
   return (
     <Popover>
@@ -73,7 +61,7 @@ export const TopBarNotifications = () => {
         </div>
         <Visible when={notifications.length === 0}>
           <div className='rounded-xl border border-dashed border-border/70 bg-secondary/30 px-4 py-6 text-sm text-secondary-foreground'>
-            {hasLoaded ? 'No live notifications from your running apps.' : 'Checking running apps for notifications.'}
+            {isLoading ? 'Checking running apps for notifications.' : 'No live notifications from your running apps.'}
           </div>
         </Visible>
         <Visible when={notifications.length > 0}>

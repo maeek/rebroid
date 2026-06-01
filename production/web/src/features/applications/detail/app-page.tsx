@@ -13,7 +13,7 @@ import {
   viewerSettingsFromDefaults
 } from '@/features/applications/viewer/viewer-settings'
 import { ProtectedSplitPageLayout, ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
-import { useForegroundRefresh } from '@/hooks/use-foreground-refresh'
+import { usePollingQuery } from '@/hooks/use-polling-query'
 import { getApplicationAction } from '@/server/orchestrator/applications/read-actions'
 import { rememberRecentAppAction } from '@/server/recent-apps/actions'
 import { hasPermission } from '@/shared/permissions/permissions'
@@ -119,29 +119,29 @@ export const AppViewerPage = ({
     }
   }, [])
 
-  useForegroundRefresh({
-    enabled: Boolean(currentAppId),
-    intervalMs: refreshIntervalMs,
-    refresh: async () => {
-      if (!currentAppId) {
-        return
-      }
-
-      try {
-        const nextApp = await getApplicationAction(currentAppId)
-        setCurrentApp(current => {
-          const mapped = mapAndroidApplicationToAppDefinition(nextApp)
-          return {
-            ...mapped,
-            icon: current?.icon ?? mapped.icon,
-            ownerDisplayName: current?.ownerDisplayName ?? mapped.ownerDisplayName
-          }
-        })
-      } catch {
-        // Keep the last known app state on transient refresh failures.
-      }
+  const { data: refreshedApp } = usePollingQuery(
+    ['applications', currentAppId],
+    () => getApplicationAction(currentAppId!),
+    {
+      enabled: Boolean(currentAppId),
+      intervalMs: refreshIntervalMs
     }
-  })
+  )
+
+  useEffect(() => {
+    if (!refreshedApp) {
+      return
+    }
+
+    setCurrentApp(current => {
+      const mapped = mapAndroidApplicationToAppDefinition(refreshedApp)
+      return {
+        ...mapped,
+        icon: current?.icon ?? mapped.icon,
+        ownerDisplayName: current?.ownerDisplayName ?? mapped.ownerDisplayName
+      }
+    })
+  }, [refreshedApp])
 
   if (!currentApp) {
     return <AppNotFoundSplash />

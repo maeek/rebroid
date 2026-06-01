@@ -38,12 +38,10 @@ export class DockerMaintenancePruneController {
       'Prune stopped containers, unused networks, dangling images, and unused volumes.',
   })
   async pruneAll() {
-    const [containers, networks, images, volumes] = await Promise.all([
-      this.prune.pruneContainers(),
-      this.prune.pruneNetworks(),
-      this.prune.pruneImages(true),
-      this.prune.pruneVolumes(),
-    ]);
+    const containers = await this.prune.pruneContainers();
+    const networks = await this.prune.pruneNetworks();
+    const images = await this.prune.pruneImages(true);
+    const volumes = await this.prune.pruneVolumes();
 
     return {
       containers,

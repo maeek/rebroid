@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { usePollingQuery } from '@/hooks/use-polling-query'
 import { toast } from '@/hooks/use-toast'
 import { getApplicationLogsAction } from '@/server/orchestrator/applications/read-actions'
 import { LogsConsole } from '../../orchestrator/logs/logs-console'
@@ -94,12 +95,25 @@ export const AppLogsDialog = ({
 }: AppLogsDialogProps) => {
   const [source, setSource] = useState<LogSource>('orchestrator')
   const [log, setLog] = useState<ApplicationLog>()
-  const [isLoading, setIsLoading] = useState(false)
   const [isLive, setIsLive] = useState(false)
   const [internalOpen, setInternalOpen] = useState(false)
   const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false)
   const isOpen = open ?? internalOpen
   const sourceUnavailable = isSourceUnavailableForApp(app, source)
+  const {
+    data: refreshedLog,
+    isValidating: isLoading,
+    mutate: refreshLogs
+  } = usePollingQuery<ApplicationLog>(
+    ['applications', app?.id, 'logs', source],
+    () => getApplicationLogsAction(app!.id, source, 500),
+    {
+      enabled: Boolean(app) && isOpen && !sourceUnavailable,
+      intervalMs: isLive ? 3000 : null,
+      revalidateOnMount: false,
+      onError: () => setIsLive(false)
+    }
+  )
 
   const setDialogOpen = useCallback(
     (nextOpen: boolean) => {
@@ -128,10 +142,12 @@ export const AppLogsDialog = ({
       return
     }
 
-    setIsLoading(true)
     setHasAttemptedLoad(true)
     try {
-      setLog(await getApplicationLogsAction(app.id, source, 500))
+      const nextLog = await refreshLogs()
+      if (nextLog) {
+        setLog(nextLog)
+      }
     } catch (error) {
       setIsLive(false)
       toast({
@@ -139,10 +155,14 @@ export const AppLogsDialog = ({
         description: getToastErrorDescription(error),
         variant: 'destructive'
       })
-    } finally {
-      setIsLoading(false)
     }
-  }, [app, source])
+  }, [app, refreshLogs, source, sourceUnavailable])
+
+  useEffect(() => {
+    if (refreshedLog) {
+      setLog(refreshedLog)
+    }
+  }, [refreshedLog])
 
   useEffect(() => {
     if (!app || typeof window === 'undefined') {
@@ -174,8 +194,6 @@ export const AppLogsDialog = ({
     }
 
     void loadLogs()
-    const interval = window.setInterval(() => void loadLogs(), 3000)
-    return () => window.clearInterval(interval)
   }, [isLive, isOpen, loadLogs, sourceUnavailable])
 
   return (

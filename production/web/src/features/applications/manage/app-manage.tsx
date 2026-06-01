@@ -19,7 +19,7 @@ import { AndroidNotifications } from '@/features/applications/viewer/notificatio
 import { useResourceLimitBounds } from '@/features/settings/hooks/use-resource-limit-bounds'
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
 import { ProtectedSplitPageContent, ProtectedSplitPageLayout } from '@/features/shell/components/protected-page-shell'
-import { useForegroundRefresh } from '@/hooks/use-foreground-refresh'
+import { usePollingQuery } from '@/hooks/use-polling-query'
 import { toast } from '@/hooks/use-toast'
 import { updateApplicationAction } from '@/server/orchestrator/applications/mutation-actions'
 import { getApplicationAction } from '@/server/orchestrator/applications/read-actions'
@@ -122,22 +122,20 @@ export default function AppManage({
     }
   }, [currentApp])
 
-  useForegroundRefresh({
-    enabled: Boolean(currentAppId),
-    intervalMs: refreshIntervalMs,
-    refresh: async () => {
-      if (!currentAppId) {
-        return
-      }
-
-      try {
-        const nextApp = await getApplicationAction(currentAppId)
-        setCurrentApp(current => mergeAppPreservingIcon(mapAndroidApplicationToAppDefinition(nextApp), current))
-      } catch {
-        // Keep the last known app state on transient refresh failures.
-      }
+  const { data: refreshedApp } = usePollingQuery(
+    ['applications', currentAppId],
+    () => getApplicationAction(currentAppId!),
+    {
+      enabled: Boolean(currentAppId),
+      intervalMs: refreshIntervalMs
     }
-  })
+  )
+
+  useEffect(() => {
+    if (refreshedApp) {
+      setCurrentApp(current => mergeAppPreservingIcon(mapAndroidApplicationToAppDefinition(refreshedApp), current))
+    }
+  }, [refreshedApp])
 
   if (!currentApp) {
     return <AppNotFoundSplash />

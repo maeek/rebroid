@@ -21,6 +21,11 @@ interface DockerVolumeDf {
 export class SystemResourcesService {
   private readonly logger = new Logger(SystemResourcesService.name);
   private volumeCache: VolumeUsageCache | null = null;
+  private volumeUsageRequest: Promise<VolumeUsageCache['volumes']> | null = null;
+  private volumeUsageRetryAfter = 0;
+  private usageRequest: Promise<
+    Awaited<ReturnType<SystemResourcesService['collectUsage']>>
+  > | null = null;
   private dockerRootStatfsWarningShown = false;
 
   constructor(
@@ -32,6 +37,20 @@ export class SystemResourcesService {
    * Aggregates managed container counts, live resource usage, and cached volume sizes.
    */
   async getUsage(refreshVolumes = false) {
+    if (this.usageRequest) {
+      return this.usageRequest;
+    }
+
+    const pending = this.collectUsage(refreshVolumes).finally(() => {
+      if (this.usageRequest === pending) {
+        this.usageRequest = null;
+      }
+    });
+    this.usageRequest = pending;
+    return pending;
+  }
+
+  private async collectUsage(refreshVolumes: boolean) {
     const [hostCapacity, containers, volumes] = await Promise.all([
       this.docker.hostCapacity(),
       this.docker.listManagedContainers(),
@@ -139,10 +158,35 @@ export class SystemResourcesService {
       return this.volumeCache.volumes;
     }
 
+    if (
+      this.docker.hasPendingMutations ||
+      Date.now() < this.volumeUsageRetryAfter
+    ) {
+      return this.volumeCache?.volumes ?? [];
+    }
+
+    if (this.volumeUsageRequest) {
+      return this.volumeUsageRequest;
+    }
+
+    const pending = this.collectVolumeUsage().finally(() => {
+      if (this.volumeUsageRequest === pending) {
+        this.volumeUsageRequest = null;
+      }
+    });
+    this.volumeUsageRequest = pending;
+    return pending;
+  }
+
+  private async collectVolumeUsage() {
     let df: Awaited<ReturnType<DockerResourceRuntimeService['systemDf']>>;
     try {
       df = await this.docker.systemDf();
     } catch (error) {
+      const retryDelaySeconds = this.config.getOrThrow<number>(
+        'app.docker.volumeUsageRetryDelaySeconds',
+      );
+      this.volumeUsageRetryAfter = Date.now() + retryDelaySeconds * 1000;
       this.logger.warn(
         `Unable to collect managed volume usage: ${getErrorMessage(error)}`,
       );
@@ -161,6 +205,7 @@ export class SystemResourcesService {
       }));
 
     this.volumeCache = { cachedAt: new Date(), volumes };
+    this.volumeUsageRetryAfter = 0;
     return volumes;
   }
 }

@@ -23,6 +23,7 @@ module.exports = {
   },
   watchPlugins: ['jest-watch-typeahead/filename', 'jest-watch-typeahead/testname'],
   testEnvironmentOptions: {
+    url: 'https://localhost:3000/',
     /**
      * @note Opt-out from JSDOM using browser-style resolution
      * for dependencies. This is simply incorrect, as JSDOM is

@@ -1,7 +1,7 @@
 'use client'
-import { useEffect, useState } from 'react'
 import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
+import { useSystemResources } from '@/features/orchestrator/hooks/use-system-resources'
 import { SystemChart } from '@/features/settings/system/chart'
 import { DetailsTable } from '@/features/settings/system/details-table'
 import { ManagedContainerDetailsTable } from '@/features/settings/system/managed-container-details-table'
@@ -10,18 +10,11 @@ import { OrchestratorResources } from '@/features/settings/system/orchestrator-r
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { StatusSplash } from '@/features/shell/components/status-splash'
+import { usePollingQuery } from '@/hooks/use-polling-query'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
-import { getSystemResourcesAction } from '@/server/orchestrator/diagnostics/actions'
-import type { SystemResources } from '@/server/orchestrator/diagnostics/types'
 import type { SystemStats } from '@/server/system/system-stats'
 
 export function SystemSettingsPage() {
-  const [resources, setResources] = useState<SystemResources>()
-  const [systemUtilization, setSystemUtilization] = useState<SystemStats>()
-  const [isLoading, setIsLoading] = useState(true)
-  const [isRefreshingResources, setIsRefreshingResources] = useState(false)
-  const [resourcesError, setResourcesError] = useState<string | null>(null)
-
   const fetchSystemUtilization = async (): Promise<SystemStats> => {
     const response = await fetch('/api/system/stats', {
       cache: 'no-store'
@@ -34,51 +27,20 @@ export function SystemSettingsPage() {
     return (await response.json()) as SystemStats
   }
 
-  const refreshResources = async (refreshVolumes = false) => {
-    setIsRefreshingResources(true)
-    try {
-      setResources(await getSystemResourcesAction(refreshVolumes))
-      setResourcesError(null)
-    } catch (error) {
-      setResourcesError(getDisplayErrorMessage(error, 'Could not load orchestrator resources.'))
-    } finally {
-      setIsRefreshingResources(false)
-    }
-  }
-
-  useEffect(() => {
-    let isActive = true
-
-    const refresh = async () => {
-      try {
-        const stats = await fetchSystemUtilization()
-
-        if (isActive) {
-          setSystemUtilization(stats)
-          setIsLoading(false)
-        }
-      } catch {
-        if (isActive) {
-          setIsLoading(false)
-        }
-      }
-    }
-
-    void refresh()
-    const interval = window.setInterval(() => void refresh(), 5000)
-
-    return () => {
-      isActive = false
-      window.clearInterval(interval)
-    }
-  }, [])
-
-  useEffect(() => {
-    void refreshResources()
-
-    const interval = window.setInterval(() => void refreshResources(false), 15000)
-    return () => window.clearInterval(interval)
-  }, [])
+  const { data: systemUtilization, isLoading } = usePollingQuery<SystemStats>(
+    'system:host-stats',
+    fetchSystemUtilization,
+    { intervalMs: 5000 }
+  )
+  const {
+    data: resources,
+    error: caughtResourcesError,
+    isValidating: isRefreshingResources,
+    refresh: refreshResources
+  } = useSystemResources()
+  const resourcesError = caughtResourcesError
+    ? getDisplayErrorMessage(caughtResourcesError, 'Could not load orchestrator resources.')
+    : null
 
   return (
     <>

@@ -1,12 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Visible } from '@/components/ui/visible'
+import { useSystemResources } from '@/features/orchestrator/hooks/use-system-resources'
 import { QuickGlanceCard } from '@/features/settings/components/quick-glance-card'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { formatDateLocale } from '@/lib/format'
-import { getSystemResourcesAction } from '@/server/orchestrator/diagnostics/actions'
-import type { SystemResources } from '@/server/orchestrator/diagnostics/types'
 
 const formatBytes = (bytes: number) => {
   if (bytes === 0) {
@@ -37,8 +36,8 @@ const loadingHint = (loading: string, error: string | null, errorHint: string) =
 }
 
 export const OrchestratorQuickGlanceSection = ({ refreshKey = 0 }: { refreshKey?: number }) => {
-  const [resources, setResources] = useState<SystemResources>()
-  const [error, setError] = useState<string | null>(null)
+  const { data: resources, error: caughtError, refresh } = useSystemResources()
+  const error = caughtError ? getDisplayErrorMessage(caughtError, 'Could not load orchestrator resources.') : null
 
   const cpuHint = () => {
     if (!resources) {
@@ -69,20 +68,10 @@ export const OrchestratorQuickGlanceSection = ({ refreshKey = 0 }: { refreshKey?
   }
 
   useEffect(() => {
-    const refresh = async (refreshVolumes = false) => {
-      try {
-        setResources(await getSystemResourcesAction(refreshVolumes))
-        setError(null)
-      } catch (caughtError) {
-        setError(getDisplayErrorMessage(caughtError, 'Could not load orchestrator resources.'))
-      }
+    if (refreshKey > 0) {
+      void refresh(true)
     }
-
-    void refresh(refreshKey > 0)
-    const interval = window.setInterval(() => void refresh(false), 15000)
-
-    return () => window.clearInterval(interval)
-  }, [refreshKey])
+  }, [refresh, refreshKey])
 
   return (
     <>

@@ -3,7 +3,7 @@ import { mapAndroidApplicationToAppDefinition } from '@/features/applications/do
 import { getAppsRefreshIntervalMs } from '@/features/applications/domain/refresh'
 import { notifyRecentAppsUpdated } from '@/features/applications/recent/recent-apps'
 import { useOrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
-import { useForegroundRefresh } from '@/hooks/use-foreground-refresh'
+import { usePollingQuery } from '@/hooks/use-polling-query'
 import { toast } from '@/hooks/use-toast'
 import { removeAppIconAction } from '@/server/app-icons/actions/remove-app-icon-action'
 import {
@@ -51,40 +51,42 @@ export const useAppsListController = ({
     }
   }, [apps])
 
-  useForegroundRefresh({
-    intervalMs: refreshIntervalMs,
-    refresh: async () => {
-      try {
-        const items = await listApplicationsAction()
-        setApps(current => {
-          const currentIcons = new Map(current.map(app => [app.id, app.icon]))
-          const currentOwnerNames = new Map(current.map(app => [app.id, app.ownerDisplayName]))
+  const { data: refreshedApps } = usePollingQuery(
+    ['applications', 'list', currentOwnerUserId],
+    () => listApplicationsAction(),
+    { intervalMs: refreshIntervalMs }
+  )
 
-          return items
-            .filter(item => !hiddenRemovingIdsRef.current.has(item.id))
-            .map(item => {
-              const app = mapAndroidApplicationToAppDefinition(item)
-              const nextApp = {
-                ...app,
-                icon: currentIcons.get(app.id) ?? app.icon,
-                ownerDisplayName: currentOwnerNames.get(app.id) ?? app.ownerDisplayName
-              }
-              const override = pendingRefreshOverridesRef.current.get(nextApp.id)
-              if (!override) {
-                return nextApp
-              }
-              if (override.expiresAt !== null && override.expiresAt <= Date.now()) {
-                pendingRefreshOverridesRef.current.delete(nextApp.id)
-                return nextApp
-              }
-              return override.app
-            })
-        })
-      } catch {
-        // Keep the current list on transient refresh failures.
-      }
+  useEffect(() => {
+    if (!refreshedApps) {
+      return
     }
-  })
+
+    setApps(current => {
+      const currentIcons = new Map(current.map(app => [app.id, app.icon]))
+      const currentOwnerNames = new Map(current.map(app => [app.id, app.ownerDisplayName]))
+
+      return refreshedApps
+        .filter(item => !hiddenRemovingIdsRef.current.has(item.id))
+        .map(item => {
+          const app = mapAndroidApplicationToAppDefinition(item)
+          const nextApp = {
+            ...app,
+            icon: currentIcons.get(app.id) ?? app.icon,
+            ownerDisplayName: currentOwnerNames.get(app.id) ?? app.ownerDisplayName
+          }
+          const override = pendingRefreshOverridesRef.current.get(nextApp.id)
+          if (!override) {
+            return nextApp
+          }
+          if (override.expiresAt !== null && override.expiresAt <= Date.now()) {
+            pendingRefreshOverridesRef.current.delete(nextApp.id)
+            return nextApp
+          }
+          return override.app
+        })
+    })
+  }, [refreshedApps])
 
   const updateApp = (updatedApp: AppDefinition, preserveDuringRefresh = false) => {
     if (preserveDuringRefresh) {

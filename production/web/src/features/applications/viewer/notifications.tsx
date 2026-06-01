@@ -1,41 +1,27 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
 import { AppDefinition } from '@/features/applications/domain/app-definition'
+import { usePollingQuery } from '@/hooks/use-polling-query'
 import { getAndroidNotificationsAction } from '@/server/orchestrator/applications/read-actions'
 import { NotificationCard } from './notification-card'
 import type { AndroidNotification } from '@/server/orchestrator/applications/types'
 
 export const AndroidNotifications = ({ app }: { app: AppDefinition }) => {
-  const [notifications, setNotifications] = useState<AndroidNotification[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const { data } = usePollingQuery<AndroidNotification[]>(
+    ['applications', app.id, 'notifications'],
+    () => getAndroidNotificationsAction(app.id),
+    { enabled: app.running, intervalMs: 10_000 }
+  )
+  const notifications = data ?? []
   const visibleNotifications = notifications
   const previewNotifications = visibleNotifications.slice(0, 2)
   const hasOverflowNotifications = visibleNotifications.length > 2
-
-  useEffect(() => {
-    if (!app.running) {
-      setNotifications([])
-      return
-    }
-
-    let cancelled = false
-    const load = async () => {
-      const next = await getAndroidNotificationsAction(app.id).catch(() => [])
-      if (!cancelled) setNotifications(next)
-    }
-
-    void load()
-    const interval = window.setInterval(() => void load(), 10000)
-    return () => {
-      cancelled = true
-      window.clearInterval(interval)
-    }
-  }, [app.id, app.running])
 
   if (visibleNotifications.length === 0) {
     return null

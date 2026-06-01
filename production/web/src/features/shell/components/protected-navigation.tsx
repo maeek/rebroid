@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState, type ElementType } from 'react'
+import { useEffect, useState, type ElementType } from 'react'
 import {
   IconAdjustments,
   IconApps,
@@ -23,6 +23,7 @@ import { useSession } from 'next-auth/react'
 import { Visible } from '@/components/ui/visible'
 import { AppIcon } from '@/features/applications/components/app-icon'
 import { recentAppsUpdatedEvent, type RecentApp } from '@/features/applications/recent/recent-apps'
+import { usePollingQuery } from '@/hooks/use-polling-query'
 import { startApplicationAction } from '@/server/orchestrator/applications/mutation-actions'
 import { listRecentAppsAction } from '@/server/recent-apps/actions'
 
@@ -212,7 +213,11 @@ const RecentAppLink = ({ app, variant, isActive, onNavigate, onStarted }: Recent
 export const ProtectedNavigation = ({ variant, onNavigate }: ProtectedNavigationProps) => {
   const pathname = usePathname()
   const { data: session } = useSession()
-  const [recentApps, setRecentApps] = useState<RecentApp[]>([])
+  const { data: recentApps = [], mutate: refreshRecentApps } = usePollingQuery<RecentApp[]>(
+    'navigation:recent-apps',
+    () => listRecentAppsAction(),
+    { intervalMs: 5000 }
+  )
   const isAdmin = session?.user.role === 'admin'
   const userManagementPathIsActive = pathname.startsWith('/settings/users')
   const orchestratorPathIsActive = pathname.startsWith('/settings/orchestrator')
@@ -220,26 +225,14 @@ export const ProtectedNavigation = ({ variant, onNavigate }: ProtectedNavigation
   const [orchestratorMenuIsOpen, setOrchestratorMenuIsOpen] = useState(orchestratorPathIsActive)
   const styles = variantStyles[variant]
 
-  const hydrateRecentApps = useCallback(async () => {
-    try {
-      setRecentApps(await listRecentAppsAction())
-    } catch {
-      // Keep the current navigation list on transient server failures.
-    }
-  }, [])
-
   useEffect(() => {
-    void hydrateRecentApps()
-
-    const onRecentAppsUpdated = () => void hydrateRecentApps()
-    const interval = window.setInterval(() => void hydrateRecentApps(), 5000)
+    const onRecentAppsUpdated = () => void refreshRecentApps()
 
     window.addEventListener(recentAppsUpdatedEvent, onRecentAppsUpdated)
     return () => {
-      window.clearInterval(interval)
       window.removeEventListener(recentAppsUpdatedEvent, onRecentAppsUpdated)
     }
-  }, [hydrateRecentApps])
+  }, [refreshRecentApps])
 
   useEffect(() => {
     if (userManagementPathIsActive) {
@@ -278,7 +271,7 @@ export const ProtectedNavigation = ({ variant, onNavigate }: ProtectedNavigation
             variant={variant}
             isActive={pathname === `/app/${app.id}` || pathname.startsWith(`/app/${app.id}/`)}
             onNavigate={onNavigate}
-            onStarted={() => void hydrateRecentApps()}
+            onStarted={() => void refreshRecentApps()}
           />
         ))}
         {appSections.slice(1).map(({ name, Icon, href }) => (

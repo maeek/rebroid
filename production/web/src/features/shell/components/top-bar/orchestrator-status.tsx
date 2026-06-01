@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { IconAlertTriangle, IconChevronRight, IconCircleCheck, IconLoader2 } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { usePollingQuery } from '@/hooks/use-polling-query'
 import { cn } from '@/lib/utils'
 import { getOrchestratorHealthAction } from '@/server/orchestrator/diagnostics/actions'
 import type { OrchestratorHealth, ServiceHealth } from '@/server/orchestrator/diagnostics/types'
@@ -131,31 +132,17 @@ export const OrchestratorStatus = () => {
     })
   }, [])
 
-  const check = useCallback(async () => {
-    try {
-      applyHealth(await getOrchestratorHealth())
-    } catch (error) {
-      applyOfflineHealth(error)
-    }
-  }, [applyHealth, applyOfflineHealth])
+  const { data, error } = usePollingQuery<OrchestratorHealth>('orchestrator:health', () => getOrchestratorHealth(), {
+    intervalMs: 10_000
+  })
 
   useEffect(() => {
-    let isActive = true
-
-    const guardedCheck = async () => {
-      if (!isActive) {
-        return
-      }
-      await check()
+    if (error) {
+      applyOfflineHealth(error)
+    } else if (data) {
+      applyHealth(data)
     }
-
-    void guardedCheck()
-    const interval = window.setInterval(() => void guardedCheck(), 10000)
-    return () => {
-      isActive = false
-      window.clearInterval(interval)
-    }
-  }, [check])
+  }, [applyHealth, applyOfflineHealth, data, error])
 
   const icon =
     state === 'checking' ? (

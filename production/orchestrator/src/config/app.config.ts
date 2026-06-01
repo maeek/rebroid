@@ -66,6 +66,10 @@ export default registerAs('app', () => {
         process.env.VOLUME_USAGE_CACHE_TTL_SECONDS,
         300,
       ),
+      volumeUsageRetryDelaySeconds: number(
+        process.env.VOLUME_USAGE_RETRY_DELAY_SECONDS,
+        60,
+      ),
       stoppingStaleTimeoutSeconds: number(
         process.env.DOCKER_STOPPING_STALE_TIMEOUT_SECONDS,
         60,
