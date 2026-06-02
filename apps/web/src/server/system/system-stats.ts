@@ -28,7 +28,7 @@ interface SystemStatsSampler {
 
 declare global {
   // Keep one sampler across Next dev module reloads.
-  // eslint-disable-next-line no-var
+
   var __rebroidSystemStatsSampler: SystemStatsSampler | undefined
 }
 

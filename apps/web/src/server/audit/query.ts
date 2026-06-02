@@ -1,4 +1,4 @@
-import { exportAuditEvents, type AuditEvent, type AuditEventFilters } from '@/server/storage/database'
+import type { AuditEvent, AuditEventFilters } from '@/server/storage/database'
 
 export type AuditSearchParams = Record<string, string | string[] | undefined>
 
@@ -82,5 +82,3 @@ export const auditEventsToCsv = (events: AuditEvent[]) => {
   ])
   return [headers, ...rows].map(row => row.map(csvCell).join(',')).join('\n')
 }
-
-export const exportAuditEventsCsv = (filters: AuditEventFilters) => auditEventsToCsv(exportAuditEvents(filters))
