@@ -1,50 +1,10 @@
 import { mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import Database from 'better-sqlite3'
-import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 import { initialWebSchema } from './migrations/0000-initial'
-
-export const users = sqliteTable('users', {
-  id: text('id').primaryKey(),
-  data: text('data').notNull()
-})
-
-export const userGroups = sqliteTable('user_groups', {
-  id: text('id').primaryKey(),
-  data: text('data').notNull()
-})
-
-export const userGroupMemberships = sqliteTable('user_group_memberships', {
-  userId: text('user_id').notNull(),
-  groupId: text('group_id').notNull()
-})
-
-export const recentApps = sqliteTable('recent_apps', {
-  userId: text('user_id').notNull(),
-  appId: text('app_id').notNull(),
-  openedAt: integer('opened_at').notNull()
-})
-
-export const auditEvents = sqliteTable('audit_events', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  createdAt: text('created_at').notNull(),
-  actorUserId: text('actor_user_id'),
-  actorLabel: text('actor_label').notNull(),
-  action: text('action').notNull(),
-  category: text('category').notNull(),
-  resourceType: text('resource_type'),
-  resourceId: text('resource_id'),
-  resourceLabel: text('resource_label'),
-  outcome: text('outcome').notNull(),
-  detailsJson: text('details_json').notNull(),
-  sourceIp: text('source_ip'),
-  userAgent: text('user_agent')
-})
 
 type WebDatabase = {
   client: Database.Database
-  orm: BetterSQLite3Database
 }
 
 type UsersFile = {
@@ -152,7 +112,7 @@ const openDatabase = (): WebDatabase => {
   }
   ensureAuditEventsSchema(client)
 
-  instance = { client, orm: drizzle(client) }
+  instance = { client }
   instancePath = path
   return instance
 }

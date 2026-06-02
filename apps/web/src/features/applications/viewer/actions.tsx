@@ -36,9 +36,8 @@ export const AppViewerActions = ({
   const canStop = hasPermission(permissions, 'applications:stop')
   const canViewLogs = canUseRuntime && hasPermission(permissions, 'applications:view-logs')
   const canDelete = mode !== 'workspace' && hasPermission(permissions, 'applications:delete')
-  const showDetailsAction = Boolean(app?.id) && mode === 'workspace'
+  const showSettingsAction = Boolean(app?.id) && (mode === 'workspace' || mode === 'details')
   const showLogsAction = canViewLogs && mode === 'details'
-  const showSettingsAction = Boolean(app?.id) && mode === 'details'
 
   return (
     <div className={classNames('flex flex-row flex-wrap justify-end gap-2 items-center', className)}>
@@ -67,7 +66,7 @@ export const AppViewerActions = ({
           initialSettings={initialSettings}
         />
       </Visible>
-      <Visible when={showDetailsAction}>
+      <Visible when={showSettingsAction}>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -97,23 +96,6 @@ export const AppViewerActions = ({
             </Button>
           </TooltipTrigger>
           <TooltipContent>Logs</TooltipContent>
-        </Tooltip>
-      </Visible>
-      <Visible when={showSettingsAction}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              asChild
-              variant='secondary'
-              size='icon'
-              aria-label='Manage application settings'
-            >
-              <Link href={`/app/${app?.id}/manage`}>
-                <IconSettings className='size-4' />
-              </Link>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Settings</TooltipContent>
         </Tooltip>
       </Visible>
     </div>

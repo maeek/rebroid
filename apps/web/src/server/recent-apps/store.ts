@@ -1,6 +1,6 @@
 import { readWebState, updateWebState, writeWebState } from '@/server/storage/database'
 
-export type StoredRecentApp = {
+type StoredRecentApp = {
   id: string
   openedAt: number
 }

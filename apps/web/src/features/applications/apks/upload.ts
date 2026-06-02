@@ -1,3 +1,4 @@
+import { uploadFormDataWithProgress } from '@/features/applications/upload-form-data-with-progress'
 import type { UploadedApk } from '@/server/orchestrator/applications/types'
 
 type UploadApkOptions = {
@@ -5,37 +6,14 @@ type UploadApkOptions = {
   onProgress?: (progress: number) => void
 }
 
-const errorMessage = (value: unknown) => {
-  if (!value || typeof value !== 'object' || !('message' in value)) {
-    return 'APK upload failed.'
-  }
+export const uploadApkWithProgress = ({ file, onProgress }: UploadApkOptions) => {
+  const body = new FormData()
+  body.set('apk', file)
 
-  const message = value.message
-  return Array.isArray(message) ? message.join(', ') : typeof message === 'string' ? message : 'APK upload failed.'
-}
-
-export const uploadApkWithProgress = ({ file, onProgress }: UploadApkOptions) =>
-  new Promise<UploadedApk>((resolve, reject) => {
-    const body = new FormData()
-    body.set('apk', file)
-
-    const request = new XMLHttpRequest()
-    request.open('POST', '/api/apks/upload')
-    request.responseType = 'json'
-    request.upload.onprogress = event => {
-      if (event.lengthComputable) {
-        onProgress?.(Math.round((event.loaded / event.total) * 100))
-      }
-    }
-    request.onload = () => {
-      if (request.status >= 200 && request.status < 300) {
-        onProgress?.(100)
-        resolve(request.response as UploadedApk)
-        return
-      }
-
-      reject(new Error(errorMessage(request.response)))
-    }
-    request.onerror = () => reject(new Error('APK upload failed.'))
-    request.send(body)
+  return uploadFormDataWithProgress<UploadedApk>({
+    body,
+    failureMessage: 'APK upload failed.',
+    onProgress,
+    url: '/api/apks/upload'
   })
+}

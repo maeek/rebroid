@@ -4,8 +4,6 @@ import { Label, PolarGrid, PolarRadiusAxis, RadialBar, RadialBarChart } from 're
 import { ChartContainer } from '@/components/ui/chart'
 import { formatDisplayNumber } from '@/lib/format'
 
-export const description = 'A radial chart with text'
-
 export function MemoryChart({ totalMemory, freeMemory }: { totalMemory: number; freeMemory: number }) {
   const memory = totalMemory > 0 ? Math.round(((totalMemory - freeMemory) / totalMemory) * 100) : 0
   const chartData = [{ memory, fill: 'var(--color-mem_usage)' }]

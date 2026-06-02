@@ -17,8 +17,6 @@ export const permissionCategories = [
   }
 ] as const
 
-export type PermissionCategoryId = (typeof permissionCategories)[number]['id']
-
 export const permissionDefinitions = [
   {
     id: 'applications:create',
@@ -227,7 +225,7 @@ export const mergeQuotas = (...quotas: Array<Partial<ResourceQuota> | null | und
 
 export const hasPermission = (permissions: PermissionMap, permission: PermissionId) => permissions[permission] === true
 
-export const isBroadInternetCidr = (cidr: string) => {
+const isBroadInternetCidr = (cidr: string) => {
   const normalized = cidr.trim().toLowerCase()
   return normalized === '0.0.0.0/0' || normalized === '::/0'
 }

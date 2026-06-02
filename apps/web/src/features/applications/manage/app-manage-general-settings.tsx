@@ -4,14 +4,10 @@ import { useTopLoader } from 'nextjs-toploader'
 import { Badge } from '@/components/ui/badge'
 import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
-import { uploadApkWithProgress } from '@/features/applications/apks/upload'
+import { uploadApkWithFeedback } from '@/features/applications/apks/upload-apk-with-feedback'
 import { AppFormGeneralSection } from '@/features/applications/create/create-app-general-section'
 import { Setting } from '@/features/settings/components/setting'
-import {
-  apkSizeLabel,
-  isFileWithinApkLimit,
-  useOrchestratorUiSettings
-} from '@/features/settings/hooks/use-orchestrator-ui-settings'
+import { useOrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 import { toast } from '@/hooks/use-toast'
 import { updateApkAction } from '@/server/orchestrator/applications/actions/configuration/create-update-actions'
 import type { AppFormValues } from '@/features/applications/create/create-app-form.types'
@@ -52,38 +48,21 @@ export const AppManageGeneralSettings = ({
   const handleApkUpload = async (file: File | null) => {
     if (!file) return
 
-    if (!isFileWithinApkLimit(file, settings.maxApkUploadSizeMb)) {
-      toast({
-        title: 'APK is too large',
-        description: `The configured upload limit is ${apkSizeLabel(settings.maxApkUploadSizeMb)}.`,
-        variant: 'destructive'
-      })
-      return
-    }
-
     setIsUploadingApk(true)
-    topLoader.start()
-    topLoader.setProgress(0.08)
 
     try {
-      const uploaded = await uploadApkWithProgress({
+      const uploaded = await uploadApkWithFeedback({
+        errorTitle: 'Could not upload APK',
         file,
-        onProgress: progress => {
-          topLoader.setProgress(Math.min(Math.max(progress / 100, 0.08), 0.95))
-        }
+        maxApkUploadSizeMb: settings.maxApkUploadSizeMb,
+        topLoader
       })
-      topLoader.setProgress(1)
+      if (!uploaded) return
+
       await updateApkAction(appId, uploaded.id)
       toast({ title: 'APK uploaded' })
       router.refresh()
-    } catch (error) {
-      toast({
-        title: 'Could not upload APK',
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
-      })
     } finally {
-      topLoader.done(true)
       setIsUploadingApk(false)
     }
   }

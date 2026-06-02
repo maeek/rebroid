@@ -8,7 +8,7 @@ import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 import type { PlatformContainer } from '@/server/orchestrator/platform/types'
 
-export const stateClassName = (state: string) => {
+const stateClassName = (state: string) => {
   if (state === 'running') {
     return 'bg-primary/15 text-primary'
   }

@@ -1,6 +1,6 @@
 import { isRedroidImage } from '@/shared/permissions/permissions'
 
-export const redroidDefaultContainerArgs = [
+const redroidDefaultContainerArgs = [
   'androidboot.redroid_gpu_mode=guest',
   'androidboot.use_memfd=true',
   'ro.secure=0',
@@ -130,7 +130,7 @@ export const redroidDisplayArgsForProfile = (id: string) => {
   return redroidDisplayArgsForConfig(profile)
 }
 
-export const redroidDisplayArgsForConfig = (config: RedroidDisplayConfig) => {
+const redroidDisplayArgsForConfig = (config: RedroidDisplayConfig) => {
   return [
     `androidboot.redroid_width=${config.width}`,
     `androidboot.redroid_height=${config.height}`,

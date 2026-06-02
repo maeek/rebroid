@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "ignorePatterns": [
+    "apps/web/public/sw.js",
+    "apps/web/rebroid-proxy-server.mjs",
+    "apps/web/src/setup-tests.tsx"
+  ],
+  "ignoreDependencies": [
+    "babel-plugin-react-compiler",
+    "jest-css-modules",
+    "whatwg-fetch"
+  ]
+}

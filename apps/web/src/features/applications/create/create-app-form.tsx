@@ -6,13 +6,9 @@ import { useRouter } from 'next/navigation'
 import { useTopLoader } from 'nextjs-toploader'
 import { Button } from '@/components/ui/button'
 import { Visible } from '@/components/ui/visible'
-import { uploadApkWithProgress } from '@/features/applications/apks/upload'
+import { uploadApkWithFeedback } from '@/features/applications/apks/upload-apk-with-feedback'
 import { optimizeIconFile } from '@/features/applications/icons/icon-metadata'
-import {
-  apkSizeLabel,
-  isFileWithinApkLimit,
-  useOrchestratorUiSettings
-} from '@/features/settings/hooks/use-orchestrator-ui-settings'
+import { useOrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 import { useResourceLimitBounds } from '@/features/settings/hooks/use-resource-limit-bounds'
 import { PageBackdrop } from '@/features/shell/components/page-backdrop'
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
@@ -158,27 +154,17 @@ export const CreateAppForm = ({
       return
     }
 
-    if (!isFileWithinApkLimit(file, settings.maxApkUploadSizeMb)) {
-      toast({
-        title: 'APK is too large',
-        description: `The configured upload limit is ${apkSizeLabel(settings.maxApkUploadSizeMb)}.`,
-        variant: 'destructive'
-      })
-      return
-    }
-
     setIsUploadingApk(true)
-    topLoader.start()
-    topLoader.setProgress(0.08)
 
     try {
-      const uploaded = await uploadApkWithProgress({
+      const uploaded = await uploadApkWithFeedback({
+        errorTitle: 'Could not upload APK',
         file,
-        onProgress: progress => {
-          topLoader.setProgress(Math.min(Math.max(progress / 100, 0.08), 0.95))
-        }
+        maxApkUploadSizeMb: settings.maxApkUploadSizeMb,
+        topLoader
       })
-      topLoader.setProgress(1)
+      if (!uploaded) return
+
       setUploadedApk(uploaded)
       if (!formValues.name.trim()) {
         updateFormValues({ name: appNameFromApk(file, uploaded) })
@@ -189,14 +175,7 @@ export const CreateAppForm = ({
       } else {
         toast({ title: 'APK uploaded', description: 'Launcher icon was extracted.' })
       }
-    } catch (error) {
-      toast({
-        title: 'Could not upload APK',
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
-      })
     } finally {
-      topLoader.done(true)
       setIsUploadingApk(false)
     }
   }

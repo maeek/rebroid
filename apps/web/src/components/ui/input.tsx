@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { cn } from '@/lib/utils'
 
-export type InputProps = React.InputHTMLAttributes<HTMLInputElement>
+type InputProps = React.InputHTMLAttributes<HTMLInputElement>
 
 const inputBaseClassName =
   'h-9 w-full rounded-md border border-border/70 bg-input/72 text-sm backdrop-blur-xs transition-[background-color,border-color,color] duration-75 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-primary/60 hover:bg-input/84 disabled:cursor-not-allowed disabled:opacity-50'

@@ -38,7 +38,7 @@ export const PageBackdropProvider = ({
   )
 }
 
-export const usePageBackdrop = (backdrop: PageBackdropConfig | null) => {
+const usePageBackdrop = (backdrop: PageBackdropConfig | null) => {
   const context = useContext(PageBackdropContext)
 
   useEffect(() => {

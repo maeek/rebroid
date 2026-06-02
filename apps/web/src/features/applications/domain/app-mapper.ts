@@ -1,7 +1,7 @@
 import { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
 
-export const isApplicationRunning = (app: AndroidApplication) => app.status.currentStatus === 'running'
+const isApplicationRunning = (app: AndroidApplication) => app.status.currentStatus === 'running'
 
 export const mapAndroidApplicationToAppDefinition = (app: AndroidApplication): AppDefinition => ({
   id: app.id,

@@ -5,12 +5,9 @@ export type AndroidApplicationSummary = OrchestratorApiSchemas['AndroidApplicati
 export type AndroidApplicationStatus = AndroidApplication['status']['currentStatus']
 export type AndroidApplicationLifecycleStage = AndroidApplication['status']['lifecycleStage']
 export type AndroidApplicationStatusDetail = NonNullable<AndroidApplication['status']['detail']>
-export type AndroidApplicationStatusDetailCode = AndroidApplicationStatusDetail['code']
 export type AndroidApplicationError = NonNullable<AndroidApplication['errors']['application']>
-export type AndroidApplicationErrorCode = AndroidApplicationError['code']
 export type AndroidImagePullProgress = NonNullable<AndroidApplication['status']['progress']>
 export type AndroidNetworkPolicyResult = NonNullable<AndroidApplication['network']['policy']['result']>
-export type AndroidNetworkPolicyResultCode = AndroidNetworkPolicyResult['code']
 export type ScrcpyTransport = AndroidApplication['runtime']['scrcpyTransport']
 export type ApplicationProfileMode = AndroidApplication['storage']['profileMode']
 export type UploadedApk = OrchestratorApiSchemas['UploadedApk']
@@ -24,10 +21,6 @@ export type ApplicationScreenshot = OrchestratorApiSchemas['ApplicationScreensho
 export type ApplicationViewerControlCommand = OrchestratorApiSchemas['ApplicationViewerControlDto']['command']
 export type ApplicationViewerControlResponse = OrchestratorApiSchemas['ApplicationViewerControlResponseDto']
 export type ScrcpySession = OrchestratorApiSchemas['ScrcpySessionDto']
-export type ScrcpyViewerError = NonNullable<ScrcpySession['viewerError']>
-export type ScrcpyViewerErrorCode = ScrcpyViewerError['code']
-export type DisplaySession = NonNullable<ScrcpySession['displaySession']>
-export type DisplaySessionStatus = DisplaySession['status']
 export type DeleteAndroidApplicationResponse = OrchestratorApiSchemas['DeleteAndroidApplicationResponseDto']
 
 export interface ApplicationRuntimeFilesProfileInput {

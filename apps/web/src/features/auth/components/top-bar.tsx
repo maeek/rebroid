@@ -1,10 +1,11 @@
 'use client'
 import { GitHubLogoIcon } from '@radix-ui/react-icons'
-import { IconMoon, IconSun, IconSunMoon } from '@tabler/icons-react'
+import { IconSunMoon } from '@tabler/icons-react'
 import classNames from 'classnames'
 import Link from 'next/link'
 import { useTheme } from 'next-themes'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { ThemeMenuItems } from '@/components/ui/theme-toggle'
 
 export const TopBarUnprotected = () => {
   const sectionClasses = 'flex items-center h-full px-4 gap-x-8'
@@ -33,15 +34,7 @@ export const TopBarUnprotected = () => {
             <IconSunMoon className='size-6' />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => setTheme('light')}>
-              <IconSun className='h-4 mr-2' /> Light
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme('dark')}>
-              <IconMoon className='h-4 mr-2' /> Dark
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme('system')}>
-              <IconSunMoon className='h-4 mr-2' /> System
-            </DropdownMenuItem>
+            <ThemeMenuItems onSelect={setTheme} />
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

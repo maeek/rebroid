@@ -1,7 +1,7 @@
 import { readWebState, updateWebState, writeWebState } from '@/server/storage/database'
 import type { WebSettings } from './types'
 
-export const defaultWebSettings: WebSettings = {
+const defaultWebSettings: WebSettings = {
   appListRefreshIntervalSeconds: 5,
   removeDataOnDelete: true,
   defaultViewerPreset: 'balanced',

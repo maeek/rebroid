@@ -1,3 +1,4 @@
+import { uploadFormDataWithProgress } from '@/features/applications/upload-form-data-with-progress'
 import type { ApplicationRuntimeFileUpload } from '@/server/orchestrator/applications/types'
 
 type UploadDownloadFileOptions = {
@@ -7,40 +8,17 @@ type UploadDownloadFileOptions = {
   onProgress?: (progress: number) => void
 }
 
-const errorMessage = (value: unknown) => {
-  if (!value || typeof value !== 'object' || !('message' in value)) {
-    return 'File upload failed.'
-  }
+export const uploadDownloadFileWithProgress = ({ appId, file, path, onProgress }: UploadDownloadFileOptions) => {
+  const body = new FormData()
+  body.set('file', file)
+  const query = new URLSearchParams({ path })
 
-  const message = value.message
-  return Array.isArray(message) ? message.join(', ') : typeof message === 'string' ? message : 'File upload failed.'
-}
-
-export const uploadDownloadFileWithProgress = ({ appId, file, path, onProgress }: UploadDownloadFileOptions) =>
-  new Promise<ApplicationRuntimeFileUpload>((resolve, reject) => {
-    const body = new FormData()
-    body.set('file', file)
-    const query = new URLSearchParams({ path })
-
-    const request = new XMLHttpRequest()
-    request.open('POST', `/api/applications/${encodeURIComponent(appId)}/downloads/upload?${query.toString()}`)
-    request.responseType = 'json'
-    request.timeout = 5 * 60 * 1000
-    request.upload.onprogress = event => {
-      if (event.lengthComputable) {
-        onProgress?.(Math.round((event.loaded / event.total) * 100))
-      }
-    }
-    request.onload = () => {
-      if (request.status >= 200 && request.status < 300) {
-        onProgress?.(100)
-        resolve(request.response as ApplicationRuntimeFileUpload)
-        return
-      }
-
-      reject(new Error(errorMessage(request.response)))
-    }
-    request.onerror = () => reject(new Error('File upload failed.'))
-    request.ontimeout = () => reject(new Error('File upload timed out.'))
-    request.send(body)
+  return uploadFormDataWithProgress<ApplicationRuntimeFileUpload>({
+    body,
+    failureMessage: 'File upload failed.',
+    onProgress,
+    timeoutMessage: 'File upload timed out.',
+    timeoutMs: 5 * 60 * 1000,
+    url: `/api/applications/${encodeURIComponent(appId)}/downloads/upload?${query.toString()}`
   })
+}

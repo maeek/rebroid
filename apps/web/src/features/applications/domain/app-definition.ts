@@ -1,4 +1,3 @@
-import { IconApps, IconLibraryPlusFilled, IconAdjustments, IconBrandDocker, IconServerSpark } from '@tabler/icons-react'
 import type {
   AndroidApplicationError,
   AndroidApplicationLifecycleStage,
@@ -71,14 +70,3 @@ export interface AppDefinition {
 }
 
 export const yourApps = [] as AppDefinition[]
-
-export const appsSections = [
-  { name: 'Installed Apps', Icon: IconApps, href: '/apps' },
-  { name: 'Create', Icon: IconLibraryPlusFilled, href: '/apps/create' }
-] as const
-
-export const settingsSections = [
-  { name: 'General', Icon: IconAdjustments, href: '/settings/general' },
-  { name: 'Orchestrator', Icon: IconBrandDocker, href: '/settings/orchestrator' },
-  { name: 'System', Icon: IconServerSpark, href: '/settings/system' }
-] as const

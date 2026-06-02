@@ -4,19 +4,16 @@ import { withStoredAppIcons } from '@/features/applications/icons/enrich'
 import { AppsList } from '@/features/applications/list/apps-list'
 import { AppsPageSkeleton } from '@/features/applications/list/apps-page-skeleton'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
-import { userService } from '@/server/auth/user'
 import { orchestratorApplicationsClient } from '@/server/orchestrator/applications/client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { getServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
+import { getOwnerDisplayName, getVisibleOwnerDisplayNames } from '@/server/users/owner-display-names'
 
 const AppsPageContent = async () => {
   const initialSettingsPromise = getServerOrchestratorUiSettings()
   const user = await getCurrentUserContext()
   const ownerUserId = user.role === 'admin' ? undefined : user.ownerUserId
-  const ownerNamesPromise =
-    user.role === 'admin'
-      ? userService.listUsers().then(owners => new Map(owners.map(owner => [owner.id, owner.name || owner.username])))
-      : Promise.resolve(new Map<string, string>())
+  const ownerNamesPromise = getVisibleOwnerDisplayNames(user)
   let orchestratorError: string | null = null
   const appsPromise = orchestratorApplicationsClient
     .listApplications(ownerUserId, false)
@@ -34,7 +31,7 @@ const AppsPageContent = async () => {
     .then(items =>
       items.map(app => ({
         ...app,
-        ownerDisplayName: app.ownerUserId ? (ownerNames.get(app.ownerUserId) ?? app.ownerUserId) : null
+        ownerDisplayName: getOwnerDisplayName(ownerNames, app.ownerUserId)
       }))
     )
     .then(withStoredAppIcons)

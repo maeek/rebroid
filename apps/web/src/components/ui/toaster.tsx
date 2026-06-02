@@ -9,7 +9,7 @@ export function Toaster() {
 
   return (
     <ToastProvider>
-      {toasts.map(function ({ id, title, description, action, ...props }) {
+      {toasts.map(function ({ id, title, description, ...props }) {
         return (
           <Toast
             key={id}
@@ -23,7 +23,6 @@ export function Toaster() {
                 <ToastDescription>{description}</ToastDescription>
               </Visible>
             </div>
-            {action}
             <ToastClose />
           </Toast>
         )

@@ -23,14 +23,11 @@ import type {
 import type { OrchestratorSettingsResponse } from '@/server/orchestrator/settings/types'
 import type { WebSettings as WebSettingsResponse } from '@/server/web-settings/types'
 
-export { defaultOrchestratorUiSettings } from '@/features/settings/domain/orchestrator-ui-settings'
 export type {
   GeneralUiSettings,
   OrchestratorUiSettings,
   RuntimeUiSettings
 } from '@/features/settings/domain/orchestrator-ui-settings'
-export type { OrchestratorSettingsResponse } from '@/server/orchestrator/settings/types'
-export type { WebSettings as WebSettingsResponse } from '@/server/web-settings/types'
 
 const getWebSettings = getWebSettingsAction
 const resetWebSettings = resetWebSettingsAction
@@ -81,7 +78,7 @@ const mergeSettings = (web: Partial<WebSettingsResponse>, orchestrator: Partial<
   return settings
 }
 
-export const getOrchestratorUiSettings = async (): Promise<OrchestratorUiSettings> => {
+const getOrchestratorUiSettings = async (): Promise<OrchestratorUiSettings> => {
   const web = await loadWebSettings()
   const orchestrator = await loadRuntimeSettings()
   return mergeSettings(web, orchestrator)

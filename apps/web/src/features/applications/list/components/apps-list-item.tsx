@@ -34,84 +34,26 @@ export const AppsListItem = ({ app, showOwner = false }: { app: AppDefinition; s
               data-selected={isSelected}
               onClick={() => toggleSelected(app.id)}
             >
-              <div className='relative size-20 transition-all hover:scale-95 hover:saturate-150 min-[360px]:size-24'>
-                <span
-                  className='absolute left-1 top-1 z-20 flex size-5 items-center justify-center rounded-sm border border-primary bg-background text-primary data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground'
-                  data-selected={isSelected}
-                  aria-hidden='true'
-                >
-                  <Visible when={isSelected}>
-                    <IconCheck className='size-4' />
-                  </Visible>
-                </span>
-                <Visible when={app.running}>
-                  <>
-                    <div className='absolute top-2 right-2 rounded-2xl size-4 bg-primary/95 z-10' />
-                    <div className='absolute top-2 right-2 rounded-2xl size-4 bg-primary z-10 animate-ping duration-[2s]' />
-                  </>
-                </Visible>
-                <Visible when={app.status === 'error'}>
-                  <IconAlertTriangle className='absolute top-1 right-1 size-5 text-destructive z-10' />
-                </Visible>
-                <Visible when={busy}>
-                  <IconLoader2 className='absolute top-1 right-1 size-5 text-primary z-10 animate-spin' />
-                </Visible>
-                <AppIcon
-                  appId={app.id}
-                  appName={app.name}
-                  icon={app.icon}
-                  className='absolute top-[50%] left-[50%] size-16 translate-x-[-50%] translate-y-[-50%] min-[360px]:size-20'
-                />
-              </div>
-              <span className='text-sm text-ellipsis w-full text-nowrap overflow-hidden text-center lg:px-2'>
-                {app.name}
-              </span>
-              <Badge
-                variant={app.status === 'error' ? 'destructive' : 'secondary'}
-                className='max-w-full text-[10px] capitalize'
-              >
-                {itemStatus}
-              </Badge>
-              <Visible when={showOwner}>
-                <OwnerBadge app={app} />
-              </Visible>
+              <AppTileContent
+                app={app}
+                busy={busy}
+                isSelected={isSelected}
+                itemStatus={itemStatus}
+                showOwner={showOwner}
+                showSelection
+              />
             </button>
           </Visible>
           <Visible when={!isManaging}>
             <Link href={`/app/${app.id}`}>
               <div className='flex flex-col items-center justify-center cursor-pointer gap-2 overflow-hidden p-2'>
-                <div className='relative size-20 transition-all hover:scale-95 hover:saturate-150 min-[360px]:size-24'>
-                  <Visible when={app.running}>
-                    <>
-                      <div className='absolute top-2 right-2 rounded-2xl size-4 bg-primary/95 z-10' />
-                      <div className='absolute top-2 right-2 rounded-2xl size-4 bg-primary z-10 animate-ping duration-[2s]' />
-                    </>
-                  </Visible>
-                  <Visible when={app.status === 'error'}>
-                    <IconAlertTriangle className='absolute top-1 right-1 size-5 text-destructive z-10' />
-                  </Visible>
-                  <Visible when={busy}>
-                    <IconLoader2 className='absolute top-1 right-1 size-5 text-primary z-10 animate-spin' />
-                  </Visible>
-                  <AppIcon
-                    appId={app.id}
-                    appName={app.name}
-                    icon={app.icon}
-                    className='absolute top-[50%] left-[50%] size-16 translate-x-[-50%] translate-y-[-50%] min-[360px]:size-20'
-                  />
-                </div>
-                <span className='text-sm text-ellipsis w-full text-nowrap overflow-hidden text-center lg:px-2'>
-                  {app.name}
-                </span>
-                <Badge
-                  variant={app.status === 'error' ? 'destructive' : 'secondary'}
-                  className='max-w-full text-[10px] capitalize'
-                >
-                  {itemStatus}
-                </Badge>
-                <Visible when={showOwner}>
-                  <OwnerBadge app={app} />
-                </Visible>
+                <AppTileContent
+                  app={app}
+                  busy={busy}
+                  isSelected={isSelected}
+                  itemStatus={itemStatus}
+                  showOwner={showOwner}
+                />
               </div>
             </Link>
           </Visible>
@@ -164,4 +106,64 @@ const OwnerBadge = ({ app }: { app: AppDefinition }) => (
   >
     {app.ownerDisplayName ?? app.ownerUserId ?? 'Unknown owner'}
   </Badge>
+)
+
+const AppTileContent = ({
+  app,
+  busy,
+  isSelected,
+  itemStatus,
+  showOwner,
+  showSelection = false
+}: {
+  app: AppDefinition
+  busy: boolean
+  isSelected: boolean
+  itemStatus: string
+  showOwner: boolean
+  showSelection?: boolean
+}) => (
+  <>
+    <div className='relative size-20 transition-all hover:scale-95 hover:saturate-150 min-[360px]:size-24'>
+      <Visible when={showSelection}>
+        <span
+          className='absolute left-1 top-1 z-20 flex size-5 items-center justify-center rounded-sm border border-primary bg-background text-primary data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground'
+          data-selected={isSelected}
+          aria-hidden='true'
+        >
+          <Visible when={isSelected}>
+            <IconCheck className='size-4' />
+          </Visible>
+        </span>
+      </Visible>
+      <Visible when={app.running}>
+        <>
+          <div className='absolute top-2 right-2 rounded-2xl size-4 bg-primary/95 z-10' />
+          <div className='absolute top-2 right-2 rounded-2xl size-4 bg-primary z-10 animate-ping duration-[2s]' />
+        </>
+      </Visible>
+      <Visible when={app.status === 'error'}>
+        <IconAlertTriangle className='absolute top-1 right-1 size-5 text-destructive z-10' />
+      </Visible>
+      <Visible when={busy}>
+        <IconLoader2 className='absolute top-1 right-1 size-5 text-primary z-10 animate-spin' />
+      </Visible>
+      <AppIcon
+        appId={app.id}
+        appName={app.name}
+        icon={app.icon}
+        className='absolute top-[50%] left-[50%] size-16 translate-x-[-50%] translate-y-[-50%] min-[360px]:size-20'
+      />
+    </div>
+    <span className='text-sm text-ellipsis w-full text-nowrap overflow-hidden text-center lg:px-2'>{app.name}</span>
+    <Badge
+      variant={app.status === 'error' ? 'destructive' : 'secondary'}
+      className='max-w-full text-[10px] capitalize'
+    >
+      {itemStatus}
+    </Badge>
+    <Visible when={showOwner}>
+      <OwnerBadge app={app} />
+    </Visible>
+  </>
 )
