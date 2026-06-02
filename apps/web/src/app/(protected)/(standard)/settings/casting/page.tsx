@@ -6,7 +6,7 @@ import { OperationalSettingsSkeleton } from '@/features/settings/orchestrator/op
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { requireAdmin } from '@/server/auth/authorization'
 import { userService } from '@/server/auth/user'
-import { listApplicationsAction } from '@/server/orchestrator/applications/read-actions'
+import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
 import {
   getOrchestratorHealthAction,
   listDisplaySidecarSessionsAction

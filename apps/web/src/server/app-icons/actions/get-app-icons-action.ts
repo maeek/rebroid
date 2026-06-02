@@ -1,6 +1,6 @@
 'use server'
 
-import { getApplicationAction } from '@/server/orchestrator/applications/read-actions'
+import { getApplicationAction } from '@/server/orchestrator/applications/actions/queries/get-application-action'
 import { requireUser } from '../shared'
 import { getStoredAppIcon } from '../store'
 

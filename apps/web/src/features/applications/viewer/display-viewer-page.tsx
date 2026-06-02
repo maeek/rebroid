@@ -10,7 +10,8 @@ import {
   normalizeViewerSettings
 } from '@/features/applications/viewer/viewer-settings'
 import { StatusSplash } from '@/features/shell/components/status-splash'
-import { getApplicationAction, getScrcpySessionAction } from '@/server/orchestrator/applications/read-actions'
+import { getApplicationAction } from '@/server/orchestrator/applications/actions/queries/get-application-action'
+import { getScrcpySessionAction } from '@/server/orchestrator/applications/actions/runtime/viewer-actions'
 import { ViewerActivityKeepalive, ViewerStartupRefresh } from './viewer-activity-keepalive'
 import type { ViewerSettings } from '@/features/applications/viewer/viewer-settings'
 import type { AndroidApplication, ScrcpySession } from '@/server/orchestrator/applications/types'

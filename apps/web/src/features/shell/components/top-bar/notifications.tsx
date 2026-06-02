@@ -7,7 +7,7 @@ import { Visible } from '@/components/ui/visible'
 import { NotificationCard } from '@/features/applications/viewer/notification-card'
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { cn } from '@/lib/utils'
-import { listRunningApplicationNotificationsAction } from '@/server/orchestrator/applications/read-actions'
+import { listRunningApplicationNotificationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
 import type { RunningApplicationNotifications } from '@/server/orchestrator/applications/types'
 
 const refreshIntervalMs = 10000

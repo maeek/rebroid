@@ -14,7 +14,7 @@ import {
 } from '@/features/applications/viewer/viewer-settings'
 import { ProtectedSplitPageLayout, ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { usePollingQuery } from '@/hooks/use-polling-query'
-import { getApplicationAction } from '@/server/orchestrator/applications/read-actions'
+import { getApplicationAction } from '@/server/orchestrator/applications/actions/queries/get-application-action'
 import { rememberRecentAppAction } from '@/server/recent-apps/actions'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { PageBackdrop } from '../../shell/components/page-backdrop'

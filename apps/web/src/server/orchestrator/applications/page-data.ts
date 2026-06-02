@@ -3,7 +3,7 @@ import { withStoredAppIcon } from '@/features/applications/icons/enrich'
 import { userService } from '@/server/auth/user'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { getServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
-import { getApplicationAction } from './read-actions'
+import { getApplicationAction } from './actions/queries/get-application-action'
 
 export const getApplicationPageData = async (id: string) => {
   const userPromise = getCurrentUserContext()

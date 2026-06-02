@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Visible } from '@/components/ui/visible'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { toast } from '@/hooks/use-toast'
-import { cloneApplicationForCurrentUserAction } from '@/server/orchestrator/applications/mutation-actions'
+import { cloneApplicationForCurrentUserAction } from '@/server/orchestrator/applications/actions/lifecycle/clone-actions'
 import { useAppViewerActionRunner } from './use-app-viewer-action-runner'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 

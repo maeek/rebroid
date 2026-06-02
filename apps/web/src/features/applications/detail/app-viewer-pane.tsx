@@ -6,37 +6,16 @@ import { Visible } from '@/components/ui/visible'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { AppViewer } from '@/features/applications/viewer/android'
 import { ViewerControlBar } from '@/features/applications/viewer/viewer-control-bar'
+import { getToastErrorDescription } from '@/features/applications/viewer/viewer-error-utils'
 import { StatusSplash } from '@/features/shell/components/status-splash'
 import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
-import { startApplicationAction } from '@/server/orchestrator/applications/mutation-actions'
-import { captureApplicationScreenshotAction } from '@/server/orchestrator/applications/read-actions'
+import { startApplicationAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
+import { captureApplicationScreenshotAction } from '@/server/orchestrator/applications/actions/runtime/screenshot-actions'
 import { getRedroidDisplayDimensionsFromArgs } from '@/shared/runtime/redroid-runtime'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { ViewerOrientation } from '@/features/applications/viewer/android'
 import type { ViewerSettings } from '@/features/applications/viewer/viewer-settings'
-
-const getToastErrorDescription = (error: unknown): string => {
-  const message = error instanceof Error ? error.message.trim() : ''
-  if (!message) {
-    return 'The server did not return details for this failure.'
-  }
-
-  const loweredMessage = message.toLowerCase()
-  if (
-    loweredMessage.includes('an error occurred in the server components render') ||
-    loweredMessage.includes('specific message is omitted in production builds') ||
-    loweredMessage.includes('digest property is included')
-  ) {
-    return 'The server did not return details for this failure.'
-  }
-
-  if (loweredMessage === 'failed to fetch' || loweredMessage.includes('fetch failed')) {
-    return 'Could not reach the server.'
-  }
-
-  return message
-}
 
 export const AppViewerPane = ({
   app,

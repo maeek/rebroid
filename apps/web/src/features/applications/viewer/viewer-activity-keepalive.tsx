@@ -3,7 +3,7 @@
 import { startTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { useVisibilityAwareInterval } from '@/hooks/use-visibility-aware-interval'
-import { recordViewerActivityAction } from '@/server/orchestrator/applications/read-actions'
+import { recordViewerActivityAction } from '@/server/orchestrator/applications/actions/runtime/viewer-actions'
 
 const keepaliveIntervalMs = 30_000
 

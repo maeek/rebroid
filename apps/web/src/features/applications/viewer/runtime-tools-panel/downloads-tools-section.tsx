@@ -22,7 +22,7 @@ import { formatDateLocale } from '@/lib/format'
 import {
   downloadApplicationRuntimeFileAction,
   listApplicationFilesAction
-} from '@/server/orchestrator/applications/read-actions'
+} from '@/server/orchestrator/applications/actions/runtime/file-actions'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
 import { downloadDataUrl, formatBytes, runtimeActionErrorToast } from './runtime-tools-panel.utils'
 import { ToolSection } from './tool-section'

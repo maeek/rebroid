@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/hooks/use-toast'
 import { useVisibilityAwareInterval } from '@/hooks/use-visibility-aware-interval'
-import { setApplicationClipboardAction } from '@/server/orchestrator/applications/mutation-actions'
-import { getApplicationClipboardAction } from '@/server/orchestrator/applications/read-actions'
+import {
+  getApplicationClipboardAction,
+  setApplicationClipboardAction
+} from '@/server/orchestrator/applications/actions/runtime/clipboard-actions'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
 import { runtimeActionErrorToast } from './runtime-tools-panel.utils'
 import { ToolSection } from './tool-section'

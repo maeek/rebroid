@@ -4,7 +4,7 @@ import { FirewallSettings } from '@/features/settings/orchestrator/firewall-sett
 import { OperationalSettingsSkeleton } from '@/features/settings/orchestrator/operational-settings-skeleton'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { requireAdmin } from '@/server/auth/authorization'
-import { listApplicationsAction } from '@/server/orchestrator/applications/read-actions'
+import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
 import { getOrchestratorHealthAction } from '@/server/orchestrator/diagnostics/actions'
 
 const firewallColumns = [

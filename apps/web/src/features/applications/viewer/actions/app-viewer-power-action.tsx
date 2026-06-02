@@ -25,7 +25,10 @@ import {
   rememberApplicationProfile
 } from '@/features/applications/profiles/profile-history'
 import { ApplicationProfilePicker } from '@/features/applications/profiles/profile-picker'
-import { startApplicationAction, stopApplicationAction } from '@/server/orchestrator/applications/mutation-actions'
+import {
+  startApplicationAction,
+  stopApplicationAction
+} from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { useAppViewerActionRunner } from './use-app-viewer-action-runner'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { ApplicationProfileMode } from '@/server/orchestrator/applications/types'

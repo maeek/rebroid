@@ -13,7 +13,7 @@ import {
   useOrchestratorUiSettings
 } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 import { toast } from '@/hooks/use-toast'
-import { updateApkAction } from '@/server/orchestrator/applications/mutation-actions'
+import { updateApkAction } from '@/server/orchestrator/applications/actions/configuration/create-update-actions'
 import type { AppFormValues } from '@/features/applications/create/create-app-form.types'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'

@@ -26,7 +26,7 @@ import { Visible } from '@/components/ui/visible'
 import { AppIcon } from '@/features/applications/components/app-icon'
 import { recentAppsUpdatedEvent, type RecentApp } from '@/features/applications/recent/recent-apps'
 import { usePollingQuery } from '@/hooks/use-polling-query'
-import { startApplicationAction } from '@/server/orchestrator/applications/mutation-actions'
+import { startApplicationAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { listRecentAppsAction } from '@/server/recent-apps/actions'
 
 type NavigationVariant = 'sidebar' | 'drawer'

@@ -19,8 +19,8 @@ import {
   applyNetworkPolicyAction,
   reconcileNetworkPoliciesAction,
   updateNetworkPolicyAction
-} from '@/server/orchestrator/applications/mutation-actions'
-import { listApplicationsAction } from '@/server/orchestrator/applications/read-actions'
+} from '@/server/orchestrator/applications/actions/configuration/network-policy-actions'
+import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
 import type { ServiceHealth } from '@/server/orchestrator/diagnostics/types'
 

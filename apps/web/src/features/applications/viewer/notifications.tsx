@@ -7,7 +7,7 @@ import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
 import { AppDefinition } from '@/features/applications/domain/app-definition'
 import { usePollingQuery } from '@/hooks/use-polling-query'
-import { getAndroidNotificationsAction } from '@/server/orchestrator/applications/read-actions'
+import { getAndroidNotificationsAction } from '@/server/orchestrator/applications/actions/runtime/notification-actions'
 import { NotificationCard } from './notification-card'
 import type { AndroidNotification } from '@/server/orchestrator/applications/types'
 

@@ -10,7 +10,7 @@ import {
   deleteApplicationAction,
   startApplicationAction,
   stopApplicationAction
-} from '@/server/orchestrator/applications/mutation-actions'
+} from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { forgetRecentAppAction } from '@/server/recent-apps/actions'
 import { getDisplayErrorMessage } from '../../../../lib/error-utils'
 import type { AppsListContextValue, BulkAction, PendingAppAction } from './apps-list-context'

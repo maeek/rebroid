@@ -10,7 +10,7 @@ import { toast } from '@/hooks/use-toast'
 import {
   applyNetworkPolicyAction,
   updateNetworkPolicyAction
-} from '@/server/orchestrator/applications/mutation-actions'
+} from '@/server/orchestrator/applications/actions/configuration/network-policy-actions'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
 type AppManageNetworkPolicySettingsProps = {

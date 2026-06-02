@@ -34,7 +34,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Visible } from '@/components/ui/visible'
 import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
-import { sendApplicationViewerControlAction } from '@/server/orchestrator/applications/mutation-actions'
+import { sendApplicationViewerControlAction } from '@/server/orchestrator/applications/actions/runtime/viewer-actions'
 import { viewerControlCommandEventType } from './android'
 import type { ApplicationViewerControlCommand } from '@/server/orchestrator/applications/types'
 

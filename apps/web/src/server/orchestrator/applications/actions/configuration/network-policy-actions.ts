@@ -1,0 +1,78 @@
+'use server'
+
+import { recordAuditEvent } from '@/server/audit/events'
+import { allowsBroadInternetAccess, hasPermission } from '@/shared/permissions/permissions'
+import { getCurrentUserContext } from '../../../current-user'
+import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
+import { orchestratorApplicationsClient } from '../../client'
+import { sanitizeAndroidApplicationForUser } from '../../safety'
+import { assertCanAccessApplication } from '../common/action-helpers'
+import type { UpdateNetworkPolicyInput } from '../../types'
+
+export const updateNetworkPolicyAction = async (id: string, input: UpdateNetworkPolicyInput) => {
+  await assertCanAccessApplication(id)
+  const user = await getCurrentUserContext()
+  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:configure-egress')) {
+    throw new Error('You do not have permission to configure network access.')
+  }
+  if (
+    user.role !== 'admin' &&
+    (input.networkPolicyEnabled === false || allowsBroadInternetAccess(input.networkPolicyAllowCidrs ?? [])) &&
+    !hasPermission(user.permissions, 'applications:use-internet')
+  ) {
+    throw new Error('You do not have permission to allow broad internet access.')
+  }
+  const app = await orchestratorApplicationsClient.updateNetworkPolicy(id, input)
+  recordAuditEvent({
+    actorUserId: user.ownerUserId,
+    actorLabel: user.ownerUserId,
+    category: 'application',
+    action: 'application.network.update',
+    resourceType: 'application',
+    resourceId: id,
+    resourceLabel: app.name,
+    details: {
+      networkPolicyEnabled: input.networkPolicyEnabled,
+      allowCidrsCount: input.networkPolicyAllowCidrs?.length ?? 0
+    }
+  })
+  revalidateApplicationList()
+  revalidateApplicationDetail(id)
+  return sanitizeAndroidApplicationForUser(app, user)
+}
+
+export const applyNetworkPolicyAction = async (id: string) => {
+  await assertCanAccessApplication(id)
+  const user = await getCurrentUserContext()
+  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:configure-egress')) {
+    throw new Error('You do not have permission to apply network policy.')
+  }
+  const app = await orchestratorApplicationsClient.applyNetworkPolicy(id)
+  recordAuditEvent({
+    actorUserId: user.ownerUserId,
+    actorLabel: user.ownerUserId,
+    category: 'application',
+    action: 'application.network.apply',
+    resourceType: 'application',
+    resourceId: id,
+    resourceLabel: app.name
+  })
+  revalidateApplicationDetail(id)
+  return sanitizeAndroidApplicationForUser(app, user)
+}
+
+export const reconcileNetworkPoliciesAction = async () => {
+  const user = await getCurrentUserContext()
+  if (user.role !== 'admin') {
+    throw new Error('You do not have permission to reconcile all network policies.')
+  }
+  const result = await orchestratorApplicationsClient.reconcileNetworkPolicies()
+  recordAuditEvent({
+    actorUserId: user.ownerUserId,
+    actorLabel: user.ownerUserId,
+    category: 'application',
+    action: 'application.network.reconcile',
+    resourceType: 'network_policy'
+  })
+  return result
+}
