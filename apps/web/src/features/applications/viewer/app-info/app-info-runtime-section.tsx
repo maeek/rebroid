@@ -3,11 +3,105 @@ import { Visible } from '@/components/ui/visible'
 import { AppInfoRow } from './app-info-row'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
+const formatMemoryLimit = (app: AppDefinition) => (app.memoryLimitMb ? `${app.memoryLimitMb} MB` : 'unlimited')
+
+const formatCpuLimit = (app: AppDefinition) => app.cpuLimitCpus ?? 'unlimited'
+
+const formatVolumeLimit = (app: AppDefinition) =>
+  app.volumeSizeLimitMb ? `${app.volumeSizeLimitMb} MB advisory` : 'unlimited'
+
 const formatResources = (app: AppDefinition) => {
-  return `RAM ${app.memoryLimitMb ? `${app.memoryLimitMb} MB` : 'unlimited'}, CPU ${
-    app.cpuLimitCpus ?? 'unlimited'
-  }, volume ${app.volumeSizeLimitMb ? `${app.volumeSizeLimitMb} MB advisory` : 'unlimited'}`
+  return `RAM ${formatMemoryLimit(app)}, CPU ${formatCpuLimit(app)}, volume ${formatVolumeLimit(app)}`
 }
+
+const getContainerName = (app?: AppDefinition) => app?.containerName ?? 'Loading...'
+
+const getContainerNameCopyValue = (app?: AppDefinition) => app?.containerName
+
+const getContainerId = (app?: AppDefinition) => app?.containerId ?? 'Not created'
+
+const getContainerIdCopyValue = (app?: AppDefinition) => app?.containerId ?? undefined
+
+const getContainerImage = (app?: AppDefinition) => app?.containerImage ?? 'Loading...'
+
+const getContainerImageCopyValue = (app?: AppDefinition) => app?.containerImage
+
+const getVolumeValue = (app?: AppDefinition) => {
+  if (!app) {
+    return 'Loading...'
+  }
+
+  return app.profileMode === 'temporary' ? 'Temporary container data' : app.volumeName
+}
+
+const getVolumeCopyValue = (app?: AppDefinition) => {
+  if (!app || app.profileMode === 'temporary') {
+    return undefined
+  }
+
+  return app.volumeName
+}
+
+const getProfileValue = (app?: AppDefinition) => {
+  if (!app) {
+    return 'Loading...'
+  }
+
+  return `${app.profileName ?? 'default'} / ${app.profileMode}`
+}
+
+const getResourcesValue = (app?: AppDefinition) => {
+  if (!app) {
+    return 'Loading...'
+  }
+
+  return formatResources(app)
+}
+
+const getContainerArgs = (app?: AppDefinition) => app?.containerArgs ?? undefined
+
+const getIdleTimeoutValue = (app?: AppDefinition) => {
+  if (!app) {
+    return 'Loading...'
+  }
+
+  return `${app.inactivityTimeoutSeconds}s`
+}
+
+const RuntimeBackendRows = ({ app }: { app?: AppDefinition }) => (
+  <>
+    <AppInfoRow
+      label='Container name'
+      value={getContainerName(app)}
+      copyValue={getContainerNameCopyValue(app)}
+    />
+    <AppInfoRow
+      label='Container ID'
+      value={getContainerId(app)}
+      copyValue={getContainerIdCopyValue(app)}
+    />
+    <AppInfoRow
+      label='Image'
+      value={getContainerImage(app)}
+      copyValue={getContainerImageCopyValue(app)}
+    />
+    <AppInfoRow
+      label='Volume'
+      value={getVolumeValue(app)}
+      copyValue={getVolumeCopyValue(app)}
+    />
+  </>
+)
+
+const ContainerArgsRow = ({ containerArgs }: { containerArgs?: string }) => (
+  <Visible when={containerArgs}>
+    <AppInfoRow
+      label='Container args'
+      value={containerArgs}
+      copyValue={containerArgs}
+    />
+  </Visible>
+)
 
 export const AppInfoRuntimeSection = ({
   app,
@@ -24,45 +118,22 @@ export const AppInfoRuntimeSection = ({
       contentClassName='flex-col'
     >
       <Visible when={canViewBackendDetails}>
-        <AppInfoRow
-          label='Container name'
-          value={app?.containerName || 'Loading...'}
-          copyValue={app?.containerName}
-        />
-        <AppInfoRow
-          label='Container ID'
-          value={app?.containerId || 'Not created'}
-          copyValue={app?.containerId || undefined}
-        />
-        <AppInfoRow
-          label='Image'
-          value={app?.containerImage || 'Loading...'}
-          copyValue={app?.containerImage}
-        />
-        <AppInfoRow
-          label='Volume'
-          value={app ? (app.profileMode === 'temporary' ? 'Temporary container data' : app.volumeName) : 'Loading...'}
-          copyValue={app?.profileMode === 'temporary' ? undefined : app?.volumeName}
-        />
+        <RuntimeBackendRows app={app} />
       </Visible>
       <AppInfoRow
         label='Profile'
-        value={app ? `${app.profileName ?? 'default'} / ${app.profileMode}` : 'Loading...'}
+        value={getProfileValue(app)}
       />
       <AppInfoRow
         label='Resources'
-        value={app ? formatResources(app) : 'Loading...'}
+        value={getResourcesValue(app)}
       />
       <Visible when={canViewBackendDetails && app?.containerArgs}>
-        <AppInfoRow
-          label='Container args'
-          value={app?.containerArgs ?? ''}
-          copyValue={app?.containerArgs ?? undefined}
-        />
+        <ContainerArgsRow containerArgs={getContainerArgs(app)} />
       </Visible>
       <AppInfoRow
         label='Idle timeout'
-        value={app ? `${app.inactivityTimeoutSeconds}s` : 'Loading...'}
+        value={getIdleTimeoutValue(app)}
       />
     </Section>
   )

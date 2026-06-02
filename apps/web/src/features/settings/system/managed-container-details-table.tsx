@@ -1,14 +1,8 @@
 'use client'
 
 import { formatDateLocale } from '@/lib/format'
+import { formatBytes } from '@/lib/format-bytes'
 import type { SystemResources } from '@/server/orchestrator/diagnostics/types'
-
-const formatBytes = (bytes: number) => {
-  if (bytes === 0) return '0 B'
-  const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
-  return `${(bytes / 1024 ** index).toFixed(2)} ${units[index]}`
-}
 
 const formatPercent = (value: number) => `${value.toFixed(1)}%`
 

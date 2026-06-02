@@ -3,7 +3,80 @@ import { Visible } from '@/components/ui/visible'
 import { AppInfoRow } from './app-info-row'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
+type ApplicationError = NonNullable<AppDefinition['applicationError']>
+
+const getApkName = (app?: AppDefinition) => app?.apkOriginalName ?? 'No APK uploaded'
+
+const getApkCopyValue = (app?: AppDefinition) => app?.apkOriginalName ?? undefined
+
+const getLastError = (app?: AppDefinition) => app?.lastError ?? undefined
+
+const getApplicationError = (app?: AppDefinition) => app?.applicationError ?? undefined
+
+const OptionalArtifactRow = ({
+  label,
+  value,
+  copyValue = value
+}: {
+  label: string
+  value?: string
+  copyValue?: string
+}) => (
+  <Visible when={value}>
+    <AppInfoRow
+      label={label}
+      value={value}
+      copyValue={copyValue}
+    />
+  </Visible>
+)
+
+const ApplicationErrorCodeRow = ({ error }: { error?: ApplicationError }) => {
+  if (!error) {
+    return null
+  }
+
+  return (
+    <AppInfoRow
+      label='Error code'
+      value={`${error.code} (${error.phase})`}
+      copyValue={`${error.code}:${error.phase}`}
+    />
+  )
+}
+
+const ApplicationErrorExitCodeRow = ({ error }: { error?: ApplicationError }) => {
+  const exitCode = error?.exitCode
+
+  if (exitCode === null || exitCode === undefined) {
+    return null
+  }
+
+  return (
+    <AppInfoRow
+      label='Exit code'
+      value={String(exitCode)}
+      copyValue={String(exitCode)}
+    />
+  )
+}
+
+const ApplicationErrorRows = ({ error }: { error?: ApplicationError }) => (
+  <>
+    <Visible when={error}>
+      <ApplicationErrorCodeRow error={error} />
+    </Visible>
+    <ApplicationErrorExitCodeRow error={error} />
+    <OptionalArtifactRow
+      label='Hint'
+      value={error?.hint ?? undefined}
+    />
+  </>
+)
+
 export const AppInfoArtifactsSection = ({ app }: { app?: AppDefinition }) => {
+  const applicationError = getApplicationError(app)
+
   return (
     <Section
       title='Artifacts'
@@ -13,45 +86,14 @@ export const AppInfoArtifactsSection = ({ app }: { app?: AppDefinition }) => {
     >
       <AppInfoRow
         label='APK'
-        value={app?.apkOriginalName || 'No APK uploaded'}
-        copyValue={app?.apkOriginalName || undefined}
+        value={getApkName(app)}
+        copyValue={getApkCopyValue(app)}
       />
-      <Visible when={app?.lastError}>
-        <AppInfoRow
-          label='Last error'
-          value={app?.lastError ?? ''}
-          copyValue={app?.lastError ?? undefined}
-        />
-      </Visible>
-      <Visible when={app?.applicationError}>
-        <AppInfoRow
-          label='Error code'
-          value={app?.applicationError ? `${app.applicationError.code} (${app.applicationError.phase})` : ''}
-          copyValue={app?.applicationError ? `${app.applicationError.code}:${app.applicationError.phase}` : undefined}
-        />
-      </Visible>
-      <Visible when={app?.applicationError?.exitCode !== null && app?.applicationError?.exitCode !== undefined}>
-        <AppInfoRow
-          label='Exit code'
-          value={
-            app?.applicationError?.exitCode !== null && app?.applicationError?.exitCode !== undefined
-              ? String(app.applicationError.exitCode)
-              : ''
-          }
-          copyValue={
-            app?.applicationError?.exitCode !== null && app?.applicationError?.exitCode !== undefined
-              ? String(app.applicationError.exitCode)
-              : undefined
-          }
-        />
-      </Visible>
-      <Visible when={app?.applicationError?.hint}>
-        <AppInfoRow
-          label='Hint'
-          value={app?.applicationError?.hint ?? ''}
-          copyValue={app?.applicationError?.hint ?? undefined}
-        />
-      </Visible>
+      <OptionalArtifactRow
+        label='Last error'
+        value={getLastError(app)}
+      />
+      <ApplicationErrorRows error={applicationError} />
     </Section>
   )
 }

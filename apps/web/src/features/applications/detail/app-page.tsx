@@ -82,12 +82,12 @@ export const AppViewerPage = ({
   }, [viewerSettings, viewerSettingsHydrated])
 
   useEffect(() => {
-    if (currentApp) {
-      void rememberRecentAppAction(currentApp.id)
+    if (currentAppId) {
+      void rememberRecentAppAction(currentAppId)
         .then(notifyRecentAppsUpdated)
         .catch(() => undefined)
     }
-  }, [currentApp?.id])
+  }, [currentAppId])
 
   useEffect(() => {
     const blurFocusedEditorOutsideEditableTarget = (target: EventTarget | null) => {

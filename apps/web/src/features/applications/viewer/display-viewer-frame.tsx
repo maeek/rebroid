@@ -1,10 +1,12 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-
-const keyboardCaptureMessageType = 'rebroid-viewer-keyboard-capture'
-const keyboardEventMessageType = 'rebroid-viewer-keyboard-event'
-const viewerControlMessageType = 'rebroid-viewer-control-event'
+import { useCallback, useEffect, useRef } from 'react'
+import {
+  addViewerKeyboardRelay,
+  keyboardCaptureMessageType,
+  keyboardEventMessageType,
+  viewerControlMessageType
+} from '@/features/applications/viewer/viewer-keyboard-relay'
 
 const isKeyboardCaptureMessage = (value: unknown): value is { type: string; enabled: boolean } => {
   if (!value || typeof value !== 'object') {
@@ -37,19 +39,6 @@ const isViewerControlMessage = (value: unknown): value is { type: string; comman
   return record.type === viewerControlMessageType && typeof record.command === 'string'
 }
 
-const isEditableKeyboardTarget = (target: EventTarget | null) => {
-  if (!(target instanceof HTMLElement)) {
-    return false
-  }
-
-  return (
-    target instanceof HTMLInputElement ||
-    target instanceof HTMLTextAreaElement ||
-    target instanceof HTMLSelectElement ||
-    target.isContentEditable
-  )
-}
-
 export const DisplayViewerFrame = ({
   src,
   keyboardCaptureEnabled
@@ -61,36 +50,42 @@ export const DisplayViewerFrame = ({
   const enabledRef = useRef(keyboardCaptureEnabled)
   const viewerOriginRef = useRef<string | null>(null)
 
-  const getViewerOrigin = () => viewerOriginRef.current ?? window.location.origin
+  const getViewerOrigin = useCallback(() => viewerOriginRef.current ?? window.location.origin, [])
 
-  const postKeyboardCapturePreference = (enabled: boolean) => {
-    const targetWindow = iframeRef.current?.contentWindow
-    if (!targetWindow) {
-      return
-    }
+  const postKeyboardCapturePreference = useCallback(
+    (enabled: boolean) => {
+      const targetWindow = iframeRef.current?.contentWindow
+      if (!targetWindow) {
+        return
+      }
 
-    targetWindow.postMessage(
-      {
-        type: keyboardCaptureMessageType,
-        enabled
-      },
-      getViewerOrigin()
-    )
-  }
+      targetWindow.postMessage(
+        {
+          type: keyboardCaptureMessageType,
+          enabled
+        },
+        getViewerOrigin()
+      )
+    },
+    [getViewerOrigin]
+  )
 
-  const scheduleKeyboardCaptureSync = (enabled: boolean) => {
-    const attempts = [0, 150, 400, 900]
-    const timers = attempts.map(delay => window.setTimeout(() => postKeyboardCapturePreference(enabled), delay))
+  const scheduleKeyboardCaptureSync = useCallback(
+    (enabled: boolean) => {
+      const attempts = [0, 150, 400, 900]
+      const timers = attempts.map(delay => window.setTimeout(() => postKeyboardCapturePreference(enabled), delay))
 
-    return () => {
-      timers.forEach(timer => window.clearTimeout(timer))
-    }
-  }
+      return () => {
+        timers.forEach(timer => window.clearTimeout(timer))
+      }
+    },
+    [postKeyboardCapturePreference]
+  )
 
   useEffect(() => {
     enabledRef.current = keyboardCaptureEnabled
     return scheduleKeyboardCaptureSync(keyboardCaptureEnabled)
-  }, [keyboardCaptureEnabled])
+  }, [keyboardCaptureEnabled, scheduleKeyboardCaptureSync])
 
   useEffect(() => {
     try {
@@ -122,50 +117,15 @@ export const DisplayViewerFrame = ({
     return () => {
       window.removeEventListener('message', handleMessage)
     }
-  }, [])
+  }, [getViewerOrigin, postKeyboardCapturePreference])
 
   useEffect(() => {
-    const relayKeyboardEvent = (event: KeyboardEvent) => {
-      if (!enabledRef.current || isEditableKeyboardTarget(event.target)) {
-        return
-      }
-
-      const targetWindow = iframeRef.current?.contentWindow
-      if (!targetWindow) {
-        return
-      }
-
-      event.preventDefault()
-      event.stopPropagation()
-
-      targetWindow.postMessage(
-        {
-          type: keyboardEventMessageType,
-          eventType: event.type,
-          key: event.key,
-          code: event.code,
-          location: event.location,
-          repeat: event.repeat,
-          altKey: event.altKey,
-          ctrlKey: event.ctrlKey,
-          metaKey: event.metaKey,
-          shiftKey: event.shiftKey,
-          capsLock: event.getModifierState('CapsLock'),
-          numLock: event.getModifierState('NumLock'),
-          scrollLock: event.getModifierState('ScrollLock')
-        },
-        getViewerOrigin()
-      )
-    }
-
-    window.addEventListener('keydown', relayKeyboardEvent, true)
-    window.addEventListener('keyup', relayKeyboardEvent, true)
-
-    return () => {
-      window.removeEventListener('keydown', relayKeyboardEvent, true)
-      window.removeEventListener('keyup', relayKeyboardEvent, true)
-    }
-  }, [])
+    return addViewerKeyboardRelay({
+      getTargetOrigin: getViewerOrigin,
+      getTargetWindow: () => iframeRef.current?.contentWindow,
+      isEnabled: () => enabledRef.current
+    })
+  }, [getViewerOrigin])
 
   return (
     <iframe

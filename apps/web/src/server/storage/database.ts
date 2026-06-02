@@ -268,6 +268,22 @@ export type AuditEventPage = {
   }
 }
 
+type AuditEventRow = {
+  id: number
+  actor_user_id: string | null
+  actor_label: string
+  action: string
+  category: string
+  resource_type: string | null
+  resource_id: string | null
+  resource_label: string | null
+  outcome: AuditEventOutcome
+  details_json: string
+  source_ip: string | null
+  user_agent: string | null
+  created_at: string
+}
+
 const normalizeAuditDetails = (details: Record<string, unknown> | undefined) =>
   JSON.stringify(details ?? {}, (_key, value: unknown) => {
     if (typeof value === 'bigint') return value.toString()
@@ -295,21 +311,7 @@ export const appendAuditEvent = (input: AuditEventInput) => {
     )
 }
 
-const parseAuditRow = (row: {
-  id: number
-  actor_user_id: string | null
-  actor_label: string
-  action: string
-  category: string
-  resource_type: string | null
-  resource_id: string | null
-  resource_label: string | null
-  outcome: AuditEventOutcome
-  details_json: string
-  source_ip: string | null
-  user_agent: string | null
-  created_at: string
-}): AuditEvent => ({
+const parseAuditRow = (row: AuditEventRow): AuditEvent => ({
   id: row.id,
   actorUserId: row.actor_user_id,
   actorLabel: row.actor_label,
@@ -417,21 +419,7 @@ export const listAuditEvents = (
     .prepare(
       `SELECT ${auditSelectColumns} FROM audit_events ${where.sql} ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`
     )
-    .all(...where.values, pageSize, (page - 1) * pageSize) as Array<{
-    id: number
-    actor_user_id: string | null
-    actor_label: string
-    action: string
-    category: string
-    resource_type: string | null
-    resource_id: string | null
-    resource_label: string | null
-    outcome: AuditEventOutcome
-    details_json: string
-    source_ip: string | null
-    user_agent: string | null
-    created_at: string
-  }>
+    .all(...where.values, pageSize, (page - 1) * pageSize) as AuditEventRow[]
 
   return {
     events: rows.map(parseAuditRow),

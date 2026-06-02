@@ -19,27 +19,32 @@ const getPolicyEnabledDescription = (enabled: boolean) => {
     : 'Network policy restrictions are turned off for this app, so outbound access is not limited.'
 }
 
-const getPolicyStatusDescription = (result?: AppDefinition['networkPolicyResult']) => {
-  switch (result?.code) {
-    case 'applied':
-      return result.hint ?? 'The latest network policy rules were applied successfully to the running container.'
-    case 'apply_failed':
-      return result.hint ?? 'Applying the latest network policy failed. Check the policy details below for more detail.'
-    case 'container_ip_unavailable':
-      return result.hint ?? 'The container is not ready on its network yet, so the policy could not be attached.'
-    case 'container_not_created':
-      return result.hint ?? 'The app must create its managed container before policy rules can be applied.'
-    case 'agent_unavailable':
-      return result.hint ?? 'The firewall agent is unavailable.'
-    case 'unsupported_host':
-      return result.hint ?? 'The host firewall backend is unsupported.'
-    case 'policy_disabled':
-      return result.hint ?? 'Network policy restrictions are disabled for this app.'
-    case 'unknown':
-      return result.message
-    default:
-      return 'The network policy has not been applied yet.'
+type NetworkPolicyResult = NonNullable<AppDefinition['networkPolicyResult']>
+
+const noPolicyResultDescription = 'The network policy has not been applied yet.'
+
+const policyStatusDescriptions: Partial<Record<NetworkPolicyResult['code'], (result: NetworkPolicyResult) => string>> =
+  {
+    applied: result =>
+      result.hint ?? 'The latest network policy rules were applied successfully to the running container.',
+    apply_failed: result =>
+      result.hint ?? 'Applying the latest network policy failed. Check the policy details below for more detail.',
+    container_ip_unavailable: result =>
+      result.hint ?? 'The container is not ready on its network yet, so the policy could not be attached.',
+    container_not_created: result =>
+      result.hint ?? 'The app must create its managed container before policy rules can be applied.',
+    agent_unavailable: result => result.hint ?? 'The firewall agent is unavailable.',
+    unsupported_host: result => result.hint ?? 'The host firewall backend is unsupported.',
+    policy_disabled: result => result.hint ?? 'Network policy restrictions are disabled for this app.',
+    unknown: result => result.message
   }
+
+const getPolicyStatusDescription = (result?: AppDefinition['networkPolicyResult']) => {
+  if (!result) {
+    return noPolicyResultDescription
+  }
+
+  return policyStatusDescriptions[result.code]?.(result) ?? noPolicyResultDescription
 }
 
 type AppInfoNetworkSectionProps = {
@@ -49,27 +54,188 @@ type AppInfoNetworkSectionProps = {
   onAppChange: (app: AppDefinition) => void
 }
 
+const getPolicyStatusText = (app: AppDefinition) =>
+  app.networkPolicyResult?.status ?? app.networkPolicyStatus ?? 'not applied'
+
+const getPolicyAppliedAt = (app: AppDefinition) => app.networkPolicyAppliedAt ?? undefined
+
+const getPolicyHint = (app: AppDefinition) => app.networkPolicyResult?.hint ?? undefined
+
+const getPolicyMessage = (app: AppDefinition) =>
+  app.networkPolicyResult?.message ?? app.networkPolicyMessage ?? undefined
+
+const getAppAllowCidrs = (app?: AppDefinition) => app?.networkPolicyAllowCidrs ?? []
+
+const getAppId = (app?: AppDefinition) => app?.id
+
+const isNetworkAccessDisabled = (app?: AppDefinition) => !app
+
+const NetworkPolicyEnabledBadge = ({ enabled }: { enabled: boolean }) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <span>
+        <Badge
+          variant={enabled ? 'status' : 'secondary'}
+          className='capitalize'
+        >
+          {enabled ? 'enabled' : 'disabled'}
+        </Badge>
+      </span>
+    </TooltipTrigger>
+    <TooltipContent>{getPolicyEnabledDescription(enabled)}</TooltipContent>
+  </Tooltip>
+)
+
+const NetworkPolicyStatusBadge = ({ app }: { app: AppDefinition }) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <span>
+        <Badge
+          variant={app.networkPolicyResult?.status === 'error' ? 'destructive' : 'secondary'}
+          className='capitalize'
+        >
+          {getPolicyStatusText(app)}
+        </Badge>
+      </span>
+    </TooltipTrigger>
+    <TooltipContent>{getPolicyStatusDescription(app.networkPolicyResult)}</TooltipContent>
+  </Tooltip>
+)
+
+const NetworkPolicyBadges = ({ app }: { app?: AppDefinition }) => {
+  if (!app) {
+    return <>Loading...</>
+  }
+
+  return (
+    <div className='flex flex-wrap items-center justify-end gap-2'>
+      <NetworkPolicyEnabledBadge enabled={app.networkPolicyEnabled} />
+      <NetworkPolicyStatusBadge app={app} />
+    </div>
+  )
+}
+
+const NetworkNameRow = ({ app }: { app?: AppDefinition }) => {
+  if (!app) {
+    return (
+      <AppInfoRow
+        label='Network'
+        value='Loading...'
+      />
+    )
+  }
+
+  return (
+    <AppInfoRow
+      label='Network'
+      value={app.networkName}
+      copyValue={app.networkName}
+    />
+  )
+}
+
+const NetworkConnectionRows = ({ app }: { app?: AppDefinition }) => {
+  if (!app) {
+    return (
+      <>
+        <AppInfoRow
+          label='ADB'
+          value='Loading...'
+        />
+        <AppInfoRow
+          label='Transport'
+          value='Loading...'
+        />
+      </>
+    )
+  }
+
+  const adbAddress = `${app.containerName}:${app.adbPort}`
+
+  return (
+    <>
+      <AppInfoRow
+        label='ADB'
+        value={adbAddress}
+        copyValue={adbAddress}
+      />
+      <AppInfoRow
+        label='Transport'
+        value={app.scrcpyTransport}
+      />
+    </>
+  )
+}
+
+const PolicyAppliedRow = ({ appliedAt }: { appliedAt?: Date | string }) => (
+  <AppInfoRow
+    label='Applied'
+    value={appliedAt ? formatDateLocale(appliedAt) : 'Not applied'}
+  />
+)
+
+const PolicyHintRow = ({ hint }: { hint?: string }) => (
+  <Visible when={hint}>
+    <AppInfoRow
+      label='Policy hint'
+      value={hint}
+    />
+  </Visible>
+)
+
+const PolicyMessageRow = ({ message }: { message?: string }) => (
+  <Visible when={message}>
+    <AppInfoRow
+      label='Policy message'
+      value={message}
+    />
+  </Visible>
+)
+
+const PolicyResultRows = ({ app }: { app?: AppDefinition }) => {
+  if (!app) {
+    return <PolicyAppliedRow />
+  }
+
+  return (
+    <>
+      <PolicyAppliedRow appliedAt={getPolicyAppliedAt(app)} />
+      <PolicyHintRow hint={getPolicyHint(app)} />
+      <PolicyMessageRow message={getPolicyMessage(app)} />
+    </>
+  )
+}
+
+const showInvalidCidrToast = (value: string) => {
+  toast({
+    title: 'Invalid CIDR',
+    description: `${value} is not a valid IPv4 address or CIDR range.`,
+    variant: 'destructive'
+  })
+}
+
 export const AppInfoNetworkSection = ({
   app,
   canConfigureEgress,
   canViewBackendDetails,
   onAppChange
 }: AppInfoNetworkSectionProps) => {
-  const [allowCidrs, setAllowCidrs] = useState<string[]>(app?.networkPolicyAllowCidrs ?? [])
+  const appId = getAppId(app)
+  const [allowCidrs, setAllowCidrs] = useState<string[]>(() => getAppAllowCidrs(app))
   const [isSaving, setIsSaving] = useState(false)
   const hasPendingLocalChangesRef = useRef(false)
-  const previousAppIdRef = useRef(app?.id)
+  const previousAppIdRef = useRef(appId)
 
   useEffect(() => {
-    if (app?.id !== previousAppIdRef.current) {
-      previousAppIdRef.current = app?.id
+    if (appId !== previousAppIdRef.current) {
+      previousAppIdRef.current = appId
       hasPendingLocalChangesRef.current = false
     }
 
     if (!hasPendingLocalChangesRef.current) {
-      setAllowCidrs(app?.networkPolicyAllowCidrs ?? [])
+      setAllowCidrs(getAppAllowCidrs(app))
     }
-  }, [app?.id, app?.networkPolicyAllowCidrs])
+  }, [app, appId])
 
   const persistAllowCidrs = async (nextCidrs: string[]) => {
     if (!app) {
@@ -119,49 +285,11 @@ export const AppInfoNetworkSection = ({
       contentClassName='flex-col'
     >
       <Visible when={canViewBackendDetails}>
-        <AppInfoRow
-          label='Network'
-          value={app?.networkName || 'Loading...'}
-          copyValue={app?.networkName}
-        />
+        <NetworkNameRow app={app} />
       </Visible>
       <AppInfoRow
         label='Policy'
-        value={
-          <>
-            <Visible when={app}>
-              <div className='flex flex-wrap items-center justify-end gap-2'>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span>
-                      <Badge
-                        variant={app?.networkPolicyEnabled ? 'status' : 'secondary'}
-                        className='capitalize'
-                      >
-                        {app?.networkPolicyEnabled ? 'enabled' : 'disabled'}
-                      </Badge>
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>{getPolicyEnabledDescription(app?.networkPolicyEnabled ?? false)}</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span>
-                      <Badge
-                        variant={app?.networkPolicyResult?.status === 'error' ? 'destructive' : 'secondary'}
-                        className='capitalize'
-                      >
-                        {app?.networkPolicyResult?.status ?? app?.networkPolicyStatus ?? 'not applied'}
-                      </Badge>
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>{getPolicyStatusDescription(app?.networkPolicyResult)}</TooltipContent>
-                </Tooltip>
-              </div>
-            </Visible>
-            <Visible when={!app}>Loading...</Visible>
-          </>
-        }
+        value={<NetworkPolicyBadges app={app} />}
       />
       <Visible when={canConfigureEgress}>
         <AppInfoRow
@@ -169,49 +297,20 @@ export const AppInfoNetworkSection = ({
           value={
             <NetworkAccessInput
               cidrs={allowCidrs}
-              disabled={!app}
+              disabled={isNetworkAccessDisabled(app)}
               isBusy={isSaving}
               onAddCidr={handleAddCidr}
               onRemoveCidr={handleRemoveCidr}
-              onInvalidCidr={value =>
-                toast({
-                  title: 'Invalid CIDR',
-                  description: `${value} is not a valid IPv4 address or CIDR range.`,
-                  variant: 'destructive'
-                })
-              }
+              onInvalidCidr={showInvalidCidrToast}
             />
           }
           valueClassName='w-full sm:max-w-none sm:justify-stretch sm:text-left'
         />
       </Visible>
       <Visible when={canViewBackendDetails}>
-        <AppInfoRow
-          label='ADB'
-          value={app ? `${app.containerName}:${app.adbPort}` : 'Loading...'}
-          copyValue={app ? `${app.containerName}:${app.adbPort}` : undefined}
-        />
-        <AppInfoRow
-          label='Transport'
-          value={app?.scrcpyTransport || 'Loading...'}
-        />
+        <NetworkConnectionRows app={app} />
       </Visible>
-      <AppInfoRow
-        label='Applied'
-        value={app?.networkPolicyAppliedAt ? formatDateLocale(app.networkPolicyAppliedAt) : 'Not applied'}
-      />
-      <Visible when={app?.networkPolicyResult?.hint}>
-        <AppInfoRow
-          label='Policy hint'
-          value={app?.networkPolicyResult?.hint ?? ''}
-        />
-      </Visible>
-      <Visible when={app?.networkPolicyResult?.message ?? app?.networkPolicyMessage}>
-        <AppInfoRow
-          label='Policy message'
-          value={app?.networkPolicyResult?.message ?? app?.networkPolicyMessage ?? 'Unknown policy state'}
-        />
-      </Visible>
+      <PolicyResultRows app={app} />
     </Section>
   )
 }

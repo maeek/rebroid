@@ -35,23 +35,18 @@ export const listStoredRecentApps = async (userId: string) => {
   return sanitizeRecentApps(file.users[userId] ?? [])
 }
 
-export const rememberStoredRecentApp = async (userId: string, appId: string) => {
+const updateStoredRecentApps = async (userId: string, update: (apps: StoredRecentApp[]) => StoredRecentApp[]) => {
   await readRecentAppsFile()
   return updateWebState(recentAppsStateKey, current => {
     const file = JSON.parse(current ?? '{"users":{}}') as RecentAppsFile
-    file.users[userId] = sanitizeRecentApps([
-      { id: appId, openedAt: Date.now() },
-      ...(file.users[userId] ?? []).filter(app => app.id !== appId)
-    ])
+    file.users[userId] = sanitizeRecentApps(update(file.users[userId] ?? []))
     return [JSON.stringify(file), file.users[userId]]
   })
 }
 
+export const rememberStoredRecentApp = async (userId: string, appId: string) =>
+  updateStoredRecentApps(userId, apps => [{ id: appId, openedAt: Date.now() }, ...apps.filter(app => app.id !== appId)])
+
 export const forgetStoredRecentApp = async (userId: string, appId: string) => {
-  await readRecentAppsFile()
-  return updateWebState(recentAppsStateKey, current => {
-    const file = JSON.parse(current ?? '{"users":{}}') as RecentAppsFile
-    file.users[userId] = sanitizeRecentApps((file.users[userId] ?? []).filter(app => app.id !== appId))
-    return [JSON.stringify(file), file.users[userId]]
-  })
+  return updateStoredRecentApps(userId, apps => apps.filter(app => app.id !== appId))
 }

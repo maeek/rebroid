@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { IconAlertTriangle, IconLoader2, IconPlayerStopFilled, IconTrash } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -12,6 +13,139 @@ import {
 import { Visible } from '@/components/ui/visible'
 import { AppActionDialogSummary } from '@/features/applications/components/app-action-dialog-summary'
 import { useAppsListContext } from './apps-list-context'
+import type { BulkAction, PendingAppAction } from './apps-list-context'
+
+type DialogTone = 'destructive' | 'warning'
+type DialogButtonVariant = 'default' | 'destructive'
+type RemoveDataKey = 'false' | 'true'
+
+const actionLabels: Record<BulkAction, { singular: string; plural: string }> = {
+  stop: { singular: 'Stop app', plural: 'Stop apps' },
+  delete: { singular: 'Delete app', plural: 'Delete apps' }
+}
+
+const actionIcons: Record<BulkAction, ReactNode> = {
+  stop: <IconPlayerStopFilled className='size-4' />,
+  delete: <IconTrash className='size-4' />
+}
+
+const pendingActionIcons: Record<BulkAction, ReactNode> = {
+  stop: <IconPlayerStopFilled className='size-4' />,
+  delete: <IconAlertTriangle className='size-4' />
+}
+
+const bulkDialogCopy: Record<
+  BulkAction,
+  {
+    verb: string
+    description: Record<RemoveDataKey, string>
+    details: Record<RemoveDataKey, string[]>
+    tone: DialogTone
+    buttonVariant: DialogButtonVariant
+  }
+> = {
+  stop: {
+    verb: 'Stop',
+    description: {
+      false: 'The selected apps will stop, but their saved data and records will remain.',
+      true: 'The selected apps will stop, but their saved data and records will remain.'
+    },
+    details: {
+      false: ['Containers stop immediately.', 'Saved profiles and app records remain available.'],
+      true: ['Containers stop immediately.', 'Saved profiles and app records remain available.']
+    },
+    tone: 'warning',
+    buttonVariant: 'default'
+  },
+  delete: {
+    verb: 'Delete',
+    description: {
+      false: 'This removes the selected apps while preserving saved data when possible.',
+      true: 'This removes the selected apps and their saved data.'
+    },
+    details: {
+      false: ['Running containers are stopped and removed.', 'Saved profile data is preserved when possible.'],
+      true: ['Running containers are stopped and removed.', 'Saved profile data is deleted.']
+    },
+    tone: 'destructive',
+    buttonVariant: 'destructive'
+  }
+}
+
+const pluralizeApps = (count: number) => `app${count === 1 ? '' : 's'}`
+
+const removeDataKey = (removeDataOnDelete: boolean): RemoveDataKey => String(removeDataOnDelete) as RemoveDataKey
+
+const pendingDialogCopy: Record<
+  BulkAction,
+  {
+    verb: string
+    description: string
+    summaryDescription: Record<RemoveDataKey, string>
+    tone: DialogTone
+    buttonVariant: DialogButtonVariant
+  }
+> = {
+  stop: {
+    verb: 'Stop',
+    description: 'The app becomes unavailable immediately while network cleanup finishes in the background.',
+    summaryDescription: {
+      false: 'The container stops immediately. Saved profiles remain available for the next start.',
+      true: 'The container stops immediately. Saved profiles remain available for the next start.'
+    },
+    tone: 'warning',
+    buttonVariant: 'default'
+  },
+  delete: {
+    verb: 'Delete',
+    description: 'This removes the app record and its runtime resources.',
+    summaryDescription: {
+      false:
+        'The container, app record, and network resources are removed. Saved profile data is preserved when possible.',
+      true: 'The container, app record, network resources, and saved profile data are removed.'
+    },
+    tone: 'destructive',
+    buttonVariant: 'destructive'
+  }
+}
+
+const getBulkDialog = (action: BulkAction | null, appNames: string[], removeDataOnDelete: boolean) => {
+  const activeAction = action ?? 'delete'
+  const copy = bulkDialogCopy[activeAction]
+  const count = appNames.length
+  const dataKey = removeDataKey(removeDataOnDelete)
+
+  return {
+    title: `${copy.verb} ${count} selected ${pluralizeApps(count)}?`,
+    description: copy.description[dataKey],
+    summaryTitle: `${count} ${pluralizeApps(count)} selected`,
+    summaryDescription: appNames.join(', '),
+    details: copy.details[dataKey],
+    icon: actionIcons[activeAction],
+    tone: copy.tone,
+    buttonLabel: actionLabels[activeAction].plural,
+    buttonVariant: copy.buttonVariant
+  } as const
+}
+
+const getPendingDialog = (pendingAction: PendingAppAction | null, removeDataOnDelete: boolean) => {
+  const activeAction = pendingAction?.action ?? 'delete'
+  const copy = pendingDialogCopy[activeAction]
+  const appName = pendingAction?.app.name ?? 'Selected app'
+  const dataKey = removeDataKey(removeDataOnDelete)
+
+  return {
+    title: `${copy.verb} ${appName}?`,
+    description: copy.description,
+    summaryTitle: appName,
+    summaryDescription: copy.summaryDescription[dataKey],
+    icon: pendingActionIcons[activeAction],
+    tone: copy.tone,
+    buttonLabel: actionLabels[activeAction].singular,
+    buttonIcon: actionIcons[activeAction],
+    buttonVariant: copy.buttonVariant
+  } as const
+}
 
 export const AppsListBulkDialog = () => {
   const {
@@ -26,16 +160,12 @@ export const AppsListBulkDialog = () => {
     removeDataOnDelete
   } = useAppsListContext()
 
-  const activeBulkTitle =
-    bulkAction === 'stop'
-      ? `Stop ${activeBulkApps.length} selected app${activeBulkApps.length === 1 ? '' : 's'}?`
-      : `Delete ${activeBulkApps.length} selected app${activeBulkApps.length === 1 ? '' : 's'}?`
-  const activeBulkDescription =
-    bulkAction === 'stop'
-      ? 'The selected apps will stop, but their saved data and records will remain.'
-      : removeDataOnDelete
-        ? 'This removes the selected apps and their saved data.'
-        : 'This removes the selected apps while preserving saved data when possible.'
+  const bulkDialog = getBulkDialog(
+    bulkAction,
+    activeBulkApps.map(app => app.name),
+    removeDataOnDelete
+  )
+  const pendingDialog = getPendingDialog(pendingAppAction, removeDataOnDelete)
 
   return (
     <>
@@ -49,26 +179,15 @@ export const AppsListBulkDialog = () => {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{activeBulkTitle}</DialogTitle>
-            <DialogDescription>{activeBulkDescription}</DialogDescription>
+            <DialogTitle>{bulkDialog.title}</DialogTitle>
+            <DialogDescription>{bulkDialog.description}</DialogDescription>
           </DialogHeader>
           <AppActionDialogSummary
-            icon={
-              bulkAction === 'stop' ? <IconPlayerStopFilled className='size-4' /> : <IconTrash className='size-4' />
-            }
-            title={`${activeBulkApps.length} app${activeBulkApps.length === 1 ? '' : 's'} selected`}
-            description={activeBulkApps.map(app => app.name).join(', ')}
-            details={
-              bulkAction === 'stop'
-                ? ['Containers stop immediately.', 'Saved profiles and app records remain available.']
-                : [
-                    'Running containers are stopped and removed.',
-                    removeDataOnDelete
-                      ? 'Saved profile data is deleted.'
-                      : 'Saved profile data is preserved when possible.'
-                  ]
-            }
-            tone={bulkAction === 'delete' ? 'destructive' : 'warning'}
+            icon={bulkDialog.icon}
+            title={bulkDialog.summaryTitle}
+            description={bulkDialog.summaryDescription}
+            details={bulkDialog.details}
+            tone={bulkDialog.tone}
           />
           <DialogFooter>
             <DialogClose asChild>
@@ -80,14 +199,14 @@ export const AppsListBulkDialog = () => {
               </Button>
             </DialogClose>
             <Button
-              variant={bulkAction === 'delete' ? 'destructive' : 'default'}
+              variant={bulkDialog.buttonVariant}
               disabled={isBulkWorking || activeBulkApps.length === 0}
               onClick={() => void confirmBulkAction()}
             >
               <Visible when={isBulkWorking}>
                 <IconLoader2 className='size-4 animate-spin' />
               </Visible>
-              {bulkAction === 'stop' ? 'Stop apps' : 'Delete apps'}
+              {bulkDialog.buttonLabel}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -102,49 +221,25 @@ export const AppsListBulkDialog = () => {
       >
         <DialogContent className='sm:max-w-md'>
           <DialogHeader>
-            <DialogTitle>
-              {pendingAppAction?.action === 'stop'
-                ? `Stop ${pendingAppAction.app.name}?`
-                : `Delete ${pendingAppAction?.app.name}?`}
-            </DialogTitle>
-            <DialogDescription>
-              {pendingAppAction?.action === 'stop'
-                ? 'The app becomes unavailable immediately while network cleanup finishes in the background.'
-                : 'This removes the app record and its runtime resources.'}
-            </DialogDescription>
+            <DialogTitle>{pendingDialog.title}</DialogTitle>
+            <DialogDescription>{pendingDialog.description}</DialogDescription>
           </DialogHeader>
           <AppActionDialogSummary
-            icon={
-              pendingAppAction?.action === 'stop' ? (
-                <IconPlayerStopFilled className='size-4' />
-              ) : (
-                <IconAlertTriangle className='size-4' />
-              )
-            }
-            title={pendingAppAction?.app.name ?? 'Selected app'}
-            description={
-              pendingAppAction?.action === 'stop'
-                ? 'The container stops immediately. Saved profiles remain available for the next start.'
-                : removeDataOnDelete
-                  ? 'The container, app record, network resources, and saved profile data are removed.'
-                  : 'The container, app record, and network resources are removed. Saved profile data is preserved when possible.'
-            }
-            tone={pendingAppAction?.action === 'stop' ? 'warning' : 'destructive'}
+            icon={pendingDialog.icon}
+            title={pendingDialog.summaryTitle}
+            description={pendingDialog.summaryDescription}
+            tone={pendingDialog.tone}
           />
           <DialogFooter>
             <DialogClose asChild>
               <Button variant='secondary'>Cancel</Button>
             </DialogClose>
             <Button
-              variant={pendingAppAction?.action === 'delete' ? 'destructive' : 'default'}
+              variant={pendingDialog.buttonVariant}
               onClick={() => void confirmPendingAppAction()}
             >
-              {pendingAppAction?.action === 'stop' ? (
-                <IconPlayerStopFilled className='size-4' />
-              ) : (
-                <IconTrash className='size-4' />
-              )}
-              {pendingAppAction?.action === 'stop' ? 'Stop app' : 'Delete app'}
+              {pendingDialog.buttonIcon}
+              {pendingDialog.buttonLabel}
             </Button>
           </DialogFooter>
         </DialogContent>
