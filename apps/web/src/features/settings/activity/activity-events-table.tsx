@@ -42,6 +42,7 @@ export const ActivityEventsTable = ({ events }: { events: ActivityEvent[] }) => 
   return (
     <Section
       title='Recent activity'
+      titleClassName='mb-4'
       boxed
       contentClassName='gap-4'
     >

@@ -100,7 +100,7 @@ const variantStyles = {
     label: 'text-base max-lg:text-inherit text-inherit',
     nestedList: 'min-h-0 space-y-1 py-1 pl-8',
     nestedItem:
-      'flex items-center gap-2 rounded-sm px-2 py-1 text-base text-foreground transition hover:bg-input dark:hover:text-white',
+      'flex gap-2 justify-start items-center px-2 py-1 max-lg:py-2 hover:bg-input rounded-sm text-foreground dark:hover:text-white cursor-pointer',
     nestedActiveItem: 'bg-input',
     nestedIconWrap: 'flex size-7 shrink-0 items-center justify-center rounded-sm',
     nestedIcon: 'size-4 stroke-current',

@@ -177,7 +177,10 @@ export default registerAs('app', () => {
         process.env.DEFAULT_INACTIVITY_TIMEOUT_SECONDS,
         900,
       ),
-      maxApkUploadSizeMb: number(process.env.MAX_APK_UPLOAD_SIZE_MB, 512),
+      maxApkUploadSizeMb: number(
+        process.env.MAX_APK_UPLOAD_SIZE_MB ?? '100',
+        512,
+      ),
       securityOptions: csv(process.env.CONTAINER_SECURITY_OPTS, []),
       devices: csv(process.env.REDROID_DEVICES, []),
       optionalDevices: csv(process.env.REDROID_OPTIONAL_DEVICES, [

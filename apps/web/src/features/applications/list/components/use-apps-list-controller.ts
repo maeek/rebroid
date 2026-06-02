@@ -11,12 +11,21 @@ import {
   startApplicationAction,
   stopApplicationAction
 } from '@/server/orchestrator/applications/mutation-actions'
-import { listApplicationsAction } from '@/server/orchestrator/applications/read-actions'
 import { forgetRecentAppAction } from '@/server/recent-apps/actions'
 import { getDisplayErrorMessage } from '../../../../lib/error-utils'
 import type { AppsListContextValue, BulkAction, PendingAppAction } from './apps-list-context'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
+import type { AndroidApplication } from '@/server/orchestrator/applications/types'
+
+const listApplications = async () => {
+  const response = await fetch('/api/applications', { cache: 'no-store' })
+  if (!response.ok) {
+    throw new Error('Could not refresh applications.')
+  }
+
+  return response.json() as Promise<AndroidApplication[]>
+}
 
 export const useAppsListController = ({
   currentOwnerUserId,
@@ -53,7 +62,7 @@ export const useAppsListController = ({
 
   const { data: refreshedApps } = usePollingQuery(
     ['applications', 'list', currentOwnerUserId],
-    () => listApplicationsAction(),
+    () => listApplications(),
     { intervalMs: refreshIntervalMs }
   )
 
