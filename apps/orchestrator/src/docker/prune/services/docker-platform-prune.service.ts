@@ -6,7 +6,7 @@ export class DockerPlatformPruneService {
   constructor(private readonly engine: DockerEngineService) {}
 
   isBusy() {
-    return this.engine.hasPendingMutations;
+    return this.engine.hasPendingDockerWork;
   }
 
   async pruneImages(danglingOnly = true) {

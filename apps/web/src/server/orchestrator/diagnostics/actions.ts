@@ -10,6 +10,16 @@ export const getOrchestratorHealthAction = async () => {
   return orchestratorDiagnosticsClient.health()
 }
 
+export const getOrchestratorHealthSummaryAction = async () => {
+  await requireUser()
+  return orchestratorDiagnosticsClient.healthSummary()
+}
+
+export const getDockerMetricsAction = async () => {
+  await requireAdminUser()
+  return orchestratorDiagnosticsClient.dockerMetrics()
+}
+
 export const repairDisplaySidecarAction = async () => {
   await requireAdminUser()
   return orchestratorDiagnosticsClient.repairDisplaySidecar()

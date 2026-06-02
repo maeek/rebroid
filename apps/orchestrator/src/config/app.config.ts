@@ -12,8 +12,10 @@ const environmentSchema = z.object({
   VOLUME_USAGE_RETRY_DELAY_SECONDS: optionalInteger(0, 86_400),
   DOCKER_STOPPING_STALE_TIMEOUT_SECONDS: optionalInteger(1, 86_400),
   DOCKER_REQUEST_TIMEOUT_MS: optionalInteger(1, 300_000),
-  DOCKER_CONNECTION_TIMEOUT_MS: optionalInteger(1, 300_000),
+  DOCKER_SLOW_REQUEST_WARNING_MS: optionalInteger(1, 300_000),
   DOCKER_MAX_CONCURRENT_READS: optionalInteger(1, 64),
+  DOCKER_LONG_OPERATION_TIMEOUT_MS: optionalInteger(1, 86_400_000),
+  DOCKER_MAX_CONCURRENT_LONG_OPERATIONS: optionalInteger(1, 32),
   MAX_CONCURRENT_LIFECYCLE_JOBS: optionalInteger(1, 32),
   REDROID_ADB_PORT: optionalInteger(1, 65_535),
   REDROID_BOOT_TIMEOUT_SECONDS: optionalInteger(1, 3_600),
@@ -122,12 +124,20 @@ export default registerAs('app', () => {
         process.env.DOCKER_STOPPING_STALE_TIMEOUT_SECONDS,
         60,
       ),
-      requestTimeoutMs: number(process.env.DOCKER_REQUEST_TIMEOUT_MS, 15_000),
-      connectionTimeoutMs: number(
-        process.env.DOCKER_CONNECTION_TIMEOUT_MS,
+      requestTimeoutMs: number(process.env.DOCKER_REQUEST_TIMEOUT_MS, 60_000),
+      slowRequestWarningMs: number(
+        process.env.DOCKER_SLOW_REQUEST_WARNING_MS,
         5_000,
       ),
       maxConcurrentReads: number(process.env.DOCKER_MAX_CONCURRENT_READS, 8),
+      longOperationTimeoutMs: number(
+        process.env.DOCKER_LONG_OPERATION_TIMEOUT_MS,
+        1_800_000,
+      ),
+      maxConcurrentLongOperations: number(
+        process.env.DOCKER_MAX_CONCURRENT_LONG_OPERATIONS,
+        4,
+      ),
     },
     lifecycle: {
       maxConcurrentJobs: number(process.env.MAX_CONCURRENT_LIFECYCLE_JOBS, 4),

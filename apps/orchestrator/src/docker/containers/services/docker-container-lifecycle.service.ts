@@ -8,7 +8,8 @@ export class DockerContainerLifecycleService {
   constructor(private readonly engine: DockerEngineService) {}
 
   async inspectContainer(containerId: string) {
-    return this.engine.read(
+    return this.engine.coalesceRead(
+      `container-inspect:${containerId}`,
       () => this.engine.docker.getContainer(containerId).inspect(),
       `Inspect container ${containerId}`,
     );

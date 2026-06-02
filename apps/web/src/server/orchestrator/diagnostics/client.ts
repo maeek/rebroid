@@ -2,6 +2,7 @@ import { request } from '../request'
 import type {
   DisplaySidecarSession,
   OrchestratorHealth,
+  DockerMetricsSnapshot,
   ServiceHealth,
   SystemResourceCapacity,
   SystemResources
@@ -10,6 +11,14 @@ import type {
 export const orchestratorDiagnosticsClient = {
   health() {
     return request<OrchestratorHealth>('/diagnostics')
+  },
+
+  healthSummary() {
+    return request<OrchestratorHealth>('/diagnostics/summary')
+  },
+
+  dockerMetrics() {
+    return request<DockerMetricsSnapshot>('/metrics/docker')
   },
 
   repairDisplaySidecar() {

@@ -24,53 +24,52 @@ export class DockerContainerExecService {
     command: string[],
     options: { timeoutMs?: number } = {},
   ): Promise<ContainerCommandResult> {
-    const container = this.engine.docker.getContainer(containerId);
-    const exec = await container.exec({
-      Cmd: command,
-      AttachStdout: true,
-      AttachStderr: true,
-    });
-    const stream = await exec.start({});
-    const stdout = new PassThrough();
-    const stderr = new PassThrough();
-    const stdoutChunks: Buffer[] = [];
-    const stderrChunks: Buffer[] = [];
+    const result = await this.engine.longOperation(
+      'container_exec',
+      `Execute command in container ${containerId}`,
+      async (docker, signal) => {
+        const container = docker.getContainer(containerId);
+        const exec = await container.exec({
+          Cmd: command,
+          AttachStdout: true,
+          AttachStderr: true,
+        });
+        const stream = await exec.start({ abortSignal: signal });
+        const stdout = new PassThrough();
+        const stderr = new PassThrough();
+        const stdoutChunks: Buffer[] = [];
+        const stderrChunks: Buffer[] = [];
+        const abort = () =>
+          stream.destroy(
+            new Error(`Container exec aborted: ${command.join(' ')}`),
+          );
 
-    stdout.on('data', (chunk: Buffer) => stdoutChunks.push(chunk));
-    stderr.on('data', (chunk: Buffer) => stderrChunks.push(chunk));
-    this.engine.docker.modem.demuxStream(stream, stdout, stderr);
+        signal.addEventListener('abort', abort, { once: true });
+        stdout.on('data', (chunk: Buffer) => stdoutChunks.push(chunk));
+        stderr.on('data', (chunk: Buffer) => stderrChunks.push(chunk));
+        docker.modem.demuxStream(stream, stdout, stderr);
 
-    await new Promise<void>((resolve, reject) => {
-      const timeout =
-        options.timeoutMs && options.timeoutMs > 0
-          ? setTimeout(() => {
-              stream.destroy(
-                new Error(
-                  `Container exec timed out after ${options.timeoutMs}ms: ${command.join(' ')}`,
-                ),
-              );
-            }, options.timeoutMs)
-          : null;
-      const cleanup = () => {
-        if (timeout) {
-          clearTimeout(timeout);
+        try {
+          await new Promise<void>((resolve, reject) => {
+            stream.on('end', resolve);
+            stream.on('error', reject);
+          });
+        } finally {
+          signal.removeEventListener('abort', abort);
         }
-      };
 
-      stream.on('end', () => {
-        cleanup();
-        resolve();
-      });
-      stream.on('error', (error) => {
-        cleanup();
-        reject(error);
-      });
-    });
-
-    const result = await exec.inspect();
-    const stdoutText = Buffer.concat(stdoutChunks).toString('utf-8');
-    const stderrText = Buffer.concat(stderrChunks).toString('utf-8');
-    const exitCode = result.ExitCode ?? 0;
+        const inspect = await exec.inspect();
+        return {
+          inspect,
+          stdoutText: Buffer.concat(stdoutChunks).toString('utf-8'),
+          stderrText: Buffer.concat(stderrChunks).toString('utf-8'),
+        };
+      },
+      options.timeoutMs,
+    );
+    const stdoutText = result.stdoutText;
+    const stderrText = result.stderrText;
+    const exitCode = result.inspect.ExitCode ?? 0;
 
     if (exitCode !== 0) {
       throw new ContainerCommandFailedException({

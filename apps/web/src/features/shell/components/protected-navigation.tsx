@@ -7,6 +7,7 @@ import {
   IconBox,
   IconBrandDocker,
   IconCast,
+  IconChartHistogram,
   IconChevronDown,
   IconHistory,
   IconLibraryPlus,
@@ -64,7 +65,8 @@ const orchestratorSubSections: NavigationItem[] = [
   { name: 'Overview', Icon: IconAdjustments, href: '/settings/orchestrator' },
   { name: 'Containers', Icon: IconBox, href: '/settings/orchestrator/containers' },
   { name: 'Images', Icon: IconBrandDocker, href: '/settings/orchestrator/images' },
-  { name: 'Networks', Icon: IconNetwork, href: '/settings/orchestrator/networks' }
+  { name: 'Networks', Icon: IconNetwork, href: '/settings/orchestrator/networks' },
+  { name: 'Metrics', Icon: IconChartHistogram, href: '/settings/orchestrator/metrics' }
 ]
 
 const variantStyles = {

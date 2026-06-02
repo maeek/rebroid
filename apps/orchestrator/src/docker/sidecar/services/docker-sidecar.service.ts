@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type Dockerode from 'dockerode';
+import type { Readable } from 'node:stream';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DockerContainerExecService } from '../../containers/services/docker-container-exec.service';
 import { DockerContainerLifecycleService } from '../../containers/services/docker-container-lifecycle.service';
@@ -466,6 +467,25 @@ export class DockerSidecarService implements OnModuleInit {
     }
   }
 
+  /** Checks the sidecar API without adding Docker inventory work to routine polling. */
+  async shallowHealth(): Promise<ServiceHealth> {
+    const apiError = await this.probeDisplaySidecarApi();
+    if (!apiError) {
+      this.displaySidecarLastError = null;
+      return {
+        ok: true,
+        status: 'healthy',
+        message: 'Display sidecar API is responding.',
+      };
+    }
+
+    return {
+      ok: false,
+      status: 'offline',
+      message: `Display sidecar API is not reachable: ${apiError}`,
+    };
+  }
+
   async listDisplaySessions() {
     const response =
       await this.requestDisplaySidecar<DisplaySidecarSessionListResponse>(
@@ -851,28 +871,42 @@ export class DockerSidecarService implements OnModuleInit {
     const context = await this.buildContext.createTar(
       this.displaySidecarBuildContext,
     );
-    const stream = await this.docker.buildImage(context, {
-      t: this.displaySidecarImage,
-    });
-    await new Promise<void>((resolve, reject) => {
-      this.docker.modem.followProgress(
-        stream,
-        (error) => {
-          if (error) {
-            reject(error);
-            return;
-          }
+    await this.engine.longOperation(
+      'sidecar_build',
+      'Build display sidecar image',
+      async (docker, signal) => {
+        const stream = await docker.buildImage(context, {
+          t: this.displaySidecarImage,
+          abortSignal: signal,
+        });
+        await new Promise<void>((resolve, reject) => {
+          const abort = () =>
+            (stream as unknown as Readable).destroy(
+              new Error('Display sidecar build aborted.'),
+            );
+          signal.addEventListener('abort', abort, { once: true });
+          docker.modem.followProgress(
+            stream,
+            (error) => {
+              signal.removeEventListener('abort', abort);
+              if (error) {
+                reject(error);
+                return;
+              }
 
-          resolve();
-        },
-        (event) => {
-          const message = event.stream?.trim() || event.errorDetail?.message;
-          if (message) {
-            this.logger.debug(`[display-sidecar build] ${message}`);
-          }
-        },
-      );
-    });
+              resolve();
+            },
+            (event) => {
+              const message =
+                event.stream?.trim() || event.errorDetail?.message;
+              if (message) {
+                this.logger.debug(`[display-sidecar build] ${message}`);
+              }
+            },
+          );
+        });
+      },
+    );
   }
 
   /**

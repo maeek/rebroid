@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { cn } from '@/lib/utils'
-import { getOrchestratorHealthAction } from '@/server/orchestrator/diagnostics/actions'
+import { getOrchestratorHealthSummaryAction } from '@/server/orchestrator/diagnostics/actions'
 import type { OrchestratorHealth, ServiceHealth } from '@/server/orchestrator/diagnostics/types'
 
 type HealthState = 'checking' | 'online' | 'degraded' | 'offline'
@@ -48,7 +48,7 @@ const mergeDockerAndRuntimeService = (health: OrchestratorHealth | null, fallbac
   }
 }
 
-const getOrchestratorHealth = getOrchestratorHealthAction
+const getOrchestratorHealth = getOrchestratorHealthSummaryAction
 const dotTone = (status: DisplayServiceStatus) => {
   if (status === 'healthy') {
     return 'bg-green-400'

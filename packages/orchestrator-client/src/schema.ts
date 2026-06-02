@@ -4,6 +4,38 @@
  */
 
 export interface paths {
+    "/api/v1/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MetricsController_read"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/metrics/docker": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MetricsController_dockerSnapshot"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/docker/sidecar/health": {
         parameters: {
             query?: never;
@@ -946,14 +978,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/metrics": {
+    "/api/v1/diagnostics/summary": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["MetricsController_read"];
+        get: operations["HealthController_diagnosticsSummary"];
         put?: never;
         post?: never;
         delete?: never;
@@ -966,6 +998,58 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        DockerMetricsLimitsDto: {
+            maxConcurrentReads: number;
+            maxConcurrentLongOperations: number;
+            slowRequestWarningMs: number;
+            longOperationTimeoutMs: number;
+            remoteRequestTimeoutMs: number;
+        };
+        DockerMetricsTotalsDto: {
+            success: number;
+            errors: number;
+            timeouts: number;
+            retries: number;
+            slow: number;
+        };
+        DockerMetricsClassCountsDto: {
+            read: number;
+            mutation: number;
+            long: number;
+        };
+        DockerMetricsOperationDto: {
+            /** @enum {string} */
+            class: "read" | "mutation" | "long";
+            operation: string;
+            success: number;
+            errors: number;
+            timeouts: number;
+            retries: number;
+            slow: number;
+            totalDurationMs: number;
+            maxDurationMs: number;
+            averageDurationMs: number;
+        };
+        DockerMetricsEventDto: {
+            timestamp: string;
+            /** @enum {string} */
+            class: "read" | "mutation" | "long";
+            operation: string;
+            /** @enum {string} */
+            outcome: "error" | "timeout" | "slow";
+            durationMs: number;
+            error: string | null;
+        };
+        DockerMetricsSnapshotDto: {
+            collectedAt: string;
+            transport: string;
+            limits: components["schemas"]["DockerMetricsLimitsDto"];
+            totals: components["schemas"]["DockerMetricsTotalsDto"];
+            inFlight: components["schemas"]["DockerMetricsClassCountsDto"];
+            queued: components["schemas"]["DockerMetricsClassCountsDto"];
+            operations: components["schemas"]["DockerMetricsOperationDto"][];
+            events: components["schemas"]["DockerMetricsEventDto"][];
+        };
         ServiceHealthDto: {
             ok: boolean;
             /** @enum {string} */
@@ -1595,6 +1679,42 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    MetricsController_read: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    MetricsController_dockerSnapshot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DockerMetricsSnapshotDto"];
+                };
+            };
+        };
+    };
     DockerSidecarController_health: {
         parameters: {
             query?: never;
@@ -3114,7 +3234,7 @@ export interface operations {
             };
         };
     };
-    MetricsController_read: {
+    HealthController_diagnosticsSummary: {
         parameters: {
             query?: never;
             header?: never;
@@ -3127,7 +3247,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OrchestratorDiagnosticsDto"];
+                };
             };
         };
     };

@@ -33,32 +33,45 @@ export class DockerContainerArchiveService {
     targetDirectory: string,
     targetFileName: string,
   ) {
-    const container = this.engine.docker.getContainer(containerId);
-    const pack = tar.pack();
+    await this.engine.longOperation(
+      'archive_upload',
+      `Upload archive to container ${containerId}`,
+      async (docker, signal) => {
+        const container = docker.getContainer(containerId);
+        const pack = tar.pack();
+        const abort = () =>
+          pack.destroy(new Error('Docker archive upload aborted.'));
+        signal.addEventListener('abort', abort, { once: true });
+        try {
+          await new Promise<void>((resolve, reject) => {
+            pack.entry(
+              {
+                name: targetFileName,
+                mode: 0o644,
+                size: content.length,
+              },
+              content,
+              (error) => {
+                if (error) {
+                  reject(error);
+                  return;
+                }
 
-    await new Promise<void>((resolve, reject) => {
-      pack.entry(
-        {
-          name: targetFileName,
-          mode: 0o644,
-          size: content.length,
-        },
-        content,
-        (error) => {
-          if (error) {
-            reject(error);
-            return;
-          }
+                pack.finalize();
+                resolve();
+              },
+            );
+          });
 
-          pack.finalize();
-          resolve();
-        },
-      );
-    });
-
-    await container.putArchive(pack, {
-      path: targetDirectory,
-    });
+          await container.putArchive(pack, {
+            path: targetDirectory,
+            abortSignal: signal,
+          });
+        } finally {
+          signal.removeEventListener('abort', abort);
+        }
+      },
+    );
   }
 
   async copyStreamToContainer(
@@ -68,67 +81,106 @@ export class DockerContainerArchiveService {
     targetFileName: string,
     size?: number,
   ) {
-    const container = this.engine.docker.getContainer(containerId);
-    const pack = tar.pack();
-    const archiveUpload = container
-      .putArchive(pack, {
-        path: targetDirectory,
-      })
-      .catch((error: unknown) => {
-        pack.destroy(error instanceof Error ? error : new Error(String(error)));
-        throw error;
-      });
-    const entry = pack.entry({
-      name: targetFileName,
-      mode: 0o644,
-      size,
-    });
+    await this.engine.longOperation(
+      'archive_upload',
+      `Upload archive to container ${containerId}`,
+      async (docker, signal) => {
+        const container = docker.getContainer(containerId);
+        const pack = tar.pack();
+        const abort = () => {
+          const error = new Error('Docker archive upload aborted.');
+          content.destroy(error);
+          pack.destroy(error);
+        };
+        signal.addEventListener('abort', abort, { once: true });
+        const archiveUpload = container
+          .putArchive(pack, {
+            path: targetDirectory,
+            abortSignal: signal,
+          })
+          .catch((error: unknown) => {
+            pack.destroy(
+              error instanceof Error ? error : new Error(String(error)),
+            );
+            throw error;
+          });
+        const entry = pack.entry({
+          name: targetFileName,
+          mode: 0o644,
+          size,
+        });
 
-    try {
-      await pipeline(content, entry);
-      pack.finalize();
-      await archiveUpload;
-    } catch (error) {
-      pack.destroy(error instanceof Error ? error : new Error(String(error)));
-      throw error;
-    }
+        try {
+          await pipeline(content, entry);
+          pack.finalize();
+          await archiveUpload;
+        } catch (error) {
+          pack.destroy(
+            error instanceof Error ? error : new Error(String(error)),
+          );
+          throw error;
+        } finally {
+          signal.removeEventListener('abort', abort);
+        }
+      },
+    );
   }
 
   async readFileFromContainer(containerId: string, containerPath: string) {
-    const container = this.engine.docker.getContainer(containerId);
-    const archive = await container.getArchive({ path: containerPath });
-    const extract = tar.extract();
-
-    return new Promise<Buffer>((resolve, reject) => {
-      let resolved = false;
-
-      extract.on('entry', (header, stream, next) => {
-        const chunks: Buffer[] = [];
-
-        stream.on('data', (chunk: Buffer) => {
-          chunks.push(Buffer.from(chunk));
+    return this.engine.longOperation(
+      'archive_download',
+      `Download archive from container ${containerId}`,
+      async (docker, signal) => {
+        const container = docker.getContainer(containerId);
+        const archive = await container.getArchive({
+          path: containerPath,
+          abortSignal: signal,
         });
+        const extract = tar.extract();
+        const abort = () => {
+          const error = new Error('Docker archive download aborted.');
+          (archive as unknown as Readable).destroy(error);
+          extract.destroy(error);
+        };
+        signal.addEventListener('abort', abort, { once: true });
 
-        stream.on('end', () => {
-          if (!resolved && header.type === 'file') {
-            resolved = true;
-            resolve(Buffer.concat(chunks));
-          }
-          next();
-        });
+        try {
+          return await new Promise<Buffer>((resolve, reject) => {
+            let file: Buffer | undefined;
 
-        stream.on('error', reject);
-        stream.resume();
-      });
+            extract.on('entry', (header, stream, next) => {
+              const chunks: Buffer[] = [];
 
-      extract.on('finish', () => {
-        if (!resolved) {
-          reject(new Error('File was not present in the Docker archive.'));
+              stream.on('data', (chunk: Buffer) => {
+                chunks.push(Buffer.from(chunk));
+              });
+
+              stream.on('end', () => {
+                if (!file && header.type === 'file') {
+                  file = Buffer.concat(chunks);
+                }
+                next();
+              });
+
+              stream.on('error', reject);
+              stream.resume();
+            });
+
+            extract.on('finish', () => {
+              if (file) {
+                resolve(file);
+                return;
+              }
+              reject(new Error('File was not present in the Docker archive.'));
+            });
+            extract.on('error', reject);
+            archive.on('error', reject);
+            archive.pipe(extract);
+          });
+        } finally {
+          signal.removeEventListener('abort', abort);
         }
-      });
-      extract.on('error', reject);
-      archive.on('error', reject);
-      archive.pipe(extract);
-    });
+      },
+    );
   }
 }

@@ -26,9 +26,21 @@ export class HealthController {
   @Get('diagnostics')
   @ApiOkResponse({ type: OrchestratorDiagnosticsDto })
   async diagnostics() {
+    return this.buildDiagnostics(false);
+  }
+
+  @Get('diagnostics/summary')
+  @ApiOkResponse({ type: OrchestratorDiagnosticsDto })
+  async diagnosticsSummary() {
+    return this.buildDiagnostics(true);
+  }
+
+  private async buildDiagnostics(summary: boolean) {
     const [docker, display, firewall] = await Promise.all([
-      this.docker.dockerHealth(),
-      this.docker.displaySidecarHealth(),
+      summary ? this.docker.dockerHealthSummary() : this.docker.dockerHealth(),
+      summary
+        ? this.docker.displaySidecarSummaryHealth()
+        : this.docker.displaySidecarHealth(),
       this.firewallAgent.health().catch((error) => ({
         ok: false,
         status: 'offline',
@@ -39,7 +51,9 @@ export class HealthController {
       })),
     ]);
     const runtime = docker.ok
-      ? await this.docker.runtimeSuitabilityHealth()
+      ? await (summary
+          ? this.docker.runtimeSuitabilityHealthSummary()
+          : this.docker.runtimeSuitabilityHealth())
       : {
           ok: false,
           status: 'offline' as const,

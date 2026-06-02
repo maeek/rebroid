@@ -1,4 +1,5 @@
 import { ConflictException, Injectable } from '@nestjs/common';
+import type { Readable } from 'node:stream';
 import { DockerEngineService } from '../../docker-engine.service';
 import { managedImageTag } from '../../docker.utils';
 
@@ -38,30 +39,42 @@ export class DockerImageRuntimeService {
    * Pulls an image and streams raw progress text to an optional callback.
    */
   async pullImage(image: string, onProgress?: (message: string) => void) {
-    const stream = await this.engine.docker.pull(image);
-    await new Promise<void>((resolve, reject) => {
-      this.engine.docker.modem.followProgress(
-        stream,
-        (error) => {
-          if (error) {
-            reject(error);
-            return;
-          }
+    await this.engine.longOperation(
+      'image_pull',
+      `Pull image ${image}`,
+      async (docker, signal) => {
+        const stream = await docker.pull(image, { abortSignal: signal });
+        await new Promise<void>((resolve, reject) => {
+          const abort = () =>
+            (stream as unknown as Readable).destroy(
+              new Error(`Pull image ${image} aborted.`),
+            );
+          signal.addEventListener('abort', abort, { once: true });
+          docker.modem.followProgress(
+            stream,
+            (error) => {
+              signal.removeEventListener('abort', abort);
+              if (error) {
+                reject(error);
+                return;
+              }
 
-          resolve();
-        },
-        (event) => {
-          if (!onProgress) {
-            return;
-          }
+              resolve();
+            },
+            (event) => {
+              if (!onProgress) {
+                return;
+              }
 
-          const parts = [event.status, event.progress, event.id].filter(
-            Boolean,
+              const parts = [event.status, event.progress, event.id].filter(
+                Boolean,
+              );
+              onProgress(parts.join(' '));
+            },
           );
-          onProgress(parts.join(' '));
-        },
-      );
-    });
+        });
+      },
+    );
     await this.markPulledImageAsManaged(image);
   }
 

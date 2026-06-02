@@ -169,8 +169,10 @@ services:
       REDROID_BOOT_TIMEOUT_SECONDS: 420
       REDROID_DEVICES: /dev/dri:/dev/dri:rwm
       DOCKER_STOPPING_STALE_TIMEOUT_SECONDS: 60
-      DOCKER_REQUEST_TIMEOUT_MS: 15000
-      DOCKER_CONNECTION_TIMEOUT_MS: 5000
+      DOCKER_REQUEST_TIMEOUT_MS: 60000
+      DOCKER_SLOW_REQUEST_WARNING_MS: 5000
+      DOCKER_LONG_OPERATION_TIMEOUT_MS: 1800000
+      DOCKER_MAX_CONCURRENT_LONG_OPERATIONS: 4
       VOLUME_USAGE_RETRY_DELAY_SECONDS: 60
 ```
 
@@ -178,11 +180,13 @@ services:
 
 `DOCKER_STOPPING_STALE_TIMEOUT_SECONDS` controls how long an interrupted stop may remain visibly in progress before the orchestrator trusts Docker's current runtime state and recovers the app to either running or stopped. The built-in default is `60`.
 
-`DOCKER_REQUEST_TIMEOUT_MS` bounds ordinary Docker API requests so inventory and cleanup calls fail fast when the container engine is blocked. `DOCKER_CONNECTION_TIMEOUT_MS` separately bounds connection setup. Background removal retries cleanup after failures. The built-in defaults are `15000` and `5000`.
+Local Unix-socket Docker requests do not use a destructive client timeout. `DOCKER_REQUEST_TIMEOUT_MS` bounds ordinary API requests only when `DOCKER_HOST` points to a remote HTTP or TCP endpoint. `DOCKER_SLOW_REQUEST_WARNING_MS` logs slow local or remote requests without terminating them. The built-in defaults are `60000` and `5000`.
+
+Archive transfers, exec streams, image pulls, and sidecar builds use a separate timer-free Docker client with an application-owned deadline. `DOCKER_LONG_OPERATION_TIMEOUT_MS` sets that deadline and `DOCKER_MAX_CONCURRENT_LONG_OPERATIONS` limits concurrent stream work. The built-in defaults are `1800000` and `4`.
 
 `MAX_CONCURRENT_LIFECYCLE_JOBS` bounds provisioning, start, APK-install, and removal work resumed or started in the background. The built-in default is `4`.
 
-`VOLUME_USAGE_RETRY_DELAY_SECONDS` controls how long dashboard storage diagnostics wait before retrying an expensive Docker disk-usage request after a failure. While Docker cleanup is active, the dashboard serves the last successful volume usage snapshot instead of starting a competing disk-usage request. The built-in default is `60`.
+`VOLUME_USAGE_RETRY_DELAY_SECONDS` controls how long dashboard storage diagnostics wait before retrying an expensive Docker disk-usage request after a failure. While Docker cleanup or a long Docker operation is active, the dashboard serves the last successful volume usage snapshot instead of starting a competing disk-usage request. The built-in default is `60`.
 
 Everything else is primarily for advanced deployments: custom networks, external orchestrator/web separation, sidecar image overrides, or firewall adapter tuning.
 

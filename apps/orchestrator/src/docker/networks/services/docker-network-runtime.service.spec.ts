@@ -30,6 +30,7 @@ const createEngine = () => {
     isDockerNotFound: jest.fn(() => false),
     isContainerAlreadyConnectedToNetwork: jest.fn(() => false),
     isContainerAlreadyDisconnectedFromNetwork: jest.fn(() => false),
+    isTransientDockerTransportError: jest.fn(() => false),
   } as unknown as DockerEngineService & { docker: typeof docker };
 };
 
@@ -126,5 +127,29 @@ describe('DockerNetworkRuntimeService', () => {
       'Docker network rebroid-net-app-1 is internal and is not managed by this application.',
     );
     expect(existingNetwork.remove).not.toHaveBeenCalled();
+  });
+
+  it('accepts an ambiguous network attachment when inspection confirms it committed', async () => {
+    const engine = createEngine();
+    const service = new DockerNetworkRuntimeService(engine);
+    const error = new Error('socket hang up');
+    const network = {
+      connect: jest.fn().mockRejectedValue(error),
+      inspect: jest.fn().mockResolvedValue({
+        Containers: { 'container-id': {} },
+      }),
+    };
+    engine.docker.getNetwork.mockReturnValue(network);
+    (
+      engine.isTransientDockerTransportError as jest.MockedFunction<
+        DockerEngineService['isTransientDockerTransportError']
+      >
+    ).mockReturnValue(true);
+
+    await expect(
+      service.connectContainerToNetwork('container-id', 'app-network'),
+    ).resolves.toBeUndefined();
+    expect(network.connect).toHaveBeenCalledTimes(1);
+    expect(network.inspect).toHaveBeenCalledTimes(1);
   });
 });

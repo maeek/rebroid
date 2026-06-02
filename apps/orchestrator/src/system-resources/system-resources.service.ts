@@ -160,7 +160,7 @@ export class SystemResourcesService {
     }
 
     if (
-      this.docker.hasPendingMutations ||
+      this.docker.hasPendingDockerWork ||
       Date.now() < this.volumeUsageRetryAfter
     ) {
       return this.volumeCache?.volumes ?? [];

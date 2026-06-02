@@ -22,7 +22,7 @@ const createService = (
   );
 
 const baseDocker = {
-  hasPendingMutations: false,
+  hasPendingDockerWork: false,
   hostCapacity: jest.fn().mockResolvedValue({
     memoryBytes: 1024,
     cpuCores: 2,
@@ -105,7 +105,7 @@ describe('SystemResourcesService', () => {
   it('serves stale volume usage while a Docker mutation is pending', async () => {
     const docker = {
       ...baseDocker,
-      hasPendingMutations: false,
+      hasPendingDockerWork: false,
       systemDf: jest.fn().mockResolvedValue({
         Volumes: [
           {
@@ -119,7 +119,7 @@ describe('SystemResourcesService', () => {
     const service = createService(docker);
 
     await service.getUsage();
-    docker.hasPendingMutations = true;
+    docker.hasPendingDockerWork = true;
 
     await expect(service.getUsage(true)).resolves.toMatchObject({
       volumes: [{ name: 'managed-volume', sizeBytes: 512 }],

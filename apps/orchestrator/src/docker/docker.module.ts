@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { MetricsModule } from '../metrics/metrics.module';
 import { DockerContainerArchiveService } from './containers/services/docker-container-archive.service';
 import { DockerContainerExecService } from './containers/services/docker-container-exec.service';
 import { DockerContainerLifecycleService } from './containers/services/docker-container-lifecycle.service';
@@ -16,6 +17,7 @@ import { DockerSidecarService } from './sidecar/services/docker-sidecar.service'
 import { DockerSidecarBuildContextService } from './sidecar/services/docker-sidecar-build-context.service';
 
 @Module({
+  imports: [MetricsModule],
   providers: [
     DockerEngineService,
     DockerContainerArchiveService,

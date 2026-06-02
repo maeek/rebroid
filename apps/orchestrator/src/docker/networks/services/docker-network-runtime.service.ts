@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { setTimeout as delay } from 'node:timers/promises';
 import { DockerEngineService } from '../../docker-engine.service';
 
 @Injectable()
@@ -57,7 +58,8 @@ export class DockerNetworkRuntimeService {
   }
 
   async getContainerIpOnNetwork(containerId: string, networkName: string) {
-    const inspect = await this.engine.read(
+    const inspect = await this.engine.coalesceRead(
+      `container-inspect:${containerId}`,
       () => this.engine.docker.getContainer(containerId).inspect(),
       `Inspect container ${containerId} on network ${networkName}`,
     );
@@ -68,7 +70,8 @@ export class DockerNetworkRuntimeService {
    * Reads the container IP from a specific Docker network attachment.
    */
   async getContainerIp(containerId: string, networkName: string) {
-    const inspect = await this.engine.read(
+    const inspect = await this.engine.coalesceRead(
+      `container-inspect:${containerId}`,
       () => this.engine.docker.getContainer(containerId).inspect(),
       `Inspect container ${containerId} on network ${networkName}`,
     );
@@ -125,6 +128,20 @@ export class DockerNetworkRuntimeService {
         this.engine.isContainerAlreadyConnectedToNetwork(error)
       ) {
         return;
+      }
+
+      if (this.engine.isTransientDockerTransportError(error)) {
+        await delay(300);
+        const inspect = await this.engine.read(
+          () => network.inspect(),
+          `Inspect network ${networkName} after ambiguous connect`,
+        );
+        if (inspect.Containers?.[containerId]) {
+          this.logger.warn(
+            `Accepted container ${containerId} network attachment after a transient Docker transport error.`,
+          );
+          return;
+        }
       }
 
       throw error;
