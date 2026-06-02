@@ -38,7 +38,18 @@ export const POST = async (request: NextRequest) => {
     }
 
     const uploaded = await orchestratorApplicationsClient.uploadApk(request.body, user.ownerUserId, contentType)
-    recordAuditEvent(user.ownerUserId, 'apk.upload', uploaded.id, { originalName: uploaded.originalName })
+    recordAuditEvent({
+      actorUserId: user.ownerUserId,
+      actorLabel: user.ownerUserId,
+      category: 'apk',
+      action: 'apk.upload',
+      resourceType: 'apk',
+      resourceId: uploaded.id,
+      resourceLabel: uploaded.originalName,
+      details: { originalName: uploaded.originalName },
+      sourceIp: clientAddress,
+      userAgent: request.headers.get('user-agent')
+    })
     return NextResponse.json(uploaded)
   } catch (error) {
     const status = error instanceof OrchestratorRequestError ? error.status : 500

@@ -76,6 +76,16 @@ export const updateApplicationAction = async (id: string, input: UpdateAndroidAp
   enforceResourceQuotas(input, user.quotas)
   enforceSessionQuota(input, user.quotas)
   const app = await orchestratorApplicationsClient.updateApplication(id, input)
+  recordAuditEvent({
+    actorUserId: user.ownerUserId,
+    actorLabel: user.ownerUserId,
+    category: 'application',
+    action: 'application.update',
+    resourceType: 'application',
+    resourceId: id,
+    resourceLabel: app.name,
+    details: { fields: Object.keys(input) }
+  })
   revalidateApplicationDetail(id)
   return sanitizeAndroidApplicationForUser(app, user)
 }
@@ -139,7 +149,15 @@ export const createApplicationAction = async (input: CreateApplicationActionInpu
       ? applyRedroidDefaultContainerArgs(containerImage, input.containerArgs ?? '') || undefined
       : input.containerArgs
   })
-  recordAuditEvent(user.ownerUserId, 'application.create', app.id)
+  recordAuditEvent({
+    actorUserId: user.ownerUserId,
+    actorLabel: user.ownerUserId,
+    category: 'application',
+    action: 'application.create',
+    resourceType: 'application',
+    resourceId: app.id,
+    resourceLabel: app.name
+  })
   revalidateApplicationList()
   return sanitizeAndroidApplicationForUser(app, user)
 }
@@ -154,7 +172,16 @@ export const startApplicationAction = async (id: string, input?: SwitchApplicati
   }
   await assertCanOpenApplicationSlot(user, id)
   const app = await orchestratorApplicationsClient.startApplication(id, input)
-  recordAuditEvent(user.ownerUserId, 'application.start', id)
+  recordAuditEvent({
+    actorUserId: user.ownerUserId,
+    actorLabel: user.ownerUserId,
+    category: 'application',
+    action: 'application.start',
+    resourceType: 'application',
+    resourceId: id,
+    resourceLabel: app.name,
+    details: input ? { profileMode: input.profileMode, profileName: input.profileName } : undefined
+  })
   revalidateApplicationList()
   revalidateApplicationDetail(id)
   return sanitizeAndroidApplicationForUser(app, user)
@@ -166,7 +193,15 @@ export const stopApplicationAction = async (id: string) => {
     throw new Error('You do not have permission to stop applications.')
   }
   const app = await orchestratorApplicationsClient.stopApplication(id)
-  recordAuditEvent(user.ownerUserId, 'application.stop', id)
+  recordAuditEvent({
+    actorUserId: user.ownerUserId,
+    actorLabel: user.ownerUserId,
+    category: 'application',
+    action: 'application.stop',
+    resourceType: 'application',
+    resourceId: id,
+    resourceLabel: app.name
+  })
   revalidateApplicationList()
   revalidateApplicationDetail(id)
   return sanitizeAndroidApplicationForUser(app, user)
@@ -179,7 +214,15 @@ export const deleteApplicationAction = async (id: string, removeData = true) => 
     throw new Error('You do not have permission to delete applications.')
   }
   const result = await orchestratorApplicationsClient.deleteApplication(id, removeData)
-  recordAuditEvent(user.ownerUserId, 'application.delete', id, { removeData })
+  recordAuditEvent({
+    actorUserId: user.ownerUserId,
+    actorLabel: user.ownerUserId,
+    category: 'application',
+    action: 'application.delete',
+    resourceType: 'application',
+    resourceId: id,
+    details: { removeData }
+  })
   revalidateApplicationList()
   revalidateApplicationDetail(id)
   return result
@@ -192,7 +235,16 @@ export const updateApkAction = async (id: string, uploadedApkId: string) => {
     throw new Error('You do not have permission to update APKs.')
   }
   const app = await orchestratorApplicationsClient.updateApk(id, uploadedApkId)
-  recordAuditEvent(user.ownerUserId, 'application.apk.update', id, { uploadedApkId })
+  recordAuditEvent({
+    actorUserId: user.ownerUserId,
+    actorLabel: user.ownerUserId,
+    category: 'application',
+    action: 'application.apk.update',
+    resourceType: 'application',
+    resourceId: id,
+    resourceLabel: app.name,
+    details: { uploadedApkId }
+  })
   revalidateApplicationDetail(id)
   return sanitizeAndroidApplicationForUser(app, user)
 }
@@ -211,33 +263,79 @@ export const updateNetworkPolicyAction = async (id: string, input: UpdateNetwork
     throw new Error('You do not have permission to allow broad internet access.')
   }
   const app = await orchestratorApplicationsClient.updateNetworkPolicy(id, input)
+  recordAuditEvent({
+    actorUserId: user.ownerUserId,
+    actorLabel: user.ownerUserId,
+    category: 'application',
+    action: 'application.network.update',
+    resourceType: 'application',
+    resourceId: id,
+    resourceLabel: app.name,
+    details: {
+      networkPolicyEnabled: input.networkPolicyEnabled,
+      allowCidrsCount: input.networkPolicyAllowCidrs?.length ?? 0
+    }
+  })
   revalidateApplicationList()
   revalidateApplicationDetail(id)
   return sanitizeAndroidApplicationForUser(app, user)
 }
 
 export const uploadApplicationDownloadFileAction = async (id: string, input: FormData) => {
-  const { user } = await assertCanUseOwnedApplicationRuntime(id)
+  const { app, user } = await assertCanUseOwnedApplicationRuntime(id)
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:transfer-files')) {
     throw new Error('You do not have permission to transfer files.')
   }
-  return orchestratorApplicationsClient.uploadDownloadFile(id, input)
+  const result = await orchestratorApplicationsClient.uploadDownloadFile(id, input)
+  recordAuditEvent({
+    actorUserId: user.ownerUserId,
+    actorLabel: user.ownerUserId,
+    category: 'application',
+    action: 'application.file.upload',
+    resourceType: 'application',
+    resourceId: id,
+    resourceLabel: app.name,
+    details: { path: result.path, name: result.name, sizeBytes: result.sizeBytes }
+  })
+  return result
 }
 
 export const setApplicationClipboardAction = async (id: string, text: string) => {
-  const { user } = await assertCanUseOwnedApplicationRuntime(id)
+  const { app, user } = await assertCanUseOwnedApplicationRuntime(id)
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:sync-clipboard')) {
     throw new Error('You do not have permission to sync clipboard.')
   }
-  return orchestratorApplicationsClient.setClipboard(id, text)
+  const result = await orchestratorApplicationsClient.setClipboard(id, text)
+  recordAuditEvent({
+    actorUserId: user.ownerUserId,
+    actorLabel: user.ownerUserId,
+    category: 'application',
+    action: 'application.clipboard.write',
+    resourceType: 'application',
+    resourceId: id,
+    resourceLabel: app.name,
+    details: { length: text.length }
+  })
+  return result
 }
 
 export const sendApplicationViewerControlAction = async (id: string, command: ApplicationViewerControlCommand) => {
-  const { user } = await assertCanUseOwnedApplicationRuntime(id)
+  const { app, user } = await assertCanUseOwnedApplicationRuntime(id)
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:control-viewer')) {
     throw new Error('You do not have permission to control this viewer.')
   }
-  return orchestratorApplicationsClient.sendViewerControl(id, command)
+  const result = await orchestratorApplicationsClient.sendViewerControl(id, command)
+  recordAuditEvent({
+    actorUserId: user.ownerUserId,
+    actorLabel: user.ownerUserId,
+    category: 'application',
+    action: 'application.viewer.control',
+    resourceType: 'application',
+    resourceId: id,
+    resourceLabel: app.name,
+    details: { command }
+  })
+  return result
 }
 
 export const applyNetworkPolicyAction = async (id: string) => {
@@ -247,6 +345,15 @@ export const applyNetworkPolicyAction = async (id: string) => {
     throw new Error('You do not have permission to apply network policy.')
   }
   const app = await orchestratorApplicationsClient.applyNetworkPolicy(id)
+  recordAuditEvent({
+    actorUserId: user.ownerUserId,
+    actorLabel: user.ownerUserId,
+    category: 'application',
+    action: 'application.network.apply',
+    resourceType: 'application',
+    resourceId: id,
+    resourceLabel: app.name
+  })
   revalidateApplicationDetail(id)
   return sanitizeAndroidApplicationForUser(app, user)
 }
@@ -256,7 +363,15 @@ export const reconcileNetworkPoliciesAction = async () => {
   if (user.role !== 'admin') {
     throw new Error('You do not have permission to reconcile all network policies.')
   }
-  return orchestratorApplicationsClient.reconcileNetworkPolicies()
+  const result = await orchestratorApplicationsClient.reconcileNetworkPolicies()
+  recordAuditEvent({
+    actorUserId: user.ownerUserId,
+    actorLabel: user.ownerUserId,
+    category: 'application',
+    action: 'application.network.reconcile',
+    resourceType: 'network_policy'
+  })
+  return result
 }
 
 export const switchApplicationProfileAction = async (id: string, input: SwitchApplicationProfileInput) => {
@@ -265,6 +380,16 @@ export const switchApplicationProfileAction = async (id: string, input: SwitchAp
     throw new Error('You do not have permission to switch profiles.')
   }
   const app = await orchestratorApplicationsClient.switchProfile(id, input)
+  recordAuditEvent({
+    actorUserId: user.ownerUserId,
+    actorLabel: user.ownerUserId,
+    category: 'application',
+    action: 'application.profile.switch',
+    resourceType: 'application',
+    resourceId: id,
+    resourceLabel: app.name,
+    details: { profileMode: input.profileMode, profileName: input.profileName }
+  })
   revalidateApplicationDetail(id)
   return sanitizeAndroidApplicationForUser(app, user)
 }
@@ -281,6 +406,16 @@ export const cloneApplicationForCurrentUserAction = async (id: string) => {
     ownerUserId: user.ownerUserId
   })
   await cloneStoredAppIcon(id, app.id)
+  recordAuditEvent({
+    actorUserId: user.ownerUserId,
+    actorLabel: user.ownerUserId,
+    category: 'application',
+    action: 'application.clone',
+    resourceType: 'application',
+    resourceId: app.id,
+    resourceLabel: app.name,
+    details: { sourceApplicationId: id }
+  })
   revalidateApplicationList()
   revalidateApplicationDetail(id)
   revalidateApplicationDetail(app.id)

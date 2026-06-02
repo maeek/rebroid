@@ -8,6 +8,12 @@ import type { WebSettings } from '../types'
 export const saveWebSettingsAction = async (settings: Partial<WebSettings>) => {
   const admin = await requireAdminUser()
   const saved = await saveWebSettings(settings)
-  recordAuditEvent(admin.id, 'settings.web.update')
+  recordAuditEvent({
+    actorUserId: admin.id,
+    actorLabel: admin.name || admin.username || admin.id,
+    category: 'settings',
+    action: 'settings.web.update',
+    resourceType: 'web_settings'
+  })
   return saved
 }

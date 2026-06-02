@@ -7,7 +7,16 @@ import { requireAdminUser, revalidateUsersPage } from '../shared'
 export const deleteUserAction = async (id: string) => {
   const admin = await requireAdminUser()
   const user = await userService.deleteUser(id)
-  recordAuditEvent(admin.id, 'user.delete', user.id, { username: user.username })
+  recordAuditEvent({
+    actorUserId: admin.id,
+    actorLabel: admin.name || admin.username || admin.id,
+    category: 'user',
+    action: 'user.delete',
+    resourceType: 'user',
+    resourceId: user.id,
+    resourceLabel: user.name || user.username,
+    details: { username: user.username }
+  })
   revalidateUsersPage()
   return user
 }

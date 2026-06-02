@@ -2,6 +2,7 @@
 import { getServerSession, type NextAuthOptions } from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import { z } from 'zod'
+import { recordAuditEvent } from '@/server/audit/events'
 import { consumeRateLimit } from '@/server/rate-limit/in-memory'
 import { userService } from './user'
 
@@ -58,10 +59,25 @@ export const authOptions: NextAuthOptions = {
         }
         const { username, password } = parsed.data
         if (!consumeRateLimit(`login:${username.toLowerCase()}`, 10, 15 * 60 * 1000)) {
+          recordAuditEvent({
+            actorLabel: username,
+            category: 'auth',
+            action: 'auth.login.lockout',
+            outcome: 'failure',
+            details: { username }
+          })
           return null
         }
 
         const user = await userService.authenticate(username, password)
+        recordAuditEvent({
+          actorUserId: user?.id,
+          actorLabel: user?.name || username,
+          category: 'auth',
+          action: user ? 'auth.login.success' : 'auth.login.failure',
+          outcome: user ? 'success' : 'failure',
+          details: { username }
+        })
         return user
       }
     })

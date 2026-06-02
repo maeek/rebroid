@@ -9,7 +9,14 @@ import type { RuntimeUiSettings } from '@/features/settings/domain/orchestrator-
 export const cleanupUploadedApksAction = async () => {
   const ownerUserId = await getCurrentOwnerUserId()
   const result = await orchestratorSettingsClient.cleanupUploadedApks(ownerUserId)
-  recordAuditEvent(ownerUserId, 'apk.cleanup', undefined, result)
+  recordAuditEvent({
+    actorUserId: ownerUserId,
+    actorLabel: ownerUserId,
+    category: 'apk',
+    action: 'apk.cleanup',
+    resourceType: 'apk',
+    details: result
+  })
   revalidateOrchestratorSettingsPage()
   return result
 }
@@ -22,13 +29,25 @@ export const getOrchestratorSettingsAction = async () => {
 export const updateOrchestratorSettingsAction = async (input: RuntimeUiSettings) => {
   const admin = await requireAdminUser()
   const result = await orchestratorSettingsClient.updateSettings(input)
-  recordAuditEvent(admin.id, 'settings.orchestrator.update')
+  recordAuditEvent({
+    actorUserId: admin.id,
+    actorLabel: admin.name || admin.username || admin.id,
+    category: 'settings',
+    action: 'settings.orchestrator.update',
+    resourceType: 'orchestrator_settings'
+  })
   return result
 }
 
 export const resetOrchestratorSettingsAction = async () => {
   const admin = await requireAdminUser()
   const result = await orchestratorSettingsClient.resetSettings()
-  recordAuditEvent(admin.id, 'settings.orchestrator.reset')
+  recordAuditEvent({
+    actorUserId: admin.id,
+    actorLabel: admin.name || admin.username || admin.id,
+    category: 'settings',
+    action: 'settings.orchestrator.reset',
+    resourceType: 'orchestrator_settings'
+  })
   return result
 }

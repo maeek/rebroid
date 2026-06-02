@@ -13,7 +13,16 @@ export const updateUserGroupAction = async (
 ) => {
   const admin = await requireAdminUser()
   const group = await userService.updateGroup(id, input)
-  recordAuditEvent(admin.id, 'group.update', group.id, { name: group.name })
+  recordAuditEvent({
+    actorUserId: admin.id,
+    actorLabel: admin.name || admin.username || admin.id,
+    category: 'group',
+    action: 'group.update',
+    resourceType: 'group',
+    resourceId: group.id,
+    resourceLabel: group.name,
+    details: { name: group.name }
+  })
   revalidateUsersPage()
   return group
 }

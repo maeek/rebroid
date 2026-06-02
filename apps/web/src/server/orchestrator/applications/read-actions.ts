@@ -1,6 +1,7 @@
 'use server'
 
 import { getStoredAppIcon } from '@/server/app-icons/store'
+import { recordAuditEvent } from '@/server/audit/events'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { getCurrentUserContext } from '../current-user'
 import { orchestratorApplicationsClient } from './client'
@@ -111,11 +112,22 @@ export const listApplicationFilesAction = async (id: string, path: string) => {
 }
 
 export const downloadApplicationRuntimeFileAction = async (id: string, path: string) => {
-  const { user } = await assertCanUseOwnedApplicationRuntime(id)
+  const { app, user } = await assertCanUseOwnedApplicationRuntime(id)
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:transfer-files')) {
     throw new Error('You do not have permission to transfer files.')
   }
-  return orchestratorApplicationsClient.downloadRuntimeFile(id, path)
+  const result = await orchestratorApplicationsClient.downloadRuntimeFile(id, path)
+  recordAuditEvent({
+    actorUserId: user.ownerUserId,
+    actorLabel: user.ownerUserId,
+    category: 'application',
+    action: 'application.file.download',
+    resourceType: 'application',
+    resourceId: id,
+    resourceLabel: app.name,
+    details: { path, name: result.name }
+  })
+  return result
 }
 
 export const downloadApplicationFileAction = async (
@@ -123,11 +135,22 @@ export const downloadApplicationFileAction = async (
   fileName: string,
   profile?: ApplicationRuntimeFilesProfileInput
 ) => {
-  const { user } = await assertCanUseOwnedApplicationRuntime(id)
+  const { app, user } = await assertCanUseOwnedApplicationRuntime(id)
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:transfer-files')) {
     throw new Error('You do not have permission to transfer files.')
   }
-  return orchestratorApplicationsClient.downloadFile(id, fileName, profile)
+  const result = await orchestratorApplicationsClient.downloadFile(id, fileName, profile)
+  recordAuditEvent({
+    actorUserId: user.ownerUserId,
+    actorLabel: user.ownerUserId,
+    category: 'application',
+    action: 'application.file.download',
+    resourceType: 'application',
+    resourceId: id,
+    resourceLabel: app.name,
+    details: { fileName, profileMode: profile?.profileMode, profileName: profile?.profileName }
+  })
+  return result
 }
 
 export const getApplicationClipboardAction = async (id: string) => {
@@ -139,11 +162,21 @@ export const getApplicationClipboardAction = async (id: string) => {
 }
 
 export const captureApplicationScreenshotAction = async (id: string) => {
-  const { user } = await assertCanUseOwnedApplicationRuntime(id)
+  const { app, user } = await assertCanUseOwnedApplicationRuntime(id)
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:capture-screenshot')) {
     throw new Error('You do not have permission to capture screenshots.')
   }
-  return orchestratorApplicationsClient.captureScreenshot(id)
+  const result = await orchestratorApplicationsClient.captureScreenshot(id)
+  recordAuditEvent({
+    actorUserId: user.ownerUserId,
+    actorLabel: user.ownerUserId,
+    category: 'application',
+    action: 'application.screenshot.capture',
+    resourceType: 'application',
+    resourceId: id,
+    resourceLabel: app.name
+  })
+  return result
 }
 
 export const getScrcpySessionAction = async (id: string) => {

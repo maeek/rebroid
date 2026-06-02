@@ -8,6 +8,8 @@ import {
   appendAuditEvent,
   corruptWebStateForTests,
   listAuditEvents,
+  pruneAuditEventsOlderThan,
+  purgeAuditEvents,
   readWebState,
   resetWebDatabaseForTests
 } from './database'
@@ -58,16 +60,42 @@ describe('web state database', () => {
     expect(readWebState('web-settings')).toBe('{malformed')
   })
 
-  it('lists recent audit events newest first with a bounded limit', () => {
-    appendAuditEvent('application.start', { actorUserId: 'user-1', subject: 'app-1' })
-    appendAuditEvent('docker.prune.images', { actorUserId: 'admin-1', details: { danglingOnly: true } })
+  it('lists audit events newest first with server-side filters', () => {
+    appendAuditEvent({
+      actorUserId: 'user-1',
+      actorLabel: 'User One',
+      category: 'application',
+      action: 'application.start',
+      resourceType: 'application',
+      resourceId: 'app-1'
+    })
+    appendAuditEvent({
+      actorUserId: 'admin-1',
+      actorLabel: 'Admin',
+      category: 'docker',
+      action: 'docker.prune.images',
+      resourceType: 'docker_image',
+      details: { danglingOnly: true }
+    })
 
-    expect(listAuditEvents(1)).toEqual([
+    const result = listAuditEvents({ category: 'docker' }, { pageSize: 1 })
+    expect(result.total).toBe(1)
+    expect(result.events).toEqual([
       expect.objectContaining({
         actorUserId: 'admin-1',
+        actorLabel: 'Admin',
         action: 'docker.prune.images',
+        category: 'docker',
         details: { danglingOnly: true }
       })
     ])
+  })
+
+  it('purges audit events and prunes by retention', () => {
+    appendAuditEvent({ actorLabel: 'Admin', category: 'audit', action: 'audit.old' })
+    const deleted = pruneAuditEventsOlderThan(30)
+    expect(deleted).toBe(0)
+    expect(purgeAuditEvents()).toBe(1)
+    expect(listAuditEvents().total).toBe(0)
   })
 })

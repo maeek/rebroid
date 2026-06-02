@@ -37,7 +37,15 @@ export const getPlatformImageAction = async (id: string) => {
 export const removePlatformImageAction = async (id: string, force = false) => {
   const admin = await requireAdminUser()
   const result = await orchestratorPlatformClient.removePlatformImage(id, force)
-  recordAuditEvent(admin.id, 'docker.image.remove', id, { force })
+  recordAuditEvent({
+    actorUserId: admin.id,
+    actorLabel: admin.name || admin.username || admin.id,
+    category: 'docker',
+    action: 'docker.image.remove',
+    resourceType: 'docker_image',
+    resourceId: id,
+    details: { force }
+  })
   revalidateOrchestratorPages()
   return result
 }
@@ -55,7 +63,14 @@ export const getPlatformNetworkAction = async (id: string) => {
 export const removePlatformNetworkAction = async (id: string) => {
   const admin = await requireAdminUser()
   const result = await orchestratorPlatformClient.removePlatformNetwork(id)
-  recordAuditEvent(admin.id, 'docker.network.remove', id)
+  recordAuditEvent({
+    actorUserId: admin.id,
+    actorLabel: admin.name || admin.username || admin.id,
+    category: 'docker',
+    action: 'docker.network.remove',
+    resourceType: 'docker_network',
+    resourceId: id
+  })
   revalidateOrchestratorPages()
   return result
 }
@@ -63,7 +78,14 @@ export const removePlatformNetworkAction = async (id: string) => {
 export const stopPlatformContainerAction = async (id: string) => {
   const admin = await requireAdminUser()
   const result = await orchestratorPlatformClient.stopPlatformContainer(id)
-  recordAuditEvent(admin.id, 'docker.container.stop', id)
+  recordAuditEvent({
+    actorUserId: admin.id,
+    actorLabel: admin.name || admin.username || admin.id,
+    category: 'docker',
+    action: 'docker.container.stop',
+    resourceType: 'docker_container',
+    resourceId: id
+  })
   revalidateOrchestratorPages()
   return result
 }
@@ -71,7 +93,15 @@ export const stopPlatformContainerAction = async (id: string) => {
 export const removePlatformContainerAction = async (id: string, force = false) => {
   const admin = await requireAdminUser()
   const result = await orchestratorPlatformClient.removePlatformContainer(id, force)
-  recordAuditEvent(admin.id, 'docker.container.remove', id, { force })
+  recordAuditEvent({
+    actorUserId: admin.id,
+    actorLabel: admin.name || admin.username || admin.id,
+    category: 'docker',
+    action: 'docker.container.remove',
+    resourceType: 'docker_container',
+    resourceId: id,
+    details: { force }
+  })
   revalidateOrchestratorPages()
   return result
 }

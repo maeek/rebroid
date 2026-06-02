@@ -28,11 +28,18 @@ export const recentApps = sqliteTable('recent_apps', {
 
 export const auditEvents = sqliteTable('audit_events', {
   id: integer('id').primaryKey({ autoIncrement: true }),
+  createdAt: text('created_at').notNull(),
   actorUserId: text('actor_user_id'),
+  actorLabel: text('actor_label').notNull(),
   action: text('action').notNull(),
-  subject: text('subject'),
+  category: text('category').notNull(),
+  resourceType: text('resource_type'),
+  resourceId: text('resource_id'),
+  resourceLabel: text('resource_label'),
+  outcome: text('outcome').notNull(),
   detailsJson: text('details_json').notNull(),
-  createdAt: text('created_at').notNull()
+  sourceIp: text('source_ip'),
+  userAgent: text('user_agent')
 })
 
 type WebDatabase = {
@@ -51,6 +58,7 @@ type RecentAppsFile = {
 
 let instance: WebDatabase | undefined
 let instancePath: string | undefined
+let lastAuditRetentionAt = 0
 
 const databasePath = () =>
   process.env.WEB_DATABASE_PATH || join(/* turbopackIgnore: true */ process.cwd(), 'data', 'web.sqlite')
@@ -59,6 +67,71 @@ const resetInstruction =
 
 const tableExists = (client: Database.Database, name: string) =>
   Boolean(client.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(name))
+
+const auditColumns = [
+  'id',
+  'created_at',
+  'actor_user_id',
+  'actor_label',
+  'action',
+  'category',
+  'resource_type',
+  'resource_id',
+  'resource_label',
+  'outcome',
+  'details_json',
+  'source_ip',
+  'user_agent'
+]
+
+const createAuditEventsTable = (client: Database.Database) => {
+  client.exec(`
+    CREATE TABLE audit_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      created_at TEXT NOT NULL,
+      actor_user_id TEXT,
+      actor_label TEXT NOT NULL,
+      action TEXT NOT NULL,
+      category TEXT NOT NULL,
+      resource_type TEXT,
+      resource_id TEXT,
+      resource_label TEXT,
+      outcome TEXT NOT NULL,
+      details_json TEXT NOT NULL,
+      source_ip TEXT,
+      user_agent TEXT
+    );
+    CREATE INDEX IF NOT EXISTS audit_events_created_at ON audit_events(created_at DESC);
+    CREATE INDEX IF NOT EXISTS audit_events_category_created_at ON audit_events(category, created_at DESC);
+    CREATE INDEX IF NOT EXISTS audit_events_actor_created_at ON audit_events(actor_user_id, created_at DESC);
+  `)
+}
+
+const ensureAuditEventsSchema = (client: Database.Database) => {
+  if (!tableExists(client, 'audit_events')) {
+    createAuditEventsTable(client)
+    return
+  }
+
+  const columns = client.prepare('PRAGMA table_info(audit_events)').all() as Array<{ name: string }>
+  const current = columns.map(column => column.name)
+  if (auditColumns.every(column => current.includes(column))) {
+    client.exec(`
+      CREATE INDEX IF NOT EXISTS audit_events_created_at ON audit_events(created_at DESC);
+      CREATE INDEX IF NOT EXISTS audit_events_category_created_at ON audit_events(category, created_at DESC);
+      CREATE INDEX IF NOT EXISTS audit_events_actor_created_at ON audit_events(actor_user_id, created_at DESC);
+    `)
+    return
+  }
+
+  client.exec(`
+    DROP TABLE audit_events;
+    DROP INDEX IF EXISTS audit_events_created_at;
+    DROP INDEX IF EXISTS audit_events_category_created_at;
+    DROP INDEX IF EXISTS audit_events_actor_created_at;
+  `)
+  createAuditEventsTable(client)
+}
 
 const openDatabase = (): WebDatabase => {
   const path = databasePath()
@@ -77,6 +150,7 @@ const openDatabase = (): WebDatabase => {
     client.close()
     throw new Error(`Unsupported web database schema version ${schemaVersion}. ${resetInstruction}`)
   }
+  ensureAuditEventsSchema(client)
 
   instance = { client, orm: drizzle(client) }
   instancePath = path
@@ -178,55 +252,297 @@ export const updateWebState = <Result>(key: string, update: (current: string | n
   })()
 }
 
-export const appendAuditEvent = (
-  action: string,
-  options: { actorUserId?: string | null; subject?: string | null; details?: Record<string, unknown> } = {}
-) => {
-  openDatabase()
-    .client.prepare(
-      'INSERT INTO audit_events (actor_user_id, action, subject, details_json, created_at) VALUES (?, ?, ?, ?, ?)'
-    )
-    .run(
-      options.actorUserId ?? null,
-      action,
-      options.subject ?? null,
-      JSON.stringify(options.details ?? {}),
-      new Date().toISOString()
-    )
+export type AuditEventOutcome = 'success' | 'failure'
+
+export type AuditEventInput = {
+  actorUserId?: string | null
+  actorLabel?: string | null
+  action: string
+  category: string
+  resourceType?: string | null
+  resourceId?: string | null
+  resourceLabel?: string | null
+  outcome?: AuditEventOutcome
+  details?: Record<string, unknown>
+  sourceIp?: string | null
+  userAgent?: string | null
 }
 
 export type AuditEvent = {
   id: number
   actorUserId: string | null
+  actorLabel: string
   action: string
-  subject: string | null
+  category: string
+  resourceType: string | null
+  resourceId: string | null
+  resourceLabel: string | null
+  outcome: AuditEventOutcome
   details: Record<string, unknown>
+  sourceIp: string | null
+  userAgent: string | null
   createdAt: string
 }
 
-export const listAuditEvents = (limit = 500): AuditEvent[] => {
-  const boundedLimit = Math.min(Math.max(Math.trunc(limit), 1), 1000)
-  const rows = openDatabase()
+export type AuditEventFilters = {
+  search?: string
+  actorUserId?: string
+  category?: string
+  action?: string
+  resourceType?: string
+  resourceId?: string
+  outcome?: AuditEventOutcome
+  from?: string
+  to?: string
+}
+
+export type AuditEventPage = {
+  events: AuditEvent[]
+  total: number
+  page: number
+  pageSize: number
+  summary: {
+    success: number
+    failure: number
+    lastEventAt: string | null
+  }
+}
+
+const normalizeAuditDetails = (details: Record<string, unknown> | undefined) =>
+  JSON.stringify(details ?? {}, (_key, value: unknown) => {
+    if (typeof value === 'bigint') return value.toString()
+    return value
+  })
+
+export const appendAuditEvent = (input: AuditEventInput) => {
+  openDatabase()
     .client.prepare(
-      'SELECT id, actor_user_id, action, subject, details_json, created_at FROM audit_events ORDER BY id DESC LIMIT ?'
+      'INSERT INTO audit_events (created_at, actor_user_id, actor_label, action, category, resource_type, resource_id, resource_label, outcome, details_json, source_ip, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     )
-    .all(boundedLimit) as Array<{
+    .run(
+      new Date().toISOString(),
+      input.actorUserId ?? null,
+      input.actorLabel?.trim() || input.actorUserId || 'system',
+      input.action,
+      input.category,
+      input.resourceType ?? null,
+      input.resourceId ?? null,
+      input.resourceLabel ?? null,
+      input.outcome ?? 'success',
+      normalizeAuditDetails(input.details),
+      input.sourceIp ?? null,
+      input.userAgent ?? null
+    )
+}
+
+const parseAuditRow = (row: {
+  id: number
+  actor_user_id: string | null
+  actor_label: string
+  action: string
+  category: string
+  resource_type: string | null
+  resource_id: string | null
+  resource_label: string | null
+  outcome: AuditEventOutcome
+  details_json: string
+  source_ip: string | null
+  user_agent: string | null
+  created_at: string
+}): AuditEvent => ({
+  id: row.id,
+  actorUserId: row.actor_user_id,
+  actorLabel: row.actor_label,
+  action: row.action,
+  category: row.category,
+  resourceType: row.resource_type,
+  resourceId: row.resource_id,
+  resourceLabel: row.resource_label,
+  outcome: row.outcome,
+  details: JSON.parse(row.details_json) as Record<string, unknown>,
+  sourceIp: row.source_ip,
+  userAgent: row.user_agent,
+  createdAt: row.created_at
+})
+
+const auditSelectColumns = [
+  'id',
+  'actor_user_id',
+  'actor_label',
+  'action',
+  'category',
+  'resource_type',
+  'resource_id',
+  'resource_label',
+  'outcome',
+  'details_json',
+  'source_ip',
+  'user_agent',
+  'created_at'
+].join(', ')
+
+const auditWhere = (filters: AuditEventFilters = {}) => {
+  const clauses: string[] = []
+  const values: Array<string> = []
+  const search = filters.search?.trim()
+  if (search) {
+    const pattern = `%${search.toLowerCase()}%`
+    clauses.push(
+      "(lower(action) LIKE ? OR lower(category) LIKE ? OR lower(actor_label) LIKE ? OR lower(coalesce(resource_type, '')) LIKE ? OR lower(coalesce(resource_id, '')) LIKE ? OR lower(coalesce(resource_label, '')) LIKE ? OR lower(details_json) LIKE ?)"
+    )
+    values.push(pattern, pattern, pattern, pattern, pattern, pattern, pattern)
+  }
+  if (filters.actorUserId) {
+    clauses.push('actor_user_id = ?')
+    values.push(filters.actorUserId)
+  }
+  if (filters.category) {
+    clauses.push('category = ?')
+    values.push(filters.category)
+  }
+  if (filters.action) {
+    clauses.push('action = ?')
+    values.push(filters.action)
+  }
+  if (filters.resourceType) {
+    clauses.push('resource_type = ?')
+    values.push(filters.resourceType)
+  }
+  if (filters.resourceId) {
+    clauses.push('resource_id = ?')
+    values.push(filters.resourceId)
+  }
+  if (filters.outcome) {
+    clauses.push('outcome = ?')
+    values.push(filters.outcome)
+  }
+  if (filters.from) {
+    clauses.push('created_at >= ?')
+    values.push(filters.from)
+  }
+  if (filters.to) {
+    clauses.push('created_at <= ?')
+    values.push(filters.to)
+  }
+
+  return {
+    sql: clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '',
+    values
+  }
+}
+
+export const listAuditEvents = (
+  filters: AuditEventFilters = {},
+  options: { page?: number; pageSize?: number } = {}
+): AuditEventPage => {
+  const page = Math.max(Math.trunc(options.page ?? 1), 1)
+  const pageSize = Math.min(Math.max(Math.trunc(options.pageSize ?? 20), 1), 100)
+  const where = auditWhere(filters)
+  const client = openDatabase().client
+  const total = (
+    client.prepare(`SELECT COUNT(*) AS count FROM audit_events ${where.sql}`).get(...where.values) as {
+      count: number
+    }
+  ).count
+  const outcomeRows = client
+    .prepare(`SELECT outcome, COUNT(*) AS count FROM audit_events ${where.sql} GROUP BY outcome`)
+    .all(...where.values) as Array<{ outcome: AuditEventOutcome; count: number }>
+  const lastEventAt =
+    (
+      client.prepare(`SELECT MAX(created_at) AS value FROM audit_events ${where.sql}`).get(...where.values) as {
+        value: string | null
+      }
+    ).value ?? null
+  const rows = client
+    .prepare(
+      `SELECT ${auditSelectColumns} FROM audit_events ${where.sql} ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`
+    )
+    .all(...where.values, pageSize, (page - 1) * pageSize) as Array<{
     id: number
     actor_user_id: string | null
+    actor_label: string
     action: string
-    subject: string | null
+    category: string
+    resource_type: string | null
+    resource_id: string | null
+    resource_label: string | null
+    outcome: AuditEventOutcome
     details_json: string
+    source_ip: string | null
+    user_agent: string | null
     created_at: string
   }>
 
-  return rows.map(row => ({
-    id: row.id,
-    actorUserId: row.actor_user_id,
-    action: row.action,
-    subject: row.subject,
-    details: JSON.parse(row.details_json) as Record<string, unknown>,
-    createdAt: row.created_at
-  }))
+  return {
+    events: rows.map(parseAuditRow),
+    total,
+    page,
+    pageSize,
+    summary: {
+      success: outcomeRows.find(row => row.outcome === 'success')?.count ?? 0,
+      failure: outcomeRows.find(row => row.outcome === 'failure')?.count ?? 0,
+      lastEventAt
+    }
+  }
+}
+
+export const listAuditFacetValues = () => {
+  const client = openDatabase().client
+  const values = (column: string) =>
+    (
+      client
+        .prepare(`SELECT DISTINCT ${column} AS value FROM audit_events WHERE ${column} IS NOT NULL ORDER BY value`)
+        .all() as Array<{
+        value: string
+      }>
+    ).map(row => row.value)
+
+  return {
+    actors: client
+      .prepare(
+        [
+          'SELECT DISTINCT actor_user_id AS id, actor_label AS label',
+          'FROM audit_events',
+          'WHERE actor_user_id IS NOT NULL',
+          'ORDER BY actor_label'
+        ].join(' ')
+      )
+      .all() as Array<{ id: string; label: string }>,
+    categories: values('category'),
+    actions: values('action'),
+    resourceTypes: values('resource_type')
+  }
+}
+
+export const exportAuditEvents = (filters: AuditEventFilters = {}, limit = 5000) => {
+  const boundedLimit = Math.min(Math.max(Math.trunc(limit), 1), 10000)
+  const where = auditWhere(filters)
+  const rows = openDatabase()
+    .client.prepare(
+      `SELECT ${auditSelectColumns} FROM audit_events ${where.sql} ORDER BY created_at DESC, id DESC LIMIT ?`
+    )
+    .all(...where.values, boundedLimit) as Parameters<typeof parseAuditRow>[0][]
+
+  return rows.map(parseAuditRow)
+}
+
+export const purgeAuditEvents = () => {
+  const result = openDatabase().client.prepare('DELETE FROM audit_events').run()
+  return result.changes
+}
+
+export const pruneAuditEventsOlderThan = (retentionDays: number) => {
+  if (!Number.isFinite(retentionDays) || retentionDays < 1) return 0
+  const cutoff = new Date(Date.now() - Math.trunc(retentionDays) * 24 * 60 * 60 * 1000).toISOString()
+  const result = openDatabase().client.prepare('DELETE FROM audit_events WHERE created_at < ?').run(cutoff)
+  return result.changes
+}
+
+export const maybePruneAuditEvents = (retentionDays: number, intervalMs = 60 * 60 * 1000) => {
+  const now = Date.now()
+  if (now - lastAuditRetentionAt < intervalMs) return 0
+  lastAuditRetentionAt = now
+  return pruneAuditEventsOlderThan(retentionDays)
 }
 
 export const corruptWebStateForTests = (key: 'users' | 'web-settings', value: string) => {

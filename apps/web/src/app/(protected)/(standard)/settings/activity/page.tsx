@@ -1,15 +1,22 @@
 import { PlatformPageHeader } from '@/features/orchestrator/components/platform-page-header'
 import { ActivityEventsTable } from '@/features/settings/activity/activity-events-table'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
+import { auditFiltersFromSearchParams, auditPageFromSearchParams, type AuditSearchParams } from '@/server/audit/query'
 import { requireAdmin } from '@/server/auth/authorization'
-import { userService } from '@/server/auth/user'
-import { listAuditEvents } from '@/server/storage/database'
+import { listAuditEvents, listAuditFacetValues, maybePruneAuditEvents } from '@/server/storage/database'
+import { getWebSettings } from '@/server/web-settings/store'
 
-export default async function ActivitySettingsPage() {
+const firstValue = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value)
+
+export default async function ActivitySettingsPage({ searchParams }: { searchParams?: Promise<AuditSearchParams> }) {
   await requireAdmin()
-  const events = listAuditEvents()
-  const users = await userService.listUsers()
-  const userLabels = new Map(users.map(user => [user.id, user.name || user.username]))
+  const resolvedSearchParams = (await searchParams) ?? {}
+  const settings = await getWebSettings()
+  maybePruneAuditEvents(settings.auditRetentionDays)
+  const filters = auditFiltersFromSearchParams(resolvedSearchParams)
+  const page = auditPageFromSearchParams(resolvedSearchParams)
+  const result = listAuditEvents(filters, page)
+  const facets = listAuditFacetValues()
 
   return (
     <ProtectedStackPageLayout mainClassName='gap-2'>
@@ -20,10 +27,19 @@ export default async function ActivitySettingsPage() {
       />
       <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
         <ActivityEventsTable
-          events={events.map(event => ({
-            ...event,
-            actorLabel: event.actorUserId ? (userLabels.get(event.actorUserId) ?? event.actorUserId) : 'system'
-          }))}
+          result={result}
+          filters={{
+            search: firstValue(resolvedSearchParams.search),
+            actor: firstValue(resolvedSearchParams.actor),
+            category: firstValue(resolvedSearchParams.category),
+            action: firstValue(resolvedSearchParams.action),
+            resourceType: firstValue(resolvedSearchParams.resourceType),
+            outcome: firstValue(resolvedSearchParams.outcome),
+            from: firstValue(resolvedSearchParams.from),
+            to: firstValue(resolvedSearchParams.to)
+          }}
+          facets={facets}
+          auditRetentionDays={settings.auditRetentionDays}
         />
       </section>
     </ProtectedStackPageLayout>

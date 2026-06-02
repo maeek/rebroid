@@ -10,7 +10,8 @@ export const defaultWebSettings: WebSettings = {
   defaultViewerMaxSize: 1080,
   defaultViewerIFrameInterval: 1,
   defaultViewerKeyboardCaptureEnabled: false,
-  defaultViewerSoundEnabled: true
+  defaultViewerSoundEnabled: true,
+  auditRetentionDays: 30
 }
 
 const settingsStateKey = 'web-settings'
@@ -60,7 +61,8 @@ const normalize = (value: Partial<WebSettings>): WebSettings => ({
   defaultViewerSoundEnabled:
     typeof value.defaultViewerSoundEnabled === 'boolean'
       ? value.defaultViewerSoundEnabled
-      : defaultWebSettings.defaultViewerSoundEnabled
+      : defaultWebSettings.defaultViewerSoundEnabled,
+  auditRetentionDays: numberInRange(value.auditRetentionDays, defaultWebSettings.auditRetentionDays, 1, 3650)
 })
 
 export const getWebSettings = () =>

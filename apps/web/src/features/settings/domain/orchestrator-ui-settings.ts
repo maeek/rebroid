@@ -19,6 +19,7 @@ export interface OrchestratorUiSettings {
   defaultViewerIFrameInterval: number
   defaultViewerKeyboardCaptureEnabled: boolean
   defaultViewerSoundEnabled: boolean
+  auditRetentionDays: number
 }
 
 export type GeneralUiSettings = Pick<
@@ -60,7 +61,8 @@ export const defaultOrchestratorUiSettings: OrchestratorUiSettings = {
   defaultViewerMaxSize: 1080,
   defaultViewerIFrameInterval: 1,
   defaultViewerKeyboardCaptureEnabled: false,
-  defaultViewerSoundEnabled: true
+  defaultViewerSoundEnabled: true,
+  auditRetentionDays: 30
 }
 
 export const defaultWebSettingsResponse: WebSettingsResponse = {
@@ -72,7 +74,8 @@ export const defaultWebSettingsResponse: WebSettingsResponse = {
   defaultViewerMaxSize: defaultOrchestratorUiSettings.defaultViewerMaxSize,
   defaultViewerIFrameInterval: defaultOrchestratorUiSettings.defaultViewerIFrameInterval,
   defaultViewerKeyboardCaptureEnabled: defaultOrchestratorUiSettings.defaultViewerKeyboardCaptureEnabled,
-  defaultViewerSoundEnabled: defaultOrchestratorUiSettings.defaultViewerSoundEnabled
+  defaultViewerSoundEnabled: defaultOrchestratorUiSettings.defaultViewerSoundEnabled,
+  auditRetentionDays: defaultOrchestratorUiSettings.auditRetentionDays
 }
 
 export const defaultRuntimeSettingsResponse: OrchestratorSettingsResponse = {
@@ -118,6 +121,10 @@ export const normalizeOrchestratorUiSettings = (
     typeof web.defaultViewerSoundEnabled === 'boolean'
       ? web.defaultViewerSoundEnabled
       : defaultOrchestratorUiSettings.defaultViewerSoundEnabled,
+  auditRetentionDays:
+    typeof web.auditRetentionDays === 'number'
+      ? web.auditRetentionDays
+      : defaultOrchestratorUiSettings.auditRetentionDays,
   defaultContainerImage:
     orchestrator.defaultContainerImage?.trim() || defaultOrchestratorUiSettings.defaultContainerImage,
   dockerImageRegistry: orchestrator.dockerImageRegistry?.trim() || defaultOrchestratorUiSettings.dockerImageRegistry,
