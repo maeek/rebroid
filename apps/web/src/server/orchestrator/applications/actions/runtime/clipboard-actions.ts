@@ -2,7 +2,7 @@
 
 import { recordAuditEvent } from '@/server/audit/events'
 import { hasPermission } from '@/shared/permissions/permissions'
-import { orchestratorApplicationsClient } from '../../client'
+import { orchestratorAppRuntimeClient } from '../../runtime-client'
 import { assertCanUseOwnedApplicationRuntime, ownedRuntimeMessage } from '../common/action-helpers'
 
 export const getApplicationClipboardAction = async (id: string) => {
@@ -10,7 +10,7 @@ export const getApplicationClipboardAction = async (id: string) => {
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:sync-clipboard')) {
     throw new Error('You do not have permission to sync clipboard.')
   }
-  return orchestratorApplicationsClient.getClipboard(id)
+  return orchestratorAppRuntimeClient.getClipboard(id)
 }
 
 export const setApplicationClipboardAction = async (id: string, text: string) => {
@@ -18,7 +18,7 @@ export const setApplicationClipboardAction = async (id: string, text: string) =>
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:sync-clipboard')) {
     throw new Error('You do not have permission to sync clipboard.')
   }
-  const result = await orchestratorApplicationsClient.setClipboard(id, text)
+  const result = await orchestratorAppRuntimeClient.setClipboard(id, text)
   recordAuditEvent({
     actorUserId: user.ownerUserId,
     actorLabel: user.ownerUserId,

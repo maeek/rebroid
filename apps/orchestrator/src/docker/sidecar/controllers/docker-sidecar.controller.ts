@@ -4,8 +4,8 @@ import { ServiceHealthDto } from '../../../health/dto/health-response.dto';
 import { DockerSidecarAdminSessionDto } from '../dto/docker-sidecar-response.dto';
 import { DockerSidecarService } from '../services/docker-sidecar.service';
 
-@ApiTags('docker-sidecar')
-@Controller('docker/sidecar')
+@ApiTags('platform-display-sidecar')
+@Controller('platform/display-sidecar')
 export class DockerSidecarController {
   constructor(private readonly sidecar: DockerSidecarService) {}
 

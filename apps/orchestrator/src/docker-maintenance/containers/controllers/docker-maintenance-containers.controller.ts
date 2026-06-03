@@ -12,8 +12,8 @@ import {
   DockerPlatformStopResponseDto,
 } from '../../dto/docker-maintenance-response.dto';
 
-@ApiTags('docker-maintenance')
-@Controller('docker-maintenance/containers')
+@ApiTags('platform-docker')
+@Controller('platform/docker/containers')
 export class DockerMaintenanceContainersController {
   constructor(
     private readonly containers: DockerPlatformContainersService,

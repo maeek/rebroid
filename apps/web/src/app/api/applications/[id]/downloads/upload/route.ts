@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { orchestratorApplicationsClient } from '@/server/orchestrator/applications/client'
+import { orchestratorAppCatalogClient } from '@/server/orchestrator/applications/catalog-client'
 import { getOrchestratorBaseUrl } from '@/server/orchestrator/config'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { hasPermission } from '@/shared/permissions/permissions'
@@ -36,7 +36,7 @@ export const POST = async (request: NextRequest, context: RouteContext) => {
   }
 
   try {
-    const app = await orchestratorApplicationsClient.getApplication(id)
+    const app = await orchestratorAppCatalogClient.getApplication(id)
     if (app.ownerUserId !== user.ownerUserId) {
       return NextResponse.json(
         { message: 'Open this app as your own copy before transferring files.' },
@@ -50,7 +50,7 @@ export const POST = async (request: NextRequest, context: RouteContext) => {
 
     const query = new URLSearchParams({ path: request.nextUrl.searchParams.get('path') || '/data' })
     const upstreamUrl =
-      `${getOrchestratorBaseUrl().replace(/\/$/, '')}/api/v1/android-applications/${encodeURIComponent(id)}/files?` +
+      `${getOrchestratorBaseUrl().replace(/\/$/, '')}/api/v1/apps/${encodeURIComponent(id)}/runtime/data-files?` +
       query.toString()
     const headers = new Headers()
     const contentType = request.headers.get('content-type')

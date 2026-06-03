@@ -2,8 +2,8 @@
 
 import { recordAuditEvent } from '@/server/audit/events'
 import { hasPermission } from '@/shared/permissions/permissions'
-import { orchestratorApplicationsClient } from '../../client'
 import { sanitizeScrcpySessionForUser } from '../../safety'
+import { orchestratorAppViewerClient } from '../../viewer-client'
 import {
   assertCanUseOwnedApplicationRuntime,
   ownedRuntimeControlMessage,
@@ -13,7 +13,7 @@ import type { ApplicationViewerControlCommand } from '../../types'
 
 export const getScrcpySessionAction = async (id: string) => {
   const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeMessage)
-  const session = await orchestratorApplicationsClient.getScrcpySession(id, {
+  const session = await orchestratorAppViewerClient.getScrcpySession(id, {
     control: user.role === 'admin' || hasPermission(user.permissions, 'applications:control-viewer'),
     clipboard: user.role === 'admin' || hasPermission(user.permissions, 'applications:sync-clipboard')
   })
@@ -22,7 +22,7 @@ export const getScrcpySessionAction = async (id: string) => {
 
 export const recordViewerActivityAction = async (id: string) => {
   await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeMessage)
-  return orchestratorApplicationsClient.recordViewerActivity(id)
+  return orchestratorAppViewerClient.recordViewerActivity(id)
 }
 
 export const sendApplicationViewerControlAction = async (id: string, command: ApplicationViewerControlCommand) => {
@@ -30,7 +30,7 @@ export const sendApplicationViewerControlAction = async (id: string, command: Ap
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:control-viewer')) {
     throw new Error('You do not have permission to control this viewer.')
   }
-  const result = await orchestratorApplicationsClient.sendViewerControl(id, command)
+  const result = await orchestratorAppViewerClient.sendViewerControl(id, command)
   recordAuditEvent({
     actorUserId: user.ownerUserId,
     actorLabel: user.ownerUserId,

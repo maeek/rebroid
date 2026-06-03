@@ -7,8 +7,8 @@ import {
   DockerPlatformRemovalResponseDto,
 } from '../../dto/docker-maintenance-response.dto';
 
-@ApiTags('docker-maintenance')
-@Controller('docker-maintenance/networks')
+@ApiTags('platform-docker')
+@Controller('platform/docker/networks')
 export class DockerMaintenanceNetworksController {
   constructor(private readonly networks: DockerPlatformNetworksService) {}
 

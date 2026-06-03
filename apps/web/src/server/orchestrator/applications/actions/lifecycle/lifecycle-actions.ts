@@ -4,7 +4,8 @@ import { recordAuditEvent } from '@/server/audit/events'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { getCurrentUserContext } from '../../../current-user'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
-import { orchestratorApplicationsClient } from '../../client'
+import { orchestratorAppCatalogClient } from '../../catalog-client'
+import { orchestratorAppLifecycleClient } from '../../lifecycle-client'
 import { sanitizeAndroidApplicationForUser } from '../../safety'
 import {
   assertCanAccessApplication,
@@ -23,7 +24,7 @@ export const startApplicationAction = async (id: string, input?: SwitchApplicati
     throw new Error('You do not have permission to switch profiles.')
   }
   await assertCanOpenApplicationSlot(user, id)
-  const app = await orchestratorApplicationsClient.startApplication(id, input)
+  const command = await orchestratorAppLifecycleClient.startApplication(id, input)
   recordAuditEvent({
     actorUserId: user.ownerUserId,
     actorLabel: user.ownerUserId,
@@ -31,11 +32,12 @@ export const startApplicationAction = async (id: string, input?: SwitchApplicati
     action: 'application.start',
     resourceType: 'application',
     resourceId: id,
-    resourceLabel: app.name,
+    resourceLabel: command.name,
     details: input ? { profileMode: input.profileMode, profileName: input.profileName } : undefined
   })
   revalidateApplicationList()
   revalidateApplicationDetail(id)
+  const app = await orchestratorAppCatalogClient.getApplication(id)
   return sanitizeAndroidApplicationForUser(app, user)
 }
 
@@ -44,7 +46,7 @@ export const stopApplicationAction = async (id: string) => {
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:stop')) {
     throw new Error('You do not have permission to stop applications.')
   }
-  const app = await orchestratorApplicationsClient.stopApplication(id)
+  const command = await orchestratorAppLifecycleClient.stopApplication(id)
   recordAuditEvent({
     actorUserId: user.ownerUserId,
     actorLabel: user.ownerUserId,
@@ -52,10 +54,11 @@ export const stopApplicationAction = async (id: string) => {
     action: 'application.stop',
     resourceType: 'application',
     resourceId: id,
-    resourceLabel: app.name
+    resourceLabel: command.name
   })
   revalidateApplicationList()
   revalidateApplicationDetail(id)
+  const app = await orchestratorAppCatalogClient.getApplication(id)
   return sanitizeAndroidApplicationForUser(app, user)
 }
 
@@ -65,7 +68,7 @@ export const deleteApplicationAction = async (id: string, removeData = true) => 
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:delete')) {
     throw new Error('You do not have permission to delete applications.')
   }
-  const result = await orchestratorApplicationsClient.deleteApplication(id, removeData)
+  const result = await orchestratorAppCatalogClient.deleteApplication(id, removeData)
   recordAuditEvent({
     actorUserId: user.ownerUserId,
     actorLabel: user.ownerUserId,

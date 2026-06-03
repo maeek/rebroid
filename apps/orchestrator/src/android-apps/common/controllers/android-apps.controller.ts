@@ -15,6 +15,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { ApplicationCommandResultDto } from '../dto/application-command-result.dto';
 import { AndroidApplicationResponseDto } from '../dto/android-application-response.dto';
 import { AndroidApplicationSummaryResponseDto } from '../dto/android-application-summary-response.dto';
 import { CloneAndroidApplicationDto } from '../dto/clone-android-application.dto';
@@ -30,8 +31,8 @@ import {
   toAndroidApplicationResponseList,
 } from '../utils/android-apps-controller-response.utils';
 
-@ApiTags('android-applications')
-@Controller('android-applications')
+@ApiTags('apps')
+@Controller('apps')
 export class AndroidAppsController {
   constructor(
     private readonly lifecycle: AndroidAppsLifecycleService,
@@ -42,7 +43,7 @@ export class AndroidAppsController {
   @ApiOperation({
     summary: 'Provision an isolated application container.',
   })
-  @ApiCreatedResponse({ type: AndroidApplicationResponseDto })
+  @ApiCreatedResponse({ type: ApplicationCommandResultDto })
   @ApiBody({
     schema: {
       type: 'object',
@@ -68,8 +69,10 @@ export class AndroidAppsController {
       },
     },
   })
-  create(@Body() dto: CreateAndroidApplicationDto) {
-    return toAndroidApplicationResponse(this.lifecycle.create(dto));
+  async create(@Body() dto: CreateAndroidApplicationDto) {
+    return ApplicationCommandResultDto.fromEntity(
+      await this.lifecycle.create(dto),
+    );
   }
 
   @Post(':id/clone')
@@ -77,9 +80,14 @@ export class AndroidAppsController {
     summary:
       'Create a separate owner-scoped application from an existing app definition.',
   })
-  @ApiCreatedResponse({ type: AndroidApplicationResponseDto })
-  clone(@Param('id') id: string, @Body() dto: CloneAndroidApplicationDto) {
-    return toAndroidApplicationResponse(this.lifecycle.clone(id, dto));
+  @ApiCreatedResponse({ type: ApplicationCommandResultDto })
+  async clone(
+    @Param('id') id: string,
+    @Body() dto: CloneAndroidApplicationDto,
+  ) {
+    return ApplicationCommandResultDto.fromEntity(
+      await this.lifecycle.clone(id, dto),
+    );
   }
 
   @Get()
@@ -107,9 +115,14 @@ export class AndroidAppsController {
   }
 
   @Patch(':id')
-  @ApiOkResponse({ type: AndroidApplicationResponseDto })
-  update(@Param('id') id: string, @Body() dto: UpdateAndroidApplicationDto) {
-    return toAndroidApplicationResponse(this.lifecycle.update(id, dto));
+  @ApiOkResponse({ type: ApplicationCommandResultDto })
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateAndroidApplicationDto,
+  ) {
+    return ApplicationCommandResultDto.fromEntity(
+      await this.lifecycle.update(id, dto),
+    );
   }
 
   @Delete(':id')

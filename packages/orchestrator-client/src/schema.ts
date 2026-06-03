@@ -36,7 +36,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/docker/sidecar/health": {
+    "/api/v1/platform/display-sidecar/health": {
         parameters: {
             query?: never;
             header?: never;
@@ -53,7 +53,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/docker/sidecar/repair": {
+    "/api/v1/platform/display-sidecar/repair": {
         parameters: {
             query?: never;
             header?: never;
@@ -70,7 +70,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/docker/sidecar/sessions": {
+    "/api/v1/platform/display-sidecar/sessions": {
         parameters: {
             query?: never;
             header?: never;
@@ -87,7 +87,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/docker/sidecar/sessions/{id}": {
+    "/api/v1/platform/display-sidecar/sessions/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -104,7 +104,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apks": {
+    "/api/v1/apk-uploads": {
         parameters: {
             query?: never;
             header?: never;
@@ -120,7 +120,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apks/lookup": {
+    "/api/v1/apk-uploads/lookup": {
         parameters: {
             query?: never;
             header?: never;
@@ -136,7 +136,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apks/{id}": {
+    "/api/v1/apk-uploads/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -152,7 +152,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apks/cleanup": {
+    "/api/v1/apk-uploads/cleanup": {
         parameters: {
             query?: never;
             header?: never;
@@ -200,7 +200,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/android-applications": {
+    "/api/v1/apps": {
         parameters: {
             query?: never;
             header?: never;
@@ -217,7 +217,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/android-applications/{id}/clone": {
+    "/api/v1/apps/{id}/clone": {
         parameters: {
             query?: never;
             header?: never;
@@ -234,7 +234,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/android-applications/summaries": {
+    "/api/v1/apps/summaries": {
         parameters: {
             query?: never;
             header?: never;
@@ -251,7 +251,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/android-applications/{id}": {
+    "/api/v1/apps/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -267,7 +267,7 @@ export interface paths {
         patch: operations["AndroidAppsController_update"];
         trace?: never;
     };
-    "/api/v1/android-applications/{id}/scrcpy-session": {
+    "/api/v1/apps/{id}/viewer/session": {
         parameters: {
             query?: never;
             header?: never;
@@ -283,7 +283,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/android-applications/{id}/viewer-activity": {
+    "/api/v1/apps/{id}/viewer/activity": {
         parameters: {
             query?: never;
             header?: never;
@@ -300,7 +300,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/android-applications/{id}/viewer-control": {
+    "/api/v1/apps/{id}/viewer/control": {
         parameters: {
             query?: never;
             header?: never;
@@ -317,7 +317,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/android-applications/network-policy/reconcile": {
+    "/api/v1/network-policies/reconcile": {
         parameters: {
             query?: never;
             header?: never;
@@ -334,7 +334,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/android-applications/{id}/network-policy": {
+    "/api/v1/apps/{id}/network-policy": {
         parameters: {
             query?: never;
             header?: never;
@@ -351,7 +351,7 @@ export interface paths {
         patch: operations["AndroidAppsNetworkController_updateNetworkPolicy"];
         trace?: never;
     };
-    "/api/v1/android-applications/{id}/network-policy/apply": {
+    "/api/v1/apps/{id}/network-policy/apply": {
         parameters: {
             query?: never;
             header?: never;
@@ -368,7 +368,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/android-applications/{id}/profile": {
+    "/api/v1/apps/{id}/lifecycle/profile": {
         parameters: {
             query?: never;
             header?: never;
@@ -385,7 +385,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/android-applications/{id}/start": {
+    "/api/v1/apps/{id}/lifecycle/start": {
         parameters: {
             query?: never;
             header?: never;
@@ -402,7 +402,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/android-applications/{id}/stop": {
+    "/api/v1/apps/{id}/lifecycle/stop": {
         parameters: {
             query?: never;
             header?: never;
@@ -418,7 +418,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/android-applications/{id}/apk": {
+    "/api/v1/apps/{id}/lifecycle/apk": {
         parameters: {
             query?: never;
             header?: never;
@@ -434,7 +434,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/android-applications/{id}/notifications": {
+    "/api/v1/apps/{id}/runtime/notifications": {
         parameters: {
             query?: never;
             header?: never;
@@ -450,7 +450,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/android-applications/{id}/files": {
+    "/api/v1/apps/{id}/runtime/data-files": {
         parameters: {
             query?: never;
             header?: never;
@@ -468,7 +468,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/android-applications/{id}/files/download": {
+    "/api/v1/apps/{id}/runtime/data-files/download": {
         parameters: {
             query?: never;
             header?: never;
@@ -485,7 +485,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/android-applications/{id}/files/downloads": {
+    "/api/v1/apps/{id}/runtime/download-files": {
         parameters: {
             query?: never;
             header?: never;
@@ -503,7 +503,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/android-applications/{id}/files/downloads/{fileName}": {
+    "/api/v1/apps/{id}/runtime/download-files/{fileName}": {
         parameters: {
             query?: never;
             header?: never;
@@ -520,7 +520,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/android-applications/{id}/clipboard": {
+    "/api/v1/apps/{id}/runtime/clipboard": {
         parameters: {
             query?: never;
             header?: never;
@@ -538,7 +538,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/android-applications/{id}/screenshot": {
+    "/api/v1/apps/{id}/runtime/screenshot": {
         parameters: {
             query?: never;
             header?: never;
@@ -555,7 +555,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/android-applications/{id}/logs/container": {
+    "/api/v1/apps/{id}/runtime/logs/container": {
         parameters: {
             query?: never;
             header?: never;
@@ -572,7 +572,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/android-applications/{id}/logs/orchestrator": {
+    "/api/v1/apps/{id}/runtime/logs/orchestrator": {
         parameters: {
             query?: never;
             header?: never;
@@ -589,7 +589,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/android-applications/{id}/logs/adb": {
+    "/api/v1/apps/{id}/runtime/logs/adb": {
         parameters: {
             query?: never;
             header?: never;
@@ -606,7 +606,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/container-images": {
+    "/api/v1/platform/container-images": {
         parameters: {
             query?: never;
             header?: never;
@@ -623,7 +623,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/container-images/pull": {
+    "/api/v1/platform/container-images/pull": {
         parameters: {
             query?: never;
             header?: never;
@@ -640,7 +640,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/container-images/{image}": {
+    "/api/v1/platform/container-images/{image}": {
         parameters: {
             query?: never;
             header?: never;
@@ -657,7 +657,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/docker-maintenance/containers": {
+    "/api/v1/platform/docker/containers": {
         parameters: {
             query?: never;
             header?: never;
@@ -674,7 +674,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/docker-maintenance/containers/{id}": {
+    "/api/v1/platform/docker/containers/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -692,7 +692,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/docker-maintenance/containers/{id}/logs": {
+    "/api/v1/platform/docker/containers/{id}/logs": {
         parameters: {
             query?: never;
             header?: never;
@@ -709,7 +709,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/docker-maintenance/containers/{id}/stats": {
+    "/api/v1/platform/docker/containers/{id}/stats": {
         parameters: {
             query?: never;
             header?: never;
@@ -726,7 +726,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/docker-maintenance/containers/{id}/stop": {
+    "/api/v1/platform/docker/containers/{id}/stop": {
         parameters: {
             query?: never;
             header?: never;
@@ -743,7 +743,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/docker-maintenance/images": {
+    "/api/v1/platform/docker/images": {
         parameters: {
             query?: never;
             header?: never;
@@ -760,7 +760,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/docker-maintenance/images/{id}": {
+    "/api/v1/platform/docker/images/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -778,7 +778,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/docker-maintenance/networks": {
+    "/api/v1/platform/docker/networks": {
         parameters: {
             query?: never;
             header?: never;
@@ -795,7 +795,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/docker-maintenance/networks/{id}": {
+    "/api/v1/platform/docker/networks/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -813,7 +813,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/docker-maintenance/prune/images": {
+    "/api/v1/platform/docker/prune/images": {
         parameters: {
             query?: never;
             header?: never;
@@ -830,7 +830,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/docker-maintenance/prune/containers": {
+    "/api/v1/platform/docker/prune/containers": {
         parameters: {
             query?: never;
             header?: never;
@@ -847,7 +847,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/docker-maintenance/prune/networks": {
+    "/api/v1/platform/docker/prune/networks": {
         parameters: {
             query?: never;
             header?: never;
@@ -864,7 +864,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/docker-maintenance/prune/volumes": {
+    "/api/v1/platform/docker/prune/volumes": {
         parameters: {
             query?: never;
             header?: never;
@@ -881,7 +881,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/docker-maintenance/prune/all": {
+    "/api/v1/platform/docker/prune/all": {
         parameters: {
             query?: never;
             header?: never;
@@ -962,7 +962,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/system-resources/capacity": {
+    "/api/v1/platform/system-resources/capacity": {
         parameters: {
             query?: never;
             header?: never;
@@ -978,7 +978,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/system-resources": {
+    "/api/v1/platform/system-resources": {
         parameters: {
             query?: never;
             header?: never;
@@ -1216,6 +1216,48 @@ export interface components {
             /** @example 512 */
             maxApkUploadSizeMb?: number;
         };
+        ApplicationCommandNetworkPolicyDto: {
+            enabled: boolean;
+            allowCidrs: string[];
+            status: string | null;
+            message: string | null;
+            appliedAt: string | null;
+        };
+        ApplicationCommandProfileDto: {
+            /** @enum {string} */
+            mode: "persistent" | "temporary";
+            name: string | null;
+        };
+        ApplicationCommandApkDto: {
+            uploadedApkId: string | null;
+            packageName: string | null;
+            originalName: string | null;
+        };
+        ApplicationCommandResultDto: {
+            id: string;
+            name: string;
+            /** @enum {string} */
+            status: "provisioning" | "running" | "stopped" | "error" | "removing" | "removed";
+            /** @enum {string} */
+            lifecycleStage: "queued" | "image_checking" | "image_pulling" | "volume_creating" | "network_creating" | "orchestrator_network_connecting" | "container_creating" | "container_starting" | "android_booting" | "apk_installing" | "ready" | "stopping" | "stopped" | "removing" | "removed" | "error";
+            message: string | null;
+            operationId?: string;
+            networkPolicy?: components["schemas"]["ApplicationCommandNetworkPolicyDto"];
+            profile?: components["schemas"]["ApplicationCommandProfileDto"];
+            apk?: components["schemas"]["ApplicationCommandApkDto"];
+        };
+        CloneAndroidApplicationDto: {
+            /**
+             * @description Owner user id for the cloned application.
+             * @example admin
+             */
+            ownerUserId?: string;
+            /**
+             * @description Display name for the cloned application. Defaults to the source app name.
+             * @example Signal Android
+             */
+            name?: string;
+        };
         AndroidApplicationStatusDetail: {
             /** @enum {string} */
             code: "queued" | "image_checking" | "image_pulling" | "volume_creating" | "network_creating" | "orchestrator_network_connecting" | "container_creating" | "container_starting" | "android_booting" | "apk_installing" | "ready" | "stopping" | "stopped" | "stopped_recreate_required" | "removing" | "removed" | "error" | "unknown";
@@ -1330,18 +1372,6 @@ export interface components {
             apk: components["schemas"]["AndroidApplicationApkDto"];
             createdAt: string;
             updatedAt: string;
-        };
-        CloneAndroidApplicationDto: {
-            /**
-             * @description Owner user id for the cloned application.
-             * @example admin
-             */
-            ownerUserId?: string;
-            /**
-             * @description Display name for the cloned application. Defaults to the source app name.
-             * @example Signal Android
-             */
-            name?: string;
         };
         AndroidApplicationSummaryResponseDto: {
             id: string;
@@ -2137,7 +2167,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AndroidApplicationResponseDto"];
+                    "application/json": components["schemas"]["ApplicationCommandResultDto"];
                 };
             };
         };
@@ -2162,7 +2192,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AndroidApplicationResponseDto"];
+                    "application/json": components["schemas"]["ApplicationCommandResultDto"];
                 };
             };
         };
@@ -2255,7 +2285,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AndroidApplicationResponseDto"];
+                    "application/json": components["schemas"]["ApplicationCommandResultDto"];
                 };
             };
         };
@@ -2371,7 +2401,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AndroidApplicationResponseDto"];
+                    "application/json": components["schemas"]["ApplicationCommandResultDto"];
                 };
             };
         };
@@ -2392,7 +2422,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AndroidApplicationResponseDto"];
+                    "application/json": components["schemas"]["ApplicationCommandResultDto"];
                 };
             };
         };
@@ -2417,7 +2447,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AndroidApplicationResponseDto"];
+                    "application/json": components["schemas"]["ApplicationCommandResultDto"];
                 };
             };
         };
@@ -2442,7 +2472,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AndroidApplicationResponseDto"];
+                    "application/json": components["schemas"]["ApplicationCommandResultDto"];
                 };
             };
         };
@@ -2463,7 +2493,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AndroidApplicationResponseDto"];
+                    "application/json": components["schemas"]["ApplicationCommandResultDto"];
                 };
             };
         };
@@ -2491,7 +2521,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AndroidApplicationResponseDto"];
+                    "application/json": components["schemas"]["ApplicationCommandResultDto"];
                 };
             };
         };

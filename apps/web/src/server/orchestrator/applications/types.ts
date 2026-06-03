@@ -1,6 +1,7 @@
 import type { OrchestratorApiSchemas } from '@rebroid/orchestrator-client'
 
 export type AndroidApplication = OrchestratorApiSchemas['AndroidApplicationResponseDto']
+export type ApplicationCommandResult = OrchestratorApiSchemas['ApplicationCommandResultDto']
 export type AndroidApplicationSummary = OrchestratorApiSchemas['AndroidApplicationSummaryResponseDto']
 export type AndroidApplicationStatus = AndroidApplication['status']['currentStatus']
 export type AndroidApplicationLifecycleStage = AndroidApplication['status']['lifecycleStage']

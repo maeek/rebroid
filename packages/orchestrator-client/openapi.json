@@ -36,7 +36,7 @@
         ]
       }
     },
-    "/api/v1/docker/sidecar/health": {
+    "/api/v1/platform/display-sidecar/health": {
       "get": {
         "operationId": "DockerSidecarController_health",
         "parameters": [],
@@ -54,11 +54,11 @@
         },
         "summary": "Read display sidecar health.",
         "tags": [
-          "docker-sidecar"
+          "platform-display-sidecar"
         ]
       }
     },
-    "/api/v1/docker/sidecar/repair": {
+    "/api/v1/platform/display-sidecar/repair": {
       "post": {
         "operationId": "DockerSidecarController_repair",
         "parameters": [],
@@ -76,11 +76,11 @@
         },
         "summary": "Restart or create the display sidecar.",
         "tags": [
-          "docker-sidecar"
+          "platform-display-sidecar"
         ]
       }
     },
-    "/api/v1/docker/sidecar/sessions": {
+    "/api/v1/platform/display-sidecar/sessions": {
       "get": {
         "operationId": "DockerSidecarController_listSessions",
         "parameters": [],
@@ -101,11 +101,11 @@
         },
         "summary": "List display sidecar sessions for administration.",
         "tags": [
-          "docker-sidecar"
+          "platform-display-sidecar"
         ]
       }
     },
-    "/api/v1/docker/sidecar/sessions/{id}": {
+    "/api/v1/platform/display-sidecar/sessions/{id}": {
       "delete": {
         "operationId": "DockerSidecarController_releaseSession",
         "parameters": [
@@ -132,11 +132,11 @@
         },
         "summary": "Release one display sidecar session.",
         "tags": [
-          "docker-sidecar"
+          "platform-display-sidecar"
         ]
       }
     },
-    "/api/v1/apks": {
+    "/api/v1/apk-uploads": {
       "post": {
         "operationId": "ApkController_upload",
         "parameters": [
@@ -182,7 +182,7 @@
           }
         },
         "tags": [
-          "apks"
+          "apk-uploads"
         ]
       },
       "get": {
@@ -214,11 +214,11 @@
           }
         },
         "tags": [
-          "apks"
+          "apk-uploads"
         ]
       }
     },
-    "/api/v1/apks/lookup": {
+    "/api/v1/apk-uploads/lookup": {
       "get": {
         "operationId": "ApkController_lookup",
         "parameters": [
@@ -255,11 +255,11 @@
           }
         },
         "tags": [
-          "apks"
+          "apk-uploads"
         ]
       }
     },
-    "/api/v1/apks/{id}": {
+    "/api/v1/apk-uploads/{id}": {
       "delete": {
         "operationId": "ApkController_remove",
         "parameters": [
@@ -285,11 +285,11 @@
           }
         },
         "tags": [
-          "apks"
+          "apk-uploads"
         ]
       }
     },
-    "/api/v1/apks/cleanup": {
+    "/api/v1/apk-uploads/cleanup": {
       "post": {
         "operationId": "ApkController_cleanup",
         "parameters": [],
@@ -316,7 +316,7 @@
           }
         },
         "tags": [
-          "apks"
+          "apk-uploads"
         ]
       }
     },
@@ -391,7 +391,7 @@
         ]
       }
     },
-    "/api/v1/android-applications": {
+    "/api/v1/apps": {
       "post": {
         "operationId": "AndroidAppsController_create",
         "parameters": [],
@@ -448,7 +448,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AndroidApplicationResponseDto"
+                  "$ref": "#/components/schemas/ApplicationCommandResultDto"
                 }
               }
             }
@@ -456,7 +456,7 @@
         },
         "summary": "Provision an isolated application container.",
         "tags": [
-          "android-applications"
+          "apps"
         ]
       },
       "get": {
@@ -498,11 +498,11 @@
           }
         },
         "tags": [
-          "android-applications"
+          "apps"
         ]
       }
     },
-    "/api/v1/android-applications/{id}/clone": {
+    "/api/v1/apps/{id}/clone": {
       "post": {
         "operationId": "AndroidAppsController_clone",
         "parameters": [
@@ -531,7 +531,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AndroidApplicationResponseDto"
+                  "$ref": "#/components/schemas/ApplicationCommandResultDto"
                 }
               }
             }
@@ -539,11 +539,11 @@
         },
         "summary": "Create a separate owner-scoped application from an existing app definition.",
         "tags": [
-          "android-applications"
+          "apps"
         ]
       }
     },
-    "/api/v1/android-applications/summaries": {
+    "/api/v1/apps/summaries": {
       "get": {
         "operationId": "AndroidAppsController_listSummaries",
         "parameters": [
@@ -584,11 +584,11 @@
         },
         "summary": "List lightweight app state for navigation and polling without Docker reconciliation.",
         "tags": [
-          "android-applications"
+          "apps"
         ]
       }
     },
-    "/api/v1/android-applications/{id}": {
+    "/api/v1/apps/{id}": {
       "get": {
         "operationId": "AndroidAppsController_get",
         "parameters": [
@@ -614,7 +614,7 @@
           }
         },
         "tags": [
-          "android-applications"
+          "apps"
         ]
       },
       "patch": {
@@ -645,14 +645,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AndroidApplicationResponseDto"
+                  "$ref": "#/components/schemas/ApplicationCommandResultDto"
                 }
               }
             }
           }
         },
         "tags": [
-          "android-applications"
+          "apps"
         ]
       },
       "delete": {
@@ -690,11 +690,11 @@
           }
         },
         "tags": [
-          "android-applications"
+          "apps"
         ]
       }
     },
-    "/api/v1/android-applications/{id}/scrcpy-session": {
+    "/api/v1/apps/{id}/viewer/session": {
       "get": {
         "operationId": "AndroidAppsViewerController_scrcpySession",
         "parameters": [
@@ -736,11 +736,11 @@
           }
         },
         "tags": [
-          "android-applications"
+          "app-viewer"
         ]
       }
     },
-    "/api/v1/android-applications/{id}/viewer-activity": {
+    "/api/v1/apps/{id}/viewer/activity": {
       "post": {
         "operationId": "AndroidAppsViewerController_viewerActivity",
         "parameters": [
@@ -780,11 +780,11 @@
         },
         "summary": "Refresh viewer activity for inactivity timeout tracking.",
         "tags": [
-          "android-applications"
+          "app-viewer"
         ]
       }
     },
-    "/api/v1/android-applications/{id}/viewer-control": {
+    "/api/v1/apps/{id}/viewer/control": {
       "post": {
         "operationId": "AndroidAppsViewerController_viewerControl",
         "parameters": [
@@ -821,11 +821,11 @@
         },
         "summary": "Send a viewer control command to the running Android runtime.",
         "tags": [
-          "android-applications"
+          "app-viewer"
         ]
       }
     },
-    "/api/v1/android-applications/network-policy/reconcile": {
+    "/api/v1/network-policies/reconcile": {
       "post": {
         "operationId": "AndroidAppsNetworkController_reconcileNetworkPolicies",
         "parameters": [],
@@ -836,11 +836,11 @@
         },
         "summary": "Rebuild firewall agent rules from stored applications and prune stale rules.",
         "tags": [
-          "android-applications"
+          "network-policies"
         ]
       }
     },
-    "/api/v1/android-applications/{id}/network-policy": {
+    "/api/v1/apps/{id}/network-policy": {
       "patch": {
         "operationId": "AndroidAppsNetworkController_updateNetworkPolicy",
         "parameters": [
@@ -869,7 +869,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AndroidApplicationResponseDto"
+                  "$ref": "#/components/schemas/ApplicationCommandResultDto"
                 }
               }
             }
@@ -877,11 +877,11 @@
         },
         "summary": "Update and reconcile the app container egress allowlist.",
         "tags": [
-          "android-applications"
+          "network-policies"
         ]
       }
     },
-    "/api/v1/android-applications/{id}/network-policy/apply": {
+    "/api/v1/apps/{id}/network-policy/apply": {
       "post": {
         "operationId": "AndroidAppsNetworkController_applyNetworkPolicy",
         "parameters": [
@@ -900,7 +900,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AndroidApplicationResponseDto"
+                  "$ref": "#/components/schemas/ApplicationCommandResultDto"
                 }
               }
             }
@@ -908,11 +908,11 @@
         },
         "summary": "Re-apply the stored network policy without restarting the container.",
         "tags": [
-          "android-applications"
+          "network-policies"
         ]
       }
     },
-    "/api/v1/android-applications/{id}/profile": {
+    "/api/v1/apps/{id}/lifecycle/profile": {
       "post": {
         "operationId": "AndroidAppsLifecycleController_switchProfile",
         "parameters": [
@@ -941,7 +941,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AndroidApplicationResponseDto"
+                  "$ref": "#/components/schemas/ApplicationCommandResultDto"
                 }
               }
             }
@@ -949,11 +949,11 @@
         },
         "summary": "Select the runtime profile volume used by the next container start.",
         "tags": [
-          "android-applications"
+          "app-lifecycle"
         ]
       }
     },
-    "/api/v1/android-applications/{id}/start": {
+    "/api/v1/apps/{id}/lifecycle/start": {
       "post": {
         "operationId": "AndroidAppsLifecycleController_start",
         "parameters": [
@@ -982,7 +982,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AndroidApplicationResponseDto"
+                  "$ref": "#/components/schemas/ApplicationCommandResultDto"
                 }
               }
             }
@@ -990,11 +990,11 @@
         },
         "summary": "Start the application container, optionally selecting a runtime profile.",
         "tags": [
-          "android-applications"
+          "app-lifecycle"
         ]
       }
     },
-    "/api/v1/android-applications/{id}/stop": {
+    "/api/v1/apps/{id}/lifecycle/stop": {
       "post": {
         "operationId": "AndroidAppsLifecycleController_stop",
         "parameters": [
@@ -1013,18 +1013,18 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AndroidApplicationResponseDto"
+                  "$ref": "#/components/schemas/ApplicationCommandResultDto"
                 }
               }
             }
           }
         },
         "tags": [
-          "android-applications"
+          "app-lifecycle"
         ]
       }
     },
-    "/api/v1/android-applications/{id}/apk": {
+    "/api/v1/apps/{id}/lifecycle/apk": {
       "put": {
         "operationId": "AndroidAppsLifecycleController_updateApk",
         "parameters": [
@@ -1062,18 +1062,18 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AndroidApplicationResponseDto"
+                  "$ref": "#/components/schemas/ApplicationCommandResultDto"
                 }
               }
             }
           }
         },
         "tags": [
-          "android-applications"
+          "app-lifecycle"
         ]
       }
     },
-    "/api/v1/android-applications/{id}/notifications": {
+    "/api/v1/apps/{id}/runtime/notifications": {
       "get": {
         "operationId": "AndroidAppsRuntimeController_notifications",
         "parameters": [
@@ -1102,11 +1102,11 @@
           }
         },
         "tags": [
-          "android-applications"
+          "app-runtime"
         ]
       }
     },
-    "/api/v1/android-applications/{id}/files": {
+    "/api/v1/apps/{id}/runtime/data-files": {
       "get": {
         "operationId": "AndroidAppsRuntimeController_listFiles",
         "parameters": [
@@ -1169,7 +1169,7 @@
         },
         "summary": "List entries from the active application data volume.",
         "tags": [
-          "android-applications"
+          "app-runtime"
         ]
       },
       "post": {
@@ -1250,11 +1250,11 @@
         },
         "summary": "Upload a file into a directory in the active data volume.",
         "tags": [
-          "android-applications"
+          "app-runtime"
         ]
       }
     },
-    "/api/v1/android-applications/{id}/files/download": {
+    "/api/v1/apps/{id}/runtime/data-files/download": {
       "get": {
         "operationId": "AndroidAppsRuntimeController_downloadRuntimeFile",
         "parameters": [
@@ -1314,11 +1314,11 @@
         },
         "summary": "Read a file from the active application data volume.",
         "tags": [
-          "android-applications"
+          "app-runtime"
         ]
       }
     },
-    "/api/v1/android-applications/{id}/files/downloads": {
+    "/api/v1/apps/{id}/runtime/download-files": {
       "get": {
         "operationId": "AndroidAppsRuntimeController_listDownloadFiles",
         "parameters": [
@@ -1381,7 +1381,7 @@
         },
         "summary": "List files from the application Download directory.",
         "tags": [
-          "android-applications"
+          "app-runtime"
         ]
       },
       "post": {
@@ -1462,11 +1462,11 @@
         },
         "summary": "Upload a file to the application Download directory.",
         "tags": [
-          "android-applications"
+          "app-runtime"
         ]
       }
     },
-    "/api/v1/android-applications/{id}/files/downloads/{fileName}": {
+    "/api/v1/apps/{id}/runtime/download-files/{fileName}": {
       "get": {
         "operationId": "AndroidAppsRuntimeController_downloadFile",
         "parameters": [
@@ -1534,11 +1534,11 @@
         },
         "summary": "Read a file from the application Download directory.",
         "tags": [
-          "android-applications"
+          "app-runtime"
         ]
       }
     },
-    "/api/v1/android-applications/{id}/clipboard": {
+    "/api/v1/apps/{id}/runtime/clipboard": {
       "get": {
         "operationId": "AndroidAppsRuntimeController_getClipboard",
         "parameters": [
@@ -1565,7 +1565,7 @@
         },
         "summary": "Read the application clipboard when supported by the runtime.",
         "tags": [
-          "android-applications"
+          "app-runtime"
         ]
       },
       "put": {
@@ -1604,11 +1604,11 @@
         },
         "summary": "Write the application clipboard when supported by the runtime.",
         "tags": [
-          "android-applications"
+          "app-runtime"
         ]
       }
     },
-    "/api/v1/android-applications/{id}/screenshot": {
+    "/api/v1/apps/{id}/runtime/screenshot": {
       "post": {
         "operationId": "AndroidAppsRuntimeController_screenshot",
         "parameters": [
@@ -1635,11 +1635,11 @@
         },
         "summary": "Capture a PNG screenshot from the application runtime.",
         "tags": [
-          "android-applications"
+          "app-runtime"
         ]
       }
     },
-    "/api/v1/android-applications/{id}/logs/container": {
+    "/api/v1/apps/{id}/runtime/logs/container": {
       "get": {
         "operationId": "AndroidAppsRuntimeController_containerLogs",
         "parameters": [
@@ -1674,11 +1674,11 @@
         },
         "summary": "Read recent Docker container logs for an application.",
         "tags": [
-          "android-applications"
+          "app-runtime"
         ]
       }
     },
-    "/api/v1/android-applications/{id}/logs/orchestrator": {
+    "/api/v1/apps/{id}/runtime/logs/orchestrator": {
       "get": {
         "operationId": "AndroidAppsRuntimeController_orchestratorLogs",
         "parameters": [
@@ -1713,11 +1713,11 @@
         },
         "summary": "Read recent orchestrator lifecycle events for an application.",
         "tags": [
-          "android-applications"
+          "app-runtime"
         ]
       }
     },
-    "/api/v1/android-applications/{id}/logs/adb": {
+    "/api/v1/apps/{id}/runtime/logs/adb": {
       "get": {
         "operationId": "AndroidAppsRuntimeController_adbLogs",
         "parameters": [
@@ -1752,11 +1752,11 @@
         },
         "summary": "Read recent Android logcat output for a running application.",
         "tags": [
-          "android-applications"
+          "app-runtime"
         ]
       }
     },
-    "/api/v1/container-images": {
+    "/api/v1/platform/container-images": {
       "get": {
         "operationId": "ContainerImagesController_list",
         "parameters": [],
@@ -1767,11 +1767,11 @@
         },
         "summary": "List images available in the container engine.",
         "tags": [
-          "container-images"
+          "platform-container-images"
         ]
       }
     },
-    "/api/v1/container-images/pull": {
+    "/api/v1/platform/container-images/pull": {
       "post": {
         "operationId": "ContainerImagesController_pull",
         "parameters": [],
@@ -1802,11 +1802,11 @@
         },
         "summary": "Pull or update an image.",
         "tags": [
-          "container-images"
+          "platform-container-images"
         ]
       }
     },
-    "/api/v1/container-images/{image}": {
+    "/api/v1/platform/container-images/{image}": {
       "delete": {
         "operationId": "ContainerImagesController_remove",
         "parameters": [
@@ -1836,11 +1836,11 @@
         },
         "summary": "Remove an image by name or id.",
         "tags": [
-          "container-images"
+          "platform-container-images"
         ]
       }
     },
-    "/api/v1/docker-maintenance/containers": {
+    "/api/v1/platform/docker/containers": {
       "get": {
         "operationId": "DockerMaintenanceContainersController_listContainers",
         "parameters": [],
@@ -1861,11 +1861,11 @@
         },
         "summary": "List Docker containers visible to the platform.",
         "tags": [
-          "docker-maintenance"
+          "platform-docker"
         ]
       }
     },
-    "/api/v1/docker-maintenance/containers/{id}": {
+    "/api/v1/platform/docker/containers/{id}": {
       "get": {
         "operationId": "DockerMaintenanceContainersController_getContainer",
         "parameters": [
@@ -1892,7 +1892,7 @@
         },
         "summary": "Read Docker container details and relationships.",
         "tags": [
-          "docker-maintenance"
+          "platform-docker"
         ]
       },
       "delete": {
@@ -1929,11 +1929,11 @@
         },
         "summary": "Remove a Docker container.",
         "tags": [
-          "docker-maintenance"
+          "platform-docker"
         ]
       }
     },
-    "/api/v1/docker-maintenance/containers/{id}/logs": {
+    "/api/v1/platform/docker/containers/{id}/logs": {
       "get": {
         "operationId": "DockerMaintenanceContainersController_getContainerLogs",
         "parameters": [
@@ -1968,11 +1968,11 @@
         },
         "summary": "Read recent Docker logs for a platform container.",
         "tags": [
-          "docker-maintenance"
+          "platform-docker"
         ]
       }
     },
-    "/api/v1/docker-maintenance/containers/{id}/stats": {
+    "/api/v1/platform/docker/containers/{id}/stats": {
       "get": {
         "operationId": "DockerMaintenanceContainersController_getContainerStats",
         "parameters": [
@@ -1999,11 +1999,11 @@
         },
         "summary": "Read live Docker stats for a platform container.",
         "tags": [
-          "docker-maintenance"
+          "platform-docker"
         ]
       }
     },
-    "/api/v1/docker-maintenance/containers/{id}/stop": {
+    "/api/v1/platform/docker/containers/{id}/stop": {
       "post": {
         "operationId": "DockerMaintenanceContainersController_stopContainer",
         "parameters": [
@@ -2030,11 +2030,11 @@
         },
         "summary": "Stop a Docker container.",
         "tags": [
-          "docker-maintenance"
+          "platform-docker"
         ]
       }
     },
-    "/api/v1/docker-maintenance/images": {
+    "/api/v1/platform/docker/images": {
       "get": {
         "operationId": "DockerMaintenanceImagesController_listImages",
         "parameters": [],
@@ -2055,11 +2055,11 @@
         },
         "summary": "List Docker images visible to the platform.",
         "tags": [
-          "docker-maintenance"
+          "platform-docker"
         ]
       }
     },
-    "/api/v1/docker-maintenance/images/{id}": {
+    "/api/v1/platform/docker/images/{id}": {
       "get": {
         "operationId": "DockerMaintenanceImagesController_getImage",
         "parameters": [
@@ -2086,7 +2086,7 @@
         },
         "summary": "Read Docker image details and relationships.",
         "tags": [
-          "docker-maintenance"
+          "platform-docker"
         ]
       },
       "delete": {
@@ -2123,11 +2123,11 @@
         },
         "summary": "Remove a Docker image by encoded id or name.",
         "tags": [
-          "docker-maintenance"
+          "platform-docker"
         ]
       }
     },
-    "/api/v1/docker-maintenance/networks": {
+    "/api/v1/platform/docker/networks": {
       "get": {
         "operationId": "DockerMaintenanceNetworksController_listNetworks",
         "parameters": [],
@@ -2148,11 +2148,11 @@
         },
         "summary": "List Docker networks visible to the platform.",
         "tags": [
-          "docker-maintenance"
+          "platform-docker"
         ]
       }
     },
-    "/api/v1/docker-maintenance/networks/{id}": {
+    "/api/v1/platform/docker/networks/{id}": {
       "get": {
         "operationId": "DockerMaintenanceNetworksController_getNetwork",
         "parameters": [
@@ -2179,7 +2179,7 @@
         },
         "summary": "Read Docker network details and relationships.",
         "tags": [
-          "docker-maintenance"
+          "platform-docker"
         ]
       },
       "delete": {
@@ -2208,11 +2208,11 @@
         },
         "summary": "Remove a Docker network by id.",
         "tags": [
-          "docker-maintenance"
+          "platform-docker"
         ]
       }
     },
-    "/api/v1/docker-maintenance/prune/images": {
+    "/api/v1/platform/docker/prune/images": {
       "post": {
         "operationId": "DockerMaintenancePruneController_pruneImages",
         "parameters": [
@@ -2241,11 +2241,11 @@
         },
         "summary": "Prune unused images.",
         "tags": [
-          "docker-maintenance"
+          "platform-docker"
         ]
       }
     },
-    "/api/v1/docker-maintenance/prune/containers": {
+    "/api/v1/platform/docker/prune/containers": {
       "post": {
         "operationId": "DockerMaintenancePruneController_pruneContainers",
         "parameters": [],
@@ -2263,11 +2263,11 @@
         },
         "summary": "Prune stopped containers.",
         "tags": [
-          "docker-maintenance"
+          "platform-docker"
         ]
       }
     },
-    "/api/v1/docker-maintenance/prune/networks": {
+    "/api/v1/platform/docker/prune/networks": {
       "post": {
         "operationId": "DockerMaintenancePruneController_pruneNetworks",
         "parameters": [],
@@ -2285,11 +2285,11 @@
         },
         "summary": "Prune unused networks.",
         "tags": [
-          "docker-maintenance"
+          "platform-docker"
         ]
       }
     },
-    "/api/v1/docker-maintenance/prune/volumes": {
+    "/api/v1/platform/docker/prune/volumes": {
       "post": {
         "operationId": "DockerMaintenancePruneController_pruneVolumes",
         "parameters": [],
@@ -2307,11 +2307,11 @@
         },
         "summary": "Prune unused volumes.",
         "tags": [
-          "docker-maintenance"
+          "platform-docker"
         ]
       }
     },
-    "/api/v1/docker-maintenance/prune/all": {
+    "/api/v1/platform/docker/prune/all": {
       "post": {
         "operationId": "DockerMaintenancePruneController_pruneAll",
         "parameters": [],
@@ -2329,7 +2329,7 @@
         },
         "summary": "Prune stopped containers, unused networks, dangling images, and unused volumes.",
         "tags": [
-          "docker-maintenance"
+          "platform-docker"
         ]
       }
     },
@@ -2536,7 +2536,7 @@
         ]
       }
     },
-    "/api/v1/system-resources/capacity": {
+    "/api/v1/platform/system-resources/capacity": {
       "get": {
         "operationId": "SystemResourcesController_getCapacity",
         "parameters": [],
@@ -2553,11 +2553,11 @@
           }
         },
         "tags": [
-          "system-resources"
+          "platform-system-resources"
         ]
       }
     },
-    "/api/v1/system-resources": {
+    "/api/v1/platform/system-resources": {
       "get": {
         "operationId": "SystemResourcesController_getUsage",
         "parameters": [],
@@ -2574,7 +2574,7 @@
           }
         },
         "tags": [
-          "system-resources"
+          "platform-system-resources"
         ]
       }
     },
@@ -2657,23 +2657,43 @@
   },
   "tags": [
     {
-      "name": "android-applications",
+      "name": "apps",
       "description": ""
     },
     {
-      "name": "apks",
+      "name": "app-lifecycle",
       "description": ""
     },
     {
-      "name": "container-images",
+      "name": "app-runtime",
       "description": ""
     },
     {
-      "name": "docker-maintenance",
+      "name": "app-viewer",
       "description": ""
     },
     {
-      "name": "system-resources",
+      "name": "apk-uploads",
+      "description": ""
+    },
+    {
+      "name": "network-policies",
+      "description": ""
+    },
+    {
+      "name": "platform-docker",
+      "description": ""
+    },
+    {
+      "name": "platform-container-images",
+      "description": ""
+    },
+    {
+      "name": "platform-display-sidecar",
+      "description": ""
+    },
+    {
+      "name": "platform-system-resources",
       "description": ""
     },
     {
@@ -3155,6 +3175,162 @@
             "example": 512,
             "minimum": 1,
             "maximum": 512
+          }
+        }
+      },
+      "ApplicationCommandNetworkPolicyDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "allowCidrs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "appliedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "enabled",
+          "allowCidrs",
+          "status",
+          "message",
+          "appliedAt"
+        ]
+      },
+      "ApplicationCommandProfileDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "persistent",
+              "temporary"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "mode",
+          "name"
+        ]
+      },
+      "ApplicationCommandApkDto": {
+        "type": "object",
+        "properties": {
+          "uploadedApkId": {
+            "type": "string",
+            "nullable": true
+          },
+          "packageName": {
+            "type": "string",
+            "nullable": true
+          },
+          "originalName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "uploadedApkId",
+          "packageName",
+          "originalName"
+        ]
+      },
+      "ApplicationCommandResultDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "provisioning",
+              "running",
+              "stopped",
+              "error",
+              "removing",
+              "removed"
+            ]
+          },
+          "lifecycleStage": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "image_checking",
+              "image_pulling",
+              "volume_creating",
+              "network_creating",
+              "orchestrator_network_connecting",
+              "container_creating",
+              "container_starting",
+              "android_booting",
+              "apk_installing",
+              "ready",
+              "stopping",
+              "stopped",
+              "removing",
+              "removed",
+              "error"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "operationId": {
+            "type": "string"
+          },
+          "networkPolicy": {
+            "$ref": "#/components/schemas/ApplicationCommandNetworkPolicyDto"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/ApplicationCommandProfileDto"
+          },
+          "apk": {
+            "$ref": "#/components/schemas/ApplicationCommandApkDto"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "lifecycleStage",
+          "message"
+        ]
+      },
+      "CloneAndroidApplicationDto": {
+        "type": "object",
+        "properties": {
+          "ownerUserId": {
+            "type": "string",
+            "description": "Owner user id for the cloned application.",
+            "example": "admin"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name for the cloned application. Defaults to the source app name.",
+            "example": "Signal Android"
           }
         }
       },
@@ -3692,21 +3868,6 @@
           "createdAt",
           "updatedAt"
         ]
-      },
-      "CloneAndroidApplicationDto": {
-        "type": "object",
-        "properties": {
-          "ownerUserId": {
-            "type": "string",
-            "description": "Owner user id for the cloned application.",
-            "example": "admin"
-          },
-          "name": {
-            "type": "string",
-            "description": "Display name for the cloned application. Defaults to the source app name.",
-            "example": "Signal Android"
-          }
-        }
       },
       "AndroidApplicationSummaryResponseDto": {
         "type": "object",

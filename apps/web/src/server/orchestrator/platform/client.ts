@@ -1,4 +1,4 @@
-import { request } from '../request'
+import { emptyRequest } from '../request'
 import type {
   PlatformContainer,
   PlatformContainerDetails,
@@ -12,57 +12,57 @@ import type {
 
 export const orchestratorPlatformClient = {
   listPlatformContainers() {
-    return request<PlatformContainer[]>('/docker-maintenance/containers')
+    return emptyRequest<PlatformContainer[]>('/platform/docker/containers')
   },
 
   getPlatformContainer(id: string) {
-    return request<PlatformContainerDetails>(`/docker-maintenance/containers/${id}`)
+    return emptyRequest<PlatformContainerDetails>(`/platform/docker/containers/${id}`)
   },
 
   getPlatformContainerLogs(id: string, tail = 500) {
     const query = new URLSearchParams({ tail: String(tail) })
-    return request<PlatformContainerLog>(`/docker-maintenance/containers/${id}/logs?${query.toString()}`)
+    return emptyRequest<PlatformContainerLog>(`/platform/docker/containers/${id}/logs?${query.toString()}`)
   },
 
   getPlatformContainerStats(id: string) {
-    return request<PlatformContainerStats>(`/docker-maintenance/containers/${id}/stats`)
+    return emptyRequest<PlatformContainerStats>(`/platform/docker/containers/${id}/stats`)
   },
 
   listPlatformImages() {
-    return request<PlatformImage[]>('/docker-maintenance/images')
+    return emptyRequest<PlatformImage[]>('/platform/docker/images')
   },
 
   getPlatformImage(id: string) {
-    return request<PlatformImageDetails>(`/docker-maintenance/images/${encodeURIComponent(id)}`)
+    return emptyRequest<PlatformImageDetails>(`/platform/docker/images/${encodeURIComponent(id)}`)
   },
 
   removePlatformImage(id: string, force = false) {
     const query = new URLSearchParams({ force: String(force) })
-    return request<{ id: string; removed: boolean }>(
-      `/docker-maintenance/images/${encodeURIComponent(id)}?${query.toString()}`,
+    return emptyRequest<{ id: string; removed: boolean }>(
+      `/platform/docker/images/${encodeURIComponent(id)}?${query.toString()}`,
       { method: 'DELETE' }
     )
   },
 
   listPlatformNetworks() {
-    return request<PlatformNetwork[]>('/docker-maintenance/networks')
+    return emptyRequest<PlatformNetwork[]>('/platform/docker/networks')
   },
 
   getPlatformNetwork(id: string) {
-    return request<PlatformNetworkDetails>(`/docker-maintenance/networks/${id}`)
+    return emptyRequest<PlatformNetworkDetails>(`/platform/docker/networks/${id}`)
   },
 
   removePlatformNetwork(id: string) {
-    return request<{ id: string; removed: boolean }>(`/docker-maintenance/networks/${id}`, { method: 'DELETE' })
+    return emptyRequest<{ id: string; removed: boolean }>(`/platform/docker/networks/${id}`, { method: 'DELETE' })
   },
 
   stopPlatformContainer(id: string) {
-    return request<{ id: string; stopped: boolean }>(`/docker-maintenance/containers/${id}/stop`, { method: 'POST' })
+    return emptyRequest<{ id: string; stopped: boolean }>(`/platform/docker/containers/${id}/stop`, { method: 'POST' })
   },
 
   removePlatformContainer(id: string, force = false) {
     const query = new URLSearchParams({ force: String(force) })
-    return request<{ id: string; removed: boolean }>(`/docker-maintenance/containers/${id}?${query.toString()}`, {
+    return emptyRequest<{ id: string; removed: boolean }>(`/platform/docker/containers/${id}?${query.toString()}`, {
       method: 'DELETE'
     })
   }

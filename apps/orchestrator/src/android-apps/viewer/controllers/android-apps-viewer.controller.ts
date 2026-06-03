@@ -7,12 +7,12 @@ import {
 import { ScrcpySessionDto } from '../dto/scrcpy-session.dto';
 import { AndroidAppsViewerService } from '../services/android-apps-viewer.service';
 
-@ApiTags('android-applications')
-@Controller('android-applications')
+@ApiTags('app-viewer')
+@Controller('apps')
 export class AndroidAppsViewerController {
   constructor(private readonly viewer: AndroidAppsViewerService) {}
 
-  @Get(':id/scrcpy-session')
+  @Get(':id/viewer/session')
   @ApiOkResponse({ type: ScrcpySessionDto })
   scrcpySession(
     @Param('id') id: string,
@@ -25,7 +25,7 @@ export class AndroidAppsViewerController {
     });
   }
 
-  @Post(':id/viewer-activity')
+  @Post(':id/viewer/activity')
   @ApiOperation({
     summary: 'Refresh viewer activity for inactivity timeout tracking.',
   })
@@ -43,7 +43,7 @@ export class AndroidAppsViewerController {
     return this.viewer.recordViewerActivity(id);
   }
 
-  @Post(':id/viewer-control')
+  @Post(':id/viewer/control')
   @ApiOperation({
     summary: 'Send a viewer control command to the running Android runtime.',
   })

@@ -1,27 +1,21 @@
-import { request } from '../request'
+import { emptyRequest, jsonRequest } from '../request'
 import type { CleanupUploadedApksResponse, OrchestratorSettingsResponse } from './types'
 import type { RuntimeUiSettings } from '@/features/settings/domain/orchestrator-ui-settings'
 
 export const orchestratorSettingsClient = {
   cleanupUploadedApks(ownerUserId?: string) {
-    return request<CleanupUploadedApksResponse>('/apks/cleanup', {
-      method: 'POST',
-      body: JSON.stringify({ ownerUserId })
-    })
+    return jsonRequest<CleanupUploadedApksResponse>('/apk-uploads/cleanup', 'POST', { ownerUserId })
   },
 
   getSettings() {
-    return request<OrchestratorSettingsResponse>('/settings')
+    return emptyRequest<OrchestratorSettingsResponse>('/settings')
   },
 
   updateSettings(input: RuntimeUiSettings) {
-    return request<OrchestratorSettingsResponse>('/settings', {
-      method: 'PATCH',
-      body: JSON.stringify(input)
-    })
+    return jsonRequest<OrchestratorSettingsResponse>('/settings', 'PATCH', input)
   },
 
   resetSettings() {
-    return request<OrchestratorSettingsResponse>('/settings/reset', { method: 'POST' })
+    return emptyRequest<OrchestratorSettingsResponse>('/settings/reset', { method: 'POST' })
   }
 }

@@ -2,14 +2,15 @@
 
 import { getStoredAppIcon } from '@/server/app-icons/store'
 import { getCurrentUserContext } from '../../../current-user'
-import { orchestratorApplicationsClient } from '../../client'
+import { orchestratorAppCatalogClient } from '../../catalog-client'
+import { orchestratorAppRuntimeClient } from '../../runtime-client'
 import { sanitizeAndroidApplicationForUser } from '../../safety'
 import type { RunningApplicationNotifications } from '../../types'
 
 export const listApplicationsAction = async ({ reconcile = false }: { reconcile?: boolean } = {}) => {
   const user = await getCurrentUserContext()
   const ownerUserId = user.role === 'admin' ? undefined : user.ownerUserId
-  const apps = await orchestratorApplicationsClient.listApplications(ownerUserId, reconcile)
+  const apps = await orchestratorAppCatalogClient.listApplications(ownerUserId, reconcile)
   return apps.map(app => sanitizeAndroidApplicationForUser(app, user))
 }
 
@@ -20,7 +21,7 @@ export const listRunningApplicationNotificationsAction = async (): Promise<Runni
     return []
   }
 
-  const apps = await orchestratorApplicationsClient.listApplicationSummaries(user.ownerUserId)
+  const apps = await orchestratorAppCatalogClient.listApplicationSummaries(user.ownerUserId)
   const runningApps = apps.filter(app => app.ownerUserId === user.ownerUserId && app.currentStatus === 'running')
 
   const notifications = await Promise.all(
@@ -29,7 +30,7 @@ export const listRunningApplicationNotificationsAction = async (): Promise<Runni
       appName: app.name,
       appIcon: await getStoredAppIcon(app.id),
       appPackageName: app.apkPackageName,
-      notifications: await orchestratorApplicationsClient.getNotifications(app.id).catch(() => [])
+      notifications: await orchestratorAppRuntimeClient.getNotifications(app.id).catch(() => [])
     }))
   )
 

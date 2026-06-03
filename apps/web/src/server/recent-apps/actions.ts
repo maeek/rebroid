@@ -1,7 +1,7 @@
 'use server'
 
 import { getStoredAppIcon } from '@/server/app-icons/store'
-import { orchestratorApplicationsClient } from '@/server/orchestrator/applications/client'
+import { orchestratorAppCatalogClient } from '@/server/orchestrator/applications/catalog-client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { forgetStoredRecentApp, listStoredRecentApps, rememberStoredRecentApp } from './store'
 
@@ -19,7 +19,7 @@ const visibleRecentApps = async (userId: string): Promise<RecentApp[]> => {
   const ownerUserId = user.role === 'admin' ? undefined : user.ownerUserId
   const [recent, apps] = await Promise.all([
     listStoredRecentApps(userId),
-    orchestratorApplicationsClient.listApplicationSummaries(ownerUserId)
+    orchestratorAppCatalogClient.listApplicationSummaries(ownerUserId)
   ])
   const appsById = new Map(apps.map(app => [app.id, app]))
 
@@ -51,7 +51,7 @@ export const listRecentAppsAction = async () => {
 
 export const rememberRecentAppAction = async (appId: string) => {
   const user = await getCurrentUserContext()
-  const app = await orchestratorApplicationsClient.getApplication(appId)
+  const app = await orchestratorAppCatalogClient.getApplication(appId)
   if (user.role !== 'admin' && app.ownerUserId !== user.ownerUserId) {
     throw new Error('Application not found.')
   }

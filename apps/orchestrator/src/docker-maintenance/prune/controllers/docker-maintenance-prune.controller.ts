@@ -7,8 +7,8 @@ import {
 } from '../../dto/docker-maintenance-response.dto';
 import { PruneImagesDto } from '../dto/prune-images.dto';
 
-@ApiTags('docker-maintenance')
-@Controller('docker-maintenance/prune')
+@ApiTags('platform-docker')
+@Controller('platform/docker/prune')
 export class DockerMaintenancePruneController {
   constructor(private readonly prune: DockerPlatformPruneService) {}
 

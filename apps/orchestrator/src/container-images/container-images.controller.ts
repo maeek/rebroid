@@ -19,8 +19,8 @@ import { SettingsService } from '../settings/settings.service';
 import { PullContainerImageDto } from './dto/pull-container-image.dto';
 import { RemoveContainerImageDto } from './dto/remove-container-image.dto';
 
-@ApiTags('container-images')
-@Controller('container-images')
+@ApiTags('platform-container-images')
+@Controller('platform/container-images')
 export class ContainerImagesController {
   constructor(
     private readonly images: DockerImageRuntimeService,

@@ -7,8 +7,8 @@ import {
   DockerPlatformRemovalResponseDto,
 } from '../../dto/docker-maintenance-response.dto';
 
-@ApiTags('docker-maintenance')
-@Controller('docker-maintenance/images')
+@ApiTags('platform-docker')
+@Controller('platform/docker/images')
 export class DockerMaintenanceImagesController {
   constructor(private readonly images: DockerPlatformImagesService) {}
 

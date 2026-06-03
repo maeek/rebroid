@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { recordAuditEvent } from '@/server/audit/events'
-import { orchestratorApplicationsClient } from '@/server/orchestrator/applications/client'
+import { orchestratorApkUploadsClient } from '@/server/orchestrator/applications/apk-client'
 import { OrchestratorRequestError } from '@/server/orchestrator/request'
 import { consumeRateLimit } from '@/server/rate-limit/in-memory'
 import { getApkRouteUser } from '../apk-route-auth'
@@ -28,7 +28,7 @@ export const POST = async (request: NextRequest) => {
       return NextResponse.json({ message: 'Multipart APK file is required' }, { status: 400 })
     }
 
-    const uploaded = await orchestratorApplicationsClient.uploadApk(request.body, user.ownerUserId, contentType)
+    const uploaded = await orchestratorApkUploadsClient.uploadApk(request.body, user.ownerUserId, contentType)
     recordAuditEvent({
       actorUserId: user.ownerUserId,
       actorLabel: user.ownerUserId,

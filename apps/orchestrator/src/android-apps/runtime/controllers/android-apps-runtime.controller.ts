@@ -31,18 +31,18 @@ import { ApplicationRuntimeFilesQueryDto } from '../dto/application-runtime-file
 import { ApplicationScreenshotDto } from '../dto/application-screenshot.dto';
 import { AndroidAppsRuntimeAccessService } from '../services/android-apps-runtime-access.service';
 
-@ApiTags('android-applications')
-@Controller('android-applications')
+@ApiTags('app-runtime')
+@Controller('apps')
 export class AndroidAppsRuntimeController {
   constructor(private readonly runtime: AndroidAppsRuntimeAccessService) {}
 
-  @Get(':id/notifications')
+  @Get(':id/runtime/notifications')
   @ApiOkResponse({ type: AndroidNotificationDto, isArray: true })
   notifications(@Param('id') id: string) {
     return this.runtime.notifications(id);
   }
 
-  @Get(':id/files')
+  @Get(':id/runtime/data-files')
   @ApiOperation({
     summary: 'List entries from the active application data volume.',
   })
@@ -54,7 +54,7 @@ export class AndroidAppsRuntimeController {
     return this.runtime.listFiles(id, query.path);
   }
 
-  @Post(':id/files')
+  @Post(':id/runtime/data-files')
   @ApiOperation({
     summary: 'Upload a file into a directory in the active data volume.',
   })
@@ -77,7 +77,7 @@ export class AndroidAppsRuntimeController {
     return this.runtime.uploadFile(id, request.raw, query.path);
   }
 
-  @Get(':id/files/download')
+  @Get(':id/runtime/data-files/download')
   @ApiOperation({
     summary: 'Read a file from the active application data volume.',
   })
@@ -89,7 +89,7 @@ export class AndroidAppsRuntimeController {
     return this.runtime.downloadRuntimeFile(id, query.path);
   }
 
-  @Get(':id/files/downloads')
+  @Get(':id/runtime/download-files')
   @ApiOperation({
     summary: 'List files from the application Download directory.',
   })
@@ -101,7 +101,7 @@ export class AndroidAppsRuntimeController {
     return this.runtime.listDownloadFiles(id, query);
   }
 
-  @Post(':id/files/downloads')
+  @Post(':id/runtime/download-files')
   @ApiOperation({
     summary: 'Upload a file to the application Download directory.',
   })
@@ -124,7 +124,7 @@ export class AndroidAppsRuntimeController {
     return this.runtime.uploadDownloadFile(id, request.raw, query);
   }
 
-  @Get(':id/files/downloads/:fileName')
+  @Get(':id/runtime/download-files/:fileName')
   @ApiOperation({
     summary: 'Read a file from the application Download directory.',
   })
@@ -137,7 +137,7 @@ export class AndroidAppsRuntimeController {
     return this.runtime.downloadFile(id, fileName, query);
   }
 
-  @Get(':id/clipboard')
+  @Get(':id/runtime/clipboard')
   @ApiOperation({
     summary: 'Read the application clipboard when supported by the runtime.',
   })
@@ -146,7 +146,7 @@ export class AndroidAppsRuntimeController {
     return this.runtime.getClipboard(id);
   }
 
-  @Put(':id/clipboard')
+  @Put(':id/runtime/clipboard')
   @ApiOperation({
     summary: 'Write the application clipboard when supported by the runtime.',
   })
@@ -158,7 +158,7 @@ export class AndroidAppsRuntimeController {
     return this.runtime.setClipboard(id, dto.text);
   }
 
-  @Post(':id/screenshot')
+  @Post(':id/runtime/screenshot')
   @ApiOperation({
     summary: 'Capture a PNG screenshot from the application runtime.',
   })
@@ -167,7 +167,7 @@ export class AndroidAppsRuntimeController {
     return this.runtime.screenshot(id);
   }
 
-  @Get(':id/logs/container')
+  @Get(':id/runtime/logs/container')
   @ApiOperation({
     summary: 'Read recent Docker container logs for an application.',
   })
@@ -176,7 +176,7 @@ export class AndroidAppsRuntimeController {
     return this.runtime.containerLogs(id, tail ? Number(tail) : undefined);
   }
 
-  @Get(':id/logs/orchestrator')
+  @Get(':id/runtime/logs/orchestrator')
   @ApiOperation({
     summary: 'Read recent orchestrator lifecycle events for an application.',
   })
@@ -185,7 +185,7 @@ export class AndroidAppsRuntimeController {
     return this.runtime.eventLogs(id, tail ? Number(tail) : undefined);
   }
 
-  @Get(':id/logs/adb')
+  @Get(':id/runtime/logs/adb')
   @ApiOperation({
     summary: 'Read recent Android logcat output for a running application.',
   })

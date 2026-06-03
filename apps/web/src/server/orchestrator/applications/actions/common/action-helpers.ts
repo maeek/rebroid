@@ -1,12 +1,12 @@
 import { getCurrentUserContext } from '../../../current-user'
-import { orchestratorApplicationsClient } from '../../client'
+import { orchestratorAppCatalogClient } from '../../catalog-client'
 import { sanitizeAndroidApplicationForUser } from '../../safety'
 
 export type CurrentUserContext = Awaited<ReturnType<typeof getCurrentUserContext>>
 
 const getAccessibleApplication = async (id: string) => {
   const user = await getCurrentUserContext()
-  const app = await orchestratorApplicationsClient.getApplication(id)
+  const app = await orchestratorAppCatalogClient.getApplication(id)
   if (user.role !== 'admin' && app.ownerUserId !== user.ownerUserId) {
     throw new Error('Application not found.')
   }
@@ -24,7 +24,7 @@ export const assertCanAccessApplication = async (id: string) => {
 
 export const assertCanUseOwnedApplicationRuntime = async (id: string, message: string) => {
   const user = await getCurrentUserContext()
-  const app = await orchestratorApplicationsClient.getApplication(id)
+  const app = await orchestratorAppCatalogClient.getApplication(id)
   if (app.ownerUserId !== user.ownerUserId) {
     throw new Error(message)
   }
@@ -36,7 +36,7 @@ export const assertCanOpenApplicationSlot = async (user: CurrentUserContext, can
     return
   }
 
-  const apps = await orchestratorApplicationsClient.listApplications(user.ownerUserId)
+  const apps = await orchestratorAppCatalogClient.listApplications(user.ownerUserId)
   const openApps = apps.filter(app => ['running', 'provisioning'].includes(app.status.currentStatus))
   const candidateIsAlreadyOpen = candidateId ? openApps.some(app => app.id === candidateId) : false
 

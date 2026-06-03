@@ -1,4 +1,4 @@
-import { request } from '../request'
+import { emptyRequest } from '../request'
 import type {
   DisplaySidecarSession,
   OrchestratorHealth,
@@ -10,34 +10,36 @@ import type {
 
 export const orchestratorDiagnosticsClient = {
   health() {
-    return request<OrchestratorHealth>('/diagnostics')
+    return emptyRequest<OrchestratorHealth>('/diagnostics')
   },
 
   healthSummary() {
-    return request<OrchestratorHealth>('/diagnostics/summary')
+    return emptyRequest<OrchestratorHealth>('/diagnostics/summary')
   },
 
   dockerMetrics() {
-    return request<DockerMetricsSnapshot>('/metrics/docker')
+    return emptyRequest<DockerMetricsSnapshot>('/metrics/docker')
   },
 
   repairDisplaySidecar() {
-    return request<ServiceHealth>('/docker/sidecar/repair', { method: 'POST' })
+    return emptyRequest<ServiceHealth>('/platform/display-sidecar/repair', { method: 'POST' })
   },
 
   listDisplaySidecarSessions() {
-    return request<DisplaySidecarSession[]>('/docker/sidecar/sessions')
+    return emptyRequest<DisplaySidecarSession[]>('/platform/display-sidecar/sessions')
   },
 
   releaseDisplaySidecarSession(id: string) {
-    return request<DisplaySidecarSession>(`/docker/sidecar/sessions/${encodeURIComponent(id)}`, { method: 'DELETE' })
+    return emptyRequest<DisplaySidecarSession>(`/platform/display-sidecar/sessions/${encodeURIComponent(id)}`, {
+      method: 'DELETE'
+    })
   },
 
   getSystemResources() {
-    return request<SystemResources>('/system-resources')
+    return emptyRequest<SystemResources>('/platform/system-resources')
   },
 
   getSystemResourceCapacity() {
-    return request<SystemResourceCapacity>('/system-resources/capacity')
+    return emptyRequest<SystemResourceCapacity>('/platform/system-resources/capacity')
   }
 }

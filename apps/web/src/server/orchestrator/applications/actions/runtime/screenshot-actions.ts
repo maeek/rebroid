@@ -2,7 +2,7 @@
 
 import { recordAuditEvent } from '@/server/audit/events'
 import { hasPermission } from '@/shared/permissions/permissions'
-import { orchestratorApplicationsClient } from '../../client'
+import { orchestratorAppRuntimeClient } from '../../runtime-client'
 import { assertCanUseOwnedApplicationRuntime, ownedRuntimeMessage } from '../common/action-helpers'
 
 export const captureApplicationScreenshotAction = async (id: string) => {
@@ -10,7 +10,7 @@ export const captureApplicationScreenshotAction = async (id: string) => {
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:capture-screenshot')) {
     throw new Error('You do not have permission to capture screenshots.')
   }
-  const result = await orchestratorApplicationsClient.captureScreenshot(id)
+  const result = await orchestratorAppRuntimeClient.captureScreenshot(id)
   recordAuditEvent({
     actorUserId: user.ownerUserId,
     actorLabel: user.ownerUserId,

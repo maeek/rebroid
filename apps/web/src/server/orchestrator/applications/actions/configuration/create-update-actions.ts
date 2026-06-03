@@ -5,7 +5,8 @@ import { allowsBroadInternetAccess, hasPermission, isRedroidImage } from '@/shar
 import { applyRedroidDefaultContainerArgs } from '@/shared/runtime/redroid-runtime'
 import { getCurrentOwnerUserId, getCurrentUserContext } from '../../../current-user'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
-import { orchestratorApplicationsClient } from '../../client'
+import { orchestratorAppCatalogClient } from '../../catalog-client'
+import { orchestratorAppLifecycleClient } from '../../lifecycle-client'
 import { enforceResourceQuotas, enforceSessionQuota, sanitizeAndroidApplicationForUser } from '../../safety'
 import { assertCanAccessApplication, assertCanOpenApplicationSlot } from '../common/action-helpers'
 import type { CreateApplicationActionInput, UpdateAndroidApplicationInput } from '../../types'
@@ -105,7 +106,7 @@ export const updateApplicationAction = async (id: string, input: UpdateAndroidAp
   assertCanChangeContainerArgs(user, input)
   enforceResourceQuotas(input, user.quotas)
   enforceSessionQuota(input, user.quotas)
-  const app = await orchestratorApplicationsClient.updateApplication(id, input)
+  const command = await orchestratorAppCatalogClient.updateApplication(id, input)
   recordAuditEvent({
     actorUserId: user.ownerUserId,
     actorLabel: user.ownerUserId,
@@ -113,10 +114,11 @@ export const updateApplicationAction = async (id: string, input: UpdateAndroidAp
     action: 'application.update',
     resourceType: 'application',
     resourceId: id,
-    resourceLabel: app.name,
+    resourceLabel: command.name,
     details: { fields: Object.keys(input) }
   })
   revalidateApplicationDetail(id)
+  const app = await orchestratorAppCatalogClient.getApplication(id)
   return sanitizeAndroidApplicationForUser(app, user)
 }
 
@@ -135,7 +137,7 @@ export const createApplicationAction = async (input: CreateApplicationActionInpu
   await assertCanOpenApplicationSlot(user)
   const ownerUserId = await getCurrentOwnerUserId()
   const containerImage = input.containerImage?.trim()
-  const app = await orchestratorApplicationsClient.createApplication({
+  const command = await orchestratorAppCatalogClient.createApplication({
     ...input,
     ownerUserId,
     containerArgs: containerImage
@@ -148,10 +150,11 @@ export const createApplicationAction = async (input: CreateApplicationActionInpu
     category: 'application',
     action: 'application.create',
     resourceType: 'application',
-    resourceId: app.id,
-    resourceLabel: app.name
+    resourceId: command.id,
+    resourceLabel: command.name
   })
   revalidateApplicationList()
+  const app = await orchestratorAppCatalogClient.getApplication(command.id)
   return sanitizeAndroidApplicationForUser(app, user)
 }
 
@@ -161,7 +164,7 @@ export const updateApkAction = async (id: string, uploadedApkId: string) => {
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:update-apk')) {
     throw new Error('You do not have permission to update APKs.')
   }
-  const app = await orchestratorApplicationsClient.updateApk(id, uploadedApkId)
+  const command = await orchestratorAppLifecycleClient.updateApk(id, uploadedApkId)
   recordAuditEvent({
     actorUserId: user.ownerUserId,
     actorLabel: user.ownerUserId,
@@ -169,9 +172,10 @@ export const updateApkAction = async (id: string, uploadedApkId: string) => {
     action: 'application.apk.update',
     resourceType: 'application',
     resourceId: id,
-    resourceLabel: app.name,
+    resourceLabel: command.name,
     details: { uploadedApkId }
   })
   revalidateApplicationDetail(id)
+  const app = await orchestratorAppCatalogClient.getApplication(id)
   return sanitizeAndroidApplicationForUser(app, user)
 }

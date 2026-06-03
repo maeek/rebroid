@@ -4,7 +4,8 @@ import { recordAuditEvent } from '@/server/audit/events'
 import { allowsBroadInternetAccess, hasPermission } from '@/shared/permissions/permissions'
 import { getCurrentUserContext } from '../../../current-user'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
-import { orchestratorApplicationsClient } from '../../client'
+import { orchestratorAppCatalogClient } from '../../catalog-client'
+import { orchestratorAppNetworkPolicyClient } from '../../network-policy-client'
 import { sanitizeAndroidApplicationForUser } from '../../safety'
 import { assertCanAccessApplication } from '../common/action-helpers'
 import type { UpdateNetworkPolicyInput } from '../../types'
@@ -22,7 +23,7 @@ export const updateNetworkPolicyAction = async (id: string, input: UpdateNetwork
   ) {
     throw new Error('You do not have permission to allow broad internet access.')
   }
-  const app = await orchestratorApplicationsClient.updateNetworkPolicy(id, input)
+  const command = await orchestratorAppNetworkPolicyClient.updateNetworkPolicy(id, input)
   recordAuditEvent({
     actorUserId: user.ownerUserId,
     actorLabel: user.ownerUserId,
@@ -30,7 +31,7 @@ export const updateNetworkPolicyAction = async (id: string, input: UpdateNetwork
     action: 'application.network.update',
     resourceType: 'application',
     resourceId: id,
-    resourceLabel: app.name,
+    resourceLabel: command.name,
     details: {
       networkPolicyEnabled: input.networkPolicyEnabled,
       allowCidrsCount: input.networkPolicyAllowCidrs?.length ?? 0
@@ -38,6 +39,7 @@ export const updateNetworkPolicyAction = async (id: string, input: UpdateNetwork
   })
   revalidateApplicationList()
   revalidateApplicationDetail(id)
+  const app = await orchestratorAppCatalogClient.getApplication(id)
   return sanitizeAndroidApplicationForUser(app, user)
 }
 
@@ -47,7 +49,7 @@ export const applyNetworkPolicyAction = async (id: string) => {
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:configure-egress')) {
     throw new Error('You do not have permission to apply network policy.')
   }
-  const app = await orchestratorApplicationsClient.applyNetworkPolicy(id)
+  const command = await orchestratorAppNetworkPolicyClient.applyNetworkPolicy(id)
   recordAuditEvent({
     actorUserId: user.ownerUserId,
     actorLabel: user.ownerUserId,
@@ -55,9 +57,10 @@ export const applyNetworkPolicyAction = async (id: string) => {
     action: 'application.network.apply',
     resourceType: 'application',
     resourceId: id,
-    resourceLabel: app.name
+    resourceLabel: command.name
   })
   revalidateApplicationDetail(id)
+  const app = await orchestratorAppCatalogClient.getApplication(id)
   return sanitizeAndroidApplicationForUser(app, user)
 }
 
@@ -66,7 +69,7 @@ export const reconcileNetworkPoliciesAction = async () => {
   if (user.role !== 'admin') {
     throw new Error('You do not have permission to reconcile all network policies.')
   }
-  const result = await orchestratorApplicationsClient.reconcileNetworkPolicies()
+  const result = await orchestratorAppNetworkPolicyClient.reconcileNetworkPolicies()
   recordAuditEvent({
     actorUserId: user.ownerUserId,
     actorLabel: user.ownerUserId,

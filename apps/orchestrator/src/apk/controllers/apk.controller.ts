@@ -24,8 +24,8 @@ import { UploadApkDto } from '../dto/upload-apk.dto';
 import { UploadedApk } from '../entities/uploaded-apk.entity';
 import { ApkCatalogService } from '../services/apk-catalog.service';
 
-@ApiTags('apks')
-@Controller('apks')
+@ApiTags('apk-uploads')
+@Controller('apk-uploads')
 export class ApkController {
   constructor(private readonly apk: ApkCatalogService) {}
 

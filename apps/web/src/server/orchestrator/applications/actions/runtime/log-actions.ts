@@ -1,7 +1,7 @@
 'use server'
 
 import { hasPermission } from '@/shared/permissions/permissions'
-import { orchestratorApplicationsClient } from '../../client'
+import { orchestratorAppRuntimeClient } from '../../runtime-client'
 import { sanitizeApplicationLogForUser } from '../../safety'
 import { assertCanUseOwnedApplicationRuntime, ownedRuntimeMessage } from '../common/action-helpers'
 
@@ -14,6 +14,6 @@ export const getApplicationLogsAction = async (
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:view-logs')) {
     throw new Error('You do not have permission to view logs.')
   }
-  const log = await orchestratorApplicationsClient.getApplicationLogs(id, source, tail)
+  const log = await orchestratorAppRuntimeClient.getApplicationLogs(id, source, tail)
   return sanitizeApplicationLogForUser(log, user)
 }

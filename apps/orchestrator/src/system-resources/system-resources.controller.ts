@@ -6,8 +6,8 @@ import {
 } from './dto/system-resources.dto';
 import { SystemResourcesService } from './system-resources.service';
 
-@ApiTags('system-resources')
-@Controller('system-resources')
+@ApiTags('platform-system-resources')
+@Controller('platform/system-resources')
 export class SystemResourcesController {
   constructor(private readonly resources: SystemResourcesService) {}
 
