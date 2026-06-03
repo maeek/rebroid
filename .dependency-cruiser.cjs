@@ -17,7 +17,6 @@ module.exports = {
   options: {
     exclude: '(^|/)(node_modules|\\.next|dist)(/|$)',
     doNotFollow: { path: 'node_modules' },
-    tsConfig: { fileName: 'apps/orchestrator/tsconfig.json' },
     enhancedResolveOptions: { extensions: ['.ts', '.tsx', '.js', '.mjs'] }
   }
 }

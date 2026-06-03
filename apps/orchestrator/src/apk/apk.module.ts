@@ -7,7 +7,10 @@ import { UploadedApk } from './entities/uploaded-apk.entity';
 import { ApkArchiveService } from './services/apk-archive.service';
 import { ApkCatalogService } from './services/apk-catalog.service';
 import { ApkIconExtractorService } from './services/apk-icon-extractor.service';
+import { ApkManifestReaderService } from './services/apk-manifest-reader.service';
+import { ApkResourceReaderService } from './services/apk-resource-reader.service';
 import { ApkStorageService } from './services/apk-storage.service';
+import { ApkZipReaderService } from './services/apk-zip-reader.service';
 
 @Module({
   imports: [
@@ -19,7 +22,10 @@ import { ApkStorageService } from './services/apk-storage.service';
     ApkArchiveService,
     ApkCatalogService,
     ApkIconExtractorService,
+    ApkManifestReaderService,
+    ApkResourceReaderService,
     ApkStorageService,
+    ApkZipReaderService,
   ],
   exports: [ApkCatalogService, ApkIconExtractorService, ApkStorageService],
 })

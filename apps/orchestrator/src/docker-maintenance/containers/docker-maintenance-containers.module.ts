@@ -1,11 +1,10 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { AndroidApplication } from '../../android-apps/android-application.entity';
+import { AndroidAppsPersistenceModule } from '../../android-apps/persistence/android-apps-persistence.module';
 import { DockerModule } from '../../docker/docker.module';
 import { DockerMaintenanceContainersController } from './controllers/docker-maintenance-containers.controller';
 
 @Module({
-  imports: [DockerModule, TypeOrmModule.forFeature([AndroidApplication])],
+  imports: [DockerModule, AndroidAppsPersistenceModule],
   controllers: [DockerMaintenanceContainersController],
 })
 export class DockerMaintenanceContainersModule {}

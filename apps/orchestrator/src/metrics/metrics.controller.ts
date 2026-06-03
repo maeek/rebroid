@@ -1,6 +1,6 @@
 import { Controller, Get, Res } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
-import type { Response } from 'express';
+import type { FastifyReply } from 'fastify';
 import { DockerMetricsSnapshotDto } from './dto/docker-metrics.dto';
 import { MetricsService } from './metrics.service';
 
@@ -9,9 +9,9 @@ export class MetricsController {
   constructor(private readonly metrics: MetricsService) {}
 
   @Get()
-  async read(@Res() response: Response) {
-    response.setHeader('content-type', this.metrics.registry.contentType);
-    response.send(await this.metrics.registry.metrics());
+  async read(@Res({ passthrough: true }) response: FastifyReply) {
+    response.header('content-type', this.metrics.registry.contentType);
+    return this.metrics.registry.metrics();
   }
 
   @Get('docker')

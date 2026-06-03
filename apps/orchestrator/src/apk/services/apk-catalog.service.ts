@@ -5,9 +5,12 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import Busboy from 'busboy';
-import type { Request } from 'express';
 import { In, IsNull, Repository } from 'typeorm';
 import { AndroidApplication } from '../../android-apps/android-application.entity';
+import {
+  type MultipartUploadRequest,
+  isMultipartUpload,
+} from '../../common/http-upload';
 import { SettingsService } from '../../settings/settings.service';
 import { UploadedApk } from '../entities/uploaded-apk.entity';
 import { ApkIconExtractorService } from './apk-icon-extractor.service';
@@ -25,8 +28,8 @@ export class ApkCatalogService {
     private readonly iconExtractor: ApkIconExtractorService,
   ) {}
 
-  async upload(request: Request, ownerUserId?: string | null) {
-    if (!request.is('multipart/form-data')) {
+  async upload(request: MultipartUploadRequest, ownerUserId?: string | null) {
+    if (!isMultipartUpload(request.headers)) {
       throw new ConflictException('A multipart APK upload is required.');
     }
 

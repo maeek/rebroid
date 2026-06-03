@@ -8,7 +8,7 @@ import {
   Query,
   Req,
 } from '@nestjs/common';
-import type { Request } from 'express';
+import type { FastifyRequest } from 'fastify';
 import {
   ApiBody,
   ApiConsumes,
@@ -72,9 +72,9 @@ export class AndroidAppsRuntimeController {
   uploadFile(
     @Param('id') id: string,
     @Query() query: ApplicationRuntimeFilesQueryDto,
-    @Req() request: Request,
+    @Req() request: FastifyRequest,
   ) {
-    return this.runtime.uploadFile(id, request, query.path);
+    return this.runtime.uploadFile(id, request.raw, query.path);
   }
 
   @Get(':id/files/download')
@@ -119,9 +119,9 @@ export class AndroidAppsRuntimeController {
   uploadDownloadFile(
     @Param('id') id: string,
     @Query() query: ApplicationRuntimeFilesQueryDto,
-    @Req() request: Request,
+    @Req() request: FastifyRequest,
   ) {
-    return this.runtime.uploadDownloadFile(id, request, query);
+    return this.runtime.uploadDownloadFile(id, request.raw, query);
   }
 
   @Get(':id/files/downloads/:fileName')

@@ -42,16 +42,14 @@ import { stoppedStatusMessage } from '../../common/utils/android-apps-status-mes
 import { AndroidAppsRuntimeNetworkService } from '../../network/services/android-apps-runtime-network.service';
 import { AndroidAppsProvisioningApkService } from '../../provisioning/services/android-apps-provisioning-apk.service';
 import { AndroidAppsProvisioningService } from '../../provisioning/services/android-apps-provisioning.service';
-import {
-  applyRedroidDefaultContainerArgs,
-  isRedroidImageName,
-} from '../../provisioning/utils/redroid-runtime.utils';
+import { applyRedroidDefaultContainerArgs } from '../../provisioning/utils/redroid-runtime.utils';
 import { StartAndroidApplicationDto } from '../dto/start-android-application.dto';
 import { SwitchApplicationProfileDto } from '../dto/switch-application-profile.dto';
 import { UpdateAndroidApplicationApkDto } from '../dto/update-android-application-apk.dto';
 import { AndroidAppsDisplaySidecarService } from '../../viewer/services/android-apps-display-sidecar.service';
 import { AndroidAppLifecycleJobKind } from '../entities/android-app-lifecycle-job.entity';
 import { AndroidAppLifecycleJobsService } from './android-app-lifecycle-jobs.service';
+import { AndroidAppsRuntimePreparationService } from './android-apps-runtime-preparation.service';
 
 @Injectable()
 export class AndroidAppsLifecycleService implements OnModuleInit {
@@ -80,6 +78,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     private readonly state: AndroidAppsStateService,
     private readonly displaySidecar: AndroidAppsDisplaySidecarService,
     private readonly jobs: AndroidAppLifecycleJobsService,
+    private readonly runtimePreparation: AndroidAppsRuntimePreparationService,
   ) {
     this.limitBackgroundJob = pLimit(
       this.config.getOrThrow<number>('app.lifecycle.maxConcurrentJobs'),
@@ -143,7 +142,9 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
       recreateContainerOnNextStart: false,
       removeDataOnRemoval: false,
       networkPolicyEnabled: dto.networkPolicyEnabled ?? true,
-      networkPolicyAllowCidrs: JSON.stringify(dto.networkPolicyAllowCidrs ?? []),
+      networkPolicyAllowCidrs: JSON.stringify(
+        dto.networkPolicyAllowCidrs ?? [],
+      ),
       networkPolicyStatus: null,
       networkPolicyMessage: null,
       networkPolicyAppliedAt: null,
@@ -206,10 +207,8 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
   /** Updates the editable app settings. */
   async update(id: string, dto: UpdateAndroidApplicationDto) {
     const app = await this.state.get(id);
-    const shouldRecreateContainer = this.shouldRecreateContainerOnUpdate(
-      app,
-      dto,
-    );
+    const shouldRecreateContainer =
+      this.runtimePreparation.shouldRecreateContainerOnUpdate(app, dto);
 
     if (dto.name !== undefined) {
       app.name = dto.name;
@@ -231,7 +230,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     }
 
     if (shouldRecreateContainer) {
-      await this.markContainerForRecreation(app);
+      await this.runtimePreparation.markContainerForRecreation(app);
     }
 
     return this.state.saveAndDecorate(app);
@@ -242,24 +241,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     const app = await this.state.get(id);
     this.assertRunnable(app);
 
-    if (app.containerId) {
-      await this.networkPolicy.remove(app);
-      await this.lifecycle.removeContainer(app.containerId);
-      app.containerId = null;
-    }
-
-    app.profileMode = dto.profileMode ?? app.profileMode;
-    app.profileName = dto.profileName?.trim() || app.profileName || 'default';
-    app.volumeName = this.networkIsolation.namesFor(
-      app.id,
-      app.name,
-      app.profileName,
-    ).volumeName;
-    app.status = AndroidApplicationStatus.Stopped;
-    app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
-    app.statusMessage =
-      'Profile switched. Start the app to create a container for this profile.';
-    app.lastStoppedAt = new Date();
+    await this.runtimePreparation.switchProfile(app, dto);
 
     return this.state.saveAndDecorate(app);
   }
@@ -270,7 +252,9 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     this.assertRunnable(app);
 
     if (app.status === AndroidApplicationStatus.Provisioning) {
-      if (!(await this.recoverStaleProvisioningForStart(app))) {
+      if (
+        !(await this.runtimePreparation.recoverStaleProvisioningForStart(app))
+      ) {
         return this.state.decorateApplication(app);
       }
     }
@@ -290,14 +274,14 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     }
 
     if (dto.profileMode !== undefined || dto.profileName !== undefined) {
-      await this.prepareRuntimeProfile(app, dto);
+      await this.runtimePreparation.prepareRuntimeProfile(app, dto);
     }
 
-    await this.prepareRuntimeDefaults(app);
+    await this.runtimePreparation.prepareRuntimeDefaults(app);
     await this.state.clearMissingContainerReference(app);
-    await this.prepareFailedContainerForRestart(app);
-    await this.prepareContainerForRuntimeHostConfig(app);
-    await this.prepareContainerForRecreationOnStart(app);
+    await this.runtimePreparation.prepareFailedContainerForRestart(app);
+    await this.runtimePreparation.prepareContainerForRuntimeHostConfig(app);
+    await this.runtimePreparation.prepareContainerForRecreationOnStart(app);
 
     this.tracker.reset(app.id);
     app.status = AndroidApplicationStatus.Provisioning;
@@ -614,7 +598,9 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
       try {
         await this.lifecycle.stopContainer(app.containerId, 0);
       } catch (error) {
-        if (!(await this.recoverAfterFailedStop(app, error))) {
+        if (
+          !(await this.runtimePreparation.recoverAfterFailedStop(app, error))
+        ) {
           throw error;
         }
       }
@@ -623,7 +609,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     this.releaseDisplaySessionsInBackground(app.id, 'stopping');
 
     if (app.recreateContainerOnNextStart && app.containerId) {
-      await this.removeManagedContainer(app);
+      await this.runtimePreparation.removeManagedContainer(app);
       app.recreateContainerOnNextStart = false;
     }
 
@@ -900,329 +886,14 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
   }
 
   /** Applies profile changes before starting the app. */
-  private async prepareRuntimeProfile(
-    app: AndroidApplication,
-    dto: StartAndroidApplicationDto,
-  ) {
-    const nextProfileMode = dto.profileMode ?? app.profileMode;
-    const nextProfileName =
-      dto.profileName?.trim() || app.profileName || 'default';
-    const nextVolumeName = this.networkIsolation.namesFor(
-      app.id,
-      app.name,
-      nextProfileName,
-    ).volumeName;
-    const profileChanged =
-      nextProfileMode !== app.profileMode ||
-      nextProfileName !== app.profileName ||
-      nextVolumeName !== app.volumeName;
-    const nextSavedProfilesJson = rememberSavedProfile(app.savedProfilesJson, {
-      mode: nextProfileMode,
-      name: nextProfileName,
-    });
-
-    if (!profileChanged) {
-      if (nextSavedProfilesJson !== app.savedProfilesJson) {
-        app.savedProfilesJson = nextSavedProfilesJson;
-        await this.state.save(app);
-      }
-      return;
-    }
-
-    if (app.containerId) {
-      await this.networkPolicy.remove(app);
-      await this.lifecycle.removeContainer(app.containerId);
-      app.containerId = null;
-    }
-
-    app.profileMode = nextProfileMode;
-    app.profileName = nextProfileName;
-    app.savedProfilesJson = nextSavedProfilesJson;
-    app.volumeName = nextVolumeName;
-    await this.state.save(app);
-  }
-
   /** Checks if an update needs a fresh container. */
-  private shouldRecreateContainerOnUpdate(
-    app: AndroidApplication,
-    dto: UpdateAndroidApplicationDto,
-  ) {
-    return (
-      (dto.memoryLimitMb !== undefined &&
-        dto.memoryLimitMb !== app.memoryLimitMb) ||
-      (dto.cpuLimitCpus !== undefined &&
-        dto.cpuLimitCpus !== app.cpuLimitCpus) ||
-      (dto.containerArgs !== undefined &&
-        (dto.containerArgs?.trim() || null) !== app.containerArgs)
-    );
-  }
-
   /** Marks the current container to be recreated later. */
-  private async markContainerForRecreation(app: AndroidApplication) {
-    if (!app.containerId) {
-      app.recreateContainerOnNextStart = false;
-      return;
-    }
-
-    if (app.status === AndroidApplicationStatus.Running) {
-      app.recreateContainerOnNextStart = true;
-      app.statusMessage =
-        'Runtime settings changed. Stop and start the app to recreate the managed container.';
-      return;
-    }
-
-    await this.removeManagedContainer(app);
-    app.recreateContainerOnNextStart = false;
-    app.statusMessage =
-      'Runtime settings changed. A new container will be created on next start.';
-  }
-
   /** Recreates the container on start when needed. */
-  private async prepareContainerForRecreationOnStart(app: AndroidApplication) {
-    if (!app.recreateContainerOnNextStart) {
-      return;
-    }
-
-    if (!app.containerId) {
-      app.recreateContainerOnNextStart = false;
-      await this.state.save(app);
-      return;
-    }
-
-    const runtimeState = await this.lifecycle.getContainerRuntimeState(
-      app.containerId,
-    );
-    if (runtimeState.running) {
-      throw new ConflictException(
-        'Runtime settings changed. Stop the app before starting it again so the managed container can be recreated.',
-      );
-    }
-
-    await this.removeManagedContainer(app);
-    app.recreateContainerOnNextStart = false;
-    await this.state.save(app);
-  }
-
   /** Recreates stopped containers when Docker-only host config defaults changed. */
-  private async prepareContainerForRuntimeHostConfig(app: AndroidApplication) {
-    if (!app.containerId || !isRedroidImageName(app.containerImage)) {
-      return;
-    }
-
-    const desiredCgroupnsMode = this.normalizedHostConfigValue(
-      this.config.get<string>('app.redroid.cgroupnsMode'),
-    );
-    const desiredDevices = this.normalizedDeviceMappings(
-      this.config.getOrThrow<string[]>('app.redroid.devices'),
-    );
-    if (!desiredCgroupnsMode && desiredDevices.length === 0) {
-      return;
-    }
-
-    const inspect = await this.lifecycle.inspectContainer(app.containerId);
-    const hostConfig = inspect.HostConfig as
-      | (Record<string, unknown> & { CgroupnsMode?: unknown })
-      | undefined;
-    const currentCgroupnsMode =
-      typeof hostConfig?.CgroupnsMode === 'string'
-        ? this.normalizedHostConfigValue(hostConfig.CgroupnsMode)
-        : null;
-    const currentDevices = Array.isArray(hostConfig?.Devices)
-      ? hostConfig.Devices.filter(
-          (
-            device,
-          ): device is {
-            PathOnHost?: unknown;
-            PathInContainer?: unknown;
-            CgroupPermissions?: unknown;
-          } => Boolean(device) && typeof device === 'object',
-        )
-          .map((device) =>
-            [
-              typeof device.PathOnHost === 'string' ? device.PathOnHost : '',
-              typeof device.PathInContainer === 'string'
-                ? device.PathInContainer
-                : '',
-              typeof device.CgroupPermissions === 'string'
-                ? device.CgroupPermissions
-                : '',
-            ].join(':'),
-          )
-          .sort()
-      : [];
-
-    if (
-      currentCgroupnsMode === desiredCgroupnsMode &&
-      this.sameStringArray(currentDevices, desiredDevices)
-    ) {
-      return;
-    }
-
-    const runtimeState = await this.lifecycle.getContainerRuntimeState(
-      app.containerId,
-    );
-    if (runtimeState.running) {
-      app.recreateContainerOnNextStart = true;
-      app.statusMessage =
-        'Runtime host configuration changed. Stop and start the app to recreate the managed container.';
-      await this.state.save(app);
-      return;
-    }
-
-    await this.logs.append(
-      app.id,
-      'Recreating container for runtime host config',
-      {
-        containerId: app.containerId,
-        containerName: app.containerName,
-        currentCgroupnsMode,
-        desiredCgroupnsMode,
-        currentDevices,
-        desiredDevices,
-      },
-    );
-    await this.removeManagedContainer(app);
-    app.recreateContainerOnNextStart = false;
-    app.statusMessage =
-      'Runtime host configuration changed. A new container will be created on next start.';
-    await this.state.save(app);
-  }
-
-  private normalizedHostConfigValue(value: string | null | undefined) {
-    const trimmed = value?.trim();
-    return trimmed || null;
-  }
-
-  private normalizedDeviceMappings(devices: string[]) {
-    return devices
-      .map((device) => device.trim())
-      .filter(Boolean)
-      .map((device) => {
-        const [hostPath, containerPath = hostPath, permissions = 'rwm'] = device
-          .split(':')
-          .map((part) => part.trim());
-        return [hostPath, containerPath, permissions || 'rwm'].join(':');
-      })
-      .sort();
-  }
-
-  private sameStringArray(left: string[], right: string[]) {
-    return (
-      left.length === right.length &&
-      left.every((value, index) => value === right[index])
-    );
-  }
-
   /** Applies current Redroid boot defaults to older app records before start. */
-  private async prepareRuntimeDefaults(app: AndroidApplication) {
-    const nextContainerArgs = applyRedroidDefaultContainerArgs(
-      app.containerImage,
-      app.containerArgs,
-    );
-    if (nextContainerArgs === app.containerArgs) {
-      return;
-    }
-
-    const previousContainerArgs = app.containerArgs;
-    app.containerArgs = nextContainerArgs;
-
-    if (!app.containerId) {
-      await this.state.save(app);
-      return;
-    }
-
-    const runtimeState = await this.lifecycle.getContainerRuntimeState(
-      app.containerId,
-    );
-    if (runtimeState.running) {
-      app.recreateContainerOnNextStart = true;
-      app.statusMessage =
-        'Runtime boot defaults changed. Stop and start the app to recreate the managed container.';
-      await this.state.save(app);
-      return;
-    }
-
-    await this.logs.append(
-      app.id,
-      'Recreating container for runtime defaults',
-      {
-        containerId: app.containerId,
-        containerName: app.containerName,
-        previousContainerArgs,
-        nextContainerArgs,
-      },
-    );
-    await this.removeManagedContainer(app);
-    app.recreateContainerOnNextStart = false;
-    app.statusMessage =
-      'Runtime boot defaults changed. A new container will be created on next start.';
-    await this.state.save(app);
-  }
-
   /** Lets a new start request take over a provisioning record left by a dead run. */
-  private async recoverStaleProvisioningForStart(app: AndroidApplication) {
-    const startedAt = app.provisioningStartedAt?.getTime();
-    const staleTimeoutMs =
-      this.config.getOrThrow<number>(
-        'app.redroid.provisioningStaleTimeoutSeconds',
-      ) * 1000;
-
-    if (!startedAt || Date.now() - startedAt < staleTimeoutMs) {
-      return false;
-    }
-
-    await this.logs.append(app.id, 'Recovering stale provisioning run', {
-      containerId: app.containerId,
-      containerName: app.containerName,
-      lifecycleStage: app.lifecycleStage,
-      staleAfterSeconds: staleTimeoutMs / 1000,
-    });
-    this.tracker.cancel(app.id);
-    if (app.containerId) {
-      await this.removeManagedContainer(app);
-    }
-    this.tracker.reset(app.id);
-    app.status = AndroidApplicationStatus.Stopped;
-    app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
-    app.statusMessage =
-      'Previous provisioning run was stale. A fresh start will be attempted.';
-    app.provisioningCompletedAt = new Date();
-    app.lastStoppedAt = new Date();
-    await this.state.save(app);
-    return true;
-  }
-
   /** Removes a failed runtime container so retries do not reuse a wedged Redroid boot. */
-  private async prepareFailedContainerForRestart(app: AndroidApplication) {
-    if (app.status !== AndroidApplicationStatus.Error || !app.containerId) {
-      return;
-    }
-
-    await this.logs.append(app.id, 'Removing failed container before restart', {
-      containerId: app.containerId,
-      containerName: app.containerName,
-      lastError: app.lastError,
-    });
-    await this.removeManagedContainer(app);
-    app.recreateContainerOnNextStart = false;
-    app.status = AndroidApplicationStatus.Stopped;
-    app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
-    app.statusMessage =
-      'Previous runtime container failed. A fresh container will be created.';
-    await this.state.save(app);
-  }
-
   /** Removes the managed container for an app. */
-  private async removeManagedContainer(app: AndroidApplication) {
-    if (!app.containerId) {
-      return;
-    }
-
-    await this.networkPolicy.remove(app);
-    await this.lifecycle.removeContainer(app.containerId);
-    app.containerId = null;
-  }
-
   /** Releases optional viewer state without delaying container lifecycle operations. */
   private releaseDisplaySessionsInBackground(
     applicationId: string,
@@ -1241,41 +912,6 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
    * A transport error does not prove the container stayed running. Inspect Docker
    * once so definite failures recover immediately and accepted stops can continue.
    */
-  private async recoverAfterFailedStop(
-    app: AndroidApplication,
-    error: unknown,
-  ) {
-    if (!app.containerId) {
-      return true;
-    }
-
-    const message = getErrorMessage(error);
-    try {
-      const runtimeState = await this.lifecycle.getContainerRuntimeState(
-        app.containerId,
-      );
-      if (!runtimeState.exists) {
-        app.containerId = null;
-        return true;
-      }
-      if (!runtimeState.running) {
-        return true;
-      }
-
-      app.status = AndroidApplicationStatus.Running;
-      app.lifecycleStage = AndroidApplicationLifecycleStage.Ready;
-      app.statusMessage = 'Stop failed. Runtime container is still running.';
-      await this.logs.append(app.id, 'Stop failed', { error: message });
-      await this.state.save(app);
-      return false;
-    } catch (inspectError) {
-      this.logger.warn(
-        `Could not verify container state after stop failed for ${app.id}: ${getErrorMessage(inspectError)}`,
-      );
-      return false;
-    }
-  }
-
   /** Copies uploaded APK data onto the app record. */
   private applyUploadedApk(app: AndroidApplication, uploadedApk: UploadedApk) {
     if (

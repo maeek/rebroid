@@ -1,54 +1,45 @@
 import { Module } from '@nestjs/common';
-import { MetricsModule } from '../metrics/metrics.module';
-import { DockerContainerArchiveService } from './containers/services/docker-container-archive.service';
-import { DockerContainerExecService } from './containers/services/docker-container-exec.service';
-import { DockerContainerLifecycleService } from './containers/services/docker-container-lifecycle.service';
-import { DockerContainerProvisioningService } from './containers/services/docker-container-provisioning.service';
-import { DockerPlatformContainersService } from './containers/services/docker-platform-containers.service';
-import { DockerEngineService } from './docker-engine.service';
+import { DockerContainersModule } from './containers/docker-containers.module';
+import { DockerEngineModule } from './engine/docker-engine.module';
 import { DockerHealthService } from './health/services/docker-health.service';
-import { DockerImageRuntimeService } from './images/services/docker-image-runtime.service';
-import { DockerPlatformImagesService } from './images/services/docker-platform-images.service';
-import { DockerNetworkRuntimeService } from './networks/services/docker-network-runtime.service';
-import { DockerPlatformNetworksService } from './networks/services/docker-platform-networks.service';
-import { DockerPlatformPruneService } from './prune/services/docker-platform-prune.service';
-import { DockerResourceRuntimeService } from './resources/services/docker-resource-runtime.service';
+import { DockerImagesModule } from './images/docker-images.module';
+import { DockerNetworksModule } from './networks/docker-networks.module';
+import { DockerPruneModule } from './prune/docker-prune.module';
+import { DockerResourcesModule } from './resources/docker-resources.module';
+import { DockerSidecarAdbService } from './sidecar/services/docker-sidecar-adb.service';
+import { DockerSidecarApiService } from './sidecar/services/docker-sidecar-api.service';
 import { DockerSidecarService } from './sidecar/services/docker-sidecar.service';
 import { DockerSidecarBuildContextService } from './sidecar/services/docker-sidecar-build-context.service';
+import { DockerSidecarNetworkService } from './sidecar/services/docker-sidecar-network.service';
 
 @Module({
-  imports: [MetricsModule],
+  imports: [
+    DockerEngineModule,
+    DockerContainersModule,
+    DockerImagesModule,
+    DockerNetworksModule,
+    DockerResourcesModule,
+    DockerPruneModule,
+  ],
   providers: [
-    DockerEngineService,
-    DockerContainerArchiveService,
-    DockerContainerExecService,
-    DockerContainerLifecycleService,
-    DockerContainerProvisioningService,
-    DockerPlatformContainersService,
-    DockerImageRuntimeService,
-    DockerPlatformImagesService,
-    DockerNetworkRuntimeService,
-    DockerPlatformNetworksService,
-    DockerPlatformPruneService,
-    DockerResourceRuntimeService,
     DockerHealthService,
+    DockerSidecarAdbService,
+    DockerSidecarApiService,
+    DockerSidecarNetworkService,
     DockerSidecarBuildContextService,
     DockerSidecarService,
   ],
   exports: [
-    DockerEngineService,
-    DockerContainerArchiveService,
-    DockerContainerExecService,
-    DockerContainerLifecycleService,
-    DockerContainerProvisioningService,
-    DockerPlatformContainersService,
-    DockerImageRuntimeService,
-    DockerPlatformImagesService,
-    DockerNetworkRuntimeService,
-    DockerPlatformNetworksService,
-    DockerPlatformPruneService,
-    DockerResourceRuntimeService,
+    DockerEngineModule,
+    DockerContainersModule,
+    DockerImagesModule,
+    DockerNetworksModule,
+    DockerResourcesModule,
+    DockerPruneModule,
     DockerHealthService,
+    DockerSidecarAdbService,
+    DockerSidecarApiService,
+    DockerSidecarNetworkService,
     DockerSidecarBuildContextService,
     DockerSidecarService,
   ],

@@ -12,7 +12,10 @@ export class InactivityService {
    * Stops running apps that have been idle longer than their configured timeout.
    * Activity is based on scrcpy refreshes, not generic container noise.
    */
-  @Cron(CronExpression.EVERY_MINUTE)
+  @Cron(CronExpression.EVERY_MINUTE, {
+    name: 'android-apps-inactivity-stop',
+    waitForCompletion: true,
+  })
   async stopInactiveApplications() {
     const inactiveApplications =
       await this.androidApps.findInactiveRunningApplications();

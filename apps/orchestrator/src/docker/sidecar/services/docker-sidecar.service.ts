@@ -7,42 +7,14 @@ import {
 import { ConfigService } from '@nestjs/config';
 import type Dockerode from 'dockerode';
 import type { Readable } from 'node:stream';
-import { setTimeout as delay } from 'node:timers/promises';
-import { DockerContainerExecService } from '../../containers/services/docker-container-exec.service';
 import { DockerContainerLifecycleService } from '../../containers/services/docker-container-lifecycle.service';
 import { DockerEngineService } from '../../docker-engine.service';
 import { DockerImageRuntimeService } from '../../images/services/docker-image-runtime.service';
-import { DockerNetworkRuntimeService } from '../../networks/services/docker-network-runtime.service';
-import {
-  ContainerCommandFailure,
-  ContainerCommandFailedException,
-  ServiceHealth,
-  ViewerTargetError,
-  ViewerTargetStatus,
-} from '../../docker.types';
-import { isTransientAdbConnectionError } from '../utils/docker-sidecar.utils';
+import { ServiceHealth, ViewerTargetStatus } from '../../docker.types';
+import { DockerSidecarAdbService } from './docker-sidecar-adb.service';
+import { DockerSidecarApiService } from './docker-sidecar-api.service';
 import { DockerSidecarBuildContextService } from './docker-sidecar-build-context.service';
-
-interface DisplaySidecarSession {
-  id: string;
-  appId?: string;
-  ownerUserId?: string;
-  status: 'created' | 'active' | 'released' | 'expired';
-  createdAt: string;
-  lastActivityAt: string;
-  expiresAt: string;
-  capabilities: string[];
-}
-
-interface DisplaySidecarSessionListResponse {
-  items: DisplaySidecarSession[];
-}
-
-interface CachedSidecarNetwork {
-  containerId: string;
-  ipAddress: string;
-  expiresAt: number;
-}
+import { DockerSidecarNetworkService } from './docker-sidecar-network.service';
 
 @Injectable()
 export class DockerSidecarService implements OnModuleInit {
@@ -59,15 +31,15 @@ export class DockerSidecarService implements OnModuleInit {
   private readonly displaySidecarWebrtcIceHost: string;
   private displaySidecarLastError: string | null = null;
   private sidecarMutation = Promise.resolve();
-  private readonly sidecarNetworks = new Map<string, CachedSidecarNetwork>();
 
   constructor(
     private readonly config: ConfigService,
     private readonly engine: DockerEngineService,
-    private readonly exec: DockerContainerExecService,
     private readonly lifecycle: DockerContainerLifecycleService,
     private readonly images: DockerImageRuntimeService,
-    private readonly networks: DockerNetworkRuntimeService,
+    private readonly sidecarAdb: DockerSidecarAdbService,
+    private readonly sidecarApi: DockerSidecarApiService,
+    private readonly sidecarNetwork: DockerSidecarNetworkService,
     private readonly buildContext: DockerSidecarBuildContextService,
   ) {
     this.displaySidecarContainerId = this.config.get<string>(
@@ -151,57 +123,18 @@ export class DockerSidecarService implements OnModuleInit {
         return this.sidecarUnavailableStatus();
       }
 
-      const cached = this.sidecarNetworks.get(networkName);
-      if (cached?.containerId === sidecar.id && cached.expiresAt > Date.now()) {
-        return this.sidecarNetworkStatus(networkName, cached.ipAddress);
-      }
-
-      const currentIp = await this.getContainerIpOnNetwork(
-        sidecar,
-        networkName,
-      );
-      if (currentIp) {
-        return this.cacheSidecarNetwork(sidecar.id, networkName, currentIp);
-      }
-
-      await this.networks.connectContainerToNetwork(sidecar.id, networkName);
-      const sidecarIp = await this.getContainerIpOnNetwork(
-        sidecar,
-        networkName,
-      );
-      if (!sidecarIp) {
-        return {
-          configured: true,
-          connected: false,
-          message: `Display sidecar could not be verified on ${networkName}.`,
-          error: {
-            code: 'adb_unreachable' as const,
-            message: `Display sidecar is not attached to ${networkName}; ADB target DNS will not resolve.`,
-            retryable: true,
-            exitCode: null,
-            command: null,
-            stdout: null,
-            stderr: null,
-          },
-        };
-      }
-
-      return this.cacheSidecarNetwork(sidecar.id, networkName, sidecarIp);
+      return this.sidecarNetwork.ensureOnNetwork(sidecar, networkName);
     });
   }
 
   async detachSidecarFromNetwork(networkName: string) {
     await this.queueSidecarMutation(async () => {
-      this.sidecarNetworks.delete(networkName);
       const sidecar = await this.findSidecar();
       if (!sidecar) {
         return;
       }
 
-      await this.networks.disconnectContainerFromNetwork(
-        sidecar.id,
-        networkName,
-      );
+      await this.sidecarNetwork.detachFromNetwork(sidecar, networkName);
     });
   }
 
@@ -217,159 +150,7 @@ export class DockerSidecarService implements OnModuleInit {
       return this.sidecarUnavailableStatus();
     }
 
-    try {
-      const target = `${adbHost}:${adbPort}`;
-      const tcpProbe = await this.probeTcpTarget(sidecar.id, adbHost, adbPort);
-      if (tcpProbe) {
-        return {
-          configured: true,
-          connected: false,
-          message: tcpProbe.message,
-          error: tcpProbe,
-        };
-      }
-
-      const connectCommand = [
-        'sh',
-        '-lc',
-        [
-          `timeout 5s adb disconnect ${this.shellQuote(target)} >/dev/null 2>&1 || true`,
-          `timeout 10s adb connect ${this.shellQuote(target)}`,
-        ].join('; '),
-      ];
-      const output = await this.exec.execInContainerWithOutput(
-        sidecar.id,
-        [...connectCommand],
-        { timeoutMs: 20_000 },
-      );
-      const connectFailure = this.viewerTargetErrorFromOutput({
-        command: connectCommand,
-        stdout: output.stdout,
-        stderr: output.stderr,
-      });
-      if (connectFailure) {
-        return {
-          configured: true,
-          connected: false,
-          message: connectFailure.message,
-          error: connectFailure,
-        };
-      }
-
-      const stateCommand = [
-        'sh',
-        '-lc',
-        `timeout 10s adb -s ${this.shellQuote(target)} get-state 2>&1 || true`,
-      ];
-      const state = await this.exec.execInContainerWithOutput(
-        sidecar.id,
-        [...stateCommand],
-        { timeoutMs: 15_000 },
-      );
-      let currentState = state.stdout.trim().toLowerCase();
-      let lastStateCommand = stateCommand;
-      let lastState = state;
-
-      if (currentState.includes('offline')) {
-        const recoveryCommand = [
-          'sh',
-          '-lc',
-          [
-            `timeout 5s adb disconnect ${this.shellQuote(target)} >/dev/null 2>&1 || true`,
-            'timeout 5s adb reconnect offline >/dev/null 2>&1 || true',
-            'timeout 5s adb kill-server >/dev/null 2>&1 || true',
-            'timeout 5s adb start-server >/dev/null 2>&1 || true',
-            `timeout 10s adb connect ${this.shellQuote(target)}`,
-            `timeout 30s adb -s ${this.shellQuote(target)} wait-for-device`,
-            `timeout 10s adb -s ${this.shellQuote(target)} get-state 2>&1 || true`,
-          ].join('; '),
-        ];
-        lastStateCommand = recoveryCommand;
-        lastState = await this.exec.execInContainerWithOutput(
-          sidecar.id,
-          recoveryCommand,
-          { timeoutMs: 45_000 },
-        );
-        const stateTokens = lastState.stdout.trim().toLowerCase().split(/\s+/);
-        currentState = stateTokens[stateTokens.length - 1] ?? '';
-      }
-
-      if (currentState !== 'device') {
-        const viewerError = this.viewerTargetErrorFromOutput({
-          command: lastStateCommand,
-          stdout: lastState.stdout,
-          stderr: lastState.stderr,
-          fallbackMessage: `ADB target ${target} is not ready: ${lastState.stdout.trim() || 'unknown state'}.`,
-        }) ?? {
-          code: 'adb_unreachable',
-          message: `ADB target ${target} is not ready.`,
-          retryable: true,
-          exitCode: 0,
-          command: lastStateCommand,
-          stdout: lastState.stdout,
-          stderr: lastState.stderr,
-        };
-        return {
-          configured: true,
-          connected: false,
-          message: viewerError.message,
-          error: viewerError,
-        };
-      }
-
-      await this.prepareAndroidDisplay(sidecar.id, target);
-
-      return {
-        configured: true,
-        connected: true,
-        message: [output.stdout, output.stderr, state.stdout]
-          .filter(Boolean)
-          .join('\n'),
-        error: null,
-      };
-    } catch (error) {
-      const viewerError = this.viewerTargetError(error);
-      this.logger.warn(
-        `Unable to prepare display sidecar ADB target ${adbHost}:${adbPort}: ${viewerError.message}`,
-      );
-      return {
-        configured: true,
-        connected: false,
-        message: viewerError.message,
-        error: viewerError,
-      };
-    }
-  }
-
-  private async prepareAndroidDisplay(
-    sidecarId: string,
-    target: string,
-  ): Promise<void> {
-    const command = [
-      'sh',
-      '-lc',
-      [
-        `timeout 10s adb -s ${this.shellQuote(target)} shell ${this.shellQuote(
-          [
-            'settings put system screen_off_timeout 2147483647 >/dev/null 2>&1 || true',
-            'svc power stayon true >/dev/null 2>&1 || true',
-            'input keyevent WAKEUP >/dev/null 2>&1 || input keyevent 224 >/dev/null 2>&1 || true',
-            'wm dismiss-keyguard >/dev/null 2>&1 || input keyevent MENU >/dev/null 2>&1 || true',
-          ].join('; '),
-        )}`,
-      ].join(' && '),
-    ];
-
-    try {
-      await this.exec.execInContainerWithOutput(sidecarId, command, {
-        timeoutMs: 15_000,
-      });
-    } catch (error) {
-      const viewerError = this.viewerTargetError(error);
-      this.logger.warn(
-        `Unable to prepare Android display for ${target}: ${viewerError.message}`,
-      );
-    }
+    return this.sidecarAdb.prepareTarget(sidecar.id, adbHost, adbPort);
   }
 
   /**
@@ -381,11 +162,7 @@ export class DockerSidecarService implements OnModuleInit {
       return null;
     }
 
-    try {
-      return await this.getContainerIpOnNetwork(sidecar, networkName);
-    } catch {
-      return null;
-    }
+    return this.sidecarNetwork.getSidecarIp(sidecar, networkName);
   }
 
   /**
@@ -393,7 +170,7 @@ export class DockerSidecarService implements OnModuleInit {
    * Cached startup errors are surfaced when autostart failed earlier.
    */
   async health(): Promise<ServiceHealth> {
-    const apiError = await this.probeDisplaySidecarApi();
+    const apiError = await this.sidecarApi.probeHealth();
     if (!apiError) {
       this.displaySidecarLastError = null;
       return {
@@ -469,7 +246,7 @@ export class DockerSidecarService implements OnModuleInit {
 
   /** Checks the sidecar API without adding Docker inventory work to routine polling. */
   async shallowHealth(): Promise<ServiceHealth> {
-    const apiError = await this.probeDisplaySidecarApi();
+    const apiError = await this.sidecarApi.probeHealth();
     if (!apiError) {
       this.displaySidecarLastError = null;
       return {
@@ -487,19 +264,11 @@ export class DockerSidecarService implements OnModuleInit {
   }
 
   async listDisplaySessions() {
-    const response =
-      await this.requestDisplaySidecar<DisplaySidecarSessionListResponse>(
-        '/sessions',
-      );
-    return response.items.map((session) => this.toAdminDisplaySession(session));
+    return this.sidecarApi.listDisplaySessions();
   }
 
   async releaseDisplaySession(id: string) {
-    const session = await this.requestDisplaySidecar<DisplaySidecarSession>(
-      `/sessions/${encodeURIComponent(id)}`,
-      { method: 'DELETE' },
-    );
-    return this.toAdminDisplaySession(session);
+    return this.sidecarApi.releaseDisplaySession(id);
   }
 
   /**
@@ -512,8 +281,8 @@ export class DockerSidecarService implements OnModuleInit {
         if (existing) {
           await this.lifecycle.stopContainer(existing.id, 3);
           await this.lifecycle.startContainer(existing.id);
-          await this.waitForDisplaySidecarApi();
-          await this.cleanupStaleSidecarNetworks(existing);
+          await this.sidecarApi.waitForReady();
+          await this.sidecarNetwork.cleanupStaleNetworks(existing);
           this.displaySidecarLastError = null;
           return existing.id;
         }
@@ -548,7 +317,7 @@ export class DockerSidecarService implements OnModuleInit {
       );
       if (!inspect.State?.Running) {
         await this.lifecycle.startContainer(existing.id);
-        await this.waitForDisplaySidecarApi();
+        await this.sidecarApi.waitForReady();
       }
       return existing;
     }
@@ -625,52 +394,8 @@ export class DockerSidecarService implements OnModuleInit {
       () => container.start(),
       `Start display sidecar ${container.id}`,
     );
-    await this.waitForDisplaySidecarApi();
+    await this.sidecarApi.waitForReady();
     return container;
-  }
-
-  private async requestDisplaySidecar<T>(
-    path: string,
-    init: RequestInit = {},
-  ): Promise<T> {
-    const baseUrl = this.config
-      .getOrThrow<string>('app.displaySidecar.internalBaseUrl')
-      .replace(/\/$/, '');
-    const secret = this.config.get<string>('app.sharedSecret');
-    const response = await fetch(`${baseUrl}/rebroid/display${path}`, {
-      ...init,
-      headers: {
-        accept: 'application/json',
-        ...(secret ? { 'x-rebroid-sidecar-secret': secret } : {}),
-        ...(init.headers ?? {}),
-      },
-      signal: AbortSignal.timeout(10_000),
-    }).catch((error) => {
-      throw new ConflictException(
-        `Display sidecar API is not reachable: ${this.engine.errorMessage(error)}`,
-      );
-    });
-
-    if (!response.ok) {
-      throw new ConflictException(
-        `Display sidecar API returned ${response.status}.`,
-      );
-    }
-
-    return response.json() as Promise<T>;
-  }
-
-  private toAdminDisplaySession(session: DisplaySidecarSession) {
-    return {
-      id: session.id,
-      applicationId: session.appId ?? null,
-      ownerUserId: session.ownerUserId ?? null,
-      status: session.status,
-      createdAt: session.createdAt,
-      lastActivityAt: session.lastActivityAt,
-      expiresAt: session.expiresAt,
-      capabilities: session.capabilities,
-    };
   }
 
   private webrtcUdpPortBinding() {
@@ -703,7 +428,7 @@ export class DockerSidecarService implements OnModuleInit {
         return null;
       }
 
-      await this.cleanupStaleSidecarNetworks(sidecar);
+      await this.sidecarNetwork.cleanupStaleNetworks(sidecar);
       this.displaySidecarLastError = null;
       return sidecar;
     });
@@ -718,119 +443,12 @@ export class DockerSidecarService implements OnModuleInit {
     return queued;
   }
 
-  private async waitForDisplaySidecarApi(timeoutMs = 10_000) {
-    const deadline = Date.now() + timeoutMs;
-    let lastError = 'Display sidecar API did not respond.';
-
-    while (Date.now() < deadline) {
-      const error = await this.probeDisplaySidecarApi();
-      if (!error) {
-        return;
-      }
-
-      lastError = error;
-      await delay(250);
-    }
-
-    throw new ConflictException(
-      `Display sidecar API did not become ready: ${lastError}`,
-    );
-  }
-
-  private async probeDisplaySidecarApi() {
-    const baseUrl = this.config
-      .getOrThrow<string>('app.displaySidecar.internalBaseUrl')
-      .replace(/\/$/, '');
-    try {
-      const response = await fetch(`${baseUrl}/rebroid/display/health`, {
-        signal: AbortSignal.timeout(2_000),
-      });
-      return response.ok
-        ? null
-        : `Display sidecar API returned ${response.status}.`;
-    } catch (error) {
-      return this.engine.errorMessage(error);
-    }
-  }
-
   private async getRecentSidecarLogs(containerId: string) {
     try {
       return (await this.lifecycle.getContainerLogs(containerId, 120)).trim();
     } catch (error) {
       return `Could not read display sidecar logs: ${this.engine.errorMessage(error)}`;
     }
-  }
-
-  private async cleanupStaleSidecarNetworks(sidecar: Dockerode.Container) {
-    const inspect = await this.engine.read(
-      () => sidecar.inspect(),
-      'Inspect display sidecar networks',
-    );
-    const networkNames = Object.keys(inspect.NetworkSettings?.Networks ?? {});
-    const staleNetworkNames = networkNames.filter((networkName) =>
-      this.isStaleSidecarNetwork(networkName),
-    );
-
-    if (!staleNetworkNames.length) {
-      return;
-    }
-
-    await Promise.all(
-      staleNetworkNames.map((networkName) =>
-        this.networks.disconnectContainerFromNetwork(sidecar.id, networkName),
-      ),
-    );
-    staleNetworkNames.forEach((networkName) =>
-      this.sidecarNetworks.delete(networkName),
-    );
-
-    this.logger.log(
-      `Detached display sidecar from stale networks: ${staleNetworkNames.join(', ')}`,
-    );
-  }
-
-  private async getContainerIpOnNetwork(
-    sidecar: Dockerode.Container,
-    networkName: string,
-  ) {
-    const inspect = await this.engine.read(
-      () => sidecar.inspect(),
-      `Inspect display sidecar on network ${networkName}`,
-    );
-    return inspect.NetworkSettings.Networks?.[networkName]?.IPAddress || null;
-  }
-
-  private cacheSidecarNetwork(
-    containerId: string,
-    networkName: string,
-    ipAddress: string,
-  ) {
-    this.sidecarNetworks.set(networkName, {
-      containerId,
-      ipAddress,
-      expiresAt: Date.now() + 30_000,
-    });
-    return this.sidecarNetworkStatus(networkName, ipAddress);
-  }
-
-  private sidecarNetworkStatus(
-    networkName: string,
-    ipAddress: string,
-  ): ViewerTargetStatus {
-    return {
-      configured: true,
-      connected: true,
-      message: `Display sidecar is attached to ${networkName} as ${ipAddress}.`,
-      error: null,
-    };
-  }
-
-  private isStaleSidecarNetwork(networkName: string) {
-    if (networkName === this.displaySidecarPlatformNetwork) {
-      return false;
-    }
-
-    return networkName.startsWith(`${this.engine.resourcePrefix}-net-`);
   }
 
   private async findSidecar() {
@@ -929,179 +547,6 @@ export class DockerSidecarService implements OnModuleInit {
         stdout: null,
         stderr: null,
       },
-    };
-  }
-
-  private viewerTargetError(error: unknown): ViewerTargetError {
-    if (error instanceof ContainerCommandFailedException) {
-      return this.classifyViewerTargetError(error.details);
-    }
-
-    const message = this.engine.errorMessage(error);
-    return {
-      code: 'unknown',
-      message,
-      retryable: false,
-      exitCode: null,
-      command: null,
-      stdout: null,
-      stderr: null,
-    };
-  }
-
-  private shellQuote(value: string) {
-    return `'${value.replaceAll("'", "'\\''")}'`;
-  }
-
-  private async probeTcpTarget(
-    sidecarId: string,
-    adbHost: string,
-    adbPort: number,
-  ): Promise<ViewerTargetError | null> {
-    const hostLiteral = JSON.stringify(adbHost);
-    const portLiteral = JSON.stringify(adbPort);
-    const probeCommand = [
-      'sh',
-      '-lc',
-      [
-        'node -e',
-        this.shellQuote(
-          [
-            'const net = require("node:net");',
-            `const host = ${hostLiteral};`,
-            `const port = ${portLiteral};`,
-            'const socket = net.createConnection({ host, port });',
-            'socket.setTimeout(3000);',
-            'socket.on("connect", () => {',
-            '  process.stdout.write(`tcp:${host}:${port} reachable`);',
-            '  socket.end();',
-            '});',
-            'socket.on("timeout", () => {',
-            '  process.stderr.write(`tcp probe timed out for ${host}:${port}`);',
-            '  socket.destroy();',
-            '  process.exit(124);',
-            '});',
-            'socket.on("error", (error) => {',
-            '  process.stderr.write(`tcp probe failed for ${host}:${port}: ${error.message}`);',
-            '  process.exit(1);',
-            '});',
-          ].join(' '),
-        ),
-      ].join(' '),
-    ];
-
-    try {
-      await this.exec.execInContainerWithOutput(sidecarId, probeCommand, {
-        timeoutMs: 5_000,
-      });
-      return null;
-    } catch (error) {
-      const viewerError = this.viewerTargetError(error);
-      return {
-        code: 'adb_unreachable',
-        message:
-          viewerError.stderr?.trim() ||
-          viewerError.stdout?.trim() ||
-          `TCP probe to ${adbHost}:${adbPort} failed before adb connect.`,
-        retryable: true,
-        exitCode: viewerError.exitCode,
-        command: probeCommand,
-        stdout: viewerError.stdout,
-        stderr: viewerError.stderr,
-      };
-    }
-  }
-
-  private viewerTargetErrorFromOutput({
-    command,
-    stdout,
-    stderr,
-    fallbackMessage,
-  }: {
-    command: string[];
-    stdout: string;
-    stderr: string;
-    fallbackMessage?: string;
-  }): ViewerTargetError | null {
-    const combinedOutput = [stderr, stdout].filter(Boolean).join('\n');
-
-    if (!isTransientAdbConnectionError(combinedOutput)) {
-      if (!fallbackMessage) {
-        return null;
-      }
-
-      return {
-        code: 'adb_unreachable',
-        message: fallbackMessage,
-        retryable: true,
-        exitCode: 0,
-        command,
-        stdout,
-        stderr,
-      };
-    }
-
-    return {
-      code: 'adb_unreachable',
-      message:
-        combinedOutput.trim() ||
-        fallbackMessage ||
-        'ADB target is not reachable.',
-      retryable: true,
-      exitCode: 0,
-      command,
-      stdout,
-      stderr,
-    };
-  }
-
-  /**
-   * Maps adb command failures into retryable and non-retryable viewer errors.
-   */
-  private classifyViewerTargetError(
-    details: ContainerCommandFailure,
-  ): ViewerTargetError {
-    const combinedOutput = [details.stderr, details.stdout]
-      .filter(Boolean)
-      .join('\n')
-      .toLowerCase();
-
-    if (
-      details.exitCode === 127 &&
-      combinedOutput.includes('adb') &&
-      combinedOutput.includes('not found')
-    ) {
-      return {
-        code: 'adb_missing',
-        message: details.message,
-        retryable: false,
-        exitCode: details.exitCode,
-        command: details.command,
-        stdout: details.stdout,
-        stderr: details.stderr,
-      };
-    }
-
-    if (isTransientAdbConnectionError(combinedOutput)) {
-      return {
-        code: 'adb_unreachable',
-        message: details.message,
-        retryable: true,
-        exitCode: details.exitCode,
-        command: details.command,
-        stdout: details.stdout,
-        stderr: details.stderr,
-      };
-    }
-
-    return {
-      code: 'unknown',
-      message: details.message,
-      retryable: false,
-      exitCode: details.exitCode,
-      command: details.command,
-      stdout: details.stdout,
-      stderr: details.stderr,
     };
   }
 }

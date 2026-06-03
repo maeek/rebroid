@@ -15,7 +15,7 @@ import {
   ApiOkResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import type { Request } from 'express';
+import type { FastifyRequest } from 'fastify';
 import { CleanupUploadedApksResponseDto } from '../dto/cleanup-uploaded-apks-response.dto';
 import { CleanupUploadedApksDto } from '../dto/cleanup-uploaded-apks.dto';
 import { ListUploadedApksDto } from '../dto/list-uploaded-apks.dto';
@@ -41,8 +41,8 @@ export class ApkController {
       },
     },
   })
-  upload(@Req() request: Request, @Query() dto: UploadApkDto) {
-    return this.apk.upload(request, dto.ownerUserId);
+  upload(@Req() request: FastifyRequest, @Query() dto: UploadApkDto) {
+    return this.apk.upload(request.raw, dto.ownerUserId);
   }
 
   @Get()

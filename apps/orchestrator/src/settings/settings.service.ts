@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { ScrcpyTransport } from '../android-apps/android-application-status';
+import type { BufferedUploadFile } from '../common/http-upload';
 import { numberInRange } from '../common/number-range';
 import { OrchestratorSettingsDto } from './dto/orchestrator-settings.dto';
 import { UpdateOrchestratorSettingsDto } from './dto/update-orchestrator-settings.dto';
@@ -42,7 +43,7 @@ export class SettingsService {
    * Enforces the current APK upload size limit.
    * This is a no-op when no file object is provided.
    */
-  async assertApkSizeAllowed(file?: Express.Multer.File) {
+  async assertApkSizeAllowed(file?: Pick<BufferedUploadFile, 'size'>) {
     if (!file) {
       return;
     }

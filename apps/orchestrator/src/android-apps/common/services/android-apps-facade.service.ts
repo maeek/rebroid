@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { AndroidApplication } from '../../android-application.entity';
+import type { BufferedUploadFile } from '../../../common/http-upload';
 import { CloneAndroidApplicationDto } from '../dto/clone-android-application.dto';
 import { CreateAndroidApplicationDto } from '../dto/create-android-application.dto';
 import { ListAndroidApplicationsDto } from '../dto/list-android-applications.dto';
@@ -144,7 +145,7 @@ export class AndroidAppsFacadeService {
   }
 
   /** Uploads one file into the Download folder. */
-  uploadDownloadFile(id: string, file?: Express.Multer.File) {
+  uploadDownloadFile(id: string, file?: BufferedUploadFile) {
     const app = this.state.get(id);
     return app.then((storedApp) =>
       this.runtime.uploadDownloadFileBuffer(storedApp, file),

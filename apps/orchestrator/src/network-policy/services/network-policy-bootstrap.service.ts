@@ -1,10 +1,7 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { setTimeout as delay } from 'node:timers/promises';
-import { AndroidApplication } from '../../android-apps/android-application.entity';
-import { AndroidApplicationStatus } from '../../android-apps/android-application-status';
+import { AndroidApplicationsRepository } from '../../android-apps/persistence/android-applications.repository';
 import { NetworkPolicyService } from './network-policy.service';
 import { DockerContainerLifecycleService } from '../../docker/containers/services/docker-container-lifecycle.service';
 
@@ -14,8 +11,7 @@ export class NetworkPolicyBootstrapService implements OnApplicationBootstrap {
 
   constructor(
     private readonly config: ConfigService,
-    @InjectRepository(AndroidApplication)
-    private readonly applications: Repository<AndroidApplication>,
+    private readonly applications: AndroidApplicationsRepository,
     private readonly policies: NetworkPolicyService,
     private readonly containers: DockerContainerLifecycleService,
   ) {}
@@ -28,12 +24,8 @@ export class NetworkPolicyBootstrapService implements OnApplicationBootstrap {
 
     for (let attempt = 1; attempt <= 30; attempt += 1) {
       try {
-        const applications = await this.applications.find({
-          where: {
-            status: AndroidApplicationStatus.Running,
-            networkPolicyEnabled: true,
-          },
-        });
+        const applications =
+          await this.applications.findRunningWithNetworkPolicy();
         await this.policies.reconcile(applications);
         return;
       } catch (error) {
@@ -60,12 +52,7 @@ export class NetworkPolicyBootstrapService implements OnApplicationBootstrap {
   }
 
   private async stopApplicationsWithUnverifiedPolicies() {
-    const applications = await this.applications.find({
-      where: {
-        status: AndroidApplicationStatus.Running,
-        networkPolicyEnabled: true,
-      },
-    });
+    const applications = await this.applications.findRunningWithNetworkPolicy();
     for (const app of applications) {
       if (app.containerId) {
         await this.containers.stopContainer(app.containerId);

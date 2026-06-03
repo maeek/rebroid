@@ -15,25 +15,28 @@ import { tmpdir } from 'node:os';
 import { join, posix } from 'node:path';
 import { Readable, Transform, type TransformCallback } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import type { Request } from 'express';
 import { ApplicationProfileMode } from '../../application-profile-mode';
 import { DockerContainerArchiveService } from '../../../docker/containers/services/docker-container-archive.service';
 import { DockerContainerExecService } from '../../../docker/containers/services/docker-container-exec.service';
-import { DockerContainerLifecycleService } from '../../../docker/containers/services/docker-container-lifecycle.service';
 import { DockerResourceRuntimeService } from '../../../docker/resources/services/docker-resource-runtime.service';
+import {
+  type BufferedUploadFile,
+  type MultipartUploadRequest,
+  assertMultipartUpload,
+} from '../../../common/http-upload';
 import { NetworkIsolationService } from '../../../network-isolation/network-isolation.service';
 import { AndroidApplicationStatus } from '../../android-application-status';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
-import { AndroidAppsDisplaySidecarService } from '../../viewer/services/android-apps-display-sidecar.service';
-import { AndroidAppsSidecarAdbService } from '../../viewer/services/android-apps-sidecar-adb.service';
 import { ApplicationRuntimeFileUploadDto } from '../dto/application-runtime-file.dto';
 import { ApplicationRuntimeFilesQueryDto } from '../dto/application-runtime-files-query.dto';
 import {
   parseDownloadFiles,
   sanitizeRuntimeFileName,
 } from '../utils/android-apps-runtime-file.utils';
+import { AndroidAppsRuntimeDeviceService } from './android-apps-runtime-device.service';
+import { AndroidAppsRuntimeDiagnosticsService } from './android-apps-runtime-diagnostics.service';
 
 @Injectable()
 export class AndroidAppsRuntimeAccessService {
@@ -44,80 +47,32 @@ export class AndroidAppsRuntimeAccessService {
   constructor(
     private readonly archive: DockerContainerArchiveService,
     private readonly exec: DockerContainerExecService,
-    private readonly lifecycle: DockerContainerLifecycleService,
     private readonly networkIsolation: NetworkIsolationService,
     private readonly resources: DockerResourceRuntimeService,
     private readonly logs: AndroidAppsLogService,
-    private readonly displaySidecar: AndroidAppsDisplaySidecarService,
-    private readonly sidecarAdb: AndroidAppsSidecarAdbService,
     private readonly state: AndroidAppsStateService,
+    private readonly device: AndroidAppsRuntimeDeviceService,
+    private readonly diagnostics: AndroidAppsRuntimeDiagnosticsService,
   ) {}
 
   /** Reads recent Android notifications. */
   async notifications(id: string) {
-    const app = await this.state.get(id);
-    if (!app.containerId || app.status !== AndroidApplicationStatus.Running) {
-      return [];
-    }
-
-    return this.sidecarAdb.notifications(app);
+    return this.diagnostics.notifications(id);
   }
 
   /** Reads recent logs from the app container. */
   async containerLogs(id: string, tail = 300) {
-    const app = await this.state.get(id);
-    if (!app.containerId) {
-      return {
-        source: 'container' as const,
-        collectedAt: new Date().toISOString(),
-        output: 'No container has been created for this application yet.',
-      };
-    }
-
-    const runtimeState = await this.lifecycle.getContainerRuntimeState(
-      app.containerId,
-    );
-    if (!runtimeState.exists) {
-      return {
-        source: 'container' as const,
-        collectedAt: new Date().toISOString(),
-        output:
-          app.status === AndroidApplicationStatus.Stopped
-            ? 'Container logs are unavailable because the runtime container is currently stopped and has already been removed.'
-            : 'Container logs are unavailable because the runtime container no longer exists.',
-      };
-    }
-
-    return {
-      source: 'container' as const,
-      collectedAt: new Date().toISOString(),
-      output: await this.lifecycle.getContainerLogs(app.containerId, tail),
-    };
+    return this.diagnostics.containerLogs(id, tail);
   }
 
   /** Reads recent logs from the orchestrator side. */
   async eventLogs(id: string, tail = 300) {
-    await this.state.get(id);
-    return {
-      source: 'orchestrator' as const,
-      collectedAt: new Date().toISOString(),
-      output: await this.logs.read(id, tail),
-    };
+    return this.diagnostics.eventLogs(id, tail);
   }
 
   /** Reads recent ADB logs from the display sidecar. */
   async adbLogs(id: string, tail = 300) {
-    const app = await this.state.get(id);
-    if (!app.containerId || app.status !== AndroidApplicationStatus.Running) {
-      return {
-        source: 'adb' as const,
-        collectedAt: new Date().toISOString(),
-        output:
-          'ADB logs are available after the Android container is running.',
-      };
-    }
-
-    return this.sidecarAdb.logcat(app, tail);
+    return this.diagnostics.adbLogs(id, tail);
   }
 
   /** Lists files and directories in the active runtime data volume. */
@@ -178,7 +133,11 @@ export class AndroidAppsRuntimeAccessService {
   }
 
   /** Uploads one file into a directory in the active runtime data volume. */
-  async uploadFile(id: string, request: Request, requestedPath?: string) {
+  async uploadFile(
+    id: string,
+    request: MultipartUploadRequest,
+    requestedPath?: string,
+  ) {
     const app = await this.getRunningRuntimeApp(id);
     const directory = this.normalizeDataPath(requestedPath);
     await this.exec.execInContainer(app.containerId!, [
@@ -258,7 +217,7 @@ export class AndroidAppsRuntimeAccessService {
   /** Uploads one file into the Download folder. */
   async uploadDownloadFile(
     id: string,
-    request: Request,
+    request: MultipartUploadRequest,
     query: ApplicationRuntimeFilesQueryDto = {},
   ) {
     const app = await this.state.get(id);
@@ -267,7 +226,7 @@ export class AndroidAppsRuntimeAccessService {
 
   async uploadDownloadFileBuffer(
     app: AndroidApplication,
-    file?: Express.Multer.File,
+    file?: BufferedUploadFile,
     query: ApplicationRuntimeFilesQueryDto = {},
   ) {
     if (!file) {
@@ -330,7 +289,7 @@ export class AndroidAppsRuntimeAccessService {
 
   private async consumeDownloadFileUpload(
     app: AndroidApplication,
-    request: Request,
+    request: MultipartUploadRequest,
     query: ApplicationRuntimeFilesQueryDto,
   ) {
     return this.consumeFileUpload(request, (stream, originalName) =>
@@ -339,15 +298,13 @@ export class AndroidAppsRuntimeAccessService {
   }
 
   private async consumeFileUpload(
-    request: Request,
+    request: MultipartUploadRequest,
     store: (
       stream: Readable,
       originalName: string,
     ) => Promise<ApplicationRuntimeFileUploadDto>,
   ) {
-    if (!request.is('multipart/form-data')) {
-      throw new ConflictException('A multipart file upload is required.');
-    }
+    assertMultipartUpload(request);
 
     const parser = Busboy({
       headers: request.headers,
@@ -644,38 +601,17 @@ export class AndroidAppsRuntimeAccessService {
 
   /** Reads the Android clipboard. */
   async getClipboard(id: string) {
-    const app = await this.getRunningRuntimeApp(id);
-    const clipboard = await this.sidecarAdb.getClipboard(app);
-
-    return {
-      text: clipboard.text,
-      supported: clipboard.supported,
-      message: clipboard.supported
-        ? null
-        : 'Clipboard commands are not available in this container image.',
-    };
+    return this.device.getClipboard(id);
   }
 
   /** Writes text to the Android clipboard. */
   async setClipboard(id: string, text: string) {
-    const app = await this.getRunningRuntimeApp(id);
-    const clipboard = await this.displaySidecar
-      .setClipboard(app, text)
-      .catch(() => this.sidecarAdb.setClipboard(app, text));
-
-    return {
-      text: clipboard.text,
-      supported: clipboard.supported,
-      message: clipboard.supported
-        ? null
-        : 'Clipboard commands are not available in this container image.',
-    };
+    return this.device.setClipboard(id, text);
   }
 
   /** Captures a screenshot from the running app. */
   async screenshot(id: string) {
-    const app = await this.getRunningRuntimeApp(id);
-    return this.sidecarAdb.screenshot(app);
+    return this.device.screenshot(id);
   }
 
   /** Loads one running app for runtime actions. */

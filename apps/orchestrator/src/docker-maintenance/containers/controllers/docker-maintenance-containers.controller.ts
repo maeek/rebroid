@@ -1,8 +1,6 @@
 import { Controller, Delete, Get, Param, Post, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
-import { AndroidApplication } from '../../../android-apps/android-application.entity';
+import { AndroidApplicationsRepository } from '../../../android-apps/persistence/android-applications.repository';
 import { DockerPlatformContainersService } from '../../../docker/containers/services/docker-platform-containers.service';
 import { PlatformContainer } from '../../../docker/docker.types';
 import {
@@ -19,8 +17,7 @@ import {
 export class DockerMaintenanceContainersController {
   constructor(
     private readonly containers: DockerPlatformContainersService,
-    @InjectRepository(AndroidApplication)
-    private readonly applications: Repository<AndroidApplication>,
+    private readonly applications: AndroidApplicationsRepository,
   ) {}
 
   @Get()
@@ -84,14 +81,7 @@ export class DockerMaintenanceContainersController {
       return containers;
     }
 
-    const existing = new Set(
-      (
-        await this.applications.find({
-          select: { id: true },
-          where: { id: In(appIds) },
-        })
-      ).map((app) => app.id),
-    );
+    const existing = await this.applications.findExistingIds(appIds);
 
     return containers.map((container) => ({
       ...container,

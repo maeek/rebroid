@@ -12,6 +12,7 @@ import { AndroidAppsRuntimeNetworkModule } from '../network/android-apps-runtime
 import { AndroidAppsProvisioningModule } from '../provisioning/android-apps-provisioning.module';
 import { AndroidAppsViewerModule } from '../viewer/android-apps-viewer.module';
 import { AndroidAppsLifecycleService } from './services/android-apps-lifecycle.service';
+import { AndroidAppsRuntimePreparationService } from './services/android-apps-runtime-preparation.service';
 
 @Module({
   imports: [
@@ -27,7 +28,10 @@ import { AndroidAppsLifecycleService } from './services/android-apps-lifecycle.s
     AndroidAppsViewerModule,
   ],
   controllers: [AndroidAppsLifecycleController],
-  providers: [AndroidAppsLifecycleService],
+  providers: [
+    AndroidAppsLifecycleService,
+    AndroidAppsRuntimePreparationService,
+  ],
   exports: [AndroidAppsLifecycleService],
 })
 export class AndroidAppsLifecycleModule {}

@@ -1,61 +1,21 @@
-import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import helmet from 'helmet';
-import { randomUUID } from 'node:crypto';
-import pinoHttp from 'pino-http';
 import { AppModule } from './app.module';
 import {
-  secretHeaderName,
-  SharedSecretGuard,
-} from './security/shared-secret.guard';
+  configureFastifyPlatform,
+  createFastifyAdapter,
+} from './platform/http-platform';
+import { secretHeaderName } from './security/shared-secret.guard';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppModule,
+    createFastifyAdapter(),
+  );
   const config = app.get(ConfigService);
-  app.use(helmet());
-  app.use(
-    pinoHttp({
-      redact: {
-        paths: [
-          'req.headers.authorization',
-          'req.headers.cookie',
-          'req.headers["x-orchestrator-secret"]',
-          'req.headers["x-rebroid-sidecar-secret"]',
-          'res.headers["set-cookie"]',
-        ],
-        censor: '[redacted]',
-      },
-      genReqId: (request, response) => {
-        const requestId =
-          typeof request.headers['x-request-id'] === 'string'
-            ? request.headers['x-request-id']
-            : randomUUID();
-        response.setHeader('x-request-id', requestId);
-        return requestId;
-      },
-    }),
-  );
-  app.setGlobalPrefix('api/v1', {
-    exclude: ['health/live', 'health/ready'],
-  });
-
-  const corsOrigins = config.get<string[]>('app.corsOrigins') ?? [];
-  if (corsOrigins.length > 0) {
-    app.enableCors({
-      origin: corsOrigins,
-      credentials: true,
-    });
-  }
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
-      forbidNonWhitelisted: true,
-    }),
-  );
-  app.useGlobalGuards(app.get(SharedSecretGuard));
+  await configureFastifyPlatform(app);
 
   if (!config.get<string>('app.sharedSecret')) {
     throw new Error(
