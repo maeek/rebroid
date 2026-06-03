@@ -1,15 +1,9 @@
 import {
   BadRequestException,
   Injectable,
-  Logger,
   NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
-import { SchedulerRegistry } from '@nestjs/schedule';
-import { InjectRepository } from '@nestjs/typeorm';
-import { CronJob, sendAt, validateCronExpression } from 'cron';
-import { In, Repository } from 'typeorm';
-import { getErrorMessage } from '../../common/error-message';
 import {
   CreateScheduledTaskDto,
   ScheduledTaskDto,
@@ -21,97 +15,31 @@ import {
   ScheduledTaskKind,
   ScheduledTaskLastStatus,
 } from '../entities/scheduled-task.entity';
+import { ScheduledTasksRepository } from '../persistence/scheduled-tasks.repository';
 import { ScheduledTaskActionsService } from './scheduled-task-actions.service';
-
-const taskJobName = (id: string) => `scheduled-task:${id}`;
+import { ScheduledTaskCronRegistryService } from './scheduled-task-cron-registry.service';
+import { ScheduledTaskPredefinedSeederService } from './scheduled-task-predefined-seeder.service';
+import { ScheduledTaskRunnerService } from './scheduled-task-runner.service';
+import { ScheduledTaskScheduleService } from './scheduled-task-schedule.service';
 
 const toIso = (value: Date | string | null | undefined) =>
   value ? new Date(value).toISOString() : null;
 
-type PredefinedScheduledTask = {
-  key: string;
-  name: string;
-  enabled: boolean;
-  cronExpression: string;
-  actionType: ScheduledTaskActionType;
-  payload: Record<string, unknown> | null;
-};
-
-const predefinedTasks: PredefinedScheduledTask[] = [
-  {
-    key: 'clean-uploaded-apks',
-    name: 'Clean APK uploads',
-    enabled: true,
-    cronExpression: '0 2 * * *',
-    actionType: ScheduledTaskActionType.CleanUploadedApks,
-    payload: null,
-  },
-  {
-    key: 'prune-docker-images',
-    name: 'Prune Docker images',
-    enabled: true,
-    cronExpression: '0 3 * * *',
-    actionType: ScheduledTaskActionType.PruneImages,
-    payload: { danglingOnly: true },
-  },
-  {
-    key: 'clean-runtime-logs',
-    name: 'Clean runtime logs',
-    enabled: true,
-    cronExpression: '0 4 * * 0',
-    actionType: ScheduledTaskActionType.CleanRuntimeLogs,
-    payload: { retentionDays: 30 },
-  },
-  {
-    key: 'prune-stopped-containers',
-    name: 'Prune stopped containers',
-    enabled: false,
-    cronExpression: '0 4 * * 6',
-    actionType: ScheduledTaskActionType.PruneContainers,
-    payload: null,
-  },
-  {
-    key: 'prune-unused-networks',
-    name: 'Prune unused networks',
-    enabled: false,
-    cronExpression: '30 4 * * 6',
-    actionType: ScheduledTaskActionType.PruneNetworks,
-    payload: null,
-  },
-  {
-    key: 'prune-unused-volumes',
-    name: 'Prune unused volumes',
-    enabled: false,
-    cronExpression: '0 5 1 * *',
-    actionType: ScheduledTaskActionType.PruneVolumes,
-    payload: null,
-  },
-  {
-    key: 'full-docker-cleanup',
-    name: 'Full Docker cleanup',
-    enabled: false,
-    cronExpression: '0 5 1 * *',
-    actionType: ScheduledTaskActionType.PruneAll,
-    payload: null,
-  },
-];
-
 @Injectable()
 export class ScheduledTasksService implements OnModuleInit {
-  private readonly logger = new Logger(ScheduledTasksService.name);
-  private readonly runningTasks = new Set<string>();
-
   constructor(
-    @InjectRepository(ScheduledTask)
-    private readonly tasks: Repository<ScheduledTask>,
-    private readonly scheduler: SchedulerRegistry,
+    private readonly tasks: ScheduledTasksRepository,
     private readonly actions: ScheduledTaskActionsService,
+    private readonly cronRegistry: ScheduledTaskCronRegistryService,
+    private readonly predefinedSeeder: ScheduledTaskPredefinedSeederService,
+    private readonly runner: ScheduledTaskRunnerService,
+    private readonly schedule: ScheduledTaskScheduleService,
   ) {}
 
   async onModuleInit() {
-    await this.ensurePredefinedTasks();
-    for (const task of await this.tasks.find()) {
-      await this.registerTask(task);
+    await this.predefinedSeeder.ensurePredefinedTasks();
+    for (const task of await this.tasks.findAll()) {
+      this.registerTask(task);
     }
   }
 
@@ -120,9 +48,7 @@ export class ScheduledTasksService implements OnModuleInit {
   }
 
   async list() {
-    return (await this.tasks.find({ order: { updatedAt: 'DESC' } })).map(
-      this.toDto,
-    );
+    return (await this.tasks.listForDisplay()).map(this.toDto);
   }
 
   async get(id: string) {
@@ -130,7 +56,9 @@ export class ScheduledTasksService implements OnModuleInit {
   }
 
   async create(dto: CreateScheduledTaskDto) {
-    const cronExpression = this.validateCronExpression(dto.cronExpression);
+    const cronExpression = this.schedule.validateCronExpression(
+      dto.cronExpression,
+    );
     const actionType = dto.actionType;
     const payload = this.actions.normalizePayload(
       actionType,
@@ -147,10 +75,11 @@ export class ScheduledTasksService implements OnModuleInit {
       lastStatus: ScheduledTaskLastStatus.NeverRun,
       lastRunAt: null,
       lastError: null,
-      nextRunAt: dto.enabled === false ? null : this.nextRun(cronExpression),
+      nextRunAt:
+        dto.enabled === false ? null : this.schedule.nextRun(cronExpression),
     });
     const saved = await this.tasks.save(task);
-    await this.registerTask(saved);
+    this.registerTask(saved);
     return this.toDto(saved);
   }
 
@@ -163,7 +92,9 @@ export class ScheduledTasksService implements OnModuleInit {
       task.enabled = dto.enabled;
     }
     if (dto.cronExpression !== undefined) {
-      task.cronExpression = this.validateCronExpression(dto.cronExpression);
+      task.cronExpression = this.schedule.validateCronExpression(
+        dto.cronExpression,
+      );
     }
     if (dto.actionType !== undefined) {
       task.actionType = dto.actionType;
@@ -175,14 +106,16 @@ export class ScheduledTasksService implements OnModuleInit {
           ? dto.payload
             ? { ...dto.payload }
             : dto.payload
-          : this.parsePayload(task),
+          : this.runner.parsePayload(task),
       );
       task.payloadJson = payload ? JSON.stringify(payload) : null;
     }
-    task.nextRunAt = task.enabled ? this.nextRun(task.cronExpression) : null;
+    task.nextRunAt = task.enabled
+      ? this.schedule.nextRun(task.cronExpression)
+      : null;
 
     const saved = await this.tasks.save(task);
-    await this.registerTask(saved);
+    this.registerTask(saved);
     return this.toDto(saved);
   }
 
@@ -193,141 +126,30 @@ export class ScheduledTasksService implements OnModuleInit {
         'Predefined scheduled tasks cannot be deleted.',
       );
     }
-    this.unregisterTask(task.id);
+    this.cronRegistry.unregisterTask(task.id);
     await this.tasks.remove(task);
     return this.toDto(task);
   }
 
   async runNow(id: string) {
     const task = await this.getEntity(id);
-    await this.runTask(task.id);
+    await this.runner.runTask(task.id);
     return this.get(id);
   }
 
-  private async runTask(id: string) {
-    if (this.runningTasks.has(id)) {
-      return;
-    }
-
-    const task = await this.tasks.findOneBy({ id });
-    if (!task) {
-      this.unregisterTask(id);
-      return;
-    }
-
-    this.runningTasks.add(id);
-    try {
-      await this.actions.run(task.actionType, this.parsePayload(task));
-      task.lastStatus = ScheduledTaskLastStatus.Success;
-      task.lastError = null;
-    } catch (error) {
-      task.lastStatus = ScheduledTaskLastStatus.Failed;
-      task.lastError = getErrorMessage(error);
-      this.logger.warn(
-        `Scheduled task "${task.name}" failed: ${task.lastError}`,
-      );
-    } finally {
-      task.lastRunAt = new Date();
-      task.nextRunAt = task.enabled ? this.nextRun(task.cronExpression) : null;
-      await this.tasks.save(task);
-      this.runningTasks.delete(id);
-    }
-  }
-
-  private async ensurePredefinedTasks() {
-    const existingTasks = await this.tasks.find({
-      where: { predefinedKey: In(predefinedTasks.map((task) => task.key)) },
-    });
-    const existingKeys = new Set(
-      existingTasks.map((task) => task.predefinedKey),
-    );
-
-    for (const predefined of predefinedTasks) {
-      if (existingKeys.has(predefined.key)) {
-        continue;
-      }
-
-      const cronExpression = this.validateCronExpression(
-        predefined.cronExpression,
-      );
-      const payload = this.actions.normalizePayload(
-        predefined.actionType,
-        predefined.payload,
-      );
-      await this.tasks.save(
-        this.tasks.create({
-          name: predefined.name,
-          enabled: predefined.enabled,
-          kind: ScheduledTaskKind.Predefined,
-          predefinedKey: predefined.key,
-          cronExpression,
-          actionType: predefined.actionType,
-          payloadJson: payload ? JSON.stringify(payload) : null,
-          lastStatus: ScheduledTaskLastStatus.NeverRun,
-          lastRunAt: null,
-          lastError: null,
-          nextRunAt: predefined.enabled ? this.nextRun(cronExpression) : null,
-        }),
-      );
-    }
-  }
-
   private async getEntity(id: string) {
-    const task = await this.tasks.findOneBy({ id });
+    const task = await this.tasks.findById(id);
     if (!task) {
       throw new NotFoundException(`Scheduled task "${id}" was not found.`);
     }
     return task;
   }
 
-  private async registerTask(task: ScheduledTask) {
-    this.unregisterTask(task.id);
-    if (!task.enabled) {
-      return;
-    }
-
-    const job = CronJob.from({
-      cronTime: task.cronExpression,
-      onTick: () => void this.runTask(task.id),
-      start: false,
-    });
-    this.scheduler.addCronJob(taskJobName(task.id), job);
-    job.start();
-  }
-
-  private unregisterTask(id: string) {
-    const name = taskJobName(id);
-    try {
-      this.scheduler.deleteCronJob(name);
-    } catch {
-      return;
-    }
-  }
-
-  private validateCronExpression(value: string) {
-    const cronExpression = value.trim();
-    const result = validateCronExpression(cronExpression);
-    if (!result.valid) {
-      throw new BadRequestException(
-        result.error?.message ?? 'Invalid cron expression.',
-      );
-    }
-    return cronExpression;
-  }
-
-  private nextRun(cronExpression: string) {
-    try {
-      return sendAt(cronExpression).toJSDate();
-    } catch (error) {
-      throw new BadRequestException(getErrorMessage(error));
-    }
-  }
-
-  private parsePayload(task: Pick<ScheduledTask, 'payloadJson'>) {
-    if (!task.payloadJson) {
-      return null;
-    }
-    return JSON.parse(task.payloadJson) as Record<string, unknown>;
+  private registerTask(task: ScheduledTask) {
+    this.cronRegistry.registerTask(
+      task,
+      () => void this.runner.runTask(task.id),
+    );
   }
 
   private toDto(task: ScheduledTask): ScheduledTaskDto {

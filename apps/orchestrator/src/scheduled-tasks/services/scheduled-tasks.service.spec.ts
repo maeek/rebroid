@@ -1,13 +1,16 @@
 import { BadRequestException } from '@nestjs/common';
-import { SchedulerRegistry } from '@nestjs/schedule';
-import { Repository } from 'typeorm';
 import {
   ScheduledTask,
   ScheduledTaskActionType,
   ScheduledTaskKind,
   ScheduledTaskLastStatus,
 } from '../entities/scheduled-task.entity';
+import { ScheduledTasksRepository } from '../persistence/scheduled-tasks.repository';
 import { ScheduledTaskActionsService } from './scheduled-task-actions.service';
+import { ScheduledTaskCronRegistryService } from './scheduled-task-cron-registry.service';
+import { ScheduledTaskPredefinedSeederService } from './scheduled-task-predefined-seeder.service';
+import { ScheduledTaskRunnerService } from './scheduled-task-runner.service';
+import { ScheduledTaskScheduleService } from './scheduled-task-schedule.service';
 import { ScheduledTasksService } from './scheduled-tasks.service';
 
 const task = (patch: Partial<ScheduledTask> = {}): ScheduledTask => ({
@@ -30,51 +33,86 @@ const task = (patch: Partial<ScheduledTask> = {}): ScheduledTask => ({
 
 const createService = ({
   repository = {},
-  scheduler = {},
+  cron = {},
   actions = {},
+  seeder = {},
+  runner = {},
+  schedule = {},
 }: {
-  repository?: Partial<Repository<ScheduledTask>>;
-  scheduler?: Partial<SchedulerRegistry>;
+  repository?: Partial<ScheduledTasksRepository>;
+  cron?: Partial<ScheduledTaskCronRegistryService>;
   actions?: Partial<ScheduledTaskActionsService>;
+  seeder?: Partial<ScheduledTaskPredefinedSeederService>;
+  runner?: Partial<ScheduledTaskRunnerService>;
+  schedule?: Partial<ScheduledTaskScheduleService>;
 } = {}) => {
   const tasks = {
     create: jest.fn((value: Partial<ScheduledTask>) => task(value)),
     save: jest.fn(async (value: ScheduledTask) => value),
-    find: jest.fn(async () => []),
-    findOneBy: jest.fn(async () => task()),
+    findAll: jest.fn(async () => []),
+    listForDisplay: jest.fn(async () => []),
+    findById: jest.fn(async () => task()),
+    findByPredefinedKeys: jest.fn(async () => []),
     remove: jest.fn(async (value: ScheduledTask) => value),
     ...repository,
-  } as unknown as Repository<ScheduledTask>;
-  const registry = {
-    addCronJob: jest.fn(
-      (_name: string, job: { start: () => void; stop: () => void }) => {
-        job.stop();
-        job.start = jest.fn();
-      },
-    ),
-    deleteCronJob: jest.fn(() => {
-      throw new Error('missing job');
-    }),
-    ...scheduler,
-  } as unknown as SchedulerRegistry;
+  } as unknown as ScheduledTasksRepository;
   const taskActions = {
     listActions: jest.fn(() => []),
     normalizePayload: jest.fn((_type, payload) => payload ?? null),
     run: jest.fn(async () => ({})),
     ...actions,
   } as unknown as ScheduledTaskActionsService;
+  const cronRegistry = {
+    registerTask: jest.fn(),
+    unregisterTask: jest.fn(),
+    ...cron,
+  } as unknown as ScheduledTaskCronRegistryService;
+  const predefinedSeeder = {
+    ensurePredefinedTasks: jest.fn(async () => undefined),
+    ...seeder,
+  } as unknown as ScheduledTaskPredefinedSeederService;
+  const taskRunner = {
+    runTask: jest.fn(async () => undefined),
+    parsePayload: jest.fn(
+      (scheduledTask: Pick<ScheduledTask, 'payloadJson'>) =>
+        scheduledTask.payloadJson
+          ? (JSON.parse(scheduledTask.payloadJson) as Record<string, unknown>)
+          : null,
+    ),
+    ...runner,
+  } as unknown as ScheduledTaskRunnerService;
+  const taskSchedule = {
+    validateCronExpression: jest.fn((value: string) => {
+      if (value === 'not cron') {
+        throw new BadRequestException('Invalid cron expression.');
+      }
+      return value.trim();
+    }),
+    nextRun: jest.fn(() => new Date('2026-01-02T00:00:00.000Z')),
+    ...schedule,
+  } as unknown as ScheduledTaskScheduleService;
 
   return {
-    service: new ScheduledTasksService(tasks, registry, taskActions),
+    service: new ScheduledTasksService(
+      tasks,
+      taskActions,
+      cronRegistry,
+      predefinedSeeder,
+      taskRunner,
+      taskSchedule,
+    ),
     tasks,
-    registry,
     taskActions,
+    cronRegistry,
+    predefinedSeeder,
+    taskRunner,
+    taskSchedule,
   };
 };
 
 describe('ScheduledTasksService', () => {
   it('creates an enabled cron task and registers it', async () => {
-    const { service, tasks, registry, taskActions } = createService();
+    const { service, tasks, cronRegistry, taskActions } = createService();
 
     await expect(
       service.create({
@@ -103,9 +141,9 @@ describe('ScheduledTasksService', () => {
         nextRunAt: expect.any(Date),
       }),
     );
-    expect(registry.addCronJob).toHaveBeenCalledWith(
-      'scheduled-task:task-1',
-      expect.any(Object),
+    expect(cronRegistry.registerTask).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'task-1' }),
+      expect.any(Function),
     );
   });
 
@@ -122,26 +160,11 @@ describe('ScheduledTasksService', () => {
   });
 
   it('seeds predefined maintenance tasks on startup', async () => {
-    const { service, tasks } = createService();
+    const { service, predefinedSeeder } = createService();
 
     await service.onModuleInit();
 
-    expect(tasks.save).toHaveBeenCalledWith(
-      expect.objectContaining({
-        kind: ScheduledTaskKind.Predefined,
-        predefinedKey: 'prune-docker-images',
-        actionType: ScheduledTaskActionType.PruneImages,
-        payloadJson: JSON.stringify({ danglingOnly: true }),
-      }),
-    );
-    expect(tasks.save).toHaveBeenCalledWith(
-      expect.objectContaining({
-        kind: ScheduledTaskKind.Predefined,
-        predefinedKey: 'clean-runtime-logs',
-        actionType: ScheduledTaskActionType.CleanRuntimeLogs,
-        payloadJson: JSON.stringify({ retentionDays: 30 }),
-      }),
-    );
+    expect(predefinedSeeder.ensurePredefinedTasks).toHaveBeenCalled();
   });
 
   it('does not delete predefined tasks', async () => {
@@ -151,7 +174,7 @@ describe('ScheduledTasksService', () => {
     });
     const { service } = createService({
       repository: {
-        findOneBy: jest.fn(async () => existing),
+        findById: jest.fn(async () => existing),
       },
     });
 
@@ -162,13 +185,14 @@ describe('ScheduledTasksService', () => {
 
   it('records run-now failures on the task', async () => {
     const existing = task();
-    const { service, tasks, taskActions } = createService({
+    const { service, taskRunner } = createService({
       repository: {
-        findOneBy: jest.fn(async () => existing),
+        findById: jest.fn(async () => existing),
       },
-      actions: {
-        run: jest.fn(async () => {
-          throw new Error('cleanup failed');
+      runner: {
+        runTask: jest.fn(async () => {
+          existing.lastStatus = ScheduledTaskLastStatus.Failed;
+          existing.lastError = 'cleanup failed';
         }),
       },
     });
@@ -178,13 +202,6 @@ describe('ScheduledTasksService', () => {
       lastError: 'cleanup failed',
     });
 
-    expect(taskActions.run).toHaveBeenCalledWith(existing.actionType, null);
-    expect(tasks.save).toHaveBeenCalledWith(
-      expect.objectContaining({
-        lastStatus: ScheduledTaskLastStatus.Failed,
-        lastError: 'cleanup failed',
-        lastRunAt: expect.any(Date),
-      }),
-    );
+    expect(taskRunner.runTask).toHaveBeenCalledWith(existing.id);
   });
 });

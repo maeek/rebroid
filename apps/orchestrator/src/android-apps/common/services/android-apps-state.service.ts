@@ -1,7 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { getErrorMessage } from '../../../common/error-message';
 import { throwNotFound } from '../../../common/not-found';
 import { DockerContainerLifecycleService } from '../../../docker/containers/services/docker-container-lifecycle.service';
@@ -13,6 +11,7 @@ import {
   AndroidApplicationStatus,
 } from '../../android-application-status';
 import { ListAndroidApplicationsDto } from '../dto/list-android-applications.dto';
+import { AndroidApplicationsRepository } from '../../persistence/android-applications.repository';
 import { shouldReconcileContainerState } from '../utils/android-apps-state.utils';
 import { latestRuntimeActivity } from '../utils/android-apps-inactivity.utils';
 import { AndroidAppsProvisioningTrackerService } from './android-apps-provisioning-tracker.service';
@@ -23,8 +22,7 @@ export class AndroidAppsStateService {
   private readonly logger = new Logger(AndroidAppsStateService.name);
 
   constructor(
-    @InjectRepository(AndroidApplication)
-    private readonly applications: Repository<AndroidApplication>,
+    private readonly applications: AndroidApplicationsRepository,
     private readonly config: ConfigService,
     private readonly lifecycle: DockerContainerLifecycleService,
     private readonly networkPolicy: NetworkPolicyService,
@@ -34,10 +32,7 @@ export class AndroidAppsStateService {
 
   /** Lists apps and refreshes their runtime state. */
   async list(query: ListAndroidApplicationsDto) {
-    const apps = await this.applications.find({
-      where: query.ownerUserId ? { ownerUserId: query.ownerUserId } : {},
-      order: { createdAt: 'DESC' },
-    });
+    const apps = await this.applications.findForList(query);
     return query.reconcile === false
       ? apps.map((app) => this.status.decorateApplication(app))
       : Promise.all(apps.map((app) => this.reconcileContainerState(app)));
@@ -45,10 +40,7 @@ export class AndroidAppsStateService {
 
   /** Lists stored app summaries without waiting for Docker reconciliation. */
   async listSummaries(query: ListAndroidApplicationsDto) {
-    const apps = await this.applications.find({
-      where: query.ownerUserId ? { ownerUserId: query.ownerUserId } : {},
-      order: { createdAt: 'DESC' },
-    });
+    const apps = await this.applications.findForList(query);
     return apps.map((app) => this.status.decorateApplication(app));
   }
 
@@ -61,8 +53,7 @@ export class AndroidAppsStateService {
   /** Loads one app without changing its state. */
   async getStored(id: string) {
     return (
-      (await this.applications.findOneBy({ id })) ??
-      throwNotFound('Application', id)
+      (await this.applications.findById(id)) ?? throwNotFound('Application', id)
     );
   }
 
@@ -97,7 +88,7 @@ export class AndroidAppsStateService {
       >
     >,
   ) {
-    await this.applications.update(applicationId, patch);
+    await this.applications.updateLifecycle(applicationId, patch);
   }
 
   /** Clears a missing container reference from the app record. */
@@ -126,9 +117,9 @@ export class AndroidAppsStateService {
 
   /** Finds running apps that have been idle too long. */
   async findInactiveRunningApplications(now = new Date()) {
-    const running = await this.applications.findBy({
-      status: AndroidApplicationStatus.Running,
-    });
+    const running = await this.applications.findByStatus(
+      AndroidApplicationStatus.Running,
+    );
 
     return running.filter((app) => {
       if (app.inactivityTimeoutSeconds < 0) {

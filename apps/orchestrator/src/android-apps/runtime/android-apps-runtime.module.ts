@@ -7,6 +7,10 @@ import { AndroidAppsRuntimeController } from './controllers/android-apps-runtime
 import { AndroidAppsRuntimeAccessService } from './services/android-apps-runtime-access.service';
 import { AndroidAppsRuntimeDeviceService } from './services/android-apps-runtime-device.service';
 import { AndroidAppsRuntimeDiagnosticsService } from './services/android-apps-runtime-diagnostics.service';
+import { RuntimeDataFilesService } from './services/runtime-data-files.service';
+import { RuntimeDownloadFilesService } from './services/runtime-download-files.service';
+import { RuntimeFilePathService } from './services/runtime-file-path.service';
+import { RuntimeUploadStreamService } from './services/runtime-upload-stream.service';
 
 @Module({
   imports: [
@@ -20,6 +24,10 @@ import { AndroidAppsRuntimeDiagnosticsService } from './services/android-apps-ru
     AndroidAppsRuntimeAccessService,
     AndroidAppsRuntimeDeviceService,
     AndroidAppsRuntimeDiagnosticsService,
+    RuntimeDataFilesService,
+    RuntimeDownloadFilesService,
+    RuntimeFilePathService,
+    RuntimeUploadStreamService,
   ],
   exports: [AndroidAppsRuntimeAccessService],
 })

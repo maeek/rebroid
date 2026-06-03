@@ -7,7 +7,6 @@ import { AppConfigModule } from './config/app-config.module';
 import { DatabaseModule } from './database/database.module';
 import { DockerModule } from './docker/docker.module';
 import { DockerMaintenanceModule } from './docker-maintenance/docker-maintenance.module';
-import { DockerSidecarModule } from './docker/sidecar/docker-sidecar.module';
 import { HealthModule } from './health/health.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { NetworkIsolationModule } from './network-isolation/network-isolation.module';
@@ -23,7 +22,6 @@ import { SystemResourcesModule } from './system-resources/system-resources.modul
     DatabaseModule,
     ScheduleModule.forRoot(),
     DockerModule,
-    DockerSidecarModule,
     NetworkIsolationModule,
     NetworkPolicyModule,
     ApkModule,

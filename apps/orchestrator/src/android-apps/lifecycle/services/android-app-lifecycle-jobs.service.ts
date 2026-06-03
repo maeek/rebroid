@@ -1,25 +1,23 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { AndroidAppLifecycleJobsRepository } from '../../persistence/android-app-lifecycle-jobs.repository';
 import {
-  AndroidAppLifecycleJob,
   AndroidAppLifecycleJobKind,
   AndroidAppLifecycleJobStatus,
 } from '../entities/android-app-lifecycle-job.entity';
 
 @Injectable()
 export class AndroidAppLifecycleJobsService {
-  constructor(
-    @InjectRepository(AndroidAppLifecycleJob)
-    private readonly jobs: Repository<AndroidAppLifecycleJob>,
-  ) {}
+  constructor(private readonly jobs: AndroidAppLifecycleJobsRepository) {}
 
   async enqueue(
     applicationId: string,
     kind: AndroidAppLifecycleJobKind,
     payload?: Record<string, unknown>,
   ) {
-    const existing = await this.jobs.findOneBy({ applicationId, kind });
+    const existing = await this.jobs.findByApplicationAndKind(
+      applicationId,
+      kind,
+    );
     const job =
       existing ??
       this.jobs.create({
@@ -33,7 +31,10 @@ export class AndroidAppLifecycleJobsService {
     try {
       return await this.jobs.save(job);
     } catch (error) {
-      const concurrent = await this.jobs.findOneBy({ applicationId, kind });
+      const concurrent = await this.jobs.findByApplicationAndKind(
+        applicationId,
+        kind,
+      );
       if (!concurrent) throw error;
       concurrent.status = AndroidAppLifecycleJobStatus.Pending;
       concurrent.payloadJson = job.payloadJson;
@@ -61,15 +62,15 @@ export class AndroidAppLifecycleJobsService {
   }
 
   async complete(applicationId: string, kind: AndroidAppLifecycleJobKind) {
-    await this.jobs.delete({ applicationId, kind });
+    await this.jobs.deleteByApplicationAndKind(applicationId, kind);
   }
 
   async removeForApplication(applicationId: string) {
-    await this.jobs.delete({ applicationId });
+    await this.jobs.deleteByApplication(applicationId);
   }
 
   listPending() {
-    return this.jobs.find({ order: { updatedAt: 'ASC' } });
+    return this.jobs.listPending();
   }
 
   private async findOrCreate(
@@ -77,7 +78,7 @@ export class AndroidAppLifecycleJobsService {
     kind: AndroidAppLifecycleJobKind,
   ) {
     return (
-      (await this.jobs.findOneBy({ applicationId, kind })) ??
+      (await this.jobs.findByApplicationAndKind(applicationId, kind)) ??
       this.jobs.create({ applicationId, kind, attempts: 0 })
     );
   }

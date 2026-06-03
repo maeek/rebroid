@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, randomUUID } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
 import {
@@ -14,14 +13,13 @@ import {
 import { join } from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { Not, Repository } from 'typeorm';
 import { UploadedApk } from '../entities/uploaded-apk.entity';
+import { UploadedApksRepository } from '../persistence/uploaded-apks.repository';
 
 @Injectable()
 export class ApkStorageService {
   constructor(
-    @InjectRepository(UploadedApk)
-    private readonly uploadedApks: Repository<UploadedApk>,
+    private readonly uploadedApks: UploadedApksRepository,
     private readonly config: ConfigService,
   ) {}
 
@@ -89,10 +87,10 @@ export class ApkStorageService {
    * Deletes the underlying APK file only after the last database reference is gone.
    */
   async removeSharedFileIfUnused(upload: UploadedApk) {
-    const remaining = await this.uploadedApks.countBy({
-      sha256: upload.sha256,
-      id: Not(upload.id),
-    });
+    const remaining = await this.uploadedApks.countSameShaExcluding(
+      upload.sha256,
+      upload.id,
+    );
     if (remaining > 0) {
       return false;
     }
@@ -105,9 +103,7 @@ export class ApkStorageService {
     sha256: string;
     filePath: string;
   }) {
-    const references = await this.uploadedApks.countBy({
-      sha256: upload.sha256,
-    });
+    const references = await this.uploadedApks.countBySha256(upload.sha256);
     if (references > 0) {
       return false;
     }
@@ -118,11 +114,7 @@ export class ApkStorageService {
 
   async cleanupOrphanedFiles() {
     const apkDir = await this.apkDirectory();
-    const referenced = new Set(
-      (await this.uploadedApks.find({ select: { sha256: true } })).map(
-        (upload) => `${upload.sha256}.apk`,
-      ),
-    );
+    const referenced = await this.uploadedApks.referencedFileNames();
     const cutoff = Date.now() - 60 * 60 * 1000;
     let removed = 0;
     for (const name of await readdir(apkDir)) {

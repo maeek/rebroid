@@ -5,7 +5,12 @@ import { ApkModule } from '../apk/apk.module';
 import { DockerModule } from '../docker/docker.module';
 import { ScheduledTasksController } from './controllers/scheduled-tasks.controller';
 import { ScheduledTask } from './entities/scheduled-task.entity';
+import { ScheduledTasksRepository } from './persistence/scheduled-tasks.repository';
 import { ScheduledTaskActionsService } from './services/scheduled-task-actions.service';
+import { ScheduledTaskCronRegistryService } from './services/scheduled-task-cron-registry.service';
+import { ScheduledTaskPredefinedSeederService } from './services/scheduled-task-predefined-seeder.service';
+import { ScheduledTaskRunnerService } from './services/scheduled-task-runner.service';
+import { ScheduledTaskScheduleService } from './services/scheduled-task-schedule.service';
 import { ScheduledTasksService } from './services/scheduled-tasks.service';
 
 @Module({
@@ -16,6 +21,14 @@ import { ScheduledTasksService } from './services/scheduled-tasks.service';
     AndroidAppsCommonModule,
   ],
   controllers: [ScheduledTasksController],
-  providers: [ScheduledTasksService, ScheduledTaskActionsService],
+  providers: [
+    ScheduledTasksRepository,
+    ScheduledTasksService,
+    ScheduledTaskActionsService,
+    ScheduledTaskCronRegistryService,
+    ScheduledTaskPredefinedSeederService,
+    ScheduledTaskRunnerService,
+    ScheduledTaskScheduleService,
+  ],
 })
 export class ScheduledTasksModule {}

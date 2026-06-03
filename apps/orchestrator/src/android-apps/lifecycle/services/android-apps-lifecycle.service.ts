@@ -4,24 +4,16 @@ import {
   Logger,
   OnModuleInit,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
 import { setTimeout as delay } from 'node:timers/promises';
-import { Repository } from 'typeorm';
-import pLimit from 'p-limit';
-import { UploadedApk } from '../../../apk/entities/uploaded-apk.entity';
 import { ApkCatalogService } from '../../../apk/services/apk-catalog.service';
+import { RedroidRuntimeConfigService } from '../../../config/redroid-runtime-config.service';
 import { DockerContainerLifecycleService } from '../../../docker/containers/services/docker-container-lifecycle.service';
 import { DockerContainerProvisioningService } from '../../../docker/containers/services/docker-container-provisioning.service';
 import { DockerImageRuntimeService } from '../../../docker/images/services/docker-image-runtime.service';
-import { DockerNetworkRuntimeService } from '../../../docker/networks/services/docker-network-runtime.service';
 import { DockerResourceRuntimeService } from '../../../docker/resources/services/docker-resource-runtime.service';
 import { getErrorMessage } from '../../../common/error-message';
-import { NetworkIsolationService } from '../../../network-isolation/network-isolation.service';
-import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
 import { SettingsService } from '../../../settings/settings.service';
 import { AndroidApplication } from '../../android-application.entity';
-import { ApplicationProfileMode } from '../../application-profile-mode';
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
@@ -33,11 +25,6 @@ import { UpdateAndroidApplicationDto } from '../../common/dto/update-android-app
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
-import { resolveContainerImage } from '../../common/utils/android-apps-container-image.utils';
-import {
-  parseSavedProfiles,
-  rememberSavedProfile,
-} from '../../common/utils/android-apps-profile-history.utils';
 import { stoppedStatusMessage } from '../../common/utils/android-apps-status-message.utils';
 import { AndroidAppsRuntimeNetworkService } from '../../network/services/android-apps-runtime-network.service';
 import { AndroidAppsProvisioningApkService } from '../../provisioning/services/android-apps-provisioning-apk.service';
@@ -46,28 +33,25 @@ import { applyRedroidDefaultContainerArgs } from '../../provisioning/utils/redro
 import { StartAndroidApplicationDto } from '../dto/start-android-application.dto';
 import { SwitchApplicationProfileDto } from '../dto/switch-application-profile.dto';
 import { UpdateAndroidApplicationApkDto } from '../dto/update-android-application-apk.dto';
-import { AndroidAppsDisplaySidecarService } from '../../viewer/services/android-apps-display-sidecar.service';
 import { AndroidAppLifecycleJobKind } from '../entities/android-app-lifecycle-job.entity';
+import { AndroidApplicationsRepository } from '../../persistence/android-applications.repository';
+import { AndroidApplicationFactory } from './android-application.factory';
 import { AndroidAppLifecycleJobsService } from './android-app-lifecycle-jobs.service';
 import { AndroidAppsRuntimePreparationService } from './android-apps-runtime-preparation.service';
+import { AndroidAppsRemovalService } from './android-apps-removal.service';
+import { LifecycleBackgroundJobRunner } from './lifecycle-background-job-runner.service';
 
 @Injectable()
 export class AndroidAppsLifecycleService implements OnModuleInit {
   private readonly logger = new Logger(AndroidAppsLifecycleService.name);
-  private readonly backgroundJobs = new Set<string>();
-  private readonly limitBackgroundJob: ReturnType<typeof pLimit>;
 
   constructor(
-    @InjectRepository(AndroidApplication)
-    private readonly applications: Repository<AndroidApplication>,
-    private readonly config: ConfigService,
+    private readonly applications: AndroidApplicationsRepository,
+    private readonly redroidConfig: RedroidRuntimeConfigService,
     private readonly lifecycle: DockerContainerLifecycleService,
     private readonly provisioningContainers: DockerContainerProvisioningService,
     private readonly images: DockerImageRuntimeService,
-    private readonly networks: DockerNetworkRuntimeService,
     private readonly resources: DockerResourceRuntimeService,
-    private readonly networkIsolation: NetworkIsolationService,
-    private readonly networkPolicy: NetworkPolicyService,
     private readonly settings: SettingsService,
     private readonly apks: ApkCatalogService,
     private readonly provisioning: AndroidAppsProvisioningService,
@@ -76,14 +60,12 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     private readonly logs: AndroidAppsLogService,
     private readonly runtimeNetwork: AndroidAppsRuntimeNetworkService,
     private readonly state: AndroidAppsStateService,
-    private readonly displaySidecar: AndroidAppsDisplaySidecarService,
     private readonly jobs: AndroidAppLifecycleJobsService,
     private readonly runtimePreparation: AndroidAppsRuntimePreparationService,
-  ) {
-    this.limitBackgroundJob = pLimit(
-      this.config.getOrThrow<number>('app.lifecycle.maxConcurrentJobs'),
-    );
-  }
+    private readonly applicationFactory: AndroidApplicationFactory,
+    private readonly removal: AndroidAppsRemovalService,
+    private readonly backgroundJobs: LifecycleBackgroundJobRunner,
+  ) {}
 
   onModuleInit() {
     void this.resumeInterruptedJobs().catch((error) => {
@@ -102,71 +84,16 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
         : Promise.resolve(null),
     ]);
 
-    const containerImage = resolveContainerImage(
-      dto.containerImage ?? settings.defaultContainerImage,
-      settings.dockerImageRegistry,
+    const app = this.applications.create(
+      this.applicationFactory.initialFields(dto, settings),
     );
-
-    const app = this.applications.create({
-      name: dto.name,
-      ownerUserId: dto.ownerUserId ?? null,
-      status: AndroidApplicationStatus.Provisioning,
-      lifecycleStage: AndroidApplicationLifecycleStage.Queued,
-      statusMessage: 'Provisioning has been queued.',
-      containerImage,
-      containerName: 'pending',
-      networkName: 'pending',
-      volumeName: 'pending',
-      containerId: null,
-      apkFilePath: null,
-      apkOriginalName: null,
-      apkPackageName: null,
-      uploadedApkId: null,
-      scrcpyTransport: settings.defaultScrcpyTransport,
-      adbPort: this.config.getOrThrow<number>('app.redroid.adbPort'),
-      inactivityTimeoutSeconds:
-        dto.inactivityTimeoutSeconds ??
-        settings.defaultInactivityTimeoutSeconds,
-      profileMode: ApplicationProfileMode.Persistent,
-      profileName: 'default',
-      savedProfilesJson: rememberSavedProfile(null, {
-        mode: ApplicationProfileMode.Persistent,
-        name: 'default',
-      }),
-      memoryLimitMb: dto.memoryLimitMb ?? null,
-      cpuLimitCpus: dto.cpuLimitCpus ?? null,
-      containerArgs: applyRedroidDefaultContainerArgs(
-        containerImage,
-        dto.containerArgs,
-      ),
-      recreateContainerOnNextStart: false,
-      removeDataOnRemoval: false,
-      networkPolicyEnabled: dto.networkPolicyEnabled ?? true,
-      networkPolicyAllowCidrs: JSON.stringify(
-        dto.networkPolicyAllowCidrs ?? [],
-      ),
-      networkPolicyStatus: null,
-      networkPolicyMessage: null,
-      networkPolicyAppliedAt: null,
-      lastScrcpyActivityAt: null,
-      lastStartedAt: null,
-      lastStoppedAt: null,
-      provisioningStartedAt: null,
-      provisioningCompletedAt: null,
-      lastError: null,
-    });
 
     await this.state.save(app);
 
-    const names = this.networkIsolation.namesFor(
-      app.id,
-      app.name,
-      app.profileName,
-    );
-    Object.assign(app, names);
+    this.applicationFactory.assignGeneratedNames(app);
 
     if (uploadedApk) {
-      this.applyUploadedApk(app, uploadedApk);
+      this.applicationFactory.applyUploadedApk(app, uploadedApk);
     }
 
     await this.state.save(app);
@@ -398,23 +325,17 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
           networkName: app.networkName,
           volumeName: app.volumeName,
           image: app.containerImage,
-          dataMountPath: this.config.getOrThrow<string>(
-            'app.redroid.dataMountPath',
-          ),
+          dataMountPath: this.redroidConfig.dataMountPath,
           adbPort: app.adbPort,
-          privileged: this.config.getOrThrow<boolean>('app.redroid.privileged'),
+          privileged: this.redroidConfig.privileged,
           profileMode: app.profileMode,
           memoryLimitMb: app.memoryLimitMb,
           cpuLimitCpus: app.cpuLimitCpus,
           containerArgs: app.containerArgs,
-          securityOptions: this.config.getOrThrow<string[]>(
-            'app.redroid.securityOptions',
-          ),
-          cgroupnsMode: this.config.get<string>('app.redroid.cgroupnsMode'),
-          devices: this.config.getOrThrow<string[]>('app.redroid.devices'),
-          optionalDevices: this.config.getOrThrow<string[]>(
-            'app.redroid.optionalDevices',
-          ),
+          securityOptions: this.redroidConfig.securityOptions,
+          cgroupnsMode: this.redroidConfig.cgroupnsMode,
+          devices: this.redroidConfig.devices,
+          optionalDevices: this.redroidConfig.optionalDevices,
         });
       app.containerId = container.id;
       app.recreateContainerOnNextStart = false;
@@ -606,7 +527,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
       }
     }
 
-    this.releaseDisplaySessionsInBackground(app.id, 'stopping');
+    this.removal.releaseDisplaySessionsInBackground(app.id, 'stopping');
 
     if (app.recreateContainerOnNextStart && app.containerId) {
       await this.runtimePreparation.removeManagedContainer(app);
@@ -630,7 +551,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     this.assertRunnable(app);
 
     const uploadedApk = await this.apks.get(dto.uploadedApkId);
-    this.applyUploadedApk(app, uploadedApk);
+    this.applicationFactory.applyUploadedApk(app, uploadedApk);
     await this.state.save(app);
 
     if (app.status === AndroidApplicationStatus.Running) {
@@ -690,7 +611,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     const maxAttempts = 12;
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
-        await this.cleanupRemovedApplication(app, removeData);
+        await this.removal.cleanupRemovedApplication(app, removeData);
         await this.applications.remove(app);
         await this.logs.remove(app.id);
         await this.jobs.removeForApplication(app.id);
@@ -716,43 +637,10 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     }
   }
 
-  private async cleanupRemovedApplication(
-    app: AndroidApplication,
-    removeData: boolean,
-  ) {
-    await this.networkPolicy.remove(app);
-    if (app.containerId) {
-      await this.lifecycle.removeContainer(app.containerId);
-      app.containerId = null;
-    }
-    await this.lifecycle.removeContainerByName(app.containerName);
-    this.releaseDisplaySessionsInBackground(app.id, 'removing');
-    await this.runtimeNetwork.releaseRuntimeSupport(app);
-    await this.networks.removeNetwork(app.networkName);
-
-    if (!removeData) {
-      return;
-    }
-
-    const volumeNames = new Set([
-      app.volumeName,
-      ...parseSavedProfiles(app.savedProfilesJson).map(
-        (profile) =>
-          this.networkIsolation.namesFor(app.id, app.name, profile.name)
-            .volumeName,
-      ),
-    ]);
-    await Promise.all(
-      [...volumeNames].map((volumeName) =>
-        this.resources.removeVolume(volumeName),
-      ),
-    );
-  }
-
   private async resumeInterruptedRemovals() {
-    const apps = await this.applications.findBy({
-      status: AndroidApplicationStatus.Removing,
-    });
+    const apps = await this.applications.findByStatus(
+      AndroidApplicationStatus.Removing,
+    );
     for (const app of apps) {
       this.logger.warn(`Resuming interrupted removal cleanup for ${app.id}.`);
       this.tracker.cancel(app.id);
@@ -763,7 +651,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
   private async resumeInterruptedJobs() {
     const restoredApplicationIds = await this.resumePersistedJobs();
     await this.resumeInterruptedRemovals();
-    const apps = await this.applications.find();
+    const apps = await this.applications.findAll();
     for (const app of apps) {
       if (restoredApplicationIds.has(app.id)) {
         continue;
@@ -807,7 +695,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
         await this.jobs.complete(job.applicationId, job.kind);
         continue;
       }
-      const app = await this.applications.findOneBy({ id: job.applicationId });
+      const app = await this.applications.findById(job.applicationId);
       if (!app) {
         await this.jobs.removeForApplication(job.applicationId);
         continue;
@@ -875,14 +763,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
   }
 
   private scheduleBackgroundJob(key: string, operation: () => Promise<void>) {
-    if (this.backgroundJobs.has(key)) {
-      return;
-    }
-
-    this.backgroundJobs.add(key);
-    void this.limitBackgroundJob(operation).finally(() => {
-      this.backgroundJobs.delete(key);
-    });
+    this.backgroundJobs.schedule(key, operation);
   }
 
   /** Applies profile changes before starting the app. */
@@ -894,40 +775,10 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
   /** Lets a new start request take over a provisioning record left by a dead run. */
   /** Removes a failed runtime container so retries do not reuse a wedged Redroid boot. */
   /** Removes the managed container for an app. */
-  /** Releases optional viewer state without delaying container lifecycle operations. */
-  private releaseDisplaySessionsInBackground(
-    applicationId: string,
-    operation: string,
-  ) {
-    void this.displaySidecar
-      .releaseSessionsForApp(applicationId)
-      .catch((error) => {
-        this.logger.warn(
-          `Could not release display sessions while ${operation} ${applicationId}: ${getErrorMessage(error)}`,
-        );
-      });
-  }
-
   /**
    * A transport error does not prove the container stayed running. Inspect Docker
    * once so definite failures recover immediately and accepted stops can continue.
    */
-  /** Copies uploaded APK data onto the app record. */
-  private applyUploadedApk(app: AndroidApplication, uploadedApk: UploadedApk) {
-    if (
-      uploadedApk.ownerUserId &&
-      app.ownerUserId &&
-      uploadedApk.ownerUserId !== app.ownerUserId
-    ) {
-      throw new ConflictException('Uploaded APK belongs to a different owner.');
-    }
-
-    app.uploadedApkId = uploadedApk.id;
-    app.apkFilePath = uploadedApk.filePath;
-    app.apkOriginalName = uploadedApk.originalName;
-    app.apkPackageName = null;
-  }
-
   /** Blocks actions on removed apps. */
   private assertRunnable(app: AndroidApplication) {
     if (app.status === AndroidApplicationStatus.Removed) {

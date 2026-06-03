@@ -3,26 +3,23 @@ import {
   Injectable,
   PayloadTooLargeException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import Busboy from 'busboy';
-import { In, IsNull, Repository } from 'typeorm';
-import { AndroidApplication } from '../../android-apps/android-application.entity';
+import { AndroidApplicationsRepository } from '../../android-apps/persistence/android-applications.repository';
 import {
   type MultipartUploadRequest,
   isMultipartUpload,
 } from '../../common/http-upload';
 import { SettingsService } from '../../settings/settings.service';
 import { UploadedApk } from '../entities/uploaded-apk.entity';
+import { UploadedApksRepository } from '../persistence/uploaded-apks.repository';
 import { ApkIconExtractorService } from './apk-icon-extractor.service';
 import { ApkStorageService } from './apk-storage.service';
 
 @Injectable()
 export class ApkCatalogService {
   constructor(
-    @InjectRepository(UploadedApk)
-    private readonly uploadedApks: Repository<UploadedApk>,
-    @InjectRepository(AndroidApplication)
-    private readonly applications: Repository<AndroidApplication>,
+    private readonly uploadedApks: UploadedApksRepository,
+    private readonly applications: AndroidApplicationsRepository,
     private readonly settings: SettingsService,
     private readonly storage: ApkStorageService,
     private readonly iconExtractor: ApkIconExtractorService,
@@ -113,10 +110,10 @@ export class ApkCatalogService {
     const { filePath, sha256, sizeBytes } = stored;
     const owner = ownerUserId?.trim() || null;
     const metadata = await this.iconExtractor.extractMetadataFromFile(filePath);
-    const existing = await this.uploadedApks.findOneBy({
+    const existing = await this.uploadedApks.findBySha256ForOwner(
       sha256,
-      ownerUserId: owner ?? IsNull(),
-    });
+      owner,
+    );
     if (existing) {
       if (
         (metadata.extractedIconDataUrl &&
@@ -147,25 +144,18 @@ export class ApkCatalogService {
   }
 
   async findBySha256(sha256: string, ownerUserId?: string | null) {
-    const owner = ownerUserId?.trim() || null;
-    return this.uploadedApks.findOneBy({
-      sha256,
-      ownerUserId: owner ?? IsNull(),
-    });
+    return this.uploadedApks.findBySha256ForOwner(sha256, ownerUserId);
   }
 
   async list(ownerUserId?: string) {
-    return this.uploadedApks.find({
-      where: ownerUserId ? { ownerUserId } : {},
-      order: { createdAt: 'DESC' },
-    });
+    return this.uploadedApks.list(ownerUserId);
   }
 
   /**
    * Loads an uploaded APK or throws when the id does not exist.
    */
   async get(id: string) {
-    const uploaded = await this.uploadedApks.findOneBy({ id });
+    const uploaded = await this.uploadedApks.findById(id);
     if (!uploaded) {
       throw new ConflictException(`Uploaded APK "${id}" was not found.`);
     }
@@ -181,10 +171,10 @@ export class ApkCatalogService {
   async cloneForOwner(id: string, ownerUserId?: string | null) {
     const source = await this.get(id);
     const owner = ownerUserId?.trim() || null;
-    const existing = await this.uploadedApks.findOneBy({
-      sha256: source.sha256,
-      ownerUserId: owner ?? IsNull(),
-    });
+    const existing = await this.uploadedApks.findBySha256ForOwner(
+      source.sha256,
+      owner,
+    );
 
     if (existing) {
       return existing;
@@ -209,7 +199,7 @@ export class ApkCatalogService {
    */
   async remove(id: string) {
     const uploaded = await this.get(id);
-    const inUseCount = await this.applications.countBy({ uploadedApkId: id });
+    const inUseCount = await this.applications.countUsingUploadedApk(id);
     if (inUseCount > 0) {
       throw new ConflictException(
         'Uploaded APK is used by one or more Android applications.',
@@ -225,10 +215,7 @@ export class ApkCatalogService {
    * Removes unreferenced uploads and deletes shared files only after the last reference is gone.
    */
   async cleanupUnused(ownerUserId?: string | null) {
-    const owner = ownerUserId?.trim();
-    const uploads = await this.uploadedApks.find({
-      where: owner ? { ownerUserId: owner } : {},
-    });
+    const uploads = await this.uploadedApks.listForCleanup(ownerUserId);
     const ids = uploads.map((upload) => upload.id);
     if (ids.length === 0) {
       return {
@@ -237,13 +224,7 @@ export class ApkCatalogService {
       };
     }
 
-    const used = await this.applications.find({
-      select: { uploadedApkId: true },
-      where: { uploadedApkId: In(ids) },
-    });
-    const usedIds = new Set(
-      used.map((app) => app.uploadedApkId).filter(Boolean),
-    );
+    const usedIds = await this.applications.findReferencedUploadedApkIds(ids);
     const unused = uploads.filter((upload) => !usedIds.has(upload.id));
 
     let removedFiles = 0;

@@ -12,19 +12,23 @@ describe('AndroidAppLifecycleJobsService', () => {
         records.set(key(value), { ...value });
         return value;
       }),
-      findOneBy: jest.fn(async (value) => records.get(key(value)) ?? null),
-      delete: jest.fn(async (value) => {
-        if (value.kind) {
-          records.delete(key(value));
-          return;
-        }
+      findByApplicationAndKind: jest.fn(
+        async (applicationId: string, kind: AndroidAppLifecycleJobKind) =>
+          records.get(key({ applicationId, kind })) ?? null,
+      ),
+      deleteByApplicationAndKind: jest.fn(
+        async (applicationId: string, kind: AndroidAppLifecycleJobKind) => {
+          records.delete(key({ applicationId, kind }));
+        },
+      ),
+      deleteByApplication: jest.fn(async (applicationId: string) => {
         for (const recordKey of records.keys()) {
-          if (recordKey.startsWith(`${value.applicationId}:`)) {
+          if (recordKey.startsWith(`${applicationId}:`)) {
             records.delete(recordKey);
           }
         }
       }),
-      find: jest.fn(async () => [...records.values()]),
+      listPending: jest.fn(async () => [...records.values()]),
     };
     return { records, repository };
   };

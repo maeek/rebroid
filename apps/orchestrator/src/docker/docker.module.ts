@@ -6,11 +6,7 @@ import { DockerImagesModule } from './images/docker-images.module';
 import { DockerNetworksModule } from './networks/docker-networks.module';
 import { DockerPruneModule } from './prune/docker-prune.module';
 import { DockerResourcesModule } from './resources/docker-resources.module';
-import { DockerSidecarAdbService } from './sidecar/services/docker-sidecar-adb.service';
-import { DockerSidecarApiService } from './sidecar/services/docker-sidecar-api.service';
-import { DockerSidecarService } from './sidecar/services/docker-sidecar.service';
-import { DockerSidecarBuildContextService } from './sidecar/services/docker-sidecar-build-context.service';
-import { DockerSidecarNetworkService } from './sidecar/services/docker-sidecar-network.service';
+import { DockerSidecarModule } from './sidecar/docker-sidecar.module';
 
 @Module({
   imports: [
@@ -20,15 +16,9 @@ import { DockerSidecarNetworkService } from './sidecar/services/docker-sidecar-n
     DockerNetworksModule,
     DockerResourcesModule,
     DockerPruneModule,
+    DockerSidecarModule,
   ],
-  providers: [
-    DockerHealthService,
-    DockerSidecarAdbService,
-    DockerSidecarApiService,
-    DockerSidecarNetworkService,
-    DockerSidecarBuildContextService,
-    DockerSidecarService,
-  ],
+  providers: [DockerHealthService],
   exports: [
     DockerEngineModule,
     DockerContainersModule,
@@ -36,12 +26,8 @@ import { DockerSidecarNetworkService } from './sidecar/services/docker-sidecar-n
     DockerNetworksModule,
     DockerResourcesModule,
     DockerPruneModule,
+    DockerSidecarModule,
     DockerHealthService,
-    DockerSidecarAdbService,
-    DockerSidecarApiService,
-    DockerSidecarNetworkService,
-    DockerSidecarBuildContextService,
-    DockerSidecarService,
   ],
 })
 export class DockerModule {}

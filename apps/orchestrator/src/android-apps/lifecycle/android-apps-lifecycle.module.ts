@@ -1,22 +1,26 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { ApkModule } from '../../apk/apk.module';
+import { AppConfigModule } from '../../config/app-config.module';
 import { DockerModule } from '../../docker/docker.module';
 import { NetworkIsolationModule } from '../../network-isolation/network-isolation.module';
 import { NetworkPolicyModule } from '../../network-policy/network-policy.module';
 import { SettingsModule } from '../../settings/settings.module';
-import { AndroidApplication } from '../android-application.entity';
 import { AndroidAppsCommonModule } from '../common/android-apps-common.module';
+import { AndroidAppsPersistenceModule } from '../persistence/android-apps-persistence.module';
 import { AndroidAppsLifecycleController } from './controllers/android-apps-lifecycle.controller';
 import { AndroidAppsRuntimeNetworkModule } from '../network/android-apps-runtime-network.module';
 import { AndroidAppsProvisioningModule } from '../provisioning/android-apps-provisioning.module';
 import { AndroidAppsViewerModule } from '../viewer/android-apps-viewer.module';
+import { AndroidApplicationFactory } from './services/android-application.factory';
 import { AndroidAppsLifecycleService } from './services/android-apps-lifecycle.service';
+import { AndroidAppsRemovalService } from './services/android-apps-removal.service';
 import { AndroidAppsRuntimePreparationService } from './services/android-apps-runtime-preparation.service';
+import { LifecycleBackgroundJobRunner } from './services/lifecycle-background-job-runner.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([AndroidApplication]),
+    AppConfigModule,
+    AndroidAppsPersistenceModule,
     ApkModule,
     DockerModule,
     NetworkIsolationModule,
@@ -29,8 +33,11 @@ import { AndroidAppsRuntimePreparationService } from './services/android-apps-ru
   ],
   controllers: [AndroidAppsLifecycleController],
   providers: [
+    AndroidApplicationFactory,
     AndroidAppsLifecycleService,
+    AndroidAppsRemovalService,
     AndroidAppsRuntimePreparationService,
+    LifecycleBackgroundJobRunner,
   ],
   exports: [AndroidAppsLifecycleService],
 })
