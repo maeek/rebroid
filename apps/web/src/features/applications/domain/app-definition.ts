@@ -28,7 +28,6 @@ export interface AppDefinition {
   profileName: string | null
   memoryLimitMb: number | null
   cpuLimitCpus: number | null
-  volumeSizeLimitMb: number | null
   containerArgs: string | null
   recreateContainerOnNextStart: boolean
   networkPolicyEnabled: boolean

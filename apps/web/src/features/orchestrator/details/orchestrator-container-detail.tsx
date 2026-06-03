@@ -336,7 +336,6 @@ const RelatedImageSection = ({ relatedImage }: { relatedImage: PlatformContainer
 const RelatedNetworksSection = ({ networks }: { networks: PlatformContainerDetails['relatedNetworks'] }) => (
   <Section
     title='Related networks'
-    boxed
     contentClassName='gap-3'
   >
     <Visible when={networks.length > 0}>

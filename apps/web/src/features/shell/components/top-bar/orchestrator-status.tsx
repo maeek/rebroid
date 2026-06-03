@@ -55,7 +55,7 @@ const dotTone = (status: DisplayServiceStatus) => {
   }
 
   if (status === 'unhealthy' || status === 'degraded') {
-    return 'bg-yellow-400'
+    return 'bg-amber-400'
   }
 
   return 'bg-destructive'
@@ -67,7 +67,7 @@ const badgeTone = (status: DisplayServiceStatus) => {
   }
 
   if (status === 'unhealthy' || status === 'degraded') {
-    return 'border-yellow-400/35 bg-yellow-400/10 text-yellow-300'
+    return 'border-amber-400/35 bg-amber-400/10 text-amber-300'
   }
 
   return 'border-destructive/35 bg-destructive/15 text-destructive'
@@ -163,7 +163,7 @@ export const OrchestratorStatus = () => {
             {
               'border-border/70 bg-secondary/50 text-secondary-foreground': state === 'checking',
               'border-green-400/30 bg-green-400/10 text-green-400': state === 'online',
-              'border-yellow-400/40 bg-yellow-400/10 text-yellow-400': state === 'degraded',
+              'border-amber-400/40 bg-amber-400/10 text-amber-300': state === 'degraded',
               'border-destructive/50 bg-destructive/15 text-destructive': state === 'offline'
             }
           )}

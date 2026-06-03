@@ -1,0 +1,76 @@
+import type { ReactNode } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { Section } from '@/components/ui/section'
+import { cn } from '@/lib/utils'
+
+const statusTone = (status: string, ok: boolean) => {
+  if (status === 'offline') {
+    return {
+      banner: 'border-destructive/40 bg-destructive/10',
+      badge: 'destructive' as const
+    }
+  }
+
+  if (ok || status === 'healthy') {
+    return {
+      banner: 'border-green-400/25 bg-green-400/10',
+      badge: 'status' as const
+    }
+  }
+
+  return {
+    banner: 'border-amber-500/35 bg-amber-500/10',
+    badge: 'warning' as const
+  }
+}
+
+export const PlatformStatusBanner = ({
+  status,
+  ok,
+  message,
+  actions,
+  details,
+  detailTitle = 'Technical details'
+}: {
+  status: string
+  ok: boolean
+  message: ReactNode
+  actions?: ReactNode
+  details?: ReactNode
+  detailTitle?: string
+}) => {
+  const tone = statusTone(status, ok)
+
+  return (
+    <div
+      className={cn(
+        'rounded-lg border px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md',
+        tone.banner
+      )}
+    >
+      <div className='flex flex-wrap items-center justify-between gap-3'>
+        <div className='flex min-w-0 flex-wrap items-center gap-3'>
+          <Badge
+            className='capitalize'
+            variant={tone.badge}
+          >
+            {status}
+          </Badge>
+          <span className='min-w-0 text-sm text-secondary-foreground'>{message}</span>
+        </div>
+        {actions}
+      </div>
+      {details ? (
+        <Section
+          title={detailTitle}
+          collapsible
+          className='mt-3'
+          titleClassName='border-t border-border/60 pt-3 text-sm text-secondary-foreground'
+          contentClassName='gap-3'
+        >
+          {details}
+        </Section>
+      ) : null}
+    </div>
+  )
+}

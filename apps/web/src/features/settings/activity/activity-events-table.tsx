@@ -25,7 +25,6 @@ const ActivityEventsContent = () => {
             </div>
           </div>
         }
-        boxed
         contentClassName='gap-4'
       >
         <ActivityEventsToolbar />

@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { IconEye, IconLoader2, IconRefresh, IconTrash } from '@tabler/icons-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { IconEye, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -62,7 +62,13 @@ const ImageNameCell = ({ image }: { image: PlatformImage }) => {
   )
 }
 
-export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: number }) => {
+export const OrchestratorImagesSection = ({
+  refreshKey = 0,
+  onRefreshComplete
+}: {
+  refreshKey?: number
+  onRefreshComplete?: () => void
+}) => {
   const [images, setImages] = useState<PlatformImage[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -109,7 +115,7 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
     [filteredImages, pageIndex, pageSize]
   )
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     setIsLoading(true)
     try {
       setImages(await listPlatformImagesAction())
@@ -118,12 +124,13 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
       setError(caughtError instanceof Error ? caughtError.message : 'Could not load image inventory.')
     } finally {
       setIsLoading(false)
+      onRefreshComplete?.()
     }
-  }
+  }, [onRefreshComplete])
 
   useEffect(() => {
     void refresh()
-  }, [refreshKey])
+  }, [refresh, refreshKey])
 
   useEffect(() => {
     setPageIndex(0)
@@ -185,17 +192,7 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
 
   return (
     <>
-      <Section
-        title='Images'
-        boxed
-        titleClassName='pb-4'
-        contentClassName='gap-4'
-      >
-        <div className='flex items-center justify-between gap-3'>
-          <p className='text-sm text-secondary-foreground'>
-            Docker images available to start application containers or custom runtimes.
-          </p>
-        </div>
+      <Section contentClassName='gap-4'>
         <PlatformSelectionToolbar
           search={search}
           placeholder='Search images'
@@ -209,15 +206,6 @@ export const OrchestratorImagesSection = ({ refreshKey = 0 }: { refreshKey?: num
           onSearchChange={setSearch}
           actions={
             <>
-              <Button
-                type='button'
-                variant='ghost'
-                disabled={isLoading}
-                onClick={() => void refresh()}
-              >
-                {isLoading ? <IconLoader2 className='size-4 animate-spin' /> : <IconRefresh className='size-4' />}
-                Refresh
-              </Button>
               <Button
                 type='button'
                 variant='ghost'

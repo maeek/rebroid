@@ -4,7 +4,6 @@ import type { ResourceQuota } from '@/shared/permissions/permissions'
 export type ResourceLimitBounds = {
   maxMemoryMb: number | null
   maxCpuCpus: number | null
-  maxVolumeSizeMb: number | null
 }
 
 const bytesToWholeMb = (bytes: number | null | undefined) =>
@@ -27,6 +26,5 @@ export const buildResourceLimitBounds = (
   quotas: ResourceQuota
 ): ResourceLimitBounds => ({
   maxMemoryMb: boundedMax(quotas.maxMemoryMb, bytesToWholeMb(resources?.hostMemoryBytes)),
-  maxCpuCpus: boundedMax(quotas.maxCpuCpus, resources?.hostCpuCores ?? null),
-  maxVolumeSizeMb: quotas.maxVolumeSizeMb
+  maxCpuCpus: boundedMax(quotas.maxCpuCpus, resources?.hostCpuCores ?? null)
 })

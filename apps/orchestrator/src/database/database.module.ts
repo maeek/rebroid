@@ -6,6 +6,7 @@ import { dirname } from 'node:path';
 import { AndroidApplication } from '../android-apps/android-application.entity';
 import { AndroidAppLifecycleJob } from '../android-apps/lifecycle/entities/android-app-lifecycle-job.entity';
 import { UploadedApk } from '../apk/entities/uploaded-apk.entity';
+import { ScheduledTask } from '../scheduled-tasks/entities/scheduled-task.entity';
 import { InitializeSqliteSchema1800000000000 } from './migrations/1800000000000-initialize-sqlite-schema';
 
 @Module({
@@ -19,7 +20,12 @@ import { InitializeSqliteSchema1800000000000 } from './migrations/1800000000000-
         return {
           type: 'better-sqlite3',
           database,
-          entities: [AndroidApplication, AndroidAppLifecycleJob, UploadedApk],
+          entities: [
+            AndroidApplication,
+            AndroidAppLifecycleJob,
+            UploadedApk,
+            ScheduledTask,
+          ],
           migrations: [InitializeSqliteSchema1800000000000],
           migrationsRun: true,
           synchronize: false,

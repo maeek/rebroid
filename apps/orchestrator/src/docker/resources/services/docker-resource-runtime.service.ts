@@ -186,13 +186,6 @@ export class DockerResourceRuntimeService {
     );
   }
 
-  /**
-   * Returns Docker disk-usage data for callers that need volume sizing details.
-   */
-  async systemDf() {
-    return this.engine.read(() => this.engine.docker.df(), 'Collect Docker df');
-  }
-
   private async findVolumeByName(name: string) {
     const volumes = await this.engine.read(
       () =>

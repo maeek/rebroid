@@ -14,25 +14,30 @@ export const OperationalSettingsSkeleton = ({
   columns: ListColumn[]
   minWidth: string
 }) => (
-  <Section
-    title={title}
-    boxed
-    titleClassName='pb-4'
-    contentClassName='gap-5'
-  >
-    <div className='flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-4'>
+  <>
+    <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/70 bg-card/35 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md'>
       <div className='flex items-center gap-3'>
         <Skeleton className='h-6 w-16 rounded-full' />
         <Skeleton className='h-4 w-56 max-sm:w-36' />
       </div>
       <Skeleton className='h-9 w-24' />
     </div>
-    <TableSkeleton
-      columns={columns}
-      minWidth={minWidth}
-      rows={4}
-    />
-  </Section>
+    <Section
+      title={title}
+      titleClassName='pb-2'
+      contentClassName='gap-4'
+    >
+      <div className='flex flex-wrap items-center justify-between gap-3'>
+        <Skeleton className='h-9 w-full max-w-md' />
+        <Skeleton className='h-9 w-36' />
+      </div>
+      <TableSkeleton
+        columns={columns}
+        minWidth={minWidth}
+        rows={4}
+      />
+    </Section>
+  </>
 )
 
 export const OperationalSettingsPageSkeleton = ({

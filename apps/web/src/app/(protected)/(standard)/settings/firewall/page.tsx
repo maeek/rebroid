@@ -1,8 +1,6 @@
 import { Suspense } from 'react'
-import { PlatformPageHeader } from '@/features/orchestrator/components/platform-page-header'
-import { FirewallSettings } from '@/features/settings/orchestrator/firewall-settings'
-import { OperationalSettingsSkeleton } from '@/features/settings/orchestrator/operational-settings-skeleton'
-import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
+import { FirewallSettingsPageClient } from '@/features/settings/orchestrator/firewall-settings-page-client'
+import { OperationalSettingsPageSkeleton } from '@/features/settings/orchestrator/operational-settings-skeleton'
 import { requireAdmin } from '@/server/auth/authorization'
 import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
 import { getOrchestratorHealthAction } from '@/server/orchestrator/diagnostics/actions'
@@ -20,7 +18,7 @@ const FirewallSettingsContent = async () => {
   const [health, applications] = await Promise.all([getOrchestratorHealthAction(), listApplicationsAction()])
 
   return (
-    <FirewallSettings
+    <FirewallSettingsPageClient
       initialHealth={health.services.firewall}
       initialApplications={applications}
     />
@@ -31,25 +29,18 @@ export default async function OrchestratorFirewallSettingsPage() {
   await requireAdmin()
 
   return (
-    <ProtectedStackPageLayout mainClassName='gap-2'>
-      <PlatformPageHeader
-        title='Network access'
-        description='Apply outbound network restrictions to application containers.'
-        includeOrchestratorBreadcrumb={false}
-      />
-      <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
-        <Suspense
-          fallback={
-            <OperationalSettingsSkeleton
-              title='Firewall agent'
-              columns={[...firewallColumns]}
-              minWidth='58rem'
-            />
-          }
-        >
-          <FirewallSettingsContent />
-        </Suspense>
-      </section>
-    </ProtectedStackPageLayout>
+    <Suspense
+      fallback={
+        <OperationalSettingsPageSkeleton
+          titleWidth='w-36 max-sm:w-24'
+          sectionTitle='Network access policies'
+          columns={[...firewallColumns]}
+          minWidth='58rem'
+          includeOrchestratorBreadcrumb={false}
+        />
+      }
+    >
+      <FirewallSettingsContent />
+    </Suspense>
   )
 }

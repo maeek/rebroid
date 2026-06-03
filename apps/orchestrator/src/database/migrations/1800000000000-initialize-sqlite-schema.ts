@@ -53,7 +53,6 @@ export class InitializeSqliteSchema1800000000000 implements MigrationInterface {
           },
           { name: 'memoryLimitMb', type: 'integer', isNullable: true },
           { name: 'cpuLimitCpus', type: 'real', isNullable: true },
-          { name: 'volumeSizeLimitMb', type: 'integer', isNullable: true },
           { name: 'containerArgs', type: 'text', isNullable: true },
           {
             name: 'recreateContainerOnNextStart',
@@ -213,9 +212,60 @@ export class InitializeSqliteSchema1800000000000 implements MigrationInterface {
         ],
       }),
     );
+
+    await queryRunner.createTable(
+      new Table({
+        name: 'scheduled_tasks',
+        columns: [
+          { name: 'id', type: 'varchar', isPrimary: true, isNullable: false },
+          { name: 'name', type: 'varchar', isNullable: false },
+          {
+            name: 'enabled',
+            type: 'boolean',
+            isNullable: false,
+            default: '1',
+          },
+          {
+            name: 'kind',
+            type: 'varchar',
+            isNullable: false,
+            default: "'custom'",
+          },
+          { name: 'predefinedKey', type: 'varchar', isNullable: true },
+          { name: 'cronExpression', type: 'varchar', isNullable: false },
+          { name: 'actionType', type: 'varchar', isNullable: false },
+          { name: 'payloadJson', type: 'text', isNullable: true },
+          { name: 'lastRunAt', type: 'datetime', isNullable: true },
+          { name: 'nextRunAt', type: 'datetime', isNullable: true },
+          {
+            name: 'lastStatus',
+            type: 'varchar',
+            isNullable: false,
+            default: "'never_run'",
+          },
+          { name: 'lastError', type: 'text', isNullable: true },
+          {
+            name: 'createdAt',
+            type: 'datetime',
+            isNullable: false,
+            default: "datetime('now')",
+          },
+          {
+            name: 'updatedAt',
+            type: 'datetime',
+            isNullable: false,
+            default: "datetime('now')",
+          },
+        ],
+      }),
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    if (await queryRunner.hasTable('scheduled_tasks')) {
+      await queryRunner.dropTable('scheduled_tasks');
+    }
+
     if (await queryRunner.hasTable('android_app_lifecycle_jobs')) {
       await queryRunner.dropTable('android_app_lifecycle_jobs');
     }

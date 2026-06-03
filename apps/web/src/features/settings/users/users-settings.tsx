@@ -101,8 +101,7 @@ export const UsersSettings = ({
       <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
         <Section
           title='Existing Users'
-          boxed
-          titleClassName='pb-4'
+          titleClassName='pb-2'
           contentClassName='gap-3'
         >
           <UsersGrid

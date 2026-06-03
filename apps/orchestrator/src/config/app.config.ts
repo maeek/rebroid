@@ -8,8 +8,6 @@ const optionalInteger = (minimum: number, maximum: number) =>
 
 const environmentSchema = z.object({
   PORT: optionalInteger(1, 65_535),
-  VOLUME_USAGE_CACHE_TTL_SECONDS: optionalInteger(0, 86_400),
-  VOLUME_USAGE_RETRY_DELAY_SECONDS: optionalInteger(0, 86_400),
   DOCKER_STOPPING_STALE_TIMEOUT_SECONDS: optionalInteger(1, 86_400),
   DOCKER_REQUEST_TIMEOUT_MS: optionalInteger(1, 300_000),
   DOCKER_SLOW_REQUEST_WARNING_MS: optionalInteger(1, 300_000),
@@ -26,6 +24,7 @@ const environmentSchema = z.object({
   DISPLAY_SIDECAR_PORT: optionalInteger(1, 65_535),
   DISPLAY_SIDECAR_PUBLISHED_HOST_PORT: optionalInteger(0, 65_535),
   ENABLE_API_DOCS: z.enum(['true', 'false']).optional(),
+  FIREWALL_POLICY_BOOTSTRAP: z.enum(['true', 'false']).optional(),
   DISPLAY_WEBRTC_UDP_PORT_RANGE: z
     .string()
     .regex(
@@ -112,14 +111,6 @@ export default registerAs('app', () => {
         process.env.ORCHESTRATOR_CONTAINER_ID ||
         process.env.HOSTNAME ||
         undefined,
-      volumeUsageCacheTtlSeconds: number(
-        process.env.VOLUME_USAGE_CACHE_TTL_SECONDS,
-        300,
-      ),
-      volumeUsageRetryDelaySeconds: number(
-        process.env.VOLUME_USAGE_RETRY_DELAY_SECONDS,
-        60,
-      ),
       stoppingStaleTimeoutSeconds: number(
         process.env.DOCKER_STOPPING_STALE_TIMEOUT_SECONDS,
         60,
@@ -154,6 +145,7 @@ export default registerAs('app', () => {
         process.env.ORCHESTRATOR_API_HOST ||
         undefined,
       apiCidrs: csv(process.env.NETWORK_POLICY_API_CIDRS, []),
+      bootstrap: bool(process.env.FIREWALL_POLICY_BOOTSTRAP, true),
       defaultAllowDestinations: csv(
         process.env.NETWORK_POLICY_DEFAULT_ALLOW_DESTINATIONS,
         ['API_IP', 'GATEWAY_IP'],

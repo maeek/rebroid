@@ -57,7 +57,6 @@ export default function AppManage({
   const [inactivityTimeoutSeconds, setInactivityTimeoutSeconds] = useState(app?.inactivityTimeoutSeconds ?? 900)
   const [memoryLimitMb, setMemoryLimitMb] = useState(app?.memoryLimitMb?.toString() ?? '')
   const [cpuLimitCpus, setCpuLimitCpus] = useState(app?.cpuLimitCpus?.toString() ?? '')
-  const [volumeSizeLimitMb, setVolumeSizeLimitMb] = useState(app?.volumeSizeLimitMb?.toString() ?? '')
   const [containerArgs, setContainerArgs] = useState(app?.containerArgs ?? '')
   const [icon, setIcon] = useState<string | null>(app?.icon ?? null)
   const [isSaving, setIsSaving] = useState(false)
@@ -109,7 +108,6 @@ export default function AppManage({
       setInactivityTimeoutSeconds(currentApp.inactivityTimeoutSeconds)
       setMemoryLimitMb(currentApp.memoryLimitMb?.toString() ?? '')
       setCpuLimitCpus(currentApp.cpuLimitCpus?.toString() ?? '')
-      setVolumeSizeLimitMb(currentApp.volumeSizeLimitMb?.toString() ?? '')
       setContainerArgs(currentApp.containerArgs ?? '')
     }
   }, [currentApp])
@@ -148,7 +146,6 @@ export default function AppManage({
     inactivityTimeoutSeconds,
     memoryLimitMb,
     cpuLimitCpus,
-    volumeSizeLimitMb,
     customContainerArgs: containerArgs,
     redroidDisplayProfileId: 'custom',
     redroidCustomDisplayWidth: '',
@@ -163,7 +160,6 @@ export default function AppManage({
     if (patch.inactivityTimeoutSeconds !== undefined) setInactivityTimeoutSeconds(patch.inactivityTimeoutSeconds)
     if (patch.memoryLimitMb !== undefined) setMemoryLimitMb(patch.memoryLimitMb)
     if (patch.cpuLimitCpus !== undefined) setCpuLimitCpus(patch.cpuLimitCpus)
-    if (patch.volumeSizeLimitMb !== undefined) setVolumeSizeLimitMb(patch.volumeSizeLimitMb)
     if (patch.customContainerArgs !== undefined) setContainerArgs(patch.customContainerArgs)
   }
 
@@ -175,7 +171,6 @@ export default function AppManage({
         inactivityTimeoutSeconds: canChangeSessionLimit ? inactivityTimeoutSeconds : undefined,
         memoryLimitMb: canChangeResources && memoryLimitMb ? Number(memoryLimitMb) : undefined,
         cpuLimitCpus: canChangeResources && cpuLimitCpus ? Number(cpuLimitCpus) : undefined,
-        volumeSizeLimitMb: canChangeResources && volumeSizeLimitMb ? Number(volumeSizeLimitMb) : undefined,
         containerArgs: canChangeContainerArgs ? containerArgs.trim() || null : undefined
       })
       hasPendingAppChangesRef.current = false

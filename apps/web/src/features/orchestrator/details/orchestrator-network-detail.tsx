@@ -143,9 +143,8 @@ export const OrchestratorNetworkDetail = ({ details }: OrchestratorNetworkDetail
 
         <Section
           title='Related containers'
-          boxed
           contentClassName='gap-4'
-          titleClassName='pb-4'
+          titleClassName='pb-2'
         >
           <Visible when={details.relatedContainers.length > 0}>
             <div className='overflow-hidden rounded-lg border border-border/60 bg-background/25'>

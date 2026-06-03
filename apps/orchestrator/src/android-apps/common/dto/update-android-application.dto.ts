@@ -60,20 +60,6 @@ export class UpdateAndroidApplicationDto {
   cpuLimitCpus?: number | null;
 
   @ApiPropertyOptional({
-    type: Number,
-    example: 8192,
-    minimum: 16,
-    maximum: 1048576,
-    nullable: true,
-  })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(16)
-  @Max(1048576)
-  volumeSizeLimitMb?: number | null;
-
-  @ApiPropertyOptional({
     type: String,
     description:
       'Optional command or arguments passed to the container as Docker Cmd. Use a long-running command if the image would otherwise exit immediately.',

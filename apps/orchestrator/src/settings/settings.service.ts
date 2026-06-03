@@ -109,16 +109,6 @@ export class SettingsService {
         1,
         512,
       ),
-      imagePruneIntervalHours: numberInRange(
-        value.imagePruneIntervalHours,
-        defaults.imagePruneIntervalHours,
-        0,
-        8760,
-      ),
-      imagePruneDanglingOnly:
-        typeof value.imagePruneDanglingOnly === 'boolean'
-          ? value.imagePruneDanglingOnly
-          : defaults.imagePruneDanglingOnly,
     };
   }
 
@@ -135,8 +125,6 @@ export class SettingsService {
       maxApkUploadSizeMb: this.config.getOrThrow<number>(
         'app.redroid.maxApkUploadSizeMb',
       ),
-      imagePruneIntervalHours: 24,
-      imagePruneDanglingOnly: true,
     };
   }
 

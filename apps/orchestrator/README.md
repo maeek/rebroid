@@ -185,7 +185,7 @@ PATCH /android-applications/:id/network-policy
 POST  /android-applications/:id/network-policy/apply
 ```
 
-Resource/profile options are stored per app. RAM and CPU are applied to new containers. Named Docker volume size is currently advisory because the default local volume driver does not enforce quota cleanly across hosts.
+Resource/profile options are stored per app. RAM and CPU limits are applied to new containers.
 
 ## Docker
 

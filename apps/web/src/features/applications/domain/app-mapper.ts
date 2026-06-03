@@ -23,7 +23,6 @@ export const mapAndroidApplicationToAppDefinition = (app: AndroidApplication): A
   savedProfiles: app.storage.savedProfiles ?? [],
   memoryLimitMb: app.runtime.resources.memoryLimitMb,
   cpuLimitCpus: app.runtime.resources.cpuLimitCpus,
-  volumeSizeLimitMb: app.runtime.resources.volumeSizeLimitMb,
   containerArgs: app.runtime.containerArgs,
   recreateContainerOnNextStart: app.status.recreateRequired,
   networkPolicyEnabled: app.network.policy.enabled,

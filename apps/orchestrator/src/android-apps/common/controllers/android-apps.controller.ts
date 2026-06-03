@@ -57,7 +57,6 @@ export class AndroidAppsController {
         inactivityTimeoutSeconds: { type: 'integer', example: 900 },
         memoryLimitMb: { type: 'integer', example: 2048 },
         cpuLimitCpus: { type: 'number', example: 2 },
-        volumeSizeLimitMb: { type: 'integer', example: 8192 },
         containerArgs: {
           type: 'string',
           example: 'sleep infinity',

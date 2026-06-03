@@ -23,10 +23,10 @@ export const OrchestratorSettingsHeader = ({
             items={[
               { label: 'Settings', href: '/settings/general' },
               { label: 'Orchestrator', href: '/settings/orchestrator' },
-              { label: 'Overview' }
+              { label: 'Settings' }
             ]}
           />
-          <h2 className='pt-4 text-3xl font-medium max-sm:text-xl'>Orchestrator</h2>
+          <h2 className='pt-4 text-3xl font-medium max-sm:text-xl'>Settings</h2>
         </div>
         <Visible when={showActions}>
           <div className='flex gap-2 max-sm:w-full'>

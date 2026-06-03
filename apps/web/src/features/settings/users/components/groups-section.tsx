@@ -43,30 +43,34 @@ export const GroupsSection = ({
     <>
       <Section
         title='Groups'
-        boxed
-        titleClassName='pb-4'
+        titleClassName='pb-2'
         contentClassName='gap-3'
       >
-        <p className='text-sm text-secondary-foreground'>
-          Groups provide default permissions and quotas. User-level settings can override them when needed.
-        </p>
-        <div className='flex flex-wrap gap-2'>
-          <Input
-            value={newGroupName}
-            className='max-w-sm'
-            placeholder='New Group Name'
-            onChange={event => setNewGroupName(event.target.value)}
-          />
-          <Button
-            type='button'
-            variant='secondary'
-            disabled={isSaving || !newGroupName.trim()}
-            onClick={() => void createGroup()}
-          >
-            <IconPlus className='size-4' />
-            Create Group
-          </Button>
-        </div>
+        <Section
+          boxed
+          contentClassName='gap-3'
+        >
+          <p className='text-sm text-secondary-foreground'>
+            Groups provide default permissions and quotas. User-level settings can override them when needed.
+          </p>
+          <div className='flex flex-wrap gap-2'>
+            <Input
+              value={newGroupName}
+              className='max-w-sm'
+              placeholder='New Group Name'
+              onChange={event => setNewGroupName(event.target.value)}
+            />
+            <Button
+              type='button'
+              variant='secondary'
+              disabled={isSaving || !newGroupName.trim()}
+              onClick={() => void createGroup()}
+            >
+              <IconPlus className='size-4' />
+              Create Group
+            </Button>
+          </div>
+        </Section>
         <div className='overflow-hidden rounded-lg border border-border/60 bg-background/25'>
           <Table>
             <TableHeader className='bg-background/45'>

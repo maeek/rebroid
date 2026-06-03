@@ -54,15 +54,6 @@ const quotaFields: QuotaField[] = [
     min: 0.1,
     max: 64,
     step: 0.1
-  },
-  {
-    key: 'maxVolumeSizeMb',
-    label: 'Max Volume',
-    description: 'Maximum requested volume size.',
-    suffix: ' MB',
-    inputSuffix: 'MB',
-    min: 16,
-    max: 1048576
   }
 ]
 
@@ -91,10 +82,6 @@ export const QuotaFields = ({
 
     if (field.key === 'maxCpuCpus') {
       return resourceLimits?.maxCpuCpus ?? field.max
-    }
-
-    if (field.key === 'maxVolumeSizeMb') {
-      return resourceLimits?.maxVolumeSizeMb ?? field.max
     }
 
     return field.max

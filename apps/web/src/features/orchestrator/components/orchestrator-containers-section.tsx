@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { IconLoader2, IconRefresh } from '@tabler/icons-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -29,7 +28,13 @@ import type { PlatformContainer } from '@/server/orchestrator/platform/types'
 
 type PendingAction = { type: 'stop' | 'remove'; container: PlatformContainer } | null
 
-export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?: number }) => {
+export const OrchestratorContainersSection = ({
+  refreshKey = 0,
+  onRefreshComplete
+}: {
+  refreshKey?: number
+  onRefreshComplete?: () => void
+}) => {
   const [containers, setContainers] = useState<PlatformContainer[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -92,7 +97,7 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
     [filteredContainers, pageIndex, pageSize]
   )
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     setIsLoading(true)
     try {
       setContainers(await listPlatformContainersAction())
@@ -101,12 +106,13 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
       setError(caughtError instanceof Error ? caughtError.message : 'Could not load container inventory.')
     } finally {
       setIsLoading(false)
+      onRefreshComplete?.()
     }
-  }
+  }, [onRefreshComplete])
 
   useEffect(() => {
     void refresh()
-  }, [refreshKey])
+  }, [refresh, refreshKey])
 
   useEffect(() => {
     setPageIndex(0)
@@ -180,17 +186,7 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
 
   return (
     <>
-      <Section
-        title='Containers'
-        boxed
-        titleClassName='pb-4'
-        contentClassName='gap-4'
-      >
-        <div className='flex items-center justify-between gap-3'>
-          <p className='text-sm text-secondary-foreground'>
-            Docker containers visible to the platform. Managed application containers are shown first.
-          </p>
-        </div>
+      <Section contentClassName='gap-4'>
         <Visible when={orphanedContainers.length > 0}>
           <div className='flex flex-wrap items-center justify-between gap-3 rounded-md border border-destructive/35 bg-destructive/10 p-3 text-sm'>
             <span className='text-destructive'>
@@ -222,43 +218,32 @@ export const OrchestratorContainersSection = ({ refreshKey = 0 }: { refreshKey?:
           }
           onSearchChange={setSearch}
           actions={
-            <>
+            <div className='flex gap-2'>
               <Button
                 type='button'
                 variant='ghost'
-                disabled={isLoading}
-                onClick={() => void refresh()}
+                disabled={busyId === 'bulk' || selection.selectedItems.length === 0}
+                onClick={() => void runBulkAction('stop')}
               >
-                {isLoading ? <IconLoader2 className='size-4 animate-spin' /> : <IconRefresh className='size-4' />}
-                Refresh
+                Stop
+                <Visible when={selection.selectedIds.size > 0}>
+                  {' '}
+                  {selection.selectedIds.size} container{selection.selectedIds.size === 1 ? '' : 's'}
+                </Visible>
               </Button>
-              <div className='flex gap-2'>
-                <Button
-                  type='button'
-                  variant='ghost'
-                  disabled={busyId === 'bulk' || selection.selectedItems.length === 0}
-                  onClick={() => void runBulkAction('stop')}
-                >
-                  Stop
-                  <Visible when={selection.selectedIds.size > 0}>
-                    {' '}
-                    {selection.selectedIds.size} container{selection.selectedIds.size === 1 ? '' : 's'}
-                  </Visible>
-                </Button>
-                <Button
-                  type='button'
-                  variant='ghost'
-                  disabled={busyId === 'bulk' || selection.selectedItems.length === 0}
-                  onClick={() => void runBulkAction('remove')}
-                >
-                  Remove
-                  <Visible when={selection.selectedIds.size > 0}>
-                    {' '}
-                    {selection.selectedIds.size} container{selection.selectedIds.size === 1 ? '' : 's'}
-                  </Visible>
-                </Button>
-              </div>
-            </>
+              <Button
+                type='button'
+                variant='ghost'
+                disabled={busyId === 'bulk' || selection.selectedItems.length === 0}
+                onClick={() => void runBulkAction('remove')}
+              >
+                Remove
+                <Visible when={selection.selectedIds.size > 0}>
+                  {' '}
+                  {selection.selectedIds.size} container{selection.selectedIds.size === 1 ? '' : 's'}
+                </Visible>
+              </Button>
+            </div>
           }
         />
 

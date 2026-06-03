@@ -70,9 +70,6 @@ export class AndroidApplicationRuntimeResourcesDto {
 
   @ApiProperty({ type: Number, nullable: true })
   cpuLimitCpus!: number | null;
-
-  @ApiProperty({ type: Number, nullable: true })
-  volumeSizeLimitMb!: number | null;
 }
 
 export class AndroidApplicationRuntimeDto {
@@ -235,7 +232,6 @@ export class AndroidApplicationResponseDto {
         resources: {
           memoryLimitMb: app.memoryLimitMb,
           cpuLimitCpus: app.cpuLimitCpus,
-          volumeSizeLimitMb: app.volumeSizeLimitMb,
         },
       },
       storage: {

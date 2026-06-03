@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import {
   SystemResourceCapacityDto,
@@ -19,7 +19,7 @@ export class SystemResourcesController {
 
   @Get()
   @ApiOkResponse({ type: SystemResourcesDto })
-  getUsage(@Query('refreshVolumes') refreshVolumes?: string) {
-    return this.resources.getUsage(refreshVolumes === 'true');
+  getUsage() {
+    return this.resources.getUsage();
   }
 }

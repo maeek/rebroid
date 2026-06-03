@@ -76,7 +76,7 @@ export const permissionDefinitions = [
     id: 'applications:change-resources',
     category: 'runtime-configuration',
     name: 'Change resources',
-    description: 'Set CPU, memory, and volume size limits.'
+    description: 'Set CPU and memory limits.'
   },
   {
     id: 'applications:change-session-limit',
@@ -154,7 +154,6 @@ export type ResourceQuota = {
   maxSessionSeconds: number | null
   maxMemoryMb: number | null
   maxCpuCpus: number | null
-  maxVolumeSizeMb: number | null
 }
 
 export const allPermissionIds = permissionDefinitions.map(permission => permission.id)
@@ -184,16 +183,14 @@ export const defaultUserQuota: ResourceQuota = {
   maxOpenApps: 2,
   maxSessionSeconds: 3600,
   maxMemoryMb: 2048,
-  maxCpuCpus: 2,
-  maxVolumeSizeMb: 8192
+  maxCpuCpus: 2
 }
 
 export const unlimitedQuota: ResourceQuota = {
   maxOpenApps: null,
   maxSessionSeconds: null,
   maxMemoryMb: null,
-  maxCpuCpus: null,
-  maxVolumeSizeMb: null
+  maxCpuCpus: null
 }
 
 export const mergePermissions = (...maps: Array<PermissionMap | null | undefined>): PermissionMap =>
@@ -217,8 +214,7 @@ export const mergeQuotas = (...quotas: Array<Partial<ResourceQuota> | null | und
       maxOpenApps: quota?.maxOpenApps !== undefined ? quota.maxOpenApps : merged.maxOpenApps,
       maxSessionSeconds: quota?.maxSessionSeconds !== undefined ? quota.maxSessionSeconds : merged.maxSessionSeconds,
       maxMemoryMb: quota?.maxMemoryMb !== undefined ? quota.maxMemoryMb : merged.maxMemoryMb,
-      maxCpuCpus: quota?.maxCpuCpus !== undefined ? quota.maxCpuCpus : merged.maxCpuCpus,
-      maxVolumeSizeMb: quota?.maxVolumeSizeMb !== undefined ? quota.maxVolumeSizeMb : merged.maxVolumeSizeMb
+      maxCpuCpus: quota?.maxCpuCpus !== undefined ? quota.maxCpuCpus : merged.maxCpuCpus
     }),
     { ...defaultUserQuota }
   )

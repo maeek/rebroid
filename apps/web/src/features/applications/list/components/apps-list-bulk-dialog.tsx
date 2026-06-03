@@ -16,7 +16,7 @@ import { useAppsListContext } from './apps-list-context'
 import type { BulkAction, PendingAppAction } from './apps-list-context'
 
 type DialogTone = 'destructive' | 'warning'
-type DialogButtonVariant = 'default' | 'destructive'
+type DialogButtonVariant = 'secondary' | 'destructive'
 type RemoveDataKey = 'false' | 'true'
 
 const actionLabels: Record<BulkAction, { singular: string; plural: string }> = {
@@ -47,25 +47,25 @@ const bulkDialogCopy: Record<
   stop: {
     verb: 'Stop',
     description: {
-      false: 'The selected apps will stop, but their saved data and records will remain.',
-      true: 'The selected apps will stop, but their saved data and records will remain.'
+      false: 'The selected apps will stop.',
+      true: 'The selected apps will stop.'
     },
     details: {
-      false: ['Containers stop immediately.', 'Saved profiles and app records remain available.'],
-      true: ['Containers stop immediately.', 'Saved profiles and app records remain available.']
+      false: ['Saved profiles and app records remain available.'],
+      true: ['Saved profiles and app records remain available.']
     },
     tone: 'warning',
-    buttonVariant: 'default'
+    buttonVariant: 'secondary'
   },
   delete: {
     verb: 'Delete',
     description: {
-      false: 'This removes the selected apps while preserving saved data when possible.',
+      false: 'This removes the selected apps from Rebroid.',
       true: 'This removes the selected apps and their saved data.'
     },
     details: {
-      false: ['Running containers are stopped and removed.', 'Saved profile data is preserved when possible.'],
-      true: ['Running containers are stopped and removed.', 'Saved profile data is deleted.']
+      false: ['Saved profile data is preserved when possible.'],
+      true: ['Saved profile data is deleted.']
     },
     tone: 'destructive',
     buttonVariant: 'destructive'
@@ -88,21 +88,20 @@ const pendingDialogCopy: Record<
 > = {
   stop: {
     verb: 'Stop',
-    description: 'The app becomes unavailable immediately while network cleanup finishes in the background.',
+    description: 'The current Android runtime will stop.',
     summaryDescription: {
-      false: 'The container stops immediately. Saved profiles remain available for the next start.',
-      true: 'The container stops immediately. Saved profiles remain available for the next start.'
+      false: 'Saved profiles remain available for the next start.',
+      true: 'Saved profiles remain available for the next start.'
     },
     tone: 'warning',
-    buttonVariant: 'default'
+    buttonVariant: 'secondary'
   },
   delete: {
     verb: 'Delete',
-    description: 'This removes the app record and its runtime resources.',
+    description: 'This removes the app from Rebroid.',
     summaryDescription: {
-      false:
-        'The container, app record, and network resources are removed. Saved profile data is preserved when possible.',
-      true: 'The container, app record, network resources, and saved profile data are removed.'
+      false: 'Saved profile data is preserved when possible.',
+      true: 'Saved profile data is deleted with the app.'
     },
     tone: 'destructive',
     buttonVariant: 'destructive'

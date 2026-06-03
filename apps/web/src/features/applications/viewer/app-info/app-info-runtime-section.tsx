@@ -7,11 +7,8 @@ const formatMemoryLimit = (app: AppDefinition) => (app.memoryLimitMb ? `${app.me
 
 const formatCpuLimit = (app: AppDefinition) => app.cpuLimitCpus ?? 'unlimited'
 
-const formatVolumeLimit = (app: AppDefinition) =>
-  app.volumeSizeLimitMb ? `${app.volumeSizeLimitMb} MB advisory` : 'unlimited'
-
 const formatResources = (app: AppDefinition) => {
-  return `RAM ${formatMemoryLimit(app)}, CPU ${formatCpuLimit(app)}, volume ${formatVolumeLimit(app)}`
+  return `RAM ${formatMemoryLimit(app)}, CPU ${formatCpuLimit(app)}`
 }
 
 const getContainerName = (app?: AppDefinition) => app?.containerName ?? 'Loading...'

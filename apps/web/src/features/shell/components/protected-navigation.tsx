@@ -6,6 +6,7 @@ import {
   IconApps,
   IconBox,
   IconBrandDocker,
+  IconCalendarTime,
   IconCast,
   IconChartHistogram,
   IconChevronDown,
@@ -53,6 +54,7 @@ const adminSettingsSections: NavigationItem[] = [
   { name: 'Casting', Icon: IconCast, href: '/settings/casting' },
   { name: 'Network access', Icon: IconNetwork, href: '/settings/firewall' },
   { name: 'Activity', Icon: IconHistory, href: '/settings/activity' },
+  { name: 'Scheduled tasks', Icon: IconCalendarTime, href: '/settings/scheduled-tasks' },
   { name: 'System', Icon: IconServerSpark, href: '/settings/system' }
 ]
 
@@ -62,11 +64,11 @@ const userManagementSubSections: NavigationItem[] = [
 ]
 
 const orchestratorSubSections: NavigationItem[] = [
-  { name: 'Overview', Icon: IconAdjustments, href: '/settings/orchestrator' },
+  { name: 'Overview', Icon: IconChartHistogram, href: '/settings/orchestrator' },
+  { name: 'Settings', Icon: IconAdjustments, href: '/settings/orchestrator/settings' },
   { name: 'Containers', Icon: IconBox, href: '/settings/orchestrator/containers' },
   { name: 'Images', Icon: IconBrandDocker, href: '/settings/orchestrator/images' },
-  { name: 'Networks', Icon: IconNetwork, href: '/settings/orchestrator/networks' },
-  { name: 'Metrics', Icon: IconChartHistogram, href: '/settings/orchestrator/metrics' }
+  { name: 'Networks', Icon: IconNetwork, href: '/settings/orchestrator/networks' }
 ]
 
 const variantStyles = {

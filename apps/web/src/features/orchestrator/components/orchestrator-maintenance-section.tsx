@@ -83,13 +83,7 @@ const MaintenanceActionCard = ({
   )
 }
 
-export const OrchestratorMaintenanceSection = ({
-  imagePruneDanglingOnly,
-  onMaintenanceComplete
-}: {
-  imagePruneDanglingOnly: boolean
-  onMaintenanceComplete?: () => void
-}) => {
+export const OrchestratorMaintenanceSection = ({ onMaintenanceComplete }: { onMaintenanceComplete?: () => void }) => {
   const [activeAction, setActiveAction] = useState<string | null>(null)
 
   const runMaintenanceAction = async ({
@@ -129,8 +123,7 @@ export const OrchestratorMaintenanceSection = ({
       className='w-full'
     >
       <p className='text-sm text-secondary-foreground'>
-        Run one-off Docker cleanup tasks without leaving settings. Use the prune mode below to control image cleanup
-        defaults.
+        Run one-off Docker cleanup tasks without leaving settings. Recurring cleanup is managed from Scheduled tasks.
       </p>
       <div className='grid gap-3'>
         <MaintenanceActionCard
@@ -153,17 +146,13 @@ export const OrchestratorMaintenanceSection = ({
         />
         <MaintenanceActionCard
           title='Prune images'
-          description={
-            imagePruneDanglingOnly
-              ? 'Removes dangling images using the current safer cleanup mode.'
-              : 'Removes all unused images using the current cleanup mode.'
-          }
+          description='Removes dangling images. Use Scheduled tasks to configure recurring image cleanup mode.'
           icon={<IconBox className='size-5' />}
           actionLabel='Prune'
           isBusy={activeAction !== null}
           onClick={() =>
             void runMaintenanceAction({
-              action: () => pruneImagesAction(imagePruneDanglingOnly),
+              action: () => pruneImagesAction(true),
               key: 'images',
               successTitle: 'Images pruned',
               successDescription: result => summarizePruneResult(result as DockerPruneResponse, 'Image prune')

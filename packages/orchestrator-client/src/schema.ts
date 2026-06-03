@@ -898,6 +898,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/scheduled-tasks/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ScheduledTasksController_listActions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scheduled-tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ScheduledTasksController_list"];
+        put?: never;
+        post: operations["ScheduledTasksController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scheduled-tasks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ScheduledTasksController_get"];
+        put?: never;
+        post?: never;
+        delete: operations["ScheduledTasksController_remove"];
+        options?: never;
+        head?: never;
+        patch: operations["ScheduledTasksController_update"];
+        trace?: never;
+    };
+    "/api/v1/scheduled-tasks/{id}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ScheduledTasksController_runNow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system-resources/capacity": {
         parameters: {
             query?: never;
@@ -1130,10 +1194,6 @@ export interface components {
             defaultInactivityTimeoutSeconds: number;
             /** @example 512 */
             maxApkUploadSizeMb: number;
-            /** @example 24 */
-            imagePruneIntervalHours: number;
-            /** @example true */
-            imagePruneDanglingOnly: boolean;
         };
         UpdateOrchestratorSettingsDto: {
             /** @example redroid/redroid:13.0.0-latest */
@@ -1155,10 +1215,6 @@ export interface components {
             defaultInactivityTimeoutSeconds?: number;
             /** @example 512 */
             maxApkUploadSizeMb?: number;
-            /** @example 24 */
-            imagePruneIntervalHours?: number;
-            /** @example true */
-            imagePruneDanglingOnly?: boolean;
         };
         AndroidApplicationStatusDetail: {
             /** @enum {string} */
@@ -1212,7 +1268,6 @@ export interface components {
         AndroidApplicationRuntimeResourcesDto: {
             memoryLimitMb: number | null;
             cpuLimitCpus: number | null;
-            volumeSizeLimitMb: number | null;
         };
         AndroidApplicationRuntimeDto: {
             image: string;
@@ -1308,8 +1363,6 @@ export interface components {
             memoryLimitMb?: number | null;
             /** @example 2 */
             cpuLimitCpus?: number | null;
-            /** @example 8192 */
-            volumeSizeLimitMb?: number | null;
             /**
              * @description Optional command or arguments passed to the container as Docker Cmd. Use a long-running command if the image would otherwise exit immediately.
              * @example sleep infinity
@@ -1625,6 +1678,71 @@ export interface components {
             images: components["schemas"]["DockerPruneResponseDto"];
             volumes: components["schemas"]["DockerPruneResponseDto"];
         };
+        ScheduledTaskActionDto: {
+            /** @enum {string} */
+            type: "clean_uploaded_apks" | "prune_images" | "prune_containers" | "prune_networks" | "prune_volumes" | "prune_all" | "clean_runtime_logs";
+            label: string;
+            description: string;
+        };
+        ScheduledTaskDto: {
+            id: string;
+            name: string;
+            enabled: boolean;
+            /** @enum {string} */
+            kind: "predefined" | "custom";
+            predefinedKey: string | null;
+            cronExpression: string;
+            /** @enum {string} */
+            actionType: "clean_uploaded_apks" | "prune_images" | "prune_containers" | "prune_networks" | "prune_volumes" | "prune_all" | "clean_runtime_logs";
+            payload: Record<string, never> | null;
+            lastRunAt: string | null;
+            nextRunAt: string | null;
+            /** @enum {string} */
+            lastStatus: "never_run" | "success" | "failed";
+            lastError: string | null;
+            createdAt: string;
+            updatedAt: string;
+        };
+        ScheduledTaskPayloadDto: {
+            /**
+             * @description Only for prune_images. Defaults to true.
+             * @example true
+             */
+            danglingOnly?: boolean;
+            /**
+             * @description Only for clean_runtime_logs. Logs older than this many days are removed.
+             * @example 30
+             */
+            retentionDays?: number;
+        };
+        CreateScheduledTaskDto: {
+            /** @example Weekly Docker cleanup */
+            name: string;
+            /**
+             * @default true
+             * @example true
+             */
+            enabled: boolean;
+            /** @example 0 3 * * 0 */
+            cronExpression: string;
+            /** @enum {string} */
+            actionType: "clean_uploaded_apks" | "prune_images" | "prune_containers" | "prune_networks" | "prune_volumes" | "prune_all" | "clean_runtime_logs";
+            payload?: components["schemas"]["ScheduledTaskPayloadDto"] | null;
+        };
+        UpdateScheduledTaskDto: {
+            /** @example Weekly Docker cleanup */
+            name?: string;
+            /**
+             * @default true
+             * @example true
+             */
+            enabled: boolean;
+            /** @example 0 3 * * 0 */
+            cronExpression?: string;
+            /** @enum {string} */
+            actionType?: "clean_uploaded_apks" | "prune_images" | "prune_containers" | "prune_networks" | "prune_volumes" | "prune_all" | "clean_runtime_logs";
+            payload?: components["schemas"]["ScheduledTaskPayloadDto"] | null;
+        };
         SystemResourceCapacityDto: {
             hostMemoryBytes: number | null;
             hostCpuCores: number | null;
@@ -1634,10 +1752,6 @@ export interface components {
             name: string;
             state: string;
             status: string;
-        };
-        ManagedVolumeUsageDto: {
-            name: string;
-            sizeBytes: number | null;
         };
         SystemResourcesDto: {
             hostMemoryBytes: number | null;
@@ -1649,11 +1763,7 @@ export interface components {
             managedContainersCpuUsagePercent: number;
             managedContainersMemoryUsageBytes: number;
             containerStatsCollectedAt: string | null;
-            managedVolumesTotal: number;
-            managedVolumesSizeBytes: number;
-            volumeUsageCachedAt: string | null;
             containers: components["schemas"]["ManagedContainerUsageDto"][];
-            volumes: components["schemas"]["ManagedVolumeUsageDto"][];
         };
         OrchestratorDiagnosticsServicesDto: {
             orchestrator: components["schemas"]["ServiceHealthDto"];
@@ -2014,8 +2124,6 @@ export interface operations {
                     memoryLimitMb?: number;
                     /** @example 2 */
                     cpuLimitCpus?: number;
-                    /** @example 8192 */
-                    volumeSizeLimitMb?: number;
                     /** @example sleep infinity */
                     containerArgs?: string;
                     /** @example 98a530d6-a45d-466a-9cb4-c023067c4971 */
@@ -3141,6 +3249,155 @@ export interface operations {
             };
         };
     };
+    ScheduledTasksController_listActions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledTaskActionDto"][];
+                };
+            };
+        };
+    };
+    ScheduledTasksController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledTaskDto"][];
+                };
+            };
+        };
+    };
+    ScheduledTasksController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateScheduledTaskDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledTaskDto"];
+                };
+            };
+        };
+    };
+    ScheduledTasksController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledTaskDto"];
+                };
+            };
+        };
+    };
+    ScheduledTasksController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledTaskDto"];
+                };
+            };
+        };
+    };
+    ScheduledTasksController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateScheduledTaskDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledTaskDto"];
+                };
+            };
+        };
+    };
+    ScheduledTasksController_runNow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledTaskDto"];
+                };
+            };
+        };
+    };
     SystemResourcesController_getCapacity: {
         parameters: {
             query?: never;
@@ -3162,9 +3419,7 @@ export interface operations {
     };
     SystemResourcesController_getUsage: {
         parameters: {
-            query: {
-                refreshVolumes: string;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;

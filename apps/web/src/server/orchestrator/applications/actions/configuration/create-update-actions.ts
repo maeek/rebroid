@@ -15,7 +15,7 @@ const assertCanChangeResources = (
   input: UpdateAndroidApplicationInput
 ) => {
   if (
-    (input.memoryLimitMb !== undefined || input.cpuLimitCpus !== undefined || input.volumeSizeLimitMb !== undefined) &&
+    (input.memoryLimitMb !== undefined || input.cpuLimitCpus !== undefined) &&
     user.role !== 'admin' &&
     !hasPermission(user.permissions, 'applications:change-resources')
   ) {

@@ -4,7 +4,6 @@ export type AppFormValues = {
   inactivityTimeoutSeconds: number
   memoryLimitMb: string
   cpuLimitCpus: string
-  volumeSizeLimitMb: string
   customContainerArgs: string
   redroidDisplayProfileId: string
   redroidCustomDisplayWidth: string

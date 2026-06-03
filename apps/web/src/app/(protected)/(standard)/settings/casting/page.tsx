@@ -1,9 +1,6 @@
 import { Suspense } from 'react'
-import { PlatformPageHeader } from '@/features/orchestrator/components/platform-page-header'
-import { CastingHeaderActions } from '@/features/settings/casting/casting-header-actions'
-import { CastingSidecarSettings } from '@/features/settings/casting/casting-sidecar-settings'
-import { OperationalSettingsSkeleton } from '@/features/settings/orchestrator/operational-settings-skeleton'
-import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
+import { CastingSettingsPageClient } from '@/features/settings/casting/casting-settings-page-client'
+import { OperationalSettingsPageSkeleton } from '@/features/settings/orchestrator/operational-settings-skeleton'
 import { requireAdmin } from '@/server/auth/authorization'
 import { userService } from '@/server/auth/user'
 import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
@@ -30,7 +27,7 @@ const CastingSettingsContent = async () => {
   const sessions = health.services.display.ok ? await listDisplaySidecarSessionsAction().catch(() => []) : []
 
   return (
-    <CastingSidecarSettings
+    <CastingSettingsPageClient
       initialHealth={health.services.display}
       initialSessions={sessions}
       applications={applications}
@@ -43,26 +40,18 @@ export default async function CastingSettingsPage() {
   await requireAdmin()
 
   return (
-    <ProtectedStackPageLayout mainClassName='gap-2'>
-      <PlatformPageHeader
-        title='Casting'
-        description='Inspect the casting sidecar and terminate active viewer sessions.'
-        includeOrchestratorBreadcrumb={false}
-        actions={<CastingHeaderActions />}
-      />
-      <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
-        <Suspense
-          fallback={
-            <OperationalSettingsSkeleton
-              title='Casting sidecar'
-              columns={[...castingColumns]}
-              minWidth='52rem'
-            />
-          }
-        >
-          <CastingSettingsContent />
-        </Suspense>
-      </section>
-    </ProtectedStackPageLayout>
+    <Suspense
+      fallback={
+        <OperationalSettingsPageSkeleton
+          titleWidth='w-36 max-sm:w-24'
+          sectionTitle='Sessions'
+          columns={[...castingColumns]}
+          minWidth='52rem'
+          includeOrchestratorBreadcrumb={false}
+        />
+      }
+    >
+      <CastingSettingsContent />
+    </Suspense>
   )
 }

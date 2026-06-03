@@ -3,7 +3,7 @@ import { ActivityEventsTable } from '@/features/settings/activity/activity-event
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { auditFiltersFromSearchParams, auditPageFromSearchParams, type AuditSearchParams } from '@/server/audit/query'
 import { requireAdmin } from '@/server/auth/authorization'
-import { listAuditEvents, listAuditFacetValues, maybePruneAuditEvents } from '@/server/storage/database'
+import { listAuditEvents, listAuditFacetValues } from '@/server/storage/database'
 import { getWebSettings } from '@/server/web-settings/store'
 
 const firstValue = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value)
@@ -12,7 +12,6 @@ export default async function ActivitySettingsPage({ searchParams }: { searchPar
   await requireAdmin()
   const resolvedSearchParams = (await searchParams) ?? {}
   const settings = await getWebSettings()
-  maybePruneAuditEvents(settings.auditRetentionDays)
   const filters = auditFiltersFromSearchParams(resolvedSearchParams)
   const page = auditPageFromSearchParams(resolvedSearchParams)
   const result = listAuditEvents(filters, page)

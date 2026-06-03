@@ -12,6 +12,7 @@ import { HealthModule } from './health/health.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { NetworkIsolationModule } from './network-isolation/network-isolation.module';
 import { NetworkPolicyModule } from './network-policy/network-policy.module';
+import { ScheduledTasksModule } from './scheduled-tasks/scheduled-tasks.module';
 import { SecurityModule } from './security/security.module';
 import { SettingsModule } from './settings/settings.module';
 import { SystemResourcesModule } from './system-resources/system-resources.module';
@@ -29,6 +30,7 @@ import { SystemResourcesModule } from './system-resources/system-resources.modul
     AndroidAppsModule,
     ContainerImagesModule,
     DockerMaintenanceModule,
+    ScheduledTasksModule,
     SettingsModule,
     SystemResourcesModule,
     HealthModule,

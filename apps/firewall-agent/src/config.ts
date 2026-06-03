@@ -7,7 +7,9 @@ const environment = z
     FIREWALL_AGENT_STATE_PATH: z.string().min(1).optional(),
     FIREWALL_AGENT_SHARED_SECRET: z.string().min(1).optional(),
     FIREWALL_AGENT_SHARED_SECRET_FILE: z.string().min(1).optional(),
-    FIREWALL_ADAPTER: z.enum(["iptables", "nftables", "podman"]).optional(),
+    FIREWALL_ADAPTER: z
+      .enum(["auto", "docker-iptables", "podman-iptables", "nftables"])
+      .optional(),
   })
   .parse(process.env);
 

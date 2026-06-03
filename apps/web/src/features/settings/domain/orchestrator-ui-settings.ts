@@ -7,8 +7,6 @@ export interface OrchestratorUiSettings {
   dockerImageRegistry: string | null
   defaultInactivityTimeoutSeconds: number
   maxApkUploadSizeMb: number
-  imagePruneIntervalHours: number
-  imagePruneDanglingOnly: boolean
   appListRefreshIntervalSeconds: number
   removeDataOnDelete: boolean
   scrcpyTransport: ScrcpyTransport
@@ -37,12 +35,7 @@ export type GeneralUiSettings = Pick<
 
 export type RuntimeUiSettings = Pick<
   OrchestratorUiSettings,
-  | 'defaultContainerImage'
-  | 'dockerImageRegistry'
-  | 'defaultInactivityTimeoutSeconds'
-  | 'maxApkUploadSizeMb'
-  | 'imagePruneIntervalHours'
-  | 'imagePruneDanglingOnly'
+  'defaultContainerImage' | 'dockerImageRegistry' | 'defaultInactivityTimeoutSeconds' | 'maxApkUploadSizeMb'
 >
 
 export const defaultOrchestratorUiSettings: OrchestratorUiSettings = {
@@ -50,8 +43,6 @@ export const defaultOrchestratorUiSettings: OrchestratorUiSettings = {
   dockerImageRegistry: null,
   defaultInactivityTimeoutSeconds: 900,
   maxApkUploadSizeMb: 512,
-  imagePruneIntervalHours: 24,
-  imagePruneDanglingOnly: true,
   appListRefreshIntervalSeconds: 5,
   removeDataOnDelete: true,
   scrcpyTransport: 'webrtc',
@@ -83,9 +74,7 @@ export const defaultRuntimeSettingsResponse: OrchestratorSettingsResponse = {
   dockerImageRegistry: defaultOrchestratorUiSettings.dockerImageRegistry,
   defaultScrcpyTransport: defaultOrchestratorUiSettings.scrcpyTransport,
   defaultInactivityTimeoutSeconds: defaultOrchestratorUiSettings.defaultInactivityTimeoutSeconds,
-  maxApkUploadSizeMb: defaultOrchestratorUiSettings.maxApkUploadSizeMb,
-  imagePruneIntervalHours: defaultOrchestratorUiSettings.imagePruneIntervalHours,
-  imagePruneDanglingOnly: defaultOrchestratorUiSettings.imagePruneDanglingOnly
+  maxApkUploadSizeMb: defaultOrchestratorUiSettings.maxApkUploadSizeMb
 }
 
 export const normalizeOrchestratorUiSettings = (
@@ -133,12 +122,6 @@ export const normalizeOrchestratorUiSettings = (
       ? orchestrator.defaultInactivityTimeoutSeconds
       : defaultOrchestratorUiSettings.defaultInactivityTimeoutSeconds,
   maxApkUploadSizeMb: Number(orchestrator.maxApkUploadSizeMb) || defaultOrchestratorUiSettings.maxApkUploadSizeMb,
-  imagePruneIntervalHours:
-    Number(orchestrator.imagePruneIntervalHours) || defaultOrchestratorUiSettings.imagePruneIntervalHours,
-  imagePruneDanglingOnly:
-    typeof orchestrator.imagePruneDanglingOnly === 'boolean'
-      ? orchestrator.imagePruneDanglingOnly
-      : defaultOrchestratorUiSettings.imagePruneDanglingOnly,
   scrcpyTransport:
     orchestrator.defaultScrcpyTransport === 'websocket' || orchestrator.defaultScrcpyTransport === 'webrtc'
       ? orchestrator.defaultScrcpyTransport

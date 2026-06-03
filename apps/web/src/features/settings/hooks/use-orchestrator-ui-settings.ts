@@ -106,9 +106,7 @@ export const saveOrchestratorUiSettings = async (settings: RuntimeUiSettings): P
     defaultContainerImage: settings.defaultContainerImage,
     dockerImageRegistry: settings.dockerImageRegistry,
     defaultInactivityTimeoutSeconds: settings.defaultInactivityTimeoutSeconds,
-    maxApkUploadSizeMb: settings.maxApkUploadSizeMb,
-    imagePruneIntervalHours: settings.imagePruneIntervalHours,
-    imagePruneDanglingOnly: settings.imagePruneDanglingOnly
+    maxApkUploadSizeMb: settings.maxApkUploadSizeMb
   })
   const saved = mergeSettings(web, orchestrator)
   dispatchSettingsUpdated(saved)

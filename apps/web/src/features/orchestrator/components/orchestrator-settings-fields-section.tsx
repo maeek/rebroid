@@ -1,6 +1,5 @@
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Setting } from '@/features/settings/components/setting'
 import { getOrchestratorBaseUrl } from '@/server/orchestrator/config'
 import type { OrchestratorUiSettings } from '@/features/settings/domain/orchestrator-ui-settings'
@@ -101,53 +100,6 @@ export const OrchestratorSettingsFieldsSection = ({
             />
             <span className='text-sm text-secondary-foreground'>MB</span>
           </div>
-        </Setting>
-      </Section>
-      <Section
-        title='Cleanup defaults'
-        boxed
-        titleClassName='pb-4'
-        contentClassName='gap-6'
-      >
-        <Setting
-          label='Image prune interval'
-          description='How often the orchestrator prunes unused images. Set 0 to disable scheduled pruning.'
-          className={verticalSettingClassName}
-          variant='vertical'
-        >
-          <div className='flex w-full items-center gap-2'>
-            <Input
-              value={settings.imagePruneIntervalHours}
-              min={0}
-              max={8760}
-              type='number'
-              onChange={event =>
-                onSettingsChange({
-                  imagePruneIntervalHours: numberValue(Number(event.target.value), settings.imagePruneIntervalHours)
-                })
-              }
-            />
-            <span className='text-sm text-secondary-foreground'>hours</span>
-          </div>
-        </Setting>
-        <Setting
-          label='Image prune mode'
-          description='Dangling-only is the safer default. Full unused-image pruning can remove old tags.'
-          className={verticalSettingClassName}
-          variant='vertical'
-        >
-          <Select
-            value={settings.imagePruneDanglingOnly ? 'dangling' : 'unused'}
-            onValueChange={value => onSettingsChange({ imagePruneDanglingOnly: value === 'dangling' })}
-          >
-            <SelectTrigger className='w-full'>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value='dangling'>Dangling images only</SelectItem>
-              <SelectItem value='unused'>All unused images</SelectItem>
-            </SelectContent>
-          </Select>
         </Setting>
       </Section>
     </div>

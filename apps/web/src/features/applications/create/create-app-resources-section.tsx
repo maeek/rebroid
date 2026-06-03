@@ -55,23 +55,6 @@ export const AppFormResourcesSection = ({ values, resourceLimits, onChange }: Ap
           onValueChange={value => onChange({ cpuLimitCpus: value })}
         />
       </Setting>
-      <Setting
-        label='Volume limit'
-        description='Optional advisory limit for persistent app data storage, measured in MB.'
-        variant='vertical'
-        className={verticalSettingClassName}
-      >
-        <NumberSliderField
-          value={values.volumeSizeLimitMb}
-          min={16}
-          max={resourceLimits?.maxVolumeSizeMb}
-          placeholder='MB advisory'
-          suffix=' MB'
-          rangeLabel='Volume limit range'
-          allowEmpty
-          onValueChange={value => onChange({ volumeSizeLimitMb: value })}
-        />
-      </Setting>
     </Section>
   )
 }

@@ -419,7 +419,6 @@ export class DockerEngineService {
       ['inspect container', 'container_inspect'],
       ['list containers', 'container_list'],
       ['read logs', 'container_logs'],
-      ['collect docker df', 'system_df'],
       ['list images', 'image_list'],
       ['inspect image', 'image_inspect'],
       ['remove image', 'image_remove'],

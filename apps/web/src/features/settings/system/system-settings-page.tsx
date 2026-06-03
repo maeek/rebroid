@@ -90,7 +90,7 @@ export function SystemSettingsPage() {
                     description='Docker inventory could not be loaded from the orchestrator.'
                     detail={resourcesError}
                     tone='danger'
-                    primaryAction={{ label: 'Refresh', onClick: () => void refreshResources(true) }}
+                    primaryAction={{ label: 'Refresh', onClick: () => void refreshResources() }}
                     className='min-h-64 p-4'
                   />
                 </Visible>

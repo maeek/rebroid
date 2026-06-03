@@ -43,7 +43,6 @@ export interface CreateAndroidApplicationInput {
   inactivityTimeoutSeconds?: number
   memoryLimitMb?: number
   cpuLimitCpus?: number
-  volumeSizeLimitMb?: number
   containerArgs?: string
   uploadedApkId?: string
 }

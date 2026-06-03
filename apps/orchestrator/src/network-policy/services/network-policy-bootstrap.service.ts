@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -12,6 +13,7 @@ export class NetworkPolicyBootstrapService implements OnApplicationBootstrap {
   private readonly logger = new Logger(NetworkPolicyBootstrapService.name);
 
   constructor(
+    private readonly config: ConfigService,
     @InjectRepository(AndroidApplication)
     private readonly applications: Repository<AndroidApplication>,
     private readonly policies: NetworkPolicyService,
@@ -19,6 +21,11 @@ export class NetworkPolicyBootstrapService implements OnApplicationBootstrap {
   ) {}
 
   async onApplicationBootstrap() {
+    if (!this.config.get<boolean>('app.networkPolicy.bootstrap')) {
+      this.logger.warn('Firewall policy restore is disabled for this run.');
+      return;
+    }
+
     for (let attempt = 1; attempt <= 30; attempt += 1) {
       try {
         const applications = await this.applications.find({

@@ -20,15 +20,19 @@ const viewerTokenCookieName = 'rebroid_viewer_token'
 const viewerPathPrefix = '/viewer/ws-scrcpy'
 const displayViewerPathPrefix = '/viewer/display'
 const displayPathPrefix = '/rebroid/display'
-const defaultNextAuthUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || `https://localhost:${publicPort}`
+const explicitNextAuthUrl = process.env.NEXTAUTH_URL
+  ? {}
+  : process.env.AUTH_URL
+    ? { NEXTAUTH_URL: process.env.AUTH_URL }
+    : {}
 
 const nextProcess = spawn(process.execPath, [process.env.NEXT_SERVER_PATH || 'server.js'], {
   stdio: 'inherit',
   env: {
     ...process.env,
+    ...explicitNextAuthUrl,
     PORT: String(nextPort),
     HOSTNAME: nextHost,
-    NEXTAUTH_URL: defaultNextAuthUrl,
     AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST || 'true'
   }
 })

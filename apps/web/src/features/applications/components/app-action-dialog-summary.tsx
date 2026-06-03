@@ -15,18 +15,18 @@ export const AppActionDialogSummary = ({
   tone?: 'neutral' | 'warning' | 'destructive'
 }) => (
   <div
-    className={classNames('rounded-lg border p-4', {
-      'border-border/70 bg-background/35': tone === 'neutral',
-      'border-amber-500/25 bg-amber-500/8': tone === 'warning',
-      'border-destructive/30 bg-destructive/8': tone === 'destructive'
+    className={classNames('rounded-md border-l-2 py-1 pl-4 pr-2', {
+      'border-l-border/70': tone === 'neutral',
+      'border-l-amber-400/80': tone === 'warning',
+      'border-l-destructive/80': tone === 'destructive'
     })}
   >
     <div className='flex items-start gap-3'>
       <div
-        className={classNames('flex size-9 shrink-0 items-center justify-center rounded-md border', {
-          'border-border/70 bg-secondary/65 text-secondary-foreground': tone === 'neutral',
-          'border-amber-500/25 bg-amber-500/10 text-amber-400': tone === 'warning',
-          'border-destructive/30 bg-destructive/12 text-destructive': tone === 'destructive'
+        className={classNames('mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md', {
+          'text-secondary-foreground': tone === 'neutral',
+          'text-amber-300': tone === 'warning',
+          'text-destructive': tone === 'destructive'
         })}
       >
         {icon}
@@ -37,13 +37,13 @@ export const AppActionDialogSummary = ({
       </div>
     </div>
     {details?.length ? (
-      <ul className='mt-3 grid gap-1 border-t border-border/55 pt-3 text-xs leading-5 text-muted-foreground'>
+      <ul className='ml-11 mt-2 grid gap-1 text-xs leading-5 text-muted-foreground'>
         {details.map(detail => (
           <li
             key={detail}
             className='flex gap-2'
           >
-            <span className='text-primary'>-</span>
+            <span className='text-muted-foreground'>-</span>
             <span>{detail}</span>
           </li>
         ))}

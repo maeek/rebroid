@@ -89,15 +89,11 @@ const assertQuota = (label: string, value: number | null | undefined, max: numbe
 }
 
 export const enforceResourceQuotas = (
-  input: Pick<
-    CreateApplicationActionInput | UpdateAndroidApplicationInput,
-    'memoryLimitMb' | 'cpuLimitCpus' | 'volumeSizeLimitMb'
-  >,
+  input: Pick<CreateApplicationActionInput | UpdateAndroidApplicationInput, 'memoryLimitMb' | 'cpuLimitCpus'>,
   quotas: ResourceQuota
 ) => {
   assertQuota('Memory limit', input.memoryLimitMb, quotas.maxMemoryMb)
   assertQuota('CPU limit', input.cpuLimitCpus, quotas.maxCpuCpus)
-  assertQuota('Volume size limit', input.volumeSizeLimitMb, quotas.maxVolumeSizeMb)
 }
 
 export const enforceSessionQuota = (

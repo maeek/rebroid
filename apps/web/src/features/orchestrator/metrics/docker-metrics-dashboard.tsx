@@ -2,34 +2,49 @@
 
 import { useEffect, useState } from 'react'
 import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { Section } from '@/components/ui/section'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Visible } from '@/components/ui/visible'
+import { QuickGlanceCard } from '@/features/settings/components/quick-glance-card'
 import { StatusSplash } from '@/features/shell/components/status-splash'
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
+import { cn } from '@/lib/utils'
 import { getDockerMetricsAction } from '@/server/orchestrator/diagnostics/actions'
 import { appendDockerMetricsHistory, type HistorySample } from './docker-metrics-history'
 import type { DockerMetricsSnapshot } from '@/server/orchestrator/diagnostics/types'
 
 const summaryCards = (metrics: DockerMetricsSnapshot) =>
   [
-    ['Success', metrics.totals.success],
-    ['Errors', metrics.totals.errors],
-    ['Timeouts', metrics.totals.timeouts],
-    ['Retries', metrics.totals.retries],
-    ['Slow operations', metrics.totals.slow]
+    ['Success', metrics.totals.success, 'Completed Docker operations', 'green-500'],
+    ['Errors', metrics.totals.errors, 'Failed Docker operations', 'red-500'],
+    ['Timeouts', metrics.totals.timeouts, 'Operations that exceeded timeout', 'yellow-500'],
+    ['Retries', metrics.totals.retries, 'Retry attempts across operations', 'blue-500'],
+    ['Slow operations', metrics.totals.slow, 'Exceeded the slow-operation warning', 'orange-500']
   ] as const
 
-export function DockerMetricsDashboard() {
+export function DockerMetricsDashboard({
+  title,
+  refreshKey = 0,
+  onRefreshComplete
+}: {
+  title?: string
+  refreshKey?: number
+  onRefreshComplete?: () => void
+} = {}) {
   const [history, setHistory] = useState<HistorySample[]>([])
-  const { data, error, isLoading } = usePollingQuery<DockerMetricsSnapshot>(
+  const { data, error, isLoading, mutate } = usePollingQuery<DockerMetricsSnapshot>(
     'orchestrator:docker-metrics',
     getDockerMetricsAction,
     { intervalMs: 5000 }
   )
+
+  useEffect(() => {
+    if (refreshKey > 0) {
+      void mutate().finally(() => onRefreshComplete?.())
+    }
+  }, [mutate, onRefreshComplete, refreshKey])
 
   useEffect(() => {
     if (!data) return
@@ -53,14 +68,18 @@ export function DockerMetricsDashboard() {
 
   return (
     <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
+      <Visible when={title}>
+        <h3 className='text-xl font-medium text-foreground'>{title}</h3>
+      </Visible>
       <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-5'>
-        {summaryCards(data).map(([label, value]) => (
-          <Card key={label}>
-            <CardHeader className='pb-2'>
-              <CardTitle className='text-sm text-secondary-foreground'>{label}</CardTitle>
-            </CardHeader>
-            <CardContent className='text-3xl font-semibold'>{value}</CardContent>
-          </Card>
+        {summaryCards(data).map(([label, value, hint, color]) => (
+          <QuickGlanceCard
+            key={label}
+            label={label}
+            value={value}
+            hint={hint}
+            className={cn(`border-l-${color}`)}
+          />
         ))}
       </div>
       <Section
@@ -93,69 +112,75 @@ export function DockerMetricsDashboard() {
       </div>
       <Section
         title='Per-operation aggregates'
-        boxed
+        titleClassName='pb-4'
+        contentClassName='gap-4'
       >
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Class</TableHead>
-              <TableHead>Operation</TableHead>
-              <TableHead>Success</TableHead>
-              <TableHead>Errors</TableHead>
-              <TableHead>Retries</TableHead>
-              <TableHead>Slow</TableHead>
-              <TableHead>Average</TableHead>
-              <TableHead>Max</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.operations.map(operation => (
-              <TableRow key={`${operation.class}:${operation.operation}`}>
-                <TableCell>{operation.class}</TableCell>
-                <TableCell>{operation.operation}</TableCell>
-                <TableCell>{operation.success}</TableCell>
-                <TableCell>{operation.errors + operation.timeouts}</TableCell>
-                <TableCell>{operation.retries}</TableCell>
-                <TableCell>{operation.slow}</TableCell>
-                <TableCell>{operation.averageDurationMs}ms</TableCell>
-                <TableCell>{operation.maxDurationMs}ms</TableCell>
+        <div className='overflow-hidden rounded-lg border border-border/60 bg-background/25'>
+          <Table>
+            <TableHeader className='bg-background/45'>
+              <TableRow className='hover:bg-transparent'>
+                <TableHead>Class</TableHead>
+                <TableHead>Operation</TableHead>
+                <TableHead>Success</TableHead>
+                <TableHead>Errors</TableHead>
+                <TableHead>Retries</TableHead>
+                <TableHead>Slow</TableHead>
+                <TableHead>Average</TableHead>
+                <TableHead>Max</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {data.operations.map(operation => (
+                <TableRow key={`${operation.class}:${operation.operation}`}>
+                  <TableCell>{operation.class}</TableCell>
+                  <TableCell>{operation.operation}</TableCell>
+                  <TableCell>{operation.success}</TableCell>
+                  <TableCell>{operation.errors + operation.timeouts}</TableCell>
+                  <TableCell>{operation.retries}</TableCell>
+                  <TableCell>{operation.slow}</TableCell>
+                  <TableCell>{operation.averageDurationMs}ms</TableCell>
+                  <TableCell>{operation.maxDurationMs}ms</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </Section>
       <Section
         title='Recent slow or failed operations'
-        boxed
+        titleClassName='pb-4'
+        contentClassName='gap-4'
       >
         <Visible when={data.events.length === 0}>
           <p className='text-sm text-secondary-foreground'>No slow or failed Docker operations recorded.</p>
         </Visible>
         <Visible when={data.events.length > 0}>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Time</TableHead>
-                <TableHead>Class</TableHead>
-                <TableHead>Operation</TableHead>
-                <TableHead>Outcome</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead>Error</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.events.map((event, index) => (
-                <TableRow key={`${event.timestamp}:${event.operation}:${index}`}>
-                  <TableCell>{new Date(event.timestamp).toLocaleTimeString()}</TableCell>
-                  <TableCell>{event.class}</TableCell>
-                  <TableCell>{event.operation}</TableCell>
-                  <TableCell>{event.outcome}</TableCell>
-                  <TableCell>{event.durationMs}ms</TableCell>
-                  <TableCell>{event.error ?? '-'}</TableCell>
+          <div className='overflow-hidden rounded-lg border border-border/60 bg-background/25'>
+            <Table>
+              <TableHeader className='bg-background/45'>
+                <TableRow className='hover:bg-transparent'>
+                  <TableHead>Time</TableHead>
+                  <TableHead>Class</TableHead>
+                  <TableHead>Operation</TableHead>
+                  <TableHead>Outcome</TableHead>
+                  <TableHead>Duration</TableHead>
+                  <TableHead>Error</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {data.events.map((event, index) => (
+                  <TableRow key={`${event.timestamp}:${event.operation}:${index}`}>
+                    <TableCell>{new Date(event.timestamp).toLocaleTimeString()}</TableCell>
+                    <TableCell>{event.class}</TableCell>
+                    <TableCell>{event.operation}</TableCell>
+                    <TableCell>{event.outcome}</TableCell>
+                    <TableCell>{event.durationMs}ms</TableCell>
+                    <TableCell>{event.error ?? '-'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </Visible>
       </Section>
     </section>

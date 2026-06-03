@@ -9,24 +9,13 @@ const systemResourcesKey = 'orchestrator:system-resources'
 const systemResourcesRefreshIntervalMs = 15_000
 
 export const useSystemResources = () => {
-  const { mutate, ...query } = usePollingQuery<SystemResources>(
-    systemResourcesKey,
-    () => getSystemResourcesAction(false),
-    {
-      intervalMs: systemResourcesRefreshIntervalMs
-    }
-  )
+  const { mutate, ...query } = usePollingQuery<SystemResources>(systemResourcesKey, getSystemResourcesAction, {
+    intervalMs: systemResourcesRefreshIntervalMs
+  })
 
-  const refresh = useCallback(
-    async (refreshVolumes = false) => {
-      if (refreshVolumes) {
-        await mutate(() => getSystemResourcesAction(true), { revalidate: false })
-      } else {
-        await mutate()
-      }
-    },
-    [mutate]
-  )
+  const refresh = useCallback(async () => {
+    await mutate()
+  }, [mutate])
 
   return { ...query, mutate, refresh }
 }

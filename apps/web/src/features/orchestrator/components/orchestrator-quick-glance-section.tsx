@@ -35,7 +35,13 @@ const loadingHint = (loading: string, error: string | null, errorHint: string) =
   return loading
 }
 
-export const OrchestratorQuickGlanceSection = ({ refreshKey = 0 }: { refreshKey?: number }) => {
+export const OrchestratorQuickGlanceSection = ({
+  refreshKey = 0,
+  onRefreshComplete
+}: {
+  refreshKey?: number
+  onRefreshComplete?: () => void
+}) => {
   const { data: resources, error: caughtError, refresh } = useSystemResources()
   const error = caughtError ? getDisplayErrorMessage(caughtError, 'Could not load orchestrator resources.') : null
 
@@ -59,19 +65,11 @@ export const OrchestratorQuickGlanceSection = ({ refreshKey = 0 }: { refreshKey?
       : 'No running managed containers'
   }
 
-  const volumeHint = () => {
-    if (!resources) {
-      return loadingHint('Refreshing storage usage', error, 'Storage usage could not be refreshed')
-    }
-
-    return `${resources.managedVolumesTotal} managed volumes`
-  }
-
   useEffect(() => {
     if (refreshKey > 0) {
-      void refresh(true)
+      void refresh().finally(() => onRefreshComplete?.())
     }
-  }, [refresh, refreshKey])
+  }, [onRefreshComplete, refresh, refreshKey])
 
   return (
     <>
@@ -80,7 +78,7 @@ export const OrchestratorQuickGlanceSection = ({ refreshKey = 0 }: { refreshKey?
           {error}
         </div>
       </Visible>
-      <div className='grid grid-cols-4 gap-3 max-xl:grid-cols-2 max-sm:grid-cols-1'>
+      <div className='grid grid-cols-3 gap-3 max-xl:grid-cols-2 max-sm:grid-cols-1'>
         <QuickGlanceCard
           label='Managed container CPU'
           value={valueOrUnavailable(
@@ -105,19 +103,11 @@ export const OrchestratorQuickGlanceSection = ({ refreshKey = 0 }: { refreshKey?
           )}
           hint='Running / Total'
         />
-        <QuickGlanceCard
-          label='Managed volume size'
-          value={valueOrUnavailable(resources ? formatBytes(resources.managedVolumesSizeBytes) : undefined, error)}
-          hint={volumeHint()}
-        />
       </div>
       <div className='text-xs text-secondary-foreground'>
         Container stats are sampled live when this panel refreshes.
         {resources?.containerStatsCollectedAt
           ? ` Last sample: ${formatDateLocale(resources.containerStatsCollectedAt)}`
-          : ''}
-        {resources?.volumeUsageCachedAt
-          ? ` • Volume sizes cached at ${formatDateLocale(resources.volumeUsageCachedAt)}`
           : ''}
       </div>
     </>

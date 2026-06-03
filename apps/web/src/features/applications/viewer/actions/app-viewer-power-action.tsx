@@ -42,9 +42,10 @@ type RuntimeConfirmationDialogProps = {
   summaryIcon: ReactNode
   summaryTitle: string
   summaryDescription: string
-  details: string[]
+  details?: string[]
   disabled: boolean
   isWorking: boolean
+  buttonVariant?: 'secondary' | 'destructive'
   buttonLabel: string
   workingLabel: string
   onConfirm: () => void
@@ -555,6 +556,7 @@ const RuntimeConfirmationDialog = ({
   details,
   disabled,
   isWorking,
+  buttonVariant = 'secondary',
   buttonLabel,
   workingLabel,
   onConfirm
@@ -584,6 +586,7 @@ const RuntimeConfirmationDialog = ({
           Cancel
         </Button>
         <Button
+          variant={buttonVariant}
           disabled={disabled}
           onClick={onConfirm}
         >
@@ -726,14 +729,10 @@ const StopRuntimeDialog = ({
     open={stopDialogOpen}
     onOpenChange={onStopDialogOpenChange}
     title={`Stop ${appName}?`}
-    description='The app becomes unavailable immediately while network cleanup finishes in the background.'
+    description='The current Android runtime will stop.'
     summaryIcon={<IconPlayerStopFilled className='size-4' />}
-    summaryTitle='Stop the current session'
-    summaryDescription='The Android container is terminated immediately. Saved profiles and the app record remain available.'
-    details={[
-      'Viewer sessions are released.',
-      'Isolated network attachments are cleaned up after the container stops.'
-    ]}
+    summaryTitle='Saved data remains available'
+    summaryDescription='The app record and saved profiles stay ready for the next start.'
     disabled={dialogDisabled}
     isWorking={isStoppingAction}
     buttonLabel='Stop app'
@@ -762,11 +761,10 @@ const RestartRuntimeDialog = ({
     open={restartDialogOpen}
     onOpenChange={onRestartDialogOpenChange}
     title={`Restart ${appName}?`}
-    description='The current container stops immediately, then a fresh session starts with the active profile and runtime settings.'
+    description='The current Android runtime will stop and start again.'
     summaryIcon={<IconRestore className='size-4' />}
-    summaryTitle='Restart the Android runtime'
-    summaryDescription='The viewer disconnects briefly while the container is stopped and Android boots again.'
-    details={['Saved profile data is preserved.', 'The app may remain unavailable while Android finishes booting.']}
+    summaryTitle='Saved data remains available'
+    summaryDescription='The active profile is reused when the app starts again.'
     disabled={dialogDisabled}
     isWorking={isRestartingAction}
     buttonLabel='Restart app'

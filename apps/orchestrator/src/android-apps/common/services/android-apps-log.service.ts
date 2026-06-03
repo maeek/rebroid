@@ -1,6 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { appendFile, mkdir, readFile, rm } from 'node:fs/promises';
+import {
+  appendFile,
+  mkdir,
+  readdir,
+  readFile,
+  rm,
+  stat,
+} from 'node:fs/promises';
 import { join } from 'node:path';
 import { getErrorMessage } from '../../../common/error-message';
 import {
@@ -69,6 +76,30 @@ export class AndroidAppsLogService {
   /** Deletes the app log file. */
   async remove(applicationId: string) {
     await rm(this.logPath(applicationId), { force: true });
+  }
+
+  /** Removes runtime log files older than the requested retention period. */
+  async cleanup(retentionDays = 30) {
+    await mkdir(this.logDir, { recursive: true });
+    const cutoff = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
+    let removedFiles = 0;
+
+    for (const name of await readdir(this.logDir)) {
+      if (!name.endsWith('.log')) {
+        continue;
+      }
+
+      const path = join(this.logDir, name);
+      const stats = await stat(path).catch(() => null);
+      if (!stats || stats.mtimeMs > cutoff) {
+        continue;
+      }
+
+      await rm(path, { force: true });
+      removedFiles += 1;
+    }
+
+    return { removedFiles };
   }
 
   /** Builds the log file path for one app. */

@@ -136,7 +136,6 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
       }),
       memoryLimitMb: dto.memoryLimitMb ?? null,
       cpuLimitCpus: dto.cpuLimitCpus ?? null,
-      volumeSizeLimitMb: dto.volumeSizeLimitMb ?? null,
       containerArgs: applyRedroidDefaultContainerArgs(
         containerImage,
         dto.containerArgs,
@@ -199,7 +198,6 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
       inactivityTimeoutSeconds: source.inactivityTimeoutSeconds,
       memoryLimitMb: source.memoryLimitMb ?? undefined,
       cpuLimitCpus: source.cpuLimitCpus ?? undefined,
-      volumeSizeLimitMb: source.volumeSizeLimitMb ?? undefined,
       containerArgs: source.containerArgs ?? undefined,
       uploadedApkId: uploadedApk?.id,
     });
@@ -224,9 +222,6 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     }
     if (dto.cpuLimitCpus !== undefined) {
       app.cpuLimitCpus = dto.cpuLimitCpus;
-    }
-    if (dto.volumeSizeLimitMb !== undefined) {
-      app.volumeSizeLimitMb = dto.volumeSizeLimitMb;
     }
     if (dto.containerArgs !== undefined) {
       app.containerArgs = applyRedroidDefaultContainerArgs(

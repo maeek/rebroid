@@ -33,7 +33,6 @@ const getInitialFormValues = (settings: OrchestratorUiSettings): CreateAppFormVa
   inactivityTimeoutSeconds: settings.defaultInactivityTimeoutSeconds,
   memoryLimitMb: '',
   cpuLimitCpus: '',
-  volumeSizeLimitMb: '',
   customContainerArgs: '',
   redroidDisplayProfileId: defaultRedroidDisplayProfileId,
   redroidCustomDisplayWidth: '1080',
@@ -198,8 +197,6 @@ export const CreateAppForm = ({
         inactivityTimeoutSeconds: canChangeSessionLimit ? formValues.inactivityTimeoutSeconds || undefined : undefined,
         memoryLimitMb: canChangeResources && formValues.memoryLimitMb ? Number(formValues.memoryLimitMb) : undefined,
         cpuLimitCpus: canChangeResources && formValues.cpuLimitCpus ? Number(formValues.cpuLimitCpus) : undefined,
-        volumeSizeLimitMb:
-          canChangeResources && formValues.volumeSizeLimitMb ? Number(formValues.volumeSizeLimitMb) : undefined,
         containerArgs: canChangeContainerArgs
           ? (isRedroidRuntime
               ? applyRedroidDisplayContainerArgs(

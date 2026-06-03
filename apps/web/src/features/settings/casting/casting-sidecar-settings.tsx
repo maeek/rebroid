@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { IconLoader2, IconRefresh, IconTrash } from '@tabler/icons-react'
+import { IconLoader2, IconRestore, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -12,11 +12,13 @@ import { Visible } from '@/components/ui/visible'
 import { PlatformDetailRow } from '@/features/orchestrator/components/platform-detail-parts'
 import { PlatformGridPagination } from '@/features/orchestrator/components/platform-grid-pagination'
 import { PlatformSelectionToolbar } from '@/features/orchestrator/components/platform-selection-toolbar'
+import { PlatformStatusBanner } from '@/features/orchestrator/components/platform-status-banner'
 import { useGridSelection } from '@/features/orchestrator/components/use-grid-selection'
 import { toast } from '@/hooks/use-toast'
 import {
   getOrchestratorHealthAction,
   listDisplaySidecarSessionsAction,
+  repairDisplaySidecarAction,
   releaseDisplaySidecarSessionAction
 } from '@/server/orchestrator/diagnostics/actions'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
@@ -50,12 +52,16 @@ export const CastingSidecarSettings = ({
   initialHealth,
   initialSessions,
   applications,
-  owners
+  owners,
+  refreshKey = 0,
+  onRefreshComplete
 }: {
   initialHealth: ServiceHealth
   initialSessions: DisplaySidecarSession[]
   applications: Pick<AndroidApplication, 'id' | 'name' | 'ownerUserId' | 'runtime'>[]
   owners: Array<{ id: string; name: string }>
+  refreshKey?: number
+  onRefreshComplete?: () => void
 }) => {
   const [health, setHealth] = useState(initialHealth)
   const [sessions, setSessions] = useState(initialSessions)
@@ -104,14 +110,32 @@ export const CastingSidecarSettings = ({
       })
     } finally {
       setBusy(null)
+      onRefreshComplete?.()
     }
-  }, [])
+  }, [onRefreshComplete])
 
   useEffect(() => {
-    const handleRestart = () => void refresh()
-    window.addEventListener('rebroid:casting-sidecar-restarted', handleRestart)
-    return () => window.removeEventListener('rebroid:casting-sidecar-restarted', handleRestart)
-  }, [refresh])
+    if (refreshKey > 0) {
+      void refresh()
+    }
+  }, [refresh, refreshKey])
+
+  const restartSidecar = async () => {
+    setBusy('restart')
+    try {
+      await repairDisplaySidecarAction()
+      toast({ title: 'Casting sidecar restarted' })
+      await refresh()
+    } catch (error) {
+      toast({
+        title: 'Could not restart casting sidecar',
+        description: castingErrorMessage(error),
+        variant: 'destructive'
+      })
+    } finally {
+      setBusy(null)
+    }
+  }
 
   const killSessions = async (targets: DisplaySidecarSession[]) => {
     if (targets.length === 0) return
@@ -137,53 +161,40 @@ export const CastingSidecarSettings = ({
     }
   }
 
+  const healthDetails = health.details ? (
+    <div className='grid gap-x-8 xl:grid-cols-2'>
+      {Object.entries(health.details).map(([key, value]) => (
+        <PlatformDetailRow
+          key={key}
+          label={castingDetailLabels[key] ?? key}
+          value={formatHealthDetail(value)}
+        />
+      ))}
+    </div>
+  ) : undefined
+
   return (
     <>
-      <Section
-        title='Casting sidecar'
-        boxed
-        titleClassName='pb-4'
-        contentClassName='gap-5'
-      >
-        <div className='flex flex-wrap items-center justify-between gap-3'>
-          <div className='flex items-center gap-3'>
-            <Badge
-              className='capitalize'
-              variant={health.ok ? 'status' : 'warning'}
-            >
-              {health.status}
-            </Badge>
-            <span className='text-sm text-secondary-foreground'>{castingMessage(health.message)}</span>
-          </div>
+      <PlatformStatusBanner
+        status={health.status}
+        ok={health.ok}
+        message={castingMessage(health.message)}
+        actions={
           <Button
             type='button'
-            variant='ghost'
+            variant='outline'
             disabled={busy !== null}
-            onClick={() => void refresh()}
+            onClick={() => void restartSidecar()}
           >
-            {busy === 'refresh' ? <IconLoader2 className='size-4 animate-spin' /> : <IconRefresh className='size-4' />}
-            Refresh
+            {busy === 'restart' ? <IconLoader2 className='size-4 animate-spin' /> : <IconRestore className='size-4' />}
+            Restart sidecar
           </Button>
-        </div>
-        {health.details ? (
-          <div className='rounded-lg border border-border/60 bg-background/25 px-4'>
-            <div className='grid gap-x-8 xl:grid-cols-2'>
-              {Object.entries(health.details).map(([key, value]) => (
-                <PlatformDetailRow
-                  key={key}
-                  label={castingDetailLabels[key] ?? key}
-                  value={formatHealthDetail(value)}
-                />
-              ))}
-            </div>
-          </div>
-        ) : null}
-      </Section>
-
+        }
+        details={healthDetails}
+      />
       <Section
         title='Sessions'
-        boxed
-        titleClassName='pb-4'
+        titleClassName='pb-2'
         contentClassName='gap-4'
       >
         <PlatformSelectionToolbar

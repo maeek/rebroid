@@ -14,14 +14,6 @@ export class ManagedContainerUsageDto {
   status!: string;
 }
 
-export class ManagedVolumeUsageDto {
-  @ApiProperty()
-  name!: string;
-
-  @ApiProperty({ type: Number, nullable: true })
-  sizeBytes!: number | null;
-}
-
 export class SystemResourcesDto {
   @ApiProperty({ type: Number, nullable: true })
   hostMemoryBytes!: number | null;
@@ -50,20 +42,8 @@ export class SystemResourcesDto {
   @ApiProperty({ type: String, nullable: true })
   containerStatsCollectedAt!: string | null;
 
-  @ApiProperty()
-  managedVolumesTotal!: number;
-
-  @ApiProperty()
-  managedVolumesSizeBytes!: number;
-
-  @ApiProperty({ type: String, nullable: true })
-  volumeUsageCachedAt!: string | null;
-
   @ApiProperty({ type: [ManagedContainerUsageDto] })
   containers!: ManagedContainerUsageDto[];
-
-  @ApiProperty({ type: [ManagedVolumeUsageDto] })
-  volumes!: ManagedVolumeUsageDto[];
 }
 
 export class SystemResourceCapacityDto {

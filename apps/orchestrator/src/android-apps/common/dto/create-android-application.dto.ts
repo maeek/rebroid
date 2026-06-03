@@ -60,14 +60,6 @@ export class CreateAndroidApplicationDto {
   @Max(128)
   cpuLimitCpus?: number;
 
-  @ApiPropertyOptional({ example: 8192, minimum: 16, maximum: 1048576 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(16)
-  @Max(1048576)
-  volumeSizeLimitMb?: number;
-
   @ApiPropertyOptional({
     description:
       'Optional command or arguments passed to the container as Docker Cmd. Use a long-running command if the image would otherwise exit immediately.',

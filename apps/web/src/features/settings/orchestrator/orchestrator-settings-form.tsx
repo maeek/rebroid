@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { IconLoader2 } from '@tabler/icons-react'
-import { OrchestratorInventoryLinksSection } from '@/features/orchestrator/components/orchestrator-inventory-links-section'
 import { OrchestratorMaintenanceSection } from '@/features/orchestrator/components/orchestrator-maintenance-section'
-import { OrchestratorQuickGlanceSection } from '@/features/orchestrator/components/orchestrator-quick-glance-section'
 import { OrchestratorSettingsFieldsSection } from '@/features/orchestrator/components/orchestrator-settings-fields-section'
 import { OrchestratorSettingsHeader } from '@/features/orchestrator/components/orchestrator-settings-header'
 import {
@@ -19,12 +17,7 @@ import type { OrchestratorUiSettings } from '@/features/settings/domain/orchestr
 
 type SaveOrchestratorUiSettingsInput = Pick<
   OrchestratorUiSettings,
-  | 'defaultContainerImage'
-  | 'dockerImageRegistry'
-  | 'defaultInactivityTimeoutSeconds'
-  | 'maxApkUploadSizeMb'
-  | 'imagePruneIntervalHours'
-  | 'imagePruneDanglingOnly'
+  'defaultContainerImage' | 'dockerImageRegistry' | 'defaultInactivityTimeoutSeconds' | 'maxApkUploadSizeMb'
 >
 
 const persistOrchestratorUiSettings = saveOrchestratorUiSettings
@@ -36,15 +29,12 @@ const toRuntimeUiSettings = (settings: OrchestratorUiSettings): SaveOrchestrator
   defaultContainerImage: settings.defaultContainerImage,
   dockerImageRegistry: settings.dockerImageRegistry,
   defaultInactivityTimeoutSeconds: settings.defaultInactivityTimeoutSeconds,
-  maxApkUploadSizeMb: settings.maxApkUploadSizeMb,
-  imagePruneIntervalHours: settings.imagePruneIntervalHours,
-  imagePruneDanglingOnly: settings.imagePruneDanglingOnly
+  maxApkUploadSizeMb: settings.maxApkUploadSizeMb
 })
 
 export const OrchestratorSettingsForm = ({ initialSettings }: { initialSettings: OrchestratorUiSettings }) => {
   const [settings, setSettings] = useState(initialSettings)
   const [isSaving, setIsSaving] = useState(false)
-  const [maintenanceRefreshKey, setMaintenanceRefreshKey] = useState(0)
   const [healthState, setHealthState] = useState<HealthState>('checking')
   const [healthError, setHealthError] = useState<string | null>(null)
 
@@ -155,17 +145,12 @@ export const OrchestratorSettingsForm = ({ initialSettings }: { initialSettings:
         onSave={() => void saveSettings()}
       />
       <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
-        <OrchestratorQuickGlanceSection refreshKey={maintenanceRefreshKey} />
-        <OrchestratorInventoryLinksSection />
         <div className='grid w-full gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)]'>
           <OrchestratorSettingsFieldsSection
             settings={settings}
             onSettingsChange={updateSettings}
           />
-          <OrchestratorMaintenanceSection
-            imagePruneDanglingOnly={settings.imagePruneDanglingOnly}
-            onMaintenanceComplete={() => setMaintenanceRefreshKey(current => current + 1)}
-          />
+          <OrchestratorMaintenanceSection />
         </div>
       </section>
     </ProtectedStackPageLayout>

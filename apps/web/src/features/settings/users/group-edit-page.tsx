@@ -5,6 +5,7 @@ import { IconDeviceFloppy } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useResourceLimitBounds } from '@/features/settings/hooks/use-resource-limit-bounds'
@@ -95,8 +96,12 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
       </section>
       <section className='grid w-full gap-6 px-6 pb-16 max-sm:px-4 xl:grid-cols-[minmax(0,1fr)_minmax(28rem,0.85fr)]'>
         <div className='grid content-start gap-6'>
-          <section className='grid gap-5 rounded-lg border border-border/60 bg-card/35 p-6 backdrop-blur-md'>
-            <h3 className='text-lg font-medium'>Group Details</h3>
+          <Section
+            title='Group Details'
+            boxed
+            titleClassName='pb-4'
+            contentClassName='gap-5'
+          >
             <div className='grid gap-4 md:grid-cols-2'>
               <LabeledField
                 label='Name'
@@ -134,26 +139,39 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
                 onChange={event => updateDraft({ description: event.target.value })}
               />
             </LabeledField>
-          </section>
-          <section className='grid gap-5 rounded-lg border border-border/60 bg-card/35 p-6 backdrop-blur-md'>
-            <h3 className='text-lg font-medium'>Quotas</h3>
+          </Section>
+          <Section
+            title='Quotas'
+            boxed
+            titleClassName='pb-4'
+            contentClassName='gap-5'
+          >
             <QuotaFields
               quotas={draft.quotas}
               resourceLimits={resourceLimits}
               onChange={quotas => updateDraft({ quotas })}
             />
-          </section>
+          </Section>
         </div>
-        <section className='grid content-start gap-4 rounded-lg border border-border/60 bg-card/35 p-6 backdrop-blur-md xl:sticky xl:top-4'>
-          <div>
-            <h3 className='text-lg font-medium'>Permissions</h3>
-            <p className='text-sm text-secondary-foreground'>These permissions are inherited by every group member.</p>
-          </div>
+        <Section
+          title={
+            <div>
+              <div>Permissions</div>
+              <p className='mt-1 text-sm font-normal text-secondary-foreground'>
+                These permissions are inherited by every group member.
+              </p>
+            </div>
+          }
+          boxed
+          titleClassName='pb-4'
+          contentClassName='gap-4'
+          className='xl:sticky xl:top-4'
+        >
           <PermissionSwitchTable
             permissions={draft.permissions}
             onChange={permissions => updateDraft({ permissions })}
           />
-        </section>
+        </Section>
       </section>
     </ProtectedStackPageLayout>
   )

@@ -244,15 +244,6 @@ export class AndroidApplication {
   cpuLimitCpus!: number | null;
 
   @ApiPropertyOptional({
-    description:
-      'Advisory size limit. Docker local named volumes do not enforce this without a storage driver.',
-    example: 8192,
-    nullable: true,
-  })
-  @Column({ type: 'integer', nullable: true })
-  volumeSizeLimitMb!: number | null;
-
-  @ApiPropertyOptional({
     example: 'sleep infinity',
     nullable: true,
   })

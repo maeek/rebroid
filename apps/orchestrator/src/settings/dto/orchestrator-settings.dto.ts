@@ -1,7 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
-  IsBoolean,
   IsEnum,
   IsInt,
   IsOptional,
@@ -55,15 +54,4 @@ export class OrchestratorSettingsDto {
   @Min(1)
   @Max(512)
   maxApkUploadSizeMb!: number;
-
-  @ApiProperty({ example: 24, minimum: 0, maximum: 8760 })
-  @Type(() => Number)
-  @IsInt()
-  @Min(0)
-  @Max(8760)
-  imagePruneIntervalHours!: number;
-
-  @ApiProperty({ example: true })
-  @IsBoolean()
-  imagePruneDanglingOnly!: boolean;
 }

@@ -1,18 +1,26 @@
 import { ReactNode } from 'react'
+import { cn } from '@/lib/utils'
 
 export const QuickGlanceCard = ({
   label,
   value,
   hint,
-  headerAction
+  headerAction,
+  className
 }: {
   label: string
   value: ReactNode
   hint: ReactNode
   headerAction?: ReactNode
+  className?: string
 }) => {
   return (
-    <div className='rounded-md border border-border/60 border-l-primary/50 bg-card/40 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md'>
+    <div
+      className={cn(
+        'rounded-md border border-l-4 border-border/60 border-l-primary/50 bg-card/40 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md',
+        className
+      )}
+    >
       <div className='flex items-start justify-between gap-2'>
         <div className='text-sm font-medium text-secondary-foreground'>{label}</div>
         {headerAction}

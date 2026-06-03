@@ -9,8 +9,7 @@ const userContext = {
     maxOpenApps: 1,
     maxSessionSeconds: 1,
     maxMemoryMb: 1,
-    maxCpuCpus: 1,
-    maxVolumeSizeMb: 1
+    maxCpuCpus: 1
   }
 }
 

@@ -3,7 +3,7 @@ import { SettingsPageSkeleton } from '@/features/settings/components/settings-pa
 export default function Loading() {
   return (
     <SettingsPageSkeleton
-      title='Orchestrator'
+      title='Settings'
       sectionTitle='Runtime'
       rows={4}
       variant='orchestrator'

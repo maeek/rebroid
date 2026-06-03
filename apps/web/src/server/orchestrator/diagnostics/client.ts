@@ -33,9 +33,8 @@ export const orchestratorDiagnosticsClient = {
     return request<DisplaySidecarSession>(`/docker/sidecar/sessions/${encodeURIComponent(id)}`, { method: 'DELETE' })
   },
 
-  getSystemResources(refreshVolumes = false) {
-    const query = new URLSearchParams({ refreshVolumes: String(refreshVolumes) })
-    return request<SystemResources>(`/system-resources?${query.toString()}`)
+  getSystemResources() {
+    return request<SystemResources>('/system-resources')
   },
 
   getSystemResourceCapacity() {

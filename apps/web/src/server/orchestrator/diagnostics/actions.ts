@@ -35,9 +35,9 @@ export const releaseDisplaySidecarSessionAction = async (id: string) => {
   return orchestratorDiagnosticsClient.releaseDisplaySidecarSession(id)
 }
 
-export const getSystemResourcesAction = async (refreshVolumes = false) => {
+export const getSystemResourcesAction = async () => {
   await requireAdminUser()
-  return orchestratorDiagnosticsClient.getSystemResources(refreshVolumes)
+  return orchestratorDiagnosticsClient.getSystemResources()
 }
 
 export const getResourceLimitBoundsAction = async () => {

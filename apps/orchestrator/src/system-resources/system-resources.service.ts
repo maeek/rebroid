@@ -1,48 +1,27 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { statfs } from 'node:fs/promises';
 import { getErrorMessage } from '../common/error-message';
 import { DockerResourceRuntimeService } from '../docker/resources/services/docker-resource-runtime.service';
 
-interface VolumeUsageCache {
-  cachedAt: Date;
-  volumes: { name: string; sizeBytes: number | null }[];
-}
-
-interface DockerVolumeDf {
-  Name: string;
-  Labels?: Record<string, string>;
-  UsageData?: {
-    Size?: number;
-  };
-}
-
 @Injectable()
 export class SystemResourcesService {
   private readonly logger = new Logger(SystemResourcesService.name);
-  private volumeCache: VolumeUsageCache | null = null;
-  private volumeUsageRequest: Promise<VolumeUsageCache['volumes']> | null =
-    null;
-  private volumeUsageRetryAfter = 0;
   private usageRequest: Promise<
     Awaited<ReturnType<SystemResourcesService['collectUsage']>>
   > | null = null;
   private dockerRootStatfsWarningShown = false;
 
-  constructor(
-    private readonly config: ConfigService,
-    private readonly docker: DockerResourceRuntimeService,
-  ) {}
+  constructor(private readonly docker: DockerResourceRuntimeService) {}
 
   /**
-   * Aggregates managed container counts, live resource usage, and cached volume sizes.
+   * Aggregates managed container counts and live resource usage.
    */
-  async getUsage(refreshVolumes = false) {
+  async getUsage() {
     if (this.usageRequest) {
       return this.usageRequest;
     }
 
-    const pending = this.collectUsage(refreshVolumes).finally(() => {
+    const pending = this.collectUsage().finally(() => {
       if (this.usageRequest === pending) {
         this.usageRequest = null;
       }
@@ -51,11 +30,10 @@ export class SystemResourcesService {
     return pending;
   }
 
-  private async collectUsage(refreshVolumes: boolean) {
-    const [hostCapacity, containers, volumes] = await Promise.all([
+  private async collectUsage() {
+    const [hostCapacity, containers] = await Promise.all([
       this.docker.hostCapacity(),
       this.docker.listManagedContainers(),
-      this.getVolumeUsage(refreshVolumes),
     ]);
     const running = containers.filter(
       (container) => container.State === 'running',
@@ -78,12 +56,6 @@ export class SystemResourcesService {
       managedContainersMemoryUsageBytes:
         managedContainerResourceUsage.memoryUsageBytes,
       containerStatsCollectedAt: new Date().toISOString(),
-      managedVolumesTotal: volumes.length,
-      managedVolumesSizeBytes: volumes.reduce(
-        (sum: number, volume) => sum + (volume.sizeBytes ?? 0),
-        0,
-      ),
-      volumeUsageCachedAt: this.volumeCache?.cachedAt.toISOString() ?? null,
       containers: containers.map((container) => ({
         id: container.Id,
         name:
@@ -91,7 +63,6 @@ export class SystemResourcesService {
         state: container.State,
         status: container.Status,
       })),
-      volumes,
     };
   }
 
@@ -142,71 +113,5 @@ export class SystemResourcesService {
         memoryUsageBytes: 0,
       };
     }
-  }
-
-  /**
-   * Caches managed volume usage for a configurable TTL because docker df can be expensive.
-   */
-  private async getVolumeUsage(refreshVolumes: boolean) {
-    const ttlSeconds = this.config.getOrThrow<number>(
-      'app.docker.volumeUsageCacheTtlSeconds',
-    );
-    const cacheIsFresh =
-      this.volumeCache &&
-      Date.now() - this.volumeCache.cachedAt.getTime() < ttlSeconds * 1000;
-
-    if (!refreshVolumes && cacheIsFresh && this.volumeCache) {
-      return this.volumeCache.volumes;
-    }
-
-    if (
-      this.docker.hasPendingDockerWork ||
-      Date.now() < this.volumeUsageRetryAfter
-    ) {
-      return this.volumeCache?.volumes ?? [];
-    }
-
-    if (this.volumeUsageRequest) {
-      return this.volumeUsageRequest;
-    }
-
-    const pending = this.collectVolumeUsage().finally(() => {
-      if (this.volumeUsageRequest === pending) {
-        this.volumeUsageRequest = null;
-      }
-    });
-    this.volumeUsageRequest = pending;
-    return pending;
-  }
-
-  private async collectVolumeUsage() {
-    let df: Awaited<ReturnType<DockerResourceRuntimeService['systemDf']>>;
-    try {
-      df = await this.docker.systemDf();
-    } catch (error) {
-      const retryDelaySeconds = this.config.getOrThrow<number>(
-        'app.docker.volumeUsageRetryDelaySeconds',
-      );
-      this.volumeUsageRetryAfter = Date.now() + retryDelaySeconds * 1000;
-      this.logger.warn(
-        `Unable to collect managed volume usage: ${getErrorMessage(error)}`,
-      );
-      return this.volumeCache?.volumes ?? [];
-    }
-
-    const dockerVolumes = (df.Volumes ?? []) as DockerVolumeDf[];
-    const volumes = dockerVolumes
-      .filter(
-        (volume: DockerVolumeDf) =>
-          volume.Labels?.['com.rebroid.managed'] === 'true',
-      )
-      .map((volume: DockerVolumeDf) => ({
-        name: volume.Name,
-        sizeBytes: volume.UsageData?.Size ?? null,
-      }));
-
-    this.volumeCache = { cachedAt: new Date(), volumes };
-    this.volumeUsageRetryAfter = 0;
-    return volumes;
   }
 }

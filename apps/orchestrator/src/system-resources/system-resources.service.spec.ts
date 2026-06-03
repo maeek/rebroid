@@ -1,28 +1,12 @@
-import { ConfigService } from '@nestjs/config';
 import { DockerResourceRuntimeService } from '../docker/resources/services/docker-resource-runtime.service';
 import { SystemResourcesService } from './system-resources.service';
 
 const createService = (
   docker: Partial<DockerResourceRuntimeService>,
 ): SystemResourcesService =>
-  new SystemResourcesService(
-    {
-      getOrThrow: (key: string) => {
-        if (
-          key === 'app.docker.volumeUsageCacheTtlSeconds' ||
-          key === 'app.docker.volumeUsageRetryDelaySeconds'
-        ) {
-          return key === 'app.docker.volumeUsageCacheTtlSeconds' ? 300 : 60;
-        }
-
-        throw new Error(`Unexpected config key: ${key}`);
-      },
-    } as unknown as ConfigService,
-    docker as DockerResourceRuntimeService,
-  );
+  new SystemResourcesService(docker as DockerResourceRuntimeService);
 
 const baseDocker = {
-  hasPendingDockerWork: false,
   hostCapacity: jest.fn().mockResolvedValue({
     memoryBytes: 1024,
     cpuCores: 2,
@@ -36,94 +20,86 @@ const baseDocker = {
 };
 
 describe('SystemResourcesService', () => {
-  it('returns the remaining resource data when Docker volume usage cannot be collected', async () => {
+  it('returns managed container counts and resource usage without Docker df', async () => {
     const service = createService({
       ...baseDocker,
-      systemDf: jest.fn().mockRejectedValue(new Error('docker df failed')),
+      listManagedContainers: jest.fn().mockResolvedValue([
+        {
+          Id: 'running-container-id',
+          Names: ['/rebroid-running'],
+          State: 'running',
+          Status: 'Up 1 minute',
+        },
+        {
+          Id: 'stopped-container-id',
+          Names: ['/rebroid-stopped'],
+          State: 'exited',
+          Status: 'Exited',
+        },
+      ]),
+      getManagedContainerResourceUsage: jest.fn().mockResolvedValue({
+        cpuUsagePercent: 12.5,
+        memoryUsageBytes: 256,
+      }),
     });
 
     await expect(service.getUsage()).resolves.toMatchObject({
-      containersTotal: 0,
-      managedVolumesTotal: 0,
-      managedVolumesSizeBytes: 0,
-      volumes: [],
+      hostMemoryBytes: 1024,
+      hostCpuCores: 2,
+      containersTotal: 2,
+      containersRunning: 1,
+      containersStopped: 1,
+      managedContainersCpuUsagePercent: 12.5,
+      managedContainersMemoryUsageBytes: 256,
+      containers: [
+        {
+          id: 'running-container-id',
+          name: 'rebroid-running',
+          state: 'running',
+          status: 'Up 1 minute',
+        },
+        {
+          id: 'stopped-container-id',
+          name: 'rebroid-stopped',
+          state: 'exited',
+          status: 'Exited',
+        },
+      ],
     });
   });
 
-  it('reuses cached volume usage when a forced refresh fails', async () => {
-    const systemDf = jest
-      .fn()
-      .mockResolvedValueOnce({
-        Volumes: [
-          {
-            Name: 'managed-volume',
-            Labels: { 'com.rebroid.managed': 'true' },
-            UsageData: { Size: 512 },
-          },
-        ],
-      })
-      .mockRejectedValueOnce(new Error('docker df failed'));
-    const service = createService({ ...baseDocker, systemDf });
-
-    await service.getUsage();
-
-    await expect(service.getUsage(true)).resolves.toMatchObject({
-      managedVolumesTotal: 1,
-      managedVolumesSizeBytes: 512,
-      volumes: [{ name: 'managed-volume', sizeBytes: 512 }],
+  it('coalesces concurrent resource snapshots', async () => {
+    let resolveContainers!: (value: []) => void;
+    const containersGate = new Promise<[]>((resolve) => {
+      resolveContainers = resolve;
     });
-  });
-
-  it('coalesces concurrent resource snapshots and Docker df requests', async () => {
-    let resolveDf!: (value: { Volumes: [] }) => void;
-    const dfGate = new Promise<{ Volumes: [] }>((resolve) => {
-      resolveDf = resolve;
-    });
-    const systemDf = jest.fn().mockReturnValue(dfGate);
-    const service = createService({ ...baseDocker, systemDf });
+    const docker = {
+      ...baseDocker,
+      listManagedContainers: jest.fn().mockReturnValue(containersGate),
+    };
+    const service = createService(docker);
 
     const first = service.getUsage();
     const second = service.getUsage();
     await Promise.resolve();
 
-    expect(systemDf).toHaveBeenCalledTimes(1);
+    expect(docker.listManagedContainers).toHaveBeenCalledTimes(1);
 
-    resolveDf({ Volumes: [] });
+    resolveContainers([]);
     await expect(Promise.all([first, second])).resolves.toHaveLength(2);
   });
 
-  it('waits for the retry cooldown before repeating a failed Docker df request', async () => {
-    const systemDf = jest.fn().mockRejectedValue(new Error('docker df failed'));
-    const service = createService({ ...baseDocker, systemDf });
-
-    await service.getUsage();
-    await service.getUsage(true);
-
-    expect(systemDf).toHaveBeenCalledTimes(1);
-  });
-
-  it('serves stale volume usage while a Docker mutation is pending', async () => {
-    const docker = {
+  it('falls back to zeroed live stats when Docker stats collection fails', async () => {
+    const service = createService({
       ...baseDocker,
-      hasPendingDockerWork: false,
-      systemDf: jest.fn().mockResolvedValue({
-        Volumes: [
-          {
-            Name: 'managed-volume',
-            Labels: { 'com.rebroid.managed': 'true' },
-            UsageData: { Size: 512 },
-          },
-        ],
-      }),
-    };
-    const service = createService(docker);
-
-    await service.getUsage();
-    docker.hasPendingDockerWork = true;
-
-    await expect(service.getUsage(true)).resolves.toMatchObject({
-      volumes: [{ name: 'managed-volume', sizeBytes: 512 }],
+      getManagedContainerResourceUsage: jest
+        .fn()
+        .mockRejectedValue(new Error('stats failed')),
     });
-    expect(docker.systemDf).toHaveBeenCalledTimes(1);
+
+    await expect(service.getUsage()).resolves.toMatchObject({
+      managedContainersCpuUsagePercent: 0,
+      managedContainersMemoryUsageBytes: 0,
+    });
   });
 });

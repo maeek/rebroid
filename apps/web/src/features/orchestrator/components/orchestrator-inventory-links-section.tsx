@@ -28,22 +28,19 @@ export const OrchestratorInventoryLinksSection = () => (
     title='Inventory'
     boxed
     titleClassName='pb-4'
-    contentClassName='gap-3'
   >
-    <div className='grid gap-3 md:grid-cols-2 xl:grid-cols-3'>
+    <div className='grid gap-4 lg:grid-cols-3'>
       {inventoryLinks.map(({ title, description, href, Icon }) => (
         <Link
           key={href}
           href={href}
-          className='group flex min-h-32 flex-col gap-3 rounded-lg border border-border/60 bg-background/35 p-4 transition hover:border-primary/35 hover:bg-primary/5'
+          className='rounded-md border border-border/70 bg-secondary/30 p-4 transition hover:border-primary/50 hover:bg-secondary/50'
         >
-          <div className='flex size-10 items-center justify-center rounded-md bg-secondary text-secondary-foreground group-hover:text-primary'>
+          <div className='mb-4 flex size-10 items-center justify-center rounded-md bg-muted text-secondary-foreground'>
             <Icon className='size-5' />
           </div>
-          <div className='flex flex-col gap-1'>
-            <h3 className='font-medium'>{title}</h3>
-            <p className='text-sm text-secondary-foreground'>{description}</p>
-          </div>
+          <h3 className='font-medium text-foreground'>{title}</h3>
+          <p className='mt-1 text-sm leading-5 text-secondary-foreground'>{description}</p>
         </Link>
       ))}
     </div>
