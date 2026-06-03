@@ -21,6 +21,7 @@ import { CreateAppDeviceSection } from './create-app-device-section'
 import { CreateAppDisplaySection } from './create-app-display-section'
 import { AppFormGeneralSection } from './create-app-general-section'
 import { AppFormIconSection } from './create-app-icon-section'
+import { CreateAppNetworkAccessSection } from './create-app-network-access-section'
 import { AppFormResourcesSection } from './create-app-resources-section'
 import { AppFormSessionSection } from './create-app-session-section'
 import type { CreateAppFormValues } from './create-app-form.types'
@@ -38,7 +39,9 @@ const getInitialFormValues = (settings: OrchestratorUiSettings): CreateAppFormVa
   redroidCustomDisplayWidth: '1080',
   redroidCustomDisplayHeight: '2340',
   redroidCustomDisplayDpi: '440',
-  redroidExtraArgs: ''
+  redroidExtraArgs: '',
+  networkPolicyEnabled: true,
+  networkPolicyAllowCidrs: []
 })
 
 const appNameFromApk = (file: File, uploaded?: UploadedApk | null) =>
@@ -86,6 +89,8 @@ export const CreateAppForm = ({
   const canChangeSessionLimit = hasPermission(permissions, 'applications:change-session-limit')
   const canChangeResources = hasPermission(permissions, 'applications:change-resources')
   const canChangeContainerArgs = hasPermission(permissions, 'applications:change-container-args')
+  const canConfigureEgress = hasPermission(permissions, 'applications:configure-egress')
+  const canUseInternet = hasPermission(permissions, 'applications:use-internet')
   const isRedroidRuntime = isRedroidImage(formValues.containerImage)
   const showDeviceSection = canChangeBaseImage || canChangeContainerArgs
   const showSessionSection = canChangeSessionLimit
@@ -207,7 +212,13 @@ export const CreateAppForm = ({
                 )
               : formValues.customContainerArgs.trim()) || undefined
           : undefined,
-        uploadedApkId: uploadedApk?.id
+        uploadedApkId: uploadedApk?.id,
+        ...(canConfigureEgress
+          ? {
+              networkPolicyEnabled: canUseInternet ? formValues.networkPolicyEnabled : true,
+              networkPolicyAllowCidrs: formValues.networkPolicyAllowCidrs
+            }
+          : {})
       })
 
       topLoader.setProgress(iconPreview ? 0.65 : 0.9)
@@ -269,61 +280,68 @@ export const CreateAppForm = ({
       </Visible>
       <form
         id={createFormId}
-        className='grid w-full grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)] items-start gap-6 pt-2 pb-24 max-lg:grid-cols-1'
+        className='flex w-full flex-col gap-5 pt-2 pb-24'
         onSubmit={event => void handleSubmit(event)}
       >
-        <div className='flex w-full flex-col gap-5'>
-          <h2 className='font-bold my-4'>General</h2>
-          <AppFormGeneralSection
+        <h2 className='font-bold my-4'>General</h2>
+        <AppFormGeneralSection
+          values={formValues}
+          onChange={updateFormValues}
+          uploadedApk={uploadedApk}
+          isUploadingApk={isUploadingApk}
+          onApkSelect={file => void handleApkSelect(file)}
+          iconSlot={
+            <AppFormIconSection
+              appName={trimmedName}
+              iconPreview={iconPreview}
+              autoExtractIcon={autoExtractIcon}
+              hasExtractedIcon={Boolean(extractedIcon)}
+              boxed={false}
+              showDescription={false}
+              onIconChange={event => void handleIconChange(event)}
+              onClearIcon={handleClearIcon}
+              onAutoExtractIconChange={setAutoExtractIcon}
+            />
+          }
+        />
+        <Visible when={isRedroidRuntime && canChangeContainerArgs}>
+          <CreateAppDisplaySection
             values={formValues}
             onChange={updateFormValues}
-            uploadedApk={uploadedApk}
-            isUploadingApk={isUploadingApk}
-            onApkSelect={file => void handleApkSelect(file)}
           />
-          <Visible when={isRedroidRuntime && canChangeContainerArgs}>
-            <CreateAppDisplaySection
-              values={formValues}
-              onChange={updateFormValues}
-            />
-          </Visible>
-          <Visible when={showDeviceSection || showSessionSection || showResourcesSection}>
-            <h2 className='font-bold my-4'>Advanced</h2>
-          </Visible>
-          <Visible when={showDeviceSection}>
-            <CreateAppDeviceSection
-              values={formValues}
-              onChange={updateFormValues}
-              canChangeBaseImage={canChangeBaseImage}
-              canChangeContainerArgs={canChangeContainerArgs}
-              isRedroidRuntime={isRedroidRuntime}
-            />
-          </Visible>
-          <Visible when={showSessionSection}>
-            <AppFormSessionSection
-              values={formValues}
-              onChange={updateFormValues}
-            />
-          </Visible>
-          <Visible when={showResourcesSection}>
-            <AppFormResourcesSection
-              values={formValues}
-              resourceLimits={resourceLimits}
-              onChange={updateFormValues}
-            />
-          </Visible>
-        </div>
-        <div className='flex w-full flex-col gap-4 lg:mt-19'>
-          <AppFormIconSection
-            appName={trimmedName}
-            iconPreview={iconPreview}
-            autoExtractIcon={autoExtractIcon}
-            hasExtractedIcon={Boolean(extractedIcon)}
-            onIconChange={event => void handleIconChange(event)}
-            onClearIcon={handleClearIcon}
-            onAutoExtractIconChange={setAutoExtractIcon}
+        </Visible>
+        <Visible when={canConfigureEgress}>
+          <CreateAppNetworkAccessSection
+            values={formValues}
+            canUseInternet={canUseInternet}
+            onChange={updateFormValues}
           />
-        </div>
+        </Visible>
+        <Visible when={showDeviceSection || showSessionSection || showResourcesSection}>
+          <h2 className='font-bold my-4'>Advanced</h2>
+        </Visible>
+        <Visible when={showDeviceSection}>
+          <CreateAppDeviceSection
+            values={formValues}
+            onChange={updateFormValues}
+            canChangeBaseImage={canChangeBaseImage}
+            canChangeContainerArgs={canChangeContainerArgs}
+            isRedroidRuntime={isRedroidRuntime}
+          />
+        </Visible>
+        <Visible when={showSessionSection}>
+          <AppFormSessionSection
+            values={formValues}
+            onChange={updateFormValues}
+          />
+        </Visible>
+        <Visible when={showResourcesSection}>
+          <AppFormResourcesSection
+            values={formValues}
+            resourceLimits={resourceLimits}
+            onChange={updateFormValues}
+          />
+        </Visible>
       </form>
     </>
   )

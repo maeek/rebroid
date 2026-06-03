@@ -13,6 +13,8 @@ type AppFormIconSectionProps = {
   autoExtractIcon: boolean
   hasExtractedIcon: boolean
   disabled?: boolean
+  boxed?: boolean
+  showDescription?: boolean
   showAutoExtract?: boolean
   onIconChange: (event: ChangeEvent<HTMLInputElement>) => void
   onClearIcon: () => void
@@ -26,6 +28,8 @@ export const AppFormIconSection = ({
   autoExtractIcon,
   hasExtractedIcon,
   disabled = false,
+  boxed = true,
+  showDescription = true,
   showAutoExtract = true,
   onIconChange,
   onClearIcon,
@@ -43,20 +47,22 @@ export const AppFormIconSection = ({
 
   return (
     <Section
-      title='Icon'
-      boxed
+      title={showDescription ? 'Icon' : undefined}
+      boxed={boxed}
       titleClassName='pb-1'
       contentClassName='gap-5'
     >
-      <p className='text-xs leading-relaxed text-muted-foreground'>
-        Optional app icon for the web UI. Square images work best and are optimized locally before upload.
-      </p>
-      <div className='flex w-full flex-col items-center gap-5'>
+      <Visible when={showDescription}>
+        <p className='text-xs leading-relaxed text-muted-foreground'>
+          Optional app icon for the web UI. Square images work best and are optimized locally before upload.
+        </p>
+      </Visible>
+      <div className='flex w-full flex-col items-center gap-5 max-xl:items-start max-sm:items-center'>
         <AppIcon
           appId={appId}
           appName={appName || 'App'}
           icon={iconPreview}
-          className='size-44 text-4xl shadow-[0_18px_60px_rgba(0,0,0,0.24)] max-sm:size-40'
+          className='size-44 text-4xl shadow-[0_18px_60px_rgba(0,0,0,0.24)] max-sm:size-36'
         />
 
         <div className='flex w-full gap-2 max-sm:flex-col'>

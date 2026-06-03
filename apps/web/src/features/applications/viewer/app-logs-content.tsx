@@ -7,9 +7,11 @@ import type { AppDefinition } from '@/features/applications/domain/app-definitio
 
 type AppLogsContentProps = {
   app?: AppDefinition
+  className?: string
+  outputClassName?: string
 }
 
-export const AppLogsContent = ({ app }: AppLogsContentProps) => {
+export const AppLogsContent = ({ app, className, outputClassName }: AppLogsContentProps) => {
   const { source, log, isLive, isLoading, sourceUnavailable, changeSource, loadLogs, setIsLive } = useApplicationLogs({
     app
   })
@@ -21,6 +23,8 @@ export const AppLogsContent = ({ app }: AppLogsContentProps) => {
       refreshDisabled={!app}
       onRefresh={() => void loadLogs()}
       emptyMessage='Refresh logs to inspect container startup failures or Android logcat output.'
+      className={className}
+      outputClassName={outputClassName}
       controls={
         <AppLogsControls
           source={source}

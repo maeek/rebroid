@@ -45,6 +45,8 @@ export interface CreateAndroidApplicationInput {
   cpuLimitCpus?: number
   containerArgs?: string
   uploadedApkId?: string
+  networkPolicyEnabled?: boolean
+  networkPolicyAllowCidrs?: string[]
 }
 
 export type CreateApplicationActionInput = Omit<CreateAndroidApplicationInput, 'ownerUserId'>

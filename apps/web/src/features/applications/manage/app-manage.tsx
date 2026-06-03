@@ -5,6 +5,7 @@ import { IconDeviceFloppy } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
 import { AppNotFoundSplash } from '@/features/applications/components/app-not-found-splash'
 import { AppViewerStatusSection } from '@/features/applications/detail/app-viewer-status-section'
@@ -12,9 +13,8 @@ import { mapAndroidApplicationToAppDefinition } from '@/features/applications/do
 import { getAppRefreshIntervalMs } from '@/features/applications/domain/refresh'
 import { resolveAppIconUrl } from '@/features/applications/icons/url'
 import { AppViewerDeleteAction } from '@/features/applications/viewer/actions/app-viewer-delete-action'
-import { AppLogsDialog } from '@/features/applications/viewer/app-logs-dialog'
+import { AppLogsContent } from '@/features/applications/viewer/app-logs-content'
 import { AppViewerHeading } from '@/features/applications/viewer/heading'
-import { AppInfo } from '@/features/applications/viewer/info'
 import { AndroidNotifications } from '@/features/applications/viewer/notifications'
 import { useResourceLimitBounds } from '@/features/settings/hooks/use-resource-limit-bounds'
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
@@ -29,6 +29,7 @@ import { AppManageGeneralSettings } from './app-manage-general-settings'
 import { AppManageIconPanel } from './app-manage-icon-panel'
 import { AppManageNetworkPolicySettings } from './app-manage-network-policy-settings'
 import { AppManageRuntimeSettings } from './app-manage-runtime-settings'
+import { AppManageTechnicalDetails } from './app-manage-technical-details'
 import type { AppFormValues } from '@/features/applications/create/create-app-form.types'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
@@ -204,9 +205,6 @@ export default function AppManage({
         />
         <AppViewerHeading app={displayApp}>
           <div className='flex gap-2'>
-            <Visible when={canViewLogs && !isForeignOwnedApp}>
-              <AppLogsDialog app={currentApp} />
-            </Visible>
             <Visible when={canDelete}>
               <AppViewerDeleteAction
                 app={displayApp}
@@ -230,59 +228,69 @@ export default function AppManage({
             Owner: {currentApp.ownerDisplayName ?? currentApp.ownerUserId ?? 'Unknown'}
           </Badge>
         </Visible>
-        <div className='grid w-full grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)] items-start gap-6 pb-24 max-lg:grid-cols-1'>
-          <div className='flex min-w-0 flex-col gap-5'>
-            <AppViewerStatusSection app={currentApp} />
-            <AppManageGeneralSettings
+        <div className='flex w-full min-w-0 flex-col gap-5 pb-24'>
+          <AppViewerStatusSection app={currentApp} />
+          <div className='[&:empty]:hidden'>
+            <AndroidNotifications app={currentApp} />
+          </div>
+          <AppManageGeneralSettings
+            app={currentApp}
+            appId={currentApp.id}
+            values={formValues}
+            initialSettings={initialSettings}
+            iconSlot={
+              <AppManageIconPanel
+                appId={currentApp.id}
+                appName={appName}
+                icon={icon}
+                initialSettings={initialSettings}
+                compact
+                onIconChange={(nextIcon, isDirty) => {
+                  isIconDirtyRef.current = isDirty
+                  setIcon(nextIcon)
+                }}
+              />
+            }
+            onAppNameChange={value => {
+              hasPendingAppChangesRef.current = true
+              setAppName(value)
+            }}
+          />
+          <Visible when={showRuntimeSection}>
+            <AppManageRuntimeSettings
               app={currentApp}
-              appId={currentApp.id}
               values={formValues}
-              initialSettings={initialSettings}
-              onAppNameChange={value => {
-                hasPendingAppChangesRef.current = true
-                setAppName(value)
-              }}
+              resourceLimits={resourceLimits}
+              canChangeSessionLimit={canChangeSessionLimit}
+              canChangeResources={canChangeResources}
+              canChangeContainerArgs={canChangeContainerArgs}
+              canViewBackendDetails={canViewBackendDetails}
+              onChange={handleFormChange}
             />
-            <Visible when={showRuntimeSection}>
-              <AppManageRuntimeSettings
-                app={currentApp}
-                values={formValues}
-                resourceLimits={resourceLimits}
-                canChangeSessionLimit={canChangeSessionLimit}
-                canChangeResources={canChangeResources}
-                canChangeContainerArgs={canChangeContainerArgs}
-                canViewBackendDetails={canViewBackendDetails}
-                onChange={handleFormChange}
-              />
-            </Visible>
-            <Visible when={canConfigureEgress}>
-              <AppManageNetworkPolicySettings
-                app={currentApp}
-                onUpdated={setCurrentApp}
-              />
-            </Visible>
-          </div>
-          <div className='flex w-full min-w-0 flex-col gap-4'>
-            <AppManageIconPanel
-              appId={currentApp.id}
-              appName={appName}
-              icon={icon}
-              initialSettings={initialSettings}
-              onIconChange={(nextIcon, isDirty) => {
-                isIconDirtyRef.current = isDirty
-                setIcon(nextIcon)
-              }}
+          </Visible>
+          <Visible when={canConfigureEgress}>
+            <AppManageNetworkPolicySettings
+              app={currentApp}
+              onUpdated={setCurrentApp}
             />
-            <div className='flex flex-col gap-4'>
-              <h2 className='font-bold'>Details</h2>
-              <AndroidNotifications app={currentApp} />
-              <AppInfo
+          </Visible>
+          <Visible when={canViewBackendDetails}>
+            <AppManageTechnicalDetails app={currentApp} />
+          </Visible>
+          <Visible when={canViewLogs && !isForeignOwnedApp}>
+            <Section
+              title='Logs'
+              boxed
+              titleClassName='pb-4'
+              contentClassName='min-h-[30rem]'
+            >
+              <AppLogsContent
                 app={currentApp}
-                permissions={permissions}
-                onAppChange={setCurrentApp}
+                className='min-h-[28rem]'
+                outputClassName='min-h-[20rem]'
               />
-            </div>
-          </div>
+            </Section>
+          </Visible>
         </div>
       </ProtectedSplitPageContent>
     </ProtectedSplitPageLayout>

@@ -90,6 +90,12 @@ shared secret:   change-me
 admin login:     admin / admin
 ```
 
+The orchestrator dev script auto-detects a Docker-compatible socket from
+`DOCKER_HOST`, `DOCKER_SOCKET_PATH`, `/var/run/docker.sock`, common Podman
+machine sockets, and macOS Podman temporary sockets. If you set `DOCKER_HOST`
+manually, prefer a Docker URL such as `unix:///var/run/docker.sock`; raw socket
+paths are normalized by the script when the path exists.
+
 The web dev server binds to `0.0.0.0` and does not require `NEXTAUTH_URL`.
 For LAN browser testing, open `https://<host-or-ip>:3000/login`. Override
 `NEXT_ALLOWED_DEV_ORIGINS` when your browser origin is outside the built-in

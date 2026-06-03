@@ -22,6 +22,16 @@ const policies = new Map<string, FirewallPolicy>();
 let adapter: ReturnType<typeof detectAdapter> | undefined;
 let startupError: string | undefined;
 
+const addStartupError = (message: string) => {
+  startupError = startupError ? `${startupError} ${message}` : message;
+};
+
+if (!secret) {
+  addStartupError(
+    "Firewall agent shared secret is not configured; policy operations are disabled.",
+  );
+}
+
 try {
   if (existsSync(statePath)) {
     const stored = JSON.parse(
@@ -38,8 +48,14 @@ try {
   adapter.initialize();
   adapter.reconcile(policies);
 } catch (error) {
-  console.error(error);
-  startupError = "No supported host firewall backend was detected.";
+  console.error(
+    `[firewall-agent] ${error instanceof Error ? error.message : "Firewall backend is unavailable."}`,
+  );
+  addStartupError(
+    error instanceof Error
+      ? `Firewall backend is unavailable: ${error.message}`
+      : "Firewall backend is unavailable.",
+  );
 }
 
 const persistPolicies = () => {
@@ -57,6 +73,7 @@ const json = (
   response.end(JSON.stringify(body));
 };
 const authorized = (request: import("node:http").IncomingMessage) => {
+  if (!secret) return false;
   const provided = request.headers["x-firewall-agent-secret"];
   if (typeof provided !== "string") return false;
   const expectedBuffer = Buffer.from(secret);

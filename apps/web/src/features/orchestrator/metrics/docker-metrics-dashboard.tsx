@@ -17,11 +17,11 @@ import type { DockerMetricsSnapshot } from '@/server/orchestrator/diagnostics/ty
 
 const summaryCards = (metrics: DockerMetricsSnapshot) =>
   [
-    ['Success', metrics.totals.success, 'Completed Docker operations', 'green-500'],
-    ['Errors', metrics.totals.errors, 'Failed Docker operations', 'red-500'],
-    ['Timeouts', metrics.totals.timeouts, 'Operations that exceeded timeout', 'yellow-500'],
-    ['Retries', metrics.totals.retries, 'Retry attempts across operations', 'blue-500'],
-    ['Slow operations', metrics.totals.slow, 'Exceeded the slow-operation warning', 'orange-500']
+    ['Success', metrics.totals.success, 'Completed Docker operations', 'border-l-green-500/50'],
+    ['Errors', metrics.totals.errors, 'Failed Docker operations', 'border-l-red-500/50'],
+    ['Timeouts', metrics.totals.timeouts, 'Operations that exceeded timeout', 'border-l-yellow-500/50'],
+    ['Retries', metrics.totals.retries, 'Retry attempts across operations', 'border-l-blue-500/50'],
+    ['Slow operations', metrics.totals.slow, 'Exceeded the slow-operation warning', '']
   ] as const
 
 export function DockerMetricsDashboard({
@@ -72,13 +72,13 @@ export function DockerMetricsDashboard({
         <h3 className='text-xl font-medium text-foreground'>{title}</h3>
       </Visible>
       <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-5'>
-        {summaryCards(data).map(([label, value, hint, color]) => (
+        {summaryCards(data).map(([label, value, hint, borderColorClass]) => (
           <QuickGlanceCard
             key={label}
             label={label}
             value={value}
             hint={hint}
-            className={cn(`border-l-${color}`)}
+            className={cn(borderColorClass)}
           />
         ))}
       </div>

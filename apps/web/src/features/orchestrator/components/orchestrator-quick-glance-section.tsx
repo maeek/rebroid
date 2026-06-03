@@ -86,6 +86,7 @@ export const OrchestratorQuickGlanceSection = ({
             error
           )}
           hint={cpuHint()}
+          className='border-l-primary/50'
         />
         <QuickGlanceCard
           label='Managed container memory'
@@ -94,6 +95,7 @@ export const OrchestratorQuickGlanceSection = ({
             error
           )}
           hint={memoryHint()}
+          className='border-l-primary/50'
         />
         <QuickGlanceCard
           label='Containers'
@@ -102,6 +104,7 @@ export const OrchestratorQuickGlanceSection = ({
             error
           )}
           hint='Running / Total'
+          className='border-l-primary/50'
         />
       </div>
       <div className='text-xs text-secondary-foreground'>

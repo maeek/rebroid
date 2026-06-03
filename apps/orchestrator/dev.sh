@@ -9,6 +9,40 @@ if [ -f .env ]; then
   set +a
 fi
 
+detect_docker_socket() {
+  if [ -n "${DOCKER_SOCKET_PATH:-}" ] && [ -S "$DOCKER_SOCKET_PATH" ]; then
+    printf '%s\n' "$DOCKER_SOCKET_PATH"
+    return
+  fi
+
+  for candidate in \
+    /var/run/docker.sock \
+    "${HOME:-}/.local/share/containers/podman/machine/podman.sock"; do
+    if [ -S "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      return
+    fi
+  done
+
+  find /var/folders -path '*/podman/machine-api.sock' -type s -print 2>/dev/null | head -n 1
+}
+
+if [ -n "${DOCKER_HOST:-}" ]; then
+  case "$DOCKER_HOST" in
+    unix://* | tcp://* | http://* | https://*) ;;
+    *)
+      if [ -S "$DOCKER_HOST" ]; then
+        export DOCKER_HOST="unix://$DOCKER_HOST"
+      fi
+      ;;
+  esac
+else
+  detected_socket="$(detect_docker_socket)"
+  if [ -n "$detected_socket" ]; then
+    export DOCKER_SOCKET_PATH="$detected_socket"
+  fi
+fi
+
 export NODE_ENV="${NODE_ENV:-development}"
 export PORT="${PORT:-4100}"
 export ORCHESTRATOR_SHARED_SECRET="${ORCHESTRATOR_SHARED_SECRET:-change-me}"

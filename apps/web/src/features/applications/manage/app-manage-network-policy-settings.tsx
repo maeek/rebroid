@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -7,6 +8,7 @@ import { mapAndroidApplicationToAppDefinition } from '@/features/applications/do
 import { NetworkAccessInput } from '@/features/applications/viewer/app-info/network-access-input'
 import { Setting } from '@/features/settings/components/setting'
 import { toast } from '@/hooks/use-toast'
+import { formatDateLocale } from '@/lib/format'
 import {
   applyNetworkPolicyAction,
   updateNetworkPolicyAction
@@ -19,6 +21,10 @@ type AppManageNetworkPolicySettingsProps = {
 }
 
 const verticalSettingClassName = 'flex-col items-start w-full'
+const getPolicyStatus = (app: AppDefinition) =>
+  app.networkPolicyResult?.status ?? app.networkPolicyStatus ?? 'not applied'
+const getPolicyMessage = (app: AppDefinition) =>
+  app.networkPolicyResult?.hint ?? app.networkPolicyResult?.message ?? app.networkPolicyMessage
 
 export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetworkPolicySettingsProps) => {
   const [networkPolicyEnabled, setNetworkPolicyEnabled] = useState(app.networkPolicyEnabled)
@@ -115,19 +121,35 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
 
   return (
     <Section
-      title='Network policy'
+      title='Network access'
       boxed
       titleClassName='pb-4'
-      contentClassName='gap-4'
+      contentClassName='gap-5'
     >
-      <Visible when={app.networkPolicyResult?.hint ?? app.networkPolicyResult?.message ?? app.networkPolicyMessage}>
-        <p className='text-sm text-secondary-foreground'>
-          {app.networkPolicyResult?.hint ?? app.networkPolicyResult?.message ?? app.networkPolicyMessage}
-        </p>
-      </Visible>
+      <div className='flex flex-col gap-2'>
+        <div className='flex flex-wrap items-center gap-2'>
+          <Badge variant={networkPolicyEnabled ? 'status' : 'secondary'}>
+            {networkPolicyEnabled ? 'Restricted' : 'Unrestricted'}
+          </Badge>
+          <Badge
+            variant={app.networkPolicyResult?.status === 'error' ? 'destructive' : 'secondary'}
+            className='capitalize'
+          >
+            {getPolicyStatus(app)}
+          </Badge>
+          <Visible when={app.networkPolicyAppliedAt}>
+            <span className='text-xs text-secondary-foreground'>
+              Applied {formatDateLocale(app.networkPolicyAppliedAt as Date)}
+            </span>
+          </Visible>
+        </div>
+        <Visible when={getPolicyMessage(app)}>
+          <p className='text-sm text-secondary-foreground'>{getPolicyMessage(app)}</p>
+        </Visible>
+      </div>
       <Setting
-        label='Outbound access'
-        description='Limit Android traffic to the API plus any CIDR ranges explicitly added below.'
+        label='Mode'
+        description='Choose whether Android traffic is limited to the API and explicit CIDR ranges.'
         className={verticalSettingClassName}
         variant='vertical'
       >
@@ -148,6 +170,10 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
         </Select>
       </Setting>
       <div className='flex w-full flex-col gap-3'>
+        <div className='grid gap-1'>
+          <div className='text-sm font-bold text-foreground'>Allowlist</div>
+          <p className='text-xs leading-relaxed text-muted-foreground'>Add app-specific IPv4 ranges when needed.</p>
+        </div>
         <NetworkAccessInput
           cidrs={networkPolicyAllowCidrs}
           disabled={isSaving}

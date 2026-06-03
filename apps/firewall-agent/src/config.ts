@@ -7,9 +7,7 @@ const environment = z
     FIREWALL_AGENT_STATE_PATH: z.string().min(1).optional(),
     FIREWALL_AGENT_SHARED_SECRET: z.string().min(1).optional(),
     FIREWALL_AGENT_SHARED_SECRET_FILE: z.string().min(1).optional(),
-    FIREWALL_ADAPTER: z
-      .enum(["auto", "docker-iptables", "podman-iptables", "nftables"])
-      .optional(),
+    FIREWALL_ADAPTER: z.string().min(1).optional(),
   })
   .parse(process.env);
 
@@ -28,9 +26,3 @@ export const firewallAgentConfig = {
     (existsSync(secretFile) ? readFileSync(secretFile, "utf8").trim() : ""),
   adapter: environment.FIREWALL_ADAPTER,
 };
-
-if (!firewallAgentConfig.secret) {
-  throw new Error(
-    "Firewall agent shared secret is required. Configure FIREWALL_AGENT_SHARED_SECRET or FIREWALL_AGENT_SHARED_SECRET_FILE.",
-  );
-}

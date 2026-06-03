@@ -12,4 +12,7 @@ export type AppFormValues = {
   redroidExtraArgs: string
 }
 
-export type CreateAppFormValues = AppFormValues
+export type CreateAppFormValues = AppFormValues & {
+  networkPolicyEnabled: boolean
+  networkPolicyAllowCidrs: string[]
+}

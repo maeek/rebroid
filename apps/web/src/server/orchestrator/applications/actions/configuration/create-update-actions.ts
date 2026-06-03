@@ -1,7 +1,7 @@
 'use server'
 
 import { recordAuditEvent } from '@/server/audit/events'
-import { hasPermission, isRedroidImage } from '@/shared/permissions/permissions'
+import { allowsBroadInternetAccess, hasPermission, isRedroidImage } from '@/shared/permissions/permissions'
 import { applyRedroidDefaultContainerArgs } from '@/shared/runtime/redroid-runtime'
 import { getCurrentOwnerUserId, getCurrentUserContext } from '../../../current-user'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
@@ -76,6 +76,27 @@ const assertCanUseContainerImage = (
   }
 }
 
+const assertCanConfigureCreateNetworkPolicy = (
+  user: Awaited<ReturnType<typeof getCurrentUserContext>>,
+  input: CreateApplicationActionInput
+) => {
+  if (input.networkPolicyEnabled === undefined && input.networkPolicyAllowCidrs === undefined) {
+    return
+  }
+
+  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:configure-egress')) {
+    throw new Error('You do not have permission to configure network access.')
+  }
+
+  if (
+    user.role !== 'admin' &&
+    (input.networkPolicyEnabled === false || allowsBroadInternetAccess(input.networkPolicyAllowCidrs ?? [])) &&
+    !hasPermission(user.permissions, 'applications:use-internet')
+  ) {
+    throw new Error('You do not have permission to allow broad internet access.')
+  }
+}
+
 export const updateApplicationAction = async (id: string, input: UpdateAndroidApplicationInput) => {
   await assertCanAccessApplication(id)
   const user = await getCurrentUserContext()
@@ -108,6 +129,7 @@ export const createApplicationAction = async (input: CreateApplicationActionInpu
   assertCanChangeResources(user, input)
   assertCanChangeSessionLimit(user, input)
   assertCanChangeContainerArgs(user, input)
+  assertCanConfigureCreateNetworkPolicy(user, input)
   enforceResourceQuotas(input, user.quotas)
   enforceSessionQuota(input, user.quotas)
   await assertCanOpenApplicationSlot(user)

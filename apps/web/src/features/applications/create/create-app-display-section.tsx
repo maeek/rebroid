@@ -18,7 +18,7 @@ export const CreateAppDisplaySection = ({ values, onChange }: CreateAppDisplaySe
     contentClassName='gap-4'
     titleClassName='mb-4'
   >
-    <div className='grid grid-cols-2 gap-3 max-sm:grid-cols-1'>
+    <div className='grid grid-cols-2 gap-3 max-sm:max-h-[27rem] max-sm:grid-cols-1 max-sm:overflow-y-auto max-sm:pr-1'>
       {redroidDisplayProfiles.map(profile => {
         const selected = values.redroidDisplayProfileId === profile.id
         const Icon = profile.kind === 'tablet' ? IconDeviceTablet : IconDeviceMobile
@@ -94,7 +94,7 @@ export const CreateAppDisplaySection = ({ values, onChange }: CreateAppDisplaySe
       </button>
     </div>
     {values.redroidDisplayProfileId === 'custom' ? (
-      <div className='grid grid-cols-3 gap-3 rounded-lg border border-border/70 bg-card/30 p-3 max-sm:grid-cols-1'>
+      <div className='grid grid-cols-3 gap-3 pt-1 max-sm:grid-cols-1'>
         <div className='space-y-2'>
           <Label htmlFor='redroid-custom-display-width'>Width</Label>
           <Input

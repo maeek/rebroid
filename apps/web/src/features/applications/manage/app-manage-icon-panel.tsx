@@ -1,4 +1,8 @@
 import { useState, type ChangeEvent } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Visible } from '@/components/ui/visible'
+import { AppIcon } from '@/features/applications/components/app-icon'
 import { AppFormIconSection } from '@/features/applications/create/create-app-icon-section'
 import { optimizeIconFile } from '@/features/applications/icons/icon-metadata'
 import { notifyRecentAppsUpdated } from '@/features/applications/recent/recent-apps'
@@ -17,6 +21,7 @@ type AppManageIconPanelProps = {
   appName: string
   icon: string | null
   initialSettings: OrchestratorUiSettings
+  compact?: boolean
   onIconChange: (icon: string | null, isDirty: boolean) => void
 }
 
@@ -25,6 +30,7 @@ export const AppManageIconPanel = ({
   appName,
   icon,
   initialSettings,
+  compact = false,
   onIconChange
 }: AppManageIconPanelProps) => {
   const [isUploadingIcon, setIsUploadingIcon] = useState(false)
@@ -79,6 +85,38 @@ export const AppManageIconPanel = ({
     } finally {
       setIsUploadingIcon(false)
     }
+  }
+
+  if (compact) {
+    return (
+      <div className='grid gap-4'>
+        <AppIcon
+          appId={appId}
+          appName={appName || 'App'}
+          icon={icon}
+          className='mx-auto size-32 text-3xl max-xl:size-28 max-sm:size-24'
+        />
+        <div className='flex w-full gap-2 max-sm:flex-col'>
+          <Input
+            type='file'
+            accept='image/*'
+            disabled={isUploadingIcon}
+            onChange={event => void handleIconUpload(event)}
+          />
+          <Visible when={icon}>
+            <Button
+              type='button'
+              variant='secondary'
+              className='shrink-0'
+              disabled={isUploadingIcon}
+              onClick={() => void handleClearIcon()}
+            >
+              Clear
+            </Button>
+          </Visible>
+        </div>
+      </div>
+    )
   }
 
   return (
