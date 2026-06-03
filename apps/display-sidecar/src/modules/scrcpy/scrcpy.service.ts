@@ -10,6 +10,7 @@ import {
   SCRCPY_WS_OPEN,
   ScrcpyAudioPacket,
   ScrcpyAttemptResult,
+  ScrcpyCompatibilityMode,
   ScrcpyKeyboardEventPayload,
   ScrcpySocket,
   ScrcpyStreamClient,
@@ -25,6 +26,7 @@ const WS_LOW_WATERMARK_BYTES = 2 * 1024 * 1024;
 const STREAM_RESTART_BACKOFF_MS = 500;
 const SCRCPY_CONNECT_RETRY_DELAY_MS = 100;
 const REVERSE_SOCKET_ACCEPT_TIMEOUT_MS = 1_500;
+const AUXILIARY_SOCKET_CONNECT_TIMEOUT_MS = 2_000;
 const MAX_QUEUED_CONTROL_MESSAGES = 128;
 const MAX_QUEUED_CONTROL_AGE_MS = 10_000;
 const SCRCPY_TUNNEL_MODE = process.env.SCRCPY_TUNNEL_MODE?.trim().toLowerCase();
@@ -62,6 +64,25 @@ const AUDIO_PACKET_MAGIC = Buffer.from("RA01");
 const AUDIO_PACKET_HEADER_BYTES = AUDIO_PACKET_MAGIC.length + 1 + 8;
 const AUDIO_CONFIGURATION_FAILURE_REASON =
   "invalid audio stream: scrcpy stream configuration failed on the device";
+const MINIMUM_SCRCPY_SERVER_MAJOR = 4;
+const COMPATIBILITY_PROBE_LOGCAT_LINES = 220;
+const COMPATIBILITY_PROBE_PROPERTIES = [
+  "ro.build.version.release",
+  "ro.build.version.sdk",
+  "ro.product.brand",
+  "ro.product.model",
+  "ro.build.id",
+  "ro.redroid.version",
+  "ro.build.flavor",
+] as const;
+const COMPATIBILITY_PROBE_SERVICES = [
+  "input",
+  "settings",
+  "display",
+  "SurfaceFlinger",
+] as const;
+const DISPLAY_DIAGNOSTIC_PATTERN =
+  /scrcpy|MediaCodec|ACodec|CCodec|OMX|SoftAVC|VirtualDisplay|BufferQueue|Surface|surfaceflinger|gralloc|ashmem|RenderEngine|hwservicemanager|adbd|InputManagerGlobal|KeyCharacterMap|IDisplayWindowListener|Can't find service/i;
 
 interface ActiveControlSocket {
   socket: ScrcpySocket;
@@ -88,6 +109,21 @@ interface ScrcpyPacket {
   data: Buffer;
   timestampUs: bigint;
   config: boolean;
+}
+
+interface ScrcpyCompatibilityProbe {
+  androidRelease: string;
+  androidSdk: number | null;
+  productBrand: string;
+  productModel: string;
+  buildId: string;
+  redroidVersion: string;
+  services: Record<
+    (typeof COMPATIBILITY_PROBE_SERVICES)[number],
+    "found" | "missing" | "unknown"
+  >;
+  encoders: string[];
+  diagnostics: string[];
 }
 
 class ScrcpyPacketParser {
@@ -162,6 +198,7 @@ export class ScrcpyService {
   private readonly controlSockets = new Map<string, ActiveControlSocket>();
   private readonly streamingSessions = new Set<string>();
   private readonly streamClients = new Map<string, ScrcpyStreamClient>();
+  private readonly controlUnavailableSessions = new Set<string>();
   private readonly queuedControlMessages = new Map<
     string,
     QueuedControlMessage[]
@@ -178,9 +215,21 @@ export class ScrcpyService {
     let stopCurrentAttempt: (() => Promise<void>) | null = null;
     let streamedOnce = false;
     let restartAttempt = 0;
-    let effectiveOptions = { ...options };
+    let effectiveOptions: ScrcpyStreamOptions = {
+      ...options,
+      control: options.control ?? true,
+      compatibilityMode: options.compatibilityMode ?? "normal",
+    };
+    this.assertCompatibleScrcpyServerVersion();
     this.streamingSessions.add(options.sessionId);
     this.streamClients.set(options.sessionId, options.client);
+    const compatibilityProbe = await this.collectCompatibilityProbe(
+      options.udid,
+      `scrcpy:${options.udid}:${options.sessionId}`,
+    );
+    this.sendCompatibilityStatus(options.client, effectiveOptions, {
+      message: this.compatibilityProbeSummary(compatibilityProbe),
+    });
 
     options.client.once("close", () => {
       clientClosed = true;
@@ -207,10 +256,14 @@ export class ScrcpyService {
 
           streamedOnce = true;
           const audioWasEnabled = effectiveOptions.audio;
+          const previousOptions = effectiveOptions;
           effectiveOptions = this.nextEffectiveStreamOptions(
             effectiveOptions,
             result,
           );
+          if (this.compatibilityStateChanged(previousOptions, effectiveOptions)) {
+            this.sendCompatibilityStatus(options.client, effectiveOptions);
+          }
           if (audioWasEnabled && !effectiveOptions.audio) {
             this.logger.debug(
               `[scrcpy:${options.udid}:${options.sessionId}] Android audio configuration failed; retrying with video only`,
@@ -231,6 +284,40 @@ export class ScrcpyService {
           stopCurrentAttempt = null;
 
           if (!streamedOnce) {
+            const diagnostics = await this.collectCompatibilityProbe(
+              options.udid,
+              `scrcpy:${options.udid}:${options.sessionId}`,
+            ).catch(() => compatibilityProbe);
+            const nextOptions =
+              this.nextInitialSetupStreamOptions(
+                effectiveOptions,
+                error,
+                diagnostics,
+              );
+            if (nextOptions !== effectiveOptions) {
+              const audioWasEnabled = effectiveOptions.audio;
+              const controlWasEnabled = effectiveOptions.control !== false;
+              effectiveOptions = nextOptions;
+              restartAttempt += 1;
+              const delayMs = this.restartDelayMs(restartAttempt);
+              this.logger.debug(
+                `[scrcpy:${options.udid}:${options.sessionId}] initial display stream setup failed: ${this.errorMessage(error)}; retrying with ${this.retryDescription(effectiveOptions, audioWasEnabled, controlWasEnabled)}; delayMs=${delayMs}`,
+              );
+              if (audioWasEnabled && !effectiveOptions.audio) {
+                this.sendJson(options.client, { type: "audio-disabled" });
+              }
+              this.sendCompatibilityStatus(options.client, effectiveOptions, {
+                message: this.compatibilityProbeSummary(diagnostics),
+                diagnostic: this.firstDiagnosticLine(diagnostics),
+              });
+              this.sendJson(options.client, {
+                type: "reconnecting",
+                message: this.reconnectMessage(effectiveOptions, error),
+                diagnostic: this.firstDiagnosticLine(diagnostics),
+              });
+              await this.delay(delayMs);
+              continue;
+            }
             throw error;
           }
 
@@ -263,6 +350,10 @@ export class ScrcpyService {
       .get(sessionId)
       ?.close?.(1000, "Display session released");
     this.streamClients.delete(sessionId);
+  }
+
+  serverVersion() {
+    return this.config.scrcpyVersion;
   }
 
   private async streamRawVideoAttempt(
@@ -353,6 +444,7 @@ export class ScrcpyService {
       controlSocket?.destroy();
       directConnection?.destroy();
       this.controlSockets.delete(options.sessionId);
+      this.controlUnavailableSessions.delete(options.sessionId);
       if (options.client.readyState !== SCRCPY_WS_OPEN) {
         this.queuedControlMessages.delete(options.sessionId);
       }
@@ -397,6 +489,7 @@ export class ScrcpyService {
     };
 
     try {
+      this.controlUnavailableSessions.delete(options.sessionId);
       await this.adb.ensureConnected(options.udid);
       await this.adb.pushFile(
         options.udid,
@@ -468,34 +561,58 @@ export class ScrcpyService {
               );
       streamSocket = connectedVideo.socket;
       if (options.audio) {
-        audioSocket =
-          tunnelMode === "reverse"
-            ? await reverseAcceptor!.acceptSocket(
-                REVERSE_SOCKET_ACCEPT_TIMEOUT_MS,
-              )
-            : tunnelMode === "direct"
-              ? await this.connectToDirectAdbSocket(
-                  directConnection!,
-                  socketName,
-                  "audio",
+        audioSocket = await this.connectOptionalSocket(
+          logPrefix,
+          "audio",
+          async () =>
+            tunnelMode === "reverse"
+              ? await reverseAcceptor!.acceptSocket(
+                  REVERSE_SOCKET_ACCEPT_TIMEOUT_MS,
                 )
-              : await this.connectToForwardedSocket(localPort);
+              : tunnelMode === "direct"
+                ? await this.connectToDirectAdbSocket(
+                    directConnection!,
+                    socketName,
+                    "audio",
+                    AUXILIARY_SOCKET_CONNECT_TIMEOUT_MS,
+                  )
+                : await this.connectToForwardedSocket(
+                    localPort,
+                    AUXILIARY_SOCKET_CONNECT_TIMEOUT_MS,
+                  ),
+        );
       }
-      if (SCRCPY_CONTROL_CHANNEL) {
-        controlSocket =
-          tunnelMode === "reverse"
-            ? await reverseAcceptor!.acceptSocket(
-                REVERSE_SOCKET_ACCEPT_TIMEOUT_MS,
-              )
-            : tunnelMode === "direct"
-              ? await this.connectToDirectAdbSocket(
-                  directConnection!,
-                  socketName,
-                  "control",
+      if (this.streamControlEnabled(options)) {
+        controlSocket = await this.connectOptionalSocket(
+          logPrefix,
+          "control",
+          async () =>
+            tunnelMode === "reverse"
+              ? await reverseAcceptor!.acceptSocket(
+                  REVERSE_SOCKET_ACCEPT_TIMEOUT_MS,
                 )
-              : await this.connectToForwardedSocket(localPort);
-        controlSocket.setNoDelay(true);
-        controlSocket.on("data", () => undefined);
+              : tunnelMode === "direct"
+                ? await this.connectToDirectAdbSocket(
+                    directConnection!,
+                    socketName,
+                    "control",
+                    AUXILIARY_SOCKET_CONNECT_TIMEOUT_MS,
+                  )
+                : await this.connectToForwardedSocket(
+                    localPort,
+                    AUXILIARY_SOCKET_CONNECT_TIMEOUT_MS,
+                  ),
+        );
+        if (controlSocket) {
+          controlSocket.setNoDelay(true);
+          controlSocket.on("data", () => undefined);
+        } else {
+          this.controlUnavailableSessions.add(options.sessionId);
+          this.queuedControlMessages.delete(options.sessionId);
+        }
+      } else if (SCRCPY_CONTROL_CHANNEL) {
+        this.controlUnavailableSessions.add(options.sessionId);
+        this.queuedControlMessages.delete(options.sessionId);
       }
 
       if (forwardActive) {
@@ -525,6 +642,9 @@ export class ScrcpyService {
           udid: options.udid,
         });
         this.flushQueuedControlMessages(options.sessionId);
+      }
+      if (options.audio && !audioSocket) {
+        this.sendJson(options.client, { type: "audio-disabled" });
       }
       options.onActivity?.();
 
@@ -618,18 +738,20 @@ export class ScrcpyService {
             true,
             (packet) => forwardVideoPayload(packet.data),
           );
-          const audioParser = new ScrcpyPacketParser(
-            SCRCPY_CODEC_OPUS,
-            false,
-            forwardAudioPayload,
-            () => {
-              this.logger.debug(
-                `[${logPrefix}] Android audio capture is unavailable; continuing with video only`,
-              );
-              this.sendJson(options.client, { type: "audio-disabled" });
-              audioSocket?.destroy();
-            },
-          );
+          const audioParser = audioSocket
+            ? new ScrcpyPacketParser(
+                SCRCPY_CODEC_OPUS,
+                false,
+                forwardAudioPayload,
+                () => {
+                  this.logger.debug(
+                    `[${logPrefix}] Android audio capture is unavailable; continuing with video only`,
+                  );
+                  this.sendJson(options.client, { type: "audio-disabled" });
+                  audioSocket?.destroy();
+                },
+              )
+            : null;
           videoParser.push(connectedVideo.initialPayload);
           streamSocket?.on("data", (chunk: Buffer) => {
             try {
@@ -643,7 +765,7 @@ export class ScrcpyService {
           });
           audioSocket?.on("data", (chunk: Buffer) => {
             try {
-              audioParser.push(chunk);
+              audioParser?.push(chunk);
             } catch (error) {
               this.runInBackground(
                 cleanup(`invalid audio stream: ${this.errorMessage(error)}`),
@@ -685,15 +807,25 @@ export class ScrcpyService {
           );
         });
         controlSocket?.once("close", () => {
-          this.runInBackground(
-            cleanup("display control socket closed"),
-            `[${logPrefix}] control socket close cleanup`,
+          if (released) {
+            return;
+          }
+          this.controlSockets.delete(options.sessionId);
+          this.controlUnavailableSessions.add(options.sessionId);
+          this.queuedControlMessages.delete(options.sessionId);
+          this.logger.debug(
+            `[${logPrefix}] display control socket closed; continuing video with ADB control fallback`,
           );
         });
         controlSocket?.once("error", (error) => {
-          this.runInBackground(
-            cleanup(`display control socket failed: ${error.message}`),
-            `[${logPrefix}] control socket error cleanup`,
+          if (released) {
+            return;
+          }
+          this.controlSockets.delete(options.sessionId);
+          this.controlUnavailableSessions.add(options.sessionId);
+          this.queuedControlMessages.delete(options.sessionId);
+          this.logger.debug(
+            `[${logPrefix}] display control socket failed: ${error.message}; continuing video with ADB control fallback`,
           );
         });
         if (!serverLaunch?.detached) {
@@ -722,6 +854,18 @@ export class ScrcpyService {
 
   usesStreamControl() {
     return SCRCPY_CONTROL_CHANNEL;
+  }
+
+  shouldWaitForStreamControl(sessionId: string) {
+    return (
+      SCRCPY_CONTROL_CHANNEL &&
+      this.streamingSessions.has(sessionId) &&
+      !this.controlUnavailableSessions.has(sessionId)
+    );
+  }
+
+  private streamControlEnabled(options: ScrcpyStreamOptions) {
+    return SCRCPY_CONTROL_CHANNEL && options.control !== false;
   }
 
   isStreamingSession(sessionId: string) {
@@ -762,7 +906,7 @@ export class ScrcpyService {
       "video=true",
       `audio=${options.audio ? "true" : "false"}`,
       "audio_codec=opus",
-      `control=${SCRCPY_CONTROL_CHANNEL ? "true" : "false"}`,
+      `control=${this.streamControlEnabled(options) ? "true" : "false"}`,
       "clipboard_autosync=true",
       "cleanup=false",
       "keep_active=true",
@@ -951,7 +1095,10 @@ export class ScrcpyService {
     });
   }
 
-  private connectToForwardedSocket(port: number) {
+  private connectToForwardedSocket(
+    port: number,
+    timeoutMs = SOCKET_CONNECT_TIMEOUT_MS,
+  ) {
     const startedAt = Date.now();
 
     return new Promise<Socket>((resolve, reject) => {
@@ -966,7 +1113,7 @@ export class ScrcpyService {
           settled = true;
           socket.destroy();
 
-          if (Date.now() - startedAt >= SOCKET_CONNECT_TIMEOUT_MS) {
+          if (Date.now() - startedAt >= timeoutMs) {
             reject(
               error ??
                 new Error(
@@ -995,7 +1142,7 @@ export class ScrcpyService {
           ),
         );
         socket.once("error", fail);
-        socket.setTimeout(1_000, () =>
+        socket.setTimeout(Math.min(1_000, timeoutMs), () =>
           fail(
             new Error(
               `Timed out connecting to scrcpy socket on ${LOCALHOST}:${port}`,
@@ -1007,6 +1154,21 @@ export class ScrcpyService {
 
       tryConnect();
     });
+  }
+
+  private async connectOptionalSocket(
+    logPrefix: string,
+    label: string,
+    connect: () => Promise<ScrcpySocket>,
+  ) {
+    try {
+      return await connect();
+    } catch (error) {
+      this.logger.debug(
+        `[${logPrefix}] scrcpy ${label} socket unavailable; continuing without ${label}: ${this.errorMessage(error)}`,
+      );
+      return null;
+    }
   }
 
   private async connectToDirectAdbVideoSocket(
@@ -1126,9 +1288,10 @@ export class ScrcpyService {
     connection: DirectAdbConnection,
     socketName: string,
     label: string,
+    timeoutMs = SOCKET_CONNECT_TIMEOUT_MS,
   ): Promise<ScrcpySocket> {
     return connection
-      .open(`localabstract:${socketName}`, label)
+      .open(`localabstract:${socketName}`, label, timeoutMs)
       .then((connected) => connected.setNoDelay(true));
   }
 
@@ -1286,12 +1449,44 @@ export class ScrcpyService {
     );
   }
 
+  private nextInitialSetupStreamOptions(
+    options: ScrcpyStreamOptions,
+    error: unknown,
+    probe: ScrcpyCompatibilityProbe | null,
+  ): ScrcpyStreamOptions {
+    if (options.audio) {
+      return {
+        ...options,
+        audio: false,
+        compatibilityMode: "audio-disabled",
+      };
+    }
+
+    if (
+      options.control !== false &&
+      this.shouldRetryWithoutStreamControl(error, probe)
+    ) {
+      return {
+        ...options,
+        control: false,
+        compatibilityMode: "stream-control-disabled",
+      };
+    }
+
+    const next = this.stableStreamOptions(options);
+    return this.sameStreamSettings(options, next) ? options : next;
+  }
+
   private nextEffectiveStreamOptions(
     options: ScrcpyStreamOptions,
     result: ScrcpyAttemptResult,
   ): ScrcpyStreamOptions {
     if (options.audio && result.reason === AUDIO_CONFIGURATION_FAILURE_REASON) {
-      return { ...options, audio: false };
+      return {
+        ...options,
+        audio: false,
+        compatibilityMode: "audio-disabled",
+      };
     }
 
     const shortAndroidStreamExit =
@@ -1306,8 +1501,22 @@ export class ScrcpyService {
       return options;
     }
 
-    const next = {
+    const next = this.stableStreamOptions(options);
+
+    if (!this.sameStreamSettings(options, next)) {
+      this.logger.warn(
+        `[scrcpy:${options.udid}:${options.sessionId}] Android display encoder exited after ${result.durationMs}ms; retrying with stable stream settings maxSize=${next.maxSize}, maxFps=${next.maxFps}, bitrate=${next.bitrate}, iFrameInterval=${next.iFrameInterval}`,
+      );
+      return next;
+    }
+
+    return options;
+  }
+
+  private stableStreamOptions(options: ScrcpyStreamOptions): ScrcpyStreamOptions {
+    return {
       ...options,
+      compatibilityMode: "stable-video",
       bitrate: Math.min(options.bitrate, SCRCPY_STABLE_BITRATE),
       maxFps: Math.min(options.maxFps, SCRCPY_STABLE_MAX_FPS),
       maxSize:
@@ -1319,20 +1528,261 @@ export class ScrcpyService {
           ? Math.max(options.iFrameInterval, SCRCPY_STABLE_I_FRAME_INTERVAL)
           : SCRCPY_STABLE_I_FRAME_INTERVAL,
     };
+  }
 
-    if (
-      next.bitrate !== options.bitrate ||
-      next.maxFps !== options.maxFps ||
-      next.maxSize !== options.maxSize ||
-      next.iFrameInterval !== options.iFrameInterval
-    ) {
-      this.logger.warn(
-        `[scrcpy:${options.udid}:${options.sessionId}] Android display encoder exited after ${result.durationMs}ms; retrying with stable stream settings maxSize=${next.maxSize}, maxFps=${next.maxFps}, bitrate=${next.bitrate}, iFrameInterval=${next.iFrameInterval}`,
+  private sameStreamSettings(
+    left: ScrcpyStreamOptions,
+    right: ScrcpyStreamOptions,
+  ) {
+    return (
+      left.bitrate === right.bitrate &&
+      left.maxFps === right.maxFps &&
+      left.maxSize === right.maxSize &&
+      left.iFrameInterval === right.iFrameInterval
+    );
+  }
+
+  private compatibilityStateChanged(
+    previous: ScrcpyStreamOptions,
+    next: ScrcpyStreamOptions,
+  ) {
+    return (
+      previous.compatibilityMode !== next.compatibilityMode ||
+      previous.audio !== next.audio ||
+      previous.control !== next.control
+    );
+  }
+
+  private assertCompatibleScrcpyServerVersion() {
+    const version = this.config.scrcpyVersion.trim();
+    const major = Number(version.split(".")[0]);
+    if (!Number.isFinite(major) || major < MINIMUM_SCRCPY_SERVER_MAJOR) {
+      throw new Error(
+        `Display sidecar bundles scrcpy server ${version}; Android 15/16 support requires scrcpy ${MINIMUM_SCRCPY_SERVER_MAJOR}.0 or newer.`,
       );
-      return next;
+    }
+  }
+
+  private async collectCompatibilityProbe(
+    udid: string,
+    logPrefix: string,
+  ): Promise<ScrcpyCompatibilityProbe | null> {
+    try {
+      const [probeResult, logcatResult] = await Promise.allSettled([
+        this.adb.shell(
+          udid,
+          [
+            "sh",
+            "-lc",
+            [
+              'echo "== props =="',
+              COMPATIBILITY_PROBE_PROPERTIES
+                .map(
+                  (prop) =>
+                    `printf '${prop}='; getprop ${prop} 2>/dev/null || true; printf '\\n'`,
+                )
+                .join("; "),
+              'echo "== services =="',
+              `for svc in ${COMPATIBILITY_PROBE_SERVICES.join(" ")}; do if service check "$svc" 2>/dev/null | grep -qi found; then echo "$svc=found"; else echo "$svc=missing"; fi; done`,
+              'echo "== encoders =="',
+              'cmd media.codec list 2>/dev/null | grep -Ei "encoder|avc|hevc|h264|h265" | head -80 || dumpsys media.codec 2>/dev/null | grep -Ei "encoder|avc|hevc|h264|h265" | head -80 || true',
+            ].join("; "),
+          ],
+          8_000,
+        ),
+        this.adb.logcat(udid, COMPATIBILITY_PROBE_LOGCAT_LINES),
+      ]);
+
+      const output =
+        probeResult.status === "fulfilled" ? probeResult.value.stdout : "";
+      const logcat =
+        logcatResult.status === "fulfilled" ? logcatResult.value.stdout : "";
+      const probe = this.parseCompatibilityProbe(output, logcat);
+      this.logger.debug(
+        `[${logPrefix}] Android display compatibility probe: ${this.compatibilityProbeSummary(probe)}`,
+      );
+      const diagnostic = this.firstDiagnosticLine(probe);
+      if (diagnostic) {
+        this.logger.debug(`[${logPrefix}] diagnostic: ${diagnostic}`);
+      }
+      return probe;
+    } catch (error) {
+      this.logger.debug(
+        `[${logPrefix}] compatibility probe skipped: ${this.errorMessage(error)}`,
+      );
+      return null;
+    }
+  }
+
+  private parseCompatibilityProbe(
+    output: string,
+    logcat: string,
+  ): ScrcpyCompatibilityProbe {
+    const props = new Map<string, string>();
+    const services = Object.fromEntries(
+      COMPATIBILITY_PROBE_SERVICES.map((service) => [service, "unknown"]),
+    ) as ScrcpyCompatibilityProbe["services"];
+    const encoders: string[] = [];
+    let section = "";
+
+    for (const rawLine of output.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line) {
+        continue;
+      }
+      if (line === "== props ==" || line === "== services ==" || line === "== encoders ==") {
+        section = line;
+        continue;
+      }
+      if (section === "== props ==") {
+        const separator = line.indexOf("=");
+        if (separator > 0) {
+          props.set(line.slice(0, separator), line.slice(separator + 1));
+        }
+        continue;
+      }
+      if (section === "== services ==") {
+        const separator = line.indexOf("=");
+        const name = line.slice(0, separator);
+        const status = line.slice(separator + 1);
+        if (separator > 0 && this.isCompatibilityService(name)) {
+          services[name] = status === "found" ? "found" : "missing";
+        }
+        continue;
+      }
+      if (section === "== encoders ==" && encoders.length < 80) {
+        encoders.push(line);
+      }
     }
 
-    return options;
+    const diagnostics = logcat
+      .split(/\r?\n/)
+      .filter((line) => DISPLAY_DIAGNOSTIC_PATTERN.test(line))
+      .slice(-40);
+
+    const sdk = Number(props.get("ro.build.version.sdk"));
+    return {
+      androidRelease: props.get("ro.build.version.release") ?? "",
+      androidSdk: Number.isFinite(sdk) ? sdk : null,
+      productBrand: props.get("ro.product.brand") ?? "",
+      productModel: props.get("ro.product.model") ?? "",
+      buildId: props.get("ro.build.id") ?? "",
+      redroidVersion: props.get("ro.redroid.version") ?? "",
+      services,
+      encoders,
+      diagnostics,
+    };
+  }
+
+  private isCompatibilityService(
+    value: string,
+  ): value is (typeof COMPATIBILITY_PROBE_SERVICES)[number] {
+    return COMPATIBILITY_PROBE_SERVICES.some((service) => service === value);
+  }
+
+  private shouldRetryWithoutStreamControl(
+    error: unknown,
+    probe: ScrcpyCompatibilityProbe | null,
+  ) {
+    const message = this.errorMessage(error);
+    const diagnostics = probe?.diagnostics.join("\n") ?? "";
+    const text = `${message}\n${diagnostics}`;
+    const androidSdk = probe?.androidSdk ?? 0;
+    const mayBeAndroid15OrNewer = !probe || androidSdk >= 35;
+    const redroidLike =
+      /redroid/i.test(
+        `${probe?.productBrand ?? ""} ${probe?.productModel ?? ""} ${probe?.redroidVersion ?? ""}`,
+      ) || !probe;
+
+    return (
+      redroidLike &&
+      mayBeAndroid15OrNewer &&
+      /InputManagerGlobal|getInputDevice|KeyCharacterMap|Can't find service: settings|Can't find service: input|control|Timed out connecting to scrcpy socket/i.test(
+        text,
+      )
+    );
+  }
+
+  private sendCompatibilityStatus(
+    client: ScrcpyStreamClient,
+    options: ScrcpyStreamOptions,
+    details: { message?: string; diagnostic?: string } = {},
+  ) {
+    this.sendJson(client, {
+      type: "compatibility",
+      mode: options.compatibilityMode ?? "normal",
+      control: this.streamControlEnabled(options),
+      audio: options.audio,
+      message: details.message ?? this.compatibilityModeMessage(options),
+      diagnostic: details.diagnostic,
+    });
+  }
+
+  private compatibilityModeMessage(options: ScrcpyStreamOptions) {
+    const mode = options.compatibilityMode ?? "normal";
+    if (mode === "audio-disabled") {
+      return "Audio capture is disabled for this stream after Android rejected the audio setup.";
+    }
+    if (mode === "stream-control-disabled") {
+      return "Stream control is disabled for this Android build; viewer controls use ADB fallback.";
+    }
+    if (mode === "stable-video") {
+      return "Using conservative video settings after the Android encoder exited early.";
+    }
+    return "Using the standard scrcpy display stream.";
+  }
+
+  private reconnectMessage(options: ScrcpyStreamOptions, error: unknown) {
+    const mode = options.compatibilityMode ?? "normal";
+    if (mode === "stream-control-disabled") {
+      return "Retrying live display without scrcpy stream control...";
+    }
+    if (mode === "audio-disabled") {
+      return "Retrying live display without Android audio capture...";
+    }
+    if (mode === "stable-video") {
+      return "Retrying live display with stable video settings...";
+    }
+    return `Reconnecting live display: ${this.errorMessage(error)}`;
+  }
+
+  private retryDescription(
+    options: ScrcpyStreamOptions,
+    audioWasEnabled: boolean,
+    controlWasEnabled: boolean,
+  ) {
+    if (audioWasEnabled && !options.audio) {
+      return "video only";
+    }
+    if (controlWasEnabled && options.control === false) {
+      return "ADB control fallback";
+    }
+    return `stable stream settings maxSize=${options.maxSize}, maxFps=${options.maxFps}, bitrate=${options.bitrate}, iFrameInterval=${options.iFrameInterval}`;
+  }
+
+  private compatibilityProbeSummary(probe: ScrcpyCompatibilityProbe | null) {
+    if (!probe) {
+      return "Android compatibility diagnostics were unavailable.";
+    }
+    const version = [probe.androidRelease, probe.androidSdk && `API ${probe.androidSdk}`]
+      .filter(Boolean)
+      .join(" ");
+    const services = Object.entries(probe.services)
+      .map(([name, status]) => `${name}:${status}`)
+      .join(" ");
+    return [
+      version || "Android version unknown",
+      [probe.productBrand, probe.productModel].filter(Boolean).join(" ") ||
+        "unknown device",
+      probe.buildId ? `build ${probe.buildId}` : null,
+      services,
+    ]
+      .filter(Boolean)
+      .join("; ");
+  }
+
+  private firstDiagnosticLine(probe: ScrcpyCompatibilityProbe | null) {
+    return probe?.diagnostics.at(-1)?.slice(0, 260);
   }
 
   private async maybeLogDeviceDiagnostics(
@@ -1353,11 +1803,9 @@ export class ScrcpyService {
 
     try {
       const result = await this.adb.logcat(udid, 350);
-      const diagnosticPattern =
-        /scrcpy|MediaCodec|ACodec|CCodec|OMX|SoftAVC|VirtualDisplay|BufferQueue|Surface|surfaceflinger|gralloc|ashmem|RenderEngine|hwservicemanager|adbd/i;
       const lines = result.stdout
         .split(/\r?\n/)
-        .filter((line) => diagnosticPattern.test(line))
+        .filter((line) => DISPLAY_DIAGNOSTIC_PATTERN.test(line))
         .slice(-80);
 
       if (!lines.length) {
@@ -1406,6 +1854,10 @@ export class ScrcpyService {
     }
 
     if (!this.streamingSessions.has(sessionId)) {
+      return false;
+    }
+
+    if (this.controlUnavailableSessions.has(sessionId)) {
       return false;
     }
 

@@ -56,3 +56,5 @@ docker compose -f deploy/compose.yaml down -v
 ## Manual Scrcpy Harness
 
 Scrcpy integration work requires a Linux Docker-compatible host with Redroid support, binder devices, and the display-sidecar image. Start the appliance, create an Android application, and manually verify launch, video, input, disconnect, retry, and shutdown before and after any scrcpy change. Record the host configuration and test result in the change description.
+
+For Redroid 15 and 16, verify both WebRTC and WebSocket streams. Confirm the sidecar reports scrcpy server 4.0 or newer, collect the compatibility mode shown by the viewer, and capture sidecar log lines for any fallback. A passing matrix should include Redroid 13, 14, 15, and 16 with video startup, touch/keyboard controls, audio when supported, reconnect, and clean session release. If a Redroid 16 image shows `InputManagerGlobal`, `KeyCharacterMap`, missing `settings`/`input` services, or repeated early scrcpy socket timeouts, confirm that `stream-control-disabled` fallback takes over and ADB controls still work.

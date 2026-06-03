@@ -1,9 +1,11 @@
 'use server'
 
+import { compareAppNames } from '@/features/applications/domain/app-sort'
 import { getStoredAppIcon } from '@/server/app-icons/store'
 import { orchestratorAppCatalogClient } from '@/server/orchestrator/applications/catalog-client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { forgetStoredRecentApp, listStoredRecentApps, rememberStoredRecentApp } from './store'
+import type { AndroidApplicationSummary } from '@/server/orchestrator/applications/types'
 
 export type RecentApp = {
   id: string
@@ -14,6 +16,17 @@ export type RecentApp = {
   statusLabel?: string | null
 }
 
+const navigationAppsLimit = 5
+
+const toRecentApp = async (app: AndroidApplicationSummary, openedAt: number): Promise<RecentApp> => ({
+  id: app.id,
+  name: app.name,
+  icon: await getStoredAppIcon(app.id),
+  openedAt,
+  status: app.currentStatus,
+  statusLabel: app.detail?.title ?? null
+})
+
 const visibleRecentApps = async (userId: string): Promise<RecentApp[]> => {
   const user = await getCurrentUserContext()
   const ownerUserId = user.role === 'admin' ? undefined : user.ownerUserId
@@ -23,25 +36,25 @@ const visibleRecentApps = async (userId: string): Promise<RecentApp[]> => {
   ])
   const appsById = new Map(apps.map(app => [app.id, app]))
 
-  const hydratedApps: Array<RecentApp | null> = await Promise.all(
-    recent.map(async item => {
+  const runningApps = apps
+    .filter(app => app.currentStatus === 'running')
+    .toSorted(compareAppNames)
+    .slice(0, navigationAppsLimit)
+  const runningIds = new Set(runningApps.map(app => app.id))
+  const recentApps = recent
+    .map(item => {
       const app = appsById.get(item.id)
-      if (!app) {
-        return null
-      }
-
-      return {
-        id: app.id,
-        name: app.name,
-        icon: await getStoredAppIcon(app.id),
-        openedAt: item.openedAt,
-        status: app.currentStatus,
-        statusLabel: app.detail?.title ?? null
-      }
+      return app && !runningIds.has(app.id) ? { app, openedAt: item.openedAt } : null
     })
-  )
+    .filter((item): item is { app: AndroidApplicationSummary; openedAt: number } => Boolean(item))
+    .slice(0, navigationAppsLimit - runningApps.length)
 
-  return hydratedApps.filter((app): app is RecentApp => Boolean(app))
+  return Promise.all(
+    [
+      ...runningApps.map(app => ({ app, openedAt: recent.find(item => item.id === app.id)?.openedAt ?? 0 })),
+      ...recentApps
+    ].map(item => toRecentApp(item.app, item.openedAt))
+  )
 }
 
 export const listRecentAppsAction = async () => {

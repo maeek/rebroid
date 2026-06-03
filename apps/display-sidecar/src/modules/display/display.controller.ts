@@ -122,6 +122,16 @@ export class DisplayController {
         defaultCodec: "h264",
         players: ["webcodecs", "webrtc"],
       },
+      compatibility: {
+        scrcpyVersion: this.scrcpy.serverVersion(),
+        minimumAndroid15Version: "4.0",
+        androidVersions: ["13", "14", "15", "16"],
+        fallbackModes: [
+          "audio-disabled",
+          "stream-control-disabled",
+          "stable-video",
+        ],
+      },
       actions: [
         "back",
         "home",
@@ -230,7 +240,7 @@ export class DisplayController {
       };
     }
 
-    if (this.scrcpy.isStreamingSession(id) && this.scrcpy.usesStreamControl()) {
+    if (this.scrcpy.shouldWaitForStreamControl(id)) {
       throw new ConflictException(
         "Live controls are reconnecting. Try again in a moment.",
       );
@@ -320,7 +330,7 @@ export class DisplayController {
       };
     }
 
-    if (this.scrcpy.isStreamingSession(id) && this.scrcpy.usesStreamControl()) {
+    if (this.scrcpy.shouldWaitForStreamControl(id)) {
       throw new ConflictException(
         "Live controls are reconnecting. Try again in a moment.",
       );
@@ -354,7 +364,7 @@ export class DisplayController {
       };
     }
 
-    if (this.scrcpy.isStreamingSession(id) && this.scrcpy.usesStreamControl()) {
+    if (this.scrcpy.shouldWaitForStreamControl(id)) {
       throw new ConflictException(
         "Live controls are reconnecting. Try again in a moment.",
       );
@@ -419,7 +429,7 @@ export class DisplayController {
       };
     }
 
-    if (this.scrcpy.isStreamingSession(id) && this.scrcpy.usesStreamControl()) {
+    if (this.scrcpy.shouldWaitForStreamControl(id)) {
       throw new ConflictException(
         "Live controls are reconnecting. Try again in a moment.",
       );

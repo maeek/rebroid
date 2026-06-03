@@ -11,6 +11,7 @@ export type ViewerElements = {
   title: HTMLElement | null;
   copy: HTMLElement | null;
   status: HTMLElement | null;
+  compatibility: HTMLElement | null;
   message: HTMLElement | null;
   canvas: HTMLCanvasElement;
   context: CanvasRenderingContext2D;
@@ -23,6 +24,7 @@ export type ViewerUi = {
   showCanvas: () => void;
   showVideo: () => void;
   showStarting: (text?: string) => void;
+  showCompatibility: (mode: string, message?: string) => void;
 };
 
 export type PageLifecycle = {

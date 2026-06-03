@@ -19,7 +19,9 @@ type DisplayStreamOptions = {
 
 type StreamTextMessage = {
   type?: unknown;
+  mode?: unknown;
   message?: unknown;
+  diagnostic?: unknown;
   text?: unknown;
 };
 
@@ -118,6 +120,17 @@ export function createDisplayStream({
             ? payload.message
             : "Reconnecting live display...",
         );
+      }
+      return;
+    }
+
+    if (payload.type === "compatibility") {
+      ui.showCompatibility(
+        typeof payload.mode === "string" ? payload.mode : "normal",
+        typeof payload.message === "string" ? payload.message : undefined,
+      );
+      if (!decoder.hasFrames() && typeof payload.diagnostic === "string") {
+        ui.showStatus(payload.diagnostic.slice(0, 180));
       }
       return;
     }

@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { AppsListSortMode } from '@/features/applications/domain/app-sort'
 
 export type BulkAction = 'stop' | 'delete'
 export type PendingAppAction = { action: BulkAction; app: AppDefinition }
@@ -23,9 +24,11 @@ export type AppsListContextValue = {
   removeDataOnDelete: boolean
   selectedIds: Set<string>
   selectionCount: number
+  setSortMode: (sortMode: AppsListSortMode) => void
   startApp: (app: AppDefinition) => Promise<void>
   startManaging: () => void
   stopApp: (app: AppDefinition) => Promise<void>
+  sortMode: AppsListSortMode
   stoppableSelectedCount: number
   toggleSelected: (id: string) => void
   toggleSelectAll: () => void

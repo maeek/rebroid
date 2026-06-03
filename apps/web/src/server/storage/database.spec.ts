@@ -53,6 +53,14 @@ describe('web state database', () => {
     )
   })
 
+  it('keeps five recent applications per user', async () => {
+    for (let index = 0; index < 6; index += 1) {
+      await rememberStoredRecentApp('user-1', `app-${index + 1}`)
+    }
+
+    await expect(listStoredRecentApps('user-1')).resolves.toHaveLength(5)
+  })
+
   it('does not hide corrupted state', async () => {
     corruptWebStateForTests('web-settings', '{malformed')
 

@@ -13,6 +13,30 @@ const elements = getViewerElements();
 const ui = createViewerUi(elements);
 const lifecycle = createPageLifecycle();
 const audioPlayer = createViewerAudioPlayer();
+const handleSidecarMessage = (message: Record<string, unknown>) => {
+  if (message.type === "compatibility") {
+    ui.showCompatibility(
+      typeof message.mode === "string" ? message.mode : "normal",
+      typeof message.message === "string" ? message.message : undefined,
+    );
+    return;
+  }
+  if (message.type === "audio-disabled") {
+    audioPlayer.reset();
+    ui.showCompatibility(
+      "audio-disabled",
+      "Audio capture is disabled for this stream.",
+    );
+    return;
+  }
+  if (message.type === "reconnecting") {
+    ui.showStatus(
+      typeof message.message === "string"
+        ? message.message
+        : "Reconnecting live display...",
+    );
+  }
+};
 document.addEventListener(
   "contextmenu",
   (event) => {
@@ -24,6 +48,7 @@ const controlChannel = createControlChannel({
   sessionId: config.sessionId,
   token: config.token,
   lifecycle,
+  onMessage: handleSidecarMessage,
 });
 const decoder = createH264Decoder({
   canvas: elements.canvas,

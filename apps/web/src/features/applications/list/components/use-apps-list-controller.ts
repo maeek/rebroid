@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
+import { sortApps, type AppsListSortMode } from '@/features/applications/domain/app-sort'
 import { getAppsRefreshIntervalMs } from '@/features/applications/domain/refresh'
 import { notifyRecentAppsUpdated } from '@/features/applications/recent/recent-apps'
 import { useOrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
@@ -40,6 +41,7 @@ export const useAppsListController = ({
   const [apps, setApps] = useState(yourApps)
   const [isManaging, setIsManaging] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
+  const [sortMode, setSortMode] = useState<AppsListSortMode>('name-asc')
   const [bulkAction, setBulkAction] = useState<BulkAction | null>(null)
   const [pendingAppAction, setPendingAppAction] = useState<PendingAppAction | null>(null)
   const [isBulkWorking, setIsBulkWorking] = useState(false)
@@ -226,11 +228,7 @@ export const useAppsListController = ({
     setSelectedIds(new Set())
   }
 
-  const sortedApps = apps.toSorted((a, b) => {
-    if (a.running && !b.running) return -1
-    if (!a.running && b.running) return 1
-    return a.name.localeCompare(b.name)
-  })
+  const sortedApps = useMemo(() => sortApps(apps, sortMode), [apps, sortMode])
   const selectedApps = sortedApps.filter(app => selectedIds.has(app.id))
   const stoppableSelectedApps = selectedApps.filter(
     app => app.ownerUserId === currentOwnerUserId && app.running && app.status !== 'removing'
@@ -410,9 +408,11 @@ export const useAppsListController = ({
     removeDataOnDelete: settings.removeDataOnDelete,
     selectedIds,
     selectionCount: selectedIds.size,
+    setSortMode,
     startApp,
     startManaging: () => setIsManaging(true),
     stopApp,
+    sortMode,
     stoppableSelectedCount: stoppableSelectedApps.length,
     toggleSelected,
     toggleSelectAll

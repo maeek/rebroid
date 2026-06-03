@@ -172,10 +172,7 @@ export class DisplayControlGateway implements OnGatewayConnection {
     sessionId: string,
     execute: () => Promise<unknown>,
   ) {
-    if (
-      this.scrcpy.isStreamingSession(sessionId) &&
-      this.scrcpy.usesStreamControl()
-    ) {
+    if (this.scrcpy.shouldWaitForStreamControl(sessionId)) {
       throw new Error("Live controls are reconnecting. Try again in a moment.");
     }
 

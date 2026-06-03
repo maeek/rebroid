@@ -213,6 +213,36 @@ androidboot.redroid_gpu_mode=guest androidboot.use_memfd=true ro.secure=0 ro.deb
 
 On SELinux hosts, pass `CONTAINER_SECURITY_OPTS=label=disable` so the privileged Android runtime can access the host devices it needs.
 
+### Redroid 15 and 16 display streaming
+
+Rebroid supports Redroid 13, 14, 15, and 16 through the display sidecar, but
+newer Redroid builds can fail differently from 13/14. In particular, Redroid
+16 builds around `250627` have a known upstream screen connection issue where
+ADB works but scrcpy can fail during control setup with Android input-service
+errors. The sidecar now probes Android version, Redroid/device properties,
+core services, encoders, and recent display diagnostics before stream startup.
+
+The sidecar requires scrcpy server `4.0` or newer for Android 15/16 support. If
+the stream cannot start normally, it retries in compatibility modes:
+
+- `audio-disabled`: video is retried without Android audio capture.
+- `stream-control-disabled`: scrcpy stream control is disabled and viewer
+  controls use the sidecar ADB fallback.
+- `stable-video`: video is retried with lower resolution, frame rate, bitrate,
+  and a conservative I-frame interval.
+
+Recommended Redroid runtime defaults remain:
+
+```text
+androidboot.redroid_gpu_mode=guest androidboot.use_memfd=true ro.secure=0 ro.debuggable=1
+```
+
+If Android 15/16 still loops on "Reconnecting live display", check the viewer
+compatibility badge, the sidecar logs, and the session logcat endpoint for
+`InputManagerGlobal`, `KeyCharacterMap`, `MediaCodec`, `VirtualDisplay`, or
+`SurfaceFlinger` diagnostics. When a specific Redroid image tag is broken,
+prefer pinning a known-good image build over increasing reconnect timeouts.
+
 ## Configuration Surface
 
 The defaults are intended to work without a `.env` file. For a normal admin install, these are the only compose-level knobs worth knowing:

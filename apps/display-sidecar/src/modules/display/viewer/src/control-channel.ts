@@ -9,6 +9,7 @@ type ControlChannelOptions = {
   sessionId: string | null;
   token: string | null;
   lifecycle: PageLifecycle;
+  onMessage?: (message: JsonRecord) => void;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -18,6 +19,7 @@ export function createControlChannel({
   sessionId,
   token,
   lifecycle,
+  onMessage,
 }: ControlChannelOptions): ControlChannel {
   let keyboardCaptureEnabled = false;
   let controlWs: WebSocket | null = null;
@@ -168,6 +170,19 @@ export function createControlChannel({
     connect: connectControlWs,
     useDataChannel(channel: RTCDataChannel) {
       dataChannel = channel;
+      dataChannel.onmessage = (event) => {
+        if (typeof event.data !== "string") {
+          return;
+        }
+        try {
+          const parsed: unknown = JSON.parse(event.data);
+          if (isRecord(parsed)) {
+            onMessage?.(parsed as JsonRecord);
+          }
+        } catch {
+          return;
+        }
+      };
       dataChannel.onclose = () => {
         if (dataChannel === channel) {
           dataChannel = null;

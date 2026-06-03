@@ -317,6 +317,20 @@ export class DisplayCapabilitiesDto {
   })
   stream!: Record<string, string | string[]>;
 
+  @ApiProperty({
+    example: {
+      scrcpyVersion: "4.0",
+      minimumAndroid15Version: "4.0",
+      androidVersions: ["13", "14", "15", "16"],
+      fallbackModes: [
+        "audio-disabled",
+        "stream-control-disabled",
+        "stable-video",
+      ],
+    },
+  })
+  compatibility!: Record<string, string | string[]>;
+
   @ApiProperty({ enum: viewerCommands, isArray: true })
   actions!: string[];
 

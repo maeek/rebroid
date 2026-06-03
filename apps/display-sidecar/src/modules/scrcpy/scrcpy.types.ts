@@ -4,6 +4,11 @@ export const SCRCPY_WS_OPEN = WebSocket.OPEN;
 
 export type ScrcpyVideoCodec = "h264" | "h265";
 export type ScrcpyTunnelMode = "direct" | "reverse" | "forward";
+export type ScrcpyCompatibilityMode =
+  | "normal"
+  | "audio-disabled"
+  | "stream-control-disabled"
+  | "stable-video";
 
 export interface ScrcpyAudioPacket {
   data: Buffer;
@@ -32,6 +37,8 @@ export interface ScrcpyStreamOptions {
   maxFps: number;
   bitrate: number;
   audio: boolean;
+  control?: boolean;
+  compatibilityMode?: ScrcpyCompatibilityMode;
   iFrameInterval?: number;
   onActivity?: () => void;
 }

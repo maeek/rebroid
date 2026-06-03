@@ -16,6 +16,64 @@ import { AndroidAppsProvisioningTrackerService } from '../../common/services/and
 import { AndroidAppsViewerNetworkService } from '../../viewer/services/android-apps-viewer-network.service';
 import { isRedroidImageName } from '../utils/redroid-runtime.utils';
 
+interface AndroidBootReadiness {
+  ready: boolean;
+  probe: string;
+}
+
+const androidBootProbeProperties = [
+  'sys.boot_completed',
+  'dev.bootcomplete',
+  'service.bootanim.exit',
+  'init.svc.bootanim',
+  'init.svc.zygote',
+  'init.svc.zygote64',
+  'init.svc.surfaceflinger',
+  'init.svc.servicemanager',
+  'init.svc.hwservicemanager',
+  'init.svc.adbd',
+] as const;
+
+export const parseAndroidBootReadiness = (
+  output: string,
+): AndroidBootReadiness => {
+  const props = new Map<string, string>();
+  for (const line of output.split(/\r?\n/)) {
+    const separator = line.indexOf('=');
+    if (separator <= 0) {
+      continue;
+    }
+    props.set(
+      line.slice(0, separator).trim(),
+      line.slice(separator + 1).trim(),
+    );
+  }
+
+  const get = (prop: string) => props.get(prop) ?? '';
+  const running = (prop: string) => get(prop) === 'running';
+  const bootPropertyComplete =
+    get('sys.boot_completed') === '1' ||
+    get('dev.bootcomplete') === '1' ||
+    get('service.bootanim.exit') === '1';
+  const bootAnimationDone =
+    get('init.svc.bootanim') === 'stopped' ||
+    get('service.bootanim.exit') === '1';
+  const zygoteReady =
+    running('init.svc.zygote') || running('init.svc.zygote64');
+  const coreServicesReady =
+    zygoteReady &&
+    running('init.svc.surfaceflinger') &&
+    running('init.svc.servicemanager') &&
+    running('init.svc.hwservicemanager');
+  const ready =
+    bootPropertyComplete || (bootAnimationDone && coreServicesReady);
+  const probe = androidBootProbeProperties
+    .map((prop) => `${prop}=${get(prop) || '<empty>'}`)
+    .join(' ');
+
+  return { ready, probe };
+};
+
 @Injectable()
 export class AndroidAppsProvisioningAndroidService {
   private readonly logger = new Logger(
@@ -41,14 +99,23 @@ export class AndroidAppsProvisioningAndroidService {
       this.config.getOrThrow<number>('app.redroid.bootTimeoutSeconds') * 1000;
     const intervalMs = 1_000;
     const deadline = Date.now() + timeoutMs;
-    let lastProbe = 'sys.boot_completed was not reported.';
+    let lastProbe = 'Android boot readiness was not reported.';
 
     while (Date.now() < deadline) {
       this.tracker.ensureActive(app.id);
       const [probeResult, runtimeStateResult] = await Promise.allSettled([
         this.exec.execInContainerWithOutput(
           app.containerId,
-          ['sh', '-lc', 'getprop sys.boot_completed 2>/dev/null || true'],
+          [
+            'sh',
+            '-lc',
+            androidBootProbeProperties
+              .map(
+                (prop) =>
+                  `printf '${prop}='; getprop ${prop} 2>/dev/null || true; printf '\\n'`,
+              )
+              .join('; '),
+          ],
           { timeoutMs: 10_000 },
         ),
         this.lifecycle.getContainerRuntimeState(app.containerId),
@@ -67,14 +134,10 @@ export class AndroidAppsProvisioningAndroidService {
 
       if (probeResult.status === 'fulfilled') {
         const { stdout, stderr } = probeResult.value;
-        const bootCompleted = stdout.trim();
-        lastProbe =
-          stderr.trim() ||
-          (bootCompleted
-            ? `sys.boot_completed=${bootCompleted}`
-            : 'sys.boot_completed was empty.');
+        const readiness = parseAndroidBootReadiness(stdout);
+        lastProbe = [readiness.probe, stderr.trim()].filter(Boolean).join(' ');
 
-        if (bootCompleted === '1') {
+        if (readiness.ready) {
           await this.logs.append(app.id, 'Android boot completed', {
             probe: lastProbe,
           });

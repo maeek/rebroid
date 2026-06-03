@@ -9,7 +9,7 @@ type RecentAppsFile = {
   users: Record<string, StoredRecentApp[]>
 }
 
-const maxRecentApps = 3
+const maxRecentApps = 5
 const recentAppsStateKey = 'recent-apps'
 
 const readRecentAppsFile = (): Promise<RecentAppsFile> => {
