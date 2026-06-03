@@ -49,6 +49,75 @@ Initial Rebroid admin credentials: username=admin password=...
 
 No `.env` file, `NEXTAUTH_URL`, shared secret, Redroid device mapping, or sidecar URL is required for the default Docker compose setup. The containers generate and persist their own secrets in Docker volumes, and the orchestrator applies the Redroid runtime defaults internally.
 
+## Local Development
+
+Use Node.js 24 with Corepack enabled, then install dependencies once from the repository root:
+
+```bash
+corepack enable
+pnpm install
+```
+
+Run each service in its own terminal. Start the infrastructure services first:
+
+```bash
+./apps/firewall-agent/dev.sh
+./apps/display-sidecar/dev.sh
+./apps/orchestrator/dev.sh
+./apps/web/dev.sh
+```
+
+Each script loads its local env file before applying defaults:
+
+```text
+apps/web/.env.local
+apps/orchestrator/.env
+apps/display-sidecar/.env
+apps/firewall-agent/.env
+```
+
+Use the neighboring `.env.example` files as templates when a local file is
+missing.
+
+The scripts use this local development wiring by default:
+
+```text
+web:             https://localhost:3000
+orchestrator:    http://localhost:4100
+display-sidecar: http://localhost:8000
+firewall-agent:  /tmp/rebroid-firewall/agent.sock
+shared secret:   change-me
+admin login:     admin / admin
+```
+
+The web dev server binds to `0.0.0.0` and does not require `NEXTAUTH_URL`.
+For LAN browser testing, open `https://<host-or-ip>:3000/login`. Override
+`NEXT_ALLOWED_DEV_ORIGINS` when your browser origin is outside the built-in
+private-network defaults.
+
+The orchestrator dev script sets `FIREWALL_POLICY_BOOTSTRAP=false`, so the API
+starts even when the local firewall agent reports unhealthy or the host cannot
+apply firewall rules. That is useful for UI and API development, but network
+egress policy enforcement still requires a supported Linux host firewall
+backend and appropriate privileges.
+
+Useful overrides:
+
+```bash
+ORCHESTRATOR_SHARED_SECRET=local-secret ./apps/orchestrator/dev.sh
+ORCHESTRATOR_SHARED_SECRET=local-secret ./apps/web/dev.sh
+DISPLAY_SIDECAR_SHARED_SECRET=local-secret ./apps/display-sidecar/dev.sh
+FIREWALL_AGENT_SHARED_SECRET=local-secret ./apps/firewall-agent/dev.sh
+```
+
+If an old local SQLite database fails after a schema change, move it aside and
+restart the affected service:
+
+```bash
+mv apps/orchestrator/data/orchestrator.sqlite apps/orchestrator/data/orchestrator.sqlite.backup
+mv apps/web/data/web.sqlite apps/web/data/web.sqlite.backup
+```
+
 ## Local HTTPS
 
 The web service starts its own HTTPS listener and auto-generates a self-signed certificate on first boot. The certificate is persisted under `/app/data/certificates` inside the `web` container.
