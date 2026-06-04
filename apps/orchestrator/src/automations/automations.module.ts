@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AndroidAppsCommonModule } from '../android-apps/common/android-apps-common.module';
+import { AndroidAppsLifecycleModule } from '../android-apps/lifecycle/android-apps-lifecycle.module';
 import { AndroidAppsRuntimeNetworkModule } from '../android-apps/network/android-apps-runtime-network.module';
 import { AndroidAppsViewerModule } from '../android-apps/viewer/android-apps-viewer.module';
 import { AndroidAutomationCommandsService } from './commands/android-automation-commands.service';
@@ -18,6 +19,7 @@ import { AutomationsService } from './services/automations.service';
   imports: [
     AutomationsPersistenceModule,
     AndroidAppsCommonModule,
+    AndroidAppsLifecycleModule,
     AndroidAppsViewerModule,
     AndroidAppsRuntimeNetworkModule,
   ],

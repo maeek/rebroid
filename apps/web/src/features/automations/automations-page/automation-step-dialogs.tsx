@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { IconCheck } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { parse, stringify } from 'yaml'
 import {
   Dialog,
   DialogContent,
@@ -83,28 +84,48 @@ export function AutomationRawInputDialog({
   open: boolean
   step: AutomationStepForm | null
   onOpenChange: (open: boolean) => void
-  onApply: (json: string) => void
+  onApply: (input: Record<string, unknown>) => string | void
 }) {
-  const [draft, setDraft] = useState('{}')
+  const [draft, setDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
-      setDraft(step?.withJson ?? '{}')
+      try {
+        const input = step?.withJson ? JSON.parse(step.withJson) : {}
+        setDraft(
+          stringify(
+            typeof input === 'object' && input !== null && !Array.isArray(input)
+              ? input
+              : {},
+            { indent: 2 }
+          )
+        )
+      } catch {
+        setDraft('{}')
+      }
       setError(null)
     }
   }, [open, step?.withJson])
 
   const apply = () => {
     try {
-      const parsed: unknown = JSON.parse(draft || '{}')
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        throw new Error('Input must be a JSON object.')
+      const parsed: unknown = parse(draft || '{}')
+      if (parsed === undefined || parsed === null) {
+        onApply({})
+        onOpenChange(false)
+        return
       }
-      onApply(JSON.stringify(parsed, null, 2))
+      if (typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('YAML must be a single object.')
+      }
+      const validationError = onApply(parsed as Record<string, unknown>)
+      if (validationError) {
+        throw new Error(validationError)
+      }
       onOpenChange(false)
     } catch (parseError) {
-      setError(parseError instanceof Error ? parseError.message : 'Invalid JSON.')
+      setError(parseError instanceof Error ? parseError.message : 'Invalid YAML.')
     }
   }
 
@@ -115,8 +136,8 @@ export function AutomationRawInputDialog({
     >
       <DialogContent className='sm:max-w-3xl'>
         <DialogHeader>
-          <DialogTitle>Edit raw input</DialogTitle>
-          <DialogDescription className='sr-only'>Edit selected step raw input JSON.</DialogDescription>
+          <DialogTitle>Edit YAML</DialogTitle>
+          <DialogDescription className='sr-only'>Edit selected step input as YAML.</DialogDescription>
         </DialogHeader>
         <div className='grid gap-2'>
           <Textarea

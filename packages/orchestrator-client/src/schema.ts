@@ -317,6 +317,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/apps/{id}/viewer/displays": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create or reuse one experimental virtual display surface. */
+        post: operations["AndroidAppsViewerController_createVirtualDisplay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/apps/{id}/viewer/displays/{surfaceId}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Release one experimental virtual display surface. */
+        post: operations["AndroidAppsViewerController_releaseVirtualDisplay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/apps/{id}/viewer/displays/{surfaceId}/recording/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start recording one display surface. */
+        post: operations["AndroidAppsViewerController_startRecording"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/apps/{id}/viewer/displays/{surfaceId}/recording/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop recording one display surface and return the file data. */
+        post: operations["AndroidAppsViewerController_stopRecording"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/apps/{id}/viewer/recordings/{recordingId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download one completed display recording. */
+        get: operations["AndroidAppsViewerController_downloadRecording"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/network-policies/reconcile": {
         parameters: {
             query?: never;
@@ -600,6 +685,182 @@ export interface paths {
         get: operations["AndroidAppsRuntimeController_adbLogs"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/automations/commands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AutomationsController_listCommands"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/automations/validate-yaml": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AutomationsController_validateYaml"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/automations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AutomationsController_list"];
+        put?: never;
+        post: operations["AutomationsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/automations/runnable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AutomationsController_listRunnable"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/automations/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AutomationsController_listAllRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/automations/runs/{runId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AutomationsController_getRun"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/automations/triggers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AutomationsController_listTriggers"];
+        put?: never;
+        post: operations["AutomationsController_createTrigger"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/automations/triggers/{triggerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AutomationsController_getTrigger"];
+        put?: never;
+        post?: never;
+        delete: operations["AutomationsController_removeTrigger"];
+        options?: never;
+        head?: never;
+        patch: operations["AutomationsController_updateTrigger"];
+        trace?: never;
+    };
+    "/api/v1/automations/triggers/{triggerId}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AutomationsController_runTrigger"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/automations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AutomationsController_get"];
+        put?: never;
+        post?: never;
+        delete: operations["AutomationsController_remove"];
+        options?: never;
+        head?: never;
+        patch: operations["AutomationsController_update"];
+        trace?: never;
+    };
+    "/api/v1/automations/{id}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AutomationsController_listRuns"];
+        put?: never;
+        post: operations["AutomationsController_run"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1058,91 +1319,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/viewer/displays": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create or reuse one experimental virtual display surface. */
-        post: operations["AndroidAppsViewerController_createVirtualDisplay"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/viewer/displays/{surfaceId}/release": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Release one experimental virtual display surface. */
-        post: operations["AndroidAppsViewerController_releaseVirtualDisplay"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/viewer/displays/{surfaceId}/recording/start": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Start recording one display surface. */
-        post: operations["AndroidAppsViewerController_startRecording"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/viewer/displays/{surfaceId}/recording/stop": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Stop recording one display surface and return the file data. */
-        post: operations["AndroidAppsViewerController_stopRecording"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/viewer/recordings/{recordingId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Download one completed display recording. */
-        get: operations["AndroidAppsViewerController_downloadRecording"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1504,9 +1680,36 @@ export interface components {
             stdout: string | null;
             stderr: string | null;
         };
+        DisplayNewDisplayDto: {
+            width: number;
+            height: number;
+            dpi: number;
+        };
+        DisplaySurfaceDto: {
+            id: string;
+            sessionId: string;
+            /** @enum {string} */
+            kind: "main" | "virtual";
+            name: string;
+            /** @enum {string} */
+            status: "created" | "active" | "released" | "expired";
+            createdAt: string;
+            lastActivityAt: string;
+            streamPath: string;
+            viewerPath: string;
+            webrtcOfferPath: string;
+            displayId?: number;
+            newDisplay?: components["schemas"]["DisplayNewDisplayDto"];
+        };
         DisplaySessionDto: {
             id: string;
             appId?: string | null;
+            surfaceId: string;
+            /** @enum {string} */
+            surfaceKind: "main" | "virtual";
+            displayName: string;
+            displayId?: number;
+            newDisplay?: components["schemas"]["DisplayNewDisplayDto"];
             /** @enum {string} */
             status: "created" | "active" | "released" | "expired";
             createdAt: string;
@@ -1514,23 +1717,11 @@ export interface components {
             expiresAt: string;
             maxExpiresAt: string;
             capabilities: string[];
+            surface: components["schemas"]["DisplaySurfaceDto"];
+            surfaces: components["schemas"]["DisplaySurfaceDto"][];
             streamPath: string;
             viewerPath: string;
             webrtcOfferPath: string;
-            /** @example main */
-            surfaceId: string;
-            /**
-             * @example main
-             * @enum {string}
-             */
-            surfaceKind: "main" | "virtual";
-            /** @example Main display */
-            displayName: string;
-            /** @example 0 */
-            displayId?: number;
-            newDisplay?: components["schemas"]["DisplayNewDisplayDto"];
-            surface: components["schemas"]["DisplaySurfaceDto"];
-            surfaces: components["schemas"]["DisplaySurfaceDto"][];
         };
         ScrcpySessionDto: {
             applicationId: string;
@@ -1564,6 +1755,20 @@ export interface components {
             executed: boolean;
             /** @example Viewer control command executed. */
             message: string;
+        };
+        DisplayRecordingDto: {
+            id: string;
+            sessionId: string;
+            /** @enum {string} */
+            status: "recording" | "stopped";
+            startedAt: string;
+            stoppedAt: string | null;
+            fileName: string;
+            mimeType: string;
+            sizeBytes: number;
+            durationMs: number;
+            sampleCount: number;
+            downloadPath: string | null;
         };
         UpdateNetworkPolicyDto: {
             /** @example true */
@@ -1682,6 +1887,201 @@ export interface components {
             collectedAt: string;
             /** @example container log output... */
             output: string;
+        };
+        AutomationCommandDto: {
+            /** @example android.viewerCommand */
+            uses: string;
+            /** @example Viewer command */
+            label: string;
+            /** @example Sends a supported viewer control command. */
+            description: string;
+            requiredPermissions: string[];
+        };
+        ValidateAutomationYamlDto: {
+            /**
+             * @example apiVersion: rebroid.io/automation/v1
+             *     ...
+             */
+            yaml: string;
+        };
+        AutomationDefinitionMetadataDto: {
+            /** @example Prepare app environment */
+            name: string;
+            /** @example Optional notes */
+            description?: string;
+            /**
+             * @example {
+             *       "category": "setup"
+             *     }
+             */
+            labels?: Record<string, never>;
+        };
+        AutomationDefinitionStepDto: {
+            /** @example wake-device */
+            id: string;
+            /** @example android.viewerCommand */
+            uses: string;
+            /**
+             * @example {
+             *       "command": "wake"
+             *     }
+             */
+            with: Record<string, never>;
+        };
+        AutomationDefinitionSpecDto: {
+            steps: components["schemas"]["AutomationDefinitionStepDto"][];
+        };
+        AutomationDefinitionDto: {
+            /** @example rebroid.io/automation/v1 */
+            apiVersion: string;
+            /** @example AndroidAutomation */
+            kind: string;
+            metadata: components["schemas"]["AutomationDefinitionMetadataDto"];
+            spec: components["schemas"]["AutomationDefinitionSpecDto"];
+        };
+        AutomationValidationDto: {
+            valid: boolean;
+            definition: components["schemas"]["AutomationDefinitionDto"] | null;
+            /** @example  */
+            yaml: Record<string, never> | null;
+            errors: string[];
+        };
+        AutomationDto: {
+            id: string;
+            ownerUserId: string;
+            name: string;
+            description: string | null;
+            definition: components["schemas"]["AutomationDefinitionDto"];
+            yaml: string;
+            lastRunAt: string | null;
+            /** @enum {string} */
+            lastStatus: "never_run" | "success" | "failed" | "running";
+            lastError: string | null;
+            createdAt: string;
+            updatedAt: string;
+        };
+        CreateAutomationDto: {
+            /** @example user_123 */
+            ownerUserId: string;
+            /** @description YAML automation definition. Required unless definition is supplied. */
+            yaml?: string;
+            definition?: components["schemas"]["AutomationDefinitionDto"];
+        };
+        AutomationStepResultDto: {
+            /** @example wake-device */
+            stepId: string;
+            /** @example android.viewerCommand */
+            uses: string;
+            /** @enum {string} */
+            status: "success" | "failed" | "skipped";
+            startedAt: string;
+            completedAt: string;
+            output?: Record<string, never> | null;
+            error?: string | null;
+        };
+        AutomationRunDto: {
+            id: string;
+            automationId: string;
+            automationTriggerId: string | null;
+            ownerUserId: string;
+            targetApplicationId: string;
+            targetProfileMode: string | null;
+            targetProfileName: string | null;
+            /** @enum {string} */
+            trigger: "manual" | "schedule" | "webhook" | "event";
+            /** @enum {string} */
+            status: "queued" | "running" | "success" | "failed" | "canceled";
+            startedAt: string | null;
+            completedAt: string | null;
+            stepResults: components["schemas"]["AutomationStepResultDto"][];
+            error: string | null;
+            createdAt: string;
+            updatedAt: string;
+        };
+        AutomationTriggerDto: {
+            id: string;
+            ownerUserId: string;
+            name: string;
+            automationId: string;
+            targetApplicationId: string;
+            profileMode: string | null;
+            profileName: string | null;
+            enabled: boolean;
+            /** @enum {string} */
+            triggerType: "schedule" | "webhook" | "event";
+            triggerConfig: Record<string, never>;
+            lastRunAt: string | null;
+            nextRunAt: string | null;
+            /** @enum {string} */
+            lastStatus: "never_run" | "success" | "failed" | "running";
+            lastError: string | null;
+            createdAt: string;
+            updatedAt: string;
+        };
+        AutomationScheduleTriggerConfigDto: {
+            /** @example 0 9 * * * */
+            cronExpression: string;
+            /**
+             * @default start-if-needed
+             * @enum {string}
+             */
+            startPolicy: "require-running" | "start-if-needed";
+        };
+        CreateAutomationTriggerDto: {
+            /** @example user_123 */
+            ownerUserId: string;
+            /** @example Daily setup */
+            name: string;
+            automationId: string;
+            targetApplicationId: string;
+            /** @enum {string} */
+            profileMode?: "persistent" | "temporary";
+            /** @example default */
+            profileName?: Record<string, never> | null;
+            /** @default true */
+            enabled: boolean;
+            /** @enum {string} */
+            triggerType: "schedule" | "webhook" | "event";
+            triggerConfig: components["schemas"]["AutomationScheduleTriggerConfigDto"];
+        };
+        UpdateAutomationTriggerDto: {
+            /** @example user_123 */
+            ownerUserId?: string;
+            /** @example Daily setup */
+            name?: string;
+            automationId?: string;
+            targetApplicationId?: string;
+            /** @enum {string} */
+            profileMode?: "persistent" | "temporary";
+            /** @example default */
+            profileName?: Record<string, never> | null;
+            /** @default true */
+            enabled: boolean;
+            /** @enum {string} */
+            triggerType?: "schedule" | "webhook" | "event";
+            triggerConfig?: components["schemas"]["AutomationScheduleTriggerConfigDto"];
+        };
+        RunAutomationDto: {
+            /** @example user_123 */
+            ownerUserId: string;
+            /** @example 98a530d6-a45d-466a-9cb4-c023067c4971 */
+            targetApplicationId?: Record<string, never> | null;
+            /** @enum {string} */
+            profileMode?: "persistent" | "temporary";
+            /** @example default */
+            profileName?: Record<string, never> | null;
+            /**
+             * @default require-running
+             * @enum {string}
+             */
+            startPolicy: "require-running" | "start-if-needed";
+        };
+        UpdateAutomationDto: {
+            /** @example user_123 */
+            ownerUserId?: string;
+            /** @description YAML automation definition. Required unless definition is supplied. */
+            yaml?: string;
+            definition?: components["schemas"]["AutomationDefinitionDto"];
         };
         PullContainerImageDto: {
             /** @example redroid/redroid:13.0.0-latest */
@@ -1908,59 +2308,6 @@ export interface components {
             display: boolean;
             firewall: boolean;
             services: components["schemas"]["OrchestratorDiagnosticsServicesDto"];
-        };
-        DisplayNewDisplayDto: {
-            /** @example 1280 */
-            width: number;
-            /** @example 720 */
-            height: number;
-            /** @example 160 */
-            dpi: number;
-        };
-        DisplaySurfaceDto: {
-            /** @example main */
-            id: string;
-            /** @example 7c7270d5-bd2d-4ac2-81f6-1f77be3596b5 */
-            sessionId: string;
-            /**
-             * @example main
-             * @enum {string}
-             */
-            kind: "main" | "virtual";
-            /** @example Main display */
-            name: string;
-            /**
-             * @example created
-             * @enum {string}
-             */
-            status: "created" | "active" | "released" | "expired";
-            /** @example 2026-05-25T20:30:00.000Z */
-            createdAt: string;
-            /** @example 2026-05-25T20:30:10.000Z */
-            lastActivityAt: string;
-            /** @example /rebroid/display/stream?sessionId=...&token=... */
-            streamPath: string;
-            /** @example /viewer/display/?sessionId=...&token=... */
-            viewerPath: string;
-            /** @example /rebroid/display/public/sessions/.../webrtc/offer */
-            webrtcOfferPath: string;
-            /** @example 0 */
-            displayId?: number;
-            newDisplay?: components["schemas"]["DisplayNewDisplayDto"];
-        };
-        DisplayRecordingDto: {
-            id: string;
-            sessionId: string;
-            /** @enum {string} */
-            status: "recording" | "stopped";
-            startedAt: string;
-            stoppedAt: string | null;
-            fileName: string;
-            mimeType: string;
-            sizeBytes: number;
-            durationMs: number;
-            sampleCount: number;
-            downloadPath: string | null;
         };
     };
     responses: never;
@@ -2447,7 +2794,7 @@ export interface operations {
             query: {
                 control: string;
                 clipboard: string;
-                screenshot?: string;
+                screenshot: string;
             };
             header?: never;
             path: {
@@ -2514,6 +2861,115 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApplicationViewerControlResponseDto"];
                 };
+            };
+        };
+    };
+    AndroidAppsViewerController_createVirtualDisplay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisplaySessionDto"];
+                };
+            };
+        };
+    };
+    AndroidAppsViewerController_releaseVirtualDisplay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                surfaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisplaySessionDto"];
+                };
+            };
+        };
+    };
+    AndroidAppsViewerController_startRecording: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                surfaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisplayRecordingDto"];
+                };
+            };
+        };
+    };
+    AndroidAppsViewerController_stopRecording: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                surfaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisplayRecordingDto"];
+                };
+            };
+        };
+    };
+    AndroidAppsViewerController_downloadRecording: {
+        parameters: {
+            query: {
+                surfaceSessionId: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+                recordingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -3015,6 +3471,424 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApplicationLogDto"];
+                };
+            };
+        };
+    };
+    AutomationsController_listCommands: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationCommandDto"][];
+                };
+            };
+        };
+    };
+    AutomationsController_validateYaml: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidateAutomationYamlDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationValidationDto"];
+                };
+            };
+        };
+    };
+    AutomationsController_list: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationDto"][];
+                };
+            };
+        };
+    };
+    AutomationsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAutomationDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationDto"];
+                };
+            };
+        };
+    };
+    AutomationsController_listRunnable: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationDto"][];
+                };
+            };
+        };
+    };
+    AutomationsController_listAllRuns: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+                limit?: number;
+                status?: "active";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationRunDto"][];
+                };
+            };
+        };
+    };
+    AutomationsController_getRun: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+            };
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationRunDto"];
+                };
+            };
+        };
+    };
+    AutomationsController_listTriggers: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationTriggerDto"][];
+                };
+            };
+        };
+    };
+    AutomationsController_createTrigger: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAutomationTriggerDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationTriggerDto"];
+                };
+            };
+        };
+    };
+    AutomationsController_getTrigger: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+            };
+            header?: never;
+            path: {
+                triggerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationTriggerDto"];
+                };
+            };
+        };
+    };
+    AutomationsController_removeTrigger: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+            };
+            header?: never;
+            path: {
+                triggerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationTriggerDto"];
+                };
+            };
+        };
+    };
+    AutomationsController_updateTrigger: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+            };
+            header?: never;
+            path: {
+                triggerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAutomationTriggerDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationTriggerDto"];
+                };
+            };
+        };
+    };
+    AutomationsController_runTrigger: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                triggerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunAutomationDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationRunDto"];
+                };
+            };
+        };
+    };
+    AutomationsController_get: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationDto"];
+                };
+            };
+        };
+    };
+    AutomationsController_remove: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationDto"];
+                };
+            };
+        };
+    };
+    AutomationsController_update: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAutomationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationDto"];
+                };
+            };
+        };
+    };
+    AutomationsController_listRuns: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+                limit?: number;
+                status?: "active";
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationRunDto"][];
+                };
+            };
+        };
+    };
+    AutomationsController_run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunAutomationDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationRunDto"];
                 };
             };
         };
@@ -3687,117 +4561,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrchestratorDiagnosticsDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsViewerController_createVirtualDisplay: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DisplaySessionDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsViewerController_releaseVirtualDisplay: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-                surfaceId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DisplaySessionDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsViewerController_startRecording: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-                surfaceId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DisplayRecordingDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsViewerController_stopRecording: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-                surfaceId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DisplayRecordingDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsViewerController_downloadRecording: {
-        parameters: {
-            query: {
-                surfaceSessionId: string;
-            };
-            header?: never;
-            path: {
-                id: string;
-                recordingId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "video/mp4": string;
                 };
             };
         };

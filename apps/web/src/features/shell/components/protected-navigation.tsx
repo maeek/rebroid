@@ -10,8 +10,8 @@ import {
   IconCast,
   IconChartHistogram,
   IconChevronDown,
+  IconCirclePlus,
   IconHistory,
-  IconLibraryPlus,
   IconLoader2,
   IconNetwork,
   IconPlayerPlayFilled,
@@ -44,12 +44,12 @@ type ProtectedNavigationProps = {
   onNavigate?: () => void
 }
 
-const appSections: NavigationItem[] = [
-  { name: 'Installed Apps', Icon: IconApps, href: '/apps' },
-  { name: 'Create', Icon: IconLibraryPlus, href: '/apps/create' }
-]
+const appSections: NavigationItem[] = [{ name: 'Installed Apps', Icon: IconApps, href: '/apps' }]
 
-const automationSections: NavigationItem[] = [{ name: 'Automations', Icon: IconRobot, href: '/automations' }]
+const automationSections: NavigationItem[] = [
+  { name: 'Flows', Icon: IconRobot, href: '/automations' },
+  { name: 'Triggers', Icon: IconCalendarTime, href: '/automations/triggers' }
+]
 
 const settingsSections: NavigationItem[] = [{ name: 'General', Icon: IconAdjustments, href: '/settings/general' }]
 
@@ -77,7 +77,11 @@ const orchestratorSubSections: NavigationItem[] = [
 const variantStyles = {
   sidebar: {
     root: 'w-full py-6 flex flex-col px-2',
-    sectionTitle: 'text-sm pb-4 font-semibold color-secondary px-2 max-lg:text-sm',
+    sectionHeader: 'flex items-center justify-between gap-2 px-2 pb-4',
+    sectionTitle: 'text-sm font-semibold color-secondary max-lg:text-sm',
+    sectionAction:
+      'flex size-5 shrink-0 items-center justify-center rounded-full text-secondary-foreground transition hover:bg-primary/15 hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+    sectionActionIcon: 'size-4 stroke-current',
     list: 'w-full pb-6 flex flex-col',
     item: 'flex gap-2 justify-start items-center px-2 py-1 max-lg:py-2 hover:bg-white/5 rounded-sm text-foreground dark:hover:text-white cursor-pointer',
     activeItem: 'bg-white/5 text-primary!',
@@ -96,7 +100,11 @@ const variantStyles = {
   },
   drawer: {
     root: 'flex flex-col p-4',
-    sectionTitle: 'text-sm pb-4 font-semibold color-secondary px-2 max-lg:text-sm',
+    sectionHeader: 'flex items-center justify-between gap-2 px-2 pb-4',
+    sectionTitle: 'text-sm font-semibold color-secondary max-lg:text-sm',
+    sectionAction:
+      'flex size-5 shrink-0 items-center justify-center rounded-full text-secondary-foreground transition hover:bg-input hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+    sectionActionIcon: 'size-4 stroke-current',
     list: 'w-full pb-6 flex flex-col',
     item: 'flex gap-2 justify-start items-center px-2 py-1 max-lg:py-2 hover:bg-input rounded-sm text-foreground dark:hover:text-white cursor-pointer',
     activeItem: 'bg-input',
@@ -122,6 +130,37 @@ type NavLinkProps = {
   isActive: boolean
   variant: NavigationVariant
   onNavigate?: () => void
+}
+
+type SectionHeaderProps = {
+  title: string
+  variant: NavigationVariant
+  actionHref?: string
+  actionLabel?: string
+  onNavigate?: () => void
+}
+
+const SectionHeader = ({ title, variant, actionHref, actionLabel, onNavigate }: SectionHeaderProps) => {
+  const styles = variantStyles[variant]
+  const action =
+    actionHref && actionLabel ? (
+      <Link
+        href={actionHref}
+        className={styles.sectionAction}
+        aria-label={actionLabel}
+        title={actionLabel}
+        onClick={onNavigate}
+      >
+        <IconCirclePlus className={styles.sectionActionIcon} />
+      </Link>
+    ) : null
+
+  return (
+    <div className={styles.sectionHeader}>
+      <h6 className={styles.sectionTitle}>{title}</h6>
+      {action}
+    </div>
+  )
 }
 
 const NavLink = ({ href, label, Icon, isActive, variant, onNavigate }: NavLinkProps) => {
@@ -260,9 +299,15 @@ export const ProtectedNavigation = ({ variant, onNavigate }: ProtectedNavigation
 
   return (
     <div className={styles.root}>
-      <h6 className={styles.sectionTitle}>Apps</h6>
+      <SectionHeader
+        title='Apps'
+        variant={variant}
+        actionHref='/apps/create'
+        actionLabel='Create app'
+        onNavigate={onNavigate}
+      />
       <ul className={styles.list}>
-        {appSections.slice(0, 1).map(({ name, Icon, href }) => (
+        {appSections.map(({ name, Icon, href }) => (
           <NavLink
             key={name}
             href={href}
@@ -283,20 +328,15 @@ export const ProtectedNavigation = ({ variant, onNavigate }: ProtectedNavigation
             onStarted={() => void refreshRecentApps()}
           />
         ))}
-        {appSections.slice(1).map(({ name, Icon, href }) => (
-          <NavLink
-            key={name}
-            href={href}
-            label={name}
-            Icon={Icon}
-            isActive={pathname === href}
-            variant={variant}
-            onNavigate={onNavigate}
-          />
-        ))}
       </ul>
 
-      <h6 className={styles.sectionTitle}>Automations</h6>
+      <SectionHeader
+        title='Automations'
+        variant={variant}
+        actionHref='/automations/create'
+        actionLabel='Create automation'
+        onNavigate={onNavigate}
+      />
       <ul className={styles.list}>
         {automationSections.map(({ name, Icon, href }) => (
           <NavLink
@@ -304,7 +344,7 @@ export const ProtectedNavigation = ({ variant, onNavigate }: ProtectedNavigation
             href={href}
             label={name}
             Icon={Icon}
-            isActive={isActivePath(href)}
+            isActive={isActivePath(href, href === '/automations')}
             variant={variant}
             onNavigate={onNavigate}
           />
@@ -312,7 +352,10 @@ export const ProtectedNavigation = ({ variant, onNavigate }: ProtectedNavigation
       </ul>
 
       <Visible when={isAdmin}>
-        <h6 className={styles.sectionTitle}>Settings</h6>
+        <SectionHeader
+          title='Settings'
+          variant={variant}
+        />
         <ul className={styles.list}>
           {settingsSections.map(({ name, Icon, href }) => (
             <NavLink

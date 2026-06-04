@@ -1,7 +1,14 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { IconDeviceFloppy, IconDotsVertical, IconFileCode, IconTrash } from '@tabler/icons-react'
+import {
+  IconActivityHeartbeat,
+  IconDeviceFloppy,
+  IconDotsVertical,
+  IconFileCode,
+  IconRobot,
+  IconTrash
+} from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import {
@@ -11,7 +18,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { toast } from '@/hooks/use-toast'
@@ -22,8 +28,8 @@ import {
   validateAutomationYamlAction
 } from '@/server/orchestrator/automations/actions'
 import { AutomationDetailsSection } from './automation-details-section'
-import { AutomationStepEditor } from './automation-step-editor'
 import { AutomationStepsList } from './automation-steps-list'
+import { AutomationTracesSection } from './automation-traces-section'
 import { AutomationYamlDialog } from './automation-yaml-dialog'
 import {
   automationToForm,
@@ -37,34 +43,29 @@ import {
 import type { AutomationEditorPageProps } from './types'
 import type { Automation } from '@/server/orchestrator/automations/types'
 
-const useCompactEditor = () => {
-  const [compact, setCompact] = useState(false)
+type AutomationEditorView = 'builder' | 'traces'
 
-  useEffect(() => {
-    const media = window.matchMedia('(max-width: 1023px)')
-    const update = () => setCompact(media.matches)
-    update()
-    media.addEventListener('change', update)
-    return () => media.removeEventListener('change', update)
-  }, [])
-
-  return compact
-}
-
-export function AutomationEditorPage({ initialAutomation, initialCommands }: AutomationEditorPageProps) {
+export function AutomationEditorPage({
+  initialApplications,
+  initialAutomation,
+  initialCommands,
+  initialView = 'builder',
+  initialRuns = []
+}: AutomationEditorPageProps) {
   const router = useRouter()
-  const compactEditor = useCompactEditor()
   const [automation, setAutomation] = useState<Automation | null>(initialAutomation ?? null)
   const [form, setForm] = useState<AutomationFormState>(() =>
     initialAutomation ? automationToForm(initialAutomation) : defaultForm()
   )
-  const [selectedStepIndex, setSelectedStepIndex] = useState(0)
-  const [stepSheetOpen, setStepSheetOpen] = useState(false)
+  const [view, setView] = useState<AutomationEditorView>(() => (initialAutomation ? initialView : 'builder'))
+  const [expandedStepKeys, setExpandedStepKeys] = useState<string[]>(() => {
+    const initialForm = initialAutomation ? automationToForm(initialAutomation) : defaultForm()
+    return initialForm.steps[0]?.clientKey ? [initialForm.steps[0].clientKey] : []
+  })
   const [yamlOpen, setYamlOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const isNew = !automation
   const title = isNew ? 'New automation' : automation.name
-  const selectedStep = form.steps[selectedStepIndex] ?? null
   const currentYaml = useMemo(() => {
     try {
       return buildYaml(form)
@@ -73,33 +74,45 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
     }
   }, [automation?.yaml, form])
 
-  useEffect(() => {
-    if (selectedStepIndex >= form.steps.length) {
-      setSelectedStepIndex(Math.max(form.steps.length - 1, 0))
-    }
-  }, [form.steps.length, selectedStepIndex])
-
   const updateForm = (patch: Partial<AutomationFormState>) => setForm(current => ({ ...current, ...patch }))
 
   const updateSteps = (steps: AutomationStepForm[]) => {
-    const selectedStepKey = form.steps[selectedStepIndex]?.clientKey
-    const nextSelectedIndex = selectedStepKey ? steps.findIndex(step => step.clientKey === selectedStepKey) : -1
     updateForm({ steps })
-    if (nextSelectedIndex >= 0) {
-      setSelectedStepIndex(nextSelectedIndex)
-    } else {
-      setSelectedStepIndex(Math.max(Math.min(selectedStepIndex, steps.length - 1), 0))
+  }
+
+  useEffect(() => {
+    const currentKeys = new Set(form.steps.map(step => step.clientKey))
+    setExpandedStepKeys(current => {
+      const next = current.filter(key => currentKeys.has(key))
+      if (next.length === current.length && next.every((key, index) => key === current[index])) {
+        return current
+      }
+
+      return next.length > 0 || !form.steps[0]?.clientKey ? next : [form.steps[0].clientKey]
+    })
+  }, [form.steps])
+
+  const toggleStep = (clientKey: string) => {
+    setExpandedStepKeys(current =>
+      current.includes(clientKey) ? current.filter(key => key !== clientKey) : [...current, clientKey]
+    )
+  }
+
+  const updateStepAt = (index: number, step: AutomationStepForm) => {
+    updateSteps(form.steps.map((item, itemIndex) => (itemIndex === index ? step : item)))
+  }
+
+  const showBuilder = () => {
+    setView('builder')
+    if (automation) {
+      router.replace(`/automations/${automation.id}`, { scroll: false })
     }
   }
 
-  const updateSelectedStep = (step: AutomationStepForm) => {
-    updateSteps(form.steps.map((item, index) => (index === selectedStepIndex ? step : item)))
-  }
-
-  const selectStep = (index: number) => {
-    setSelectedStepIndex(index)
-    if (compactEditor) {
-      setStepSheetOpen(true)
+  const showTraces = () => {
+    setView('traces')
+    if (automation) {
+      router.replace(`/automations/${automation.id}?view=traces`, { scroll: false })
     }
   }
 
@@ -171,7 +184,7 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
         <div className='grid gap-3'>
           <PageBreadcrumbs
             className='pt-0'
-            items={[{ label: 'Automations', href: '/automations' }, { label: title }]}
+            items={[{ label: 'Automations' }, { label: 'Flows', href: '/automations' }, { label: title }]}
           />
           <div className='flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-stretch'>
             <h2 className='min-w-0 truncate text-3xl font-medium max-sm:text-xl'>{title}</h2>
@@ -194,8 +207,32 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
                     <IconDotsVertical className='size-4' />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align='end'>
-                  <DropdownMenuItem onSelect={() => setYamlOpen(true)}>
+                <DropdownMenuContent
+                  align='end'
+                  className='min-w-44 p-2'
+                >
+                  {automation ? (
+                    <DropdownMenuItem
+                      className='gap-2 px-3 py-2'
+                      onSelect={view === 'traces' ? showBuilder : showTraces}
+                    >
+                      {view === 'traces' ? (
+                        <>
+                          <IconRobot className='size-4' />
+                          Builder
+                        </>
+                      ) : (
+                        <>
+                          <IconActivityHeartbeat className='size-4' />
+                          Traces
+                        </>
+                      )}
+                    </DropdownMenuItem>
+                  ) : null}
+                  <DropdownMenuItem
+                    className='gap-2 px-3 py-2'
+                    onSelect={() => setYamlOpen(true)}
+                  >
                     <IconFileCode className='size-4' />
                     Edit YAML
                   </DropdownMenuItem>
@@ -204,7 +241,7 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         disabled={busy}
-                        className='text-red-300'
+                        className='gap-2 px-3 py-2 text-red-300'
                         onSelect={() => void remove()}
                       >
                         <IconTrash className='size-4' />
@@ -225,44 +262,22 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
           onChange={updateForm}
         />
 
-        <div className='grid gap-6 lg:grid-cols-[minmax(0,1fr)_28rem]'>
+        {view === 'builder' ? (
           <AutomationStepsList
             steps={form.steps}
             commands={initialCommands}
-            selectedIndex={selectedStepIndex}
-            onSelect={selectStep}
+            expandedStepKeys={expandedStepKeys}
+            onToggleStep={toggleStep}
             onChange={updateSteps}
+            onStepChange={updateStepAt}
           />
-          <div className='hidden lg:block'>
-            <AutomationStepEditor
-              step={selectedStep}
-              commands={initialCommands}
-              onChange={updateSelectedStep}
-            />
-          </div>
-        </div>
+        ) : (
+          <AutomationTracesSection
+            applications={initialApplications}
+            runs={initialRuns}
+          />
+        )}
       </section>
-
-      <Sheet
-        open={stepSheetOpen}
-        onOpenChange={setStepSheetOpen}
-      >
-        <SheetContent
-          side='right'
-          className='w-full overflow-y-auto sm:max-w-md lg:hidden'
-        >
-          <SheetHeader className='mb-5 pr-8 text-left'>
-            <SheetTitle>Edit step</SheetTitle>
-            <SheetDescription className='sr-only'>Edit the selected automation step.</SheetDescription>
-          </SheetHeader>
-          <AutomationStepEditor
-            step={selectedStep}
-            commands={initialCommands}
-            onChange={updateSelectedStep}
-            boxed={false}
-          />
-        </SheetContent>
-      </Sheet>
 
       <AutomationYamlDialog
         open={yamlOpen}

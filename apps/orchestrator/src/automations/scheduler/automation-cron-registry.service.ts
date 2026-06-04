@@ -1,32 +1,43 @@
 import { Injectable } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
-import { Automation } from '../entities/automation.entity';
+import {
+  AutomationTrigger,
+  AutomationTriggerType,
+} from '../entities/automation-trigger.entity';
 
-const automationJobName = (id: string) => `automation:${id}`;
+const automationTriggerJobName = (id: string) => `automation-trigger:${id}`;
 
 @Injectable()
 export class AutomationCronRegistryService {
   constructor(private readonly scheduler: SchedulerRegistry) {}
 
-  registerAutomation(automation: Automation, onTick: () => void) {
-    this.unregisterAutomation(automation.id);
-    if (!automation.scheduleEnabled || !automation.cronExpression) {
+  registerTrigger(
+    trigger: AutomationTrigger,
+    cronExpression: string | null,
+    onTick: () => void,
+  ) {
+    this.unregisterTrigger(trigger.id);
+    if (
+      !trigger.enabled ||
+      trigger.triggerType !== AutomationTriggerType.Schedule ||
+      !cronExpression
+    ) {
       return;
     }
 
     const job = CronJob.from({
-      cronTime: automation.cronExpression,
+      cronTime: cronExpression,
       onTick,
       start: false,
     });
-    this.scheduler.addCronJob(automationJobName(automation.id), job);
+    this.scheduler.addCronJob(automationTriggerJobName(trigger.id), job);
     job.start();
   }
 
-  unregisterAutomation(id: string) {
+  unregisterTrigger(id: string) {
     try {
-      this.scheduler.deleteCronJob(automationJobName(id));
+      this.scheduler.deleteCronJob(automationTriggerJobName(id));
     } catch {
       return;
     }

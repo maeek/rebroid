@@ -2,7 +2,7 @@ import { AutomationEditorPage } from '@/features/automations/automations-page/au
 import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
 import { listAutomationCommandsAction } from '@/server/orchestrator/automations/actions'
 
-export default async function NewAutomationRoute() {
+export default async function CreateAutomationRoute() {
   const [commands, applications] = await Promise.all([
     listAutomationCommandsAction(),
     listApplicationsAction({ reconcile: false })

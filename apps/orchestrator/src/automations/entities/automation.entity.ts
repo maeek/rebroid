@@ -30,20 +30,8 @@ export class Automation {
   @Column({ type: 'text' })
   definitionJson!: string;
 
-  @Column({ default: false })
-  scheduleEnabled!: boolean;
-
-  @Column({ type: 'varchar', nullable: true })
-  cronExpression!: string | null;
-
-  @Column({ type: 'varchar', nullable: true })
-  targetApplicationId!: string | null;
-
   @Column({ type: 'datetime', nullable: true })
   lastRunAt!: Date | null;
-
-  @Column({ type: 'datetime', nullable: true })
-  nextRunAt!: Date | null;
 
   @Column({ default: AutomationLastStatus.NeverRun })
   lastStatus!: AutomationLastStatus;

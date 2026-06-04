@@ -7,8 +7,15 @@ import {
   listAutomationRunsAction
 } from '@/server/orchestrator/automations/actions'
 
-export default async function EditAutomationRoute({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditAutomationRoute({
+  params,
+  searchParams
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ view?: string }>
+}) {
   const { id } = await params
+  const { view } = await searchParams
   const automation = await getAutomationAction(id).catch(() => null)
   if (!automation) {
     notFound()
@@ -25,6 +32,7 @@ export default async function EditAutomationRoute({ params }: { params: Promise<
       initialApplications={applications}
       initialAutomation={automation}
       initialCommands={commands}
+      initialView={view === 'traces' ? 'traces' : 'builder'}
       initialRuns={runs}
     />
   )

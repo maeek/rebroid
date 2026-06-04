@@ -143,7 +143,7 @@ const createFallbackDefinition = (uses: string, command?: AutomationCommand): Au
         .join(', ')
     },
     renderEditor: () => (
-      <NoInputState message='No visual editor for this action yet. Use Edit raw input from the step menu.' />
+      <NoInputState message='No visual editor for this action yet. Use Edit YAML from the step menu.' />
     )
   }
 }

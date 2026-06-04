@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsEnum,
   IsInt,
   IsObject,
   IsOptional,
@@ -11,11 +12,16 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+import { ApplicationProfileMode } from '../../android-apps/application-profile-mode';
 import { AutomationLastStatus } from '../entities/automation.entity';
 import {
   AutomationRunStatus,
   AutomationRunTrigger,
 } from '../entities/automation-run.entity';
+import {
+  AutomationStartPolicy,
+  AutomationTriggerType,
+} from '../entities/automation-trigger.entity';
 
 export class AutomationDefinitionStepDto {
   @ApiProperty({ example: 'wake-device' })
@@ -77,27 +83,6 @@ export class CreateAutomationDto {
   @IsOptional()
   @IsObject()
   definition?: AutomationDefinitionDto;
-
-  @ApiPropertyOptional({ example: false, default: false })
-  @IsOptional()
-  @IsBoolean()
-  scheduleEnabled?: boolean;
-
-  @ApiPropertyOptional({ example: '0 9 * * *', nullable: true })
-  @IsOptional()
-  @IsString()
-  @MinLength(5)
-  @MaxLength(120)
-  cronExpression?: string | null;
-
-  @ApiPropertyOptional({
-    example: '98a530d6-a45d-466a-9cb4-c023067c4971',
-    nullable: true,
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(120)
-  targetApplicationId?: string | null;
 }
 
 export class UpdateAutomationDto extends PartialType(CreateAutomationDto) {}
@@ -123,9 +108,34 @@ export class RunAutomationDto {
   @IsString()
   @MaxLength(120)
   targetApplicationId?: string | null;
+
+  @ApiPropertyOptional({ enum: ApplicationProfileMode })
+  @IsOptional()
+  @IsEnum(ApplicationProfileMode)
+  profileMode?: ApplicationProfileMode | null;
+
+  @ApiPropertyOptional({ example: 'default', nullable: true })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  profileName?: string | null;
+
+  @ApiPropertyOptional({
+    enum: AutomationStartPolicy,
+    default: AutomationStartPolicy.RequireRunning,
+  })
+  @IsOptional()
+  @IsEnum(AutomationStartPolicy)
+  startPolicy?: AutomationStartPolicy;
 }
 
 export class ListAutomationRunsQueryDto {
+  @ApiProperty({ example: 'user_123' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  ownerUserId!: string;
+
   @ApiPropertyOptional({ example: 50, minimum: 1, maximum: 100 })
   @IsOptional()
   @Type(() => Number)
@@ -133,6 +143,11 @@ export class ListAutomationRunsQueryDto {
   @Min(1)
   @Max(100)
   limit?: number;
+
+  @ApiPropertyOptional({ enum: ['active'] })
+  @IsOptional()
+  @IsString()
+  status?: 'active';
 }
 
 export class AutomationStepResultDto {
@@ -165,11 +180,20 @@ export class AutomationRunDto {
   @ApiProperty()
   automationId!: string;
 
+  @ApiProperty({ type: String, nullable: true })
+  automationTriggerId!: string | null;
+
   @ApiProperty()
   ownerUserId!: string;
 
   @ApiProperty()
   targetApplicationId!: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  targetProfileMode!: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  targetProfileName!: string | null;
 
   @ApiProperty({ enum: AutomationRunTrigger })
   trigger!: AutomationRunTrigger;
@@ -215,20 +239,8 @@ export class AutomationDto {
   @ApiProperty()
   yaml!: string;
 
-  @ApiProperty()
-  scheduleEnabled!: boolean;
-
-  @ApiProperty({ type: String, nullable: true })
-  cronExpression!: string | null;
-
-  @ApiProperty({ type: String, nullable: true })
-  targetApplicationId!: string | null;
-
   @ApiProperty({ type: String, nullable: true })
   lastRunAt!: string | null;
-
-  @ApiProperty({ type: String, nullable: true })
-  nextRunAt!: string | null;
 
   @ApiProperty({ enum: AutomationLastStatus })
   lastStatus!: AutomationLastStatus;
@@ -269,4 +281,122 @@ export class AutomationCommandDto {
 
   @ApiProperty({ type: String, isArray: true })
   requiredPermissions!: string[];
+}
+
+export class AutomationScheduleTriggerConfigDto {
+  @ApiProperty({ example: '0 9 * * *' })
+  @IsString()
+  @MinLength(5)
+  @MaxLength(120)
+  cronExpression!: string;
+
+  @ApiPropertyOptional({
+    enum: AutomationStartPolicy,
+    default: AutomationStartPolicy.StartIfNeeded,
+  })
+  @IsOptional()
+  @IsEnum(AutomationStartPolicy)
+  startPolicy?: AutomationStartPolicy;
+}
+
+export class CreateAutomationTriggerDto {
+  @ApiProperty({ example: 'user_123' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  ownerUserId!: string;
+
+  @ApiProperty({ example: 'Daily setup' })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(120)
+  name!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MaxLength(120)
+  automationId!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MaxLength(120)
+  targetApplicationId!: string;
+
+  @ApiPropertyOptional({ enum: ApplicationProfileMode })
+  @IsOptional()
+  @IsEnum(ApplicationProfileMode)
+  profileMode?: ApplicationProfileMode | null;
+
+  @ApiPropertyOptional({ example: 'default', nullable: true })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  profileName?: string | null;
+
+  @ApiPropertyOptional({ default: true })
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+
+  @ApiProperty({ enum: AutomationTriggerType })
+  @IsEnum(AutomationTriggerType)
+  triggerType!: AutomationTriggerType;
+
+  @ApiProperty({ type: AutomationScheduleTriggerConfigDto })
+  @IsObject()
+  triggerConfig!: Record<string, unknown>;
+}
+
+export class UpdateAutomationTriggerDto extends PartialType(
+  CreateAutomationTriggerDto,
+) {}
+
+export class AutomationTriggerDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  ownerUserId!: string;
+
+  @ApiProperty()
+  name!: string;
+
+  @ApiProperty()
+  automationId!: string;
+
+  @ApiProperty()
+  targetApplicationId!: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  profileMode!: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  profileName!: string | null;
+
+  @ApiProperty()
+  enabled!: boolean;
+
+  @ApiProperty({ enum: AutomationTriggerType })
+  triggerType!: AutomationTriggerType;
+
+  @ApiProperty({ type: Object })
+  triggerConfig!: Record<string, unknown>;
+
+  @ApiProperty({ type: String, nullable: true })
+  lastRunAt!: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  nextRunAt!: string | null;
+
+  @ApiProperty({ enum: AutomationLastStatus })
+  lastStatus!: AutomationLastStatus;
+
+  @ApiProperty({ type: String, nullable: true })
+  lastError!: string | null;
+
+  @ApiProperty()
+  createdAt!: string;
+
+  @ApiProperty()
+  updatedAt!: string;
 }

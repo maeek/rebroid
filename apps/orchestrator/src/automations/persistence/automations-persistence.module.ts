@@ -2,12 +2,24 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Automation } from '../entities/automation.entity';
 import { AutomationRun } from '../entities/automation-run.entity';
+import { AutomationTrigger } from '../entities/automation-trigger.entity';
 import { AutomationRunsRepository } from './automation-runs.repository';
+import { AutomationTriggersRepository } from './automation-triggers.repository';
 import { AutomationsRepository } from './automations.repository';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Automation, AutomationRun])],
-  providers: [AutomationsRepository, AutomationRunsRepository],
-  exports: [AutomationsRepository, AutomationRunsRepository],
+  imports: [
+    TypeOrmModule.forFeature([Automation, AutomationRun, AutomationTrigger]),
+  ],
+  providers: [
+    AutomationsRepository,
+    AutomationRunsRepository,
+    AutomationTriggersRepository,
+  ],
+  exports: [
+    AutomationsRepository,
+    AutomationRunsRepository,
+    AutomationTriggersRepository,
+  ],
 })
 export class AutomationsPersistenceModule {}

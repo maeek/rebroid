@@ -9,7 +9,7 @@ import {
   ownedRuntimeControlMessage
 } from '../applications/actions/common/action-helpers'
 import { orchestratorAutomationsClient } from './client'
-import type { AutomationDefinition, SaveAutomationInput } from './types'
+import type { AutomationDefinition, RunAutomationInput, SaveAutomationInput, SaveAutomationTriggerInput } from './types'
 
 const assertPermission = (user: Awaited<ReturnType<typeof getCurrentUserContext>>, permission: PermissionId) => {
   if (user.role !== 'admin' && !hasPermission(user.permissions, permission)) {
@@ -88,6 +88,12 @@ export const listAutomationsAction = async () => {
   return orchestratorAutomationsClient.list(user.ownerUserId)
 }
 
+export const listRunnableAutomationsAction = async () => {
+  const user = await getCurrentUserContext()
+  assertPermission(user, 'automations:run')
+  return orchestratorAutomationsClient.listRunnable(user.ownerUserId)
+}
+
 export const getAutomationAction = async (id: string) => {
   const user = await getCurrentUserContext()
   assertPermission(user, 'automations:manage')
@@ -97,7 +103,6 @@ export const getAutomationAction = async (id: string) => {
 export const createAutomationAction = async (input: SaveAutomationInput) => {
   const user = await getCurrentUserContext()
   assertPermission(user, 'automations:manage')
-  await assertTargetApplication(input.targetApplicationId)
   const validation = await orchestratorAutomationsClient.validateYaml(input.yaml)
   if (!validation.definition) {
     throw new Error(validation.errors[0] ?? 'Automation YAML is invalid.')
@@ -115,7 +120,6 @@ export const createAutomationAction = async (input: SaveAutomationInput) => {
 export const updateAutomationAction = async (id: string, input: Partial<SaveAutomationInput>) => {
   const user = await getCurrentUserContext()
   assertPermission(user, 'automations:manage')
-  await assertTargetApplication(input.targetApplicationId)
   let payload = input
   if (input.yaml !== undefined) {
     const validation = await orchestratorAutomationsClient.validateYaml(input.yaml)
@@ -140,18 +144,34 @@ export const deleteAutomationAction = async (id: string) => {
   return automation
 }
 
-export const runAutomationAction = async (id: string, targetApplicationId?: string | null) => {
+const assertRunProfilePermission = (
+  user: Awaited<ReturnType<typeof getCurrentUserContext>>,
+  input: RunAutomationInput
+) => {
+  if (
+    user.role !== 'admin' &&
+    (input.profileMode || input.profileName) &&
+    !hasPermission(user.permissions, 'applications:switch-profile')
+  ) {
+    throw new Error('You do not have permission to switch application profiles.')
+  }
+}
+
+export const runAutomationAction = async (id: string, input: RunAutomationInput) => {
   const user = await getCurrentUserContext()
   assertPermission(user, 'automations:run')
-  await assertTargetApplication(targetApplicationId)
+  await assertTargetApplication(input.targetApplicationId)
+  assertRunProfilePermission(user, input)
   const automation = await orchestratorAutomationsClient.get(user.ownerUserId, id)
-  await assertTargetApplication(targetApplicationId ?? automation.targetApplicationId)
   await assertDefinitionPermissions(user, automation.definition)
-  const run = await orchestratorAutomationsClient.run(user.ownerUserId, id, targetApplicationId)
+  const run = await orchestratorAutomationsClient.run(user.ownerUserId, id, input)
   revalidatePath('/automations')
+  revalidatePath(`/automations/${id}`)
   await recordAutomationAudit('automation.run', automation.id, automation.name, {
     runId: run.id,
-    targetApplicationId: run.targetApplicationId
+    targetApplicationId: run.targetApplicationId,
+    targetProfileMode: run.targetProfileMode,
+    targetProfileName: run.targetProfileName
   })
   return run
 }
@@ -160,4 +180,83 @@ export const listAutomationRunsAction = async (automationId: string, limit = 50)
   const user = await getCurrentUserContext()
   assertPermission(user, 'automations:manage')
   return orchestratorAutomationsClient.listRuns(user.ownerUserId, automationId, limit)
+}
+
+const assertTriggerTarget = async (input: Partial<SaveAutomationTriggerInput>) => {
+  if (input.targetApplicationId) {
+    await assertTargetApplication(input.targetApplicationId)
+  }
+}
+
+const assertTriggerProfilePermission = (
+  user: Awaited<ReturnType<typeof getCurrentUserContext>>,
+  input: Partial<SaveAutomationTriggerInput>
+) => {
+  if (
+    user.role !== 'admin' &&
+    (input.profileMode || input.profileName) &&
+    !hasPermission(user.permissions, 'applications:switch-profile')
+  ) {
+    throw new Error('You do not have permission to switch application profiles.')
+  }
+}
+
+export const listAutomationTriggersAction = async () => {
+  const user = await getCurrentUserContext()
+  assertPermission(user, 'automations:manage')
+  return orchestratorAutomationsClient.listTriggers(user.ownerUserId)
+}
+
+export const createAutomationTriggerAction = async (input: SaveAutomationTriggerInput) => {
+  const user = await getCurrentUserContext()
+  assertPermission(user, 'automations:manage')
+  await assertTriggerTarget(input)
+  assertTriggerProfilePermission(user, input)
+  const automation = await orchestratorAutomationsClient.get(user.ownerUserId, input.automationId)
+  await assertDefinitionPermissions(user, automation.definition)
+  const trigger = await orchestratorAutomationsClient.createTrigger(user.ownerUserId, input)
+  revalidatePath('/automations/triggers')
+  await recordAutomationAudit('automation.trigger.create', trigger.id, trigger.name, {
+    automationId: trigger.automationId,
+    targetApplicationId: trigger.targetApplicationId
+  })
+  return trigger
+}
+
+export const updateAutomationTriggerAction = async (id: string, input: Partial<SaveAutomationTriggerInput>) => {
+  const user = await getCurrentUserContext()
+  assertPermission(user, 'automations:manage')
+  await assertTriggerTarget(input)
+  assertTriggerProfilePermission(user, input)
+  if (input.automationId) {
+    const automation = await orchestratorAutomationsClient.get(user.ownerUserId, input.automationId)
+    await assertDefinitionPermissions(user, automation.definition)
+  }
+  const trigger = await orchestratorAutomationsClient.updateTrigger(user.ownerUserId, id, input)
+  revalidatePath('/automations/triggers')
+  await recordAutomationAudit('automation.trigger.update', trigger.id, trigger.name, { fields: Object.keys(input) })
+  return trigger
+}
+
+export const deleteAutomationTriggerAction = async (id: string) => {
+  const user = await getCurrentUserContext()
+  assertPermission(user, 'automations:manage')
+  const trigger = await orchestratorAutomationsClient.removeTrigger(user.ownerUserId, id)
+  revalidatePath('/automations/triggers')
+  await recordAutomationAudit('automation.trigger.delete', trigger.id, trigger.name)
+  return trigger
+}
+
+export const runAutomationTriggerAction = async (id: string) => {
+  const user = await getCurrentUserContext()
+  assertPermission(user, 'automations:run')
+  const run = await orchestratorAutomationsClient.runTrigger(user.ownerUserId, id)
+  revalidatePath('/automations/triggers')
+  revalidatePath('/automations')
+  revalidatePath(`/automations/${run.automationId}`)
+  await recordAutomationAudit('automation.trigger.run', id, id, {
+    runId: run.id,
+    targetApplicationId: run.targetApplicationId
+  })
+  return run
 }

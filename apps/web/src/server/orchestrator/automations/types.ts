@@ -1,6 +1,8 @@
 export type AutomationLastStatus = 'never_run' | 'success' | 'failed' | 'running'
 export type AutomationRunStatus = 'queued' | 'running' | 'success' | 'failed' | 'canceled'
-export type AutomationRunTrigger = 'manual' | 'schedule'
+export type AutomationRunTrigger = 'manual' | 'schedule' | 'webhook' | 'event'
+export type AutomationTriggerType = 'schedule' | 'webhook' | 'event'
+export type AutomationStartPolicy = 'require-running' | 'start-if-needed'
 
 export interface AutomationDefinitionStep {
   id: string
@@ -28,11 +30,7 @@ export interface Automation {
   description: string | null
   definition: AutomationDefinition
   yaml: string
-  scheduleEnabled: boolean
-  cronExpression: string | null
-  targetApplicationId: string | null
   lastRunAt: string | null
-  nextRunAt: string | null
   lastStatus: AutomationLastStatus
   lastError: string | null
   createdAt: string
@@ -59,8 +57,11 @@ export interface AutomationStepResult {
 export interface AutomationRun {
   id: string
   automationId: string
+  automationTriggerId: string | null
   ownerUserId: string
   targetApplicationId: string
+  targetProfileMode: string | null
+  targetProfileName: string | null
   trigger: AutomationRunTrigger
   status: AutomationRunStatus
   startedAt: string | null
@@ -73,9 +74,43 @@ export interface AutomationRun {
 
 export interface SaveAutomationInput {
   yaml: string
-  scheduleEnabled?: boolean
-  cronExpression?: string | null
-  targetApplicationId?: string | null
+}
+
+export interface RunAutomationInput {
+  targetApplicationId: string
+  profileMode?: string | null
+  profileName?: string | null
+  startPolicy?: AutomationStartPolicy
+}
+
+export interface AutomationTrigger {
+  id: string
+  ownerUserId: string
+  name: string
+  automationId: string
+  targetApplicationId: string
+  profileMode: string | null
+  profileName: string | null
+  enabled: boolean
+  triggerType: AutomationTriggerType
+  triggerConfig: Record<string, unknown>
+  lastRunAt: string | null
+  nextRunAt: string | null
+  lastStatus: AutomationLastStatus
+  lastError: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface SaveAutomationTriggerInput {
+  name: string
+  automationId: string
+  targetApplicationId: string
+  profileMode?: string | null
+  profileName?: string | null
+  enabled?: boolean
+  triggerType: AutomationTriggerType
+  triggerConfig: Record<string, unknown>
 }
 
 export interface AutomationValidation {

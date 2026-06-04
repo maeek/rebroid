@@ -13,10 +13,13 @@ import {
   AutomationCommandDto,
   AutomationDto,
   AutomationRunDto,
+  AutomationTriggerDto,
   AutomationValidationDto,
   CreateAutomationDto,
+  CreateAutomationTriggerDto,
   ListAutomationRunsQueryDto,
   RunAutomationDto,
+  UpdateAutomationTriggerDto,
   UpdateAutomationDto,
   ValidateAutomationYamlDto,
 } from '../dto/automation.dto';
@@ -45,10 +48,25 @@ export class AutomationsController {
     return this.automations.list(ownerUserId);
   }
 
+  @Get('runnable')
+  @ApiOkResponse({ type: AutomationDto, isArray: true })
+  listRunnable(@Query('ownerUserId') ownerUserId: string) {
+    return this.automations.list(ownerUserId);
+  }
+
   @Post()
   @ApiCreatedResponse({ type: AutomationDto })
   create(@Body() dto: CreateAutomationDto) {
     return this.automations.create(dto);
+  }
+
+  @Get('runs')
+  @ApiOkResponse({ type: AutomationRunDto, isArray: true })
+  listAllRuns(@Query() query: ListAutomationRunsQueryDto) {
+    if (query.status === 'active') {
+      return this.automations.listActiveRuns(query.ownerUserId);
+    }
+    return this.automations.listActiveRuns(query.ownerUserId);
   }
 
   @Get('runs/:runId')
@@ -58,6 +76,55 @@ export class AutomationsController {
     @Query('ownerUserId') ownerUserId: string,
   ) {
     return this.automations.getRun(ownerUserId, runId);
+  }
+
+  @Get('triggers')
+  @ApiOkResponse({ type: AutomationTriggerDto, isArray: true })
+  listTriggers(@Query('ownerUserId') ownerUserId: string) {
+    return this.automations.listTriggers(ownerUserId);
+  }
+
+  @Post('triggers')
+  @ApiCreatedResponse({ type: AutomationTriggerDto })
+  createTrigger(@Body() dto: CreateAutomationTriggerDto) {
+    return this.automations.createTrigger(dto);
+  }
+
+  @Get('triggers/:triggerId')
+  @ApiOkResponse({ type: AutomationTriggerDto })
+  getTrigger(
+    @Param('triggerId') triggerId: string,
+    @Query('ownerUserId') ownerUserId: string,
+  ) {
+    return this.automations.getTrigger(ownerUserId, triggerId);
+  }
+
+  @Patch('triggers/:triggerId')
+  @ApiOkResponse({ type: AutomationTriggerDto })
+  updateTrigger(
+    @Param('triggerId') triggerId: string,
+    @Query('ownerUserId') ownerUserId: string,
+    @Body() dto: UpdateAutomationTriggerDto,
+  ) {
+    return this.automations.updateTrigger(ownerUserId, triggerId, dto);
+  }
+
+  @Delete('triggers/:triggerId')
+  @ApiOkResponse({ type: AutomationTriggerDto })
+  removeTrigger(
+    @Param('triggerId') triggerId: string,
+    @Query('ownerUserId') ownerUserId: string,
+  ) {
+    return this.automations.removeTrigger(ownerUserId, triggerId);
+  }
+
+  @Post('triggers/:triggerId/runs')
+  @ApiCreatedResponse({ type: AutomationRunDto })
+  runTrigger(
+    @Param('triggerId') triggerId: string,
+    @Body() dto: RunAutomationDto,
+  ) {
+    return this.automations.runTrigger(dto.ownerUserId, triggerId);
   }
 
   @Get(':id')
@@ -85,16 +152,15 @@ export class AutomationsController {
   @Post(':id/runs')
   @ApiCreatedResponse({ type: AutomationRunDto })
   run(@Param('id') id: string, @Body() dto: RunAutomationDto) {
-    return this.automations.run(dto.ownerUserId, id, dto.targetApplicationId);
+    return this.automations.run(dto.ownerUserId, id, dto);
   }
 
   @Get(':id/runs')
   @ApiOkResponse({ type: AutomationRunDto, isArray: true })
   listRuns(
     @Param('id') id: string,
-    @Query('ownerUserId') ownerUserId: string,
     @Query() query: ListAutomationRunsQueryDto,
   ) {
-    return this.automations.listRuns(ownerUserId, id, query.limit);
+    return this.automations.listRuns(query.ownerUserId, id, query.limit);
   }
 }

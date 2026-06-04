@@ -29,6 +29,23 @@ export class AutomationRunsRepository {
     });
   }
 
+  findLatestForAutomation(ownerUserId: string, automationId: string) {
+    return this.runs.findOne({
+      where: { ownerUserId, automationId },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  listActive(ownerUserId: string) {
+    return this.runs.find({
+      where: [
+        { ownerUserId, status: AutomationRunStatus.Queued },
+        { ownerUserId, status: AutomationRunStatus.Running },
+      ],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
   findByOwnerAndId(ownerUserId: string, id: string) {
     return this.runs.findOneBy({ ownerUserId, id });
   }

@@ -26,6 +26,17 @@ export class ScrcpyViewerErrorDto {
   stderr!: string | null;
 }
 
+export class DisplayNewDisplayDto {
+  @ApiProperty()
+  width!: number;
+
+  @ApiProperty()
+  height!: number;
+
+  @ApiProperty()
+  dpi!: number;
+}
+
 export class DisplaySurfaceDto {
   @ApiProperty()
   id!: string;
@@ -60,12 +71,8 @@ export class DisplaySurfaceDto {
   @ApiPropertyOptional({ type: Number })
   displayId?: number;
 
-  @ApiPropertyOptional({ type: Object })
-  newDisplay?: {
-    width: number;
-    height: number;
-    dpi: number;
-  };
+  @ApiPropertyOptional({ type: DisplayNewDisplayDto })
+  newDisplay?: DisplayNewDisplayDto;
 }
 
 export class DisplayRecordingDto {
@@ -122,12 +129,8 @@ export class DisplaySessionDto {
   @ApiPropertyOptional({ type: Number })
   displayId?: number;
 
-  @ApiPropertyOptional({ type: Object })
-  newDisplay?: {
-    width: number;
-    height: number;
-    dpi: number;
-  };
+  @ApiPropertyOptional({ type: DisplayNewDisplayDto })
+  newDisplay?: DisplayNewDisplayDto;
 
   @ApiProperty({ enum: ['created', 'active', 'released', 'expired'] })
   status!: 'created' | 'active' | 'released' | 'expired';

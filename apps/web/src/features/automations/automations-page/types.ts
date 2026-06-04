@@ -1,5 +1,10 @@
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
-import type { Automation, AutomationCommand, AutomationRun } from '@/server/orchestrator/automations/types'
+import type {
+  Automation,
+  AutomationCommand,
+  AutomationRun,
+  AutomationTrigger
+} from '@/server/orchestrator/automations/types'
 
 export interface AutomationsListPageProps {
   initialApplications: AndroidApplication[]
@@ -11,9 +16,11 @@ export interface AutomationEditorPageProps {
   initialAutomation?: Automation | null
   initialCommands: AutomationCommand[]
   initialRuns?: AutomationRun[]
+  initialView?: 'builder' | 'traces'
 }
 
-export interface AutomationRunState {
-  automationId: string
-  runs: AutomationRun[]
+export interface AutomationTriggersPageProps {
+  initialApplications: AndroidApplication[]
+  initialAutomations: Automation[]
+  initialTriggers: AutomationTrigger[]
 }

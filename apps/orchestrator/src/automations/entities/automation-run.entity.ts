@@ -17,6 +17,8 @@ export enum AutomationRunStatus {
 export enum AutomationRunTrigger {
   Manual = 'manual',
   Schedule = 'schedule',
+  Webhook = 'webhook',
+  Event = 'event',
 }
 
 @Entity({ name: 'automation_runs' })
@@ -27,11 +29,20 @@ export class AutomationRun {
   @Column()
   automationId!: string;
 
+  @Column({ type: 'varchar', nullable: true })
+  automationTriggerId!: string | null;
+
   @Column({ type: 'text' })
   ownerUserId!: string;
 
   @Column()
   targetApplicationId!: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  targetProfileMode!: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  targetProfileName!: string | null;
 
   @Column()
   trigger!: AutomationRunTrigger;
