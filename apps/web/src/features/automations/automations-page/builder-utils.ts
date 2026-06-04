@@ -1,9 +1,22 @@
-import type { Automation, AutomationDefinitionStep } from '@/server/orchestrator/automations/types'
+import {
+  getActionUiStateFromInput,
+  getBackendActionInput,
+  getDefaultActionInput,
+  normalizeActionInput
+} from './actions/action-registry'
+import type {
+  Automation,
+  AutomationDefinition,
+  AutomationDefinitionStep,
+  SaveAutomationInput
+} from '@/server/orchestrator/automations/types'
 
 export interface AutomationStepForm {
+  clientKey: string
   id: string
   uses: string
   withJson: string
+  uiState?: Record<string, unknown>
 }
 
 export interface AutomationFormState {
@@ -12,52 +25,61 @@ export interface AutomationFormState {
   description: string
   labelsJson: string
   steps: AutomationStepForm[]
-  yaml: string
-  scheduleEnabled: boolean
-  cronExpression: string
-  targetApplicationId: string
 }
 
-export const defaultStep = (uses = 'android.viewerCommand'): AutomationStepForm => ({
-  id: 'wake-device',
-  uses,
-  withJson: JSON.stringify({ command: 'wake' }, null, 2)
-})
+export const defaultStepInput = (uses: string): Record<string, unknown> => getDefaultActionInput(uses)
+
+const createClientKey = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+
+const stepIdBase = (uses: string) =>
+  uses
+    .split('.')
+    .at(-1)
+    ?.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`)
+    .replace(/^-/, '') || 'step'
+
+export const defaultStep = (uses = 'android.viewerCommand', index = 1): AutomationStepForm => {
+  const input = defaultStepInput(uses)
+
+  return {
+    clientKey: createClientKey(),
+    id: uses === 'android.viewerCommand' && index === 1 ? 'wake-device' : `${stepIdBase(uses)}-${index}`,
+    uses,
+    withJson: JSON.stringify(input, null, 2),
+    uiState: getActionUiStateFromInput(uses, input)
+  }
+}
 
 export const defaultForm = (): AutomationFormState => ({
   id: null,
   name: 'New automation',
   description: '',
   labelsJson: '{}',
-  steps: [defaultStep()],
-  yaml: buildYaml({
-    name: 'New automation',
-    description: '',
-    labelsJson: '{}',
-    steps: [defaultStep()]
-  }),
-  scheduleEnabled: false,
-  cronExpression: '0 9 * * *',
-  targetApplicationId: ''
+  steps: [defaultStep()]
 })
 
-export const automationToForm = (automation: Automation): AutomationFormState => ({
-  id: automation.id,
-  name: automation.name,
-  description: automation.description ?? '',
-  labelsJson: JSON.stringify(automation.definition.metadata.labels ?? {}, null, 2),
-  steps: automation.definition.spec.steps.map(stepToForm),
-  yaml: automation.yaml,
-  scheduleEnabled: automation.scheduleEnabled,
-  cronExpression: automation.cronExpression ?? '0 9 * * *',
-  targetApplicationId: automation.targetApplicationId ?? ''
+export const definitionToForm = (definition: AutomationDefinition, id: string | null = null): AutomationFormState => ({
+  id,
+  name: definition.metadata.name,
+  description: definition.metadata.description ?? '',
+  labelsJson: JSON.stringify(definition.metadata.labels ?? {}, null, 2),
+  steps: definition.spec.steps.map(stepToForm)
 })
 
-const stepToForm = (step: AutomationDefinitionStep): AutomationStepForm => ({
-  id: step.id,
-  uses: step.uses,
-  withJson: JSON.stringify(step.with ?? {}, null, 2)
-})
+export const automationToForm = (automation: Automation): AutomationFormState =>
+  definitionToForm(automation.definition, automation.id)
+
+const stepToForm = (step: AutomationDefinitionStep): AutomationStepForm => {
+  const input = normalizeActionInput(step.uses, step.with ?? {})
+
+  return {
+    clientKey: createClientKey(),
+    id: step.id,
+    uses: step.uses,
+    withJson: JSON.stringify(input, null, 2),
+    uiState: getActionUiStateFromInput(step.uses, input)
+  }
+}
 
 const indent = (value: string, spaces: number) =>
   value
@@ -90,10 +112,14 @@ export const buildYaml = ({
   steps
 }: Pick<AutomationFormState, 'name' | 'description' | 'labelsJson' | 'steps'>) => {
   const labels = JSON.parse(labelsJson || '{}') as Record<string, string>
-  const normalizedSteps = steps.map(step => ({
-    id: step.id.trim(),
+  const normalizedSteps = steps.map((step, index) => ({
+    id: step.id.trim() || `${stepIdBase(step.uses)}-${index + 1}`,
     uses: step.uses,
-    with: JSON.parse(step.withJson || '{}') as Record<string, unknown>
+    with: getBackendActionInput(
+      step.uses,
+      JSON.parse(step.withJson || '{}') as Record<string, unknown>,
+      step.uiState ?? {}
+    )
   }))
 
   const metadataLines = [`  name: ${scalar(name.trim() || 'Automation')}`]
@@ -120,9 +146,6 @@ export const buildYaml = ({
   ].join('\n')
 }
 
-export const formToSaveInput = (form: AutomationFormState) => ({
-  yaml: form.yaml,
-  scheduleEnabled: form.scheduleEnabled,
-  cronExpression: form.scheduleEnabled ? form.cronExpression : null,
-  targetApplicationId: form.targetApplicationId || null
+export const formToSaveInput = (form: AutomationFormState): SaveAutomationInput => ({
+  yaml: buildYaml(form)
 })

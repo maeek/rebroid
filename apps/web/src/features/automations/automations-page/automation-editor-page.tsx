@@ -1,137 +1,124 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { IconArrowLeft, IconDeviceFloppy, IconPlayerPlay, IconRefresh, IconTrash, IconWand } from '@tabler/icons-react'
-import classNames from 'classnames'
-import Link from 'next/link'
+import { useEffect, useMemo, useState } from 'react'
+import { IconDeviceFloppy, IconDotsVertical, IconFileCode, IconTrash } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { toast } from '@/hooks/use-toast'
 import {
   createAutomationAction,
   deleteAutomationAction,
-  listAutomationRunsAction,
-  runAutomationAction,
   updateAutomationAction,
   validateAutomationYamlAction
 } from '@/server/orchestrator/automations/actions'
+import { AutomationDetailsSection } from './automation-details-section'
+import { AutomationStepEditor } from './automation-step-editor'
+import { AutomationStepsList } from './automation-steps-list'
+import { AutomationYamlDialog } from './automation-yaml-dialog'
 import {
   automationToForm,
   buildYaml,
+  definitionToForm,
   defaultForm,
-  defaultStep,
   formToSaveInput,
-  type AutomationFormState
+  type AutomationFormState,
+  type AutomationStepForm
 } from './builder-utils'
 import type { AutomationEditorPageProps } from './types'
-import type { Automation, AutomationRun } from '@/server/orchestrator/automations/types'
+import type { Automation } from '@/server/orchestrator/automations/types'
 
-const statusTone: Record<string, string> = {
-  never_run: 'text-secondary-foreground',
-  running: 'text-sky-300',
-  queued: 'text-sky-300',
-  success: 'text-emerald-300',
-  failed: 'text-red-300',
-  canceled: 'text-secondary-foreground'
+const useCompactEditor = () => {
+  const [compact, setCompact] = useState(false)
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 1023px)')
+    const update = () => setCompact(media.matches)
+    update()
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
+
+  return compact
 }
 
-export function AutomationEditorPage({
-  initialApplications,
-  initialAutomation,
-  initialCommands,
-  initialRuns = []
-}: AutomationEditorPageProps) {
+export function AutomationEditorPage({ initialAutomation, initialCommands }: AutomationEditorPageProps) {
   const router = useRouter()
+  const compactEditor = useCompactEditor()
   const [automation, setAutomation] = useState<Automation | null>(initialAutomation ?? null)
   const [form, setForm] = useState<AutomationFormState>(() =>
     initialAutomation ? automationToForm(initialAutomation) : defaultForm()
   )
-  const [runs, setRuns] = useState<AutomationRun[]>(initialRuns)
+  const [selectedStepIndex, setSelectedStepIndex] = useState(0)
+  const [stepSheetOpen, setStepSheetOpen] = useState(false)
+  const [yamlOpen, setYamlOpen] = useState(false)
   const [busy, setBusy] = useState(false)
-  const commandByUses = useMemo(
-    () => new Map(initialCommands.map(command => [command.uses, command])),
-    [initialCommands]
-  )
   const isNew = !automation
+  const title = isNew ? 'New automation' : automation.name
+  const selectedStep = form.steps[selectedStepIndex] ?? null
+  const currentYaml = useMemo(() => {
+    try {
+      return buildYaml(form)
+    } catch {
+      return automation?.yaml ?? ''
+    }
+  }, [automation?.yaml, form])
+
+  useEffect(() => {
+    if (selectedStepIndex >= form.steps.length) {
+      setSelectedStepIndex(Math.max(form.steps.length - 1, 0))
+    }
+  }, [form.steps.length, selectedStepIndex])
 
   const updateForm = (patch: Partial<AutomationFormState>) => setForm(current => ({ ...current, ...patch }))
 
-  const syncBuilderToYaml = () => {
-    try {
-      updateForm({ yaml: buildYaml(form) })
-      toast({ title: 'YAML updated from builder' })
-    } catch (error) {
-      toast({
-        title: 'Could not build YAML',
-        description: error instanceof Error ? error.message : 'Check JSON fields.',
-        variant: 'destructive'
-      })
+  const updateSteps = (steps: AutomationStepForm[]) => {
+    const selectedStepKey = form.steps[selectedStepIndex]?.clientKey
+    const nextSelectedIndex = selectedStepKey ? steps.findIndex(step => step.clientKey === selectedStepKey) : -1
+    updateForm({ steps })
+    if (nextSelectedIndex >= 0) {
+      setSelectedStepIndex(nextSelectedIndex)
+    } else {
+      setSelectedStepIndex(Math.max(Math.min(selectedStepIndex, steps.length - 1), 0))
     }
   }
 
-  const validateYaml = async () => {
-    setBusy(true)
-    try {
-      const validation = await validateAutomationYamlAction(form.yaml)
-      if (!validation.valid) {
-        throw new Error(validation.errors[0] ?? 'Automation YAML is invalid.')
-      }
-      updateForm({ yaml: validation.yaml ?? form.yaml })
-      toast({ title: 'Automation YAML is valid' })
-    } catch (error) {
-      toast({
-        title: 'Validation failed',
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
-      })
-    } finally {
-      setBusy(false)
+  const updateSelectedStep = (step: AutomationStepForm) => {
+    updateSteps(form.steps.map((item, index) => (index === selectedStepIndex ? step : item)))
+  }
+
+  const selectStep = (index: number) => {
+    setSelectedStepIndex(index)
+    if (compactEditor) {
+      setStepSheetOpen(true)
     }
   }
 
   const save = async () => {
     setBusy(true)
     try {
-      const input = formToSaveInput(form)
+      const wasNew = !automation
       const saved = automation
-        ? await updateAutomationAction(automation.id, input)
-        : await createAutomationAction(input)
+        ? await updateAutomationAction(automation.id, formToSaveInput(form))
+        : await createAutomationAction(formToSaveInput(form))
       setAutomation(saved)
       setForm(automationToForm(saved))
-      toast({ title: automation ? 'Automation updated' : 'Automation created' })
-      if (!automation) {
+      toast({ title: wasNew ? 'Automation created' : 'Automation updated' })
+      if (wasNew) {
         router.replace(`/automations/${saved.id}`)
       }
     } catch (error) {
       toast({
         title: 'Could not save automation',
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
-      })
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const run = async () => {
-    if (!automation) return
-    setBusy(true)
-    try {
-      const queuedRun = await runAutomationAction(
-        automation.id,
-        form.targetApplicationId || automation.targetApplicationId
-      )
-      setRuns(current => [queuedRun, ...current])
-      setAutomation({ ...automation, lastStatus: 'running', lastRunAt: new Date().toISOString(), lastError: null })
-      toast({ title: 'Automation run queued' })
-    } catch (error) {
-      toast({
-        title: 'Could not run automation',
         description: error instanceof Error ? error.message : 'Unknown error',
         variant: 'destructive'
       })
@@ -157,285 +144,133 @@ export function AutomationEditorPage({
     }
   }
 
-  const refreshRuns = async () => {
-    if (!automation) return
+  const applyYaml = async (yaml: string) => {
     setBusy(true)
     try {
-      setRuns(await listAutomationRunsAction(automation.id, 20))
+      const validation = await validateAutomationYamlAction(yaml)
+      if (!validation.valid || !validation.definition) {
+        throw new Error(validation.errors[0] ?? 'Automation YAML is invalid.')
+      }
+      setForm(definitionToForm(validation.definition, automation?.id ?? form.id))
+      setYamlOpen(false)
+      toast({ title: 'YAML applied' })
+    } catch (error) {
+      toast({
+        title: 'Could not apply YAML',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
+      })
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <ProtectedStackPageLayout mainClassName='gap-2'>
+    <ProtectedStackPageLayout mainClassName='gap-0'>
       <section className='shrink-0 px-6 py-4 max-sm:px-4'>
-        <div className='flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-start'>
-          <div className='grid gap-3'>
-            <Link
-              href='/automations'
-              className='inline-flex items-center gap-2 text-sm text-secondary-foreground hover:text-foreground'
-            >
-              <IconArrowLeft className='size-4' />
-              Automations
-            </Link>
-            <div className='grid gap-2'>
-              <h2 className='text-3xl font-medium max-sm:text-xl'>{isNew ? 'New automation' : automation.name}</h2>
-              <p className='max-w-3xl text-sm text-secondary-foreground'>
-                Temporary editor for YAML definitions, schedules, and run history.
-              </p>
-            </div>
-          </div>
-          <div className='flex gap-2 max-sm:w-full max-sm:flex-col'>
-            <Button
-              disabled={busy}
-              onClick={() => void save()}
-            >
-              <IconDeviceFloppy className='size-4' />
-              Save
-            </Button>
-            <Button
-              variant='secondary'
-              disabled={busy || !automation}
-              onClick={() => void run()}
-            >
-              <IconPlayerPlay className='size-4' />
-              Run
-            </Button>
-          </div>
-        </div>
-      </section>
-      <section className='grid gap-4 px-6 pb-16 max-sm:px-4'>
-        <div className='grid gap-4 rounded-lg border border-border/70 bg-card/40 p-4'>
-          <div className='grid grid-cols-2 gap-3 max-md:grid-cols-1'>
-            <div className='grid gap-2'>
-              <Label htmlFor='automation-name'>Name</Label>
-              <Input
-                id='automation-name'
-                value={form.name}
-                onChange={event => updateForm({ name: event.target.value })}
-              />
-            </div>
-            <div className='grid gap-2'>
-              <Label htmlFor='automation-target'>Target app</Label>
-              <select
-                id='automation-target'
-                className='h-10 rounded-md border border-input bg-background px-3 text-sm'
-                value={form.targetApplicationId}
-                onChange={event => updateForm({ targetApplicationId: event.target.value })}
-              >
-                <option value=''>Choose when running</option>
-                {initialApplications.map(app => (
-                  <option
-                    key={app.id}
-                    value={app.id}
-                  >
-                    {app.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className='grid gap-2'>
-            <Label htmlFor='automation-description'>Description</Label>
-            <Input
-              id='automation-description'
-              value={form.description}
-              onChange={event => updateForm({ description: event.target.value })}
-            />
-          </div>
-
-          <div className='grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 max-md:grid-cols-1'>
-            <div className='flex items-center gap-2'>
-              <Switch
-                checked={form.scheduleEnabled}
-                onCheckedChange={checked => updateForm({ scheduleEnabled: checked })}
-              />
-              <span className='text-sm'>Schedule</span>
-            </div>
-            <Input
-              value={form.cronExpression}
-              disabled={!form.scheduleEnabled}
-              onChange={event => updateForm({ cronExpression: event.target.value })}
-            />
-          </div>
-        </div>
-
-        <div className='grid gap-4 rounded-lg border border-border/70 bg-card/40 p-4'>
-          <div className='flex items-center justify-between gap-2 max-sm:flex-col max-sm:items-stretch'>
-            <div>
-              <h3 className='font-medium'>Builder</h3>
-              <p className='text-sm text-secondary-foreground'>Step inputs are JSON and generate the YAML below.</p>
-            </div>
-            <Button
-              variant='secondary'
-              onClick={syncBuilderToYaml}
-            >
-              <IconWand className='size-4' />
-              Update YAML
-            </Button>
-          </div>
-          <div className='grid gap-3'>
-            {form.steps.map((step, index) => (
-              <div
-                key={`${step.id}-${index}`}
-                className='grid gap-3 rounded-md border border-border/60 p-3'
-              >
-                <div className='grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 max-md:grid-cols-1'>
-                  <Input
-                    value={step.id}
-                    onChange={event =>
-                      updateForm({
-                        steps: form.steps.map((item, itemIndex) =>
-                          itemIndex === index ? { ...item, id: event.target.value } : item
-                        )
-                      })
-                    }
-                  />
-                  <select
-                    className='h-10 rounded-md border border-input bg-background px-3 text-sm'
-                    value={step.uses}
-                    onChange={event =>
-                      updateForm({
-                        steps: form.steps.map((item, itemIndex) =>
-                          itemIndex === index ? { ...item, uses: event.target.value } : item
-                        )
-                      })
-                    }
-                  >
-                    {initialCommands.map(command => (
-                      <option
-                        key={command.uses}
-                        value={command.uses}
-                      >
-                        {command.uses}
-                      </option>
-                    ))}
-                  </select>
-                  <Button
-                    variant='ghost'
-                    size='icon'
-                    onClick={() => updateForm({ steps: form.steps.filter((_, itemIndex) => itemIndex !== index) })}
-                    aria-label='Remove step'
-                  >
-                    <IconTrash className='size-4' />
-                  </Button>
-                </div>
-                <p className='text-xs text-secondary-foreground'>{commandByUses.get(step.uses)?.description}</p>
-                <Textarea
-                  value={step.withJson}
-                  className='min-h-28 font-mono text-xs'
-                  onChange={event =>
-                    updateForm({
-                      steps: form.steps.map((item, itemIndex) =>
-                        itemIndex === index ? { ...item, withJson: event.target.value } : item
-                      )
-                    })
-                  }
-                />
-              </div>
-            ))}
-            <Button
-              variant='secondary'
-              onClick={() => updateForm({ steps: [...form.steps, defaultStep(initialCommands[0]?.uses)] })}
-            >
-              Add step
-            </Button>
-          </div>
-        </div>
-
-        <div className='grid gap-4 rounded-lg border border-border/70 bg-card/40 p-4'>
-          <div className='flex items-center justify-between gap-2 max-sm:flex-col max-sm:items-stretch'>
-            <h3 className='font-medium'>YAML</h3>
-            <div className='flex gap-2 max-sm:flex-col'>
-              <Button
-                variant='secondary'
-                disabled={busy}
-                onClick={() => void validateYaml()}
-              >
-                Validate
-              </Button>
+        <div className='grid gap-3'>
+          <PageBreadcrumbs
+            className='pt-0'
+            items={[{ label: 'Automations', href: '/automations' }, { label: title }]}
+          />
+          <div className='flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-stretch'>
+            <h2 className='min-w-0 truncate text-3xl font-medium max-sm:text-xl'>{title}</h2>
+            <div className='flex gap-2 max-sm:w-full'>
               <Button
                 disabled={busy}
+                className='max-sm:flex-1'
                 onClick={() => void save()}
               >
                 <IconDeviceFloppy className='size-4' />
                 Save
               </Button>
-              <Button
-                variant='secondary'
-                disabled={busy || !automation}
-                onClick={() => void run()}
-              >
-                <IconPlayerPlay className='size-4' />
-                Run
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant='secondary'
+                    size='icon'
+                    aria-label='More automation actions'
+                  >
+                    <IconDotsVertical className='size-4' />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align='end'>
+                  <DropdownMenuItem onSelect={() => setYamlOpen(true)}>
+                    <IconFileCode className='size-4' />
+                    Edit YAML
+                  </DropdownMenuItem>
+                  {automation ? (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        disabled={busy}
+                        className='text-red-300'
+                        onSelect={() => void remove()}
+                      >
+                        <IconTrash className='size-4' />
+                        Delete
+                      </DropdownMenuItem>
+                    </>
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
-          <Textarea
-            value={form.yaml}
-            className='min-h-[28rem] font-mono text-xs'
-            onChange={event => updateForm({ yaml: event.target.value })}
-          />
         </div>
-
-        {automation ? (
-          <div className='grid gap-4 rounded-lg border border-border/70 bg-card/40 p-4'>
-            <div className='flex items-center justify-between gap-2'>
-              <h3 className='font-medium'>Run history</h3>
-              <div className='flex gap-2'>
-                <Button
-                  variant='secondary'
-                  size='sm'
-                  disabled={busy}
-                  onClick={() => void refreshRuns()}
-                >
-                  <IconRefresh className='size-4' />
-                  Refresh
-                </Button>
-                <Button
-                  variant='destructive'
-                  size='sm'
-                  disabled={busy}
-                  onClick={() => void remove()}
-                >
-                  <IconTrash className='size-4' />
-                  Delete
-                </Button>
-              </div>
-            </div>
-            <div className='grid gap-2'>
-              {runs.map(automationRun => (
-                <div
-                  key={automationRun.id}
-                  className='grid gap-2 rounded-md border border-border/60 p-3 text-sm'
-                >
-                  <div className='flex flex-wrap items-center justify-between gap-2'>
-                    <span className={classNames('font-medium', statusTone[automationRun.status])}>
-                      {automationRun.status}
-                    </span>
-                    <span className='text-xs text-secondary-foreground'>
-                      {new Date(automationRun.createdAt).toLocaleString()}
-                    </span>
-                  </div>
-                  {automationRun.error ? <p className='text-xs text-red-300'>{automationRun.error}</p> : null}
-                  {automationRun.stepResults.map(step => (
-                    <div
-                      key={`${automationRun.id}-${step.stepId}`}
-                      className='rounded-sm bg-black/10 px-2 py-1 text-xs'
-                    >
-                      {step.stepId} · {step.uses} · {step.status}
-                      {step.error ? ` · ${step.error}` : ''}
-                    </div>
-                  ))}
-                </div>
-              ))}
-              {runs.length === 0 ? <p className='text-sm text-secondary-foreground'>No runs recorded.</p> : null}
-            </div>
-          </div>
-        ) : null}
       </section>
+
+      <section className='grid gap-6 px-6 pb-16 pt-2 max-sm:px-4'>
+        <AutomationDetailsSection
+          form={form}
+          onChange={updateForm}
+        />
+
+        <div className='grid gap-6 lg:grid-cols-[minmax(0,1fr)_28rem]'>
+          <AutomationStepsList
+            steps={form.steps}
+            commands={initialCommands}
+            selectedIndex={selectedStepIndex}
+            onSelect={selectStep}
+            onChange={updateSteps}
+          />
+          <div className='hidden lg:block'>
+            <AutomationStepEditor
+              step={selectedStep}
+              commands={initialCommands}
+              onChange={updateSelectedStep}
+            />
+          </div>
+        </div>
+      </section>
+
+      <Sheet
+        open={stepSheetOpen}
+        onOpenChange={setStepSheetOpen}
+      >
+        <SheetContent
+          side='right'
+          className='w-full overflow-y-auto sm:max-w-md lg:hidden'
+        >
+          <SheetHeader className='mb-5 pr-8 text-left'>
+            <SheetTitle>Edit step</SheetTitle>
+            <SheetDescription className='sr-only'>Edit the selected automation step.</SheetDescription>
+          </SheetHeader>
+          <AutomationStepEditor
+            step={selectedStep}
+            commands={initialCommands}
+            onChange={updateSelectedStep}
+            boxed={false}
+          />
+        </SheetContent>
+      </Sheet>
+
+      <AutomationYamlDialog
+        open={yamlOpen}
+        yaml={currentYaml}
+        busy={busy}
+        onOpenChange={setYamlOpen}
+        onApply={applyYaml}
+      />
     </ProtectedStackPageLayout>
   )
 }

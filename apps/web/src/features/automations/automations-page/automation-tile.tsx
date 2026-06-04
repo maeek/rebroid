@@ -1,14 +1,6 @@
-import {
-  IconCalendarTime,
-  IconClock,
-  IconDeviceMobile,
-  IconListCheck,
-  IconPlayerPlay,
-  IconRobot
-} from '@tabler/icons-react'
+import { IconClock, IconListCheck, IconPlayerPlay, IconRobot } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
-import type { AndroidApplication } from '@/server/orchestrator/applications/types'
 import type { Automation } from '@/server/orchestrator/automations/types'
 
 const statusVariant = (status: Automation['lastStatus']) => (status === 'failed' ? 'destructive' : 'secondary')
@@ -21,14 +13,7 @@ const formatDate = (value: string | null) => {
   }).format(new Date(value))
 }
 
-export function AutomationTile({
-  automation,
-  applicationById
-}: {
-  automation: Automation
-  applicationById: Map<string, AndroidApplication>
-}) {
-  const targetApp = automation.targetApplicationId ? applicationById.get(automation.targetApplicationId) : null
+export function AutomationTile({ automation }: { automation: Automation }) {
   const stepCount = automation.definition.spec.steps.length
 
   return (
@@ -47,14 +32,6 @@ export function AutomationTile({
         </div>
 
         <div className='grid gap-2 text-xs text-secondary-foreground'>
-          <span className='flex min-w-0 items-center gap-2'>
-            <IconDeviceMobile className='size-4 shrink-0' />
-            <span className='truncate'>{targetApp?.name ?? 'Choose when running'}</span>
-          </span>
-          <span className='flex items-center gap-2'>
-            <IconCalendarTime className='size-4 shrink-0' />
-            {automation.scheduleEnabled && automation.cronExpression ? automation.cronExpression : 'Manual'}
-          </span>
           <span className='flex items-center gap-2'>
             <IconListCheck className='size-4 shrink-0' />
             {stepCount} {stepCount === 1 ? 'step' : 'steps'}

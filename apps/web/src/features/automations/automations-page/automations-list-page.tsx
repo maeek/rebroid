@@ -6,18 +6,14 @@ import { AutomationEmptyState } from './automation-empty-state'
 import { AutomationTile } from './automation-tile'
 import type { AutomationsListPageProps } from './types'
 
-export function AutomationsListPage({ initialApplications, initialAutomations }: AutomationsListPageProps) {
-  const applicationById = new Map(initialApplications.map(app => [app.id, app]))
-
+export function AutomationsListPage({ initialAutomations }: AutomationsListPageProps) {
   return (
     <ProtectedStackPageLayout mainClassName='gap-2'>
       <section className='shrink-0 px-6 py-4 max-sm:px-4'>
         <div className='flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-start'>
           <div className='grid gap-2'>
             <h2 className='text-3xl font-medium max-sm:text-xl'>Automations</h2>
-            <p className='max-w-3xl text-sm text-secondary-foreground'>
-              User-owned Android automation workflows with YAML definitions, schedules, and run history.
-            </p>
+            <p className='max-w-3xl text-sm text-secondary-foreground'>User-owned Android automation workflows.</p>
           </div>
           <Button
             asChild
@@ -43,7 +39,6 @@ export function AutomationsListPage({ initialApplications, initialAutomations }:
               <AutomationTile
                 key={automation.id}
                 automation={automation}
-                applicationById={applicationById}
               />
             ))}
           </div>
