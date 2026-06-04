@@ -184,7 +184,7 @@ export function AutomationEditorPage({
         <div className='grid gap-3'>
           <PageBreadcrumbs
             className='pt-0'
-            items={[{ label: 'Automations' }, { label: 'Flows', href: '/automations' }, { label: title }]}
+            items={[{ label: 'Automations' }, { label: 'Workflows', href: '/automations' }, { label: title }]}
           />
           <div className='flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-stretch'>
             <h2 className='min-w-0 truncate text-3xl font-medium max-sm:text-xl'>{title}</h2>

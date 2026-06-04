@@ -40,7 +40,7 @@ export function AutomationsTable({ automations }: { automations: Automation[] })
         >
           <TableHeader className='bg-background/45'>
             <TableRow className='hover:bg-transparent'>
-              <TableHead className='w-[28rem] px-4 py-3 uppercase'>Flow</TableHead>
+              <TableHead className='w-md px-4 py-3 uppercase'>Workflow</TableHead>
               <TableHead className='w-28 px-4 py-3 uppercase'>Steps</TableHead>
               <TableHead className='w-44 px-4 py-3 uppercase'>Last run</TableHead>
               <TableHead className='w-32 px-4 py-3 uppercase'>Status</TableHead>

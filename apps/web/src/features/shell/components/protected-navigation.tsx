@@ -47,7 +47,7 @@ type ProtectedNavigationProps = {
 const appSections: NavigationItem[] = [{ name: 'Installed Apps', Icon: IconApps, href: '/apps' }]
 
 const automationSections: NavigationItem[] = [
-  { name: 'Flows', Icon: IconRobot, href: '/automations' },
+  { name: 'Workflows', Icon: IconRobot, href: '/automations' },
   { name: 'Triggers', Icon: IconCalendarTime, href: '/automations/triggers' }
 ]
 

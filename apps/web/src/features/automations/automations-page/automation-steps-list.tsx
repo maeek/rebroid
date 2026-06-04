@@ -28,11 +28,17 @@ import {
 } from '@tabler/icons-react'
 import classNames from 'classnames'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { AutomationCommandIcon } from './automation-command-catalog'
-import { AutomationStepEditor } from './automation-step-editor'
-import { AutomationRawInputDialog, AutomationStepSettingsDialog } from './automation-step-dialogs'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
 import { getActionUiStateFromInput, normalizeActionInput } from './actions/action-registry'
+import { AutomationCommandIcon } from './automation-command-catalog'
+import { AutomationRawInputDialog, AutomationStepSettingsDialog } from './automation-step-dialogs'
+import { AutomationStepEditor } from './automation-step-editor'
 import { stepSummary, stepTitle } from './automation-step-utils'
 import { defaultStep, type AutomationStepForm } from './builder-utils'
 import type { AutomationCommand } from '@/server/orchestrator/automations/types'
@@ -166,7 +172,7 @@ function AutomationStepRow({
     <div
       ref={setNodeRef}
       className={classNames(
-        'grid rounded-md shadow-sm ring-1 ring-border/50',
+        'grid rounded-md shadow-[inset_0_0_10px_rgba(0,0,0,0.1)] ring-1 ring-border/50',
         expanded ? 'bg-background/30 text-foreground' : 'bg-background/30 hover:bg-background/45',
         isDragging ? 'z-10 opacity-70 shadow-xl shadow-black/30' : null
       )}

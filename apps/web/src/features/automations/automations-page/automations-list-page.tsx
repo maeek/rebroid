@@ -14,12 +14,12 @@ export function AutomationsListPage({ initialAutomations }: AutomationsListPageP
         <div className='grid gap-3'>
           <PageBreadcrumbs
             className='pt-0'
-            items={[{ label: 'Automations' }, { label: 'Flows' }]}
+            items={[{ label: 'Automations' }, { label: 'Workflows' }]}
           />
           <div className='flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-start'>
             <div className='grid gap-2'>
-              <h2 className='text-3xl font-medium max-sm:text-xl'>Flows</h2>
-              <p className='max-w-3xl text-sm text-secondary-foreground'>User-owned Android automation flows.</p>
+              <h2 className='text-3xl font-medium max-sm:text-xl'>Workflows</h2>
+              <p className='max-w-3xl text-sm text-secondary-foreground'>User-owned Android automation workflows.</p>
             </div>
             <Button
               asChild
@@ -38,9 +38,6 @@ export function AutomationsListPage({ initialAutomations }: AutomationsListPageP
         <AutomationEmptySplash variant='automations' />
       ) : (
         <section className='px-6 pb-16 pt-4 max-sm:px-4'>
-          <div className='mb-3 px-1'>
-            <h3 className='text-sm font-semibold text-secondary-foreground'>Owned flows</h3>
-          </div>
           <AutomationsTable automations={initialAutomations} />
         </section>
       )}

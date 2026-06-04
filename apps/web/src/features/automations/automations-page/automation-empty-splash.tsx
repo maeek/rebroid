@@ -6,9 +6,9 @@ type AutomationEmptySplashVariant = 'automations' | 'triggers' | 'trigger-prereq
 
 const copy = {
   automations: {
-    title: 'No flows yet',
-    description: 'Create your first Android automation flow, then run it manually or attach it to a trigger.',
-    action: 'New flow',
+    title: 'No workflows yet',
+    description: 'Create your first Android automation workflow, then run it manually or attach it to a trigger.',
+    action: 'New workflow',
     href: '/automations/create'
   },
   triggers: {
