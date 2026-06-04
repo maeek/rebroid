@@ -4,13 +4,24 @@ import { IconPlus } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { PlatformPageHeader } from '@/features/orchestrator/components/platform-page-header'
 import { ScheduledTaskFormDialog } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-task-form-dialog'
+import {
+  ScheduledTasksProvider,
+  useScheduledTasksControllerContext
+} from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-context'
 import { ScheduledTasksTable } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-table'
-import { useScheduledTasksController } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/use-scheduled-tasks-controller'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import type { ScheduledTasksPageProps } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/types'
 
 export function ScheduledTasksPage(props: ScheduledTasksPageProps) {
-  const controller = useScheduledTasksController(props)
+  return (
+    <ScheduledTasksProvider value={props}>
+      <ScheduledTasksPageContent />
+    </ScheduledTasksProvider>
+  )
+}
+
+const ScheduledTasksPageContent = () => {
+  const controller = useScheduledTasksControllerContext()
 
   return (
     <ProtectedStackPageLayout mainClassName='gap-2'>
@@ -39,28 +50,10 @@ export function ScheduledTasksPage(props: ScheduledTasksPageProps) {
               </p>
             </div>
           </div>
-          <ScheduledTasksTable
-            tasks={controller.tasks}
-            actionByType={controller.actionByType}
-            busyTaskId={controller.busyTaskId}
-            onEdit={controller.openEditForm}
-            onRun={task => void controller.runNow(task)}
-            onToggle={(task, enabled) => void controller.toggleEnabled(task, enabled)}
-            onDelete={task => void controller.deleteTask(task)}
-          />
+          <ScheduledTasksTable />
         </div>
       </section>
-      <ScheduledTaskFormDialog
-        actionByType={controller.actionByType}
-        form={controller.form}
-        initialActions={props.initialActions}
-        isFormOpen={controller.isFormOpen}
-        isSaving={controller.isSaving}
-        onCloseForm={controller.closeForm}
-        onFormChange={controller.setForm}
-        onSubmitForm={() => void controller.submitForm()}
-        onUpdateSchedule={controller.updateSchedule}
-      />
+      <ScheduledTaskFormDialog />
     </ProtectedStackPageLayout>
   )
 }

@@ -14,6 +14,10 @@ export const permissionCategories = [
   {
     id: 'profiles-observability',
     name: 'Profiles and observability'
+  },
+  {
+    id: 'automations',
+    name: 'Automations'
   }
 ] as const
 
@@ -143,6 +147,30 @@ export const permissionDefinitions = [
     category: 'profiles-observability',
     name: 'View backend details',
     description: 'See container IDs, names, network names, volume names, and ADB endpoints.'
+  },
+  {
+    id: 'automations:manage',
+    category: 'automations',
+    name: 'Manage automations',
+    description: 'Create, edit, import, export, and delete owned automations.'
+  },
+  {
+    id: 'automations:run',
+    category: 'automations',
+    name: 'Run automations',
+    description: 'Run owned automations against owned application containers.'
+  },
+  {
+    id: 'automations:run-adb-shell',
+    category: 'automations',
+    name: 'Run ADB shell steps',
+    description: 'Allow automation steps that run Android shell commands.'
+  },
+  {
+    id: 'automations:manage-network',
+    category: 'automations',
+    name: 'Manage automation network policy',
+    description: 'Allow automation steps that change app container network restrictions and allowlists.'
   }
 ] as const
 
@@ -176,7 +204,9 @@ export const defaultUserPermissions: PermissionMap = {
   'applications:transfer-files': true,
   'applications:sync-clipboard': true,
   'applications:control-viewer': true,
-  'applications:capture-screenshot': true
+  'applications:capture-screenshot': true,
+  'automations:manage': true,
+  'automations:run': true
 }
 
 export const defaultUserQuota: ResourceQuota = {

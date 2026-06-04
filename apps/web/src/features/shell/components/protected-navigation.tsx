@@ -15,6 +15,7 @@ import {
   IconLoader2,
   IconNetwork,
   IconPlayerPlayFilled,
+  IconRobot,
   IconServerSpark,
   IconShield,
   IconUsers
@@ -47,6 +48,8 @@ const appSections: NavigationItem[] = [
   { name: 'Installed Apps', Icon: IconApps, href: '/apps' },
   { name: 'Create', Icon: IconLibraryPlus, href: '/apps/create' }
 ]
+
+const automationSections: NavigationItem[] = [{ name: 'Automations', Icon: IconRobot, href: '/automations' }]
 
 const settingsSections: NavigationItem[] = [{ name: 'General', Icon: IconAdjustments, href: '/settings/general' }]
 
@@ -287,6 +290,21 @@ export const ProtectedNavigation = ({ variant, onNavigate }: ProtectedNavigation
             label={name}
             Icon={Icon}
             isActive={pathname === href}
+            variant={variant}
+            onNavigate={onNavigate}
+          />
+        ))}
+      </ul>
+
+      <h6 className={styles.sectionTitle}>Automations</h6>
+      <ul className={styles.list}>
+        {automationSections.map(({ name, Icon, href }) => (
+          <NavLink
+            key={name}
+            href={href}
+            label={name}
+            Icon={Icon}
+            isActive={isActivePath(href)}
             variant={variant}
             onNavigate={onNavigate}
           />

@@ -7,29 +7,21 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Visible } from '@/components/ui/visible'
-import { AppDefinition } from '@/features/applications/domain/app-definition'
+import { useApplicationViewerContext } from '@/features/applications/detail/application-viewer-context'
 import { AppLogsDialog } from '@/features/applications/viewer/logs/app-logs-dialog'
-import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
+import { hasPermission } from '@/shared/permissions/permissions'
 import { AppViewerDeleteAction } from './app-viewer-delete-action'
 import { AppViewerOpenAsMeAction } from './app-viewer-open-as-me-action'
 import { AppViewerPowerAction } from './app-viewer-power-action/app-viewer-power-action'
-import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 
 export const AppViewerActions = ({
   className,
-  app,
-  initialSettings,
-  permissions,
-  isForeignOwnedApp = false,
   mode = 'workspace'
 }: {
-  app?: AppDefinition
   className?: string
-  initialSettings: OrchestratorUiSettings
-  permissions: PermissionMap
-  isForeignOwnedApp?: boolean
   mode?: 'workspace' | 'details'
 }) => {
+  const { app, initialSettings, isForeignOwnedApp, permissions } = useApplicationViewerContext()
   const [logsOpen, setLogsOpen] = useState(false)
   const canUseRuntime = !isForeignOwnedApp
   const canStart = hasPermission(permissions, 'applications:start')
@@ -53,12 +45,7 @@ export const AppViewerActions = ({
         <AppViewerOpenAsMeAction app={app} />
       </Visible>
       <Visible when={canUseRuntime && (canStart || canStop)}>
-        <AppViewerPowerAction
-          app={app}
-          canStart={canStart}
-          canStop={canStop}
-          canSwitchProfile={hasPermission(permissions, 'applications:switch-profile')}
-        />
+        <AppViewerPowerAction />
       </Visible>
       <Visible when={canDelete}>
         <AppViewerDeleteAction

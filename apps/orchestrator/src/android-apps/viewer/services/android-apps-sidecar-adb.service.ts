@@ -46,6 +46,121 @@ export class AndroidAppsSidecarAdbService {
     );
   }
 
+  async tap(app: AndroidApplication, x: number, y: number) {
+    return this.request<{ executed: boolean }>(app, '/tap', {
+      method: 'POST',
+      body: JSON.stringify({ x, y }),
+    });
+  }
+
+  async swipe(
+    app: AndroidApplication,
+    input: {
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+      durationMs: number;
+    },
+  ) {
+    return this.request<{ executed: boolean }>(app, '/swipe', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  async inputText(app: AndroidApplication, text: string) {
+    return this.request<{ executed: boolean }>(app, '/input-text', {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    });
+  }
+
+  async key(app: AndroidApplication, key: string) {
+    return this.request<{ executed: boolean }>(app, '/key', {
+      method: 'POST',
+      body: JSON.stringify({ key }),
+    });
+  }
+
+  async rotateDisplay(
+    app: AndroidApplication,
+    orientation:
+      | 'portrait'
+      | 'landscape'
+      | 'reverse-portrait'
+      | 'reverse-landscape',
+  ) {
+    return this.request<{ executed: boolean }>(app, '/rotate-display', {
+      method: 'POST',
+      body: JSON.stringify({ orientation }),
+    });
+  }
+
+  async shell(app: AndroidApplication, command: string, timeoutMs: number) {
+    return this.request<{
+      stdout: string;
+      stderr: string;
+      exitCode: number;
+    }>(app, '/shell', {
+      method: 'POST',
+      body: JSON.stringify({ command, timeoutMs }),
+    });
+  }
+
+  async dumpUi(app: AndroidApplication) {
+    return this.request<{ xml: string; dumpedAt: string }>(app, '/ui-dump');
+  }
+
+  async tapText(app: AndroidApplication, text: string) {
+    return this.request<{ found: boolean; x: number | null; y: number | null }>(
+      app,
+      '/tap-text',
+      {
+        method: 'POST',
+        body: JSON.stringify({ text }),
+      },
+    );
+  }
+
+  async pushFile(app: AndroidApplication, path: string, contentBase64: string) {
+    return this.request<{ pushed: boolean }>(app, '/files', {
+      method: 'PUT',
+      body: JSON.stringify({ path, contentBase64 }),
+    });
+  }
+
+  async pullFile(app: AndroidApplication, path: string) {
+    return this.request<{
+      path: string;
+      contentBase64: string;
+      sizeBytes: number;
+    }>(app, `/files?path=${encodeURIComponent(path)}`);
+  }
+
+  async deleteFile(app: AndroidApplication, path: string) {
+    return this.request<{ deleted: boolean }>(app, '/files', {
+      method: 'DELETE',
+      body: JSON.stringify({ path }),
+    });
+  }
+
+  async fileExists(app: AndroidApplication, path: string) {
+    const result = await this.request<{ exists: boolean }>(
+      app,
+      `/files/exists?path=${encodeURIComponent(path)}`,
+    );
+    return result.exists;
+  }
+
+  async listFiles(app: AndroidApplication, path: string) {
+    const result = await this.request<{ files: string[] }>(
+      app,
+      `/files/list?path=${encodeURIComponent(path)}`,
+    );
+    return result.files;
+  }
+
   async logcat(app: AndroidApplication, tail: number) {
     return this.request<{ source: 'adb'; collectedAt: string; output: string }>(
       app,

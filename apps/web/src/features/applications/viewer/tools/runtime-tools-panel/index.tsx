@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { IconCast, IconChevronDown, IconClipboard, IconFolder, IconLogs, IconWorld } from '@tabler/icons-react'
+import { useApplicationViewerApp } from '@/features/applications/detail/application-viewer-context'
 import { AppLogsContent } from '@/features/applications/viewer/logs/app-logs-content'
 import { cn } from '@/lib/utils'
 import { hasPermission } from '@/shared/permissions/permissions'
@@ -9,25 +10,11 @@ import { ClipboardToolsSection } from './clipboard-tools-section'
 import { DownloadsToolsSection } from './downloads-tools-section'
 import { NetworkAccessToolsSection } from './network-access-tools-section'
 import { StreamingToolsSection } from './streaming-tools-section'
-import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
-import type { PermissionMap } from '@/shared/permissions/permissions'
 
 type RuntimeToolId = 'clipboard' | 'files' | 'streaming' | 'network-access' | 'logs'
 
-export const RuntimeToolsPanel = ({
-  app,
-  permissions,
-  viewerSettings,
-  onAppChange,
-  onViewerSettingsChange
-}: {
-  app: AppDefinition
-  permissions: PermissionMap
-  viewerSettings: ViewerSettings
-  onAppChange: (app: AppDefinition) => void
-  onViewerSettingsChange: (settings: ViewerSettings) => void
-}) => {
+export const RuntimeToolsPanel = () => {
+  const { app, permissions, setApp, setViewerSettings, viewerSettings } = useApplicationViewerApp()
   const tools = useMemo(
     () =>
       [
@@ -114,7 +101,7 @@ export const RuntimeToolsPanel = ({
         <NetworkAccessToolsSection
           app={app}
           permissions={permissions}
-          onAppChange={onAppChange}
+          onAppChange={setApp}
           className={sectionClassName}
           hideHeader={inline}
         />
@@ -124,7 +111,7 @@ export const RuntimeToolsPanel = ({
     return (
       <StreamingToolsSection
         viewerSettings={viewerSettings}
-        onViewerSettingsChange={onViewerSettingsChange}
+        onViewerSettingsChange={setViewerSettings}
         className={sectionClassName}
         hideHeader={inline}
       />

@@ -25,26 +25,26 @@ export const SurfaceChrome = ({
 }) => (
   <div
     className={cn(
-      'flex h-10 shrink-0 items-center justify-between gap-3 rounded-t-lg border border-b-0 border-border/70 bg-card/90 px-2 text-foreground shadow-lg backdrop-blur-md',
+      'flex h-7 shrink-0 items-center justify-between gap-2 rounded-t-lg border border-b-0 border-border/70 bg-card/90 px-1.5 text-foreground shadow-md backdrop-blur-md',
       'w-full min-w-0',
       isActive && 'bg-secondary/80'
     )}
   >
-    <div className='flex min-w-0 items-center gap-2 overflow-x-auto'>
-      <span className='max-w-32 truncate text-sm font-medium'>{surface.name}</span>
+    <div className='flex min-w-0 items-center gap-1.5 overflow-x-auto'>
+      <span className='max-w-32 truncate text-xs font-medium'>{surface.name}</span>
     </div>
-    <div className='flex shrink-0 items-center gap-1.5'>
+    <div className='flex shrink-0 items-center gap-1'>
       <IconActionButton
         label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
         onClick={onToggleFullscreen}
       >
-        {fullscreen ? <IconArrowsMinimize className='size-4' /> : <IconArrowsMaximize className='size-4' />}
+        {fullscreen ? <IconArrowsMinimize className='size-3.5' /> : <IconArrowsMaximize className='size-3.5' />}
       </IconActionButton>
       <IconActionButton
         label='Open viewer in new window'
         onClick={onOpenPopout}
       >
-        <IconExternalLink className='size-4' />
+        <IconExternalLink className='size-3.5' />
       </IconActionButton>
       <Visible when={surface.kind === 'virtual'}>
         <IconActionButton
@@ -52,7 +52,7 @@ export const SurfaceChrome = ({
           disabled={isClosing}
           onClick={onClose}
         >
-          {isClosing ? <IconLoader2 className='size-4 animate-spin' /> : <IconX className='size-4' />}
+          {isClosing ? <IconLoader2 className='size-3.5 animate-spin' /> : <IconX className='size-3.5' />}
         </IconActionButton>
       </Visible>
     </div>

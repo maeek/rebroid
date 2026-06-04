@@ -1,5 +1,8 @@
 import { Injectable, InternalServerErrorException } from "@nestjs/common";
 import { ChildProcessByStdio, spawn } from "node:child_process";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Readable } from "node:stream";
 
 export type AdbChildProcess = ChildProcessByStdio<null, Readable, Readable>;
@@ -151,6 +154,54 @@ export class AdbService {
     timeoutMs = 30_000,
   ) {
     return this.adb(["-s", udid, "push", source, target], timeoutMs);
+  }
+
+  async pushFileContent(udid: string, target: string, contentBase64: string) {
+    const directory = await mkdtemp(join(tmpdir(), "rebroid-adb-push-"));
+    const source = join(directory, "content");
+    try {
+      await writeFile(source, Buffer.from(contentBase64, "base64"));
+      return await this.pushFile(udid, source, target);
+    } finally {
+      await rm(directory, { recursive: true, force: true }).catch(() => {});
+    }
+  }
+
+  async pullFileContent(udid: string, path: string) {
+    const content = await this.adbBuffer(
+      ["-s", udid, "exec-out", "cat", path],
+      15_000,
+    );
+    return {
+      path,
+      contentBase64: content.toString("base64"),
+      sizeBytes: content.byteLength,
+    };
+  }
+
+  async deleteFile(udid: string, path: string) {
+    return this.shell(udid, ["rm", "-f", path], 10_000);
+  }
+
+  async fileExists(udid: string, path: string) {
+    const result = await this.shell(
+      udid,
+      ["sh", "-lc", `[ -e ${this.shellQuote(path)} ] && echo yes || echo no`],
+      5_000,
+    );
+    return result.stdout.trim() === "yes";
+  }
+
+  async listFiles(udid: string, path: string) {
+    const result = await this.shell(
+      udid,
+      ["sh", "-lc", `ls -1A ${this.shellQuote(path)}`],
+      10_000,
+    );
+    return result.stdout
+      .split("\n")
+      .map((item) => item.trim())
+      .filter(Boolean);
   }
 
   async forward(
@@ -320,6 +371,122 @@ export class AdbService {
     );
   }
 
+  async tap(udid: string, x: number, y: number) {
+    return this.shell(udid, ["input", "tap", String(x), String(y)], 5_000);
+  }
+
+  async swipe(
+    udid: string,
+    input: {
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+      durationMs?: number;
+    },
+  ) {
+    return this.shell(
+      udid,
+      [
+        "input",
+        "swipe",
+        String(input.x1),
+        String(input.y1),
+        String(input.x2),
+        String(input.y2),
+        String(this.clampNumber(input.durationMs, 50, 5_000, 300)),
+      ],
+      10_000,
+    );
+  }
+
+  async inputText(udid: string, text: string) {
+    return this.shell(
+      udid,
+      ["input", "text", this.escapeInputText(text)],
+      10_000,
+    );
+  }
+
+  async keyEvent(udid: string, key: string) {
+    const normalized = key
+      .trim()
+      .toUpperCase()
+      .replace(/^KEYCODE_/, "");
+    return this.shell(
+      udid,
+      ["input", "keyevent", `KEYCODE_${normalized}`],
+      5_000,
+    );
+  }
+
+  async rotateDisplayTo(
+    udid: string,
+    orientation:
+      | "portrait"
+      | "landscape"
+      | "reverse-portrait"
+      | "reverse-landscape",
+  ) {
+    const rotationByOrientation = {
+      portrait: "0",
+      landscape: "1",
+      "reverse-portrait": "2",
+      "reverse-landscape": "3",
+    } as const;
+    await this.shell(
+      udid,
+      ["settings", "put", "system", "accelerometer_rotation", "0"],
+      5_000,
+    );
+    return this.shell(
+      udid,
+      [
+        "settings",
+        "put",
+        "system",
+        "user_rotation",
+        rotationByOrientation[orientation],
+      ],
+      5_000,
+    );
+  }
+
+  async shellCommand(udid: string, command: string, timeoutMs = 15_000) {
+    return this.shell(udid, ["sh", "-lc", command], timeoutMs);
+  }
+
+  async dumpUi(udid: string) {
+    await this.shell(
+      udid,
+      ["sh", "-lc", "uiautomator dump /sdcard/rebroid-window.xml >/dev/null"],
+      10_000,
+    );
+    const result = await this.shell(
+      udid,
+      ["cat", "/sdcard/rebroid-window.xml"],
+      10_000,
+    );
+    return result.stdout;
+  }
+
+  async tapText(udid: string, text: string) {
+    const xml = await this.dumpUi(udid);
+    const escaped = this.escapeRegExp(this.escapeXml(text));
+    const pattern = new RegExp(
+      `<node\\b[^>]*(?:text="${escaped}"|content-desc="${escaped}")[^>]*bounds="\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]"`,
+    );
+    const match = xml.match(pattern);
+    if (!match) {
+      return { found: false, x: null, y: null };
+    }
+
+    const x = Math.round((Number(match[1]) + Number(match[3])) / 2);
+    const y = Math.round((Number(match[2]) + Number(match[4])) / 2);
+    await this.tap(udid, x, y);
+    return { found: true, x, y };
+  }
+
   private async rotateDisplay(udid: string) {
     let nextRotation = "1";
 
@@ -404,6 +571,18 @@ export class AdbService {
 
   private shellQuote(value: string) {
     return `'${value.replace(/'/g, `'\\''`)}'`;
+  }
+
+  private escapeXml(value: string) {
+    return value
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  private escapeRegExp(value: string) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
   private noop(): CommandResult {

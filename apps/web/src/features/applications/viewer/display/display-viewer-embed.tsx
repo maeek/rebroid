@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { IconAlertTriangle, IconDeviceDesktop, IconLoader2 } from '@tabler/icons-react'
 import { Visible } from '@/components/ui/visible'
+import { DisplayViewerProvider } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-context'
 import { DisplayViewerShell } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-shell'
 import { buildDisplayViewerSurfaces } from '@/features/applications/viewer/display/display-viewer-surfaces'
 import { getToastErrorDescription } from '@/features/applications/viewer/utils/viewer-error-utils'
@@ -40,7 +41,7 @@ const EmbeddedViewerSplash = ({
   tone?: 'default' | 'danger'
   icon?: ReactNode
 }) => (
-  <div className='flex min-h-[34rem] w-full items-center justify-center rounded-lg border border-border/50 bg-background/35 p-6'>
+  <div className='flex min-h-136 w-full items-center justify-center bg-background/35 p-6'>
     <StatusSplash
       title={title}
       description={description}
@@ -184,22 +185,25 @@ export const DisplayViewerEmbed = ({
           Viewer connection could not be confirmed yet.
         </div>
       </Visible>
-      <DisplayViewerShell
-        applicationId={session.applicationId}
-        surfaces={surfaces}
-        initialKeyboardCaptureEnabled={viewerSettings.keyboardCaptureEnabled}
-        controlsEnabled
-        canControl={canControlViewer && session.displaySession.capabilities.includes('control')}
-        canCaptureScreenshot={canCaptureScreenshot && session.displaySession.capabilities.includes('screenshot')}
-        onSurfacesChanged={() => setReloadToken(current => current + 1)}
-        onKeyboardCaptureChange={enabled => {
-          onViewerSettingsChange?.({
-            ...viewerSettings,
-            keyboardCaptureEnabled: enabled
-          })
+      <DisplayViewerProvider
+        value={{
+          applicationId: session.applicationId,
+          surfaces,
+          initialKeyboardCaptureEnabled: viewerSettings.keyboardCaptureEnabled,
+          controlsEnabled: true,
+          canControl: canControlViewer && session.displaySession.capabilities.includes('control'),
+          canCaptureScreenshot: canCaptureScreenshot && session.displaySession.capabilities.includes('screenshot'),
+          onSurfacesChanged: () => setReloadToken(current => current + 1),
+          onKeyboardCaptureChange: enabled => {
+            onViewerSettingsChange?.({
+              ...viewerSettings,
+              keyboardCaptureEnabled: enabled
+            })
+          }
         }}
-        className='h-full w-full bg-transparent'
-      />
+      >
+        <DisplayViewerShell className='h-full w-full bg-transparent' />
+      </DisplayViewerProvider>
     </div>
   )
 }

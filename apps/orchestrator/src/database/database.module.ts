@@ -6,7 +6,10 @@ import { dirname } from 'node:path';
 import { AndroidApplication } from '../android-apps/android-application.entity';
 import { AndroidAppLifecycleJob } from '../android-apps/lifecycle/entities/android-app-lifecycle-job.entity';
 import { UploadedApk } from '../apk/entities/uploaded-apk.entity';
+import { AutomationRun } from '../automations/entities/automation-run.entity';
+import { Automation } from '../automations/entities/automation.entity';
 import { ScheduledTask } from '../scheduled-tasks/entities/scheduled-task.entity';
+import { AddAutomations1800000001000 } from './migrations/1800000001000-add-automations';
 import { InitializeSqliteSchema1800000000000 } from './migrations/1800000000000-initialize-sqlite-schema';
 
 @Module({
@@ -25,8 +28,13 @@ import { InitializeSqliteSchema1800000000000 } from './migrations/1800000000000-
             AndroidAppLifecycleJob,
             UploadedApk,
             ScheduledTask,
+            Automation,
+            AutomationRun,
           ],
-          migrations: [InitializeSqliteSchema1800000000000],
+          migrations: [
+            InitializeSqliteSchema1800000000000,
+            AddAutomations1800000001000,
+          ],
           migrationsRun: true,
           synchronize: false,
         };

@@ -9,12 +9,10 @@ import {
   navigationControls
 } from '@/features/applications/viewer/display/viewer-control-bar/commands/command-groups'
 import { IconButtonTooltip } from '@/features/applications/viewer/display/viewer-control-bar/controls/icon-button-tooltip'
+import { FloatingPrimaryControls } from '@/features/applications/viewer/display/viewer-control-bar/floating/floating-primary-controls'
+import { useViewerControlContext } from '@/features/applications/viewer/display/viewer-control-bar/viewer-control-context'
 import { cn } from '@/lib/utils'
-import type {
-  FloatingToolbarRenderProps,
-  FloatingViewerControlsProps,
-  FloatingPosition
-} from '@/features/applications/viewer/display/viewer-control-bar/types'
+import type { FloatingPosition } from '@/features/applications/viewer/display/viewer-control-bar/types'
 
 const FloatingToolbarHandle = ({
   onPointerCancel,
@@ -121,110 +119,103 @@ const FloatingNavigationToggle = ({
 const CollapsedFloatingViewerControls = ({
   collapseTowardLeft,
   handle,
-  position,
-  preventContextMenu,
-  setCollapsed
-}: Pick<FloatingToolbarRenderProps, 'position' | 'setCollapsed'> & {
+  preventContextMenu
+}: {
   collapseTowardLeft: boolean
   handle: ReactNode
   preventContextMenu: (event: { preventDefault: () => void }) => void
-}) => (
-  <FloatingToolbarShell
-    position={position}
-    preventContextMenu={preventContextMenu}
-  >
-    {handle}
-    <FloatingToolbarToggle
-      label='Show toolbar'
-      variant='secondary'
-      collapseTowardLeft={collapseTowardLeft}
-      isCollapsing={false}
-      onClick={() => setCollapsed(false)}
-    />
-  </FloatingToolbarShell>
-)
+}) => {
+  const { floatingPosition, setFloatingCollapsed } = useViewerControlContext()
+
+  return (
+    <FloatingToolbarShell
+      position={floatingPosition}
+      preventContextMenu={preventContextMenu}
+    >
+      {handle}
+      <FloatingToolbarToggle
+        label='Show toolbar'
+        variant='secondary'
+        collapseTowardLeft={collapseTowardLeft}
+        isCollapsing={false}
+        onClick={() => setFloatingCollapsed(false)}
+      />
+    </FloatingToolbarShell>
+  )
+}
 
 const ExpandedFloatingViewerControls = ({
   collapseTowardLeft,
-  controlIcon,
-  controlsDisabled,
-  floatingOpen,
   handle,
-  position,
-  preventContextMenu,
-  renderPrimaryControls,
-  sendControl,
-  setCollapsed,
-  setFloatingOpen
-}: FloatingToolbarRenderProps & {
+  preventContextMenu
+}: {
   collapseTowardLeft: boolean
   handle: ReactNode
   preventContextMenu: (event: { preventDefault: () => void }) => void
-}) => (
-  <FloatingToolbarShell
-    expanded
-    position={position}
-    preventContextMenu={preventContextMenu}
-  >
-    {handle}
-    <FloatingToolbarToggle
-      label='Hide toolbar'
-      variant='ghost'
-      collapseTowardLeft={collapseTowardLeft}
-      isCollapsing
-      onClick={() => setCollapsed(true)}
-    />
-    {renderPrimaryControls}
-    <FloatingNavigationToggle
-      floatingOpen={floatingOpen}
-      setFloatingOpen={setFloatingOpen}
-    />
-    <Visible when={floatingOpen}>
-      <IconCommandGroup
-        className='mt-1 flex flex-col items-center gap-1 border-t border-border/60 pt-1'
-        controls={navigationControls}
-        controlsDisabled={controlsDisabled}
-        controlIcon={controlIcon}
-        sendControl={sendControl}
-      />
-    </Visible>
-  </FloatingToolbarShell>
-)
+}) => {
+  const {
+    controlsDisabled,
+    controlIcon,
+    floatingOpen,
+    floatingPosition,
+    sendControl,
+    setFloatingCollapsed,
+    setFloatingOpen
+  } = useViewerControlContext()
 
-export const FloatingViewerControls = ({
-  collapsed,
-  controlIcon,
-  controlsDisabled,
-  floatingOpen,
-  position,
-  renderPrimaryControls,
-  sendControl,
-  setCollapsed,
-  setFloatingOpen,
-  onPointerDown,
-  onPointerMove,
-  onPointerUp
-}: FloatingViewerControlsProps) => {
-  const collapseTowardLeft = position.x < 160
+  return (
+    <FloatingToolbarShell
+      expanded
+      position={floatingPosition}
+      preventContextMenu={preventContextMenu}
+    >
+      {handle}
+      <FloatingToolbarToggle
+        label='Hide toolbar'
+        variant='ghost'
+        collapseTowardLeft={collapseTowardLeft}
+        isCollapsing
+        onClick={() => setFloatingCollapsed(true)}
+      />
+      <FloatingPrimaryControls />
+      <FloatingNavigationToggle
+        floatingOpen={floatingOpen}
+        setFloatingOpen={setFloatingOpen}
+      />
+      <Visible when={floatingOpen}>
+        <IconCommandGroup
+          className='mt-1 flex flex-col items-center gap-1 border-t border-border/60 pt-1'
+          controls={navigationControls}
+          controlsDisabled={controlsDisabled}
+          controlIcon={controlIcon}
+          sendControl={sendControl}
+        />
+      </Visible>
+    </FloatingToolbarShell>
+  )
+}
+
+export const FloatingViewerControls = () => {
+  const { floatingCollapsed, floatingPosition, onFloatingPointerDown, onFloatingPointerMove, onFloatingPointerUp } =
+    useViewerControlContext()
+  const collapseTowardLeft = floatingPosition.x < 160
   const preventContextMenu = (event: { preventDefault: () => void }) => event.preventDefault()
   const handle = (
     <FloatingToolbarHandle
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
+      onPointerDown={onFloatingPointerDown}
+      onPointerMove={onFloatingPointerMove}
+      onPointerUp={onFloatingPointerUp}
+      onPointerCancel={onFloatingPointerUp}
       onContextMenu={preventContextMenu}
     />
   )
 
-  if (collapsed) {
+  if (floatingCollapsed) {
     return (
       <CollapsedFloatingViewerControls
         collapseTowardLeft={collapseTowardLeft}
         handle={handle}
-        position={position}
         preventContextMenu={preventContextMenu}
-        setCollapsed={setCollapsed}
       />
     )
   }
@@ -232,16 +223,8 @@ export const FloatingViewerControls = ({
   return (
     <ExpandedFloatingViewerControls
       collapseTowardLeft={collapseTowardLeft}
-      controlIcon={controlIcon}
-      controlsDisabled={controlsDisabled}
-      floatingOpen={floatingOpen}
       handle={handle}
-      position={position}
       preventContextMenu={preventContextMenu}
-      renderPrimaryControls={renderPrimaryControls}
-      sendControl={sendControl}
-      setCollapsed={setCollapsed}
-      setFloatingOpen={setFloatingOpen}
     />
   )
 }

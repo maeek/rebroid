@@ -14,70 +14,88 @@ import {
   KeyboardCaptureButton,
   PopoutButton
 } from '@/features/applications/viewer/display/viewer-control-bar/controls/control-buttons'
-import type { ViewerControlRenderProps } from '@/features/applications/viewer/display/viewer-control-bar/types'
+import { useViewerControlContext } from '@/features/applications/viewer/display/viewer-control-bar/viewer-control-context'
 
-export const StandardViewerControls = ({
-  canCaptureScreenshot,
-  canControl,
-  controlsDisabled,
-  controlIcon,
-  fullscreen,
-  isCapturing,
-  keyboardCaptureEnabled,
-  runtimeAvailable,
-  sendControl,
-  surfaceActions,
-  onCaptureScreenshot,
-  onOpenPopout,
-  onToggleFullscreen,
-  onToggleKeyboardCapture
-}: ViewerControlRenderProps) => (
-  <div className='flex w-full flex-wrap items-center justify-center gap-2 pb-2 z-50'>
-    <IconCommandGroup
-      className='flex items-center rounded-md border border-border/60 bg-secondary/35 p-1'
-      controls={navigationControls}
-      controlsDisabled={controlsDisabled}
-      controlIcon={controlIcon}
-      sendControl={sendControl}
-    />
-    <IconCommandGroup
-      className='flex items-center rounded-md border border-border/60 bg-secondary/35 p-1'
-      controls={volumeControls}
-      controlsDisabled={controlsDisabled}
-      controlIcon={controlIcon}
-      sendControl={sendControl}
-    />
-    <IconCommandGroup
-      buttonVariant='secondary'
-      className='contents'
-      controls={displayControls}
-      controlsDisabled={controlsDisabled}
-      controlIcon={controlIcon}
-      sendControl={sendControl}
-    />
-    <KeyboardCaptureButton
-      controlsDisabled={controlsDisabled}
-      keyboardCaptureEnabled={keyboardCaptureEnabled}
-      onToggleKeyboardCapture={onToggleKeyboardCapture}
-    />
-    <AndroidPanelsMenu
-      controlsDisabled={controlsDisabled}
-      sendControl={sendControl}
-    />
-    <Visible when={runtimeAvailable && canCaptureScreenshot}>
-      <CaptureScreenshotButton
-        isCapturing={isCapturing}
-        onCaptureScreenshot={onCaptureScreenshot}
+const standardControlButtonClassName = 'size-8'
+const standardControlGroupClassName =
+  'flex h-8 items-center overflow-hidden rounded-md border border-border/60 bg-secondary/35'
+
+export const StandardViewerControls = () => {
+  const {
+    canCaptureScreenshot,
+    canControl,
+    controlsDisabled,
+    controlIcon,
+    fullscreen,
+    isCapturing,
+    keyboardCaptureEnabled,
+    runtimeAvailable,
+    sendControl,
+    surfaceActions,
+    onCaptureScreenshot,
+    onOpenPopout,
+    onToggleFullscreen,
+    onToggleKeyboardCapture
+  } = useViewerControlContext()
+
+  return (
+    <div className='z-50 flex w-full flex-wrap items-center justify-center gap-1.5 pb-1'>
+      <IconCommandGroup
+        buttonClassName={standardControlButtonClassName}
+        className={standardControlGroupClassName}
+        controls={navigationControls}
+        controlsDisabled={controlsDisabled}
+        controlIcon={controlIcon}
+        sendControl={sendControl}
       />
-    </Visible>
-    {surfaceActions}
-    <FullscreenButton
-      fullscreen={fullscreen}
-      onToggleFullscreen={onToggleFullscreen}
-    />
-    <PopoutButton onOpenPopout={onOpenPopout} />
-    <Visible when={!canControl && runtimeAvailable}>
-      <div className='text-xs text-muted-foreground'>Viewer controls are disabled by permissions.</div>
-    </Visible>
-  </div>
-)
+      <IconCommandGroup
+        buttonClassName={standardControlButtonClassName}
+        className={standardControlGroupClassName}
+        controls={volumeControls}
+        controlsDisabled={controlsDisabled}
+        controlIcon={controlIcon}
+        sendControl={sendControl}
+      />
+      <IconCommandGroup
+        buttonClassName={standardControlButtonClassName}
+        buttonVariant='secondary'
+        className='contents'
+        controls={displayControls}
+        controlsDisabled={controlsDisabled}
+        controlIcon={controlIcon}
+        sendControl={sendControl}
+      />
+      <KeyboardCaptureButton
+        className={standardControlButtonClassName}
+        controlsDisabled={controlsDisabled}
+        keyboardCaptureEnabled={keyboardCaptureEnabled}
+        onToggleKeyboardCapture={onToggleKeyboardCapture}
+      />
+      <AndroidPanelsMenu
+        buttonClassName={standardControlButtonClassName}
+        controlsDisabled={controlsDisabled}
+        sendControl={sendControl}
+      />
+      <Visible when={runtimeAvailable && canCaptureScreenshot}>
+        <CaptureScreenshotButton
+          className={standardControlButtonClassName}
+          isCapturing={isCapturing}
+          onCaptureScreenshot={onCaptureScreenshot}
+        />
+      </Visible>
+      {surfaceActions}
+      <FullscreenButton
+        className={standardControlButtonClassName}
+        fullscreen={fullscreen}
+        onToggleFullscreen={onToggleFullscreen}
+      />
+      <PopoutButton
+        className={standardControlButtonClassName}
+        onOpenPopout={onOpenPopout}
+      />
+      <Visible when={!canControl && runtimeAvailable}>
+        <div className='text-xs text-muted-foreground'>Viewer controls are disabled by permissions.</div>
+      </Visible>
+    </div>
+  )
+}

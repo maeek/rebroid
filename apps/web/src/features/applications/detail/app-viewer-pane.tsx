@@ -12,31 +12,20 @@ import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { startApplicationAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { getRedroidDisplayDimensionsFromArgs } from '@/shared/runtime/redroid-runtime'
-import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import { useApplicationViewerApp } from './application-viewer-context'
 import type { ViewerOrientation } from '@/features/applications/viewer/player/android-viewer'
-import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
 
-export const AppViewerPane = ({
-  app,
-  canAttach = true,
-  canCaptureScreenshot = false,
-  canControlViewer = false,
-  canStart = false,
-  placement = 'side',
-  viewerSettings,
-  onAppChange,
-  onViewerSettingsChange
-}: {
-  app: AppDefinition
-  canAttach?: boolean
-  canCaptureScreenshot?: boolean
-  canControlViewer?: boolean
-  canStart?: boolean
-  placement?: 'side' | 'top'
-  viewerSettings: ViewerSettings
-  onAppChange: (app: AppDefinition) => void
-  onViewerSettingsChange?: (settings: ViewerSettings) => void
-}) => {
+export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'top' }) => {
+  const {
+    app,
+    canAttach,
+    canCaptureScreenshot,
+    canControlViewer,
+    canStartCurrentApp,
+    setApp,
+    setViewerSettings,
+    viewerSettings
+  } = useApplicationViewerApp()
   const [orientation, setOrientation] = useState<ViewerOrientation>(() => {
     const display = getRedroidDisplayDimensionsFromArgs(app.containerArgs)
     return display.width >= display.height ? 'landscape' : 'portrait'
@@ -51,14 +40,14 @@ export const AppViewerPane = ({
   }, [app.containerArgs, app.id])
 
   const handleStart = () => {
-    if (!canStart || !canAttach) {
+    if (!canStartCurrentApp || !canAttach) {
       return
     }
 
     startTransition(async () => {
       try {
         const nextApp = await startApplicationAction(app.id)
-        onAppChange(mapAndroidApplicationToAppDefinition(nextApp))
+        setApp(mapAndroidApplicationToAppDefinition(nextApp))
       } catch (error) {
         toast({
           title: 'Could not start app',
@@ -91,7 +80,7 @@ export const AppViewerPane = ({
             viewerSettings={viewerSettings}
             canControlViewer={canControlViewer}
             canCaptureScreenshot={canCaptureScreenshot}
-            onViewerSettingsChange={onViewerSettingsChange}
+            onViewerSettingsChange={setViewerSettings}
           />
         </Visible>
         <Visible when={canAttach && !runtimeAvailable}>
@@ -100,7 +89,7 @@ export const AppViewerPane = ({
             fullscreen={false}
             orientation={orientation}
             viewerSettings={viewerSettings}
-            canStart={canStart}
+            canStart={canStartCurrentApp}
             isStarting={isStarting}
             onStart={handleStart}
           />

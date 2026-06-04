@@ -8,51 +8,52 @@ import { Visible } from '@/components/ui/visible'
 import { ContainerStateBadge } from '@/features/orchestrator/components/orchestrator-containers-table-parts'
 import { PlatformDetailRow, formatPlatformDate } from '@/features/orchestrator/components/platform-detail-parts'
 import {
+  useContainerDetailContext,
+  useContainerDetailControllerContext
+} from '@/features/orchestrator/details/orchestrator-container-detail/container-detail-context'
+import {
   formatContainerNetworks,
-  formatContainerPorts,
-  type ContainerPendingAction
+  formatContainerPorts
 } from '@/features/orchestrator/details/orchestrator-container-detail/container-detail-utils'
 import type { PlatformContainerDetails } from '@/server/orchestrator/platform/types'
 
-const ContainerOverviewHeader = ({
-  container,
-  onAction
-}: {
-  container: PlatformContainerDetails['container']
-  onAction: (action: ContainerPendingAction) => void
-}) => (
-  <div className='flex flex-wrap items-center justify-between gap-4'>
-    <div className='flex min-w-0 flex-col gap-2'>
-      <div className='flex flex-wrap items-center gap-2'>
-        <h3 className='text-xl font-medium'>Overview</h3>
-        <Visible when={container.managed}>
-          <Badge variant='status'>managed</Badge>
-        </Visible>
-        <ContainerStateBadge state={container.state} />
+const ContainerOverviewHeader = ({ container }: { container: PlatformContainerDetails['container'] }) => {
+  const { setPendingAction } = useContainerDetailControllerContext()
+
+  return (
+    <div className='flex flex-wrap items-center justify-between gap-4'>
+      <div className='flex min-w-0 flex-col gap-2'>
+        <div className='flex flex-wrap items-center gap-2'>
+          <h3 className='text-xl font-medium'>Overview</h3>
+          <Visible when={container.managed}>
+            <Badge variant='status'>managed</Badge>
+          </Visible>
+          <ContainerStateBadge state={container.state} />
+        </div>
+        <div className='font-mono text-xs text-muted-foreground'>{container.id}</div>
       </div>
-      <div className='font-mono text-xs text-muted-foreground'>{container.id}</div>
+      <div className='flex flex-wrap gap-2'>
+        <Button
+          type='button'
+          variant='secondary'
+          disabled={container.state !== 'running'}
+          onClick={() => setPendingAction('stop')}
+        >
+          <IconPlayerStopFilled className='size-4' />
+          Stop
+        </Button>
+        <Button
+          type='button'
+          variant='destructive'
+          onClick={() => setPendingAction('remove')}
+        >
+          <IconTrash className='size-4' />
+          Remove
+        </Button>
+      </div>
     </div>
-    <div className='flex flex-wrap gap-2'>
-      <Button
-        type='button'
-        variant='secondary'
-        disabled={container.state !== 'running'}
-        onClick={() => onAction('stop')}
-      >
-        <IconPlayerStopFilled className='size-4' />
-        Stop
-      </Button>
-      <Button
-        type='button'
-        variant='destructive'
-        onClick={() => onAction('remove')}
-      >
-        <IconTrash className='size-4' />
-        Remove
-      </Button>
-    </div>
-  </div>
-)
+  )
+}
 
 const ContainerIdentityDetails = ({ container }: { container: PlatformContainerDetails['container'] }) => (
   <div>
@@ -104,25 +105,21 @@ const ContainerRuntimeDetails = ({ container }: { container: PlatformContainerDe
   </div>
 )
 
-export const ContainerOverviewSection = ({
-  container,
-  onAction
-}: {
-  container: PlatformContainerDetails['container']
-  onAction: (action: ContainerPendingAction) => void
-}) => (
-  <Section
-    boxed
-    className='bg-card/40'
-    contentClassName='gap-5'
-  >
-    <ContainerOverviewHeader
-      container={container}
-      onAction={onAction}
-    />
-    <div className='grid gap-6 xl:grid-cols-2'>
-      <ContainerIdentityDetails container={container} />
-      <ContainerRuntimeDetails container={container} />
-    </div>
-  </Section>
-)
+export const ContainerOverviewSection = () => {
+  const { details } = useContainerDetailContext()
+  const container = details.container
+
+  return (
+    <Section
+      boxed
+      className='bg-card/40'
+      contentClassName='gap-5'
+    >
+      <ContainerOverviewHeader container={container} />
+      <div className='grid gap-6 xl:grid-cols-2'>
+        <ContainerIdentityDetails container={container} />
+        <ContainerRuntimeDetails container={container} />
+      </div>
+    </Section>
+  )
+}

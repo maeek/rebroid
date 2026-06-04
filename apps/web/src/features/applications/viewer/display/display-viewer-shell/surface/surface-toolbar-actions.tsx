@@ -9,12 +9,14 @@ export const SurfaceToolbarActions = ({
   isRecordingBusy,
   recording,
   canRecord,
-  onToggleRecording
+  onToggleRecording,
+  buttonClassName = 'size-9'
 }: {
   isRecordingBusy: boolean
   recording?: ApplicationDisplayRecording
   canRecord: boolean
   onToggleRecording: () => void
+  buttonClassName?: string
 }) => (
   <>
     <Visible when={canRecord}>
@@ -22,6 +24,7 @@ export const SurfaceToolbarActions = ({
         label={recording?.status === 'recording' ? 'Stop recording' : 'Start recording'}
         disabled={isRecordingBusy}
         onClick={onToggleRecording}
+        className={buttonClassName}
       >
         {isRecordingBusy ? (
           <IconLoader2 className='size-4 animate-spin' />

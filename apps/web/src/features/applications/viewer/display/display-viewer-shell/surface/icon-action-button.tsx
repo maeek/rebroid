@@ -3,17 +3,20 @@
 import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
 
 export const IconActionButton = ({
   label,
   disabled,
   onClick,
-  children
+  children,
+  className
 }: {
   label: string
   disabled?: boolean
   onClick: () => void
   children: ReactNode
+  className?: string
 }) => (
   <Tooltip>
     <TooltipTrigger asChild>
@@ -24,7 +27,7 @@ export const IconActionButton = ({
         disabled={disabled}
         onClick={onClick}
         aria-label={label}
-        className='size-8'
+        className={cn('size-6', className)}
       >
         {children}
       </Button>

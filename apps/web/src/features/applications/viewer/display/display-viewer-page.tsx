@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { IconAlertTriangle, IconDeviceDesktop, IconLoader2 } from '@tabler/icons-react'
 import { headers } from 'next/headers'
 import { Visible } from '@/components/ui/visible'
+import { DisplayViewerProvider } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-context'
 import { DisplayViewerShell } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-shell'
 import { buildDisplayViewerSurfaces } from '@/features/applications/viewer/display/display-viewer-surfaces'
 import {
@@ -12,8 +13,10 @@ import {
 import { StatusSplash } from '@/features/shell/components/status-splash'
 import { getApplicationAction } from '@/server/orchestrator/applications/actions/queries/get-application-action'
 import { getScrcpySessionAction } from '@/server/orchestrator/applications/actions/runtime/viewer-actions'
+import { listAutomationsAction } from '@/server/orchestrator/automations/actions'
 import { getRedroidDisplayDimensionsFromArgs } from '@/shared/runtime/redroid-runtime'
 import { ViewerActivityKeepalive, ViewerStartupRefresh } from './viewer-activity-keepalive'
+import { ViewerAutomationRunner } from './viewer-automation-runner'
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
 import type { AndroidApplication, ScrcpySession } from '@/server/orchestrator/applications/types'
 
@@ -421,6 +424,7 @@ export async function DisplayViewerPage({
     selectedSurfaceId,
     controlsEnabled
   })
+  const automations = await listAutomationsAction().catch(() => [])
 
   return (
     <main className='relative min-h-screen overflow-hidden bg-background'>
@@ -430,13 +434,21 @@ export async function DisplayViewerPage({
           {viewerIssue?.kind === 'warning' ? viewerIssue.banner : 'Viewer connection could not be confirmed yet.'}
         </div>
       </Visible>
-      <DisplayViewerShell
+      <DisplayViewerProvider
+        value={{
+          applicationId: session.applicationId,
+          surfaces,
+          initialKeyboardCaptureEnabled: viewerSettings.keyboardCaptureEnabled,
+          controlsEnabled,
+          canControl: session.displaySession.capabilities.includes('control'),
+          canCaptureScreenshot: session.displaySession.capabilities.includes('screenshot')
+        }}
+      >
+        <DisplayViewerShell />
+      </DisplayViewerProvider>
+      <ViewerAutomationRunner
         applicationId={session.applicationId}
-        surfaces={surfaces}
-        initialKeyboardCaptureEnabled={viewerSettings.keyboardCaptureEnabled}
-        controlsEnabled={controlsEnabled}
-        canControl={session.displaySession.capabilities.includes('control')}
-        canCaptureScreenshot={session.displaySession.capabilities.includes('screenshot')}
+        automations={automations}
       />
       <div className='pointer-events-none absolute inset-0 hidden items-center justify-center bg-background/80 text-secondary-foreground'>
         <IconLoader2 className='size-8 animate-spin' />

@@ -1,6 +1,5 @@
 'use client'
 
-import type { Dispatch, SetStateAction } from 'react'
 import { IconDeviceFloppy, IconPlus } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -21,37 +20,23 @@ import {
   actionNeedsDanglingOnly,
   actionNeedsRetentionDays
 } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/schedule-utils'
-import type { FormState, ScheduledTasksActionMap } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/types'
-import type { ScheduledTaskAction, ScheduledTaskActionType } from '@/server/orchestrator/scheduled-tasks/types'
+import {
+  useScheduledTasksContext,
+  useScheduledTasksControllerContext
+} from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-context'
+import type { ScheduledTaskActionType } from '@/server/orchestrator/scheduled-tasks/types'
 
-export const ScheduledTaskFormDialog = ({
-  actionByType,
-  form,
-  initialActions,
-  isFormOpen,
-  isSaving,
-  onCloseForm,
-  onFormChange,
-  onSubmitForm,
-  onUpdateSchedule
-}: {
-  actionByType: ScheduledTasksActionMap
-  form: FormState
-  initialActions: ScheduledTaskAction[]
-  isFormOpen: boolean
-  isSaving: boolean
-  onCloseForm: (open: boolean) => void
-  onFormChange: Dispatch<SetStateAction<FormState>>
-  onSubmitForm: () => void
-  onUpdateSchedule: (patch: Partial<FormState['schedule']>) => void
-}) => {
+export const ScheduledTaskFormDialog = () => {
+  const { initialActions } = useScheduledTasksContext()
+  const { actionByType, closeForm, form, isFormOpen, isSaving, setForm, submitForm, updateSchedule } =
+    useScheduledTasksControllerContext()
   const isEditing = Boolean(form.id)
   const isEditingPredefined = form.kind === 'predefined'
 
   return (
     <Dialog
       open={isFormOpen}
-      onOpenChange={onCloseForm}
+      onOpenChange={closeForm}
     >
       <DialogContent className='sm:max-w-2xl'>
         <DialogHeader>
@@ -66,7 +51,7 @@ export const ScheduledTaskFormDialog = ({
           className='grid gap-5'
           onSubmit={event => {
             event.preventDefault()
-            onSubmitForm()
+            void submitForm()
           }}
         >
           <div className='flex flex-wrap items-center justify-between gap-3'>
@@ -74,7 +59,7 @@ export const ScheduledTaskFormDialog = ({
             <label className='flex items-center gap-3 text-sm text-foreground'>
               <Switch
                 checked={form.enabled ?? true}
-                onCheckedChange={enabled => onFormChange(current => ({ ...current, enabled }))}
+                onCheckedChange={enabled => setForm(current => ({ ...current, enabled }))}
               />
               Enabled
             </label>
@@ -85,7 +70,7 @@ export const ScheduledTaskFormDialog = ({
               value={form.name}
               disabled={isEditingPredefined}
               placeholder='Nightly cleanup'
-              onChange={event => onFormChange(current => ({ ...current, name: event.target.value }))}
+              onChange={event => setForm(current => ({ ...current, name: event.target.value }))}
             />
           </div>
           <div className='grid gap-2'>
@@ -94,7 +79,7 @@ export const ScheduledTaskFormDialog = ({
               value={form.actionType}
               disabled={isEditingPredefined}
               onValueChange={value =>
-                onFormChange(current => ({
+                setForm(current => ({
                   ...current,
                   actionType: value as ScheduledTaskActionType,
                   payload: {}
@@ -119,14 +104,14 @@ export const ScheduledTaskFormDialog = ({
           </div>
           <ScheduleEditor
             schedule={form.schedule}
-            onScheduleChange={onUpdateSchedule}
+            onScheduleChange={updateSchedule}
           />
           <Visible when={actionNeedsDanglingOnly(form.actionType)}>
             <label className='flex items-center gap-2 text-sm text-foreground'>
               <Checkbox
                 checked={form.payload?.danglingOnly ?? true}
                 onCheckedChange={checked =>
-                  onFormChange(current => ({
+                  setForm(current => ({
                     ...current,
                     payload: { ...current.payload, danglingOnly: checked === true }
                   }))
@@ -145,7 +130,7 @@ export const ScheduledTaskFormDialog = ({
                   max={3650}
                   value={form.payload?.retentionDays ?? 30}
                   onChange={event =>
-                    onFormChange(current => ({
+                    setForm(current => ({
                       ...current,
                       payload: { ...current.payload, retentionDays: Number(event.target.value) }
                     }))
@@ -160,7 +145,7 @@ export const ScheduledTaskFormDialog = ({
               type='button'
               variant='secondary'
               disabled={isSaving}
-              onClick={() => onCloseForm(false)}
+              onClick={() => closeForm(false)}
             >
               Cancel
             </Button>
