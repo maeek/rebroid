@@ -1,9 +1,10 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { ConflictException, Injectable, Logger } from "@nestjs/common";
 import { createServer, Server, Socket } from "node:net";
 import { AdbService } from "../adb/adb.service";
 import type { AdbChildProcess, ViewerCommand } from "../adb/adb.service";
 import { SidecarConfigService } from "../shared/sidecar-config.service";
 import { DirectAdbConnection } from "./direct-adb-connection";
+import { H264Mp4Recorder } from "./h264-mp4-recorder";
 import { ScrcpyControlCodec } from "./scrcpy-control-codec";
 import {
   ForwardedVideoSocket,
@@ -65,6 +66,8 @@ const AUDIO_PACKET_HEADER_BYTES = AUDIO_PACKET_MAGIC.length + 1 + 8;
 const AUDIO_CONFIGURATION_FAILURE_REASON =
   "invalid audio stream: scrcpy stream configuration failed on the device";
 const MINIMUM_SCRCPY_SERVER_MAJOR = 4;
+const MAX_SUPPORTED_ANDROID_SDK = 34;
+const SCRCPY_RECORDING_MP4_TIMESCALE = 90_000;
 const COMPATIBILITY_PROBE_LOGCAT_LINES = 220;
 const COMPATIBILITY_PROBE_PROPERTIES = [
   "ro.build.version.release",
@@ -124,6 +127,27 @@ interface ScrcpyCompatibilityProbe {
   >;
   encoders: string[];
   diagnostics: string[];
+}
+
+interface ActiveRecording {
+  id: string;
+  sessionId: string;
+  startedAt: string;
+  fileName: string;
+  recorder: H264Mp4Recorder;
+}
+
+interface CompletedRecording {
+  id: string;
+  sessionId: string;
+  startedAt: string;
+  stoppedAt: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  durationMs: number;
+  sampleCount: number;
+  data: Buffer;
 }
 
 class ScrcpyPacketParser {
@@ -204,6 +228,8 @@ export class ScrcpyService {
     QueuedControlMessage[]
   >();
   private readonly lastLogcatDiagnosticsAt = new Map<string, number>();
+  private readonly activeRecordings = new Map<string, ActiveRecording>();
+  private readonly completedRecordings = new Map<string, CompletedRecording>();
 
   constructor(
     private readonly adb: AdbService,
@@ -227,6 +253,7 @@ export class ScrcpyService {
       options.udid,
       `scrcpy:${options.udid}:${options.sessionId}`,
     );
+    this.assertSupportedAndroidVersion(compatibilityProbe);
     this.sendCompatibilityStatus(options.client, effectiveOptions, {
       message: this.compatibilityProbeSummary(compatibilityProbe),
     });
@@ -350,10 +377,144 @@ export class ScrcpyService {
       .get(sessionId)
       ?.close?.(1000, "Display session released");
     this.streamClients.delete(sessionId);
+    this.finishRecordingForSession(sessionId);
   }
 
   serverVersion() {
     return this.config.scrcpyVersion;
+  }
+
+  startRecording(sessionId: string, displayName = "display") {
+    const existing = this.activeRecordings.get(sessionId);
+    if (existing) {
+      return this.recordingMetadata(existing);
+    }
+
+    const startedAt = new Date().toISOString();
+    const id = `${sessionId}-${Date.now().toString(36)}`;
+    const fileName = `${this.safeFileSegment(displayName)}-${startedAt.replace(/[:.]/g, "-")}.mp4`;
+    const recording: ActiveRecording = {
+      id,
+      sessionId,
+      startedAt,
+      fileName,
+      recorder: new H264Mp4Recorder(
+        Math.max(1, Math.round(SCRCPY_RECORDING_MP4_TIMESCALE / 30)),
+      ),
+    };
+    this.activeRecordings.set(sessionId, recording);
+    return this.recordingMetadata(recording);
+  }
+
+  stopRecording(sessionId: string) {
+    const recording = this.activeRecordings.get(sessionId);
+    if (!recording) {
+      throw new ConflictException("Display recording is not active.");
+    }
+
+    try {
+      return this.completeRecording(recording);
+    } catch (error) {
+      throw new ConflictException(this.errorMessage(error));
+    }
+  }
+
+  listRecordings(sessionId: string) {
+    return [
+      ...[this.activeRecordings.get(sessionId)]
+        .filter((recording): recording is ActiveRecording => Boolean(recording))
+        .map((recording) => this.recordingMetadata(recording)),
+      ...[...this.completedRecordings.values()]
+        .filter((recording) => recording.sessionId === sessionId)
+        .map((recording) => this.recordingMetadata(recording)),
+    ];
+  }
+
+  getRecording(recordingId: string) {
+    return this.completedRecordings.get(recordingId) ?? null;
+  }
+
+  async assertTargetSupported(udid: string) {
+    this.assertCompatibleScrcpyServerVersion();
+    this.assertSupportedAndroidVersion(
+      await this.collectCompatibilityProbe(udid, `scrcpy:${udid}:support`),
+    );
+  }
+
+  private recordVideoPacket(sessionId: string, packet: ScrcpyPacket) {
+    const recording = this.activeRecordings.get(sessionId);
+    if (!recording) {
+      return;
+    }
+
+    recording.recorder.addPacket(packet.data, packet.timestampUs);
+  }
+
+  private finishRecordingForSession(sessionId: string) {
+    const recording = this.activeRecordings.get(sessionId);
+    if (!recording) {
+      return null;
+    }
+
+    try {
+      return this.completeRecording(recording);
+    } catch (error) {
+      this.logger.warn(
+        `[scrcpy:${sessionId}] dropping unfinished recording: ${this.errorMessage(error)}`,
+      );
+      this.activeRecordings.delete(sessionId);
+      return null;
+    }
+  }
+
+  private completeRecording(recording: ActiveRecording) {
+    const data = recording.recorder.finish();
+    const stoppedAt = new Date().toISOString();
+    const completed: CompletedRecording = {
+      id: recording.id,
+      sessionId: recording.sessionId,
+      startedAt: recording.startedAt,
+      stoppedAt,
+      fileName: recording.fileName,
+      mimeType: "video/mp4",
+      sizeBytes: data.length,
+      durationMs: recording.recorder.durationMs,
+      sampleCount: recording.recorder.sampleCount,
+      data,
+    };
+    this.activeRecordings.delete(recording.sessionId);
+    this.completedRecordings.set(recording.id, completed);
+    return this.recordingMetadata(completed);
+  }
+
+  private recordingMetadata(recording: ActiveRecording | CompletedRecording) {
+    const completed = "data" in recording;
+    return {
+      id: recording.id,
+      sessionId: recording.sessionId,
+      status: completed ? ("stopped" as const) : ("recording" as const),
+      startedAt: recording.startedAt,
+      stoppedAt: completed ? recording.stoppedAt : null,
+      fileName: recording.fileName,
+      mimeType: "video/mp4",
+      sizeBytes: completed ? recording.sizeBytes : 0,
+      durationMs: completed ? recording.durationMs : 0,
+      sampleCount: completed ? recording.sampleCount : 0,
+      downloadPath: completed
+        ? `/rebroid/display/recordings/${encodeURIComponent(recording.id)}`
+        : null,
+    };
+  }
+
+  private safeFileSegment(value: string) {
+    return (
+      value
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9._-]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 64) || "display"
+    );
   }
 
   private async streamRawVideoAttempt(
@@ -656,11 +817,13 @@ export class ScrcpyService {
         udid: options.udid,
       });
 
-      const forwardVideoPayload = (chunk: Buffer) => {
+      const forwardVideoPayload = (packet: ScrcpyPacket) => {
         options.onActivity?.();
+        const chunk = packet.data;
         if (!chunk.length) {
           return;
         }
+        this.recordVideoPacket(options.sessionId, packet);
         if (options.client.readyState === SCRCPY_WS_OPEN) {
           bytesForwarded += chunk.byteLength;
           if (options.client.bufferedAmount > WS_HIGH_WATERMARK_BYTES) {
@@ -736,7 +899,7 @@ export class ScrcpyService {
           const videoParser = new ScrcpyPacketParser(
             options.codec === "h265" ? SCRCPY_CODEC_H265 : SCRCPY_CODEC_H264,
             true,
-            (packet) => forwardVideoPayload(packet.data),
+            forwardVideoPayload,
           );
           const audioParser = audioSocket
             ? new ScrcpyPacketParser(
@@ -775,8 +938,22 @@ export class ScrcpyService {
           });
           audioSocket?.resume();
         } else {
-          forwardVideoPayload(connectedVideo.initialPayload);
-          streamSocket?.on("data", forwardVideoPayload);
+          const videoParser = new ScrcpyPacketParser(
+            options.codec === "h265" ? SCRCPY_CODEC_H265 : SCRCPY_CODEC_H264,
+            true,
+            forwardVideoPayload,
+          );
+          videoParser.push(connectedVideo.initialPayload);
+          streamSocket?.on("data", (chunk: Buffer) => {
+            try {
+              videoParser.push(chunk);
+            } catch (error) {
+              this.runInBackground(
+                cleanup(`invalid video stream: ${this.errorMessage(error)}`),
+                `[${logPrefix}] video parser cleanup`,
+              );
+            }
+          });
         }
         streamSocket?.resume();
         let controlReadBuffer = Buffer.alloc(0);
@@ -913,14 +1090,23 @@ export class ScrcpyService {
       "power_on=true",
       "raw_stream=true",
       "send_device_meta=false",
-      `send_frame_meta=${options.audio ? "true" : "false"}`,
+      "send_frame_meta=true",
       `send_dummy_byte=${tunnelMode === "reverse" ? "false" : "true"}`,
-      `send_stream_meta=${options.audio ? "true" : "false"}`,
+      "send_stream_meta=true",
       `max_size=${options.maxSize}`,
       `video_bit_rate=${options.bitrate}`,
       `max_fps=${options.maxFps}`,
       `video_codec=${options.codec}`,
     ];
+
+    if (options.newDisplay) {
+      serverOptions.push(
+        `new_display=${options.newDisplay.width}x${options.newDisplay.height}/${options.newDisplay.dpi}`,
+        "vd_destroy_content=false",
+      );
+    } else if (options.displayId !== undefined) {
+      serverOptions.push(`display_id=${options.displayId}`);
+    }
 
     if (tunnelMode !== "reverse") {
       serverOptions.push("tunnel_forward=true");
@@ -1558,9 +1744,21 @@ export class ScrcpyService {
     const major = Number(version.split(".")[0]);
     if (!Number.isFinite(major) || major < MINIMUM_SCRCPY_SERVER_MAJOR) {
       throw new Error(
-        `Display sidecar bundles scrcpy server ${version}; Android 15/16 support requires scrcpy ${MINIMUM_SCRCPY_SERVER_MAJOR}.0 or newer.`,
+        `Display sidecar bundles scrcpy server ${version}; Rebroid display streaming requires scrcpy ${MINIMUM_SCRCPY_SERVER_MAJOR}.0 or newer.`,
       );
     }
+  }
+
+  private assertSupportedAndroidVersion(
+    probe: ScrcpyCompatibilityProbe | null,
+  ) {
+    if (!probe?.androidSdk || probe.androidSdk <= MAX_SUPPORTED_ANDROID_SDK) {
+      return;
+    }
+
+    throw new Error(
+      `Redroid Android ${probe.androidRelease || probe.androidSdk} is not supported by Rebroid display streaming yet. Use a Redroid 13 or 14 image for live display access.`,
+    );
   }
 
   private async collectCompatibilityProbe(

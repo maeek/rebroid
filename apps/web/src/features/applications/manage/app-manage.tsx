@@ -13,9 +13,9 @@ import { mapAndroidApplicationToAppDefinition } from '@/features/applications/do
 import { getAppRefreshIntervalMs } from '@/features/applications/domain/refresh'
 import { resolveAppIconUrl } from '@/features/applications/icons/url'
 import { AppViewerDeleteAction } from '@/features/applications/viewer/actions/app-viewer-delete-action'
-import { AppLogsContent } from '@/features/applications/viewer/app-logs-content'
-import { AppViewerHeading } from '@/features/applications/viewer/heading'
-import { AndroidNotifications } from '@/features/applications/viewer/notifications'
+import { AppViewerHeading } from '@/features/applications/viewer/components/heading'
+import { AppLogsContent } from '@/features/applications/viewer/logs/app-logs-content'
+import { AndroidNotifications } from '@/features/applications/viewer/notifications/android-notifications'
 import { useResourceLimitBounds } from '@/features/settings/hooks/use-resource-limit-bounds'
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
 import { ProtectedSplitPageContent, ProtectedSplitPageLayout } from '@/features/shell/components/protected-page-shell'
@@ -286,8 +286,8 @@ export default function AppManage({
             >
               <AppLogsContent
                 app={currentApp}
-                className='min-h-[28rem]'
-                outputClassName='min-h-[20rem]'
+                className='min-h-112'
+                outputClassName='min-h-[20rem] max-h-[40vh]'
               />
             </Section>
           </Visible>

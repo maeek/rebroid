@@ -33,6 +33,12 @@ export interface ScrcpyStreamOptions {
   udid: string;
   client: ScrcpyStreamClient;
   codec: ScrcpyVideoCodec;
+  displayId?: number;
+  newDisplay?: {
+    width: number;
+    height: number;
+    dpi: number;
+  };
   maxSize: number;
   maxFps: number;
   bitrate: number;

@@ -1,7 +1,8 @@
-import { emptyRequest, jsonRequest } from '../request'
+import { emptyRequest, jsonRequest, responseRequest } from '../request'
 import type {
   ApplicationViewerControlCommand,
   ApplicationViewerControlResponse,
+  ApplicationDisplayRecording,
   ScrcpySession,
   ScrcpySessionAccess
 } from './types'
@@ -15,6 +16,7 @@ export const orchestratorAppViewerClient = {
     const query = new URLSearchParams()
     if (access.control) query.set('control', 'true')
     if (access.clipboard) query.set('clipboard', 'true')
+    if (access.screenshot) query.set('screenshot', 'true')
     const suffix = query.size > 0 ? `?${query.toString()}` : ''
     return emptyRequest<ScrcpySession>(`/apps/${id}/viewer/session${suffix}`)
   },
@@ -22,6 +24,46 @@ export const orchestratorAppViewerClient = {
   recordViewerActivity(id: string) {
     return emptyRequest<{ id: string; lastScrcpyActivityAt: string }>(`/apps/${id}/viewer/activity`, {
       method: 'POST'
+    })
+  },
+
+  createVirtualDisplay(id: string) {
+    return emptyRequest<NonNullable<ScrcpySession['displaySession']>>(`/apps/${id}/viewer/displays`, {
+      method: 'POST'
+    })
+  },
+
+  releaseVirtualDisplay(id: string, surfaceId: string) {
+    return emptyRequest<NonNullable<ScrcpySession['displaySession']>>(
+      `/apps/${id}/viewer/displays/${encodeURIComponent(surfaceId)}/release`,
+      {
+        method: 'POST'
+      }
+    )
+  },
+
+  startRecording(id: string, surfaceId: string) {
+    return emptyRequest<ApplicationDisplayRecording>(
+      `/apps/${id}/viewer/displays/${encodeURIComponent(surfaceId)}/recording/start`,
+      {
+        method: 'POST'
+      }
+    )
+  },
+
+  stopRecording(id: string, surfaceId: string) {
+    return emptyRequest<ApplicationDisplayRecording>(
+      `/apps/${id}/viewer/displays/${encodeURIComponent(surfaceId)}/recording/stop`,
+      {
+        method: 'POST'
+      }
+    )
+  },
+
+  downloadRecording(id: string, recordingId: string, surfaceSessionId: string) {
+    const query = new URLSearchParams({ surfaceSessionId })
+    return responseRequest(`/apps/${id}/viewer/recordings/${encodeURIComponent(recordingId)}?${query.toString()}`, {
+      headers: { accept: 'video/mp4' }
     })
   }
 }

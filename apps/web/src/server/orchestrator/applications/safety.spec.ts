@@ -35,12 +35,41 @@ const session: ScrcpySession = {
   adbPort: 5555,
   displaySession: {
     id: 'display-1',
+    surfaceId: 'main',
+    surfaceKind: 'main',
+    displayName: 'Main display',
     status: 'created',
     createdAt: '2026-01-01T00:00:00.000Z',
     lastActivityAt: '2026-01-01T00:00:00.000Z',
     expiresAt: '2026-01-01T00:01:00.000Z',
     maxExpiresAt: '2026-01-01T01:00:00.000Z',
     capabilities: [],
+    surface: {
+      id: 'main',
+      sessionId: 'display-1',
+      kind: 'main',
+      name: 'Main display',
+      status: 'created',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      lastActivityAt: '2026-01-01T00:00:00.000Z',
+      streamPath: '/stream',
+      viewerPath: '/viewer',
+      webrtcOfferPath: '/offer'
+    },
+    surfaces: [
+      {
+        id: 'main',
+        sessionId: 'display-1',
+        kind: 'main',
+        name: 'Main display',
+        status: 'created',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        lastActivityAt: '2026-01-01T00:00:00.000Z',
+        streamPath: '/stream',
+        viewerPath: '/viewer',
+        webrtcOfferPath: '/offer'
+      }
+    ],
     streamPath: '/stream',
     viewerPath: '/viewer',
     webrtcOfferPath: '/offer'

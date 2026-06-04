@@ -22,6 +22,17 @@ export type DisplaySessionStatus =
   | "released"
   | "expired";
 
+export class DisplayNewDisplayDto {
+  @ApiProperty({ example: 1280 })
+  width!: number;
+
+  @ApiProperty({ example: 720 })
+  height!: number;
+
+  @ApiProperty({ example: 160 })
+  dpi!: number;
+}
+
 export class CreateDisplaySessionDto {
   @ApiPropertyOptional({
     example: "app_123",
@@ -54,6 +65,81 @@ export class CreateDisplaySessionDto {
     type: [String],
   })
   capabilities?: string[];
+
+  @ApiPropertyOptional({
+    example: "main",
+    description: "Stable caller-visible surface id.",
+  })
+  surfaceId?: string;
+
+  @ApiPropertyOptional({ enum: ["main", "virtual"], example: "main" })
+  surfaceKind?: "main" | "virtual";
+
+  @ApiPropertyOptional({ example: "Main display" })
+  displayName?: string;
+
+  @ApiPropertyOptional({ example: 0 })
+  displayId?: number;
+
+  @ApiPropertyOptional({
+    example: { width: 1280, height: 720, dpi: 160 },
+  })
+  newDisplay?: DisplayNewDisplayDto;
+}
+
+export class CreateDisplaySurfaceDto {
+  @ApiPropertyOptional({ example: "Virtual display" })
+  name?: string;
+
+  @ApiPropertyOptional({ example: 1280 })
+  width?: number;
+
+  @ApiPropertyOptional({ example: 720 })
+  height?: number;
+
+  @ApiPropertyOptional({ example: 160 })
+  dpi?: number;
+}
+
+export class DisplaySurfaceDto {
+  @ApiProperty({ example: "main" })
+  id!: string;
+
+  @ApiProperty({ example: "7c7270d5-bd2d-4ac2-81f6-1f77be3596b5" })
+  sessionId!: string;
+
+  @ApiProperty({ enum: ["main", "virtual"], example: "main" })
+  kind!: "main" | "virtual";
+
+  @ApiProperty({ example: "Main display" })
+  name!: string;
+
+  @ApiProperty({
+    enum: ["created", "active", "released", "expired"],
+    example: "created",
+  })
+  status!: DisplaySessionStatus;
+
+  @ApiProperty({ example: "2026-05-25T20:30:00.000Z" })
+  createdAt!: string;
+
+  @ApiProperty({ example: "2026-05-25T20:30:10.000Z" })
+  lastActivityAt!: string;
+
+  @ApiProperty({ example: "/rebroid/display/stream?sessionId=...&token=..." })
+  streamPath!: string;
+
+  @ApiProperty({ example: "/viewer/display/?sessionId=...&token=..." })
+  viewerPath!: string;
+
+  @ApiProperty({ example: "/rebroid/display/public/sessions/.../webrtc/offer" })
+  webrtcOfferPath!: string;
+
+  @ApiPropertyOptional({ example: 0 })
+  displayId?: number;
+
+  @ApiPropertyOptional({ type: DisplayNewDisplayDto })
+  newDisplay?: DisplayNewDisplayDto;
 }
 
 export class DisplaySessionDto {
@@ -68,6 +154,21 @@ export class DisplaySessionDto {
 
   @ApiPropertyOptional({ example: "user_123" })
   ownerUserId?: string;
+
+  @ApiProperty({ example: "main" })
+  surfaceId!: string;
+
+  @ApiProperty({ enum: ["main", "virtual"], example: "main" })
+  surfaceKind!: "main" | "virtual";
+
+  @ApiProperty({ example: "Main display" })
+  displayName!: string;
+
+  @ApiPropertyOptional({ example: 0 })
+  displayId?: number;
+
+  @ApiPropertyOptional({ type: DisplayNewDisplayDto })
+  newDisplay?: DisplayNewDisplayDto;
 
   @ApiProperty({
     enum: ["created", "active", "released", "expired"],
@@ -93,6 +194,12 @@ export class DisplaySessionDto {
   })
   capabilities!: string[];
 
+  @ApiProperty({ type: DisplaySurfaceDto })
+  surface!: DisplaySurfaceDto;
+
+  @ApiProperty({ type: DisplaySurfaceDto, isArray: true })
+  surfaces!: DisplaySurfaceDto[];
+
   @ApiProperty({ example: "/rebroid/display/stream?sessionId=...&token=..." })
   streamPath!: string;
 
@@ -106,6 +213,11 @@ export class DisplaySessionDto {
 export class DisplaySessionResponseDto {
   @ApiProperty({ type: DisplaySessionDto })
   session!: DisplaySessionDto;
+}
+
+export class DisplaySurfaceListResponseDto {
+  @ApiProperty({ type: DisplaySurfaceDto, isArray: true })
+  items!: DisplaySurfaceDto[];
 }
 
 export class DisplaySessionListResponseDto {
@@ -304,6 +416,51 @@ export class DisplayCommandResultDto {
   message?: string;
 }
 
+export class DisplayRecordingDto {
+  @ApiProperty({ example: "display-1-lx5s2m" })
+  id!: string;
+
+  @ApiProperty({ example: "display-1" })
+  sessionId!: string;
+
+  @ApiProperty({ enum: ["recording", "stopped"], example: "recording" })
+  status!: "recording" | "stopped";
+
+  @ApiProperty({ example: "2026-05-25T20:30:00.000Z" })
+  startedAt!: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  stoppedAt!: string | null;
+
+  @ApiProperty({ example: "main-display-2026-05-25T20-30-00-000Z.mp4" })
+  fileName!: string;
+
+  @ApiProperty({ example: "video/mp4" })
+  mimeType!: string;
+
+  @ApiProperty({ example: 1024000 })
+  sizeBytes!: number;
+
+  @ApiProperty({ example: 15_000 })
+  durationMs!: number;
+
+  @ApiProperty({ example: 450 })
+  sampleCount!: number;
+
+  @ApiProperty({ type: String, nullable: true })
+  downloadPath!: string | null;
+}
+
+export class DisplayRecordingResponseDto {
+  @ApiProperty({ type: DisplayRecordingDto })
+  recording!: DisplayRecordingDto;
+}
+
+export class DisplayRecordingListResponseDto {
+  @ApiProperty({ type: DisplayRecordingDto, isArray: true })
+  items!: DisplayRecordingDto[];
+}
+
 export class DisplayCapabilitiesDto {
   @ApiProperty({
     example: {
@@ -320,8 +477,8 @@ export class DisplayCapabilitiesDto {
   @ApiProperty({
     example: {
       scrcpyVersion: "4.0",
-      minimumAndroid15Version: "4.0",
-      androidVersions: ["13", "14", "15", "16"],
+      supportedAndroidVersions: ["13", "14"],
+      unsupportedAndroidVersions: ["15", "16"],
       fallbackModes: [
         "audio-disabled",
         "stream-control-disabled",
@@ -330,6 +487,24 @@ export class DisplayCapabilitiesDto {
     },
   })
   compatibility!: Record<string, string | string[]>;
+
+  @ApiProperty({
+    example: {
+      defaultSurface: "main",
+      virtualDisplayLimit: 1,
+      virtualDisplayDefault: "1280x720/160",
+    },
+  })
+  surfaces!: Record<string, string | number>;
+
+  @ApiProperty({
+    example: {
+      container: "mp4",
+      videoCodec: "h264",
+      audio: "not-recorded",
+    },
+  })
+  recording!: Record<string, string>;
 
   @ApiProperty({ enum: viewerCommands, isArray: true })
   actions!: string[];

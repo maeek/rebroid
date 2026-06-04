@@ -10,7 +10,9 @@ The sidecar connects to Android targets over ADB, starts scrcpy on demand, and e
 - WebRTC playback for modern browsers.
 - Raw H.264 WebSocket stream support for custom clients.
 - Optional Opus audio playback over WebRTC and the built-in WebSocket viewer on Android 11+.
-- Android 15/16 compatibility probing with audio, stream-control, and stable-video fallbacks.
+- Redroid 13/14 compatibility probing with audio, stream-control, and stable-video fallbacks.
+- Experimental one-virtual-display surface per app, streamed as a separate side-by-side viewer session.
+- Video-only MP4 recording by muxing H.264 packets already received by the sidecar.
 - Touch, keyboard, navigation, power, rotation, volume, notification, and quick-settings controls.
 - Clipboard synchronization through scrcpy control messages with ADB fallback.
 - Token-scoped display sessions and viewer URLs.
@@ -220,8 +222,9 @@ The build compiles the NestJS service, compiles the browser viewer assets, rewri
 - WebRTC needs the configured UDP port range published all the way to the browser path.
 - Set `DISPLAY_WEBRTC_ICE_HOST` when the browser is outside the Docker host or the sidecar advertises an unreachable container IP.
 - Browser playback works best when served through HTTPS, because browser media and clipboard APIs are stricter on insecure origins.
-- Android 15/16 requires scrcpy server 4.0 or newer. The sidecar reports its bundled server version from `/rebroid/display/capabilities`.
-- Some Redroid 16 builds can start ADB but fail scrcpy stream control during display startup. In that case, the sidecar retries with stream control disabled and keeps viewer controls available through ADB fallback.
+- Redroid 13/14 display streaming requires scrcpy server 4.0 or newer. The sidecar reports its bundled server version from `/rebroid/display/capabilities`.
+- Redroid 15/16 display streaming is blocked for now because current images can boot and answer ADB while still failing scrcpy video startup.
+- Virtual displays are experimental and limited to one extra surface per app until Redroid resource behavior is proven under load.
 - A black viewer usually means scrcpy started but Android produced no video frames. Check the session logcat endpoint and service logs for `surfaceflinger`, `ashmem`, `gralloc`, or encoder errors.
 
 ## Troubleshooting

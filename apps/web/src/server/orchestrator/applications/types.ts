@@ -22,6 +22,7 @@ export type ApplicationScreenshot = OrchestratorApiSchemas['ApplicationScreensho
 export type ApplicationViewerControlCommand = OrchestratorApiSchemas['ApplicationViewerControlDto']['command']
 export type ApplicationViewerControlResponse = OrchestratorApiSchemas['ApplicationViewerControlResponseDto']
 export type ScrcpySession = OrchestratorApiSchemas['ScrcpySessionDto']
+export type ApplicationDisplayRecording = OrchestratorApiSchemas['DisplayRecordingDto']
 export type DeleteAndroidApplicationResponse = OrchestratorApiSchemas['DeleteAndroidApplicationResponseDto']
 
 export interface ApplicationRuntimeFilesProfileInput {
@@ -59,6 +60,7 @@ export type UpdateNetworkPolicyInput = OrchestratorApiSchemas['UpdateNetworkPoli
 export interface ScrcpySessionAccess {
   control?: boolean
   clipboard?: boolean
+  screenshot?: boolean
 }
 
 export type SwitchApplicationProfileInput = Partial<OrchestratorApiSchemas['SwitchApplicationProfileDto']>

@@ -32,6 +32,7 @@ import { ScrcpyService } from "../scrcpy/scrcpy.service";
 import { SidecarAuthGuard } from "../shared/sidecar-auth.guard";
 import {
   CreateDisplaySessionDto,
+  CreateDisplaySurfaceDto,
   DisplayActionDto,
   DisplayCapabilitiesDto,
   DisplayClipboardDto,
@@ -40,9 +41,12 @@ import {
   DisplayHealthDto,
   DisplayKeyboardDto,
   DisplayLogcatDto,
+  DisplayRecordingListResponseDto,
+  DisplayRecordingResponseDto,
   DisplaySessionDto,
   DisplaySessionListResponseDto,
   DisplaySessionResponseDto,
+  DisplaySurfaceListResponseDto,
   DisplayTouchDto,
   DisplayWebrtcAnswerDto,
   DisplayWebrtcOfferDto,
@@ -124,13 +128,23 @@ export class DisplayController {
       },
       compatibility: {
         scrcpyVersion: this.scrcpy.serverVersion(),
-        minimumAndroid15Version: "4.0",
-        androidVersions: ["13", "14", "15", "16"],
+        supportedAndroidVersions: ["13", "14"],
+        unsupportedAndroidVersions: ["15", "16"],
         fallbackModes: [
           "audio-disabled",
           "stream-control-disabled",
           "stable-video",
         ],
+      },
+      surfaces: {
+        defaultSurface: "main",
+        virtualDisplayLimit: 1,
+        virtualDisplayDefault: "1280x720/160",
+      },
+      recording: {
+        container: "mp4",
+        videoCodec: "h264",
+        audio: "not-recorded",
       },
       actions: [
         "back",
@@ -193,6 +207,57 @@ export class DisplayController {
   }
 
   @UseGuards(SidecarAuthGuard)
+  @Get("rebroid/display/sessions/:id/surfaces")
+  @ApiOperation({ summary: "List display surfaces for one display session." })
+  @ApiHeader({ name: "x-rebroid-sidecar-secret", required: false })
+  @ApiParam({ name: "id", description: "Display session id." })
+  @ApiOkResponse({ type: DisplaySurfaceListResponseDto })
+  listSessionSurfaces(@Param("id") id: string) {
+    return { items: this.sessions.getPublic(id).surfaces };
+  }
+
+  @UseGuards(SidecarAuthGuard)
+  @Post("rebroid/display/sessions/:id/surfaces")
+  @ApiOperation({
+    summary: "Create or reuse one experimental virtual display surface.",
+  })
+  @ApiHeader({ name: "x-rebroid-sidecar-secret", required: false })
+  @ApiParam({ name: "id", description: "Parent display session id." })
+  @ApiBody({ type: CreateDisplaySurfaceDto })
+  @ApiOkResponse({ type: DisplaySessionResponseDto })
+  createSessionSurface(
+    @Param("id") id: string,
+    @Body() body: CreateDisplaySurfaceDto,
+  ) {
+    return { session: this.sessions.createVirtualSurface(id, body) };
+  }
+
+  @UseGuards(SidecarAuthGuard)
+  @Delete("rebroid/display/sessions/:id/surfaces/:surfaceId")
+  @ApiOperation({ summary: "Release one virtual display surface." })
+  @ApiHeader({ name: "x-rebroid-sidecar-secret", required: false })
+  @ApiParam({ name: "id", description: "Parent display session id." })
+  @ApiParam({ name: "surfaceId", description: "Display surface id." })
+  @ApiOkResponse({ type: DisplaySessionDto })
+  releaseSessionSurface(
+    @Param("id") id: string,
+    @Param("surfaceId") surfaceId: string,
+  ) {
+    const session = this.sessions.releaseSurface(id, surfaceId);
+    try {
+      this.webrtc.stopSession(session.id);
+    } catch {
+      // Surface release already succeeded. Cleanup is best-effort.
+    }
+    try {
+      this.scrcpy.closeSession(session.id);
+    } catch {
+      // Surface release already succeeded. Cleanup is best-effort.
+    }
+    return session;
+  }
+
+  @UseGuards(SidecarAuthGuard)
   @Delete("rebroid/display/sessions/apps/:appId")
   @ApiOperation({ summary: "Release every display session for one app." })
   @ApiHeader({ name: "x-rebroid-sidecar-secret", required: false })
@@ -218,6 +283,65 @@ export class DisplayController {
     this.webrtc.stopSession(id);
     this.scrcpy.closeSession(id);
     return session;
+  }
+
+  @UseGuards(SidecarAuthGuard)
+  @Get("rebroid/display/sessions/:id/recordings")
+  @ApiOperation({ summary: "List recordings for one display session." })
+  @ApiHeader({ name: "x-rebroid-sidecar-secret", required: false })
+  @ApiParam({ name: "id", description: "Display session id." })
+  @ApiOkResponse({ type: DisplayRecordingListResponseDto })
+  listRecordings(@Param("id") id: string) {
+    this.sessions.get(id);
+    return { items: this.scrcpy.listRecordings(id) };
+  }
+
+  @UseGuards(SidecarAuthGuard)
+  @Post("rebroid/display/sessions/:id/recording/start")
+  @ApiOperation({ summary: "Start recording one display session." })
+  @ApiHeader({ name: "x-rebroid-sidecar-secret", required: false })
+  @ApiParam({ name: "id", description: "Display session id." })
+  @ApiOkResponse({ type: DisplayRecordingResponseDto })
+  startRecording(@Param("id") id: string) {
+    const session = this.sessions.get(id);
+    return {
+      recording: this.scrcpy.startRecording(id, session.displayName),
+    };
+  }
+
+  @UseGuards(SidecarAuthGuard)
+  @Post("rebroid/display/sessions/:id/recording/stop")
+  @ApiOperation({ summary: "Stop recording one display session." })
+  @ApiHeader({ name: "x-rebroid-sidecar-secret", required: false })
+  @ApiParam({ name: "id", description: "Display session id." })
+  @ApiOkResponse({ type: DisplayRecordingResponseDto })
+  stopRecording(@Param("id") id: string) {
+    this.sessions.get(id);
+    return { recording: this.scrcpy.stopRecording(id) };
+  }
+
+  @UseGuards(SidecarAuthGuard)
+  @Get("rebroid/display/recordings/:recordingId")
+  @ApiOperation({ summary: "Download a completed display recording." })
+  @ApiHeader({ name: "x-rebroid-sidecar-secret", required: false })
+  @ApiParam({ name: "recordingId", description: "Display recording id." })
+  async downloadRecording(
+    @Param("recordingId") recordingId: string,
+    @Res() response: FastifyReply,
+  ) {
+    const recording = this.scrcpy.getRecording(recordingId);
+    if (!recording) {
+      response.status(404).send("Recording not found.");
+      return;
+    }
+
+    response
+      .type(recording.mimeType)
+      .header(
+        "content-disposition",
+        `attachment; filename="${recording.fileName.replace(/"/g, "")}"`,
+      )
+      .send(recording.data);
   }
 
   @UseGuards(SidecarAuthGuard)

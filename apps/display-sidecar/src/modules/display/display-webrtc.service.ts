@@ -61,6 +61,7 @@ export class DisplayWebrtcService {
       options.token,
     );
     this.sessions.assertCapability(session, "video");
+    await this.scrcpy.assertTargetSupported(session.udid);
     const iceHost = this.resolveIceHost(options.requestHost);
     if (!iceHost) {
       throw new ConflictException("Could not determine WebRTC ICE host.");
@@ -107,6 +108,8 @@ export class DisplayWebrtcService {
         udid: session.udid,
         client,
         codec: "h264",
+        displayId: session.displayId,
+        newDisplay: session.newDisplay,
         audio: options.audio,
         maxSize: this.maxSize(options.maxSize),
         maxFps: this.number(options.maxFps, DEFAULT_MAX_FPS, 1, 120),

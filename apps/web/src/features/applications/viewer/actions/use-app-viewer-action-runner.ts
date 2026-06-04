@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { toast } from '@/hooks/use-toast'
-import { getDisplayErrorMessage } from '../../../../lib/error-utils'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 
 const isSessionError = (message: string) => /session|sign in|unauthenticated|unauthorized|authentication/i.test(message)
 

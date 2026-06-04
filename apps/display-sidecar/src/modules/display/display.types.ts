@@ -9,6 +9,11 @@ export interface DisplaySession {
   appId?: string;
   udid: string;
   ownerUserId?: string;
+  surfaceId: string;
+  surfaceKind: DisplaySurfaceKind;
+  displayName: string;
+  displayId?: number;
+  newDisplay?: DisplayNewDisplayConfig;
   status: DisplaySessionStatus;
   token: string;
   createdAt: string;
@@ -18,8 +23,33 @@ export interface DisplaySession {
   capabilities: string[];
 }
 
+export type DisplaySurfaceKind = "main" | "virtual";
+
+export interface DisplayNewDisplayConfig {
+  width: number;
+  height: number;
+  dpi: number;
+}
+
+export interface DisplaySurface {
+  id: string;
+  sessionId: string;
+  kind: DisplaySurfaceKind;
+  name: string;
+  status: DisplaySessionStatus;
+  createdAt: string;
+  lastActivityAt: string;
+  streamPath: string;
+  viewerPath: string;
+  webrtcOfferPath: string;
+  displayId?: number;
+  newDisplay?: DisplayNewDisplayConfig;
+}
+
 export interface PublicDisplaySession
   extends Omit<DisplaySession, "token" | "udid" | "ownerUserId"> {
+  surface: DisplaySurface;
+  surfaces: DisplaySurface[];
   streamPath: string;
   viewerPath: string;
   webrtcOfferPath: string;
@@ -31,6 +61,18 @@ export interface CreateDisplaySessionBody {
   ownerUserId?: string;
   ttlSeconds?: number;
   capabilities?: string[];
+  surfaceId?: string;
+  surfaceKind?: DisplaySurfaceKind;
+  displayName?: string;
+  displayId?: number;
+  newDisplay?: DisplayNewDisplayConfig;
+}
+
+export interface CreateDisplaySurfaceBody {
+  name?: string;
+  width?: number;
+  height?: number;
+  dpi?: number;
 }
 
 export interface DisplayActionBody {

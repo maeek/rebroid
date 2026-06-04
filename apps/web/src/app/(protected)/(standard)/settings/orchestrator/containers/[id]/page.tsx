@@ -1,5 +1,5 @@
 import { PlatformPageHeader } from '@/features/orchestrator/components/platform-page-header'
-import { OrchestratorContainerDetail } from '@/features/orchestrator/details/orchestrator-container-detail'
+import { OrchestratorContainerDetail } from '@/features/orchestrator/details/orchestrator-container-detail/orchestrator-container-detail'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { StatusSplash } from '@/features/shell/components/status-splash'
 import { getPlatformContainerAction, getPlatformContainerLogsAction } from '@/server/orchestrator/platform/actions'

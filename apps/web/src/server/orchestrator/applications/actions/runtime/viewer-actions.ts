@@ -15,7 +15,8 @@ export const getScrcpySessionAction = async (id: string) => {
   const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeMessage)
   const session = await orchestratorAppViewerClient.getScrcpySession(id, {
     control: user.role === 'admin' || hasPermission(user.permissions, 'applications:control-viewer'),
-    clipboard: user.role === 'admin' || hasPermission(user.permissions, 'applications:sync-clipboard')
+    clipboard: user.role === 'admin' || hasPermission(user.permissions, 'applications:sync-clipboard'),
+    screenshot: user.role === 'admin' || hasPermission(user.permissions, 'applications:capture-screenshot')
   })
   return sanitizeScrcpySessionForUser(session, user)
 }
@@ -42,4 +43,40 @@ export const sendApplicationViewerControlAction = async (id: string, command: Ap
     details: { command }
   })
   return result
+}
+
+export const createApplicationVirtualDisplayAction = async (id: string) => {
+  const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
+  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:control-viewer')) {
+    throw new Error('You do not have permission to add displays for this viewer.')
+  }
+
+  return orchestratorAppViewerClient.createVirtualDisplay(id)
+}
+
+export const releaseApplicationVirtualDisplayAction = async (id: string, surfaceId: string) => {
+  const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
+  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:control-viewer')) {
+    throw new Error('You do not have permission to close displays for this viewer.')
+  }
+
+  return orchestratorAppViewerClient.releaseVirtualDisplay(id, surfaceId)
+}
+
+export const startApplicationDisplayRecordingAction = async (id: string, surfaceId: string) => {
+  const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
+  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:capture-screenshot')) {
+    throw new Error('You do not have permission to record this viewer.')
+  }
+
+  return orchestratorAppViewerClient.startRecording(id, surfaceId)
+}
+
+export const stopApplicationDisplayRecordingAction = async (id: string, surfaceId: string) => {
+  const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
+  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:capture-screenshot')) {
+    throw new Error('You do not have permission to record this viewer.')
+  }
+
+  return orchestratorAppViewerClient.stopRecording(id, surfaceId)
 }

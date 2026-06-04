@@ -1,9 +1,9 @@
 'use server'
 
-import { compareAppNames } from '@/features/applications/domain/app-sort'
 import { getStoredAppIcon } from '@/server/app-icons/store'
 import { orchestratorAppCatalogClient } from '@/server/orchestrator/applications/catalog-client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
+import { navigationAppsLimit, selectNavigationAppEntries } from './navigation'
 import { forgetStoredRecentApp, listStoredRecentApps, rememberStoredRecentApp } from './store'
 import type { AndroidApplicationSummary } from '@/server/orchestrator/applications/types'
 
@@ -15,8 +15,6 @@ export type RecentApp = {
   status?: 'provisioning' | 'running' | 'stopped' | 'error' | 'removing' | 'removed'
   statusLabel?: string | null
 }
-
-const navigationAppsLimit = 5
 
 const toRecentApp = async (app: AndroidApplicationSummary, openedAt: number): Promise<RecentApp> => ({
   id: app.id,
@@ -34,27 +32,9 @@ const visibleRecentApps = async (userId: string): Promise<RecentApp[]> => {
     listStoredRecentApps(userId),
     orchestratorAppCatalogClient.listApplicationSummaries(ownerUserId)
   ])
-  const appsById = new Map(apps.map(app => [app.id, app]))
+  const navigationApps = selectNavigationAppEntries(apps, recent, navigationAppsLimit)
 
-  const runningApps = apps
-    .filter(app => app.currentStatus === 'running')
-    .toSorted(compareAppNames)
-    .slice(0, navigationAppsLimit)
-  const runningIds = new Set(runningApps.map(app => app.id))
-  const recentApps = recent
-    .map(item => {
-      const app = appsById.get(item.id)
-      return app && !runningIds.has(app.id) ? { app, openedAt: item.openedAt } : null
-    })
-    .filter((item): item is { app: AndroidApplicationSummary; openedAt: number } => Boolean(item))
-    .slice(0, navigationAppsLimit - runningApps.length)
-
-  return Promise.all(
-    [
-      ...runningApps.map(app => ({ app, openedAt: recent.find(item => item.id === app.id)?.openedAt ?? 0 })),
-      ...recentApps
-    ].map(item => toRecentApp(item.app, item.openedAt))
-  )
+  return Promise.all(navigationApps.map(item => toRecentApp(item.app, item.openedAt)))
 }
 
 export const listRecentAppsAction = async () => {

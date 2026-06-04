@@ -116,11 +116,11 @@ p {
   max-width: 100%;
   align-items: center;
   justify-content: center;
-  padding: 5px 9px;
-  border: 1px solid rgb(34 197 94 / 34%);
-  border-radius: 999px;
-  background: rgb(20 83 45 / 34%);
-  color: #bbf7d0;
+  padding: 6px 10px;
+  border: 1px solid rgb(245 158 11 / 42%);
+  border-radius: 6px;
+  background: rgb(120 53 15 / 34%);
+  color: #fcd34d;
   font-size: 12px;
   line-height: 1.3;
 }

@@ -18,10 +18,10 @@ import { AppActionDialogSummary } from '@/features/applications/components/app-a
 import { notifyRecentAppsUpdated } from '@/features/applications/recent/recent-apps'
 import { useOrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 import { toast } from '@/hooks/use-toast'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { removeAppIconAction } from '@/server/app-icons/actions/remove-app-icon-action'
 import { deleteApplicationAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { forgetRecentAppAction } from '@/server/recent-apps/actions'
-import { getDisplayErrorMessage } from '../../../../lib/error-utils'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 

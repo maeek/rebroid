@@ -2,7 +2,7 @@ import { IconAlertTriangle, IconCircleCheck, IconLoader2 } from '@tabler/icons-r
 import { Badge } from '@/components/ui/badge'
 import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
-import { ImagePullProgress } from '@/features/applications/viewer/image-pull-progress'
+import { ImagePullProgress } from '@/features/applications/viewer/components/image-pull-progress'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { AndroidApplicationStatusDetail } from '@/server/orchestrator/applications/types'
 

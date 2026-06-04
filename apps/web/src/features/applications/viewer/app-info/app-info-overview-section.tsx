@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
-import { ImagePullProgress } from '@/features/applications/viewer/image-pull-progress'
+import { ImagePullProgress } from '@/features/applications/viewer/components/image-pull-progress'
 import { AppInfoRow } from './app-info-row'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 

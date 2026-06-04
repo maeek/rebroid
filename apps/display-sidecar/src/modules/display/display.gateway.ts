@@ -38,6 +38,8 @@ export class DisplayGateway implements OnGatewayConnection {
         udid: session.udid,
         client,
         codec: this.parseCodec(url.searchParams.get("codec")),
+        displayId: session.displayId,
+        newDisplay: session.newDisplay,
         audio: url.searchParams.get("audio") !== "0",
         maxSize: this.parseMaxSize(url.searchParams.get("maxSize")),
         maxFps: this.parseNumber(

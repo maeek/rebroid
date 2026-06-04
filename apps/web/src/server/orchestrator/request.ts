@@ -71,6 +71,29 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>
 }
 
+export async function responseRequest(path: string, init?: RequestInit): Promise<Response> {
+  let response: Response
+  try {
+    response = await fetch(apiUrl(path), {
+      ...init,
+      cache: 'no-store',
+      headers: defaultHeadersFor(init)
+    })
+  } catch (error) {
+    throw new OrchestratorRequestError(
+      `Orchestrator request failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+      502
+    )
+  }
+
+  if (!response.ok) {
+    const error: unknown = await response.json().catch(() => ({ message: response.statusText }))
+    throw new OrchestratorRequestError(getErrorMessage(error, response.statusText), response.status)
+  }
+
+  return response
+}
+
 export const emptyRequest = <T>(path: string, init?: Omit<RequestInit, 'body'>) => request<T>(path, init)
 
 export const jsonRequest = <T>(

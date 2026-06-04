@@ -11,7 +11,7 @@ import {
   saveViewerSettings,
   viewerSettingsStorageKey,
   viewerSettingsFromDefaults
-} from '@/features/applications/viewer/viewer-settings'
+} from '@/features/applications/viewer/settings/viewer-settings'
 import { ProtectedSplitPageLayout, ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { getApplicationAction } from '@/server/orchestrator/applications/actions/queries/get-application-action'

@@ -213,17 +213,21 @@ androidboot.redroid_gpu_mode=guest androidboot.use_memfd=true ro.secure=0 ro.deb
 
 On SELinux hosts, pass `CONTAINER_SECURITY_OPTS=label=disable` so the privileged Android runtime can access the host devices it needs.
 
-### Redroid 15 and 16 display streaming
+### Redroid display streaming support
 
-Rebroid supports Redroid 13, 14, 15, and 16 through the display sidecar, but
-newer Redroid builds can fail differently from 13/14. In particular, Redroid
-16 builds around `250627` have a known upstream screen connection issue where
-ADB works but scrcpy can fail during control setup with Android input-service
-errors. The sidecar now probes Android version, Redroid/device properties,
-core services, encoders, and recent display diagnostics before stream startup.
+Live display streaming is currently supported for Redroid 13 and 14. Redroid
+15 and 16 are intentionally blocked for now because current images can boot and
+answer ADB while still failing scrcpy video startup. In particular, Redroid 16
+builds around `250627` have a known upstream screen connection issue involving
+Android input/display services.
 
-The sidecar requires scrcpy server `4.0` or newer for Android 15/16 support. If
-the stream cannot start normally, it retries in compatibility modes:
+The sidecar probes Android version, Redroid/device properties, core services,
+encoders, and recent display diagnostics before stream startup. It rejects
+Android API levels newer than 34 with a clear unsupported-version error instead
+of looping on reconnect.
+
+For supported Redroid 13/14 streams, the sidecar can still retry in
+compatibility modes:
 
 - `audio-disabled`: video is retried without Android audio capture.
 - `stream-control-disabled`: scrcpy stream control is disabled and viewer
@@ -237,11 +241,17 @@ Recommended Redroid runtime defaults remain:
 androidboot.redroid_gpu_mode=guest androidboot.use_memfd=true ro.secure=0 ro.debuggable=1
 ```
 
-If Android 15/16 still loops on "Reconnecting live display", check the viewer
-compatibility badge, the sidecar logs, and the session logcat endpoint for
-`InputManagerGlobal`, `KeyCharacterMap`, `MediaCodec`, `VirtualDisplay`, or
-`SurfaceFlinger` diagnostics. When a specific Redroid image tag is broken,
-prefer pinning a known-good image build over increasing reconnect timeouts.
+If a supported Redroid 13/14 image still loops on "Reconnecting live display",
+check the viewer compatibility badge, the sidecar logs, and the session logcat
+endpoint for `MediaCodec`, `VirtualDisplay`, or `SurfaceFlinger` diagnostics.
+
+The viewer workspace can create one experimental virtual display per running
+app. The main display stays first, virtual displays are appended horizontally,
+and overflowing panes scroll sideways instead of wrapping. Any viewer can be
+opened in a minimal popout window with the display and essential controls.
+Each display pane can record a video-only MP4 by muxing the H.264 packets
+already received by the sidecar; the browser downloads the file when recording
+stops.
 
 ## Configuration Surface
 

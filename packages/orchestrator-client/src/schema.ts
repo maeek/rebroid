@@ -1058,6 +1058,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/apps/{id}/viewer/displays": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create or reuse one experimental virtual display surface. */
+        post: operations["AndroidAppsViewerController_createVirtualDisplay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/apps/{id}/viewer/displays/{surfaceId}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Release one experimental virtual display surface. */
+        post: operations["AndroidAppsViewerController_releaseVirtualDisplay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/apps/{id}/viewer/displays/{surfaceId}/recording/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start recording one display surface. */
+        post: operations["AndroidAppsViewerController_startRecording"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/apps/{id}/viewer/displays/{surfaceId}/recording/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop recording one display surface and return the file data. */
+        post: operations["AndroidAppsViewerController_stopRecording"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/apps/{id}/viewer/recordings/{recordingId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download one completed display recording. */
+        get: operations["AndroidAppsViewerController_downloadRecording"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1432,6 +1517,20 @@ export interface components {
             streamPath: string;
             viewerPath: string;
             webrtcOfferPath: string;
+            /** @example main */
+            surfaceId: string;
+            /**
+             * @example main
+             * @enum {string}
+             */
+            surfaceKind: "main" | "virtual";
+            /** @example Main display */
+            displayName: string;
+            /** @example 0 */
+            displayId?: number;
+            newDisplay?: components["schemas"]["DisplayNewDisplayDto"];
+            surface: components["schemas"]["DisplaySurfaceDto"];
+            surfaces: components["schemas"]["DisplaySurfaceDto"][];
         };
         ScrcpySessionDto: {
             applicationId: string;
@@ -1809,6 +1908,59 @@ export interface components {
             display: boolean;
             firewall: boolean;
             services: components["schemas"]["OrchestratorDiagnosticsServicesDto"];
+        };
+        DisplayNewDisplayDto: {
+            /** @example 1280 */
+            width: number;
+            /** @example 720 */
+            height: number;
+            /** @example 160 */
+            dpi: number;
+        };
+        DisplaySurfaceDto: {
+            /** @example main */
+            id: string;
+            /** @example 7c7270d5-bd2d-4ac2-81f6-1f77be3596b5 */
+            sessionId: string;
+            /**
+             * @example main
+             * @enum {string}
+             */
+            kind: "main" | "virtual";
+            /** @example Main display */
+            name: string;
+            /**
+             * @example created
+             * @enum {string}
+             */
+            status: "created" | "active" | "released" | "expired";
+            /** @example 2026-05-25T20:30:00.000Z */
+            createdAt: string;
+            /** @example 2026-05-25T20:30:10.000Z */
+            lastActivityAt: string;
+            /** @example /rebroid/display/stream?sessionId=...&token=... */
+            streamPath: string;
+            /** @example /viewer/display/?sessionId=...&token=... */
+            viewerPath: string;
+            /** @example /rebroid/display/public/sessions/.../webrtc/offer */
+            webrtcOfferPath: string;
+            /** @example 0 */
+            displayId?: number;
+            newDisplay?: components["schemas"]["DisplayNewDisplayDto"];
+        };
+        DisplayRecordingDto: {
+            id: string;
+            sessionId: string;
+            /** @enum {string} */
+            status: "recording" | "stopped";
+            startedAt: string;
+            stoppedAt: string | null;
+            fileName: string;
+            mimeType: string;
+            sizeBytes: number;
+            durationMs: number;
+            sampleCount: number;
+            downloadPath: string | null;
         };
     };
     responses: never;
@@ -2295,6 +2447,7 @@ export interface operations {
             query: {
                 control: string;
                 clipboard: string;
+                screenshot?: string;
             };
             header?: never;
             path: {
@@ -3534,6 +3687,117 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrchestratorDiagnosticsDto"];
+                };
+            };
+        };
+    };
+    AndroidAppsViewerController_createVirtualDisplay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisplaySessionDto"];
+                };
+            };
+        };
+    };
+    AndroidAppsViewerController_releaseVirtualDisplay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                surfaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisplaySessionDto"];
+                };
+            };
+        };
+    };
+    AndroidAppsViewerController_startRecording: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                surfaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisplayRecordingDto"];
+                };
+            };
+        };
+    };
+    AndroidAppsViewerController_stopRecording: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                surfaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisplayRecordingDto"];
+                };
+            };
+        };
+    };
+    AndroidAppsViewerController_downloadRecording: {
+        parameters: {
+            query: {
+                surfaceSessionId: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+                recordingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "video/mp4": string;
                 };
             };
         };

@@ -26,12 +26,108 @@ export class ScrcpyViewerErrorDto {
   stderr!: string | null;
 }
 
+export class DisplaySurfaceDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  sessionId!: string;
+
+  @ApiProperty({ enum: ['main', 'virtual'] })
+  kind!: 'main' | 'virtual';
+
+  @ApiProperty()
+  name!: string;
+
+  @ApiProperty({ enum: ['created', 'active', 'released', 'expired'] })
+  status!: 'created' | 'active' | 'released' | 'expired';
+
+  @ApiProperty()
+  createdAt!: string;
+
+  @ApiProperty()
+  lastActivityAt!: string;
+
+  @ApiProperty()
+  streamPath!: string;
+
+  @ApiProperty()
+  viewerPath!: string;
+
+  @ApiProperty()
+  webrtcOfferPath!: string;
+
+  @ApiPropertyOptional({ type: Number })
+  displayId?: number;
+
+  @ApiPropertyOptional({ type: Object })
+  newDisplay?: {
+    width: number;
+    height: number;
+    dpi: number;
+  };
+}
+
+export class DisplayRecordingDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  sessionId!: string;
+
+  @ApiProperty({ enum: ['recording', 'stopped'] })
+  status!: 'recording' | 'stopped';
+
+  @ApiProperty()
+  startedAt!: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  stoppedAt!: string | null;
+
+  @ApiProperty()
+  fileName!: string;
+
+  @ApiProperty()
+  mimeType!: string;
+
+  @ApiProperty()
+  sizeBytes!: number;
+
+  @ApiProperty()
+  durationMs!: number;
+
+  @ApiProperty()
+  sampleCount!: number;
+
+  @ApiProperty({ type: String, nullable: true })
+  downloadPath!: string | null;
+}
+
 export class DisplaySessionDto {
   @ApiProperty()
   id!: string;
 
   @ApiPropertyOptional({ nullable: true })
   appId?: string;
+
+  @ApiProperty()
+  surfaceId!: string;
+
+  @ApiProperty({ enum: ['main', 'virtual'] })
+  surfaceKind!: 'main' | 'virtual';
+
+  @ApiProperty()
+  displayName!: string;
+
+  @ApiPropertyOptional({ type: Number })
+  displayId?: number;
+
+  @ApiPropertyOptional({ type: Object })
+  newDisplay?: {
+    width: number;
+    height: number;
+    dpi: number;
+  };
 
   @ApiProperty({ enum: ['created', 'active', 'released', 'expired'] })
   status!: 'created' | 'active' | 'released' | 'expired';
@@ -50,6 +146,12 @@ export class DisplaySessionDto {
 
   @ApiProperty({ type: [String] })
   capabilities!: string[];
+
+  @ApiProperty({ type: DisplaySurfaceDto })
+  surface!: DisplaySurfaceDto;
+
+  @ApiProperty({ type: () => [DisplaySurfaceDto] })
+  surfaces!: DisplaySurfaceDto[];
 
   @ApiProperty()
   streamPath!: string;

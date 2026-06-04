@@ -30,7 +30,11 @@ export class AndroidAppsViewerService {
   /** Builds the viewer session data for scrcpy. */
   async scrcpySession(
     id: string,
-    access: { control?: boolean; clipboard?: boolean } = {},
+    access: {
+      control?: boolean;
+      clipboard?: boolean;
+      screenshot?: boolean;
+    } = {},
   ): Promise<ScrcpySessionDto> {
     const app = await this.getRunningRuntimeApp(id);
     const proxyRemote =
@@ -47,6 +51,7 @@ export class AndroidAppsViewerService {
               'audio',
               ...(access.control ? ['control'] : []),
               ...(access.clipboard ? ['clipboard'] : []),
+              ...(access.screenshot ? ['screenshot'] : []),
             ],
           )
         : null;
@@ -164,6 +169,58 @@ export class AndroidAppsViewerService {
           ? 'Viewer control command executed through display sidecar.'
           : 'Viewer control command executed through display sidecar ADB endpoint.',
     };
+  }
+
+  /** Creates or reuses the app's single experimental virtual display surface. */
+  async createVirtualDisplay(id: string) {
+    const app = await this.getRunningRuntimeApp(id);
+    const surface = await this.displaySidecar.createVirtualSurface(app, {
+      name: 'Virtual display',
+      width: 1280,
+      height: 720,
+      dpi: 160,
+    });
+    await this.recordViewerActivity(id);
+    return surface;
+  }
+
+  /** Releases one experimental virtual display surface. */
+  async releaseVirtualDisplay(id: string, surfaceId: string) {
+    const app = await this.getRunningRuntimeApp(id);
+    const surface = await this.displaySidecar.releaseVirtualSurface(
+      app,
+      surfaceId,
+    );
+    await this.recordViewerActivity(id);
+    return surface;
+  }
+
+  /** Starts recording one display surface. */
+  async startRecording(id: string, surfaceId: string) {
+    const app = await this.getRunningRuntimeApp(id);
+    const recording = await this.displaySidecar.startRecording(app, surfaceId);
+    await this.recordViewerActivity(id);
+    return recording;
+  }
+
+  /** Stops recording one display surface and returns a downloadable data URL. */
+  async stopRecording(id: string, surfaceId: string) {
+    const app = await this.getRunningRuntimeApp(id);
+    const recording = await this.displaySidecar.stopRecording(app, surfaceId);
+    await this.recordViewerActivity(id);
+    return recording;
+  }
+
+  /** Downloads one completed display recording after validating the app surface. */
+  async downloadRecording(id: string, surfaceId: string, recordingId: string) {
+    const app = await this.getRunningRuntimeApp(id);
+    const recording = await this.displaySidecar.downloadRecording(
+      app,
+      surfaceId,
+      recordingId,
+    );
+    await this.recordViewerActivity(id);
+    return recording;
   }
 
   /** Loads one running app for viewer actions. */

@@ -721,6 +721,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "screenshot",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -2647,6 +2655,202 @@
           "health"
         ]
       }
+    },
+    "/api/v1/apps/{id}/viewer/displays": {
+      "post": {
+        "operationId": "AndroidAppsViewerController_createVirtualDisplay",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplaySessionDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create or reuse one experimental virtual display surface.",
+        "tags": [
+          "app-viewer"
+        ]
+      }
+    },
+    "/api/v1/apps/{id}/viewer/displays/{surfaceId}/release": {
+      "post": {
+        "operationId": "AndroidAppsViewerController_releaseVirtualDisplay",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "surfaceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplaySessionDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Release one experimental virtual display surface.",
+        "tags": [
+          "app-viewer"
+        ]
+      }
+    },
+    "/api/v1/apps/{id}/viewer/displays/{surfaceId}/recording/start": {
+      "post": {
+        "operationId": "AndroidAppsViewerController_startRecording",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "surfaceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayRecordingDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Start recording one display surface.",
+        "tags": [
+          "app-viewer"
+        ]
+      }
+    },
+    "/api/v1/apps/{id}/viewer/displays/{surfaceId}/recording/stop": {
+      "post": {
+        "operationId": "AndroidAppsViewerController_stopRecording",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "surfaceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayRecordingDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Stop recording one display surface and return the file data.",
+        "tags": [
+          "app-viewer"
+        ]
+      }
+    },
+    "/api/v1/apps/{id}/viewer/recordings/{recordingId}": {
+      "get": {
+        "operationId": "AndroidAppsViewerController_downloadRecording",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "recordingId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "surfaceSessionId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "video/mp4": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Download one completed display recording.",
+        "tags": [
+          "app-viewer"
+        ]
+      }
     }
   },
   "info": {
@@ -4093,6 +4297,38 @@
           },
           "webrtcOfferPath": {
             "type": "string"
+          },
+          "surfaceId": {
+            "type": "string",
+            "example": "main"
+          },
+          "surfaceKind": {
+            "type": "string",
+            "enum": [
+              "main",
+              "virtual"
+            ],
+            "example": "main"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Main display"
+          },
+          "displayId": {
+            "type": "number",
+            "example": 0
+          },
+          "newDisplay": {
+            "$ref": "#/components/schemas/DisplayNewDisplayDto"
+          },
+          "surface": {
+            "$ref": "#/components/schemas/DisplaySurfaceDto"
+          },
+          "surfaces": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DisplaySurfaceDto"
+            }
           }
         },
         "required": [
@@ -4105,7 +4341,12 @@
           "capabilities",
           "streamPath",
           "viewerPath",
-          "webrtcOfferPath"
+          "webrtcOfferPath",
+          "surfaceId",
+          "surfaceKind",
+          "displayName",
+          "surface",
+          "surfaces"
         ]
       },
       "ScrcpySessionDto": {
@@ -5380,6 +5621,159 @@
           "display",
           "firewall",
           "services"
+        ]
+      },
+      "DisplayNewDisplayDto": {
+        "type": "object",
+        "properties": {
+          "width": {
+            "type": "number",
+            "example": 1280
+          },
+          "height": {
+            "type": "number",
+            "example": 720
+          },
+          "dpi": {
+            "type": "number",
+            "example": 160
+          }
+        },
+        "required": [
+          "width",
+          "height",
+          "dpi"
+        ]
+      },
+      "DisplaySurfaceDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "main"
+          },
+          "sessionId": {
+            "type": "string",
+            "example": "7c7270d5-bd2d-4ac2-81f6-1f77be3596b5"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "main",
+              "virtual"
+            ],
+            "example": "main"
+          },
+          "name": {
+            "type": "string",
+            "example": "Main display"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "created",
+              "active",
+              "released",
+              "expired"
+            ],
+            "example": "created"
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-05-25T20:30:00.000Z"
+          },
+          "lastActivityAt": {
+            "type": "string",
+            "example": "2026-05-25T20:30:10.000Z"
+          },
+          "streamPath": {
+            "type": "string",
+            "example": "/rebroid/display/stream?sessionId=...&token=..."
+          },
+          "viewerPath": {
+            "type": "string",
+            "example": "/viewer/display/?sessionId=...&token=..."
+          },
+          "webrtcOfferPath": {
+            "type": "string",
+            "example": "/rebroid/display/public/sessions/.../webrtc/offer"
+          },
+          "displayId": {
+            "type": "number",
+            "example": 0
+          },
+          "newDisplay": {
+            "$ref": "#/components/schemas/DisplayNewDisplayDto"
+          }
+        },
+        "required": [
+          "id",
+          "sessionId",
+          "kind",
+          "name",
+          "status",
+          "createdAt",
+          "lastActivityAt",
+          "streamPath",
+          "viewerPath",
+          "webrtcOfferPath"
+        ]
+      },
+      "DisplayRecordingDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "recording",
+              "stopped"
+            ]
+          },
+          "startedAt": {
+            "type": "string"
+          },
+          "stoppedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "number"
+          },
+          "durationMs": {
+            "type": "number"
+          },
+          "sampleCount": {
+            "type": "number"
+          },
+          "downloadPath": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "sessionId",
+          "status",
+          "startedAt",
+          "stoppedAt",
+          "fileName",
+          "mimeType",
+          "sizeBytes",
+          "durationMs",
+          "sampleCount",
+          "downloadPath"
         ]
       }
     }
