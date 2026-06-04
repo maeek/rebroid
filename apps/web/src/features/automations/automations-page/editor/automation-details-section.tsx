@@ -2,6 +2,7 @@
 
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { AutomationTagsInput } from '../shared/automation-tags-input'
 import type { AutomationFormState } from './builder-utils'
 
 export function AutomationDetailsSection({
@@ -30,6 +31,11 @@ export function AutomationDetailsSection({
             onChange={event => onChange({ description: event.target.value })}
           />
         </div>
+        <AutomationTagsInput
+          id='automation-tags'
+          value={form.tags}
+          onChange={tags => onChange({ tags })}
+        />
       </div>
     </section>
   )

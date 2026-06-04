@@ -1,17 +1,8 @@
-import { AutomationEditorPage } from '@/features/automations/automations-page/automation-editor-page'
-import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
+import { AutomationEditorPage } from '@/features/automations/automations-page/editor/automation-editor-page'
 import { listAutomationCommandsAction } from '@/server/orchestrator/automations/actions'
 
 export default async function CreateAutomationRoute() {
-  const [commands, applications] = await Promise.all([
-    listAutomationCommandsAction(),
-    listApplicationsAction({ reconcile: false })
-  ])
+  const commands = await listAutomationCommandsAction()
 
-  return (
-    <AutomationEditorPage
-      initialApplications={applications}
-      initialCommands={commands}
-    />
-  )
+  return <AutomationEditorPage initialCommands={commands} />
 }

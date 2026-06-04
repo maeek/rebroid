@@ -3,11 +3,15 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
-import { AutomationEmptySplash } from './automation-empty-splash'
+import { AutomationEmptySplash } from '../shared/automation-empty-splash'
 import { AutomationsTable } from './automations-table'
-import type { AutomationsListPageProps } from './types'
+import type { AutomationsListPageProps } from '../editor/types'
 
-export function AutomationsListPage({ initialAutomations }: AutomationsListPageProps) {
+export function AutomationsListPage({
+  initialApplications,
+  initialAutomations,
+  initialTriggers
+}: AutomationsListPageProps) {
   return (
     <ProtectedStackPageLayout mainClassName='gap-2'>
       <section className='shrink-0 px-6 py-4 max-sm:px-4'>
@@ -38,7 +42,11 @@ export function AutomationsListPage({ initialAutomations }: AutomationsListPageP
         <AutomationEmptySplash variant='automations' />
       ) : (
         <section className='px-6 pb-16 pt-4 max-sm:px-4'>
-          <AutomationsTable automations={initialAutomations} />
+          <AutomationsTable
+            applications={initialApplications}
+            automations={initialAutomations}
+            triggers={initialTriggers}
+          />
         </section>
       )}
     </ProtectedStackPageLayout>

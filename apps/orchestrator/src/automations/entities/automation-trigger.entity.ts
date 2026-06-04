@@ -44,6 +44,9 @@ export class AutomationTrigger {
   @Column({ default: true })
   enabled!: boolean;
 
+  @Column({ type: 'text', default: "'[]'" })
+  tagsJson!: string;
+
   @Column()
   triggerType!: AutomationTriggerType;
 

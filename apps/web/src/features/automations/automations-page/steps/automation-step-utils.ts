@@ -1,0 +1,46 @@
+import { summarizeActionInput } from '../actions/action-registry'
+import { referenceDisplay, pixelToPercent, percentToPixel } from '../actions/shared/coordinate-helpers'
+import { numberInputValue, stringInputValue, booleanInputValue } from '../actions/shared/input-values'
+import type { AutomationStepForm } from '../editor/builder-utils'
+import type { AutomationCommand } from '@/server/orchestrator/automations/types'
+
+export { booleanInputValue, numberInputValue, percentToPixel, pixelToPercent, referenceDisplay, stringInputValue }
+
+export const parseStepInput = (step: AutomationStepForm): Record<string, unknown> => {
+  if (step.kind !== 'action') return {}
+  try {
+    const parsed: unknown = JSON.parse(step.withJson || '{}')
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {}
+  } catch {
+    return {}
+  }
+}
+
+export const updateStepInput = (step: AutomationStepForm, patch: Record<string, unknown>): AutomationStepForm => ({
+  ...step,
+  ...(step.kind === 'action' ? { withJson: JSON.stringify({ ...parseStepInput(step), ...patch }, null, 2) } : {})
+})
+
+export const replaceStepInput = (step: AutomationStepForm, input: Record<string, unknown>): AutomationStepForm => ({
+  ...step,
+  ...(step.kind === 'action' ? { withJson: JSON.stringify(input, null, 2) } : {})
+})
+
+export const stepTitle = (step: AutomationStepForm, command?: AutomationCommand) => {
+  if (step.kind === 'condition') return 'Condition'
+  if (step.kind === 'switch') return 'Switch'
+  if (step.kind === 'repeat') return 'Repeat'
+  return command?.label || step.uses
+}
+
+export const stepSummary = (step: AutomationStepForm) => {
+  if (step.kind === 'condition') return 'Run a branch when the condition matches'
+  if (step.kind === 'switch') return `${step.cases.length} ${step.cases.length === 1 ? 'case' : 'cases'}`
+  if (step.kind === 'repeat') {
+    return step.mode === 'count'
+      ? `Repeat ${step.count} times`
+      : `Repeat while condition matches, max ${step.maxIterations}`
+  }
+  const input = parseStepInput(step)
+  return summarizeActionInput(step.uses, input)
+}

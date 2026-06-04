@@ -58,17 +58,22 @@ export const createNumberAction = ({
   fieldLabel,
   defaultValue,
   suffix,
+  summary,
   ...options
 }: BaseActionOptions & {
   field: string
   fieldLabel: string
   defaultValue: number
   suffix?: string
+  summary?: (value: number) => string
 }): AutomationActionDefinition => ({
   ...options,
   defaultInput: () => ({ [field]: defaultValue }),
   normalizeInput: input => normalizeNumberInput(input, field, defaultValue),
-  summary: input => `${field}: ${numberInputValue(input, field, defaultValue)}`,
+  summary: input => {
+    const value = numberInputValue(input, field, defaultValue)
+    return summary ? summary(value) : `${fieldLabel} ${value}${suffix ?? ''}`
+  },
   renderEditor: ({ input, patchInput }) => (
     <NumberField
       label={fieldLabel}

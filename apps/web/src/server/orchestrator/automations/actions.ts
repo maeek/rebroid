@@ -9,7 +9,13 @@ import {
   ownedRuntimeControlMessage
 } from '../applications/actions/common/action-helpers'
 import { orchestratorAutomationsClient } from './client'
-import type { AutomationDefinition, RunAutomationInput, SaveAutomationInput, SaveAutomationTriggerInput } from './types'
+import type {
+  AutomationDefinition,
+  AutomationDefinitionStep,
+  RunAutomationInput,
+  SaveAutomationInput,
+  SaveAutomationTriggerInput
+} from './types'
 
 const assertPermission = (user: Awaited<ReturnType<typeof getCurrentUserContext>>, permission: PermissionId) => {
   if (user.role !== 'admin' && !hasPermission(user.permissions, permission)) {
@@ -28,7 +34,21 @@ const assertDefinitionPermissions = async (
 ) => {
   const commands = await orchestratorAutomationsClient.listCommands()
   const commandByUses = new Map(commands.map(command => [command.uses, command]))
-  for (const step of definition.spec.steps) {
+  const assertStep = (step: AutomationDefinitionStep) => {
+    if (!('uses' in step)) {
+      if (step.type === 'condition') {
+        step.then.forEach(assertStep)
+        step.else?.forEach(assertStep)
+        return
+      }
+      if (step.type === 'switch') {
+        step.cases.forEach(item => item.steps.forEach(assertStep))
+        step.default?.forEach(assertStep)
+        return
+      }
+      step.steps.forEach(assertStep)
+      return
+    }
     const command = commandByUses.get(step.uses)
     if (!command) {
       throw new Error(`Unsupported automation command "${step.uses}".`)
@@ -39,6 +59,7 @@ const assertDefinitionPermissions = async (
       }
     }
   }
+  definition.spec.steps.forEach(assertStep)
 }
 
 const assertTargetApplication = async (targetApplicationId?: string | null) => {

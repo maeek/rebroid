@@ -29,7 +29,7 @@ import {
   getAutomationActionIconKey,
   type AutomationActionCategory,
   type AutomationActionIconKey
-} from './actions/action-registry'
+} from '../actions/action-registry'
 
 export type { AutomationActionCategory as AutomationCommandCategory }
 

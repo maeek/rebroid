@@ -4,6 +4,7 @@ import {
   IsBoolean,
   IsEnum,
   IsInt,
+  IsArray,
   IsObject,
   IsOptional,
   IsString,
@@ -41,13 +42,17 @@ export class AutomationDefinitionMetadataDto {
   @ApiPropertyOptional({ example: 'Optional notes' })
   description?: string;
 
-  @ApiPropertyOptional({ type: Object, example: { category: 'setup' } })
-  labels?: Record<string, string>;
+  @ApiPropertyOptional({
+    type: String,
+    isArray: true,
+    example: ['smoke', 'login'],
+  })
+  tags?: string[];
 }
 
 export class AutomationDefinitionSpecDto {
-  @ApiProperty({ type: AutomationDefinitionStepDto, isArray: true })
-  steps!: AutomationDefinitionStepDto[];
+  @ApiProperty({ type: Object, isArray: true })
+  steps!: unknown[];
 }
 
 export class AutomationDefinitionDto {
@@ -157,6 +162,12 @@ export class AutomationStepResultDto {
   @ApiProperty({ example: 'android.viewerCommand' })
   uses!: string;
 
+  @ApiPropertyOptional({ type: String, nullable: true })
+  parentStepId?: string | null;
+
+  @ApiPropertyOptional({ example: 'steps[0].then[0]' })
+  path?: string;
+
   @ApiProperty({ enum: ['success', 'failed', 'skipped'] })
   status!: 'success' | 'failed' | 'skipped';
 
@@ -233,6 +244,9 @@ export class AutomationDto {
   @ApiProperty({ type: String, nullable: true })
   description!: string | null;
 
+  @ApiProperty({ type: String, isArray: true })
+  tags!: string[];
+
   @ApiProperty({ type: AutomationDefinitionDto })
   definition!: AutomationDefinitionDto;
 
@@ -281,6 +295,9 @@ export class AutomationCommandDto {
 
   @ApiProperty({ type: String, isArray: true })
   requiredPermissions!: string[];
+
+  @ApiProperty({ type: Object })
+  inputSchema!: Record<string, unknown>;
 }
 
 export class AutomationScheduleTriggerConfigDto {
@@ -338,6 +355,12 @@ export class CreateAutomationTriggerDto {
   @IsBoolean()
   enabled?: boolean;
 
+  @ApiPropertyOptional({ type: String, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
+
   @ApiProperty({ enum: AutomationTriggerType })
   @IsEnum(AutomationTriggerType)
   triggerType!: AutomationTriggerType;
@@ -375,6 +398,9 @@ export class AutomationTriggerDto {
 
   @ApiProperty()
   enabled!: boolean;
+
+  @ApiProperty({ type: String, isArray: true })
+  tags!: string[];
 
   @ApiProperty({ enum: AutomationTriggerType })
   triggerType!: AutomationTriggerType;

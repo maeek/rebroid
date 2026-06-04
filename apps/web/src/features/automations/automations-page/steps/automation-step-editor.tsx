@@ -7,10 +7,10 @@ import {
   getAutomationActionDefinition,
   getDefaultActionInput,
   normalizeActionInput
-} from './actions/action-registry'
+} from '../actions/action-registry'
 import { AutomationActionPicker } from './automation-action-picker'
-import { parseStepInput, updateStepInput } from './automation-step-utils'
-import type { AutomationStepForm } from './builder-utils'
+import { parseStepInput } from './automation-step-utils'
+import type { AutomationActionStepForm } from '../editor/builder-utils'
 import type { AutomationCommand } from '@/server/orchestrator/automations/types'
 
 export function AutomationStepEditor({
@@ -19,9 +19,9 @@ export function AutomationStepEditor({
   onChange,
   boxed = true
 }: {
-  step: AutomationStepForm | null
+  step: AutomationActionStepForm | null
   commands: AutomationCommand[]
-  onChange: (step: AutomationStepForm) => void
+  onChange: (step: AutomationActionStepForm) => void
   boxed?: boolean
 }) {
   if (!step) {
@@ -86,12 +86,15 @@ export function AutomationStepEditor({
           command,
           input,
           uiState: step.uiState ?? {},
-          patchInput: patch => onChange(updateStepInput(step, patch)),
+          patchInput: patch =>
+            onChange({
+              ...step,
+              withJson: JSON.stringify({ ...parseStepInput(step), ...patch }, null, 2)
+            }),
           replaceInput,
           patchUiState
         })}
       </Section>
-
     </>
   )
 }

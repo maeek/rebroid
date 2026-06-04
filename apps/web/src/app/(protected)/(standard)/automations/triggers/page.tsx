@@ -1,4 +1,4 @@
-import { AutomationTriggersPage } from '@/features/automations/automations-page/automation-triggers-page'
+import { AutomationTriggersPage } from '@/features/automations/automations-page/triggers/automation-triggers-page'
 import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
 import { listAutomationTriggersAction, listAutomationsAction } from '@/server/orchestrator/automations/actions'
 

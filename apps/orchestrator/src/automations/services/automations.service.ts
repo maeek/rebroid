@@ -44,9 +44,16 @@ import {
 import { AutomationStepResult } from '../runner/automation-runner.types';
 import { AutomationCronRegistryService } from '../scheduler/automation-cron-registry.service';
 import { AutomationScheduleService } from '../scheduler/automation-schedule.service';
+import {
+  normalizeAutomationTags,
+  parseAutomationTagsJson,
+} from '../tags/automation-tags';
 
 const toIso = (value: Date | string | null | undefined) =>
   value ? new Date(value).toISOString() : null;
+
+const stringifyTags = (value: unknown) =>
+  JSON.stringify(normalizeAutomationTags(value, 'tags') ?? []);
 
 interface ScheduleTriggerConfig {
   cronExpression: string;
@@ -204,6 +211,7 @@ export class AutomationsService implements OnModuleInit {
       profileMode: dto.profileMode ?? ApplicationProfileMode.Persistent,
       profileName: dto.profileName?.trim() || 'default',
       enabled: dto.enabled !== false,
+      tagsJson: stringifyTags(dto.tags),
       triggerType: dto.triggerType,
       triggerConfigJson: JSON.stringify(triggerConfig),
       lastStatus: AutomationLastStatus.NeverRun,
@@ -245,6 +253,9 @@ export class AutomationsService implements OnModuleInit {
     }
     if (dto.enabled !== undefined) {
       trigger.enabled = dto.enabled;
+    }
+    if (dto.tags !== undefined) {
+      trigger.tagsJson = stringifyTags(dto.tags);
     }
     if (dto.triggerType !== undefined) {
       trigger.triggerType = dto.triggerType;
@@ -480,6 +491,7 @@ export class AutomationsService implements OnModuleInit {
       ownerUserId: automation.ownerUserId,
       name: automation.name,
       description: automation.description,
+      tags: definition.metadata.tags ?? [],
       definition,
       yaml: this.definitions.toYaml(definition),
       lastRunAt: toIso(automation.lastRunAt),
@@ -520,6 +532,7 @@ export class AutomationsService implements OnModuleInit {
       profileMode: trigger.profileMode,
       profileName: trigger.profileName,
       enabled: trigger.enabled,
+      tags: parseAutomationTagsJson(trigger.tagsJson),
       triggerType: trigger.triggerType,
       triggerConfig: this.parseTriggerConfig(trigger),
       lastRunAt: toIso(trigger.lastRunAt),

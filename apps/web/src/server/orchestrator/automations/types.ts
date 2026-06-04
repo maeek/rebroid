@@ -4,11 +4,71 @@ export type AutomationRunTrigger = 'manual' | 'schedule' | 'webhook' | 'event'
 export type AutomationTriggerType = 'schedule' | 'webhook' | 'event'
 export type AutomationStartPolicy = 'require-running' | 'start-if-needed'
 
-export interface AutomationDefinitionStep {
+export type AutomationPredicateOperator =
+  | 'equals'
+  | 'notEquals'
+  | 'contains'
+  | 'exists'
+  | 'greaterThan'
+  | 'greaterThanOrEqual'
+  | 'lessThan'
+  | 'lessThanOrEqual'
+  | 'matches'
+
+export interface AutomationValueRef {
+  source: 'literal' | 'context' | 'step'
+  value?: unknown
+  path?: string
+  stepId?: string
+}
+
+export interface AutomationPredicate {
+  left: AutomationValueRef
+  operator: AutomationPredicateOperator
+  right?: AutomationValueRef
+}
+
+export interface AutomationActionStep {
   id: string
   uses: string
   with: Record<string, unknown>
 }
+
+export interface AutomationConditionStep {
+  id: string
+  type: 'condition'
+  condition: AutomationPredicate
+  then: AutomationDefinitionStep[]
+  else?: AutomationDefinitionStep[]
+}
+
+export interface AutomationSwitchCase {
+  value: unknown
+  steps: AutomationDefinitionStep[]
+}
+
+export interface AutomationSwitchStep {
+  id: string
+  type: 'switch'
+  value: AutomationValueRef
+  cases: AutomationSwitchCase[]
+  default?: AutomationDefinitionStep[]
+}
+
+export interface AutomationRepeatStep {
+  id: string
+  type: 'repeat'
+  count?: number
+  while?: AutomationPredicate
+  maxIterations: number
+  steps: AutomationDefinitionStep[]
+}
+
+export type AutomationDefinitionStep =
+  | AutomationActionStep
+  | AutomationConditionStep
+  | AutomationSwitchStep
+  | AutomationRepeatStep
 
 export interface AutomationDefinition {
   apiVersion: 'rebroid.io/automation/v1'
@@ -16,7 +76,7 @@ export interface AutomationDefinition {
   metadata: {
     name: string
     description?: string
-    labels?: Record<string, string>
+    tags?: string[]
   }
   spec: {
     steps: AutomationDefinitionStep[]
@@ -28,6 +88,7 @@ export interface Automation {
   ownerUserId: string
   name: string
   description: string | null
+  tags: string[]
   definition: AutomationDefinition
   yaml: string
   lastRunAt: string | null
@@ -42,11 +103,14 @@ export interface AutomationCommand {
   label: string
   description: string
   requiredPermissions: string[]
+  inputSchema: Record<string, unknown>
 }
 
 export interface AutomationStepResult {
   stepId: string
   uses: string
+  parentStepId?: string | null
+  path?: string
   status: 'success' | 'failed' | 'skipped'
   startedAt: string
   completedAt: string
@@ -92,6 +156,7 @@ export interface AutomationTrigger {
   profileMode: string | null
   profileName: string | null
   enabled: boolean
+  tags: string[]
   triggerType: AutomationTriggerType
   triggerConfig: Record<string, unknown>
   lastRunAt: string | null
@@ -109,6 +174,7 @@ export interface SaveAutomationTriggerInput {
   profileMode?: string | null
   profileName?: string | null
   enabled?: boolean
+  tags?: string[]
   triggerType: AutomationTriggerType
   triggerConfig: Record<string, unknown>
 }

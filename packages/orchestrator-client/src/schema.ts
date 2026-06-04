@@ -1896,6 +1896,7 @@ export interface components {
             /** @example Sends a supported viewer control command. */
             description: string;
             requiredPermissions: string[];
+            inputSchema: Record<string, never>;
         };
         ValidateAutomationYamlDto: {
             /**
@@ -1910,11 +1911,12 @@ export interface components {
             /** @example Optional notes */
             description?: string;
             /**
-             * @example {
-             *       "category": "setup"
-             *     }
+             * @example [
+             *       "smoke",
+             *       "login"
+             *     ]
              */
-            labels?: Record<string, never>;
+            tags?: string[];
         };
         AutomationDefinitionStepDto: {
             /** @example wake-device */
@@ -1929,7 +1931,7 @@ export interface components {
             with: Record<string, never>;
         };
         AutomationDefinitionSpecDto: {
-            steps: components["schemas"]["AutomationDefinitionStepDto"][];
+            steps: Record<string, never>[];
         };
         AutomationDefinitionDto: {
             /** @example rebroid.io/automation/v1 */
@@ -1959,6 +1961,7 @@ export interface components {
             lastError: string | null;
             createdAt: string;
             updatedAt: string;
+            tags: string[];
         };
         CreateAutomationDto: {
             /** @example user_123 */
@@ -1978,6 +1981,9 @@ export interface components {
             completedAt: string;
             output?: Record<string, never> | null;
             error?: string | null;
+            parentStepId?: string | null;
+            /** @example steps[0].then[0] */
+            path?: string;
         };
         AutomationRunDto: {
             id: string;
@@ -2017,6 +2023,7 @@ export interface components {
             lastError: string | null;
             createdAt: string;
             updatedAt: string;
+            tags: string[];
         };
         AutomationScheduleTriggerConfigDto: {
             /** @example 0 9 * * * */
@@ -2043,6 +2050,7 @@ export interface components {
             /** @enum {string} */
             triggerType: "schedule" | "webhook" | "event";
             triggerConfig: components["schemas"]["AutomationScheduleTriggerConfigDto"];
+            tags?: string[];
         };
         UpdateAutomationTriggerDto: {
             /** @example user_123 */

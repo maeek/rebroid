@@ -81,6 +81,143 @@ spec:
     ).toThrow('Invalid input for container.network.allowCidr');
   });
 
+  it('normalizes tags and nested flow blocks', () => {
+    const { service } = createService();
+
+    const definition = service.parseYaml(`
+apiVersion: rebroid.io/automation/v1
+kind: AndroidAutomation
+metadata:
+  name: Branching
+  tags:
+    - Smoke
+    - smoke
+    - Login
+spec:
+  steps:
+    - id: check-clipboard
+      uses: android.getClipboard
+      with: {}
+    - id: branch
+      type: condition
+      condition:
+        left:
+          source: step
+          stepId: check-clipboard
+          path: text
+        operator: contains
+        right:
+          source: literal
+          value: ready
+      then:
+        - id: wait-ready
+          uses: android.wait
+          with:
+            durationMs: 1000
+      else:
+        - id: stop-not-ready
+          uses: flow.stop
+          with:
+            reason: Not ready
+    - id: choose
+      type: switch
+      value:
+        source: context
+        path: targetProfileName
+      cases:
+        - value: default
+          steps:
+            - id: log-default
+              uses: debug.log
+              with:
+                message: default profile
+      default:
+        - id: log-other
+          uses: debug.log
+          with:
+            message: other profile
+    - id: retry
+      type: repeat
+      count: 2
+      maxIterations: 2
+      steps:
+        - id: retry-wait
+          uses: android.wait
+          with:
+            durationMs: 500
+`);
+
+    expect(definition.metadata.tags).toEqual(['Smoke', 'Login']);
+    expect(definition.spec.steps[1]).toMatchObject({
+      id: 'branch',
+      type: 'condition',
+      then: [{ id: 'wait-ready' }],
+      else: [{ id: 'stop-not-ready' }],
+    });
+    expect(definition.spec.steps[3]).toMatchObject({
+      id: 'retry',
+      type: 'repeat',
+      count: 2,
+      maxIterations: 2,
+    });
+  });
+
+  it('rejects duplicate nested step IDs', () => {
+    const { service } = createService();
+
+    expect(() =>
+      service.parseYaml(`
+apiVersion: rebroid.io/automation/v1
+kind: AndroidAutomation
+metadata:
+  name: Duplicate nested ids
+spec:
+  steps:
+    - id: branch
+      type: condition
+      condition:
+        left:
+          source: literal
+          value: true
+        operator: equals
+        right:
+          source: literal
+          value: true
+      then:
+        - id: duplicate
+          uses: android.wait
+          with:
+            durationMs: 1000
+    - id: duplicate
+      uses: android.wait
+      with:
+        durationMs: 1000
+`),
+    ).toThrow('Duplicate step id "duplicate"');
+  });
+
+  it('requires repeat blocks to define bounded iteration', () => {
+    const { service } = createService();
+
+    expect(() =>
+      service.parseYaml(`
+apiVersion: rebroid.io/automation/v1
+kind: AndroidAutomation
+metadata:
+  name: Bad repeat
+spec:
+  steps:
+    - id: repeat
+      type: repeat
+      steps:
+        - id: wait
+          uses: android.wait
+          with:
+            durationMs: 1000
+`),
+    ).toThrow('must define count or while');
+  });
+
   it('exposes permission metadata for sensitive command families', () => {
     const { registry } = createService();
     const permissions = new Map(

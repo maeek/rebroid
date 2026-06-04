@@ -1,17 +1,19 @@
-import { AutomationsListPage } from '@/features/automations/automations-page/automations-list-page'
+import { AutomationsListPage } from '@/features/automations/automations-page/list/automations-list-page'
 import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
-import { listAutomationsAction } from '@/server/orchestrator/automations/actions'
+import { listAutomationTriggersAction, listAutomationsAction } from '@/server/orchestrator/automations/actions'
 
 export default async function AutomationsRoute() {
-  const [automations, applications] = await Promise.all([
+  const [automations, applications, triggers] = await Promise.all([
     listAutomationsAction(),
-    listApplicationsAction({ reconcile: false })
+    listApplicationsAction({ reconcile: false }),
+    listAutomationTriggersAction()
   ])
 
   return (
     <AutomationsListPage
       initialApplications={applications}
       initialAutomations={automations}
+      initialTriggers={triggers}
     />
   )
 }

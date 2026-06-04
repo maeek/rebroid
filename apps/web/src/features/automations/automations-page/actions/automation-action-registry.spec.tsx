@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals'
-import { buildYaml, defaultStep } from '../builder-utils'
+import { buildYaml, defaultStep } from '../editor/builder-utils'
 import {
   getAutomationActionDefinitions,
   getBackendActionInput,
@@ -109,7 +109,7 @@ describe('automation builder serialization', () => {
     const yaml = buildYaml({
       name: 'Coordinate test',
       description: '',
-      labelsJson: '{}',
+      tags: [],
       steps: [step]
     })
 

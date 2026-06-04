@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, OnModuleInit } from '@nestjs/common';
-import { ZodError } from 'zod';
+import { ZodError, toJSONSchema } from 'zod';
 import { AutomationCommandDto } from '../dto/automation.dto';
 import {
   AutomationCommandContext,
@@ -39,6 +39,9 @@ export class AutomationCommandRegistryService implements OnModuleInit {
         label,
         description,
         requiredPermissions,
+        inputSchema: toJSONSchema(this.get(uses).schema, {
+          unrepresentable: 'any',
+        }) as Record<string, unknown>,
       }))
       .sort((left, right) => left.uses.localeCompare(right.uses));
   }

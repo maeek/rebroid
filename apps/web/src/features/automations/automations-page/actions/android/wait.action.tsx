@@ -7,5 +7,6 @@ export const waitAction = createNumberAction({
   field: 'durationMs',
   fieldLabel: 'Duration',
   defaultValue: 1000,
-  suffix: 'ms'
+  suffix: 'ms',
+  summary: value => `Wait for ${value}ms`
 })
