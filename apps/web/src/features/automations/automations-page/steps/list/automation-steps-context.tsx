@@ -13,9 +13,14 @@ interface AutomationStepsContextValue {
   rootSteps: AutomationStepForm[]
   commands: AutomationCommand[]
   commandByUses: Map<string, AutomationCommand>
-  expandedStepKeys: string[]
+  selectedStepKey: string | null
+  openBlockKeys: string[]
+  yamlStepKey: string | null
   dropTarget: AutomationStepDropTarget
-  onToggleStep: (clientKey: string) => void
+  onSelectStep: (clientKey: string | null) => void
+  onToggleBlock: (clientKey: string) => void
+  onOpenBlock: (clientKey: string) => void
+  onSetYamlStepKey: (clientKey: string | null) => void
   onListChange: (listId: string, steps: AutomationStepForm[]) => void
   onStepChange: (listId: string, index: number, step: AutomationStepForm) => void
   onMoveStep: (listId: string, stepId: string, offset: -1 | 1) => void

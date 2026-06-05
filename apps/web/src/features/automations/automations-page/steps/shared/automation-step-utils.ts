@@ -1,4 +1,5 @@
 import { summarizeActionInput } from '../../actions/action-registry'
+import { conditionOperatorLabel, valueRefLabel } from '../value-ref/automation-value-ref-utils'
 import type { AutomationStepForm } from '../../editor/builder-utils'
 import type { AutomationCommand } from '@/server/orchestrator/automations/types'
 
@@ -19,13 +20,26 @@ export const stepTitle = (step: AutomationStepForm, command?: AutomationCommand)
   return command?.label || step.uses
 }
 
+export const stepKindLabel = (step: AutomationStepForm) => {
+  if (step.kind === 'action') return 'Action'
+  if (step.kind === 'condition') return 'Condition'
+  if (step.kind === 'switch') return 'Switch'
+  return 'Repeat'
+}
+
 export const stepSummary = (step: AutomationStepForm) => {
-  if (step.kind === 'condition') return 'Run a branch when the condition matches'
-  if (step.kind === 'switch') return `${step.cases.length} ${step.cases.length === 1 ? 'case' : 'cases'}`
+  if (step.kind === 'condition') {
+    const firstRule = step.condition.groups[0]?.conditions[0]
+    if (firstRule) {
+      return `${valueRefLabel(firstRule.value, [])} ${conditionOperatorLabel(firstRule.operator)}`
+    }
+    return 'Run a branch when the condition matches'
+  }
+  if (step.kind === 'switch') return `by ${valueRefLabel(step.value, [])}`
   if (step.kind === 'repeat') {
     return step.mode === 'count'
-      ? `Repeat ${step.count} times`
-      : `Repeat while condition matches, max ${step.maxIterations}`
+      ? `${step.count} ${step.count === 1 ? 'time' : 'times'}`
+      : `while condition matches, max ${step.maxIterations}`
   }
   const input = parseStepInput(step)
   return summarizeActionInput(step.uses, input)

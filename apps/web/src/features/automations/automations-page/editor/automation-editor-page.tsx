@@ -40,6 +40,7 @@ import {
   validateAutomationYamlAction
 } from '@/server/orchestrator/automations/actions'
 import { AutomationStepsList } from '../steps/list/automation-steps-list'
+import { collectBlockKeys, collectStepKeys, firstStepKey } from '../steps/shared/automation-step-selection'
 import { AutomationDetailsSection } from './automation-details-section'
 import { AutomationYamlEditorSection } from './automation-yaml-editor-section'
 import {
@@ -60,10 +61,15 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
   const [form, setForm] = useState<AutomationFormState>(() =>
     initialAutomation ? automationToForm(initialAutomation) : defaultForm()
   )
-  const [expandedStepKeys, setExpandedStepKeys] = useState<string[]>(() => {
+  const [selectedStepKey, setSelectedStepKey] = useState<string | null>(() => {
     const initialForm = initialAutomation ? automationToForm(initialAutomation) : defaultForm()
-    return initialForm.steps[0]?.clientKey ? [initialForm.steps[0].clientKey] : []
+    return firstStepKey(initialForm.steps)
   })
+  const [openBlockKeys, setOpenBlockKeys] = useState<string[]>(() => {
+    const initialForm = initialAutomation ? automationToForm(initialAutomation) : defaultForm()
+    return collectBlockKeys(initialForm.steps)
+  })
+  const [yamlStepKey, setYamlStepKey] = useState<string | null>(null)
   const [yamlOpen, setYamlOpen] = useState(false)
   const [yamlDraft, setYamlDraft] = useState('')
   const [yamlValid, setYamlValid] = useState(true)
@@ -88,21 +94,23 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
   }
 
   useEffect(() => {
-    const currentKeys = new Set(form.steps.map(step => step.clientKey))
-    setExpandedStepKeys(current => {
-      const next = current.filter(key => currentKeys.has(key))
-      if (next.length === current.length && next.every((key, index) => key === current[index])) {
-        return current
-      }
+    const currentStepKeys = collectStepKeys(form.steps)
+    const currentStepKeySet = new Set(currentStepKeys)
+    const currentBlockKeySet = new Set(collectBlockKeys(form.steps))
 
-      return next.length > 0 || !form.steps[0]?.clientKey ? next : [form.steps[0].clientKey]
-    })
+    setSelectedStepKey(current => (current && currentStepKeySet.has(current) ? current : (currentStepKeys[0] ?? null)))
+    setYamlStepKey(current => (current && currentStepKeySet.has(current) ? current : null))
+    setOpenBlockKeys(current => current.filter(key => currentBlockKeySet.has(key)))
   }, [form.steps])
 
-  const toggleStep = (clientKey: string) => {
-    setExpandedStepKeys(current =>
+  const toggleBlock = (clientKey: string) => {
+    setOpenBlockKeys(current =>
       current.includes(clientKey) ? current.filter(key => key !== clientKey) : [...current, clientKey]
     )
+  }
+
+  const openBlock = (clientKey: string) => {
+    setOpenBlockKeys(current => (current.includes(clientKey) ? current : [...current, clientKey]))
   }
 
   const updateStepAt = (index: number, step: AutomationStepForm) => {
@@ -142,8 +150,12 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
   const persistAutomation = async (input: { yaml: string }) => {
     const wasNew = !automation
     const saved = automation ? await updateAutomationAction(automation.id, input) : await createAutomationAction(input)
+    const nextForm = automationToForm(saved)
     setAutomation(saved)
-    setForm(automationToForm(saved))
+    setForm(nextForm)
+    setSelectedStepKey(firstStepKey(nextForm.steps))
+    setOpenBlockKeys(collectBlockKeys(nextForm.steps))
+    setYamlStepKey(null)
     if (yamlOpen) setYamlDraft(saved.yaml)
     toast({ title: wasNew ? 'Automation created' : 'Automation updated' })
     if (wasNew) {
@@ -218,7 +230,11 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
         throw new Error(validation.errors[0] ?? 'Workflow YAML is invalid.')
       }
 
-      setForm(definitionToForm(validation.definition, automation?.id ?? form.id))
+      const nextForm = definitionToForm(validation.definition, automation?.id ?? form.id)
+      setForm(nextForm)
+      setSelectedStepKey(firstStepKey(nextForm.steps))
+      setOpenBlockKeys(collectBlockKeys(nextForm.steps))
+      setYamlStepKey(null)
       setYamlDraft(validation.yaml ?? yaml)
       setYamlValid(true)
       setYamlError(null)
@@ -348,43 +364,53 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
 
       <section
         className={cn(
-          'grid 2xl:flex',
-          yamlOpen
-            ? 'min-h-[calc(100dvh-9rem)] grid-rows-[auto_minmax(32rem,1fr)] gap-6 px-6 pb-16 pt-2 max-sm:px-4'
-            : 'gap-6 px-6 pb-16 pt-2 max-sm:px-4'
+          'grid gap-6 px-6 pb-16 pt-2 max-sm:px-4',
+          yamlOpen ? 'min-h-[calc(100dvh-9rem)] grid-rows-[auto_minmax(32rem,1fr)] 2xl:flex' : null
         )}
       >
-        <AutomationDetailsSection
-          form={form}
-          onChange={updateForm}
-          className='flex-2/5'
-        />
-
         {yamlOpen ? (
-          <AutomationYamlEditorSection
-            yaml={yamlDraft}
-            commands={initialCommands}
-            onYamlChange={setYamlDraft}
-            onValidationChange={(valid, messages) => {
-              if (!valid) {
-                setYamlValid(false)
-                setYamlError(messages[0] ?? 'Automation YAML is invalid.')
-                return
-              }
-              setYamlValid(true)
-              setYamlError(null)
-            }}
-            className='flex-3/5'
-          />
+          <>
+            <AutomationDetailsSection
+              form={form}
+              onChange={updateForm}
+              className='flex-2/5'
+            />
+            <AutomationYamlEditorSection
+              yaml={yamlDraft}
+              commands={initialCommands}
+              onYamlChange={setYamlDraft}
+              onValidationChange={(valid, messages) => {
+                if (!valid) {
+                  setYamlValid(false)
+                  setYamlError(messages[0] ?? 'Automation YAML is invalid.')
+                  return
+                }
+                setYamlValid(true)
+                setYamlError(null)
+              }}
+              className='flex-3/5'
+            />
+          </>
         ) : (
           <AutomationStepsList
             steps={form.steps}
             commands={initialCommands}
-            expandedStepKeys={expandedStepKeys}
-            onToggleStep={toggleStep}
+            selectedStepKey={selectedStepKey}
+            openBlockKeys={openBlockKeys}
+            yamlStepKey={yamlStepKey}
+            onSelectStep={setSelectedStepKey}
+            onToggleBlock={toggleBlock}
+            onOpenBlock={openBlock}
+            onYamlStepKeyChange={setYamlStepKey}
             onChange={updateSteps}
             onStepChange={updateStepAt}
-            className='flex-3/5'
+            details={
+              <AutomationDetailsSection
+                form={form}
+                onChange={updateForm}
+              />
+            }
+            className='w-full'
           />
         )}
       </section>

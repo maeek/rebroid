@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import {
   closestCenter,
   DndContext,
@@ -16,9 +16,12 @@ import {
   useSensor,
   useSensors
 } from '@dnd-kit/core'
+import { AutomationStepInspector } from '../inspector/automation-step-inspector'
+import { AutomationStepOutlineListView } from '../outline/automation-step-outline-list-view'
 import { isAutomationStepForm } from '../shared/automation-step-clipboard'
 import {
   findStepById,
+  findStepLocation,
   getStepListLength,
   moveStepByOffset,
   moveStepToList,
@@ -28,7 +31,6 @@ import {
 } from '../tree/automation-step-tree'
 import { AutomationStepDragPreview } from './automation-step-drag-preview'
 import { getDropTargetIndex, getStepIdFromDraggableId } from './automation-step-drop-target'
-import { AutomationStepListView } from './automation-step-list-view'
 import { AutomationStepsProvider, type AutomationStepDropTarget } from './automation-steps-context'
 import type { AutomationStepForm } from '../../editor/builder-utils'
 import type { AutomationCommand } from '@/server/orchestrator/automations/types'
@@ -101,18 +103,30 @@ const getStepDropData = (event: DragOverEvent | DragEndEvent): StepDropData | nu
 export function AutomationStepsList({
   steps,
   commands,
-  expandedStepKeys,
-  onToggleStep,
+  selectedStepKey,
+  openBlockKeys,
+  yamlStepKey,
+  onSelectStep,
+  onToggleBlock,
+  onOpenBlock,
+  onYamlStepKeyChange,
   onChange,
   onStepChange,
+  details,
   className
 }: {
   steps: AutomationStepForm[]
   commands: AutomationCommand[]
-  expandedStepKeys: string[]
-  onToggleStep: (clientKey: string) => void
+  selectedStepKey: string | null
+  openBlockKeys: string[]
+  yamlStepKey: string | null
+  onSelectStep: (clientKey: string | null) => void
+  onToggleBlock: (clientKey: string) => void
+  onOpenBlock: (clientKey: string) => void
+  onYamlStepKeyChange: (clientKey: string | null) => void
   onChange: (steps: AutomationStepForm[]) => void
   onStepChange: (index: number, step: AutomationStepForm) => void
+  details?: ReactNode
   className?: string
 }) {
   const [activeStepId, setActiveStepId] = useState<string | null>(null)
@@ -123,6 +137,8 @@ export function AutomationStepsList({
   const commandByUses = useMemo(() => new Map(commands.map(command => [command.uses, command])), [commands])
   const activeStep = activeStepId ? findStepById(safeSteps, activeStepId) : null
   const activeCommand = activeStep?.kind === 'action' ? commandByUses.get(activeStep.uses) : undefined
+  const selectedStep = selectedStepKey ? findStepById(safeSteps, selectedStepKey) : null
+  const selectedLocation = selectedStepKey ? findStepLocation(safeSteps, selectedStepKey) : null
 
   const getDropTarget = (event: DragOverEvent | DragEndEvent): AutomationStepDropTarget => {
     const activeId = getStepIdFromDragEvent(event)
@@ -147,6 +163,7 @@ export function AutomationStepsList({
     if (!target) return
 
     onChange(moveStepToList(safeSteps, activeId, target.listId, target.index))
+    onSelectStep(activeId)
   }
 
   const updateList = useCallback(
@@ -176,14 +193,34 @@ export function AutomationStepsList({
       rootSteps: safeSteps,
       commands,
       commandByUses,
-      expandedStepKeys,
+      selectedStepKey,
+      openBlockKeys,
+      yamlStepKey,
       dropTarget,
-      onToggleStep,
+      onSelectStep,
+      onToggleBlock,
+      onOpenBlock,
+      onSetYamlStepKey: onYamlStepKeyChange,
       onListChange: updateList,
       onStepChange: updateStep,
       onMoveStep: moveStep
     }),
-    [safeSteps, commands, commandByUses, expandedStepKeys, dropTarget, onToggleStep, updateList, updateStep, moveStep]
+    [
+      safeSteps,
+      commands,
+      commandByUses,
+      selectedStepKey,
+      openBlockKeys,
+      yamlStepKey,
+      dropTarget,
+      onSelectStep,
+      onToggleBlock,
+      onOpenBlock,
+      onYamlStepKeyChange,
+      updateList,
+      updateStep,
+      moveStep
+    ]
   )
 
   return (
@@ -205,10 +242,30 @@ export function AutomationStepsList({
         onDragEnd={finishDrag}
       >
         <AutomationStepsProvider value={stepsContext}>
-          <AutomationStepListView
-            listId={ROOT_STEP_LIST_ID}
-            steps={safeSteps}
-          />
+          <div className='grid min-w-0 gap-6 xl:grid-cols-[minmax(32rem,1fr)_minmax(24rem,30rem)]'>
+            <div className='grid min-w-0 content-start gap-6'>
+              {details}
+              <AutomationStepOutlineListView
+                listId={ROOT_STEP_LIST_ID}
+                steps={safeSteps}
+                root
+              />
+            </div>
+            <AutomationStepInspector
+              step={selectedStep}
+              rootSteps={safeSteps}
+              commands={commands}
+              commandByUses={commandByUses}
+              yamlStepKey={yamlStepKey}
+              onYamlStepKeyChange={onYamlStepKeyChange}
+              onChange={nextStep => {
+                if (!selectedLocation) return
+                if (selectedLocation.listId === ROOT_STEP_LIST_ID) onStepChange(selectedLocation.index, nextStep)
+                else onChange(replaceStepInList(safeSteps, selectedLocation.listId, selectedLocation.index, nextStep))
+              }}
+              onClose={() => onSelectStep(null)}
+            />
+          </div>
           {hasInvalidSteps ? (
             <div className='rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive'>
               Some invalid steps were hidden to keep the visual editor stable. Fix the YAML before saving.
