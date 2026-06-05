@@ -54,6 +54,7 @@ const commands: AutomationCommand[] = [
       required: ['command'],
       additionalProperties: false
     },
+    outputs: [{ key: 'summary', label: 'Summary', type: 'string', description: 'Step summary.' }],
     editor: {
       inputDefaults: {},
       inputFieldOrder: ['command'],
@@ -66,6 +67,7 @@ const commands: AutomationCommand[] = [
     description: 'Resets network policy.',
     requiredPermissions: ['automations:run'],
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    outputs: [{ key: 'summary', label: 'Summary', type: 'string', description: 'Step summary.' }],
     editor: {
       inputDefaults: {},
       inputFieldOrder: [],
@@ -89,6 +91,7 @@ const commands: AutomationCommand[] = [
       required: ['x1', 'y1', 'x2', 'y2'],
       additionalProperties: false
     },
+    outputs: [{ key: 'summary', label: 'Summary', type: 'string', description: 'Step summary.' }],
     editor: {
       inputDefaults: { durationMs: 300 },
       inputFieldOrder: ['x1', 'y1', 'x2', 'y2', 'durationMs'],
@@ -185,13 +188,15 @@ describe('automation YAML completions', () => {
     - id: branch
       type: condition
       condition:
-        left:
-          source: context
-          path: ready
-        operator: exists
+        groups:
+          - conditions:
+              - value:
+                  source: runContext
+                  key: targetApplicationId
+                operator: exists
       then:
         - `,
-      11
+      13
     )
 
     expect(suggestions.map(suggestion => suggestion.label)).toEqual([

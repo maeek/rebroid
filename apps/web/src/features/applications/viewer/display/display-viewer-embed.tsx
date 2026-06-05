@@ -41,7 +41,7 @@ const EmbeddedViewerSplash = ({
   tone?: 'default' | 'danger'
   icon?: ReactNode
 }) => (
-  <div className='flex min-h-136 w-full items-center justify-center bg-background/35 p-6'>
+  <div className='flex min-h-136 w-full items-center justify-center p-6'>
     <StatusSplash
       title={title}
       description={description}

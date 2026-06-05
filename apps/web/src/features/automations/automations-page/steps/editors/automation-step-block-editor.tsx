@@ -14,9 +14,9 @@ import {
   type AutomationSwitchStepForm,
   defaultStep
 } from '../../editor/builder-utils'
-import { AutomationValueRefEditor } from '../value-ref/automation-value-ref-editor'
+import { AutomationReferencePicker } from '../value-ref/automation-reference-picker'
+import { AutomationConditionBuilder } from './automation-condition-builder'
 import { AutomationLiteralValueEditor } from './automation-literal-value-editor'
-import { AutomationPredicateEditor } from './automation-predicate-editor'
 import type { AutomationStepReferenceOption } from '../value-ref/automation-value-ref-constants'
 
 type RenderSteps = (
@@ -85,7 +85,7 @@ function ConditionBlockEditor({
 }) {
   return (
     <div className='grid gap-5'>
-      <AutomationPredicateEditor
+      <AutomationConditionBuilder
         id={`${step.clientKey}-condition`}
         label='Condition'
         value={step.condition}
@@ -113,6 +113,8 @@ function SwitchBlockEditor({
   onChange: (step: AutomationStepForm) => void
   renderSteps: RenderSteps
 }) {
+  const switchValue =
+    step.value.source === 'literal' ? { source: 'runContext' as const, key: 'targetProfileName' } : step.value
   const updateCase = (clientKey: string, patch: Partial<AutomationSwitchCaseForm>) => {
     onChange({
       ...step,
@@ -122,10 +124,10 @@ function SwitchBlockEditor({
 
   return (
     <div className='grid gap-5'>
-      <AutomationValueRefEditor
+      <AutomationReferencePicker
         id={`${step.clientKey}-switch-value`}
         label='Switch value'
-        value={step.value}
+        value={switchValue}
         stepOptions={stepOptions}
         onChange={value => onChange({ ...step, value })}
       />
@@ -219,7 +221,7 @@ function RepeatBlockEditor({
           onChange={count => onChange({ ...step, count, maxIterations: Math.max(step.maxIterations, count) })}
         />
       ) : (
-        <AutomationPredicateEditor
+        <AutomationConditionBuilder
           id={`${step.clientKey}-while`}
           label='While'
           value={step.while}
@@ -242,7 +244,7 @@ function RepeatBlockEditor({
 
 function NestedSection({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className='grid gap-2 rounded-md border border-border/60 p-3'>
+    <div className='grid min-w-0 gap-2 rounded-md border border-border/60 p-3 max-sm:p-2'>
       <Label>{title}</Label>
       {children}
     </div>

@@ -7,6 +7,7 @@ import { AndroidAutomationCommandsService } from './commands/android-automation-
 import { AutomationCommandRegistryService } from './commands/automation-command-registry.service';
 import { ContainerNetworkAutomationCommandsService } from './commands/container-network-automation-commands.service';
 import { GenericAutomationCommandsService } from './commands/generic-automation-commands.service';
+import { AutomationConditionService } from './condition/automation-condition.service';
 import { AutomationsController } from './controllers/automations.controller';
 import { AutomationDefinitionService } from './definition/automation-definition.service';
 import { AutomationsPersistenceModule } from './persistence/automations-persistence.module';
@@ -29,6 +30,7 @@ import { AutomationsService } from './services/automations.service';
     ContainerNetworkAutomationCommandsService,
     GenericAutomationCommandsService,
     AutomationCommandRegistryService,
+    AutomationConditionService,
     AutomationDefinitionService,
     AutomationRunnerService,
     AutomationCronRegistryService,

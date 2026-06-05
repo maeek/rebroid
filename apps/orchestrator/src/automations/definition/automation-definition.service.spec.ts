@@ -2,6 +2,7 @@ import { AndroidAutomationCommandsService } from '../commands/android-automation
 import { AutomationCommandRegistryService } from '../commands/automation-command-registry.service';
 import { ContainerNetworkAutomationCommandsService } from '../commands/container-network-automation-commands.service';
 import { GenericAutomationCommandsService } from '../commands/generic-automation-commands.service';
+import { AutomationConditionService } from '../condition/automation-condition.service';
 import { AutomationDefinitionService } from './automation-definition.service';
 
 const createService = () => {
@@ -11,9 +12,10 @@ const createService = () => {
     new GenericAutomationCommandsService(),
   );
   registry.onModuleInit();
+  const conditions = new AutomationConditionService();
   return {
     registry,
-    service: new AutomationDefinitionService(registry),
+    service: new AutomationDefinitionService(registry, conditions),
   };
 };
 
@@ -101,14 +103,16 @@ spec:
     - id: branch
       type: condition
       condition:
-        left:
-          source: step
-          stepId: check-clipboard
-          path: text
-        operator: contains
-        right:
-          source: literal
-          value: ready
+        groups:
+          - conditions:
+              - value:
+                  source: stepOutput
+                  stepId: check-clipboard
+                  outputKey: text
+                operator: contains
+                compare:
+                  source: literal
+                  value: ready
       then:
         - id: wait-ready
           uses: android.wait
@@ -122,8 +126,8 @@ spec:
     - id: choose
       type: switch
       value:
-        source: context
-        path: targetProfileName
+        source: runContext
+        key: targetProfileName
       cases:
         - value: default
           steps:
@@ -176,13 +180,12 @@ spec:
     - id: branch
       type: condition
       condition:
-        left:
-          source: literal
-          value: true
-        operator: equals
-        right:
-          source: literal
-          value: true
+        groups:
+          - conditions:
+              - value:
+                  source: runContext
+                  key: targetApplicationId
+                operator: exists
       then:
         - id: duplicate
           uses: android.wait

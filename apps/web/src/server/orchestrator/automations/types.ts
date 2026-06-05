@@ -4,28 +4,53 @@ export type AutomationRunTrigger = 'manual' | 'schedule' | 'webhook' | 'event'
 export type AutomationTriggerType = 'schedule' | 'webhook' | 'event'
 export type AutomationStartPolicy = 'require-running' | 'start-if-needed'
 
-export type AutomationPredicateOperator =
+export type AutomationValueType = 'string' | 'number' | 'boolean' | 'array' | 'object' | 'unknown'
+
+export interface AutomationCommandOutput {
+  key: string
+  label: string
+  type: AutomationValueType
+  description: string
+  example?: unknown
+}
+
+export type AutomationConditionOperator =
   | 'equals'
   | 'notEquals'
   | 'contains'
+  | 'doesNotContain'
   | 'exists'
+  | 'doesNotExist'
+  | 'isEmpty'
+  | 'isNotEmpty'
+  | 'isTrue'
+  | 'isFalse'
   | 'greaterThan'
   | 'greaterThanOrEqual'
   | 'lessThan'
   | 'lessThanOrEqual'
   | 'matches'
+  | 'lengthEquals'
+  | 'lengthGreaterThan'
+  | 'lengthLessThan'
 
-export interface AutomationValueRef {
-  source: 'literal' | 'context' | 'step'
-  value?: unknown
-  path?: string
-  stepId?: string
+export type AutomationValueRef =
+  | { source: 'literal'; value?: unknown }
+  | { source: 'runContext'; key: string }
+  | { source: 'stepOutput'; stepId: string; outputKey: string }
+
+export interface AutomationConditionRule {
+  value: AutomationValueRef
+  operator: AutomationConditionOperator
+  compare?: AutomationValueRef
 }
 
-export interface AutomationPredicate {
-  left: AutomationValueRef
-  operator: AutomationPredicateOperator
-  right?: AutomationValueRef
+export interface AutomationConditionGroup {
+  conditions: AutomationConditionRule[]
+}
+
+export interface AutomationConditionExpression {
+  groups: AutomationConditionGroup[]
 }
 
 export interface AutomationActionStep {
@@ -37,7 +62,7 @@ export interface AutomationActionStep {
 export interface AutomationConditionStep {
   id: string
   type: 'condition'
-  condition: AutomationPredicate
+  condition: AutomationConditionExpression
   then: AutomationDefinitionStep[]
   else?: AutomationDefinitionStep[]
 }
@@ -59,7 +84,7 @@ export interface AutomationRepeatStep {
   id: string
   type: 'repeat'
   count?: number
-  while?: AutomationPredicate
+  while?: AutomationConditionExpression
   maxIterations: number
   steps: AutomationDefinitionStep[]
 }
@@ -152,6 +177,7 @@ export interface AutomationCommand {
   description: string
   requiredPermissions: string[]
   inputSchema: Record<string, unknown>
+  outputs: AutomationCommandOutput[]
   editor: AutomationCommandEditorMetadata
 }
 

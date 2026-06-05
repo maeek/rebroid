@@ -16,6 +16,7 @@ const commands: AutomationCommand[] = [
       required: ['command'],
       additionalProperties: false
     },
+    outputs: [{ key: 'summary', label: 'Summary', type: 'string', description: 'Step summary.' }],
     editor: {
       inputDefaults: {},
       inputFieldOrder: ['command'],

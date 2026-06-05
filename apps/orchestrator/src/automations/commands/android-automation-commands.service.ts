@@ -201,6 +201,20 @@ export class AndroidAutomationCommandsService {
         description: 'Reads Android clipboard text.',
         requiredPermissions: ['automations:run'],
         schema: z.object({}),
+        outputs: [
+          {
+            key: 'text',
+            label: 'Text',
+            type: 'string',
+            description: 'Clipboard text returned by Android.',
+          },
+          {
+            key: 'supported',
+            label: 'Supported',
+            type: 'boolean',
+            description: 'Whether clipboard reads are supported.',
+          },
+        ],
         execute: async (
           _input: Record<string, never>,
           { app, adb }: AutomationCommandContext,
@@ -220,6 +234,27 @@ export class AndroidAutomationCommandsService {
         description: 'Captures a PNG screenshot artifact.',
         requiredPermissions: ['automations:run'],
         schema: screenshotSchema,
+        outputs: [
+          {
+            key: 'mimeType',
+            label: 'MIME type',
+            type: 'string',
+            description: 'Screenshot media type.',
+            example: 'image/png',
+          },
+          {
+            key: 'capturedAt',
+            label: 'Captured at',
+            type: 'string',
+            description: 'Timestamp when the screenshot was captured.',
+          },
+          {
+            key: 'dataUrl',
+            label: 'Image data',
+            type: 'string',
+            description: 'Screenshot encoded as a data URL.',
+          },
+        ],
         execute: async (
           _input: Record<string, never>,
           { app, adb }: AutomationCommandContext,
@@ -264,6 +299,20 @@ export class AndroidAutomationCommandsService {
         description: 'Finds visible UI text and taps its bounds center.',
         requiredPermissions: ['automations:run'],
         schema: textWaitSchema,
+        outputs: [
+          {
+            key: 'x',
+            label: 'X coordinate',
+            type: 'number',
+            description: 'Tapped horizontal coordinate.',
+          },
+          {
+            key: 'y',
+            label: 'Y coordinate',
+            type: 'number',
+            description: 'Tapped vertical coordinate.',
+          },
+        ],
         execute: async (
           { text, timeoutMs, intervalMs }: z.infer<typeof textWaitSchema>,
           { app, adb }: AutomationCommandContext,
@@ -290,6 +339,26 @@ export class AndroidAutomationCommandsService {
         description: 'Runs an Android device shell command.',
         requiredPermissions: ['automations:run-adb-shell'],
         schema: shellSchema,
+        outputs: [
+          {
+            key: 'stdout',
+            label: 'stdout',
+            type: 'string',
+            description: 'Shell command standard output.',
+          },
+          {
+            key: 'stderr',
+            label: 'stderr',
+            type: 'string',
+            description: 'Shell command standard error.',
+          },
+          {
+            key: 'exitCode',
+            label: 'Exit code',
+            type: 'number',
+            description: 'Shell command exit code.',
+          },
+        ],
         execute: async (
           { command, timeoutMs }: z.infer<typeof shellSchema>,
           { app, adb }: AutomationCommandContext,
@@ -325,6 +394,26 @@ export class AndroidAutomationCommandsService {
         description: 'Reads a device file as base64 content.',
         requiredPermissions: ['automations:run'],
         schema: fileSchema,
+        outputs: [
+          {
+            key: 'contentBase64',
+            label: 'File content',
+            type: 'string',
+            description: 'Pulled file content encoded as base64.',
+          },
+          {
+            key: 'mimeType',
+            label: 'MIME type',
+            type: 'string',
+            description: 'Detected file media type.',
+          },
+          {
+            key: 'size',
+            label: 'Size',
+            type: 'number',
+            description: 'Pulled file size in bytes.',
+          },
+        ],
         execute: async (
           { path }: z.infer<typeof fileSchema>,
           { app, adb }: AutomationCommandContext,
@@ -353,6 +442,14 @@ export class AndroidAutomationCommandsService {
         description: 'Checks whether a device file exists.',
         requiredPermissions: ['automations:run'],
         schema: fileSchema,
+        outputs: [
+          {
+            key: 'exists',
+            label: 'Exists',
+            type: 'boolean',
+            description: 'Whether the file exists.',
+          },
+        ],
         execute: async (
           { path }: z.infer<typeof fileSchema>,
           { app, adb }: AutomationCommandContext,
@@ -370,6 +467,14 @@ export class AndroidAutomationCommandsService {
         description: 'Lists device files under a directory.',
         requiredPermissions: ['automations:run'],
         schema: fileSchema,
+        outputs: [
+          {
+            key: 'files',
+            label: 'Files',
+            type: 'array',
+            description: 'Files listed under the requested directory.',
+          },
+        ],
         execute: async (
           { path }: z.infer<typeof fileSchema>,
           { app, adb }: AutomationCommandContext,

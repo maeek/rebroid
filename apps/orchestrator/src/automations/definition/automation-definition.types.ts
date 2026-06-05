@@ -13,41 +13,66 @@ export interface AutomationActionStep {
   with: Record<string, unknown>;
 }
 
-export type AutomationPredicateOperator =
+export type AutomationConditionOperator =
   | 'equals'
   | 'notEquals'
   | 'contains'
+  | 'doesNotContain'
   | 'exists'
+  | 'doesNotExist'
+  | 'isEmpty'
+  | 'isNotEmpty'
+  | 'isTrue'
+  | 'isFalse'
   | 'greaterThan'
   | 'greaterThanOrEqual'
   | 'lessThan'
   | 'lessThanOrEqual'
-  | 'matches';
+  | 'matches'
+  | 'lengthEquals'
+  | 'lengthGreaterThan'
+  | 'lengthLessThan';
 
-export interface AutomationValueRef {
-  source: 'literal' | 'context' | 'step';
-  value?: unknown;
-  path?: string;
-  stepId?: string;
+export type AutomationValueRef =
+  | {
+      source: 'literal';
+      value?: unknown;
+    }
+  | {
+      source: 'runContext';
+      key: string;
+    }
+  | {
+      source: 'stepOutput';
+      stepId: string;
+      outputKey: string;
+    };
+
+export interface AutomationConditionRule {
+  value: AutomationValueRef;
+  operator: AutomationConditionOperator;
+  compare?: AutomationValueRef;
 }
 
-export interface AutomationPredicate {
-  left: AutomationValueRef;
-  operator: AutomationPredicateOperator;
-  right?: AutomationValueRef;
+export interface AutomationConditionGroup {
+  conditions: AutomationConditionRule[];
 }
 
-export interface AutomationConditionStep {
-  id: string;
-  type: 'condition';
-  condition: AutomationPredicate;
-  then: AutomationDefinitionStep[];
-  else?: AutomationDefinitionStep[];
+export interface AutomationConditionExpression {
+  groups: AutomationConditionGroup[];
 }
 
 export interface AutomationSwitchCase {
   value: unknown;
   steps: AutomationDefinitionStep[];
+}
+
+export interface AutomationConditionStep {
+  id: string;
+  type: 'condition';
+  condition: AutomationConditionExpression;
+  then: AutomationDefinitionStep[];
+  else?: AutomationDefinitionStep[];
 }
 
 export interface AutomationSwitchStep {
@@ -62,7 +87,7 @@ export interface AutomationRepeatStep {
   id: string;
   type: 'repeat';
   count?: number;
-  while?: AutomationPredicate;
+  while?: AutomationConditionExpression;
   maxIterations: number;
   steps: AutomationDefinitionStep[];
 }

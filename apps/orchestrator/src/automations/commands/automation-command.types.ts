@@ -16,6 +16,22 @@ export interface AutomationCommandResult {
   data?: Record<string, unknown>;
 }
 
+export type AutomationValueType =
+  | 'string'
+  | 'number'
+  | 'boolean'
+  | 'array'
+  | 'object'
+  | 'unknown';
+
+export interface AutomationCommandOutputMetadata {
+  key: string;
+  label: string;
+  type: AutomationValueType;
+  description: string;
+  example?: unknown;
+}
+
 export interface AutomationCommandEditorExample {
   label: string;
   input: Record<string, unknown>;
@@ -41,6 +57,7 @@ export interface AutomationCommandDefinition<
   description: string;
   requiredPermissions: string[];
   schema: Input;
+  outputs?: AutomationCommandOutputMetadata[];
   editor?: AutomationCommandEditorMetadataOverride;
   execute: (
     input: z.infer<Input>,

@@ -1,7 +1,14 @@
+import { controlOutputOptions } from '../value-ref/automation-value-ref-constants'
 import type { AutomationStepForm } from '../../editor/builder-utils'
+import type { AutomationStepReferenceOption } from '../value-ref/automation-value-ref-constants'
+import type { AutomationCommand } from '@/server/orchestrator/automations/types'
 
-export const collectStepReferenceOptions = (steps: AutomationStepForm[], excludeClientKey: string) => {
-  const options: { id: string; label: string; uses?: string }[] = []
+export const collectStepReferenceOptions = (
+  steps: AutomationStepForm[],
+  excludeClientKey: string,
+  commandByUses: Map<string, AutomationCommand>
+) => {
+  const options: AutomationStepReferenceOption[] = []
 
   const visit = (items: AutomationStepForm[]): boolean => {
     for (const item of items) {
@@ -9,10 +16,13 @@ export const collectStepReferenceOptions = (steps: AutomationStepForm[], exclude
 
       const id = item.id.trim()
       if (id) {
+        const uses = item.kind === 'action' ? item.uses : `flow.${item.kind}`
+        const command = item.kind === 'action' ? commandByUses.get(item.uses) : undefined
         options.push({
           id,
-          label: item.kind === 'action' ? `${id} (${item.uses})` : `${id} (${item.kind})`,
-          uses: item.kind === 'action' ? item.uses : `flow.${item.kind}`
+          label: command?.label ?? stepLabel(item),
+          uses,
+          outputs: item.kind === 'action' ? (command?.outputs ?? []) : (controlOutputOptions[uses] ?? [])
         })
       }
 
@@ -34,4 +44,11 @@ export const collectStepReferenceOptions = (steps: AutomationStepForm[], exclude
 
   visit(steps)
   return options
+}
+
+const stepLabel = (step: AutomationStepForm) => {
+  if (step.kind === 'action') return step.uses
+  if (step.kind === 'condition') return 'Condition'
+  if (step.kind === 'switch') return 'Switch'
+  return 'Repeat'
 }

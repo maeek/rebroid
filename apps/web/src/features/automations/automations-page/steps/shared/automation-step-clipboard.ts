@@ -6,7 +6,7 @@ import type {
   AutomationSwitchCaseForm,
   AutomationSwitchStepForm
 } from '../../editor/builder-utils'
-import type { AutomationPredicate, AutomationValueRef } from '@/server/orchestrator/automations/types'
+import type { AutomationConditionExpression, AutomationValueRef } from '@/server/orchestrator/automations/types'
 
 const stepClipboardPayloadType = 'rebroid.workflow.step'
 
@@ -105,7 +105,9 @@ const parseActionStep = (value: Record<string, unknown>): AutomationActionStepFo
 }
 
 const parseConditionStep = (value: Record<string, unknown>): AutomationConditionStepForm | null => {
-  if (!isPredicate(value.condition) || !Array.isArray(value.thenSteps) || !Array.isArray(value.elseSteps)) return null
+  if (!isConditionExpression(value.condition) || !Array.isArray(value.thenSteps) || !Array.isArray(value.elseSteps)) {
+    return null
+  }
   const thenSteps = parseStepList(value.thenSteps)
   const elseSteps = parseStepList(value.elseSteps)
   if (!thenSteps || !elseSteps) return null
@@ -153,7 +155,7 @@ const parseRepeatStep = (value: Record<string, unknown>): AutomationRepeatStepFo
     (value.mode !== 'count' && value.mode !== 'while') ||
     typeof value.count !== 'number' ||
     typeof value.maxIterations !== 'number' ||
-    !isPredicate(value.while) ||
+    !isConditionExpression(value.while) ||
     !Array.isArray(value.steps)
   ) {
     return null
@@ -178,17 +180,27 @@ const parseStepList = (values: unknown[]) => {
   return steps.some(step => step === null) ? null : (steps as AutomationStepForm[])
 }
 
-const isPredicate = (value: unknown): value is AutomationPredicate =>
+const isConditionExpression = (value: unknown): value is AutomationConditionExpression =>
   isRecord(value) &&
-  isValueRef(value.left) &&
-  typeof value.operator === 'string' &&
-  (value.operator === 'exists' || value.right === undefined || isValueRef(value.right))
+  Array.isArray(value.groups) &&
+  value.groups.every(
+    group =>
+      isRecord(group) &&
+      Array.isArray(group.conditions) &&
+      group.conditions.every(
+        condition =>
+          isRecord(condition) &&
+          isValueRef(condition.value) &&
+          typeof condition.operator === 'string' &&
+          (condition.compare === undefined || isValueRef(condition.compare))
+      )
+  )
 
 const isValueRef = (value: unknown): value is AutomationValueRef =>
   isRecord(value) &&
   (value.source === 'literal' ||
-    (value.source === 'context' && typeof value.path === 'string') ||
-    (value.source === 'step' && typeof value.stepId === 'string' && typeof value.path === 'string'))
+    (value.source === 'runContext' && typeof value.key === 'string') ||
+    (value.source === 'stepOutput' && typeof value.stepId === 'string' && typeof value.outputKey === 'string'))
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value)

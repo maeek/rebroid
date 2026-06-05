@@ -79,6 +79,14 @@ export class GenericAutomationCommandsService {
         description: 'Stops the automation successfully at this step.',
         requiredPermissions: ['automations:run'],
         schema: z.object({ reason: z.string().max(500).optional() }),
+        outputs: [
+          {
+            key: 'stop',
+            label: 'Stopped',
+            type: 'boolean',
+            description: 'Whether this step requested a successful stop.',
+          },
+        ],
         execute: async ({ reason }: { reason?: string }) => {
           return {
             summary: reason ? `Stopped: ${reason}` : 'Stopped automation.',
@@ -112,6 +120,27 @@ export class GenericAutomationCommandsService {
         description: 'Captures a screenshot into the run step output.',
         requiredPermissions: ['automations:run'],
         schema: z.object({}),
+        outputs: [
+          {
+            key: 'mimeType',
+            label: 'MIME type',
+            type: 'string',
+            description: 'Screenshot media type.',
+            example: 'image/png',
+          },
+          {
+            key: 'capturedAt',
+            label: 'Captured at',
+            type: 'string',
+            description: 'Timestamp when the screenshot was captured.',
+          },
+          {
+            key: 'dataUrl',
+            label: 'Image data',
+            type: 'string',
+            description: 'Screenshot encoded as a data URL.',
+          },
+        ],
         execute: async (
           _input: Record<string, never>,
           { app, adb }: AutomationCommandContext,

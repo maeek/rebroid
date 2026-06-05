@@ -11,7 +11,7 @@ import type {
   AutomationConditionStep,
   AutomationDefinition,
   AutomationDefinitionStep,
-  AutomationPredicate,
+  AutomationConditionExpression,
   AutomationValueRef,
   AutomationRepeatStep,
   AutomationSwitchStep,
@@ -31,7 +31,7 @@ export interface AutomationConditionStepForm {
   kind: 'condition'
   clientKey: string
   id: string
-  condition: AutomationPredicate
+  condition: AutomationConditionExpression
   thenSteps: AutomationStepForm[]
   elseSteps: AutomationStepForm[]
 }
@@ -57,7 +57,7 @@ export interface AutomationRepeatStepForm {
   id: string
   mode: 'count' | 'while'
   count: number
-  while: AutomationPredicate
+  while: AutomationConditionExpression
   maxIterations: number
   steps: AutomationStepForm[]
 }
@@ -112,17 +112,24 @@ export const defaultForm = (): AutomationFormState => ({
   steps: [defaultStep('android.viewerCommand', 1, 'spec.steps[0]')]
 })
 
-const defaultPredicate = (): AutomationPredicate => ({
-  left: { source: 'literal', value: true },
-  operator: 'equals',
-  right: { source: 'literal', value: true }
+export const defaultConditionExpression = (): AutomationConditionExpression => ({
+  groups: [
+    {
+      conditions: [
+        {
+          value: { source: 'runContext', key: 'targetApplicationId' },
+          operator: 'exists'
+        }
+      ]
+    }
+  ]
 })
 
 export const defaultConditionStep = (index = 1, clientKey?: string): AutomationConditionStepForm => ({
   kind: 'condition',
   clientKey: createClientKey(clientKey),
   id: `condition-${index}`,
-  condition: defaultPredicate(),
+  condition: defaultConditionExpression(),
   thenSteps: [defaultStep('android.wait', 1)],
   elseSteps: []
 })
@@ -131,7 +138,7 @@ export const defaultSwitchStep = (index = 1, clientKey?: string): AutomationSwit
   kind: 'switch',
   clientKey: createClientKey(clientKey),
   id: `switch-${index}`,
-  value: { source: 'context', path: 'targetProfileName' },
+  value: { source: 'runContext', key: 'targetProfileName' },
   cases: [
     {
       clientKey: createClientKey(),
@@ -148,7 +155,7 @@ export const defaultRepeatStep = (index = 1, clientKey?: string): AutomationRepe
   id: `repeat-${index}`,
   mode: 'count',
   count: 2,
-  while: defaultPredicate(),
+  while: defaultConditionExpression(),
   maxIterations: 2,
   steps: [defaultStep('android.wait', 1)]
 })
@@ -200,7 +207,7 @@ const stepToForm = (step: AutomationDefinitionStep, path: string): AutomationSte
       id: step.id,
       mode: step.count === undefined ? 'while' : 'count',
       count: step.count ?? 1,
-      while: step.while ?? defaultPredicate(),
+      while: step.while ?? defaultConditionExpression(),
       maxIterations: step.maxIterations,
       steps: step.steps.map((item, index) => stepToForm(item, `${path}.steps[${index}]`))
     }

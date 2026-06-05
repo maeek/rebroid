@@ -3,36 +3,103 @@ import type { AutomationCommand } from '@/server/orchestrator/automations/types'
 type JsonSchema = Record<string, unknown>
 
 const valueRefSchema: JsonSchema = {
-  type: 'object',
-  required: ['source'],
-  properties: {
-    source: { enum: ['literal', 'context', 'step'] },
-    value: {},
-    path: { type: 'string' },
-    stepId: { type: 'string' }
-  },
-  additionalProperties: false
+  oneOf: [
+    {
+      type: 'object',
+      required: ['source'],
+      properties: {
+        source: { enum: ['literal'] },
+        value: {}
+      },
+      additionalProperties: false
+    },
+    {
+      type: 'object',
+      required: ['source', 'key'],
+      properties: {
+        source: { enum: ['runContext'] },
+        key: {
+          enum: [
+            'runId',
+            'trigger',
+            'targetApplicationId',
+            'targetProfileMode',
+            'targetProfileName',
+            'app.id',
+            'app.packageName',
+            'app.status',
+            'app.profileName',
+            'app.profileMode'
+          ]
+        }
+      },
+      additionalProperties: false
+    },
+    {
+      type: 'object',
+      required: ['source', 'stepId', 'outputKey'],
+      properties: {
+        source: { enum: ['stepOutput'] },
+        stepId: { type: 'string' },
+        outputKey: { type: 'string' }
+      },
+      additionalProperties: false
+    }
+  ]
 }
 
-const predicateSchema: JsonSchema = {
+const conditionRuleSchema: JsonSchema = {
   type: 'object',
-  required: ['left', 'operator'],
+  required: ['value', 'operator'],
   properties: {
-    left: valueRefSchema,
+    value: valueRefSchema,
     operator: {
       enum: [
         'equals',
         'notEquals',
         'contains',
+        'doesNotContain',
         'exists',
+        'doesNotExist',
+        'isEmpty',
+        'isNotEmpty',
+        'isTrue',
+        'isFalse',
         'greaterThan',
         'greaterThanOrEqual',
         'lessThan',
         'lessThanOrEqual',
-        'matches'
+        'matches',
+        'lengthEquals',
+        'lengthGreaterThan',
+        'lengthLessThan'
       ]
     },
-    right: valueRefSchema
+    compare: valueRefSchema
+  },
+  additionalProperties: false
+}
+
+const conditionExpressionSchema: JsonSchema = {
+  type: 'object',
+  required: ['groups'],
+  properties: {
+    groups: {
+      type: 'array',
+      minItems: 1,
+      items: {
+        type: 'object',
+        required: ['conditions'],
+        properties: {
+          conditions: {
+            type: 'array',
+            minItems: 1,
+            items: conditionRuleSchema
+          }
+        },
+        additionalProperties: false
+      }
+    }
   },
   additionalProperties: false
 }
@@ -100,7 +167,7 @@ export const buildAutomationYamlSchema = (commands: AutomationCommand[]): JsonSc
             properties: {
               id: { type: 'string' },
               type: { enum: ['condition'] },
-              condition: predicateSchema,
+              condition: conditionExpressionSchema,
               then: { type: 'array', minItems: 1, items: { $ref: '#/definitions/step' } },
               else: { type: 'array', items: { $ref: '#/definitions/step' } }
             },
@@ -136,7 +203,7 @@ export const buildAutomationYamlSchema = (commands: AutomationCommand[]): JsonSc
               id: { type: 'string' },
               type: { enum: ['repeat'] },
               count: { type: 'integer', minimum: 1 },
-              while: predicateSchema,
+              while: conditionExpressionSchema,
               maxIterations: { type: 'integer', minimum: 1, maximum: 1000 },
               steps: { type: 'array', minItems: 1, items: { $ref: '#/definitions/step' } }
             },

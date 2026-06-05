@@ -8,6 +8,7 @@ import { AndroidAppsNetworkPolicyService } from '../../android-apps/network/serv
 import { AndroidAppsDisplaySidecarService } from '../../android-apps/viewer/services/android-apps-display-sidecar.service';
 import { AndroidAppsSidecarAdbService } from '../../android-apps/viewer/services/android-apps-sidecar-adb.service';
 import { AutomationCommandRegistryService } from '../commands/automation-command-registry.service';
+import { AutomationConditionService } from '../condition/automation-condition.service';
 import {
   Automation,
   AutomationLastStatus,
@@ -22,10 +23,8 @@ import { AutomationsRepository } from '../persistence/automations.repository';
 import { AutomationDefinition } from '../definition/automation-definition.types';
 import {
   AutomationDefinitionStep,
-  AutomationPredicate,
   AutomationRepeatStep,
   AutomationSwitchStep,
-  AutomationValueRef,
 } from '../definition/automation-definition.types';
 import { AutomationStepResult } from './automation-runner.types';
 
@@ -77,6 +76,7 @@ export class AutomationRunnerService {
     private readonly apps: AndroidAppsStateService,
     private readonly lifecycle: AndroidAppsLifecycleService,
     private readonly registry: AutomationCommandRegistryService,
+    private readonly conditions: AutomationConditionService,
     private readonly adb: AndroidAppsSidecarAdbService,
     private readonly display: AndroidAppsDisplaySidecarService,
     private readonly networkPolicy: AndroidAppsNetworkPolicyService,
@@ -375,7 +375,10 @@ export class AutomationRunnerService {
     step: Extract<AutomationDefinitionStep, { type: 'condition' }>,
     options: StepExecutionOptions,
   ) {
-    const matched = this.evaluatePredicate(step.condition, state);
+    const matched = this.conditions.evaluate(step.condition, {
+      ...state,
+      app: state.app as unknown as Record<string, unknown>,
+    });
     await this.recordControlStep(
       state,
       run,
@@ -404,7 +407,10 @@ export class AutomationRunnerService {
     step: AutomationSwitchStep,
     options: StepExecutionOptions,
   ) {
-    const value = this.resolveValueRef(step.value, state);
+    const value = this.conditions.resolveValueRef(step.value, {
+      ...state,
+      app: state.app as unknown as Record<string, unknown>,
+    });
     const matchingIndex = step.cases.findIndex((item) =>
       Object.is(item.value, value),
     );
@@ -440,7 +446,13 @@ export class AutomationRunnerService {
     });
 
     while (iterations < totalIterations && iterations < step.maxIterations) {
-      if (step.while && !this.evaluatePredicate(step.while, state)) {
+      if (
+        step.while &&
+        !this.conditions.evaluate(step.while, {
+          ...state,
+          app: state.app as unknown as Record<string, unknown>,
+        })
+      ) {
         break;
       }
       const result = await this.executeSteps(step.steps, state, run, {
@@ -491,79 +503,5 @@ export class AutomationRunnerService {
   ) {
     run.stepResultsJson = JSON.stringify(results);
     await this.runs.save(run);
-  }
-
-  private evaluatePredicate(
-    predicate: AutomationPredicate,
-    state: ExecutionState,
-  ) {
-    const left = this.resolveValueRef(predicate.left, state);
-    if (predicate.operator === 'exists') {
-      return left !== undefined && left !== null;
-    }
-    const right = predicate.right
-      ? this.resolveValueRef(predicate.right, state)
-      : undefined;
-    switch (predicate.operator) {
-      case 'equals':
-        return Object.is(left, right);
-      case 'notEquals':
-        return !Object.is(left, right);
-      case 'contains':
-        return String(left ?? '').includes(String(right ?? ''));
-      case 'greaterThan':
-        return Number(left) > Number(right);
-      case 'greaterThanOrEqual':
-        return Number(left) >= Number(right);
-      case 'lessThan':
-        return Number(left) < Number(right);
-      case 'lessThanOrEqual':
-        return Number(left) <= Number(right);
-      case 'matches':
-        return new RegExp(String(right ?? '')).test(String(left ?? ''));
-      default:
-        return false;
-    }
-  }
-
-  private resolveValueRef(ref: AutomationValueRef, state: ExecutionState) {
-    if (ref.source === 'literal') {
-      return ref.value;
-    }
-    if (ref.source === 'context') {
-      return this.valueAtPath(
-        {
-          runId: state.runId,
-          trigger: state.trigger,
-          targetApplicationId: state.app.id,
-          targetProfileMode: state.targetProfileMode,
-          targetProfileName: state.targetProfileName,
-          app: state.app,
-        },
-        ref.path,
-      );
-    }
-    return this.valueAtPath(
-      state.outputsByStepId.get(ref.stepId ?? '') ?? undefined,
-      ref.path,
-    );
-  }
-
-  private valueAtPath(value: unknown, path?: string) {
-    if (!path) {
-      return value;
-    }
-    return path.split('.').reduce<unknown>((current, segment) => {
-      if (current === undefined || current === null) {
-        return undefined;
-      }
-      if (Array.isArray(current) && /^\d+$/.test(segment)) {
-        return current[Number(segment)];
-      }
-      if (typeof current === 'object') {
-        return (current as Record<string, unknown>)[segment];
-      }
-      return undefined;
-    }, value);
   }
 }

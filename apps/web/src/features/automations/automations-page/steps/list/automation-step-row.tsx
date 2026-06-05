@@ -79,7 +79,10 @@ export function AutomationStepRow({
   const [stepSettingsOpen, setStepSettingsOpen] = useState(false)
   const [stepYamlOpen, setStepYamlOpen] = useState(false)
   const command = step.kind === 'action' ? commandByUses.get(step.uses) : undefined
-  const stepOptions = useMemo(() => collectStepReferenceOptions(rootSteps, step.clientKey), [rootSteps, step.clientKey])
+  const stepOptions = useMemo(
+    () => collectStepReferenceOptions(rootSteps, step.clientKey, commandByUses),
+    [commandByUses, rootSteps, step.clientKey]
+  )
   const onChange = (nextStep: AutomationStepForm) => onStepChange(listId, index, nextStep)
   const onToggle = listId === ROOT_STEP_LIST_ID ? () => onToggleStep(step.clientKey) : () => undefined
   const onMoveUp = () => onMoveStep(listId, step.clientKey, -1)

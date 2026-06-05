@@ -6,6 +6,7 @@ import {
   AutomationCommandEditorMetadataOverride,
   AutomationCommandContext,
   AutomationCommandDefinition,
+  AutomationCommandOutputMetadata,
 } from './automation-command.types';
 import { AndroidAutomationCommandsService } from './android-automation-commands.service';
 import { ContainerNetworkAutomationCommandsService } from './container-network-automation-commands.service';
@@ -36,20 +37,30 @@ export class AutomationCommandRegistryService implements OnModuleInit {
 
   listCommands(): AutomationCommandDto[] {
     return [...this.commands.values()]
-      .map(({ uses, label, description, requiredPermissions, editor }) => {
-        const inputSchema = toJSONSchema(this.get(uses).schema, {
-          unrepresentable: 'any',
-        }) as Record<string, unknown>;
-
-        return {
+      .map(
+        ({
           uses,
           label,
           description,
           requiredPermissions,
-          inputSchema,
-          editor: buildCommandEditorMetadata(inputSchema, editor),
-        };
-      })
+          outputs,
+          editor,
+        }) => {
+          const inputSchema = toJSONSchema(this.get(uses).schema, {
+            unrepresentable: 'any',
+          }) as Record<string, unknown>;
+
+          return {
+            uses,
+            label,
+            description,
+            requiredPermissions,
+            inputSchema,
+            outputs: normalizeCommandOutputs(outputs),
+            editor: buildCommandEditorMetadata(inputSchema, editor),
+          };
+        },
+      )
       .sort((left, right) => left.uses.localeCompare(right.uses));
   }
 
@@ -71,6 +82,10 @@ export class AutomationCommandRegistryService implements OnModuleInit {
     return this.get(uses).requiredPermissions;
   }
 
+  outputsFor(uses: string) {
+    return normalizeCommandOutputs(this.get(uses).outputs);
+  }
+
   async execute(
     uses: string,
     input: Record<string, unknown>,
@@ -90,6 +105,24 @@ export class AutomationCommandRegistryService implements OnModuleInit {
     return command;
   }
 }
+
+export const summaryOutput: AutomationCommandOutputMetadata = {
+  key: 'summary',
+  label: 'Summary',
+  type: 'string',
+  description: 'Human-readable step result summary.',
+};
+
+export const normalizeCommandOutputs = (
+  outputs: AutomationCommandOutputMetadata[] = [],
+) => {
+  const seen = new Set<string>();
+  return [summaryOutput, ...outputs].filter((output) => {
+    if (seen.has(output.key)) return false;
+    seen.add(output.key);
+    return true;
+  });
+};
 
 const buildCommandEditorMetadata = (
   inputSchema: Record<string, unknown>,

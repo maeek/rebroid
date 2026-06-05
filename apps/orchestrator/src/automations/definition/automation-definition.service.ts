@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { parse, stringify } from 'yaml';
 import { AutomationCommandRegistryService } from '../commands/automation-command-registry.service';
+import { AutomationConditionService } from '../condition/automation-condition.service';
+import { controlStepOutputs } from '../condition/automation-condition.constants';
 import { normalizeAutomationTags } from '../tags/automation-tags';
 import {
   AUTOMATION_API_VERSION,
@@ -8,10 +10,7 @@ import {
   AutomationDefinition,
   AutomationDefinitionStep,
   AutomationDefinitionMetadata,
-  AutomationPredicate,
-  AutomationPredicateOperator,
   AutomationSwitchCase,
-  AutomationValueRef,
 } from './automation-definition.types';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -19,24 +18,15 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const controlTypes = new Set(['condition', 'switch', 'repeat']);
 
-const predicateOperators = new Set<AutomationPredicateOperator>([
-  'equals',
-  'notEquals',
-  'contains',
-  'exists',
-  'greaterThan',
-  'greaterThanOrEqual',
-  'lessThan',
-  'lessThanOrEqual',
-  'matches',
-]);
-
 const stableStepId = (base: string, index: number) =>
   `${base.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '') || 'step'}-${index + 1}`;
 
 @Injectable()
 export class AutomationDefinitionService {
-  constructor(private readonly registry: AutomationCommandRegistryService) {}
+  constructor(
+    private readonly registry: AutomationCommandRegistryService,
+    private readonly conditions: AutomationConditionService,
+  ) {}
 
   parseYaml(yaml: string) {
     let parsed: unknown;
@@ -73,7 +63,12 @@ export class AutomationDefinitionService {
     }
 
     const seenIds = new Set<string>();
-    const steps = this.normalizeSteps(spec.steps, seenIds, 'spec.steps');
+    const steps = this.normalizeSteps(
+      spec.steps,
+      seenIds,
+      'spec.steps',
+      new Map(),
+    );
 
     return {
       apiVersion: AUTOMATION_API_VERSION,
@@ -129,10 +124,21 @@ export class AutomationDefinitionService {
     rawSteps: unknown[],
     seenIds: Set<string>,
     path: string,
+    availableStepOutputs: Map<string, Set<string>>,
   ): AutomationDefinitionStep[] {
-    return rawSteps.map((rawStep, index) =>
-      this.normalizeStep(rawStep, index, seenIds, `${path}[${index}]`),
-    );
+    const steps: AutomationDefinitionStep[] = [];
+    for (const [index, rawStep] of rawSteps.entries()) {
+      const step = this.normalizeStep(
+        rawStep,
+        index,
+        seenIds,
+        `${path}[${index}]`,
+        availableStepOutputs,
+      );
+      steps.push(step);
+      availableStepOutputs.set(step.id, this.outputKeysForStep(step));
+    }
+    return steps;
   }
 
   private normalizeStep(
@@ -140,6 +146,7 @@ export class AutomationDefinitionService {
     index: number,
     seenIds: Set<string>,
     path: string,
+    availableStepOutputs: Map<string, Set<string>>,
   ): AutomationDefinitionStep {
     if (!isRecord(rawStep)) {
       throw new BadRequestException(`Step ${index + 1} must be an object.`);
@@ -156,18 +163,27 @@ export class AutomationDefinitionService {
     seenIds.add(id);
 
     if (type === 'condition') {
+      const condition = this.conditions.normalizeExpression(
+        rawStep.condition,
+        `${path}.condition`,
+      );
+      this.conditions.validateExpressionReferences(
+        condition,
+        availableStepOutputs,
+        `${path}.condition`,
+      );
+      const branchOutputs = cloneAvailableStepOutputs(availableStepOutputs);
+      branchOutputs.set(id, outputKeysForUses('flow.condition'));
       return {
         id,
         type,
-        condition: this.normalizePredicate(
-          rawStep.condition,
-          `${path}.condition`,
-        ),
+        condition,
         then: this.normalizeNestedSteps(
           rawStep.then,
           seenIds,
           `${path}.then`,
           id,
+          cloneAvailableStepOutputs(branchOutputs),
         ),
         ...(rawStep.else === undefined
           ? {}
@@ -177,6 +193,7 @@ export class AutomationDefinitionService {
                 seenIds,
                 `${path}.else`,
                 id,
+                cloneAvailableStepOutputs(branchOutputs),
               ),
             }),
       };
@@ -186,6 +203,8 @@ export class AutomationDefinitionService {
       if (!Array.isArray(rawStep.cases)) {
         throw new BadRequestException(`Step "${id}" cases must be an array.`);
       }
+      const caseOutputs = cloneAvailableStepOutputs(availableStepOutputs);
+      caseOutputs.set(id, outputKeysForUses('flow.switch'));
       const cases: AutomationSwitchCase[] = rawStep.cases.map(
         (rawCase, caseIndex) => {
           if (!isRecord(rawCase)) {
@@ -200,6 +219,7 @@ export class AutomationDefinitionService {
               seenIds,
               `${path}.cases[${caseIndex}].steps`,
               id,
+              cloneAvailableStepOutputs(caseOutputs),
             ),
           };
         },
@@ -207,7 +227,11 @@ export class AutomationDefinitionService {
       return {
         id,
         type,
-        value: this.normalizeValueRef(rawStep.value, `${path}.value`),
+        value: this.normalizeSwitchValueRef(
+          rawStep.value,
+          `${path}.value`,
+          availableStepOutputs,
+        ),
         cases,
         ...(rawStep.default === undefined
           ? {}
@@ -217,6 +241,7 @@ export class AutomationDefinitionService {
                 seenIds,
                 `${path}.default`,
                 id,
+                cloneAvailableStepOutputs(caseOutputs),
               ),
             }),
       };
@@ -230,7 +255,14 @@ export class AutomationDefinitionService {
       const predicate =
         rawStep.while === undefined
           ? undefined
-          : this.normalizePredicate(rawStep.while, `${path}.while`);
+          : this.conditions.normalizeExpression(rawStep.while, `${path}.while`);
+      if (predicate) {
+        this.conditions.validateExpressionReferences(
+          predicate,
+          availableStepOutputs,
+          `${path}.while`,
+        );
+      }
       if (count === undefined && predicate === undefined) {
         throw new BadRequestException(
           `Step "${id}" must define count or while.`,
@@ -261,6 +293,7 @@ export class AutomationDefinitionService {
           seenIds,
           `${path}.steps`,
           id,
+          cloneAvailableStepOutputs(availableStepOutputs),
         ),
       };
     }
@@ -297,64 +330,51 @@ export class AutomationDefinitionService {
     seenIds: Set<string>,
     path: string,
     id: string,
+    availableStepOutputs: Map<string, Set<string>>,
   ) {
     if (!Array.isArray(rawSteps) || rawSteps.length === 0) {
       throw new BadRequestException(`Step "${id}" ${path} must contain steps.`);
     }
-    return this.normalizeSteps(rawSteps, seenIds, path);
+    return this.normalizeSteps(rawSteps, seenIds, path, availableStepOutputs);
   }
 
-  private normalizeValueRef(value: unknown, path: string): AutomationValueRef {
-    if (!isRecord(value)) {
-      throw new BadRequestException(`${path} must be an object.`);
-    }
-    if (
-      value.source !== 'literal' &&
-      value.source !== 'context' &&
-      value.source !== 'step'
-    ) {
-      throw new BadRequestException(`${path}.source is invalid.`);
-    }
-    if (value.source === 'literal') {
-      return { source: value.source, value: value.value };
-    }
-    if (typeof value.path !== 'string' || !value.path.trim()) {
-      throw new BadRequestException(`${path}.path is required.`);
-    }
-    if (value.source === 'step') {
-      if (typeof value.stepId !== 'string' || !value.stepId.trim()) {
-        throw new BadRequestException(`${path}.stepId is required.`);
-      }
-      return {
-        source: value.source,
-        stepId: value.stepId.trim(),
-        path: value.path.trim(),
-      };
-    }
-    return { source: value.source, path: value.path.trim() };
-  }
-
-  private normalizePredicate(
+  private normalizeSwitchValueRef(
     value: unknown,
     path: string,
-  ): AutomationPredicate {
-    if (!isRecord(value)) {
-      throw new BadRequestException(`${path} must be an object.`);
+    availableStepOutputs: Map<string, Set<string>>,
+  ) {
+    const ref = this.conditions.normalizeExpression(
+      {
+        groups: [
+          {
+            conditions: [
+              {
+                value,
+                operator: 'exists',
+              },
+            ],
+          },
+        ],
+      },
+      path,
+    ).groups[0].conditions[0].value;
+    this.conditions.validateExpressionReferences(
+      {
+        groups: [{ conditions: [{ value: ref, operator: 'exists' }] }],
+      },
+      availableStepOutputs,
+      path,
+    );
+    return ref;
+  }
+
+  private outputKeysForStep(step: AutomationDefinitionStep) {
+    if ('uses' in step) {
+      return new Set(
+        this.registry.outputsFor(step.uses).map((output) => output.key),
+      );
     }
-    if (
-      typeof value.operator !== 'string' ||
-      !predicateOperators.has(value.operator as AutomationPredicateOperator)
-    ) {
-      throw new BadRequestException(`${path}.operator is invalid.`);
-    }
-    const operator = value.operator as AutomationPredicateOperator;
-    return {
-      left: this.normalizeValueRef(value.left, `${path}.left`),
-      operator,
-      ...(operator === 'exists'
-        ? {}
-        : { right: this.normalizeValueRef(value.right, `${path}.right`) }),
-    };
+    return outputKeysForUses(`flow.${step.type}`);
   }
 
   private normalizePositiveInteger(value: unknown, label: string) {
@@ -364,3 +384,14 @@ export class AutomationDefinitionService {
     return value;
   }
 }
+
+const outputKeysForUses = (uses: string) =>
+  new Set((controlStepOutputs[uses] ?? []).map((output) => output.key));
+
+const cloneAvailableStepOutputs = (source: Map<string, Set<string>>) =>
+  new Map(
+    [...source.entries()].map(([stepId, outputs]) => [
+      stepId,
+      new Set(outputs),
+    ]),
+  );
