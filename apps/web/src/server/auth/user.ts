@@ -188,8 +188,7 @@ const normalizeUser = (
 ): StoredUser => {
   const now = nowIso()
   const role = user.role ?? 'user'
-  const legacyGroupId = (user as Partial<StoredUser> & { groupId?: string }).groupId
-  const groupIds = user.groupIds ?? (legacyGroupId ? [legacyGroupId] : [role === 'admin' ? 'admins' : 'users'])
+  const groupIds = user.groupIds ?? [role === 'admin' ? 'admins' : 'users']
 
   return {
     id: user.id,

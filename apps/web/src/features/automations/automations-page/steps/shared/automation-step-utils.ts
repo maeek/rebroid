@@ -1,10 +1,6 @@
-import { summarizeActionInput } from '../actions/action-registry'
-import { referenceDisplay, pixelToPercent, percentToPixel } from '../actions/shared/coordinate-helpers'
-import { numberInputValue, stringInputValue, booleanInputValue } from '../actions/shared/input-values'
-import type { AutomationStepForm } from '../editor/builder-utils'
+import { summarizeActionInput } from '../../actions/action-registry'
+import type { AutomationStepForm } from '../../editor/builder-utils'
 import type { AutomationCommand } from '@/server/orchestrator/automations/types'
-
-export { booleanInputValue, numberInputValue, percentToPixel, pixelToPercent, referenceDisplay, stringInputValue }
 
 export const parseStepInput = (step: AutomationStepForm): Record<string, unknown> => {
   if (step.kind !== 'action') return {}
@@ -15,16 +11,6 @@ export const parseStepInput = (step: AutomationStepForm): Record<string, unknown
     return {}
   }
 }
-
-export const updateStepInput = (step: AutomationStepForm, patch: Record<string, unknown>): AutomationStepForm => ({
-  ...step,
-  ...(step.kind === 'action' ? { withJson: JSON.stringify({ ...parseStepInput(step), ...patch }, null, 2) } : {})
-})
-
-export const replaceStepInput = (step: AutomationStepForm, input: Record<string, unknown>): AutomationStepForm => ({
-  ...step,
-  ...(step.kind === 'action' ? { withJson: JSON.stringify(input, null, 2) } : {})
-})
 
 export const stepTitle = (step: AutomationStepForm, command?: AutomationCommand) => {
   if (step.kind === 'condition') return 'Condition'

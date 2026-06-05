@@ -31,7 +31,7 @@ export const validateAutomationYamlModel = ({
 
   for (let lineNumber = 1; lineNumber <= model.getLineCount(); lineNumber += 1) {
     const line = model.getLineContent(lineNumber)
-    const usesMatch = line.match(/^(\s*uses:\s*)([^\s#]*)/)
+    const usesMatch = line.match(/^(\s*(?:-\s*)?uses:\s*)([^\s#]*)/)
     if (usesMatch) {
       const uses = usesMatch[2] ?? ''
       const validUses = commands.map(command => command.uses)
@@ -164,7 +164,8 @@ const yamlParseMarker = (
   model: Monaco.editor.ITextModel,
   error: unknown
 ): Monaco.editor.IMarkerData => {
-  const linePosition = isRecord(error) && Array.isArray(error.linePos) ? error.linePos[0] : null
+  const linePositions = isRecord(error) && Array.isArray(error.linePos) ? (error.linePos as unknown[]) : []
+  const linePosition = linePositions[0] ?? null
   const lineNumber =
     isRecord(linePosition) && typeof linePosition.line === 'number'
       ? Math.min(Math.max(linePosition.line, 1), model.getLineCount())

@@ -5,29 +5,19 @@ import classNames from 'classnames'
 import { useTheme } from 'next-themes'
 import { Textarea } from '@/components/ui/textarea'
 import { createAutomationYamlCompletionProvider } from './language/automation-yaml-completions'
+import {
+  automationYamlMarkerOwner,
+  configureAutomationYamlLanguage,
+  disableAutomationYamlLanguage,
+  isAutomationYamlWorkerRequestHandlerError
+} from './language/automation-yaml-service'
 import { validateAutomationYamlModel } from './language/automation-yaml-validation'
+import { registerAutomationMonacoWorkers } from './language/automation-yaml-workers'
 import { buildAutomationYamlSchema } from './schema/automation-yaml-schema'
 import type { AutomationCommand } from '@/server/orchestrator/automations/types'
 import type * as Monaco from 'monaco-editor'
 
 const defaultModelUri = 'file:///rebroid-automation.yaml'
-
-const registerMonacoWorkers = () => {
-  const existingEnvironment = globalThis.MonacoEnvironment
-
-  globalThis.MonacoEnvironment = {
-    ...existingEnvironment,
-    getWorker(moduleId, label) {
-      if (label !== 'yaml' && moduleId !== 'monaco-yaml/yaml.worker') {
-        const worker = existingEnvironment?.getWorker?.(moduleId, label)
-        if (worker) return worker
-      }
-      return new Worker(new URL('monaco-editor/esm/vs/editor/editor.worker', import.meta.url))
-    }
-  }
-}
-
-const automationYamlMarkerOwner = 'rebroid-automation-yaml'
 
 export function AutomationMonacoYamlEditor({
   value,
@@ -53,6 +43,7 @@ export function AutomationMonacoYamlEditor({
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null)
   const modelRef = useRef<Monaco.editor.ITextModel | null>(null)
   const monacoRef = useRef<typeof Monaco | null>(null)
+  const valueRef = useRef(value)
   const onChangeRef = useRef(onChange)
   const onValidationChangeRef = useRef(onValidationChange)
   const [fallbackReason, setFallbackReason] = useState<string | null>(null)
@@ -61,8 +52,9 @@ export function AutomationMonacoYamlEditor({
   const monacoTheme = resolvedTheme === 'light' ? 'vs' : 'vs-dark'
 
   useEffect(() => {
+    valueRef.current = value
     onChangeRef.current = onChange
-  }, [onChange])
+  }, [onChange, value])
 
   useEffect(() => {
     onValidationChangeRef.current = onValidationChange
@@ -74,10 +66,12 @@ export function AutomationMonacoYamlEditor({
     let markersDisposable: Monaco.IDisposable | null = null
     let contentDisposable: Monaco.IDisposable | null = null
     let completionDisposable: Monaco.IDisposable | null = null
+    let yamlLanguageDisposable: { dispose: () => void } | null = null
+    let runtimeErrorDisposable: { dispose: () => void } | null = null
 
     const initialize = async () => {
       try {
-        registerMonacoWorkers()
+        registerAutomationMonacoWorkers()
         const monaco = await import('monaco-editor')
         if (disposed || !containerRef.current) return
         monacoRef.current = monaco
@@ -112,21 +106,10 @@ export function AutomationMonacoYamlEditor({
 
         const uri = monaco.Uri.parse(modelUri)
         const existingModel = monaco.editor.getModel(uri)
-        const model = existingModel ?? monaco.editor.createModel(value, 'yaml', uri)
-        if (existingModel && existingModel.getValue() !== value) existingModel.setValue(value)
+        const currentValue = valueRef.current
+        const model = existingModel ?? monaco.editor.createModel(currentValue, 'yaml', uri)
+        if (existingModel && existingModel.getValue() !== currentValue) existingModel.setValue(currentValue)
         modelRef.current = model
-
-        editorRef.current = monaco.editor.create(containerRef.current, {
-          model,
-          automaticLayout: true,
-          minimap: { enabled: false },
-          scrollBeyondLastLine: false,
-          fontSize: 12,
-          tabSize: 2,
-          wordWrap: 'on',
-          wordBasedSuggestions: 'off',
-          theme: monacoTheme
-        })
         const validateModel = () => {
           monaco.editor.setModelMarkers(
             model,
@@ -139,6 +122,28 @@ export function AutomationMonacoYamlEditor({
             })
           )
         }
+        runtimeErrorDisposable = registerAutomationYamlRuntimeFallback(validateModel)
+        yamlLanguageDisposable = await configureAutomationYamlLanguage({
+          monaco,
+          modelUri: model.uri.toString(),
+          schema: resolvedSchema
+        })
+        if (disposed || !containerRef.current) {
+          yamlLanguageDisposable?.dispose()
+          return
+        }
+
+        editorRef.current = monaco.editor.create(containerRef.current, {
+          model,
+          automaticLayout: true,
+          minimap: { enabled: false },
+          scrollBeyondLastLine: false,
+          fontSize: 12,
+          tabSize: 2,
+          wordWrap: 'on',
+          wordBasedSuggestions: 'off',
+          theme: monacoTheme
+        })
         completionDisposable = monaco.languages.registerCompletionItemProvider(
           'yaml',
           createAutomationYamlCompletionProvider({
@@ -182,6 +187,8 @@ export function AutomationMonacoYamlEditor({
         contentDisposable?.dispose()
         markersDisposable?.dispose()
         completionDisposable?.dispose()
+        yamlLanguageDisposable?.dispose()
+        runtimeErrorDisposable?.dispose()
         if (modelRef.current) monacoRef.current?.editor.setModelMarkers(modelRef.current, automationYamlMarkerOwner, [])
         editorRef.current?.dispose()
       } catch {
@@ -225,4 +232,30 @@ export function AutomationMonacoYamlEditor({
       aria-label={`${ariaLabel} editor`}
     />
   )
+}
+
+const registerAutomationYamlRuntimeFallback = (onFallback: () => void) => {
+  const fallback = (error: unknown) => {
+    if (!isAutomationYamlWorkerRequestHandlerError(error)) return false
+    disableAutomationYamlLanguage()
+    onFallback()
+    return true
+  }
+
+  const onUnhandledRejection = (event: PromiseRejectionEvent) => {
+    if (fallback(event.reason)) event.preventDefault()
+  }
+  const onError = (event: ErrorEvent) => {
+    if (fallback(event.error)) event.preventDefault()
+  }
+
+  window.addEventListener('unhandledrejection', onUnhandledRejection)
+  window.addEventListener('error', onError)
+
+  return {
+    dispose() {
+      window.removeEventListener('unhandledrejection', onUnhandledRejection)
+      window.removeEventListener('error', onError)
+    }
+  }
 }

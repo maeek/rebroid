@@ -1,4 +1,4 @@
-import type { AutomationStepForm } from '../editor/builder-utils'
+import type { AutomationStepForm } from '../../editor/builder-utils'
 
 export const collectStepReferenceOptions = (steps: AutomationStepForm[], excludeClientKey: string) => {
   const options: { id: string; label: string; uses?: string }[] = []

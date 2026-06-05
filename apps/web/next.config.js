@@ -16,7 +16,7 @@ const nextConfig = {
   allowedDevOrigins,
   output: 'standalone',
   // The display sidecar serves the viewer directly. Keep slash normalization
-  // disabled so legacy same-origin viewer tokens do not trigger redirect loops.
+  // disabled so same-origin viewer tokens do not trigger redirect loops.
   skipTrailingSlashRedirect: true,
   experimental: {
     proxyClientMaxBodySize: apkUploadBodySizeLimit,

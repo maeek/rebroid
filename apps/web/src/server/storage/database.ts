@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import Database from 'better-sqlite3'
+import 'server-only'
 import { initialWebSchema } from './migrations/0000-initial'
 
 type WebDatabase = {
@@ -21,76 +22,15 @@ let instancePath: string | undefined
 let lastAuditRetentionAt = 0
 
 const databasePath = () =>
-  process.env.WEB_DATABASE_PATH || join(/* turbopackIgnore: true */ process.cwd(), 'data', 'web.sqlite')
+  process.env.WEB_DATABASE_PATH || join(/*turbopackIgnore: true*/ process.cwd(), 'data', 'web.sqlite')
 const resetInstruction =
   'Reset stored state with "docker compose -f deploy/compose.yaml down -v" before starting Rebroid.'
 
-const tableExists = (client: Database.Database, name: string) =>
-  Boolean(client.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(name))
-
-const auditColumns = [
-  'id',
-  'created_at',
-  'actor_user_id',
-  'actor_label',
-  'action',
-  'category',
-  'resource_type',
-  'resource_id',
-  'resource_label',
-  'outcome',
-  'details_json',
-  'source_ip',
-  'user_agent'
-]
-
-const createAuditEventsTable = (client: Database.Database) => {
-  client.exec(`
-    CREATE TABLE audit_events (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      created_at TEXT NOT NULL,
-      actor_user_id TEXT,
-      actor_label TEXT NOT NULL,
-      action TEXT NOT NULL,
-      category TEXT NOT NULL,
-      resource_type TEXT,
-      resource_id TEXT,
-      resource_label TEXT,
-      outcome TEXT NOT NULL,
-      details_json TEXT NOT NULL,
-      source_ip TEXT,
-      user_agent TEXT
-    );
-    CREATE INDEX IF NOT EXISTS audit_events_created_at ON audit_events(created_at DESC);
-    CREATE INDEX IF NOT EXISTS audit_events_category_created_at ON audit_events(category, created_at DESC);
-    CREATE INDEX IF NOT EXISTS audit_events_actor_created_at ON audit_events(actor_user_id, created_at DESC);
-  `)
-}
-
-const ensureAuditEventsSchema = (client: Database.Database) => {
-  if (!tableExists(client, 'audit_events')) {
-    createAuditEventsTable(client)
-    return
-  }
-
-  const columns = client.prepare('PRAGMA table_info(audit_events)').all() as Array<{ name: string }>
-  const current = columns.map(column => column.name)
-  if (auditColumns.every(column => current.includes(column))) {
-    client.exec(`
-      CREATE INDEX IF NOT EXISTS audit_events_created_at ON audit_events(created_at DESC);
-      CREATE INDEX IF NOT EXISTS audit_events_category_created_at ON audit_events(category, created_at DESC);
-      CREATE INDEX IF NOT EXISTS audit_events_actor_created_at ON audit_events(actor_user_id, created_at DESC);
-    `)
-    return
-  }
-
-  client.exec(`
-    DROP TABLE audit_events;
-    DROP INDEX IF EXISTS audit_events_created_at;
-    DROP INDEX IF EXISTS audit_events_category_created_at;
-    DROP INDEX IF EXISTS audit_events_actor_created_at;
-  `)
-  createAuditEventsTable(client)
+const hasApplicationTables = (client: Database.Database) => {
+  const result = client
+    .prepare("SELECT COUNT(*) AS count FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
+    .get() as { count: number }
+  return result.count > 0
 }
 
 const openDatabase = (): WebDatabase => {
@@ -104,13 +44,16 @@ const openDatabase = (): WebDatabase => {
   client.pragma('foreign_keys = ON')
   const schemaVersion = client.pragma('user_version', { simple: true }) as number
 
-  if (schemaVersion === 0 && !tableExists(client, 'web_state')) {
+  if (schemaVersion === 0) {
+    if (hasApplicationTables(client)) {
+      client.close()
+      throw new Error(`Unsupported web database schema version ${schemaVersion}. ${resetInstruction}`)
+    }
     client.exec(initialWebSchema)
   } else if (schemaVersion !== 2) {
     client.close()
     throw new Error(`Unsupported web database schema version ${schemaVersion}. ${resetInstruction}`)
   }
-  ensureAuditEventsSchema(client)
 
   instance = { client }
   instancePath = path

@@ -76,7 +76,7 @@ export interface AutomationFormState {
   steps: AutomationStepForm[]
 }
 
-export const defaultStepInput = (uses: string): Record<string, unknown> => getDefaultActionInput(uses)
+const defaultStepInput = (uses: string): Record<string, unknown> => getDefaultActionInput(uses)
 
 const createClientKey = (seed?: string) => seed ?? globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
 
@@ -218,7 +218,7 @@ const stepToForm = (step: AutomationDefinitionStep, path: string): AutomationSte
   }
 }
 
-export const buildDefinition = ({
+const buildDefinition = ({
   name,
   description,
   tags,
@@ -241,8 +241,7 @@ export const buildDefinition = ({
   }
 }
 
-export const definitionToYaml = (definition: AutomationDefinition) =>
-  stringifyYaml(definition, { lineWidth: 0 }).trimEnd()
+const definitionToYaml = (definition: AutomationDefinition) => stringifyYaml(definition, { lineWidth: 0 }).trimEnd()
 
 export const buildYaml = (form: Pick<AutomationFormState, 'name' | 'description' | 'tags' | 'steps'>) =>
   definitionToYaml(buildDefinition(form))

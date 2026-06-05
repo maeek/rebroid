@@ -104,6 +104,21 @@ export interface AutomationCommand {
   description: string
   requiredPermissions: string[]
   inputSchema: Record<string, unknown>
+  editor: AutomationCommandEditorMetadata
+}
+
+export interface AutomationCommandEditorExample {
+  label: string
+  input: Record<string, unknown>
+}
+
+export interface AutomationCommandEditorMetadata {
+  inputDefaults: Record<string, unknown>
+  inputFieldOrder: string[]
+  yamlSnippetFields: string[]
+  category?: string
+  iconKey?: string
+  examples?: AutomationCommandEditorExample[]
 }
 
 export interface AutomationStepResult {

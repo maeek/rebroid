@@ -30,6 +30,7 @@ import { recentAppsUpdatedEvent, type RecentApp } from '@/features/applications/
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { startApplicationAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { listRecentAppsAction } from '@/server/recent-apps/actions'
+import type { ShellUser } from './shell-user'
 
 type NavigationVariant = 'sidebar' | 'drawer'
 
@@ -41,6 +42,7 @@ type NavigationItem = {
 
 type ProtectedNavigationProps = {
   variant: NavigationVariant
+  initialUser: ShellUser
   onNavigate?: () => void
 }
 
@@ -258,20 +260,25 @@ const RecentAppLink = ({ app, variant, isActive, onNavigate, onStarted }: Recent
   )
 }
 
-export const ProtectedNavigation = ({ variant, onNavigate }: ProtectedNavigationProps) => {
+export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: ProtectedNavigationProps) => {
   const pathname = usePathname()
   const { data: session } = useSession()
+  const [role, setRole] = useState(initialUser.role)
   const { data: recentApps = [], mutate: refreshRecentApps } = usePollingQuery<RecentApp[]>(
     'navigation:recent-apps',
     () => listRecentAppsAction(),
     { intervalMs: 5000 }
   )
-  const isAdmin = session?.user.role === 'admin'
+  const isAdmin = role === 'admin'
   const userManagementPathIsActive = pathname.startsWith('/settings/users')
   const orchestratorPathIsActive = pathname.startsWith('/settings/orchestrator')
   const [userManagementMenuIsOpen, setUserManagementMenuIsOpen] = useState(userManagementPathIsActive)
   const [orchestratorMenuIsOpen, setOrchestratorMenuIsOpen] = useState(orchestratorPathIsActive)
   const styles = variantStyles[variant]
+
+  useEffect(() => {
+    if (session?.user.role) setRole(session.user.role)
+  }, [session?.user.role])
 
   useEffect(() => {
     const onRecentAppsUpdated = () => void refreshRecentApps()

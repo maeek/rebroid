@@ -3,8 +3,14 @@
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { literalKind as resolveLiteralKind, defaultLiteralValue } from './automation-value-ref-utils'
-import type { LiteralKind } from './automation-value-ref-constants'
+import { literalKind as resolveLiteralKind, defaultLiteralValue } from '../value-ref/automation-value-ref-utils'
+import type { LiteralKind } from '../value-ref/automation-value-ref-constants'
+
+const literalInputValue = (value: unknown) => {
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  return ''
+}
 
 export function AutomationLiteralValueEditor({
   id,
@@ -64,7 +70,7 @@ export function AutomationLiteralValueEditor({
             id={id}
             type={kind === 'number' ? 'number' : 'text'}
             disabled={kind === 'null'}
-            value={kind === 'null' ? '' : String(value ?? '')}
+            value={kind === 'null' ? '' : literalInputValue(value)}
             onChange={event => onChange(kind === 'number' ? Number(event.target.value) || 0 : event.target.value)}
           />
         )}

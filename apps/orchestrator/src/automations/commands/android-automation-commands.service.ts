@@ -105,9 +105,9 @@ export class AndroidAutomationCommandsService {
         schema: viewerCommandSchema,
         execute: async (
           { command }: z.infer<typeof viewerCommandSchema>,
-          { app, adb }: AutomationCommandContext,
+          { app, display }: AutomationCommandContext,
         ) => {
-          await adb.viewerControl(app, command);
+          await display.viewerControl(app, command);
           return { summary: `Sent ${command}.` };
         },
       },

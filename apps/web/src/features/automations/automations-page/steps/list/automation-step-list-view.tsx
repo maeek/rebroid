@@ -19,14 +19,14 @@ import {
   defaultStep,
   defaultSwitchStep,
   type AutomationStepForm
-} from '../editor/builder-utils'
+} from '../../editor/builder-utils'
 import {
   cloneAutomationStep,
   copyAutomationStepToClipboard,
   readAutomationStepFromClipboard
-} from './automation-step-clipboard'
+} from '../shared/automation-step-clipboard'
+import { ROOT_STEP_LIST_ID } from '../tree/automation-step-tree'
 import { AutomationStepRow } from './automation-step-row'
-import { ROOT_STEP_LIST_ID } from './automation-step-tree'
 import { useAutomationStepsContext } from './automation-steps-context'
 
 export function AutomationStepListView({ listId, steps }: { listId: string; steps: AutomationStepForm[] }) {

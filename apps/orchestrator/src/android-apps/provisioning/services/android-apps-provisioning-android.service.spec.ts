@@ -1,7 +1,7 @@
 import { parseAndroidBootReadiness } from './android-apps-provisioning-android.service';
 
 describe('AndroidAppsProvisioningAndroidService boot readiness', () => {
-  it('accepts the legacy sys.boot_completed property', () => {
+  it('ignores sys.boot_completed as a readiness shortcut', () => {
     expect(
       parseAndroidBootReadiness(
         [
@@ -10,14 +10,13 @@ describe('AndroidAppsProvisioningAndroidService boot readiness', () => {
           'init.svc.bootanim=running',
         ].join('\n'),
       ),
-    ).toMatchObject({ ready: true });
+    ).toMatchObject({ ready: false });
   });
 
   it('accepts Redroid service readiness when boot properties are not set', () => {
     expect(
       parseAndroidBootReadiness(
         [
-          'sys.boot_completed=',
           'dev.bootcomplete=',
           'service.bootanim.exit=',
           'init.svc.bootanim=stopped',
@@ -35,7 +34,6 @@ describe('AndroidAppsProvisioningAndroidService boot readiness', () => {
   it('keeps waiting when core Android services are not ready', () => {
     const readiness = parseAndroidBootReadiness(
       [
-        'sys.boot_completed=',
         'dev.bootcomplete=',
         'service.bootanim.exit=',
         'init.svc.bootanim=stopped',

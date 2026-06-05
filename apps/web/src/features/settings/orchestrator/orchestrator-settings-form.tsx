@@ -75,7 +75,7 @@ export const OrchestratorSettingsForm = ({ initialSettings }: { initialSettings:
     try {
       const runtimeSettings: SaveOrchestratorUiSettingsInput = toRuntimeUiSettings(settings)
       const saved: OrchestratorUiSettings = await persistOrchestratorUiSettings(runtimeSettings)
-      setSettings(saved)
+      setSettings(current => ({ ...saved, orchestratorApiUrl: current.orchestratorApiUrl }))
       toast({ title: 'Settings saved' })
     } catch (error) {
       toast({
@@ -92,7 +92,7 @@ export const OrchestratorSettingsForm = ({ initialSettings }: { initialSettings:
     setIsSaving(true)
     try {
       const saved: OrchestratorUiSettings = await restoreOrchestratorUiSettings()
-      setSettings(saved)
+      setSettings(current => ({ ...saved, orchestratorApiUrl: current.orchestratorApiUrl }))
       toast({ title: 'Settings reset' })
     } catch (error) {
       toast({

@@ -16,17 +16,22 @@ import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { Visible } from '@/components/ui/visible'
 import { getHslColorFromCharCode, getHslColorFromCharCodeForeground } from '@/utils/hsl-from-text'
 import { ProfileDialog } from './profile-dialog'
+import type { ShellUser } from '../shell-user'
 
-export const TopBarAccount = () => {
+export const TopBarAccount = ({ initialUser }: { initialUser: ShellUser }) => {
   const session = useSession()
   const [profileOpen, setProfileOpen] = useState(false)
-  const [avatar, setAvatar] = useState<string | null>(session.data?.user?.image ?? null)
-  const displayName = session.data?.user.name ?? 'User'
-  const isAdmin = session.data?.user.role === 'admin'
+  const [avatar, setAvatar] = useState<string | null>(initialUser.avatarDataUrl)
+  const [displayName, setDisplayName] = useState(initialUser.name)
+  const [role, setRole] = useState(initialUser.role)
+  const isAdmin = role === 'admin'
 
   useEffect(() => {
-    setAvatar(session.data?.user?.image ?? null)
-  }, [session.data?.user?.image])
+    if (!session.data?.user) return
+    setAvatar(session.data.user.image ?? null)
+    setDisplayName(session.data.user.name ?? initialUser.name)
+    setRole(session.data.user.role ?? initialUser.role)
+  }, [initialUser.name, initialUser.role, session.data?.user])
 
   return (
     <>

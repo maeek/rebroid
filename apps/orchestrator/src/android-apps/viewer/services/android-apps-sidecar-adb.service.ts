@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { getErrorMessage } from '../../../common/error-message';
 import { AndroidApplication } from '../../android-application.entity';
 import { parseAndroidNotifications } from '../../runtime/utils/android-apps-notification.utils';
-import type { ApplicationViewerControlCommand } from '../dto/application-viewer-control.dto';
 import { AndroidAppsViewerNetworkService } from './android-apps-viewer-network.service';
 
 @Injectable()
@@ -17,16 +16,6 @@ export class AndroidAppsSidecarAdbService {
     private readonly config: ConfigService,
     private readonly viewerNetwork: AndroidAppsViewerNetworkService,
   ) {}
-
-  async viewerControl(
-    app: AndroidApplication,
-    command: ApplicationViewerControlCommand,
-  ) {
-    return this.request(app, '/control', {
-      method: 'POST',
-      body: JSON.stringify({ command }),
-    });
-  }
 
   async getClipboard(app: AndroidApplication) {
     return this.request<{ text: string; supported: boolean }>(

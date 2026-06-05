@@ -408,7 +408,9 @@ export function AutomationsTable({
         description='This removes the workflow and its triggers.'
         busy={busy}
         onOpenChange={open => !open && setPendingDelete(null)}
-        onConfirm={() => pendingDelete && deleteMany([pendingDelete])}
+        onConfirm={() => {
+          if (pendingDelete) void deleteMany([pendingDelete])
+        }}
       />
       <AutomationDeleteDialog
         open={bulkDeleteOpen}
@@ -416,7 +418,9 @@ export function AutomationsTable({
         description='This removes the selected workflows and their triggers.'
         busy={busy}
         onOpenChange={open => !open && setBulkDeleteOpen(false)}
-        onConfirm={() => deleteMany(selectedAutomations)}
+        onConfirm={() => {
+          void deleteMany(selectedAutomations)
+        }}
       />
     </div>
   )

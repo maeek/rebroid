@@ -3,7 +3,6 @@ import { AndroidApplication } from '../../android-application.entity';
 import { AndroidApplicationStatus } from '../../android-application-status';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
 import { AndroidAppsDisplaySidecarService } from './android-apps-display-sidecar.service';
-import { AndroidAppsSidecarAdbService } from './android-apps-sidecar-adb.service';
 import { AndroidAppsViewerNetworkService } from './android-apps-viewer-network.service';
 import { AndroidAppsViewerService } from './android-apps-viewer.service';
 
@@ -34,7 +33,6 @@ describe('AndroidAppsViewerService', () => {
       {
         tryCreateSessionForPreparedTarget: jest.fn().mockResolvedValue(null),
       } as unknown as AndroidAppsDisplaySidecarService,
-      {} as AndroidAppsSidecarAdbService,
       {
         getStored: jest.fn().mockResolvedValue(app),
         save: jest.fn().mockResolvedValue(app),
@@ -88,7 +86,6 @@ describe('AndroidAppsViewerService', () => {
       {
         tryCreateSessionForPreparedTarget: jest.fn().mockResolvedValue(null),
       } as unknown as AndroidAppsDisplaySidecarService,
-      {} as AndroidAppsSidecarAdbService,
       {
         getStored: jest.fn().mockResolvedValue(app),
         save: jest.fn().mockResolvedValue(app),

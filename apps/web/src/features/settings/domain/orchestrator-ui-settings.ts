@@ -3,6 +3,7 @@ import type { OrchestratorSettingsResponse } from '@/server/orchestrator/setting
 import type { WebSettings as WebSettingsResponse } from '@/server/web-settings/types'
 
 export interface OrchestratorUiSettings {
+  orchestratorApiUrl: string
   defaultContainerImage: string
   dockerImageRegistry: string | null
   defaultInactivityTimeoutSeconds: number
@@ -39,6 +40,7 @@ export type RuntimeUiSettings = Pick<
 >
 
 export const defaultOrchestratorUiSettings: OrchestratorUiSettings = {
+  orchestratorApiUrl: 'http://localhost:4100',
   defaultContainerImage: 'redroid/redroid:13.0.0-latest',
   dockerImageRegistry: null,
   defaultInactivityTimeoutSeconds: 900,
@@ -79,8 +81,10 @@ export const defaultRuntimeSettingsResponse: OrchestratorSettingsResponse = {
 
 export const normalizeOrchestratorUiSettings = (
   web: Partial<WebSettingsResponse>,
-  orchestrator: Partial<OrchestratorSettingsResponse>
+  orchestrator: Partial<OrchestratorSettingsResponse>,
+  orchestratorApiUrl = defaultOrchestratorUiSettings.orchestratorApiUrl
 ): OrchestratorUiSettings => ({
+  orchestratorApiUrl,
   appListRefreshIntervalSeconds:
     Number(web.appListRefreshIntervalSeconds) || defaultOrchestratorUiSettings.appListRefreshIntervalSeconds,
   removeDataOnDelete:

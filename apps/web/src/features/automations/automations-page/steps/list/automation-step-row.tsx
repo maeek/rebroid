@@ -23,16 +23,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import { AutomationCommandIcon } from './automation-command-catalog'
-import { AutomationStepBlockEditor } from './automation-step-block-editor'
-import { AutomationStepSettingsDialog } from './automation-step-dialogs'
-import { AutomationStepEditor } from './automation-step-editor'
-import { collectStepReferenceOptions } from './automation-step-reference-options'
-import { ROOT_STEP_LIST_ID } from './automation-step-tree'
-import { stepSummary, stepTitle } from './automation-step-utils'
-import { AutomationStepYamlEditor } from './automation-step-yaml-editor'
+import { AutomationCommandIcon } from '../catalog/automation-command-catalog'
+import { AutomationStepBlockEditor } from '../editors/automation-step-block-editor'
+import { AutomationStepSettingsDialog } from '../editors/automation-step-dialogs'
+import { AutomationStepEditor } from '../editors/automation-step-editor'
+import { AutomationStepYamlEditor } from '../editors/automation-step-yaml-editor'
+import { collectStepReferenceOptions } from '../shared/automation-step-reference-options'
+import { stepSummary, stepTitle } from '../shared/automation-step-utils'
+import { ROOT_STEP_LIST_ID } from '../tree/automation-step-tree'
 import { useAutomationStepsContext } from './automation-steps-context'
-import type { AutomationStepForm } from '../editor/builder-utils'
+import type { AutomationStepForm } from '../../editor/builder-utils'
 
 export function AutomationStepRow({
   listId,

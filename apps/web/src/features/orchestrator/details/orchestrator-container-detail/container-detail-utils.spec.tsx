@@ -12,7 +12,7 @@ describe('orchestrator container detail utilities', () => {
   it('formats network and port summaries', () => {
     expect(formatContainerNetworks([])).toBe('none')
     expect(formatContainerNetworks(['app', 'bridge'])).toBe('app, bridge')
-    expect(formatContainerPorts([{ ip: undefined, publicPort: 8080, privatePort: 80, type: 'tcp' }])).toBe(
+    expect(formatContainerPorts([{ ip: null, publicPort: 8080, privatePort: 80, type: 'tcp' }])).toBe(
       '*:8080 -> 80/tcp'
     )
   })

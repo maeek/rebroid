@@ -17,9 +17,9 @@ export default async function FilesLayout({ children }: { children: React.ReactN
         }}
       >
         <div className='main-layout relative z-10'>
-          <TopBarProtected />
+          <TopBarProtected initialUser={user} />
           <div className='h-[calc(100%-4rem)] w-full'>
-            <Sidebar />
+            <Sidebar initialUser={user} />
             {children}
           </div>
         </div>

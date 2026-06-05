@@ -12,8 +12,9 @@ import { ProtectedNavigation } from '../protected-navigation'
 import { TopBarAccount } from './account'
 import { TopBarNotifications } from './notifications'
 import { OrchestratorStatus } from './orchestrator-status'
+import type { ShellUser } from '../shell-user'
 
-export const TopBarProtected = () => {
+export const TopBarProtected = ({ initialUser }: { initialUser: ShellUser }) => {
   const sectionClasses = 'flex min-w-0 items-center h-full px-4 gap-x-4 max-sm:px-2 lg:w-[33%]'
   const runningApps = yourApps.filter(app => app.running)
 
@@ -50,6 +51,7 @@ export const TopBarProtected = () => {
             <div className='max-h-[80dvh] overflow-y-auto'>
               <ProtectedNavigation
                 variant='drawer'
+                initialUser={initialUser}
                 onNavigate={() => window.setTimeout(() => setDrawerOpen(false), 0)}
               />
             </div>
@@ -88,7 +90,7 @@ export const TopBarProtected = () => {
           </Popover>
         </Visible>
         <TopBarNotifications />
-        <TopBarAccount />
+        <TopBarAccount initialUser={initialUser} />
       </div>
     </div>
   )

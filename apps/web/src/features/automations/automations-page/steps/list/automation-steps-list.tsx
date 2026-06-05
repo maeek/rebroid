@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
   closestCenter,
   DndContext,
@@ -13,9 +13,7 @@ import {
   useSensors
 } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
-import { isAutomationStepForm } from './automation-step-clipboard'
-import { AutomationStepDragPreview } from './automation-step-drag-preview'
-import { AutomationStepListView } from './automation-step-list-view'
+import { isAutomationStepForm } from '../shared/automation-step-clipboard'
 import {
   findStepById,
   findStepLocation,
@@ -26,9 +24,11 @@ import {
   replaceStepInList,
   ROOT_STEP_LIST_ID,
   updateStepList
-} from './automation-step-tree'
+} from '../tree/automation-step-tree'
+import { AutomationStepDragPreview } from './automation-step-drag-preview'
+import { AutomationStepListView } from './automation-step-list-view'
 import { AutomationStepsProvider } from './automation-steps-context'
-import type { AutomationStepForm } from '../editor/builder-utils'
+import type { AutomationStepForm } from '../../editor/builder-utils'
 import type { AutomationCommand } from '@/server/orchestrator/automations/types'
 
 export function AutomationStepsList({
@@ -71,18 +71,27 @@ export function AutomationStepsList({
     onChange(moveStepToList(safeSteps, activeId, targetListId, targetIndex))
   }
 
-  const updateList = (listId: string, nextSteps: AutomationStepForm[]) => {
-    onChange(updateStepList(safeSteps, listId, () => nextSteps))
-  }
+  const updateList = useCallback(
+    (listId: string, nextSteps: AutomationStepForm[]) => {
+      onChange(updateStepList(safeSteps, listId, () => nextSteps))
+    },
+    [onChange, safeSteps]
+  )
 
-  const updateStep = (listId: string, index: number, nextStep: AutomationStepForm) => {
-    if (listId === ROOT_STEP_LIST_ID) onStepChange(index, nextStep)
-    else onChange(replaceStepInList(safeSteps, listId, index, nextStep))
-  }
+  const updateStep = useCallback(
+    (listId: string, index: number, nextStep: AutomationStepForm) => {
+      if (listId === ROOT_STEP_LIST_ID) onStepChange(index, nextStep)
+      else onChange(replaceStepInList(safeSteps, listId, index, nextStep))
+    },
+    [onChange, onStepChange, safeSteps]
+  )
 
-  const moveStep = (listId: string, stepId: string, offset: -1 | 1) => {
-    onChange(moveStepByOffset(safeSteps, listId, stepId, offset))
-  }
+  const moveStep = useCallback(
+    (listId: string, stepId: string, offset: -1 | 1) => {
+      onChange(moveStepByOffset(safeSteps, listId, stepId, offset))
+    },
+    [onChange, safeSteps]
+  )
 
   const stepsContext = useMemo(
     () => ({

@@ -1,9 +1,8 @@
-import { getOrchestratorBaseUrl } from '@/server/orchestrator/config'
+import 'server-only'
+import { getOrchestratorApiUrl } from '@/server/orchestrator/config'
 
 const secretHeaderName = 'x-orchestrator-secret'
 const orchestratorSharedSecret = process.env.ORCHESTRATOR_SHARED_SECRET?.trim()
-
-const apiUrl = (path: string) => `${getOrchestratorBaseUrl().replace(/\/$/, '')}/api/v1${path}`
 
 const getErrorMessage = (error: unknown, fallback: string) => {
   if (!error || typeof error !== 'object' || !('message' in error)) {
@@ -51,7 +50,7 @@ const defaultHeadersFor = (init?: RequestInit) => {
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response
   try {
-    response = await fetch(apiUrl(path), {
+    response = await fetch(getOrchestratorApiUrl(path), {
       ...init,
       cache: 'no-store',
       headers: defaultHeadersFor(init)
@@ -74,7 +73,7 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export async function responseRequest(path: string, init?: RequestInit): Promise<Response> {
   let response: Response
   try {
-    response = await fetch(apiUrl(path), {
+    response = await fetch(getOrchestratorApiUrl(path), {
       ...init,
       cache: 'no-store',
       headers: defaultHeadersFor(init)

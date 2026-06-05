@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals'
-import { defaultConditionStep, defaultStep, type AutomationConditionStepForm } from '../editor/builder-utils'
+import { defaultConditionStep, defaultStep, type AutomationConditionStepForm } from '../../editor/builder-utils'
 import { moveStepByOffset, moveStepToList, ROOT_STEP_LIST_ID } from './automation-step-tree'
 
 const conditionListId = (step: AutomationConditionStepForm, slot: 'then' | 'else') => `${step.clientKey}:${slot}`

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { orchestratorAppCatalogClient } from '@/server/orchestrator/applications/catalog-client'
-import { getOrchestratorBaseUrl } from '@/server/orchestrator/config'
+import { getOrchestratorApiUrl } from '@/server/orchestrator/config'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { hasPermission } from '@/shared/permissions/permissions'
 
@@ -49,9 +49,7 @@ export const POST = async (request: NextRequest, context: RouteContext) => {
     }
 
     const query = new URLSearchParams({ path: request.nextUrl.searchParams.get('path') || '/data' })
-    const upstreamUrl =
-      `${getOrchestratorBaseUrl().replace(/\/$/, '')}/api/v1/apps/${encodeURIComponent(id)}/runtime/data-files?` +
-      query.toString()
+    const upstreamUrl = getOrchestratorApiUrl(`/apps/${encodeURIComponent(id)}/runtime/data-files?${query.toString()}`)
     const headers = new Headers()
     const contentType = request.headers.get('content-type')
     const contentLength = request.headers.get('content-length')

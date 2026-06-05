@@ -8,7 +8,6 @@ import { AndroidApplicationStatus } from '../../android-application-status';
 import type { ApplicationViewerControlCommand } from '../dto/application-viewer-control.dto';
 import { ScrcpySessionDto } from '../dto/scrcpy-session.dto';
 import { AndroidAppsDisplaySidecarService } from './android-apps-display-sidecar.service';
-import { AndroidAppsSidecarAdbService } from './android-apps-sidecar-adb.service';
 import { AndroidAppsViewerNetworkService } from './android-apps-viewer-network.service';
 
 @Injectable()
@@ -22,7 +21,6 @@ export class AndroidAppsViewerService {
   constructor(
     private readonly config: ConfigService,
     private readonly displaySidecar: AndroidAppsDisplaySidecarService,
-    private readonly sidecarAdb: AndroidAppsSidecarAdbService,
     private readonly state: AndroidAppsStateService,
     private readonly viewerNetwork: AndroidAppsViewerNetworkService,
   ) {}
@@ -158,16 +156,13 @@ export class AndroidAppsViewerService {
   /** Sends one control action to the viewer runtime. */
   async viewerControl(id: string, command: ApplicationViewerControlCommand) {
     const app = await this.getRunningRuntimeApp(id);
-    const sidecarPath = await this.tryDisplaySidecarControl(app, command);
+    await this.displaySidecar.viewerControl(app, command);
     await this.recordViewerActivity(id);
 
     return {
       command,
       executed: true,
-      message:
-        sidecarPath === 'display'
-          ? 'Viewer control command executed through display sidecar.'
-          : 'Viewer control command executed through display sidecar ADB endpoint.',
+      message: 'Viewer control command executed through display sidecar.',
     };
   }
 
@@ -235,24 +230,5 @@ export class AndroidAppsViewerService {
     }
 
     return app;
-  }
-
-  private async tryDisplaySidecarControl(
-    app: Awaited<ReturnType<AndroidAppsViewerService['getRunningRuntimeApp']>>,
-    command: ApplicationViewerControlCommand,
-  ) {
-    try {
-      await this.displaySidecar.viewerControl(app, command);
-      return 'display' as const;
-    } catch (error) {
-      await this.sidecarAdb.viewerControl(app, command).catch((legacyError) => {
-        throw new ConflictException(
-          `Viewer control command failed. Display sidecar: ${getErrorMessage(
-            error,
-          )}. Display sidecar ADB endpoint: ${getErrorMessage(legacyError)}.`,
-        );
-      });
-      return 'adb' as const;
-    }
   }
 }

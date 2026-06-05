@@ -42,9 +42,13 @@ export const buildAutomationYamlSchema = (commands: AutomationCommand[]): JsonSc
     type: 'object',
     required: ['id', 'uses', 'with'],
     properties: {
-      id: { type: 'string' },
+      id: { type: 'string', description: 'Unique step identifier.' },
       uses: { enum: [command.uses], description: command.description },
-      with: command.inputSchema
+      with: {
+        description: `${command.label} input.`,
+        default: command.editor.inputDefaults,
+        ...command.inputSchema
+      }
     },
     additionalProperties: false
   }))

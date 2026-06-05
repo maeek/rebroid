@@ -19,12 +19,10 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { SidecarAuthGuard } from "../shared/sidecar-auth.guard";
-import { AdbService, ViewerCommand } from "./adb.service";
+import { AdbService } from "./adb.service";
 import {
   AdbClipboardDto,
   AdbClipboardResultDto,
-  AdbControlDto,
-  AdbControlResultDto,
   AdbFileDto,
   AdbFileExistsResultDto,
   AdbInputTextDto,
@@ -44,22 +42,6 @@ import {
   AdbTapTextResultDto,
   AdbUiDumpDto,
 } from "./adb.dto";
-
-const viewerCommands = new Set<ViewerCommand>([
-  "back",
-  "home",
-  "recents",
-  "power",
-  "wake",
-  "sleep",
-  "volume-up",
-  "volume-down",
-  "mute",
-  "rotate",
-  "expand-notifications",
-  "expand-settings",
-  "collapse-panels",
-]);
 
 const clampTail = (value: string | undefined) => {
   const parsed = Number(value ?? 300);
@@ -84,29 +66,6 @@ const clampTail = (value: string | undefined) => {
 })
 export class AdbController {
   constructor(private readonly adb: AdbService) {}
-
-  @Post("control")
-  @ApiOperation({ summary: "Execute a legacy ADB viewer control command." })
-  @ApiBody({ type: AdbControlDto })
-  @ApiOkResponse({ type: AdbControlResultDto })
-  async control(@Param("udid") udid: string, @Body() body: AdbControlDto) {
-    if (!body.command || !viewerCommands.has(body.command as ViewerCommand)) {
-      return {
-        command: body.command ?? null,
-        executed: false,
-        message: `Unsupported ADB control command: ${body.command ?? "missing"}`,
-      };
-    }
-
-    const command = body.command as ViewerCommand;
-    const result = await this.adb.viewerAction(udid, command);
-    return {
-      command,
-      executed: true,
-      stdout: result.stdout,
-      stderr: result.stderr,
-    };
-  }
 
   @Get("clipboard")
   @ApiOperation({ summary: "Read Android clipboard text through ADB." })

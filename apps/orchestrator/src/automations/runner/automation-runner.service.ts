@@ -5,6 +5,7 @@ import { ApplicationProfileMode } from '../../android-apps/application-profile-m
 import { AndroidAppsStateService } from '../../android-apps/common/services/android-apps-state.service';
 import { AndroidAppsLifecycleService } from '../../android-apps/lifecycle/services/android-apps-lifecycle.service';
 import { AndroidAppsNetworkPolicyService } from '../../android-apps/network/services/android-apps-network-policy.service';
+import { AndroidAppsDisplaySidecarService } from '../../android-apps/viewer/services/android-apps-display-sidecar.service';
 import { AndroidAppsSidecarAdbService } from '../../android-apps/viewer/services/android-apps-sidecar-adb.service';
 import { AutomationCommandRegistryService } from '../commands/automation-command-registry.service';
 import {
@@ -77,6 +78,7 @@ export class AutomationRunnerService {
     private readonly lifecycle: AndroidAppsLifecycleService,
     private readonly registry: AutomationCommandRegistryService,
     private readonly adb: AndroidAppsSidecarAdbService,
+    private readonly display: AndroidAppsDisplaySidecarService,
     private readonly networkPolicy: AndroidAppsNetworkPolicyService,
   ) {}
 
@@ -323,6 +325,7 @@ export class AutomationRunnerService {
       const result = await this.registry.execute(step.uses, step.with, {
         app: state.app,
         adb: this.adb,
+        display: this.display,
         networkPolicy: this.networkPolicy,
       });
       const completedAt = new Date().toISOString();

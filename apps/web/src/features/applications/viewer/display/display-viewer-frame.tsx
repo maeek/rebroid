@@ -126,7 +126,7 @@ export const DisplayViewerFrame = ({
     return () => {
       window.removeEventListener('message', handleMessage)
     }
-  }, [getViewerOrigin, postKeyboardCapturePreference])
+  }, [getViewerOrigin, postKeyboardCapturePreference, surfaceId])
 
   useEffect(() => {
     const relayControlCommand = (event: Event) => {

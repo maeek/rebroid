@@ -2,9 +2,9 @@
 
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { operatorOptions } from './automation-value-ref-constants'
-import { AutomationValueRefEditor } from './automation-value-ref-editor'
-import type { AutomationStepReferenceOption } from './automation-value-ref-constants'
+import { operatorOptions } from '../value-ref/automation-value-ref-constants'
+import { AutomationValueRefEditor } from '../value-ref/automation-value-ref-editor'
+import type { AutomationStepReferenceOption } from '../value-ref/automation-value-ref-constants'
 import type { AutomationPredicate, AutomationPredicateOperator } from '@/server/orchestrator/automations/types'
 
 export function AutomationPredicateEditor({

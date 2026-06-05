@@ -63,7 +63,7 @@ export const workflowContext = (model: Monaco.editor.ITextModel, position: Monac
   for (let lineNumber = position.lineNumber - 1; lineNumber >= 1; lineNumber -= 1) {
     const line = model.getLineContent(lineNumber)
     const indent = indentation(line)
-    const usesMatch = line.match(/^\s*uses:\s*([^\s#]+)/)
+    const usesMatch = line.match(/^\s*(?:-\s*)?uses:\s*([^\s#]+)/)
     if (!uses && usesMatch) uses = usesMatch[1] ?? null
     if (withIndent === null && /^\s*with:\s*(?:#.*)?$/.test(line)) withIndent = indent
     if (/^\s*-\s+/.test(line) && indent < currentIndent) break

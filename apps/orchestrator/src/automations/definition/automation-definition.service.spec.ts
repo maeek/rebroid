@@ -233,4 +233,27 @@ spec:
       'automations:manage-network',
     );
   });
+
+  it('exposes command-owned editor metadata derived from schemas', () => {
+    const { registry } = createService();
+    const commands = new Map(
+      registry.listCommands().map((command) => [command.uses, command]),
+    );
+
+    expect(commands.get('android.swipe')?.editor).toMatchObject({
+      inputDefaults: { durationMs: 300 },
+      inputFieldOrder: ['x1', 'y1', 'x2', 'y2', 'durationMs'],
+      yamlSnippetFields: ['x1', 'y1', 'x2', 'y2', 'durationMs'],
+    });
+    expect(commands.get('android.adbShell')?.editor).toMatchObject({
+      inputDefaults: { timeoutMs: 15000 },
+      inputFieldOrder: ['command', 'timeoutMs'],
+      yamlSnippetFields: ['command', 'timeoutMs'],
+    });
+    expect(commands.get('android.getClipboard')?.editor).toMatchObject({
+      inputDefaults: {},
+      inputFieldOrder: [],
+      yamlSnippetFields: [],
+    });
+  });
 });

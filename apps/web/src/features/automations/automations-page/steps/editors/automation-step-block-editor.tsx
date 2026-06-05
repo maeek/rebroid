@@ -13,11 +13,11 @@ import {
   type AutomationSwitchCaseForm,
   type AutomationSwitchStepForm,
   defaultStep
-} from '../editor/builder-utils'
+} from '../../editor/builder-utils'
+import { AutomationValueRefEditor } from '../value-ref/automation-value-ref-editor'
 import { AutomationLiteralValueEditor } from './automation-literal-value-editor'
 import { AutomationPredicateEditor } from './automation-predicate-editor'
-import { AutomationValueRefEditor } from './automation-value-ref-editor'
-import type { AutomationStepReferenceOption } from './automation-value-ref-constants'
+import type { AutomationStepReferenceOption } from '../value-ref/automation-value-ref-constants'
 
 type RenderSteps = (
   steps: AutomationStepForm[],

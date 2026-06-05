@@ -5,7 +5,7 @@ import type {
   AutomationStepForm,
   AutomationSwitchCaseForm,
   AutomationSwitchStepForm
-} from '../editor/builder-utils'
+} from '../../editor/builder-utils'
 import type { AutomationPredicate, AutomationValueRef } from '@/server/orchestrator/automations/types'
 
 const stepClipboardPayloadType = 'rebroid.workflow.step'

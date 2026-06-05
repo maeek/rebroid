@@ -140,11 +140,6 @@ read_shared_orchestrator_secret() {
   fi
 
   secret_file="${ORCHESTRATOR_SHARED_SECRET_FILE:-/app/secrets/rebroid-shared-secret}"
-  legacy_secret_file="/app/secrets/orchestrator-secret"
-  if [ ! -s "$secret_file" ] && [ -s "$legacy_secret_file" ]; then
-    mkdir -p "$(dirname "$secret_file")"
-    cp "$legacy_secret_file" "$secret_file"
-  fi
   attempts=0
   while [ ! -s "$secret_file" ] && [ "$attempts" -lt 30 ]; do
     attempts=$((attempts + 1))

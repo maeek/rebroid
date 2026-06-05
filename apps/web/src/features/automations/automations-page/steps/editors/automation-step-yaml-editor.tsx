@@ -5,13 +5,13 @@ import { IconAlertTriangle, IconBlocks } from '@tabler/icons-react'
 import dynamic from 'next/dynamic'
 import { parse, stringify } from 'yaml'
 import { Button } from '@/components/ui/button'
-import { getActionUiStateFromInput, normalizeActionInput } from '../actions/action-registry'
-import { buildAutomationActionInputYamlSchema } from '../editor/monaco-yaml'
-import type { AutomationActionStepForm } from '../editor/builder-utils'
+import { getActionUiStateFromInput, normalizeActionInput } from '../../actions/action-registry'
+import { buildAutomationActionInputYamlSchema } from '../../editor/monaco-yaml'
+import type { AutomationActionStepForm } from '../../editor/builder-utils'
 import type { AutomationCommand } from '@/server/orchestrator/automations/types'
 
 const AutomationMonacoYamlEditor = dynamic(
-  () => import('../editor/monaco-yaml').then(module => module.AutomationMonacoYamlEditor),
+  () => import('../../editor/monaco-yaml').then(module => module.AutomationMonacoYamlEditor),
   {
     ssr: false,
     loading: () => <div className='h-72 rounded-md border border-border/60 bg-background/25' />
@@ -37,7 +37,7 @@ export function AutomationStepYamlEditor({
 
   useEffect(() => {
     setYaml(stringify(parseStepInput(step), { lineWidth: 0 }).trimEnd())
-  }, [step.clientKey, step.uses])
+  }, [step])
 
   const changeYaml = (nextYaml: string) => {
     setYaml(nextYaml)

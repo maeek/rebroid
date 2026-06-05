@@ -23,6 +23,7 @@ import {
   AutomationStartPolicy,
   AutomationTriggerType,
 } from '../entities/automation-trigger.entity';
+import type { AutomationCommandEditorMetadata } from '../commands/automation-command.types';
 
 export class AutomationDefinitionStepDto {
   @ApiProperty({ example: 'wake-device' })
@@ -298,6 +299,9 @@ export class AutomationCommandDto {
 
   @ApiProperty({ type: Object })
   inputSchema!: Record<string, unknown>;
+
+  @ApiProperty({ type: Object })
+  editor!: AutomationCommandEditorMetadata;
 }
 
 export class AutomationScheduleTriggerConfigDto {

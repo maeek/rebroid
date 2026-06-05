@@ -261,16 +261,6 @@ export const CreateAppForm = ({
             }
           ]}
         />
-        <Button
-          form={createFormId}
-          type='submit'
-          disabled={isSubmitDisabled}
-        >
-          <Visible when={isCreating}>
-            <IconLoader2 className='size-4 animate-spin' />
-          </Visible>
-          {isCreating ? 'Creating...' : 'Create'}
-        </Button>
       </div>
       <Visible when={iconPreview}>
         <PageBackdrop
@@ -283,7 +273,19 @@ export const CreateAppForm = ({
         className='flex w-full flex-col gap-5 pt-2 pb-24'
         onSubmit={event => void handleSubmit(event)}
       >
-        <h2 className='font-bold my-4'>General</h2>
+        <div className='flex items-center justify-between gap-4 flex-wrap'>
+          <h2 className='font-bold my-4'>General</h2>
+          <Button
+            form={createFormId}
+            type='submit'
+            disabled={isSubmitDisabled}
+          >
+            <Visible when={isCreating}>
+              <IconLoader2 className='size-4 animate-spin' />
+            </Visible>
+            {isCreating ? 'Creating...' : 'Create'}
+          </Button>
+        </div>
         <AppFormGeneralSection
           values={formValues}
           onChange={updateFormValues}

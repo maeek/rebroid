@@ -7,6 +7,7 @@ module.exports = {
   moduleNameMapper: {
     '\\.(jpg|jpeg|png|wav|mp3|gif|svg|m4a|aac|ogg|ttf|woff|woff2|mp4|webm)$': 'identity-obj-proxy',
     '\\.(css|sass|scss)$': 'jest-css-modules',
+    '^server-only$': '<rootDir>/src/test/server-only.ts',
     '^@/(.*)': '<rootDir>/src/$1'
   },
   resetMocks: true,

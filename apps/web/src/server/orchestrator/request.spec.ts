@@ -75,4 +75,27 @@ describe('orchestrator request helpers', () => {
       new OrchestratorRequestError('name is required, name is too short', 400)
     )
   })
+
+  it('rejects orchestrator API paths outside the API root', async () => {
+    const { getOrchestratorApiUrl } = await import('./config')
+
+    expect(() => getOrchestratorApiUrl('/../internal')).toThrow('Orchestrator API paths cannot escape the API root.')
+    expect(() => getOrchestratorApiUrl('//internal')).toThrow('Orchestrator API paths must start with a single slash.')
+  })
+
+  it('rejects non-http orchestrator upstream URLs', async () => {
+    const previousUrl = process.env.ORCHESTRATOR_API_URL
+    process.env.ORCHESTRATOR_API_URL = 'file:///tmp/socket'
+    const { getOrchestratorBaseUrl } = await import('./config')
+
+    try {
+      expect(() => getOrchestratorBaseUrl()).toThrow('ORCHESTRATOR_API_URL must use http or https.')
+    } finally {
+      if (previousUrl === undefined) {
+        delete process.env.ORCHESTRATOR_API_URL
+      } else {
+        process.env.ORCHESTRATOR_API_URL = previousUrl
+      }
+    }
+  })
 })

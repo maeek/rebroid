@@ -38,7 +38,7 @@ import {
   updateAutomationAction,
   validateAutomationYamlAction
 } from '@/server/orchestrator/automations/actions'
-import { AutomationStepsList } from '../steps/automation-steps-list'
+import { AutomationStepsList } from '../steps/list/automation-steps-list'
 import { AutomationDetailsSection } from './automation-details-section'
 import { AutomationYamlEditorSection } from './automation-yaml-editor-section'
 import {

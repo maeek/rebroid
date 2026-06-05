@@ -7,10 +7,10 @@ import {
   getAutomationActionDefinition,
   getDefaultActionInput,
   normalizeActionInput
-} from '../actions/action-registry'
-import { AutomationActionPicker } from './automation-action-picker'
-import { parseStepInput } from './automation-step-utils'
-import type { AutomationActionStepForm } from '../editor/builder-utils'
+} from '../../actions/action-registry'
+import { AutomationActionPicker } from '../catalog/automation-action-picker'
+import { parseStepInput } from '../shared/automation-step-utils'
+import type { AutomationActionStepForm } from '../../editor/builder-utils'
 import type { AutomationCommand } from '@/server/orchestrator/automations/types'
 
 export function AutomationStepEditor({

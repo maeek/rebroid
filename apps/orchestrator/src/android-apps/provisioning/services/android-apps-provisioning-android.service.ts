@@ -22,7 +22,6 @@ interface AndroidBootReadiness {
 }
 
 const androidBootProbeProperties = [
-  'sys.boot_completed',
   'dev.bootcomplete',
   'service.bootanim.exit',
   'init.svc.bootanim',
@@ -52,9 +51,7 @@ export const parseAndroidBootReadiness = (
   const get = (prop: string) => props.get(prop) ?? '';
   const running = (prop: string) => get(prop) === 'running';
   const bootPropertyComplete =
-    get('sys.boot_completed') === '1' ||
-    get('dev.bootcomplete') === '1' ||
-    get('service.bootanim.exit') === '1';
+    get('dev.bootcomplete') === '1' || get('service.bootanim.exit') === '1';
   const bootAnimationDone =
     get('init.svc.bootanim') === 'stopped' ||
     get('service.bootanim.exit') === '1';
@@ -336,7 +333,7 @@ export class AndroidAppsProvisioningAndroidService {
       '-lc',
       [
         'echo "== props =="',
-        'for prop in sys.boot_completed dev.bootcomplete init.svc.bootanim init.svc.zygote init.svc.zygote64 init.svc.surfaceflinger init.svc.servicemanager init.svc.hwservicemanager init.svc.adbd ro.hardware ro.boot.use_memfd sys.use_memfd; do printf "%s=" "$prop"; getprop "$prop" 2>/dev/null || true; done',
+        'for prop in dev.bootcomplete service.bootanim.exit init.svc.bootanim init.svc.zygote init.svc.zygote64 init.svc.surfaceflinger init.svc.servicemanager init.svc.hwservicemanager init.svc.adbd ro.hardware ro.boot.use_memfd sys.use_memfd; do printf "%s=" "$prop"; getprop "$prop" 2>/dev/null || true; done',
         'echo "== binder devices =="',
         'ls -la /dev/binder /dev/hwbinder /dev/vndbinder /dev/ashmem /dev/binderfs 2>&1 || true',
         'echo "== binder proc =="',

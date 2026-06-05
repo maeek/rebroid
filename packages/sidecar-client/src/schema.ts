@@ -38,23 +38,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/rebroid/adb/{udid}/control": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Execute a legacy ADB viewer control command. */
-        post: operations["AdbController_control"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/rebroid/adb/{udid}/clipboard": {
         parameters: {
             query?: never;
@@ -449,28 +432,6 @@ export interface components {
             /** @example 8000 */
             port: number;
             auth: components["schemas"]["HealthAuthDto"];
-        };
-        AdbControlDto: {
-            /**
-             * @example home
-             * @enum {string}
-             */
-            command?: "back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-notifications" | "expand-settings" | "collapse-panels";
-        };
-        AdbControlResultDto: {
-            /**
-             * @example home
-             * @enum {string|null}
-             */
-            command?: "back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-notifications" | "expand-settings" | "collapse-panels" | null;
-            /** @example true */
-            executed: boolean;
-            /** @example Unsupported ADB control command: missing */
-            message?: string;
-            /** @example  */
-            stdout?: string;
-            /** @example  */
-            stderr?: string;
         };
         AdbClipboardResultDto: {
             /** @example Clipboard text */
@@ -970,35 +931,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthDto"];
-                };
-            };
-        };
-    };
-    AdbController_control: {
-        parameters: {
-            query?: never;
-            header?: {
-                /** @description Required when sidecar shared-secret auth is configured. */
-                "x-rebroid-sidecar-secret"?: string;
-            };
-            path: {
-                /** @description ADB serial or host:port target reachable from the sidecar. */
-                udid: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AdbControlDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdbControlResultDto"];
                 };
             };
         };

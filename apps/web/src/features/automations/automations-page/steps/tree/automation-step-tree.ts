@@ -1,4 +1,4 @@
-import type { AutomationStepForm } from '../editor/builder-utils'
+import type { AutomationStepForm } from '../../editor/builder-utils'
 
 export const ROOT_STEP_LIST_ID = 'root'
 
@@ -96,7 +96,7 @@ export const hasStepList = (steps: AutomationStepForm[], listId: string) => coll
 export const getStepListLength = (steps: AutomationStepForm[], listId: string) =>
   collectListRefs(steps).get(listId)?.length ?? 0
 
-export const nestedListIdsForStep = (step: AutomationStepForm) => {
+const nestedListIdsForStep = (step: AutomationStepForm) => {
   const listIds = new Set<string>()
   const visit = (item: AutomationStepForm) => {
     for (const nested of nestedListsForStep(item)) {

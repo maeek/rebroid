@@ -1,35 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { viewerCommands } from "../display/display.dto";
-
-export class AdbControlDto {
-  @ApiPropertyOptional({ enum: viewerCommands, example: "home" })
-  command?: string;
-}
 
 export class AdbClipboardDto {
   @ApiPropertyOptional({ example: "Text copied from the host." })
   text?: string;
-}
-
-export class AdbControlResultDto {
-  @ApiPropertyOptional({
-    enum: viewerCommands,
-    example: "home",
-    nullable: true,
-  })
-  command?: string | null;
-
-  @ApiProperty({ example: true })
-  executed!: boolean;
-
-  @ApiPropertyOptional({ example: "Unsupported ADB control command: missing" })
-  message?: string;
-
-  @ApiPropertyOptional({ example: "" })
-  stdout?: string;
-
-  @ApiPropertyOptional({ example: "" })
-  stderr?: string;
 }
 
 export class AdbClipboardResultDto {

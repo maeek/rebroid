@@ -1,7 +1,6 @@
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Setting } from '@/features/settings/components/setting'
-import { getOrchestratorBaseUrl } from '@/server/orchestrator/config'
 import type { OrchestratorUiSettings } from '@/features/settings/domain/orchestrator-ui-settings'
 
 const verticalSettingClassName = 'flex-col items-start w-full'
@@ -29,7 +28,7 @@ export const OrchestratorSettingsFieldsSection = ({
           variant='vertical'
         >
           <Input
-            value={getOrchestratorBaseUrl()}
+            value={settings.orchestratorApiUrl}
             readOnly
           />
         </Setting>

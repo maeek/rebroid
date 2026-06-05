@@ -1,12 +1,17 @@
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
+import 'server-only'
 
 const safeId = (appId: string) => appId.replace(/[^a-zA-Z0-9_-]/g, '')
-const rootPath = () =>
-  process.env.WEB_APP_ICONS_PATH || join(/* turbopackIgnore: true */ process.cwd(), 'data', 'app-icons')
-const iconPath = (appId: string) => join(/* turbopackIgnore: true */ rootPath(), `${safeId(appId)}.json`)
-const iconFilePath = (appId: string, extension: string) =>
-  join(/* turbopackIgnore: true */ rootPath(), `${safeId(appId)}.${extension}`)
+const configuredRootPath = () => process.env.WEB_APP_ICONS_PATH?.trim()
+const storagePath = (fileName: string) => {
+  const root = configuredRootPath()
+  return root
+    ? join(/*turbopackIgnore: true*/ root, fileName)
+    : join(/*turbopackIgnore: true*/ process.cwd(), 'data', 'app-icons', fileName)
+}
+const iconPath = (appId: string) => storagePath(`${safeId(appId)}.json`)
+const iconFilePath = (appId: string, extension: string) => storagePath(`${safeId(appId)}.${extension}`)
 const iconUrl = (appId: string) => `/api/app-icons/${encodeURIComponent(appId)}`
 
 type StoredIconMetadata = {

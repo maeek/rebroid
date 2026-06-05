@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { AutomationLiteralValueEditor } from './automation-literal-value-editor'
+import { AutomationLiteralValueEditor } from '../editors/automation-literal-value-editor'
 import { contextPaths, commonOutputPaths, outputPathsByUses } from './automation-value-ref-constants'
 import { AutomationValueRefPathField } from './automation-value-ref-path-field'
 import { defaultValueRef, uniqueValues } from './automation-value-ref-utils'

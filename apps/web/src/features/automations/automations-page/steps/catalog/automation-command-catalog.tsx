@@ -29,7 +29,7 @@ import {
   getAutomationActionIconKey,
   type AutomationActionCategory,
   type AutomationActionIconKey
-} from '../actions/action-registry'
+} from '../../actions/action-registry'
 
 export type { AutomationActionCategory as AutomationCommandCategory }
 
@@ -47,7 +47,7 @@ export function AutomationCommandIcon({ uses, className }: { uses: string; class
   )
 }
 
-export function AutomationActionIcon({ iconKey, className }: { iconKey: AutomationActionIconKey; className?: string }) {
+function AutomationActionIcon({ iconKey, className }: { iconKey: AutomationActionIconKey; className?: string }) {
   switch (iconKey) {
     case 'alert':
       return <IconAlertTriangle className={className} />

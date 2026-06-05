@@ -90,7 +90,7 @@ export class AndroidAppsDisplaySidecarService {
     return result.session;
   }
 
-  /** Best-effort session creation used by viewer bootstrap so legacy streaming still works. */
+  /** Best-effort session creation used by viewer bootstrap while the sidecar is settling. */
   async tryCreateSessionForPreparedTarget(
     app: AndroidApplication,
     udid: string,
