@@ -58,7 +58,7 @@ export function AutomationActionPicker({
       <PopoverTrigger asChild>
         <Button
           type='button'
-          variant='secondary'
+          variant='input'
           className='h-auto min-h-11 w-full justify-between gap-3 px-3 py-2 text-left'
         >
           <span className='flex min-w-0 items-center gap-3'>

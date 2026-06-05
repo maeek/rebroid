@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { IconChevronDown, IconChevronUp, IconColumns3, IconDotsVertical, IconSearch } from '@tabler/icons-react'
 import {
   flexRender,
@@ -133,13 +133,25 @@ const openContextMenuFromButton = (event: MouseEvent<HTMLButtonElement>) => {
   )
 }
 
+const spacerColumn = <TData,>(): ColumnDef<TData> => ({
+  id: '__spacer',
+  enableHiding: false,
+  enableSorting: false,
+  size: 0,
+  minSize: 0,
+  maxSize: 10000,
+  enableResizing: false,
+  header: () => null,
+  cell: () => null
+})
+
 const rowMenuColumn = <TData,>(): ColumnDef<TData> => ({
   id: '__row_menu',
   enableHiding: false,
   enableSorting: false,
-  size: 56,
-  minSize: 56,
-  maxSize: 56,
+  size: 72,
+  minSize: 72,
+  maxSize: 72,
   enableResizing: false,
   header: () => <span className='sr-only'>Row actions</span>,
   cell: () => (
@@ -169,15 +181,17 @@ export function DataGrid<TData>({
   onColumnVisibilityChange,
   selection,
   emptyState,
-  minWidth,
+  minWidth: _minWidth,
   mobileCard,
   rowContextMenu,
   className
 }: DataGridProps<TData>) {
   const lastSelectedIndexRef = useRef<number | null>(null)
+  const tableContainerRef = useRef<HTMLDivElement | null>(null)
   const [internalSorting, setInternalSorting] = useState<SortingState>(sorting)
   const [internalColumnVisibility, setInternalColumnVisibility] = useState<VisibilityState>(columnVisibility ?? {})
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({})
+  const [containerWidth, setContainerWidth] = useState(0)
   const resolvedSorting = onSortingChange ? sorting : internalSorting
   const resolvedColumnVisibility = onColumnVisibilityChange ? (columnVisibility ?? {}) : internalColumnVisibility
   const resolvedColumns = useMemo(
@@ -192,10 +206,23 @@ export function DataGrid<TData>({
           ]
         : []),
       ...columns,
+      spacerColumn<TData>(),
       ...(rowContextMenu ? [rowMenuColumn<TData>()] : [])
     ],
     [columns, getRowId, rowContextMenu, selection]
   )
+  useEffect(() => {
+    const node = tableContainerRef.current
+    if (!node) return
+
+    const updateContainerWidth = () => setContainerWidth(node.clientWidth)
+    updateContainerWidth()
+
+    const resizeObserver = new ResizeObserver(updateContainerWidth)
+    resizeObserver.observe(node)
+    return () => resizeObserver.disconnect()
+  }, [])
+
   const handleSortingChange: OnChangeFn<SortingState> = updater => {
     if (onSortingChange) onSortingChange(updater)
     else setInternalSorting(updater)
@@ -233,8 +260,14 @@ export function DataGrid<TData>({
     onColumnSizingChange: setColumnSizing
   })
   const rows = table.getRowModel().rows
-  const tableWidth = table.getTotalSize()
   const visibleColumns = table.getVisibleLeafColumns()
+  const fixedTableWidth = visibleColumns
+    .filter(column => column.id !== '__spacer')
+    .reduce((total, column) => total + column.getSize(), 0)
+  const spacerWidth = Math.max(containerWidth - fixedTableWidth, 0)
+  const renderedTableWidth = fixedTableWidth + spacerWidth
+  const getColumnPixelWidth = (column: (typeof visibleColumns)[number]) =>
+    column.id === '__spacer' ? spacerWidth : column.getSize()
   const lastVisibleColumnId = visibleColumns[visibleColumns.length - 1]?.id
   const showColumnVisibilityControl =
     columns.length > 1 && table.getAllLeafColumns().some(column => column.getCanHide())
@@ -290,8 +323,8 @@ export function DataGrid<TData>({
     <Table
       className='table-fixed'
       style={{
-        minWidth,
-        width: `max(100%, ${tableWidth}px)`
+        width: renderedTableWidth,
+        minWidth: renderedTableWidth
       }}
     >
       <TableHeader className='bg-background/45'>
@@ -304,19 +337,21 @@ export function DataGrid<TData>({
               const canSort = header.column.getCanSort()
               const canResize = header.column.getCanResize()
               const isSelectColumn = header.column.id === '__select'
+              const isSpacerColumn = header.column.id === '__spacer'
               const isRowMenuColumn = header.column.id === '__row_menu'
               const hasColumnVisibilityMenu = header.column.id === lastVisibleColumnId && Boolean(columnVisibilityMenu)
+              const widthPx = getColumnPixelWidth(header.column)
               const sortDirection = header.column.getIsSorted()
               return (
                 <TableHead
                   key={header.id}
                   className={cn(
                     'relative overflow-hidden py-3',
-                    isSelectColumn ? 'px-0' : isRowMenuColumn ? 'px-2' : 'px-4'
+                    isSelectColumn || isSpacerColumn ? 'px-0' : isRowMenuColumn ? 'px-2' : 'px-4'
                   )}
                   style={{
-                    width: header.getSize(),
-                    maxWidth: header.getSize()
+                    width: widthPx,
+                    maxWidth: widthPx
                   }}
                 >
                   <div
@@ -399,15 +434,15 @@ export function DataGrid<TData>({
                     key={cell.id}
                     className={cn(
                       'overflow-hidden py-4 align-top',
-                      cell.column.id === '__select'
+                      cell.column.id === '__select' || cell.column.id === '__spacer'
                         ? 'px-0'
                         : cell.column.id === '__row_menu'
                           ? 'px-2 text-center'
                           : 'px-4'
                     )}
                     style={{
-                      width: cell.column.getSize(),
-                      maxWidth: cell.column.getSize()
+                      width: getColumnPixelWidth(cell.column),
+                      maxWidth: getColumnPixelWidth(cell.column)
                     }}
                   >
                     <div
@@ -480,6 +515,7 @@ export function DataGrid<TData>({
         </div>
       ) : null}
       <div
+        ref={tableContainerRef}
         className={cn(
           'overflow-hidden rounded-xl border border-border/70 bg-background/25',
           mobileCard && 'hidden lg:block'
