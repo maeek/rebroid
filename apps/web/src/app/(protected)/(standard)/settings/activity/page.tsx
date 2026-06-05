@@ -1,7 +1,12 @@
 import { PlatformPageHeader } from '@/features/orchestrator/components/platform-page-header'
 import { ActivityEventsTable } from '@/features/settings/activity/activity-events-table'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
-import { auditFiltersFromSearchParams, auditPageFromSearchParams, type AuditSearchParams } from '@/server/audit/query'
+import {
+  auditFiltersFromSearchParams,
+  auditPageFromSearchParams,
+  auditSortFromSearchParams,
+  type AuditSearchParams
+} from '@/server/audit/query'
 import { requireAdmin } from '@/server/auth/authorization'
 import { listAuditEvents, listAuditFacetValues } from '@/server/storage/database'
 import { getWebSettings } from '@/server/web-settings/store'
@@ -14,7 +19,8 @@ export default async function ActivitySettingsPage({ searchParams }: { searchPar
   const settings = await getWebSettings()
   const filters = auditFiltersFromSearchParams(resolvedSearchParams)
   const page = auditPageFromSearchParams(resolvedSearchParams)
-  const result = listAuditEvents(filters, page)
+  const sorting = auditSortFromSearchParams(resolvedSearchParams)
+  const result = listAuditEvents(filters, { ...page, sorting })
   const facets = listAuditFacetValues()
 
   return (
@@ -37,6 +43,7 @@ export default async function ActivitySettingsPage({ searchParams }: { searchPar
             from: firstValue(resolvedSearchParams.from),
             to: firstValue(resolvedSearchParams.to)
           }}
+          sorting={sorting}
           facets={facets}
           auditRetentionDays={settings.auditRetentionDays}
         />

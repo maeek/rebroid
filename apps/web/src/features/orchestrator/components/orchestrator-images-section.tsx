@@ -1,10 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { IconEye, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { DataGrid, DataGridPagination, DataGridToolbar } from '@/components/data-grid'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { ContextMenuItem } from '@/components/ui/context-menu'
 import {
   Dialog,
   DialogClose,
@@ -15,30 +18,48 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Section } from '@/components/ui/section'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Visible } from '@/components/ui/visible'
 import { imageDisplayName } from '@/features/orchestrator/domain/image-display-name'
 import { toast } from '@/hooks/use-toast'
 import { formatUtcDate } from '@/lib/format'
-import { listPlatformImagesAction, removePlatformImageAction } from '@/server/orchestrator/platform/actions'
-import { PlatformGridPagination } from './platform-grid-pagination'
-import { PlatformResourceScopeFilter, type PlatformResourceScope } from './platform-resource-scope-filter'
-import { PlatformSelectionToolbar } from './platform-selection-toolbar'
-import { useGridSelection } from './use-grid-selection'
-import type { PlatformImage } from '@/server/orchestrator/platform/types'
+import { removePlatformImageAction } from '@/server/orchestrator/platform/actions'
+import { PlatformResourceScopeFilter } from './platform-resource-scope-filter'
+import type {
+  PlatformImage,
+  PlatformImagesGridPage,
+  PlatformImagesGridQuery
+} from '@/server/orchestrator/platform/types'
+import type { ColumnDef, SortingState } from '@tanstack/react-table'
 
 const formatBytes = (bytes: number) => {
-  if (!bytes) {
-    return '0 B'
-  }
-
+  if (!bytes) return '0 B'
   const units = ['B', 'KB', 'MB', 'GB', 'TB']
   const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
   return `${(bytes / 1024 ** index).toFixed(2)} ${units[index]}`
 }
 
-const isManagedImage = (image: PlatformImage) => image.managed
+const compactParams = (values: Record<string, string | number | undefined>) => {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(values)) {
+    const text = String(value ?? '').trim()
+    if (text && !(key === 'scope' && text === 'managed')) params.set(key, text)
+  }
+  return params
+}
+
+const sortToSearchParam = (sorting: SortingState) =>
+  sorting.length === 0 ? undefined : sorting.map(item => `${item.id}:${item.desc ? 'desc' : 'asc'}`).join(',')
+
+const sortFromSearchParam = (sort: string | undefined): SortingState =>
+  (sort ?? 'createdAt:desc')
+    .split(',')
+    .map(part => {
+      const [id, direction] = part.split(':')
+      if (!id) return null
+      return { id, desc: direction !== 'asc' }
+    })
+    .filter((item): item is SortingState[number] => Boolean(item))
+    .slice(0, 3)
 
 const ImageNameCell = ({ image }: { image: PlatformImage }) => {
   const name = imageDisplayName(image)
@@ -63,97 +84,60 @@ const ImageNameCell = ({ image }: { image: PlatformImage }) => {
 }
 
 export const OrchestratorImagesSection = ({
+  imagesPage,
+  gridQuery,
   refreshKey = 0,
   onRefreshComplete
 }: {
+  imagesPage: PlatformImagesGridPage
+  gridQuery: PlatformImagesGridQuery
   refreshKey?: number
   onRefreshComplete?: () => void
 }) => {
-  const [images, setImages] = useState<PlatformImage[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [resourceScope, setResourceScope] = useState<PlatformResourceScope>('managed')
+  const router = useRouter()
+  const [search, setSearch] = useState(gridQuery.q ?? '')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [pendingRemove, setPendingRemove] = useState<PlatformImage | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [pageIndex, setPageIndex] = useState(0)
-  const [pageSize, setPageSize] = useState(20)
+  const sorting = useMemo(() => sortFromSearchParam(gridQuery.sort), [gridQuery.sort])
 
-  const sortedImages = useMemo(
-    () =>
-      [...images].sort((a, b) => {
-        const newestFirst = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        return newestFirst || imageDisplayName(a).localeCompare(imageDisplayName(b))
-      }),
-    [images]
-  )
+  useEffect(() => {
+    setSearch(gridQuery.q ?? '')
+  }, [gridQuery.q])
 
-  const filteredImages = useMemo(() => {
-    const query = search.trim().toLowerCase()
-    const scopedImages = resourceScope === 'managed' ? sortedImages.filter(isManagedImage) : sortedImages
-    if (!query) return scopedImages
+  useEffect(() => {
+    const currentPageIds = new Set(imagesPage.items.map(image => image.id))
+    setSelectedIds(current => new Set(Array.from(current).filter(id => currentPageIds.has(id))))
+  }, [imagesPage.items])
 
-    return scopedImages.filter(image =>
-      [
-        image.id,
-        image.shortId,
-        ...image.repoTags,
-        ...image.repoDigests,
-        String(image.sizeBytes),
-        String(image.containers)
-      ]
-        .join(' ')
-        .toLowerCase()
-        .includes(query)
-    )
-  }, [resourceScope, search, sortedImages])
-
-  const selection = useGridSelection(filteredImages)
-
-  const paginatedImages = useMemo(
-    () => filteredImages.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize),
-    [filteredImages, pageIndex, pageSize]
-  )
-
-  const refresh = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      setImages(await listPlatformImagesAction())
-      setError(null)
-    } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : 'Could not load image inventory.')
-    } finally {
-      setIsLoading(false)
+  useEffect(() => {
+    if (refreshKey > 0) {
+      router.refresh()
       onRefreshComplete?.()
     }
-  }, [onRefreshComplete])
+  }, [onRefreshComplete, refreshKey, router])
 
-  useEffect(() => {
-    void refresh()
-  }, [refresh, refreshKey])
+  const selectedImages = imagesPage.items.filter(image => selectedIds.has(image.id))
 
-  useEffect(() => {
-    setPageIndex(0)
-  }, [resourceScope, search])
-
-  useEffect(() => {
-    const pageCount = Math.max(Math.ceil(filteredImages.length / pageSize), 1)
-    if (pageIndex >= pageCount) {
-      setPageIndex(pageCount - 1)
-    }
-  }, [filteredImages.length, pageIndex, pageSize])
+  const pushGridParams = (patch: Partial<PlatformImagesGridQuery>) => {
+    const params = compactParams({
+      q: patch.q ?? gridQuery.q,
+      scope: patch.scope ?? gridQuery.scope ?? 'managed',
+      sort: patch.sort ?? gridQuery.sort,
+      page: patch.page ?? gridQuery.page ?? 1,
+      pageSize: patch.pageSize ?? gridQuery.pageSize ?? imagesPage.pageSize
+    })
+    router.push(`/settings/orchestrator/images${params.size ? `?${params.toString()}` : ''}`)
+  }
 
   const removeImage = async () => {
-    if (!pendingRemove) {
-      return
-    }
-
+    if (!pendingRemove) return
     setBusyId(pendingRemove.id)
     try {
       await removePlatformImageAction(pendingRemove.id)
       toast({ title: 'Image removed' })
       setPendingRemove(null)
-      await refresh()
+      router.refresh()
     } catch (caughtError) {
       toast({
         title: 'Could not remove image',
@@ -166,184 +150,222 @@ export const OrchestratorImagesSection = ({
   }
 
   const removeSelectedImages = async () => {
-    const targets = selection.selectedItems
-    if (targets.length === 0) {
-      return
-    }
-
+    if (selectedImages.length === 0) return
     setBusyId('bulk')
     try {
-      await Promise.all(targets.map(image => removePlatformImageAction(image.id)))
-      selection.clearSelection()
-      toast({ title: 'Selected images removed' })
-      await refresh()
-    } catch (caughtError) {
-      toast({
-        title: 'Could not remove selected images',
-        description: caughtError instanceof Error ? caughtError.message : 'Unknown error',
-        variant: 'destructive'
-      })
+      const results = await Promise.allSettled(selectedImages.map(image => removePlatformImageAction(image.id)))
+      const failedCount = results.filter(result => result.status === 'rejected').length
+      setSelectedIds(new Set())
+      router.refresh()
+      toast(
+        failedCount > 0
+          ? {
+              title: 'Some images could not be removed',
+              description: `${failedCount} remove request failed.`,
+              variant: 'destructive'
+            }
+          : { title: 'Selected images removed' }
+      )
     } finally {
       setBusyId(null)
     }
   }
 
-  const emptyMessage = search.trim() ? 'No images match this search.' : 'No images are visible to Docker.'
+  const columns = useMemo<ColumnDef<PlatformImage>[]>(
+    () => [
+      {
+        id: 'name',
+        accessorFn: image => imageDisplayName(image),
+        header: 'Image',
+        size: 384,
+        meta: { label: 'Image' },
+        cell: ({ row }) => <ImageNameCell image={row.original} />
+      },
+      {
+        id: 'sizeBytes',
+        accessorFn: image => image.sizeBytes,
+        header: 'Size',
+        size: 144,
+        meta: { label: 'Size' },
+        cell: ({ row }) => (
+          <span className='text-sm text-secondary-foreground'>{formatBytes(row.original.sizeBytes)}</span>
+        )
+      },
+      {
+        id: 'createdAt',
+        accessorFn: image => image.createdAt,
+        header: 'Created',
+        size: 144,
+        meta: { label: 'Created' },
+        cell: ({ row }) => (
+          <span className='text-sm text-secondary-foreground'>{formatUtcDate(row.original.createdAt)}</span>
+        )
+      },
+      {
+        id: 'containers',
+        accessorFn: image => image.containers,
+        header: 'Containers',
+        size: 128,
+        meta: { label: 'Containers' },
+        cell: ({ row }) => (
+          <span className='text-sm text-secondary-foreground'>
+            {row.original.containers < 0 ? 'unknown' : row.original.containers}
+          </span>
+        )
+      },
+      {
+        id: 'id',
+        header: 'ID',
+        size: 224,
+        enableSorting: false,
+        meta: { label: 'ID' },
+        cell: ({ row }) => <span className='text-sm text-secondary-foreground'>{row.original.shortId}</span>
+      }
+    ],
+    []
+  )
 
   return (
     <>
       <Section contentClassName='gap-4'>
-        <PlatformSelectionToolbar
+        <DataGridToolbar
           search={search}
-          placeholder='Search images'
-          selectedCount={selection.selectedItems.length}
+          searchPlaceholder='Search images'
+          onSearchChange={setSearch}
+          onSearchSubmit={() => pushGridParams({ q: search.trim() || undefined, page: 1 })}
+          activeFilterCount={gridQuery.scope === 'all' ? 1 : 0}
+          selectedCount={selectedImages.length}
           filters={
             <PlatformResourceScopeFilter
-              value={resourceScope}
-              onValueChange={setResourceScope}
+              value={gridQuery.scope ?? 'managed'}
+              onValueChange={scope => pushGridParams({ scope, page: 1 })}
             />
           }
-          onSearchChange={setSearch}
           actions={
-            <>
-              <Button
-                type='button'
-                variant='ghost'
-                disabled={busyId === 'bulk' || selection.selectedItems.length === 0}
-                onClick={() => void removeSelectedImages()}
-              >
-                Remove selected
-              </Button>
-            </>
+            <Button
+              type='button'
+              variant='ghost'
+              disabled={busyId === 'bulk' || selectedImages.length === 0}
+              onClick={() => void removeSelectedImages()}
+            >
+              Remove selected
+            </Button>
           }
         />
-        <Visible when={error}>
-          <div className='rounded-md border border-destructive/35 bg-destructive/10 p-4 text-sm text-destructive'>
-            {error}
-          </div>
-        </Visible>
-        <Visible when={!error}>
-          <div className='overflow-hidden rounded-lg border border-border/60 bg-background/25'>
-            <div className='overflow-x-auto'>
-              <TooltipProvider delayDuration={150}>
-                <Table
-                  className='table-fixed'
-                  style={{ minWidth: '72rem' }}
+
+        <TooltipProvider delayDuration={150}>
+          <DataGrid
+            columns={columns}
+            data={imagesPage.items}
+            totalItems={imagesPage.total}
+            pageIndex={imagesPage.page - 1}
+            pageSize={imagesPage.pageSize}
+            getRowId={image => image.id}
+            sorting={sorting}
+            onSortingChange={updater => {
+              const nextSorting = typeof updater === 'function' ? updater(sorting) : updater
+              pushGridParams({ sort: sortToSearchParam(nextSorting), page: 1 })
+            }}
+            selection={{
+              selectedIds,
+              onSelectedIdsChange: setSelectedIds
+            }}
+            minWidth='72rem'
+            emptyState={
+              <div className='text-center text-secondary-foreground'>
+                {gridQuery.q ? 'No images match this search.' : 'No images are visible to Docker.'}
+              </div>
+            }
+            mobileCard={row => {
+              const image = row.original
+              const selected = selectedIds.has(image.id)
+              return (
+                <div
+                  key={image.id}
+                  className='grid gap-3 rounded-lg border border-border/70 bg-background/25 p-4'
                 >
-                  <TableHeader className='bg-background/45'>
-                    <TableRow className='hover:bg-transparent'>
-                      <TableHead className='w-12 px-4 py-3'>
-                        <Checkbox
-                          checked={
-                            paginatedImages.length > 0 &&
-                            paginatedImages.every(image => selection.selectedIds.has(image.id))
-                          }
-                          onCheckedChange={checked => selection.selectPage(paginatedImages, checked === true)}
-                        />
-                      </TableHead>
-                      <TableHead className='w-[24rem] px-4 py-3 uppercase'>Image</TableHead>
-                      <TableHead className='w-36 px-4 py-3 uppercase'>Size</TableHead>
-                      <TableHead className='w-36 px-4 py-3 uppercase'>Created</TableHead>
-                      <TableHead className='w-32 px-4 py-3 uppercase'>Containers</TableHead>
-                      <TableHead className='w-[14rem] px-4 py-3 uppercase'>ID</TableHead>
-                      <TableHead className='w-40 px-4 py-3 text-right uppercase'>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <Visible when={isLoading && images.length === 0}>
-                      <TableRow>
-                        <TableCell
-                          colSpan={7}
-                          className='px-4 py-4 text-sm text-secondary-foreground'
-                        >
-                          Loading images...
-                        </TableCell>
-                      </TableRow>
-                    </Visible>
-                    <Visible when={!isLoading && filteredImages.length === 0}>
-                      <TableRow>
-                        <TableCell
-                          colSpan={7}
-                          className='px-4 py-4 text-sm text-secondary-foreground'
-                        >
-                          {emptyMessage}
-                        </TableCell>
-                      </TableRow>
-                    </Visible>
-                    <Visible when={filteredImages.length > 0}>
-                      {paginatedImages.map((image, index) => (
-                        <TableRow key={image.id}>
-                          <TableCell className='px-4 py-3'>
-                            <Checkbox
-                              checked={selection.selectedIds.has(image.id)}
-                              onClick={event =>
-                                selection.toggleSelection(image, pageIndex * pageSize + index, event.shiftKey)
-                              }
-                              onCheckedChange={() => undefined}
-                            />
-                          </TableCell>
-                          <TableCell className='px-4 py-3 align-top'>
-                            <ImageNameCell image={image} />
-                          </TableCell>
-                          <TableCell className='px-4 py-3 align-top text-sm text-secondary-foreground'>
-                            {formatBytes(image.sizeBytes)}
-                          </TableCell>
-                          <TableCell className='px-4 py-3 align-top text-sm text-secondary-foreground'>
-                            {formatUtcDate(image.createdAt)}
-                          </TableCell>
-                          <TableCell className='px-4 py-3 align-top text-sm text-secondary-foreground'>
-                            {image.containers < 0 ? 'unknown' : image.containers}
-                          </TableCell>
-                          <TableCell className='px-4 py-3 align-top text-sm text-secondary-foreground'>
-                            {image.shortId}
-                          </TableCell>
-                          <TableCell className='px-4 py-3 align-top'>
-                            <div className='flex justify-end gap-2'>
-                              <Button
-                                asChild
-                                variant='secondary'
-                              >
-                                <Link href={`/settings/orchestrator/images/${encodeURIComponent(image.id)}`}>
-                                  <IconEye className='size-4' />
-                                </Link>
-                              </Button>
-                              <Button
-                                type='button'
-                                variant='destructive'
-                                disabled={busyId === image.id || busyId === 'bulk'}
-                                onClick={() => setPendingRemove(image)}
-                              >
-                                <IconTrash className='size-4' />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </Visible>
-                  </TableBody>
-                </Table>
-              </TooltipProvider>
-            </div>
-          </div>
-        </Visible>
-        <Visible when={!error}>
-          <PlatformGridPagination
-            totalItems={filteredImages.length}
-            pageIndex={pageIndex}
-            pageSize={pageSize}
-            onPageIndexChange={setPageIndex}
-            onPageSizeChange={setPageSize}
+                  <div className='flex items-start gap-3'>
+                    <Checkbox
+                      checked={selected}
+                      aria-label='Select image'
+                      onCheckedChange={checked => {
+                        const next = new Set(selectedIds)
+                        if (checked === true) next.add(image.id)
+                        else next.delete(image.id)
+                        setSelectedIds(next)
+                      }}
+                    />
+                    <div className='min-w-0 flex-1'>
+                      <ImageNameCell image={image} />
+                    </div>
+                  </div>
+                  <dl className='grid grid-cols-2 gap-x-4 gap-y-2 text-sm'>
+                    <div>
+                      <dt className='text-secondary-foreground'>Size</dt>
+                      <dd>{formatBytes(image.sizeBytes)}</dd>
+                    </div>
+                    <div>
+                      <dt className='text-secondary-foreground'>Containers</dt>
+                      <dd>{image.containers < 0 ? 'unknown' : image.containers}</dd>
+                    </div>
+                    <div>
+                      <dt className='text-secondary-foreground'>Created</dt>
+                      <dd>{formatUtcDate(image.createdAt)}</dd>
+                    </div>
+                    <div>
+                      <dt className='text-secondary-foreground'>ID</dt>
+                      <dd>{image.shortId}</dd>
+                    </div>
+                  </dl>
+                </div>
+              )
+            }}
+            rowContextMenu={row => {
+              const hasBulkSelection = selectedIds.has(row.original.id) && selectedImages.length > 1
+              return (
+                <>
+                  {hasBulkSelection ? (
+                    <ContextMenuItem
+                      className='text-destructive focus:text-destructive'
+                      disabled={busyId === 'bulk'}
+                      onSelect={() => void removeSelectedImages()}
+                    >
+                      <IconTrash className='mr-2 size-4' />
+                      Remove selected ({selectedImages.length})
+                    </ContextMenuItem>
+                  ) : null}
+                  <ContextMenuItem asChild>
+                    <Link href={`/settings/orchestrator/images/${encodeURIComponent(row.original.id)}`}>
+                      <IconEye className='mr-2 size-4' />
+                      Details
+                    </Link>
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    className='text-destructive focus:text-destructive'
+                    onSelect={() => setPendingRemove(row.original)}
+                  >
+                    <IconTrash className='mr-2 size-4' />
+                    Remove
+                  </ContextMenuItem>
+                </>
+              )
+            }}
           />
-        </Visible>
+        </TooltipProvider>
+        <DataGridPagination
+          totalItems={imagesPage.total}
+          pageIndex={imagesPage.page - 1}
+          pageSize={imagesPage.pageSize}
+          onPageIndexChange={pageIndex => pushGridParams({ page: pageIndex + 1 })}
+          onPageSizeChange={pageSize => pushGridParams({ page: 1, pageSize })}
+        />
       </Section>
 
       <Dialog
         modal
         open={Boolean(pendingRemove)}
         onOpenChange={open => {
-          if (!open) {
-            setPendingRemove(null)
-          }
+          if (!open) setPendingRemove(null)
         }}
       >
         <DialogContent className='sm:max-w-xl'>

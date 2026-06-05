@@ -30,6 +30,6 @@ const useActivityContext = () => {
 export const useActivityController = () => useActivityContext().controller
 
 export const useActivityData = () => {
-  const { result, filters, facets, auditRetentionDays } = useActivityContext()
-  return { result, filters, facets, auditRetentionDays }
+  const { result, filters, sorting, facets, auditRetentionDays } = useActivityContext()
+  return { result, filters, sorting, facets, auditRetentionDays }
 }

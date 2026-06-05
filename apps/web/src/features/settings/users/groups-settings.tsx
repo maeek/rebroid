@@ -32,6 +32,7 @@ export const GroupsSettings = ({ initialGroups }: { initialGroups: UserGroup[] }
                 : [...current, group]
             )
           }
+          onGroupsDeleted={groupIds => setGroups(current => current.filter(group => !groupIds.has(group.id)))}
         />
       </section>
     </ProtectedStackPageLayout>

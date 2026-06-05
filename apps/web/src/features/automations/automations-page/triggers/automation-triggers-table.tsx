@@ -1,207 +1,217 @@
 'use client'
 
+import { useMemo } from 'react'
 import { IconEdit, IconPlayerPlayFilled, IconTrash } from '@tabler/icons-react'
+import { DataGrid } from '@/components/data-grid'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Switch } from '@/components/ui/switch'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Visible } from '@/components/ui/visible'
 import { dateLabel, scheduleLabel } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/schedule-utils'
 import { getScheduleCron, statusLabel, statusVariant } from './automation-trigger-utils'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
 import type { Automation, AutomationTrigger } from '@/server/orchestrator/automations/types'
+import type { ColumnDef, SortingState } from '@tanstack/react-table'
+
+function TriggerTags({ tags }: { tags: string[] }) {
+  return (
+    <div className='flex flex-wrap gap-1'>
+      {tags.length === 0 ? (
+        <span className='text-sm text-secondary-foreground'>-</span>
+      ) : (
+        tags.map(tag => (
+          <Badge
+            key={tag}
+            variant='secondary'
+          >
+            {tag}
+          </Badge>
+        ))
+      )}
+    </div>
+  )
+}
 
 export function AutomationTriggersTable({
   applicationById,
   automationById,
-  allSelected,
   busyId,
   selectedIds,
+  sorting,
   triggers,
   onDelete,
+  onDeleteSelected,
+  onDisableSelected,
   onEdit,
+  onEnableSelected,
   onRun,
-  onToggleAll,
-  onToggleEnabled,
-  onToggleSelected
+  onSelectedIdsChange,
+  onSortingChange,
+  onToggleEnabled
 }: {
   applicationById: Map<string, AndroidApplication>
   automationById: Map<string, Automation>
-  allSelected: boolean
   busyId: string | null
   selectedIds: Set<string>
+  sorting: SortingState
   triggers: AutomationTrigger[]
   onDelete: (trigger: AutomationTrigger) => void
+  onDeleteSelected: () => void
+  onDisableSelected: () => Promise<void>
   onEdit: (trigger: AutomationTrigger) => void
+  onEnableSelected: () => Promise<void>
   onRun: (trigger: AutomationTrigger) => Promise<void>
-  onToggleAll: () => void
+  onSelectedIdsChange: (ids: Set<string>) => void
+  onSortingChange: (sorting: SortingState) => void
   onToggleEnabled: (trigger: AutomationTrigger, enabled: boolean) => Promise<void>
-  onToggleSelected: (id: string) => void
 }) {
-  return (
-    <>
-      <div className='hidden overflow-hidden rounded-lg border border-border/60 bg-background/25 lg:block'>
-        <div className='overflow-x-auto'>
-          <Table
-            className='table-fixed'
-            style={{ minWidth: '86rem' }}
-          >
-            <TableHeader className='bg-background/45'>
-              <TableRow className='hover:bg-transparent'>
-                <TableHead className='w-12 px-4 py-3'>
-                  <Checkbox
-                    checked={allSelected}
-                    aria-label='Select all triggers'
-                    onCheckedChange={onToggleAll}
-                  />
-                </TableHead>
-                <TableHead className='w-[22rem] px-4 py-3 uppercase'>Trigger</TableHead>
-                <TableHead className='w-44 px-4 py-3 uppercase'>Tags</TableHead>
-                <TableHead className='w-[18rem] px-4 py-3 uppercase'>Target</TableHead>
-                <TableHead className='w-44 px-4 py-3 uppercase'>Schedule</TableHead>
-                <TableHead className='w-44 px-4 py-3 uppercase'>Next run</TableHead>
-                <TableHead className='w-44 px-4 py-3 uppercase'>Last trace</TableHead>
-                <TableHead className='w-28 px-4 py-3 text-center uppercase'>Enabled</TableHead>
-                <TableHead className='w-48 px-4 py-3 text-right uppercase'>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {triggers.map(trigger => {
-                const automation = automationById.get(trigger.automationId)
-                const application = applicationById.get(trigger.targetApplicationId)
-                const busy = busyId === trigger.id
-
-                return (
-                  <TableRow
-                    key={trigger.id}
-                    className='hover:bg-secondary/22'
-                  >
-                    <TableCell className='px-4 py-3 align-top'>
-                      <Checkbox
-                        checked={selectedIds.has(trigger.id)}
-                        aria-label={`Select ${trigger.name}`}
-                        onCheckedChange={() => onToggleSelected(trigger.id)}
-                      />
-                    </TableCell>
-                    <TableCell className='px-4 py-3 align-top'>
-                      <div className='grid gap-1'>
-                        <div className='flex flex-wrap items-center gap-2'>
-                          <span className='font-medium text-foreground'>{trigger.name}</span>
-                          <Badge variant='secondary'>Schedule</Badge>
-                          <Badge variant={statusVariant(trigger.lastStatus)}>{statusLabel(trigger.lastStatus)}</Badge>
-                        </div>
-                        <span className='truncate text-sm text-secondary-foreground'>
-                          {automation?.name ?? trigger.automationId}
-                        </span>
-                        <Visible when={trigger.lastError}>
-                          <span className='truncate text-sm text-destructive'>{trigger.lastError}</span>
-                        </Visible>
-                      </div>
-                    </TableCell>
-                    <TableCell className='px-4 py-3 align-top'>
-                      <TriggerTags tags={trigger.tags} />
-                    </TableCell>
-                    <TableCell className='px-4 py-3 align-top text-sm text-secondary-foreground'>
-                      <div className='grid gap-1'>
-                        <span className='truncate text-foreground'>
-                          {application?.name ?? trigger.targetApplicationId}
-                        </span>
-                        <span className='truncate'>
-                          {trigger.profileName ?? 'default'} / {trigger.profileMode ?? 'persistent'}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className='px-4 py-3 align-top text-sm text-secondary-foreground'>
-                      {scheduleLabel(getScheduleCron(trigger))}
-                    </TableCell>
-                    <TableCell className='px-4 py-3 align-top text-sm text-secondary-foreground'>
-                      {dateLabel(trigger.nextRunAt)}
-                    </TableCell>
-                    <TableCell className='px-4 py-3 align-top text-sm text-secondary-foreground'>
-                      {dateLabel(trigger.lastRunAt)}
-                    </TableCell>
-                    <TableCell className='px-4 py-3 text-center align-top'>
-                      <Switch
-                        checked={trigger.enabled}
-                        disabled={busy}
-                        aria-label={`${trigger.enabled ? 'Disable' : 'Enable'} ${trigger.name}`}
-                        onCheckedChange={enabled => void onToggleEnabled(trigger, enabled)}
-                      />
-                    </TableCell>
-                    <TableCell className='px-4 py-3 align-top'>
-                      <TriggerRowActions
-                        busy={busy}
-                        trigger={trigger}
-                        onDelete={onDelete}
-                        onEdit={onEdit}
-                        onRun={onRun}
-                      />
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-              <Visible when={triggers.length === 0}>
-                <TableRow>
-                  <TableCell
-                    colSpan={9}
-                    className='px-4 py-8 text-center text-secondary-foreground'
-                  >
-                    No triggers match the current filters.
-                  </TableCell>
-                </TableRow>
-              </Visible>
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-      <AutomationTriggersMobileList
-        applicationById={applicationById}
-        automationById={automationById}
-        busyId={busyId}
-        selectedIds={selectedIds}
-        triggers={triggers}
-        onDelete={onDelete}
-        onEdit={onEdit}
-        onRun={onRun}
-        onToggleEnabled={onToggleEnabled}
-        onToggleSelected={onToggleSelected}
-      />
-    </>
+  const columns = useMemo<ColumnDef<AutomationTrigger>[]>(
+    () => [
+      {
+        id: 'name',
+        accessorFn: trigger => trigger.name,
+        header: 'Trigger',
+        size: 352,
+        meta: { label: 'Trigger' },
+        cell: ({ row }) => {
+          const trigger = row.original
+          const automation = automationById.get(trigger.automationId)
+          return (
+            <div className='grid gap-1'>
+              <div className='flex flex-wrap items-center gap-2'>
+                <span className='font-medium text-foreground'>{trigger.name}</span>
+                <Badge variant='secondary'>Schedule</Badge>
+                <Badge variant={statusVariant(trigger.lastStatus)}>{statusLabel(trigger.lastStatus)}</Badge>
+              </div>
+              <span className='truncate text-sm text-secondary-foreground'>
+                {automation?.name ?? trigger.automationId}
+              </span>
+              {trigger.lastError ? (
+                <span className='truncate text-sm text-destructive'>{trigger.lastError}</span>
+              ) : null}
+            </div>
+          )
+        }
+      },
+      {
+        id: 'tags',
+        header: 'Tags',
+        size: 176,
+        enableSorting: false,
+        meta: { label: 'Tags' },
+        cell: ({ row }) => <TriggerTags tags={row.original.tags} />
+      },
+      {
+        id: 'target',
+        header: 'Target',
+        size: 288,
+        enableSorting: false,
+        meta: { label: 'Target' },
+        cell: ({ row }) => {
+          const trigger = row.original
+          const application = applicationById.get(trigger.targetApplicationId)
+          return (
+            <div className='grid gap-1 text-sm text-secondary-foreground'>
+              <span className='truncate text-foreground'>{application?.name ?? trigger.targetApplicationId}</span>
+              <span className='truncate'>
+                {trigger.profileName ?? 'default'} / {trigger.profileMode ?? 'persistent'}
+              </span>
+            </div>
+          )
+        }
+      },
+      {
+        id: 'schedule',
+        header: 'Schedule',
+        size: 176,
+        enableSorting: false,
+        meta: { label: 'Schedule' },
+        cell: ({ row }) => (
+          <span className='text-sm text-secondary-foreground'>{scheduleLabel(getScheduleCron(row.original))}</span>
+        )
+      },
+      {
+        id: 'nextRunAt',
+        accessorFn: trigger => trigger.nextRunAt ?? '',
+        header: 'Next run',
+        size: 176,
+        meta: { label: 'Next run' },
+        cell: ({ row }) => (
+          <span className='text-sm text-secondary-foreground'>{dateLabel(row.original.nextRunAt)}</span>
+        )
+      },
+      {
+        id: 'lastRunAt',
+        accessorFn: trigger => trigger.lastRunAt ?? '',
+        header: 'Last trace',
+        size: 176,
+        meta: { label: 'Last trace' },
+        cell: ({ row }) => (
+          <span className='text-sm text-secondary-foreground'>{dateLabel(row.original.lastRunAt)}</span>
+        )
+      },
+      {
+        id: 'enabled',
+        accessorFn: trigger => String(trigger.enabled),
+        header: 'Enabled',
+        size: 128,
+        meta: { label: 'Enabled' },
+        cell: ({ row }) => {
+          const busy = busyId === row.original.id
+          return (
+            <div className='flex justify-center'>
+              <Switch
+                checked={row.original.enabled}
+                disabled={busy}
+                aria-label={`${row.original.enabled ? 'Disable' : 'Enable'} ${row.original.name}`}
+                onCheckedChange={enabled => void onToggleEnabled(row.original, enabled)}
+              />
+            </div>
+          )
+        }
+      }
+    ],
+    [applicationById, automationById, busyId, onToggleEnabled]
   )
-}
 
-function AutomationTriggersMobileList({
-  applicationById,
-  automationById,
-  busyId,
-  selectedIds,
-  triggers,
-  onDelete,
-  onEdit,
-  onRun,
-  onToggleEnabled,
-  onToggleSelected
-}: Omit<Parameters<typeof AutomationTriggersTable>[0], 'allSelected' | 'onToggleAll'>) {
   return (
-    <div className='overflow-hidden rounded-lg border border-border/60 bg-background/25 lg:hidden'>
-      {triggers.map(trigger => {
+    <DataGrid
+      columns={columns}
+      data={triggers}
+      totalItems={triggers.length}
+      pageIndex={0}
+      pageSize={triggers.length || 20}
+      getRowId={trigger => trigger.id}
+      sorting={sorting}
+      onSortingChange={updater => onSortingChange(typeof updater === 'function' ? updater(sorting) : updater)}
+      selection={{
+        selectedIds,
+        onSelectedIdsChange
+      }}
+      minWidth='86rem'
+      emptyState={<div className='text-center text-secondary-foreground'>No triggers match the current filters.</div>}
+      mobileCard={row => {
+        const trigger = row.original
         const automation = automationById.get(trigger.automationId)
         const application = applicationById.get(trigger.targetApplicationId)
         const busy = busyId === trigger.id
-
         return (
           <div
             key={trigger.id}
-            className='grid gap-4 border-b border-border/60 px-4 py-4 last:border-b-0'
+            className='grid gap-4 rounded-lg border border-border/70 bg-background/25 p-4'
           >
             <div className='flex min-w-0 items-start justify-between gap-3'>
               <Checkbox
                 checked={selectedIds.has(trigger.id)}
                 aria-label={`Select ${trigger.name}`}
-                onCheckedChange={() => onToggleSelected(trigger.id)}
+                onCheckedChange={checked => {
+                  const next = new Set(selectedIds)
+                  if (checked === true) next.add(trigger.id)
+                  else next.delete(trigger.id)
+                  onSelectedIdsChange(next)
+                }}
               />
-              <div className='min-w-0'>
+              <div className='min-w-0 flex-1'>
                 <h3 className='font-medium text-foreground'>{trigger.name}</h3>
                 <p className='mt-1 text-sm text-secondary-foreground'>{automation?.name ?? trigger.automationId}</p>
               </div>
@@ -243,115 +253,55 @@ function AutomationTriggersMobileList({
                 <dt className='text-secondary-foreground'>Last</dt>
                 <dd className='text-foreground'>{dateLabel(trigger.lastRunAt)}</dd>
               </div>
-              <Visible when={trigger.lastError}>
+              {trigger.lastError ? (
                 <div className='col-span-2 grid gap-1'>
                   <dt className='text-secondary-foreground'>Error</dt>
                   <dd className='text-destructive'>{trigger.lastError}</dd>
                 </div>
-              </Visible>
+              ) : null}
             </dl>
-            <div className='flex flex-wrap gap-2'>
-              <Button
-                size='sm'
-                variant='secondary'
-                disabled={busy}
-                onClick={() => onEdit(trigger)}
-              >
-                <IconEdit className='size-4' />
-                Edit
-              </Button>
-              <Button
-                size='sm'
-                variant='secondary'
-                disabled={busy}
-                onClick={() => void onRun(trigger)}
-              >
-                <IconPlayerPlayFilled className='size-4' />
-                Run now
-              </Button>
-              <Button
-                size='sm'
-                variant='ghost'
-                disabled={busy}
-                onClick={() => onDelete(trigger)}
-              >
-                <IconTrash className='size-4 text-destructive' />
-                Delete
-              </Button>
-            </div>
           </div>
         )
-      })}
-      <Visible when={triggers.length === 0}>
-        <div className='px-4 py-8 text-center text-sm text-secondary-foreground'>
-          No triggers match the current filters.
-        </div>
-      </Visible>
-    </div>
-  )
-}
-
-function TriggerTags({ tags }: { tags: string[] }) {
-  return (
-    <div className='flex flex-wrap gap-1'>
-      {tags.length === 0 ? (
-        <span className='text-sm text-secondary-foreground'>-</span>
-      ) : (
-        tags.map(tag => (
-          <Badge
-            key={tag}
-            variant='secondary'
-          >
-            {tag}
-          </Badge>
-        ))
-      )}
-    </div>
-  )
-}
-
-function TriggerRowActions({
-  busy,
-  trigger,
-  onDelete,
-  onEdit,
-  onRun
-}: {
-  busy: boolean
-  trigger: AutomationTrigger
-  onDelete: (trigger: AutomationTrigger) => void
-  onEdit: (trigger: AutomationTrigger) => void
-  onRun: (trigger: AutomationTrigger) => Promise<void>
-}) {
-  return (
-    <div className='flex justify-end gap-2'>
-      <Button
-        size='sm'
-        variant='ghost'
-        disabled={busy}
-        onClick={() => onEdit(trigger)}
-      >
-        <IconEdit className='size-4' />
-        Edit
-      </Button>
-      <Button
-        size='sm'
-        variant='ghost'
-        disabled={busy}
-        onClick={() => void onRun(trigger)}
-      >
-        <IconPlayerPlayFilled className='size-4' />
-        Run
-      </Button>
-      <Button
-        size='sm'
-        variant='ghost'
-        aria-label={`Delete ${trigger.name}`}
-        disabled={busy}
-        onClick={() => onDelete(trigger)}
-      >
-        <IconTrash className='size-4 text-destructive' />
-      </Button>
-    </div>
+      }}
+      rowContextMenu={row => {
+        const hasBulkSelection = selectedIds.has(row.original.id) && selectedIds.size > 1
+        return (
+          <>
+            {hasBulkSelection ? (
+              <>
+                <ContextMenuItem onSelect={() => void onEnableSelected()}>
+                  Enable selected ({selectedIds.size})
+                </ContextMenuItem>
+                <ContextMenuItem onSelect={() => void onDisableSelected()}>
+                  Disable selected ({selectedIds.size})
+                </ContextMenuItem>
+                <ContextMenuItem
+                  className='text-destructive focus:text-destructive'
+                  onSelect={onDeleteSelected}
+                >
+                  <IconTrash className='mr-2 size-4' />
+                  Delete selected ({selectedIds.size})
+                </ContextMenuItem>
+              </>
+            ) : null}
+            <ContextMenuItem onSelect={() => onEdit(row.original)}>
+              <IconEdit className='mr-2 size-4' />
+              Edit
+            </ContextMenuItem>
+            <ContextMenuItem onSelect={() => void onRun(row.original)}>
+              <IconPlayerPlayFilled className='mr-2 size-4' />
+              Run now
+            </ContextMenuItem>
+            <ContextMenuItem
+              className='text-destructive focus:text-destructive'
+              onSelect={() => onDelete(row.original)}
+            >
+              <IconTrash className='mr-2 size-4' />
+              Delete
+            </ContextMenuItem>
+          </>
+        )
+      }}
+    />
   )
 }

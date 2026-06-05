@@ -33,6 +33,7 @@ export const UsersSettings = ({
   const groups = initialGroups
   const [busyUserId, setBusyUserId] = useState<string | null>(null)
   const [pendingDeleteUser, setPendingDeleteUser] = useState<PublicUser | null>(null)
+  const [pendingDeleteUsers, setPendingDeleteUsers] = useState<PublicUser[]>([])
 
   const upsertUser = (user: PublicUser) => {
     setUsers(current => {
@@ -79,6 +80,57 @@ export const UsersSettings = ({
     }
   }
 
+  const setUsersDisabled = async (targets: PublicUser[], disabled: boolean) => {
+    if (targets.length === 0) return
+    setBusyUserId('bulk')
+    try {
+      const results = await Promise.allSettled(targets.map(user => setUserDisabledAction(user.id, disabled)))
+      const updatedUsers = results
+        .map(result => (result.status === 'fulfilled' ? result.value : null))
+        .filter((user): user is PublicUser => Boolean(user))
+      setUsers(current => current.map(user => updatedUsers.find(updated => updated.id === user.id) ?? user))
+      const failedCount = results.length - updatedUsers.length
+      toast(
+        failedCount > 0
+          ? {
+              title: 'Some users could not be updated',
+              description: `${failedCount} update request${failedCount === 1 ? '' : 's'} failed.`,
+              variant: 'destructive'
+            }
+          : { title: disabled ? 'Selected users disabled' : 'Selected users enabled' }
+      )
+    } finally {
+      setBusyUserId(null)
+    }
+  }
+
+  const deleteUsers = async (targets: PublicUser[]) => {
+    if (targets.length === 0) return
+    setBusyUserId('bulk')
+    try {
+      const results = await Promise.allSettled(targets.map(user => deleteUserAction(user.id)))
+      const deletedIds = new Set(
+        results
+          .map((result, index) => (result.status === 'fulfilled' ? targets[index]?.id : null))
+          .filter((id): id is string => Boolean(id))
+      )
+      setUsers(current => current.filter(user => !deletedIds.has(user.id)))
+      setPendingDeleteUsers([])
+      const failedCount = results.length - deletedIds.size
+      toast(
+        failedCount > 0
+          ? {
+              title: 'Some users could not be deleted',
+              description: `${failedCount} delete request${failedCount === 1 ? '' : 's'} failed.`,
+              variant: 'destructive'
+            }
+          : { title: 'Selected users deleted' }
+      )
+    } finally {
+      setBusyUserId(null)
+    }
+  }
+
   return (
     <ProtectedStackPageLayout mainClassName='gap-2'>
       <section className='shrink-0 px-6 py-4 max-sm:px-4'>
@@ -110,6 +162,9 @@ export const UsersSettings = ({
             busyUserId={busyUserId}
             onToggleDisabled={user => void toggleDisabled(user)}
             onDelete={setPendingDeleteUser}
+            onDeleteSelected={setPendingDeleteUsers}
+            onDisableSelected={targets => void setUsersDisabled(targets, true)}
+            onEnableSelected={targets => void setUsersDisabled(targets, false)}
           />
         </Section>
       </section>
@@ -142,6 +197,38 @@ export const UsersSettings = ({
             >
               <IconTrash className='size-4' />
               Delete User
+            </Button>
+            <DialogClose asChild>
+              <Button variant='secondary'>Cancel</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        modal
+        open={pendingDeleteUsers.length > 0}
+        onOpenChange={isOpen => {
+          if (!isOpen) {
+            setPendingDeleteUsers([])
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete {pendingDeleteUsers.length} selected users?</DialogTitle>
+            <DialogDescription>
+              This removes the selected user accounts from the web app user store. Existing orchestrator deployments are
+              not deleted by this action.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant='destructive'
+              disabled={pendingDeleteUsers.length === 0 || busyUserId === 'bulk'}
+              onClick={() => void deleteUsers(pendingDeleteUsers)}
+            >
+              <IconTrash className='size-4' />
+              Delete Users
             </Button>
             <DialogClose asChild>
               <Button variant='secondary'>Cancel</Button>

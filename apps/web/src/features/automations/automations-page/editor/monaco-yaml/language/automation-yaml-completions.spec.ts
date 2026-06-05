@@ -111,10 +111,13 @@ describe('automation YAML completions', () => {
   })
 
   it('adds required command inputs when completing a missing with block', () => {
-    const suggestions = completeAtEnd(`spec:
+    const suggestions = completeAtEnd(
+      `spec:
   steps:
     - id: step-id
-      uses: android.`, 4)
+      uses: android.`,
+      4
+    )
     const swipeSuggestion = suggestions.find(suggestion => suggestion.label === 'android.swipe')
 
     expect(String(swipeSuggestion?.insertText)).toContain(`android.swipe
@@ -127,32 +130,41 @@ describe('automation YAML completions', () => {
   })
 
   it('does not add a duplicate with block when one already exists', () => {
-    const suggestions = completeAtEnd(`spec:
+    const suggestions = completeAtEnd(
+      `spec:
   steps:
     - id: step-id
       uses: android.
       with:
-        x1: 0`, 4)
+        x1: 0`,
+      4
+    )
     const swipeSuggestion = suggestions.find(suggestion => suggestion.label === 'android.swipe')
 
     expect(swipeSuggestion?.insertText).toBe('android.swipe')
   })
 
   it('suggests command input enum values from the fallback schema path', () => {
-    const suggestions = completeAtEnd(`spec:
+    const suggestions = completeAtEnd(
+      `spec:
   steps:
     - id: wake-device
       uses: android.viewerCommand
       with:
-        command: h`, 6)
+        command: h`,
+      6
+    )
 
     expect(suggestions.map(suggestion => suggestion.label)).toEqual(['home'])
   })
 
   it('suggests step skeletons after a bare item in a step array', () => {
-    const suggestions = completeAtEnd(`spec:
+    const suggestions = completeAtEnd(
+      `spec:
   steps:
-    - `, 3)
+    - `,
+      3
+    )
 
     expect(suggestions.map(suggestion => suggestion.label)).toEqual([
       'android.viewerCommand',
@@ -167,7 +179,8 @@ describe('automation YAML completions', () => {
   })
 
   it('suggests step skeletons on nested blank items in condition branches', () => {
-    const suggestions = completeAtEnd(`spec:
+    const suggestions = completeAtEnd(
+      `spec:
   steps:
     - id: branch
       type: condition
@@ -177,7 +190,9 @@ describe('automation YAML completions', () => {
           path: ready
         operator: exists
       then:
-        - `, 11)
+        - `,
+      11
+    )
 
     expect(suggestions.map(suggestion => suggestion.label)).toEqual([
       'android.viewerCommand',
@@ -191,9 +206,12 @@ describe('automation YAML completions', () => {
   })
 
   it('normalizes inline uses completion into a valid multiline action step body', () => {
-    const suggestions = completeAtEnd(`spec:
+    const suggestions = completeAtEnd(
+      `spec:
   steps:
-    - uses: android.`, 3)
+    - uses: android.`,
+      3
+    )
     const viewerCommandSuggestion = suggestions.find(suggestion => suggestion.label === 'android.viewerCommand')
 
     expect(String(viewerCommandSuggestion?.insertText)).toContain(`android.viewerCommand
@@ -202,9 +220,12 @@ describe('automation YAML completions', () => {
   })
 
   it('inserts command-specific step snippets with required inputs and correct indentation', () => {
-    const suggestions = completeAtEnd(`spec:
+    const suggestions = completeAtEnd(
+      `spec:
   steps:
-    - `, 3)
+    - `,
+      3
+    )
     const swipeSuggestion = suggestions.find(suggestion => suggestion.label === 'android.swipe')
 
     expect(String(swipeSuggestion?.insertText)).toContain(`- id: \${1:step-id}
@@ -220,9 +241,12 @@ describe('automation YAML completions', () => {
   })
 
   it('replaces the bare item marker for control-flow snippets', () => {
-    const suggestions = completeAtEnd(`spec:
+    const suggestions = completeAtEnd(
+      `spec:
   steps:
-    - `, 3)
+    - `,
+      3
+    )
     const conditionSuggestion = suggestions.find(suggestion => suggestion.label === 'Condition step')
 
     expect(String(conditionSuggestion?.insertText)).toContain(`- id: \${1:condition-step}
@@ -232,9 +256,12 @@ describe('automation YAML completions', () => {
   })
 
   it('does not suggest step skeletons after a bare item outside step arrays', () => {
-    const suggestions = completeAtEnd(`metadata:
+    const suggestions = completeAtEnd(
+      `metadata:
   tags:
-    - `, 3)
+    - `,
+      3
+    )
 
     expect(suggestions).toEqual([])
   })

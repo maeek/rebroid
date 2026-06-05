@@ -134,7 +134,7 @@ const pathAt = (node: ParsedNode | null, offset: number, path: Array<string | nu
     for (const pair of node.items) {
       const key = isScalar(pair.key) ? String(pair.key.value) : null
       if (!key || !pair.value || !containsOffset(pair.value, offset)) continue
-      return pathAt(pair.value as ParsedNode, offset, [...path, key])
+      return pathAt(pair.value, offset, [...path, key])
     }
     return path
   }
@@ -143,7 +143,7 @@ const pathAt = (node: ParsedNode | null, offset: number, path: Array<string | nu
     for (let index = 0; index < node.items.length; index += 1) {
       const item = node.items[index]
       if (!item || !containsOffset(item, offset)) continue
-      return pathAt(item as ParsedNode, offset, [...path, index])
+      return pathAt(item, offset, [...path, index])
     }
   }
 
@@ -165,12 +165,12 @@ const nodeAtPath = (node: ParsedNode | null, path: Array<string | number>): Pars
     if (typeof pathItem === 'string') {
       if (!current || !isMap(current)) return null
       const pair = current.items.find(item => isScalar(item.key) && item.key.value === pathItem)
-      current = pair?.value ? (pair.value as ParsedNode) : null
+      current = pair?.value ? pair.value : null
       continue
     }
 
     if (!current || !isSeq(current)) return null
-    current = current.items[pathItem] ? (current.items[pathItem] as ParsedNode) : null
+    current = current.items[pathItem] ? current.items[pathItem] : null
   }
 
   return current
@@ -208,7 +208,11 @@ const hasSiblingWithBlock = (
   stepIndent: number,
   propertyIndent: number
 ) => {
-  for (let candidateLineNumber = lineNumber + 1; candidateLineNumber <= model.getLineCount(); candidateLineNumber += 1) {
+  for (
+    let candidateLineNumber = lineNumber + 1;
+    candidateLineNumber <= model.getLineCount();
+    candidateLineNumber += 1
+  ) {
     const candidate = model.getLineContent(candidateLineNumber)
     if (!candidate.trim()) continue
     const candidateIndent = indentation(candidate)
@@ -236,7 +240,9 @@ const fallbackWithPropertyContext = (
     if (/^\s*-\s+/.test(line) && indent < currentIndent) break
   }
 
-  return uses && withIndent !== null && currentIndent > withIndent ? { kind: 'with-property', uses, indent: currentIndent } : null
+  return uses && withIndent !== null && currentIndent > withIndent
+    ? { kind: 'with-property', uses, indent: currentIndent }
+    : null
 }
 
 const fallbackIsStepArrayItem = (model: Monaco.editor.ITextModel, lineNumber: number, listIndent: number) => {

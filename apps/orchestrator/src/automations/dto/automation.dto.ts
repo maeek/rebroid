@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsIn,
   IsEnum,
   IsInt,
   IsArray,
@@ -156,6 +157,125 @@ export class ListAutomationRunsQueryDto {
   status?: 'active';
 }
 
+export class ListAutomationsGridQueryDto {
+  @ApiProperty({ example: 'user_123' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  ownerUserId!: string;
+
+  @ApiPropertyOptional({ example: 1, minimum: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @ApiPropertyOptional({ example: 20, minimum: 1, maximum: 100 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  pageSize?: number;
+
+  @ApiPropertyOptional({ example: 'login smoke' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  q?: string;
+
+  @ApiPropertyOptional({ example: 'smoke' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(48)
+  tag?: string;
+
+  @ApiPropertyOptional({ example: 'app-123' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  targetApplicationId?: string;
+
+  @ApiPropertyOptional({ enum: AutomationLastStatus })
+  @IsOptional()
+  @IsEnum(AutomationLastStatus)
+  status?: AutomationLastStatus;
+
+  @ApiPropertyOptional({ enum: ['all', 'never', '7d', '30d', '90d'] })
+  @IsOptional()
+  @IsIn(['all', 'never', '7d', '30d', '90d'])
+  lastRun?: 'all' | 'never' | '7d' | '30d' | '90d';
+
+  @ApiPropertyOptional({ example: 'updatedAt:desc,name:asc' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  sort?: string;
+}
+
+export class ListAutomationTriggersGridQueryDto {
+  @ApiProperty({ example: 'user_123' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  ownerUserId!: string;
+
+  @ApiPropertyOptional({ example: 1, minimum: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @ApiPropertyOptional({ example: 20, minimum: 1, maximum: 100 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  pageSize?: number;
+
+  @ApiPropertyOptional({ example: 'daily smoke' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  q?: string;
+
+  @ApiPropertyOptional({ example: 'smoke' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(48)
+  tag?: string;
+
+  @ApiPropertyOptional({ example: 'app-123' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  targetApplicationId?: string;
+
+  @ApiPropertyOptional({ enum: ['true', 'false'] })
+  @IsOptional()
+  @IsIn(['true', 'false'])
+  enabled?: 'true' | 'false';
+
+  @ApiPropertyOptional({ enum: AutomationLastStatus })
+  @IsOptional()
+  @IsEnum(AutomationLastStatus)
+  status?: AutomationLastStatus;
+
+  @ApiPropertyOptional({ enum: ['all', 'never', '7d', '30d', '90d'] })
+  @IsOptional()
+  @IsIn(['all', 'never', '7d', '30d', '90d'])
+  lastRun?: 'all' | 'never' | '7d' | '30d' | '90d';
+
+  @ApiPropertyOptional({ example: 'updatedAt:desc,name:asc' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  sort?: string;
+}
+
 export class AutomationStepResultDto {
   @ApiProperty({ example: 'wake-device' })
   stepId!: string;
@@ -268,6 +388,31 @@ export class AutomationDto {
 
   @ApiProperty()
   updatedAt!: string;
+}
+
+export class AutomationsGridFacetsDto {
+  @ApiProperty({ type: String, isArray: true })
+  tags!: string[];
+
+  @ApiProperty({ type: String, isArray: true })
+  targetApplicationIds!: string[];
+}
+
+export class AutomationsGridPageDto {
+  @ApiProperty({ type: AutomationDto, isArray: true })
+  items!: AutomationDto[];
+
+  @ApiProperty()
+  total!: number;
+
+  @ApiProperty()
+  page!: number;
+
+  @ApiProperty()
+  pageSize!: number;
+
+  @ApiProperty({ type: AutomationsGridFacetsDto })
+  facets!: AutomationsGridFacetsDto;
 }
 
 export class AutomationValidationDto {
@@ -429,4 +574,29 @@ export class AutomationTriggerDto {
 
   @ApiProperty()
   updatedAt!: string;
+}
+
+export class AutomationTriggersGridFacetsDto {
+  @ApiProperty({ type: String, isArray: true })
+  tags!: string[];
+
+  @ApiProperty({ type: String, isArray: true })
+  targetApplicationIds!: string[];
+}
+
+export class AutomationTriggersGridPageDto {
+  @ApiProperty({ type: AutomationTriggerDto, isArray: true })
+  items!: AutomationTriggerDto[];
+
+  @ApiProperty()
+  total!: number;
+
+  @ApiProperty()
+  page!: number;
+
+  @ApiProperty()
+  pageSize!: number;
+
+  @ApiProperty({ type: AutomationTriggersGridFacetsDto })
+  facets!: AutomationTriggersGridFacetsDto;
 }

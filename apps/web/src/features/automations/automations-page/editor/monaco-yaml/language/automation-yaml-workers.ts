@@ -8,7 +8,8 @@ export const registerAutomationMonacoWorkers = () => {
 
   globalThis.MonacoEnvironment = createAutomationMonacoWorkerEnvironment({
     existingEnvironment: globalThis.MonacoEnvironment,
-    createYamlWorker: () => new Worker(new URL('monaco-yaml/yaml.worker', import.meta.url), automationYamlWorkerOptions),
+    createYamlWorker: () =>
+      new Worker(new URL('monaco-yaml/yaml.worker', import.meta.url), automationYamlWorkerOptions),
     createEditorWorker: () =>
       new Worker(new URL('monaco-editor/esm/vs/editor/editor.worker', import.meta.url), automationYamlWorkerOptions)
   })

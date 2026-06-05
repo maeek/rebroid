@@ -1,9 +1,18 @@
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
-import type { Automation, AutomationCommand, AutomationTrigger } from '@/server/orchestrator/automations/types'
+import type {
+  Automation,
+  AutomationCommand,
+  AutomationsGridPage,
+  AutomationsGridQuery,
+  AutomationTriggersGridPage,
+  AutomationTriggersGridQuery,
+  AutomationTrigger
+} from '@/server/orchestrator/automations/types'
 
 export interface AutomationsListPageProps {
   initialApplications: AndroidApplication[]
-  initialAutomations: Automation[]
+  automationsPage: AutomationsGridPage
+  gridQuery: AutomationsGridQuery
   initialTriggers: AutomationTrigger[]
 }
 
@@ -15,5 +24,6 @@ export interface AutomationEditorPageProps {
 export interface AutomationTriggersPageProps {
   initialApplications: AndroidApplication[]
   initialAutomations: Automation[]
-  initialTriggers: AutomationTrigger[]
+  triggersPage: AutomationTriggersGridPage
+  gridQuery: AutomationTriggersGridQuery
 }

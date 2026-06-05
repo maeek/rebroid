@@ -1,6 +1,10 @@
 import { emptyRequest, jsonRequest, request } from '../request'
 import type {
   Automation,
+  AutomationsGridPage,
+  AutomationsGridQuery,
+  AutomationTriggersGridPage,
+  AutomationTriggersGridQuery,
   AutomationCommand,
   AutomationRun,
   AutomationTrigger,
@@ -26,6 +30,15 @@ export const orchestratorAutomationsClient = {
 
   list(ownerUserId: string) {
     return emptyRequest<Automation[]>(`/automations?${ownerQuery(ownerUserId)}`)
+  },
+
+  listGrid(ownerUserId: string, input: AutomationsGridQuery = {}) {
+    const query = new URLSearchParams({ ownerUserId })
+    for (const [key, value] of Object.entries(input)) {
+      const text = String(value ?? '').trim()
+      if (text) query.set(key, text)
+    }
+    return emptyRequest<AutomationsGridPage>(`/automations/grid?${query.toString()}`)
   },
 
   listRunnable(ownerUserId: string) {
@@ -72,6 +85,15 @@ export const orchestratorAutomationsClient = {
 
   listTriggers(ownerUserId: string) {
     return emptyRequest<AutomationTrigger[]>(`/automations/triggers?${ownerQuery(ownerUserId)}`)
+  },
+
+  listTriggersGrid(ownerUserId: string, input: AutomationTriggersGridQuery = {}) {
+    const query = new URLSearchParams({ ownerUserId })
+    for (const [key, value] of Object.entries(input)) {
+      const text = String(value ?? '').trim()
+      if (text) query.set(key, text)
+    }
+    return emptyRequest<AutomationTriggersGridPage>(`/automations/triggers/grid?${query.toString()}`)
   },
 
   createTrigger(ownerUserId: string, input: SaveAutomationTriggerInput) {

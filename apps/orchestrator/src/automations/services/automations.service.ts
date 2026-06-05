@@ -12,10 +12,14 @@ import { AutomationDefinition } from '../definition/automation-definition.types'
 import {
   AutomationCommandDto,
   AutomationDto,
+  AutomationsGridPageDto,
   AutomationRunDto,
   AutomationTriggerDto,
+  AutomationTriggersGridPageDto,
   CreateAutomationDto,
   CreateAutomationTriggerDto,
+  ListAutomationTriggersGridQueryDto,
+  ListAutomationsGridQueryDto,
   RunAutomationDto,
   UpdateAutomationDto,
   UpdateAutomationTriggerDto,
@@ -55,6 +59,30 @@ const toIso = (value: Date | string | null | undefined) =>
 const stringifyTags = (value: unknown) =>
   JSON.stringify(normalizeAutomationTags(value, 'tags') ?? []);
 
+const automationGridSortFields = new Set([
+  'name',
+  'lastRunAt',
+  'lastStatus',
+  'createdAt',
+  'updatedAt',
+]);
+
+const automationTriggerGridSortFields = new Set([
+  'name',
+  'enabled',
+  'nextRunAt',
+  'lastRunAt',
+  'lastStatus',
+  'updatedAt',
+]);
+
+const compareNullableDates = (left: string | null, right: string | null) => {
+  if (!left && !right) return 0;
+  if (!left) return 1;
+  if (!right) return -1;
+  return new Date(left).getTime() - new Date(right).getTime();
+};
+
 interface ScheduleTriggerConfig {
   cronExpression: string;
   startPolicy: AutomationStartPolicy;
@@ -92,6 +120,85 @@ export class AutomationsService implements OnModuleInit {
       ),
     );
     return automations.map((automation) => this.toDto(automation));
+  }
+
+  async listGrid(
+    query: ListAutomationsGridQueryDto,
+  ): Promise<AutomationsGridPageDto> {
+    const ownerUserId = query.ownerUserId.trim();
+    const page = Math.max(Math.trunc(query.page ?? 1), 1);
+    const pageSize = Math.min(
+      Math.max(Math.trunc(query.pageSize ?? 20), 1),
+      100,
+    );
+    const [automations, triggers] = await Promise.all([
+      this.automations.listByOwner(ownerUserId),
+      this.triggers.listByOwner(ownerUserId),
+    ]);
+    await Promise.all(
+      automations.map((automation) =>
+        this.backfillAutomationLastRun(automation),
+      ),
+    );
+
+    const targetApplicationIdsByAutomation = new Map<string, Set<string>>();
+    for (const trigger of triggers) {
+      const appIds =
+        targetApplicationIdsByAutomation.get(trigger.automationId) ??
+        new Set<string>();
+      appIds.add(trigger.targetApplicationId);
+      targetApplicationIdsByAutomation.set(trigger.automationId, appIds);
+    }
+
+    const facets = {
+      tags: [
+        ...new Set(
+          automations.flatMap((automation) => this.toDto(automation).tags),
+        ),
+      ].sort((left, right) => left.localeCompare(right)),
+      targetApplicationIds: [
+        ...new Set(triggers.map((trigger) => trigger.targetApplicationId)),
+      ].sort((left, right) => left.localeCompare(right)),
+    };
+
+    const search = query.q?.trim().toLowerCase();
+    const tag = query.tag?.trim();
+    const lastRun = query.lastRun ?? 'all';
+    const filtered = automations
+      .map((automation) => this.toDto(automation))
+      .filter((automation) => {
+        const targetApplicationIds =
+          targetApplicationIdsByAutomation.get(automation.id) ??
+          new Set<string>();
+        return (
+          (!search ||
+            [
+              automation.name,
+              automation.description,
+              automation.lastStatus,
+              ...automation.tags,
+            ]
+              .filter(Boolean)
+              .join(' ')
+              .toLowerCase()
+              .includes(search)) &&
+          (!tag || automation.tags.includes(tag)) &&
+          (!query.status || automation.lastStatus === query.status) &&
+          (!query.targetApplicationId ||
+            targetApplicationIds.has(query.targetApplicationId)) &&
+          this.matchesAutomationLastRun(automation, lastRun)
+        );
+      });
+
+    const sorted = this.sortAutomationGridItems(filtered, query.sort);
+    const offset = (page - 1) * pageSize;
+    return {
+      items: sorted.slice(offset, offset + pageSize),
+      total: sorted.length,
+      page,
+      pageSize,
+      facets,
+    };
   }
 
   async get(ownerUserId: string, id: string) {
@@ -189,6 +296,71 @@ export class AutomationsService implements OnModuleInit {
     return (await this.triggers.listByOwner(ownerUserId)).map((trigger) =>
       this.toTriggerDto(trigger),
     );
+  }
+
+  async listTriggersGrid(
+    query: ListAutomationTriggersGridQueryDto,
+  ): Promise<AutomationTriggersGridPageDto> {
+    const ownerUserId = query.ownerUserId.trim();
+    const page = Math.max(Math.trunc(query.page ?? 1), 1);
+    const pageSize = Math.min(
+      Math.max(Math.trunc(query.pageSize ?? 20), 1),
+      100,
+    );
+    const [triggers, automations] = await Promise.all([
+      this.triggers.listByOwner(ownerUserId),
+      this.automations.listByOwner(ownerUserId),
+    ]);
+    const automationById = new Map(
+      automations.map((automation) => [automation.id, automation]),
+    );
+    const triggerDtos = triggers.map((trigger) => this.toTriggerDto(trigger));
+    const facets = {
+      tags: [...new Set(triggerDtos.flatMap((trigger) => trigger.tags))].sort(
+        (left, right) => left.localeCompare(right),
+      ),
+      targetApplicationIds: [
+        ...new Set(triggerDtos.map((trigger) => trigger.targetApplicationId)),
+      ].sort((left, right) => left.localeCompare(right)),
+    };
+
+    const search = query.q?.trim().toLowerCase();
+    const tag = query.tag?.trim();
+    const lastRun = query.lastRun ?? 'all';
+    const filtered = triggerDtos.filter((trigger) => {
+      const automation = automationById.get(trigger.automationId);
+      return (
+        (!search ||
+          [
+            trigger.name,
+            trigger.targetApplicationId,
+            trigger.profileName,
+            trigger.lastStatus,
+            automation?.name,
+            ...trigger.tags,
+          ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase()
+            .includes(search)) &&
+        (!tag || trigger.tags.includes(tag)) &&
+        (!query.targetApplicationId ||
+          trigger.targetApplicationId === query.targetApplicationId) &&
+        (!query.enabled || String(trigger.enabled) === query.enabled) &&
+        (!query.status || trigger.lastStatus === query.status) &&
+        this.matchesAutomationTriggerLastRun(trigger, lastRun)
+      );
+    });
+
+    const sorted = this.sortAutomationTriggerGridItems(filtered, query.sort);
+    const offset = (page - 1) * pageSize;
+    return {
+      items: sorted.slice(offset, offset + pageSize),
+      total: sorted.length,
+      page,
+      pageSize,
+      facets,
+    };
   }
 
   async getTrigger(ownerUserId: string, id: string) {
@@ -480,6 +652,111 @@ export class AutomationsService implements OnModuleInit {
           : AutomationLastStatus.Running;
     automation.lastError = run.error;
     await this.automations.save(automation);
+  }
+
+  private matchesAutomationLastRun(
+    automation: AutomationDto,
+    filter: ListAutomationsGridQueryDto['lastRun'],
+  ) {
+    if (!filter || filter === 'all') return true;
+    if (filter === 'never') return automation.lastRunAt === null;
+    if (!automation.lastRunAt) return false;
+    const days = filter === '7d' ? 7 : filter === '30d' ? 30 : 90;
+    return (
+      new Date(automation.lastRunAt).getTime() >=
+      Date.now() - days * 24 * 60 * 60 * 1000
+    );
+  }
+
+  private matchesAutomationTriggerLastRun(
+    trigger: AutomationTriggerDto,
+    filter: ListAutomationTriggersGridQueryDto['lastRun'],
+  ) {
+    if (!filter || filter === 'all') return true;
+    if (filter === 'never') return trigger.lastRunAt === null;
+    if (!trigger.lastRunAt) return false;
+    const days = filter === '7d' ? 7 : filter === '30d' ? 30 : 90;
+    return (
+      new Date(trigger.lastRunAt).getTime() >=
+      Date.now() - days * 24 * 60 * 60 * 1000
+    );
+  }
+
+  private sortAutomationGridItems(items: AutomationDto[], sort?: string) {
+    const sorting = (sort || 'updatedAt:desc')
+      .split(',')
+      .map((part) => {
+        const [id, direction] = part.split(':');
+        if (!id || !automationGridSortFields.has(id)) return null;
+        return { id, desc: direction !== 'asc' };
+      })
+      .filter((item): item is { id: string; desc: boolean } => Boolean(item))
+      .slice(0, 3);
+
+    return [...items].sort((left, right) => {
+      for (const sortItem of sorting) {
+        const multiplier = sortItem.desc ? -1 : 1;
+        let result = 0;
+        if (sortItem.id === 'name') {
+          result = left.name.localeCompare(right.name);
+        } else if (sortItem.id === 'lastStatus') {
+          result = left.lastStatus.localeCompare(right.lastStatus);
+        } else if (sortItem.id === 'lastRunAt') {
+          result = compareNullableDates(left.lastRunAt, right.lastRunAt);
+        } else if (sortItem.id === 'createdAt') {
+          result =
+            new Date(left.createdAt).getTime() -
+            new Date(right.createdAt).getTime();
+        } else if (sortItem.id === 'updatedAt') {
+          result =
+            new Date(left.updatedAt).getTime() -
+            new Date(right.updatedAt).getTime();
+        }
+
+        if (result !== 0) return result * multiplier;
+      }
+      return left.id.localeCompare(right.id);
+    });
+  }
+
+  private sortAutomationTriggerGridItems(
+    items: AutomationTriggerDto[],
+    sort?: string,
+  ) {
+    const sorting = (sort || 'updatedAt:desc')
+      .split(',')
+      .map((part) => {
+        const [id, direction] = part.split(':');
+        if (!id || !automationTriggerGridSortFields.has(id)) return null;
+        return { id, desc: direction !== 'asc' };
+      })
+      .filter((item): item is { id: string; desc: boolean } => Boolean(item))
+      .slice(0, 3);
+
+    return [...items].sort((left, right) => {
+      for (const sortItem of sorting) {
+        const multiplier = sortItem.desc ? -1 : 1;
+        let result = 0;
+        if (sortItem.id === 'name') {
+          result = left.name.localeCompare(right.name);
+        } else if (sortItem.id === 'enabled') {
+          result = Number(left.enabled) - Number(right.enabled);
+        } else if (sortItem.id === 'lastStatus') {
+          result = left.lastStatus.localeCompare(right.lastStatus);
+        } else if (sortItem.id === 'lastRunAt') {
+          result = compareNullableDates(left.lastRunAt, right.lastRunAt);
+        } else if (sortItem.id === 'nextRunAt') {
+          result = compareNullableDates(left.nextRunAt, right.nextRunAt);
+        } else if (sortItem.id === 'updatedAt') {
+          result =
+            new Date(left.updatedAt).getTime() -
+            new Date(right.updatedAt).getTime();
+        }
+
+        if (result !== 0) return result * multiplier;
+      }
+      return left.id.localeCompare(right.id);
+    });
   }
 
   private toDto(automation: Automation): AutomationDto {

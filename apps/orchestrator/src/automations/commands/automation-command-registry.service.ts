@@ -140,7 +140,9 @@ const defaultsOf = (properties: Record<string, Record<string, unknown>>) =>
 
 const requiredPropertiesOf = (schema: Record<string, unknown>) =>
   Array.isArray(schema.required)
-    ? schema.required.filter((field): field is string => typeof field === 'string')
+    ? schema.required.filter(
+        (field): field is string => typeof field === 'string',
+      )
     : [];
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

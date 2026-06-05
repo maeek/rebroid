@@ -109,6 +109,14 @@ export const listAutomationsAction = async () => {
   return orchestratorAutomationsClient.list(user.ownerUserId)
 }
 
+export const listAutomationsGridAction = async (
+  input: Parameters<typeof orchestratorAutomationsClient.listGrid>[1] = {}
+) => {
+  const user = await getCurrentUserContext()
+  assertPermission(user, 'automations:manage')
+  return orchestratorAutomationsClient.listGrid(user.ownerUserId, input)
+}
+
 export const listRunnableAutomationsAction = async () => {
   const user = await getCurrentUserContext()
   assertPermission(user, 'automations:run')
@@ -226,6 +234,14 @@ export const listAutomationTriggersAction = async () => {
   const user = await getCurrentUserContext()
   assertPermission(user, 'automations:manage')
   return orchestratorAutomationsClient.listTriggers(user.ownerUserId)
+}
+
+export const listAutomationTriggersGridAction = async (
+  input: Parameters<typeof orchestratorAutomationsClient.listTriggersGrid>[1] = {}
+) => {
+  const user = await getCurrentUserContext()
+  assertPermission(user, 'automations:manage')
+  return orchestratorAutomationsClient.listTriggersGrid(user.ownerUserId, input)
 }
 
 export const createAutomationTriggerAction = async (input: SaveAutomationTriggerInput) => {

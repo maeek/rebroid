@@ -98,6 +98,54 @@ export interface Automation {
   updatedAt: string
 }
 
+export type AutomationsGridSortField = 'name' | 'lastRunAt' | 'lastStatus' | 'createdAt' | 'updatedAt'
+export type AutomationsGridLastRunFilter = 'all' | 'never' | '7d' | '30d' | '90d'
+
+export interface AutomationsGridQuery {
+  page?: number
+  pageSize?: number
+  q?: string
+  tag?: string
+  targetApplicationId?: string
+  status?: AutomationLastStatus
+  lastRun?: AutomationsGridLastRunFilter
+  sort?: string
+}
+
+export interface AutomationsGridPage {
+  items: Automation[]
+  total: number
+  page: number
+  pageSize: number
+  facets: {
+    tags: string[]
+    targetApplicationIds: string[]
+  }
+}
+
+export interface AutomationTriggersGridQuery {
+  page?: number
+  pageSize?: number
+  q?: string
+  tag?: string
+  targetApplicationId?: string
+  enabled?: 'true' | 'false'
+  status?: AutomationLastStatus
+  lastRun?: AutomationsGridLastRunFilter
+  sort?: string
+}
+
+export interface AutomationTriggersGridPage {
+  items: AutomationTrigger[]
+  total: number
+  page: number
+  pageSize: number
+  facets: {
+    tags: string[]
+    targetApplicationIds: string[]
+  }
+}
+
 export interface AutomationCommand {
   uses: string
   label: string

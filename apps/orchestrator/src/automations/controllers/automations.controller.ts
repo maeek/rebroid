@@ -12,12 +12,16 @@ import { ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import {
   AutomationCommandDto,
   AutomationDto,
+  AutomationsGridPageDto,
   AutomationRunDto,
   AutomationTriggerDto,
+  AutomationTriggersGridPageDto,
   AutomationValidationDto,
   CreateAutomationDto,
   CreateAutomationTriggerDto,
+  ListAutomationTriggersGridQueryDto,
   ListAutomationRunsQueryDto,
+  ListAutomationsGridQueryDto,
   RunAutomationDto,
   UpdateAutomationTriggerDto,
   UpdateAutomationDto,
@@ -46,6 +50,12 @@ export class AutomationsController {
   @ApiOkResponse({ type: AutomationDto, isArray: true })
   list(@Query('ownerUserId') ownerUserId: string) {
     return this.automations.list(ownerUserId);
+  }
+
+  @Get('grid')
+  @ApiOkResponse({ type: AutomationsGridPageDto })
+  listGrid(@Query() query: ListAutomationsGridQueryDto) {
+    return this.automations.listGrid(query);
   }
 
   @Get('runnable')
@@ -82,6 +92,12 @@ export class AutomationsController {
   @ApiOkResponse({ type: AutomationTriggerDto, isArray: true })
   listTriggers(@Query('ownerUserId') ownerUserId: string) {
     return this.automations.listTriggers(ownerUserId);
+  }
+
+  @Get('triggers/grid')
+  @ApiOkResponse({ type: AutomationTriggersGridPageDto })
+  listTriggersGrid(@Query() query: ListAutomationTriggersGridQueryDto) {
+    return this.automations.listTriggersGrid(query);
   }
 
   @Post('triggers')

@@ -1,3 +1,4 @@
+import type { AuditSort } from '@/server/audit/query'
 import type { AuditEventPage } from '@/server/storage/database'
 
 export type ActivityFilterValues = {
@@ -27,6 +28,7 @@ export type ActivityFilterEntry = {
 export type ActivityEventsTableProps = {
   result: AuditEventPage
   filters: ActivityFilterValues
+  sorting: AuditSort[]
   facets: ActivityFacets
   auditRetentionDays: number
 }

@@ -1,11 +1,14 @@
+import { useMemo } from 'react'
 import { IconEye, IconSearch, IconShieldCheck } from '@tabler/icons-react'
+import { DataGrid } from '@/components/data-grid'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { ContextMenuItem } from '@/components/ui/context-menu'
 import { useActivityController, useActivityData } from '../activity-context'
 import { formatAction, outcomeTone } from '../activity-format'
 import { ActivityResourceTypeBadge } from '../common/activity-resource-type-badge'
 import type { AuditEvent } from '@/server/storage/database'
+import type { ColumnDef } from '@tanstack/react-table'
 
 const ActivityEventBadges = ({ event }: { event: AuditEvent }) => (
   <div className='mt-1 flex flex-wrap gap-1'>
@@ -15,121 +18,194 @@ const ActivityEventBadges = ({ event }: { event: AuditEvent }) => (
 )
 
 const ActivityEventTargetCell = ({ event }: { event: AuditEvent }) => (
-  <TableCell className='px-4 py-4 align-top'>
+  <div>
     <div className='truncate font-medium'>{event.resourceLabel ?? event.resourceId ?? 'none'}</div>
     <div className='mt-1 truncate font-mono text-xs text-secondary-foreground'>
       {event.resourceId ?? event.resourceType ?? 'No resource id'}
     </div>
-  </TableCell>
+  </div>
 )
 
 const ActivityEventsEmptyState = ({ resetFilters }: { resetFilters: () => void }) => (
-  <TableRow>
-    <TableCell
-      colSpan={6}
-      className='px-4 py-10'
+  <div className='mx-auto flex max-w-md flex-col items-center text-center'>
+    <div className='mb-3 rounded-full border border-border/70 bg-card/60 p-3'>
+      <IconSearch className='size-6 text-secondary-foreground' />
+    </div>
+    <div className='font-medium'>No activity found</div>
+    <p className='mt-1 text-sm text-secondary-foreground'>
+      Try clearing filters or widening the date range. New audit events appear here after actions finish.
+    </p>
+    <Button
+      className='mt-4'
+      variant='secondary'
+      onClick={resetFilters}
     >
-      <div className='mx-auto flex max-w-md flex-col items-center text-center'>
-        <div className='mb-3 rounded-full border border-border/70 bg-card/60 p-3'>
-          <IconSearch className='size-6 text-secondary-foreground' />
-        </div>
-        <div className='font-medium'>No activity found</div>
-        <p className='mt-1 text-sm text-secondary-foreground'>
-          Try clearing filters or widening the date range. New audit events appear here after actions finish.
-        </p>
-        <Button
-          className='mt-4'
-          variant='secondary'
-          onClick={resetFilters}
-        >
-          Clear filters
-        </Button>
-      </div>
-    </TableCell>
-  </TableRow>
+      Clear filters
+    </Button>
+  </div>
 )
 
-const ActivityEventRow = ({
+const ActivityEventMobileCard = ({
   event,
   setSelectedEvent
 }: {
   event: AuditEvent
   setSelectedEvent: (event: AuditEvent) => void
 }) => (
-  <TableRow
-    key={event.id}
-    className='group'
-  >
-    <TableCell className='px-4 py-4 align-top'>
-      <div className='flex items-start gap-3'>
-        <div className='mt-0.5 rounded-lg border border-border/60 bg-secondary/50 p-2'>
-          <IconShieldCheck className='size-4 text-secondary-foreground' />
-        </div>
-        <div className='min-w-0'>
-          <div className='font-medium'>{formatAction(event.action)}</div>
-          <ActivityEventBadges event={event} />
-        </div>
+  <div className='grid gap-3 rounded-lg border border-border/70 bg-background/25 p-4'>
+    <div className='flex items-start gap-3'>
+      <div className='mt-0.5 rounded-lg border border-border/60 bg-secondary/50 p-2'>
+        <IconShieldCheck className='size-4 text-secondary-foreground' />
       </div>
-    </TableCell>
-    <TableCell className='px-4 py-4 align-top'>
-      <div className='font-medium'>{event.actorLabel}</div>
-      <div className='mt-1 font-mono text-xs text-secondary-foreground'>{event.actorUserId ?? 'system'}</div>
-    </TableCell>
-    <ActivityEventTargetCell event={event} />
-    <TableCell className='px-4 py-4 align-top'>
+      <div className='min-w-0 flex-1'>
+        <div className='font-medium'>{formatAction(event.action)}</div>
+        <ActivityEventBadges event={event} />
+      </div>
       <Badge variant={outcomeTone(event.outcome)}>{event.outcome}</Badge>
-    </TableCell>
-    <TableCell className='px-4 py-4 align-top'>
-      <div>{new Date(event.createdAt).toLocaleString()}</div>
-      <div className='mt-1 text-xs text-secondary-foreground'>{event.createdAt}</div>
-    </TableCell>
-    <TableCell className='px-4 py-4 text-right align-top'>
-      <Button
-        variant='secondary'
-        size='sm'
-        onClick={() => setSelectedEvent(event)}
-      >
-        <IconEye className='size-4' />
-        Details
-      </Button>
-    </TableCell>
-  </TableRow>
+    </div>
+    <dl className='grid gap-2 text-sm'>
+      <div>
+        <dt className='text-secondary-foreground'>Actor</dt>
+        <dd className='truncate'>{event.actorLabel}</dd>
+      </div>
+      <div>
+        <dt className='text-secondary-foreground'>Target</dt>
+        <dd className='truncate'>{event.resourceLabel ?? event.resourceId ?? event.resourceType ?? 'none'}</dd>
+      </div>
+      <div>
+        <dt className='text-secondary-foreground'>Time</dt>
+        <dd>{new Date(event.createdAt).toLocaleString()}</dd>
+      </div>
+    </dl>
+    <Button
+      variant='secondary'
+      size='sm'
+      onClick={() => setSelectedEvent(event)}
+    >
+      <IconEye className='size-4' />
+      Details
+    </Button>
+  </div>
 )
 
 export const ActivityEventsDataTable = () => {
-  const { result } = useActivityData()
+  const { result, sorting } = useActivityData()
   const controller = useActivityController()
+  const columns = useMemo<ColumnDef<AuditEvent>[]>(
+    () => [
+      {
+        id: 'action',
+        accessorFn: event => event.action,
+        header: 'Event',
+        size: 256,
+        meta: { label: 'Event' },
+        cell: ({ row }) => (
+          <div className='flex items-start gap-3'>
+            <div className='mt-0.5 rounded-lg border border-border/60 bg-secondary/50 p-2'>
+              <IconShieldCheck className='size-4 text-secondary-foreground' />
+            </div>
+            <div className='min-w-0'>
+              <div className='font-medium'>{formatAction(row.original.action)}</div>
+              <ActivityEventBadges event={row.original} />
+            </div>
+          </div>
+        )
+      },
+      {
+        id: 'actorLabel',
+        accessorFn: event => event.actorLabel,
+        header: 'Actor',
+        size: 176,
+        meta: { label: 'Actor' },
+        cell: ({ row }) => (
+          <div>
+            <div className='font-medium'>{row.original.actorLabel}</div>
+            <div className='mt-1 font-mono text-xs text-secondary-foreground'>
+              {row.original.actorUserId ?? 'system'}
+            </div>
+          </div>
+        )
+      },
+      {
+        id: 'resourceLabel',
+        accessorFn: event => event.resourceLabel ?? event.resourceId ?? event.resourceType ?? '',
+        header: 'Target',
+        size: 240,
+        meta: { label: 'Target' },
+        cell: ({ row }) => <ActivityEventTargetCell event={row.original} />
+      },
+      {
+        id: 'outcome',
+        accessorFn: event => event.outcome,
+        header: 'Outcome',
+        size: 160,
+        meta: { label: 'Outcome' },
+        cell: ({ row }) => <Badge variant={outcomeTone(row.original.outcome)}>{row.original.outcome}</Badge>
+      },
+      {
+        id: 'createdAt',
+        accessorFn: event => event.createdAt,
+        header: 'Time',
+        size: 224,
+        meta: { label: 'Time' },
+        cell: ({ row }) => (
+          <div>
+            <div>{new Date(row.original.createdAt).toLocaleString()}</div>
+            <div className='mt-1 text-xs text-secondary-foreground'>{row.original.createdAt}</div>
+          </div>
+        )
+      },
+      {
+        id: 'inspect',
+        header: 'Inspect',
+        size: 112,
+        enableSorting: false,
+        enableHiding: false,
+        cell: ({ row }) => (
+          <div className='flex justify-end'>
+            <Button
+              variant='secondary'
+              size='sm'
+              onClick={() => controller.setSelectedEvent(row.original)}
+            >
+              <IconEye className='size-4' />
+              Details
+            </Button>
+          </div>
+        )
+      }
+    ],
+    [controller]
+  )
 
   return (
-    <div className='overflow-hidden rounded-xl border border-border/70 bg-background/25'>
-      <Table
-        className='table-fixed'
-        style={{ minWidth: '78rem' }}
-      >
-        <TableHeader className='bg-background/45'>
-          <TableRow className='hover:bg-transparent'>
-            <TableHead className='w-64 px-4 py-3 uppercase'>Event</TableHead>
-            <TableHead className='w-44 px-4 py-3 uppercase'>Actor</TableHead>
-            <TableHead className='w-60 px-4 py-3 uppercase'>Target</TableHead>
-            <TableHead className='w-40 px-4 py-3 uppercase'>Outcome</TableHead>
-            <TableHead className='w-56 px-4 py-3 uppercase'>Time</TableHead>
-            <TableHead className='w-28 px-4 py-3 text-right uppercase'>Inspect</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {result.events.length === 0 ? (
-            <ActivityEventsEmptyState resetFilters={controller.resetFilters} />
-          ) : (
-            result.events.map(event => (
-              <ActivityEventRow
-                key={event.id}
-                event={event}
-                setSelectedEvent={controller.setSelectedEvent}
-              />
-            ))
-          )}
-        </TableBody>
-      </Table>
-    </div>
+    <DataGrid
+      columns={columns}
+      data={result.events}
+      totalItems={result.total}
+      pageIndex={result.page - 1}
+      pageSize={result.pageSize}
+      getRowId={event => String(event.id)}
+      sorting={sorting}
+      onSortingChange={updater => {
+        const nextSorting = typeof updater === 'function' ? updater(sorting) : updater
+        controller.setSorting(nextSorting)
+      }}
+      minWidth='78rem'
+      emptyState={<ActivityEventsEmptyState resetFilters={controller.resetFilters} />}
+      mobileCard={row => (
+        <ActivityEventMobileCard
+          key={row.id}
+          event={row.original}
+          setSelectedEvent={controller.setSelectedEvent}
+        />
+      )}
+      rowContextMenu={row => (
+        <ContextMenuItem onSelect={() => controller.setSelectedEvent(row.original)}>
+          <IconEye className='mr-2 size-4' />
+          Details
+        </ContextMenuItem>
+      )}
+    />
   )
 }

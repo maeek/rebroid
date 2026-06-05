@@ -78,9 +78,12 @@ const snippetPlaceholderValue = ({
   return snippetEscape(fieldName)
 }
 
-const schemaType = (schema: Record<string, unknown>) => {
+const schemaType = (schema: Record<string, unknown>): string | null => {
   if (typeof schema.type === 'string') return schema.type
-  if (Array.isArray(schema.type)) return schema.type.find(item => item !== 'null' && typeof item === 'string') ?? null
+  if (Array.isArray(schema.type)) {
+    const types: unknown[] = schema.type
+    return types.find((item): item is string => item !== 'null' && typeof item === 'string') ?? null
+  }
   return null
 }
 

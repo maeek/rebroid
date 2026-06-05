@@ -4,13 +4,16 @@ import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from '@/hooks/use-toast'
 import { purgeAllAuditEventsAction, saveAuditRetentionAction } from '@/server/audit/actions'
+import { auditSortToSearchParam } from '@/server/audit/query'
 import { activityFilterEntries, compactActivityParams, dateDaysAgo } from './activity-format'
 import type { ActivityEventsTableProps, ActivityFilterValues } from './activity-types'
 import type { AuditEvent } from '@/server/storage/database'
+import type { SortingState } from '@tanstack/react-table'
 
 export const useActivityEventsController = ({
   result,
   filters,
+  sorting,
   facets,
   auditRetentionDays
 }: ActivityEventsTableProps) => {
@@ -32,12 +35,13 @@ export const useActivityEventsController = ({
     setRetentionDays(String(auditRetentionDays))
   }, [auditRetentionDays])
 
-  const pushParams = (patch: Partial<ActivityFilterValues> & { page?: number; pageSize?: number }) => {
+  const pushParams = (patch: Partial<ActivityFilterValues> & { page?: number; pageSize?: number; sort?: string }) => {
     const params = compactActivityParams({
       ...filters,
       ...patch,
       page: patch.page ?? 1,
-      pageSize: patch.pageSize ?? result.pageSize
+      pageSize: patch.pageSize ?? result.pageSize,
+      sort: patch.sort ?? auditSortToSearchParam(sorting)
     })
     router.push(`/settings/activity${params.size ? `?${params.toString()}` : ''}`)
   }
@@ -68,6 +72,10 @@ export const useActivityEventsController = ({
 
   const setRange = (days: number) => {
     setLocalFilters(current => ({ ...current, from: dateDaysAgo(days), to: undefined }))
+  }
+
+  const setSorting = (nextSorting: SortingState) => {
+    pushParams({ page: 1, sort: auditSortToSearchParam(nextSorting as typeof sorting) })
   }
 
   const saveRetention = () => {
@@ -134,6 +142,7 @@ export const useActivityEventsController = ({
     setRange,
     setRetentionDays,
     setRetentionOpen,
-    setSelectedEvent
+    setSelectedEvent,
+    setSorting
   }
 }

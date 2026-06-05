@@ -446,6 +446,24 @@ const updateGroup = async (
     return group
   })
 
+const deleteGroup = async (id: string) =>
+  mutateUsersFile(file => {
+    const group = file.groups.find(item => item.id === id)
+    if (!group) {
+      throw new Error('Group not found.')
+    }
+    if (file.groups.length < 2) {
+      throw new Error('Cannot remove the last user group.')
+    }
+
+    file.groups = file.groups.filter(item => item.id !== id)
+    for (const user of file.users) {
+      user.groupIds = user.groupIds.filter(groupId => groupId !== id)
+      user.updatedAt = nowIso()
+    }
+    return group
+  })
+
 const createGroup = async (input: {
   name: string
   description?: string
@@ -480,6 +498,7 @@ export const userService = {
   changeOwnPassword,
   createUser,
   createGroup,
+  deleteGroup,
   deleteUser,
   getUserById,
   listGroups,

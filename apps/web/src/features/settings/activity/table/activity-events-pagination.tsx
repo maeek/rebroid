@@ -1,4 +1,4 @@
-import { PlatformGridPagination } from '@/features/orchestrator/components/platform-grid-pagination'
+import { DataGridPagination } from '@/components/data-grid'
 import { useActivityController, useActivityData } from '../activity-context'
 
 export const ActivityEventsPagination = () => {
@@ -6,7 +6,7 @@ export const ActivityEventsPagination = () => {
   const controller = useActivityController()
 
   return (
-    <PlatformGridPagination
+    <DataGridPagination
       totalItems={result.total}
       pageIndex={result.page - 1}
       pageSize={result.pageSize}

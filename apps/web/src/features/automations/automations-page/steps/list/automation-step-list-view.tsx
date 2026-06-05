@@ -144,7 +144,7 @@ export function AutomationStepListView({ listId, steps }: { listId: string; step
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            variant='secondary'
+            variant='ghost'
             className='h-9'
           >
             <IconPlus className='size-4' />

@@ -1,6 +1,6 @@
 import { configureMonacoYaml } from 'monaco-yaml'
-import type { JSONSchema, MonacoYaml, MonacoYamlOptions, SchemasSettings } from 'monaco-yaml'
 import type * as Monaco from 'monaco-editor'
+import type { MonacoYaml, MonacoYamlOptions, SchemasSettings } from 'monaco-yaml'
 
 let yamlLanguage: MonacoYaml | null = null
 let yamlUpdate = Promise.resolve()
@@ -23,7 +23,7 @@ export const configureAutomationYamlLanguage = async ({
   schemasByModelUri.set(modelUri, {
     uri: schemaUriForModel(modelUri),
     fileMatch: [modelUri],
-    schema: schema as JSONSchema
+    schema: schema
   })
   try {
     await queueYamlLanguageUpdate(monaco)
@@ -66,7 +66,7 @@ const updateYamlLanguage = async (monaco: typeof Monaco) => {
   }
 
   if (!yamlLanguage) {
-    yamlLanguage = configureMonacoYaml(monaco as unknown as Parameters<typeof configureMonacoYaml>[0], options)
+    yamlLanguage = configureMonacoYaml(monaco, options)
     return
   }
 

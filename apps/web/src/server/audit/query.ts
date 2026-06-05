@@ -1,8 +1,18 @@
 import type { AuditEvent, AuditEventFilters } from '@/server/storage/database'
 
 export type AuditSearchParams = Record<string, string | string[] | undefined>
+export type AuditSortField = 'createdAt' | 'actorLabel' | 'action' | 'category' | 'outcome' | 'resourceLabel'
+export type AuditSort = { id: AuditSortField; desc: boolean }
 
 const firstValue = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value)
+const auditSortFields = new Set<AuditSortField>([
+  'createdAt',
+  'actorLabel',
+  'action',
+  'category',
+  'outcome',
+  'resourceLabel'
+])
 
 const isoDateParam = (value: string | undefined, boundary: 'start' | 'end') => {
   if (!value) return undefined
@@ -32,6 +42,24 @@ export const auditPageFromSearchParams = (searchParams: AuditSearchParams) => ({
   page: Math.max(Number(firstValue(searchParams.page)) || 1, 1),
   pageSize: Math.min(Math.max(Number(firstValue(searchParams.pageSize)) || 20, 1), 100)
 })
+
+export const auditSortFromSearchParams = (searchParams: AuditSearchParams): AuditSort[] => {
+  const sort = firstValue(searchParams.sort)
+  if (!sort) return [{ id: 'createdAt', desc: true }]
+
+  return sort
+    .split(',')
+    .map(part => {
+      const [id, direction] = part.split(':')
+      if (!auditSortFields.has(id as AuditSortField)) return null
+      return { id: id as AuditSortField, desc: direction === 'desc' }
+    })
+    .filter((item): item is AuditSort => Boolean(item))
+    .slice(0, 3)
+}
+
+export const auditSortToSearchParam = (sorting: AuditSort[]) =>
+  sorting.length === 0 ? undefined : sorting.map(item => `${item.id}:${item.desc ? 'desc' : 'asc'}`).join(',')
 
 const csvCell = (value: unknown) => {
   let text: string

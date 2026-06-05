@@ -1,5 +1,4 @@
 import { automationYamlCompletionContext, type AutomationYamlCompletionContext } from './automation-yaml-context'
-import { commandStepSnippet, commandWithBlockSnippet } from './automation-yaml-snippets'
 import {
   enumValues,
   propertiesOf,
@@ -7,6 +6,7 @@ import {
   type JsonSchema,
   yamlScalar
 } from './automation-yaml-language-utils'
+import { commandStepSnippet, commandWithBlockSnippet } from './automation-yaml-snippets'
 import type { AutomationCommand } from '@/server/orchestrator/automations/types'
 import type * as Monaco from 'monaco-editor'
 
@@ -193,12 +193,10 @@ const propertyNameSuggestions = (
 
   const query = match[2] ?? ''
   const activeSchema =
-    context.kind === 'with-property'
-      ? commands.find(command => command.uses === context.uses)?.inputSchema
-      : schema
+    context.kind === 'with-property' ? commands.find(command => command.uses === context.uses)?.inputSchema : schema
   const propertyNames =
     context.kind === 'with-property'
-      ? commands.find(command => command.uses === context.uses)?.editor.inputFieldOrder ?? []
+      ? (commands.find(command => command.uses === context.uses)?.editor.inputFieldOrder ?? [])
       : Object.keys(propertiesOf(activeSchema))
   const indentPrefix = context.kind === 'with-property' && linePrefix.trim() === '' ? ' '.repeat(context.indent) : ''
 

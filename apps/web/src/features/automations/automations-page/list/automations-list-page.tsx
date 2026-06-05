@@ -9,7 +9,8 @@ import type { AutomationsListPageProps } from '../editor/types'
 
 export function AutomationsListPage({
   initialApplications,
-  initialAutomations,
+  automationsPage,
+  gridQuery,
   initialTriggers
 }: AutomationsListPageProps) {
   return (
@@ -38,13 +39,19 @@ export function AutomationsListPage({
         </div>
       </section>
 
-      {initialAutomations.length === 0 ? (
+      {automationsPage.total === 0 &&
+      !gridQuery.q &&
+      !gridQuery.tag &&
+      !gridQuery.targetApplicationId &&
+      !gridQuery.status &&
+      !gridQuery.lastRun ? (
         <AutomationEmptySplash variant='automations' />
       ) : (
         <section className='px-6 pb-16 pt-4 max-sm:px-4'>
           <AutomationsTable
             applications={initialApplications}
-            automations={initialAutomations}
+            automationsPage={automationsPage}
+            gridQuery={gridQuery}
             triggers={initialTriggers}
           />
         </section>

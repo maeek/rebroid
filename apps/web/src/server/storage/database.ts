@@ -211,6 +211,9 @@ export type AuditEventPage = {
   }
 }
 
+export type AuditEventSortField = 'createdAt' | 'actorLabel' | 'action' | 'category' | 'outcome' | 'resourceLabel'
+export type AuditEventSort = { id: AuditEventSortField; desc: boolean }
+
 type AuditEventRow = {
   id: number
   actor_user_id: string | null
@@ -336,9 +339,29 @@ const auditWhere = (filters: AuditEventFilters = {}) => {
   }
 }
 
+const auditSortColumns: Record<AuditEventSortField, string> = {
+  createdAt: 'created_at',
+  actorLabel: 'actor_label',
+  action: 'action',
+  category: 'category',
+  outcome: 'outcome',
+  resourceLabel: 'resource_label'
+}
+
+const auditOrderBy = (sorting: AuditEventSort[] = []) => {
+  const clauses = sorting
+    .map(sort => {
+      const column = auditSortColumns[sort.id]
+      return column ? `${column} ${sort.desc ? 'DESC' : 'ASC'}` : null
+    })
+    .filter((clause): clause is string => Boolean(clause))
+
+  return clauses.length > 0 ? `${clauses.join(', ')}, id DESC` : 'created_at DESC, id DESC'
+}
+
 export const listAuditEvents = (
   filters: AuditEventFilters = {},
-  options: { page?: number; pageSize?: number } = {}
+  options: { page?: number; pageSize?: number; sorting?: AuditEventSort[] } = {}
 ): AuditEventPage => {
   const page = Math.max(Math.trunc(options.page ?? 1), 1)
   const pageSize = Math.min(Math.max(Math.trunc(options.pageSize ?? 20), 1), 100)
@@ -360,7 +383,9 @@ export const listAuditEvents = (
     ).value ?? null
   const rows = client
     .prepare(
-      `SELECT ${auditSelectColumns} FROM audit_events ${where.sql} ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`
+      `SELECT ${auditSelectColumns} FROM audit_events ${where.sql} ORDER BY ${auditOrderBy(
+        options.sorting
+      )} LIMIT ? OFFSET ?`
     )
     .all(...where.values, pageSize, (page - 1) * pageSize) as AuditEventRow[]
 

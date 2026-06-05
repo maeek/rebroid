@@ -1,10 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { IconEye, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { DataGrid, DataGridPagination, DataGridToolbar } from '@/components/data-grid'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { ContextMenuItem } from '@/components/ui/context-menu'
 import {
   Dialog,
   DialogClose,
@@ -15,19 +18,43 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Section } from '@/components/ui/section'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Visible } from '@/components/ui/visible'
 import { toast } from '@/hooks/use-toast'
-import { listPlatformNetworksAction, removePlatformNetworkAction } from '@/server/orchestrator/platform/actions'
-import { PlatformGridPagination } from './platform-grid-pagination'
-import { PlatformResourceScopeFilter, type PlatformResourceScope } from './platform-resource-scope-filter'
-import { PlatformSelectionToolbar } from './platform-selection-toolbar'
-import { useGridSelection } from './use-grid-selection'
-import type { PlatformNetwork } from '@/server/orchestrator/platform/types'
+import { removePlatformNetworkAction } from '@/server/orchestrator/platform/actions'
+import { PlatformResourceScopeFilter } from './platform-resource-scope-filter'
+import type {
+  PlatformNetwork,
+  PlatformNetworksGridPage,
+  PlatformNetworksGridQuery
+} from '@/server/orchestrator/platform/types'
+import type { ColumnDef, SortingState } from '@tanstack/react-table'
 
-const NetworkNameCell = ({ network }: { network: PlatformNetwork }) => (
-  <div className='flex min-w-[16rem] flex-col gap-1'>
+const compactParams = (values: Record<string, string | number | undefined>) => {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(values)) {
+    const text = String(value ?? '').trim()
+    if (text && !(key === 'scope' && text === 'managed')) params.set(key, text)
+  }
+  return params
+}
+
+const sortToSearchParam = (sorting: SortingState) =>
+  sorting.length === 0 ? undefined : sorting.map(item => `${item.id}:${item.desc ? 'desc' : 'asc'}`).join(',')
+
+const sortFromSearchParam = (sort: string | undefined): SortingState =>
+  (sort ?? 'name:asc')
+    .split(',')
+    .map(part => {
+      const [id, direction] = part.split(':')
+      if (!id) return null
+      return { id, desc: direction === 'desc' }
+    })
+    .filter((item): item is SortingState[number] => Boolean(item))
+    .slice(0, 3)
+
+const NetworkNameCell = ({ network, className }: { network: PlatformNetwork; className?: string }) => (
+  <div className={className ?? 'flex min-w-[16rem] flex-col gap-1'}>
     <div className='flex min-w-0 items-center gap-2'>
       <Tooltip>
         <TooltipTrigger asChild>
@@ -54,102 +81,61 @@ const NetworkNameCell = ({ network }: { network: PlatformNetwork }) => (
 )
 
 export const OrchestratorNetworksSection = ({
+  networksPage,
+  gridQuery,
   refreshKey = 0,
   onRefreshComplete
 }: {
+  networksPage: PlatformNetworksGridPage
+  gridQuery: PlatformNetworksGridQuery
   refreshKey?: number
   onRefreshComplete?: () => void
 }) => {
-  const [networks, setNetworks] = useState<PlatformNetwork[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [resourceScope, setResourceScope] = useState<PlatformResourceScope>('managed')
+  const router = useRouter()
+  const [search, setSearch] = useState(gridQuery.q ?? '')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [pendingRemove, setPendingRemove] = useState<PlatformNetwork | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [pageIndex, setPageIndex] = useState(0)
-  const [pageSize, setPageSize] = useState(20)
+  const sorting = useMemo(() => sortFromSearchParam(gridQuery.sort), [gridQuery.sort])
 
-  const sortedNetworks = useMemo(
-    () =>
-      [...networks].sort((a, b) => {
-        if (a.managed !== b.managed) {
-          return a.managed ? -1 : 1
-        }
-        return a.name.localeCompare(b.name)
-      }),
-    [networks]
-  )
+  useEffect(() => {
+    setSearch(gridQuery.q ?? '')
+  }, [gridQuery.q])
 
-  const filteredNetworks = useMemo(() => {
-    const query = search.trim().toLowerCase()
-    const scopedNetworks =
-      resourceScope === 'managed' ? sortedNetworks.filter(network => network.managed) : sortedNetworks
-    if (!query) return scopedNetworks
+  useEffect(() => {
+    const currentPageIds = new Set(networksPage.items.map(network => network.id))
+    setSelectedIds(current => new Set(Array.from(current).filter(id => currentPageIds.has(id))))
+  }, [networksPage.items])
 
-    return scopedNetworks.filter(network =>
-      [
-        network.id,
-        network.shortId,
-        network.name,
-        network.driver,
-        network.scope,
-        ...network.subnets,
-        ...network.gateways,
-        ...network.containers
-      ]
-        .join(' ')
-        .toLowerCase()
-        .includes(query)
-    )
-  }, [resourceScope, search, sortedNetworks])
-
-  const selection = useGridSelection(filteredNetworks)
-
-  const paginatedNetworks = useMemo(
-    () => filteredNetworks.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize),
-    [filteredNetworks, pageIndex, pageSize]
-  )
-
-  const refresh = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      setNetworks(await listPlatformNetworksAction())
-      setError(null)
-    } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : 'Could not load network inventory.')
-    } finally {
-      setIsLoading(false)
+  useEffect(() => {
+    if (refreshKey > 0) {
+      router.refresh()
       onRefreshComplete?.()
     }
-  }, [onRefreshComplete])
+  }, [onRefreshComplete, refreshKey, router])
 
-  useEffect(() => {
-    void refresh()
-  }, [refresh, refreshKey])
+  const selectedNetworks = networksPage.items.filter(network => selectedIds.has(network.id))
 
-  useEffect(() => {
-    setPageIndex(0)
-  }, [resourceScope, search])
-
-  useEffect(() => {
-    const pageCount = Math.max(Math.ceil(filteredNetworks.length / pageSize), 1)
-    if (pageIndex >= pageCount) {
-      setPageIndex(pageCount - 1)
-    }
-  }, [filteredNetworks.length, pageIndex, pageSize])
+  const pushGridParams = (patch: Partial<PlatformNetworksGridQuery>) => {
+    const params = compactParams({
+      q: patch.q ?? gridQuery.q,
+      scope: patch.scope ?? gridQuery.scope ?? 'managed',
+      sort: patch.sort ?? gridQuery.sort,
+      page: patch.page ?? gridQuery.page ?? 1,
+      pageSize: patch.pageSize ?? gridQuery.pageSize ?? networksPage.pageSize
+    })
+    router.push(`/settings/orchestrator/networks${params.size ? `?${params.toString()}` : ''}`)
+  }
 
   const removeNetwork = async () => {
-    if (!pendingRemove) {
-      return
-    }
+    if (!pendingRemove) return
 
     setBusyId(pendingRemove.id)
     try {
       await removePlatformNetworkAction(pendingRemove.id)
       toast({ title: 'Network removed' })
       setPendingRemove(null)
-      await refresh()
+      router.refresh()
     } catch (caughtError) {
       toast({
         title: 'Could not remove network',
@@ -162,196 +148,242 @@ export const OrchestratorNetworksSection = ({
   }
 
   const removeSelectedNetworks = async () => {
-    const targets = selection.selectedItems
-    if (targets.length === 0) {
-      return
-    }
+    if (selectedNetworks.length === 0) return
 
     setBusyId('bulk')
     try {
-      await Promise.all(targets.map(network => removePlatformNetworkAction(network.id)))
-      selection.clearSelection()
-      toast({ title: 'Selected networks removed' })
-      await refresh()
-    } catch (caughtError) {
-      toast({
-        title: 'Could not remove selected networks',
-        description: caughtError instanceof Error ? caughtError.message : 'Unknown error',
-        variant: 'destructive'
-      })
+      const results = await Promise.allSettled(selectedNetworks.map(network => removePlatformNetworkAction(network.id)))
+      const failedCount = results.filter(result => result.status === 'rejected').length
+      setSelectedIds(new Set())
+      router.refresh()
+      toast(
+        failedCount > 0
+          ? {
+              title: 'Some networks could not be removed',
+              description: `${failedCount} remove request${failedCount === 1 ? '' : 's'} failed.`,
+              variant: 'destructive'
+            }
+          : { title: 'Selected networks removed' }
+      )
     } finally {
       setBusyId(null)
     }
   }
 
-  const emptyMessage = search.trim() ? 'No networks match this search.' : 'No networks are visible to Docker.'
+  const columns = useMemo<ColumnDef<PlatformNetwork>[]>(
+    () => [
+      {
+        id: 'name',
+        accessorFn: network => network.name,
+        header: 'Network',
+        size: 352,
+        meta: { label: 'Network' },
+        cell: ({ row }) => <NetworkNameCell network={row.original} />
+      },
+      {
+        id: 'driver',
+        accessorFn: network => network.driver,
+        header: 'Driver',
+        size: 128,
+        meta: { label: 'Driver' },
+        cell: ({ row }) => <span className='text-sm text-secondary-foreground'>{row.original.driver}</span>
+      },
+      {
+        id: 'scope',
+        accessorFn: network => network.scope,
+        header: 'Scope',
+        size: 112,
+        meta: { label: 'Scope' },
+        cell: ({ row }) => <span className='text-sm text-secondary-foreground'>{row.original.scope}</span>
+      },
+      {
+        id: 'subnets',
+        header: 'Subnet',
+        size: 320,
+        enableSorting: false,
+        meta: { label: 'Subnet' },
+        cell: ({ row }) => (
+          <div className='truncate text-sm text-secondary-foreground'>
+            {row.original.subnets.length > 0 ? row.original.subnets.join(', ') : 'none'}
+          </div>
+        )
+      },
+      {
+        id: 'gateways',
+        header: 'Gateway',
+        size: 192,
+        enableSorting: false,
+        meta: { label: 'Gateway' },
+        cell: ({ row }) => (
+          <div className='truncate text-sm text-secondary-foreground'>
+            {row.original.gateways.length > 0 ? row.original.gateways.join(', ') : 'none'}
+          </div>
+        )
+      },
+      {
+        id: 'containers',
+        accessorFn: network => network.containers.length,
+        header: 'Containers',
+        size: 128,
+        meta: { label: 'Containers' },
+        cell: ({ row }) => <span className='text-sm text-secondary-foreground'>{row.original.containers.length}</span>
+      }
+    ],
+    []
+  )
 
   return (
     <>
       <Section contentClassName='gap-4'>
-        <PlatformSelectionToolbar
+        <DataGridToolbar
           search={search}
-          placeholder='Search networks'
-          selectedCount={selection.selectedItems.length}
+          searchPlaceholder='Search networks'
+          onSearchChange={setSearch}
+          onSearchSubmit={() => pushGridParams({ q: search.trim() || undefined, page: 1 })}
+          activeFilterCount={gridQuery.scope === 'all' ? 1 : 0}
+          selectedCount={selectedNetworks.length}
           filters={
             <PlatformResourceScopeFilter
-              value={resourceScope}
-              onValueChange={setResourceScope}
+              value={gridQuery.scope ?? 'managed'}
+              onValueChange={scope => pushGridParams({ scope, page: 1 })}
             />
           }
-          onSearchChange={setSearch}
           actions={
-            <>
-              <Button
-                type='button'
-                variant='ghost'
-                disabled={
-                  busyId === 'bulk' ||
-                  selection.selectedItems.some(network => network.containers.length > 0) ||
-                  selection.selectedItems.length === 0
-                }
-                onClick={() => void removeSelectedNetworks()}
-              >
-                Remove selected
-              </Button>
-            </>
+            <Button
+              type='button'
+              variant='ghost'
+              disabled={
+                busyId === 'bulk' ||
+                selectedNetworks.length === 0 ||
+                selectedNetworks.some(network => network.containers.length > 0)
+              }
+              onClick={() => void removeSelectedNetworks()}
+            >
+              Remove selected
+            </Button>
           }
         />
-        <Visible when={error}>
-          <div className='rounded-md border border-destructive/35 bg-destructive/10 p-4 text-sm text-destructive'>
-            {error}
-          </div>
-        </Visible>
-        <Visible when={!error}>
-          <div className='overflow-hidden rounded-lg border border-border/60 bg-background/25'>
-            <div className='overflow-x-auto'>
-              <TooltipProvider delayDuration={150}>
-                <Table
-                  className='table-fixed'
-                  style={{ minWidth: '78rem' }}
+
+        <TooltipProvider delayDuration={150}>
+          <DataGrid
+            columns={columns}
+            data={networksPage.items}
+            totalItems={networksPage.total}
+            pageIndex={networksPage.page - 1}
+            pageSize={networksPage.pageSize}
+            getRowId={network => network.id}
+            sorting={sorting}
+            onSortingChange={updater => {
+              const nextSorting = typeof updater === 'function' ? updater(sorting) : updater
+              pushGridParams({ sort: sortToSearchParam(nextSorting), page: 1 })
+            }}
+            selection={{
+              selectedIds,
+              onSelectedIdsChange: setSelectedIds
+            }}
+            minWidth='82rem'
+            emptyState={
+              <div className='text-center text-secondary-foreground'>
+                {gridQuery.q ? 'No networks match this search.' : 'No networks are visible to Docker.'}
+              </div>
+            }
+            mobileCard={row => {
+              const network = row.original
+              const selected = selectedIds.has(network.id)
+              return (
+                <div
+                  key={network.id}
+                  className='grid gap-3 rounded-lg border border-border/70 bg-background/25 p-4'
                 >
-                  <TableHeader className='bg-background/45'>
-                    <TableRow className='hover:bg-transparent'>
-                      <TableHead className='w-12 px-4 py-3'>
-                        <Checkbox
-                          checked={
-                            paginatedNetworks.length > 0 &&
-                            paginatedNetworks.every(network => selection.selectedIds.has(network.id))
-                          }
-                          onCheckedChange={checked => selection.selectPage(paginatedNetworks, checked === true)}
-                        />
-                      </TableHead>
-                      <TableHead className='w-88 px-4 py-3 uppercase'>Network</TableHead>
-                      <TableHead className='w-32 px-4 py-3 uppercase'>Driver</TableHead>
-                      <TableHead className='w-28 px-4 py-3 uppercase'>Scope</TableHead>
-                      <TableHead className='w-[20rem] px-4 py-3 uppercase'>Subnet</TableHead>
-                      <TableHead className='w-48 px-4 py-3 uppercase'>Gateway</TableHead>
-                      <TableHead className='w-32 px-4 py-3 uppercase'>Containers</TableHead>
-                      <TableHead className='w-40 px-4 py-3 text-right uppercase'>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <Visible when={isLoading && networks.length === 0}>
-                      <TableRow>
-                        <TableCell
-                          colSpan={8}
-                          className='px-4 py-4 text-sm text-secondary-foreground'
-                        >
-                          Loading networks...
-                        </TableCell>
-                      </TableRow>
-                    </Visible>
-                    <Visible when={!isLoading && filteredNetworks.length === 0}>
-                      <TableRow>
-                        <TableCell
-                          colSpan={8}
-                          className='px-4 py-4 text-sm text-secondary-foreground'
-                        >
-                          {emptyMessage}
-                        </TableCell>
-                      </TableRow>
-                    </Visible>
-                    <Visible when={filteredNetworks.length > 0}>
-                      {paginatedNetworks.map((network, index) => (
-                        <TableRow key={network.id}>
-                          <TableCell className='px-4 py-3'>
-                            <Checkbox
-                              checked={selection.selectedIds.has(network.id)}
-                              onClick={event =>
-                                selection.toggleSelection(network, pageIndex * pageSize + index, event.shiftKey)
-                              }
-                              onCheckedChange={() => undefined}
-                            />
-                          </TableCell>
-                          <TableCell className='px-4 py-3 align-top'>
-                            <NetworkNameCell network={network} />
-                          </TableCell>
-                          <TableCell className='px-4 py-3 align-top text-sm text-secondary-foreground'>
-                            {network.driver}
-                          </TableCell>
-                          <TableCell className='px-4 py-3 align-top text-sm text-secondary-foreground'>
-                            {network.scope}
-                          </TableCell>
-                          <TableCell className='px-4 py-3 align-top'>
-                            <div className='truncate text-sm text-secondary-foreground'>
-                              {network.subnets.length > 0 ? network.subnets.join(', ') : 'none'}
-                            </div>
-                          </TableCell>
-                          <TableCell className='px-4 py-3 align-top'>
-                            <div className='truncate text-sm text-secondary-foreground'>
-                              {network.gateways.length > 0 ? network.gateways.join(', ') : 'none'}
-                            </div>
-                          </TableCell>
-                          <TableCell className='px-4 py-3 align-top text-sm text-secondary-foreground'>
-                            {network.containers.length}
-                          </TableCell>
-                          <TableCell className='px-4 py-3 align-top'>
-                            <div className='flex justify-end gap-2'>
-                              <Button
-                                asChild
-                                variant='secondary'
-                              >
-                                <Link href={`/settings/orchestrator/networks/${network.id}`}>
-                                  <IconEye className='size-4' />
-                                </Link>
-                              </Button>
-                              <Button
-                                type='button'
-                                variant='destructive'
-                                disabled={busyId === network.id || busyId === 'bulk' || network.containers.length > 0}
-                                onClick={() => setPendingRemove(network)}
-                              >
-                                <IconTrash className='size-4' />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </Visible>
-                  </TableBody>
-                </Table>
-              </TooltipProvider>
-            </div>
-          </div>
-        </Visible>
-        <Visible when={!error}>
-          <PlatformGridPagination
-            totalItems={filteredNetworks.length}
-            pageIndex={pageIndex}
-            pageSize={pageSize}
-            onPageIndexChange={setPageIndex}
-            onPageSizeChange={setPageSize}
+                  <div className='flex items-start gap-3'>
+                    <Checkbox
+                      checked={selected}
+                      aria-label='Select network'
+                      onCheckedChange={checked => {
+                        const next = new Set(selectedIds)
+                        if (checked === true) next.add(network.id)
+                        else next.delete(network.id)
+                        setSelectedIds(next)
+                      }}
+                    />
+                    <NetworkNameCell
+                      network={network}
+                      className='min-w-0 flex-1 flex-col gap-1'
+                    />
+                  </div>
+                  <dl className='grid grid-cols-2 gap-x-4 gap-y-2 text-sm'>
+                    <div>
+                      <dt className='text-secondary-foreground'>Driver</dt>
+                      <dd>{network.driver}</dd>
+                    </div>
+                    <div>
+                      <dt className='text-secondary-foreground'>Scope</dt>
+                      <dd>{network.scope}</dd>
+                    </div>
+                    <div>
+                      <dt className='text-secondary-foreground'>Containers</dt>
+                      <dd>{network.containers.length}</dd>
+                    </div>
+                    <div>
+                      <dt className='text-secondary-foreground'>Gateway</dt>
+                      <dd className='truncate'>{network.gateways.length > 0 ? network.gateways.join(', ') : 'none'}</dd>
+                    </div>
+                    <div className='col-span-2'>
+                      <dt className='text-secondary-foreground'>Subnet</dt>
+                      <dd className='truncate'>{network.subnets.length > 0 ? network.subnets.join(', ') : 'none'}</dd>
+                    </div>
+                  </dl>
+                </div>
+              )
+            }}
+            rowContextMenu={row => {
+              const hasBulkSelection = selectedIds.has(row.original.id) && selectedNetworks.length > 1
+              return (
+                <>
+                  {hasBulkSelection ? (
+                    <ContextMenuItem
+                      className='text-destructive focus:text-destructive'
+                      disabled={busyId === 'bulk' || selectedNetworks.some(network => network.containers.length > 0)}
+                      onSelect={() => void removeSelectedNetworks()}
+                    >
+                      <IconTrash className='mr-2 size-4' />
+                      Remove selected ({selectedNetworks.length})
+                    </ContextMenuItem>
+                  ) : null}
+                  <ContextMenuItem asChild>
+                    <Link href={`/settings/orchestrator/networks/${row.original.id}`}>
+                      <IconEye className='mr-2 size-4' />
+                      Details
+                    </Link>
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    className='text-destructive focus:text-destructive'
+                    disabled={row.original.containers.length > 0}
+                    onSelect={() => setPendingRemove(row.original)}
+                  >
+                    <IconTrash className='mr-2 size-4' />
+                    Remove
+                  </ContextMenuItem>
+                </>
+              )
+            }}
           />
-        </Visible>
+        </TooltipProvider>
+
+        <DataGridPagination
+          totalItems={networksPage.total}
+          pageIndex={networksPage.page - 1}
+          pageSize={networksPage.pageSize}
+          onPageIndexChange={pageIndex => pushGridParams({ page: pageIndex + 1 })}
+          onPageSizeChange={pageSize => pushGridParams({ page: 1, pageSize })}
+        />
       </Section>
 
       <Dialog
         modal
         open={Boolean(pendingRemove)}
         onOpenChange={open => {
-          if (!open) {
-            setPendingRemove(null)
-          }
+          if (!open) setPendingRemove(null)
         }}
       >
         <DialogContent>

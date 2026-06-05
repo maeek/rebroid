@@ -4,21 +4,23 @@ import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
-const pageSizeOptions = [20, 50, 100]
+const defaultPageSizeOptions = [10, 20, 50, 100]
 
-export const PlatformGridPagination = ({
-  totalItems,
+export function DataGridPagination({
   pageIndex,
   pageSize,
+  pageSizeOptions = defaultPageSizeOptions,
+  totalItems,
   onPageIndexChange,
   onPageSizeChange
 }: {
-  totalItems: number
   pageIndex: number
   pageSize: number
+  pageSizeOptions?: number[]
+  totalItems: number
   onPageIndexChange: (pageIndex: number) => void
   onPageSizeChange: (pageSize: number) => void
-}) => {
+}) {
   const pageCount = Math.max(Math.ceil(totalItems / pageSize), 1)
   const firstItem = totalItems === 0 ? 0 : pageIndex * pageSize + 1
   const lastItem = Math.min((pageIndex + 1) * pageSize, totalItems)

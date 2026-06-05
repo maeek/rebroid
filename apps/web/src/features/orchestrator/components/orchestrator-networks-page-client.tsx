@@ -5,8 +5,15 @@ import { PlatformPageHeader } from '@/features/orchestrator/components/platform-
 import { PlatformPageRefreshButton } from '@/features/orchestrator/components/platform-page-refresh-button'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { OrchestratorNetworksSection } from './orchestrator-networks-section'
+import type { PlatformNetworksGridPage, PlatformNetworksGridQuery } from '@/server/orchestrator/platform/types'
 
-export const OrchestratorNetworksPageClient = () => {
+export const OrchestratorNetworksPageClient = ({
+  networksPage,
+  gridQuery
+}: {
+  networksPage: PlatformNetworksGridPage
+  gridQuery: PlatformNetworksGridQuery
+}) => {
   const [refreshKey, setRefreshKey] = useState(0)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
@@ -29,6 +36,8 @@ export const OrchestratorNetworksPageClient = () => {
       />
       <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
         <OrchestratorNetworksSection
+          networksPage={networksPage}
+          gridQuery={gridQuery}
           refreshKey={refreshKey}
           onRefreshComplete={() => setIsRefreshing(false)}
         />

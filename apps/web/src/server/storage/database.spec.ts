@@ -2,6 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals'
+import { auditSortFromSearchParams, auditSortToSearchParam } from '@/server/audit/query'
 import { forgetStoredRecentApp, listStoredRecentApps, rememberStoredRecentApp } from '@/server/recent-apps/store'
 import { getWebSettings, saveWebSettings } from '@/server/web-settings/store'
 import {
@@ -97,6 +98,33 @@ describe('web state database', () => {
         details: { danglingOnly: true }
       })
     ])
+  })
+
+  it('sorts audit events with allowlisted server-side fields', () => {
+    appendAuditEvent({
+      actorUserId: 'user-2',
+      actorLabel: 'Zulu',
+      category: 'application',
+      action: 'application.stop'
+    })
+    appendAuditEvent({
+      actorUserId: 'user-1',
+      actorLabel: 'Alpha',
+      category: 'application',
+      action: 'application.start'
+    })
+
+    const result = listAuditEvents({}, { sorting: [{ id: 'actorLabel', desc: false }] })
+    expect(result.events.map(event => event.actorLabel)).toEqual(['Alpha', 'Zulu'])
+  })
+
+  it('parses and serializes audit sort search params safely', () => {
+    expect(auditSortFromSearchParams({ sort: 'actorLabel:asc,unknown:desc,createdAt:desc' })).toEqual([
+      { id: 'actorLabel', desc: false },
+      { id: 'createdAt', desc: true }
+    ])
+    expect(auditSortFromSearchParams({})).toEqual([{ id: 'createdAt', desc: true }])
+    expect(auditSortToSearchParam([{ id: 'outcome', desc: true }])).toBe('outcome:desc')
   })
 
   it('purges audit events and prunes by retention', () => {
