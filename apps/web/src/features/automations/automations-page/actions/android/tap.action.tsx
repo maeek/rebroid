@@ -37,7 +37,7 @@ export const tapAction: AutomationActionDefinition = {
           onChange={value => patchUiState({ coordinateMode: value })}
         />
         {mode === 'pixels' ? (
-          <div className='grid grid-cols-2 gap-3'>
+          <div className='grid grid-cols-[repeat(auto-fit,minmax(min(10rem,100%),1fr))] gap-3'>
             <NumberField
               label='X'
               value={x}
@@ -50,7 +50,7 @@ export const tapAction: AutomationActionDefinition = {
             />
           </div>
         ) : (
-          <div className='grid grid-cols-2 gap-3'>
+          <div className='grid grid-cols-[repeat(auto-fit,minmax(min(10rem,100%),1fr))] gap-3'>
             <NumberField
               label='X (%)'
               value={pixelToPercent(x, 'x')}

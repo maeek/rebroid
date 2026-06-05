@@ -40,7 +40,7 @@ export const OrchestratorImageDetail = ({ details }: { details: PlatformImageDet
     try {
       await removePlatformImageAction(image.id)
       toast({ title: 'Image removed' })
-      router.push('/settings/orchestrator/images')
+      router.push('/infrastructure/images')
     } catch (error) {
       toast({
         title: 'Could not remove image',
@@ -140,7 +140,7 @@ export const OrchestratorImageDetail = ({ details }: { details: PlatformImageDet
                           asChild
                           variant='secondary'
                         >
-                          <Link href={`/settings/orchestrator/containers/${container.id}`}>
+                          <Link href={`/infrastructure/containers/${container.id}`}>
                             <IconEye className='size-4' />
                           </Link>
                         </Button>

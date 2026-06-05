@@ -1,4 +1,8 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { getErrorMessage } from '../../common/error-message';
 import { AndroidApplicationStatus } from '../../android-apps/android-application-status';
 import { ApplicationProfileMode } from '../../android-apps/application-profile-mode';
@@ -8,6 +12,7 @@ import { AndroidAppsNetworkPolicyService } from '../../android-apps/network/serv
 import { AndroidAppsDisplaySidecarService } from '../../android-apps/viewer/services/android-apps-display-sidecar.service';
 import { AndroidAppsSidecarAdbService } from '../../android-apps/viewer/services/android-apps-sidecar-adb.service';
 import { AutomationCommandRegistryService } from '../commands/automation-command-registry.service';
+import { AutomationAiHarnessService } from '../ai/automation-ai-harness.service';
 import { AutomationConditionService } from '../condition/automation-condition.service';
 import {
   Automation,
@@ -27,6 +32,7 @@ import {
   AutomationSwitchStep,
 } from '../definition/automation-definition.types';
 import { AutomationStepResult } from './automation-runner.types';
+import { AutomationRunEventBus } from '../events/automation-run-event-bus.service';
 
 export enum AutomationRunStartPolicy {
   RequireRunning = 'require-running',
@@ -69,6 +75,8 @@ interface StepExecutionResult {
 
 @Injectable()
 export class AutomationRunnerService {
+  private readonly canceledRunIds = new Set<string>();
+
   constructor(
     private readonly automations: AutomationsRepository,
     private readonly runs: AutomationRunsRepository,
@@ -76,6 +84,8 @@ export class AutomationRunnerService {
     private readonly apps: AndroidAppsStateService,
     private readonly lifecycle: AndroidAppsLifecycleService,
     private readonly registry: AutomationCommandRegistryService,
+    private readonly aiHarness: AutomationAiHarnessService,
+    private readonly events: AutomationRunEventBus,
     private readonly conditions: AutomationConditionService,
     private readonly adb: AndroidAppsSidecarAdbService,
     private readonly display: AndroidAppsDisplaySidecarService,
@@ -120,7 +130,36 @@ export class AutomationRunnerService {
       }),
     );
 
+    await this.events.emit({
+      runId: run.id,
+      ownerUserId: run.ownerUserId,
+      type: 'run.queued',
+      message: 'Automation queued.',
+      data: { automationId: automation.id, trigger },
+    });
     void this.execute(run.id, automation.id);
+    return run;
+  }
+
+  async cancel(ownerUserId: string, runId: string) {
+    const run = await this.runs.findByOwnerAndId(ownerUserId, runId);
+    if (!run) {
+      throw new NotFoundException(`Automation run "${runId}" was not found.`);
+    }
+    if (terminalStatuses.has(run.status)) {
+      return run;
+    }
+    this.canceledRunIds.add(run.id);
+    run.status = AutomationRunStatus.Canceled;
+    run.completedAt = new Date();
+    run.error = 'Canceled by user.';
+    await this.runs.save(run);
+    await this.events.emit({
+      runId: run.id,
+      ownerUserId: run.ownerUserId,
+      type: 'run.canceled',
+      message: 'Automation canceled.',
+    });
     return run;
   }
 
@@ -213,6 +252,13 @@ export class AutomationRunnerService {
     run.startedAt = new Date();
     run.stepResultsJson = JSON.stringify(results);
     await this.runs.save(run);
+    await this.events.emit({
+      runId: run.id,
+      ownerUserId: run.ownerUserId,
+      type: 'run.started',
+      message: 'Automation started.',
+      data: { automationId: automation.id },
+    });
 
     const state: ExecutionState = {
       app,
@@ -229,17 +275,38 @@ export class AutomationRunnerService {
       run,
       { path: 'steps' },
     );
+    const canceled = this.canceledRunIds.has(run.id);
     const failed = execution.failed;
 
     run.completedAt = new Date();
-    run.status = failed
-      ? AutomationRunStatus.Failed
-      : AutomationRunStatus.Success;
+    run.status = canceled
+      ? AutomationRunStatus.Canceled
+      : failed
+        ? AutomationRunStatus.Failed
+        : AutomationRunStatus.Success;
     await this.runs.save(run);
+    this.canceledRunIds.delete(run.id);
+    await this.events.emit({
+      runId: run.id,
+      ownerUserId: run.ownerUserId,
+      type:
+        run.status === AutomationRunStatus.Canceled
+          ? 'run.canceled'
+          : failed
+            ? 'run.failed'
+            : 'run.completed',
+      message:
+        run.status === AutomationRunStatus.Canceled
+          ? 'Automation canceled.'
+          : failed
+            ? (run.error ?? 'Automation failed.')
+            : 'Automation completed.',
+    });
 
-    automation.lastStatus = failed
-      ? AutomationLastStatus.Failed
-      : AutomationLastStatus.Success;
+    automation.lastStatus =
+      run.status === AutomationRunStatus.Canceled || failed
+        ? AutomationLastStatus.Failed
+        : AutomationLastStatus.Success;
     automation.lastRunAt = run.completedAt;
     automation.lastError = failed ? run.error : null;
     const trigger = run.automationTriggerId
@@ -264,6 +331,9 @@ export class AutomationRunnerService {
     options: { parentStepId?: string | null; path: string },
   ): Promise<StepExecutionResult> {
     for (const [index, step] of steps.entries()) {
+      if (this.canceledRunIds.has(run.id)) {
+        return { failed: false, stopped: true };
+      }
       const result = await this.executeStep(state, run, step, {
         parentStepId: options.parentStepId ?? null,
         path: `${options.path}[${index}]`,
@@ -321,12 +391,42 @@ export class AutomationRunnerService {
     options: StepExecutionOptions,
   ): Promise<StepExecutionResult> {
     const startedAt = new Date().toISOString();
+    await this.events.emit({
+      runId: state.runId,
+      ownerUserId: run.ownerUserId,
+      type: 'step.started',
+      stepId: step.id,
+      parentStepId: options.parentStepId ?? null,
+      message: `Starting ${step.uses}.`,
+      data: { uses: step.uses, path: options.path },
+    });
     try {
+      const executeTool = async (tool: {
+        name: string;
+        arguments: Record<string, unknown>;
+      }) => {
+        if (this.canceledRunIds.has(run.id)) {
+          throw new ConflictException('Automation run was canceled.');
+        }
+        return this.registry.execute(tool.name, tool.arguments, {
+          app: state.app,
+          adb: this.adb,
+          display: this.display,
+          networkPolicy: this.networkPolicy,
+        });
+      };
       const result = await this.registry.execute(step.uses, step.with, {
         app: state.app,
         adb: this.adb,
         display: this.display,
         networkPolicy: this.networkPolicy,
+        aiHarness: this.aiHarness,
+        runId: state.runId,
+        ownerUserId: run.ownerUserId,
+        stepId: step.id,
+        parentStepId: options.parentStepId ?? null,
+        path: options.path,
+        toolExecutor: executeTool,
       });
       const completedAt = new Date().toISOString();
       const output = {
@@ -346,6 +446,15 @@ export class AutomationRunnerService {
         error: null,
       });
       await this.saveRunResults(run, state.results);
+      await this.events.emit({
+        runId: state.runId,
+        ownerUserId: run.ownerUserId,
+        type: 'step.completed',
+        stepId: step.id,
+        parentStepId: options.parentStepId ?? null,
+        message: result.summary,
+        data: { uses: step.uses, output },
+      });
 
       return { failed: false, stopped: result.data?.stop === true };
     } catch (error) {
@@ -365,6 +474,15 @@ export class AutomationRunnerService {
       });
       run.error = message;
       await this.saveRunResults(run, state.results);
+      await this.events.emit({
+        runId: state.runId,
+        ownerUserId: run.ownerUserId,
+        type: 'step.failed',
+        stepId: step.id,
+        parentStepId: options.parentStepId ?? null,
+        message,
+        data: { uses: step.uses },
+      });
       return { failed: true, stopped: false };
     }
   }
@@ -495,6 +613,15 @@ export class AutomationRunnerService {
       error: null,
     });
     await this.saveRunResults(run, state.results);
+    await this.events.emit({
+      runId: state.runId,
+      ownerUserId: run.ownerUserId,
+      type: 'step.completed',
+      stepId,
+      parentStepId: options.parentStepId ?? null,
+      message: result.summary,
+      data: { uses, output: result },
+    });
   }
 
   private async saveRunResults(

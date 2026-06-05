@@ -41,7 +41,7 @@ export type RuntimeUiSettings = Pick<
 
 export const defaultOrchestratorUiSettings: OrchestratorUiSettings = {
   orchestratorApiUrl: 'http://localhost:4100',
-  defaultContainerImage: 'redroid/redroid:13.0.0-latest',
+  defaultContainerImage: 'redroid/redroid:14.0.0-latest',
   dockerImageRegistry: null,
   defaultInactivityTimeoutSeconds: 900,
   maxApkUploadSizeMb: 512,

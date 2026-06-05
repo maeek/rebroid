@@ -12,7 +12,7 @@ import {
 import { ScrcpyTransport } from '../../android-apps/android-application-status';
 
 export class OrchestratorSettingsDto {
-  @ApiProperty({ example: 'redroid/redroid:13.0.0-latest' })
+  @ApiProperty({ example: 'redroid/redroid:14.0.0-latest' })
   @IsString()
   @MinLength(3)
   defaultContainerImage!: string;

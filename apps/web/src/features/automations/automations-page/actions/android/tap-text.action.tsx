@@ -20,7 +20,7 @@ export const tapTextAction: AutomationActionDefinition = {
         value={stringInputValue(input, 'text')}
         onChange={value => patchInput({ text: value })}
       />
-      <div className='grid grid-cols-2 gap-3'>
+      <div className='grid grid-cols-[repeat(auto-fit,minmax(min(12rem,100%),1fr))] gap-3'>
         <NumberField
           label='Timeout'
           suffix='ms'

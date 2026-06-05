@@ -1,4 +1,5 @@
 import { AndroidAutomationCommandsService } from '../commands/android-automation-commands.service';
+import { AiAutomationCommandsService } from '../commands/ai-automation-commands.service';
 import { AutomationCommandRegistryService } from '../commands/automation-command-registry.service';
 import { ContainerNetworkAutomationCommandsService } from '../commands/container-network-automation-commands.service';
 import { GenericAutomationCommandsService } from '../commands/generic-automation-commands.service';
@@ -10,6 +11,7 @@ const createService = () => {
     new AndroidAutomationCommandsService(),
     new ContainerNetworkAutomationCommandsService(),
     new GenericAutomationCommandsService(),
+    new AiAutomationCommandsService(),
   );
   registry.onModuleInit();
   const conditions = new AutomationConditionService();

@@ -119,12 +119,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
       <section className='shrink-0 px-6 py-4 max-sm:px-4'>
         <PageBreadcrumbs
           className='pt-0'
-          items={[
-            { label: 'Settings', href: '/settings/general' },
-            { label: 'User management', href: '/settings/users' },
-            { label: 'Users', href: '/settings/users' },
-            { label: user.username }
-          ]}
+          items={[{ label: 'Users', href: '/users' }, { label: 'Users', href: '/users' }, { label: user.username }]}
         />
         <div className='flex items-center justify-between gap-3 pt-4 max-sm:flex-col max-sm:items-start'>
           <div className='flex min-w-0 items-center gap-4'>

@@ -59,7 +59,7 @@ const NetworkNameCell = ({ network, className }: { network: PlatformNetwork; cla
       <Tooltip>
         <TooltipTrigger asChild>
           <Link
-            href={`/settings/orchestrator/networks/${network.id}`}
+            href={`/infrastructure/networks/${network.id}`}
             className='block min-w-0 truncate font-medium hover:text-primary'
           >
             {network.name}
@@ -124,7 +124,7 @@ export const OrchestratorNetworksSection = ({
       page: patch.page ?? gridQuery.page ?? 1,
       pageSize: patch.pageSize ?? gridQuery.pageSize ?? networksPage.pageSize
     })
-    router.push(`/settings/orchestrator/networks${params.size ? `?${params.toString()}` : ''}`)
+    router.push(`/infrastructure/networks${params.size ? `?${params.toString()}` : ''}`)
   }
 
   const removeNetwork = async () => {
@@ -351,7 +351,7 @@ export const OrchestratorNetworksSection = ({
                     </ContextMenuItem>
                   ) : null}
                   <ContextMenuItem asChild>
-                    <Link href={`/settings/orchestrator/networks/${row.original.id}`}>
+                    <Link href={`/infrastructure/networks/${row.original.id}`}>
                       <IconEye className='mr-2 size-4' />
                       Details
                     </Link>

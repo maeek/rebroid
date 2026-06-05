@@ -7,8 +7,13 @@ import type {
   AutomationTriggersGridQuery,
   AutomationCommand,
   AutomationRun,
+  AutomationRunEvent,
+  AutomationRunEventStreamToken,
   AutomationTrigger,
+  AutomationYamlDraft,
   AutomationValidation,
+  DraftAutomationYamlInput,
+  RunAdHocAiAutomationInput,
   RunAutomationInput,
   SaveAutomationInput,
   SaveAutomationTriggerInput
@@ -26,6 +31,10 @@ export const orchestratorAutomationsClient = {
 
   validateYaml(yaml: string) {
     return jsonRequest<AutomationValidation>('/automations/validate-yaml', 'POST', { yaml })
+  },
+
+  draftYaml(input: DraftAutomationYamlInput) {
+    return jsonRequest<AutomationYamlDraft>('/automations/draft-yaml', 'POST', input)
   },
 
   list(ownerUserId: string) {
@@ -77,6 +86,31 @@ export const orchestratorAutomationsClient = {
 
   getRun(ownerUserId: string, runId: string) {
     return emptyRequest<AutomationRun>(`/automations/runs/${encodeURIComponent(runId)}?${ownerQuery(ownerUserId)}`)
+  },
+
+  cancelRun(ownerUserId: string, runId: string) {
+    return jsonRequest<AutomationRun>(
+      `/automations/runs/${encodeURIComponent(runId)}/cancel?${ownerQuery(ownerUserId)}`,
+      'POST',
+      {}
+    )
+  },
+
+  listRunEvents(ownerUserId: string, runId: string, after = 0) {
+    const query = new URLSearchParams({ ownerUserId, after: String(after) })
+    return emptyRequest<AutomationRunEvent[]>(`/automations/runs/${encodeURIComponent(runId)}/events?${query}`)
+  },
+
+  createRunEventStreamToken(ownerUserId: string, runId: string) {
+    return jsonRequest<AutomationRunEventStreamToken>(
+      `/automations/runs/${encodeURIComponent(runId)}/events/token`,
+      'POST',
+      { ownerUserId }
+    )
+  },
+
+  runAdHocAi(ownerUserId: string, input: RunAdHocAiAutomationInput) {
+    return jsonRequest<AutomationRun>('/automations/ai/runs', 'POST', { ownerUserId, ...input })
   },
 
   listActiveRuns(ownerUserId: string) {

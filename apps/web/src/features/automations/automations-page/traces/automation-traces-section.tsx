@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { DataGrid } from '@/components/data-grid'
 import { Badge } from '@/components/ui/badge'
+import { AutomationRunLiveEvents } from './automation-run-live-events'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
 import type { AutomationRun, AutomationRunStatus } from '@/server/orchestrator/automations/types'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
@@ -80,6 +81,10 @@ export function AutomationTracesSection({
     [applications]
   )
   const sortedRuns = useMemo(() => sortRuns(runs, sorting), [runs, sorting])
+  const activeRuns = useMemo(
+    () => sortedRuns.filter(run => run.status === 'queued' || run.status === 'running'),
+    [sortedRuns]
+  )
 
   const columns = useMemo<ColumnDef<AutomationRun>[]>(
     () => [
@@ -166,6 +171,17 @@ export function AutomationTracesSection({
       <div className='flex h-8 items-center justify-between gap-3'>
         <h3 className='text-xl font-medium'>Traces</h3>
       </div>
+
+      {activeRuns.length > 0 ? (
+        <div className='grid gap-3 lg:grid-cols-2'>
+          {activeRuns.map(run => (
+            <AutomationRunLiveEvents
+              key={run.id}
+              run={run}
+            />
+          ))}
+        </div>
+      ) : null}
 
       <DataGrid
         columns={columns}

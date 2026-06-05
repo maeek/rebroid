@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { recordAuditEvent } from '@/server/audit/events'
+import { getOrchestratorBrowserWsUrl } from '@/server/orchestrator/config'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { hasPermission, type PermissionId } from '@/shared/permissions/permissions'
 import {
@@ -12,6 +13,8 @@ import { orchestratorAutomationsClient } from './client'
 import type {
   AutomationDefinition,
   AutomationDefinitionStep,
+  DraftAutomationYamlInput,
+  RunAdHocAiAutomationInput,
   RunAutomationInput,
   SaveAutomationInput,
   SaveAutomationTriggerInput
@@ -24,9 +27,13 @@ const assertPermission = (user: Awaited<ReturnType<typeof getCurrentUserContext>
 }
 
 const commandPermissionIsKnown = (permission: string): permission is PermissionId =>
-  ['automations:manage', 'automations:run', 'automations:run-adb-shell', 'automations:manage-network'].includes(
-    permission
-  )
+  [
+    'automations:manage',
+    'automations:run',
+    'automations:run-ai',
+    'automations:run-adb-shell',
+    'automations:manage-network'
+  ].includes(permission)
 
 const assertDefinitionPermissions = async (
   user: Awaited<ReturnType<typeof getCurrentUserContext>>,
@@ -34,6 +41,24 @@ const assertDefinitionPermissions = async (
 ) => {
   const commands = await orchestratorAutomationsClient.listCommands()
   const commandByUses = new Map(commands.map(command => [command.uses, command]))
+  const assertCommandPermissions = (uses: string) => {
+    const command = commandByUses.get(uses)
+    if (!command) {
+      throw new Error(`Unsupported automation command "${uses}".`)
+    }
+    for (const permission of command.requiredPermissions) {
+      if (commandPermissionIsKnown(permission)) {
+        assertPermission(user, permission)
+      }
+    }
+  }
+  const nestedAiTools = (step: Extract<AutomationDefinitionStep, { uses: string }>) => {
+    const allowedTools = step.with.allowedTools
+    if (Array.isArray(allowedTools)) {
+      return allowedTools.filter((uses): uses is string => typeof uses === 'string' && uses !== 'ai.run')
+    }
+    return commands.filter(command => command.uses !== 'ai.run').map(command => command.uses)
+  }
   const assertStep = (step: AutomationDefinitionStep) => {
     if (!('uses' in step)) {
       if (step.type === 'condition') {
@@ -49,17 +74,27 @@ const assertDefinitionPermissions = async (
       step.steps.forEach(assertStep)
       return
     }
-    const command = commandByUses.get(step.uses)
-    if (!command) {
-      throw new Error(`Unsupported automation command "${step.uses}".`)
-    }
-    for (const permission of command.requiredPermissions) {
-      if (commandPermissionIsKnown(permission)) {
-        assertPermission(user, permission)
+    assertCommandPermissions(step.uses)
+    if (step.uses === 'ai.run') {
+      for (const uses of nestedAiTools(step)) {
+        assertCommandPermissions(uses)
       }
     }
   }
   definition.spec.steps.forEach(assertStep)
+}
+
+const listPermittedAiTools = async (user: Awaited<ReturnType<typeof getCurrentUserContext>>) => {
+  const commands = await orchestratorAutomationsClient.listCommands()
+  return commands
+    .filter(command => command.uses !== 'ai.run')
+    .filter(command =>
+      command.requiredPermissions.every(
+        permission =>
+          !commandPermissionIsKnown(permission) || user.role === 'admin' || hasPermission(user.permissions, permission)
+      )
+    )
+    .map(command => command.uses)
 }
 
 const assertTargetApplication = async (targetApplicationId?: string | null) => {
@@ -101,6 +136,15 @@ export const validateAutomationYamlAction = async (yaml: string) => {
     await assertDefinitionPermissions(user, validation.definition)
   }
   return validation
+}
+
+export const draftAutomationYamlAction = async (input: DraftAutomationYamlInput) => {
+  const user = await getCurrentUserContext()
+  assertPermission(user, 'automations:manage')
+  assertPermission(user, 'automations:run-ai')
+  const draft = await orchestratorAutomationsClient.draftYaml(input)
+  await assertDefinitionPermissions(user, draft.definition)
+  return draft
 }
 
 export const listAutomationsAction = async () => {
@@ -203,6 +247,53 @@ export const runAutomationAction = async (id: string, input: RunAutomationInput)
     targetProfileName: run.targetProfileName
   })
   return run
+}
+
+export const runAdHocAiAutomationAction = async (input: RunAdHocAiAutomationInput) => {
+  const user = await getCurrentUserContext()
+  assertPermission(user, 'automations:run')
+  assertPermission(user, 'automations:run-ai')
+  await assertTargetApplication(input.targetApplicationId)
+  assertRunProfilePermission(user, input)
+  const run = await orchestratorAutomationsClient.runAdHocAi(user.ownerUserId, {
+    ...input,
+    allowedTools: await listPermittedAiTools(user)
+  })
+  revalidatePath('/automations')
+  await recordAutomationAudit('automation.ai.run', run.automationId, 'Ad-hoc AI automation', {
+    runId: run.id,
+    targetApplicationId: run.targetApplicationId
+  })
+  return run
+}
+
+export const cancelAutomationRunAction = async (runId: string) => {
+  const user = await getCurrentUserContext()
+  assertPermission(user, 'automations:run')
+  const run = await orchestratorAutomationsClient.cancelRun(user.ownerUserId, runId)
+  revalidatePath('/automations')
+  revalidatePath(`/automations/${run.automationId}`)
+  return run
+}
+
+export const listAutomationRunEventsAction = async (runId: string, after = 0) => {
+  const user = await getCurrentUserContext()
+  assertPermission(user, 'automations:run')
+  return orchestratorAutomationsClient.listRunEvents(user.ownerUserId, runId, after)
+}
+
+export const createAutomationRunEventStreamUrlAction = async (runId: string, after = 0) => {
+  const user = await getCurrentUserContext()
+  assertPermission(user, 'automations:run')
+  const token = await orchestratorAutomationsClient.createRunEventStreamToken(user.ownerUserId, runId)
+  const query = new URLSearchParams({ token: token.token, after: String(after) })
+  return getOrchestratorBrowserWsUrl(`/automations/runs/events/ws?${query}`)
+}
+
+export const listActiveAutomationRunsAction = async () => {
+  const user = await getCurrentUserContext()
+  assertPermission(user, 'automations:run')
+  return orchestratorAutomationsClient.listActiveRuns(user.ownerUserId)
 }
 
 export const listAutomationRunsAction = async (automationId: string, limit = 50) => {

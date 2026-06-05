@@ -20,13 +20,12 @@ export const OrchestratorSettingsHeader = ({
         <div className='flex flex-col gap-2'>
           <PageBreadcrumbs
             className='pt-0'
-            items={[
-              { label: 'Settings', href: '/settings/general' },
-              { label: 'Orchestrator', href: '/settings/orchestrator' },
-              { label: 'Settings' }
-            ]}
+            items={[{ label: 'Orchestrator', href: '/orchestrator' }, { label: 'Settings' }]}
           />
           <h2 className='pt-4 text-3xl font-medium max-sm:text-xl'>Settings</h2>
+          <p className='max-w-3xl text-sm text-secondary-foreground'>
+            General settings and maintenance actions for the orchestrator.
+          </p>
         </div>
         <Visible when={showActions}>
           <div className='flex gap-2 max-sm:w-full'>

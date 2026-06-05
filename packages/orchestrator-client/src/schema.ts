@@ -4,4573 +4,5488 @@
  */
 
 export interface paths {
-    "/api/v1/metrics": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["MetricsController_read"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/metrics/docker": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["MetricsController_dockerSnapshot"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/display-sidecar/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read display sidecar health. */
-        get: operations["DockerSidecarController_health"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/display-sidecar/repair": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Restart or create the display sidecar. */
-        post: operations["DockerSidecarController_repair"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/display-sidecar/sessions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List display sidecar sessions for administration. */
-        get: operations["DockerSidecarController_listSessions"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/display-sidecar/sessions/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Release one display sidecar session. */
-        delete: operations["DockerSidecarController_releaseSession"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apk-uploads": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["ApkController_list"];
-        put?: never;
-        post: operations["ApkController_upload"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apk-uploads/lookup": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["ApkController_lookup"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apk-uploads/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete: operations["ApkController_remove"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apk-uploads/cleanup": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["ApkController_cleanup"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/settings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["SettingsController_getSettings"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: operations["SettingsController_updateSettings"];
-        trace?: never;
-    };
-    "/api/v1/settings/reset": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["SettingsController_resetSettings"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AndroidAppsController_list"];
-        put?: never;
-        /** Provision an isolated application container. */
-        post: operations["AndroidAppsController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/clone": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create a separate owner-scoped application from an existing app definition. */
-        post: operations["AndroidAppsController_clone"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/summaries": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List lightweight app state for navigation and polling without Docker reconciliation. */
-        get: operations["AndroidAppsController_listSummaries"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AndroidAppsController_get"];
-        put?: never;
-        post?: never;
-        delete: operations["AndroidAppsController_remove"];
-        options?: never;
-        head?: never;
-        patch: operations["AndroidAppsController_update"];
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/viewer/session": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AndroidAppsViewerController_scrcpySession"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/viewer/activity": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Refresh viewer activity for inactivity timeout tracking. */
-        post: operations["AndroidAppsViewerController_viewerActivity"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/viewer/control": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Send a viewer control command to the running Android runtime. */
-        post: operations["AndroidAppsViewerController_viewerControl"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/viewer/displays": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create or reuse one experimental virtual display surface. */
-        post: operations["AndroidAppsViewerController_createVirtualDisplay"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/viewer/displays/{surfaceId}/release": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Release one experimental virtual display surface. */
-        post: operations["AndroidAppsViewerController_releaseVirtualDisplay"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/viewer/displays/{surfaceId}/recording/start": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Start recording one display surface. */
-        post: operations["AndroidAppsViewerController_startRecording"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/viewer/displays/{surfaceId}/recording/stop": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Stop recording one display surface and return the file data. */
-        post: operations["AndroidAppsViewerController_stopRecording"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/viewer/recordings/{recordingId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Download one completed display recording. */
-        get: operations["AndroidAppsViewerController_downloadRecording"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/network-policies/reconcile": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Rebuild firewall agent rules from stored applications and prune stale rules. */
-        post: operations["AndroidAppsNetworkController_reconcileNetworkPolicies"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/network-policy": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Update and reconcile the app container egress allowlist. */
-        patch: operations["AndroidAppsNetworkController_updateNetworkPolicy"];
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/network-policy/apply": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Re-apply the stored network policy without restarting the container. */
-        post: operations["AndroidAppsNetworkController_applyNetworkPolicy"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/lifecycle/profile": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Select the runtime profile volume used by the next container start. */
-        post: operations["AndroidAppsLifecycleController_switchProfile"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/lifecycle/start": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Start the application container, optionally selecting a runtime profile. */
-        post: operations["AndroidAppsLifecycleController_start"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/lifecycle/stop": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AndroidAppsLifecycleController_stop"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/lifecycle/apk": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put: operations["AndroidAppsLifecycleController_updateApk"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/runtime/notifications": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AndroidAppsRuntimeController_notifications"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/runtime/data-files": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List entries from the active application data volume. */
-        get: operations["AndroidAppsRuntimeController_listFiles"];
-        put?: never;
-        /** Upload a file into a directory in the active data volume. */
-        post: operations["AndroidAppsRuntimeController_uploadFile"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/runtime/data-files/download": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read a file from the active application data volume. */
-        get: operations["AndroidAppsRuntimeController_downloadRuntimeFile"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/runtime/download-files": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List files from the application Download directory. */
-        get: operations["AndroidAppsRuntimeController_listDownloadFiles"];
-        put?: never;
-        /** Upload a file to the application Download directory. */
-        post: operations["AndroidAppsRuntimeController_uploadDownloadFile"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/runtime/download-files/{fileName}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read a file from the application Download directory. */
-        get: operations["AndroidAppsRuntimeController_downloadFile"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/runtime/clipboard": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read the application clipboard when supported by the runtime. */
-        get: operations["AndroidAppsRuntimeController_getClipboard"];
-        /** Write the application clipboard when supported by the runtime. */
-        put: operations["AndroidAppsRuntimeController_setClipboard"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/runtime/screenshot": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Capture a PNG screenshot from the application runtime. */
-        post: operations["AndroidAppsRuntimeController_screenshot"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/runtime/logs/container": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read recent Docker container logs for an application. */
-        get: operations["AndroidAppsRuntimeController_containerLogs"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/runtime/logs/orchestrator": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read recent orchestrator lifecycle events for an application. */
-        get: operations["AndroidAppsRuntimeController_orchestratorLogs"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/runtime/logs/adb": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read recent Android logcat output for a running application. */
-        get: operations["AndroidAppsRuntimeController_adbLogs"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/automations/commands": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AutomationsController_listCommands"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/automations/validate-yaml": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AutomationsController_validateYaml"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/automations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AutomationsController_list"];
-        put?: never;
-        post: operations["AutomationsController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/automations/runnable": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AutomationsController_listRunnable"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/automations/runs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AutomationsController_listAllRuns"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/automations/runs/{runId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AutomationsController_getRun"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/automations/triggers": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AutomationsController_listTriggers"];
-        put?: never;
-        post: operations["AutomationsController_createTrigger"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/automations/triggers/{triggerId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AutomationsController_getTrigger"];
-        put?: never;
-        post?: never;
-        delete: operations["AutomationsController_removeTrigger"];
-        options?: never;
-        head?: never;
-        patch: operations["AutomationsController_updateTrigger"];
-        trace?: never;
-    };
-    "/api/v1/automations/triggers/{triggerId}/runs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AutomationsController_runTrigger"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/automations/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AutomationsController_get"];
-        put?: never;
-        post?: never;
-        delete: operations["AutomationsController_remove"];
-        options?: never;
-        head?: never;
-        patch: operations["AutomationsController_update"];
-        trace?: never;
-    };
-    "/api/v1/automations/{id}/runs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AutomationsController_listRuns"];
-        put?: never;
-        post: operations["AutomationsController_run"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/container-images": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List images available in the container engine. */
-        get: operations["ContainerImagesController_list"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/container-images/pull": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Pull or update an image. */
-        post: operations["ContainerImagesController_pull"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/container-images/{image}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Remove an image by name or id. */
-        delete: operations["ContainerImagesController_remove"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/docker/containers": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Docker containers visible to the platform. */
-        get: operations["DockerMaintenanceContainersController_listContainers"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/docker/containers/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read Docker container details and relationships. */
-        get: operations["DockerMaintenanceContainersController_getContainer"];
-        put?: never;
-        post?: never;
-        /** Remove a Docker container. */
-        delete: operations["DockerMaintenanceContainersController_removeContainer"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/docker/containers/{id}/logs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read recent Docker logs for a platform container. */
-        get: operations["DockerMaintenanceContainersController_getContainerLogs"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/docker/containers/{id}/stats": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read live Docker stats for a platform container. */
-        get: operations["DockerMaintenanceContainersController_getContainerStats"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/docker/containers/{id}/stop": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Stop a Docker container. */
-        post: operations["DockerMaintenanceContainersController_stopContainer"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/docker/images": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Docker images visible to the platform. */
-        get: operations["DockerMaintenanceImagesController_listImages"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/docker/images/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read Docker image details and relationships. */
-        get: operations["DockerMaintenanceImagesController_getImage"];
-        put?: never;
-        post?: never;
-        /** Remove a Docker image by encoded id or name. */
-        delete: operations["DockerMaintenanceImagesController_removeImage"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/docker/networks": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Docker networks visible to the platform. */
-        get: operations["DockerMaintenanceNetworksController_listNetworks"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/docker/networks/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read Docker network details and relationships. */
-        get: operations["DockerMaintenanceNetworksController_getNetwork"];
-        put?: never;
-        post?: never;
-        /** Remove a Docker network by id. */
-        delete: operations["DockerMaintenanceNetworksController_removeNetwork"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/docker/prune/images": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Prune unused images. */
-        post: operations["DockerMaintenancePruneController_pruneImages"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/docker/prune/containers": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Prune stopped containers. */
-        post: operations["DockerMaintenancePruneController_pruneContainers"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/docker/prune/networks": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Prune unused networks. */
-        post: operations["DockerMaintenancePruneController_pruneNetworks"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/docker/prune/volumes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Prune unused volumes. */
-        post: operations["DockerMaintenancePruneController_pruneVolumes"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/docker/prune/all": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Prune stopped containers, unused networks, dangling images, and unused volumes. */
-        post: operations["DockerMaintenancePruneController_pruneAll"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/scheduled-tasks/actions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["ScheduledTasksController_listActions"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/scheduled-tasks": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["ScheduledTasksController_list"];
-        put?: never;
-        post: operations["ScheduledTasksController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/scheduled-tasks/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["ScheduledTasksController_get"];
-        put?: never;
-        post?: never;
-        delete: operations["ScheduledTasksController_remove"];
-        options?: never;
-        head?: never;
-        patch: operations["ScheduledTasksController_update"];
-        trace?: never;
-    };
-    "/api/v1/scheduled-tasks/{id}/run": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["ScheduledTasksController_runNow"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/system-resources/capacity": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["SystemResourcesController_getCapacity"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/system-resources": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["SystemResourcesController_getUsage"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/health/live": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["HealthController_live"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/health/ready": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["HealthController_ready"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/diagnostics": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["HealthController_diagnostics"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/diagnostics/summary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["HealthController_diagnosticsSummary"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
+  "/api/v1/metrics": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["MetricsController_read"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/metrics/docker": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["MetricsController_dockerSnapshot"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/display-sidecar/health": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read display sidecar health. */
+    get: operations["DockerSidecarController_health"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/display-sidecar/repair": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Restart or create the display sidecar. */
+    post: operations["DockerSidecarController_repair"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/display-sidecar/sessions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List display sidecar sessions for administration. */
+    get: operations["DockerSidecarController_listSessions"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/display-sidecar/sessions/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Release one display sidecar session. */
+    delete: operations["DockerSidecarController_releaseSession"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apk-uploads": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ApkController_list"];
+    put?: never;
+    post: operations["ApkController_upload"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apk-uploads/lookup": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ApkController_lookup"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apk-uploads/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations["ApkController_remove"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apk-uploads/cleanup": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ApkController_cleanup"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/settings": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["SettingsController_getSettings"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["SettingsController_updateSettings"];
+    trace?: never;
+  };
+  "/api/v1/settings/reset": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["SettingsController_resetSettings"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/settings/ai-providers": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["SettingsController_listAiProviders"];
+    put?: never;
+    post: operations["SettingsController_createAiProvider"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/settings/ai-providers/{providerId}/health": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["SettingsController_checkAiProviderHealth"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/settings/ai-providers/{providerId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations["SettingsController_deleteAiProvider"];
+    options?: never;
+    head?: never;
+    patch: operations["SettingsController_updateAiProvider"];
+    trace?: never;
+  };
+  "/api/v1/settings/ai-providers/{providerId}/models": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["SettingsController_createAiProviderModel"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/settings/ai-providers/{providerId}/models/{modelId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations["SettingsController_deleteAiProviderModel"];
+    options?: never;
+    head?: never;
+    patch: operations["SettingsController_updateAiProviderModel"];
+    trace?: never;
+  };
+  "/api/v1/settings/ai-model-catalog": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["SettingsController_listAiModelCatalog"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AndroidAppsController_list"];
+    put?: never;
+    /** Provision an isolated application container. */
+    post: operations["AndroidAppsController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps/{id}/clone": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Create a separate owner-scoped application from an existing app definition. */
+    post: operations["AndroidAppsController_clone"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps/summaries": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List lightweight app state for navigation and polling without Docker reconciliation. */
+    get: operations["AndroidAppsController_listSummaries"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AndroidAppsController_get"];
+    put?: never;
+    post?: never;
+    delete: operations["AndroidAppsController_remove"];
+    options?: never;
+    head?: never;
+    patch: operations["AndroidAppsController_update"];
+    trace?: never;
+  };
+  "/api/v1/apps/{id}/viewer/session": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AndroidAppsViewerController_scrcpySession"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps/{id}/viewer/activity": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Refresh viewer activity for inactivity timeout tracking. */
+    post: operations["AndroidAppsViewerController_viewerActivity"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps/{id}/viewer/control": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Send a viewer control command to the running Android runtime. */
+    post: operations["AndroidAppsViewerController_viewerControl"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps/{id}/viewer/displays": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Create or reuse one experimental virtual display surface. */
+    post: operations["AndroidAppsViewerController_createVirtualDisplay"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps/{id}/viewer/displays/{surfaceId}/release": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Release one experimental virtual display surface. */
+    post: operations["AndroidAppsViewerController_releaseVirtualDisplay"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps/{id}/viewer/displays/{surfaceId}/recording/start": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Start recording one display surface. */
+    post: operations["AndroidAppsViewerController_startRecording"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps/{id}/viewer/displays/{surfaceId}/recording/stop": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Stop recording one display surface and return the file data. */
+    post: operations["AndroidAppsViewerController_stopRecording"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps/{id}/viewer/recordings/{recordingId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Download one completed display recording. */
+    get: operations["AndroidAppsViewerController_downloadRecording"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/network-policies/reconcile": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Rebuild firewall agent rules from stored applications and prune stale rules. */
+    post: operations["AndroidAppsNetworkController_reconcileNetworkPolicies"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps/{id}/network-policy": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Update and reconcile the app container egress allowlist. */
+    patch: operations["AndroidAppsNetworkController_updateNetworkPolicy"];
+    trace?: never;
+  };
+  "/api/v1/apps/{id}/network-policy/apply": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Re-apply the stored network policy without restarting the container. */
+    post: operations["AndroidAppsNetworkController_applyNetworkPolicy"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps/{id}/lifecycle/profile": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Select the runtime profile volume used by the next container start. */
+    post: operations["AndroidAppsLifecycleController_switchProfile"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps/{id}/lifecycle/start": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Start the application container, optionally selecting a runtime profile. */
+    post: operations["AndroidAppsLifecycleController_start"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps/{id}/lifecycle/stop": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AndroidAppsLifecycleController_stop"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps/{id}/lifecycle/apk": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put: operations["AndroidAppsLifecycleController_updateApk"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps/{id}/runtime/notifications": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AndroidAppsRuntimeController_notifications"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps/{id}/runtime/data-files": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List entries from the active application data volume. */
+    get: operations["AndroidAppsRuntimeController_listFiles"];
+    put?: never;
+    /** Upload a file into a directory in the active data volume. */
+    post: operations["AndroidAppsRuntimeController_uploadFile"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps/{id}/runtime/data-files/download": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read a file from the active application data volume. */
+    get: operations["AndroidAppsRuntimeController_downloadRuntimeFile"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps/{id}/runtime/download-files": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List files from the application Download directory. */
+    get: operations["AndroidAppsRuntimeController_listDownloadFiles"];
+    put?: never;
+    /** Upload a file to the application Download directory. */
+    post: operations["AndroidAppsRuntimeController_uploadDownloadFile"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps/{id}/runtime/download-files/{fileName}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read a file from the application Download directory. */
+    get: operations["AndroidAppsRuntimeController_downloadFile"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps/{id}/runtime/clipboard": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read the application clipboard when supported by the runtime. */
+    get: operations["AndroidAppsRuntimeController_getClipboard"];
+    /** Write the application clipboard when supported by the runtime. */
+    put: operations["AndroidAppsRuntimeController_setClipboard"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps/{id}/runtime/screenshot": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Capture a PNG screenshot from the application runtime. */
+    post: operations["AndroidAppsRuntimeController_screenshot"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps/{id}/runtime/logs/container": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read recent Docker container logs for an application. */
+    get: operations["AndroidAppsRuntimeController_containerLogs"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps/{id}/runtime/logs/orchestrator": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read recent orchestrator lifecycle events for an application. */
+    get: operations["AndroidAppsRuntimeController_orchestratorLogs"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/apps/{id}/runtime/logs/adb": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read recent Android logcat output for a running application. */
+    get: operations["AndroidAppsRuntimeController_adbLogs"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/automations/commands": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AutomationsController_listCommands"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/automations/validate-yaml": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AutomationsController_validateYaml"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/automations/draft-yaml": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AutomationsController_draftYaml"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/automations/ai/runs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AutomationsController_runAdHocAi"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/automations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AutomationsController_list"];
+    put?: never;
+    post: operations["AutomationsController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/automations/grid": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AutomationsController_listGrid"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/automations/runnable": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AutomationsController_listRunnable"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/automations/runs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AutomationsController_listAllRuns"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/automations/runs/{runId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AutomationsController_getRun"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/automations/runs/{runId}/cancel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AutomationsController_cancelRun"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/automations/runs/{runId}/events": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AutomationsController_listRunEvents"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/automations/runs/{runId}/events/token": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AutomationsController_createRunEventStreamToken"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/automations/triggers": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AutomationsController_listTriggers"];
+    put?: never;
+    post: operations["AutomationsController_createTrigger"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/automations/triggers/grid": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AutomationsController_listTriggersGrid"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/automations/triggers/{triggerId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AutomationsController_getTrigger"];
+    put?: never;
+    post?: never;
+    delete: operations["AutomationsController_removeTrigger"];
+    options?: never;
+    head?: never;
+    patch: operations["AutomationsController_updateTrigger"];
+    trace?: never;
+  };
+  "/api/v1/automations/triggers/{triggerId}/runs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AutomationsController_runTrigger"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/automations/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AutomationsController_get"];
+    put?: never;
+    post?: never;
+    delete: operations["AutomationsController_remove"];
+    options?: never;
+    head?: never;
+    patch: operations["AutomationsController_update"];
+    trace?: never;
+  };
+  "/api/v1/automations/{id}/runs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AutomationsController_listRuns"];
+    put?: never;
+    post: operations["AutomationsController_run"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/container-images": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List images available in the container engine. */
+    get: operations["ContainerImagesController_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/container-images/pull": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Pull or update an image. */
+    post: operations["ContainerImagesController_pull"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/container-images/{image}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Remove an image by name or id. */
+    delete: operations["ContainerImagesController_remove"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/docker/containers": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Docker containers visible to the platform. */
+    get: operations["DockerMaintenanceContainersController_listContainers"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/docker/containers/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read Docker container details and relationships. */
+    get: operations["DockerMaintenanceContainersController_getContainer"];
+    put?: never;
+    post?: never;
+    /** Remove a Docker container. */
+    delete: operations["DockerMaintenanceContainersController_removeContainer"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/docker/containers/{id}/logs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read recent Docker logs for a platform container. */
+    get: operations["DockerMaintenanceContainersController_getContainerLogs"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/docker/containers/{id}/stats": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read live Docker stats for a platform container. */
+    get: operations["DockerMaintenanceContainersController_getContainerStats"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/docker/containers/{id}/stop": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Stop a Docker container. */
+    post: operations["DockerMaintenanceContainersController_stopContainer"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/docker/images": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Docker images visible to the platform. */
+    get: operations["DockerMaintenanceImagesController_listImages"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/docker/images/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read Docker image details and relationships. */
+    get: operations["DockerMaintenanceImagesController_getImage"];
+    put?: never;
+    post?: never;
+    /** Remove a Docker image by encoded id or name. */
+    delete: operations["DockerMaintenanceImagesController_removeImage"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/docker/networks": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Docker networks visible to the platform. */
+    get: operations["DockerMaintenanceNetworksController_listNetworks"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/docker/networks/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read Docker network details and relationships. */
+    get: operations["DockerMaintenanceNetworksController_getNetwork"];
+    put?: never;
+    post?: never;
+    /** Remove a Docker network by id. */
+    delete: operations["DockerMaintenanceNetworksController_removeNetwork"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/docker/prune/images": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Prune unused images. */
+    post: operations["DockerMaintenancePruneController_pruneImages"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/docker/prune/containers": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Prune stopped containers. */
+    post: operations["DockerMaintenancePruneController_pruneContainers"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/docker/prune/networks": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Prune unused networks. */
+    post: operations["DockerMaintenancePruneController_pruneNetworks"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/docker/prune/volumes": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Prune unused volumes. */
+    post: operations["DockerMaintenancePruneController_pruneVolumes"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/docker/prune/all": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Prune stopped containers, unused networks, dangling images, and unused volumes. */
+    post: operations["DockerMaintenancePruneController_pruneAll"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/scheduled-tasks/actions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ScheduledTasksController_listActions"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/scheduled-tasks": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ScheduledTasksController_list"];
+    put?: never;
+    post: operations["ScheduledTasksController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/scheduled-tasks/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ScheduledTasksController_get"];
+    put?: never;
+    post?: never;
+    delete: operations["ScheduledTasksController_remove"];
+    options?: never;
+    head?: never;
+    patch: operations["ScheduledTasksController_update"];
+    trace?: never;
+  };
+  "/api/v1/scheduled-tasks/{id}/run": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ScheduledTasksController_runNow"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/system-resources/capacity": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["SystemResourcesController_getCapacity"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/system-resources": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["SystemResourcesController_getUsage"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/health/live": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["HealthController_live"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/health/ready": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["HealthController_ready"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/diagnostics": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["HealthController_diagnostics"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/diagnostics/summary": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["HealthController_diagnosticsSummary"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        DockerMetricsLimitsDto: {
-            maxConcurrentReads: number;
-            maxConcurrentLongOperations: number;
-            slowRequestWarningMs: number;
-            longOperationTimeoutMs: number;
-            remoteRequestTimeoutMs: number;
-        };
-        DockerMetricsTotalsDto: {
-            success: number;
-            errors: number;
-            timeouts: number;
-            retries: number;
-            slow: number;
-        };
-        DockerMetricsClassCountsDto: {
-            read: number;
-            mutation: number;
-            long: number;
-        };
-        DockerMetricsOperationDto: {
-            /** @enum {string} */
-            class: "read" | "mutation" | "long";
-            operation: string;
-            success: number;
-            errors: number;
-            timeouts: number;
-            retries: number;
-            slow: number;
-            totalDurationMs: number;
-            maxDurationMs: number;
-            averageDurationMs: number;
-        };
-        DockerMetricsEventDto: {
-            timestamp: string;
-            /** @enum {string} */
-            class: "read" | "mutation" | "long";
-            operation: string;
-            /** @enum {string} */
-            outcome: "error" | "timeout" | "slow";
-            durationMs: number;
-            error: string | null;
-        };
-        DockerMetricsSnapshotDto: {
-            collectedAt: string;
-            transport: string;
-            limits: components["schemas"]["DockerMetricsLimitsDto"];
-            totals: components["schemas"]["DockerMetricsTotalsDto"];
-            inFlight: components["schemas"]["DockerMetricsClassCountsDto"];
-            queued: components["schemas"]["DockerMetricsClassCountsDto"];
-            operations: components["schemas"]["DockerMetricsOperationDto"][];
-            events: components["schemas"]["DockerMetricsEventDto"][];
-        };
-        ServiceHealthDto: {
-            ok: boolean;
-            /** @enum {string} */
-            status: "healthy" | "unhealthy" | "offline";
-            message: string;
-            details?: {
-                [key: string]: unknown;
-            };
-        };
-        DockerSidecarAdminSessionDto: {
-            id: string;
-            applicationId: string | null;
-            ownerUserId: string | null;
-            /** @enum {string} */
-            status: "created" | "active" | "released" | "expired";
-            createdAt: string;
-            lastActivityAt: string;
-            expiresAt: string;
-            capabilities: string[];
-        };
-        UploadedApk: {
-            /** @example 98a530d6-a45d-466a-9cb4-c023067c4971 */
-            id: string;
-            /** @example admin */
-            ownerUserId: string | null;
-            /** @example Signal.apk */
-            originalName: string;
-            /** @example 9d1e7fdf5f9f4d0e9f3e3a7a66a9ac884e7b68be3e0dd41d7dfc9f4e5ddbdc91 */
-            sha256: string;
-            /** @example 74311257 */
-            sizeBytes: number;
-            /** @example /app/uploads/apks/9d1e7fdf.apk */
-            filePath: string;
-            /** @example data:image/png;base64,iVBORw0KGgo... */
-            extractedIconDataUrl: string | null;
-            /** @example Signal */
-            displayName: string | null;
-            /** @example org.thoughtcrime.securesms */
-            packageName: string | null;
-            /**
-             * Format: date-time
-             * @example 2026-05-16T20:39:29.000Z
-             */
-            createdAt: string;
-            /**
-             * Format: date-time
-             * @example 2026-05-16T20:39:31.000Z
-             */
-            updatedAt: string;
-        };
-        CleanupUploadedApksDto: {
-            /** @example admin */
-            ownerUserId?: string;
-        };
-        CleanupUploadedApksResponseDto: {
-            /** @example 3 */
-            deletedRecords: number;
-            /** @example 2 */
-            removedFiles: number;
-        };
-        OrchestratorSettingsDto: {
-            /** @example redroid/redroid:13.0.0-latest */
-            defaultContainerImage: string;
-            /**
-             * @description Optional registry prefix applied to image names without an explicit registry host.
-             * @example registry.internal.example:5000
-             */
-            dockerImageRegistry?: string | null;
-            /**
-             * @default webrtc
-             * @enum {string}
-             */
-            defaultScrcpyTransport: "webrtc" | "websocket";
-            /**
-             * @description Use -1 to keep sessions running until manually stopped.
-             * @example 900
-             */
-            defaultInactivityTimeoutSeconds: number;
-            /** @example 512 */
-            maxApkUploadSizeMb: number;
-        };
-        UpdateOrchestratorSettingsDto: {
-            /** @example redroid/redroid:13.0.0-latest */
-            defaultContainerImage?: string;
-            /**
-             * @description Optional registry prefix applied to image names without an explicit registry host.
-             * @example registry.internal.example:5000
-             */
-            dockerImageRegistry?: string | null;
-            /**
-             * @default webrtc
-             * @enum {string}
-             */
-            defaultScrcpyTransport: "webrtc" | "websocket";
-            /**
-             * @description Use -1 to keep sessions running until manually stopped.
-             * @example 900
-             */
-            defaultInactivityTimeoutSeconds?: number;
-            /** @example 512 */
-            maxApkUploadSizeMb?: number;
-        };
-        ApplicationCommandNetworkPolicyDto: {
-            enabled: boolean;
-            allowCidrs: string[];
-            status: string | null;
-            message: string | null;
-            appliedAt: string | null;
-        };
-        ApplicationCommandProfileDto: {
-            /** @enum {string} */
-            mode: "persistent" | "temporary";
-            name: string | null;
-        };
-        ApplicationCommandApkDto: {
-            uploadedApkId: string | null;
-            packageName: string | null;
-            originalName: string | null;
-        };
-        ApplicationCommandResultDto: {
-            id: string;
-            name: string;
-            /** @enum {string} */
-            status: "provisioning" | "running" | "stopped" | "error" | "removing" | "removed";
-            /** @enum {string} */
-            lifecycleStage: "queued" | "image_checking" | "image_pulling" | "volume_creating" | "network_creating" | "orchestrator_network_connecting" | "container_creating" | "container_starting" | "android_booting" | "apk_installing" | "ready" | "stopping" | "stopped" | "removing" | "removed" | "error";
-            message: string | null;
-            operationId?: string;
-            networkPolicy?: components["schemas"]["ApplicationCommandNetworkPolicyDto"];
-            profile?: components["schemas"]["ApplicationCommandProfileDto"];
-            apk?: components["schemas"]["ApplicationCommandApkDto"];
-        };
-        CloneAndroidApplicationDto: {
-            /**
-             * @description Owner user id for the cloned application.
-             * @example admin
-             */
-            ownerUserId?: string;
-            /**
-             * @description Display name for the cloned application. Defaults to the source app name.
-             * @example Signal Android
-             */
-            name?: string;
-        };
-        AndroidApplicationStatusDetail: {
-            /** @enum {string} */
-            code: "queued" | "image_checking" | "image_pulling" | "volume_creating" | "network_creating" | "orchestrator_network_connecting" | "container_creating" | "container_starting" | "android_booting" | "apk_installing" | "ready" | "stopping" | "stopped" | "stopped_recreate_required" | "removing" | "removed" | "error" | "unknown";
-            title: string;
-            description: string | null;
-            /** @enum {string} */
-            tone: "neutral" | "progress" | "success" | "warning" | "error";
-        };
-        AndroidImagePullProgress: {
-            /** @example Downloading */
-            status: string;
-            /** @example 120.5 MB */
-            current: string;
-            /** @example 512 MB */
-            total: string;
-            /** @example sha256:abc123 */
-            layerId: string | null;
-            /** @example 23.5 */
-            percent: number;
-        };
-        AndroidApplicationStatusResponseDto: {
-            /** @enum {string} */
-            currentStatus: "provisioning" | "running" | "stopped" | "error" | "removing" | "removed";
-            /** @enum {string} */
-            lifecycleStage: "queued" | "image_checking" | "image_pulling" | "volume_creating" | "network_creating" | "orchestrator_network_connecting" | "container_creating" | "container_starting" | "android_booting" | "apk_installing" | "ready" | "stopping" | "stopped" | "removing" | "removed" | "error";
-            message: string | null;
-            detail: components["schemas"]["AndroidApplicationStatusDetail"] | null;
-            progress: components["schemas"]["AndroidImagePullProgress"] | null;
-            recreateRequired: boolean;
-            lastScrcpyActivityAt: string | null;
-            lastStartedAt: string | null;
-            lastStoppedAt: string | null;
-            provisioningStartedAt: string | null;
-            provisioningCompletedAt: string | null;
-        };
-        AndroidApplicationError: {
-            /** @enum {string} */
-            code: "container_command_failed" | "container_exited" | "container_oom_killed" | "container_missing" | "startup_command_finished" | "unknown";
-            /** @enum {string} */
-            phase: "provisioning" | "runtime" | "unknown";
-            message: string;
-            retryable: boolean;
-            exitCode: number | null;
-            hint: string | null;
-        };
-        AndroidApplicationErrorResponseDto: {
-            lastError: string | null;
-            application: components["schemas"]["AndroidApplicationError"] | null;
-        };
-        AndroidApplicationRuntimeResourcesDto: {
-            memoryLimitMb: number | null;
-            cpuLimitCpus: number | null;
-        };
-        AndroidApplicationRuntimeDto: {
-            image: string;
-            containerName: string;
-            containerId: string | null;
-            containerArgs: string | null;
-            adbPort: number;
-            /** @enum {string} */
-            scrcpyTransport: "websocket" | "webrtc";
-            inactivityTimeoutSeconds: number;
-            resources: components["schemas"]["AndroidApplicationRuntimeResourcesDto"];
-        };
-        AndroidApplicationSavedProfileDto: {
-            /** @enum {string} */
-            mode: "persistent" | "temporary";
-            name: string;
-        };
-        AndroidApplicationStorageDto: {
-            volumeName: string;
-            /** @enum {string} */
-            profileMode: "persistent" | "temporary";
-            profileName: string | null;
-            savedProfiles: components["schemas"]["AndroidApplicationSavedProfileDto"][];
-        };
-        AndroidNetworkPolicyResult: {
-            /** @enum {string} */
-            status: "applied" | "skipped" | "error";
-            /** @enum {string} */
-            code: "applied" | "apply_failed" | "container_ip_unavailable" | "container_not_created" | "agent_unavailable" | "unsupported_host" | "policy_disabled" | "unknown";
-            message: string;
-            hint: string | null;
-        };
-        AndroidApplicationNetworkPolicyDto: {
-            enabled: boolean;
-            allowCidrs: string[];
-            status: string | null;
-            message: string | null;
-            result: components["schemas"]["AndroidNetworkPolicyResult"] | null;
-            appliedAt: string | null;
-        };
-        AndroidApplicationNetworkDto: {
-            networkName: string;
-            policy: components["schemas"]["AndroidApplicationNetworkPolicyDto"];
-        };
-        AndroidApplicationApkDto: {
-            filePath: string | null;
-            originalName: string | null;
-            packageName: string | null;
-            uploadedApkId: string | null;
-        };
-        AndroidApplicationResponseDto: {
-            id: string;
-            name: string;
-            ownerUserId: string | null;
-            status: components["schemas"]["AndroidApplicationStatusResponseDto"];
-            errors: components["schemas"]["AndroidApplicationErrorResponseDto"];
-            runtime: components["schemas"]["AndroidApplicationRuntimeDto"];
-            storage: components["schemas"]["AndroidApplicationStorageDto"];
-            network: components["schemas"]["AndroidApplicationNetworkDto"];
-            apk: components["schemas"]["AndroidApplicationApkDto"];
-            createdAt: string;
-            updatedAt: string;
-        };
-        AndroidApplicationSummaryResponseDto: {
-            id: string;
-            name: string;
-            ownerUserId: string | null;
-            /** @enum {string} */
-            currentStatus: "provisioning" | "running" | "stopped" | "error" | "removing" | "removed";
-            /** @enum {string} */
-            lifecycleStage: "queued" | "image_checking" | "image_pulling" | "volume_creating" | "network_creating" | "orchestrator_network_connecting" | "container_creating" | "container_starting" | "android_booting" | "apk_installing" | "ready" | "stopping" | "stopped" | "removing" | "removed" | "error";
-            detail: components["schemas"]["AndroidApplicationStatusDetail"] | null;
-            apkPackageName: string | null;
-        };
-        UpdateAndroidApplicationDto: {
-            /** @example Signal Android */
-            name?: string;
-            /** @description Use -1 to keep the session running until manually stopped. */
-            inactivityTimeoutSeconds?: number;
-            /** @example 2048 */
-            memoryLimitMb?: number | null;
-            /** @example 2 */
-            cpuLimitCpus?: number | null;
-            /**
-             * @description Optional command or arguments passed to the container as Docker Cmd. Use a long-running command if the image would otherwise exit immediately.
-             * @example sleep infinity
-             */
-            containerArgs?: string | null;
-        };
-        DeleteAndroidApplicationResponseDto: {
-            /** @example 98a530d6-a45d-466a-9cb4-c023067c4971 */
-            id: string;
-            /** @example false */
-            deleted: boolean;
-            /** @example true */
-            cleanupQueued: boolean;
-            /** @example true */
-            removedData: boolean;
-        };
-        ScrcpyViewerErrorDto: {
-            /** @enum {string} */
-            code: "sidecar_unavailable" | "adb_missing" | "adb_unreachable" | "unknown";
-            message: string;
-            retryable: boolean;
-            exitCode: number | null;
-            command: string[] | null;
-            stdout: string | null;
-            stderr: string | null;
-        };
-        DisplayNewDisplayDto: {
-            width: number;
-            height: number;
-            dpi: number;
-        };
-        DisplaySurfaceDto: {
-            id: string;
-            sessionId: string;
-            /** @enum {string} */
-            kind: "main" | "virtual";
-            name: string;
-            /** @enum {string} */
-            status: "created" | "active" | "released" | "expired";
-            createdAt: string;
-            lastActivityAt: string;
-            streamPath: string;
-            viewerPath: string;
-            webrtcOfferPath: string;
-            displayId?: number;
-            newDisplay?: components["schemas"]["DisplayNewDisplayDto"];
-        };
-        DisplaySessionDto: {
-            id: string;
-            appId?: string | null;
-            surfaceId: string;
-            /** @enum {string} */
-            surfaceKind: "main" | "virtual";
-            displayName: string;
-            displayId?: number;
-            newDisplay?: components["schemas"]["DisplayNewDisplayDto"];
-            /** @enum {string} */
-            status: "created" | "active" | "released" | "expired";
-            createdAt: string;
-            lastActivityAt: string;
-            expiresAt: string;
-            maxExpiresAt: string;
-            capabilities: string[];
-            surface: components["schemas"]["DisplaySurfaceDto"];
-            surfaces: components["schemas"]["DisplaySurfaceDto"][];
-            streamPath: string;
-            viewerPath: string;
-            webrtcOfferPath: string;
-        };
-        ScrcpySessionDto: {
-            applicationId: string;
-            /** @enum {string} */
-            transport: "websocket" | "webrtc";
-            udid: string;
-            proxyRemote: string;
-            player: string;
-            viewerServiceConfigured: boolean;
-            viewerTargetConnected: boolean;
-            viewerMessage: string | null;
-            viewerError: components["schemas"]["ScrcpyViewerErrorDto"] | null;
-            adbHost: string;
-            adbPort: number;
-            displaySession: components["schemas"]["DisplaySessionDto"] | null;
-        };
-        ApplicationViewerControlDto: {
-            /**
-             * @example home
-             * @enum {string}
-             */
-            command: "back" | "home" | "recents" | "wake" | "power" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-notifications" | "expand-settings" | "collapse-panels";
-        };
-        ApplicationViewerControlResponseDto: {
-            /**
-             * @example home
-             * @enum {string}
-             */
-            command: "back" | "home" | "recents" | "wake" | "power" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-notifications" | "expand-settings" | "collapse-panels";
-            /** @example true */
-            executed: boolean;
-            /** @example Viewer control command executed. */
-            message: string;
-        };
-        DisplayRecordingDto: {
-            id: string;
-            sessionId: string;
-            /** @enum {string} */
-            status: "recording" | "stopped";
-            startedAt: string;
-            stoppedAt: string | null;
-            fileName: string;
-            mimeType: string;
-            sizeBytes: number;
-            durationMs: number;
-            sampleCount: number;
-            downloadPath: string | null;
-        };
-        UpdateNetworkPolicyDto: {
-            /** @example true */
-            networkPolicyEnabled?: boolean;
-            /**
-             * @description Additional app-specific destination CIDRs the Android container may reach. Backend default destinations such as API_IP are applied automatically and are not stored here.
-             * @example [
-             *       "10.20.0.0/16",
-             *       "203.0.113.10/32"
-             *     ]
-             */
-            networkPolicyAllowCidrs?: string[];
-        };
-        SwitchApplicationProfileDto: {
-            /**
-             * @default persistent
-             * @enum {string}
-             */
-            profileMode: "persistent" | "temporary";
-            /** @example work */
-            profileName?: string;
-        };
-        StartAndroidApplicationDto: {
-            /**
-             * @description Runtime profile mode to use for this start. Persistent uses a named volume; temporary does not.
-             * @default persistent
-             * @enum {string}
-             */
-            profileMode: "persistent" | "temporary";
-            /** @example default */
-            profileName?: string;
-        };
-        AndroidNotificationDto: {
-            /** @example android */
-            packageName: string;
-            /** @example System UI */
-            title: string;
-            /** @example VPN is active */
-            text: string;
-            /** @example Clock */
-            appName?: string | null;
-            /** @example NotificationRecord(...) */
-            raw: string;
-        };
-        ApplicationRuntimeFileDto: {
-            /** @example report.pdf */
-            name: string;
-            /** @example /sdcard/Download/report.pdf */
-            path: string;
-            /**
-             * @example file
-             * @enum {string}
-             */
-            type: "file" | "directory";
-            /** @example 1572864 */
-            sizeBytes: number | null;
-            /** @example 12 */
-            itemCount: number | null;
-            /** @example 2026-05-19T10:15:30.000Z */
-            modifiedAt: string | null;
-        };
-        ApplicationRuntimeFileUploadDto: {
-            /** @example report.pdf */
-            name: string;
-            /** @example /sdcard/Download/report.pdf */
-            path: string;
-            /**
-             * @example file
-             * @enum {string}
-             */
-            type: "file" | "directory";
-            /** @example 1572864 */
-            sizeBytes: number | null;
-            /** @example 12 */
-            itemCount: number | null;
-            /** @example 2026-05-19T10:15:30.000Z */
-            modifiedAt: string | null;
-            /** @example true */
-            uploaded: boolean;
-        };
-        ApplicationRuntimeFileDownloadDto: {
-            /** @example report.pdf */
-            name: string;
-            /** @example application/octet-stream */
-            mimeType: string;
-            /** @example data:application/octet-stream;base64,SGVsbG8= */
-            dataUrl: string;
-        };
-        ApplicationClipboardDto: {
-            /** @example Copied text from Android */
-            text: string;
-            /** @example true */
-            supported: boolean;
-            /** @example null */
-            message: string | null;
-        };
-        UpdateApplicationClipboardDto: {
-            /** @example Text copied from the browser */
-            text: string;
-        };
-        ApplicationScreenshotDto: {
-            /** @example image/png */
-            mimeType: string;
-            /** @example data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB */
-            dataUrl: string;
-            /** @example 2026-05-19T10:15:30.000Z */
-            capturedAt: string;
-        };
-        ApplicationLogDto: {
-            /**
-             * @example orchestrator
-             * @enum {string}
-             */
-            source: "orchestrator" | "container" | "adb";
-            /** @example 2026-05-16T18:20:00.000Z */
-            collectedAt: string;
-            /** @example container log output... */
-            output: string;
-        };
-        AutomationCommandDto: {
-            /** @example android.viewerCommand */
-            uses: string;
-            /** @example Viewer command */
-            label: string;
-            /** @example Sends a supported viewer control command. */
-            description: string;
-            requiredPermissions: string[];
-            inputSchema: Record<string, never>;
-        };
-        ValidateAutomationYamlDto: {
-            /**
-             * @example apiVersion: rebroid.io/automation/v1
-             *     ...
-             */
-            yaml: string;
-        };
-        AutomationDefinitionMetadataDto: {
-            /** @example Prepare app environment */
-            name: string;
-            /** @example Optional notes */
-            description?: string;
-            /**
-             * @example [
-             *       "smoke",
-             *       "login"
-             *     ]
-             */
-            tags?: string[];
-        };
-        AutomationDefinitionStepDto: {
-            /** @example wake-device */
-            id: string;
-            /** @example android.viewerCommand */
-            uses: string;
-            /**
-             * @example {
-             *       "command": "wake"
-             *     }
-             */
-            with: Record<string, never>;
-        };
-        AutomationDefinitionSpecDto: {
-            steps: Record<string, never>[];
-        };
-        AutomationDefinitionDto: {
-            /** @example rebroid.io/automation/v1 */
-            apiVersion: string;
-            /** @example AndroidAutomation */
-            kind: string;
-            metadata: components["schemas"]["AutomationDefinitionMetadataDto"];
-            spec: components["schemas"]["AutomationDefinitionSpecDto"];
-        };
-        AutomationValidationDto: {
-            valid: boolean;
-            definition: components["schemas"]["AutomationDefinitionDto"] | null;
-            /** @example  */
-            yaml: Record<string, never> | null;
-            errors: string[];
-        };
-        AutomationDto: {
-            id: string;
-            ownerUserId: string;
-            name: string;
-            description: string | null;
-            definition: components["schemas"]["AutomationDefinitionDto"];
-            yaml: string;
-            lastRunAt: string | null;
-            /** @enum {string} */
-            lastStatus: "never_run" | "success" | "failed" | "running";
-            lastError: string | null;
-            createdAt: string;
-            updatedAt: string;
-            tags: string[];
-        };
-        CreateAutomationDto: {
-            /** @example user_123 */
-            ownerUserId: string;
-            /** @description YAML automation definition. Required unless definition is supplied. */
-            yaml?: string;
-            definition?: components["schemas"]["AutomationDefinitionDto"];
-        };
-        AutomationStepResultDto: {
-            /** @example wake-device */
-            stepId: string;
-            /** @example android.viewerCommand */
-            uses: string;
-            /** @enum {string} */
-            status: "success" | "failed" | "skipped";
-            startedAt: string;
-            completedAt: string;
-            output?: Record<string, never> | null;
-            error?: string | null;
-            parentStepId?: string | null;
-            /** @example steps[0].then[0] */
-            path?: string;
-        };
-        AutomationRunDto: {
-            id: string;
-            automationId: string;
-            automationTriggerId: string | null;
-            ownerUserId: string;
-            targetApplicationId: string;
-            targetProfileMode: string | null;
-            targetProfileName: string | null;
-            /** @enum {string} */
-            trigger: "manual" | "schedule" | "webhook" | "event";
-            /** @enum {string} */
-            status: "queued" | "running" | "success" | "failed" | "canceled";
-            startedAt: string | null;
-            completedAt: string | null;
-            stepResults: components["schemas"]["AutomationStepResultDto"][];
-            error: string | null;
-            createdAt: string;
-            updatedAt: string;
-        };
-        AutomationTriggerDto: {
-            id: string;
-            ownerUserId: string;
-            name: string;
-            automationId: string;
-            targetApplicationId: string;
-            profileMode: string | null;
-            profileName: string | null;
-            enabled: boolean;
-            /** @enum {string} */
-            triggerType: "schedule" | "webhook" | "event";
-            triggerConfig: Record<string, never>;
-            lastRunAt: string | null;
-            nextRunAt: string | null;
-            /** @enum {string} */
-            lastStatus: "never_run" | "success" | "failed" | "running";
-            lastError: string | null;
-            createdAt: string;
-            updatedAt: string;
-            tags: string[];
-        };
-        AutomationScheduleTriggerConfigDto: {
-            /** @example 0 9 * * * */
-            cronExpression: string;
-            /**
-             * @default start-if-needed
-             * @enum {string}
-             */
-            startPolicy: "require-running" | "start-if-needed";
-        };
-        CreateAutomationTriggerDto: {
-            /** @example user_123 */
-            ownerUserId: string;
-            /** @example Daily setup */
-            name: string;
-            automationId: string;
-            targetApplicationId: string;
-            /** @enum {string} */
-            profileMode?: "persistent" | "temporary";
-            /** @example default */
-            profileName?: Record<string, never> | null;
-            /** @default true */
-            enabled: boolean;
-            /** @enum {string} */
-            triggerType: "schedule" | "webhook" | "event";
-            triggerConfig: components["schemas"]["AutomationScheduleTriggerConfigDto"];
-            tags?: string[];
-        };
-        UpdateAutomationTriggerDto: {
-            /** @example user_123 */
-            ownerUserId?: string;
-            /** @example Daily setup */
-            name?: string;
-            automationId?: string;
-            targetApplicationId?: string;
-            /** @enum {string} */
-            profileMode?: "persistent" | "temporary";
-            /** @example default */
-            profileName?: Record<string, never> | null;
-            /** @default true */
-            enabled: boolean;
-            /** @enum {string} */
-            triggerType?: "schedule" | "webhook" | "event";
-            triggerConfig?: components["schemas"]["AutomationScheduleTriggerConfigDto"];
-        };
-        RunAutomationDto: {
-            /** @example user_123 */
-            ownerUserId: string;
-            /** @example 98a530d6-a45d-466a-9cb4-c023067c4971 */
-            targetApplicationId?: Record<string, never> | null;
-            /** @enum {string} */
-            profileMode?: "persistent" | "temporary";
-            /** @example default */
-            profileName?: Record<string, never> | null;
-            /**
-             * @default require-running
-             * @enum {string}
-             */
-            startPolicy: "require-running" | "start-if-needed";
-        };
-        UpdateAutomationDto: {
-            /** @example user_123 */
-            ownerUserId?: string;
-            /** @description YAML automation definition. Required unless definition is supplied. */
-            yaml?: string;
-            definition?: components["schemas"]["AutomationDefinitionDto"];
-        };
-        PullContainerImageDto: {
-            /** @example redroid/redroid:13.0.0-latest */
-            image: string;
-        };
-        DockerPlatformContainerPortDto: {
-            privatePort: number;
-            publicPort: number | null;
-            type: string;
-            ip: string | null;
-        };
-        DockerPlatformContainerDto: {
-            id: string;
-            shortId: string;
-            names: string[];
-            image: string;
-            imageId: string;
-            command: string;
-            createdAt: string;
-            state: string;
-            status: string;
-            labels: {
-                [key: string]: string;
-            };
-            managed: boolean;
-            orphaned: boolean;
-            applicationId: string | null;
-            component: string | null;
-            ports: components["schemas"]["DockerPlatformContainerPortDto"][];
-            networks: string[];
-        };
-        DockerPlatformImageDto: {
-            id: string;
-            shortId: string;
-            repoTags: string[];
-            repoDigests: string[];
-            sizeBytes: number;
-            sharedSizeBytes: number;
-            virtualSizeBytes: number;
-            createdAt: string;
-            labels: {
-                [key: string]: string;
-            };
-            managed: boolean;
-            containers: number;
-        };
-        DockerPlatformNetworkDto: {
-            id: string;
-            shortId: string;
-            name: string;
-            driver: string;
-            scope: string;
-            createdAt: string | null;
-            internal: boolean;
-            attachable: boolean;
-            ingress: boolean;
-            labels: {
-                [key: string]: string;
-            };
-            managed: boolean;
-            containers: string[];
-            subnets: string[];
-            gateways: string[];
-        };
-        DockerPlatformContainerDetailsDto: {
-            container: components["schemas"]["DockerPlatformContainerDto"];
-            inspect: {
-                [key: string]: unknown;
-            };
-            relatedImage: components["schemas"]["DockerPlatformImageDto"] | null;
-            relatedNetworks: components["schemas"]["DockerPlatformNetworkDto"][];
-        };
-        DockerPlatformContainerLogDto: {
-            /** @enum {string} */
-            source: "container";
-            collectedAt: string;
-            output: string;
-        };
-        DockerPlatformContainerStatsDto: {
-            cpuUsagePercent: number;
-            memoryUsageBytes: number;
-            memoryLimitBytes: number | null;
-            networkRxBytes: number;
-            networkTxBytes: number;
-            collectedAt: string;
-        };
-        DockerPlatformStopResponseDto: {
-            id: string;
-            stopped: boolean;
-        };
-        DockerPlatformRemovalResponseDto: {
-            id: string;
-            removed: boolean;
-        };
-        DockerPlatformImageDetailsDto: {
-            image: components["schemas"]["DockerPlatformImageDto"];
-            inspect: {
-                [key: string]: unknown;
-            };
-            relatedContainers: components["schemas"]["DockerPlatformContainerDto"][];
-        };
-        DockerPlatformNetworkDetailsDto: {
-            network: components["schemas"]["DockerPlatformNetworkDto"];
-            inspect: {
-                [key: string]: unknown;
-            };
-            relatedContainers: components["schemas"]["DockerPlatformContainerDto"][];
-        };
-        DockerPrunedImageDto: {
-            Deleted?: string;
-            Untagged?: string;
-        };
-        DockerPruneResponseDto: {
-            ContainersDeleted?: string[];
-            ImagesDeleted?: components["schemas"]["DockerPrunedImageDto"][];
-            NetworksDeleted?: string[];
-            VolumesDeleted?: string[];
-            SpaceReclaimed?: number;
-        };
-        DockerPruneAllResponseDto: {
-            containers: components["schemas"]["DockerPruneResponseDto"];
-            networks: components["schemas"]["DockerPruneResponseDto"];
-            images: components["schemas"]["DockerPruneResponseDto"];
-            volumes: components["schemas"]["DockerPruneResponseDto"];
-        };
-        ScheduledTaskActionDto: {
-            /** @enum {string} */
-            type: "clean_uploaded_apks" | "prune_images" | "prune_containers" | "prune_networks" | "prune_volumes" | "prune_all" | "clean_runtime_logs";
-            label: string;
-            description: string;
-        };
-        ScheduledTaskDto: {
-            id: string;
-            name: string;
-            enabled: boolean;
-            /** @enum {string} */
-            kind: "predefined" | "custom";
-            predefinedKey: string | null;
-            cronExpression: string;
-            /** @enum {string} */
-            actionType: "clean_uploaded_apks" | "prune_images" | "prune_containers" | "prune_networks" | "prune_volumes" | "prune_all" | "clean_runtime_logs";
-            payload: Record<string, never> | null;
-            lastRunAt: string | null;
-            nextRunAt: string | null;
-            /** @enum {string} */
-            lastStatus: "never_run" | "success" | "failed";
-            lastError: string | null;
-            createdAt: string;
-            updatedAt: string;
-        };
-        ScheduledTaskPayloadDto: {
-            /**
-             * @description Only for prune_images. Defaults to true.
-             * @example true
-             */
-            danglingOnly?: boolean;
-            /**
-             * @description Only for clean_runtime_logs. Logs older than this many days are removed.
-             * @example 30
-             */
-            retentionDays?: number;
-        };
-        CreateScheduledTaskDto: {
-            /** @example Weekly Docker cleanup */
-            name: string;
-            /**
-             * @default true
-             * @example true
-             */
-            enabled: boolean;
-            /** @example 0 3 * * 0 */
-            cronExpression: string;
-            /** @enum {string} */
-            actionType: "clean_uploaded_apks" | "prune_images" | "prune_containers" | "prune_networks" | "prune_volumes" | "prune_all" | "clean_runtime_logs";
-            payload?: components["schemas"]["ScheduledTaskPayloadDto"] | null;
-        };
-        UpdateScheduledTaskDto: {
-            /** @example Weekly Docker cleanup */
-            name?: string;
-            /**
-             * @default true
-             * @example true
-             */
-            enabled: boolean;
-            /** @example 0 3 * * 0 */
-            cronExpression?: string;
-            /** @enum {string} */
-            actionType?: "clean_uploaded_apks" | "prune_images" | "prune_containers" | "prune_networks" | "prune_volumes" | "prune_all" | "clean_runtime_logs";
-            payload?: components["schemas"]["ScheduledTaskPayloadDto"] | null;
-        };
-        SystemResourceCapacityDto: {
-            hostMemoryBytes: number | null;
-            hostCpuCores: number | null;
-        };
-        ManagedContainerUsageDto: {
-            id: string;
-            name: string;
-            state: string;
-            status: string;
-        };
-        SystemResourcesDto: {
-            hostMemoryBytes: number | null;
-            hostCpuCores: number | null;
-            dockerRootAvailableBytes: number | null;
-            containersTotal: number;
-            containersRunning: number;
-            containersStopped: number;
-            managedContainersCpuUsagePercent: number;
-            managedContainersMemoryUsageBytes: number;
-            containerStatsCollectedAt: string | null;
-            containers: components["schemas"]["ManagedContainerUsageDto"][];
-        };
-        OrchestratorDiagnosticsServicesDto: {
-            orchestrator: components["schemas"]["ServiceHealthDto"];
-            docker: components["schemas"]["ServiceHealthDto"];
-            runtime: components["schemas"]["ServiceHealthDto"];
-            display: components["schemas"]["ServiceHealthDto"];
-            firewall: components["schemas"]["ServiceHealthDto"];
-        };
-        OrchestratorDiagnosticsDto: {
-            ok: boolean;
-            docker: boolean;
-            runtime: boolean;
-            display: boolean;
-            firewall: boolean;
-            services: components["schemas"]["OrchestratorDiagnosticsServicesDto"];
-        };
+  schemas: {
+    DockerMetricsLimitsDto: {
+      maxConcurrentReads: number;
+      maxConcurrentLongOperations: number;
+      slowRequestWarningMs: number;
+      longOperationTimeoutMs: number;
+      remoteRequestTimeoutMs: number;
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+    DockerMetricsTotalsDto: {
+      success: number;
+      errors: number;
+      timeouts: number;
+      retries: number;
+      slow: number;
+    };
+    DockerMetricsClassCountsDto: {
+      read: number;
+      mutation: number;
+      long: number;
+    };
+    DockerMetricsOperationDto: {
+      /** @enum {string} */
+      class: "read" | "mutation" | "long";
+      operation: string;
+      success: number;
+      errors: number;
+      timeouts: number;
+      retries: number;
+      slow: number;
+      totalDurationMs: number;
+      maxDurationMs: number;
+      averageDurationMs: number;
+    };
+    DockerMetricsEventDto: {
+      timestamp: string;
+      /** @enum {string} */
+      class: "read" | "mutation" | "long";
+      operation: string;
+      /** @enum {string} */
+      outcome: "error" | "timeout" | "slow";
+      durationMs: number;
+      error: string | null;
+    };
+    DockerMetricsSnapshotDto: {
+      collectedAt: string;
+      transport: string;
+      limits: components["schemas"]["DockerMetricsLimitsDto"];
+      totals: components["schemas"]["DockerMetricsTotalsDto"];
+      inFlight: components["schemas"]["DockerMetricsClassCountsDto"];
+      queued: components["schemas"]["DockerMetricsClassCountsDto"];
+      operations: components["schemas"]["DockerMetricsOperationDto"][];
+      events: components["schemas"]["DockerMetricsEventDto"][];
+    };
+    ServiceHealthDto: {
+      ok: boolean;
+      /** @enum {string} */
+      status: "healthy" | "unhealthy" | "offline";
+      message: string;
+      details?: {
+        [key: string]: unknown;
+      };
+    };
+    DockerSidecarAdminSessionDto: {
+      id: string;
+      applicationId: string | null;
+      ownerUserId: string | null;
+      /** @enum {string} */
+      status: "created" | "active" | "released" | "expired";
+      createdAt: string;
+      lastActivityAt: string;
+      expiresAt: string;
+      capabilities: string[];
+    };
+    UploadedApk: {
+      /** @example 98a530d6-a45d-466a-9cb4-c023067c4971 */
+      id: string;
+      /** @example admin */
+      ownerUserId: string | null;
+      /** @example Signal.apk */
+      originalName: string;
+      /** @example 9d1e7fdf5f9f4d0e9f3e3a7a66a9ac884e7b68be3e0dd41d7dfc9f4e5ddbdc91 */
+      sha256: string;
+      /** @example 74311257 */
+      sizeBytes: number;
+      /** @example /app/uploads/apks/9d1e7fdf.apk */
+      filePath: string;
+      /** @example data:image/png;base64,iVBORw0KGgo... */
+      extractedIconDataUrl: string | null;
+      /** @example Signal */
+      displayName: string | null;
+      /** @example org.thoughtcrime.securesms */
+      packageName: string | null;
+      /**
+       * Format: date-time
+       * @example 2026-05-16T20:39:29.000Z
+       */
+      createdAt: string;
+      /**
+       * Format: date-time
+       * @example 2026-05-16T20:39:31.000Z
+       */
+      updatedAt: string;
+    };
+    CleanupUploadedApksDto: {
+      /** @example admin */
+      ownerUserId?: string;
+    };
+    CleanupUploadedApksResponseDto: {
+      /** @example 3 */
+      deletedRecords: number;
+      /** @example 2 */
+      removedFiles: number;
+    };
+    OrchestratorSettingsDto: {
+      /** @example redroid/redroid:14.0.0-latest */
+      defaultContainerImage: string;
+      /**
+       * @description Optional registry prefix applied to image names without an explicit registry host.
+       * @example registry.internal.example:5000
+       */
+      dockerImageRegistry?: string | null;
+      /**
+       * @default webrtc
+       * @enum {string}
+       */
+      defaultScrcpyTransport: "webrtc" | "websocket";
+      /**
+       * @description Use -1 to keep sessions running until manually stopped.
+       * @example 900
+       */
+      defaultInactivityTimeoutSeconds: number;
+      /** @example 512 */
+      maxApkUploadSizeMb: number;
+    };
+    UpdateOrchestratorSettingsDto: {
+      /** @example redroid/redroid:14.0.0-latest */
+      defaultContainerImage?: string;
+      /**
+       * @description Optional registry prefix applied to image names without an explicit registry host.
+       * @example registry.internal.example:5000
+       */
+      dockerImageRegistry?: string | null;
+      /**
+       * @default webrtc
+       * @enum {string}
+       */
+      defaultScrcpyTransport: "webrtc" | "websocket";
+      /**
+       * @description Use -1 to keep sessions running until manually stopped.
+       * @example 900
+       */
+      defaultInactivityTimeoutSeconds?: number;
+      /** @example 512 */
+      maxApkUploadSizeMb?: number;
+    };
+    AutomationAiProviderModelDto: {
+      /** @example qwen2.5vl:7b */
+      id: string;
+      /** @example Qwen 2.5 VL 7B */
+      label: string;
+      /** @default true */
+      supportsVision: boolean;
+      /** @default true */
+      supportsTools: boolean;
+      /** @default true */
+      enabled: boolean;
+      /** @default false */
+      default: boolean;
+    };
+    AutomationAiProviderDto: {
+      /** @example local-ollama */
+      id: string;
+      /** @example Local Ollama */
+      label: string;
+      /** @enum {string} */
+      kind: "openai" | "openai-compatible" | "ollama";
+      /** @example http://localhost:11434 */
+      baseUrl: string;
+      /** @description Masked on reads. Send a new value to replace the stored secret, or null to clear it. */
+      apiKey?: string | null;
+      models: components["schemas"]["AutomationAiProviderModelDto"][];
+      /** @default true */
+      enabled: boolean;
+    };
+    CreateAutomationAiProviderDto: {
+      /** @example local-ollama */
+      id: string;
+      /** @example Local Ollama */
+      label: string;
+      /** @enum {string} */
+      kind: "openai" | "openai-compatible" | "ollama";
+      /** @example http://localhost:11434 */
+      baseUrl: string;
+      /** @description Masked on reads. Send a new value to replace the stored secret, or null to clear it. */
+      apiKey?: string | null;
+      models: components["schemas"]["AutomationAiProviderModelDto"][];
+      /** @default true */
+      enabled: boolean;
+    };
+    AutomationAiProviderHealthDto: {
+      providerId: string;
+      modelId?: string;
+      /** @enum {string} */
+      status: "ok" | "error" | "disabled";
+      message: string;
+      checkedAt: string;
+    };
+    UpdateAutomationAiProviderDto: {
+      /** @example local-ollama */
+      id?: string;
+      /** @example Local Ollama */
+      label?: string;
+      /** @enum {string} */
+      kind?: "openai" | "openai-compatible" | "ollama";
+      /** @example http://localhost:11434 */
+      baseUrl?: string;
+      /** @description Masked on reads. Send a new value to replace the stored secret, or null to clear it. */
+      apiKey?: string | null;
+      models?: components["schemas"]["AutomationAiProviderModelDto"][];
+      /** @default true */
+      enabled: boolean;
+    };
+    CreateAutomationAiProviderModelDto: {
+      /** @example qwen2.5vl:7b */
+      id: string;
+      /** @example Qwen 2.5 VL 7B */
+      label: string;
+      /** @default true */
+      supportsVision: boolean;
+      /** @default true */
+      supportsTools: boolean;
+      /** @default true */
+      enabled: boolean;
+      /** @default false */
+      default: boolean;
+    };
+    UpdateAutomationAiProviderModelDto: {
+      /** @example qwen2.5vl:7b */
+      id?: string;
+      /** @example Qwen 2.5 VL 7B */
+      label?: string;
+      /** @default true */
+      supportsVision: boolean;
+      /** @default true */
+      supportsTools: boolean;
+      /** @default true */
+      enabled: boolean;
+      /** @default false */
+      default: boolean;
+    };
+    AutomationAiModelCatalogProviderDto: {
+      id: string;
+      label: string;
+      /** @enum {string} */
+      kind: "openai" | "openai-compatible" | "ollama";
+      models: components["schemas"]["AutomationAiProviderModelDto"][];
+    };
+    ApplicationCommandNetworkPolicyDto: {
+      enabled: boolean;
+      allowCidrs: string[];
+      status: string | null;
+      message: string | null;
+      appliedAt: string | null;
+    };
+    ApplicationCommandProfileDto: {
+      /** @enum {string} */
+      mode: "persistent" | "temporary";
+      name: string | null;
+    };
+    ApplicationCommandApkDto: {
+      uploadedApkId: string | null;
+      packageName: string | null;
+      originalName: string | null;
+    };
+    ApplicationCommandResultDto: {
+      id: string;
+      name: string;
+      /** @enum {string} */
+      status:
+        | "provisioning"
+        | "running"
+        | "stopped"
+        | "error"
+        | "removing"
+        | "removed";
+      /** @enum {string} */
+      lifecycleStage:
+        | "queued"
+        | "image_checking"
+        | "image_pulling"
+        | "volume_creating"
+        | "network_creating"
+        | "orchestrator_network_connecting"
+        | "container_creating"
+        | "container_starting"
+        | "android_booting"
+        | "apk_installing"
+        | "ready"
+        | "stopping"
+        | "stopped"
+        | "removing"
+        | "removed"
+        | "error";
+      message: string | null;
+      operationId?: string;
+      networkPolicy?: components["schemas"]["ApplicationCommandNetworkPolicyDto"];
+      profile?: components["schemas"]["ApplicationCommandProfileDto"];
+      apk?: components["schemas"]["ApplicationCommandApkDto"];
+    };
+    CloneAndroidApplicationDto: {
+      /**
+       * @description Owner user id for the cloned application.
+       * @example admin
+       */
+      ownerUserId?: string;
+      /**
+       * @description Display name for the cloned application. Defaults to the source app name.
+       * @example Signal Android
+       */
+      name?: string;
+    };
+    AndroidApplicationStatusDetail: {
+      /** @enum {string} */
+      code:
+        | "queued"
+        | "image_checking"
+        | "image_pulling"
+        | "volume_creating"
+        | "network_creating"
+        | "orchestrator_network_connecting"
+        | "container_creating"
+        | "container_starting"
+        | "android_booting"
+        | "apk_installing"
+        | "ready"
+        | "stopping"
+        | "stopped"
+        | "stopped_recreate_required"
+        | "removing"
+        | "removed"
+        | "error"
+        | "unknown";
+      title: string;
+      description: string | null;
+      /** @enum {string} */
+      tone: "neutral" | "progress" | "success" | "warning" | "error";
+    };
+    AndroidImagePullProgress: {
+      /** @example Downloading */
+      status: string;
+      /** @example 120.5 MB */
+      current: string;
+      /** @example 512 MB */
+      total: string;
+      /** @example sha256:abc123 */
+      layerId: string | null;
+      /** @example 23.5 */
+      percent: number;
+    };
+    AndroidApplicationStatusResponseDto: {
+      /** @enum {string} */
+      currentStatus:
+        | "provisioning"
+        | "running"
+        | "stopped"
+        | "error"
+        | "removing"
+        | "removed";
+      /** @enum {string} */
+      lifecycleStage:
+        | "queued"
+        | "image_checking"
+        | "image_pulling"
+        | "volume_creating"
+        | "network_creating"
+        | "orchestrator_network_connecting"
+        | "container_creating"
+        | "container_starting"
+        | "android_booting"
+        | "apk_installing"
+        | "ready"
+        | "stopping"
+        | "stopped"
+        | "removing"
+        | "removed"
+        | "error";
+      message: string | null;
+      detail: components["schemas"]["AndroidApplicationStatusDetail"] | null;
+      progress: components["schemas"]["AndroidImagePullProgress"] | null;
+      recreateRequired: boolean;
+      lastScrcpyActivityAt: string | null;
+      lastStartedAt: string | null;
+      lastStoppedAt: string | null;
+      provisioningStartedAt: string | null;
+      provisioningCompletedAt: string | null;
+    };
+    AndroidApplicationError: {
+      /** @enum {string} */
+      code:
+        | "container_command_failed"
+        | "container_exited"
+        | "container_oom_killed"
+        | "container_missing"
+        | "startup_command_finished"
+        | "unknown";
+      /** @enum {string} */
+      phase: "provisioning" | "runtime" | "unknown";
+      message: string;
+      retryable: boolean;
+      exitCode: number | null;
+      hint: string | null;
+    };
+    AndroidApplicationErrorResponseDto: {
+      lastError: string | null;
+      application: components["schemas"]["AndroidApplicationError"] | null;
+    };
+    AndroidApplicationRuntimeResourcesDto: {
+      memoryLimitMb: number | null;
+      cpuLimitCpus: number | null;
+    };
+    AndroidApplicationRuntimeDto: {
+      image: string;
+      containerName: string;
+      containerId: string | null;
+      containerArgs: string | null;
+      adbPort: number;
+      /** @enum {string} */
+      scrcpyTransport: "websocket" | "webrtc";
+      inactivityTimeoutSeconds: number;
+      resources: components["schemas"]["AndroidApplicationRuntimeResourcesDto"];
+    };
+    AndroidApplicationSavedProfileDto: {
+      /** @enum {string} */
+      mode: "persistent" | "temporary";
+      name: string;
+    };
+    AndroidApplicationStorageDto: {
+      volumeName: string;
+      /** @enum {string} */
+      profileMode: "persistent" | "temporary";
+      profileName: string | null;
+      savedProfiles: components["schemas"]["AndroidApplicationSavedProfileDto"][];
+    };
+    AndroidNetworkPolicyResult: {
+      /** @enum {string} */
+      status: "applied" | "skipped" | "error";
+      /** @enum {string} */
+      code:
+        | "applied"
+        | "apply_failed"
+        | "container_ip_unavailable"
+        | "container_not_created"
+        | "agent_unavailable"
+        | "unsupported_host"
+        | "policy_disabled"
+        | "unknown";
+      message: string;
+      hint: string | null;
+    };
+    AndroidApplicationNetworkPolicyDto: {
+      enabled: boolean;
+      allowCidrs: string[];
+      status: string | null;
+      message: string | null;
+      result: components["schemas"]["AndroidNetworkPolicyResult"] | null;
+      appliedAt: string | null;
+    };
+    AndroidApplicationNetworkDto: {
+      networkName: string;
+      policy: components["schemas"]["AndroidApplicationNetworkPolicyDto"];
+    };
+    AndroidApplicationApkDto: {
+      filePath: string | null;
+      originalName: string | null;
+      packageName: string | null;
+      uploadedApkId: string | null;
+    };
+    AndroidApplicationResponseDto: {
+      id: string;
+      name: string;
+      ownerUserId: string | null;
+      status: components["schemas"]["AndroidApplicationStatusResponseDto"];
+      errors: components["schemas"]["AndroidApplicationErrorResponseDto"];
+      runtime: components["schemas"]["AndroidApplicationRuntimeDto"];
+      storage: components["schemas"]["AndroidApplicationStorageDto"];
+      network: components["schemas"]["AndroidApplicationNetworkDto"];
+      apk: components["schemas"]["AndroidApplicationApkDto"];
+      createdAt: string;
+      updatedAt: string;
+    };
+    AndroidApplicationSummaryResponseDto: {
+      id: string;
+      name: string;
+      ownerUserId: string | null;
+      /** @enum {string} */
+      currentStatus:
+        | "provisioning"
+        | "running"
+        | "stopped"
+        | "error"
+        | "removing"
+        | "removed";
+      /** @enum {string} */
+      lifecycleStage:
+        | "queued"
+        | "image_checking"
+        | "image_pulling"
+        | "volume_creating"
+        | "network_creating"
+        | "orchestrator_network_connecting"
+        | "container_creating"
+        | "container_starting"
+        | "android_booting"
+        | "apk_installing"
+        | "ready"
+        | "stopping"
+        | "stopped"
+        | "removing"
+        | "removed"
+        | "error";
+      detail: components["schemas"]["AndroidApplicationStatusDetail"] | null;
+      apkPackageName: string | null;
+    };
+    UpdateAndroidApplicationDto: {
+      /** @example Signal Android */
+      name?: string;
+      /** @description Use -1 to keep the session running until manually stopped. */
+      inactivityTimeoutSeconds?: number;
+      /** @example 2048 */
+      memoryLimitMb?: number | null;
+      /** @example 2 */
+      cpuLimitCpus?: number | null;
+      /**
+       * @description Optional command or arguments passed to the container as Docker Cmd. Use a long-running command if the image would otherwise exit immediately.
+       * @example sleep infinity
+       */
+      containerArgs?: string | null;
+    };
+    DeleteAndroidApplicationResponseDto: {
+      /** @example 98a530d6-a45d-466a-9cb4-c023067c4971 */
+      id: string;
+      /** @example false */
+      deleted: boolean;
+      /** @example true */
+      cleanupQueued: boolean;
+      /** @example true */
+      removedData: boolean;
+    };
+    ScrcpyViewerErrorDto: {
+      /** @enum {string} */
+      code:
+        | "sidecar_unavailable"
+        | "adb_missing"
+        | "adb_unreachable"
+        | "unknown";
+      message: string;
+      retryable: boolean;
+      exitCode: number | null;
+      command: string[] | null;
+      stdout: string | null;
+      stderr: string | null;
+    };
+    DisplayNewDisplayDto: {
+      width: number;
+      height: number;
+      dpi: number;
+    };
+    DisplaySurfaceDto: {
+      id: string;
+      sessionId: string;
+      /** @enum {string} */
+      kind: "main" | "virtual";
+      name: string;
+      /** @enum {string} */
+      status: "created" | "active" | "released" | "expired";
+      createdAt: string;
+      lastActivityAt: string;
+      streamPath: string;
+      viewerPath: string;
+      webrtcOfferPath: string;
+      displayId?: number;
+      newDisplay?: components["schemas"]["DisplayNewDisplayDto"];
+    };
+    DisplaySessionDto: {
+      id: string;
+      appId?: string | null;
+      surfaceId: string;
+      /** @enum {string} */
+      surfaceKind: "main" | "virtual";
+      displayName: string;
+      displayId?: number;
+      newDisplay?: components["schemas"]["DisplayNewDisplayDto"];
+      /** @enum {string} */
+      status: "created" | "active" | "released" | "expired";
+      createdAt: string;
+      lastActivityAt: string;
+      expiresAt: string;
+      maxExpiresAt: string;
+      capabilities: string[];
+      surface: components["schemas"]["DisplaySurfaceDto"];
+      surfaces: components["schemas"]["DisplaySurfaceDto"][];
+      streamPath: string;
+      viewerPath: string;
+      webrtcOfferPath: string;
+    };
+    ScrcpySessionDto: {
+      applicationId: string;
+      /** @enum {string} */
+      transport: "websocket" | "webrtc";
+      udid: string;
+      proxyRemote: string;
+      player: string;
+      viewerServiceConfigured: boolean;
+      viewerTargetConnected: boolean;
+      viewerMessage: string | null;
+      viewerError: components["schemas"]["ScrcpyViewerErrorDto"] | null;
+      adbHost: string;
+      adbPort: number;
+      displaySession: components["schemas"]["DisplaySessionDto"] | null;
+    };
+    ApplicationViewerControlDto: {
+      /**
+       * @example home
+       * @enum {string}
+       */
+      command:
+        | "back"
+        | "home"
+        | "recents"
+        | "wake"
+        | "power"
+        | "volume-up"
+        | "volume-down"
+        | "mute"
+        | "rotate"
+        | "expand-notifications"
+        | "expand-settings"
+        | "collapse-panels";
+    };
+    ApplicationViewerControlResponseDto: {
+      /**
+       * @example home
+       * @enum {string}
+       */
+      command:
+        | "back"
+        | "home"
+        | "recents"
+        | "wake"
+        | "power"
+        | "volume-up"
+        | "volume-down"
+        | "mute"
+        | "rotate"
+        | "expand-notifications"
+        | "expand-settings"
+        | "collapse-panels";
+      /** @example true */
+      executed: boolean;
+      /** @example Viewer control command executed. */
+      message: string;
+    };
+    DisplayRecordingDto: {
+      id: string;
+      sessionId: string;
+      /** @enum {string} */
+      status: "recording" | "stopped";
+      startedAt: string;
+      stoppedAt: string | null;
+      fileName: string;
+      mimeType: string;
+      sizeBytes: number;
+      durationMs: number;
+      sampleCount: number;
+      downloadPath: string | null;
+    };
+    UpdateNetworkPolicyDto: {
+      /** @example true */
+      networkPolicyEnabled?: boolean;
+      /**
+       * @description Additional app-specific destination CIDRs the Android container may reach. Backend default destinations such as API_IP are applied automatically and are not stored here.
+       * @example [
+       *       "10.20.0.0/16",
+       *       "203.0.113.10/32"
+       *     ]
+       */
+      networkPolicyAllowCidrs?: string[];
+    };
+    SwitchApplicationProfileDto: {
+      /**
+       * @default persistent
+       * @enum {string}
+       */
+      profileMode: "persistent" | "temporary";
+      /** @example work */
+      profileName?: string;
+    };
+    StartAndroidApplicationDto: {
+      /**
+       * @description Runtime profile mode to use for this start. Persistent uses a named volume; temporary does not.
+       * @default persistent
+       * @enum {string}
+       */
+      profileMode: "persistent" | "temporary";
+      /** @example default */
+      profileName?: string;
+    };
+    AndroidNotificationDto: {
+      /** @example android */
+      packageName: string;
+      /** @example System UI */
+      title: string;
+      /** @example VPN is active */
+      text: string;
+      /** @example Clock */
+      appName?: string | null;
+      /** @example NotificationRecord(...) */
+      raw: string;
+    };
+    ApplicationRuntimeFileDto: {
+      /** @example report.pdf */
+      name: string;
+      /** @example /sdcard/Download/report.pdf */
+      path: string;
+      /**
+       * @example file
+       * @enum {string}
+       */
+      type: "file" | "directory";
+      /** @example 1572864 */
+      sizeBytes: number | null;
+      /** @example 12 */
+      itemCount: number | null;
+      /** @example 2026-05-19T10:15:30.000Z */
+      modifiedAt: string | null;
+    };
+    ApplicationRuntimeFileUploadDto: {
+      /** @example report.pdf */
+      name: string;
+      /** @example /sdcard/Download/report.pdf */
+      path: string;
+      /**
+       * @example file
+       * @enum {string}
+       */
+      type: "file" | "directory";
+      /** @example 1572864 */
+      sizeBytes: number | null;
+      /** @example 12 */
+      itemCount: number | null;
+      /** @example 2026-05-19T10:15:30.000Z */
+      modifiedAt: string | null;
+      /** @example true */
+      uploaded: boolean;
+    };
+    ApplicationRuntimeFileDownloadDto: {
+      /** @example report.pdf */
+      name: string;
+      /** @example application/octet-stream */
+      mimeType: string;
+      /** @example data:application/octet-stream;base64,SGVsbG8= */
+      dataUrl: string;
+    };
+    ApplicationClipboardDto: {
+      /** @example Copied text from Android */
+      text: string;
+      /** @example true */
+      supported: boolean;
+      /** @example null */
+      message: string | null;
+    };
+    UpdateApplicationClipboardDto: {
+      /** @example Text copied from the browser */
+      text: string;
+    };
+    ApplicationScreenshotDto: {
+      /** @example image/png */
+      mimeType: string;
+      /** @example data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB */
+      dataUrl: string;
+      /** @example 2026-05-19T10:15:30.000Z */
+      capturedAt: string;
+    };
+    ApplicationLogDto: {
+      /**
+       * @example orchestrator
+       * @enum {string}
+       */
+      source: "orchestrator" | "container" | "adb";
+      /** @example 2026-05-16T18:20:00.000Z */
+      collectedAt: string;
+      /** @example container log output... */
+      output: string;
+    };
+    AutomationCommandDto: {
+      /** @example android.viewerCommand */
+      uses: string;
+      /** @example Viewer command */
+      label: string;
+      /** @example Sends a supported viewer control command. */
+      description: string;
+      requiredPermissions: string[];
+      inputSchema: Record<string, never>;
+      outputs: Record<string, never>[];
+      editor: Record<string, never>;
+    };
+    ValidateAutomationYamlDto: {
+      /**
+       * @example apiVersion: rebroid.io/automation/v1
+       *     ...
+       */
+      yaml: string;
+    };
+    AutomationTagDto: {
+      /** @example smoke */
+      name: string;
+      /** @example #0ea5e9 */
+      color: string;
+    };
+    AutomationDefinitionMetadataDto: {
+      /** @example Prepare app environment */
+      name: string;
+      /** @example Optional notes */
+      description?: string;
+      /**
+       * @example [
+       *       {
+       *         "name": "smoke",
+       *         "color": "#0ea5e9"
+       *       },
+       *       {
+       *         "name": "login",
+       *         "color": "#22c55e"
+       *       }
+       *     ]
+       */
+      tags?: components["schemas"]["AutomationTagDto"][];
+    };
+    AutomationDefinitionSpecDto: {
+      steps: Record<string, never>[];
+    };
+    AutomationDefinitionDto: {
+      /** @example rebroid.io/automation/v1 */
+      apiVersion: string;
+      /** @example AndroidAutomation */
+      kind: string;
+      metadata: components["schemas"]["AutomationDefinitionMetadataDto"];
+      spec: components["schemas"]["AutomationDefinitionSpecDto"];
+    };
+    AutomationValidationDto: {
+      valid: boolean;
+      definition: components["schemas"]["AutomationDefinitionDto"] | null;
+      /** @example  */
+      yaml: Record<string, never> | null;
+      errors: string[];
+    };
+    DraftAutomationYamlDto: {
+      /** @example Log in to the app and verify the home screen opens. */
+      prompt: string;
+      /** @example local-ollama */
+      providerId?: string;
+      /** @example qwen2.5vl:7b */
+      modelId?: string;
+    };
+    AutomationYamlDraftDto: {
+      yaml: string;
+      definition: components["schemas"]["AutomationDefinitionDto"];
+    };
+    RunAdHocAiAutomationDto: {
+      /** @example user_123 */
+      ownerUserId: string;
+      /** @example 98a530d6-a45d-466a-9cb4-c023067c4971 */
+      targetApplicationId: string | null;
+      /** @enum {string} */
+      profileMode?: "persistent" | "temporary";
+      /** @example default */
+      profileName?: Record<string, never> | null;
+      /**
+       * @default require-running
+       * @enum {string}
+       */
+      startPolicy: "require-running" | "start-if-needed";
+      /** @example Open settings and verify Wi-Fi is visible. */
+      prompt: string;
+      /** @example local-ollama */
+      providerId?: string;
+      /** @example qwen2.5vl:7b */
+      modelId?: string;
+      allowedTools?: string[];
+      /** @default 20 */
+      maxToolCalls: number;
+      /** @default 120000 */
+      timeoutMs: number;
+    };
+    AutomationStepResultDto: {
+      /** @example wake-device */
+      stepId: string;
+      /** @example android.viewerCommand */
+      uses: string;
+      parentStepId?: string | null;
+      /** @example steps[0].then[0] */
+      path?: string;
+      /** @enum {string} */
+      status: "success" | "failed" | "skipped";
+      startedAt: string;
+      completedAt: string;
+      output?: Record<string, never> | null;
+      error?: string | null;
+    };
+    AutomationRunDto: {
+      id: string;
+      automationId: string;
+      automationTriggerId: string | null;
+      ownerUserId: string;
+      targetApplicationId: string;
+      targetProfileMode: string | null;
+      targetProfileName: string | null;
+      /** @enum {string} */
+      trigger: "manual" | "schedule" | "webhook" | "event";
+      /** @enum {string} */
+      status: "queued" | "running" | "success" | "failed" | "canceled";
+      startedAt: string | null;
+      completedAt: string | null;
+      stepResults: components["schemas"]["AutomationStepResultDto"][];
+      error: string | null;
+      createdAt: string;
+      updatedAt: string;
+    };
+    AutomationDto: {
+      id: string;
+      ownerUserId: string;
+      name: string;
+      description: string | null;
+      tags: components["schemas"]["AutomationTagDto"][];
+      definition: components["schemas"]["AutomationDefinitionDto"];
+      yaml: string;
+      lastRunAt: string | null;
+      /** @enum {string} */
+      lastStatus: "never_run" | "success" | "failed" | "running";
+      lastError: string | null;
+      createdAt: string;
+      updatedAt: string;
+    };
+    AutomationsGridFacetsDto: {
+      tags: string[];
+      targetApplicationIds: string[];
+    };
+    AutomationsGridPageDto: {
+      items: components["schemas"]["AutomationDto"][];
+      total: number;
+      page: number;
+      pageSize: number;
+      facets: components["schemas"]["AutomationsGridFacetsDto"];
+    };
+    CreateAutomationDto: {
+      /** @example user_123 */
+      ownerUserId: string;
+      /** @description YAML automation definition. Required unless definition is supplied. */
+      yaml?: string;
+      definition?: components["schemas"]["AutomationDefinitionDto"];
+    };
+    AutomationRunEventDto: {
+      id: string;
+      runId: string;
+      ownerUserId: string;
+      sequence: number;
+      type: string;
+      stepId: string | null;
+      parentStepId: string | null;
+      message: string;
+      data: Record<string, never>;
+      createdAt: string;
+    };
+    AutomationRunEventStreamTokenDto: {
+      token: string;
+      expiresAt: string;
+    };
+    AutomationTriggerDto: {
+      id: string;
+      ownerUserId: string;
+      name: string;
+      automationId: string;
+      targetApplicationId: string;
+      profileMode: string | null;
+      profileName: string | null;
+      enabled: boolean;
+      tags: components["schemas"]["AutomationTagDto"][];
+      /** @enum {string} */
+      triggerType: "schedule" | "webhook" | "event";
+      triggerConfig: Record<string, never>;
+      lastRunAt: string | null;
+      nextRunAt: string | null;
+      /** @enum {string} */
+      lastStatus: "never_run" | "success" | "failed" | "running";
+      lastError: string | null;
+      createdAt: string;
+      updatedAt: string;
+    };
+    AutomationTriggersGridFacetsDto: {
+      tags: string[];
+      targetApplicationIds: string[];
+    };
+    AutomationTriggersGridPageDto: {
+      items: components["schemas"]["AutomationTriggerDto"][];
+      total: number;
+      page: number;
+      pageSize: number;
+      facets: components["schemas"]["AutomationTriggersGridFacetsDto"];
+    };
+    AutomationScheduleTriggerConfigDto: {
+      /** @example 0 9 * * * */
+      cronExpression: string;
+      /**
+       * @default start-if-needed
+       * @enum {string}
+       */
+      startPolicy: "require-running" | "start-if-needed";
+    };
+    CreateAutomationTriggerDto: {
+      /** @example user_123 */
+      ownerUserId: string;
+      /** @example Daily setup */
+      name: string;
+      automationId: string;
+      targetApplicationId: string;
+      /** @enum {string} */
+      profileMode?: "persistent" | "temporary";
+      /** @example default */
+      profileName?: Record<string, never> | null;
+      /** @default true */
+      enabled: boolean;
+      tags?: components["schemas"]["AutomationTagDto"][];
+      /** @enum {string} */
+      triggerType: "schedule" | "webhook" | "event";
+      triggerConfig: components["schemas"]["AutomationScheduleTriggerConfigDto"];
+    };
+    UpdateAutomationTriggerDto: {
+      /** @example user_123 */
+      ownerUserId?: string;
+      /** @example Daily setup */
+      name?: string;
+      automationId?: string;
+      targetApplicationId?: string;
+      /** @enum {string} */
+      profileMode?: "persistent" | "temporary";
+      /** @example default */
+      profileName?: Record<string, never> | null;
+      /** @default true */
+      enabled: boolean;
+      tags?: components["schemas"]["AutomationTagDto"][];
+      /** @enum {string} */
+      triggerType?: "schedule" | "webhook" | "event";
+      triggerConfig?: components["schemas"]["AutomationScheduleTriggerConfigDto"];
+    };
+    RunAutomationDto: {
+      /** @example user_123 */
+      ownerUserId: string;
+      /** @example 98a530d6-a45d-466a-9cb4-c023067c4971 */
+      targetApplicationId?: Record<string, never> | null;
+      /** @enum {string} */
+      profileMode?: "persistent" | "temporary";
+      /** @example default */
+      profileName?: Record<string, never> | null;
+      /**
+       * @default require-running
+       * @enum {string}
+       */
+      startPolicy: "require-running" | "start-if-needed";
+    };
+    UpdateAutomationDto: {
+      /** @example user_123 */
+      ownerUserId?: string;
+      /** @description YAML automation definition. Required unless definition is supplied. */
+      yaml?: string;
+      definition?: components["schemas"]["AutomationDefinitionDto"];
+    };
+    PullContainerImageDto: {
+      /** @example redroid/redroid:14.0.0-latest */
+      image: string;
+    };
+    DockerPlatformContainerPortDto: {
+      privatePort: number;
+      publicPort: number | null;
+      type: string;
+      ip: string | null;
+    };
+    DockerPlatformContainerDto: {
+      id: string;
+      shortId: string;
+      names: string[];
+      image: string;
+      imageId: string;
+      command: string;
+      createdAt: string;
+      state: string;
+      status: string;
+      labels: {
+        [key: string]: string;
+      };
+      managed: boolean;
+      orphaned: boolean;
+      applicationId: string | null;
+      component: string | null;
+      ports: components["schemas"]["DockerPlatformContainerPortDto"][];
+      networks: string[];
+    };
+    DockerPlatformImageDto: {
+      id: string;
+      shortId: string;
+      repoTags: string[];
+      repoDigests: string[];
+      sizeBytes: number;
+      sharedSizeBytes: number;
+      virtualSizeBytes: number;
+      createdAt: string;
+      labels: {
+        [key: string]: string;
+      };
+      managed: boolean;
+      containers: number;
+    };
+    DockerPlatformNetworkDto: {
+      id: string;
+      shortId: string;
+      name: string;
+      driver: string;
+      scope: string;
+      createdAt: string | null;
+      internal: boolean;
+      attachable: boolean;
+      ingress: boolean;
+      labels: {
+        [key: string]: string;
+      };
+      managed: boolean;
+      containers: string[];
+      subnets: string[];
+      gateways: string[];
+    };
+    DockerPlatformContainerDetailsDto: {
+      container: components["schemas"]["DockerPlatformContainerDto"];
+      inspect: {
+        [key: string]: unknown;
+      };
+      relatedImage: components["schemas"]["DockerPlatformImageDto"] | null;
+      relatedNetworks: components["schemas"]["DockerPlatformNetworkDto"][];
+    };
+    DockerPlatformContainerLogDto: {
+      /** @enum {string} */
+      source: "container";
+      collectedAt: string;
+      output: string;
+    };
+    DockerPlatformContainerStatsDto: {
+      cpuUsagePercent: number;
+      memoryUsageBytes: number;
+      memoryLimitBytes: number | null;
+      networkRxBytes: number;
+      networkTxBytes: number;
+      collectedAt: string;
+    };
+    DockerPlatformStopResponseDto: {
+      id: string;
+      stopped: boolean;
+    };
+    DockerPlatformRemovalResponseDto: {
+      id: string;
+      removed: boolean;
+    };
+    DockerPlatformImageDetailsDto: {
+      image: components["schemas"]["DockerPlatformImageDto"];
+      inspect: {
+        [key: string]: unknown;
+      };
+      relatedContainers: components["schemas"]["DockerPlatformContainerDto"][];
+    };
+    DockerPlatformNetworkDetailsDto: {
+      network: components["schemas"]["DockerPlatformNetworkDto"];
+      inspect: {
+        [key: string]: unknown;
+      };
+      relatedContainers: components["schemas"]["DockerPlatformContainerDto"][];
+    };
+    DockerPrunedImageDto: {
+      Deleted?: string;
+      Untagged?: string;
+    };
+    DockerPruneResponseDto: {
+      ContainersDeleted?: string[];
+      ImagesDeleted?: components["schemas"]["DockerPrunedImageDto"][];
+      NetworksDeleted?: string[];
+      VolumesDeleted?: string[];
+      SpaceReclaimed?: number;
+    };
+    DockerPruneAllResponseDto: {
+      containers: components["schemas"]["DockerPruneResponseDto"];
+      networks: components["schemas"]["DockerPruneResponseDto"];
+      images: components["schemas"]["DockerPruneResponseDto"];
+      volumes: components["schemas"]["DockerPruneResponseDto"];
+    };
+    ScheduledTaskActionDto: {
+      /** @enum {string} */
+      type:
+        | "clean_uploaded_apks"
+        | "prune_images"
+        | "prune_containers"
+        | "prune_networks"
+        | "prune_volumes"
+        | "prune_all"
+        | "clean_runtime_logs";
+      label: string;
+      description: string;
+    };
+    ScheduledTaskDto: {
+      id: string;
+      name: string;
+      enabled: boolean;
+      /** @enum {string} */
+      kind: "predefined" | "custom";
+      predefinedKey: string | null;
+      cronExpression: string;
+      /** @enum {string} */
+      actionType:
+        | "clean_uploaded_apks"
+        | "prune_images"
+        | "prune_containers"
+        | "prune_networks"
+        | "prune_volumes"
+        | "prune_all"
+        | "clean_runtime_logs";
+      payload: Record<string, never> | null;
+      lastRunAt: string | null;
+      nextRunAt: string | null;
+      /** @enum {string} */
+      lastStatus: "never_run" | "success" | "failed";
+      lastError: string | null;
+      createdAt: string;
+      updatedAt: string;
+    };
+    ScheduledTaskPayloadDto: {
+      /**
+       * @description Only for prune_images. Defaults to true.
+       * @example true
+       */
+      danglingOnly?: boolean;
+      /**
+       * @description Only for clean_runtime_logs. Logs older than this many days are removed.
+       * @example 30
+       */
+      retentionDays?: number;
+    };
+    CreateScheduledTaskDto: {
+      /** @example Weekly Docker cleanup */
+      name: string;
+      /**
+       * @default true
+       * @example true
+       */
+      enabled: boolean;
+      /** @example 0 3 * * 0 */
+      cronExpression: string;
+      /** @enum {string} */
+      actionType:
+        | "clean_uploaded_apks"
+        | "prune_images"
+        | "prune_containers"
+        | "prune_networks"
+        | "prune_volumes"
+        | "prune_all"
+        | "clean_runtime_logs";
+      payload?: components["schemas"]["ScheduledTaskPayloadDto"] | null;
+    };
+    UpdateScheduledTaskDto: {
+      /** @example Weekly Docker cleanup */
+      name?: string;
+      /**
+       * @default true
+       * @example true
+       */
+      enabled: boolean;
+      /** @example 0 3 * * 0 */
+      cronExpression?: string;
+      /** @enum {string} */
+      actionType?:
+        | "clean_uploaded_apks"
+        | "prune_images"
+        | "prune_containers"
+        | "prune_networks"
+        | "prune_volumes"
+        | "prune_all"
+        | "clean_runtime_logs";
+      payload?: components["schemas"]["ScheduledTaskPayloadDto"] | null;
+    };
+    SystemResourceCapacityDto: {
+      hostMemoryBytes: number | null;
+      hostCpuCores: number | null;
+    };
+    ManagedContainerUsageDto: {
+      id: string;
+      name: string;
+      state: string;
+      status: string;
+    };
+    SystemResourcesDto: {
+      hostMemoryBytes: number | null;
+      hostCpuCores: number | null;
+      dockerRootAvailableBytes: number | null;
+      containersTotal: number;
+      containersRunning: number;
+      containersStopped: number;
+      managedContainersCpuUsagePercent: number;
+      managedContainersMemoryUsageBytes: number;
+      containerStatsCollectedAt: string | null;
+      containers: components["schemas"]["ManagedContainerUsageDto"][];
+    };
+    OrchestratorDiagnosticsServicesDto: {
+      orchestrator: components["schemas"]["ServiceHealthDto"];
+      docker: components["schemas"]["ServiceHealthDto"];
+      runtime: components["schemas"]["ServiceHealthDto"];
+      display: components["schemas"]["ServiceHealthDto"];
+      firewall: components["schemas"]["ServiceHealthDto"];
+    };
+    OrchestratorDiagnosticsDto: {
+      ok: boolean;
+      docker: boolean;
+      runtime: boolean;
+      display: boolean;
+      firewall: boolean;
+      services: components["schemas"]["OrchestratorDiagnosticsServicesDto"];
+    };
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    MetricsController_read: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    MetricsController_dockerSnapshot: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerMetricsSnapshotDto"];
-                };
-            };
-        };
-    };
-    DockerSidecarController_health: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ServiceHealthDto"];
-                };
-            };
-        };
-    };
-    DockerSidecarController_repair: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ServiceHealthDto"];
-                };
-            };
-        };
-    };
-    DockerSidecarController_listSessions: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerSidecarAdminSessionDto"][];
-                };
-            };
-        };
-    };
-    DockerSidecarController_releaseSession: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerSidecarAdminSessionDto"];
-                };
-            };
-        };
-    };
-    ApkController_list: {
-        parameters: {
-            query?: {
-                ownerUserId?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UploadedApk"][];
-                };
-            };
-        };
-    };
-    ApkController_upload: {
-        parameters: {
-            query?: {
-                ownerUserId?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "multipart/form-data": {
-                    /** Format: binary */
-                    apk: string;
-                };
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UploadedApk"];
-                };
-            };
-        };
-    };
-    ApkController_lookup: {
-        parameters: {
-            query: {
-                sha256: string;
-                ownerUserId?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UploadedApk"];
-                };
-            };
-        };
-    };
-    ApkController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UploadedApk"];
-                };
-            };
-        };
-    };
-    ApkController_cleanup: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CleanupUploadedApksDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CleanupUploadedApksResponseDto"];
-                };
-            };
-        };
-    };
-    SettingsController_getSettings: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OrchestratorSettingsDto"];
-                };
-            };
-        };
-    };
-    SettingsController_updateSettings: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateOrchestratorSettingsDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OrchestratorSettingsDto"];
-                };
-            };
-        };
-    };
-    SettingsController_resetSettings: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OrchestratorSettingsDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsController_list: {
-        parameters: {
-            query?: {
-                ownerUserId?: string;
-                /** @description Set false for a fast stored-state response without Docker reconciliation. */
-                reconcile?: boolean;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AndroidApplicationResponseDto"][];
-                };
-            };
-        };
-    };
-    AndroidAppsController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** @example Signal Android */
-                    name: string;
-                    /** @example user_123 */
-                    ownerUserId?: string;
-                    /** @example redroid/redroid:13.0.0-latest */
-                    containerImage?: string;
-                    /** @example 900 */
-                    inactivityTimeoutSeconds?: number;
-                    /** @example 2048 */
-                    memoryLimitMb?: number;
-                    /** @example 2 */
-                    cpuLimitCpus?: number;
-                    /** @example sleep infinity */
-                    containerArgs?: string;
-                    /** @example 98a530d6-a45d-466a-9cb4-c023067c4971 */
-                    uploadedApkId?: string;
-                };
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationCommandResultDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsController_clone: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CloneAndroidApplicationDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationCommandResultDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsController_listSummaries: {
-        parameters: {
-            query?: {
-                ownerUserId?: string;
-                /** @description Set false for a fast stored-state response without Docker reconciliation. */
-                reconcile?: boolean;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AndroidApplicationSummaryResponseDto"][];
-                };
-            };
-        };
-    };
-    AndroidAppsController_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AndroidApplicationResponseDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsController_remove: {
-        parameters: {
-            query?: {
-                /** @description When true, remove the persisted Docker volume too. */
-                removeData?: boolean;
-            };
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeleteAndroidApplicationResponseDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateAndroidApplicationDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationCommandResultDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsViewerController_scrcpySession: {
-        parameters: {
-            query: {
-                control: string;
-                clipboard: string;
-                screenshot: string;
-            };
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScrcpySessionDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsViewerController_viewerActivity: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        id: string;
-                        /** Format: date-time */
-                        lastScrcpyActivityAt: string;
-                    };
-                };
-            };
-        };
-    };
-    AndroidAppsViewerController_viewerControl: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ApplicationViewerControlDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationViewerControlResponseDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsViewerController_createVirtualDisplay: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DisplaySessionDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsViewerController_releaseVirtualDisplay: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-                surfaceId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DisplaySessionDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsViewerController_startRecording: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-                surfaceId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DisplayRecordingDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsViewerController_stopRecording: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-                surfaceId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DisplayRecordingDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsViewerController_downloadRecording: {
-        parameters: {
-            query: {
-                surfaceSessionId: string;
-            };
-            header?: never;
-            path: {
-                id: string;
-                recordingId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AndroidAppsNetworkController_reconcileNetworkPolicies: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AndroidAppsNetworkController_updateNetworkPolicy: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateNetworkPolicyDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationCommandResultDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsNetworkController_applyNetworkPolicy: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationCommandResultDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsLifecycleController_switchProfile: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SwitchApplicationProfileDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationCommandResultDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsLifecycleController_start: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["StartAndroidApplicationDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationCommandResultDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsLifecycleController_stop: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationCommandResultDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsLifecycleController_updateApk: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** @example 98a530d6-a45d-466a-9cb4-c023067c4971 */
-                    uploadedApkId: string;
-                };
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationCommandResultDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsRuntimeController_notifications: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AndroidNotificationDto"][];
-                };
-            };
-        };
-    };
-    AndroidAppsRuntimeController_listFiles: {
-        parameters: {
-            query?: {
-                /** @description Absolute path inside the active runtime data volume. */
-                path?: string;
-                /** @description Profile storage mode to browse when the app is not running. */
-                profileMode?: "persistent" | "temporary";
-                /** @description Persistent profile name to browse when profileMode is persistent. */
-                profileName?: string;
-            };
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationRuntimeFileDto"][];
-                };
-            };
-        };
-    };
-    AndroidAppsRuntimeController_uploadFile: {
-        parameters: {
-            query?: {
-                /** @description Absolute path inside the active runtime data volume. */
-                path?: string;
-                /** @description Profile storage mode to browse when the app is not running. */
-                profileMode?: "persistent" | "temporary";
-                /** @description Persistent profile name to browse when profileMode is persistent. */
-                profileName?: string;
-            };
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "multipart/form-data": {
-                    /** Format: binary */
-                    file: string;
-                };
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationRuntimeFileUploadDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsRuntimeController_downloadRuntimeFile: {
-        parameters: {
-            query?: {
-                /** @description Absolute path inside the active runtime data volume. */
-                path?: string;
-                /** @description Profile storage mode to browse when the app is not running. */
-                profileMode?: "persistent" | "temporary";
-                /** @description Persistent profile name to browse when profileMode is persistent. */
-                profileName?: string;
-            };
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationRuntimeFileDownloadDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsRuntimeController_listDownloadFiles: {
-        parameters: {
-            query?: {
-                /** @description Absolute path inside the active runtime data volume. */
-                path?: string;
-                /** @description Profile storage mode to browse when the app is not running. */
-                profileMode?: "persistent" | "temporary";
-                /** @description Persistent profile name to browse when profileMode is persistent. */
-                profileName?: string;
-            };
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationRuntimeFileDto"][];
-                };
-            };
-        };
-    };
-    AndroidAppsRuntimeController_uploadDownloadFile: {
-        parameters: {
-            query?: {
-                /** @description Absolute path inside the active runtime data volume. */
-                path?: string;
-                /** @description Profile storage mode to browse when the app is not running. */
-                profileMode?: "persistent" | "temporary";
-                /** @description Persistent profile name to browse when profileMode is persistent. */
-                profileName?: string;
-            };
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "multipart/form-data": {
-                    /** Format: binary */
-                    file: string;
-                };
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationRuntimeFileUploadDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsRuntimeController_downloadFile: {
-        parameters: {
-            query?: {
-                /** @description Absolute path inside the active runtime data volume. */
-                path?: string;
-                /** @description Profile storage mode to browse when the app is not running. */
-                profileMode?: "persistent" | "temporary";
-                /** @description Persistent profile name to browse when profileMode is persistent. */
-                profileName?: string;
-            };
-            header?: never;
-            path: {
-                id: string;
-                fileName: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationRuntimeFileDownloadDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsRuntimeController_getClipboard: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationClipboardDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsRuntimeController_setClipboard: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateApplicationClipboardDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationClipboardDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsRuntimeController_screenshot: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationScreenshotDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsRuntimeController_containerLogs: {
-        parameters: {
-            query: {
-                tail: string;
-            };
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationLogDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsRuntimeController_orchestratorLogs: {
-        parameters: {
-            query: {
-                tail: string;
-            };
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationLogDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsRuntimeController_adbLogs: {
-        parameters: {
-            query: {
-                tail: string;
-            };
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationLogDto"];
-                };
-            };
-        };
-    };
-    AutomationsController_listCommands: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AutomationCommandDto"][];
-                };
-            };
-        };
-    };
-    AutomationsController_validateYaml: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ValidateAutomationYamlDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AutomationValidationDto"];
-                };
-            };
-        };
-    };
-    AutomationsController_list: {
-        parameters: {
-            query: {
-                ownerUserId: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AutomationDto"][];
-                };
-            };
-        };
-    };
-    AutomationsController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateAutomationDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AutomationDto"];
-                };
-            };
-        };
-    };
-    AutomationsController_listRunnable: {
-        parameters: {
-            query: {
-                ownerUserId: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AutomationDto"][];
-                };
-            };
-        };
-    };
-    AutomationsController_listAllRuns: {
-        parameters: {
-            query: {
-                ownerUserId: string;
-                limit?: number;
-                status?: "active";
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AutomationRunDto"][];
-                };
-            };
-        };
-    };
-    AutomationsController_getRun: {
-        parameters: {
-            query: {
-                ownerUserId: string;
-            };
-            header?: never;
-            path: {
-                runId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AutomationRunDto"];
-                };
-            };
-        };
-    };
-    AutomationsController_listTriggers: {
-        parameters: {
-            query: {
-                ownerUserId: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AutomationTriggerDto"][];
-                };
-            };
-        };
-    };
-    AutomationsController_createTrigger: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateAutomationTriggerDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AutomationTriggerDto"];
-                };
-            };
-        };
-    };
-    AutomationsController_getTrigger: {
-        parameters: {
-            query: {
-                ownerUserId: string;
-            };
-            header?: never;
-            path: {
-                triggerId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AutomationTriggerDto"];
-                };
-            };
-        };
-    };
-    AutomationsController_removeTrigger: {
-        parameters: {
-            query: {
-                ownerUserId: string;
-            };
-            header?: never;
-            path: {
-                triggerId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AutomationTriggerDto"];
-                };
-            };
-        };
-    };
-    AutomationsController_updateTrigger: {
-        parameters: {
-            query: {
-                ownerUserId: string;
-            };
-            header?: never;
-            path: {
-                triggerId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateAutomationTriggerDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AutomationTriggerDto"];
-                };
-            };
-        };
-    };
-    AutomationsController_runTrigger: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                triggerId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RunAutomationDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AutomationRunDto"];
-                };
-            };
-        };
-    };
-    AutomationsController_get: {
-        parameters: {
-            query: {
-                ownerUserId: string;
-            };
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AutomationDto"];
-                };
-            };
-        };
-    };
-    AutomationsController_remove: {
-        parameters: {
-            query: {
-                ownerUserId: string;
-            };
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AutomationDto"];
-                };
-            };
-        };
-    };
-    AutomationsController_update: {
-        parameters: {
-            query: {
-                ownerUserId: string;
-            };
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateAutomationDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AutomationDto"];
-                };
-            };
-        };
-    };
-    AutomationsController_listRuns: {
-        parameters: {
-            query: {
-                ownerUserId: string;
-                limit?: number;
-                status?: "active";
-            };
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AutomationRunDto"][];
-                };
-            };
-        };
-    };
-    AutomationsController_run: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RunAutomationDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AutomationRunDto"];
-                };
-            };
-        };
-    };
-    ContainerImagesController_list: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Container engine image summaries. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    ContainerImagesController_pull: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PullContainerImageDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    ContainerImagesController_remove: {
-        parameters: {
-            query?: {
-                force?: boolean;
-            };
-            header?: never;
-            path: {
-                /** @description URL-encoded image name or id. Example: redroid%2Fredroid%3A13.0.0-latest */
-                image: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    DockerMaintenanceContainersController_listContainers: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerPlatformContainerDto"][];
-                };
-            };
-        };
-    };
-    DockerMaintenanceContainersController_getContainer: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerPlatformContainerDetailsDto"];
-                };
-            };
-        };
-    };
-    DockerMaintenanceContainersController_removeContainer: {
-        parameters: {
-            query: {
-                force: string;
-            };
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerPlatformRemovalResponseDto"];
-                };
-            };
-        };
-    };
-    DockerMaintenanceContainersController_getContainerLogs: {
-        parameters: {
-            query: {
-                tail: string;
-            };
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerPlatformContainerLogDto"];
-                };
-            };
-        };
-    };
-    DockerMaintenanceContainersController_getContainerStats: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerPlatformContainerStatsDto"];
-                };
-            };
-        };
-    };
-    DockerMaintenanceContainersController_stopContainer: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerPlatformStopResponseDto"];
-                };
-            };
-        };
-    };
-    DockerMaintenanceImagesController_listImages: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerPlatformImageDto"][];
-                };
-            };
-        };
-    };
-    DockerMaintenanceImagesController_getImage: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerPlatformImageDetailsDto"];
-                };
-            };
-        };
-    };
-    DockerMaintenanceImagesController_removeImage: {
-        parameters: {
-            query: {
-                force: string;
-            };
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerPlatformRemovalResponseDto"];
-                };
-            };
-        };
-    };
-    DockerMaintenanceNetworksController_listNetworks: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerPlatformNetworkDto"][];
-                };
-            };
-        };
-    };
-    DockerMaintenanceNetworksController_getNetwork: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerPlatformNetworkDetailsDto"];
-                };
-            };
-        };
-    };
-    DockerMaintenanceNetworksController_removeNetwork: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerPlatformRemovalResponseDto"];
-                };
-            };
-        };
-    };
-    DockerMaintenancePruneController_pruneImages: {
-        parameters: {
-            query?: {
-                /** @description When false, prune all unused images instead of only dangling images. */
-                danglingOnly?: boolean;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerPruneResponseDto"];
-                };
-            };
-        };
-    };
-    DockerMaintenancePruneController_pruneContainers: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerPruneResponseDto"];
-                };
-            };
-        };
-    };
-    DockerMaintenancePruneController_pruneNetworks: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerPruneResponseDto"];
-                };
-            };
-        };
-    };
-    DockerMaintenancePruneController_pruneVolumes: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerPruneResponseDto"];
-                };
-            };
-        };
-    };
-    DockerMaintenancePruneController_pruneAll: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerPruneAllResponseDto"];
-                };
-            };
-        };
-    };
-    ScheduledTasksController_listActions: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScheduledTaskActionDto"][];
-                };
-            };
-        };
-    };
-    ScheduledTasksController_list: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScheduledTaskDto"][];
-                };
-            };
-        };
-    };
-    ScheduledTasksController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateScheduledTaskDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScheduledTaskDto"];
-                };
-            };
-        };
-    };
-    ScheduledTasksController_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScheduledTaskDto"];
-                };
-            };
-        };
-    };
-    ScheduledTasksController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScheduledTaskDto"];
-                };
-            };
-        };
-    };
-    ScheduledTasksController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateScheduledTaskDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScheduledTaskDto"];
-                };
-            };
-        };
-    };
-    ScheduledTasksController_runNow: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScheduledTaskDto"];
-                };
-            };
-        };
-    };
-    SystemResourcesController_getCapacity: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SystemResourceCapacityDto"];
-                };
-            };
-        };
-    };
-    SystemResourcesController_getUsage: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SystemResourcesDto"];
-                };
-            };
-        };
-    };
-    HealthController_live: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    HealthController_ready: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    HealthController_diagnostics: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OrchestratorDiagnosticsDto"];
-                };
-            };
-        };
-    };
-    HealthController_diagnosticsSummary: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OrchestratorDiagnosticsDto"];
-                };
-            };
-        };
-    };
+  MetricsController_read: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  MetricsController_dockerSnapshot: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DockerMetricsSnapshotDto"];
+        };
+      };
+    };
+  };
+  DockerSidecarController_health: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceHealthDto"];
+        };
+      };
+    };
+  };
+  DockerSidecarController_repair: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ServiceHealthDto"];
+        };
+      };
+    };
+  };
+  DockerSidecarController_listSessions: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DockerSidecarAdminSessionDto"][];
+        };
+      };
+    };
+  };
+  DockerSidecarController_releaseSession: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DockerSidecarAdminSessionDto"];
+        };
+      };
+    };
+  };
+  ApkController_list: {
+    parameters: {
+      query?: {
+        ownerUserId?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UploadedApk"][];
+        };
+      };
+    };
+  };
+  ApkController_upload: {
+    parameters: {
+      query?: {
+        ownerUserId?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "multipart/form-data": {
+          /** Format: binary */
+          apk: string;
+        };
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UploadedApk"];
+        };
+      };
+    };
+  };
+  ApkController_lookup: {
+    parameters: {
+      query: {
+        sha256: string;
+        ownerUserId?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UploadedApk"];
+        };
+      };
+    };
+  };
+  ApkController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UploadedApk"];
+        };
+      };
+    };
+  };
+  ApkController_cleanup: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CleanupUploadedApksDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CleanupUploadedApksResponseDto"];
+        };
+      };
+    };
+  };
+  SettingsController_getSettings: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OrchestratorSettingsDto"];
+        };
+      };
+    };
+  };
+  SettingsController_updateSettings: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateOrchestratorSettingsDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OrchestratorSettingsDto"];
+        };
+      };
+    };
+  };
+  SettingsController_resetSettings: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OrchestratorSettingsDto"];
+        };
+      };
+    };
+  };
+  SettingsController_listAiProviders: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationAiProviderDto"][];
+        };
+      };
+    };
+  };
+  SettingsController_createAiProvider: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateAutomationAiProviderDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationAiProviderDto"];
+        };
+      };
+    };
+  };
+  SettingsController_checkAiProviderHealth: {
+    parameters: {
+      query: {
+        modelId: string;
+      };
+      header?: never;
+      path: {
+        providerId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationAiProviderHealthDto"];
+        };
+      };
+    };
+  };
+  SettingsController_deleteAiProvider: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        providerId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  SettingsController_updateAiProvider: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        providerId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateAutomationAiProviderDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationAiProviderDto"];
+        };
+      };
+    };
+  };
+  SettingsController_createAiProviderModel: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        providerId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateAutomationAiProviderModelDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationAiProviderModelDto"];
+        };
+      };
+    };
+  };
+  SettingsController_deleteAiProviderModel: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        providerId: string;
+        modelId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  SettingsController_updateAiProviderModel: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        providerId: string;
+        modelId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateAutomationAiProviderModelDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationAiProviderModelDto"];
+        };
+      };
+    };
+  };
+  SettingsController_listAiModelCatalog: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationAiModelCatalogProviderDto"][];
+        };
+      };
+    };
+  };
+  AndroidAppsController_list: {
+    parameters: {
+      query?: {
+        ownerUserId?: string;
+        /** @description Set false for a fast stored-state response without Docker reconciliation. */
+        reconcile?: boolean;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AndroidApplicationResponseDto"][];
+        };
+      };
+    };
+  };
+  AndroidAppsController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @example Signal Android */
+          name: string;
+          /** @example user_123 */
+          ownerUserId?: string;
+          /** @example redroid/redroid:14.0.0-latest */
+          containerImage?: string;
+          /** @example 900 */
+          inactivityTimeoutSeconds?: number;
+          /** @example 2048 */
+          memoryLimitMb?: number;
+          /** @example 2 */
+          cpuLimitCpus?: number;
+          /** @example sleep infinity */
+          containerArgs?: string;
+          /** @example 98a530d6-a45d-466a-9cb4-c023067c4971 */
+          uploadedApkId?: string;
+        };
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApplicationCommandResultDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsController_clone: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CloneAndroidApplicationDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApplicationCommandResultDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsController_listSummaries: {
+    parameters: {
+      query?: {
+        ownerUserId?: string;
+        /** @description Set false for a fast stored-state response without Docker reconciliation. */
+        reconcile?: boolean;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AndroidApplicationSummaryResponseDto"][];
+        };
+      };
+    };
+  };
+  AndroidAppsController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AndroidApplicationResponseDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsController_remove: {
+    parameters: {
+      query?: {
+        /** @description When true, remove the persisted Docker volume too. */
+        removeData?: boolean;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DeleteAndroidApplicationResponseDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateAndroidApplicationDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApplicationCommandResultDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsViewerController_scrcpySession: {
+    parameters: {
+      query: {
+        control: string;
+        clipboard: string;
+        screenshot: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ScrcpySessionDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsViewerController_viewerActivity: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            id: string;
+            /** Format: date-time */
+            lastScrcpyActivityAt: string;
+          };
+        };
+      };
+    };
+  };
+  AndroidAppsViewerController_viewerControl: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ApplicationViewerControlDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApplicationViewerControlResponseDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsViewerController_createVirtualDisplay: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DisplaySessionDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsViewerController_releaseVirtualDisplay: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        surfaceId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DisplaySessionDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsViewerController_startRecording: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        surfaceId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DisplayRecordingDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsViewerController_stopRecording: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        surfaceId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DisplayRecordingDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsViewerController_downloadRecording: {
+    parameters: {
+      query: {
+        surfaceSessionId: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+        recordingId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  AndroidAppsNetworkController_reconcileNetworkPolicies: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  AndroidAppsNetworkController_updateNetworkPolicy: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateNetworkPolicyDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApplicationCommandResultDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsNetworkController_applyNetworkPolicy: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApplicationCommandResultDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsLifecycleController_switchProfile: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SwitchApplicationProfileDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApplicationCommandResultDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsLifecycleController_start: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["StartAndroidApplicationDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApplicationCommandResultDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsLifecycleController_stop: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApplicationCommandResultDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsLifecycleController_updateApk: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @example 98a530d6-a45d-466a-9cb4-c023067c4971 */
+          uploadedApkId: string;
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApplicationCommandResultDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsRuntimeController_notifications: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AndroidNotificationDto"][];
+        };
+      };
+    };
+  };
+  AndroidAppsRuntimeController_listFiles: {
+    parameters: {
+      query?: {
+        /** @description Absolute path inside the active runtime data volume. */
+        path?: string;
+        /** @description Profile storage mode to browse when the app is not running. */
+        profileMode?: "persistent" | "temporary";
+        /** @description Persistent profile name to browse when profileMode is persistent. */
+        profileName?: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApplicationRuntimeFileDto"][];
+        };
+      };
+    };
+  };
+  AndroidAppsRuntimeController_uploadFile: {
+    parameters: {
+      query?: {
+        /** @description Absolute path inside the active runtime data volume. */
+        path?: string;
+        /** @description Profile storage mode to browse when the app is not running. */
+        profileMode?: "persistent" | "temporary";
+        /** @description Persistent profile name to browse when profileMode is persistent. */
+        profileName?: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "multipart/form-data": {
+          /** Format: binary */
+          file: string;
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApplicationRuntimeFileUploadDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsRuntimeController_downloadRuntimeFile: {
+    parameters: {
+      query?: {
+        /** @description Absolute path inside the active runtime data volume. */
+        path?: string;
+        /** @description Profile storage mode to browse when the app is not running. */
+        profileMode?: "persistent" | "temporary";
+        /** @description Persistent profile name to browse when profileMode is persistent. */
+        profileName?: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApplicationRuntimeFileDownloadDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsRuntimeController_listDownloadFiles: {
+    parameters: {
+      query?: {
+        /** @description Absolute path inside the active runtime data volume. */
+        path?: string;
+        /** @description Profile storage mode to browse when the app is not running. */
+        profileMode?: "persistent" | "temporary";
+        /** @description Persistent profile name to browse when profileMode is persistent. */
+        profileName?: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApplicationRuntimeFileDto"][];
+        };
+      };
+    };
+  };
+  AndroidAppsRuntimeController_uploadDownloadFile: {
+    parameters: {
+      query?: {
+        /** @description Absolute path inside the active runtime data volume. */
+        path?: string;
+        /** @description Profile storage mode to browse when the app is not running. */
+        profileMode?: "persistent" | "temporary";
+        /** @description Persistent profile name to browse when profileMode is persistent. */
+        profileName?: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "multipart/form-data": {
+          /** Format: binary */
+          file: string;
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApplicationRuntimeFileUploadDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsRuntimeController_downloadFile: {
+    parameters: {
+      query?: {
+        /** @description Absolute path inside the active runtime data volume. */
+        path?: string;
+        /** @description Profile storage mode to browse when the app is not running. */
+        profileMode?: "persistent" | "temporary";
+        /** @description Persistent profile name to browse when profileMode is persistent. */
+        profileName?: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+        fileName: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApplicationRuntimeFileDownloadDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsRuntimeController_getClipboard: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApplicationClipboardDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsRuntimeController_setClipboard: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateApplicationClipboardDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApplicationClipboardDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsRuntimeController_screenshot: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApplicationScreenshotDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsRuntimeController_containerLogs: {
+    parameters: {
+      query: {
+        tail: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApplicationLogDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsRuntimeController_orchestratorLogs: {
+    parameters: {
+      query: {
+        tail: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApplicationLogDto"];
+        };
+      };
+    };
+  };
+  AndroidAppsRuntimeController_adbLogs: {
+    parameters: {
+      query: {
+        tail: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApplicationLogDto"];
+        };
+      };
+    };
+  };
+  AutomationsController_listCommands: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationCommandDto"][];
+        };
+      };
+    };
+  };
+  AutomationsController_validateYaml: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ValidateAutomationYamlDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationValidationDto"];
+        };
+      };
+    };
+  };
+  AutomationsController_draftYaml: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["DraftAutomationYamlDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationYamlDraftDto"];
+        };
+      };
+    };
+  };
+  AutomationsController_runAdHocAi: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RunAdHocAiAutomationDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationRunDto"];
+        };
+      };
+    };
+  };
+  AutomationsController_list: {
+    parameters: {
+      query: {
+        ownerUserId: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationDto"][];
+        };
+      };
+    };
+  };
+  AutomationsController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateAutomationDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationDto"];
+        };
+      };
+    };
+  };
+  AutomationsController_listGrid: {
+    parameters: {
+      query: {
+        ownerUserId: string;
+        page?: number;
+        pageSize?: number;
+        q?: string;
+        tag?: string;
+        targetApplicationId?: string;
+        status?: "never_run" | "success" | "failed" | "running";
+        lastRun?: "all" | "never" | "7d" | "30d" | "90d";
+        sort?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationsGridPageDto"];
+        };
+      };
+    };
+  };
+  AutomationsController_listRunnable: {
+    parameters: {
+      query: {
+        ownerUserId: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationDto"][];
+        };
+      };
+    };
+  };
+  AutomationsController_listAllRuns: {
+    parameters: {
+      query: {
+        ownerUserId: string;
+        limit?: number;
+        status?: "active";
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationRunDto"][];
+        };
+      };
+    };
+  };
+  AutomationsController_getRun: {
+    parameters: {
+      query: {
+        ownerUserId: string;
+      };
+      header?: never;
+      path: {
+        runId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationRunDto"];
+        };
+      };
+    };
+  };
+  AutomationsController_cancelRun: {
+    parameters: {
+      query: {
+        ownerUserId: string;
+      };
+      header?: never;
+      path: {
+        runId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationRunDto"];
+        };
+      };
+    };
+  };
+  AutomationsController_listRunEvents: {
+    parameters: {
+      query: {
+        ownerUserId: string;
+        after: string;
+      };
+      header?: never;
+      path: {
+        runId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationRunEventDto"][];
+        };
+      };
+    };
+  };
+  AutomationsController_createRunEventStreamToken: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        runId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationRunEventStreamTokenDto"];
+        };
+      };
+    };
+  };
+  AutomationsController_listTriggers: {
+    parameters: {
+      query: {
+        ownerUserId: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationTriggerDto"][];
+        };
+      };
+    };
+  };
+  AutomationsController_createTrigger: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateAutomationTriggerDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationTriggerDto"];
+        };
+      };
+    };
+  };
+  AutomationsController_listTriggersGrid: {
+    parameters: {
+      query: {
+        ownerUserId: string;
+        page?: number;
+        pageSize?: number;
+        q?: string;
+        tag?: string;
+        targetApplicationId?: string;
+        enabled?: "true" | "false";
+        status?: "never_run" | "success" | "failed" | "running";
+        lastRun?: "all" | "never" | "7d" | "30d" | "90d";
+        sort?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationTriggersGridPageDto"];
+        };
+      };
+    };
+  };
+  AutomationsController_getTrigger: {
+    parameters: {
+      query: {
+        ownerUserId: string;
+      };
+      header?: never;
+      path: {
+        triggerId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationTriggerDto"];
+        };
+      };
+    };
+  };
+  AutomationsController_removeTrigger: {
+    parameters: {
+      query: {
+        ownerUserId: string;
+      };
+      header?: never;
+      path: {
+        triggerId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationTriggerDto"];
+        };
+      };
+    };
+  };
+  AutomationsController_updateTrigger: {
+    parameters: {
+      query: {
+        ownerUserId: string;
+      };
+      header?: never;
+      path: {
+        triggerId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateAutomationTriggerDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationTriggerDto"];
+        };
+      };
+    };
+  };
+  AutomationsController_runTrigger: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        triggerId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RunAutomationDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationRunDto"];
+        };
+      };
+    };
+  };
+  AutomationsController_get: {
+    parameters: {
+      query: {
+        ownerUserId: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationDto"];
+        };
+      };
+    };
+  };
+  AutomationsController_remove: {
+    parameters: {
+      query: {
+        ownerUserId: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationDto"];
+        };
+      };
+    };
+  };
+  AutomationsController_update: {
+    parameters: {
+      query: {
+        ownerUserId: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateAutomationDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationDto"];
+        };
+      };
+    };
+  };
+  AutomationsController_listRuns: {
+    parameters: {
+      query: {
+        ownerUserId: string;
+        limit?: number;
+        status?: "active";
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationRunDto"][];
+        };
+      };
+    };
+  };
+  AutomationsController_run: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RunAutomationDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationRunDto"];
+        };
+      };
+    };
+  };
+  ContainerImagesController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Container engine image summaries. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ContainerImagesController_pull: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PullContainerImageDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+    };
+  };
+  ContainerImagesController_remove: {
+    parameters: {
+      query?: {
+        force?: boolean;
+      };
+      header?: never;
+      path: {
+        /** @description URL-encoded image name or id. Example: redroid%2Fredroid%3A13.0.0-latest */
+        image: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  DockerMaintenanceContainersController_listContainers: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DockerPlatformContainerDto"][];
+        };
+      };
+    };
+  };
+  DockerMaintenanceContainersController_getContainer: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DockerPlatformContainerDetailsDto"];
+        };
+      };
+    };
+  };
+  DockerMaintenanceContainersController_removeContainer: {
+    parameters: {
+      query: {
+        force: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DockerPlatformRemovalResponseDto"];
+        };
+      };
+    };
+  };
+  DockerMaintenanceContainersController_getContainerLogs: {
+    parameters: {
+      query: {
+        tail: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DockerPlatformContainerLogDto"];
+        };
+      };
+    };
+  };
+  DockerMaintenanceContainersController_getContainerStats: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DockerPlatformContainerStatsDto"];
+        };
+      };
+    };
+  };
+  DockerMaintenanceContainersController_stopContainer: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DockerPlatformStopResponseDto"];
+        };
+      };
+    };
+  };
+  DockerMaintenanceImagesController_listImages: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DockerPlatformImageDto"][];
+        };
+      };
+    };
+  };
+  DockerMaintenanceImagesController_getImage: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DockerPlatformImageDetailsDto"];
+        };
+      };
+    };
+  };
+  DockerMaintenanceImagesController_removeImage: {
+    parameters: {
+      query: {
+        force: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DockerPlatformRemovalResponseDto"];
+        };
+      };
+    };
+  };
+  DockerMaintenanceNetworksController_listNetworks: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DockerPlatformNetworkDto"][];
+        };
+      };
+    };
+  };
+  DockerMaintenanceNetworksController_getNetwork: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DockerPlatformNetworkDetailsDto"];
+        };
+      };
+    };
+  };
+  DockerMaintenanceNetworksController_removeNetwork: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DockerPlatformRemovalResponseDto"];
+        };
+      };
+    };
+  };
+  DockerMaintenancePruneController_pruneImages: {
+    parameters: {
+      query?: {
+        /** @description When false, prune all unused images instead of only dangling images. */
+        danglingOnly?: boolean;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DockerPruneResponseDto"];
+        };
+      };
+    };
+  };
+  DockerMaintenancePruneController_pruneContainers: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DockerPruneResponseDto"];
+        };
+      };
+    };
+  };
+  DockerMaintenancePruneController_pruneNetworks: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DockerPruneResponseDto"];
+        };
+      };
+    };
+  };
+  DockerMaintenancePruneController_pruneVolumes: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DockerPruneResponseDto"];
+        };
+      };
+    };
+  };
+  DockerMaintenancePruneController_pruneAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DockerPruneAllResponseDto"];
+        };
+      };
+    };
+  };
+  ScheduledTasksController_listActions: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ScheduledTaskActionDto"][];
+        };
+      };
+    };
+  };
+  ScheduledTasksController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ScheduledTaskDto"][];
+        };
+      };
+    };
+  };
+  ScheduledTasksController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateScheduledTaskDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ScheduledTaskDto"];
+        };
+      };
+    };
+  };
+  ScheduledTasksController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ScheduledTaskDto"];
+        };
+      };
+    };
+  };
+  ScheduledTasksController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ScheduledTaskDto"];
+        };
+      };
+    };
+  };
+  ScheduledTasksController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateScheduledTaskDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ScheduledTaskDto"];
+        };
+      };
+    };
+  };
+  ScheduledTasksController_runNow: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ScheduledTaskDto"];
+        };
+      };
+    };
+  };
+  SystemResourcesController_getCapacity: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SystemResourceCapacityDto"];
+        };
+      };
+    };
+  };
+  SystemResourcesController_getUsage: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SystemResourcesDto"];
+        };
+      };
+    };
+  };
+  HealthController_live: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  HealthController_ready: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  HealthController_diagnostics: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OrchestratorDiagnosticsDto"];
+        };
+      };
+    };
+  };
+  HealthController_diagnosticsSummary: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OrchestratorDiagnosticsDto"];
+        };
+      };
+    };
+  };
 }

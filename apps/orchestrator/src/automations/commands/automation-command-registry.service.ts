@@ -9,6 +9,7 @@ import {
   AutomationCommandOutputMetadata,
 } from './automation-command.types';
 import { AndroidAutomationCommandsService } from './android-automation-commands.service';
+import { AiAutomationCommandsService } from './ai-automation-commands.service';
 import { ContainerNetworkAutomationCommandsService } from './container-network-automation-commands.service';
 import { GenericAutomationCommandsService } from './generic-automation-commands.service';
 
@@ -20,6 +21,7 @@ export class AutomationCommandRegistryService implements OnModuleInit {
     private readonly androidCommands: AndroidAutomationCommandsService,
     private readonly networkCommands: ContainerNetworkAutomationCommandsService,
     private readonly genericCommands: GenericAutomationCommandsService,
+    private readonly aiCommands: AiAutomationCommandsService,
   ) {}
 
   onModuleInit() {
@@ -27,6 +29,7 @@ export class AutomationCommandRegistryService implements OnModuleInit {
       ...this.androidCommands.list(),
       ...this.networkCommands.list(),
       ...this.genericCommands.list(),
+      ...this.aiCommands.list(),
     ]) {
       if (this.commands.has(command.uses)) {
         throw new Error(`Duplicate automation command "${command.uses}".`);

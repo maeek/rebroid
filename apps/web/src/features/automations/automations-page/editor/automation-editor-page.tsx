@@ -1,34 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import {
-  IconActivityHeartbeat,
-  IconDeviceFloppy,
-  IconDotsVertical,
-  IconDownload,
-  IconEye,
-  IconFileCode,
-  IconTrash,
-  IconUpload
-} from '@tabler/icons-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { toast } from '@/hooks/use-toast'
@@ -36,12 +9,21 @@ import { cn } from '@/lib/utils'
 import {
   createAutomationAction,
   deleteAutomationAction,
+  draftAutomationYamlAction,
   updateAutomationAction,
   validateAutomationYamlAction
 } from '@/server/orchestrator/automations/actions'
+import { listAutomationAiModelCatalogAction } from '@/server/orchestrator/settings/actions'
 import { AutomationStepsList } from '../steps/list/automation-steps-list'
 import { collectBlockKeys, collectStepKeys, firstStepKey } from '../steps/shared/automation-step-selection'
 import { AutomationDetailsSection } from './automation-details-section'
+import {
+  AiDraftDialog,
+  AutomationDeleteConfirmDialog,
+  UnsavedAutomationChangesDialog
+} from './automation-editor-dialogs'
+import { AutomationEditorHeader } from './automation-editor-header'
+import { workflowFileName } from './automation-editor-utils'
 import { AutomationYamlEditorSection } from './automation-yaml-editor-section'
 import {
   automationToForm,
@@ -54,6 +36,43 @@ import {
 } from './builder-utils'
 import type { AutomationEditorPageProps } from './types'
 import type { Automation } from '@/server/orchestrator/automations/types'
+import type { AutomationAiModelCatalogProvider } from '@/server/orchestrator/settings/types'
+
+type EditorSnapshot = {
+  form: AutomationFormState
+  yamlOpen: boolean
+  yamlDraft: string
+}
+
+type EditorHistoryState = {
+  undo: EditorSnapshot[]
+  redo: EditorSnapshot[]
+}
+
+const maxEditorHistoryEntries = 100
+
+const cloneForm = (form: AutomationFormState): AutomationFormState =>
+  typeof structuredClone === 'function'
+    ? structuredClone(form)
+    : (JSON.parse(JSON.stringify(form)) as AutomationFormState)
+
+const sameSnapshot = (left: EditorSnapshot, right: EditorSnapshot) =>
+  left.yamlOpen === right.yamlOpen &&
+  left.yamlDraft === right.yamlDraft &&
+  JSON.stringify(left.form) === JSON.stringify(right.form)
+
+const isEditableShortcutTarget = (target: EventTarget | null) => {
+  if (!(target instanceof Element)) return false
+  if (target instanceof HTMLElement && target.isContentEditable) return true
+  const editable = target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]')
+  if (!editable) return false
+  if (editable instanceof HTMLInputElement) {
+    return editable.type !== 'checkbox' && editable.type !== 'radio'
+  }
+  return true
+}
+
+const unsavedAutomationMessage = 'This workflow has unsaved changes.'
 
 export function AutomationEditorPage({ initialAutomation, initialCommands }: AutomationEditorPageProps) {
   const router = useRouter()
@@ -74,11 +93,27 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
   const [yamlDraft, setYamlDraft] = useState('')
   const [yamlValid, setYamlValid] = useState(true)
   const [yamlError, setYamlError] = useState<string | null>(null)
+  const [aiDraftOpen, setAiDraftOpen] = useState(false)
+  const [aiDraftPrompt, setAiDraftPrompt] = useState('')
+  const [aiModelCatalog, setAiModelCatalog] = useState<AutomationAiModelCatalogProvider[]>([])
+  const [aiDraftProviderId, setAiDraftProviderId] = useState('')
+  const [aiDraftModelId, setAiDraftModelId] = useState('')
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [pendingNavigationHref, setPendingNavigationHref] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [history, setHistory] = useState<EditorHistoryState>({ undo: [], redo: [] })
   const importInputRef = useRef<HTMLInputElement | null>(null)
+  const snapshotRef = useRef<EditorSnapshot | null>(null)
+  const confirmedNavigationRef = useRef(false)
   const isNew = !automation
   const title = isNew ? 'New workflow' : automation.name
+  const selectedAiDraftProvider =
+    aiModelCatalog.find(provider => provider.id === aiDraftProviderId) ?? aiModelCatalog[0]
+  const selectedAiDraftModel =
+    selectedAiDraftProvider?.models.find(model => model.id === aiDraftModelId) ??
+    selectedAiDraftProvider?.models.find(model => model.default) ??
+    selectedAiDraftProvider?.models[0]
+  const canDraftFromPrompt = Boolean(selectedAiDraftProvider && selectedAiDraftModel)
   const currentYaml = useMemo(() => {
     try {
       return buildYaml(form)
@@ -87,7 +122,114 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
     }
   }, [automation?.yaml, form])
 
-  const updateForm = (patch: Partial<AutomationFormState>) => setForm(current => ({ ...current, ...patch }))
+  const canUndo = history.undo.length > 0
+  const canRedo = history.redo.length > 0
+  const hasUnsavedHistory = canUndo
+
+  const currentSnapshot = useCallback(
+    () => ({
+      form: cloneForm(snapshotRef.current?.form ?? form),
+      yamlOpen: snapshotRef.current?.yamlOpen ?? yamlOpen,
+      yamlDraft: snapshotRef.current?.yamlDraft ?? yamlDraft
+    }),
+    [form, yamlDraft, yamlOpen]
+  )
+
+  const applySnapshot = useCallback((snapshot: EditorSnapshot) => {
+    const nextSnapshot = {
+      form: cloneForm(snapshot.form),
+      yamlOpen: snapshot.yamlOpen,
+      yamlDraft: snapshot.yamlDraft
+    }
+    snapshotRef.current = nextSnapshot
+    setForm(nextSnapshot.form)
+    setYamlOpen(nextSnapshot.yamlOpen)
+    setYamlDraft(nextSnapshot.yamlDraft)
+  }, [])
+
+  const recordHistory = useCallback(() => {
+    const snapshot = currentSnapshot()
+    setHistory(current => {
+      const previous = current.undo.at(-1)
+      if (previous && sameSnapshot(previous, snapshot)) return current
+      return {
+        undo: [...current.undo, snapshot].slice(-maxEditorHistoryEntries),
+        redo: []
+      }
+    })
+  }, [currentSnapshot])
+
+  const commitEditorChange = useCallback(
+    (update: () => EditorSnapshot) => {
+      recordHistory()
+      applySnapshot(update())
+    },
+    [applySnapshot, recordHistory]
+  )
+
+  const resetEditorHistory = useCallback((snapshot: EditorSnapshot) => {
+    snapshotRef.current = {
+      form: cloneForm(snapshot.form),
+      yamlOpen: snapshot.yamlOpen,
+      yamlDraft: snapshot.yamlDraft
+    }
+    setHistory({ undo: [], redo: [] })
+  }, [])
+
+  const undo = useCallback(() => {
+    setHistory(current => {
+      const previous = current.undo.at(-1)
+      if (!previous) return current
+      const currentValue = currentSnapshot()
+      applySnapshot(previous)
+      return {
+        undo: current.undo.slice(0, -1),
+        redo: [currentValue, ...current.redo].slice(0, maxEditorHistoryEntries)
+      }
+    })
+  }, [applySnapshot, currentSnapshot])
+
+  const redo = useCallback(() => {
+    setHistory(current => {
+      const next = current.redo[0]
+      if (!next) return current
+      const currentValue = currentSnapshot()
+      applySnapshot(next)
+      return {
+        undo: [...current.undo, currentValue].slice(-maxEditorHistoryEntries),
+        redo: current.redo.slice(1)
+      }
+    })
+  }, [applySnapshot, currentSnapshot])
+
+  useEffect(() => {
+    snapshotRef.current = {
+      form: cloneForm(form),
+      yamlOpen,
+      yamlDraft
+    }
+  }, [form, yamlDraft, yamlOpen])
+
+  const updateForm = (patch: Partial<AutomationFormState>) =>
+    commitEditorChange(() => ({
+      ...currentSnapshot(),
+      form: { ...cloneForm(snapshotRef.current?.form ?? form), ...patch }
+    }))
+
+  useEffect(() => {
+    let cancelled = false
+    void listAutomationAiModelCatalogAction().then(catalog => {
+      if (cancelled) return
+      setAiModelCatalog(catalog)
+      const provider = catalog[0]
+      const model = provider?.models.find(item => item.default) ?? provider?.models[0]
+      setAiDraftProviderId(provider?.id ?? '')
+      setAiDraftModelId(model?.id ?? '')
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const updateSteps = (steps: AutomationStepForm[]) => {
     updateForm({ steps })
@@ -141,9 +283,34 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
     else openYamlEditor()
   }
 
+  const requestNavigation = useCallback(
+    (href: string) => {
+      if (hasUnsavedHistory) {
+        setPendingNavigationHref(href)
+        return
+      }
+      router.push(href)
+    },
+    [hasUnsavedHistory, router]
+  )
+
+  const confirmPendingNavigation = useCallback(() => {
+    const href = pendingNavigationHref
+    if (!href) return
+
+    setPendingNavigationHref(null)
+    confirmedNavigationRef.current = true
+    const url = new URL(href, window.location.href)
+    if (url.origin === window.location.origin) {
+      router.push(`${url.pathname}${url.search}${url.hash}`)
+      return
+    }
+    window.location.assign(url.href)
+  }, [pendingNavigationHref, router])
+
   const showTraces = () => {
     if (automation) {
-      router.push(`/automations/${automation.id}/traces`)
+      requestNavigation(`/automations/${automation.id}/traces`)
     }
   }
 
@@ -157,6 +324,11 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
     setOpenBlockKeys(collectBlockKeys(nextForm.steps))
     setYamlStepKey(null)
     if (yamlOpen) setYamlDraft(saved.yaml)
+    resetEditorHistory({
+      form: nextForm,
+      yamlOpen,
+      yamlDraft: yamlOpen ? saved.yaml : yamlDraft
+    })
     toast({ title: wasNew ? 'Automation created' : 'Automation updated' })
     if (wasNew) {
       router.replace(`/automations/${saved.id}`)
@@ -220,6 +392,37 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
     importInputRef.current?.click()
   }
 
+  const draftFromPrompt = async () => {
+    const prompt = aiDraftPrompt.trim()
+    if (!prompt || !selectedAiDraftProvider || !selectedAiDraftModel) return
+    setBusy(true)
+    try {
+      const draft = await draftAutomationYamlAction({
+        prompt,
+        providerId: selectedAiDraftProvider.id,
+        modelId: selectedAiDraftModel.id
+      })
+      const nextForm = definitionToForm(draft.definition, automation?.id ?? form.id)
+      commitEditorChange(() => ({
+        form: nextForm,
+        yamlOpen: true,
+        yamlDraft: draft.yaml
+      }))
+      setYamlValid(true)
+      setYamlError(null)
+      setAiDraftOpen(false)
+      setAiDraftPrompt('')
+    } catch (error) {
+      toast({
+        title: 'Could not draft automation',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
+      })
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const handleWorkflowImport = async (file: File | null) => {
     if (!file) return
     setBusy(true)
@@ -231,11 +434,14 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
       }
 
       const nextForm = definitionToForm(validation.definition, automation?.id ?? form.id)
-      setForm(nextForm)
+      commitEditorChange(() => ({
+        form: nextForm,
+        yamlOpen,
+        yamlDraft: validation.yaml ?? yaml
+      }))
       setSelectedStepKey(firstStepKey(nextForm.steps))
       setOpenBlockKeys(collectBlockKeys(nextForm.steps))
       setYamlStepKey(null)
-      setYamlDraft(validation.yaml ?? yaml)
       setYamlValid(true)
       setYamlError(null)
       toast({ title: 'Workflow imported' })
@@ -276,6 +482,66 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
     }
   }, [automation?.id, form.id, yamlDraft, yamlOpen])
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const isModZ = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z'
+      if (!isModZ || event.altKey || isEditableShortcutTarget(event.target)) return
+
+      if (event.shiftKey) {
+        if (!canRedo) return
+        event.preventDefault()
+        redo()
+        return
+      }
+
+      if (!canUndo) return
+      event.preventDefault()
+      undo()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [canRedo, canUndo, redo, undo])
+
+  useEffect(() => {
+    if (!hasUnsavedHistory) return
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (confirmedNavigationRef.current) return
+      event.preventDefault()
+      event.returnValue = unsavedAutomationMessage
+    }
+
+    const handleDocumentClick = (event: MouseEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return
+      }
+      const link = event.target instanceof Element ? event.target.closest('a[href]') : null
+      if (!(link instanceof HTMLAnchorElement) || link.target || link.download) return
+      const href = link.href
+      if (!href || href.startsWith('mailto:') || href.startsWith('tel:')) return
+      if (href === window.location.href) return
+
+      event.preventDefault()
+      event.stopPropagation()
+      setPendingNavigationHref(href)
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    document.addEventListener('click', handleDocumentClick, true)
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      document.removeEventListener('click', handleDocumentClick, true)
+    }
+  }, [hasUnsavedHistory])
+
   return (
     <ProtectedStackPageLayout mainClassName='gap-0'>
       <section className='shrink-0 px-6 py-4 max-sm:px-4'>
@@ -284,83 +550,37 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
             className='pt-0'
             items={[{ label: 'Automations' }, { label: 'Workflows', href: '/automations' }, { label: title }]}
           />
-          <div className='flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-stretch'>
-            <h2 className='min-w-0 truncate text-3xl font-medium max-sm:text-xl'>{title}</h2>
-            <div className='flex gap-2 max-sm:w-full'>
-              <Button
-                disabled={busy || (yamlOpen && !yamlValid)}
-                className='max-sm:flex-1'
-                onClick={() => void save()}
-              >
-                <IconDeviceFloppy className='size-4' />
-                Save
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant='secondary'
-                    size='icon'
-                    aria-label='More automation actions'
-                  >
-                    <IconDotsVertical className='size-4' />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align='end'
-                  className='min-w-44 p-2'
-                >
-                  {automation ? (
-                    <DropdownMenuItem
-                      className='gap-2 px-3 py-2'
-                      onSelect={showTraces}
-                    >
-                      <IconActivityHeartbeat className='size-4' />
-                      Traces
-                    </DropdownMenuItem>
-                  ) : null}
-                  <DropdownMenuItem
-                    className='gap-2 px-3 py-2'
-                    onSelect={toggleYamlEditor}
-                  >
-                    {yamlOpen ? <IconEye className='size-4' /> : <IconFileCode className='size-4' />}
-                    {yamlOpen ? 'Edit visually' : 'Edit YAML'}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    disabled={busy}
-                    className='gap-2 px-3 py-2'
-                    onSelect={importWorkflow}
-                  >
-                    <IconUpload className='size-4' />
-                    Import workflow
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={busy || (yamlOpen && !yamlValid)}
-                    className='gap-2 px-3 py-2'
-                    onSelect={exportWorkflow}
-                  >
-                    <IconDownload className='size-4' />
-                    Export workflow
-                  </DropdownMenuItem>
-                  {automation ? (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        disabled={busy}
-                        className='gap-2 px-3 py-2 text-red-300'
-                        onSelect={() => setDeleteOpen(true)}
-                      >
-                        <IconTrash className='size-4' />
-                        Delete
-                      </DropdownMenuItem>
-                    </>
-                  ) : null}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
+          <AutomationEditorHeader
+            title={title}
+            busy={busy}
+            canDraftFromPrompt={canDraftFromPrompt}
+            canDelete={Boolean(automation)}
+            yamlOpen={yamlOpen}
+            yamlValid={yamlValid}
+            onDelete={() => setDeleteOpen(true)}
+            onDraftFromPrompt={() => setAiDraftOpen(true)}
+            onExport={exportWorkflow}
+            onImport={importWorkflow}
+            onSave={() => void save()}
+            onShowTraces={showTraces}
+            onToggleYaml={toggleYamlEditor}
+          />
         </div>
       </section>
+
+      <AiDraftDialog
+        open={aiDraftOpen && canDraftFromPrompt}
+        busy={busy}
+        catalog={aiModelCatalog}
+        providerId={selectedAiDraftProvider?.id ?? ''}
+        modelId={selectedAiDraftModel?.id ?? ''}
+        prompt={aiDraftPrompt}
+        onDraft={() => void draftFromPrompt()}
+        onModelChange={setAiDraftModelId}
+        onOpenChange={setAiDraftOpen}
+        onProviderChange={setAiDraftProviderId}
+        onPromptChange={setAiDraftPrompt}
+      />
 
       <section
         className={cn(
@@ -378,7 +598,12 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
             <AutomationYamlEditorSection
               yaml={yamlDraft}
               commands={initialCommands}
-              onYamlChange={setYamlDraft}
+              onYamlChange={yaml =>
+                commitEditorChange(() => ({
+                  ...currentSnapshot(),
+                  yamlDraft: yaml
+                }))
+              }
               onValidationChange={(valid, messages) => {
                 if (!valid) {
                   setYamlValid(false)
@@ -423,42 +648,21 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
         onChange={event => void handleWorkflowImport(event.currentTarget.files?.[0] ?? null)}
       />
 
-      <Dialog
+      <AutomationDeleteConfirmDialog
         open={deleteOpen}
+        busy={busy}
+        automationName={automation?.name ?? 'workflow'}
+        onConfirm={() => void remove()}
         onOpenChange={setDeleteOpen}
-      >
-        <DialogContent className='sm:max-w-md'>
-          <DialogHeader>
-            <DialogTitle>Delete {automation?.name ?? 'workflow'}?</DialogTitle>
-            <DialogDescription>This removes the workflow and its triggers.</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button
-                variant='secondary'
-                disabled={busy}
-              >
-                Cancel
-              </Button>
-            </DialogClose>
-            <Button
-              variant='destructive'
-              disabled={busy}
-              onClick={() => void remove()}
-            >
-              <IconTrash className='size-4' />
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      />
+
+      <UnsavedAutomationChangesDialog
+        open={Boolean(pendingNavigationHref)}
+        onConfirm={confirmPendingNavigation}
+        onOpenChange={open => {
+          if (!open) setPendingNavigationHref(null)
+        }}
+      />
     </ProtectedStackPageLayout>
   )
 }
-
-const workflowFileName = (name: string) =>
-  (name || 'workflow')
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '') || 'workflow'

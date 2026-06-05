@@ -3,12 +3,23 @@ import { AndroidApplication } from '../../android-apps/android-application.entit
 import { AndroidAppsNetworkPolicyService } from '../../android-apps/network/services/android-apps-network-policy.service';
 import { AndroidAppsDisplaySidecarService } from '../../android-apps/viewer/services/android-apps-display-sidecar.service';
 import { AndroidAppsSidecarAdbService } from '../../android-apps/viewer/services/android-apps-sidecar-adb.service';
+import type { AutomationAiHarnessService } from '../ai/automation-ai-harness.service';
 
 export interface AutomationCommandContext {
   app: AndroidApplication;
   adb: AndroidAppsSidecarAdbService;
   display: AndroidAppsDisplaySidecarService;
   networkPolicy: AndroidAppsNetworkPolicyService;
+  aiHarness?: AutomationAiHarnessService;
+  runId?: string;
+  ownerUserId?: string;
+  stepId?: string;
+  parentStepId?: string | null;
+  path?: string;
+  toolExecutor?: (tool: {
+    name: string;
+    arguments: Record<string, unknown>;
+  }) => Promise<AutomationCommandResult>;
 }
 
 export interface AutomationCommandResult {

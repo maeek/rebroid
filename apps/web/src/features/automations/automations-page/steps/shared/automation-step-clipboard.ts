@@ -28,8 +28,20 @@ export const copyAutomationStepToClipboard = async (step: AutomationStepForm) =>
 
 export const readAutomationStepFromClipboard = async () => {
   const text = await navigator.clipboard.readText()
+  return readAutomationStepFromText(text)
+}
+
+export const readAutomationStepFromText = (text: string) => {
   const parsed = parseClipboardPayload(text)
   return parsed ? cloneAutomationStep(parsed, '-copy') : null
+}
+
+export const makeAutomationStepIdsUnique = (
+  step: AutomationStepForm,
+  existingSteps: AutomationStepForm[]
+): AutomationStepForm => {
+  const usedIds = collectAutomationStepIds(existingSteps)
+  return uniquifyStepIds(step, usedIds)
 }
 
 export const cloneAutomationStep = (step: AutomationStepForm, idSuffix = ''): AutomationStepForm => {
@@ -70,6 +82,70 @@ export const cloneAutomationStep = (step: AutomationStepForm, idSuffix = ''): Au
 }
 
 export const isAutomationStepForm = (value: unknown): value is AutomationStepForm => parseStep(value) !== null
+
+const collectAutomationStepIds = (steps: AutomationStepForm[]) => {
+  const ids = new Set<string>()
+  const visit = (step: AutomationStepForm) => {
+    if (step.id) ids.add(step.id)
+    if (step.kind === 'condition') {
+      step.thenSteps.forEach(visit)
+      step.elseSteps.forEach(visit)
+    } else if (step.kind === 'switch') {
+      step.cases.forEach(item => item.steps.forEach(visit))
+      step.defaultSteps.forEach(visit)
+    } else if (step.kind === 'repeat') {
+      step.steps.forEach(visit)
+    }
+  }
+  steps.forEach(visit)
+  return ids
+}
+
+const uniqueStepId = (id: string, usedIds: Set<string>) => {
+  if (!id || !usedIds.has(id)) {
+    if (id) usedIds.add(id)
+    return id
+  }
+
+  const base = id.replace(/-copy(?:-\d+)?$/, '')
+  let index = 1
+  let candidate = `${base}-copy`
+  while (usedIds.has(candidate)) {
+    index += 1
+    candidate = `${base}-copy-${index}`
+  }
+  usedIds.add(candidate)
+  return candidate
+}
+
+const uniquifyStepIds = (step: AutomationStepForm, usedIds: Set<string>): AutomationStepForm => {
+  const id = uniqueStepId(step.id, usedIds)
+  if (step.kind === 'action') return { ...step, id }
+  if (step.kind === 'condition') {
+    return {
+      ...step,
+      id,
+      thenSteps: step.thenSteps.map(item => uniquifyStepIds(item, usedIds)),
+      elseSteps: step.elseSteps.map(item => uniquifyStepIds(item, usedIds))
+    }
+  }
+  if (step.kind === 'switch') {
+    return {
+      ...step,
+      id,
+      cases: step.cases.map(item => ({
+        ...item,
+        steps: item.steps.map(caseStep => uniquifyStepIds(caseStep, usedIds))
+      })),
+      defaultSteps: step.defaultSteps.map(item => uniquifyStepIds(item, usedIds))
+    }
+  }
+  return {
+    ...step,
+    id,
+    steps: step.steps.map(item => uniquifyStepIds(item, usedIds))
+  }
+}
 
 const parseClipboardPayload = (text: string) => {
   try {

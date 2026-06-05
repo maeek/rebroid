@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { DataGrid, DataGridPagination, DataGridToolbar } from '@/components/data-grid'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import {
   Dialog,
@@ -22,41 +21,20 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { Visible } from '@/components/ui/visible'
 import { toast } from '@/hooks/use-toast'
 import { removePlatformContainerAction, stopPlatformContainerAction } from '@/server/orchestrator/platform/actions'
-import { ContainerNameCell, ContainerStateBadge } from './orchestrator-containers-table-parts'
+import { ContainerMobileCard, createContainerColumns } from './orchestrator-containers-table-parts'
+import {
+  compactPlatformGridParams,
+  platformSortFromSearchParam,
+  platformSortToSearchParam
+} from './orchestrator-grid-query-utils'
 import { PlatformResourceScopeFilter } from './platform-resource-scope-filter'
 import type {
   PlatformContainer,
   PlatformContainersGridPage,
   PlatformContainersGridQuery
 } from '@/server/orchestrator/platform/types'
-import type { ColumnDef, SortingState } from '@tanstack/react-table'
 
 type PendingAction = { type: 'stop' | 'remove'; container: PlatformContainer } | null
-
-const compactParams = (values: Record<string, string | number | undefined>) => {
-  const params = new URLSearchParams()
-  for (const [key, value] of Object.entries(values)) {
-    const text = String(value ?? '').trim()
-    if (text && !(key === 'scope' && text === 'managed')) params.set(key, text)
-  }
-  return params
-}
-
-const sortToSearchParam = (sorting: SortingState) =>
-  sorting.length === 0 ? undefined : sorting.map(item => `${item.id}:${item.desc ? 'desc' : 'asc'}`).join(',')
-
-const sortFromSearchParam = (sort: string | undefined): SortingState =>
-  (sort ?? 'name:asc')
-    .split(',')
-    .map(part => {
-      const [id, direction] = part.split(':')
-      if (!id) return null
-      return { id, desc: direction === 'desc' }
-    })
-    .filter((item): item is SortingState[number] => Boolean(item))
-    .slice(0, 3)
-
-const containerName = (container: PlatformContainer) => container.names[0] ?? container.shortId
 
 export const OrchestratorContainersSection = ({
   containersPage,
@@ -74,7 +52,7 @@ export const OrchestratorContainersSection = ({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [pendingAction, setPendingAction] = useState<PendingAction>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
-  const sorting = useMemo(() => sortFromSearchParam(gridQuery.sort), [gridQuery.sort])
+  const sorting = useMemo(() => platformSortFromSearchParam(gridQuery.sort), [gridQuery.sort])
 
   useEffect(() => {
     setSearch(gridQuery.q ?? '')
@@ -95,14 +73,14 @@ export const OrchestratorContainersSection = ({
   const selectedContainers = containersPage.items.filter(container => selectedIds.has(container.id))
 
   const pushGridParams = (patch: Partial<PlatformContainersGridQuery>) => {
-    const params = compactParams({
+    const params = compactPlatformGridParams({
       q: patch.q ?? gridQuery.q,
       scope: patch.scope ?? gridQuery.scope ?? 'managed',
       sort: patch.sort ?? gridQuery.sort,
       page: patch.page ?? gridQuery.page ?? 1,
       pageSize: patch.pageSize ?? gridQuery.pageSize ?? containersPage.pageSize
     })
-    router.push(`/settings/orchestrator/containers${params.size ? `?${params.toString()}` : ''}`)
+    router.push(`/infrastructure/containers${params.size ? `?${params.toString()}` : ''}`)
   }
 
   const runContainerAction = async () => {
@@ -170,67 +148,7 @@ export const OrchestratorContainersSection = ({
     setSelectedIds(next)
   }
 
-  const columns = useMemo<ColumnDef<PlatformContainer>[]>(
-    () => [
-      {
-        id: 'name',
-        accessorFn: container => containerName(container),
-        header: 'Container',
-        size: 288,
-        meta: { label: 'Container' },
-        cell: ({ row }) => <ContainerNameCell container={row.original} />
-      },
-      {
-        id: 'state',
-        accessorFn: container => container.state,
-        header: 'State',
-        size: 128,
-        meta: { label: 'State' },
-        cell: ({ row }) => <ContainerStateBadge state={row.original.state} />
-      },
-      {
-        id: 'image',
-        accessorFn: container => container.image,
-        header: 'Image',
-        size: 384,
-        meta: { label: 'Image' },
-        cell: ({ row }) => <div className='truncate text-sm text-secondary-foreground'>{row.original.image}</div>
-      },
-      {
-        id: 'applicationId',
-        accessorFn: container => container.applicationId ?? '',
-        header: 'Application',
-        size: 256,
-        meta: { label: 'Application' },
-        cell: ({ row }) => (
-          <div className='truncate text-sm text-secondary-foreground'>{row.original.applicationId ?? 'unmanaged'}</div>
-        )
-      },
-      {
-        id: 'networks',
-        header: 'Networks',
-        size: 288,
-        enableSorting: false,
-        meta: { label: 'Networks' },
-        cell: ({ row }) => (
-          <div className='flex flex-wrap gap-1 text-sm text-secondary-foreground'>
-            {row.original.networks.length > 0
-              ? row.original.networks.map(network => (
-                  <Link
-                    key={network}
-                    href={`/settings/orchestrator/networks/${encodeURIComponent(network)}`}
-                    className='max-w-full truncate rounded-full bg-background/60 px-2 py-0.5 hover:text-primary'
-                  >
-                    {network}
-                  </Link>
-                ))
-              : 'none'}
-          </div>
-        )
-      }
-    ],
-    []
-  )
+  const columns = useMemo(() => createContainerColumns(), [])
 
   return (
     <>
@@ -298,7 +216,7 @@ export const OrchestratorContainersSection = ({
             sorting={sorting}
             onSortingChange={updater => {
               const nextSorting = typeof updater === 'function' ? updater(sorting) : updater
-              pushGridParams({ sort: sortToSearchParam(nextSorting), page: 1 })
+              pushGridParams({ sort: platformSortToSearchParam(nextSorting), page: 1 })
             }}
             selection={{
               selectedIds,
@@ -312,51 +230,18 @@ export const OrchestratorContainersSection = ({
             }
             mobileCard={row => {
               const container = row.original
-              const selected = selectedIds.has(container.id)
               return (
-                <div
+                <ContainerMobileCard
                   key={container.id}
-                  className='grid gap-3 rounded-lg border border-border/70 bg-background/25 p-4'
-                >
-                  <div className='flex items-start gap-3'>
-                    <Checkbox
-                      checked={selected}
-                      aria-label='Select container'
-                      onCheckedChange={checked => {
-                        const next = new Set(selectedIds)
-                        if (checked === true) next.add(container.id)
-                        else next.delete(container.id)
-                        setSelectedIds(next)
-                      }}
-                    />
-                    <ContainerNameCell
-                      container={container}
-                      className='min-w-0 flex-1'
-                    />
-                  </div>
-                  <dl className='grid grid-cols-2 gap-x-4 gap-y-2 text-sm'>
-                    <div>
-                      <dt className='text-secondary-foreground'>State</dt>
-                      <dd>
-                        <ContainerStateBadge state={container.state} />
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className='text-secondary-foreground'>Application</dt>
-                      <dd className='truncate'>{container.applicationId ?? 'unmanaged'}</dd>
-                    </div>
-                    <div className='col-span-2'>
-                      <dt className='text-secondary-foreground'>Image</dt>
-                      <dd className='truncate'>{container.image}</dd>
-                    </div>
-                    <div className='col-span-2'>
-                      <dt className='text-secondary-foreground'>Networks</dt>
-                      <dd className='truncate'>
-                        {container.networks.length > 0 ? container.networks.join(', ') : 'none'}
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
+                  container={container}
+                  selected={selectedIds.has(container.id)}
+                  onSelectedChange={selected => {
+                    const next = new Set(selectedIds)
+                    if (selected) next.add(container.id)
+                    else next.delete(container.id)
+                    setSelectedIds(next)
+                  }}
+                />
               )
             }}
             rowContextMenu={row => {
@@ -383,7 +268,7 @@ export const OrchestratorContainersSection = ({
                     </>
                   ) : null}
                   <ContextMenuItem asChild>
-                    <Link href={`/settings/orchestrator/containers/${row.original.id}`}>
+                    <Link href={`/infrastructure/containers/${row.original.id}`}>
                       <IconEye className='mr-2 size-4' />
                       Details
                     </Link>

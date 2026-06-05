@@ -39,7 +39,7 @@ export class ContainerImagesController {
   @ApiCreatedResponse({
     schema: {
       example: {
-        image: 'redroid/redroid:13.0.0-latest',
+        image: 'redroid/redroid:14.0.0-latest',
         status: 'pulled',
       },
     },

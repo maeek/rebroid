@@ -101,7 +101,7 @@ export const GeneralSettingsForm = ({ initialSettings }: { initialSettings: Orch
         <div className='flex flex-col gap-2'>
           <PageBreadcrumbs
             className='pt-0'
-            items={[{ label: 'Settings', href: '/settings/general' }, { label: 'General' }]}
+            items={[{ label: 'Preferences', href: '/preferences/general' }, { label: 'General' }]}
           />
           <h2 className='text-3xl max-sm:text-xl font-medium shrink-0 pt-4'>General</h2>
         </div>

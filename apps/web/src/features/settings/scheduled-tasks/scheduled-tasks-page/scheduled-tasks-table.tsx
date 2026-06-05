@@ -4,8 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { IconEdit, IconPlayerPlayFilled, IconTrash } from '@tabler/icons-react'
 import { DataGrid } from '@/components/data-grid'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Switch } from '@/components/ui/switch'
 import { Visible } from '@/components/ui/visible'
@@ -16,34 +14,13 @@ import {
   statusVariant
 } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/schedule-utils'
 import { useScheduledTasksControllerContext } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-context'
+import {
+  ScheduledTaskBulkBar,
+  ScheduledTaskMobileCard
+} from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-table-parts'
+import { sortTasks } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-table-utils'
 import type { ScheduledTask } from '@/server/orchestrator/scheduled-tasks/types'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
-
-const sortDate = (left: string | null, right: string | null) => {
-  if (!left && !right) return 0
-  if (!left) return -1
-  if (!right) return 1
-  return new Date(left).getTime() - new Date(right).getTime()
-}
-
-const sortTasks = (tasks: ScheduledTask[], sorting: SortingState, actionLabel: (task: ScheduledTask) => string) => {
-  const activeSorting = sorting.length > 0 ? sorting : [{ id: 'name', desc: false }]
-  return [...tasks].sort((left, right) => {
-    for (const item of activeSorting) {
-      const multiplier = item.desc ? -1 : 1
-      let result = 0
-      if (item.id === 'name') result = left.name.localeCompare(right.name)
-      else if (item.id === 'state') {
-        result = Number(left.enabled) - Number(right.enabled) || left.lastStatus.localeCompare(right.lastStatus)
-      } else if (item.id === 'schedule') result = left.cronExpression.localeCompare(right.cronExpression)
-      else if (item.id === 'nextRunAt') result = sortDate(left.nextRunAt, right.nextRunAt)
-      else if (item.id === 'lastRunAt') result = sortDate(left.lastRunAt, right.lastRunAt)
-      else if (item.id === 'action') result = actionLabel(left).localeCompare(actionLabel(right))
-      if (result !== 0) return result * multiplier
-    }
-    return left.id.localeCompare(right.id)
-  })
-}
 
 export const ScheduledTasksTable = () => {
   const { actionByType, busyTaskId, deleteTask, openEditForm, runNow, tasks, toggleEnabled } =
@@ -171,47 +148,15 @@ export const ScheduledTasksTable = () => {
 
   return (
     <div className='grid gap-3'>
-      {selectedTasks.length > 0 ? (
-        <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-input bg-card/40 px-4 py-3 text-sm'>
-          <span className='text-secondary-foreground'>{selectedTasks.length} selected</span>
-          <div className='flex flex-wrap gap-2'>
-            <Button
-              type='button'
-              variant='secondary'
-              disabled={busyTaskId !== null}
-              onClick={() => void runSelected()}
-            >
-              <IconPlayerPlayFilled className='size-4' />
-              Run selected
-            </Button>
-            <Button
-              type='button'
-              variant='secondary'
-              disabled={busyTaskId !== null}
-              onClick={() => void updateSelectedEnabled(true)}
-            >
-              Enable selected
-            </Button>
-            <Button
-              type='button'
-              variant='secondary'
-              disabled={busyTaskId !== null}
-              onClick={() => void updateSelectedEnabled(false)}
-            >
-              Disable selected
-            </Button>
-            <Button
-              type='button'
-              variant='destructive'
-              disabled={busyTaskId !== null || !selectedTasksAreCustom}
-              onClick={() => void deleteSelected()}
-            >
-              <IconTrash className='size-4' />
-              Delete selected
-            </Button>
-          </div>
-        </div>
-      ) : null}
+      <ScheduledTaskBulkBar
+        busy={busyTaskId !== null}
+        canDelete={selectedTasksAreCustom}
+        selectedCount={selectedTasks.length}
+        onDelete={() => void deleteSelected()}
+        onDisable={() => void updateSelectedEnabled(false)}
+        onEnable={() => void updateSelectedEnabled(true)}
+        onRun={() => void runSelected()}
+      />
       <DataGrid
         columns={columns}
         data={sortedTasks}
@@ -228,64 +173,20 @@ export const ScheduledTasksTable = () => {
         minWidth='82rem'
         emptyState={<div className='text-center text-secondary-foreground'>No scheduled tasks configured.</div>}
         mobileCard={row => (
-          <div
+          <ScheduledTaskMobileCard
             key={row.original.id}
-            className='grid gap-4 rounded-lg border border-border/70 bg-background/25 p-4'
-          >
-            <div className='flex min-w-0 items-start justify-between gap-3'>
-              <div className='flex min-w-0 items-start gap-3'>
-                <Checkbox
-                  checked={selectedIds.has(row.original.id)}
-                  aria-label='Select scheduled task'
-                  onCheckedChange={checked => {
-                    const next = new Set(selectedIds)
-                    if (checked === true) next.add(row.original.id)
-                    else next.delete(row.original.id)
-                    setSelectedIds(next)
-                  }}
-                />
-                <div className='min-w-0'>
-                  <div className='flex flex-wrap items-center gap-2'>
-                    <h3 className='font-medium text-foreground'>{row.original.name}</h3>
-                    <Badge variant='secondary'>{row.original.kind === 'predefined' ? 'Built-in' : 'Custom'}</Badge>
-                  </div>
-                  <p className='mt-1 text-sm text-secondary-foreground'>{actionLabel(row.original)}</p>
-                </div>
-              </div>
-              <Switch
-                checked={row.original.enabled}
-                disabled={busyTaskId === row.original.id}
-                aria-label={`${row.original.enabled ? 'Disable' : 'Enable'} ${row.original.name}`}
-                onCheckedChange={enabled => void toggleEnabled(row.original, enabled)}
-              />
-            </div>
-            <div className='flex flex-wrap gap-2'>
-              <Badge variant={row.original.enabled ? 'status' : 'secondary'}>
-                {row.original.enabled ? 'Enabled' : 'Paused'}
-              </Badge>
-              <Badge variant={statusVariant(row.original.lastStatus)}>{statusLabel(row.original.lastStatus)}</Badge>
-            </div>
-            <dl className='grid grid-cols-2 gap-x-4 gap-y-3 text-sm'>
-              <div className='col-span-2 grid gap-1'>
-                <dt className='text-secondary-foreground'>Schedule</dt>
-                <dd className='text-foreground'>{scheduleLabel(row.original.cronExpression)}</dd>
-              </div>
-              <div className='grid gap-1'>
-                <dt className='text-secondary-foreground'>Next</dt>
-                <dd className='text-foreground'>{dateLabel(row.original.nextRunAt)}</dd>
-              </div>
-              <div className='grid gap-1'>
-                <dt className='text-secondary-foreground'>Last</dt>
-                <dd className='text-foreground'>{dateLabel(row.original.lastRunAt)}</dd>
-              </div>
-              <Visible when={row.original.lastError}>
-                <div className='col-span-2 grid gap-1'>
-                  <dt className='text-secondary-foreground'>Error</dt>
-                  <dd className='text-destructive'>{row.original.lastError}</dd>
-                </div>
-              </Visible>
-            </dl>
-          </div>
+            task={row.original}
+            actionLabel={actionLabel(row.original)}
+            busy={busyTaskId === row.original.id}
+            selected={selectedIds.has(row.original.id)}
+            onSelectedChange={selected => {
+              const next = new Set(selectedIds)
+              if (selected) next.add(row.original.id)
+              else next.delete(row.original.id)
+              setSelectedIds(next)
+            }}
+            onToggleEnabled={enabled => void toggleEnabled(row.original, enabled)}
+          />
         )}
         rowContextMenu={row => {
           const hasBulkSelection = selectedIds.has(row.original.id) && selectedTasks.length > 1

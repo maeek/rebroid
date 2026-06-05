@@ -6,5 +6,5 @@ export const requireAdminUser = async () => {
 }
 
 export const revalidateUsersPage = () => {
-  revalidatePath('/settings/users')
+  revalidatePath('/users')
 }

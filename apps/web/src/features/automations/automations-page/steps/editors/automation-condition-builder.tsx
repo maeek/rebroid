@@ -167,46 +167,48 @@ function ConditionRow({
 
   return (
     <div className='grid gap-3 rounded-md border border-border/50 bg-background/35 p-3'>
-      <div className='grid gap-3 lg:grid-cols-[minmax(0,1fr)_15rem_auto]'>
-        {condition.value.source === 'literal' ? (
-          <div className='grid gap-2'>
-            <Label>Value</Label>
-            <div className='rounded-md border border-border/60 bg-input/40 px-3 py-2 text-sm'>
-              {valueRefLabel(condition.value, stepOptions)}
+      <div className='grid grid-cols-[minmax(0,1fr)_auto] gap-3'>
+        <div className='grid grid-cols-[repeat(auto-fit,minmax(min(14rem,100%),1fr))] gap-3'>
+          {condition.value.source === 'literal' ? (
+            <div className='grid gap-2'>
+              <Label>Value</Label>
+              <div className='rounded-md border border-border/60 bg-input/40 px-3 py-2 text-sm'>
+                {valueRefLabel(condition.value, stepOptions)}
+              </div>
             </div>
-          </div>
-        ) : (
-          <AutomationReferencePicker
-            id={`${id}-value`}
-            label='Value'
-            value={condition.value}
-            stepOptions={stepOptions}
-            onChange={setValue}
-          />
-        )}
-        <div className='grid gap-2'>
-          <Label htmlFor={`${id}-operator`}>Condition</Label>
-          <Select
-            value={operator}
-            onValueChange={nextOperator => setOperator(nextOperator as AutomationConditionOperator)}
-          >
-            <SelectTrigger
-              id={`${id}-operator`}
-              className='w-full'
+          ) : (
+            <AutomationReferencePicker
+              id={`${id}-value`}
+              label='Value'
+              value={condition.value}
+              stepOptions={stepOptions}
+              onChange={setValue}
+            />
+          )}
+          <div className='grid gap-2'>
+            <Label htmlFor={`${id}-operator`}>Condition</Label>
+            <Select
+              value={operator}
+              onValueChange={nextOperator => setOperator(nextOperator as AutomationConditionOperator)}
             >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {operators.map(item => (
-                <SelectItem
-                  key={item}
-                  value={item}
-                >
-                  {conditionOperatorLabel(item)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+              <SelectTrigger
+                id={`${id}-operator`}
+                className='w-full'
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {operators.map(item => (
+                  <SelectItem
+                    key={item}
+                    value={item}
+                  >
+                    {conditionOperatorLabel(item)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <div className='flex items-end justify-end'>
           <Button

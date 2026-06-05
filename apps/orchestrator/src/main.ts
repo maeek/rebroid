@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { AutomationRunEventStreamService } from './automations/events/automation-run-event-stream.service';
 import {
   configureFastifyPlatform,
   createFastifyAdapter,
@@ -60,6 +61,10 @@ async function bootstrap() {
       },
     });
   }
+
+  await app
+    .get(AutomationRunEventStreamService)
+    .register(app.getHttpAdapter().getInstance());
 
   const port = config.getOrThrow<number>('app.port');
   await app.listen(port, '0.0.0.0');

@@ -171,6 +171,18 @@ export const permissionDefinitions = [
     category: 'automations',
     name: 'Manage automation network policy',
     description: 'Allow automation steps that change app container network restrictions and allowlists.'
+  },
+  {
+    id: 'automations:run-ai',
+    category: 'automations',
+    name: 'Run AI automations',
+    description: 'Allow automation steps that use configured AI providers and tool calls.'
+  },
+  {
+    id: 'automations:manage-ai-providers',
+    category: 'automations',
+    name: 'Manage AI providers',
+    description: 'Configure local and remote AI providers used by automation steps.'
   }
 ] as const
 
@@ -206,7 +218,8 @@ export const defaultUserPermissions: PermissionMap = {
   'applications:control-viewer': true,
   'applications:capture-screenshot': true,
   'automations:manage': true,
-  'automations:run': true
+  'automations:run': true,
+  'automations:run-ai': true
 }
 
 export const defaultUserQuota: ResourceQuota = {

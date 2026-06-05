@@ -32,7 +32,7 @@ export const CastingSettingsPageClient = ({
       <PlatformPageHeader
         title='Casting'
         description='Inspect the casting sidecar and terminate active viewer sessions.'
-        includeOrchestratorBreadcrumb={false}
+        breadcrumbRoot={{ label: 'Operations' }}
         actions={
           <PlatformPageRefreshButton
             isRefreshing={isRefreshing}

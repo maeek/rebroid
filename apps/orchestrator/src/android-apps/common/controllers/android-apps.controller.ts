@@ -53,7 +53,7 @@ export class AndroidAppsController {
         ownerUserId: { type: 'string', example: 'user_123' },
         containerImage: {
           type: 'string',
-          example: 'redroid/redroid:13.0.0-latest',
+          example: 'redroid/redroid:14.0.0-latest',
         },
         inactivityTimeoutSeconds: { type: 'integer', example: 900 },
         memoryLimitMb: { type: 'integer', example: 2048 },

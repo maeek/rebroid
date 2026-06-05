@@ -28,7 +28,7 @@ const ScheduledTasksPageContent = () => {
       <PlatformPageHeader
         title='Scheduled tasks'
         description='Recurring maintenance jobs with simple schedules.'
-        includeOrchestratorBreadcrumb={false}
+        breadcrumbRoot={{ label: 'Operations' }}
         actions={
           <Button
             className='max-sm:w-full'

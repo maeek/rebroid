@@ -71,7 +71,7 @@ export const swipeAction: AutomationActionDefinition = {
           onChange={value => patchUiState({ coordinateMode: value })}
         />
         {mode === 'pixels' ? (
-          <div className='grid grid-cols-2 gap-3'>
+          <div className='grid grid-cols-[repeat(auto-fit,minmax(min(10rem,100%),1fr))] gap-3'>
             <NumberField
               label='Start X'
               value={x1}
@@ -94,7 +94,7 @@ export const swipeAction: AutomationActionDefinition = {
             />
           </div>
         ) : (
-          <div className='grid grid-cols-2 gap-3'>
+          <div className='grid grid-cols-[repeat(auto-fit,minmax(min(10rem,100%),1fr))] gap-3'>
             <NumberField
               label='Start X (%)'
               value={pixelToPercent(x1, 'x')}

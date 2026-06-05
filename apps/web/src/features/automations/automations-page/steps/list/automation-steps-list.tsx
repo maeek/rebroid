@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   closestCenter,
   DndContext,
@@ -16,9 +16,14 @@ import {
   useSensor,
   useSensors
 } from '@dnd-kit/core'
+import { toast } from '@/hooks/use-toast'
 import { AutomationStepInspector } from '../inspector/automation-step-inspector'
 import { AutomationStepOutlineListView } from '../outline/automation-step-outline-list-view'
-import { isAutomationStepForm } from '../shared/automation-step-clipboard'
+import {
+  isAutomationStepForm,
+  makeAutomationStepIdsUnique,
+  readAutomationStepFromText
+} from '../shared/automation-step-clipboard'
 import {
   findStepById,
   findStepLocation,
@@ -98,6 +103,17 @@ const getStepDropData = (event: DragOverEvent | DragEndEvent): StepDropData | nu
     return { type: 'step-list', listId: data.listId }
   }
   return null
+}
+
+const isEditablePasteTarget = (target: EventTarget | null) => {
+  if (!(target instanceof Element)) return false
+  if (target instanceof HTMLElement && target.isContentEditable) return true
+  const editable = target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]')
+  if (!editable) return false
+  if (editable instanceof HTMLInputElement) {
+    return editable.type !== 'checkbox' && editable.type !== 'radio'
+  }
+  return true
 }
 
 export function AutomationStepsList({
@@ -188,6 +204,35 @@ export function AutomationStepsList({
     [onChange, safeSteps]
   )
 
+  const pasteStepAtRoot = useCallback(
+    (step: AutomationStepForm) => {
+      const nextStep = makeAutomationStepIdsUnique(step, safeSteps)
+      onChange([...safeSteps, nextStep])
+      onSelectStep(nextStep.clientKey)
+      if (nextStep.kind !== 'action') onOpenBlock(nextStep.clientKey)
+      toast({ title: 'Block pasted' })
+    },
+    [onChange, onOpenBlock, onSelectStep, safeSteps]
+  )
+
+  useEffect(() => {
+    const handlePaste = (event: ClipboardEvent) => {
+      if (isEditablePasteTarget(event.target)) return
+
+      const text = event.clipboardData?.getData('text/plain') ?? ''
+      if (!text.trim()) return
+
+      const step = readAutomationStepFromText(text)
+      if (!step) return
+
+      event.preventDefault()
+      pasteStepAtRoot(step)
+    }
+
+    window.addEventListener('paste', handlePaste)
+    return () => window.removeEventListener('paste', handlePaste)
+  }, [pasteStepAtRoot])
+
   const stepsContext = useMemo(
     () => ({
       rootSteps: safeSteps,
@@ -242,7 +287,7 @@ export function AutomationStepsList({
         onDragEnd={finishDrag}
       >
         <AutomationStepsProvider value={stepsContext}>
-          <div className='flex min-w-0 gap-6 max-[1280px]:flex-wrap'>
+          <div className='flex min-w-0 items-start gap-6 max-[1280px]:flex-wrap'>
             <div className='grid min-w-0 content-start gap-6 flex-2/5'>
               {details}
               <AutomationStepOutlineListView
@@ -251,7 +296,7 @@ export function AutomationStepsList({
                 root
               />
             </div>
-            <div className='grid min-w-0 content-start gap-6 flex-3/5 shrink-0'>
+            <div className='sticky top-24 grid max-h-[calc(100dvh-7rem)] min-w-0 content-start gap-6 overflow-hidden flex-3/5 shrink-0'>
               <AutomationStepInspector
                 step={selectedStep}
                 rootSteps={safeSteps}

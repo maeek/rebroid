@@ -17,7 +17,7 @@ Docker healthchecks use liveness endpoints so an optional downstream outage does
 
 The supported production target is native rootful Linux Docker Engine. Docker Desktop VM mode, Podman machine VM mode, and rootless engines are unsupported.
 
-Use **Settings > Orchestrator > Metrics** first. The dashboard shows Docker API retries, slow operations, failures, active work, queue depth, and the latest sanitized failure events. Local Unix-socket requests intentionally log slow operations without terminating them.
+Use **Orchestrator > Overview** first. The dashboard shows Docker API retries, slow operations, failures, active work, queue depth, and the latest sanitized failure events. Local Unix-socket requests intentionally log slow operations without terminating them.
 
 When a socket reset remains, collect the host evidence around the same timestamp:
 

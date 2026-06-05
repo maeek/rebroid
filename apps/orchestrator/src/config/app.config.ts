@@ -152,7 +152,7 @@ export default registerAs('app', () => {
       ),
     },
     container: {
-      image: process.env.CONTAINER_IMAGE ?? 'redroid/redroid:13.0.0-latest',
+      image: process.env.CONTAINER_IMAGE ?? 'redroid/redroid:14.0.0-latest',
     },
     redroid: {
       dataMountPath: process.env.REDROID_DATA_MOUNT_PATH ?? '/data',

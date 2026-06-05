@@ -2,11 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { IconLoader2, IconRestore, IconTrash } from '@tabler/icons-react'
-import Link from 'next/link'
 import { DataGrid, DataGridPagination, DataGridToolbar } from '@/components/data-grid'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Section } from '@/components/ui/section'
 import { PlatformDetailRow } from '@/features/orchestrator/components/platform-detail-parts'
@@ -18,53 +15,19 @@ import {
   repairDisplaySidecarAction,
   releaseDisplaySidecarSessionAction
 } from '@/server/orchestrator/diagnostics/actions'
+import { CastingSessionMobileCard, createCastingSessionColumns } from './casting-sessions-grid'
+import {
+  activeStatuses,
+  castingDetailLabels,
+  castingErrorMessage,
+  castingMessage,
+  filterSessions,
+  formatHealthDetail,
+  sortSessions
+} from './casting-sidecar-utils'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
 import type { DisplaySidecarSession, ServiceHealth } from '@/server/orchestrator/diagnostics/types'
-import type { ColumnDef, SortingState } from '@tanstack/react-table'
-
-const formatTimestamp = (value: string) => new Date(value).toLocaleString()
-const castingMessage = (message: string) => message.replace(/display sidecar/gi, 'casting sidecar')
-const castingErrorMessage = (error: unknown) => castingMessage(error instanceof Error ? error.message : 'Unknown error')
-const formatHealthDetail = (value: unknown) => {
-  if (value === null) return 'none'
-  if (typeof value === 'string') return value
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
-  return JSON.stringify(value)
-}
-const activeStatuses = new Set(['created', 'active'])
-const castingDetailLabels: Record<string, string> = {
-  autoStart: 'Auto start',
-  containerId: 'Container ID',
-  containerName: 'Container name',
-  error: 'Error',
-  exitCode: 'Exit code',
-  finishedAt: 'Finished at',
-  image: 'Image',
-  port: 'Port',
-  publishedHostPort: 'Published host port',
-  recentLogs: 'Recent logs',
-  restartCount: 'Restart count'
-}
-
-const sortSessions = (sessions: DisplaySidecarSession[], sorting: SortingState) => {
-  const activeSorting = sorting.length > 0 ? sorting : [{ id: 'lastActivityAt', desc: true }]
-  return [...sessions].sort((left, right) => {
-    for (const item of activeSorting) {
-      const multiplier = item.desc ? -1 : 1
-      let result = 0
-      if (item.id === 'application') result = (left.applicationId ?? '').localeCompare(right.applicationId ?? '')
-      else if (item.id === 'id') result = left.id.localeCompare(right.id)
-      else if (item.id === 'status') result = left.status.localeCompare(right.status)
-      else if (item.id === 'lastActivityAt') {
-        result = new Date(left.lastActivityAt).getTime() - new Date(right.lastActivityAt).getTime()
-      } else if (item.id === 'expiresAt') {
-        result = new Date(left.expiresAt).getTime() - new Date(right.expiresAt).getTime()
-      }
-      if (result !== 0) return result * multiplier
-    }
-    return left.id.localeCompare(right.id)
-  })
-}
+import type { SortingState } from '@tanstack/react-table'
 
 export const CastingSidecarSettings = ({
   initialHealth,
@@ -93,18 +56,10 @@ export const CastingSidecarSettings = ({
   const appsById = useMemo(() => new Map(applications.map(app => [app.id, app])), [applications])
   const ownerNames = useMemo(() => new Map(owners.map(owner => [owner.id, owner.name])), [owners])
 
-  const filteredSessions = useMemo(() => {
-    const query = submittedSearch.trim().toLowerCase()
-    if (!query) return sessions
-    return sessions.filter(session => {
-      const app = session.applicationId ? appsById.get(session.applicationId) : undefined
-      return [session.id, session.applicationId, app?.name, session.ownerUserId, session.status]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-        .includes(query)
-    })
-  }, [appsById, sessions, submittedSearch])
+  const filteredSessions = useMemo(
+    () => filterSessions(sessions, appsById, submittedSearch),
+    [appsById, sessions, submittedSearch]
+  )
   const sortedSessions = useMemo(() => sortSessions(filteredSessions, sorting), [filteredSessions, sorting])
   const paginatedSessions = useMemo(
     () => sortedSessions.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize),
@@ -199,89 +154,7 @@ export const CastingSidecarSettings = ({
     </div>
   ) : undefined
 
-  const columns = useMemo<ColumnDef<DisplaySidecarSession>[]>(
-    () => [
-      {
-        id: 'application',
-        accessorFn: session => session.applicationId ?? '',
-        header: 'Application and user',
-        size: 352,
-        meta: { label: 'Application and user' },
-        cell: ({ row }) => {
-          const app = row.original.applicationId ? appsById.get(row.original.applicationId) : undefined
-          const ownerId = row.original.ownerUserId ?? app?.ownerUserId
-          return (
-            <div className='flex min-w-0 flex-col gap-1'>
-              {row.original.applicationId ? (
-                <Link
-                  className='truncate font-medium hover:text-primary'
-                  href={`/app/${row.original.applicationId}/manage`}
-                >
-                  {app?.name ?? row.original.applicationId}
-                </Link>
-              ) : (
-                <span>Unassigned application</span>
-              )}
-              {ownerId ? (
-                <Link
-                  className='truncate text-xs text-muted-foreground hover:text-primary'
-                  href={`/settings/users/${ownerId}`}
-                >
-                  {ownerNames.get(ownerId) ?? ownerId}
-                </Link>
-              ) : (
-                <span className='text-xs text-muted-foreground'>Unknown user</span>
-              )}
-            </div>
-          )
-        }
-      },
-      {
-        id: 'id',
-        accessorFn: session => session.id,
-        header: 'Session ID',
-        size: 224,
-        meta: { label: 'Session ID' },
-        cell: ({ row }) => <span className='truncate text-sm text-secondary-foreground'>{row.original.id}</span>
-      },
-      {
-        id: 'status',
-        accessorFn: session => session.status,
-        header: 'Status',
-        size: 112,
-        meta: { label: 'Status' },
-        cell: ({ row }) => (
-          <Badge
-            className='capitalize'
-            variant={row.original.status === 'active' ? 'status' : 'secondary'}
-          >
-            {row.original.status}
-          </Badge>
-        )
-      },
-      {
-        id: 'lastActivityAt',
-        accessorFn: session => session.lastActivityAt,
-        header: 'Last activity',
-        size: 192,
-        meta: { label: 'Last activity' },
-        cell: ({ row }) => (
-          <span className='text-sm text-secondary-foreground'>{formatTimestamp(row.original.lastActivityAt)}</span>
-        )
-      },
-      {
-        id: 'expiresAt',
-        accessorFn: session => session.expiresAt,
-        header: 'Expires',
-        size: 192,
-        meta: { label: 'Expires' },
-        cell: ({ row }) => (
-          <span className='text-sm text-secondary-foreground'>{formatTimestamp(row.original.expiresAt)}</span>
-        )
-      }
-    ],
-    [appsById, ownerNames]
-  )
+  const columns = useMemo(() => createCastingSessionColumns({ appsById, ownerNames }), [appsById, ownerNames])
 
   return (
     <>
@@ -348,74 +221,20 @@ export const CastingSidecarSettings = ({
           }
           mobileCard={row => {
             const session = row.original
-            const app = session.applicationId ? appsById.get(session.applicationId) : undefined
-            const ownerId = session.ownerUserId ?? app?.ownerUserId
-            const selected = selectedIds.has(session.id)
             return (
-              <div
+              <CastingSessionMobileCard
                 key={session.id}
-                className='grid gap-3 rounded-lg border border-border/70 bg-background/25 p-4'
-              >
-                <div className='flex items-start gap-3'>
-                  <Checkbox
-                    checked={selected}
-                    aria-label='Select session'
-                    onCheckedChange={checked => {
-                      const next = new Set(selectedIds)
-                      if (checked === true) next.add(session.id)
-                      else next.delete(session.id)
-                      setSelectedIds(next)
-                    }}
-                  />
-                  <div className='min-w-0 flex-1'>
-                    {session.applicationId ? (
-                      <Link
-                        className='truncate font-medium hover:text-primary'
-                        href={`/app/${session.applicationId}/manage`}
-                      >
-                        {app?.name ?? session.applicationId}
-                      </Link>
-                    ) : (
-                      <span>Unassigned application</span>
-                    )}
-                    {ownerId ? (
-                      <Link
-                        className='block truncate text-xs text-muted-foreground hover:text-primary'
-                        href={`/settings/users/${ownerId}`}
-                      >
-                        {ownerNames.get(ownerId) ?? ownerId}
-                      </Link>
-                    ) : (
-                      <span className='text-xs text-muted-foreground'>Unknown user</span>
-                    )}
-                  </div>
-                </div>
-                <dl className='grid grid-cols-2 gap-x-4 gap-y-2 text-sm'>
-                  <div>
-                    <dt className='text-secondary-foreground'>Status</dt>
-                    <dd>
-                      <Badge
-                        className='capitalize'
-                        variant={session.status === 'active' ? 'status' : 'secondary'}
-                      >
-                        {session.status}
-                      </Badge>
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className='text-secondary-foreground'>Session ID</dt>
-                    <dd className='truncate'>{session.id}</dd>
-                  </div>
-                  <div>
-                    <dt className='text-secondary-foreground'>Last activity</dt>
-                    <dd>{formatTimestamp(session.lastActivityAt)}</dd>
-                  </div>
-                  <div>
-                    <dt className='text-secondary-foreground'>Expires</dt>
-                    <dd>{formatTimestamp(session.expiresAt)}</dd>
-                  </div>
-                </dl>
-              </div>
+                session={session}
+                appsById={appsById}
+                ownerNames={ownerNames}
+                selected={selectedIds.has(session.id)}
+                onSelectedChange={selected => {
+                  const next = new Set(selectedIds)
+                  if (selected) next.add(session.id)
+                  else next.delete(session.id)
+                  setSelectedIds(next)
+                }}
+              />
             )
           }}
           rowContextMenu={row => {

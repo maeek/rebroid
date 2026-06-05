@@ -241,6 +241,65 @@ export interface RunAutomationInput {
   startPolicy?: AutomationStartPolicy
 }
 
+export interface RunAdHocAiAutomationInput extends RunAutomationInput {
+  prompt: string
+  providerId?: string
+  modelId?: string
+  allowedTools?: string[]
+  maxToolCalls?: number
+  timeoutMs?: number
+}
+
+export interface DraftAutomationYamlInput {
+  prompt: string
+  providerId?: string
+  modelId?: string
+}
+
+export interface AutomationYamlDraft {
+  yaml: string
+  definition: AutomationDefinition
+}
+
+export type AutomationRunEventType =
+  | 'run.queued'
+  | 'run.started'
+  | 'run.completed'
+  | 'run.failed'
+  | 'run.canceled'
+  | 'step.started'
+  | 'step.completed'
+  | 'step.failed'
+  | 'step.progress'
+  | 'ai.model.started'
+  | 'ai.model.completed'
+  | 'ai.message.delta'
+  | 'ai.message.completed'
+  | 'ai.tool.started'
+  | 'ai.tool.arguments'
+  | 'ai.tool.completed'
+  | 'ai.tool.failed'
+  | 'ai.guardrail.triggered'
+  | 'heartbeat'
+
+export interface AutomationRunEvent {
+  id: string
+  runId: string
+  ownerUserId: string
+  sequence: number
+  type: AutomationRunEventType
+  stepId: string | null
+  parentStepId: string | null
+  message: string
+  data: Record<string, unknown>
+  createdAt: string
+}
+
+export interface AutomationRunEventStreamToken {
+  token: string
+  expiresAt: string
+}
+
 export interface AutomationTrigger {
   id: string
   ownerUserId: string

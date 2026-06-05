@@ -28,7 +28,7 @@ export const FirewallSettingsPageClient = ({
       <PlatformPageHeader
         title='Network access'
         description='Apply outbound network restrictions to application containers.'
-        includeOrchestratorBreadcrumb={false}
+        breadcrumbRoot={{ label: 'Operations' }}
         actions={
           <PlatformPageRefreshButton
             isRefreshing={isRefreshing}

@@ -1,5 +1,12 @@
 import { emptyRequest, jsonRequest } from '../request'
-import type { CleanupUploadedApksResponse, OrchestratorSettingsResponse } from './types'
+import type {
+  AutomationAiModelCatalogProvider,
+  AutomationAiProvider,
+  AutomationAiProviderHealth,
+  AutomationAiProviderModel,
+  CleanupUploadedApksResponse,
+  OrchestratorSettingsResponse
+} from './types'
 import type { RuntimeUiSettings } from '@/features/settings/domain/orchestrator-ui-settings'
 
 export const orchestratorSettingsClient = {
@@ -17,5 +24,55 @@ export const orchestratorSettingsClient = {
 
   resetSettings() {
     return emptyRequest<OrchestratorSettingsResponse>('/settings/reset', { method: 'POST' })
+  },
+
+  listAiProviders() {
+    return emptyRequest<AutomationAiProvider[]>('/settings/ai-providers')
+  },
+
+  createAiProvider(input: AutomationAiProvider) {
+    return jsonRequest<AutomationAiProvider>('/settings/ai-providers', 'POST', input)
+  },
+
+  updateAiProvider(providerId: string, input: Partial<AutomationAiProvider>) {
+    return jsonRequest<AutomationAiProvider>(`/settings/ai-providers/${encodeURIComponent(providerId)}`, 'PATCH', input)
+  },
+
+  deleteAiProvider(providerId: string) {
+    return emptyRequest<void>(`/settings/ai-providers/${encodeURIComponent(providerId)}`, { method: 'DELETE' })
+  },
+
+  checkAiProviderHealth(providerId: string, modelId?: string) {
+    const params = modelId ? `?modelId=${encodeURIComponent(modelId)}` : ''
+    return emptyRequest<AutomationAiProviderHealth>(
+      `/settings/ai-providers/${encodeURIComponent(providerId)}/health${params}`
+    )
+  },
+
+  createAiProviderModel(providerId: string, input: AutomationAiProviderModel) {
+    return jsonRequest<AutomationAiProviderModel>(
+      `/settings/ai-providers/${encodeURIComponent(providerId)}/models`,
+      'POST',
+      input
+    )
+  },
+
+  updateAiProviderModel(providerId: string, modelId: string, input: Partial<AutomationAiProviderModel>) {
+    return jsonRequest<AutomationAiProviderModel>(
+      `/settings/ai-providers/${encodeURIComponent(providerId)}/models/${encodeURIComponent(modelId)}`,
+      'PATCH',
+      input
+    )
+  },
+
+  deleteAiProviderModel(providerId: string, modelId: string) {
+    return emptyRequest<void>(
+      `/settings/ai-providers/${encodeURIComponent(providerId)}/models/${encodeURIComponent(modelId)}`,
+      { method: 'DELETE' }
+    )
+  },
+
+  listAiModelCatalog() {
+    return emptyRequest<AutomationAiModelCatalogProvider[]>('/settings/ai-model-catalog')
   }
 }

@@ -80,7 +80,10 @@ export function AutomationActionPicker({
       </PopoverTrigger>
       <PopoverContent
         align='start'
-        className='w-[min(34rem,calc(100vw-2rem))] p-2'
+        data-vaul-no-drag
+        className='max-h-[calc(var(--radix-popover-content-available-height)-0.5rem)] w-[min(34rem,calc(100vw-2rem))] overflow-hidden p-2'
+        onTouchMoveCapture={event => event.stopPropagation()}
+        onWheelCapture={event => event.stopPropagation()}
       >
         <div className='grid gap-2'>
           <div className='relative'>
@@ -92,7 +95,12 @@ export function AutomationActionPicker({
               onChange={event => setQuery(event.target.value)}
             />
           </div>
-          <div className='max-h-[24rem] overflow-y-auto pr-1'>
+          <div
+            data-vaul-no-drag
+            className='max-h-[min(24rem,calc(var(--radix-popover-content-available-height)-5rem))] overflow-y-auto overscroll-contain pr-1'
+            onTouchMoveCapture={event => event.stopPropagation()}
+            onWheelCapture={event => event.stopPropagation()}
+          >
             {groupedCommands.length > 0 ? (
               groupedCommands.map(group => (
                 <div

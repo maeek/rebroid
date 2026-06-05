@@ -27,6 +27,7 @@ export const OrchestratorImagesPageClient = ({
       <PlatformPageHeader
         title='Images'
         description='Local images available to application containers, custom runtimes, and platform sidecars.'
+        breadcrumbRoot={{ label: 'Infrastructure' }}
         actions={
           <PlatformPageRefreshButton
             isRefreshing={isRefreshing}

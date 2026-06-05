@@ -84,6 +84,7 @@ export function AutomationStepEditor({
 
         {definition.renderEditor({
           command,
+          commands,
           input,
           uiState: step.uiState ?? {},
           patchInput: patch =>

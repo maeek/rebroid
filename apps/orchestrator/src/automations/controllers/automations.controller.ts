@@ -13,15 +13,20 @@ import {
   AutomationCommandDto,
   AutomationDto,
   AutomationsGridPageDto,
+  AutomationRunEventDto,
+  AutomationRunEventStreamTokenDto,
   AutomationRunDto,
   AutomationTriggerDto,
   AutomationTriggersGridPageDto,
+  AutomationYamlDraftDto,
   AutomationValidationDto,
   CreateAutomationDto,
   CreateAutomationTriggerDto,
+  DraftAutomationYamlDto,
   ListAutomationTriggersGridQueryDto,
   ListAutomationRunsQueryDto,
   ListAutomationsGridQueryDto,
+  RunAdHocAiAutomationDto,
   RunAutomationDto,
   UpdateAutomationTriggerDto,
   UpdateAutomationDto,
@@ -44,6 +49,18 @@ export class AutomationsController {
   @ApiOkResponse({ type: AutomationValidationDto })
   validateYaml(@Body() dto: ValidateAutomationYamlDto) {
     return this.automations.validateYaml(dto.yaml);
+  }
+
+  @Post('draft-yaml')
+  @ApiCreatedResponse({ type: AutomationYamlDraftDto })
+  draftYaml(@Body() dto: DraftAutomationYamlDto) {
+    return this.automations.draftYaml(dto);
+  }
+
+  @Post('ai/runs')
+  @ApiCreatedResponse({ type: AutomationRunDto })
+  runAdHocAi(@Body() dto: RunAdHocAiAutomationDto) {
+    return this.automations.runAdHocAi(dto);
   }
 
   @Get()
@@ -86,6 +103,38 @@ export class AutomationsController {
     @Query('ownerUserId') ownerUserId: string,
   ) {
     return this.automations.getRun(ownerUserId, runId);
+  }
+
+  @Post('runs/:runId/cancel')
+  @ApiOkResponse({ type: AutomationRunDto })
+  cancelRun(
+    @Param('runId') runId: string,
+    @Query('ownerUserId') ownerUserId: string,
+  ) {
+    return this.automations.cancelRun(ownerUserId, runId);
+  }
+
+  @Get('runs/:runId/events')
+  @ApiOkResponse({ type: AutomationRunEventDto, isArray: true })
+  listRunEvents(
+    @Param('runId') runId: string,
+    @Query('ownerUserId') ownerUserId: string,
+    @Query('after') after?: string,
+  ) {
+    return this.automations.listRunEvents(
+      ownerUserId,
+      runId,
+      after === undefined ? undefined : Number(after),
+    );
+  }
+
+  @Post('runs/:runId/events/token')
+  @ApiCreatedResponse({ type: AutomationRunEventStreamTokenDto })
+  createRunEventStreamToken(
+    @Param('runId') runId: string,
+    @Body() dto: Pick<RunAutomationDto, 'ownerUserId'>,
+  ) {
+    return this.automations.createRunEventStreamToken(dto.ownerUserId, runId);
   }
 
   @Get('triggers')

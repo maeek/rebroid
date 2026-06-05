@@ -60,7 +60,7 @@ export const TopBarAccount = ({ initialUser }: { initialUser: ShellUser }) => {
           </DropdownMenuItem>
           <Visible when={isAdmin}>
             <DropdownMenuItem asChild>
-              <Link href='/settings/general'>
+              <Link href='/preferences/general'>
                 <IconSettings className='size-4 mr-2' /> Settings
               </Link>
             </DropdownMenuItem>

@@ -69,7 +69,7 @@ export const OrchestratorNetworkDetail = ({ details }: OrchestratorNetworkDetail
     try {
       await removePlatformNetwork(network.id)
       toast({ title: 'Network removed' })
-      router.push('/settings/orchestrator/networks')
+      router.push('/infrastructure/networks')
     } catch (error) {
       toast({
         title: 'Could not remove network',
@@ -170,7 +170,7 @@ export const OrchestratorNetworkDetail = ({ details }: OrchestratorNetworkDetail
                           asChild
                           variant='secondary'
                         >
-                          <Link href={`/settings/orchestrator/containers/${container.id}`}>
+                          <Link href={`/infrastructure/containers/${container.id}`}>
                             <IconEye className='size-4' />
                           </Link>
                         </Button>

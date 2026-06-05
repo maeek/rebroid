@@ -74,9 +74,8 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
         <PageBreadcrumbs
           className='pt-0'
           items={[
-            { label: 'Settings', href: '/settings/general' },
-            { label: 'User management', href: '/settings/users' },
-            { label: 'Groups', href: '/settings/users/groups' },
+            { label: 'Users', href: '/users' },
+            { label: 'Groups', href: '/users/groups' },
             { label: group.name }
           ]}
         />

@@ -114,6 +114,150 @@ export class ValidateAutomationYamlDto {
   yaml!: string;
 }
 
+export class DraftAutomationYamlDto {
+  @ApiProperty({
+    example: 'Log in to the app and verify the home screen opens.',
+  })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(12000)
+  prompt!: string;
+
+  @ApiPropertyOptional({ example: 'local-ollama' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  providerId?: string;
+
+  @ApiPropertyOptional({ example: 'qwen2.5vl:7b' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  modelId?: string;
+}
+
+export class RunAdHocAiAutomationDto {
+  @ApiProperty({ example: 'user_123' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  ownerUserId!: string;
+
+  @ApiProperty({
+    example: '98a530d6-a45d-466a-9cb4-c023067c4971',
+    nullable: true,
+  })
+  @IsString()
+  @MaxLength(120)
+  targetApplicationId!: string;
+
+  @ApiPropertyOptional({ enum: ApplicationProfileMode })
+  @IsOptional()
+  @IsEnum(ApplicationProfileMode)
+  profileMode?: ApplicationProfileMode | null;
+
+  @ApiPropertyOptional({ example: 'default', nullable: true })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  profileName?: string | null;
+
+  @ApiPropertyOptional({
+    enum: AutomationStartPolicy,
+    default: AutomationStartPolicy.RequireRunning,
+  })
+  @IsOptional()
+  @IsEnum(AutomationStartPolicy)
+  startPolicy?: AutomationStartPolicy;
+
+  @ApiProperty({ example: 'Open settings and verify Wi-Fi is visible.' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(12000)
+  prompt!: string;
+
+  @ApiPropertyOptional({ example: 'local-ollama' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  providerId?: string;
+
+  @ApiPropertyOptional({ example: 'qwen2.5vl:7b' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  modelId?: string;
+
+  @ApiPropertyOptional({ type: String, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(120, { each: true })
+  allowedTools?: string[];
+
+  @ApiPropertyOptional({ default: 20 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  maxToolCalls?: number;
+
+  @ApiPropertyOptional({ default: 120000 })
+  @IsOptional()
+  @IsInt()
+  @Min(1000)
+  @Max(900000)
+  timeoutMs?: number;
+}
+
+export class AutomationRunEventDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  runId!: string;
+
+  @ApiProperty()
+  ownerUserId!: string;
+
+  @ApiProperty()
+  sequence!: number;
+
+  @ApiProperty()
+  type!: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  stepId!: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  parentStepId!: string | null;
+
+  @ApiProperty()
+  message!: string;
+
+  @ApiProperty({ type: Object })
+  data!: Record<string, unknown>;
+
+  @ApiProperty()
+  createdAt!: string;
+}
+
+export class AutomationRunEventStreamTokenDto {
+  @ApiProperty()
+  token!: string;
+
+  @ApiProperty()
+  expiresAt!: string;
+}
+
+export class AutomationYamlDraftDto {
+  @ApiProperty()
+  yaml!: string;
+
+  @ApiProperty({ type: AutomationDefinitionDto })
+  definition!: AutomationDefinitionDto;
+}
+
 export class RunAutomationDto {
   @ApiProperty({ example: 'user_123' })
   @IsString()

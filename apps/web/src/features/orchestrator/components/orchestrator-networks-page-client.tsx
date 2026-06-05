@@ -27,6 +27,7 @@ export const OrchestratorNetworksPageClient = ({
       <PlatformPageHeader
         title='Networks'
         description='Docker networks visible to the platform, including application isolation networks.'
+        breadcrumbRoot={{ label: 'Infrastructure' }}
         actions={
           <PlatformPageRefreshButton
             isRefreshing={isRefreshing}

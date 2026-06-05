@@ -1,13 +1,5 @@
-import { ScheduledTasksPage } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-page'
-import { listScheduledTaskActionsAction, listScheduledTasksAction } from '@/server/orchestrator/scheduled-tasks/actions'
+import { redirect } from 'next/navigation'
 
-export default async function ScheduledTasksRoute() {
-  const [actions, tasks] = await Promise.all([listScheduledTaskActionsAction(), listScheduledTasksAction()])
-
-  return (
-    <ScheduledTasksPage
-      initialActions={actions}
-      initialTasks={tasks}
-    />
-  )
+export default function ScheduledTasksRedirectPage() {
+  redirect('/operations/scheduled-tasks')
 }

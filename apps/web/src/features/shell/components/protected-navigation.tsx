@@ -1,263 +1,32 @@
 'use client'
 
-import { useEffect, useState, type ElementType } from 'react'
-import {
-  IconAdjustments,
-  IconApps,
-  IconBox,
-  IconBrandDocker,
-  IconCalendarTime,
-  IconCast,
-  IconChartHistogram,
-  IconChevronDown,
-  IconCirclePlus,
-  IconHistory,
-  IconLoader2,
-  IconNetwork,
-  IconPlayerPlayFilled,
-  IconRobot,
-  IconServerSpark,
-  IconShield,
-  IconUsers
-} from '@tabler/icons-react'
-import classNames from 'classnames'
-import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Visible } from '@/components/ui/visible'
-import { AppIcon } from '@/features/applications/components/app-icon'
 import { recentAppsUpdatedEvent, type RecentApp } from '@/features/applications/recent/recent-apps'
 import { usePollingQuery } from '@/hooks/use-polling-query'
-import { startApplicationAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { listRecentAppsAction } from '@/server/recent-apps/actions'
+import {
+  appSections,
+  automationSections,
+  infrastructureSections,
+  operationsSections,
+  orchestratorSections,
+  preferenceSections,
+  userSections,
+  variantStyles,
+  type NavigationItem,
+  type NavigationVariant
+} from './protected-navigation-config'
+import { NavLink, SectionHeader } from './protected-navigation-parts'
+import { RecentAppLink } from './recent-app-link'
 import type { ShellUser } from './shell-user'
-
-type NavigationVariant = 'sidebar' | 'drawer'
-
-type NavigationItem = {
-  name: string
-  href: string
-  Icon: ElementType<{ className?: string }>
-}
 
 type ProtectedNavigationProps = {
   variant: NavigationVariant
   initialUser: ShellUser
   onNavigate?: () => void
-}
-
-const appSections: NavigationItem[] = [{ name: 'Installed Apps', Icon: IconApps, href: '/apps' }]
-
-const automationSections: NavigationItem[] = [
-  { name: 'Workflows', Icon: IconRobot, href: '/automations' },
-  { name: 'Triggers', Icon: IconCalendarTime, href: '/automations/triggers' }
-]
-
-const settingsSections: NavigationItem[] = [{ name: 'General', Icon: IconAdjustments, href: '/settings/general' }]
-
-const adminSettingsSections: NavigationItem[] = [
-  { name: 'Casting', Icon: IconCast, href: '/settings/casting' },
-  { name: 'Network access', Icon: IconNetwork, href: '/settings/firewall' },
-  { name: 'Activity', Icon: IconHistory, href: '/settings/activity' },
-  { name: 'Scheduled tasks', Icon: IconCalendarTime, href: '/settings/scheduled-tasks' },
-  { name: 'System', Icon: IconServerSpark, href: '/settings/system' }
-]
-
-const userManagementSubSections: NavigationItem[] = [
-  { name: 'Users', Icon: IconUsers, href: '/settings/users' },
-  { name: 'Groups', Icon: IconShield, href: '/settings/groups' }
-]
-
-const orchestratorSubSections: NavigationItem[] = [
-  { name: 'Overview', Icon: IconChartHistogram, href: '/settings/orchestrator' },
-  { name: 'Settings', Icon: IconAdjustments, href: '/settings/orchestrator/settings' },
-  { name: 'Containers', Icon: IconBox, href: '/settings/orchestrator/containers' },
-  { name: 'Images', Icon: IconBrandDocker, href: '/settings/orchestrator/images' },
-  { name: 'Networks', Icon: IconNetwork, href: '/settings/orchestrator/networks' }
-]
-
-const variantStyles = {
-  sidebar: {
-    root: 'w-full py-6 flex flex-col px-2',
-    sectionHeader: 'flex items-center justify-between gap-2 px-2 pb-4',
-    sectionTitle: 'text-sm font-semibold color-secondary max-lg:text-sm',
-    sectionAction:
-      'flex size-5 shrink-0 items-center justify-center rounded-full text-secondary-foreground transition hover:bg-primary/15 hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
-    sectionActionIcon: 'size-4 stroke-current',
-    list: 'w-full pb-6 flex flex-col',
-    item: 'flex gap-2 justify-start items-center px-2 py-1 max-lg:py-2 hover:bg-white/5 rounded-sm text-foreground dark:hover:text-white cursor-pointer',
-    activeItem: 'bg-white/5 text-primary!',
-    iconWrap: 'size-8 rounded-sm flex shrink-0 justify-center items-center',
-    icon: 'size-5 max-lg:size-5 stroke-current',
-    label: 'text-sm max-lg:text-inherit',
-    nestedList: 'min-h-0 space-y-1 py-1 pl-8',
-    nestedItem:
-      'flex items-center gap-2 rounded-sm px-2 py-1 text-sm text-secondary-foreground transition hover:bg-white/5 hover:text-foreground',
-    nestedActiveItem: 'bg-white/5 text-primary!',
-    nestedIconWrap: 'flex size-7 shrink-0 items-center justify-center rounded-sm',
-    nestedIcon: 'size-4 stroke-current',
-    toggleButton:
-      'mr-1 flex size-8 items-center justify-center rounded-sm text-secondary-foreground transition hover:bg-white/5 hover:text-foreground',
-    dashboardSpacing: ''
-  },
-  drawer: {
-    root: 'flex flex-col p-4',
-    sectionHeader: 'flex items-center justify-between gap-2 px-2 pb-4',
-    sectionTitle: 'text-sm font-semibold color-secondary max-lg:text-sm',
-    sectionAction:
-      'flex size-5 shrink-0 items-center justify-center rounded-full text-secondary-foreground transition hover:bg-input hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
-    sectionActionIcon: 'size-4 stroke-current',
-    list: 'w-full pb-6 flex flex-col',
-    item: 'flex gap-2 justify-start items-center px-2 py-1 max-lg:py-2 hover:bg-input rounded-sm text-foreground dark:hover:text-white cursor-pointer',
-    activeItem: 'bg-input',
-    iconWrap: 'size-8 rounded-sm flex shrink-0 justify-center items-center',
-    icon: 'size-5 max-lg:size-5 stroke-current',
-    label: 'text-base max-lg:text-inherit text-inherit',
-    nestedList: 'min-h-0 space-y-1 py-1 pl-8',
-    nestedItem:
-      'flex gap-2 justify-start items-center px-2 py-1 max-lg:py-2 hover:bg-input rounded-sm text-foreground dark:hover:text-white cursor-pointer',
-    nestedActiveItem: 'bg-input',
-    nestedIconWrap: 'flex size-7 shrink-0 items-center justify-center rounded-sm',
-    nestedIcon: 'size-4 stroke-current',
-    toggleButton:
-      'mr-1 flex size-8 items-center justify-center rounded-sm text-secondary-foreground transition hover:bg-input hover:text-foreground',
-    dashboardSpacing: 'mb-4'
-  }
-} as const
-
-type NavLinkProps = {
-  href: string
-  label: string
-  Icon: ElementType<{ className?: string }>
-  isActive: boolean
-  variant: NavigationVariant
-  onNavigate?: () => void
-}
-
-type SectionHeaderProps = {
-  title: string
-  variant: NavigationVariant
-  actionHref?: string
-  actionLabel?: string
-  onNavigate?: () => void
-}
-
-const SectionHeader = ({ title, variant, actionHref, actionLabel, onNavigate }: SectionHeaderProps) => {
-  const styles = variantStyles[variant]
-  const action =
-    actionHref && actionLabel ? (
-      <Link
-        href={actionHref}
-        className={styles.sectionAction}
-        aria-label={actionLabel}
-        title={actionLabel}
-        onClick={onNavigate}
-      >
-        <IconCirclePlus className={styles.sectionActionIcon} />
-      </Link>
-    ) : null
-
-  return (
-    <div className={styles.sectionHeader}>
-      <h6 className={styles.sectionTitle}>{title}</h6>
-      {action}
-    </div>
-  )
-}
-
-const NavLink = ({ href, label, Icon, isActive, variant, onNavigate }: NavLinkProps) => {
-  const styles = variantStyles[variant]
-
-  return (
-    <Link
-      href={href}
-      onClick={onNavigate}
-    >
-      <li className={classNames(styles.item, isActive && styles.activeItem)}>
-        <div className={styles.iconWrap}>
-          <Icon className={styles.icon} />
-        </div>
-        <span className={styles.label}>{label}</span>
-      </li>
-    </Link>
-  )
-}
-
-type RecentAppLinkProps = {
-  app: RecentApp
-  variant: NavigationVariant
-  isActive: boolean
-  onNavigate?: () => void
-  onStarted: () => void
-}
-
-const RecentAppLink = ({ app, variant, isActive, onNavigate, onStarted }: RecentAppLinkProps) => {
-  const styles = variantStyles[variant]
-  const router = useRouter()
-  const [isStarting, setIsStarting] = useState(false)
-  const isOperating = app.status === 'provisioning' || app.status === 'removing' || isStarting
-  const canStart = app.status === 'stopped' || app.status === 'error'
-
-  const startAndOpen = async () => {
-    if (isStarting) return
-
-    setIsStarting(true)
-    router.push(`/app/${app.id}`)
-    onNavigate?.()
-    try {
-      await startApplicationAction(app.id)
-      onStarted()
-    } catch {
-      // The destination page surfaces the runtime error state after navigation.
-    } finally {
-      setIsStarting(false)
-    }
-  }
-
-  return (
-    <li className={classNames(styles.item, 'group', isActive && styles.activeItem)}>
-      <Link
-        href={`/app/${app.id}`}
-        onClick={onNavigate}
-        className='flex min-w-0 flex-1 items-center gap-2'
-      >
-        <div className={styles.iconWrap}>
-          <AppIcon
-            appId={app.id}
-            appName={app.name}
-            icon={app.icon}
-            className='size-6 text-[0.6rem]'
-          />
-        </div>
-        <span className={classNames(styles.label, 'truncate')}>{app.name}</span>
-      </Link>
-      <Visible when={app.status === 'running'}>
-        <span
-          title='Running'
-          aria-label='Running'
-          className='mr-2 size-2 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]'
-        />
-      </Visible>
-      <Visible when={isOperating}>
-        <IconLoader2
-          title={app.statusLabel ?? 'Working'}
-          aria-label={app.statusLabel ?? 'Working'}
-          className='mr-1.5 size-4 shrink-0 animate-spin text-primary'
-        />
-      </Visible>
-      <Visible when={canStart && !isStarting}>
-        <button
-          type='button'
-          title={`Start ${app.name}`}
-          aria-label={`Start ${app.name}`}
-          className='mr-0.5 flex size-7 shrink-0 items-center justify-center rounded-full text-secondary-foreground opacity-0 transition hover:bg-primary/15 hover:text-primary focus:opacity-100 group-hover:opacity-100'
-          onClick={() => void startAndOpen()}
-        >
-          <IconPlayerPlayFilled className='size-4' />
-        </button>
-      </Visible>
-    </li>
-  )
 }
 
 export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: ProtectedNavigationProps) => {
@@ -270,10 +39,6 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
     { intervalMs: 5000 }
   )
   const isAdmin = role === 'admin'
-  const userManagementPathIsActive = pathname.startsWith('/settings/users')
-  const orchestratorPathIsActive = pathname.startsWith('/settings/orchestrator')
-  const [userManagementMenuIsOpen, setUserManagementMenuIsOpen] = useState(userManagementPathIsActive)
-  const [orchestratorMenuIsOpen, setOrchestratorMenuIsOpen] = useState(orchestratorPathIsActive)
   const styles = variantStyles[variant]
 
   useEffect(() => {
@@ -289,20 +54,38 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
     }
   }, [refreshRecentApps])
 
-  useEffect(() => {
-    if (userManagementPathIsActive) {
-      setUserManagementMenuIsOpen(true)
-    }
-  }, [userManagementPathIsActive])
-
-  useEffect(() => {
-    if (orchestratorPathIsActive) {
-      setOrchestratorMenuIsOpen(true)
-    }
-  }, [orchestratorPathIsActive])
-
   const isActivePath = (href: string, exact = false) =>
     exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`)
+
+  const itemIsActive = (href: string) => {
+    if (href === '/users') {
+      return pathname === href || (pathname.startsWith('/users/') && !pathname.startsWith('/users/groups'))
+    }
+
+    return isActivePath(href, href === '/orchestrator')
+  }
+
+  const renderSection = (title: string, items: NavigationItem[]) => (
+    <>
+      <SectionHeader
+        title={title}
+        variant={variant}
+      />
+      <ul className={styles.list}>
+        {items.map(({ name, Icon, href }) => (
+          <NavLink
+            key={href}
+            href={href}
+            label={name}
+            Icon={Icon}
+            isActive={itemIsActive(href)}
+            variant={variant}
+            onNavigate={onNavigate}
+          />
+        ))}
+      </ul>
+    </>
+  )
 
   return (
     <div className={styles.root}>
@@ -359,130 +142,11 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
       </ul>
 
       <Visible when={isAdmin}>
-        <SectionHeader
-          title='Settings'
-          variant={variant}
-        />
-        <ul className={styles.list}>
-          {settingsSections.map(({ name, Icon, href }) => (
-            <NavLink
-              key={name}
-              href={href}
-              label={name}
-              Icon={Icon}
-              isActive={isActivePath(href)}
-              variant={variant}
-              onNavigate={onNavigate}
-            />
-          ))}
-          <li>
-            <div className='flex items-center rounded-sm text-foreground dark:hover:text-white'>
-              <Link
-                href='/settings/users'
-                className={classNames(styles.item, 'min-w-0 flex-1 rounded-none bg-transparent')}
-                onClick={onNavigate}
-              >
-                <div className={styles.iconWrap}>
-                  <IconUsers className={styles.icon} />
-                </div>
-                <span className={classNames(styles.label, 'truncate')}>User management</span>
-              </Link>
-              <button
-                type='button'
-                className={styles.toggleButton}
-                aria-label={userManagementMenuIsOpen ? 'Collapse User management menu' : 'Expand User management menu'}
-                aria-expanded={userManagementMenuIsOpen}
-                onClick={() => setUserManagementMenuIsOpen(open => !open)}
-              >
-                <IconChevronDown
-                  className={classNames('size-4 transition-transform', userManagementMenuIsOpen && 'rotate-180')}
-                />
-              </button>
-            </div>
-            <Visible when={userManagementMenuIsOpen}>
-              <ul className={styles.nestedList}>
-                {userManagementSubSections.map(({ name, Icon, href }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    onClick={onNavigate}
-                  >
-                    <li
-                      className={classNames(
-                        styles.nestedItem,
-                        isActivePath(href, href === '/settings/users') && styles.nestedActiveItem
-                      )}
-                    >
-                      <div className={styles.nestedIconWrap}>
-                        <Icon className={styles.nestedIcon} />
-                      </div>
-                      <span className='truncate'>{name}</span>
-                    </li>
-                  </Link>
-                ))}
-              </ul>
-            </Visible>
-          </li>
-          <li>
-            <div className='flex items-center rounded-sm text-foreground dark:hover:text-white'>
-              <Link
-                href='/settings/orchestrator'
-                className={classNames(styles.item, 'min-w-0 flex-1 rounded-none bg-transparent')}
-                onClick={onNavigate}
-              >
-                <div className={styles.iconWrap}>
-                  <IconBrandDocker className={styles.icon} />
-                </div>
-                <span className={classNames(styles.label, 'truncate')}>Orchestrator</span>
-              </Link>
-              <button
-                type='button'
-                className={styles.toggleButton}
-                aria-label={orchestratorMenuIsOpen ? 'Collapse Orchestrator menu' : 'Expand Orchestrator menu'}
-                aria-expanded={orchestratorMenuIsOpen}
-                onClick={() => setOrchestratorMenuIsOpen(open => !open)}
-              >
-                <IconChevronDown
-                  className={classNames('size-4 transition-transform', orchestratorMenuIsOpen && 'rotate-180')}
-                />
-              </button>
-            </div>
-            <Visible when={orchestratorMenuIsOpen}>
-              <ul className={styles.nestedList}>
-                {orchestratorSubSections.map(({ name, Icon, href }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    onClick={onNavigate}
-                  >
-                    <li
-                      className={classNames(
-                        styles.nestedItem,
-                        isActivePath(href, href === '/settings/orchestrator') && styles.nestedActiveItem
-                      )}
-                    >
-                      <div className={styles.nestedIconWrap}>
-                        <Icon className={styles.nestedIcon} />
-                      </div>
-                      <span className='truncate'>{name}</span>
-                    </li>
-                  </Link>
-                ))}
-              </ul>
-            </Visible>
-          </li>
-          {adminSettingsSections.map(({ name, Icon, href }) => (
-            <NavLink
-              key={name}
-              href={href}
-              label={name}
-              Icon={Icon}
-              isActive={isActivePath(href)}
-              variant={variant}
-              onNavigate={onNavigate}
-            />
-          ))}
-        </ul>
+        {renderSection('Users', userSections)}
+        {renderSection('Orchestrator', orchestratorSections)}
+        {renderSection('Infrastructure', infrastructureSections)}
+        {renderSection('Operations', operationsSections)}
+        {renderSection('Preferences', preferenceSections)}
       </Visible>
     </div>
   )

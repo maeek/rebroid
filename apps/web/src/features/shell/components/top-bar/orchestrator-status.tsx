@@ -76,22 +76,22 @@ const badgeTone = (status: DisplayServiceStatus) => {
 const serviceRows = (health: OrchestratorHealth | null, fallbackMessage: string) => [
   {
     name: 'Orchestrator',
-    href: '/settings/orchestrator',
+    href: '/orchestrator',
     service: health?.services.orchestrator ?? checkingService(fallbackMessage)
   },
   {
     name: 'Docker',
-    href: '/settings/orchestrator/containers',
+    href: '/infrastructure/containers',
     service: mergeDockerAndRuntimeService(health, fallbackMessage)
   },
   {
     name: 'Casting',
-    href: '/settings/casting',
+    href: '/operations/casting',
     service: health?.services.display ?? checkingService(fallbackMessage)
   },
   {
     name: 'Network access',
-    href: '/settings/firewall',
+    href: '/operations/network-access',
     service: health?.services.firewall ?? checkingService(fallbackMessage)
   }
 ]

@@ -67,7 +67,12 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new OrchestratorRequestError(getErrorMessage(error, response.statusText), response.status)
   }
 
-  return response.json() as Promise<T>
+  if (response.status === 204) return undefined as T
+
+  const text = await response.text()
+  if (!text.trim()) return undefined as T
+
+  return JSON.parse(text) as T
 }
 
 export async function responseRequest(path: string, init?: RequestInit): Promise<Response> {

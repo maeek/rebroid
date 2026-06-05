@@ -16,10 +16,15 @@ import {
   AutomationRunDto,
   AutomationTriggerDto,
   AutomationTriggersGridPageDto,
+  AutomationRunEventDto,
+  AutomationRunEventStreamTokenDto,
+  AutomationYamlDraftDto,
   CreateAutomationDto,
   CreateAutomationTriggerDto,
+  DraftAutomationYamlDto,
   ListAutomationTriggersGridQueryDto,
   ListAutomationsGridQueryDto,
+  RunAdHocAiAutomationDto,
   RunAutomationDto,
   UpdateAutomationDto,
   UpdateAutomationTriggerDto,
@@ -48,6 +53,8 @@ import {
 import { AutomationStepResult } from '../runner/automation-runner.types';
 import { AutomationCronRegistryService } from '../scheduler/automation-cron-registry.service';
 import { AutomationScheduleService } from '../scheduler/automation-schedule.service';
+import { AutomationRunEventBus } from '../events/automation-run-event-bus.service';
+import { AutomationRunEventStreamService } from '../events/automation-run-event-stream.service';
 import {
   normalizeAutomationTags,
   parseAutomationTagsJson,
@@ -103,6 +110,8 @@ export class AutomationsService implements OnModuleInit {
     private readonly runner: AutomationRunnerService,
     private readonly cronRegistry: AutomationCronRegistryService,
     private readonly schedule: AutomationScheduleService,
+    private readonly events: AutomationRunEventBus,
+    private readonly eventStream: AutomationRunEventStreamService,
   ) {}
 
   async onModuleInit() {
@@ -252,6 +261,59 @@ export class AutomationsService implements OnModuleInit {
     return this.definitions.validateYaml(yaml);
   }
 
+  draftYaml(dto: DraftAutomationYamlDto): AutomationYamlDraftDto {
+    const definition = this.aiAutomationDefinition({
+      name: 'AI drafted automation',
+      prompt: dto.prompt,
+      providerId: dto.providerId,
+      modelId: dto.modelId,
+    });
+    return {
+      definition,
+      yaml: this.definitions.toYaml(definition),
+    };
+  }
+
+  async runAdHocAi(dto: RunAdHocAiAutomationDto) {
+    await this.assertTargetApplication(
+      dto.ownerUserId,
+      dto.targetApplicationId,
+    );
+    const definition = this.aiAutomationDefinition({
+      name: 'Ad-hoc AI automation',
+      prompt: dto.prompt,
+      providerId: dto.providerId,
+      modelId: dto.modelId,
+      allowedTools: dto.allowedTools,
+      maxToolCalls: dto.maxToolCalls,
+      timeoutMs: dto.timeoutMs,
+    });
+    const automation = await this.automations.save(
+      this.automations.create({
+        ownerUserId: dto.ownerUserId.trim(),
+        name: definition.metadata.name,
+        description: definition.metadata.description ?? null,
+        definitionJson: JSON.stringify(definition),
+        lastStatus: AutomationLastStatus.Running,
+        lastRunAt: new Date(),
+        lastError: null,
+      }),
+    );
+    const run = await this.runner.enqueue(
+      automation,
+      AutomationRunTrigger.Manual,
+      {
+        targetApplicationId: dto.targetApplicationId,
+        targetProfileMode: dto.profileMode ?? ApplicationProfileMode.Persistent,
+        targetProfileName: dto.profileName ?? 'default',
+        startPolicy: this.toRunnerStartPolicy(
+          dto.startPolicy ?? AutomationStartPolicy.RequireRunning,
+        ),
+      },
+    );
+    return this.toRunDto(run);
+  }
+
   async run(ownerUserId: string, id: string, dto: RunAutomationDto) {
     const automation = await this.getEntity(ownerUserId, id);
     await this.assertTargetApplication(ownerUserId, dto.targetApplicationId);
@@ -293,6 +355,27 @@ export class AutomationsService implements OnModuleInit {
       throw new NotFoundException(`Automation run "${id}" was not found.`);
     }
     return this.toRunDto(run);
+  }
+
+  async cancelRun(ownerUserId: string, id: string) {
+    return this.toRunDto(await this.runner.cancel(ownerUserId, id));
+  }
+
+  async listRunEvents(
+    ownerUserId: string,
+    runId: string,
+    after?: number,
+  ): Promise<AutomationRunEventDto[]> {
+    await this.getRun(ownerUserId, runId);
+    return this.events.list(ownerUserId, runId, after);
+  }
+
+  async createRunEventStreamToken(
+    ownerUserId: string,
+    runId: string,
+  ): Promise<AutomationRunEventStreamTokenDto> {
+    await this.getRun(ownerUserId, runId);
+    return this.eventStream.createSubscribeToken(ownerUserId, runId);
   }
 
   async listTriggers(ownerUserId: string) {
@@ -630,6 +713,51 @@ export class AutomationsService implements OnModuleInit {
     return policy === AutomationStartPolicy.StartIfNeeded
       ? AutomationRunStartPolicy.StartIfNeeded
       : AutomationRunStartPolicy.RequireRunning;
+  }
+
+  private aiAutomationDefinition({
+    name,
+    prompt,
+    providerId,
+    modelId,
+    allowedTools,
+    maxToolCalls = 20,
+    timeoutMs = 120_000,
+  }: {
+    name: string;
+    prompt: string;
+    providerId?: string;
+    modelId?: string;
+    allowedTools?: string[];
+    maxToolCalls?: number;
+    timeoutMs?: number;
+  }): AutomationDefinition {
+    return this.definitions.normalize({
+      apiVersion: 'rebroid.io/automation/v1',
+      kind: 'AndroidAutomation',
+      metadata: {
+        name,
+        description: prompt.trim().slice(0, 240),
+        tags: [{ name: 'ai', color: '#0ea5e9' }],
+      },
+      spec: {
+        steps: [
+          {
+            id: 'ai-run',
+            uses: 'ai.run',
+            with: {
+              prompt,
+              ...(providerId ? { providerId } : {}),
+              ...(modelId ? { modelId } : {}),
+              ...(allowedTools ? { allowedTools } : {}),
+              maxToolCalls,
+              timeoutMs,
+              requireFinalAnswer: true,
+            },
+          },
+        ],
+      },
+    });
   }
 
   private async backfillAutomationLastRun(automation: Automation) {

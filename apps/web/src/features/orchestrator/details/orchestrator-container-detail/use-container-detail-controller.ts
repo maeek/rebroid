@@ -85,7 +85,7 @@ const useContainerActions = (container: PlatformContainerDetails['container']) =
       remove: async () => {
         await removePlatformContainerAction(container.id, forceRemove)
         toast({ title: forceRemove ? 'Container force-removed' : 'Container removed' })
-        router.push('/settings/orchestrator/containers')
+        router.push('/infrastructure/containers')
       }
     }
 

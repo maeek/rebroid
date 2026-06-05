@@ -1,5 +1,25 @@
-import { Body, Controller, Get, Patch, Post } from '@nestjs/common';
-import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
+import { ApiNoContentResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import {
+  AutomationAiModelCatalogProviderDto,
+  AutomationAiProviderHealthDto,
+  AutomationAiProviderDto,
+  AutomationAiProviderModelDto,
+  CreateAutomationAiProviderDto,
+  CreateAutomationAiProviderModelDto,
+  UpdateAutomationAiProviderDto,
+  UpdateAutomationAiProviderModelDto,
+} from './dto/automation-ai-provider.dto';
 import { OrchestratorSettingsDto } from './dto/orchestrator-settings.dto';
 import { UpdateOrchestratorSettingsDto } from './dto/update-orchestrator-settings.dto';
 import { SettingsService } from './settings.service';
@@ -25,5 +45,77 @@ export class SettingsController {
   @ApiOkResponse({ type: OrchestratorSettingsDto })
   resetSettings() {
     return this.settings.resetSettings();
+  }
+
+  @Get('ai-providers')
+  @ApiOkResponse({ type: AutomationAiProviderDto, isArray: true })
+  listAiProviders() {
+    return this.settings.listAiProviders();
+  }
+
+  @Post('ai-providers')
+  @ApiOkResponse({ type: AutomationAiProviderDto })
+  createAiProvider(@Body() dto: CreateAutomationAiProviderDto) {
+    return this.settings.createAiProvider(dto);
+  }
+
+  @Get('ai-providers/:providerId/health')
+  @ApiOkResponse({ type: AutomationAiProviderHealthDto })
+  checkAiProviderHealth(
+    @Param('providerId') providerId: string,
+    @Query('modelId') modelId?: string,
+  ) {
+    return this.settings.checkAiProviderHealth(providerId, modelId);
+  }
+
+  @Patch('ai-providers/:providerId')
+  @ApiOkResponse({ type: AutomationAiProviderDto })
+  updateAiProvider(
+    @Param('providerId') providerId: string,
+    @Body() dto: UpdateAutomationAiProviderDto,
+  ) {
+    return this.settings.updateAiProvider(providerId, dto);
+  }
+
+  @Delete('ai-providers/:providerId')
+  @HttpCode(204)
+  @ApiNoContentResponse()
+  deleteAiProvider(@Param('providerId') providerId: string) {
+    return this.settings.deleteAiProvider(providerId);
+  }
+
+  @Post('ai-providers/:providerId/models')
+  @ApiOkResponse({ type: AutomationAiProviderModelDto })
+  createAiProviderModel(
+    @Param('providerId') providerId: string,
+    @Body() dto: CreateAutomationAiProviderModelDto,
+  ) {
+    return this.settings.createAiProviderModel(providerId, dto);
+  }
+
+  @Patch('ai-providers/:providerId/models/:modelId')
+  @ApiOkResponse({ type: AutomationAiProviderModelDto })
+  updateAiProviderModel(
+    @Param('providerId') providerId: string,
+    @Param('modelId') modelId: string,
+    @Body() dto: UpdateAutomationAiProviderModelDto,
+  ) {
+    return this.settings.updateAiProviderModel(providerId, modelId, dto);
+  }
+
+  @Delete('ai-providers/:providerId/models/:modelId')
+  @HttpCode(204)
+  @ApiNoContentResponse()
+  deleteAiProviderModel(
+    @Param('providerId') providerId: string,
+    @Param('modelId') modelId: string,
+  ) {
+    return this.settings.deleteAiProviderModel(providerId, modelId);
+  }
+
+  @Get('ai-model-catalog')
+  @ApiOkResponse({ type: AutomationAiModelCatalogProviderDto, isArray: true })
+  listAiModelCatalog() {
+    return this.settings.listEnabledAiModelCatalog();
   }
 }

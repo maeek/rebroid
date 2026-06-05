@@ -70,7 +70,7 @@ const ImageNameCell = ({ image }: { image: PlatformImage }) => {
       <Tooltip>
         <TooltipTrigger asChild>
           <Link
-            href={`/settings/orchestrator/images/${encodeURIComponent(image.id)}`}
+            href={`/infrastructure/images/${encodeURIComponent(image.id)}`}
             className='block truncate font-medium hover:text-primary'
           >
             {name}
@@ -127,7 +127,7 @@ export const OrchestratorImagesSection = ({
       page: patch.page ?? gridQuery.page ?? 1,
       pageSize: patch.pageSize ?? gridQuery.pageSize ?? imagesPage.pageSize
     })
-    router.push(`/settings/orchestrator/images${params.size ? `?${params.toString()}` : ''}`)
+    router.push(`/infrastructure/images${params.size ? `?${params.toString()}` : ''}`)
   }
 
   const removeImage = async () => {
@@ -335,7 +335,7 @@ export const OrchestratorImagesSection = ({
                     </ContextMenuItem>
                   ) : null}
                   <ContextMenuItem asChild>
-                    <Link href={`/settings/orchestrator/images/${encodeURIComponent(row.original.id)}`}>
+                    <Link href={`/infrastructure/images/${encodeURIComponent(row.original.id)}`}>
                       <IconEye className='mr-2 size-4' />
                       Details
                     </Link>

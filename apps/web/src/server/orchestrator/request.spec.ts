@@ -12,6 +12,8 @@ const errorResponse = (body: unknown, status = 400) =>
     headers: { 'content-type': 'application/json' }
   })
 
+const noContentResponse = () => new Response(null, { status: 204 })
+
 const getFetchInit = () => {
   const fetchMock = global.fetch as jest.MockedFunction<typeof fetch>
   return fetchMock.mock.calls.at(-1)?.[1] as RequestInit
@@ -30,6 +32,14 @@ describe('orchestrator request helpers', () => {
 
     expect(getFetchInit().headers).toMatchObject({ accept: 'application/json' })
     expect(getFetchInit().headers).not.toHaveProperty('content-type')
+  })
+
+  it('handles no-content successful responses', async () => {
+    const fetchMock: jest.MockedFunction<typeof fetch> = jest.fn(() => Promise.resolve(noContentResponse()))
+    global.fetch = fetchMock
+    const { emptyRequest } = await import('./request')
+
+    await expect(emptyRequest('/settings/ai-providers/local-ollama', { method: 'DELETE' })).resolves.toBeUndefined()
   })
 
   it('does not send JSON content-type for bodyless POST requests', async () => {

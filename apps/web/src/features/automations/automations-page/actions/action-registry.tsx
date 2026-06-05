@@ -1,3 +1,4 @@
+import { aiRunAction } from './ai/ai-run.action'
 import { adbShellAction } from './android/adb-shell.action'
 import { getClipboardAction } from './android/get-clipboard.action'
 import { inputTextAction } from './android/input-text.action'
@@ -47,7 +48,8 @@ const actionCategories: AutomationActionCategory[] = [
   'Network',
   'Assertions',
   'Flow',
-  'Debug'
+  'Debug',
+  'AI'
 ]
 
 const actionDefinitions = [
@@ -83,23 +85,26 @@ const actionDefinitions = [
   stopAction,
   failAction,
   logAction,
-  saveScreenshotAction
+  saveScreenshotAction,
+  aiRunAction
 ] satisfies AutomationActionDefinition[]
 
 const actionDefinitionByUses = new Map(actionDefinitions.map(definition => [definition.uses, definition]))
 
 const fallbackCategory = (uses: string): AutomationActionCategory =>
-  uses.startsWith('container.network.')
-    ? 'Network'
-    : uses.startsWith('assert.')
-      ? 'Assertions'
-      : uses.startsWith('flow.')
-        ? 'Flow'
-        : uses.startsWith('debug.') || uses.startsWith('artifact.')
-          ? 'Debug'
-          : uses.includes('File')
-            ? 'Files'
-            : 'Device'
+  uses.startsWith('ai.')
+    ? 'AI'
+    : uses.startsWith('container.network.')
+      ? 'Network'
+      : uses.startsWith('assert.')
+        ? 'Assertions'
+        : uses.startsWith('flow.')
+          ? 'Flow'
+          : uses.startsWith('debug.') || uses.startsWith('artifact.')
+            ? 'Debug'
+            : uses.includes('File')
+              ? 'Files'
+              : 'Device'
 
 const fallbackIconKey = (category: AutomationActionCategory): AutomationActionIconKey => {
   switch (category) {
@@ -117,6 +122,8 @@ const fallbackIconKey = (category: AutomationActionCategory): AutomationActionIc
       return 'route'
     case 'Debug':
       return 'debug'
+    case 'AI':
+      return 'sparkles'
     case 'Device':
     default:
       return 'device'

@@ -9,6 +9,7 @@ import {
 } from './action-registry'
 
 const knownV1Uses = [
+  'ai.run',
   'android.wait',
   'android.viewerCommand',
   'android.rotateDisplay',

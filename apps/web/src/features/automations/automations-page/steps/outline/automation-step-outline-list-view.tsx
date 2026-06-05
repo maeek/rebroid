@@ -16,6 +16,7 @@ import { useAutomationStepsContext } from '../list/automation-steps-context'
 import {
   cloneAutomationStep,
   copyAutomationStepToClipboard,
+  makeAutomationStepIdsUnique,
   readAutomationStepFromClipboard
 } from '../shared/automation-step-clipboard'
 import { collectStepKeys, selectionAfterDelete } from '../shared/automation-step-selection'
@@ -81,7 +82,7 @@ export function AutomationStepOutlineListView({
   const duplicateStep = (index: number) => {
     const source = steps[index]
     if (!source) return
-    const nextStep = cloneAutomationStep(source, '-copy')
+    const nextStep = makeAutomationStepIdsUnique(cloneAutomationStep(source, '-copy'), rootSteps)
     onListChange(listId, [...steps.slice(0, index + 1), nextStep, ...steps.slice(index + 1)])
     onSelectStep(nextStep.clientKey)
     if (nextStep.kind !== 'action') onOpenBlock(nextStep.clientKey)
@@ -97,9 +98,10 @@ export function AutomationStepOutlineListView({
         })
         return
       }
-      onListChange(listId, [...steps, step])
-      onSelectStep(step.clientKey)
-      if (step.kind !== 'action') onOpenBlock(step.clientKey)
+      const nextStep = makeAutomationStepIdsUnique(step, rootSteps)
+      onListChange(listId, [...steps, nextStep])
+      onSelectStep(nextStep.clientKey)
+      if (nextStep.kind !== 'action') onOpenBlock(nextStep.clientKey)
       toast({ title: 'Block pasted' })
     } catch (error) {
       toast({

@@ -1,5 +1,5 @@
-import { OrchestratorOverviewPageClient } from '@/features/orchestrator/components/orchestrator-overview-page-client'
+import { redirect } from 'next/navigation'
 
-export default function OrchestratorOverviewPage() {
-  return <OrchestratorOverviewPageClient />
+export default function OrchestratorRedirectPage() {
+  redirect('/orchestrator')
 }

@@ -1,12 +1,10 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { IconPlus, IconTrash } from '@tabler/icons-react'
+import { IconPlus } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
-import { DataGridPagination, DataGridToolbar } from '@/components/data-grid'
+import { DataGridPagination } from '@/components/data-grid'
 import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Visible } from '@/components/ui/visible'
 import {
   cronToSchedule,
   defaultSchedule,
@@ -23,9 +21,11 @@ import {
 } from '@/server/orchestrator/automations/actions'
 import { AutomationDeleteDialog } from '../shared/automation-delete-dialog'
 import { AutomationEmptySplash } from '../shared/automation-empty-splash'
+import { compactGridParams, sortFromSearchParam, sortToSearchParam } from '../shared/grid-query-utils'
 import { AutomationTriggerFormDialog } from './automation-trigger-form-dialog'
 import { appProfileMode, appProfileName, getScheduleCron, getStartPolicy } from './automation-trigger-utils'
 import { AutomationTriggersTable } from './automation-triggers-table'
+import { AutomationTriggerBulkBar, AutomationTriggersToolbar } from './automation-triggers-toolbar'
 import type { TriggerFormState } from './automation-trigger-types'
 import type { AutomationTriggersPageProps } from '../editor/types'
 import type { AndroidApplication, ApplicationProfileMode } from '@/server/orchestrator/applications/types'
@@ -34,37 +34,11 @@ import type {
   AutomationTrigger,
   AutomationTriggersGridQuery
 } from '@/server/orchestrator/automations/types'
-import type { SortingState } from '@tanstack/react-table'
-
-const allFilterValue = 'all'
 
 const defaultTriggerName = (automation: Automation | undefined, app: AndroidApplication | undefined) => {
   if (automation && app) return `${automation.name} on ${app.name}`
   return 'New workflow trigger'
 }
-
-const compactParams = (values: Record<string, string | number | undefined>) => {
-  const params = new URLSearchParams()
-  for (const [key, value] of Object.entries(values)) {
-    const text = String(value ?? '').trim()
-    if (text && text !== allFilterValue) params.set(key, text)
-  }
-  return params
-}
-
-const sortToSearchParam = (sorting: SortingState) =>
-  sorting.length === 0 ? undefined : sorting.map(item => `${item.id}:${item.desc ? 'desc' : 'asc'}`).join(',')
-
-const sortFromSearchParam = (sort: string | undefined): SortingState =>
-  (sort ?? 'updatedAt:desc')
-    .split(',')
-    .map(part => {
-      const [id, direction] = part.split(':')
-      if (!id) return null
-      return { id, desc: direction !== 'asc' }
-    })
-    .filter((item): item is SortingState[number] => Boolean(item))
-    .slice(0, 3)
 
 const hasActiveTriggerFilters = (query: AutomationTriggersGridQuery) =>
   Boolean(query.q || query.tag || query.targetApplicationId || query.enabled || query.status || query.lastRun)
@@ -110,7 +84,7 @@ export function AutomationTriggersPage({
   const selectedTriggers = triggersPage.items.filter(trigger => selectedIds.has(trigger.id))
 
   const pushGridParams = (patch: Partial<AutomationTriggersGridQuery>) => {
-    const params = compactParams({
+    const params = compactGridParams({
       q: patch.q ?? gridQuery.q,
       tag: patch.tag ?? gridQuery.tag,
       targetApplicationId: patch.targetApplicationId ?? gridQuery.targetApplicationId,
@@ -334,148 +308,24 @@ export function AutomationTriggersPage({
         />
       ) : (
         <section className='grid gap-4 px-6 pb-16 pt-4 max-sm:px-4'>
-          <DataGridToolbar
+          <AutomationTriggersToolbar
+            applications={initialApplications}
+            tags={triggersPage.facets.tags}
+            gridQuery={gridQuery}
             search={search}
-            searchPlaceholder='Search triggers'
             onSearchChange={setSearch}
             onSearchSubmit={() => pushGridParams({ q: search.trim() || undefined, page: 1 })}
             activeFilterCount={activeTriggerFilterCount(gridQuery)}
             selectedCount={selectedTriggers.length}
-            filters={
-              <>
-                <Select
-                  value={gridQuery.tag ?? allFilterValue}
-                  onValueChange={value =>
-                    pushGridParams({ tag: value === allFilterValue ? undefined : value, page: 1 })
-                  }
-                >
-                  <SelectTrigger className='w-full'>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={allFilterValue}>All tags</SelectItem>
-                    {triggersPage.facets.tags.map(tag => (
-                      <SelectItem
-                        key={tag}
-                        value={tag}
-                      >
-                        {tag}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={gridQuery.targetApplicationId ?? allFilterValue}
-                  onValueChange={value =>
-                    pushGridParams({ targetApplicationId: value === allFilterValue ? undefined : value, page: 1 })
-                  }
-                >
-                  <SelectTrigger className='w-full'>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={allFilterValue}>All apps</SelectItem>
-                    {initialApplications.map(app => (
-                      <SelectItem
-                        key={app.id}
-                        value={app.id}
-                      >
-                        {app.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={gridQuery.enabled ?? allFilterValue}
-                  onValueChange={value =>
-                    pushGridParams({
-                      enabled: value === allFilterValue ? undefined : (value as AutomationTriggersGridQuery['enabled']),
-                      page: 1
-                    })
-                  }
-                >
-                  <SelectTrigger className='w-full'>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={allFilterValue}>Any state</SelectItem>
-                    <SelectItem value='true'>Enabled</SelectItem>
-                    <SelectItem value='false'>Disabled</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={gridQuery.status ?? allFilterValue}
-                  onValueChange={value =>
-                    pushGridParams({
-                      status: value === allFilterValue ? undefined : (value as AutomationTriggersGridQuery['status']),
-                      page: 1
-                    })
-                  }
-                >
-                  <SelectTrigger className='w-full'>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={allFilterValue}>All status</SelectItem>
-                    <SelectItem value='never_run'>Never run</SelectItem>
-                    <SelectItem value='running'>Running</SelectItem>
-                    <SelectItem value='success'>Success</SelectItem>
-                    <SelectItem value='failed'>Failed</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={gridQuery.lastRun ?? allFilterValue}
-                  onValueChange={value =>
-                    pushGridParams({
-                      lastRun: value === allFilterValue ? undefined : (value as AutomationTriggersGridQuery['lastRun']),
-                      page: 1
-                    })
-                  }
-                >
-                  <SelectTrigger className='w-full'>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={allFilterValue}>Any run</SelectItem>
-                    <SelectItem value='never'>Never run</SelectItem>
-                    <SelectItem value='7d'>Last 7 days</SelectItem>
-                    <SelectItem value='30d'>Last 30 days</SelectItem>
-                    <SelectItem value='90d'>Last 90 days</SelectItem>
-                  </SelectContent>
-                </Select>
-              </>
-            }
+            onUpdateGrid={pushGridParams}
           />
 
-          <Visible when={selectedTriggers.length > 0}>
-            <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-input bg-card/40 px-4 py-3 text-sm'>
-              <span className='text-secondary-foreground'>{selectedTriggers.length} selected</span>
-              <div className='flex flex-wrap gap-2'>
-                <Button
-                  size='sm'
-                  variant='secondary'
-                  onClick={() => void updateSelectedEnabled(true)}
-                >
-                  Enable
-                </Button>
-                <Button
-                  size='sm'
-                  variant='secondary'
-                  onClick={() => void updateSelectedEnabled(false)}
-                >
-                  Disable
-                </Button>
-                <Button
-                  size='sm'
-                  variant='destructive'
-                  onClick={() => setBulkDeleteOpen(true)}
-                >
-                  <IconTrash className='size-4' />
-                  Delete
-                </Button>
-              </div>
-            </div>
-          </Visible>
+          <AutomationTriggerBulkBar
+            selectedCount={selectedTriggers.length}
+            onDelete={() => setBulkDeleteOpen(true)}
+            onDisable={() => void updateSelectedEnabled(false)}
+            onEnable={() => void updateSelectedEnabled(true)}
+          />
 
           <AutomationTriggersTable
             applicationById={applicationById}

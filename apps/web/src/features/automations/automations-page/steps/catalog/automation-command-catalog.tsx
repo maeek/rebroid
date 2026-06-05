@@ -17,6 +17,7 @@ import {
   IconRoute,
   IconScreenshot,
   IconShieldLock,
+  IconSparkles,
   IconSwipe,
   IconTerminal2,
   IconTrash,
@@ -83,6 +84,8 @@ function AutomationActionIcon({ iconKey, className }: { iconKey: AutomationActio
       return <IconScreenshot className={className} />
     case 'shield':
       return <IconShieldLock className={className} />
+    case 'sparkles':
+      return <IconSparkles className={className} />
     case 'swipe':
       return <IconSwipe className={className} />
     case 'terminal':

@@ -54,7 +54,7 @@ export function SystemSettingsPage() {
               <div className='flex flex-col gap-2'>
                 <PageBreadcrumbs
                   className='pt-0'
-                  items={[{ label: 'Settings', href: '/settings/general' }, { label: 'System' }]}
+                  items={[{ label: 'Infrastructure' }, { label: 'System' }]}
                 />
                 <h2 className='pt-4 text-3xl font-medium max-sm:text-xl'>System</h2>
               </div>

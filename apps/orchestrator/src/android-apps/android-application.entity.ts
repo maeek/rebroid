@@ -185,7 +185,7 @@ export class AndroidApplication {
 
   @ApiPropertyOptional({
     example:
-      'Docker image "redroid/redroid:13.0.0-latest" is not available locally. Pulling it now.',
+      'Docker image "redroid/redroid:14.0.0-latest" is not available locally. Pulling it now.',
     nullable: true,
   })
   @Column({ type: 'text', nullable: true })
@@ -197,7 +197,7 @@ export class AndroidApplication {
   })
   statusDetail!: AndroidApplicationStatusDetail | null;
 
-  @ApiProperty({ example: 'redroid/redroid:13.0.0-latest' })
+  @ApiProperty({ example: 'redroid/redroid:14.0.0-latest' })
   @Column()
   containerImage!: string;
 

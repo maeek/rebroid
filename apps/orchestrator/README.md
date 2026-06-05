@@ -63,7 +63,7 @@ If the redroid image is missing, app creation no longer fails with `409`. The ap
 {
   "status": "provisioning",
   "lifecycleStage": "image_pulling",
-  "statusMessage": "Docker image \"redroid/redroid:13.0.0-latest\" is not available locally. Pulling it now."
+  "statusMessage": "Docker image \"redroid/redroid:14.0.0-latest\" is not available locally. Pulling it now."
 }
 ```
 
@@ -81,7 +81,7 @@ Pulling an existing tag is the update path for mutable tags:
 
 ```json
 {
-  "image": "redroid/redroid:13.0.0-latest"
+  "image": "redroid/redroid:14.0.0-latest"
 }
 ```
 

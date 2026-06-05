@@ -60,7 +60,7 @@ export class CreateAndroidApplicationDto {
   @IsString()
   ownerUserId?: string;
 
-  @ApiPropertyOptional({ example: 'redroid/redroid:13.0.0-latest' })
+  @ApiPropertyOptional({ example: 'redroid/redroid:14.0.0-latest' })
   @IsOptional()
   @IsString()
   containerImage?: string;

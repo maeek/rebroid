@@ -35,7 +35,7 @@ export function AutomationStepInspector({
   return (
     <>
       <aside className='hidden min-w-0 xl:block'>
-        <div className='sticky top-4 overflow-hidden rounded-lg border border-border/70 bg-card/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md'>
+        <div className='overflow-hidden rounded-lg border border-border/70 bg-card/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md'>
           {step ? (
             <AutomationStepInspectorContent
               step={step}
@@ -108,7 +108,7 @@ function AutomationStepInspectorContent({
   const yamlMode = step.kind === 'action' && yamlStepKey === step.clientKey
 
   return (
-    <div className='grid max-h-[88dvh] min-w-0 grid-rows-[auto_minmax(0,1fr)]'>
+    <div className='grid max-h-[calc(100dvh-7rem)] min-w-0 grid-rows-[auto_minmax(0,1fr)]'>
       <AutomationStepInspectorHeader
         step={step}
         command={command}

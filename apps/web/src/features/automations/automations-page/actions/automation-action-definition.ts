@@ -10,6 +10,7 @@ export type AutomationActionCategory =
   | 'Assertions'
   | 'Flow'
   | 'Debug'
+  | 'AI'
 
 export type AutomationActionIconKey =
   | 'alert'
@@ -30,6 +31,7 @@ export type AutomationActionIconKey =
   | 'rotate'
   | 'screenshot'
   | 'shield'
+  | 'sparkles'
   | 'swipe'
   | 'terminal'
   | 'text'
@@ -38,6 +40,7 @@ export type AutomationActionIconKey =
 
 export interface AutomationActionEditorProps {
   command?: AutomationCommand
+  commands: AutomationCommand[]
   input: Record<string, unknown>
   uiState: Record<string, unknown>
   patchInput: (patch: Record<string, unknown>) => void

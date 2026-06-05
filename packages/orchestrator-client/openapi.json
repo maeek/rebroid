@@ -391,6 +391,299 @@
         ]
       }
     },
+    "/api/v1/settings/ai-providers": {
+      "get": {
+        "operationId": "SettingsController_listAiProviders",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AutomationAiProviderDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ]
+      },
+      "post": {
+        "operationId": "SettingsController_createAiProvider",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAutomationAiProviderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationAiProviderDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/ai-providers/{providerId}/health": {
+      "get": {
+        "operationId": "SettingsController_checkAiProviderHealth",
+        "parameters": [
+          {
+            "name": "providerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "modelId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationAiProviderHealthDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/ai-providers/{providerId}": {
+      "patch": {
+        "operationId": "SettingsController_updateAiProvider",
+        "parameters": [
+          {
+            "name": "providerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAutomationAiProviderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationAiProviderDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ]
+      },
+      "delete": {
+        "operationId": "SettingsController_deleteAiProvider",
+        "parameters": [
+          {
+            "name": "providerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/ai-providers/{providerId}/models": {
+      "post": {
+        "operationId": "SettingsController_createAiProviderModel",
+        "parameters": [
+          {
+            "name": "providerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAutomationAiProviderModelDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationAiProviderModelDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/ai-providers/{providerId}/models/{modelId}": {
+      "patch": {
+        "operationId": "SettingsController_updateAiProviderModel",
+        "parameters": [
+          {
+            "name": "providerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "modelId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAutomationAiProviderModelDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationAiProviderModelDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ]
+      },
+      "delete": {
+        "operationId": "SettingsController_deleteAiProviderModel",
+        "parameters": [
+          {
+            "name": "providerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "modelId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/ai-model-catalog": {
+      "get": {
+        "operationId": "SettingsController_listAiModelCatalog",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AutomationAiModelCatalogProviderDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ]
+      }
+    },
     "/api/v1/apps": {
       "post": {
         "operationId": "AndroidAppsController_create",
@@ -415,7 +708,7 @@
                   },
                   "containerImage": {
                     "type": "string",
-                    "example": "redroid/redroid:13.0.0-latest"
+                    "example": "redroid/redroid:14.0.0-latest"
                   },
                   "inactivityTimeoutSeconds": {
                     "type": "integer",
@@ -2007,6 +2300,68 @@
         ]
       }
     },
+    "/api/v1/automations/draft-yaml": {
+      "post": {
+        "operationId": "AutomationsController_draftYaml",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftAutomationYamlDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationYamlDraftDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "automations"
+        ]
+      }
+    },
+    "/api/v1/automations/ai/runs": {
+      "post": {
+        "operationId": "AutomationsController_runAdHocAi",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunAdHocAiAutomationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationRunDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "automations"
+        ]
+      }
+    },
     "/api/v1/automations": {
       "get": {
         "operationId": "AutomationsController_list",
@@ -2059,6 +2414,123 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AutomationDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "automations"
+        ]
+      }
+    },
+    "/api/v1/automations/grid": {
+      "get": {
+        "operationId": "AutomationsController_listGrid",
+        "parameters": [
+          {
+            "name": "ownerUserId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "user_123",
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "example": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "login smoke",
+              "type": "string"
+            }
+          },
+          {
+            "name": "tag",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "smoke",
+              "type": "string"
+            }
+          },
+          {
+            "name": "targetApplicationId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "app-123",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "never_run",
+                "success",
+                "failed",
+                "running"
+              ]
+            }
+          },
+          {
+            "name": "lastRun",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "never",
+                "7d",
+                "30d",
+                "90d"
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "updatedAt:desc,name:asc",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationsGridPageDto"
                 }
               }
             }
@@ -2196,6 +2668,123 @@
         ]
       }
     },
+    "/api/v1/automations/runs/{runId}/cancel": {
+      "post": {
+        "operationId": "AutomationsController_cancelRun",
+        "parameters": [
+          {
+            "name": "runId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ownerUserId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationRunDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "automations"
+        ]
+      }
+    },
+    "/api/v1/automations/runs/{runId}/events": {
+      "get": {
+        "operationId": "AutomationsController_listRunEvents",
+        "parameters": [
+          {
+            "name": "runId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ownerUserId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "after",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AutomationRunEventDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "automations"
+        ]
+      }
+    },
+    "/api/v1/automations/runs/{runId}/events/token": {
+      "post": {
+        "operationId": "AutomationsController_createRunEventStreamToken",
+        "parameters": [
+          {
+            "name": "runId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationRunEventStreamTokenDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "automations"
+        ]
+      }
+    },
     "/api/v1/automations/triggers": {
       "get": {
         "operationId": "AutomationsController_listTriggers",
@@ -2248,6 +2837,135 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AutomationTriggerDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "automations"
+        ]
+      }
+    },
+    "/api/v1/automations/triggers/grid": {
+      "get": {
+        "operationId": "AutomationsController_listTriggersGrid",
+        "parameters": [
+          {
+            "name": "ownerUserId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "user_123",
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "example": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "daily smoke",
+              "type": "string"
+            }
+          },
+          {
+            "name": "tag",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "smoke",
+              "type": "string"
+            }
+          },
+          {
+            "name": "targetApplicationId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "app-123",
+              "type": "string"
+            }
+          },
+          {
+            "name": "enabled",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "never_run",
+                "success",
+                "failed",
+                "running"
+              ]
+            }
+          },
+          {
+            "name": "lastRun",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "never",
+                "7d",
+                "30d",
+                "90d"
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "updatedAt:desc,name:asc",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationTriggersGridPageDto"
                 }
               }
             }
@@ -2676,7 +3394,7 @@
               "application/json": {
                 "schema": {
                   "example": {
-                    "image": "redroid/redroid:13.0.0-latest",
+                    "image": "redroid/redroid:14.0.0-latest",
                     "status": "pulled"
                   }
                 }
@@ -3989,7 +4707,7 @@
         "properties": {
           "defaultContainerImage": {
             "type": "string",
-            "example": "redroid/redroid:13.0.0-latest"
+            "example": "redroid/redroid:14.0.0-latest"
           },
           "dockerImageRegistry": {
             "type": "string",
@@ -4031,7 +4749,7 @@
         "properties": {
           "defaultContainerImage": {
             "type": "string",
-            "example": "redroid/redroid:13.0.0-latest"
+            "example": "redroid/redroid:14.0.0-latest"
           },
           "dockerImageRegistry": {
             "type": "string",
@@ -4061,6 +4779,307 @@
             "maximum": 512
           }
         }
+      },
+      "AutomationAiProviderModelDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "qwen2.5vl:7b"
+          },
+          "label": {
+            "type": "string",
+            "example": "Qwen 2.5 VL 7B"
+          },
+          "supportsVision": {
+            "type": "boolean",
+            "default": true
+          },
+          "supportsTools": {
+            "type": "boolean",
+            "default": true
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          },
+          "default": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "supportsVision",
+          "supportsTools",
+          "enabled",
+          "default"
+        ]
+      },
+      "AutomationAiProviderDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "local-ollama"
+          },
+          "label": {
+            "type": "string",
+            "example": "Local Ollama"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "openai",
+              "openai-compatible",
+              "ollama"
+            ]
+          },
+          "baseUrl": {
+            "type": "string",
+            "example": "http://localhost:11434"
+          },
+          "apiKey": {
+            "type": "string",
+            "nullable": true,
+            "description": "Masked on reads. Send a new value to replace the stored secret, or null to clear it."
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationAiProviderModelDto"
+            }
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "kind",
+          "baseUrl",
+          "models",
+          "enabled"
+        ]
+      },
+      "CreateAutomationAiProviderDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "local-ollama"
+          },
+          "label": {
+            "type": "string",
+            "example": "Local Ollama"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "openai",
+              "openai-compatible",
+              "ollama"
+            ]
+          },
+          "baseUrl": {
+            "type": "string",
+            "example": "http://localhost:11434"
+          },
+          "apiKey": {
+            "type": "string",
+            "nullable": true,
+            "description": "Masked on reads. Send a new value to replace the stored secret, or null to clear it."
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationAiProviderModelDto"
+            }
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "kind",
+          "baseUrl",
+          "models",
+          "enabled"
+        ]
+      },
+      "AutomationAiProviderHealthDto": {
+        "type": "object",
+        "properties": {
+          "providerId": {
+            "type": "string"
+          },
+          "modelId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "error",
+              "disabled"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "checkedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "providerId",
+          "status",
+          "message",
+          "checkedAt"
+        ]
+      },
+      "UpdateAutomationAiProviderDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "local-ollama"
+          },
+          "label": {
+            "type": "string",
+            "example": "Local Ollama"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "openai",
+              "openai-compatible",
+              "ollama"
+            ]
+          },
+          "baseUrl": {
+            "type": "string",
+            "example": "http://localhost:11434"
+          },
+          "apiKey": {
+            "type": "string",
+            "nullable": true,
+            "description": "Masked on reads. Send a new value to replace the stored secret, or null to clear it."
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationAiProviderModelDto"
+            }
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      },
+      "CreateAutomationAiProviderModelDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "qwen2.5vl:7b"
+          },
+          "label": {
+            "type": "string",
+            "example": "Qwen 2.5 VL 7B"
+          },
+          "supportsVision": {
+            "type": "boolean",
+            "default": true
+          },
+          "supportsTools": {
+            "type": "boolean",
+            "default": true
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          },
+          "default": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "supportsVision",
+          "supportsTools",
+          "enabled",
+          "default"
+        ]
+      },
+      "UpdateAutomationAiProviderModelDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "qwen2.5vl:7b"
+          },
+          "label": {
+            "type": "string",
+            "example": "Qwen 2.5 VL 7B"
+          },
+          "supportsVision": {
+            "type": "boolean",
+            "default": true
+          },
+          "supportsTools": {
+            "type": "boolean",
+            "default": true
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          },
+          "default": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "AutomationAiModelCatalogProviderDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "openai",
+              "openai-compatible",
+              "ollama"
+            ]
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationAiProviderModelDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "kind",
+          "models"
+        ]
       },
       "ApplicationCommandNetworkPolicyDto": {
         "type": "object",
@@ -5607,6 +6626,15 @@
           },
           "inputSchema": {
             "type": "object"
+          },
+          "outputs": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "editor": {
+            "type": "object"
           }
         },
         "required": [
@@ -5614,7 +6642,9 @@
           "label",
           "description",
           "requiredPermissions",
-          "inputSchema"
+          "inputSchema",
+          "outputs",
+          "editor"
         ]
       },
       "ValidateAutomationYamlDto": {
@@ -5629,6 +6659,23 @@
           "yaml"
         ]
       },
+      "AutomationTagDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "smoke"
+          },
+          "color": {
+            "type": "string",
+            "example": "#0ea5e9"
+          }
+        },
+        "required": [
+          "name",
+          "color"
+        ]
+      },
       "AutomationDefinitionMetadataDto": {
         "type": "object",
         "properties": {
@@ -5641,42 +6688,24 @@
             "example": "Optional notes"
           },
           "tags": {
+            "example": [
+              {
+                "name": "smoke",
+                "color": "#0ea5e9"
+              },
+              {
+                "name": "login",
+                "color": "#22c55e"
+              }
+            ],
             "type": "array",
             "items": {
-              "type": "string"
-            },
-            "example": [
-              "smoke",
-              "login"
-            ]
-          }
-        },
-        "required": [
-          "name"
-        ]
-      },
-      "AutomationDefinitionStepDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "example": "wake-device"
-          },
-          "uses": {
-            "type": "string",
-            "example": "android.viewerCommand"
-          },
-          "with": {
-            "type": "object",
-            "example": {
-              "command": "wake"
+              "$ref": "#/components/schemas/AutomationTagDto"
             }
           }
         },
         "required": [
-          "id",
-          "uses",
-          "with"
+          "name"
         ]
       },
       "AutomationDefinitionSpecDto": {
@@ -5752,90 +6781,104 @@
           "errors"
         ]
       },
-      "AutomationDto": {
+      "DraftAutomationYamlDto": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string"
-          },
-          "ownerUserId": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "description": {
+          "prompt": {
             "type": "string",
-            "nullable": true
+            "example": "Log in to the app and verify the home screen opens."
           },
-          "definition": {
-            "$ref": "#/components/schemas/AutomationDefinitionDto"
-          },
-          "yaml": {
-            "type": "string"
-          },
-          "lastRunAt": {
+          "providerId": {
             "type": "string",
-            "nullable": true
+            "example": "local-ollama"
           },
-          "lastStatus": {
+          "modelId": {
             "type": "string",
-            "enum": [
-              "never_run",
-              "success",
-              "failed",
-              "running"
-            ]
-          },
-          "lastError": {
-            "type": "string",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string"
-          },
-          "updatedAt": {
-            "type": "string"
-          },
-          "tags": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "example": "qwen2.5vl:7b"
           }
         },
         "required": [
-          "id",
-          "ownerUserId",
-          "name",
-          "description",
-          "tags",
-          "definition",
-          "yaml",
-          "lastRunAt",
-          "lastStatus",
-          "lastError",
-          "createdAt",
-          "updatedAt"
+          "prompt"
         ]
       },
-      "CreateAutomationDto": {
+      "AutomationYamlDraftDto": {
+        "type": "object",
+        "properties": {
+          "yaml": {
+            "type": "string"
+          },
+          "definition": {
+            "$ref": "#/components/schemas/AutomationDefinitionDto"
+          }
+        },
+        "required": [
+          "yaml",
+          "definition"
+        ]
+      },
+      "RunAdHocAiAutomationDto": {
         "type": "object",
         "properties": {
           "ownerUserId": {
             "type": "string",
             "example": "user_123"
           },
-          "yaml": {
+          "targetApplicationId": {
             "type": "string",
-            "description": "YAML automation definition. Required unless definition is supplied."
+            "example": "98a530d6-a45d-466a-9cb4-c023067c4971",
+            "nullable": true
           },
-          "definition": {
-            "$ref": "#/components/schemas/AutomationDefinitionDto"
+          "profileMode": {
+            "type": "string",
+            "enum": [
+              "persistent",
+              "temporary"
+            ]
+          },
+          "profileName": {
+            "type": "object",
+            "example": "default",
+            "nullable": true
+          },
+          "startPolicy": {
+            "type": "string",
+            "enum": [
+              "require-running",
+              "start-if-needed"
+            ],
+            "default": "require-running"
+          },
+          "prompt": {
+            "type": "string",
+            "example": "Open settings and verify Wi-Fi is visible."
+          },
+          "providerId": {
+            "type": "string",
+            "example": "local-ollama"
+          },
+          "modelId": {
+            "type": "string",
+            "example": "qwen2.5vl:7b"
+          },
+          "allowedTools": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "maxToolCalls": {
+            "type": "number",
+            "default": 20
+          },
+          "timeoutMs": {
+            "type": "number",
+            "default": 120000
           }
         },
         "required": [
-          "ownerUserId"
+          "ownerUserId",
+          "targetApplicationId",
+          "prompt"
         ]
       },
       "AutomationStepResultDto": {
@@ -5848,6 +6891,14 @@
           "uses": {
             "type": "string",
             "example": "android.viewerCommand"
+          },
+          "parentStepId": {
+            "type": "string",
+            "nullable": true
+          },
+          "path": {
+            "type": "string",
+            "example": "steps[0].then[0]"
           },
           "status": {
             "type": "string",
@@ -5870,14 +6921,6 @@
           "error": {
             "type": "string",
             "nullable": true
-          },
-          "parentStepId": {
-            "type": "string",
-            "nullable": true
-          },
-          "path": {
-            "type": "string",
-            "example": "steps[0].then[0]"
           }
         },
         "required": [
@@ -5977,6 +7020,207 @@
           "updatedAt"
         ]
       },
+      "AutomationDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "ownerUserId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationTagDto"
+            }
+          },
+          "definition": {
+            "$ref": "#/components/schemas/AutomationDefinitionDto"
+          },
+          "yaml": {
+            "type": "string"
+          },
+          "lastRunAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastStatus": {
+            "type": "string",
+            "enum": [
+              "never_run",
+              "success",
+              "failed",
+              "running"
+            ]
+          },
+          "lastError": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ownerUserId",
+          "name",
+          "description",
+          "tags",
+          "definition",
+          "yaml",
+          "lastRunAt",
+          "lastStatus",
+          "lastError",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "AutomationsGridFacetsDto": {
+        "type": "object",
+        "properties": {
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "targetApplicationIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "tags",
+          "targetApplicationIds"
+        ]
+      },
+      "AutomationsGridPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "pageSize": {
+            "type": "number"
+          },
+          "facets": {
+            "$ref": "#/components/schemas/AutomationsGridFacetsDto"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize",
+          "facets"
+        ]
+      },
+      "CreateAutomationDto": {
+        "type": "object",
+        "properties": {
+          "ownerUserId": {
+            "type": "string",
+            "example": "user_123"
+          },
+          "yaml": {
+            "type": "string",
+            "description": "YAML automation definition. Required unless definition is supplied."
+          },
+          "definition": {
+            "$ref": "#/components/schemas/AutomationDefinitionDto"
+          }
+        },
+        "required": [
+          "ownerUserId"
+        ]
+      },
+      "AutomationRunEventDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "runId": {
+            "type": "string"
+          },
+          "ownerUserId": {
+            "type": "string"
+          },
+          "sequence": {
+            "type": "number"
+          },
+          "type": {
+            "type": "string"
+          },
+          "stepId": {
+            "type": "string",
+            "nullable": true
+          },
+          "parentStepId": {
+            "type": "string",
+            "nullable": true
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "runId",
+          "ownerUserId",
+          "sequence",
+          "type",
+          "stepId",
+          "parentStepId",
+          "message",
+          "data",
+          "createdAt"
+        ]
+      },
+      "AutomationRunEventStreamTokenDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "expiresAt"
+        ]
+      },
       "AutomationTriggerDto": {
         "type": "object",
         "properties": {
@@ -6005,6 +7249,12 @@
           },
           "enabled": {
             "type": "boolean"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationTagDto"
+            }
           },
           "triggerType": {
             "type": "string",
@@ -6043,12 +7293,6 @@
           },
           "updatedAt": {
             "type": "string"
-          },
-          "tags": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
           }
         },
         "required": [
@@ -6069,6 +7313,57 @@
           "lastError",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "AutomationTriggersGridFacetsDto": {
+        "type": "object",
+        "properties": {
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "targetApplicationIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "tags",
+          "targetApplicationIds"
+        ]
+      },
+      "AutomationTriggersGridPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationTriggerDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "pageSize": {
+            "type": "number"
+          },
+          "facets": {
+            "$ref": "#/components/schemas/AutomationTriggersGridFacetsDto"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize",
+          "facets"
         ]
       },
       "AutomationScheduleTriggerConfigDto": {
@@ -6124,6 +7419,12 @@
             "type": "boolean",
             "default": true
           },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationTagDto"
+            }
+          },
           "triggerType": {
             "type": "string",
             "enum": [
@@ -6134,12 +7435,6 @@
           },
           "triggerConfig": {
             "$ref": "#/components/schemas/AutomationScheduleTriggerConfigDto"
-          },
-          "tags": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
           }
         },
         "required": [
@@ -6183,6 +7478,12 @@
           "enabled": {
             "type": "boolean",
             "default": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationTagDto"
+            }
           },
           "triggerType": {
             "type": "string",
@@ -6255,7 +7556,7 @@
         "properties": {
           "image": {
             "type": "string",
-            "example": "redroid/redroid:13.0.0-latest"
+            "example": "redroid/redroid:14.0.0-latest"
           }
         },
         "required": [

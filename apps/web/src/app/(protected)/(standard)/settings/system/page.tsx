@@ -1,3 +1,5 @@
-import { SystemSettingsPage } from '@/features/settings/system/system-settings-page'
+import { redirect } from 'next/navigation'
 
-export default SystemSettingsPage
+export default function SystemRedirectPage() {
+  redirect('/infrastructure/system')
+}

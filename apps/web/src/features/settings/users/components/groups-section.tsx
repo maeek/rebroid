@@ -62,7 +62,7 @@ export const GroupsSection = ({
       size: 480,
       meta: { label: 'Group' },
       cell: ({ row }) => (
-        <Link href={`/settings/groups/${row.original.id}`}>
+        <Link href={`/users/groups/${row.original.id}`}>
           <div className='font-medium hover:underline hover:text-primary'>{row.original.name}</div>
           <div className='text-xs text-muted-foreground'>{row.original.description}</div>
         </Link>
@@ -204,7 +204,7 @@ export const GroupsSection = ({
                   }}
                 />
                 <Link
-                  href={`/settings/groups/${row.original.id}`}
+                  href={`/users/groups/${row.original.id}`}
                   className='min-w-0 flex-1'
                 >
                   <div className='font-medium hover:underline hover:text-primary'>{row.original.name}</div>
@@ -229,7 +229,7 @@ export const GroupsSection = ({
                   </ContextMenuItem>
                 ) : null}
                 <ContextMenuItem asChild>
-                  <Link href={`/settings/groups/${row.original.id}`}>Open group</Link>
+                  <Link href={`/users/groups/${row.original.id}`}>Open group</Link>
                 </ContextMenuItem>
                 <ContextMenuItem
                   className='text-destructive focus:text-destructive'

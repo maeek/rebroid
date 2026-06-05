@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { IconChevronDown, IconChevronUp, IconColumns3, IconDotsVertical, IconSearch } from '@tabler/icons-react'
 import {
   flexRender,
@@ -22,6 +22,7 @@ import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/component
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
+import { openContextMenuFromButton, rowMenuColumn, selectionColumn, spacerColumn } from './data-grid-columns'
 
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -55,118 +56,6 @@ export type DataGridProps<TData> = {
   rowContextMenu?: (row: Row<TData>) => ReactNode
   className?: string
 }
-
-const selectionColumn = <TData,>({
-  selection,
-  getRowId,
-  lastSelectedIndexRef
-}: {
-  selection: DataGridSelectionState
-  getRowId: (row: TData) => string
-  lastSelectedIndexRef: React.MutableRefObject<number | null>
-}): ColumnDef<TData> => ({
-  id: '__select',
-  enableHiding: false,
-  enableSorting: false,
-  size: 48,
-  minSize: 48,
-  maxSize: 48,
-  enableResizing: false,
-  header: ({ table }) => {
-    const rows = table.getRowModel().rows
-    const allSelected = rows.length > 0 && rows.every(row => selection.selectedIds.has(getRowId(row.original)))
-    return (
-      <Checkbox
-        checked={allSelected}
-        aria-label='Select current page'
-        onCheckedChange={checked => {
-          const next = new Set(selection.selectedIds)
-          for (const row of rows) {
-            const id = getRowId(row.original)
-            if (checked === true) next.add(id)
-            else next.delete(id)
-          }
-          selection.onSelectedIdsChange(next)
-        }}
-      />
-    )
-  },
-  cell: ({ row, table }) => {
-    const id = getRowId(row.original)
-    return (
-      <Checkbox
-        checked={selection.selectedIds.has(id)}
-        aria-label='Select row'
-        onClick={event => {
-          const next = new Set(selection.selectedIds)
-          if (event.shiftKey && lastSelectedIndexRef.current !== null) {
-            const rows = table.getRowModel().rows
-            const start = Math.min(lastSelectedIndexRef.current, row.index)
-            const end = Math.max(lastSelectedIndexRef.current, row.index)
-            for (const rangeRow of rows.slice(start, end + 1)) {
-              next.add(getRowId(rangeRow.original))
-            }
-          } else if (next.has(id)) {
-            next.delete(id)
-          } else {
-            next.add(id)
-          }
-          lastSelectedIndexRef.current = row.index
-          selection.onSelectedIdsChange(next)
-        }}
-        onCheckedChange={() => undefined}
-      />
-    )
-  }
-})
-
-const openContextMenuFromButton = (event: MouseEvent<HTMLButtonElement>) => {
-  event.preventDefault()
-  event.stopPropagation()
-  event.currentTarget.dispatchEvent(
-    new MouseEvent('contextmenu', {
-      bubbles: true,
-      cancelable: true,
-      clientX: event.clientX,
-      clientY: event.clientY
-    })
-  )
-}
-
-const spacerColumn = <TData,>(): ColumnDef<TData> => ({
-  id: '__spacer',
-  enableHiding: false,
-  enableSorting: false,
-  size: 0,
-  minSize: 0,
-  maxSize: 10000,
-  enableResizing: false,
-  header: () => null,
-  cell: () => null
-})
-
-const rowMenuColumn = <TData,>(): ColumnDef<TData> => ({
-  id: '__row_menu',
-  enableHiding: false,
-  enableSorting: false,
-  size: 72,
-  minSize: 72,
-  maxSize: 72,
-  enableResizing: false,
-  header: () => <span className='sr-only'>Row actions</span>,
-  cell: () => (
-    <Button
-      type='button'
-      variant='ghost'
-      size='icon'
-      className='size-8'
-      aria-label='Open row actions'
-      onClick={openContextMenuFromButton}
-    >
-      <IconDotsVertical className='size-4' />
-    </Button>
-  )
-})
 
 export function DataGrid<TData>({
   columns,

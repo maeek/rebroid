@@ -4,16 +4,16 @@ import { useEffect, useMemo, useState } from 'react'
 import { IconActivityHeartbeat, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { DataGrid, DataGridPagination, DataGridToolbar } from '@/components/data-grid'
+import { DataGrid, DataGridPagination } from '@/components/data-grid'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ContextMenuItem } from '@/components/ui/context-menu'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/hooks/use-toast'
 import { deleteAutomationAction } from '@/server/orchestrator/automations/actions'
 import { AutomationDeleteDialog } from '../shared/automation-delete-dialog'
 import { AutomationTagBadge } from '../shared/automation-tag-badge'
+import { compactGridParams, sortFromSearchParam, sortToSearchParam } from '../shared/grid-query-utils'
+import { AutomationsTableToolbar } from './automations-table-toolbar'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
 import type {
   Automation,
@@ -23,9 +23,7 @@ import type {
   AutomationTag,
   AutomationTrigger
 } from '@/server/orchestrator/automations/types'
-import type { ColumnDef, SortingState } from '@tanstack/react-table'
-
-const allFilterValue = 'all'
+import type { ColumnDef } from '@tanstack/react-table'
 
 const statusVariant = (status: Automation['lastStatus']) => {
   if (status === 'success') return 'status'
@@ -57,29 +55,6 @@ const stepCount = (steps: AutomationDefinitionStep[]): number =>
     }
     return count + 1 + stepCount(step.steps)
   }, 0)
-
-const compactParams = (values: Record<string, string | number | undefined>) => {
-  const params = new URLSearchParams()
-  for (const [key, value] of Object.entries(values)) {
-    const text = String(value ?? '').trim()
-    if (text && text !== allFilterValue) params.set(key, text)
-  }
-  return params
-}
-
-const sortToSearchParam = (sorting: SortingState) =>
-  sorting.length === 0 ? undefined : sorting.map(item => `${item.id}:${item.desc ? 'desc' : 'asc'}`).join(',')
-
-const sortFromSearchParam = (sort: string | undefined): SortingState =>
-  (sort ?? 'updatedAt:desc')
-    .split(',')
-    .map(part => {
-      const [id, direction] = part.split(':')
-      if (!id) return null
-      return { id, desc: direction !== 'asc' }
-    })
-    .filter((item): item is SortingState[number] => Boolean(item))
-    .slice(0, 3)
 
 const WorkflowTags = ({ tags }: { tags: AutomationTag[] }) => (
   <div className='flex flex-wrap gap-1'>
@@ -140,7 +115,7 @@ export function AutomationsTable({
   ).length
 
   const pushGridParams = (patch: Partial<AutomationsGridQuery>) => {
-    const params = compactParams({
+    const params = compactGridParams({
       q: patch.q ?? gridQuery.q,
       tag: patch.tag ?? gridQuery.tag,
       targetApplicationId: patch.targetApplicationId ?? gridQuery.targetApplicationId,
@@ -267,108 +242,18 @@ export function AutomationsTable({
 
   return (
     <div className='grid gap-4'>
-      <DataGridToolbar
+      <AutomationsTableToolbar
+        applications={applications}
+        automationsPage={automationsPage}
+        gridQuery={gridQuery}
         search={search}
-        searchPlaceholder='Search workflows'
-        onSearchChange={setSearch}
-        onSearchSubmit={() => pushGridParams({ q: search.trim() || undefined, page: 1 })}
         activeFilterCount={activeFilterCount}
         selectedCount={selectedAutomations.length}
-        actions={
-          <Button
-            size='sm'
-            variant='destructive'
-            disabled={busy || selectedAutomations.length === 0}
-            onClick={() => setBulkDeleteOpen(true)}
-          >
-            <IconTrash className='size-4' />
-            Delete
-          </Button>
-        }
-        filters={
-          <>
-            <Select
-              value={gridQuery.tag ?? allFilterValue}
-              onValueChange={value => pushGridParams({ tag: value === allFilterValue ? undefined : value, page: 1 })}
-            >
-              <SelectTrigger className='w-full'>
-                <SelectValue placeholder='Tag' />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={allFilterValue}>All tags</SelectItem>
-                {automationsPage.facets.tags.map(tag => (
-                  <SelectItem
-                    key={tag}
-                    value={tag}
-                  >
-                    {tag}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={gridQuery.targetApplicationId ?? allFilterValue}
-              onValueChange={value =>
-                pushGridParams({ targetApplicationId: value === allFilterValue ? undefined : value, page: 1 })
-              }
-            >
-              <SelectTrigger className='w-full'>
-                <SelectValue placeholder='App' />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={allFilterValue}>All apps</SelectItem>
-                {applications.map(app => (
-                  <SelectItem
-                    key={app.id}
-                    value={app.id}
-                  >
-                    {app.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={gridQuery.status ?? allFilterValue}
-              onValueChange={value =>
-                pushGridParams({
-                  status: value === allFilterValue ? undefined : (value as AutomationsGridQuery['status']),
-                  page: 1
-                })
-              }
-            >
-              <SelectTrigger className='w-full'>
-                <SelectValue placeholder='Status' />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={allFilterValue}>All status</SelectItem>
-                <SelectItem value='never_run'>Never run</SelectItem>
-                <SelectItem value='running'>Running</SelectItem>
-                <SelectItem value='success'>Success</SelectItem>
-                <SelectItem value='failed'>Failed</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select
-              value={gridQuery.lastRun ?? allFilterValue}
-              onValueChange={value =>
-                pushGridParams({
-                  lastRun: value === allFilterValue ? undefined : (value as AutomationsGridQuery['lastRun']),
-                  page: 1
-                })
-              }
-            >
-              <SelectTrigger className='w-full'>
-                <SelectValue placeholder='Last run' />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={allFilterValue}>Any run</SelectItem>
-                <SelectItem value='never'>Never run</SelectItem>
-                <SelectItem value='7d'>Last 7 days</SelectItem>
-                <SelectItem value='30d'>Last 30 days</SelectItem>
-                <SelectItem value='90d'>Last 90 days</SelectItem>
-              </SelectContent>
-            </Select>
-          </>
-        }
+        busy={busy}
+        onBulkDelete={() => setBulkDeleteOpen(true)}
+        onSearchChange={setSearch}
+        onSearchSubmit={() => pushGridParams({ q: search.trim() || undefined, page: 1 })}
+        onUpdateGrid={pushGridParams}
       />
 
       <DataGrid

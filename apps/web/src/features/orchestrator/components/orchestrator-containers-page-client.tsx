@@ -27,6 +27,7 @@ export const OrchestratorContainersPageClient = ({
       <PlatformPageHeader
         title='Containers'
         description='Docker containers visible to the platform. Managed application containers are shown first.'
+        breadcrumbRoot={{ label: 'Infrastructure' }}
         actions={
           <PlatformPageRefreshButton
             isRefreshing={isRefreshing}

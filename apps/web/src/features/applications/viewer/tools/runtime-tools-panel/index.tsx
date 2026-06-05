@@ -1,23 +1,52 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { IconCast, IconChevronDown, IconClipboard, IconFolder, IconLogs, IconWorld } from '@tabler/icons-react'
+import {
+  IconCast,
+  IconChevronDown,
+  IconClipboard,
+  IconFolder,
+  IconLogs,
+  IconRobot,
+  IconSparkles,
+  IconWorld
+} from '@tabler/icons-react'
 import { useApplicationViewerApp } from '@/features/applications/detail/application-viewer-context'
 import { AppLogsContent } from '@/features/applications/viewer/logs/app-logs-content'
 import { cn } from '@/lib/utils'
 import { hasPermission } from '@/shared/permissions/permissions'
+import { AiAgentToolsSection } from './ai-agent-tools-section'
+import { AutomationStatusToolsSection } from './automation-status-tools-section'
 import { ClipboardToolsSection } from './clipboard-tools-section'
 import { DownloadsToolsSection } from './downloads-tools-section'
 import { NetworkAccessToolsSection } from './network-access-tools-section'
 import { StreamingToolsSection } from './streaming-tools-section'
+import type { AutomationRun } from '@/server/orchestrator/automations/types'
 
-type RuntimeToolId = 'clipboard' | 'files' | 'streaming' | 'network-access' | 'logs'
+type RuntimeToolId = 'clipboard' | 'files' | 'streaming' | 'network-access' | 'logs' | 'ai-agent' | 'automations'
 
 export const RuntimeToolsPanel = () => {
   const { app, permissions, setApp, setViewerSettings, viewerSettings } = useApplicationViewerApp()
+  const [latestAutomationRun, setLatestAutomationRun] = useState<AutomationRun | null>(null)
   const tools = useMemo(
     () =>
       [
+        hasPermission(permissions, 'automations:run') && hasPermission(permissions, 'automations:run-ai') && app.running
+          ? {
+              id: 'ai-agent' as const,
+              title: 'AI agent',
+              description: 'Run ad-hoc automation',
+              Icon: IconSparkles
+            }
+          : null,
+        hasPermission(permissions, 'automations:run')
+          ? {
+              id: 'automations' as const,
+              title: 'Automations',
+              description: latestAutomationRun ? `Run ${latestAutomationRun.id.slice(0, 8)}` : 'Active runs',
+              Icon: IconRobot
+            }
+          : null,
         hasPermission(permissions, 'applications:sync-clipboard') && app.running
           ? {
               id: 'clipboard' as const,
@@ -57,7 +86,14 @@ export const RuntimeToolsPanel = () => {
             }
           : null
       ].filter((tool): tool is NonNullable<typeof tool> => Boolean(tool)),
-    [app.networkPolicyEnabled, app.running, permissions, viewerSettings.bitrateMbps, viewerSettings.transport]
+    [
+      app.networkPolicyEnabled,
+      app.running,
+      latestAutomationRun,
+      permissions,
+      viewerSettings.bitrateMbps,
+      viewerSettings.transport
+    ]
   )
   const [activeTool, setActiveTool] = useState<RuntimeToolId | null>(() => tools[0]?.id ?? 'streaming')
 
@@ -93,6 +129,31 @@ export const RuntimeToolsPanel = () => {
         <div className='min-h-30 px-4 max-h-300 overflow-auto'>
           <AppLogsContent app={app} />
         </div>
+      )
+    }
+
+    if (toolId === 'ai-agent') {
+      return (
+        <AiAgentToolsSection
+          app={app}
+          className={sectionClassName}
+          hideHeader={inline}
+          onRunStarted={run => {
+            setLatestAutomationRun(run)
+            setActiveTool('ai-agent')
+          }}
+        />
+      )
+    }
+
+    if (toolId === 'automations') {
+      return (
+        <AutomationStatusToolsSection
+          app={app}
+          latestRun={latestAutomationRun}
+          className={sectionClassName}
+          hideHeader={inline}
+        />
       )
     }
 
