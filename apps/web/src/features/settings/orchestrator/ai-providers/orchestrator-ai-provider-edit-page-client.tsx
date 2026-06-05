@@ -27,6 +27,7 @@ export const OrchestratorAiProviderEditPageClient = ({
     setDefaultModel,
     downloadModel,
     isDownloadingModel,
+    modelDownload,
     removeModels,
     updateModel,
     updateModels,
@@ -76,6 +77,7 @@ export const OrchestratorAiProviderEditPageClient = ({
           onSetDefaultModel={setDefaultModel}
           onUpdateModel={updateModel}
           isDownloadingModel={isDownloadingModel}
+          modelDownload={modelDownload}
         />
       </section>
     </ProtectedStackPageLayout>

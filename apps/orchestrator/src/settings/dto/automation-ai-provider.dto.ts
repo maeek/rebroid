@@ -164,6 +164,44 @@ export class DownloadAutomationAiProviderModelDto {
   label?: string;
 }
 
+export class AutomationAiProviderModelDownloadDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  providerId!: string;
+
+  @ApiProperty()
+  modelId!: string;
+
+  @ApiPropertyOptional()
+  label?: string;
+
+  @ApiProperty({ enum: ['queued', 'running', 'completed', 'failed'] })
+  status!: 'queued' | 'running' | 'completed' | 'failed';
+
+  @ApiProperty()
+  message!: string;
+
+  @ApiPropertyOptional({ type: Number, nullable: true })
+  total?: number | null;
+
+  @ApiPropertyOptional({ type: Number, nullable: true })
+  completed?: number | null;
+
+  @ApiPropertyOptional({ type: Number, nullable: true })
+  percent?: number | null;
+
+  @ApiProperty()
+  createdAt!: string;
+
+  @ApiProperty()
+  updatedAt!: string;
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  finishedAt?: string | null;
+}
+
 export class AutomationAiModelCatalogProviderDto {
   @ApiProperty()
   id!: string;

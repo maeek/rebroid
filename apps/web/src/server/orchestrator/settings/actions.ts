@@ -145,6 +145,11 @@ export const downloadAutomationAiProviderModelAction = async (
   return result
 }
 
+export const getAutomationAiProviderModelDownloadAction = async (providerId: string, downloadId: string) => {
+  await requireAdminUser()
+  return orchestratorSettingsClient.getAiProviderModelDownload(providerId, downloadId)
+}
+
 export const updateAutomationAiProviderModelAction = async (
   providerId: string,
   modelId: string,

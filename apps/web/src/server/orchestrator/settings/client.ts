@@ -4,6 +4,7 @@ import type {
   AutomationAiProvider,
   AutomationAiProviderHealth,
   AutomationAiProviderModel,
+  AutomationAiProviderModelDownload,
   CleanupUploadedApksResponse,
   OrchestratorSettingsResponse
 } from './types'
@@ -62,10 +63,16 @@ export const orchestratorSettingsClient = {
   },
 
   downloadAiProviderModel(providerId: string, input: { modelId: string; label?: string }) {
-    return jsonRequest<AutomationAiProvider>(
+    return jsonRequest<AutomationAiProviderModelDownload>(
       `/settings/ai-providers/${encodeURIComponent(providerId)}/models/download`,
       'POST',
       input
+    )
+  },
+
+  getAiProviderModelDownload(providerId: string, downloadId: string) {
+    return emptyRequest<AutomationAiProviderModelDownload>(
+      `/settings/ai-providers/${encodeURIComponent(providerId)}/models/downloads/${encodeURIComponent(downloadId)}`
     )
   },
 

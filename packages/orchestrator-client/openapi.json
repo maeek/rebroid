@@ -433,7 +433,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AutomationAiProviderDto"
+                  "$ref": "#/components/schemas/AutomationAiProviderModelDownloadDto"
                 }
               }
             }
@@ -644,6 +644,44 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AutomationAiProviderDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/ai-providers/{providerId}/models/downloads/{downloadId}": {
+      "get": {
+        "operationId": "SettingsController_getAiProviderModelDownload",
+        "parameters": [
+          {
+            "name": "providerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "downloadId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationAiProviderModelDownloadDto"
                 }
               }
             }
@@ -5231,6 +5269,66 @@
         },
         "required": [
           "modelId"
+        ]
+      },
+      "AutomationAiProviderModelDownloadDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "providerId": {
+            "type": "string"
+          },
+          "modelId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "total": {
+            "type": "number",
+            "nullable": true
+          },
+          "completed": {
+            "type": "number",
+            "nullable": true
+          },
+          "percent": {
+            "type": "number",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "finishedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "providerId",
+          "modelId",
+          "status",
+          "message",
+          "createdAt",
+          "updatedAt"
         ]
       },
       "AutomationAiModelCatalogProviderDto": {

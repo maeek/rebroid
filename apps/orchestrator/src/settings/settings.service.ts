@@ -5,6 +5,7 @@ import {
   PayloadTooLargeException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { ScrcpyTransport } from '../android-apps/android-application-status';
@@ -18,6 +19,7 @@ import type {
 } from '../automations/ai/automation-ai.types';
 import type {
   AutomationAiProviderHealthDto,
+  AutomationAiProviderModelDownloadDto,
   CreateAutomationAiProviderDto,
   CreateAutomationAiProviderModelDto,
   UpdateAutomationAiProviderDto,
@@ -28,10 +30,18 @@ type StoredOrchestratorSettings = OrchestratorSettingsDto & {
   aiProviders: AutomationAiProvider[];
 };
 
+type AutomationAiProviderModelDownloadJob =
+  AutomationAiProviderModelDownloadDto;
+
 const MASKED_API_KEY = '********';
 
 @Injectable()
 export class SettingsService {
+  private readonly modelDownloads = new Map<
+    string,
+    AutomationAiProviderModelDownloadJob
+  >();
+
   constructor(private readonly config: ConfigService) {}
 
   /**
@@ -346,7 +356,11 @@ export class SettingsService {
     });
   }
 
-  async downloadAiProviderModel(providerId: string, modelId: string, label?: string) {
+  async downloadAiProviderModel(
+    providerId: string,
+    modelId: string,
+    label?: string,
+  ) {
     const settings = await this.getStoredSettings();
     const index = settings.aiProviders.findIndex(
       (provider) => provider.id === providerId,
@@ -356,56 +370,52 @@ export class SettingsService {
     }
     const provider = settings.aiProviders[index];
     if (provider.kind !== 'ollama') {
-      throw new BadRequestException('Only Ollama providers support model downloads.');
+      throw new BadRequestException(
+        'Only Ollama providers support model downloads.',
+      );
     }
     const id = text(modelId);
     if (!id) {
       throw new BadRequestException('Model ID is required.');
     }
-
-    const response = await fetch(`${provider.baseUrl.replace(/\/+$/, '')}/api/pull`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      signal: AbortSignal.timeout(30 * 60 * 1000),
-      body: JSON.stringify({ name: id, stream: false }),
-    }).catch((error: unknown) => {
-      throw new BadRequestException(this.aiProviderHealthErrorMessage(error));
-    });
-    if (!response.ok) {
-      const body = (await response.json().catch(() => null)) as
-        | { error?: unknown; message?: unknown }
-        | null;
-      const message =
-        typeof body?.error === 'string'
-          ? body.error
-          : typeof body?.message === 'string'
-            ? body.message
-            : `${response.status} ${response.statusText}`;
-      throw new BadRequestException(`Ollama model download failed: ${message}`);
+    const existingJob = Array.from(this.modelDownloads.values()).find(
+      (job) =>
+        job.providerId === providerId &&
+        job.modelId === id &&
+        ['queued', 'running'].includes(job.status),
+    );
+    if (existingJob) {
+      return existingJob;
     }
 
-    const existingIndex = provider.models.findIndex((model) => model.id === id);
-    const nextModel = this.normalizeAiModel({
-      ...(existingIndex >= 0 ? provider.models[existingIndex] : {}),
-      id,
-      label: text(label) || provider.models[existingIndex]?.label || id,
-      supportsVision: this.modelLikelySupportsVision(id, label),
-      supportsTools: true,
-      enabled: true,
-      default: provider.models.length === 0,
-      settings: provider.models[existingIndex]?.settings ?? {},
-    });
-    const nextModels = [...provider.models];
-    if (existingIndex >= 0) nextModels[existingIndex] = nextModel;
-    else nextModels.push(nextModel);
-
-    const updatedProvider = {
-      ...provider,
-      models: this.normalizeDefaultModel(nextModels),
+    const now = new Date().toISOString();
+    const job: AutomationAiProviderModelDownloadJob = {
+      id: randomUUID(),
+      providerId,
+      modelId: id,
+      ...(text(label) ? { label: text(label) } : {}),
+      status: 'queued',
+      message: 'Queued model download.',
+      total: null,
+      completed: null,
+      percent: null,
+      createdAt: now,
+      updatedAt: now,
+      finishedAt: null,
     };
-    settings.aiProviders[index] = updatedProvider;
-    await this.writeSettings(settings);
-    return this.maskProvider(updatedProvider);
+    this.modelDownloads.set(job.id, job);
+    void this.runAiProviderModelDownload(job.id);
+    return job;
+  }
+
+  getAiProviderModelDownload(providerId: string, downloadId: string) {
+    const job = this.modelDownloads.get(downloadId);
+    if (!job || job.providerId !== providerId) {
+      throw new NotFoundException(
+        `AI model download "${downloadId}" was not found.`,
+      );
+    }
+    return job;
   }
 
   private async readStoredSettings() {
@@ -757,6 +767,182 @@ export class SettingsService {
     return /\b(vl|vision|visual|multimodal|gpt-4o|o4|llava|pixtral|gemini)\b/i.test(
       `${modelId} ${label ?? ''}`,
     );
+  }
+
+  private async runAiProviderModelDownload(downloadId: string) {
+    const job = this.modelDownloads.get(downloadId);
+    if (!job) {
+      return;
+    }
+
+    try {
+      this.updateModelDownload(downloadId, {
+        status: 'running',
+        message: 'Starting Ollama model download.',
+      });
+      const settings = await this.getStoredSettings();
+      const provider = settings.aiProviders.find(
+        (item) => item.id === job.providerId,
+      );
+      if (!provider) {
+        throw new NotFoundException(
+          `AI provider "${job.providerId}" was not found.`,
+        );
+      }
+      if (provider.kind !== 'ollama') {
+        throw new BadRequestException(
+          'Only Ollama providers support model downloads.',
+        );
+      }
+
+      const response = await fetch(
+        `${provider.baseUrl.replace(/\/+$/, '')}/api/pull`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          signal: AbortSignal.timeout(30 * 60 * 1000),
+          body: JSON.stringify({ name: job.modelId, stream: true }),
+        },
+      );
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as
+          | { error?: unknown; message?: unknown }
+          | null;
+        const message =
+          typeof body?.error === 'string'
+            ? body.error
+            : typeof body?.message === 'string'
+              ? body.message
+              : `${response.status} ${response.statusText}`;
+        throw new BadRequestException(
+          `Ollama model download failed: ${message}`,
+        );
+      }
+      if (!response.body) {
+        throw new BadRequestException(
+          'Ollama model download did not return a progress stream.',
+        );
+      }
+
+      await this.readOllamaPullProgress(downloadId, response.body);
+      await this.addDownloadedAiProviderModel(job.providerId, job.modelId, job.label);
+      this.updateModelDownload(downloadId, {
+        status: 'completed',
+        message: `Model "${job.modelId}" is downloaded.`,
+        completed: null,
+        total: null,
+        percent: 100,
+        finishedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      this.updateModelDownload(downloadId, {
+        status: 'failed',
+        message: this.aiProviderHealthErrorMessage(error),
+        finishedAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  private async readOllamaPullProgress(
+    downloadId: string,
+    body: ReadableStream<Uint8Array>,
+  ) {
+    const decoder = new TextDecoder();
+    const reader = body.getReader();
+    let buffer = '';
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          this.updateModelDownloadFromOllamaEvent(downloadId, line);
+        }
+      }
+      const final = `${buffer}${decoder.decode()}`.trim();
+      if (final) {
+        this.updateModelDownloadFromOllamaEvent(downloadId, final);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
+
+  private updateModelDownloadFromOllamaEvent(downloadId: string, line: string) {
+    const event = JSON.parse(line) as {
+      completed?: unknown;
+      status?: unknown;
+      total?: unknown;
+    };
+    const total = typeof event.total === 'number' ? event.total : null;
+    const completed =
+      typeof event.completed === 'number' ? event.completed : null;
+    const percent =
+      total && completed !== null
+        ? Math.min(100, Math.max(0, Math.round((completed / total) * 100)))
+        : null;
+    this.updateModelDownload(downloadId, {
+      message: typeof event.status === 'string' ? event.status : 'Downloading model.',
+      ...(total !== null ? { total } : {}),
+      ...(completed !== null ? { completed } : {}),
+      ...(percent !== null ? { percent } : {}),
+    });
+  }
+
+  private updateModelDownload(
+    downloadId: string,
+    patch: Partial<AutomationAiProviderModelDownloadJob>,
+  ) {
+    const current = this.modelDownloads.get(downloadId);
+    if (!current) {
+      return;
+    }
+    this.modelDownloads.set(downloadId, {
+      ...current,
+      ...patch,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  private async addDownloadedAiProviderModel(
+    providerId: string,
+    modelId: string,
+    label?: string,
+  ) {
+    const settings = await this.getStoredSettings();
+    const index = settings.aiProviders.findIndex(
+      (provider) => provider.id === providerId,
+    );
+    if (index < 0) {
+      throw new NotFoundException(`AI provider "${providerId}" was not found.`);
+    }
+    const provider = settings.aiProviders[index];
+    const existingIndex = provider.models.findIndex(
+      (model) => model.id === modelId,
+    );
+    const nextModel = this.normalizeAiModel({
+      ...(existingIndex >= 0 ? provider.models[existingIndex] : {}),
+      id: modelId,
+      label: text(label) || provider.models[existingIndex]?.label || modelId,
+      supportsVision: this.modelLikelySupportsVision(modelId, label),
+      supportsTools: true,
+      enabled: true,
+      default: provider.models.length === 0,
+      settings: provider.models[existingIndex]?.settings ?? {},
+    });
+    const nextModels = [...provider.models];
+    if (existingIndex >= 0) nextModels[existingIndex] = nextModel;
+    else nextModels.push(nextModel);
+
+    settings.aiProviders[index] = {
+      ...provider,
+      models: this.normalizeDefaultModel(nextModels),
+    };
+    await this.writeSettings(settings);
   }
 
   private toPublicSettings(

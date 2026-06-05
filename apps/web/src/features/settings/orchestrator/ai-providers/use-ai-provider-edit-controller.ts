@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from '@/hooks/use-toast'
 import {
   downloadAutomationAiProviderModelAction,
+  getAutomationAiProviderModelDownloadAction,
   updateAutomationAiProviderAction
 } from '@/server/orchestrator/settings/actions'
 import {
@@ -13,7 +14,11 @@ import {
   updateProviderModelAt,
   type ProviderFormState
 } from './provider-utils'
-import type { AutomationAiProvider, AutomationAiProviderModel } from '@/server/orchestrator/settings/types'
+import type {
+  AutomationAiProvider,
+  AutomationAiProviderModel,
+  AutomationAiProviderModelDownload
+} from '@/server/orchestrator/settings/types'
 
 export const useAiProviderEditController = (initialProvider: AutomationAiProvider) => {
   const router = useRouter()
@@ -22,6 +27,7 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
   )
   const [isSaving, setIsSaving] = useState(false)
   const [isDownloadingModel, setIsDownloadingModel] = useState(false)
+  const [modelDownload, setModelDownload] = useState<AutomationAiProviderModelDownload | null>(null)
   const modelRows = useMemo(() => createProviderModelRows(provider.models), [provider.models])
 
   const updateProvider = (patch: Partial<ProviderFormState>) => setProvider(current => ({ ...current, ...patch }))
@@ -71,6 +77,41 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
       models: [...provider.models, { ...emptyModel(), default: provider.models.length === 0 }]
     })
 
+  useEffect(() => {
+    if (!modelDownload || !['queued', 'running'].includes(modelDownload.status)) return
+
+    const interval = window.setInterval(() => {
+      void getAutomationAiProviderModelDownloadAction(initialProvider.id, modelDownload.id)
+        .then(next => {
+          setModelDownload(next)
+          if (next.status === 'completed') {
+            toast({ title: 'AI model downloaded', description: next.modelId })
+            router.refresh()
+          }
+          if (next.status === 'failed') {
+            toast({
+              title: 'Could not download AI model',
+              description: next.message,
+              variant: 'destructive'
+            })
+          }
+        })
+        .catch(error => {
+          setModelDownload(current =>
+            current
+              ? {
+                  ...current,
+                  status: 'failed',
+                  message: error instanceof Error ? error.message : 'Could not read download progress.'
+                }
+              : current
+          )
+        })
+    }, 1500)
+
+    return () => window.clearInterval(interval)
+  }, [initialProvider.id, modelDownload, router])
+
   const downloadModel = async (modelId: string, label?: string) => {
     const normalizedModelId = modelId.trim()
     if (!normalizedModelId) {
@@ -84,13 +125,12 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
 
     setIsDownloadingModel(true)
     try {
-      const saved = await downloadAutomationAiProviderModelAction(initialProvider.id, {
+      const job = await downloadAutomationAiProviderModelAction(initialProvider.id, {
         modelId: normalizedModelId,
         label: label?.trim() || undefined
       })
-      setProvider(JSON.parse(JSON.stringify(saved)) as AutomationAiProvider)
-      toast({ title: 'AI model downloaded' })
-      router.refresh()
+      setModelDownload(job)
+      toast({ title: 'AI model download started', description: normalizedModelId })
     } catch (error) {
       toast({
         title: 'Could not download AI model',
@@ -140,6 +180,7 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
     downloadModel,
     isDownloadingModel,
     isSaving,
+    modelDownload,
     modelRows,
     provider,
     removeModel,

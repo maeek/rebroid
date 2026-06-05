@@ -20,7 +20,11 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { ProviderHealthBadge } from './provider-health-badge'
 import { inferModelCapabilities, type ProviderModelRow } from './provider-utils'
-import type { AutomationAiProvider, AutomationAiProviderModel } from '@/server/orchestrator/settings/types'
+import type {
+  AutomationAiProvider,
+  AutomationAiProviderModel,
+  AutomationAiProviderModelDownload
+} from '@/server/orchestrator/settings/types'
 import type { ColumnDef } from '@tanstack/react-table'
 
 export const ProviderModelsGrid = ({
@@ -33,7 +37,8 @@ export const ProviderModelsGrid = ({
   onRemoveModel,
   onSetDefaultModel,
   onUpdateModel,
-  isDownloadingModel
+  isDownloadingModel,
+  modelDownload
 }: {
   initialProvider: AutomationAiProvider
   modelRows: ProviderModelRow[]
@@ -45,6 +50,7 @@ export const ProviderModelsGrid = ({
   onSetDefaultModel: (index: number) => void
   onUpdateModel: (index: number, patch: Partial<AutomationAiProviderModel>) => void
   isDownloadingModel: boolean
+  modelDownload: AutomationAiProviderModelDownload | null
 }) => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [settingsRow, setSettingsRow] = useState<ProviderModelRow | null>(null)
@@ -177,6 +183,7 @@ export const ProviderModelsGrid = ({
           </Button>
         </div>
       </div>
+      {modelDownload ? <ModelDownloadProgress download={modelDownload} /> : null}
       {selectedIds.size > 0 ? (
         <div className='flex flex-wrap items-center justify-between gap-3'>
           <span className='text-sm text-secondary-foreground'>{selectedIds.size} selected</span>
@@ -288,11 +295,9 @@ export const ProviderModelsGrid = ({
                 onChange={event => setDownloadLabel(event.target.value)}
               />
             </Field>
-            {isDownloadingModel ? (
-              <p className='text-sm text-secondary-foreground'>
-                Downloading model. Large models can take several minutes.
-              </p>
-            ) : null}
+            <p className='text-sm text-secondary-foreground'>
+              The download runs in the background after it starts. Progress is shown in the Models section.
+            </p>
           </div>
           <DialogFooter>
             <DialogClose asChild>
@@ -310,7 +315,7 @@ export const ProviderModelsGrid = ({
               onClick={() => void submitDownload()}
             >
               <IconDownload className={isDownloadingModel ? 'size-4 animate-pulse' : 'size-4'} />
-              {isDownloadingModel ? 'Downloading' : 'Download'}
+              {isDownloadingModel ? 'Starting' : 'Start download'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -456,6 +461,39 @@ const Field = ({ label, description, children }: { label: string; description: s
     {children}
   </div>
 )
+
+const ModelDownloadProgress = ({ download }: { download: AutomationAiProviderModelDownload }) => {
+  const isActive = download.status === 'queued' || download.status === 'running'
+  const percent = typeof download.percent === 'number' ? download.percent : null
+  return (
+    <div className='rounded-md border border-border/70 bg-background/35 px-4 py-3'>
+      <div className='flex flex-wrap items-center justify-between gap-3'>
+        <div className='min-w-0'>
+          <div className='flex flex-wrap items-center gap-2'>
+            <Badge
+              variant={
+                download.status === 'completed' ? 'status' : download.status === 'failed' ? 'destructive' : 'secondary'
+              }
+            >
+              {download.status === 'completed' ? 'Downloaded' : download.status === 'failed' ? 'Error' : 'Downloading'}
+            </Badge>
+            <span className='font-medium'>{download.modelId}</span>
+          </div>
+          <p className='mt-1 break-words text-sm text-secondary-foreground'>{download.message}</p>
+        </div>
+        {percent !== null ? <span className='text-sm text-secondary-foreground'>{percent}%</span> : null}
+      </div>
+      {isActive ? (
+        <div className='mt-3 h-2 overflow-hidden rounded-full bg-muted'>
+          <div
+            className='h-full rounded-full bg-primary transition-all'
+            style={{ width: `${percent ?? 8}%` }}
+          />
+        </div>
+      ) : null}
+    </div>
+  )
+}
 
 const NumberField = ({
   label,

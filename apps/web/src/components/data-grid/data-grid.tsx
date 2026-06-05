@@ -244,7 +244,7 @@ export function DataGrid<TData>({
                   <div
                     className={cn(
                       'min-w-0',
-                      isSelectColumn && 'flex w-12 justify-center',
+                      isSelectColumn && 'flex w-12 items-center justify-center',
                       canResize && 'pr-2',
                       hasColumnVisibilityMenu && 'pr-10'
                     )}
@@ -320,7 +320,7 @@ export function DataGrid<TData>({
                   <TableCell
                     key={cell.id}
                     className={cn(
-                      'overflow-hidden py-4 align-top',
+                      'overflow-hidden py-3 align-middle',
                       cell.column.id === '__select' || cell.column.id === '__spacer'
                         ? 'px-0'
                         : cell.column.id === '__row_menu'
@@ -335,8 +335,9 @@ export function DataGrid<TData>({
                     <div
                       className={cn(
                         'min-w-0 overflow-hidden',
-                        cell.column.id === '__select' && 'flex w-12 justify-center overflow-visible',
-                        cell.column.id === '__row_menu' && 'flex justify-end overflow-visible'
+                        cell.column.id === '__select' &&
+                          'flex min-h-10 w-12 items-center justify-center overflow-visible',
+                        cell.column.id === '__row_menu' && 'flex min-h-10 items-center justify-end overflow-visible'
                       )}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

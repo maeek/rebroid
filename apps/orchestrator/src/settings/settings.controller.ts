@@ -15,6 +15,7 @@ import {
   AutomationAiProviderCandidateHealthDto,
   AutomationAiProviderHealthDto,
   AutomationAiProviderDto,
+  AutomationAiProviderModelDownloadDto,
   AutomationAiProviderModelDto,
   CreateAutomationAiProviderDto,
   CreateAutomationAiProviderModelDto,
@@ -104,7 +105,7 @@ export class SettingsController {
   }
 
   @Post('ai-providers/:providerId/models/download')
-  @ApiOkResponse({ type: AutomationAiProviderDto })
+  @ApiOkResponse({ type: AutomationAiProviderModelDownloadDto })
   downloadAiProviderModel(
     @Param('providerId') providerId: string,
     @Body() dto: DownloadAutomationAiProviderModelDto,
@@ -114,6 +115,15 @@ export class SettingsController {
       dto.modelId,
       dto.label,
     );
+  }
+
+  @Get('ai-providers/:providerId/models/downloads/:downloadId')
+  @ApiOkResponse({ type: AutomationAiProviderModelDownloadDto })
+  getAiProviderModelDownload(
+    @Param('providerId') providerId: string,
+    @Param('downloadId') downloadId: string,
+  ) {
+    return this.settings.getAiProviderModelDownload(providerId, downloadId);
   }
 
   @Patch('ai-providers/:providerId/models/:modelId')

@@ -296,6 +296,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/settings/ai-providers/{providerId}/models/downloads/{downloadId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SettingsController_getAiProviderModelDownload"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/settings/ai-providers/{providerId}/models/{modelId}": {
         parameters: {
             query?: never;
@@ -1846,6 +1862,21 @@ export interface components {
             /** @example Qwen 3.5 Latest */
             label?: string;
         };
+        AutomationAiProviderModelDownloadDto: {
+            id: string;
+            providerId: string;
+            modelId: string;
+            label?: string;
+            /** @enum {string} */
+            status: "queued" | "running" | "completed" | "failed";
+            message: string;
+            total?: number | null;
+            completed?: number | null;
+            percent?: number | null;
+            createdAt: string;
+            updatedAt: string;
+            finishedAt?: string | null;
+        };
         AutomationAiModelCatalogProviderDto: {
             id: string;
             label: string;
@@ -3108,7 +3139,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AutomationAiProviderDto"];
+                    "application/json": components["schemas"]["AutomationAiProviderModelDownloadDto"];
                 };
             };
         };
@@ -3249,6 +3280,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AutomationAiProviderDto"];
+                };
+            };
+        };
+    };
+    SettingsController_getAiProviderModelDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: string;
+                downloadId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationAiProviderModelDownloadDto"];
                 };
             };
         };
