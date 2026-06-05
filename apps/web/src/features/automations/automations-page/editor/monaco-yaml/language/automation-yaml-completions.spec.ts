@@ -5,7 +5,7 @@ import type * as Monaco from 'monaco-editor'
 
 const monaco = {
   languages: {
-    CompletionItemInsertTextRule: { InsertAsSnippet: 4 },
+    CompletionItemInsertTextRule: { KeepWhitespace: 1, InsertAsSnippet: 4 },
     CompletionItemKind: { EnumMember: 12, Property: 9, Snippet: 27 }
   },
   Range: class {
@@ -215,6 +215,7 @@ describe('automation YAML completions', () => {
         x2: \${4:0}
         y2: \${5:0}
         durationMs: \${6:300}`)
+    expect(swipeSuggestion?.insertTextRules).toBe(5)
     expect(swipeSuggestion?.range).toMatchObject({ startColumn: 5, endColumn: 7 })
   })
 
@@ -226,6 +227,7 @@ describe('automation YAML completions', () => {
 
     expect(String(conditionSuggestion?.insertText)).toContain(`- id: \${1:condition-step}
       type: condition`)
+    expect(conditionSuggestion?.insertTextRules).toBe(5)
     expect(conditionSuggestion?.range).toMatchObject({ startColumn: 5, endColumn: 7 })
   })
 

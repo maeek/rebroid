@@ -62,7 +62,7 @@ const usesSuggestions = (
         documentation: command.description,
         filterText: command.uses,
         insertText: withBlock ? [command.uses, ...withBlock].join('\n') : command.uses,
-        insertTextRules: withBlock ? monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet : undefined,
+        insertTextRules: withBlock ? snippetInsertTextRules(monaco) : undefined,
         range
       }
     })
@@ -87,7 +87,7 @@ const stepSkeletonSuggestions = (
     documentation: command.description,
     filterText: `${command.uses} ${command.label}`,
     insertText: commandStepSnippet({ command, listIndent }),
-    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+    insertTextRules: snippetInsertTextRules(monaco),
     sortText: `0-action-${String(index).padStart(4, '0')}-${command.uses}`,
     range
   }))
@@ -109,7 +109,7 @@ const stepSkeletonSuggestions = (
         `${childIndent}then:`,
         `${nestedItemIndent}- $0`
       ].join('\n'),
-      insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+      insertTextRules: snippetInsertTextRules(monaco),
       sortText: '1-condition-step',
       range
     },
@@ -125,7 +125,7 @@ const stepSkeletonSuggestions = (
         `${childIndent}steps:`,
         `${nestedItemIndent}- $0`
       ].join('\n'),
-      insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+      insertTextRules: snippetInsertTextRules(monaco),
       sortText: '2-repeat-step',
       range
     },
@@ -144,7 +144,7 @@ const stepSkeletonSuggestions = (
         `${nestedItemIndent}  steps:`,
         `${nestedItemIndent}    - $0`
       ].join('\n'),
-      insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+      insertTextRules: snippetInsertTextRules(monaco),
       sortText: '3-switch-step',
       range
     }
@@ -218,3 +218,7 @@ const completionRange = (monaco: typeof Monaco, position: Monaco.Position, lineP
   const tokenLength = match?.[0]?.length ?? 0
   return new monaco.Range(position.lineNumber, position.column - tokenLength, position.lineNumber, position.column)
 }
+
+const snippetInsertTextRules = (monaco: typeof Monaco) =>
+  monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet |
+  monaco.languages.CompletionItemInsertTextRule.KeepWhitespace
