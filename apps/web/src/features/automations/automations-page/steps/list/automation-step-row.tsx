@@ -98,7 +98,7 @@ export function AutomationStepRow({
       data-automation-step-item='true'
       className={classNames(
         'grid rounded-md shadow-[inset_0_0_10px_rgba(0,0,0,0.1)] ring-1 ring-border/50',
-        expanded ? 'bg-input/30 text-foreground' : 'bg-input/30 hover:bg-input/45',
+        expanded ? 'bg-input/50 text-foreground' : 'bg-input/30 hover:bg-input/45',
         isDragging ? 'pointer-events-none opacity-0' : null
       )}
     >
