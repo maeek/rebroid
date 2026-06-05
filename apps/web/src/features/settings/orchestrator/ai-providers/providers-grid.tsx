@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
-import { IconPencil, IconSparkles, IconTrash } from '@tabler/icons-react'
+import { IconPencil, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
 import { DataGrid } from '@/components/data-grid'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Section } from '@/components/ui/section'
 import { ProviderHealthBadge } from './provider-health-badge'
@@ -13,11 +14,21 @@ import type { ColumnDef } from '@tanstack/react-table'
 export const ProvidersGrid = ({
   providers,
   busyId,
+  selectedIds,
+  onSelectedIdsChange,
+  onEnableSelected,
+  onDisableSelected,
+  onDeleteSelected,
   onEdit,
   onDelete
 }: {
   providers: AutomationAiProvider[]
   busyId: string | null
+  selectedIds: Set<string>
+  onSelectedIdsChange: (selectedIds: Set<string>) => void
+  onEnableSelected: () => void
+  onDisableSelected: () => void
+  onDeleteSelected: () => void
   onEdit: (provider: AutomationAiProvider) => void
   onDelete: (provider: AutomationAiProvider) => void
 }) => {
@@ -114,6 +125,37 @@ export const ProvidersGrid = ({
 
   return (
     <Section contentClassName='gap-4'>
+      {selectedIds.size > 0 ? (
+        <div className='flex flex-wrap items-center justify-between gap-3'>
+          <span className='text-sm text-secondary-foreground'>{selectedIds.size} selected</span>
+          <div className='flex flex-wrap items-center gap-2'>
+            <Button
+              type='button'
+              variant='secondary'
+              disabled={busyId === 'bulk'}
+              onClick={onEnableSelected}
+            >
+              Enable selected
+            </Button>
+            <Button
+              type='button'
+              variant='secondary'
+              disabled={busyId === 'bulk'}
+              onClick={onDisableSelected}
+            >
+              Disable selected
+            </Button>
+            <Button
+              type='button'
+              variant='ghost'
+              disabled={busyId === 'bulk'}
+              onClick={onDeleteSelected}
+            >
+              Delete selected
+            </Button>
+          </div>
+        </div>
+      ) : null}
       <DataGrid
         columns={columns}
         data={providers}
@@ -121,9 +163,9 @@ export const ProvidersGrid = ({
         pageIndex={0}
         pageSize={Math.max(providers.length, 1)}
         getRowId={provider => provider.id}
+        selection={{ selectedIds, onSelectedIdsChange }}
         minWidth='74rem'
         emptyState={<div className='text-center text-secondary-foreground'>No AI providers configured.</div>}
-        mobileCard={row => <ProviderMobileCard provider={row.original} />}
         rowContextMenu={row => {
           const provider = row.original
           return (
@@ -146,37 +188,3 @@ export const ProvidersGrid = ({
     </Section>
   )
 }
-
-const ProviderMobileCard = ({ provider }: { provider: AutomationAiProvider }) => (
-  <div className='grid gap-3 rounded-lg border border-border/70 bg-background/25 p-4 pr-12'>
-    <div className='flex min-w-0 items-start gap-3'>
-      <div className='flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/12 text-primary'>
-        <IconSparkles className='size-5' />
-      </div>
-      <div className='min-w-0 flex-1'>
-        <Link
-          href={`/orchestrator/ai-providers/${encodeURIComponent(provider.id)}`}
-          className='block truncate font-medium hover:text-primary'
-        >
-          {provider.label}
-        </Link>
-        <div className='truncate text-xs text-secondary-foreground'>{provider.baseUrl}</div>
-      </div>
-      <ProviderStatusBadge enabled={provider.enabled} />
-    </div>
-    <ProviderHealthBadge
-      provider={provider}
-      compact
-    />
-    <div className='flex flex-wrap gap-1'>
-      {provider.models.map(model => (
-        <Badge
-          key={model.id}
-          variant={model.enabled ? 'outline' : 'secondary'}
-        >
-          {model.default ? `${model.label} default` : model.label}
-        </Badge>
-      ))}
-    </div>
-  </div>
-)

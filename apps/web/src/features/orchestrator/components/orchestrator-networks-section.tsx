@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { DataGrid, DataGridPagination, DataGridToolbar } from '@/components/data-grid'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import {
   Dialog,
@@ -287,55 +286,6 @@ export const OrchestratorNetworksSection = ({
                 {gridQuery.q ? 'No networks match this search.' : 'No networks are visible to Docker.'}
               </div>
             }
-            mobileCard={row => {
-              const network = row.original
-              const selected = selectedIds.has(network.id)
-              return (
-                <div
-                  key={network.id}
-                  className='grid gap-3 rounded-lg border border-border/70 bg-background/25 p-4'
-                >
-                  <div className='flex items-start gap-3'>
-                    <Checkbox
-                      checked={selected}
-                      aria-label='Select network'
-                      onCheckedChange={checked => {
-                        const next = new Set(selectedIds)
-                        if (checked === true) next.add(network.id)
-                        else next.delete(network.id)
-                        setSelectedIds(next)
-                      }}
-                    />
-                    <NetworkNameCell
-                      network={network}
-                      className='min-w-0 flex-1 flex-col gap-1'
-                    />
-                  </div>
-                  <dl className='grid grid-cols-2 gap-x-4 gap-y-2 text-sm'>
-                    <div>
-                      <dt className='text-secondary-foreground'>Driver</dt>
-                      <dd>{network.driver}</dd>
-                    </div>
-                    <div>
-                      <dt className='text-secondary-foreground'>Scope</dt>
-                      <dd>{network.scope}</dd>
-                    </div>
-                    <div>
-                      <dt className='text-secondary-foreground'>Containers</dt>
-                      <dd>{network.containers.length}</dd>
-                    </div>
-                    <div>
-                      <dt className='text-secondary-foreground'>Gateway</dt>
-                      <dd className='truncate'>{network.gateways.length > 0 ? network.gateways.join(', ') : 'none'}</dd>
-                    </div>
-                    <div className='col-span-2'>
-                      <dt className='text-secondary-foreground'>Subnet</dt>
-                      <dd className='truncate'>{network.subnets.length > 0 ? network.subnets.join(', ') : 'none'}</dd>
-                    </div>
-                  </dl>
-                </div>
-              )
-            }}
             rowContextMenu={row => {
               const hasBulkSelection = selectedIds.has(row.original.id) && selectedNetworks.length > 1
               return (

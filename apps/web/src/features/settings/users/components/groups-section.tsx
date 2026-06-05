@@ -5,7 +5,6 @@ import { IconPlus, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
 import { DataGrid } from '@/components/data-grid'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import {
   Dialog,
@@ -187,33 +186,6 @@ export const GroupsSection = ({
           }}
           minWidth='38rem'
           emptyState={<div className='text-center text-secondary-foreground'>No groups have been created.</div>}
-          mobileCard={row => (
-            <div
-              key={row.original.id}
-              className='grid gap-1 rounded-lg border border-border/70 bg-background/25 p-4'
-            >
-              <div className='flex items-start gap-3'>
-                <Checkbox
-                  checked={selectedIds.has(row.original.id)}
-                  aria-label='Select group'
-                  onCheckedChange={checked => {
-                    const next = new Set(selectedIds)
-                    if (checked === true) next.add(row.original.id)
-                    else next.delete(row.original.id)
-                    setSelectedIds(next)
-                  }}
-                />
-                <Link
-                  href={`/users/groups/${row.original.id}`}
-                  className='min-w-0 flex-1'
-                >
-                  <div className='font-medium hover:underline hover:text-primary'>{row.original.name}</div>
-                  <div className='text-xs text-muted-foreground'>{row.original.description}</div>
-                </Link>
-              </div>
-              <div className='mt-2 text-sm capitalize text-secondary-foreground'>{row.original.role}</div>
-            </div>
-          )}
           rowContextMenu={row => {
             const hasBulkSelection = selectedIds.has(row.original.id) && selectedGroups.length > 1
             return (

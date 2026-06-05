@@ -7,7 +7,6 @@ import { DataGrid } from '@/components/data-grid'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { getHslColorFromCharCode, getHslColorFromCharCodeForeground } from '@/utils/hsl-from-text'
 import type { PublicUser, UserGroup } from '@/server/auth/user'
@@ -208,45 +207,6 @@ export const UsersGrid = ({
         }}
         minWidth='64rem'
         emptyState={<div className='text-center text-secondary-foreground'>No users have been created.</div>}
-        mobileCard={row => (
-          <div
-            key={row.original.id}
-            className='grid gap-3 rounded-lg border border-border/70 bg-background/25 p-4'
-          >
-            <div className='flex items-start gap-3'>
-              <Checkbox
-                checked={selectedIds.has(row.original.id)}
-                aria-label='Select user'
-                onCheckedChange={checked => {
-                  const next = new Set(selectedIds)
-                  if (checked === true) next.add(row.original.id)
-                  else next.delete(row.original.id)
-                  setSelectedIds(next)
-                }}
-              />
-              <UserIdentity user={row.original} />
-            </div>
-            <dl className='grid grid-cols-2 gap-x-4 gap-y-2 text-sm'>
-              <div>
-                <dt className='text-secondary-foreground'>Role</dt>
-                <dd className='capitalize'>{row.original.role}</dd>
-              </div>
-              <div>
-                <dt className='text-secondary-foreground'>Status</dt>
-                <dd>{row.original.disabled ? 'Disabled' : 'Active'}</dd>
-              </div>
-              <div className='col-span-2'>
-                <dt className='text-secondary-foreground'>Groups</dt>
-                <dd className='mt-1'>
-                  <GroupBadges
-                    user={row.original}
-                    groups={groups}
-                  />
-                </dd>
-              </div>
-            </dl>
-          </div>
-        )}
         rowContextMenu={row => {
           const hasBulkSelection = selectedIds.has(row.original.id) && selectedUsers.length > 1
           return (

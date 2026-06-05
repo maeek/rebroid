@@ -15,7 +15,7 @@ import {
   repairDisplaySidecarAction,
   releaseDisplaySidecarSessionAction
 } from '@/server/orchestrator/diagnostics/actions'
-import { CastingSessionMobileCard, createCastingSessionColumns } from './casting-sessions-grid'
+import { createCastingSessionColumns } from './casting-sessions-grid'
 import {
   activeStatuses,
   castingDetailLabels,
@@ -219,24 +219,6 @@ export const CastingSidecarSettings = ({
               {submittedSearch ? 'No sessions match this search.' : 'No casting sessions are known to the sidecar.'}
             </div>
           }
-          mobileCard={row => {
-            const session = row.original
-            return (
-              <CastingSessionMobileCard
-                key={session.id}
-                session={session}
-                appsById={appsById}
-                ownerNames={ownerNames}
-                selected={selectedIds.has(session.id)}
-                onSelectedChange={selected => {
-                  const next = new Set(selectedIds)
-                  if (selected) next.add(session.id)
-                  else next.delete(session.id)
-                  setSelectedIds(next)
-                }}
-              />
-            )
-          }}
           rowContextMenu={row => {
             const hasBulkSelection = selectedIds.has(row.original.id) && selectedSessions.length > 1
             return (

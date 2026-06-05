@@ -73,6 +73,11 @@ export const createAutomationAiProviderAction = async (input: AutomationAiProvid
   return result
 }
 
+export const checkAutomationAiProviderCandidateHealthAction = async (input: AutomationAiProvider) => {
+  await requireAdminUser()
+  return orchestratorSettingsClient.checkAiProviderCandidateHealth(input)
+}
+
 export const updateAutomationAiProviderAction = async (providerId: string, input: Partial<AutomationAiProvider>) => {
   const admin = await requireAdminUser()
   const result = await orchestratorSettingsClient.updateAiProvider(providerId, input)
@@ -116,6 +121,25 @@ export const createAutomationAiProviderModelAction = async (providerId: string, 
     resourceType: 'ai_provider',
     resourceId: providerId,
     details: { modelId: result.id }
+  })
+  revalidateOrchestratorSettingsPage()
+  return result
+}
+
+export const downloadAutomationAiProviderModelAction = async (
+  providerId: string,
+  input: { modelId: string; label?: string }
+) => {
+  const admin = await requireAdminUser()
+  const result = await orchestratorSettingsClient.downloadAiProviderModel(providerId, input)
+  recordAuditEvent({
+    actorUserId: admin.id,
+    actorLabel: admin.name || admin.username || admin.id,
+    category: 'settings',
+    action: 'settings.ai_provider_model.download',
+    resourceType: 'ai_provider',
+    resourceId: providerId,
+    details: { modelId: input.modelId }
   })
   revalidateOrchestratorSettingsPage()
   return result

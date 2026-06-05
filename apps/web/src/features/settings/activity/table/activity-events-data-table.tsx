@@ -45,49 +45,6 @@ const ActivityEventsEmptyState = ({ resetFilters }: { resetFilters: () => void }
   </div>
 )
 
-const ActivityEventMobileCard = ({
-  event,
-  setSelectedEvent
-}: {
-  event: AuditEvent
-  setSelectedEvent: (event: AuditEvent) => void
-}) => (
-  <div className='grid gap-3 rounded-lg border border-border/70 bg-background/25 p-4'>
-    <div className='flex items-start gap-3'>
-      <div className='mt-0.5 rounded-lg border border-border/60 bg-secondary/50 p-2'>
-        <IconShieldCheck className='size-4 text-secondary-foreground' />
-      </div>
-      <div className='min-w-0 flex-1'>
-        <div className='font-medium'>{formatAction(event.action)}</div>
-        <ActivityEventBadges event={event} />
-      </div>
-      <Badge variant={outcomeTone(event.outcome)}>{event.outcome}</Badge>
-    </div>
-    <dl className='grid gap-2 text-sm'>
-      <div>
-        <dt className='text-secondary-foreground'>Actor</dt>
-        <dd className='truncate'>{event.actorLabel}</dd>
-      </div>
-      <div>
-        <dt className='text-secondary-foreground'>Target</dt>
-        <dd className='truncate'>{event.resourceLabel ?? event.resourceId ?? event.resourceType ?? 'none'}</dd>
-      </div>
-      <div>
-        <dt className='text-secondary-foreground'>Time</dt>
-        <dd>{new Date(event.createdAt).toLocaleString()}</dd>
-      </div>
-    </dl>
-    <Button
-      variant='secondary'
-      size='sm'
-      onClick={() => setSelectedEvent(event)}
-    >
-      <IconEye className='size-4' />
-      Details
-    </Button>
-  </div>
-)
-
 export const ActivityEventsDataTable = () => {
   const { result, sorting } = useActivityData()
   const controller = useActivityController()
@@ -174,13 +131,6 @@ export const ActivityEventsDataTable = () => {
       }}
       minWidth='78rem'
       emptyState={<ActivityEventsEmptyState resetFilters={controller.resetFilters} />}
-      mobileCard={row => (
-        <ActivityEventMobileCard
-          key={row.id}
-          event={row.original}
-          setSelectedEvent={controller.setSelectedEvent}
-        />
-      )}
       rowContextMenu={row => (
         <ContextMenuItem onSelect={() => controller.setSelectedEvent(row.original)}>
           <IconEye className='mr-2 size-4' />

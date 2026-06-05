@@ -198,51 +198,6 @@ export function AutomationTracesSection({
             No traces yet. Run this flow from an app or trigger to inspect execution history here.
           </div>
         }
-        mobileCard={row => {
-          const application = applicationById.get(row.original.targetApplicationId)
-          return (
-            <div
-              key={row.original.id}
-              className='grid gap-3 rounded-lg border border-border/70 bg-background/25 p-4'
-            >
-              <div className='flex items-start justify-between gap-3'>
-                <div className='grid min-w-0 gap-1'>
-                  <span className='text-sm text-secondary-foreground'>
-                    {dateLabel(row.original.startedAt ?? row.original.createdAt)}
-                  </span>
-                  <span className='truncate font-medium'>{application?.name ?? row.original.targetApplicationId}</span>
-                </div>
-                <Badge
-                  variant={statusVariant(row.original.status)}
-                  className='shrink-0 capitalize'
-                >
-                  {row.original.status}
-                </Badge>
-              </div>
-              <dl className='grid grid-cols-2 gap-x-4 gap-y-2 text-sm'>
-                <div>
-                  <dt className='text-secondary-foreground'>Source</dt>
-                  <dd>{triggerLabel(row.original)}</dd>
-                </div>
-                <div>
-                  <dt className='text-secondary-foreground'>Duration</dt>
-                  <dd>{durationLabel(row.original)}</dd>
-                </div>
-                <div>
-                  <dt className='text-secondary-foreground'>Steps</dt>
-                  <dd>{stepProgressLabel(row.original)}</dd>
-                </div>
-                <div>
-                  <dt className='text-secondary-foreground'>Profile</dt>
-                  <dd className='truncate'>
-                    {row.original.targetProfileName ?? 'default'} / {row.original.targetProfileMode ?? 'persistent'}
-                  </dd>
-                </div>
-              </dl>
-              {row.original.error ? <div className='text-sm text-destructive'>{row.original.error}</div> : null}
-            </div>
-          )
-        }}
       />
     </section>
   )

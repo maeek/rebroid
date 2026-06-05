@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { DataGrid, DataGridPagination, DataGridToolbar } from '@/components/data-grid'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import {
   Dialog,
@@ -276,50 +275,6 @@ export const OrchestratorImagesSection = ({
                 {gridQuery.q ? 'No images match this search.' : 'No images are visible to Docker.'}
               </div>
             }
-            mobileCard={row => {
-              const image = row.original
-              const selected = selectedIds.has(image.id)
-              return (
-                <div
-                  key={image.id}
-                  className='grid gap-3 rounded-lg border border-border/70 bg-background/25 p-4'
-                >
-                  <div className='flex items-start gap-3'>
-                    <Checkbox
-                      checked={selected}
-                      aria-label='Select image'
-                      onCheckedChange={checked => {
-                        const next = new Set(selectedIds)
-                        if (checked === true) next.add(image.id)
-                        else next.delete(image.id)
-                        setSelectedIds(next)
-                      }}
-                    />
-                    <div className='min-w-0 flex-1'>
-                      <ImageNameCell image={image} />
-                    </div>
-                  </div>
-                  <dl className='grid grid-cols-2 gap-x-4 gap-y-2 text-sm'>
-                    <div>
-                      <dt className='text-secondary-foreground'>Size</dt>
-                      <dd>{formatBytes(image.sizeBytes)}</dd>
-                    </div>
-                    <div>
-                      <dt className='text-secondary-foreground'>Containers</dt>
-                      <dd>{image.containers < 0 ? 'unknown' : image.containers}</dd>
-                    </div>
-                    <div>
-                      <dt className='text-secondary-foreground'>Created</dt>
-                      <dd>{formatUtcDate(image.createdAt)}</dd>
-                    </div>
-                    <div>
-                      <dt className='text-secondary-foreground'>ID</dt>
-                      <dd>{image.shortId}</dd>
-                    </div>
-                  </dl>
-                </div>
-              )
-            }}
             rowContextMenu={row => {
               const hasBulkSelection = selectedIds.has(row.original.id) && selectedImages.length > 1
               return (

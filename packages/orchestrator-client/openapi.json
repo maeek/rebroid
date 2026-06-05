@@ -444,6 +444,37 @@
         ]
       }
     },
+    "/api/v1/settings/ai-providers/health": {
+      "post": {
+        "operationId": "SettingsController_checkAiProviderCandidateHealth",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutomationAiProviderCandidateHealthDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationAiProviderHealthDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ]
+      }
+    },
     "/api/v1/settings/ai-providers/{providerId}/health": {
       "get": {
         "operationId": "SettingsController_checkAiProviderHealth",
@@ -573,6 +604,46 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AutomationAiProviderModelDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/ai-providers/{providerId}/models/download": {
+      "post": {
+        "operationId": "SettingsController_downloadAiProviderModel",
+        "parameters": [
+          {
+            "name": "providerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DownloadAutomationAiProviderModelDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationAiProviderDto"
                 }
               }
             }
@@ -4780,6 +4851,43 @@
           }
         }
       },
+      "AutomationAiProviderModelSettingsDto": {
+        "type": "object",
+        "properties": {
+          "systemPrompt": {
+            "type": "string",
+            "nullable": true
+          },
+          "temperature": {
+            "type": "number",
+            "nullable": true
+          },
+          "topP": {
+            "type": "number",
+            "nullable": true
+          },
+          "topK": {
+            "type": "number",
+            "nullable": true
+          },
+          "numCtx": {
+            "type": "number",
+            "nullable": true
+          },
+          "repeatPenalty": {
+            "type": "number",
+            "nullable": true
+          },
+          "seed": {
+            "type": "number",
+            "nullable": true
+          },
+          "keepAlive": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
       "AutomationAiProviderModelDto": {
         "type": "object",
         "properties": {
@@ -4790,6 +4898,9 @@
           "label": {
             "type": "string",
             "example": "Qwen 2.5 VL 7B"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/AutomationAiProviderModelSettingsDto"
           },
           "supportsVision": {
             "type": "boolean",
@@ -4811,6 +4922,7 @@
         "required": [
           "id",
           "label",
+          "settings",
           "supportsVision",
           "supportsTools",
           "enabled",
@@ -4866,6 +4978,54 @@
         ]
       },
       "CreateAutomationAiProviderDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "local-ollama"
+          },
+          "label": {
+            "type": "string",
+            "example": "Local Ollama"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "openai",
+              "openai-compatible",
+              "ollama"
+            ]
+          },
+          "baseUrl": {
+            "type": "string",
+            "example": "http://localhost:11434"
+          },
+          "apiKey": {
+            "type": "string",
+            "nullable": true,
+            "description": "Masked on reads. Send a new value to replace the stored secret, or null to clear it."
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationAiProviderModelDto"
+            }
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "kind",
+          "baseUrl",
+          "models",
+          "enabled"
+        ]
+      },
+      "AutomationAiProviderCandidateHealthDto": {
         "type": "object",
         "properties": {
           "id": {
@@ -4995,6 +5155,9 @@
             "type": "string",
             "example": "Qwen 2.5 VL 7B"
           },
+          "settings": {
+            "$ref": "#/components/schemas/AutomationAiProviderModelSettingsDto"
+          },
           "supportsVision": {
             "type": "boolean",
             "default": true
@@ -5015,6 +5178,7 @@
         "required": [
           "id",
           "label",
+          "settings",
           "supportsVision",
           "supportsTools",
           "enabled",
@@ -5031,6 +5195,9 @@
           "label": {
             "type": "string",
             "example": "Qwen 2.5 VL 7B"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/AutomationAiProviderModelSettingsDto"
           },
           "supportsVision": {
             "type": "boolean",
@@ -5049,6 +5216,22 @@
             "default": false
           }
         }
+      },
+      "DownloadAutomationAiProviderModelDto": {
+        "type": "object",
+        "properties": {
+          "modelId": {
+            "type": "string",
+            "example": "qwen3.5:latest"
+          },
+          "label": {
+            "type": "string",
+            "example": "Qwen 3.5 Latest"
+          }
+        },
+        "required": [
+          "modelId"
+        ]
       },
       "AutomationAiModelCatalogProviderDto": {
         "type": "object",

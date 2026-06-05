@@ -1,6 +1,10 @@
 import type { AutomationAiProvider, AutomationAiProviderModel } from '@/server/orchestrator/settings/types'
 
 export type ProviderFormState = AutomationAiProvider
+export type ProviderModelRow = AutomationAiProviderModel & {
+  rowId: string
+  index: number
+}
 
 export const emptyProvider = (): ProviderFormState => ({
   id: '',
@@ -15,6 +19,7 @@ export const emptyProvider = (): ProviderFormState => ({
 export const emptyModel = (): AutomationAiProviderModel => ({
   id: '',
   label: '',
+  settings: {},
   supportsVision: false,
   supportsTools: false,
   enabled: true,
@@ -41,6 +46,7 @@ export const normalizeProviderForm = (provider: ProviderFormState): AutomationAi
       ...model,
       id: model.id.trim(),
       label: model.label.trim() || model.id.trim(),
+      settings: model.settings ?? {},
       ...inferModelCapabilities({
         id: model.id.trim(),
         label: model.label.trim() || model.id.trim()
@@ -48,3 +54,23 @@ export const normalizeProviderForm = (provider: ProviderFormState): AutomationAi
     }))
     .filter(model => model.id.length > 0)
 })
+
+export const createProviderModelRows = (models: AutomationAiProviderModel[]): ProviderModelRow[] =>
+  models.map((model, index) => ({
+    ...model,
+    index,
+    rowId: `${index}:${model.id || 'new'}`
+  }))
+
+export const updateProviderModelAt = (
+  models: AutomationAiProviderModel[],
+  index: number,
+  patch: Partial<AutomationAiProviderModel>
+) =>
+  models.map((model, modelIndex) => {
+    if (patch.default && modelIndex !== index) return { ...model, default: false }
+    return modelIndex === index ? { ...model, ...patch } : model
+  })
+
+export const setDefaultProviderModelAt = (models: AutomationAiProviderModel[], index: number) =>
+  models.map((model, modelIndex) => ({ ...model, default: modelIndex === index }))

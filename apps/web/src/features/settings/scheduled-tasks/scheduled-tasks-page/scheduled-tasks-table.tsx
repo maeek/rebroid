@@ -14,10 +14,7 @@ import {
   statusVariant
 } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/schedule-utils'
 import { useScheduledTasksControllerContext } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-context'
-import {
-  ScheduledTaskBulkBar,
-  ScheduledTaskMobileCard
-} from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-table-parts'
+import { ScheduledTaskBulkBar } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-table-parts'
 import { sortTasks } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-table-utils'
 import type { ScheduledTask } from '@/server/orchestrator/scheduled-tasks/types'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
@@ -172,22 +169,6 @@ export const ScheduledTasksTable = () => {
         }}
         minWidth='82rem'
         emptyState={<div className='text-center text-secondary-foreground'>No scheduled tasks configured.</div>}
-        mobileCard={row => (
-          <ScheduledTaskMobileCard
-            key={row.original.id}
-            task={row.original}
-            actionLabel={actionLabel(row.original)}
-            busy={busyTaskId === row.original.id}
-            selected={selectedIds.has(row.original.id)}
-            onSelectedChange={selected => {
-              const next = new Set(selectedIds)
-              if (selected) next.add(row.original.id)
-              else next.delete(row.original.id)
-              setSelectedIds(next)
-            }}
-            onToggleEnabled={enabled => void toggleEnabled(row.original, enabled)}
-          />
-        )}
         rowContextMenu={row => {
           const hasBulkSelection = selectedIds.has(row.original.id) && selectedTasks.length > 1
           return (

@@ -220,6 +220,15 @@ export class SettingsService {
     }
   }
 
+  async checkAiProviderCandidateHealth(dto: CreateAutomationAiProviderDto) {
+    const provider = this.normalizeAiProvider({
+      ...dto,
+      enabled: true,
+      models: dto.models ?? [],
+    });
+    return this.checkAiProviderConnection(provider);
+  }
+
   async createAiProvider(dto: CreateAutomationAiProviderDto) {
     const settings = await this.getStoredSettings();
     if (settings.aiProviders.some((provider) => provider.id === dto.id.trim())) {
@@ -337,6 +346,68 @@ export class SettingsService {
     });
   }
 
+  async downloadAiProviderModel(providerId: string, modelId: string, label?: string) {
+    const settings = await this.getStoredSettings();
+    const index = settings.aiProviders.findIndex(
+      (provider) => provider.id === providerId,
+    );
+    if (index < 0) {
+      throw new NotFoundException(`AI provider "${providerId}" was not found.`);
+    }
+    const provider = settings.aiProviders[index];
+    if (provider.kind !== 'ollama') {
+      throw new BadRequestException('Only Ollama providers support model downloads.');
+    }
+    const id = text(modelId);
+    if (!id) {
+      throw new BadRequestException('Model ID is required.');
+    }
+
+    const response = await fetch(`${provider.baseUrl.replace(/\/+$/, '')}/api/pull`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      signal: AbortSignal.timeout(30 * 60 * 1000),
+      body: JSON.stringify({ name: id, stream: false }),
+    }).catch((error: unknown) => {
+      throw new BadRequestException(this.aiProviderHealthErrorMessage(error));
+    });
+    if (!response.ok) {
+      const body = (await response.json().catch(() => null)) as
+        | { error?: unknown; message?: unknown }
+        | null;
+      const message =
+        typeof body?.error === 'string'
+          ? body.error
+          : typeof body?.message === 'string'
+            ? body.message
+            : `${response.status} ${response.statusText}`;
+      throw new BadRequestException(`Ollama model download failed: ${message}`);
+    }
+
+    const existingIndex = provider.models.findIndex((model) => model.id === id);
+    const nextModel = this.normalizeAiModel({
+      ...(existingIndex >= 0 ? provider.models[existingIndex] : {}),
+      id,
+      label: text(label) || provider.models[existingIndex]?.label || id,
+      supportsVision: this.modelLikelySupportsVision(id, label),
+      supportsTools: true,
+      enabled: true,
+      default: provider.models.length === 0,
+      settings: provider.models[existingIndex]?.settings ?? {},
+    });
+    const nextModels = [...provider.models];
+    if (existingIndex >= 0) nextModels[existingIndex] = nextModel;
+    else nextModels.push(nextModel);
+
+    const updatedProvider = {
+      ...provider,
+      models: this.normalizeDefaultModel(nextModels),
+    };
+    settings.aiProviders[index] = updatedProvider;
+    await this.writeSettings(settings);
+    return this.maskProvider(updatedProvider);
+  }
+
   private async readStoredSettings() {
     try {
       const content = await readFile(this.settingsPath(), 'utf-8');
@@ -418,6 +489,7 @@ export class SettingsService {
             {
               id: 'qwen2.5vl:7b',
               label: 'Qwen 2.5 VL 7B',
+              settings: {},
               supportsVision: true,
               supportsTools: true,
               enabled: true,
@@ -426,6 +498,7 @@ export class SettingsService {
             {
               id: 'qwen2.5:7b',
               label: 'Qwen 2.5 7B',
+              settings: {},
               supportsVision: false,
               supportsTools: true,
               enabled: true,
@@ -544,10 +617,28 @@ export class SettingsService {
     return {
       id,
       label,
+      settings: this.normalizeAiModelSettings(model.settings),
       supportsVision: model.supportsVision !== false,
       supportsTools: model.supportsTools !== false,
       enabled: model.enabled !== false,
       default: model.default === true,
+    };
+  }
+
+  private normalizeAiModelSettings(rawSettings: unknown) {
+    const settings =
+      rawSettings && typeof rawSettings === 'object' && !Array.isArray(rawSettings)
+        ? (rawSettings as Record<string, unknown>)
+        : {};
+    return {
+      systemPrompt: nullableText(settings.systemPrompt),
+      temperature: nullableNumber(settings.temperature, 0, 2),
+      topP: nullableNumber(settings.topP, 0, 1),
+      topK: nullableInteger(settings.topK, 0, 500),
+      numCtx: nullableInteger(settings.numCtx, 128, 262144),
+      repeatPenalty: nullableNumber(settings.repeatPenalty, 0, 4),
+      seed: nullableInteger(settings.seed, -2147483648, 2147483647),
+      keepAlive: nullableText(settings.keepAlive),
     };
   }
 
@@ -590,6 +681,38 @@ export class SettingsService {
     return `${provider.baseUrl.replace(/\/+$/, '')}/models`;
   }
 
+  private async checkAiProviderConnection(provider: AutomationAiProvider) {
+    try {
+      const response = await fetch(this.aiProviderModelsUrl(provider), {
+        headers: provider.apiKey
+          ? { Authorization: `Bearer ${provider.apiKey}` }
+          : undefined,
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!response.ok) {
+        return this.aiProviderHealthResult(
+          provider.id,
+          undefined,
+          'error',
+          `Provider returned HTTP ${response.status}.`,
+        );
+      }
+      return this.aiProviderHealthResult(
+        provider.id,
+        undefined,
+        'ok',
+        'Provider connection is reachable.',
+      );
+    } catch (error) {
+      return this.aiProviderHealthResult(
+        provider.id,
+        undefined,
+        'error',
+        this.aiProviderHealthErrorMessage(error),
+      );
+    }
+  }
+
   private aiProviderHealthResult(
     providerId: string,
     modelId: string | undefined,
@@ -630,6 +753,12 @@ export class SettingsService {
       : error.message;
   }
 
+  private modelLikelySupportsVision(modelId: string, label?: string) {
+    return /\b(vl|vision|visual|multimodal|gpt-4o|o4|llava|pixtral|gemini)\b/i.test(
+      `${modelId} ${label ?? ''}`,
+    );
+  }
+
   private toPublicSettings(
     settings: StoredOrchestratorSettings,
   ): OrchestratorSettingsDto {
@@ -664,3 +793,24 @@ export class SettingsService {
 
 const text = (value: unknown) =>
   typeof value === 'string' ? value.trim() : '';
+
+const nullableText = (value: unknown) => text(value) || null;
+
+const nullableNumber = (
+  value: unknown,
+  min: number,
+  max: number,
+) => {
+  if (value === null || value === undefined || value === '') return null;
+  const number = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : null;
+};
+
+const nullableInteger = (
+  value: unknown,
+  min: number,
+  max: number,
+) => {
+  const number = nullableNumber(value, min, max);
+  return number === null ? null : Math.round(number);
+};

@@ -257,7 +257,7 @@ export const RuntimeToolsPanel = () => {
         </div>
         <div className='pb-4'>
           {tools.find(tool => tool.id === activeTool)?.id &&
-            renderToolContent(tools.find(tool => tool.id === activeTool)!.id)}
+            renderToolContent(tools.find(tool => tool.id === activeTool)!.id, true)}
         </div>
       </div>
     </div>

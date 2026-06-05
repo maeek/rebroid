@@ -12,11 +12,13 @@ import {
 import { ApiNoContentResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import {
   AutomationAiModelCatalogProviderDto,
+  AutomationAiProviderCandidateHealthDto,
   AutomationAiProviderHealthDto,
   AutomationAiProviderDto,
   AutomationAiProviderModelDto,
   CreateAutomationAiProviderDto,
   CreateAutomationAiProviderModelDto,
+  DownloadAutomationAiProviderModelDto,
   UpdateAutomationAiProviderDto,
   UpdateAutomationAiProviderModelDto,
 } from './dto/automation-ai-provider.dto';
@@ -59,6 +61,14 @@ export class SettingsController {
     return this.settings.createAiProvider(dto);
   }
 
+  @Post('ai-providers/health')
+  @ApiOkResponse({ type: AutomationAiProviderHealthDto })
+  checkAiProviderCandidateHealth(
+    @Body() dto: AutomationAiProviderCandidateHealthDto,
+  ) {
+    return this.settings.checkAiProviderCandidateHealth(dto);
+  }
+
   @Get('ai-providers/:providerId/health')
   @ApiOkResponse({ type: AutomationAiProviderHealthDto })
   checkAiProviderHealth(
@@ -91,6 +101,19 @@ export class SettingsController {
     @Body() dto: CreateAutomationAiProviderModelDto,
   ) {
     return this.settings.createAiProviderModel(providerId, dto);
+  }
+
+  @Post('ai-providers/:providerId/models/download')
+  @ApiOkResponse({ type: AutomationAiProviderDto })
+  downloadAiProviderModel(
+    @Param('providerId') providerId: string,
+    @Body() dto: DownloadAutomationAiProviderModelDto,
+  ) {
+    return this.settings.downloadAiProviderModel(
+      providerId,
+      dto.modelId,
+      dto.label,
+    );
   }
 
   @Patch('ai-providers/:providerId/models/:modelId')

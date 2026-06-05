@@ -21,7 +21,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { Visible } from '@/components/ui/visible'
 import { toast } from '@/hooks/use-toast'
 import { removePlatformContainerAction, stopPlatformContainerAction } from '@/server/orchestrator/platform/actions'
-import { ContainerMobileCard, createContainerColumns } from './orchestrator-containers-table-parts'
+import { createContainerColumns } from './orchestrator-containers-table-parts'
 import {
   compactPlatformGridParams,
   platformSortFromSearchParam,
@@ -228,22 +228,6 @@ export const OrchestratorContainersSection = ({
                 {gridQuery.q ? 'No containers match this search.' : 'No containers are visible to Docker.'}
               </div>
             }
-            mobileCard={row => {
-              const container = row.original
-              return (
-                <ContainerMobileCard
-                  key={container.id}
-                  container={container}
-                  selected={selectedIds.has(container.id)}
-                  onSelectedChange={selected => {
-                    const next = new Set(selectedIds)
-                    if (selected) next.add(container.id)
-                    else next.delete(container.id)
-                    setSelectedIds(next)
-                  }}
-                />
-              )
-            }}
             rowContextMenu={row => {
               const hasBulkSelection = selectedIds.has(row.original.id) && selectedContainers.length > 1
               return (

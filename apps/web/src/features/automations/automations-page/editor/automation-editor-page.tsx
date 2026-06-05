@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
@@ -13,7 +13,6 @@ import {
   updateAutomationAction,
   validateAutomationYamlAction
 } from '@/server/orchestrator/automations/actions'
-import { listAutomationAiModelCatalogAction } from '@/server/orchestrator/settings/actions'
 import { AutomationStepsList } from '../steps/list/automation-steps-list'
 import { collectBlockKeys, collectStepKeys, firstStepKey } from '../steps/shared/automation-step-selection'
 import { AutomationDetailsSection } from './automation-details-section'
@@ -34,45 +33,11 @@ import {
   type AutomationFormState,
   type AutomationStepForm
 } from './builder-utils'
+import { useAiDraftModelSelection } from './use-ai-draft-model-selection'
+import { cloneAutomationForm, useAutomationEditorHistory } from './use-automation-editor-history'
+import { useUnsavedAutomationNavigation } from './use-unsaved-automation-navigation'
 import type { AutomationEditorPageProps } from './types'
 import type { Automation } from '@/server/orchestrator/automations/types'
-import type { AutomationAiModelCatalogProvider } from '@/server/orchestrator/settings/types'
-
-type EditorSnapshot = {
-  form: AutomationFormState
-  yamlOpen: boolean
-  yamlDraft: string
-}
-
-type EditorHistoryState = {
-  undo: EditorSnapshot[]
-  redo: EditorSnapshot[]
-}
-
-const maxEditorHistoryEntries = 100
-
-const cloneForm = (form: AutomationFormState): AutomationFormState =>
-  typeof structuredClone === 'function'
-    ? structuredClone(form)
-    : (JSON.parse(JSON.stringify(form)) as AutomationFormState)
-
-const sameSnapshot = (left: EditorSnapshot, right: EditorSnapshot) =>
-  left.yamlOpen === right.yamlOpen &&
-  left.yamlDraft === right.yamlDraft &&
-  JSON.stringify(left.form) === JSON.stringify(right.form)
-
-const isEditableShortcutTarget = (target: EventTarget | null) => {
-  if (!(target instanceof Element)) return false
-  if (target instanceof HTMLElement && target.isContentEditable) return true
-  const editable = target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]')
-  if (!editable) return false
-  if (editable instanceof HTMLInputElement) {
-    return editable.type !== 'checkbox' && editable.type !== 'radio'
-  }
-  return true
-}
-
-const unsavedAutomationMessage = 'This workflow has unsaved changes.'
 
 export function AutomationEditorPage({ initialAutomation, initialCommands }: AutomationEditorPageProps) {
   const router = useRouter()
@@ -95,25 +60,19 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
   const [yamlError, setYamlError] = useState<string | null>(null)
   const [aiDraftOpen, setAiDraftOpen] = useState(false)
   const [aiDraftPrompt, setAiDraftPrompt] = useState('')
-  const [aiModelCatalog, setAiModelCatalog] = useState<AutomationAiModelCatalogProvider[]>([])
-  const [aiDraftProviderId, setAiDraftProviderId] = useState('')
-  const [aiDraftModelId, setAiDraftModelId] = useState('')
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const [pendingNavigationHref, setPendingNavigationHref] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [history, setHistory] = useState<EditorHistoryState>({ undo: [], redo: [] })
   const importInputRef = useRef<HTMLInputElement | null>(null)
-  const snapshotRef = useRef<EditorSnapshot | null>(null)
-  const confirmedNavigationRef = useRef(false)
   const isNew = !automation
   const title = isNew ? 'New workflow' : automation.name
-  const selectedAiDraftProvider =
-    aiModelCatalog.find(provider => provider.id === aiDraftProviderId) ?? aiModelCatalog[0]
-  const selectedAiDraftModel =
-    selectedAiDraftProvider?.models.find(model => model.id === aiDraftModelId) ??
-    selectedAiDraftProvider?.models.find(model => model.default) ??
-    selectedAiDraftProvider?.models[0]
-  const canDraftFromPrompt = Boolean(selectedAiDraftProvider && selectedAiDraftModel)
+  const {
+    canDraftFromPrompt,
+    catalog: aiModelCatalog,
+    model: selectedAiDraftModel,
+    provider: selectedAiDraftProvider,
+    setModelId: setAiDraftModelId,
+    setProviderId: setAiDraftProviderId
+  } = useAiDraftModelSelection()
   const currentYaml = useMemo(() => {
     try {
       return buildYaml(form)
@@ -121,115 +80,25 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
       return automation?.yaml ?? ''
     }
   }, [automation?.yaml, form])
-
-  const canUndo = history.undo.length > 0
-  const canRedo = history.redo.length > 0
-  const hasUnsavedHistory = canUndo
-
-  const currentSnapshot = useCallback(
-    () => ({
-      form: cloneForm(snapshotRef.current?.form ?? form),
-      yamlOpen: snapshotRef.current?.yamlOpen ?? yamlOpen,
-      yamlDraft: snapshotRef.current?.yamlDraft ?? yamlDraft
-    }),
-    [form, yamlDraft, yamlOpen]
-  )
-
-  const applySnapshot = useCallback((snapshot: EditorSnapshot) => {
-    const nextSnapshot = {
-      form: cloneForm(snapshot.form),
-      yamlOpen: snapshot.yamlOpen,
-      yamlDraft: snapshot.yamlDraft
-    }
-    snapshotRef.current = nextSnapshot
-    setForm(nextSnapshot.form)
-    setYamlOpen(nextSnapshot.yamlOpen)
-    setYamlDraft(nextSnapshot.yamlDraft)
-  }, [])
-
-  const recordHistory = useCallback(() => {
-    const snapshot = currentSnapshot()
-    setHistory(current => {
-      const previous = current.undo.at(-1)
-      if (previous && sameSnapshot(previous, snapshot)) return current
-      return {
-        undo: [...current.undo, snapshot].slice(-maxEditorHistoryEntries),
-        redo: []
-      }
+  const { commitEditorChange, currentSnapshot, hasUnsavedHistory, resetEditorHistory } = useAutomationEditorHistory({
+    form,
+    yamlOpen,
+    yamlDraft,
+    setForm,
+    setYamlOpen,
+    setYamlDraft
+  })
+  const { confirmPendingNavigation, pendingNavigationHref, requestNavigation, setPendingNavigationHref } =
+    useUnsavedAutomationNavigation({
+      hasUnsavedChanges: hasUnsavedHistory,
+      push: router.push
     })
-  }, [currentSnapshot])
-
-  const commitEditorChange = useCallback(
-    (update: () => EditorSnapshot) => {
-      recordHistory()
-      applySnapshot(update())
-    },
-    [applySnapshot, recordHistory]
-  )
-
-  const resetEditorHistory = useCallback((snapshot: EditorSnapshot) => {
-    snapshotRef.current = {
-      form: cloneForm(snapshot.form),
-      yamlOpen: snapshot.yamlOpen,
-      yamlDraft: snapshot.yamlDraft
-    }
-    setHistory({ undo: [], redo: [] })
-  }, [])
-
-  const undo = useCallback(() => {
-    setHistory(current => {
-      const previous = current.undo.at(-1)
-      if (!previous) return current
-      const currentValue = currentSnapshot()
-      applySnapshot(previous)
-      return {
-        undo: current.undo.slice(0, -1),
-        redo: [currentValue, ...current.redo].slice(0, maxEditorHistoryEntries)
-      }
-    })
-  }, [applySnapshot, currentSnapshot])
-
-  const redo = useCallback(() => {
-    setHistory(current => {
-      const next = current.redo[0]
-      if (!next) return current
-      const currentValue = currentSnapshot()
-      applySnapshot(next)
-      return {
-        undo: [...current.undo, currentValue].slice(-maxEditorHistoryEntries),
-        redo: current.redo.slice(1)
-      }
-    })
-  }, [applySnapshot, currentSnapshot])
-
-  useEffect(() => {
-    snapshotRef.current = {
-      form: cloneForm(form),
-      yamlOpen,
-      yamlDraft
-    }
-  }, [form, yamlDraft, yamlOpen])
 
   const updateForm = (patch: Partial<AutomationFormState>) =>
     commitEditorChange(() => ({
       ...currentSnapshot(),
-      form: { ...cloneForm(snapshotRef.current?.form ?? form), ...patch }
+      form: { ...cloneAutomationForm(currentSnapshot().form), ...patch }
     }))
-
-  useEffect(() => {
-    let cancelled = false
-    void listAutomationAiModelCatalogAction().then(catalog => {
-      if (cancelled) return
-      setAiModelCatalog(catalog)
-      const provider = catalog[0]
-      const model = provider?.models.find(item => item.default) ?? provider?.models[0]
-      setAiDraftProviderId(provider?.id ?? '')
-      setAiDraftModelId(model?.id ?? '')
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   const updateSteps = (steps: AutomationStepForm[]) => {
     updateForm({ steps })
@@ -282,31 +151,6 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
     if (yamlOpen) openVisualEditor()
     else openYamlEditor()
   }
-
-  const requestNavigation = useCallback(
-    (href: string) => {
-      if (hasUnsavedHistory) {
-        setPendingNavigationHref(href)
-        return
-      }
-      router.push(href)
-    },
-    [hasUnsavedHistory, router]
-  )
-
-  const confirmPendingNavigation = useCallback(() => {
-    const href = pendingNavigationHref
-    if (!href) return
-
-    setPendingNavigationHref(null)
-    confirmedNavigationRef.current = true
-    const url = new URL(href, window.location.href)
-    if (url.origin === window.location.origin) {
-      router.push(`${url.pathname}${url.search}${url.hash}`)
-      return
-    }
-    window.location.assign(url.href)
-  }, [pendingNavigationHref, router])
 
   const showTraces = () => {
     if (automation) {
@@ -481,66 +325,6 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
       window.clearTimeout(timeout)
     }
   }, [automation?.id, form.id, yamlDraft, yamlOpen])
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const isModZ = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z'
-      if (!isModZ || event.altKey || isEditableShortcutTarget(event.target)) return
-
-      if (event.shiftKey) {
-        if (!canRedo) return
-        event.preventDefault()
-        redo()
-        return
-      }
-
-      if (!canUndo) return
-      event.preventDefault()
-      undo()
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [canRedo, canUndo, redo, undo])
-
-  useEffect(() => {
-    if (!hasUnsavedHistory) return
-
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (confirmedNavigationRef.current) return
-      event.preventDefault()
-      event.returnValue = unsavedAutomationMessage
-    }
-
-    const handleDocumentClick = (event: MouseEvent) => {
-      if (
-        event.defaultPrevented ||
-        event.button !== 0 ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.shiftKey ||
-        event.altKey
-      ) {
-        return
-      }
-      const link = event.target instanceof Element ? event.target.closest('a[href]') : null
-      if (!(link instanceof HTMLAnchorElement) || link.target || link.download) return
-      const href = link.href
-      if (!href || href.startsWith('mailto:') || href.startsWith('tel:')) return
-      if (href === window.location.href) return
-
-      event.preventDefault()
-      event.stopPropagation()
-      setPendingNavigationHref(href)
-    }
-
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    document.addEventListener('click', handleDocumentClick, true)
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload)
-      document.removeEventListener('click', handleDocumentClick, true)
-    }
-  }, [hasUnsavedHistory])
 
   return (
     <ProtectedStackPageLayout mainClassName='gap-0'>

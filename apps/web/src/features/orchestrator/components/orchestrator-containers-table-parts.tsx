@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
@@ -111,47 +110,3 @@ export const createContainerColumns = (): ColumnDef<PlatformContainer>[] => [
     )
   }
 ]
-
-export const ContainerMobileCard = ({
-  container,
-  selected,
-  onSelectedChange
-}: {
-  container: PlatformContainer
-  selected: boolean
-  onSelectedChange: (selected: boolean) => void
-}) => (
-  <div className='grid gap-3 rounded-lg border border-border/70 bg-background/25 p-4'>
-    <div className='flex items-start gap-3'>
-      <Checkbox
-        checked={selected}
-        aria-label='Select container'
-        onCheckedChange={checked => onSelectedChange(checked === true)}
-      />
-      <ContainerNameCell
-        container={container}
-        className='min-w-0 flex-1'
-      />
-    </div>
-    <dl className='grid grid-cols-2 gap-x-4 gap-y-2 text-sm'>
-      <div>
-        <dt className='text-secondary-foreground'>State</dt>
-        <dd>
-          <ContainerStateBadge state={container.state} />
-        </dd>
-      </div>
-      <div>
-        <dt className='text-secondary-foreground'>Application</dt>
-        <dd className='truncate'>{container.applicationId ?? 'unmanaged'}</dd>
-      </div>
-      <div className='col-span-2'>
-        <dt className='text-secondary-foreground'>Image</dt>
-        <dd className='truncate'>{container.image}</dd>
-      </div>
-      <div className='col-span-2'>
-        <dt className='text-secondary-foreground'>Networks</dt>
-        <dd className='truncate'>{container.networks.length > 0 ? container.networks.join(', ') : 'none'}</dd>
-      </div>
-    </dl>
-  </div>
-)

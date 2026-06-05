@@ -1,4 +1,6 @@
-import { type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import { IconRefresh } from '@tabler/icons-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -13,7 +15,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import type { ProviderFormState } from './provider-utils'
+import { checkAutomationAiProviderCandidateHealthAction } from '@/server/orchestrator/settings/actions'
+import { normalizeProviderForm, type ProviderFormState } from './provider-utils'
+import type { AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
 
 export const ProviderDialog = ({
   provider,
@@ -28,9 +32,29 @@ export const ProviderDialog = ({
   onClose: () => void
   onSave: () => void
 }) => {
+  const [health, setHealth] = useState<AutomationAiProviderHealth | null>(null)
+  const [isCheckingHealth, setIsCheckingHealth] = useState(false)
   const update = (patch: Partial<ProviderFormState>) => {
     if (!provider) return
     onChange({ ...provider, ...patch })
+    setHealth(null)
+  }
+
+  const checkHealth = async () => {
+    if (!provider) return
+    setIsCheckingHealth(true)
+    try {
+      setHealth(await checkAutomationAiProviderCandidateHealthAction(normalizeProviderForm(provider)))
+    } catch (error) {
+      setHealth({
+        providerId: provider.id,
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Connection check failed.',
+        checkedAt: new Date().toISOString()
+      })
+    } finally {
+      setIsCheckingHealth(false)
+    }
   }
 
   return (
@@ -109,7 +133,30 @@ export const ProviderDialog = ({
                   onChange={event => update({ apiKey: event.target.value || null })}
                 />
               </Field>
-              <div className='flex items-center justify-between gap-3 rounded-md border border-border/70 bg-background/25 px-3 py-2'>
+              <div className='flex flex-wrap items-center justify-between gap-3'>
+                <div className='flex min-w-0 flex-wrap items-center gap-3'>
+                  {health ? (
+                    <>
+                      <Badge variant={health.status === 'ok' ? 'status' : 'destructive'}>
+                        {health.status === 'ok' ? 'Online' : 'Error'}
+                      </Badge>
+                      <span className='min-w-0 break-words text-sm text-secondary-foreground'>{health.message}</span>
+                    </>
+                  ) : (
+                    <span className='text-sm text-secondary-foreground'>Check the provider before saving.</span>
+                  )}
+                </div>
+                <Button
+                  type='button'
+                  variant='secondary'
+                  disabled={isCheckingHealth}
+                  onClick={() => void checkHealth()}
+                >
+                  <IconRefresh className={isCheckingHealth ? 'size-4 animate-spin' : 'size-4'} />
+                  Check connection
+                </Button>
+              </div>
+              <div className='flex items-center justify-between gap-3'>
                 <div>
                   <Label>Enabled</Label>
                   <p className='text-xs text-secondary-foreground'>

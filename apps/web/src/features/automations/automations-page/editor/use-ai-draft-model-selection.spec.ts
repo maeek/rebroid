@@ -1,0 +1,63 @@
+import { describe, expect, it } from '@jest/globals'
+import { selectAiDraftProviderAndModel } from './ai-draft-model-selection-utils'
+import type { AutomationAiModelCatalogProvider } from '@/server/orchestrator/settings/types'
+
+const catalog = [
+  {
+    id: 'local',
+    label: 'Local',
+    kind: 'ollama',
+    models: [
+      {
+        id: 'small',
+        label: 'Small',
+        settings: {},
+        default: false,
+        enabled: true,
+        supportsVision: false,
+        supportsTools: true
+      },
+      {
+        id: 'vision',
+        label: 'Vision',
+        settings: {},
+        default: true,
+        enabled: true,
+        supportsVision: true,
+        supportsTools: true
+      }
+    ]
+  },
+  {
+    id: 'cloud',
+    label: 'Cloud',
+    kind: 'openai',
+    models: [
+      {
+        id: 'fast',
+        label: 'Fast',
+        settings: {},
+        default: false,
+        enabled: true,
+        supportsVision: true,
+        supportsTools: true
+      }
+    ]
+  }
+] satisfies AutomationAiModelCatalogProvider[]
+
+describe('AI draft model selection', () => {
+  it('selects requested provider and model', () => {
+    const selected = selectAiDraftProviderAndModel(catalog, 'cloud', 'fast')
+
+    expect(selected.provider?.id).toBe('cloud')
+    expect(selected.model?.id).toBe('fast')
+  })
+
+  it('falls back to provider default model', () => {
+    const selected = selectAiDraftProviderAndModel(catalog, 'local', 'missing')
+
+    expect(selected.provider?.id).toBe('local')
+    expect(selected.model?.id).toBe('vision')
+  })
+})

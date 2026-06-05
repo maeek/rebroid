@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { IconChevronDown, IconChevronUp, IconColumns3, IconDotsVertical, IconSearch } from '@tabler/icons-react'
+import { IconChevronDown, IconChevronUp, IconColumns3, IconSearch } from '@tabler/icons-react'
 import {
   flexRender,
   functionalUpdate,
@@ -22,7 +22,7 @@ import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/component
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
-import { openContextMenuFromButton, rowMenuColumn, selectionColumn, spacerColumn } from './data-grid-columns'
+import { rowMenuColumn, selectionColumn, spacerColumn } from './data-grid-columns'
 
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -52,7 +52,6 @@ export type DataGridProps<TData> = {
   selection?: DataGridSelectionState
   emptyState?: ReactNode
   minWidth?: string
-  mobileCard?: (row: Row<TData>) => ReactNode
   rowContextMenu?: (row: Row<TData>) => ReactNode
   className?: string
 }
@@ -70,8 +69,7 @@ export function DataGrid<TData>({
   onColumnVisibilityChange,
   selection,
   emptyState,
-  minWidth: _minWidth,
-  mobileCard,
+  minWidth,
   rowContextMenu,
   className
 }: DataGridProps<TData>) {
@@ -213,7 +211,7 @@ export function DataGrid<TData>({
       className='table-fixed'
       style={{
         width: renderedTableWidth,
-        minWidth: renderedTableWidth
+        minWidth: minWidth ?? renderedTableWidth
       }}
     >
       <TableHeader className='bg-background/45'>
@@ -362,55 +360,14 @@ export function DataGrid<TData>({
     </Table>
   )
 
-  const renderMobileCard = (row: Row<TData>) => {
-    const card = mobileCard?.(row)
-    if (!card) return null
-
-    return rowContextMenu ? (
-      <ContextMenu key={row.id}>
-        <ContextMenuTrigger asChild>
-          <div
-            className='relative'
-            onContextMenu={() => selectRowForContextMenu(row)}
-          >
-            {card}
-            <Button
-              type='button'
-              variant='ghost'
-              size='icon'
-              className='absolute right-2 top-2 size-8'
-              aria-label='Open row actions'
-              onClick={event => {
-                selectRowForContextMenu(row)
-                openContextMenuFromButton(event)
-              }}
-            >
-              <IconDotsVertical className='size-4' />
-            </Button>
-          </div>
-        </ContextMenuTrigger>
-        <ContextMenuContent>{rowContextMenu(row)}</ContextMenuContent>
-      </ContextMenu>
-    ) : (
-      card
-    )
-  }
-
   return (
     <div className={cn('grid gap-3', className)}>
-      {mobileCard ? (
-        <div className='grid gap-3 lg:hidden'>
-          {rows.length === 0 ? emptyState : rows.map(row => renderMobileCard(row))}
-        </div>
-      ) : null}
       <div
         ref={tableContainerRef}
-        className={cn(
-          'overflow-hidden rounded-xl border border-border/70 bg-background/25',
-          mobileCard && 'hidden lg:block'
-        )}
+        className='overflow-x-auto overflow-y-hidden rounded-xl border border-border/70 bg-background/25'
+        style={{ minWidth: 0 }}
       >
-        {tableMarkup}
+        <div style={{ minWidth }}>{tableMarkup}</div>
       </div>
     </div>
   )

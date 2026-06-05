@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { DataGrid, DataGridPagination } from '@/components/data-grid'
 import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { toast } from '@/hooks/use-toast'
 import { deleteAutomationAction } from '@/server/orchestrator/automations/actions'
@@ -276,59 +275,6 @@ export function AutomationsTable({
         emptyState={
           <div className='text-center text-secondary-foreground'>No workflows match the current filters.</div>
         }
-        mobileCard={row => {
-          const automation = row.original
-          const count = stepCount(automation.definition.spec.steps)
-          const appIds = Array.from(automationAppIds.get(automation.id) ?? [])
-          return (
-            <div
-              key={automation.id}
-              className='grid gap-3 rounded-lg border border-border/70 bg-background/25 p-4'
-            >
-              <div className='flex items-start gap-3'>
-                <Checkbox
-                  checked={selectedIds.has(automation.id)}
-                  aria-label={`Select ${automation.name}`}
-                  onCheckedChange={checked => {
-                    const next = new Set(selectedIds)
-                    if (checked === true) next.add(automation.id)
-                    else next.delete(automation.id)
-                    setSelectedIds(next)
-                  }}
-                />
-                <div className='min-w-0 flex-1'>
-                  <Link
-                    href={`/automations/${automation.id}`}
-                    className='font-medium text-foreground hover:text-primary'
-                  >
-                    {automation.name}
-                  </Link>
-                  <p className='mt-1 line-clamp-2 text-sm text-secondary-foreground'>
-                    {automation.description || 'No description'}
-                  </p>
-                </div>
-                <Badge variant={statusVariant(automation.lastStatus)}>{statusLabel(automation.lastStatus)}</Badge>
-              </div>
-              <WorkflowTags tags={automation.tags} />
-              <dl className='grid grid-cols-2 gap-x-4 gap-y-2 text-sm'>
-                <div>
-                  <dt className='text-secondary-foreground'>Apps</dt>
-                  <dd>{appIds.length === 0 ? '-' : appIds.map(id => appNameById.get(id) ?? id).join(', ')}</dd>
-                </div>
-                <div>
-                  <dt className='text-secondary-foreground'>Steps</dt>
-                  <dd>
-                    {count} {count === 1 ? 'step' : 'steps'}
-                  </dd>
-                </div>
-                <div className='col-span-2'>
-                  <dt className='text-secondary-foreground'>Last run</dt>
-                  <dd>{formatDate(automation.lastRunAt)}</dd>
-                </div>
-              </dl>
-            </div>
-          )
-        }}
         rowContextMenu={row => {
           const hasBulkSelection = selectedIds.has(row.original.id) && selectedAutomations.length > 1
           return (

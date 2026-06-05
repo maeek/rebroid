@@ -80,7 +80,12 @@ export const AutomationStatusToolsSection = ({
         </div>
       )}
       {visibleRuns.length === 0 ? (
-        <div className='rounded-md border border-dashed border-border/70 p-3 text-sm text-secondary-foreground'>
+        <div
+          className={cn(
+            'text-sm text-secondary-foreground',
+            hideHeader ? 'px-4 py-2' : 'rounded-md border border-dashed border-border/70 p-3'
+          )}
+        >
           No active automation runs for this app.
         </div>
       ) : (

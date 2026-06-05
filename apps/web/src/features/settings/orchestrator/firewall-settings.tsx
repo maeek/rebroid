@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { DataGrid, DataGridPagination, DataGridToolbar } from '@/components/data-grid'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Section } from '@/components/ui/section'
 import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -348,73 +347,6 @@ export const FirewallSettings = ({
                 {submittedSearch ? 'No policies match this search.' : 'No application containers are configured.'}
               </div>
             }
-            mobileCard={row => {
-              const application = row.original
-              const policy = application.network.policy
-              const selected = selectedIds.has(application.id)
-              return (
-                <div
-                  key={application.id}
-                  className='grid gap-3 rounded-lg border border-border/70 bg-background/25 p-4'
-                >
-                  <div className='flex items-start gap-3'>
-                    <Checkbox
-                      checked={selected}
-                      aria-label='Select policy'
-                      onCheckedChange={checked => {
-                        const next = new Set(selectedIds)
-                        if (checked === true) next.add(application.id)
-                        else next.delete(application.id)
-                        setSelectedIds(next)
-                      }}
-                    />
-                    <div className='min-w-0 flex-1'>
-                      <Link
-                        className='truncate font-medium hover:text-primary'
-                        href={`/app/${application.id}/manage`}
-                      >
-                        {application.name}
-                      </Link>
-                      <div className='truncate text-xs text-muted-foreground'>{application.id}</div>
-                    </div>
-                  </div>
-                  <dl className='grid grid-cols-2 gap-x-4 gap-y-2 text-sm'>
-                    <div>
-                      <dt className='text-secondary-foreground'>Runtime</dt>
-                      <dd className='capitalize'>{application.status.currentStatus}</dd>
-                    </div>
-                    <div>
-                      <dt className='text-secondary-foreground'>Result</dt>
-                      <dd>
-                        <Badge
-                          className='capitalize'
-                          variant={policy.result?.status === 'error' ? 'destructive' : 'secondary'}
-                        >
-                          {policy.result?.code ?? policy.status ?? 'Not applied'}
-                        </Badge>
-                      </dd>
-                    </div>
-                    <div className='col-span-2'>
-                      <dt className='text-secondary-foreground'>Allowlist</dt>
-                      <dd className='mt-1'>
-                        <AllowlistBadges cidrs={policy.allowCidrs} />
-                      </dd>
-                    </div>
-                  </dl>
-                  <label className='flex items-center justify-between gap-2 border-t border-border/60 pt-3'>
-                    <span className='text-sm text-secondary-foreground'>
-                      {policy.enabled ? 'Restricted' : 'Unrestricted'}
-                    </span>
-                    <Switch
-                      checked={policy.enabled}
-                      disabled={busy !== null}
-                      aria-label={`Toggle restricted network access for ${application.name}`}
-                      onCheckedChange={checked => void setRestricted(application, checked)}
-                    />
-                  </label>
-                </div>
-              )
-            }}
           />
         </TooltipProvider>
         <DataGridPagination

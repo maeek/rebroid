@@ -34,6 +34,10 @@ export const orchestratorSettingsClient = {
     return jsonRequest<AutomationAiProvider>('/settings/ai-providers', 'POST', input)
   },
 
+  checkAiProviderCandidateHealth(input: AutomationAiProvider) {
+    return jsonRequest<AutomationAiProviderHealth>('/settings/ai-providers/health', 'POST', input)
+  },
+
   updateAiProvider(providerId: string, input: Partial<AutomationAiProvider>) {
     return jsonRequest<AutomationAiProvider>(`/settings/ai-providers/${encodeURIComponent(providerId)}`, 'PATCH', input)
   },
@@ -52,6 +56,14 @@ export const orchestratorSettingsClient = {
   createAiProviderModel(providerId: string, input: AutomationAiProviderModel) {
     return jsonRequest<AutomationAiProviderModel>(
       `/settings/ai-providers/${encodeURIComponent(providerId)}/models`,
+      'POST',
+      input
+    )
+  },
+
+  downloadAiProviderModel(providerId: string, input: { modelId: string; label?: string }) {
+    return jsonRequest<AutomationAiProvider>(
+      `/settings/ai-providers/${encodeURIComponent(providerId)}/models/download`,
       'POST',
       input
     )

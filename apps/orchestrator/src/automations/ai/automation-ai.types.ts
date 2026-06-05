@@ -18,10 +18,22 @@ export interface AutomationAiProvider {
 export interface AutomationAiProviderModel {
   id: string;
   label: string;
+  settings: AutomationAiProviderModelSettings;
   supportsVision: boolean;
   supportsTools: boolean;
   enabled: boolean;
   default: boolean;
+}
+
+export interface AutomationAiProviderModelSettings {
+  systemPrompt?: string | null;
+  temperature?: number | null;
+  topP?: number | null;
+  topK?: number | null;
+  numCtx?: number | null;
+  repeatPenalty?: number | null;
+  seed?: number | null;
+  keepAlive?: string | null;
 }
 
 export interface AutomationAiRunInput {

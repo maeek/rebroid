@@ -4,12 +4,57 @@ import {
   IsArray,
   IsBoolean,
   IsIn,
+  IsNumber,
   IsOptional,
   IsString,
   MaxLength,
   MinLength,
   ValidateNested,
 } from 'class-validator';
+
+export class AutomationAiProviderModelSettingsDto {
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @IsOptional()
+  @IsString()
+  @MaxLength(8000)
+  systemPrompt?: string | null;
+
+  @ApiPropertyOptional({ type: Number, nullable: true })
+  @IsOptional()
+  @IsNumber()
+  temperature?: number | null;
+
+  @ApiPropertyOptional({ type: Number, nullable: true })
+  @IsOptional()
+  @IsNumber()
+  topP?: number | null;
+
+  @ApiPropertyOptional({ type: Number, nullable: true })
+  @IsOptional()
+  @IsNumber()
+  topK?: number | null;
+
+  @ApiPropertyOptional({ type: Number, nullable: true })
+  @IsOptional()
+  @IsNumber()
+  numCtx?: number | null;
+
+  @ApiPropertyOptional({ type: Number, nullable: true })
+  @IsOptional()
+  @IsNumber()
+  repeatPenalty?: number | null;
+
+  @ApiPropertyOptional({ type: Number, nullable: true })
+  @IsOptional()
+  @IsNumber()
+  seed?: number | null;
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  keepAlive?: string | null;
+}
 
 export class AutomationAiProviderModelDto {
   @ApiProperty({ example: 'qwen2.5vl:7b' })
@@ -23,6 +68,11 @@ export class AutomationAiProviderModelDto {
   @MinLength(1)
   @MaxLength(160)
   label!: string;
+
+  @ApiProperty({ type: AutomationAiProviderModelSettingsDto })
+  @ValidateNested()
+  @Type(() => AutomationAiProviderModelSettingsDto)
+  settings!: AutomationAiProviderModelSettingsDto;
 
   @ApiProperty({ default: true })
   @IsBoolean()
@@ -97,6 +147,22 @@ export class CreateAutomationAiProviderModelDto extends AutomationAiProviderMode
 export class UpdateAutomationAiProviderModelDto extends PartialType(
   AutomationAiProviderModelDto,
 ) {}
+
+export class AutomationAiProviderCandidateHealthDto extends AutomationAiProviderDto {}
+
+export class DownloadAutomationAiProviderModelDto {
+  @ApiProperty({ example: 'qwen3.5:latest' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(160)
+  modelId!: string;
+
+  @ApiPropertyOptional({ example: 'Qwen 3.5 Latest' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  label?: string;
+}
 
 export class AutomationAiModelCatalogProviderDto {
   @ApiProperty()

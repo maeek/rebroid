@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
 import { formatTimestamp } from './casting-sidecar-utils'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
 import type { DisplaySidecarSession } from '@/server/orchestrator/diagnostics/types'
@@ -66,56 +65,6 @@ export const createCastingSessionColumns = ({
     )
   }
 ]
-
-export const CastingSessionMobileCard = ({
-  session,
-  appsById,
-  ownerNames,
-  selected,
-  onSelectedChange
-}: {
-  session: DisplaySidecarSession
-  appsById: Map<string, CastingApp>
-  ownerNames: Map<string, string>
-  selected: boolean
-  onSelectedChange: (selected: boolean) => void
-}) => (
-  <div className='grid gap-3 rounded-lg border border-border/70 bg-background/25 p-4'>
-    <div className='flex items-start gap-3'>
-      <Checkbox
-        checked={selected}
-        aria-label='Select session'
-        onCheckedChange={checked => onSelectedChange(checked === true)}
-      />
-      <CastingSessionIdentity
-        session={session}
-        appsById={appsById}
-        ownerNames={ownerNames}
-        className='min-w-0 flex-1'
-      />
-    </div>
-    <dl className='grid grid-cols-2 gap-x-4 gap-y-2 text-sm'>
-      <div>
-        <dt className='text-secondary-foreground'>Status</dt>
-        <dd>
-          <CastingSessionStatusBadge status={session.status} />
-        </dd>
-      </div>
-      <div>
-        <dt className='text-secondary-foreground'>Session ID</dt>
-        <dd className='truncate'>{session.id}</dd>
-      </div>
-      <div>
-        <dt className='text-secondary-foreground'>Last activity</dt>
-        <dd>{formatTimestamp(session.lastActivityAt)}</dd>
-      </div>
-      <div>
-        <dt className='text-secondary-foreground'>Expires</dt>
-        <dd>{formatTimestamp(session.expiresAt)}</dd>
-      </div>
-    </dl>
-  </div>
-)
 
 const CastingSessionIdentity = ({
   session,

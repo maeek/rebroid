@@ -9,8 +9,10 @@ import { PlatformPageRefreshButton } from '@/features/orchestrator/components/pl
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { toast } from '@/hooks/use-toast'
 import {
+  checkAutomationAiProviderCandidateHealthAction,
   createAutomationAiProviderAction,
-  deleteAutomationAiProviderAction
+  deleteAutomationAiProviderAction,
+  updateAutomationAiProviderAction
 } from '@/server/orchestrator/settings/actions'
 import { ProviderDialog } from './provider-dialog'
 import { emptyProvider, normalizeProviderForm, type ProviderFormState } from './provider-utils'
@@ -28,6 +30,7 @@ export const OrchestratorAiProvidersPageClient = ({
   const [isSaving, setIsSaving] = useState(false)
   const [isRefreshing, startRefreshTransition] = useTransition()
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [selectedProviderIds, setSelectedProviderIds] = useState<Set<string>>(() => new Set())
 
   useEffect(() => {
     setProviders(initialProviders)
@@ -60,6 +63,15 @@ export const OrchestratorAiProvidersPageClient = ({
 
     setIsSaving(true)
     try {
+      const health = await checkAutomationAiProviderCandidateHealthAction(input)
+      if (health.status !== 'ok') {
+        toast({
+          title: 'Provider connection failed',
+          description: health.message,
+          variant: 'destructive'
+        })
+        return
+      }
       const saved = await createAutomationAiProviderAction(input)
       setProviders(current => {
         const withoutCurrent = current.filter(provider => provider.id !== saved.id)
@@ -76,6 +88,50 @@ export const OrchestratorAiProvidersPageClient = ({
       })
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const updateSelectedProviders = async (enabled: boolean) => {
+    const selected = providers.filter(provider => selectedProviderIds.has(provider.id))
+    if (selected.length === 0) return
+
+    setBusyId('bulk')
+    try {
+      const results = await Promise.all(
+        selected.map(provider => updateAutomationAiProviderAction(provider.id, { enabled }))
+      )
+      setProviders(current => current.map(provider => results.find(result => result.id === provider.id) ?? provider))
+      setSelectedProviderIds(new Set())
+      toast({ title: enabled ? 'AI providers enabled' : 'AI providers disabled' })
+    } catch (error) {
+      toast({
+        title: 'Could not update AI providers',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
+      })
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const deleteSelectedProviders = async () => {
+    const selected = providers.filter(provider => selectedProviderIds.has(provider.id))
+    if (selected.length === 0) return
+
+    setBusyId('bulk')
+    try {
+      await Promise.all(selected.map(provider => deleteAutomationAiProviderAction(provider.id)))
+      setProviders(current => current.filter(provider => !selectedProviderIds.has(provider.id)))
+      setSelectedProviderIds(new Set())
+      toast({ title: 'AI providers deleted' })
+    } catch (error) {
+      toast({
+        title: 'Could not delete AI providers',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
+      })
+    } finally {
+      setBusyId(null)
     }
   }
 
@@ -121,6 +177,11 @@ export const OrchestratorAiProvidersPageClient = ({
         <ProvidersGrid
           providers={providers}
           busyId={busyId}
+          selectedIds={selectedProviderIds}
+          onSelectedIdsChange={setSelectedProviderIds}
+          onEnableSelected={() => void updateSelectedProviders(true)}
+          onDisableSelected={() => void updateSelectedProviders(false)}
+          onDeleteSelected={() => void deleteSelectedProviders()}
           onEdit={openEditDialog}
           onDelete={provider => void deleteProvider(provider)}
         />

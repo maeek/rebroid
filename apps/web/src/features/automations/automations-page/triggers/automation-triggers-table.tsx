@@ -4,7 +4,6 @@ import { useMemo } from 'react'
 import { IconEdit, IconPlayerPlayFilled, IconTrash } from '@tabler/icons-react'
 import { DataGrid } from '@/components/data-grid'
 import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Switch } from '@/components/ui/switch'
 import { dateLabel, scheduleLabel } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/schedule-utils'
@@ -189,77 +188,6 @@ export function AutomationTriggersTable({
       }}
       minWidth='86rem'
       emptyState={<div className='text-center text-secondary-foreground'>No triggers match the current filters.</div>}
-      mobileCard={row => {
-        const trigger = row.original
-        const automation = automationById.get(trigger.automationId)
-        const application = applicationById.get(trigger.targetApplicationId)
-        const busy = busyId === trigger.id
-        return (
-          <div
-            key={trigger.id}
-            className='grid gap-4 rounded-lg border border-border/70 bg-background/25 p-4'
-          >
-            <div className='flex min-w-0 items-start justify-between gap-3'>
-              <Checkbox
-                checked={selectedIds.has(trigger.id)}
-                aria-label={`Select ${trigger.name}`}
-                onCheckedChange={checked => {
-                  const next = new Set(selectedIds)
-                  if (checked === true) next.add(trigger.id)
-                  else next.delete(trigger.id)
-                  onSelectedIdsChange(next)
-                }}
-              />
-              <div className='min-w-0 flex-1'>
-                <h3 className='font-medium text-foreground'>{trigger.name}</h3>
-                <p className='mt-1 text-sm text-secondary-foreground'>{automation?.name ?? trigger.automationId}</p>
-              </div>
-              <Switch
-                checked={trigger.enabled}
-                disabled={busy}
-                aria-label={`${trigger.enabled ? 'Disable' : 'Enable'} ${trigger.name}`}
-                onCheckedChange={enabled => void onToggleEnabled(trigger, enabled)}
-              />
-            </div>
-            <div className='flex flex-wrap gap-2'>
-              <Badge variant={trigger.enabled ? 'status' : 'secondary'}>{trigger.enabled ? 'Enabled' : 'Paused'}</Badge>
-              <Badge variant={statusVariant(trigger.lastStatus)}>{statusLabel(trigger.lastStatus)}</Badge>
-              {trigger.tags.map(tag => (
-                <AutomationTagBadge
-                  key={tag.name}
-                  tag={tag}
-                />
-              ))}
-            </div>
-            <dl className='grid grid-cols-2 gap-x-4 gap-y-3 text-sm'>
-              <div className='col-span-2 grid gap-1'>
-                <dt className='text-secondary-foreground'>Target</dt>
-                <dd className='text-foreground'>
-                  {application?.name ?? trigger.targetApplicationId} / {trigger.profileName ?? 'default'}
-                </dd>
-              </div>
-              <div className='col-span-2 grid gap-1'>
-                <dt className='text-secondary-foreground'>Schedule</dt>
-                <dd className='text-foreground'>{scheduleLabel(getScheduleCron(trigger))}</dd>
-              </div>
-              <div className='grid gap-1'>
-                <dt className='text-secondary-foreground'>Next</dt>
-                <dd className='text-foreground'>{dateLabel(trigger.nextRunAt)}</dd>
-              </div>
-              <div className='grid gap-1'>
-                <dt className='text-secondary-foreground'>Last</dt>
-                <dd className='text-foreground'>{dateLabel(trigger.lastRunAt)}</dd>
-              </div>
-              {trigger.lastError ? (
-                <div className='col-span-2 grid gap-1'>
-                  <dt className='text-secondary-foreground'>Error</dt>
-                  <dd className='text-destructive'>{trigger.lastError}</dd>
-                </div>
-              ) : null}
-            </dl>
-          </div>
-        )
-      }}
       rowContextMenu={row => {
         const hasBulkSelection = selectedIds.has(row.original.id) && selectedIds.size > 1
         return (
