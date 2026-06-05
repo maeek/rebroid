@@ -14,7 +14,6 @@ import {
   validateAutomationYamlAction
 } from '@/server/orchestrator/automations/actions'
 import { AutomationStepsList } from '../steps/list/automation-steps-list'
-import { collectBlockKeys, collectStepKeys, firstStepKey } from '../steps/shared/automation-step-selection'
 import { AutomationDetailsSection } from './automation-details-section'
 import {
   AiDraftDialog,
@@ -35,6 +34,7 @@ import {
 } from './builder-utils'
 import { useAiDraftModelSelection } from './use-ai-draft-model-selection'
 import { cloneAutomationForm, useAutomationEditorHistory } from './use-automation-editor-history'
+import { useAutomationEditorSelection } from './use-automation-editor-selection'
 import { useUnsavedAutomationNavigation } from './use-unsaved-automation-navigation'
 import type { AutomationEditorPageProps } from './types'
 import type { Automation } from '@/server/orchestrator/automations/types'
@@ -45,15 +45,16 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
   const [form, setForm] = useState<AutomationFormState>(() =>
     initialAutomation ? automationToForm(initialAutomation) : defaultForm()
   )
-  const [selectedStepKey, setSelectedStepKey] = useState<string | null>(() => {
-    const initialForm = initialAutomation ? automationToForm(initialAutomation) : defaultForm()
-    return firstStepKey(initialForm.steps)
-  })
-  const [openBlockKeys, setOpenBlockKeys] = useState<string[]>(() => {
-    const initialForm = initialAutomation ? automationToForm(initialAutomation) : defaultForm()
-    return collectBlockKeys(initialForm.steps)
-  })
-  const [yamlStepKey, setYamlStepKey] = useState<string | null>(null)
+  const {
+    openBlock,
+    openBlockKeys,
+    resetSelectionForSteps,
+    selectedStepKey,
+    setSelectedStepKey,
+    setYamlStepKey,
+    toggleBlock,
+    yamlStepKey
+  } = useAutomationEditorSelection(form.steps)
   const [yamlOpen, setYamlOpen] = useState(false)
   const [yamlDraft, setYamlDraft] = useState('')
   const [yamlValid, setYamlValid] = useState(true)
@@ -104,26 +105,6 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
     updateForm({ steps })
   }
 
-  useEffect(() => {
-    const currentStepKeys = collectStepKeys(form.steps)
-    const currentStepKeySet = new Set(currentStepKeys)
-    const currentBlockKeySet = new Set(collectBlockKeys(form.steps))
-
-    setSelectedStepKey(current => (current && currentStepKeySet.has(current) ? current : (currentStepKeys[0] ?? null)))
-    setYamlStepKey(current => (current && currentStepKeySet.has(current) ? current : null))
-    setOpenBlockKeys(current => current.filter(key => currentBlockKeySet.has(key)))
-  }, [form.steps])
-
-  const toggleBlock = (clientKey: string) => {
-    setOpenBlockKeys(current =>
-      current.includes(clientKey) ? current.filter(key => key !== clientKey) : [...current, clientKey]
-    )
-  }
-
-  const openBlock = (clientKey: string) => {
-    setOpenBlockKeys(current => (current.includes(clientKey) ? current : [...current, clientKey]))
-  }
-
   const updateStepAt = (index: number, step: AutomationStepForm) => {
     updateSteps(form.steps.map((item, itemIndex) => (itemIndex === index ? step : item)))
   }
@@ -164,9 +145,7 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
     const nextForm = automationToForm(saved)
     setAutomation(saved)
     setForm(nextForm)
-    setSelectedStepKey(firstStepKey(nextForm.steps))
-    setOpenBlockKeys(collectBlockKeys(nextForm.steps))
-    setYamlStepKey(null)
+    resetSelectionForSteps(nextForm.steps)
     if (yamlOpen) setYamlDraft(saved.yaml)
     resetEditorHistory({
       form: nextForm,
@@ -283,9 +262,7 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
         yamlOpen,
         yamlDraft: validation.yaml ?? yaml
       }))
-      setSelectedStepKey(firstStepKey(nextForm.steps))
-      setOpenBlockKeys(collectBlockKeys(nextForm.steps))
-      setYamlStepKey(null)
+      resetSelectionForSteps(nextForm.steps)
       setYamlValid(true)
       setYamlError(null)
       toast({ title: 'Workflow imported' })
