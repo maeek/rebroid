@@ -29,6 +29,14 @@ import type {
   AutomationCommandOutputMetadata,
 } from '../commands/automation-command.types';
 
+export class AutomationTagDto {
+  @ApiProperty({ example: 'smoke' })
+  name!: string;
+
+  @ApiProperty({ example: '#0ea5e9' })
+  color!: string;
+}
+
 export class AutomationDefinitionStepDto {
   @ApiProperty({ example: 'wake-device' })
   id!: string;
@@ -48,11 +56,14 @@ export class AutomationDefinitionMetadataDto {
   description?: string;
 
   @ApiPropertyOptional({
-    type: String,
+    type: AutomationTagDto,
     isArray: true,
-    example: ['smoke', 'login'],
+    example: [
+      { name: 'smoke', color: '#0ea5e9' },
+      { name: 'login', color: '#22c55e' },
+    ],
   })
-  tags?: string[];
+  tags?: AutomationTagDto[];
 }
 
 export class AutomationDefinitionSpecDto {
@@ -368,8 +379,8 @@ export class AutomationDto {
   @ApiProperty({ type: String, nullable: true })
   description!: string | null;
 
-  @ApiProperty({ type: String, isArray: true })
-  tags!: string[];
+  @ApiProperty({ type: AutomationTagDto, isArray: true })
+  tags!: AutomationTagDto[];
 
   @ApiProperty({ type: AutomationDefinitionDto })
   definition!: AutomationDefinitionDto;
@@ -510,11 +521,11 @@ export class CreateAutomationTriggerDto {
   @IsBoolean()
   enabled?: boolean;
 
-  @ApiPropertyOptional({ type: String, isArray: true })
+  @ApiPropertyOptional({ type: AutomationTagDto, isArray: true })
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
-  tags?: string[];
+  @IsObject({ each: true })
+  tags?: AutomationTagDto[];
 
   @ApiProperty({ enum: AutomationTriggerType })
   @IsEnum(AutomationTriggerType)
@@ -554,8 +565,8 @@ export class AutomationTriggerDto {
   @ApiProperty()
   enabled!: boolean;
 
-  @ApiProperty({ type: String, isArray: true })
-  tags!: string[];
+  @ApiProperty({ type: AutomationTagDto, isArray: true })
+  tags!: AutomationTagDto[];
 
   @ApiProperty({ enum: AutomationTriggerType })
   triggerType!: AutomationTriggerType;

@@ -59,6 +59,9 @@ const toIso = (value: Date | string | null | undefined) =>
 const stringifyTags = (value: unknown) =>
   JSON.stringify(normalizeAutomationTags(value, 'tags') ?? []);
 
+const tagNames = (value: { tags: { name: string }[] }) =>
+  value.tags.map((tag) => tag.name);
+
 const automationGridSortFields = new Set([
   'name',
   'lastRunAt',
@@ -153,7 +156,7 @@ export class AutomationsService implements OnModuleInit {
     const facets = {
       tags: [
         ...new Set(
-          automations.flatMap((automation) => this.toDto(automation).tags),
+          automations.flatMap((automation) => tagNames(this.toDto(automation))),
         ),
       ].sort((left, right) => left.localeCompare(right)),
       targetApplicationIds: [
@@ -176,13 +179,13 @@ export class AutomationsService implements OnModuleInit {
               automation.name,
               automation.description,
               automation.lastStatus,
-              ...automation.tags,
+              ...tagNames(automation),
             ]
               .filter(Boolean)
               .join(' ')
               .toLowerCase()
               .includes(search)) &&
-          (!tag || automation.tags.includes(tag)) &&
+          (!tag || tagNames(automation).includes(tag)) &&
           (!query.status || automation.lastStatus === query.status) &&
           (!query.targetApplicationId ||
             targetApplicationIds.has(query.targetApplicationId)) &&
@@ -316,9 +319,9 @@ export class AutomationsService implements OnModuleInit {
     );
     const triggerDtos = triggers.map((trigger) => this.toTriggerDto(trigger));
     const facets = {
-      tags: [...new Set(triggerDtos.flatMap((trigger) => trigger.tags))].sort(
-        (left, right) => left.localeCompare(right),
-      ),
+      tags: [
+        ...new Set(triggerDtos.flatMap((trigger) => tagNames(trigger))),
+      ].sort((left, right) => left.localeCompare(right)),
       targetApplicationIds: [
         ...new Set(triggerDtos.map((trigger) => trigger.targetApplicationId)),
       ].sort((left, right) => left.localeCompare(right)),
@@ -337,13 +340,13 @@ export class AutomationsService implements OnModuleInit {
             trigger.profileName,
             trigger.lastStatus,
             automation?.name,
-            ...trigger.tags,
+            ...tagNames(trigger),
           ]
             .filter(Boolean)
             .join(' ')
             .toLowerCase()
             .includes(search)) &&
-        (!tag || trigger.tags.includes(tag)) &&
+        (!tag || tagNames(trigger).includes(tag)) &&
         (!query.targetApplicationId ||
           trigger.targetApplicationId === query.targetApplicationId) &&
         (!query.enabled || String(trigger.enabled) === query.enabled) &&

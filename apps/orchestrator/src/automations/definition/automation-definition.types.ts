@@ -4,7 +4,12 @@ export const AUTOMATION_KIND = 'AndroidAutomation' as const;
 export interface AutomationDefinitionMetadata {
   name: string;
   description?: string;
-  tags?: string[];
+  tags?: AutomationTag[];
+}
+
+export interface AutomationTag {
+  name: string;
+  color: string;
 }
 
 export interface AutomationActionStep {

@@ -8,24 +8,23 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Switch } from '@/components/ui/switch'
 import { dateLabel, scheduleLabel } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/schedule-utils'
+import { AutomationTagBadge } from '../shared/automation-tag-badge'
 import { getScheduleCron, statusLabel, statusVariant } from './automation-trigger-utils'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
-import type { Automation, AutomationTrigger } from '@/server/orchestrator/automations/types'
+import type { Automation, AutomationTag, AutomationTrigger } from '@/server/orchestrator/automations/types'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
 
-function TriggerTags({ tags }: { tags: string[] }) {
+function TriggerTags({ tags }: { tags: AutomationTag[] }) {
   return (
     <div className='flex flex-wrap gap-1'>
       {tags.length === 0 ? (
         <span className='text-sm text-secondary-foreground'>-</span>
       ) : (
         tags.map(tag => (
-          <Badge
-            key={tag}
-            variant='secondary'
-          >
-            {tag}
-          </Badge>
+          <AutomationTagBadge
+            key={tag.name}
+            tag={tag}
+          />
         ))
       )}
     </div>
@@ -226,12 +225,10 @@ export function AutomationTriggersTable({
               <Badge variant={trigger.enabled ? 'status' : 'secondary'}>{trigger.enabled ? 'Enabled' : 'Paused'}</Badge>
               <Badge variant={statusVariant(trigger.lastStatus)}>{statusLabel(trigger.lastStatus)}</Badge>
               {trigger.tags.map(tag => (
-                <Badge
-                  key={tag}
-                  variant='secondary'
-                >
-                  {tag}
-                </Badge>
+                <AutomationTagBadge
+                  key={tag.name}
+                  tag={tag}
+                />
               ))}
             </div>
             <dl className='grid grid-cols-2 gap-x-4 gap-y-3 text-sm'>

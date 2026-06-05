@@ -92,9 +92,12 @@ kind: AndroidAutomation
 metadata:
   name: Branching
   tags:
-    - Smoke
-    - smoke
-    - Login
+    - name: Smoke
+      color: '#0ea5e9'
+    - name: smoke
+      color: '#22c55e'
+    - name: Login
+      color: '#f97316'
 spec:
   steps:
     - id: check-clipboard
@@ -151,7 +154,10 @@ spec:
             durationMs: 500
 `);
 
-    expect(definition.metadata.tags).toEqual(['Smoke', 'Login']);
+    expect(definition.metadata.tags).toEqual([
+      { name: 'Smoke', color: '#0ea5e9' },
+      { name: 'Login', color: '#f97316' },
+    ]);
     expect(definition.spec.steps[1]).toMatchObject({
       id: 'branch',
       type: 'condition',

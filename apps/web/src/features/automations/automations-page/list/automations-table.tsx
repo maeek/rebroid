@@ -13,12 +13,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/hooks/use-toast'
 import { deleteAutomationAction } from '@/server/orchestrator/automations/actions'
 import { AutomationDeleteDialog } from '../shared/automation-delete-dialog'
+import { AutomationTagBadge } from '../shared/automation-tag-badge'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
 import type {
   Automation,
   AutomationDefinitionStep,
   AutomationsGridPage,
   AutomationsGridQuery,
+  AutomationTag,
   AutomationTrigger
 } from '@/server/orchestrator/automations/types'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
@@ -79,18 +81,16 @@ const sortFromSearchParam = (sort: string | undefined): SortingState =>
     .filter((item): item is SortingState[number] => Boolean(item))
     .slice(0, 3)
 
-const WorkflowTags = ({ tags }: { tags: string[] }) => (
+const WorkflowTags = ({ tags }: { tags: AutomationTag[] }) => (
   <div className='flex flex-wrap gap-1'>
     {tags.length === 0 ? (
       <span className='text-sm text-secondary-foreground'>-</span>
     ) : (
       tags.map(tag => (
-        <Badge
-          key={tag}
-          variant='secondary'
-        >
-          {tag}
-        </Badge>
+        <AutomationTagBadge
+          key={tag.name}
+          tag={tag}
+        />
       ))
     )}
   </div>

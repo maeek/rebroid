@@ -27,6 +27,7 @@ export const createAutomationYamlCompletionProvider = ({
     const suggestions = [
       ...usesSuggestions(monaco, context, position, commands),
       ...stepSkeletonSuggestions(monaco, context, position, commands),
+      ...tagSkeletonSuggestions(monaco, context, position),
       ...propertyValueSuggestions(monaco, model, position, linePrefix, range, commands, schema),
       ...propertyNameSuggestions(monaco, context, linePrefix, range, commands, schema)
     ]
@@ -148,6 +149,29 @@ const stepSkeletonSuggestions = (
       ].join('\n'),
       insertTextRules: snippetInsertTextRules(monaco),
       sortText: '3-switch-step',
+      range
+    }
+  ]
+}
+
+const tagSkeletonSuggestions = (
+  monaco: typeof Monaco,
+  context: AutomationYamlCompletionContext,
+  position: Monaco.Position
+) => {
+  if (context.kind !== 'tag-list-item') return []
+
+  const childIndent = ' '.repeat(context.listIndent + 2)
+  const range = new monaco.Range(position.lineNumber, context.replaceStartColumn, position.lineNumber, position.column)
+
+  return [
+    {
+      label: 'Tag',
+      kind: monaco.languages.CompletionItemKind.Snippet,
+      detail: 'Automation tag with badge color',
+      insertText: ['- name: ${1:tag}', `${childIndent}color: '\${2:#64748b}'`].join('\n'),
+      insertTextRules: snippetInsertTextRules(monaco),
+      sortText: '0-tag',
       range
     }
   ]

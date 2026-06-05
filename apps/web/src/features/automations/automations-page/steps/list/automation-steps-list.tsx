@@ -242,8 +242,8 @@ export function AutomationStepsList({
         onDragEnd={finishDrag}
       >
         <AutomationStepsProvider value={stepsContext}>
-          <div className='grid min-w-0 gap-6 xl:grid-cols-[minmax(32rem,1fr)_minmax(24rem,30rem)]'>
-            <div className='grid min-w-0 content-start gap-6'>
+          <div className='flex min-w-0 gap-6 max-[1280px]:flex-wrap'>
+            <div className='grid min-w-0 content-start gap-6 flex-2/5'>
               {details}
               <AutomationStepOutlineListView
                 listId={ROOT_STEP_LIST_ID}
@@ -251,20 +251,22 @@ export function AutomationStepsList({
                 root
               />
             </div>
-            <AutomationStepInspector
-              step={selectedStep}
-              rootSteps={safeSteps}
-              commands={commands}
-              commandByUses={commandByUses}
-              yamlStepKey={yamlStepKey}
-              onYamlStepKeyChange={onYamlStepKeyChange}
-              onChange={nextStep => {
-                if (!selectedLocation) return
-                if (selectedLocation.listId === ROOT_STEP_LIST_ID) onStepChange(selectedLocation.index, nextStep)
-                else onChange(replaceStepInList(safeSteps, selectedLocation.listId, selectedLocation.index, nextStep))
-              }}
-              onClose={() => onSelectStep(null)}
-            />
+            <div className='grid min-w-0 content-start gap-6 flex-3/5 shrink-0'>
+              <AutomationStepInspector
+                step={selectedStep}
+                rootSteps={safeSteps}
+                commands={commands}
+                commandByUses={commandByUses}
+                yamlStepKey={yamlStepKey}
+                onYamlStepKeyChange={onYamlStepKeyChange}
+                onChange={nextStep => {
+                  if (!selectedLocation) return
+                  if (selectedLocation.listId === ROOT_STEP_LIST_ID) onStepChange(selectedLocation.index, nextStep)
+                  else onChange(replaceStepInList(safeSteps, selectedLocation.listId, selectedLocation.index, nextStep))
+                }}
+                onClose={() => onSelectStep(null)}
+              />
+            </div>
           </div>
           {hasInvalidSteps ? (
             <div className='rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive'>

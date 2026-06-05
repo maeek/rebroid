@@ -6,6 +6,11 @@ export type AutomationStartPolicy = 'require-running' | 'start-if-needed'
 
 export type AutomationValueType = 'string' | 'number' | 'boolean' | 'array' | 'object' | 'unknown'
 
+export interface AutomationTag {
+  name: string
+  color: string
+}
+
 export interface AutomationCommandOutput {
   key: string
   label: string
@@ -101,7 +106,7 @@ export interface AutomationDefinition {
   metadata: {
     name: string
     description?: string
-    tags?: string[]
+    tags?: AutomationTag[]
   }
   spec: {
     steps: AutomationDefinitionStep[]
@@ -113,7 +118,7 @@ export interface Automation {
   ownerUserId: string
   name: string
   description: string | null
-  tags: string[]
+  tags: AutomationTag[]
   definition: AutomationDefinition
   yaml: string
   lastRunAt: string | null
@@ -245,7 +250,7 @@ export interface AutomationTrigger {
   profileMode: string | null
   profileName: string | null
   enabled: boolean
-  tags: string[]
+  tags: AutomationTag[]
   triggerType: AutomationTriggerType
   triggerConfig: Record<string, unknown>
   lastRunAt: string | null
@@ -263,7 +268,7 @@ export interface SaveAutomationTriggerInput {
   profileMode?: string | null
   profileName?: string | null
   enabled?: boolean
-  tags?: string[]
+  tags?: AutomationTag[]
   triggerType: AutomationTriggerType
   triggerConfig: Record<string, unknown>
 }

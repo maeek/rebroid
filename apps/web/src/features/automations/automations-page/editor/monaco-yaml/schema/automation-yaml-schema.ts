@@ -137,7 +137,15 @@ export const buildAutomationYamlSchema = (commands: AutomationCommand[]): JsonSc
           description: { type: 'string' },
           tags: {
             type: 'array',
-            items: { type: 'string', minLength: 1, maxLength: 48 },
+            items: {
+              type: 'object',
+              required: ['name', 'color'],
+              properties: {
+                name: { type: 'string', minLength: 1, maxLength: 48 },
+                color: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' }
+              },
+              additionalProperties: false
+            },
             uniqueItems: true
           }
         },

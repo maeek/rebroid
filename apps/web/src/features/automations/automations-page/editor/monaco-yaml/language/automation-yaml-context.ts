@@ -9,6 +9,11 @@ export type AutomationYamlCompletionContext =
       replaceStartColumn: number
     }
   | {
+      kind: 'tag-list-item'
+      listIndent: number
+      replaceStartColumn: number
+    }
+  | {
       kind: 'uses-value'
       query: string
       stepIndent: number
@@ -40,10 +45,33 @@ export const automationYamlCompletionContext = (
   const listItemContext = stepListItemContext(model, position, linePrefix, document.contents, offset)
   if (listItemContext) return listItemContext
 
+  const tagItemContext = tagListItemContext(model, position, linePrefix, document.contents, offset)
+  if (tagItemContext) return tagItemContext
+
   const withContext = withPropertyContext(model, position, document.contents, offset)
   if (withContext) return withContext
 
   return { kind: 'schema' }
+}
+
+const tagListItemContext = (
+  model: Monaco.editor.ITextModel,
+  position: Monaco.Position,
+  linePrefix: string,
+  root: ParsedNode | null,
+  offset: number
+): Extract<AutomationYamlCompletionContext, { kind: 'tag-list-item' }> | null => {
+  const match = linePrefix.match(/^(\s*)-\s*$/)
+  if (!match) return null
+
+  const listIndent = match[1]?.length ?? 0
+  if (!isTagArrayPosition(model, position.lineNumber, listIndent, root, offset)) return null
+
+  return {
+    kind: 'tag-list-item',
+    listIndent,
+    replaceStartColumn: listIndent + 1
+  }
 }
 
 const usesValueContext = (
@@ -117,6 +145,18 @@ const isAutomationStepArrayPosition = (
   const path = pathAt(root, offset)
   if (isStepArrayPath(path)) return true
   return fallbackIsStepArrayItem(model, lineNumber, listIndent)
+}
+
+const isTagArrayPosition = (
+  model: Monaco.editor.ITextModel,
+  lineNumber: number,
+  listIndent: number,
+  root: ParsedNode | null,
+  offset: number
+) => {
+  const path = pathAt(root, offset)
+  if (path.includes('metadata') && path.includes('tags')) return true
+  return fallbackIsTagArrayItem(model, lineNumber, listIndent)
 }
 
 const isStepArrayPath = (path: Array<string | number>) => {
@@ -253,6 +293,20 @@ const fallbackIsStepArrayItem = (model: Monaco.editor.ITextModel, lineNumber: nu
     if (previousIndent > listIndent) continue
     if (previousIndent === listIndent && /^\s*-\s+/.test(line)) continue
     if (previousIndent < listIndent) return /^\s*(?:steps|then|else|default):\s*(?:#.*)?$/.test(line)
+    return false
+  }
+
+  return false
+}
+
+const fallbackIsTagArrayItem = (model: Monaco.editor.ITextModel, lineNumber: number, listIndent: number) => {
+  for (let previousLineNumber = lineNumber - 1; previousLineNumber >= 1; previousLineNumber -= 1) {
+    const line = model.getLineContent(previousLineNumber)
+    if (!line.trim()) continue
+    const previousIndent = indentation(line)
+    if (previousIndent > listIndent) continue
+    if (previousIndent === listIndent && /^\s*-\s+/.test(line)) continue
+    if (previousIndent < listIndent) return /^\s*tags:\s*(?:#.*)?$/.test(line)
     return false
   }
 

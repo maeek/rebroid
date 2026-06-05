@@ -15,6 +15,7 @@ import type {
   AutomationValueRef,
   AutomationRepeatStep,
   AutomationSwitchStep,
+  AutomationTag,
   SaveAutomationInput
 } from '@/server/orchestrator/automations/types'
 
@@ -72,7 +73,7 @@ export interface AutomationFormState {
   id: string | null
   name: string
   description: string
-  tags: string[]
+  tags: AutomationTag[]
   steps: AutomationStepForm[]
 }
 

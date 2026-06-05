@@ -260,7 +260,7 @@ describe('automation YAML completions', () => {
     expect(conditionSuggestion?.range).toMatchObject({ startColumn: 5, endColumn: 7 })
   })
 
-  it('does not suggest step skeletons after a bare item outside step arrays', () => {
+  it('suggests tag skeletons inside metadata tag arrays', () => {
     const suggestions = completeAtEnd(
       `metadata:
   tags:
@@ -268,7 +268,11 @@ describe('automation YAML completions', () => {
       3
     )
 
-    expect(suggestions).toEqual([])
+    const tagSuggestion = suggestions.find(suggestion => suggestion.label === 'Tag')
+
+    expect(String(tagSuggestion?.insertText)).toContain(`- name: \${1:tag}
+      color: '\${2:#64748b}'`)
+    expect(tagSuggestion?.insertTextRules).toBe(5)
   })
 })
 
