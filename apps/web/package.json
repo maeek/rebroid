@@ -102,7 +102,7 @@
     "sass": "^1.100.0",
     "tailwindcss": "^4.3.0",
     "ts-jest": "^29.4.11",
-    "typescript": "^5",
+    "typescript": "^6",
     "whatwg-fetch": "^3.6.20"
   },
   "overrides": {
