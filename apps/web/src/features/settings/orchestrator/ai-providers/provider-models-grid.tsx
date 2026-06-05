@@ -1,24 +1,15 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState } from 'react'
 import { IconDownload, IconPlus, IconSettings, IconTrash } from '@tabler/icons-react'
 import { DataGrid } from '@/components/data-grid'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ContextMenuItem } from '@/components/ui/context-menu'
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Section } from '@/components/ui/section'
 import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
 import { ProviderHealthBadge } from './provider-health-badge'
+import { ProviderModelDownloadDialog, ProviderModelDownloadProgress } from './provider-model-download'
+import { ProviderModelSettingsDialog } from './provider-model-settings-dialog'
 import { inferModelCapabilities, type ProviderModelRow } from './provider-utils'
 import type {
   AutomationAiProvider,
@@ -183,7 +174,7 @@ export const ProviderModelsGrid = ({
           </Button>
         </div>
       </div>
-      {modelDownload ? <ModelDownloadProgress download={modelDownload} /> : null}
+      {modelDownload ? <ProviderModelDownloadProgress download={modelDownload} /> : null}
       {selectedIds.size > 0 ? (
         <div className='flex flex-wrap items-center justify-between gap-3'>
           <span className='text-sm text-secondary-foreground'>{selectedIds.size} selected</span>
@@ -256,70 +247,21 @@ export const ProviderModelsGrid = ({
           </>
         )}
       />
-      <ModelSettingsDialog
+      <ProviderModelSettingsDialog
         model={settingsRow}
         onClose={() => setSettingsRow(null)}
         onChange={(index, patch) => onUpdateModel(index, patch)}
       />
-      <Dialog
+      <ProviderModelDownloadDialog
         open={downloadOpen}
-        onOpenChange={open => {
-          if (!open && !isDownloadingModel) setDownloadOpen(false)
-        }}
-      >
-        <DialogContent className='sm:max-w-xl'>
-          <DialogHeader>
-            <DialogTitle>Download Ollama model</DialogTitle>
-            <DialogDescription>
-              Pull a model into the configured Ollama server and add it to this provider when the download completes.
-            </DialogDescription>
-          </DialogHeader>
-          <div className='grid gap-4'>
-            <Field
-              label='Model ID'
-              description='Use the Ollama model name, for example qwen3.5:latest.'
-            >
-              <Input
-                value={downloadModelId}
-                placeholder='qwen3.5:latest'
-                onChange={event => setDownloadModelId(event.target.value)}
-              />
-            </Field>
-            <Field
-              label='Label'
-              description='Optional display name shown in tables and model selectors.'
-            >
-              <Input
-                value={downloadLabel}
-                placeholder='Qwen 3.5 Latest'
-                onChange={event => setDownloadLabel(event.target.value)}
-              />
-            </Field>
-            <p className='text-sm text-secondary-foreground'>
-              The download runs in the background after it starts. Progress is shown in the Models section.
-            </p>
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button
-                type='button'
-                variant='secondary'
-                disabled={isDownloadingModel}
-              >
-                Cancel
-              </Button>
-            </DialogClose>
-            <Button
-              type='button'
-              disabled={isDownloadingModel || !downloadModelId.trim()}
-              onClick={() => void submitDownload()}
-            >
-              <IconDownload className={isDownloadingModel ? 'size-4 animate-pulse' : 'size-4'} />
-              {isDownloadingModel ? 'Starting' : 'Start download'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        isDownloading={isDownloadingModel}
+        modelId={downloadModelId}
+        label={downloadLabel}
+        onOpenChange={setDownloadOpen}
+        onModelIdChange={setDownloadModelId}
+        onLabelChange={setDownloadLabel}
+        onSubmit={() => void submitDownload()}
+      />
     </Section>
   )
 }
@@ -336,193 +278,3 @@ export const CapabilityBadges = ({ model }: { model: Pick<AutomationAiProviderMo
     </div>
   )
 }
-
-const ModelSettingsDialog = ({
-  model,
-  onClose,
-  onChange
-}: {
-  model: ProviderModelRow | null
-  onClose: () => void
-  onChange: (index: number, patch: Partial<AutomationAiProviderModel>) => void
-}) => {
-  const settings = model?.settings ?? {}
-  const updateSettings = (patch: Partial<AutomationAiProviderModel['settings']>) => {
-    if (!model) return
-    onChange(model.index, { settings: { ...settings, ...patch } })
-  }
-
-  return (
-    <Dialog
-      open={Boolean(model)}
-      onOpenChange={open => {
-        if (!open) onClose()
-      }}
-    >
-      <DialogContent className='sm:max-w-2xl'>
-        <DialogHeader>
-          <DialogTitle>Model settings</DialogTitle>
-          <DialogDescription>Configure optional model-level prompt and Ollama generation settings.</DialogDescription>
-        </DialogHeader>
-        {model ? (
-          <div className='grid gap-4'>
-            <Field
-              label='System prompt'
-              description='Additional system instructions appended to AI automation runs for this model.'
-            >
-              <Textarea
-                value={settings.systemPrompt ?? ''}
-                rows={5}
-                onChange={event => updateSettings({ systemPrompt: event.target.value || null })}
-              />
-            </Field>
-            <div className='grid gap-4 sm:grid-cols-2'>
-              <NumberField
-                label='Temperature'
-                description='Sampling randomness from 0 to 2.'
-                value={settings.temperature}
-                min={0}
-                max={2}
-                step={0.1}
-                onChange={temperature => updateSettings({ temperature })}
-              />
-              <NumberField
-                label='Top P'
-                description='Nucleus sampling value from 0 to 1.'
-                value={settings.topP}
-                min={0}
-                max={1}
-                step={0.05}
-                onChange={topP => updateSettings({ topP })}
-              />
-              <NumberField
-                label='Top K'
-                description='Ollama top-k sampling limit.'
-                value={settings.topK}
-                min={0}
-                max={500}
-                step={1}
-                onChange={topK => updateSettings({ topK })}
-              />
-              <NumberField
-                label='Context length'
-                description='Ollama num_ctx option.'
-                value={settings.numCtx}
-                min={128}
-                max={262144}
-                step={128}
-                onChange={numCtx => updateSettings({ numCtx })}
-              />
-              <NumberField
-                label='Repeat penalty'
-                description='Ollama repeat_penalty option.'
-                value={settings.repeatPenalty}
-                min={0}
-                max={4}
-                step={0.05}
-                onChange={repeatPenalty => updateSettings({ repeatPenalty })}
-              />
-              <NumberField
-                label='Seed'
-                description='Optional deterministic seed.'
-                value={settings.seed}
-                step={1}
-                onChange={seed => updateSettings({ seed })}
-              />
-            </div>
-            <Field
-              label='Keep alive'
-              description='Ollama keep_alive value such as 5m, 1h, or -1.'
-            >
-              <Input
-                value={settings.keepAlive ?? ''}
-                placeholder='5m'
-                onChange={event => updateSettings({ keepAlive: event.target.value || null })}
-              />
-            </Field>
-          </div>
-        ) : null}
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button type='button'>Done</Button>
-          </DialogClose>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-const Field = ({ label, description, children }: { label: string; description: string; children: ReactNode }) => (
-  <div className='grid gap-2'>
-    <div className='grid gap-1'>
-      <Label>{label}</Label>
-      <p className='text-xs text-secondary-foreground'>{description}</p>
-    </div>
-    {children}
-  </div>
-)
-
-const ModelDownloadProgress = ({ download }: { download: AutomationAiProviderModelDownload }) => {
-  const isActive = download.status === 'queued' || download.status === 'running'
-  const percent = typeof download.percent === 'number' ? download.percent : null
-  return (
-    <div className='rounded-md border border-border/70 bg-background/35 px-4 py-3'>
-      <div className='flex flex-wrap items-center justify-between gap-3'>
-        <div className='min-w-0'>
-          <div className='flex flex-wrap items-center gap-2'>
-            <Badge
-              variant={
-                download.status === 'completed' ? 'status' : download.status === 'failed' ? 'destructive' : 'secondary'
-              }
-            >
-              {download.status === 'completed' ? 'Downloaded' : download.status === 'failed' ? 'Error' : 'Downloading'}
-            </Badge>
-            <span className='font-medium'>{download.modelId}</span>
-          </div>
-          <p className='mt-1 break-words text-sm text-secondary-foreground'>{download.message}</p>
-        </div>
-        {percent !== null ? <span className='text-sm text-secondary-foreground'>{percent}%</span> : null}
-      </div>
-      {isActive ? (
-        <div className='mt-3 h-2 overflow-hidden rounded-full bg-muted'>
-          <div
-            className='h-full rounded-full bg-primary transition-all'
-            style={{ width: `${percent ?? 8}%` }}
-          />
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-const NumberField = ({
-  label,
-  description,
-  value,
-  min,
-  max,
-  step,
-  onChange
-}: {
-  label: string
-  description: string
-  value?: number | null
-  min?: number
-  max?: number
-  step?: number
-  onChange: (value: number | null) => void
-}) => (
-  <Field
-    label={label}
-    description={description}
-  >
-    <Input
-      type='number'
-      value={value ?? ''}
-      min={min}
-      max={max}
-      step={step}
-      onChange={event => onChange(event.target.value === '' ? null : Number(event.target.value))}
-    />
-  </Field>
-)
