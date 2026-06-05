@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
-const protectedPageMaxWidthClassName = 'max-w-[90rem]'
+const protectedPageMaxWidthClassName = 'max-w-[120rem]'
 
 export const ProtectedSplitPageLayout = ({
   children,

@@ -1,10 +1,9 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { IconAlertTriangle, IconBlocks } from '@tabler/icons-react'
+import { IconAlertTriangle } from '@tabler/icons-react'
 import dynamic from 'next/dynamic'
 import { parse, stringify } from 'yaml'
-import { Button } from '@/components/ui/button'
 import { getActionUiStateFromInput, normalizeActionInput } from '../../actions/action-registry'
 import { buildAutomationActionInputYamlSchema } from '../../editor/monaco-yaml'
 import type { AutomationActionStepForm } from '../../editor/builder-utils'
@@ -14,24 +13,21 @@ const AutomationMonacoYamlEditor = dynamic(
   () => import('../../editor/monaco-yaml').then(module => module.AutomationMonacoYamlEditor),
   {
     ssr: false,
-    loading: () => <div className='h-72 rounded-md border border-border/60 bg-background/25' />
+    loading: () => <div className='h-44 rounded-md border border-border/60 bg-background/25' />
   }
 )
 
 export function AutomationStepYamlEditor({
   step,
   command,
-  onChange,
-  onBack
+  onChange
 }: {
   step: AutomationActionStepForm
   command?: AutomationCommand
   onChange: (step: AutomationActionStepForm) => void
-  onBack: () => void
 }) {
   const [yaml, setYaml] = useState(() => stringify(parseStepInput(step), { lineWidth: 0 }).trimEnd())
   const [error, setError] = useState<string | null>(null)
-  const [schemaValid, setSchemaValid] = useState(true)
   const schema = useMemo(() => buildAutomationActionInputYamlSchema(command), [command])
   const modelUri = useMemo(() => `file:///rebroid-action-${step.clientKey.replaceAll(':', '-')}.yaml`, [step.clientKey])
 
@@ -58,32 +54,19 @@ export function AutomationStepYamlEditor({
     }
   }
 
-  const valid = !error && schemaValid
-
   return (
     <div className='grid gap-3'>
-      <div className='flex items-center justify-between gap-3'>
+      <div className='flex items-center gap-3'>
         <div className='text-sm font-medium'>YAML input</div>
-        <Button
-          type='button'
-          size='sm'
-          variant='secondary'
-          disabled={!valid}
-          onClick={onBack}
-        >
-          <IconBlocks className='size-4' />
-          Blocks
-        </Button>
       </div>
       <AutomationMonacoYamlEditor
         value={yaml}
         schema={schema}
         modelUri={modelUri}
         ariaLabel='Step input YAML'
-        className='h-72 min-h-72'
+        className='h-44 !min-h-44'
         onChange={changeYaml}
         onValidationChange={(nextValid: boolean, messages: string[]) => {
-          setSchemaValid(nextValid)
           if (!nextValid && messages[0]) setError(messages[0])
           else if (nextValid && error && canParseYamlObject(yaml)) setError(null)
         }}

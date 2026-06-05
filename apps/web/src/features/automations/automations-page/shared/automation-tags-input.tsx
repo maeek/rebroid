@@ -1,10 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import { IconPlus, IconX } from '@tabler/icons-react'
+import { type KeyboardEvent, useState } from 'react'
+import { IconX } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 const normalizeTag = (value: string) => value.trim()
@@ -22,7 +20,7 @@ export function AutomationTagsInput({
 }) {
   const [draft, setDraft] = useState('')
 
-  const addTag = () => {
+  const commitDraft = () => {
     const tag = normalizeTag(draft)
     if (!tag) return
     const exists = value.some(item => item.toLowerCase() === tag.toLowerCase())
@@ -32,6 +30,15 @@ export function AutomationTagsInput({
     setDraft('')
   }
 
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter') {
+      return
+    }
+
+    event.preventDefault()
+    commitDraft()
+  }
+
   const removeTag = (tag: string) => {
     onChange(value.filter(item => item !== tag))
   }
@@ -39,49 +46,33 @@ export function AutomationTagsInput({
   return (
     <div className='grid gap-2'>
       <Label htmlFor={id}>{label}</Label>
-      <div className='flex flex-wrap gap-2'>
+      <div className='flex min-h-11 w-full flex-wrap items-center gap-2 rounded-md border border-input bg-input px-3 py-2 dark:bg-white/5 focus-visible:border-primary/60 hover:bg-input/84 hover:border-primary/40'>
         {value.map(tag => (
           <Badge
             key={tag}
             variant='secondary'
-            className='gap-1 pr-1'
+            className='flex items-center gap-1 rounded-md border border-border/60 bg-secondary px-2 py-1 text-xs font-medium'
           >
-            {tag}
+            <span>{tag}</span>
             <button
               type='button'
-              className='rounded-xs p-0.5 hover:bg-background/50'
+              className='cursor-pointer rounded-sm text-muted-foreground transition hover:text-foreground'
               aria-label={`Remove ${tag}`}
               onClick={() => removeTag(tag)}
             >
-              <IconX className='size-3' />
+              <IconX className='size-3.5' />
             </button>
           </Badge>
         ))}
-      </div>
-      <div className='flex gap-2'>
-        <Input
+        <input
           id={id}
           value={draft}
-          placeholder='Add tag'
+          className='h-7 min-w-34 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground'
+          placeholder='Add tag and press Enter'
+          onBlur={commitDraft}
           onChange={event => setDraft(event.target.value)}
-          onKeyDown={event => {
-            if (event.key === 'Enter' || event.key === ',') {
-              event.preventDefault()
-              addTag()
-            }
-            if (event.key === 'Backspace' && !draft && value.length > 0) {
-              onChange(value.slice(0, -1))
-            }
-          }}
+          onKeyDown={handleKeyDown}
         />
-        <Button
-          type='button'
-          variant='secondary'
-          onClick={addTag}
-        >
-          <IconPlus className='size-4' />
-          Add
-        </Button>
       </div>
     </div>
   )

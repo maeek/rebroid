@@ -1,8 +1,7 @@
 'use client'
 
-import { useMemo, useState, type ReactNode } from 'react'
-import { useSortable } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { useDraggable, useDroppable } from '@dnd-kit/core'
 import {
   IconArrowDown,
   IconArrowUp,
@@ -31,6 +30,7 @@ import { AutomationStepYamlEditor } from '../editors/automation-step-yaml-editor
 import { collectStepReferenceOptions } from '../shared/automation-step-reference-options'
 import { stepSummary, stepTitle } from '../shared/automation-step-utils'
 import { ROOT_STEP_LIST_ID } from '../tree/automation-step-tree'
+import { getStepDraggableId, getStepRowDropId } from './automation-step-drop-target'
 import { useAutomationStepsContext } from './automation-steps-context'
 import type { AutomationStepForm } from '../../editor/builder-utils'
 
@@ -61,9 +61,19 @@ export function AutomationStepRow({
     nestedExpandedStepKeys: string[]
   ) => ReactNode
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: step.clientKey,
-    data: { listId }
+  const {
+    attributes,
+    listeners,
+    setActivatorNodeRef,
+    setNodeRef: setDraggableNodeRef,
+    isDragging
+  } = useDraggable({
+    id: getStepDraggableId(step.clientKey),
+    data: { type: 'step', stepId: step.clientKey, listId }
+  })
+  const { setNodeRef: setDroppableNodeRef } = useDroppable({
+    id: getStepRowDropId(step.clientKey),
+    data: { type: 'step-row', stepId: step.clientKey, listId, index }
   })
   const { commands, commandByUses, rootSteps, onToggleStep, onStepChange, onMoveStep } = useAutomationStepsContext()
   const [stepSettingsOpen, setStepSettingsOpen] = useState(false)
@@ -74,23 +84,28 @@ export function AutomationStepRow({
   const onToggle = listId === ROOT_STEP_LIST_ID ? () => onToggleStep(step.clientKey) : () => undefined
   const onMoveUp = () => onMoveStep(listId, step.clientKey, -1)
   const onMoveDown = () => onMoveStep(listId, step.clientKey, 1)
+  const setNodeRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      setDraggableNodeRef(node)
+      setDroppableNodeRef(node)
+    },
+    [setDraggableNodeRef, setDroppableNodeRef]
+  )
 
   return (
     <div
       ref={setNodeRef}
+      data-automation-step-item='true'
       className={classNames(
         'grid rounded-md shadow-[inset_0_0_10px_rgba(0,0,0,0.1)] ring-1 ring-border/50',
-        expanded ? 'bg-background/30 text-foreground' : 'bg-background/30 hover:bg-background/45',
-        isDragging ? 'opacity-35' : null
+        expanded ? 'bg-input/30 text-foreground' : 'bg-input/30 hover:bg-input/45',
+        isDragging ? 'pointer-events-none opacity-0' : null
       )}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition: isDragging ? undefined : transition
-      }}
     >
       <div className='grid h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-3 py-2'>
         <button
           type='button'
+          ref={setActivatorNodeRef}
           className='flex size-8 cursor-grab items-center justify-center rounded-md text-secondary-foreground hover:bg-secondary/70 active:cursor-grabbing'
           aria-label='Drag step'
           {...attributes}
@@ -173,10 +188,10 @@ export function AutomationStepRow({
               {step.kind === 'action' ? (
                 <DropdownMenuItem
                   className='gap-2 px-3 py-2'
-                  onSelect={() => setStepYamlOpen(true)}
+                  onSelect={() => setStepYamlOpen(open => !open)}
                 >
                   <IconFileCode className='size-4' />
-                  Edit YAML
+                  {stepYamlOpen ? 'Edit Visually' : 'Edit YAML'}
                 </DropdownMenuItem>
               ) : null}
               <DropdownMenuSeparator />
@@ -219,7 +234,6 @@ export function AutomationStepRow({
                   step={step}
                   command={command}
                   onChange={onChange}
-                  onBack={() => setStepYamlOpen(false)}
                 />
               ) : (
                 <AutomationStepEditor

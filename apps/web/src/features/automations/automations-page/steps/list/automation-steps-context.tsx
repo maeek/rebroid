@@ -4,11 +4,17 @@ import { createContext, useContext, type ReactNode } from 'react'
 import type { AutomationStepForm } from '../../editor/builder-utils'
 import type { AutomationCommand } from '@/server/orchestrator/automations/types'
 
+export type AutomationStepDropTarget = {
+  listId: string
+  index: number
+} | null
+
 interface AutomationStepsContextValue {
   rootSteps: AutomationStepForm[]
   commands: AutomationCommand[]
   commandByUses: Map<string, AutomationCommand>
   expandedStepKeys: string[]
+  dropTarget: AutomationStepDropTarget
   onToggleStep: (clientKey: string) => void
   onListChange: (listId: string, steps: AutomationStepForm[]) => void
   onStepChange: (listId: string, index: number, step: AutomationStepForm) => void

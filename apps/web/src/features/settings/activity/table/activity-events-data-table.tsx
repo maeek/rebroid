@@ -154,28 +154,9 @@ export const ActivityEventsDataTable = () => {
             <div className='mt-1 text-xs text-secondary-foreground'>{row.original.createdAt}</div>
           </div>
         )
-      },
-      {
-        id: 'inspect',
-        header: 'Inspect',
-        size: 112,
-        enableSorting: false,
-        enableHiding: false,
-        cell: ({ row }) => (
-          <div className='flex justify-end'>
-            <Button
-              variant='secondary'
-              size='sm'
-              onClick={() => controller.setSelectedEvent(row.original)}
-            >
-              <IconEye className='size-4' />
-              Details
-            </Button>
-          </div>
-        )
       }
     ],
-    [controller]
+    []
   )
 
   return (

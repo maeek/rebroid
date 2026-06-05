@@ -32,6 +32,7 @@ import {
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { toast } from '@/hooks/use-toast'
+import { cn } from '@/lib/utils'
 import {
   createAutomationAction,
   deleteAutomationAction,
@@ -346,15 +347,17 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
       </section>
 
       <section
-        className={
+        className={cn(
+          'grid 2xl:flex',
           yamlOpen
-            ? 'grid min-h-[calc(100dvh-9rem)] grid-rows-[auto_minmax(32rem,1fr)] gap-6 px-6 pb-16 pt-2 max-sm:px-4'
-            : 'grid gap-6 px-6 pb-16 pt-2 max-sm:px-4'
-        }
+            ? 'min-h-[calc(100dvh-9rem)] grid-rows-[auto_minmax(32rem,1fr)] gap-6 px-6 pb-16 pt-2 max-sm:px-4'
+            : 'gap-6 px-6 pb-16 pt-2 max-sm:px-4'
+        )}
       >
         <AutomationDetailsSection
           form={form}
           onChange={updateForm}
+          className='flex-2/5'
         />
 
         {yamlOpen ? (
@@ -371,6 +374,7 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
               setYamlValid(true)
               setYamlError(null)
             }}
+            className='flex-3/5'
           />
         ) : (
           <AutomationStepsList
@@ -380,6 +384,7 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
             onToggleStep={toggleStep}
             onChange={updateSteps}
             onStepChange={updateStepAt}
+            className='flex-3/5'
           />
         )}
       </section>
