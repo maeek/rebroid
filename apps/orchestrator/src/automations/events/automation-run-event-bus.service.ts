@@ -24,6 +24,10 @@ export class AutomationRunEventBus {
     return this.events.listForRun(ownerUserId, runId, after);
   }
 
+  deleteForRuns(ownerUserId: string, runIds: string[]) {
+    return this.events.deleteForRuns(ownerUserId, runIds);
+  }
+
   subscribe(
     runId: string,
     listener: (event: AutomationRunEventRecord) => void,

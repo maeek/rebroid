@@ -12,6 +12,7 @@ import {
 import type { AutomationRun, AutomationRunEvent } from '@/server/orchestrator/automations/types'
 
 const activeStatuses = new Set(['queued', 'running'])
+const terminalStatuses = new Set(['success', 'failed', 'canceled'])
 
 const eventTone = (type: AutomationRunEvent['type']) => {
   if (type.endsWith('.failed') || type === 'ai.guardrail.triggered') return 'text-destructive'
@@ -44,14 +45,17 @@ export function AutomationRunLiveEvents({
   onStatusChange?: (status: AutomationRun['status']) => void
 }) {
   const [events, setEvents] = useState<AutomationRunEvent[]>([])
+  const [localStatus, setLocalStatus] = useState<AutomationRun['status']>(run.status)
   const [isCanceling, setIsCanceling] = useState(false)
   const lastSequenceRef = useRef(0)
+  const cancelingRunIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     let closed = false
     let socket: WebSocket | null = null
     lastSequenceRef.current = 0
     setEvents([])
+    setLocalStatus(run.status)
 
     const appendEvents = (nextEvents: AutomationRunEvent[]) => {
       setEvents(current => {
@@ -63,10 +67,24 @@ export function AutomationRunLiveEvents({
         return [...byId.values()].sort((left, right) => left.sequence - right.sequence)
       })
       for (const event of nextEvents) {
-        if (event.type === 'run.started') onStatusChange?.('running')
-        if (event.type === 'run.completed') onStatusChange?.('success')
-        if (event.type === 'run.failed') onStatusChange?.('failed')
-        if (event.type === 'run.canceled') onStatusChange?.('canceled')
+        const nextStatus =
+          event.type === 'run.started'
+            ? 'running'
+            : event.type === 'run.completed'
+              ? 'success'
+              : event.type === 'run.failed'
+                ? 'failed'
+                : event.type === 'run.canceled'
+                  ? 'canceled'
+                  : null
+        if (nextStatus) {
+          setLocalStatus(nextStatus)
+          onStatusChange?.(nextStatus)
+          if (terminalStatuses.has(nextStatus)) {
+            cancelingRunIdRef.current = null
+            setIsCanceling(false)
+          }
+        }
       }
     }
 
@@ -100,13 +118,20 @@ export function AutomationRunLiveEvents({
   )
 
   const cancel = async () => {
+    if (isCanceling || cancelingRunIdRef.current === run.id) return
+    cancelingRunIdRef.current = run.id
     setIsCanceling(true)
+    setLocalStatus('canceled')
     try {
       await cancelAutomationRunAction(run.id)
-    } finally {
+    } catch {
+      cancelingRunIdRef.current = null
       setIsCanceling(false)
+      setLocalStatus(run.status)
     }
   }
+
+  const displayStatus = isCanceling && activeStatuses.has(run.status) ? 'canceling' : localStatus
 
   return (
     <div className={compact ? 'grid gap-2' : 'grid gap-3 rounded-md border border-border/70 bg-background/40 p-3'}>
@@ -118,10 +143,10 @@ export function AutomationRunLiveEvents({
           </div>
           <div className='flex items-center gap-2'>
             <Badge
-              variant={run.status === 'failed' || run.status === 'canceled' ? 'destructive' : 'secondary'}
+              variant={displayStatus === 'failed' || displayStatus === 'canceled' ? 'destructive' : 'secondary'}
               className='capitalize'
             >
-              {run.status}
+              {displayStatus}
             </Badge>
             {allowCancel && activeStatuses.has(run.status) ? (
               <Button

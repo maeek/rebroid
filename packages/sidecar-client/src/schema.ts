@@ -107,6 +107,182 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/rebroid/adb/{udid}/tap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdbController_tap"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rebroid/adb/{udid}/swipe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdbController_swipe"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rebroid/adb/{udid}/input-text": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdbController_inputText"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rebroid/adb/{udid}/key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdbController_key"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rebroid/adb/{udid}/rotate-display": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdbController_rotateDisplay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rebroid/adb/{udid}/shell": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdbController_shell"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rebroid/adb/{udid}/ui-dump": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdbController_uiDump"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rebroid/adb/{udid}/tap-text": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdbController_tapText"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rebroid/adb/{udid}/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdbController_pullFile"];
+        put: operations["AdbController_pushFile"];
+        post?: never;
+        delete: operations["AdbController_deleteFile"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rebroid/adb/{udid}/files/exists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdbController_fileExists"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rebroid/adb/{udid}/files/list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdbController_listFiles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/rebroid/display/health": {
         parameters: {
             query?: never;
@@ -177,6 +353,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/rebroid/display/sessions/{id}/surfaces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List display surfaces for one display session. */
+        get: operations["DisplayController_listSessionSurfaces"];
+        put?: never;
+        /** Create or reuse one experimental virtual display surface. */
+        post: operations["DisplayController_createSessionSurface"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rebroid/display/sessions/{id}/surfaces/{surfaceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Release one virtual display surface. */
+        delete: operations["DisplayController_releaseSessionSurface"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/rebroid/display/sessions/apps/{appId}": {
         parameters: {
             query?: never;
@@ -189,6 +400,74 @@ export interface paths {
         post?: never;
         /** Release every display session for one app. */
         delete: operations["DisplayController_releaseAppSessions"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rebroid/display/sessions/{id}/recordings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List recordings for one display session. */
+        get: operations["DisplayController_listRecordings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rebroid/display/sessions/{id}/recording/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start recording one display session. */
+        post: operations["DisplayController_startRecording"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rebroid/display/sessions/{id}/recording/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop recording one display session. */
+        post: operations["DisplayController_stopRecording"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rebroid/display/recordings/{recordingId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download a completed display recording. */
+        get: operations["DisplayController_downloadRecording"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -313,109 +592,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/rebroid/display/sessions/{id}/surfaces": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List display surfaces for one display session. */
-        get: operations["DisplayController_listSessionSurfaces"];
-        put?: never;
-        /** Create or reuse one experimental virtual display surface. */
-        post: operations["DisplayController_createSessionSurface"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/rebroid/display/sessions/{id}/surfaces/{surfaceId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Release one virtual display surface. */
-        delete: operations["DisplayController_releaseSessionSurface"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/rebroid/display/sessions/{id}/recordings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List recordings for one display session. */
-        get: operations["DisplayController_listRecordings"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/rebroid/display/sessions/{id}/recording/start": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Start recording one display session. */
-        post: operations["DisplayController_startRecording"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/rebroid/display/sessions/{id}/recording/stop": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Stop recording one display session. */
-        post: operations["DisplayController_stopRecording"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/rebroid/display/recordings/{recordingId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Download a completed display recording. */
-        get: operations["DisplayController_downloadRecording"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -463,6 +639,94 @@ export interface components {
             /** @example 2026-05-25T20:30:00.000Z */
             capturedAt: string;
         };
+        AdbTapDto: {
+            /** @example 120 */
+            x: number;
+            /** @example 640 */
+            y: number;
+        };
+        AdbSwipeDto: {
+            /** @example 120 */
+            x1: number;
+            /** @example 900 */
+            y1: number;
+            /** @example 120 */
+            x2: number;
+            /** @example 200 */
+            y2: number;
+            /** @example 300 */
+            durationMs?: number;
+        };
+        AdbInputTextDto: {
+            /** @example example text */
+            text: string;
+        };
+        AdbKeyDto: {
+            /** @example ENTER */
+            key: string;
+        };
+        AdbRotateDisplayDto: {
+            /**
+             * @example landscape
+             * @enum {string}
+             */
+            orientation: "portrait" | "landscape" | "reverse-portrait" | "reverse-landscape";
+        };
+        AdbShellDto: {
+            /** @example pm list packages */
+            command: string;
+            /** @example 15000 */
+            timeoutMs?: number;
+        };
+        AdbShellResultDto: {
+            /** @example  */
+            stdout: string;
+            /** @example  */
+            stderr: string;
+            /** @example 0 */
+            exitCode: number;
+        };
+        AdbUiDumpDto: {
+            /** @example <?xml version='1.0' encoding='UTF-8' standalone='yes' ?> */
+            xml: string;
+            /** @example 2026-05-25T20:30:00.000Z */
+            dumpedAt: string;
+        };
+        AdbTapTextDto: {
+            /** @example Install */
+            text: string;
+        };
+        AdbTapTextResultDto: {
+            /** @example true */
+            found: boolean;
+            x: number | null;
+            y: number | null;
+        };
+        AdbPushFileDto: {
+            /** @example /sdcard/Download/example.txt */
+            path: string;
+            /** @example SGVsbG8= */
+            contentBase64: string;
+        };
+        AdbPullFileResultDto: {
+            /** @example /sdcard/Download/example.txt */
+            path: string;
+            /** @example SGVsbG8= */
+            contentBase64: string;
+            /** @example 5 */
+            sizeBytes: number;
+        };
+        AdbFileDto: {
+            /** @example /sdcard/Download/example.txt */
+            path: string;
+        };
+        AdbFileExistsResultDto: {
+            /** @example true */
+            exists: boolean;
+        };
+        AdbListFilesResultDto: {
+            files: string[];
+        };
         DisplayHealthDto: {
             /** @example true */
             ok: boolean;
@@ -493,19 +757,6 @@ export interface components {
              *     }
              */
             stream: Record<string, never>;
-            actions: ("back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-notifications" | "expand-settings" | "collapse-panels")[];
-            /** @example true */
-            adbOwnedBySidecar: boolean;
-            /**
-             * @example {
-             *       "defaultSurface": "main",
-             *       "virtualDisplayLimit": 1,
-             *       "virtualDisplayDefault": "1280x720/160"
-             *     }
-             */
-            surfaces: {
-                [key: string]: string | number;
-            };
             /**
              * @example {
              *       "scrcpyVersion": "4.0",
@@ -524,9 +775,15 @@ export interface components {
              *       ]
              *     }
              */
-            compatibility: {
-                [key: string]: string | string[];
-            };
+            compatibility: Record<string, never>;
+            /**
+             * @example {
+             *       "defaultSurface": "main",
+             *       "virtualDisplayLimit": 1,
+             *       "virtualDisplayDefault": "1280x720/160"
+             *     }
+             */
+            surfaces: Record<string, never>;
             /**
              * @example {
              *       "container": "mp4",
@@ -534,9 +791,18 @@ export interface components {
              *       "audio": "not-recorded"
              *     }
              */
-            recording: {
-                [key: string]: string;
-            };
+            recording: Record<string, never>;
+            actions: ("back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-notifications" | "expand-settings" | "collapse-panels")[];
+            /** @example true */
+            adbOwnedBySidecar: boolean;
+        };
+        DisplayNewDisplayDto: {
+            /** @example 1280 */
+            width: number;
+            /** @example 720 */
+            height: number;
+            /** @example 160 */
+            dpi: number;
         };
         CreateDisplaySessionDto: {
             /**
@@ -583,6 +849,44 @@ export interface components {
             displayName?: string;
             /** @example 0 */
             displayId?: number;
+            /**
+             * @example {
+             *       "width": 1280,
+             *       "height": 720,
+             *       "dpi": 160
+             *     }
+             */
+            newDisplay?: components["schemas"]["DisplayNewDisplayDto"];
+        };
+        DisplaySurfaceDto: {
+            /** @example main */
+            id: string;
+            /** @example 7c7270d5-bd2d-4ac2-81f6-1f77be3596b5 */
+            sessionId: string;
+            /**
+             * @example main
+             * @enum {string}
+             */
+            kind: "main" | "virtual";
+            /** @example Main display */
+            name: string;
+            /**
+             * @example created
+             * @enum {string}
+             */
+            status: "created" | "active" | "released" | "expired";
+            /** @example 2026-05-25T20:30:00.000Z */
+            createdAt: string;
+            /** @example 2026-05-25T20:30:10.000Z */
+            lastActivityAt: string;
+            /** @example /rebroid/display/stream?sessionId=...&token=... */
+            streamPath: string;
+            /** @example /viewer/display/?sessionId=...&token=... */
+            viewerPath: string;
+            /** @example /rebroid/display/public/sessions/.../webrtc/offer */
+            webrtcOfferPath: string;
+            /** @example 0 */
+            displayId?: number;
             newDisplay?: components["schemas"]["DisplayNewDisplayDto"];
         };
         DisplaySessionDto: {
@@ -594,6 +898,18 @@ export interface components {
             udid: string;
             /** @example user_123 */
             ownerUserId?: string;
+            /** @example main */
+            surfaceId: string;
+            /**
+             * @example main
+             * @enum {string}
+             */
+            surfaceKind: "main" | "virtual";
+            /** @example Main display */
+            displayName: string;
+            /** @example 0 */
+            displayId?: number;
+            newDisplay?: components["schemas"]["DisplayNewDisplayDto"];
             /**
              * @example created
              * @enum {string}
@@ -616,32 +932,64 @@ export interface components {
              *     ]
              */
             capabilities: string[];
+            surface: components["schemas"]["DisplaySurfaceDto"];
+            surfaces: components["schemas"]["DisplaySurfaceDto"][];
             /** @example /rebroid/display/stream?sessionId=...&token=... */
             streamPath: string;
             /** @example /viewer/display/?sessionId=...&token=... */
             viewerPath: string;
             /** @example /rebroid/display/public/sessions/.../webrtc/offer */
             webrtcOfferPath: string;
-            /** @example main */
-            surfaceId: string;
-            /**
-             * @example main
-             * @enum {string}
-             */
-            surfaceKind: "main" | "virtual";
-            /** @example Main display */
-            displayName: string;
-            /** @example 0 */
-            displayId?: number;
-            newDisplay?: components["schemas"]["DisplayNewDisplayDto"];
-            surface: components["schemas"]["DisplaySurfaceDto"];
-            surfaces: components["schemas"]["DisplaySurfaceDto"][];
         };
         DisplaySessionResponseDto: {
             session: components["schemas"]["DisplaySessionDto"];
         };
         DisplaySessionListResponseDto: {
             items: components["schemas"]["DisplaySessionDto"][];
+        };
+        DisplaySurfaceListResponseDto: {
+            items: components["schemas"]["DisplaySurfaceDto"][];
+        };
+        CreateDisplaySurfaceDto: {
+            /** @example Virtual display */
+            name?: string;
+            /** @example 1280 */
+            width?: number;
+            /** @example 720 */
+            height?: number;
+            /** @example 160 */
+            dpi?: number;
+        };
+        DisplayRecordingDto: {
+            /** @example display-1-lx5s2m */
+            id: string;
+            /** @example display-1 */
+            sessionId: string;
+            /**
+             * @example recording
+             * @enum {string}
+             */
+            status: "recording" | "stopped";
+            /** @example 2026-05-25T20:30:00.000Z */
+            startedAt: string;
+            stoppedAt: string | null;
+            /** @example main-display-2026-05-25T20-30-00-000Z.mp4 */
+            fileName: string;
+            /** @example video/mp4 */
+            mimeType: string;
+            /** @example 1024000 */
+            sizeBytes: number;
+            /** @example 15000 */
+            durationMs: number;
+            /** @example 450 */
+            sampleCount: number;
+            downloadPath: string | null;
+        };
+        DisplayRecordingListResponseDto: {
+            items: components["schemas"]["DisplayRecordingDto"][];
+        };
+        DisplayRecordingResponseDto: {
+            recording: components["schemas"]["DisplayRecordingDto"];
         };
         DisplayClipboardDto: {
             /** @example Text copied from the host. */
@@ -662,22 +1010,11 @@ export interface components {
              * @enum {string}
              */
             command?: "back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-notifications" | "expand-settings" | "collapse-panels";
-            /**
-             * @description Legacy alias for command.
-             * @example home
-             * @enum {string}
-             */
-            action?: "back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-notifications" | "expand-settings" | "collapse-panels";
         };
         DisplayCommandResultDto: {
             /** @example true */
             ok: boolean;
             session?: components["schemas"]["DisplaySessionDto"];
-            /**
-             * @example home
-             * @enum {string}
-             */
-            action?: "back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-notifications" | "expand-settings" | "collapse-panels";
             /**
              * @example home
              * @enum {string}
@@ -700,12 +1037,6 @@ export interface components {
              * @enum {string}
              */
             command?: "back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-notifications" | "expand-settings" | "collapse-panels";
-            /**
-             * @description Legacy alias for command.
-             * @example home
-             * @enum {string}
-             */
-            action?: "back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-notifications" | "expand-settings" | "collapse-panels";
             /** @example display-session-token */
             token?: string | null;
         };
@@ -804,89 +1135,6 @@ export interface components {
             collectedAt: string;
             /** @example 05-25 20:30:00.000 ... */
             output: string;
-        };
-        DisplayNewDisplayDto: {
-            /** @example 1280 */
-            width: number;
-            /** @example 720 */
-            height: number;
-            /** @example 160 */
-            dpi: number;
-        };
-        CreateDisplaySurfaceDto: {
-            /** @example Virtual display */
-            name?: string;
-            /** @example 1280 */
-            width?: number;
-            /** @example 720 */
-            height?: number;
-            /** @example 160 */
-            dpi?: number;
-        };
-        DisplaySurfaceDto: {
-            /** @example main */
-            id: string;
-            /** @example 7c7270d5-bd2d-4ac2-81f6-1f77be3596b5 */
-            sessionId: string;
-            /**
-             * @example main
-             * @enum {string}
-             */
-            kind: "main" | "virtual";
-            /** @example Main display */
-            name: string;
-            /**
-             * @example created
-             * @enum {string}
-             */
-            status: "created" | "active" | "released" | "expired";
-            /** @example 2026-05-25T20:30:00.000Z */
-            createdAt: string;
-            /** @example 2026-05-25T20:30:10.000Z */
-            lastActivityAt: string;
-            /** @example /rebroid/display/stream?sessionId=...&token=... */
-            streamPath: string;
-            /** @example /viewer/display/?sessionId=...&token=... */
-            viewerPath: string;
-            /** @example /rebroid/display/public/sessions/.../webrtc/offer */
-            webrtcOfferPath: string;
-            /** @example 0 */
-            displayId?: number;
-            newDisplay?: components["schemas"]["DisplayNewDisplayDto"];
-        };
-        DisplaySurfaceListResponseDto: {
-            items: components["schemas"]["DisplaySurfaceDto"][];
-        };
-        DisplayRecordingDto: {
-            /** @example display-1-lx5s2m */
-            id: string;
-            /** @example display-1 */
-            sessionId: string;
-            /**
-             * @example recording
-             * @enum {string}
-             */
-            status: "recording" | "stopped";
-            /** @example 2026-05-25T20:30:00.000Z */
-            startedAt: string;
-            stoppedAt: string | null;
-            /** @example main-display-2026-05-25T20-30-00-000Z.mp4 */
-            fileName: string;
-            /** @example video/mp4 */
-            mimeType: string;
-            /** @example 1024000 */
-            sizeBytes: number;
-            /** @example 15000 */
-            durationMs: number;
-            /** @example 450 */
-            sampleCount: number;
-            downloadPath: string | null;
-        };
-        DisplayRecordingResponseDto: {
-            recording: components["schemas"]["DisplayRecordingDto"];
-        };
-        DisplayRecordingListResponseDto: {
-            items: components["schemas"]["DisplayRecordingDto"][];
         };
     };
     responses: never;
@@ -1066,6 +1314,373 @@ export interface operations {
             };
         };
     };
+    AdbController_tap: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required when sidecar shared-secret auth is configured. */
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path: {
+                /** @description ADB serial or host:port target reachable from the sidecar. */
+                udid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdbTapDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdbController_swipe: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required when sidecar shared-secret auth is configured. */
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path: {
+                /** @description ADB serial or host:port target reachable from the sidecar. */
+                udid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdbSwipeDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdbController_inputText: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required when sidecar shared-secret auth is configured. */
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path: {
+                /** @description ADB serial or host:port target reachable from the sidecar. */
+                udid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdbInputTextDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdbController_key: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required when sidecar shared-secret auth is configured. */
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path: {
+                /** @description ADB serial or host:port target reachable from the sidecar. */
+                udid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdbKeyDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdbController_rotateDisplay: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required when sidecar shared-secret auth is configured. */
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path: {
+                /** @description ADB serial or host:port target reachable from the sidecar. */
+                udid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdbRotateDisplayDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdbController_shell: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required when sidecar shared-secret auth is configured. */
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path: {
+                /** @description ADB serial or host:port target reachable from the sidecar. */
+                udid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdbShellDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdbShellResultDto"];
+                };
+            };
+        };
+    };
+    AdbController_uiDump: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required when sidecar shared-secret auth is configured. */
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path: {
+                /** @description ADB serial or host:port target reachable from the sidecar. */
+                udid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdbUiDumpDto"];
+                };
+            };
+        };
+    };
+    AdbController_tapText: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required when sidecar shared-secret auth is configured. */
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path: {
+                /** @description ADB serial or host:port target reachable from the sidecar. */
+                udid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdbTapTextDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdbTapTextResultDto"];
+                };
+            };
+        };
+    };
+    AdbController_pullFile: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: {
+                /** @description Required when sidecar shared-secret auth is configured. */
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path: {
+                /** @description ADB serial or host:port target reachable from the sidecar. */
+                udid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdbPullFileResultDto"];
+                };
+            };
+        };
+    };
+    AdbController_pushFile: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required when sidecar shared-secret auth is configured. */
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path: {
+                /** @description ADB serial or host:port target reachable from the sidecar. */
+                udid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdbPushFileDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdbController_deleteFile: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required when sidecar shared-secret auth is configured. */
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path: {
+                /** @description ADB serial or host:port target reachable from the sidecar. */
+                udid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdbFileDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AdbController_fileExists: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: {
+                /** @description Required when sidecar shared-secret auth is configured. */
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path: {
+                /** @description ADB serial or host:port target reachable from the sidecar. */
+                udid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdbFileExistsResultDto"];
+                };
+            };
+        };
+    };
+    AdbController_listFiles: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: {
+                /** @description Required when sidecar shared-secret auth is configured. */
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path: {
+                /** @description ADB serial or host:port target reachable from the sidecar. */
+                udid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdbListFilesResultDto"];
+                };
+            };
+        };
+    };
     DisplayController_health: {
         parameters: {
             query?: never;
@@ -1199,6 +1814,84 @@ export interface operations {
             };
         };
     };
+    DisplayController_listSessionSurfaces: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path: {
+                /** @description Display session id. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisplaySurfaceListResponseDto"];
+                };
+            };
+        };
+    };
+    DisplayController_createSessionSurface: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path: {
+                /** @description Parent display session id. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDisplaySurfaceDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisplaySessionResponseDto"];
+                };
+            };
+        };
+    };
+    DisplayController_releaseSessionSurface: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path: {
+                /** @description Parent display session id. */
+                id: string;
+                /** @description Display surface id. */
+                surfaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisplaySessionDto"];
+                };
+            };
+        };
+    };
     DisplayController_releaseAppSessions: {
         parameters: {
             query?: never;
@@ -1220,6 +1913,100 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DisplaySessionListResponseDto"];
                 };
+            };
+        };
+    };
+    DisplayController_listRecordings: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path: {
+                /** @description Display session id. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisplayRecordingListResponseDto"];
+                };
+            };
+        };
+    };
+    DisplayController_startRecording: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path: {
+                /** @description Display session id. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisplayRecordingResponseDto"];
+                };
+            };
+        };
+    };
+    DisplayController_stopRecording: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path: {
+                /** @description Display session id. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisplayRecordingResponseDto"];
+                };
+            };
+        };
+    };
+    DisplayController_downloadRecording: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path: {
+                /** @description Display recording id. */
+                recordingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -1405,180 +2192,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DisplayLogcatDto"];
-                };
-            };
-        };
-    };
-    DisplayController_listSessionSurfaces: {
-        parameters: {
-            query?: never;
-            header?: {
-                "x-rebroid-sidecar-secret"?: string;
-            };
-            path: {
-                /** @description Display session id. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DisplaySurfaceListResponseDto"];
-                };
-            };
-        };
-    };
-    DisplayController_createSessionSurface: {
-        parameters: {
-            query?: never;
-            header?: {
-                "x-rebroid-sidecar-secret"?: string;
-            };
-            path: {
-                /** @description Parent display session id. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateDisplaySurfaceDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DisplaySessionResponseDto"];
-                };
-            };
-        };
-    };
-    DisplayController_releaseSessionSurface: {
-        parameters: {
-            query?: never;
-            header?: {
-                "x-rebroid-sidecar-secret"?: string;
-            };
-            path: {
-                /** @description Parent display session id. */
-                id: string;
-                /** @description Display surface id. */
-                surfaceId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DisplaySessionDto"];
-                };
-            };
-        };
-    };
-    DisplayController_listRecordings: {
-        parameters: {
-            query?: never;
-            header?: {
-                "x-rebroid-sidecar-secret"?: string;
-            };
-            path: {
-                /** @description Display session id. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DisplayRecordingListResponseDto"];
-                };
-            };
-        };
-    };
-    DisplayController_startRecording: {
-        parameters: {
-            query?: never;
-            header?: {
-                "x-rebroid-sidecar-secret"?: string;
-            };
-            path: {
-                /** @description Display session id. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DisplayRecordingResponseDto"];
-                };
-            };
-        };
-    };
-    DisplayController_stopRecording: {
-        parameters: {
-            query?: never;
-            header?: {
-                "x-rebroid-sidecar-secret"?: string;
-            };
-            path: {
-                /** @description Display session id. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DisplayRecordingResponseDto"];
-                };
-            };
-        };
-    };
-    DisplayController_downloadRecording: {
-        parameters: {
-            query?: never;
-            header?: {
-                "x-rebroid-sidecar-secret"?: string;
-            };
-            path: {
-                /** @description Display recording id. */
-                recordingId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "video/mp4": string;
                 };
             };
         };

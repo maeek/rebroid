@@ -9,8 +9,10 @@ import {
   buildChatRequestBody,
   buildInitialMessages,
   buildScreenshotObservationMessage,
+  buildUiXmlObservationMessage,
   buildToolDefinitions,
   chatCompletionsEndpoint,
+  consumeChatCompletionStream,
   mapUsesByToolName,
   parseArguments,
   type ChatMessage,
@@ -23,18 +25,20 @@ import type {
 import { AutomationCommandRegistryService } from '../commands/automation-command-registry.service';
 import { AutomationRunEventBus } from '../events/automation-run-event-bus.service';
 import { AutomationAiProviderService } from './automation-ai-provider.service';
+import {
+  SCREEN_MUTATING_TOOLS,
+  isImageInputUnsupportedProviderMessage,
+  prepareUiXml,
+  providerErrorDetailFromText,
+  sanitizeAiDataForEvent,
+  sanitizeAiDataForModel,
+  sanitizeAiText,
+} from './automation-ai-observation.utils';
+import { optimizeAiScreenshot } from './automation-ai-screenshot.utils';
 import type { AutomationAiHarnessContext } from './automation-ai.types';
 
-const SCREEN_MUTATING_TOOLS = new Set([
-  'android.adbShell',
-  'android.inputText',
-  'android.key',
-  'android.rotateDisplay',
-  'android.setClipboard',
-  'android.swipe',
-  'android.tap',
-  'android.viewerCommand',
-]);
+type ObservationMode = 'screenshot' | 'ui-xml';
+type ChatResponse = { choices?: Array<{ message?: ChatMessage }> };
 
 const textContent = (content: ChatMessage['content']) =>
   typeof content === 'string'
@@ -45,16 +49,6 @@ const textContent = (content: ChatMessage['content']) =>
           .map((part) => part.text)
           .join('\n')
       : '';
-
-const sanitizeToolData = (data: Record<string, unknown> = {}) =>
-  Object.fromEntries(
-    Object.entries(data).map(([key, value]) => [
-      key,
-      key === 'dataUrl' && typeof value === 'string'
-        ? '[redacted image data]'
-        : value,
-    ]),
-  );
 
 const screenshotFromData = (data?: Record<string, unknown>) => {
   const dataUrl = typeof data?.dataUrl === 'string' ? data.dataUrl : '';
@@ -84,17 +78,6 @@ export class AutomationAiHarnessService {
       input.providerId,
       input.modelId,
     );
-    if (!model.supportsTools) {
-      throw new BadRequestException(
-        `AI model "${model.id}" does not support tool calls.`,
-      );
-    }
-    if (!model.supportsVision) {
-      throw new BadRequestException(
-        `AI model "${model.id}" does not support screenshots. Select a vision-capable model for Android automation.`,
-      );
-    }
-
     const deadline = Date.now() + input.timeoutMs;
     const commands = this.registry.listCommands();
     const allowed = allowedToolMatcher(input.allowedTools);
@@ -105,11 +88,11 @@ export class AutomationAiHarnessService {
       clientMessageId: input.clientMessageId ?? null,
     });
     const initialScreenshot = input.initialScreenshotDataUrl
-      ? {
+      ? await this.prepareScreenshot({
           dataUrl: input.initialScreenshotDataUrl,
           mimeType: 'image/png',
           capturedAt: new Date().toISOString(),
-        }
+        })
       : await this.captureScreenshot(context, 'Initial screenshot captured.', {
           clientMessageId: input.clientMessageId,
           reason: 'initial',
@@ -118,6 +101,7 @@ export class AutomationAiHarnessService {
       { ...input, initialScreenshotDataUrl: initialScreenshot.dataUrl },
       model,
     );
+    let observationMode: ObservationMode = 'screenshot';
     let toolCalls = 0;
     let finalText = '';
 
@@ -129,14 +113,59 @@ export class AutomationAiHarnessService {
 
     while (Date.now() < deadline) {
       this.assertNotCanceled(context.abortSignal);
-      const response = await this.chat(
-        provider,
-        model,
-        messages,
-        tools,
-        deadline,
-        context.abortSignal,
-      );
+      let response: ChatResponse;
+      try {
+        response = await this.chat(
+          provider,
+          model,
+          messages,
+          tools,
+          deadline,
+          context.abortSignal,
+          async (delta) => {
+            await this.emit(context, 'ai.message.delta', delta, {
+              clientMessageId: input.clientMessageId ?? null,
+            });
+          },
+        );
+      } catch (error) {
+        if (
+          observationMode === 'screenshot' &&
+          this.isImageInputUnsupportedError(error)
+        ) {
+          observationMode = 'ui-xml';
+          await this.emit(
+            context,
+            'ai.guardrail.triggered',
+            'Model rejected screenshot input. Falling back to UI hierarchy XML.',
+            {
+              clientMessageId: input.clientMessageId ?? null,
+            },
+          );
+          const ui = await this.captureUiXml(
+            context,
+            'Initial UI hierarchy captured.',
+            {
+              clientMessageId: input.clientMessageId,
+              reason: 'initial-fallback',
+            },
+          );
+          messages.splice(
+            0,
+            messages.length,
+            ...buildInitialMessages(
+              {
+                ...input,
+                initialScreenshotDataUrl: undefined,
+                initialUiXml: ui.xml,
+              },
+              model,
+            ),
+          );
+          continue;
+        }
+        throw error;
+      }
       const choice = response.choices?.[0]?.message;
       if (!choice) {
         throw new BadRequestException('AI provider returned no message.');
@@ -184,7 +213,7 @@ export class AutomationAiHarnessService {
         toolCalls += 1;
         await this.emit(context, 'ai.tool.arguments', uses, {
           uses,
-          arguments: args,
+          arguments: sanitizeAiDataForEvent(args),
           clientMessageId: input.clientMessageId ?? null,
         });
         await this.emit(context, 'ai.tool.started', `Calling ${uses}`, {
@@ -196,36 +225,82 @@ export class AutomationAiHarnessService {
             name: uses,
             arguments: args,
           });
-          const sanitizedData = sanitizeToolData(result.data);
-          await this.emit(context, 'ai.tool.completed', result.summary, {
+          const eventData = sanitizeAiDataForEvent(result.data ?? {});
+          const modelData = sanitizeAiDataForModel(result.data ?? {});
+          const summary = sanitizeAiText(result.summary);
+          await this.emit(context, 'ai.tool.completed', summary, {
             uses,
-            output: sanitizedData,
+            output: eventData,
             clientMessageId: input.clientMessageId ?? null,
           });
           messages.push({
             role: 'tool',
             tool_call_id: call.id,
             content: JSON.stringify({
-              summary: result.summary,
-              ...sanitizedData,
+              summary,
+              ...(modelData && typeof modelData === 'object'
+                ? (modelData as Record<string, unknown>)
+                : { data: modelData }),
             }),
           });
 
           const toolScreenshot = screenshotFromData(result.data);
-          if (toolScreenshot) {
+          if (observationMode === 'ui-xml' && toolScreenshot) {
+            const ui = await this.captureUiXml(
+              context,
+              'UI hierarchy captured instead of screenshot.',
+              {
+                clientMessageId: input.clientMessageId,
+                reason: 'tool-fallback',
+                uses,
+              },
+            );
+            messages.push(
+              buildUiXmlObservationMessage({
+                xml: ui.xml,
+                summary: 'UI hierarchy captured instead of screenshot.',
+              }),
+            );
+          } else if (observationMode === 'screenshot' && toolScreenshot) {
+            const screenshot = await this.prepareScreenshot(toolScreenshot);
             await this.emitScreenshot(context, {
-              ...toolScreenshot,
+              dataUrl: screenshot.dataUrl,
+              mimeType: screenshot.mimeType,
+              capturedAt: screenshot.capturedAt,
+              optimized: screenshot.optimized,
+              originalBytes: screenshot.originalBytes,
+              bytes: screenshot.bytes,
+              width: screenshot.width,
+              height: screenshot.height,
               summary: 'Screenshot captured by tool.',
               clientMessageId: input.clientMessageId,
               reason: 'tool',
             });
             messages.push(
               buildScreenshotObservationMessage({
-                dataUrl: toolScreenshot.dataUrl,
+                dataUrl: screenshot.dataUrl,
                 summary: 'Screenshot captured by tool.',
               }),
             );
           } else if (SCREEN_MUTATING_TOOLS.has(uses)) {
+            if (observationMode === 'ui-xml') {
+              const ui = await this.captureUiXml(
+                context,
+                `Fresh UI hierarchy captured after ${uses}.`,
+                {
+                  clientMessageId: input.clientMessageId,
+                  reason: 'after-tool',
+                  uses,
+                },
+              );
+              messages.push(
+                buildUiXmlObservationMessage({
+                  xml: ui.xml,
+                  summary: `Fresh UI hierarchy captured after ${uses}.`,
+                }),
+              );
+              continue;
+            }
             const screenshot = await this.captureScreenshot(
               context,
               `Fresh screenshot captured after ${uses}.`,
@@ -244,7 +319,9 @@ export class AutomationAiHarnessService {
           }
         } catch (error) {
           const message =
-            error instanceof Error ? error.message : 'Tool call failed.';
+            error instanceof Error
+              ? sanitizeAiText(error.message)
+              : 'Tool call failed.';
           await this.emit(context, 'ai.tool.failed', message, {
             uses,
             clientMessageId: input.clientMessageId ?? null,
@@ -284,6 +361,7 @@ export class AutomationAiHarnessService {
     tools: unknown[],
     deadline: number,
     abortSignal?: AbortSignal,
+    onContentDelta?: (delta: string) => Promise<void>,
   ) {
     const controller = new AbortController();
     const timeout = setTimeout(
@@ -293,31 +371,54 @@ export class AutomationAiHarnessService {
     const onAbort = () => controller.abort();
     abortSignal?.addEventListener('abort', onAbort, { once: true });
     try {
-      const response = await fetch(chatCompletionsEndpoint(provider), {
-        method: 'POST',
-        signal: controller.signal,
-        headers: {
-          'content-type': 'application/json',
-          ...(provider.apiKey
-            ? { authorization: `Bearer ${provider.apiKey}` }
-            : {}),
-        },
-        body: JSON.stringify(
-          buildChatRequestBody({ provider, model, messages, tools }),
-        ),
-      });
+      let response: Response;
+      try {
+        response = await fetch(chatCompletionsEndpoint(provider), {
+          method: 'POST',
+          signal: controller.signal,
+          headers: {
+            'content-type': 'application/json',
+            ...(provider.apiKey
+              ? { authorization: `Bearer ${provider.apiKey}` }
+              : {}),
+          },
+          body: JSON.stringify(
+            buildChatRequestBody({
+              provider,
+              model,
+              messages,
+              tools,
+              stream: true,
+            }),
+          ),
+        });
+      } catch (error) {
+        if (abortSignal?.aborted) {
+          throw new BadRequestException('AI automation was canceled.');
+        }
+        if (Date.now() >= deadline || this.isAbortError(error)) {
+          throw new RequestTimeoutException(
+            'AI automation timed out waiting for the provider response.',
+          );
+        }
+        throw error;
+      }
       if (!response.ok) {
         const detail = await this.readProviderError(response);
         this.logger.warn(
-          `AI provider request failed for provider=${provider.id} model=${model.id}: ${response.status} ${response.statusText}${detail ? ` - ${detail}` : ''}`,
+          `AI provider request failed for provider=${provider.id} model=${model.id}: ${response.status} ${response.statusText}`,
         );
         throw new BadRequestException(
           `AI provider request failed: ${response.status} ${response.statusText}${detail ? ` - ${detail}` : ''}`,
         );
       }
-      return (await response.json()) as {
-        choices?: Array<{ message?: ChatMessage }>;
-      };
+      if (!response.body) {
+        throw new BadRequestException(
+          'AI provider did not return a streaming response body.',
+        );
+      }
+      const result = await this.consumeStream(response.body, onContentDelta);
+      return { choices: [{ message: result.message }] };
     } finally {
       abortSignal?.removeEventListener('abort', onAbort);
       clearTimeout(timeout);
@@ -326,25 +427,52 @@ export class AutomationAiHarnessService {
 
   private async readProviderError(response: Response) {
     const text = await response.text().catch(() => '');
-    if (!text.trim()) return '';
-    try {
-      const parsed = JSON.parse(text) as unknown;
-      if (parsed && typeof parsed === 'object') {
-        const record = parsed as Record<string, unknown>;
-        const error = record.error;
-        if (typeof error === 'string') return error.slice(0, 2000);
-        if (error && typeof error === 'object') {
-          const errorRecord = error as Record<string, unknown>;
-          const message = errorRecord.message ?? errorRecord.error;
-          if (typeof message === 'string') return message.slice(0, 2000);
-        }
-        const message = record.message ?? record.detail;
-        if (typeof message === 'string') return message.slice(0, 2000);
-      }
-    } catch {
-      return text.slice(0, 2000);
-    }
-    return text.slice(0, 2000);
+    return providerErrorDetailFromText(text);
+  }
+
+  private async consumeStream(
+    body: ReadableStream<Uint8Array>,
+    onContentDelta?: (delta: string) => Promise<void>,
+  ) {
+    let pendingDelta = '';
+    let lastFlushAt = Date.now();
+    const flush = async (force = false) => {
+      if (!pendingDelta) return;
+      const shouldFlush =
+        force ||
+        pendingDelta.length >= 160 ||
+        Date.now() - lastFlushAt >= 150;
+      if (!shouldFlush) return;
+      const delta = pendingDelta;
+      pendingDelta = '';
+      lastFlushAt = Date.now();
+      await onContentDelta?.(sanitizeAiText(delta, 2_000));
+    };
+
+    const result = await consumeChatCompletionStream({
+      body,
+      onUpdate: async ({ contentDelta }) => {
+        if (!contentDelta) return;
+        pendingDelta += contentDelta;
+        await flush(false);
+      },
+    });
+    await flush(true);
+    return result;
+  }
+
+  private isImageInputUnsupportedError(error: unknown) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+          ? error
+          : '';
+    return isImageInputUnsupportedProviderMessage(message);
+  }
+
+  private isAbortError(error: unknown) {
+    return error instanceof Error && error.name === 'AbortError';
   }
 
   private assertNotCanceled(abortSignal?: AbortSignal) {
@@ -359,11 +487,18 @@ export class AutomationAiHarnessService {
     data: Record<string, unknown> = {},
   ) {
     try {
-      const result = await context.adb.screenshot(context.app);
+      const result = await this.prepareScreenshot(
+        await context.adb.screenshot(context.app),
+      );
       await this.emitScreenshot(context, {
         dataUrl: result.dataUrl,
         mimeType: result.mimeType,
         capturedAt: result.capturedAt,
+        optimized: result.optimized,
+        originalBytes: result.originalBytes,
+        bytes: result.bytes,
+        width: result.width,
+        height: result.height,
         summary,
         clientMessageId:
           typeof data.clientMessageId === 'string'
@@ -389,12 +524,66 @@ export class AutomationAiHarnessService {
     }
   }
 
-  private emitScreenshot(
+  private async captureUiXml(
+    context: AutomationAiHarnessContext,
+    summary: string,
+    data: Record<string, unknown> = {},
+  ) {
+    try {
+      const result = await context.adb.dumpUi(context.app);
+      const prepared = prepareUiXml(result.xml);
+      await this.emit(context, 'ai.ui.observed', summary, {
+        bytes: Buffer.byteLength(prepared.xml),
+        nodeCount: prepared.nodeCount,
+        truncated: prepared.truncated,
+        originalBytes: Buffer.byteLength(result.xml),
+        dumpedAt: result.dumpedAt,
+        clientMessageId:
+          typeof data.clientMessageId === 'string'
+            ? data.clientMessageId
+            : null,
+        reason: typeof data.reason === 'string' ? data.reason : null,
+        uses: typeof data.uses === 'string' ? data.uses : null,
+      });
+      return {
+        ...prepared,
+        dumpedAt: result.dumpedAt,
+      };
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? `UI hierarchy dump failed: ${error.message}`
+          : 'UI hierarchy dump failed.';
+      await this.emit(context, 'ai.tool.failed', message, {
+        uses: 'android.dumpUi',
+        clientMessageId:
+          typeof data.clientMessageId === 'string'
+            ? data.clientMessageId
+            : null,
+      });
+      throw new BadRequestException(message);
+    }
+  }
+
+  private prepareScreenshot(input: {
+    dataUrl: string;
+    mimeType: string;
+    capturedAt: string;
+  }) {
+    return optimizeAiScreenshot(input);
+  }
+
+  private async emitScreenshot(
     context: AutomationAiHarnessContext,
     input: {
       dataUrl: string;
       mimeType: string;
       capturedAt: string;
+      optimized?: boolean;
+      originalBytes?: number;
+      bytes?: number;
+      width?: number | null;
+      height?: number | null;
       summary: string;
       clientMessageId?: string;
       reason?: string;
@@ -402,9 +591,13 @@ export class AutomationAiHarnessService {
     },
   ) {
     return this.emit(context, 'ai.screenshot.observed', input.summary, {
-      dataUrl: input.dataUrl,
       mimeType: input.mimeType,
       capturedAt: input.capturedAt,
+      optimized: input.optimized ?? false,
+      originalBytes: input.originalBytes ?? null,
+      bytes: input.bytes ?? null,
+      width: input.width ?? null,
+      height: input.height ?? null,
       clientMessageId: input.clientMessageId ?? null,
       reason: input.reason ?? null,
       uses: input.uses ?? null,

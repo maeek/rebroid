@@ -13,17 +13,20 @@ export const buildChatRequestBody = ({
   messages,
   model,
   provider,
+  stream = false,
   tools,
 }: {
   messages: ChatMessage[];
   model: AutomationAiProviderModel;
   provider: AutomationAiProvider;
+  stream?: boolean;
   tools: unknown[];
 }) => ({
   model: model.id,
   messages,
   tools,
   tool_choice: "auto",
+  stream,
   temperature: model.settings.temperature ?? 0.2,
   ...(model.settings.topP !== null && model.settings.topP !== undefined
     ? { top_p: model.settings.topP }

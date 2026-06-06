@@ -260,6 +260,26 @@ export class AutomationsService implements OnModuleInit {
     ).map((run) => this.mapper.run(run));
   }
 
+  async clearAdHocAiRuns(ownerUserId: string, targetApplicationId: string) {
+    await this.assertTargetApplication(ownerUserId, targetApplicationId);
+    const runs = await this.runs.listAllAdHocAiForTarget(
+      ownerUserId.trim(),
+      targetApplicationId,
+    );
+    for (const run of runs) {
+      if (
+        run.status === AutomationRunStatus.Queued ||
+        run.status === AutomationRunStatus.Running
+      ) {
+        await this.runner.cancel(ownerUserId, run.id);
+      }
+    }
+    const runIds = runs.map((run) => run.id);
+    await this.events.deleteForRuns(ownerUserId, runIds);
+    await this.runs.deleteByIds(ownerUserId, runIds);
+    return { cleared: runIds.length };
+  }
+
   async run(ownerUserId: string, id: string, dto: RunAutomationDto) {
     const automation = await this.getEntity(ownerUserId, id);
     await this.assertTargetApplication(ownerUserId, dto.targetApplicationId);

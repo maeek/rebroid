@@ -9,26 +9,7 @@ export const defaultAiProviders = (): AutomationAiProvider[] => [
     kind: "ollama",
     baseUrl: "http://localhost:11434",
     apiKey: null,
-    models: [
-      {
-        id: "qwen2.5vl:7b",
-        label: "Qwen 2.5 VL 7B",
-        settings: {},
-        supportsVision: true,
-        supportsTools: true,
-        enabled: true,
-        default: true,
-      },
-      {
-        id: "qwen2.5:7b",
-        label: "Qwen 2.5 7B",
-        settings: {},
-        supportsVision: false,
-        supportsTools: true,
-        enabled: true,
-        default: false,
-      },
-    ],
+    models: [],
     enabled: false,
   },
 ];

@@ -8,10 +8,8 @@ export {
   updateProviderModelAt,
 } from "./provider/form-state";
 export {
-  inferModelCapabilities,
-  modelLikelySupportsVision,
   normalizeDefaultModel,
-} from "./provider/model-capabilities";
+} from "./provider/default-model";
 export {
   maskProvider,
   normalizeAiModel,

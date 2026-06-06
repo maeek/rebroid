@@ -3,12 +3,19 @@ export {
   AI_AUTOMATION_MASTER_SYSTEM_PROMPT,
   buildInitialMessages,
   buildScreenshotObservationMessage,
+  buildUiXmlObservationMessage,
 } from "./harness/messages";
 export {
   buildChatRequestBody,
   chatCompletionsEndpoint,
   ollamaOptions,
 } from "./harness/request-body";
+export {
+  consumeChatCompletionStream,
+  type ChatCompletionStreamResult,
+  type ChatCompletionStreamUpdate,
+  type ChatToolCallDelta,
+} from "./harness/streaming";
 export {
   allowedToolMatcher,
   buildToolDefinitions,

@@ -108,6 +108,26 @@ export const listAdHocAiAutomationRunsAction = async (targetApplicationId: strin
   return orchestratorAutomationsClient.listAdHocAiRuns(user.ownerUserId, targetApplicationId, limit)
 }
 
+export const listAdHocAiAutomationRunHistoryAction = async (targetApplicationId: string, limit = 20) => {
+  const user = await getCurrentUserContext()
+  assertAutomationPermission(user, 'automations:run')
+  assertAutomationPermission(user, 'automations:run-ai')
+  await assertTargetApplication(targetApplicationId)
+  const runs = await orchestratorAutomationsClient.listAdHocAiRuns(user.ownerUserId, targetApplicationId, limit)
+  const events = await Promise.all(
+    runs.map(run => orchestratorAutomationsClient.listRunEvents(user.ownerUserId, run.id, 0))
+  )
+  return runs.map((run, index) => ({ run, events: events[index] ?? [] }))
+}
+
+export const clearAdHocAiAutomationRunsAction = async (targetApplicationId: string) => {
+  const user = await getCurrentUserContext()
+  assertAutomationPermission(user, 'automations:run')
+  assertAutomationPermission(user, 'automations:run-ai')
+  await assertTargetApplication(targetApplicationId)
+  return orchestratorAutomationsClient.clearAdHocAiRuns(user.ownerUserId, targetApplicationId)
+}
+
 export const listAutomationRunsAction = async (automationId: string, limit = 50) => {
   const user = await getCurrentUserContext()
   assertAutomationPermission(user, 'automations:manage')

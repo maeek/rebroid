@@ -909,7 +909,7 @@ export interface paths {
         get: operations["AutomationsController_listAdHocAiRuns"];
         put?: never;
         post: operations["AutomationsController_runAdHocAi"];
-        delete?: never;
+        delete: operations["AutomationsController_clearAdHocAiRuns"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1766,10 +1766,6 @@ export interface components {
             label: string;
             settings: components["schemas"]["AutomationAiProviderModelSettingsDto"];
             /** @default true */
-            supportsVision: boolean;
-            /** @default true */
-            supportsTools: boolean;
-            /** @default true */
             enabled: boolean;
             /** @default false */
             default: boolean;
@@ -1827,6 +1823,13 @@ export interface components {
             message: string;
             checkedAt: string;
         };
+        AutomationAiProviderRemoteModelDto: {
+            id: string;
+            label: string;
+            family?: string;
+            parameterSize?: string;
+            quantizationLevel?: string;
+        };
         UpdateAutomationAiProviderDto: {
             /** @example local-ollama */
             id?: string;
@@ -1848,25 +1851,6 @@ export interface components {
             /** @example Qwen 2.5 VL 7B */
             label: string;
             settings: components["schemas"]["AutomationAiProviderModelSettingsDto"];
-            /** @default true */
-            supportsVision: boolean;
-            /** @default true */
-            supportsTools: boolean;
-            /** @default true */
-            enabled: boolean;
-            /** @default false */
-            default: boolean;
-        };
-        UpdateAutomationAiProviderModelDto: {
-            /** @example qwen2.5vl:7b */
-            id?: string;
-            /** @example Qwen 2.5 VL 7B */
-            label?: string;
-            settings?: components["schemas"]["AutomationAiProviderModelSettingsDto"];
-            /** @default true */
-            supportsVision: boolean;
-            /** @default true */
-            supportsTools: boolean;
             /** @default true */
             enabled: boolean;
             /** @default false */
@@ -1893,12 +1877,16 @@ export interface components {
             updatedAt: string;
             finishedAt?: string | null;
         };
-        AutomationAiProviderRemoteModelDto: {
-            id: string;
-            label: string;
-            family?: string;
-            parameterSize?: string;
-            quantizationLevel?: string;
+        UpdateAutomationAiProviderModelDto: {
+            /** @example qwen2.5vl:7b */
+            id?: string;
+            /** @example Qwen 2.5 VL 7B */
+            label?: string;
+            settings?: components["schemas"]["AutomationAiProviderModelSettingsDto"];
+            /** @default true */
+            enabled: boolean;
+            /** @default false */
+            default: boolean;
         };
         AutomationAiModelCatalogProviderDto: {
             id: string;
@@ -3171,7 +3159,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AutomationAiProviderModelDownloadDto"];
+                    "application/json": components["schemas"]["AutomationAiProviderDto"];
                 };
             };
         };
@@ -3332,7 +3320,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AutomationAiProviderDto"];
+                    "application/json": components["schemas"]["AutomationAiProviderModelDownloadDto"];
                 };
             };
         };
@@ -4361,7 +4349,7 @@ export interface operations {
             query: {
                 ownerUserId: string;
                 targetApplicationId: string;
-                limit?: string;
+                limit: string;
             };
             header?: never;
             path?: never;
@@ -4399,6 +4387,26 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AutomationRunDto"];
                 };
+            };
+        };
+    };
+    AutomationsController_clearAdHocAiRuns: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+                targetApplicationId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -76,14 +76,6 @@ export class AutomationAiProviderModelDto {
 
   @ApiProperty({ default: true })
   @IsBoolean()
-  supportsVision!: boolean;
-
-  @ApiProperty({ default: true })
-  @IsBoolean()
-  supportsTools!: boolean;
-
-  @ApiProperty({ default: true })
-  @IsBoolean()
   enabled!: boolean;
 
   @ApiProperty({ default: false })

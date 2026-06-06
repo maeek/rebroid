@@ -15,7 +15,7 @@ interface DisplaySessionListResponse {
 }
 
 interface DisplayActionResponse extends DisplaySessionResponse {
-  action: ApplicationViewerControlCommand;
+  command: ApplicationViewerControlCommand;
   executed: boolean;
 }
 
@@ -113,7 +113,7 @@ export class AndroidAppsDisplaySidecarService {
       `/sessions/${session.id}/actions`,
       {
         method: 'POST',
-        body: JSON.stringify({ action: command }),
+        body: JSON.stringify({ command }),
       },
     );
   }

@@ -9,7 +9,7 @@ import { DisplaySessionService } from "./display-session.service";
 import type { DisplayKeyboardBody, DisplayTouchBody } from "./display.types";
 
 type DisplayControlMessage =
-  | { id?: string; type: "action"; command?: string; action?: string }
+  | { id?: string; type: "action"; command?: string }
   | ({ id?: string; type: "keyboard" } & DisplayKeyboardBody)
   | ({ id?: string; type: "touch" } & DisplayTouchBody)
   | { id?: string; type: "clipboard"; text?: string };
@@ -95,7 +95,7 @@ export class DisplayControlGateway implements OnGatewayConnection {
       return this.executeAction(
         sessionId,
         udid,
-        message.command ?? message.action,
+        message.command,
       );
     }
 
@@ -156,7 +156,6 @@ export class DisplayControlGateway implements OnGatewayConnection {
     );
     if (handledByStream) {
       return {
-        action: viewerCommand,
         command: viewerCommand,
         executed: true,
         transport: "stream-control",

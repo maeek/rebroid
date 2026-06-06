@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   createProviderModelRows,
   emptyModel,
-  inferModelCapabilities,
   normalizeProviderForm,
   setDefaultProviderModelAt,
   updateProviderModelAt,
@@ -105,7 +104,6 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
         ...emptyModel(),
         id: normalizedModelId,
         label: nextLabel,
-        ...inferModelCapabilities({ id: normalizedModelId, label: nextLabel }),
         default: provider.models.length === 0
       }
 
@@ -216,7 +214,6 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
               ...emptyModel(),
               id: normalizedModelId,
               label: nextLabel,
-              ...inferModelCapabilities({ id: normalizedModelId, label: nextLabel }),
               default: current.models.length === 0
             }
           ]

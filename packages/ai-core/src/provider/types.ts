@@ -17,8 +17,6 @@ export interface AutomationAiProviderModel {
   id: string;
   label: string;
   settings: AutomationAiProviderModelSettings;
-  supportsVision: boolean;
-  supportsTools: boolean;
   enabled: boolean;
   default: boolean;
 }

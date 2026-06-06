@@ -5,7 +5,6 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import {
-  modelLikelySupportsVision,
   normalizeAiModel,
   normalizeDefaultModel,
   text,
@@ -248,8 +247,6 @@ export class AiProviderModelDownloadService {
       ...(existingIndex >= 0 ? provider.models[existingIndex] : {}),
       id: modelId,
       label: text(label) || provider.models[existingIndex]?.label || modelId,
-      supportsVision: modelLikelySupportsVision(modelId, label),
-      supportsTools: true,
       enabled: true,
       default: provider.models.length === 0,
       settings: provider.models[existingIndex]?.settings ?? {},

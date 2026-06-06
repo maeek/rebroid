@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { inferModelCapabilities, type ProviderModelRow } from '@rebroid/ai-core/provider'
 import { IconDownload, IconPlus, IconSettings, IconTrash } from '@tabler/icons-react'
 import { DataGrid } from '@/components/data-grid'
 import { Badge } from '@/components/ui/badge'
@@ -17,6 +16,7 @@ import type {
   AutomationAiProviderModelDownload,
   AutomationAiProviderRemoteModel
 } from '@/server/orchestrator/settings/types'
+import type { ProviderModelRow } from '@rebroid/ai-core/provider'
 import type { ColumnDef } from '@tanstack/react-table'
 
 export const ProviderModelsGrid = ({
@@ -53,9 +53,10 @@ export const ProviderModelsGrid = ({
   onLoadRemoteModels: () => void | Promise<void>
 }) => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
-  const [settingsRow, setSettingsRow] = useState<ProviderModelRow | null>(null)
+  const [settingsRowId, setSettingsRowId] = useState<string | null>(null)
   const [addOpen, setAddOpen] = useState(false)
   const selectedIndexes = modelRows.filter(model => selectedIds.has(model.rowId)).map(model => model.index)
+  const settingsRow = modelRows.find(model => model.rowId === settingsRowId) ?? null
 
   const columns = useMemo<ColumnDef<ProviderModelRow>[]>(
     () => [
@@ -86,17 +87,6 @@ export const ProviderModelsGrid = ({
               placeholder='Qwen 2.5 VL 7B'
               onChange={event => onUpdateModel(row.original.index, { label: event.target.value })}
             />
-          </div>
-        )
-      },
-      {
-        id: 'capabilities',
-        header: 'Capabilities',
-        size: 260,
-        meta: { label: 'Capabilities' },
-        cell: ({ row }) => (
-          <div className='flex min-h-10 items-center'>
-            <CapabilityBadges model={row.original} />
           </div>
         )
       },
@@ -221,7 +211,7 @@ export const ProviderModelsGrid = ({
         emptyState={<div className='text-center text-secondary-foreground'>No models configured.</div>}
         rowContextMenu={row => (
           <>
-            <ContextMenuItem onSelect={() => setSettingsRow(row.original)}>
+            <ContextMenuItem onSelect={() => setSettingsRowId(row.original.rowId)}>
               <IconSettings className='mr-2 size-4' />
               Settings
             </ContextMenuItem>
@@ -246,7 +236,7 @@ export const ProviderModelsGrid = ({
       />
       <ProviderModelSettingsDialog
         model={settingsRow}
-        onClose={() => setSettingsRow(null)}
+        onClose={() => setSettingsRowId(null)}
         onChange={(index, patch) => onUpdateModel(index, patch)}
       />
       <ProviderModelAddDialog
@@ -262,18 +252,5 @@ export const ProviderModelsGrid = ({
         onDownload={onDownloadModel}
       />
     </Section>
-  )
-}
-
-export const CapabilityBadges = ({ model }: { model: Pick<AutomationAiProviderModel, 'id' | 'label'> }) => {
-  const capabilities = inferModelCapabilities(model)
-  return (
-    <div className='flex flex-wrap gap-2'>
-      {capabilities.supportsVision ? <Badge variant='outline'>Vision</Badge> : null}
-      {capabilities.supportsTools ? <Badge variant='outline'>Tools</Badge> : null}
-      {!capabilities.supportsVision && !capabilities.supportsTools ? (
-        <span className='text-sm text-secondary-foreground'>-</span>
-      ) : null}
-    </div>
   )
 }

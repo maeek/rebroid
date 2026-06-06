@@ -526,7 +526,7 @@ export class DisplayController {
     udid: string,
     body: DisplayActionDto,
   ) {
-    const command = body.command ?? body.action;
+    const command = body.command;
     if (!command) {
       return {
         ok: false,
@@ -546,7 +546,6 @@ export class DisplayController {
     if (handledByStream) {
       return {
         ok: true,
-        action: viewerCommand,
         command: viewerCommand,
         executed: true,
         transport: "stream-control",
@@ -562,7 +561,6 @@ export class DisplayController {
     const result = await this.adb.viewerAction(udid, viewerCommand);
     return {
       ok: true,
-      action: viewerCommand,
       command: viewerCommand,
       executed: true,
       stdout: result.stdout,

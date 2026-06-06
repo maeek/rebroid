@@ -25,8 +25,6 @@ const provider: AutomationAiProvider = {
       id: " qwen ",
       label: " ",
       settings: {},
-      supportsVision: true,
-      supportsTools: true,
       enabled: true,
       default: true,
     },
@@ -34,8 +32,6 @@ const provider: AutomationAiProvider = {
       id: " ",
       label: "Ignored",
       settings: {},
-      supportsVision: false,
-      supportsTools: false,
       enabled: false,
       default: false,
     },
@@ -55,8 +51,6 @@ describe("AI provider core", () => {
           ...provider.models[0],
           id: "qwen",
           label: "qwen",
-          supportsVision: false,
-          supportsTools: true,
         },
       ],
     });
@@ -92,8 +86,6 @@ describe("AI provider core", () => {
               seed: null,
               keepAlive: null,
             },
-            supportsVision: true,
-            supportsTools: true,
             enabled: true,
             default: true,
           },
@@ -110,6 +102,28 @@ describe("AI provider core", () => {
     assert.deepEqual(
       normalizeDefaultModel(models).map((model) => model.default),
       [false, true],
+    );
+  });
+
+  it("does not include model capability fields", () => {
+    assert.deepEqual(
+      normalizeAiModel({ id: "gpt-4o", label: "gpt-4o" }),
+      {
+        id: "gpt-4o",
+        label: "gpt-4o",
+        settings: {
+          systemPrompt: null,
+          temperature: null,
+          topP: null,
+          topK: null,
+          numCtx: null,
+          repeatPenalty: null,
+          seed: null,
+          keepAlive: null,
+        },
+        enabled: true,
+        default: false,
+      },
     );
   });
 

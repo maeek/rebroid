@@ -77,7 +77,6 @@ export interface CreateDisplaySurfaceBody {
 
 export interface DisplayActionBody {
   command?: string;
-  action?: string;
 }
 
 export interface PublicDisplayActionBody extends DisplayActionBody {

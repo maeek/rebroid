@@ -127,11 +127,6 @@ export class SettingsService {
         `No enabled AI model is configured for provider "${provider.id}".`,
       );
     }
-    if (!model.supportsTools) {
-      throw new BadRequestException(
-        `AI model "${model.id}" is not enabled for tool-calling automations.`,
-      );
-    }
     return { provider, model };
   }
 

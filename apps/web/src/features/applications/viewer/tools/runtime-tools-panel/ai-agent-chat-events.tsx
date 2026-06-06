@@ -1,0 +1,195 @@
+import { IconSparkles } from '@tabler/icons-react'
+import { Badge } from '@/components/ui/badge'
+import { currentStreamingText, type ChatTurn, type ChatTurnStatus } from './ai-agent-chat-utils'
+import type { AutomationRunEvent } from '@/server/orchestrator/automations/types'
+
+const compactJson = (value: unknown) => {
+  if (!value || typeof value !== 'object') return ''
+  try {
+    const text = JSON.stringify(value)
+    return text.length > 220 ? `${text.slice(0, 220)}...` : text
+  } catch {
+    return ''
+  }
+}
+
+const runStatusBadgeVariant = (status: ChatTurnStatus) =>
+  status === 'failed' || status === 'canceled' ? 'destructive' : 'secondary'
+
+const chatTurnTitle = (turn: ChatTurn) => {
+  if (turn.status === 'queued') return 'Queued'
+  if (turn.status === 'starting') return 'Starting'
+  if (turn.status === 'running') return 'Running'
+  if (turn.status === 'canceling') return 'Canceling'
+  if (turn.status === 'success') return 'Done'
+  if (turn.status === 'canceled') return 'Canceled'
+  return 'Failed'
+}
+
+const eventToolName = (event: AutomationRunEvent) =>
+  typeof event.data.uses === 'string' ? event.data.uses : event.message
+
+const toolLabels: Record<string, string> = {
+  'android.adbShell': 'ADB shell',
+  'android.deleteFile': 'Delete file',
+  'android.dumpUi': 'Dump UI hierarchy',
+  'android.fileExists': 'File exists',
+  'android.getClipboard': 'Get clipboard',
+  'android.inputText': 'Input text',
+  'android.key': 'Key event',
+  'android.listFiles': 'List files',
+  'android.pullFile': 'Pull file',
+  'android.pushFile': 'Push file',
+  'android.rotateDisplay': 'Rotate display',
+  'android.screenshot': 'Screenshot',
+  'android.setClipboard': 'Set clipboard',
+  'android.swipe': 'Swipe',
+  'android.tap': 'Tap',
+  'android.tapText': 'Tap text',
+  'android.viewerCommand': 'Viewer command',
+  'android.wait': 'Wait',
+  'android.waitForText': 'Wait for text'
+}
+
+const eventToolLabel = (event: AutomationRunEvent) => {
+  const uses = eventToolName(event)
+  return toolLabels[uses] ?? uses
+}
+
+export const ChatTurnView = ({ turn }: { turn: ChatTurn }) => {
+  const visibleEvents = turn.events.filter(
+    event => event.type !== 'heartbeat' && event.type !== 'ai.message.delta' && event.message.trim().length > 0
+  )
+  const isWorking = turn.status === 'starting' || turn.status === 'running' || turn.status === 'canceling'
+  const hasFinalResponse = turn.events.some(
+    event => event.type === 'ai.message.completed' || event.type === 'run.failed' || event.type === 'run.canceled'
+  )
+  const hasCompletedResponse = turn.events.some(event => event.type === 'ai.message.completed')
+  const streamingText = hasCompletedResponse ? '' : currentStreamingText(turn)
+  return (
+    <article className='grid gap-2'>
+      <div className='ml-auto max-w-[85%] rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground'>
+        {turn.prompt}
+      </div>
+      <div className='grid gap-2 p-3'>
+        <div className='flex items-center justify-start gap-3'>
+          <div className='flex min-w-0 items-center gap-2'>
+            <IconSparkles className='size-4 shrink-0 text-primary' />
+            <span className='truncate text-sm font-medium'>AI agent</span>
+          </div>
+          <Badge
+            variant={runStatusBadgeVariant(turn.status)}
+            className='capitalize'
+          >
+            {chatTurnTitle(turn)}
+          </Badge>
+        </div>
+        {turn.error ? <div className='text-xs text-destructive'>{turn.error}</div> : null}
+        {turn.status === 'queued' ? (
+          <div className='text-sm text-secondary-foreground'>
+            Waiting for the active run to finish. Use Run next to start it.
+          </div>
+        ) : null}
+        {visibleEvents.length === 0 && turn.status !== 'queued' ? (
+          <div className='text-sm text-secondary-foreground'>Waiting for the agent to start...</div>
+        ) : null}
+        {visibleEvents.map(event => (
+          <ChatEventView
+            key={event.id}
+            event={event}
+          />
+        ))}
+        {streamingText ? (
+          <div className='whitespace-pre-wrap text-sm text-foreground'>
+            {streamingText}
+            <span className='ml-0.5 animate-pulse text-primary'>▍</span>
+          </div>
+        ) : null}
+        {isWorking && !hasFinalResponse ? <WorkingIndicator status={turn.status} /> : null}
+      </div>
+    </article>
+  )
+}
+
+const WorkingIndicator = ({ status }: { status: ChatTurnStatus }) => (
+  <div className='flex items-center gap-2 text-sm text-secondary-foreground'>
+    <span>{status === 'canceling' ? 'Canceling' : 'Working'}</span>
+    <span className='flex items-center gap-1'>
+      <span className='size-1.5 animate-bounce rounded-full bg-primary [animation-delay:-0.2s]' />
+      <span className='size-1.5 animate-bounce rounded-full bg-primary [animation-delay:-0.1s]' />
+      <span className='size-1.5 animate-bounce rounded-full bg-primary' />
+    </span>
+  </div>
+)
+
+const ChatEventView = ({ event }: { event: AutomationRunEvent }) => {
+  if (event.type === 'ai.user.message' || event.type === 'ai.message.delta') return null
+  if (event.type === 'ai.screenshot.observed') {
+    const dimensions =
+      typeof event.data.width === 'number' && typeof event.data.height === 'number'
+        ? ` ${event.data.width}x${event.data.height}`
+        : ''
+    const bytes = typeof event.data.bytes === 'number' ? ` ${Math.round(event.data.bytes / 1024)} KB` : ''
+    return (
+      <div className='text-xs text-secondary-foreground'>
+        {event.message}
+        {dimensions || bytes ? (
+          <span className='text-muted-foreground'>
+            {' '}
+            ({[dimensions.trim(), bytes.trim()].filter(Boolean).join(', ')})
+          </span>
+        ) : null}
+      </div>
+    )
+  }
+  if (event.type === 'ai.ui.observed') {
+    const bytes = typeof event.data.bytes === 'number' ? ` ${Math.round(event.data.bytes / 1024)} KB` : ''
+    const nodeCount = typeof event.data.nodeCount === 'number' ? ` ${event.data.nodeCount} nodes` : ''
+    return (
+      <div className='text-xs text-secondary-foreground'>
+        {event.message}
+        {bytes || nodeCount ? (
+          <span className='text-muted-foreground'>
+            {' '}
+            ({[nodeCount.trim(), bytes.trim()].filter(Boolean).join(', ')})
+          </span>
+        ) : null}
+      </div>
+    )
+  }
+  if (event.type === 'ai.message.completed') {
+    return <div className='whitespace-pre-wrap text-sm text-foreground'>{event.message}</div>
+  }
+  if (event.type === 'ai.tool.arguments') {
+    return (
+      <div className='font-mono text-xs text-secondary-foreground'>
+        args: {eventToolLabel(event)} <span className='text-muted-foreground'>({eventToolName(event)})</span>{' '}
+        {compactJson(event.data.arguments)}
+      </div>
+    )
+  }
+  if (event.type === 'ai.tool.started') {
+    return (
+      <div className='font-mono text-xs text-secondary-foreground'>
+        tool: {eventToolLabel(event)} <span className='text-muted-foreground'>({eventToolName(event)})</span>
+      </div>
+    )
+  }
+  if (event.type === 'ai.tool.completed') {
+    return (
+      <div className='font-mono text-xs text-secondary-foreground'>
+        done: {eventToolLabel(event)} <span className='text-muted-foreground'>({eventToolName(event)})</span>
+      </div>
+    )
+  }
+  if (event.type === 'ai.tool.failed' || event.type === 'ai.guardrail.triggered' || event.type === 'run.failed') {
+    return <div className='text-xs text-destructive'>{event.message}</div>
+  }
+  if (event.type === 'run.canceled') {
+    return <div className='text-xs text-destructive'>Run canceled.</div>
+  }
+  if (event.type === 'run.started' || event.type === 'run.queued' || event.type === 'ai.model.started') {
+    return <div className='font-mono text-xs text-secondary-foreground'>{event.message}</div>
+  }
+  return null
+}

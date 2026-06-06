@@ -122,6 +122,13 @@ export const orchestratorAutomationsClient = {
     return emptyRequest<AutomationRun[]>(`/automations/ai/runs?${query.toString()}`)
   },
 
+  clearAdHocAiRuns(ownerUserId: string, targetApplicationId: string) {
+    const query = new URLSearchParams({ ownerUserId, targetApplicationId })
+    return request<{ cleared: number }>(`/automations/ai/runs?${query.toString()}`, {
+      method: 'DELETE'
+    })
+  },
+
   listActiveRuns(ownerUserId: string) {
     return emptyRequest<AutomationRun[]>(`/automations/runs?${ownerQuery(ownerUserId)}&status=active`)
   },

@@ -1,5 +1,5 @@
 import { defaultAiProviders, MASKED_API_KEY } from "./defaults";
-import { normalizeDefaultModel } from "./model-capabilities";
+import { normalizeDefaultModel } from "./default-model";
 import {
   nullableInteger,
   nullableNumber,
@@ -115,8 +115,6 @@ export const normalizeAiModel = (
     id,
     label,
     settings: normalizeAiModelSettings(model.settings),
-    supportsVision: model.supportsVision !== false,
-    supportsTools: model.supportsTools !== false,
     enabled: model.enabled !== false,
     default: model.default === true,
   };

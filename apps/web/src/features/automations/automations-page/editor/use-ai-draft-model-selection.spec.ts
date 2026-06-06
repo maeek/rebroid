@@ -13,18 +13,14 @@ const catalog = [
         label: 'Small',
         settings: {},
         default: false,
-        enabled: true,
-        supportsVision: false,
-        supportsTools: true
+        enabled: true
       },
       {
         id: 'vision',
         label: 'Vision',
         settings: {},
         default: true,
-        enabled: true,
-        supportsVision: true,
-        supportsTools: true
+        enabled: true
       }
     ]
   },
@@ -38,9 +34,7 @@ const catalog = [
         label: 'Fast',
         settings: {},
         default: false,
-        enabled: true,
-        supportsVision: true,
-        supportsTools: true
+        enabled: true
       }
     ]
   }

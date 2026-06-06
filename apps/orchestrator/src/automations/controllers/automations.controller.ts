@@ -77,6 +77,14 @@ export class AutomationsController {
     );
   }
 
+  @Delete('ai/runs')
+  clearAdHocAiRuns(
+    @Query('ownerUserId') ownerUserId: string,
+    @Query('targetApplicationId') targetApplicationId: string,
+  ) {
+    return this.automations.clearAdHocAiRuns(ownerUserId, targetApplicationId);
+  }
+
   @Get()
   @ApiOkResponse({ type: AutomationDto, isArray: true })
   list(@Query('ownerUserId') ownerUserId: string) {

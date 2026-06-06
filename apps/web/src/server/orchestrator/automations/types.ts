@@ -170,6 +170,7 @@ export type AutomationRunEventType =
   | 'ai.model.completed'
   | 'ai.user.message'
   | 'ai.screenshot.observed'
+  | 'ai.ui.observed'
   | 'ai.message.delta'
   | 'ai.message.completed'
   | 'ai.tool.started'

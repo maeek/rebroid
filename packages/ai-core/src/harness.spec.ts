@@ -4,8 +4,10 @@ import {
   allowedToolMatcher,
   buildChatRequestBody,
   buildInitialMessages,
+  buildUiXmlObservationMessage,
   buildToolDefinitions,
   chatCompletionsEndpoint,
+  consumeChatCompletionStream,
   mapUsesByToolName,
   parseArguments,
   toolName,
@@ -38,8 +40,6 @@ const model: AutomationAiProviderModel = {
     seed: null,
     keepAlive: "5m",
   },
-  supportsVision: true,
-  supportsTools: true,
   enabled: true,
   default: true,
 };
@@ -86,7 +86,7 @@ describe("AI harness core", () => {
       {
         role: "system",
         content:
-          "You are an Android automation agent controlling a live device through typed tools.\nAlways inspect the latest screenshot before choosing screen actions.\nUse only the tools provided to you. Do not invent tool results or assume an action succeeded without observing the screen again.\nAfter every screen-changing action, wait for the fresh screenshot observation before deciding the next action.\nPrefer semantic or state-reading tools when they are available. Use coordinates only when they are clearly supported by the screenshot.\nContinue the observe/action/observe loop until the requested task is visibly complete, the app blocks progress, or a timeout/tool limit is reached.\nWrite concise visible progress and a short final answer. Do not reveal hidden reasoning.\n\nUse terse summaries.",
+          "You are an Android automation agent controlling a live device through typed tools.\nAlways inspect the latest screen observation before choosing screen actions. The observation may be a screenshot or UI hierarchy XML.\nUse only the tools provided to you. Do not invent tool results or assume an action succeeded without observing the screen again.\nAfter every screen-changing action, wait for the fresh observation before deciding the next action.\nPrefer semantic or state-reading tools when they are available. Use coordinates only when they are clearly supported by the screenshot or UI XML bounds.\nContinue the observe/action/observe loop until the requested task is visibly complete, the app blocks progress, or a timeout/tool limit is reached.\nWrite concise visible progress and a short final answer. Do not reveal hidden reasoning.\n\nUse terse summaries.",
       },
       { role: "user", content: "Do it" },
     ]);
@@ -121,10 +121,33 @@ describe("AI harness core", () => {
         messages: [],
         tools: [],
         tool_choice: "auto",
+        stream: false,
         temperature: 0.5,
         top_p: 0.9,
         options: { num_ctx: 4096, top_k: 20 },
         keep_alive: "5m",
+      },
+    );
+  });
+
+  it("builds text-only UI XML observations", () => {
+    assert.deepEqual(
+      buildInitialMessages({ prompt: "Do it", initialUiXml: "<hierarchy />" }, model)[1],
+      {
+        role: "user",
+        content:
+          "Do it\n\nCurrent UI hierarchy XML:\n<hierarchy />\n\nInspect this UI hierarchy before taking any action.",
+      },
+    );
+    assert.deepEqual(
+      buildUiXmlObservationMessage({
+        summary: "Fresh UI hierarchy captured.",
+        xml: "<node />",
+      }),
+      {
+        role: "user",
+        content:
+          "Fresh UI hierarchy captured.\n\nCurrent UI hierarchy XML:\n<node />\n\nInspect this latest UI hierarchy before deciding the next step.",
       },
     );
   });
@@ -134,4 +157,56 @@ describe("AI harness core", () => {
     assert.deepEqual(parseArguments("[]"), {});
     assert.deepEqual(parseArguments("bad"), {});
   });
+
+  it("consumes streamed assistant text", async () => {
+    const deltas: string[] = [];
+    const result = await consumeChatCompletionStream({
+      body: streamFromText([
+        'data: {"choices":[{"delta":{"content":"Open "}}]}\n\n',
+        'data: {"choices":[{"delta":{"content":"settings"}}]}\n\n',
+        "data: [DONE]\n\n",
+      ]),
+      onUpdate: ({ contentDelta }) => {
+        if (contentDelta) deltas.push(contentDelta);
+      },
+    });
+
+    assert.deepEqual(deltas, ["Open ", "settings"]);
+    assert.equal(result.content, "Open settings");
+    assert.deepEqual(result.message, {
+      role: "assistant",
+      content: "Open settings",
+      tool_calls: [],
+    });
+  });
+
+  it("consumes streamed tool calls with chunked arguments", async () => {
+    const result = await consumeChatCompletionStream({
+      body: streamFromText([
+        'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_1","type":"function","function":{"name":"android__tap","arguments":"{\\"x\\":"}}]}}]}\n\n',
+        'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"10,\\"y\\":20}"}}]}}]}\n\n',
+        "data: [DONE]\n\n",
+      ]),
+    });
+
+    assert.deepEqual(result.toolCalls, [
+      {
+        id: "call_1",
+        type: "function",
+        function: {
+          name: "android__tap",
+          arguments: '{"x":10,"y":20}',
+        },
+      },
+    ]);
+  });
 });
+
+const streamFromText = (chunks: string[]) =>
+  new ReadableStream<Uint8Array>({
+    start(controller) {
+      const encoder = new TextEncoder();
+      for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+      controller.close();
+    },
+  });

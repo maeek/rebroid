@@ -14,15 +14,3 @@ export const normalizeDefaultModel = (models: AutomationAiProviderModel[]) => {
     return { ...model, default: isDefault };
   });
 };
-
-export const modelLikelySupportsVision = (modelId: string, label?: string) =>
-  /\b(vl|vision|visual|multimodal|gpt-4o|o4|llava|pixtral|gemini)\b/i.test(
-    `${modelId} ${label ?? ""}`,
-  );
-
-export const inferModelCapabilities = (
-  model: Pick<AutomationAiProviderModel, "id" | "label">,
-) => ({
-  supportsVision: modelLikelySupportsVision(model.id, model.label),
-  supportsTools: Boolean(model.id.trim()),
-});

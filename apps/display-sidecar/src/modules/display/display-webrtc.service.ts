@@ -34,7 +34,7 @@ type BridgeMessage =
   | { type: "error"; message: string };
 
 type DisplayControlMessage =
-  | { id?: string; type: "action"; command?: string; action?: string }
+  | { id?: string; type: "action"; command?: string }
   | ({ id?: string; type: "keyboard" } & DisplayKeyboardBody)
   | ({ id?: string; type: "touch" } & DisplayTouchBody)
   | { id?: string; type: "clipboard"; text?: string };
@@ -268,7 +268,7 @@ export class DisplayWebrtcService {
       await this.executeAction(
         sessionId,
         session.udid,
-        message.command ?? message.action,
+        message.command,
       );
     } else if (message.type === "keyboard") {
       const handled = this.scrcpy.sendKeyboardEvent(sessionId, message);

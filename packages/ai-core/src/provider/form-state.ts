@@ -1,4 +1,3 @@
-import { inferModelCapabilities } from "./model-capabilities";
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,
@@ -20,8 +19,6 @@ export const emptyModel = (): AutomationAiProviderModel => ({
   id: "",
   label: "",
   settings: {},
-  supportsVision: false,
-  supportsTools: false,
   enabled: true,
   default: false,
 });
@@ -40,10 +37,6 @@ export const normalizeProviderForm = (
       id: model.id.trim(),
       label: model.label.trim() || model.id.trim(),
       settings: model.settings ?? {},
-      ...inferModelCapabilities({
-        id: model.id.trim(),
-        label: model.label.trim() || model.id.trim(),
-      }),
     }))
     .filter((model) => model.id.length > 0),
 });

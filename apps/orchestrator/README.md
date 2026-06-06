@@ -10,7 +10,7 @@ NestJS backend for provisioning isolated application containers and preparing br
 - `DockerMaintenanceModule`: prune unused containers, networks, images, and volumes.
 - `NetworkIsolationModule`: per-application Docker names, volume, and network boundary.
 - `SettingsModule`: JSON-backed runtime defaults and APK upload limits.
-- Viewer session API: `GET /android-applications/:id/scrcpy-session` prepares the shared display sidecar and returns app-scoped connection metadata for the browser viewer.
+- Viewer session API: `POST /api/v1/apps/:id/viewer/session` prepares the shared display sidecar and returns app-scoped connection metadata for the browser viewer.
 - `HealthModule`: Docker socket health check.
 
 ## Isolation Model
@@ -40,12 +40,12 @@ http://localhost:4100/docs
 
 ## Provisioning Flow
 
-`POST /android-applications` returns immediately after creating the database record and saving the uploaded APK. Provisioning then runs in the background.
+`POST /api/v1/apps` returns immediately after creating the database record and saving the uploaded APK. Provisioning then runs in the background.
 
 Poll the application record:
 
 ```text
-GET /android-applications/:id
+GET /api/v1/apps/:id
 ```
 
 Useful frontend fields:
@@ -72,9 +72,9 @@ If the redroid image is missing, app creation no longer fails with `409`. The ap
 Images:
 
 ```text
-GET    /container-images
-POST   /container-images/pull
-DELETE /container-images/:image?force=false
+GET    /api/v1/platform/container-images
+POST   /api/v1/platform/container-images/pull
+DELETE /api/v1/platform/container-images/:image?force=false
 ```
 
 Pulling an existing tag is the update path for mutable tags:
@@ -88,19 +88,19 @@ Pulling an existing tag is the update path for mutable tags:
 Pruning:
 
 ```text
-POST /docker-maintenance/prune/images?danglingOnly=true
-POST /docker-maintenance/prune/containers
-POST /docker-maintenance/prune/networks
-POST /docker-maintenance/prune/volumes
-POST /docker-maintenance/prune/all
+POST /api/v1/platform/docker/prune/images?danglingOnly=true
+POST /api/v1/platform/docker/prune/containers
+POST /api/v1/platform/docker/prune/networks
+POST /api/v1/platform/docker/prune/volumes
+POST /api/v1/platform/docker/prune/all
 ```
 
 Settings:
 
 ```text
-GET  /settings
-PATCH /settings
-POST /settings/reset
+GET  /api/v1/settings
+PATCH /api/v1/settings
+POST /api/v1/settings/reset
 ```
 
 Settings are stored in `SETTINGS_PATH`, defaulting to `./data/orchestrator-settings.json`.
@@ -127,7 +127,7 @@ Default compose shape:
 The orchestrator prepares a viewer session at:
 
 ```text
-GET /android-applications/:id/scrcpy-session
+POST /api/v1/apps/:id/viewer/session
 ```
 
 That endpoint validates that the app is running, creates/starts the singleton display sidecar if needed, connects it to the app's isolated Docker network, re-applies the app egress policy so replies to the sidecar are allowed, and creates a short-lived display session for the app ADB target. The frontend opens the sidecar viewer URL directly with that token; raw ADB targets are never accepted without a scoped session.
@@ -135,7 +135,7 @@ That endpoint validates that the app is running, creates/starts the singleton di
 While the viewer shell is open, Next.js sends an authenticated keepalive to:
 
 ```text
-POST /android-applications/:id/viewer-activity
+POST /api/v1/apps/:id/viewer/activity
 ```
 
 That refreshes `lastScrcpyActivityAt`, which is the timestamp used by the inactivity cron before stopping idle running containers.
@@ -145,10 +145,10 @@ That refreshes `lastScrcpyActivityAt`, which is the timestamp used by the inacti
 APK files are uploaded before an Android application is created or updated. Uploads are deduplicated by SHA-256 per owner, stored under `UPLOADS_DIR/apks`, and inspected for a direct launcher icon in common `res/mipmap*` and `res/drawable*` image paths.
 
 ```text
-POST   /apks
-GET    /apks?ownerUserId=admin
-DELETE /apks/:id
-POST   /apks/cleanup
+POST   /api/v1/apk-uploads
+GET    /api/v1/apk-uploads?ownerUserId=admin
+DELETE /api/v1/apk-uploads/:id
+POST   /api/v1/apk-uploads/cleanup
 ```
 
 Create or update applications by referencing the uploaded APK:
@@ -181,8 +181,8 @@ If the API is running outside the per-app Docker network, set `NETWORK_POLICY_AP
 The firewall agent supports native rootful Docker and rootful Podman with Netavark by selecting Docker `DOCKER-USER`, a Rebroid-owned nftables table, or a Rebroid-owned `FORWARD` chain hook. Rootless engines and VM-based desktop engines are unsupported. Policy can be reconciled without restarting the Android container:
 
 ```text
-PATCH /android-applications/:id/network-policy
-POST  /android-applications/:id/network-policy/apply
+PATCH /api/v1/apps/:id/network-policy
+POST  /api/v1/apps/:id/network-policy/apply
 ```
 
 Resource/profile options are stored per app. RAM and CPU limits are applied to new containers.

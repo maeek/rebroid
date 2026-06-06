@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Like, Repository } from 'typeorm';
+import { In, Like, Repository } from 'typeorm';
 import {
   AutomationRun,
   AutomationRunStatus,
@@ -62,6 +62,17 @@ export class AutomationRunsRepository {
     });
   }
 
+  listAllAdHocAiForTarget(ownerUserId: string, targetApplicationId: string) {
+    return this.runs.find({
+      where: {
+        ownerUserId,
+        targetApplicationId,
+        automationId: Like('ephemeral-ai-%'),
+      },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
   findByOwnerAndId(ownerUserId: string, id: string) {
     return this.runs.findOneBy({ ownerUserId, id });
   }
@@ -74,5 +85,12 @@ export class AutomationRunsRepository {
       ],
       order: { createdAt: 'DESC' },
     });
+  }
+
+  async deleteByIds(ownerUserId: string, ids: string[]) {
+    if (ids.length === 0) {
+      return;
+    }
+    await this.runs.delete({ ownerUserId, id: In(ids) });
   }
 }

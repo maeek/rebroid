@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { MoreThan, Repository } from 'typeorm';
+import { In, MoreThan, Repository } from 'typeorm';
 import { AutomationRunEvent } from '../entities/automation-run-event.entity';
 import type {
   AutomationRunEventInput,
@@ -46,6 +46,13 @@ export class AutomationRunEventsRepository {
         take: 1000,
       })
     ).map(toRecord);
+  }
+
+  async deleteForRuns(ownerUserId: string, runIds: string[]) {
+    if (runIds.length === 0) {
+      return;
+    }
+    await this.events.delete({ ownerUserId, runId: In(runIds) });
   }
 }
 

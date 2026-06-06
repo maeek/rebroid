@@ -228,13 +228,6 @@ export class DisplaySessionListResponseDto {
 export class DisplayActionDto {
   @ApiPropertyOptional({ enum: viewerCommands, example: "home" })
   command?: string;
-
-  @ApiPropertyOptional({
-    enum: viewerCommands,
-    example: "home",
-    description: "Legacy alias for command.",
-  })
-  action?: string;
 }
 
 export class PublicDisplayActionDto extends DisplayActionDto {
@@ -393,9 +386,6 @@ export class DisplayCommandResultDto {
 
   @ApiPropertyOptional({ type: DisplaySessionDto })
   session?: DisplaySessionDto;
-
-  @ApiPropertyOptional({ enum: viewerCommands, example: "home" })
-  action?: string;
 
   @ApiPropertyOptional({ enum: viewerCommands, example: "home" })
   command?: string;
