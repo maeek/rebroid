@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils'
 import {
   cancelAutomationRunAction,
   createAutomationRunEventStreamUrlAction,
+  listAdHocAiAutomationRunsAction,
   listAutomationRunEventsAction,
   runAdHocAiAutomationAction
 } from '@/server/orchestrator/automations/automation-run-actions'
@@ -99,6 +100,24 @@ const chatTurnTitle = (turn: ChatTurn) => {
 
 const eventToolName = (event: AutomationRunEvent) =>
   typeof event.data.uses === 'string' ? event.data.uses : event.message
+
+const runStatusToTurnStatus = (status: AutomationRun['status']): ChatTurnStatus => {
+  if (status === 'queued' || status === 'running') return 'running'
+  return status
+}
+
+const chatTurnFromRun = (run: AutomationRun, events: AutomationRunEvent[]): ChatTurn => {
+  const userEvent = events.find(event => event.type === 'ai.user.message')
+  const clientMessageId =
+    userEvent && typeof userEvent.data.clientMessageId === 'string' ? userEvent.data.clientMessageId : run.id
+  return {
+    id: clientMessageId,
+    prompt: userEvent?.message || 'Ad-hoc AI run',
+    status: runStatusToTurnStatus(run.status),
+    run,
+    events
+  }
+}
 
 const lastAssistantText = (turn: ChatTurn) =>
   [...turn.events]
@@ -187,6 +206,41 @@ export const AiAgentToolsSection = ({
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadHistory = async () => {
+      const runs = await listAdHocAiAutomationRunsAction(app.id, 20)
+      const loadedTurns = await Promise.all(
+        runs.map(async run => chatTurnFromRun(run, await listAutomationRunEventsAction(run.id, 0)))
+      )
+      if (cancelled) return
+      const orderedTurns = loadedTurns.sort(
+        (left, right) => new Date(left.run?.createdAt ?? '').getTime() - new Date(right.run?.createdAt ?? '').getTime()
+      )
+      setTurns(current => {
+        const byRunId = new Map(current.filter(turn => turn.run).map(turn => [turn.run?.id, turn]))
+        const currentWithoutRuns = current.filter(turn => !turn.run)
+        for (const turn of orderedTurns) {
+          if (!turn.run) continue
+          byRunId.set(turn.run.id, turn)
+        }
+        return [...currentWithoutRuns, ...byRunId.values()]
+      })
+      const active = [...orderedTurns].reverse().find(turn => turn.run && activeRunStatuses.has(turn.run.status))
+      if (active) setActiveTurnId(active.id)
+    }
+
+    void loadHistory().catch(historyError => {
+      if (cancelled) return
+      setError(historyError instanceof Error ? historyError.message : 'AI chat history could not be loaded.')
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [app.id])
 
   useEffect(() => {
     if (!selectedProvider || !selectedModel) {

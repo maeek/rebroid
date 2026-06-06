@@ -113,6 +113,15 @@ export const orchestratorAutomationsClient = {
     return jsonRequest<AutomationRun>('/automations/ai/runs', 'POST', { ownerUserId, ...input })
   },
 
+  listAdHocAiRuns(ownerUserId: string, targetApplicationId: string, limit = 20) {
+    const query = new URLSearchParams({
+      ownerUserId,
+      targetApplicationId,
+      limit: String(limit)
+    })
+    return emptyRequest<AutomationRun[]>(`/automations/ai/runs?${query.toString()}`)
+  },
+
   listActiveRuns(ownerUserId: string) {
     return emptyRequest<AutomationRun[]>(`/automations/runs?${ownerQuery(ownerUserId)}&status=active`)
   },

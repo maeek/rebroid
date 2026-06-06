@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Like, Repository } from 'typeorm';
 import {
   AutomationRun,
   AutomationRunStatus,
@@ -43,6 +43,22 @@ export class AutomationRunsRepository {
         { ownerUserId, status: AutomationRunStatus.Running },
       ],
       order: { createdAt: 'DESC' },
+    });
+  }
+
+  listAdHocAiForTarget(
+    ownerUserId: string,
+    targetApplicationId: string,
+    limit = 20,
+  ) {
+    return this.runs.find({
+      where: {
+        ownerUserId,
+        targetApplicationId,
+        automationId: Like('ephemeral-ai-%'),
+      },
+      order: { createdAt: 'DESC' },
+      take: Math.max(1, Math.min(Math.trunc(limit), 50)),
     });
   }
 

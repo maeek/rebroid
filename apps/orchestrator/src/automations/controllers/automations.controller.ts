@@ -63,6 +63,20 @@ export class AutomationsController {
     return this.automations.runAdHocAi(dto);
   }
 
+  @Get('ai/runs')
+  @ApiOkResponse({ type: AutomationRunDto, isArray: true })
+  listAdHocAiRuns(
+    @Query('ownerUserId') ownerUserId: string,
+    @Query('targetApplicationId') targetApplicationId: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.automations.listAdHocAiRuns(
+      ownerUserId,
+      targetApplicationId,
+      limit ? Number(limit) : undefined,
+    );
+  }
+
   @Get()
   @ApiOkResponse({ type: AutomationDto, isArray: true })
   list(@Query('ownerUserId') ownerUserId: string) {

@@ -14,6 +14,9 @@ const sidecarBaseUrl = new URL(
     process.env.WS_SCRCPY_INTERNAL_BASE_URL ||
     'http://rebroid-display-sidecar:8000'
 )
+const orchestratorBaseUrl = new URL(
+  process.env.ORCHESTRATOR_INTERNAL_BASE_URL || process.env.ORCHESTRATOR_API_URL || 'http://rebroid-orchestrator:4100'
+)
 const tlsCertFile = process.env.REBROID_TLS_CERT_FILE || '/app/data/certificates/rebroid-web.crt'
 const tlsKeyFile = process.env.REBROID_TLS_KEY_FILE || '/app/data/certificates/rebroid-web.key'
 const viewerTokenCookieName = 'rebroid_viewer_token'
@@ -162,6 +165,16 @@ const targetForRequest = req => {
     return {
       kind: 'sidecar',
       baseUrl: sidecarBaseUrl,
+      path: `${requestUrl.pathname}${requestUrl.search}`,
+      requestUrl,
+      requireViewerToken: false
+    }
+  }
+
+  if (requestUrl.pathname === '/api/v1' || requestUrl.pathname.startsWith('/api/v1/')) {
+    return {
+      kind: 'orchestrator',
+      baseUrl: orchestratorBaseUrl,
       path: `${requestUrl.pathname}${requestUrl.search}`,
       requestUrl,
       requireViewerToken: false
@@ -357,6 +370,7 @@ server.on('upgrade', (req, socket, head) => {
 server.listen(publicPort, '0.0.0.0', () => {
   console.log(`Rebroid web HTTPS proxy listening on 0.0.0.0:${publicPort}`)
   console.log(`Next.js standalone server listening behind proxy on ${nextHost}:${nextPort}`)
+  console.log(`Orchestrator API proxied from ${orchestratorBaseUrl.href}`)
   console.log(`Display sidecar proxied from ${sidecarBaseUrl.href}`)
   console.log(`TLS certificate loaded from ${tlsCertFile}`)
 })

@@ -48,14 +48,14 @@ export const getOrchestratorBrowserBaseUrl = () => {
   return url.toString().replace(/\/$/, '')
 }
 
-export const getOrchestratorBrowserWsUrl = (path: string) => {
+export const getOrchestratorBrowserWsUrl = (path: string, options: { secure?: boolean } = {}) => {
   if (!path.startsWith('/') || path.startsWith('//')) {
     throw new Error('Orchestrator WebSocket paths must start with a single slash.')
   }
 
   const base = new URL(`${getOrchestratorBrowserBaseUrl()}/api/v1/`)
   const url = new URL(path.slice(1), base)
-  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+  url.protocol = options.secure || url.protocol === 'https:' ? 'wss:' : 'ws:'
 
   if (!url.pathname.startsWith(base.pathname)) {
     throw new Error('Orchestrator WebSocket paths cannot escape the API root.')

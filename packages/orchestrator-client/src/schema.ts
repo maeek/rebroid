@@ -906,7 +906,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["AutomationsController_listAdHocAiRuns"];
         put?: never;
         post: operations["AutomationsController_runAdHocAi"];
         delete?: never;
@@ -4352,6 +4352,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AutomationYamlDraftDto"];
+                };
+            };
+        };
+    };
+    AutomationsController_listAdHocAiRuns: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+                targetApplicationId: string;
+                limit?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationRunDto"][];
                 };
             };
         };

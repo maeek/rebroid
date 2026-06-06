@@ -245,6 +245,21 @@ export class AutomationsService implements OnModuleInit {
     return this.mapper.run(run);
   }
 
+  async listAdHocAiRuns(
+    ownerUserId: string,
+    targetApplicationId: string,
+    limit?: number,
+  ) {
+    await this.assertTargetApplication(ownerUserId, targetApplicationId);
+    return (
+      await this.runs.listAdHocAiForTarget(
+        ownerUserId.trim(),
+        targetApplicationId,
+        limit,
+      )
+    ).map((run) => this.mapper.run(run));
+  }
+
   async run(ownerUserId: string, id: string, dto: RunAutomationDto) {
     const automation = await this.getEntity(ownerUserId, id);
     await this.assertTargetApplication(ownerUserId, dto.targetApplicationId);

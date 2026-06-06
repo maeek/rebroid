@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { headers } from 'next/headers'
 import { getOrchestratorBrowserWsUrl } from '@/server/orchestrator/config'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import {
@@ -71,13 +72,40 @@ export const createAutomationRunEventStreamUrlAction = async (runId: string, aft
   assertAutomationPermission(user, 'automations:run')
   const token = await orchestratorAutomationsClient.createRunEventStreamToken(user.ownerUserId, runId)
   const query = new URLSearchParams({ token: token.token, after: String(after) })
-  return getOrchestratorBrowserWsUrl(`/automations/runs/events/ws?${query}`)
+  const requestHeaders = await headers()
+  const isHttpsRequest =
+    requestHeaders.get('x-forwarded-proto')?.split(',')[0]?.trim() === 'https' ||
+    requestHeaders.get('x-forwarded-ssl') === 'on' ||
+    requestHeaders.get('origin')?.startsWith('https://') === true
+  const origin = requestHeaders.get('origin')
+  const forwardedHost = requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host')
+  const browserOrigin = origin?.startsWith('https://')
+    ? origin
+    : isHttpsRequest && forwardedHost
+      ? `https://${forwardedHost}`
+      : null
+  if (browserOrigin) {
+    const url = new URL(`/api/v1/automations/runs/events/ws?${query}`, browserOrigin)
+    url.protocol = 'wss:'
+    return url.toString()
+  }
+  return getOrchestratorBrowserWsUrl(`/automations/runs/events/ws?${query}`, {
+    secure: isHttpsRequest
+  })
 }
 
 export const listActiveAutomationRunsAction = async () => {
   const user = await getCurrentUserContext()
   assertAutomationPermission(user, 'automations:run')
   return orchestratorAutomationsClient.listActiveRuns(user.ownerUserId)
+}
+
+export const listAdHocAiAutomationRunsAction = async (targetApplicationId: string, limit = 20) => {
+  const user = await getCurrentUserContext()
+  assertAutomationPermission(user, 'automations:run')
+  assertAutomationPermission(user, 'automations:run-ai')
+  await assertTargetApplication(targetApplicationId)
+  return orchestratorAutomationsClient.listAdHocAiRuns(user.ownerUserId, targetApplicationId, limit)
 }
 
 export const listAutomationRunsAction = async (automationId: string, limit = 50) => {

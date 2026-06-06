@@ -2474,6 +2474,53 @@
       }
     },
     "/api/v1/automations/ai/runs": {
+      "get": {
+        "operationId": "AutomationsController_listAdHocAiRuns",
+        "parameters": [
+          {
+            "name": "ownerUserId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "targetApplicationId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AutomationRunDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "automations"
+        ]
+      },
       "post": {
         "operationId": "AutomationsController_runAdHocAi",
         "parameters": [],

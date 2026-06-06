@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   RequestTimeoutException,
 } from '@nestjs/common';
 import {
@@ -70,6 +71,8 @@ const screenshotFromData = (data?: Record<string, unknown>) => {
 
 @Injectable()
 export class AutomationAiHarnessService {
+  private readonly logger = new Logger(AutomationAiHarnessService.name);
+
   constructor(
     private readonly providers: AutomationAiProviderService,
     private readonly registry: AutomationCommandRegistryService,
@@ -304,8 +307,12 @@ export class AutomationAiHarnessService {
         ),
       });
       if (!response.ok) {
+        const detail = await this.readProviderError(response);
+        this.logger.warn(
+          `AI provider request failed for provider=${provider.id} model=${model.id}: ${response.status} ${response.statusText}${detail ? ` - ${detail}` : ''}`,
+        );
         throw new BadRequestException(
-          `AI provider request failed: ${response.status} ${response.statusText}`,
+          `AI provider request failed: ${response.status} ${response.statusText}${detail ? ` - ${detail}` : ''}`,
         );
       }
       return (await response.json()) as {
@@ -315,6 +322,29 @@ export class AutomationAiHarnessService {
       abortSignal?.removeEventListener('abort', onAbort);
       clearTimeout(timeout);
     }
+  }
+
+  private async readProviderError(response: Response) {
+    const text = await response.text().catch(() => '');
+    if (!text.trim()) return '';
+    try {
+      const parsed = JSON.parse(text) as unknown;
+      if (parsed && typeof parsed === 'object') {
+        const record = parsed as Record<string, unknown>;
+        const error = record.error;
+        if (typeof error === 'string') return error.slice(0, 2000);
+        if (error && typeof error === 'object') {
+          const errorRecord = error as Record<string, unknown>;
+          const message = errorRecord.message ?? errorRecord.error;
+          if (typeof message === 'string') return message.slice(0, 2000);
+        }
+        const message = record.message ?? record.detail;
+        if (typeof message === 'string') return message.slice(0, 2000);
+      }
+    } catch {
+      return text.slice(0, 2000);
+    }
+    return text.slice(0, 2000);
   }
 
   private assertNotCanceled(abortSignal?: AbortSignal) {
