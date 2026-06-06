@@ -21,7 +21,7 @@ export interface OptimizedAiScreenshot extends AiScreenshot {
 export const optimizeAiScreenshot = async (
   screenshot: AiScreenshot,
 ): Promise<OptimizedAiScreenshot> => {
-  const parsed = parseDataUrl(screenshot.dataUrl);
+  const parsed = parseAiScreenshotDataUrl(screenshot.dataUrl);
   if (!parsed) {
     return fallbackScreenshot(screenshot, 0, null, null);
   }
@@ -64,7 +64,25 @@ export const optimizeAiScreenshot = async (
   }
 };
 
-const parseDataUrl = (dataUrl: string) => {
+export const readAiScreenshotMetadata = async (screenshot: AiScreenshot) => {
+  const parsed = parseAiScreenshotDataUrl(screenshot.dataUrl);
+  if (!parsed) return { width: null, height: null };
+  try {
+    const metadata = await sharp(parsed.buffer, {
+      limitInputPixels: 4096 * 4096,
+    })
+      .rotate()
+      .metadata();
+    return {
+      width: metadata.width ?? null,
+      height: metadata.height ?? null,
+    };
+  } catch {
+    return { width: null, height: null };
+  }
+};
+
+export const parseAiScreenshotDataUrl = (dataUrl: string) => {
   const match = dataUrl.match(DATA_URL_PATTERN);
   if (!match) return null;
   return {

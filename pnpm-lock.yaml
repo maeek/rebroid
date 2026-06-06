@@ -140,6 +140,9 @@ importers:
       '@rebroid/firewall-policy-core':
         specifier: workspace:*
         version: link:../../packages/firewall-policy-core
+      '@rebroid/vision-core':
+        specifier: workspace:*
+        version: link:../../packages/vision-core
       better-sqlite3:
         specifier: ^12.4.1
         version: 12.10.0
@@ -312,6 +315,9 @@ importers:
       '@rebroid/orchestrator-client':
         specifier: workspace:*
         version: link:../../packages/orchestrator-client
+      '@rebroid/vision-core':
+        specifier: workspace:*
+        version: link:../../packages/vision-core
       '@tabler/icons-react':
         specifier: ^3.44.0
         version: 3.44.0(react@19.2.7)
@@ -568,6 +574,18 @@ importers:
       openapi-fetch:
         specifier: ^0.17.0
         version: 0.17.0
+
+  packages/vision-core:
+    devDependencies:
+      '@types/node':
+        specifier: ^25.9.1
+        version: 25.9.1
+      prettier:
+        specifier: ^3.8.3
+        version: 3.8.3
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
 
 packages:
 

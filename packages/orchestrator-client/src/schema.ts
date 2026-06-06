@@ -1764,6 +1764,12 @@ export interface components {
             id: string;
             /** @example Qwen 2.5 VL 7B */
             label: string;
+            /**
+             * @default [
+             *       "planner"
+             *     ]
+             */
+            roles: ("planner" | "vision")[];
             settings: components["schemas"]["AutomationAiProviderModelSettingsDto"];
             /** @default true */
             enabled: boolean;
@@ -1850,6 +1856,12 @@ export interface components {
             id: string;
             /** @example Qwen 2.5 VL 7B */
             label: string;
+            /**
+             * @default [
+             *       "planner"
+             *     ]
+             */
+            roles: ("planner" | "vision")[];
             settings: components["schemas"]["AutomationAiProviderModelSettingsDto"];
             /** @default true */
             enabled: boolean;
@@ -1882,6 +1894,12 @@ export interface components {
             id?: string;
             /** @example Qwen 2.5 VL 7B */
             label?: string;
+            /**
+             * @default [
+             *       "planner"
+             *     ]
+             */
+            roles: ("planner" | "vision")[];
             settings?: components["schemas"]["AutomationAiProviderModelSettingsDto"];
             /** @default true */
             enabled: boolean;
@@ -2375,6 +2393,10 @@ export interface components {
             providerId?: string;
             /** @example qwen2.5vl:7b */
             modelId?: string;
+            /** @example local-ollama */
+            visionProviderId?: string;
+            /** @example qwen2.5vl:7b */
+            visionModelId?: string;
         };
         AutomationYamlDraftDto: {
             yaml: string;
@@ -2407,6 +2429,10 @@ export interface components {
             providerId?: string;
             /** @example qwen2.5vl:7b */
             modelId?: string;
+            /** @example local-ollama */
+            visionProviderId?: string;
+            /** @example qwen2.5vl:7b */
+            visionModelId?: string;
             /** @example msg_01HV4Y6N2R2N4SVJ8VJ7HJZJAA */
             clientMessageId?: string;
             allowedTools?: string[];
@@ -3191,6 +3217,7 @@ export interface operations {
         parameters: {
             query: {
                 modelId: string;
+                role: string;
             };
             header?: never;
             path: {

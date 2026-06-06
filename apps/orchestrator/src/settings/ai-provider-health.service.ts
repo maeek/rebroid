@@ -1,9 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
+  buildChatRequestBody,
+  chatCompletionsEndpoint,
+  type ChatMessage,
+} from '@rebroid/ai-core/harness';
+import {
   parseProviderRemoteModels,
   providerModelsUrl,
   providerRemoteModelsUrl,
   type AutomationAiProvider,
+  type AutomationAiProviderModel,
+  type AutomationAiProviderModelRole,
 } from '@rebroid/ai-core/provider';
 import type {
   AutomationAiProviderHealthDto,
@@ -15,6 +22,7 @@ export class AiProviderHealthService {
   async checkProviderHealth(
     provider: AutomationAiProvider,
     modelId?: string,
+    role?: AutomationAiProviderModelRole,
   ): Promise<AutomationAiProviderHealthDto> {
     const model = modelId
       ? provider.models.find((item) => item.id === modelId)
@@ -39,6 +47,14 @@ export class AiProviderHealthService {
         model.id,
         'disabled',
         'Model is disabled.',
+      );
+    }
+    if (model && role && !model.roles.includes(role)) {
+      return this.healthResult(
+        provider.id,
+        model.id,
+        'disabled',
+        `Model is not enabled for the ${role} role.`,
       );
     }
 
@@ -75,6 +91,10 @@ export class AiProviderHealthService {
           `Provider is reachable, but model "${model.id}" was not listed.`,
         );
       }
+      if (model && role) {
+        const roleHealth = await this.exerciseModelRole(provider, model, role);
+        if (roleHealth) return roleHealth;
+      }
       return this.healthResult(
         provider.id,
         model?.id,
@@ -91,6 +111,90 @@ export class AiProviderHealthService {
         this.errorMessage(error),
       );
     }
+  }
+
+  private async exerciseModelRole(
+    provider: AutomationAiProvider,
+    model: AutomationAiProviderModel,
+    role: AutomationAiProviderModelRole,
+  ) {
+    try {
+      const messages = this.roleProbeMessages(role);
+      const tools =
+        role === 'planner'
+          ? [
+              {
+                type: 'function',
+                function: {
+                  name: 'health_check_noop',
+                  description:
+                    'No-op tool used only to verify tool-call request compatibility.',
+                  parameters: {
+                    type: 'object',
+                    properties: {},
+                    additionalProperties: false,
+                  },
+                },
+              },
+            ]
+          : undefined;
+      const response = await fetch(chatCompletionsEndpoint(provider), {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          ...(provider.apiKey
+            ? { Authorization: `Bearer ${provider.apiKey}` }
+            : {}),
+        },
+        signal: AbortSignal.timeout(8000),
+        body: JSON.stringify(
+          buildChatRequestBody({
+            provider,
+            model,
+            messages,
+            stream: false,
+            tools,
+          }),
+        ),
+      });
+      if (!response.ok) {
+        const detail = await response.text().catch(() => '');
+        return this.healthResult(
+          provider.id,
+          model.id,
+          'error',
+          `${role === 'planner' ? 'Planner' : 'Vision'} role check failed: HTTP ${response.status}${detail ? ` - ${detail.slice(0, 500)}` : ''}`,
+        );
+      }
+      return null;
+    } catch (error) {
+      return this.healthResult(
+        provider.id,
+        model.id,
+        'error',
+        `${role === 'planner' ? 'Planner' : 'Vision'} role check failed: ${this.errorMessage(error)}`,
+      );
+    }
+  }
+
+  private roleProbeMessages(role: AutomationAiProviderModelRole): ChatMessage[] {
+    if (role === 'vision') {
+      return [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Reply with ok if you can read this image.' },
+            {
+              type: 'image_url',
+              image_url: {
+                url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=',
+              },
+            },
+          ],
+        },
+      ];
+    }
+    return [{ role: 'user', content: 'Reply with ok.' }];
   }
 
   async checkProviderConnection(provider: AutomationAiProvider) {

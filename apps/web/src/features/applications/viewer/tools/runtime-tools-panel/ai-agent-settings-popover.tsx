@@ -51,10 +51,15 @@ export const AiAgentSettingsPopover = ({
   isCheckingHealth,
   selectedModel,
   selectedProvider,
+  selectedVisionModel,
+  selectedVisionProvider,
   setModelId,
   setProviderId,
+  setVisionModelId,
+  setVisionProviderId,
   setTimeoutMinutesInput,
-  timeoutMinutesInput
+  timeoutMinutesInput,
+  visionCatalog
 }: {
   adHocTimeoutMinutes: number
   catalog: AutomationAiModelCatalogProvider[]
@@ -62,10 +67,15 @@ export const AiAgentSettingsPopover = ({
   isCheckingHealth: boolean
   selectedModel: AutomationAiModelCatalogProvider['models'][number] | undefined
   selectedProvider: AutomationAiModelCatalogProvider | undefined
+  selectedVisionModel: AutomationAiModelCatalogProvider['models'][number] | undefined
+  selectedVisionProvider: AutomationAiModelCatalogProvider | undefined
   setModelId: (modelId: string) => void
   setProviderId: (providerId: string) => void
+  setVisionModelId: (modelId: string) => void
+  setVisionProviderId: (providerId: string) => void
   setTimeoutMinutesInput: (value: string) => void
   timeoutMinutesInput: string
+  visionCatalog: AutomationAiModelCatalogProvider[]
 }) => (
   <Popover>
     <Tooltip>
@@ -92,13 +102,12 @@ export const AiAgentSettingsPopover = ({
         <div className='grid gap-1'>
           <div className='text-sm font-medium'>AI settings</div>
           <div className='text-xs text-secondary-foreground'>
-            Choose one model that accepts screenshots and OpenAI-style tool calls. Hosted examples include GPT-4o,
-            GPT-4.1, and Gemini 2.5; many Ollama vision models can read images but reject tools.
+            Choose a planner model for tool calls and an optional vision model for screen summaries.
           </div>
         </div>
         <div className='grid gap-3'>
           <div className='grid gap-2'>
-            <Label>Provider</Label>
+            <Label>Planner provider</Label>
             <Select
               value={selectedProvider?.id ?? ''}
               disabled={catalog.length === 0}
@@ -110,7 +119,7 @@ export const AiAgentSettingsPopover = ({
               }}
             >
               <SelectTrigger className='w-full'>
-                <SelectValue placeholder='Provider' />
+                <SelectValue placeholder='Planner provider' />
               </SelectTrigger>
               <SelectContent>
                 {catalog.map(provider => (
@@ -125,7 +134,7 @@ export const AiAgentSettingsPopover = ({
             </Select>
           </div>
           <div className='grid gap-2'>
-            <Label>Model</Label>
+            <Label>Planner model</Label>
             <Select
               value={selectedModel?.id ?? ''}
               disabled={!selectedProvider}
@@ -136,6 +145,55 @@ export const AiAgentSettingsPopover = ({
               </SelectTrigger>
               <SelectContent>
                 {(selectedProvider?.models ?? []).map(model => (
+                  <SelectItem
+                    key={model.id}
+                    value={model.id}
+                  >
+                    {model.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className='grid gap-2'>
+            <Label>Vision provider</Label>
+            <Select
+              value={selectedVisionProvider?.id ?? ''}
+              disabled={visionCatalog.length === 0}
+              onValueChange={nextProviderId => {
+                const nextProvider = visionCatalog.find(provider => provider.id === nextProviderId)
+                const nextModel = nextProvider?.models.find(model => model.default) ?? nextProvider?.models[0]
+                setVisionProviderId(nextProviderId)
+                setVisionModelId(nextModel?.id ?? '')
+              }}
+            >
+              <SelectTrigger className='w-full'>
+                <SelectValue placeholder='Optional vision provider' />
+              </SelectTrigger>
+              <SelectContent>
+                {visionCatalog.map(provider => (
+                  <SelectItem
+                    key={provider.id}
+                    value={provider.id}
+                  >
+                    {provider.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className='grid gap-2'>
+            <Label>Vision model</Label>
+            <Select
+              value={selectedVisionModel?.id ?? ''}
+              disabled={!selectedVisionProvider}
+              onValueChange={setVisionModelId}
+            >
+              <SelectTrigger className='w-full'>
+                <SelectValue placeholder='Optional vision model' />
+              </SelectTrigger>
+              <SelectContent>
+                {(selectedVisionProvider?.models ?? []).map(model => (
                   <SelectItem
                     key={model.id}
                     value={model.id}

@@ -28,28 +28,33 @@ export const AiAgentToolsSection = ({
     adHocTimeoutMs,
     canSubmit,
     cancelRun,
-    catalog,
     clearConversation,
     error,
     health,
     isCanceling,
     isCheckingHealth,
     isClearing,
+    plannerCatalog,
     prompt,
     queuedTurn,
     runQueuedTurn,
     selectedModel,
     selectedProvider,
+    selectedVisionModel,
+    selectedVisionProvider,
     selectionMessage,
     setModelId,
     setPrompt,
     setProviderId,
+    setVisionModelId,
+    setVisionProviderId,
     setTimeoutMinutesInput,
     showCancelRun,
     submit,
     timeoutMinutesInput,
     transcriptRef,
-    turns
+    turns,
+    visionCatalog
   } = useAiAgentChatSession({ app, onRunStarted })
 
   return (
@@ -93,15 +98,20 @@ export const AiAgentToolsSection = ({
             />
             <AiAgentSettingsPopover
               adHocTimeoutMinutes={adHocTimeoutMinutes}
-              catalog={catalog}
+              catalog={plannerCatalog}
               health={health}
               isCheckingHealth={isCheckingHealth}
               selectedModel={selectedModel}
               selectedProvider={selectedProvider}
+              selectedVisionModel={selectedVisionModel}
+              selectedVisionProvider={selectedVisionProvider}
               setModelId={setModelId}
               setProviderId={setProviderId}
+              setVisionModelId={setVisionModelId}
+              setVisionProviderId={setVisionProviderId}
               setTimeoutMinutesInput={setTimeoutMinutesInput}
               timeoutMinutesInput={timeoutMinutesInput}
+              visionCatalog={visionCatalog}
             />
           </div>
         </div>

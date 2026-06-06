@@ -13,7 +13,10 @@ import {
   normalizeDefaultModel,
   resolveUpdatedApiKey,
 } from './ai-provider-settings';
-import type { AutomationAiProviderModel } from '@rebroid/ai-core/provider';
+import type {
+  AutomationAiProviderModel,
+  AutomationAiProviderModelRole,
+} from '@rebroid/ai-core/provider';
 import { AiProviderHealthService } from './ai-provider-health.service';
 import { AiProviderModelDownloadService } from './ai-provider-model-download.service';
 import { OrchestratorSettingsDto } from './dto/orchestrator-settings.dto';
@@ -105,7 +108,11 @@ export class SettingsService {
       .filter((provider) => provider.models.length > 0);
   }
 
-  async getAiProviderForExecution(providerId?: string, modelId?: string) {
+  async getAiProviderForExecution(
+    providerId?: string,
+    modelId?: string,
+    role: 'planner' | 'vision' = 'planner',
+  ) {
     const settings = await this.getStoredSettings();
     const providers = settings.aiProviders.filter(
       (provider) => provider.enabled,
@@ -118,13 +125,15 @@ export class SettingsService {
         'No enabled AI provider is configured for automations.',
       );
     }
-    const enabledModels = provider.models.filter((model) => model.enabled);
+    const enabledModels = provider.models.filter(
+      (model) => model.enabled && model.roles.includes(role),
+    );
     const model = modelId
       ? enabledModels.find((item) => item.id === modelId)
       : (enabledModels.find((item) => item.default) ?? enabledModels[0]);
     if (!model) {
       throw new BadRequestException(
-        `No enabled AI model is configured for provider "${provider.id}".`,
+        `No enabled ${role} AI model is configured for provider "${provider.id}".`,
       );
     }
     return { provider, model };
@@ -133,7 +142,11 @@ export class SettingsService {
   async checkAiProviderHealth(
     providerId: string,
     modelId?: string,
+    role?: AutomationAiProviderModelRole,
   ): Promise<AutomationAiProviderHealthDto> {
+    if (role && role !== 'planner' && role !== 'vision') {
+      throw new BadRequestException(`Unsupported AI model role "${role}".`);
+    }
     const settings = await this.getStoredSettings();
     const provider = settings.aiProviders.find(
       (item) => item.id === providerId,
@@ -141,7 +154,7 @@ export class SettingsService {
     if (!provider) {
       throw new NotFoundException(`AI provider "${providerId}" was not found.`);
     }
-    return this.aiProviderHealth.checkProviderHealth(provider, modelId);
+    return this.aiProviderHealth.checkProviderHealth(provider, modelId, role);
   }
 
   async checkAiProviderCandidateHealth(dto: CreateAutomationAiProviderDto) {

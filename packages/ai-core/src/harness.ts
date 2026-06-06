@@ -3,6 +3,7 @@ export {
   AI_AUTOMATION_MASTER_SYSTEM_PROMPT,
   buildInitialMessages,
   buildScreenshotObservationMessage,
+  buildScreenObservationMessage,
   buildUiXmlObservationMessage,
 } from "./harness/messages";
 export {

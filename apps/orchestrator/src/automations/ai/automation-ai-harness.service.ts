@@ -8,8 +8,7 @@ import {
   allowedToolMatcher,
   buildChatRequestBody,
   buildInitialMessages,
-  buildScreenshotObservationMessage,
-  buildUiXmlObservationMessage,
+  buildScreenObservationMessage,
   buildToolDefinitions,
   chatCompletionsEndpoint,
   consumeChatCompletionStream,
@@ -27,18 +26,13 @@ import { AutomationRunEventBus } from '../events/automation-run-event-bus.servic
 import { AutomationAiProviderService } from './automation-ai-provider.service';
 import {
   SCREEN_MUTATING_TOOLS,
-  isImageInputUnsupportedProviderMessage,
-  prepareUiXml,
   providerErrorDetailFromText,
   sanitizeAiDataForEvent,
   sanitizeAiDataForModel,
   sanitizeAiText,
 } from './automation-ai-observation.utils';
-import { optimizeAiScreenshot } from './automation-ai-screenshot.utils';
 import type { AutomationAiHarnessContext } from './automation-ai.types';
-
-type ObservationMode = 'screenshot' | 'ui-xml';
-type ChatResponse = { choices?: Array<{ message?: ChatMessage }> };
+import { AutomationPerceptionService } from '../vision/automation-perception.service';
 
 const textContent = (content: ChatMessage['content']) =>
   typeof content === 'string'
@@ -50,19 +44,6 @@ const textContent = (content: ChatMessage['content']) =>
           .join('\n')
       : '';
 
-const screenshotFromData = (data?: Record<string, unknown>) => {
-  const dataUrl = typeof data?.dataUrl === 'string' ? data.dataUrl : '';
-  if (!dataUrl) return null;
-  return {
-    dataUrl,
-    mimeType: typeof data?.mimeType === 'string' ? data.mimeType : 'image/png',
-    capturedAt:
-      typeof data?.capturedAt === 'string'
-        ? data.capturedAt
-        : new Date().toISOString(),
-  };
-};
-
 @Injectable()
 export class AutomationAiHarnessService {
   private readonly logger = new Logger(AutomationAiHarnessService.name);
@@ -71,12 +52,14 @@ export class AutomationAiHarnessService {
     private readonly providers: AutomationAiProviderService,
     private readonly registry: AutomationCommandRegistryService,
     private readonly events: AutomationRunEventBus,
+    private readonly perception: AutomationPerceptionService,
   ) {}
 
   async run(input: AutomationAiRunInput, context: AutomationAiHarnessContext) {
     const { provider, model } = await this.providers.getProvider(
       input.providerId,
       input.modelId,
+      'planner',
     );
     const deadline = Date.now() + input.timeoutMs;
     const commands = this.registry.listCommands();
@@ -87,21 +70,16 @@ export class AutomationAiHarnessService {
     await this.emit(context, 'ai.user.message', input.prompt, {
       clientMessageId: input.clientMessageId ?? null,
     });
-    const initialScreenshot = input.initialScreenshotDataUrl
-      ? await this.prepareScreenshot({
-          dataUrl: input.initialScreenshotDataUrl,
-          mimeType: 'image/png',
-          capturedAt: new Date().toISOString(),
-        })
-      : await this.captureScreenshot(context, 'Initial screenshot captured.', {
-          clientMessageId: input.clientMessageId,
-          reason: 'initial',
-        });
+    const initialObservation = await this.observeScreen({
+      context,
+      input,
+      deadline,
+      reason: 'initial',
+    });
     const messages = buildInitialMessages(
-      { ...input, initialScreenshotDataUrl: initialScreenshot.dataUrl },
+      { ...input, initialObservationText: initialObservation.plannerText },
       model,
     );
-    let observationMode: ObservationMode = 'screenshot';
     let toolCalls = 0;
     let finalText = '';
 
@@ -113,59 +91,19 @@ export class AutomationAiHarnessService {
 
     while (Date.now() < deadline) {
       this.assertNotCanceled(context.abortSignal);
-      let response: ChatResponse;
-      try {
-        response = await this.chat(
-          provider,
-          model,
-          messages,
-          tools,
-          deadline,
-          context.abortSignal,
-          async (delta) => {
-            await this.emit(context, 'ai.message.delta', delta, {
-              clientMessageId: input.clientMessageId ?? null,
-            });
-          },
-        );
-      } catch (error) {
-        if (
-          observationMode === 'screenshot' &&
-          this.isImageInputUnsupportedError(error)
-        ) {
-          observationMode = 'ui-xml';
-          await this.emit(
-            context,
-            'ai.guardrail.triggered',
-            'Model rejected screenshot input. Falling back to UI hierarchy XML.',
-            {
-              clientMessageId: input.clientMessageId ?? null,
-            },
-          );
-          const ui = await this.captureUiXml(
-            context,
-            'Initial UI hierarchy captured.',
-            {
-              clientMessageId: input.clientMessageId,
-              reason: 'initial-fallback',
-            },
-          );
-          messages.splice(
-            0,
-            messages.length,
-            ...buildInitialMessages(
-              {
-                ...input,
-                initialScreenshotDataUrl: undefined,
-                initialUiXml: ui.xml,
-              },
-              model,
-            ),
-          );
-          continue;
-        }
-        throw error;
-      }
+      const response = await this.chat(
+        provider,
+        model,
+        messages,
+        tools,
+        deadline,
+        context.abortSignal,
+        async (delta) => {
+          await this.emit(context, 'ai.message.delta', delta, {
+            clientMessageId: input.clientMessageId ?? null,
+          });
+        },
+      );
       const choice = response.choices?.[0]?.message;
       if (!choice) {
         throw new BadRequestException('AI provider returned no message.');
@@ -244,75 +182,17 @@ export class AutomationAiHarnessService {
             }),
           });
 
-          const toolScreenshot = screenshotFromData(result.data);
-          if (observationMode === 'ui-xml' && toolScreenshot) {
-            const ui = await this.captureUiXml(
+          if (SCREEN_MUTATING_TOOLS.has(uses)) {
+            const observation = await this.observeScreen({
               context,
-              'UI hierarchy captured instead of screenshot.',
-              {
-                clientMessageId: input.clientMessageId,
-                reason: 'tool-fallback',
-                uses,
-              },
-            );
-            messages.push(
-              buildUiXmlObservationMessage({
-                xml: ui.xml,
-                summary: 'UI hierarchy captured instead of screenshot.',
-              }),
-            );
-          } else if (observationMode === 'screenshot' && toolScreenshot) {
-            const screenshot = await this.prepareScreenshot(toolScreenshot);
-            await this.emitScreenshot(context, {
-              dataUrl: screenshot.dataUrl,
-              mimeType: screenshot.mimeType,
-              capturedAt: screenshot.capturedAt,
-              optimized: screenshot.optimized,
-              originalBytes: screenshot.originalBytes,
-              bytes: screenshot.bytes,
-              width: screenshot.width,
-              height: screenshot.height,
-              summary: 'Screenshot captured by tool.',
-              clientMessageId: input.clientMessageId,
-              reason: 'tool',
+              input,
+              deadline,
+              reason: 'after-tool',
+              uses,
             });
             messages.push(
-              buildScreenshotObservationMessage({
-                dataUrl: screenshot.dataUrl,
-                summary: 'Screenshot captured by tool.',
-              }),
-            );
-          } else if (SCREEN_MUTATING_TOOLS.has(uses)) {
-            if (observationMode === 'ui-xml') {
-              const ui = await this.captureUiXml(
-                context,
-                `Fresh UI hierarchy captured after ${uses}.`,
-                {
-                  clientMessageId: input.clientMessageId,
-                  reason: 'after-tool',
-                  uses,
-                },
-              );
-              messages.push(
-                buildUiXmlObservationMessage({
-                  xml: ui.xml,
-                  summary: `Fresh UI hierarchy captured after ${uses}.`,
-                }),
-              );
-              continue;
-            }
-            const screenshot = await this.captureScreenshot(
-              context,
-              `Fresh screenshot captured after ${uses}.`,
-              {
-                clientMessageId: input.clientMessageId,
-                reason: 'after-tool',
-                uses,
-              },
-            );
-            messages.push(
-              buildScreenshotObservationMessage({
-                dataUrl: screenshot.dataUrl,
+              buildScreenObservationMessage({
+                observation: observation.plannerText,
                 summary: `Fresh screenshot captured after ${uses}.`,
               }),
             );
@@ -425,6 +305,31 @@ export class AutomationAiHarnessService {
     }
   }
 
+  private observeScreen({
+    context,
+    input,
+    deadline,
+    reason,
+    uses,
+  }: {
+    context: AutomationAiHarnessContext;
+    input: Pick<
+      AutomationAiRunInput,
+      'clientMessageId' | 'visionProviderId' | 'visionModelId'
+    >;
+    deadline: number;
+    reason: string;
+    uses?: string;
+  }) {
+    return this.perception.observe({
+      context: { ...context, clientMessageId: input.clientMessageId ?? null },
+      input,
+      deadline,
+      reason,
+      uses,
+    });
+  }
+
   private async readProviderError(response: Response) {
     const text = await response.text().catch(() => '');
     return providerErrorDetailFromText(text);
@@ -461,16 +366,6 @@ export class AutomationAiHarnessService {
     return result;
   }
 
-  private isImageInputUnsupportedError(error: unknown) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : typeof error === 'string'
-          ? error
-          : '';
-    return isImageInputUnsupportedProviderMessage(message);
-  }
-
   private isAbortError(error: unknown) {
     return error instanceof Error && error.name === 'AbortError';
   }
@@ -479,129 +374,6 @@ export class AutomationAiHarnessService {
     if (abortSignal?.aborted) {
       throw new BadRequestException('AI automation was canceled.');
     }
-  }
-
-  private async captureScreenshot(
-    context: AutomationAiHarnessContext,
-    summary: string,
-    data: Record<string, unknown> = {},
-  ) {
-    try {
-      const result = await this.prepareScreenshot(
-        await context.adb.screenshot(context.app),
-      );
-      await this.emitScreenshot(context, {
-        dataUrl: result.dataUrl,
-        mimeType: result.mimeType,
-        capturedAt: result.capturedAt,
-        optimized: result.optimized,
-        originalBytes: result.originalBytes,
-        bytes: result.bytes,
-        width: result.width,
-        height: result.height,
-        summary,
-        clientMessageId:
-          typeof data.clientMessageId === 'string'
-            ? data.clientMessageId
-            : undefined,
-        reason: typeof data.reason === 'string' ? data.reason : undefined,
-        uses: typeof data.uses === 'string' ? data.uses : undefined,
-      });
-      return result;
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? `Screenshot capture failed: ${error.message}`
-          : 'Screenshot capture failed.';
-      await this.emit(context, 'ai.tool.failed', message, {
-        uses: 'android.screenshot',
-        clientMessageId:
-          typeof data.clientMessageId === 'string'
-            ? data.clientMessageId
-            : null,
-      });
-      throw new BadRequestException(message);
-    }
-  }
-
-  private async captureUiXml(
-    context: AutomationAiHarnessContext,
-    summary: string,
-    data: Record<string, unknown> = {},
-  ) {
-    try {
-      const result = await context.adb.dumpUi(context.app);
-      const prepared = prepareUiXml(result.xml);
-      await this.emit(context, 'ai.ui.observed', summary, {
-        bytes: Buffer.byteLength(prepared.xml),
-        nodeCount: prepared.nodeCount,
-        truncated: prepared.truncated,
-        originalBytes: Buffer.byteLength(result.xml),
-        dumpedAt: result.dumpedAt,
-        clientMessageId:
-          typeof data.clientMessageId === 'string'
-            ? data.clientMessageId
-            : null,
-        reason: typeof data.reason === 'string' ? data.reason : null,
-        uses: typeof data.uses === 'string' ? data.uses : null,
-      });
-      return {
-        ...prepared,
-        dumpedAt: result.dumpedAt,
-      };
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? `UI hierarchy dump failed: ${error.message}`
-          : 'UI hierarchy dump failed.';
-      await this.emit(context, 'ai.tool.failed', message, {
-        uses: 'android.dumpUi',
-        clientMessageId:
-          typeof data.clientMessageId === 'string'
-            ? data.clientMessageId
-            : null,
-      });
-      throw new BadRequestException(message);
-    }
-  }
-
-  private prepareScreenshot(input: {
-    dataUrl: string;
-    mimeType: string;
-    capturedAt: string;
-  }) {
-    return optimizeAiScreenshot(input);
-  }
-
-  private async emitScreenshot(
-    context: AutomationAiHarnessContext,
-    input: {
-      dataUrl: string;
-      mimeType: string;
-      capturedAt: string;
-      optimized?: boolean;
-      originalBytes?: number;
-      bytes?: number;
-      width?: number | null;
-      height?: number | null;
-      summary: string;
-      clientMessageId?: string;
-      reason?: string;
-      uses?: string;
-    },
-  ) {
-    return this.emit(context, 'ai.screenshot.observed', input.summary, {
-      mimeType: input.mimeType,
-      capturedAt: input.capturedAt,
-      optimized: input.optimized ?? false,
-      originalBytes: input.originalBytes ?? null,
-      bytes: input.bytes ?? null,
-      width: input.width ?? null,
-      height: input.height ?? null,
-      clientMessageId: input.clientMessageId ?? null,
-      reason: input.reason ?? null,
-      uses: input.uses ?? null,
-    });
   }
 
   private emit(

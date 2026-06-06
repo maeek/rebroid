@@ -42,6 +42,29 @@ export const getSurfaceDisplaySize = (surface: DisplaySurfaceRef, mainDisplaySiz
   return mainDisplaySize
 }
 
+const dedupeSurfaceItems = (surfaces: DisplaySurfaceRef[], preferredMainSessionId: string): DisplaySurfaceRef[] => {
+  const seenSurfaceIds = new Set<string>()
+  const deduped: DisplaySurfaceRef[] = []
+  const preferredMainSurface = surfaces.find(
+    surface => surface.kind === 'main' && surface.sessionId === preferredMainSessionId
+  )
+  const orderedSurfaces = preferredMainSurface
+    ? [preferredMainSurface, ...surfaces.filter(surface => surface !== preferredMainSurface)]
+    : surfaces
+
+  for (const surface of orderedSurfaces) {
+    const key = surface.kind === 'main' ? 'main' : surface.id
+    if (seenSurfaceIds.has(key)) {
+      continue
+    }
+
+    seenSurfaceIds.add(key)
+    deduped.push(surface)
+  }
+
+  return deduped
+}
+
 export const buildDisplayViewerSurfaces = ({
   session,
   baseUrl,
@@ -78,7 +101,7 @@ export const buildDisplayViewerSurfaces = ({
     viewerPath: mainSurface.viewerPath
   }
   const allSurfaceItems = mainSurface.surfaces?.length
-    ? mainSurface.surfaces
+    ? dedupeSurfaceItems(mainSurface.surfaces, mainSurface.id)
     : [mainSurface.surface ?? fallbackMainSurface]
   const selectedSurfaceItems =
     selectedSurfaceId && controlsEnabled

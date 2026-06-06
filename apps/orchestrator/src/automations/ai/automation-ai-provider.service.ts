@@ -9,7 +9,11 @@ export class AutomationAiProviderService {
     return this.settings.listEnabledAiModelCatalog();
   }
 
-  async getProvider(providerId?: string, modelId?: string) {
-    return this.settings.getAiProviderForExecution(providerId, modelId);
+  async getProvider(
+    providerId?: string,
+    modelId?: string,
+    role: 'planner' | 'vision' = 'planner',
+  ) {
+    return this.settings.getAiProviderForExecution(providerId, modelId, role);
   }
 }

@@ -30,6 +30,7 @@ const provider: AutomationAiProvider = {
 const model: AutomationAiProviderModel = {
   id: "qwen",
   label: "Qwen",
+  roles: ["planner"],
   settings: {
     systemPrompt: "Use terse summaries.",
     temperature: 0.5,
@@ -86,7 +87,7 @@ describe("AI harness core", () => {
       {
         role: "system",
         content:
-          "You are an Android automation agent controlling a live device through typed tools.\nAlways inspect the latest screen observation before choosing screen actions. The observation may be a screenshot or UI hierarchy XML.\nUse only the tools provided to you. Do not invent tool results or assume an action succeeded without observing the screen again.\nAfter every screen-changing action, wait for the fresh observation before deciding the next action.\nPrefer semantic or state-reading tools when they are available. Use coordinates only when they are clearly supported by the screenshot or UI XML bounds.\nContinue the observe/action/observe loop until the requested task is visibly complete, the app blocks progress, or a timeout/tool limit is reached.\nWrite concise visible progress and a short final answer. Do not reveal hidden reasoning.\n\nUse terse summaries.",
+          "You are an Android automation agent controlling a live device through typed tools.\nAlways inspect the latest structured screen observation before choosing screen actions.\nUse only the tools provided to you. Do not invent tool results or assume an action succeeded without observing the screen again.\nAfter every screen-changing action, wait for the fresh observation before deciding the next action.\nPrefer semantic, vision.locate, or state-reading tools when they are available.\nUse normalized 0..1 coordinates for screen actions. Prefer android.tapNormalized and android.swipeNormalized over raw pixel coordinates.\nContinue the observe/action/observe loop until the requested task is visibly complete, the app blocks progress, or a timeout/tool limit is reached.\nWrite concise visible progress and a short final answer. Do not reveal hidden reasoning.\n\nUse terse summaries.",
       },
       { role: "user", content: "Do it" },
     ]);
@@ -110,6 +111,17 @@ describe("AI harness core", () => {
       },
     );
     assert.deepEqual(
+      buildInitialMessages(
+        { prompt: "Do it", initialObservationText: "Screen observation" },
+        model,
+      )[1],
+      {
+        role: "user",
+        content:
+          "Do it\n\nCurrent screen observation:\nScreen observation\n\nInspect this observation before taking any action.",
+      },
+    );
+    assert.deepEqual(
       buildChatRequestBody({
         provider,
         model,
@@ -119,8 +131,6 @@ describe("AI harness core", () => {
       {
         model: "qwen",
         messages: [],
-        tools: [],
-        tool_choice: "auto",
         stream: false,
         temperature: 0.5,
         top_p: 0.9,

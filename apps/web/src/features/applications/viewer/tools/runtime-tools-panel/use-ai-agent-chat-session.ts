@@ -44,13 +44,19 @@ export const useAiAgentChatSession = ({
     health,
     isCheckingHealth,
     modelIsValid,
+    plannerCatalog,
     selectedModel,
     selectedProvider,
+    selectedVisionModel,
+    selectedVisionProvider,
     selectionMessage,
     setModelId,
     setProviderId,
+    setVisionModelId,
+    setVisionProviderId,
     setTimeoutMinutesInput,
-    timeoutMinutesInput
+    timeoutMinutesInput,
+    visionCatalog
   } = useAiAgentModelSettings()
 
   const activeTurn = turns.find(turn => turn.id === activeTurnId) ?? null
@@ -184,6 +190,12 @@ export const useAiAgentChatSession = ({
           conversation,
           providerId: selectedProvider.id,
           modelId: selectedModel.id,
+          ...(selectedVisionProvider && selectedVisionModel
+            ? {
+                visionProviderId: selectedVisionProvider.id,
+                visionModelId: selectedVisionModel.id
+              }
+            : {}),
           clientMessageId: turn.id,
           maxToolCalls: 20,
           timeoutMs: adHocTimeoutMs,
@@ -210,7 +222,7 @@ export const useAiAgentChatSession = ({
         setError(message)
       }
     },
-    [adHocTimeoutMs, app, onRunStarted, selectedModel, selectedProvider]
+    [adHocTimeoutMs, app, onRunStarted, selectedModel, selectedProvider, selectedVisionModel, selectedVisionProvider]
   )
 
   const submit = async () => {
@@ -299,20 +311,26 @@ export const useAiAgentChatSession = ({
     isCanceling,
     isCheckingHealth,
     isClearing,
+    plannerCatalog,
     prompt,
     queuedTurn,
     runQueuedTurn,
     selectedModel,
     selectedProvider,
+    selectedVisionModel,
+    selectedVisionProvider,
     selectionMessage,
     setModelId,
     setPrompt,
     setProviderId,
+    setVisionModelId,
+    setVisionProviderId,
     setTimeoutMinutesInput,
     showCancelRun,
     submit,
     timeoutMinutesInput,
     transcriptRef,
-    turns
+    turns,
+    visionCatalog
   }
 }

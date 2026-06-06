@@ -12,6 +12,7 @@ import { ProtectedStackPageLayout } from '@/features/shell/components/protected-
 import { StatusSplash } from '@/features/shell/components/status-splash'
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
+import { SystemSettingsPageSkeleton } from './system-settings-page-skeleton'
 import type { SystemStats } from '@/server/system/system-stats'
 
 export function SystemSettingsPage() {
@@ -45,7 +46,7 @@ export function SystemSettingsPage() {
   return (
     <>
       <Visible when={isLoading}>
-        <div>Loading...</div>
+        <SystemSettingsPageSkeleton />
       </Visible>
       <Visible when={!isLoading}>
         <ProtectedStackPageLayout mainClassName='gap-2'>

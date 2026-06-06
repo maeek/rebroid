@@ -35,6 +35,7 @@
     "@rebroid/automation-core": "workspace:*",
     "@rebroid/firewall-policy-core": "workspace:*",
     "@rebroid/orchestrator-client": "workspace:*",
+    "@rebroid/vision-core": "workspace:*",
     "@tabler/icons-react": "^3.44.0",
     "@tanstack/react-query": "^5.100.14",
     "@tanstack/react-table": "^8.21.3",

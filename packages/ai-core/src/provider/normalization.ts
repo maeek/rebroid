@@ -10,7 +10,10 @@ import {
   AiProviderConfigurationError,
   type AutomationAiProvider,
   type AutomationAiProviderModel,
+  type AutomationAiProviderModelRole,
 } from "./types";
+
+const modelRoles: AutomationAiProviderModelRole[] = ["planner", "vision"];
 
 export const normalizeAiProviders = (value: unknown) => {
   if (!Array.isArray(value)) {
@@ -114,10 +117,21 @@ export const normalizeAiModel = (
   return {
     id,
     label,
+    roles: normalizeAiModelRoles(model.roles),
     settings: normalizeAiModelSettings(model.settings),
     enabled: model.enabled !== false,
     default: model.default === true,
   };
+};
+
+export const normalizeAiModelRoles = (
+  rawRoles: unknown,
+): AutomationAiProviderModelRole[] => {
+  if (!Array.isArray(rawRoles)) return ["planner"];
+  const roles = rawRoles.filter((role): role is AutomationAiProviderModelRole =>
+    modelRoles.includes(role as AutomationAiProviderModelRole),
+  );
+  return Array.from(new Set(roles));
 };
 
 export const normalizeAiModelSettings = (rawSettings: unknown) => {

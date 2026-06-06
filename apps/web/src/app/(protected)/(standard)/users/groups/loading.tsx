@@ -1,11 +1,1 @@
-import { SettingsPageSkeleton } from '@/features/settings/components/settings-page-skeleton'
-
-export default function Loading() {
-  return (
-    <SettingsPageSkeleton
-      title='Groups'
-      sectionTitle='Existing groups'
-      rows={3}
-    />
-  )
-}
+export { GroupsPageSkeleton as default } from '@/features/settings/users/user-page-skeletons'

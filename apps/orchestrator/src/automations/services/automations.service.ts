@@ -206,6 +206,8 @@ export class AutomationsService implements OnModuleInit {
       prompt: dto.prompt,
       providerId: dto.providerId,
       modelId: dto.modelId,
+      visionProviderId: dto.visionProviderId,
+      visionModelId: dto.visionModelId,
     });
     return {
       definition,
@@ -224,6 +226,8 @@ export class AutomationsService implements OnModuleInit {
       conversation: dto.conversation,
       providerId: dto.providerId,
       modelId: dto.modelId,
+      visionProviderId: dto.visionProviderId,
+      visionModelId: dto.visionModelId,
       clientMessageId: dto.clientMessageId,
       allowedTools: dto.allowedTools,
       maxToolCalls: dto.maxToolCalls,
@@ -610,6 +614,8 @@ export class AutomationsService implements OnModuleInit {
     prompt,
     providerId,
     modelId,
+    visionProviderId,
+    visionModelId,
     conversation,
     allowedTools,
     maxToolCalls = 20,
@@ -621,6 +627,8 @@ export class AutomationsService implements OnModuleInit {
     conversation?: Array<{ role: 'user' | 'assistant'; content: string }>;
     providerId?: string;
     modelId?: string;
+    visionProviderId?: string;
+    visionModelId?: string;
     clientMessageId?: string;
     allowedTools?: string[];
     maxToolCalls?: number;
@@ -644,6 +652,8 @@ export class AutomationsService implements OnModuleInit {
               ...(conversation ? { conversation } : {}),
               ...(providerId ? { providerId } : {}),
               ...(modelId ? { modelId } : {}),
+              ...(visionProviderId ? { visionProviderId } : {}),
+              ...(visionModelId ? { visionModelId } : {}),
               ...(clientMessageId ? { clientMessageId } : {}),
               ...(allowedTools ? { allowedTools } : {}),
               maxToolCalls,

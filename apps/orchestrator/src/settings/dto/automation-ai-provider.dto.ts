@@ -69,6 +69,16 @@ export class AutomationAiProviderModelDto {
   @MaxLength(160)
   label!: string;
 
+  @ApiPropertyOptional({
+    enum: ['planner', 'vision'],
+    isArray: true,
+    default: ['planner'],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsIn(['planner', 'vision'], { each: true })
+  roles!: Array<'planner' | 'vision'>;
+
   @ApiProperty({ type: AutomationAiProviderModelSettingsDto })
   @ValidateNested()
   @Type(() => AutomationAiProviderModelSettingsDto)

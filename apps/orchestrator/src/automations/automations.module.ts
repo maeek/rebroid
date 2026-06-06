@@ -11,6 +11,7 @@ import { AiAutomationCommandsService } from './commands/ai-automation-commands.s
 import { AutomationCommandRegistryService } from './commands/automation-command-registry.service';
 import { ContainerNetworkAutomationCommandsService } from './commands/container-network-automation-commands.service';
 import { GenericAutomationCommandsService } from './commands/generic-automation-commands.service';
+import { VisionAutomationCommandsService } from './commands/vision-automation-commands.service';
 import { AutomationConditionService } from './condition/automation-condition.service';
 import { AutomationsController } from './controllers/automations.controller';
 import { AutomationDefinitionService } from './definition/automation-definition.service';
@@ -24,6 +25,8 @@ import { AutomationScheduleService } from './scheduler/automation-schedule.servi
 import { AutomationsDtoMapper } from './services/automations-dto-mapper.service';
 import { AutomationsService } from './services/automations.service';
 import { AutomationTriggerSchedulerService } from './services/automation-trigger-scheduler.service';
+import { AutomationPerceptionService } from './vision/automation-perception.service';
+import { AutomationVisionService } from './vision/automation-vision.service';
 
 @Module({
   imports: [
@@ -38,10 +41,13 @@ import { AutomationTriggerSchedulerService } from './services/automation-trigger
   providers: [
     AndroidAutomationCommandsService,
     AiAutomationCommandsService,
+    VisionAutomationCommandsService,
     ContainerNetworkAutomationCommandsService,
     GenericAutomationCommandsService,
     AutomationAiProviderService,
     AutomationAiHarnessService,
+    AutomationVisionService,
+    AutomationPerceptionService,
     AutomationRunEventBus,
     AutomationRunEventStreamService,
     AutomationCommandRegistryService,

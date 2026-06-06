@@ -15,6 +15,7 @@ import {
   IconNetwork,
   IconRotateClockwise,
   IconRoute,
+  IconSearch,
   IconScreenshot,
   IconShieldLock,
   IconSparkles,
@@ -82,6 +83,8 @@ function AutomationActionIcon({ iconKey, className }: { iconKey: AutomationActio
       return <IconRotateClockwise className={className} />
     case 'screenshot':
       return <IconScreenshot className={className} />
+    case 'search':
+      return <IconSearch className={className} />
     case 'shield':
       return <IconShieldLock className={className} />
     case 'sparkles':

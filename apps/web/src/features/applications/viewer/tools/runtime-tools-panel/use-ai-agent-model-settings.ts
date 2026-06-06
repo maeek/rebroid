@@ -21,14 +21,35 @@ export const useAiAgentModelSettings = () => {
   const [catalog, setCatalog] = useState<AutomationAiModelCatalogProvider[]>([])
   const [providerId, setProviderId] = useState('')
   const [modelId, setModelId] = useState('')
+  const [visionProviderId, setVisionProviderId] = useState('')
+  const [visionModelId, setVisionModelId] = useState('')
   const [health, setHealth] = useState<AutomationAiProviderHealth | null>(null)
   const [isCheckingHealth, setIsCheckingHealth] = useState(false)
 
-  const selectedProvider = catalog.find(provider => provider.id === providerId) ?? catalog[0]
+  const plannerCatalog = useMemo(
+    () =>
+      catalog
+        .map(provider => ({ ...provider, models: provider.models.filter(model => model.roles?.includes('planner')) }))
+        .filter(provider => provider.models.length > 0),
+    [catalog]
+  )
+  const visionCatalog = useMemo(
+    () =>
+      catalog
+        .map(provider => ({ ...provider, models: provider.models.filter(model => model.roles?.includes('vision')) }))
+        .filter(provider => provider.models.length > 0),
+    [catalog]
+  )
+  const selectedProvider = plannerCatalog.find(provider => provider.id === providerId) ?? plannerCatalog[0]
   const selectedModel =
     selectedProvider?.models.find(model => model.id === modelId) ??
     selectedProvider?.models.find(model => model.default) ??
     selectedProvider?.models[0]
+  const selectedVisionProvider = visionCatalog.find(provider => provider.id === visionProviderId) ?? visionCatalog[0]
+  const selectedVisionModel =
+    selectedVisionProvider?.models.find(model => model.id === visionModelId) ??
+    selectedVisionProvider?.models.find(model => model.default) ??
+    selectedVisionProvider?.models[0]
   const modelIsValid = isValidAgentModel(selectedProvider, selectedModel, health)
   const adHocTimeoutMinutes = clampAdHocTimeoutMinutes(Number(timeoutMinutesInput))
   const adHocTimeoutMs = adHocTimeoutMinutes * 60_000
@@ -45,10 +66,20 @@ export const useAiAgentModelSettings = () => {
     void listAutomationAiModelCatalogAction().then(nextCatalog => {
       if (cancelled) return
       setCatalog(nextCatalog)
-      const provider = nextCatalog[0]
+      const plannerProviders = nextCatalog
+        .map(item => ({ ...item, models: item.models.filter(model => model.roles?.includes('planner')) }))
+        .filter(item => item.models.length > 0)
+      const visionProviders = nextCatalog
+        .map(item => ({ ...item, models: item.models.filter(model => model.roles?.includes('vision')) }))
+        .filter(item => item.models.length > 0)
+      const provider = plannerProviders[0]
       const model = provider?.models.find(item => item.default) ?? provider?.models[0]
+      const visionProvider = visionProviders[0]
+      const visionModel = visionProvider?.models.find(item => item.default) ?? visionProvider?.models[0]
       setProviderId(provider?.id ?? '')
       setModelId(model?.id ?? '')
+      setVisionProviderId(visionProvider?.id ?? '')
+      setVisionModelId(visionModel?.id ?? '')
     })
     return () => {
       cancelled = true
@@ -62,7 +93,7 @@ export const useAiAgentModelSettings = () => {
     }
     let cancelled = false
     setIsCheckingHealth(true)
-    void checkAutomationAiProviderHealthAction(selectedProvider.id, selectedModel.id)
+    void checkAutomationAiProviderHealthAction(selectedProvider.id, selectedModel.id, 'planner')
       .then(result => {
         if (!cancelled) setHealth(result)
       })
@@ -91,12 +122,18 @@ export const useAiAgentModelSettings = () => {
     health,
     isCheckingHealth,
     modelIsValid,
+    plannerCatalog,
     selectedModel,
     selectedProvider,
+    selectedVisionModel,
+    selectedVisionProvider,
     selectionMessage,
     setModelId,
     setProviderId,
+    setVisionModelId,
+    setVisionProviderId,
     setTimeoutMinutesInput,
-    timeoutMinutesInput
+    timeoutMinutesInput,
+    visionCatalog
   }
 }

@@ -10,6 +10,7 @@ export type AutomationActionCategory =
   | 'Assertions'
   | 'Flow'
   | 'Debug'
+  | 'Vision'
   | 'AI'
 
 export type AutomationActionIconKey =
@@ -30,6 +31,7 @@ export type AutomationActionIconKey =
   | 'route'
   | 'rotate'
   | 'screenshot'
+  | 'search'
   | 'shield'
   | 'sparkles'
   | 'swipe'

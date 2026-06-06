@@ -44,11 +44,15 @@ const toolLabels: Record<string, string> = {
   'android.screenshot': 'Screenshot',
   'android.setClipboard': 'Set clipboard',
   'android.swipe': 'Swipe',
+  'android.swipeNormalized': 'Swipe normalized',
   'android.tap': 'Tap',
+  'android.tapNormalized': 'Tap normalized',
   'android.tapText': 'Tap text',
   'android.viewerCommand': 'Viewer command',
   'android.wait': 'Wait',
-  'android.waitForText': 'Wait for text'
+  'android.waitForText': 'Wait for text',
+  'vision.locate': 'Locate on screen',
+  'vision.observe': 'Observe screen'
 }
 
 const eventToolLabel = (event: AutomationRunEvent) => {
@@ -156,6 +160,27 @@ const ChatEventView = ({ event }: { event: AutomationRunEvent }) => {
         ) : null}
       </div>
     )
+  }
+  if (event.type === 'ai.perception.observed') {
+    const dimensions =
+      typeof event.data.width === 'number' && typeof event.data.height === 'number'
+        ? ` ${event.data.width}x${event.data.height}`
+        : ''
+    const detections = typeof event.data.detections === 'number' ? ` ${event.data.detections} detected` : ''
+    return (
+      <div className='text-xs text-secondary-foreground'>
+        {event.message}
+        {dimensions || detections ? (
+          <span className='text-muted-foreground'>
+            {' '}
+            ({[dimensions.trim(), detections.trim()].filter(Boolean).join(', ')})
+          </span>
+        ) : null}
+      </div>
+    )
+  }
+  if (event.type === 'ai.perception.summary') {
+    return <div className='text-xs text-secondary-foreground'>{event.message}</div>
   }
   if (event.type === 'ai.message.completed') {
     return <div className='whitespace-pre-wrap text-sm text-foreground'>{event.message}</div>

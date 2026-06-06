@@ -16,10 +16,13 @@ export interface AutomationAiProvider {
 export interface AutomationAiProviderModel {
   id: string;
   label: string;
+  roles: AutomationAiProviderModelRole[];
   settings: AutomationAiProviderModelSettings;
   enabled: boolean;
   default: boolean;
 }
+
+export type AutomationAiProviderModelRole = "planner" | "vision";
 
 export interface AutomationAiProviderModelSettings {
   systemPrompt?: string | null;
@@ -45,6 +48,8 @@ export interface AutomationAiRunInput {
   conversation?: AutomationAiConversationMessage[];
   providerId?: string;
   modelId?: string;
+  visionProviderId?: string;
+  visionModelId?: string;
   clientMessageId?: string;
   initialScreenshotDataUrl?: string;
   maxToolCalls: number;

@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { SettingsPageSkeleton } from '@/features/settings/components/settings-page-skeleton'
+import { UsersPageSkeleton } from '@/features/settings/users/user-page-skeletons'
 import { UsersSettings } from '@/features/settings/users/users-settings'
 import { userService } from '@/server/auth/user'
 
@@ -15,15 +15,7 @@ const UsersSettingsContent = async () => {
 
 export default function UsersSettingsPage() {
   return (
-    <Suspense
-      fallback={
-        <SettingsPageSkeleton
-          title='Users'
-          sectionTitle='Existing users'
-          rows={4}
-        />
-      }
-    >
+    <Suspense fallback={<UsersPageSkeleton />}>
       <UsersSettingsContent />
     </Suspense>
   )

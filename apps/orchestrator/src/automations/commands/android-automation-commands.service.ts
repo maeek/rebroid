@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
+import { normalizedPointToPixels } from '@rebroid/vision-core/geometry';
 import { z } from 'zod';
 import { applicationViewerControlCommands } from '../../android-apps/viewer/dto/application-viewer-control.dto';
 import {
   AutomationCommandContext,
   AutomationCommandDefinition,
 } from './automation-command.types';
+import { readAiScreenshotMetadata } from '../ai/automation-ai-screenshot.utils';
 
 const timeoutSchema = z
   .number()
@@ -32,11 +34,24 @@ const tapSchema = z.object({
   y: z.number().int().min(0),
 });
 
+const normalizedPointSchema = z.object({
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+});
+
+const tapNormalizedSchema = normalizedPointSchema;
+
 const swipeSchema = z.object({
   x1: z.number().int().min(0),
   y1: z.number().int().min(0),
   x2: z.number().int().min(0),
   y2: z.number().int().min(0),
+  durationMs: z.number().int().min(50).max(5_000).optional().default(300),
+});
+
+const swipeNormalizedSchema = z.object({
+  start: normalizedPointSchema,
+  end: normalizedPointSchema,
   durationMs: z.number().int().min(50).max(5_000).optional().default(300),
 });
 
@@ -140,6 +155,50 @@ export class AndroidAutomationCommandsService {
         },
       },
       {
+        uses: 'android.tapNormalized',
+        label: 'Tap normalized',
+        description: 'Taps normalized screen coordinates from 0 to 1.',
+        requiredPermissions: ['automations:run'],
+        schema: tapNormalizedSchema,
+        outputs: [
+          {
+            key: 'x',
+            label: 'X coordinate',
+            type: 'number',
+            description: 'Resolved pixel X coordinate.',
+          },
+          {
+            key: 'y',
+            label: 'Y coordinate',
+            type: 'number',
+            description: 'Resolved pixel Y coordinate.',
+          },
+        ],
+        editor: {
+          category: 'Touch',
+          iconKey: 'tap',
+          inputDefaults: { x: 0.5, y: 0.5 },
+          yamlSnippetFields: ['x', 'y'],
+        },
+        execute: async (
+          input: z.infer<typeof tapNormalizedSchema>,
+          { app, adb }: AutomationCommandContext,
+        ) => {
+          const screenshot = await readAiScreenshotMetadata(
+            await adb.screenshot(app),
+          );
+          const point = normalizedPointToPixels(input, {
+            width: screenshot.width ?? 1,
+            height: screenshot.height ?? 1,
+          });
+          await adb.tap(app, point.x, point.y);
+          return {
+            summary: `Tapped normalized ${input.x}, ${input.y}.`,
+            data: { x: point.x, y: point.y },
+          };
+        },
+      },
+      {
         uses: 'android.swipe',
         label: 'Swipe',
         description: 'Swipes between absolute display coordinates.',
@@ -151,6 +210,79 @@ export class AndroidAutomationCommandsService {
         ) => {
           await adb.swipe(app, input);
           return { summary: 'Swipe completed.' };
+        },
+      },
+      {
+        uses: 'android.swipeNormalized',
+        label: 'Swipe normalized',
+        description: 'Swipes between normalized screen coordinates from 0 to 1.',
+        requiredPermissions: ['automations:run'],
+        schema: swipeNormalizedSchema,
+        outputs: [
+          {
+            key: 'x1',
+            label: 'Start X coordinate',
+            type: 'number',
+            description: 'Resolved start pixel X coordinate.',
+          },
+          {
+            key: 'y1',
+            label: 'Start Y coordinate',
+            type: 'number',
+            description: 'Resolved start pixel Y coordinate.',
+          },
+          {
+            key: 'x2',
+            label: 'End X coordinate',
+            type: 'number',
+            description: 'Resolved end pixel X coordinate.',
+          },
+          {
+            key: 'y2',
+            label: 'End Y coordinate',
+            type: 'number',
+            description: 'Resolved end pixel Y coordinate.',
+          },
+        ],
+        editor: {
+          category: 'Touch',
+          iconKey: 'swipe',
+          inputDefaults: {
+            start: { x: 0.5, y: 0.8 },
+            end: { x: 0.5, y: 0.2 },
+            durationMs: 300,
+          },
+          yamlSnippetFields: ['start', 'end', 'durationMs'],
+        },
+        execute: async (
+          input: z.infer<typeof swipeNormalizedSchema>,
+          { app, adb }: AutomationCommandContext,
+        ) => {
+          const screenshot = await readAiScreenshotMetadata(
+            await adb.screenshot(app),
+          );
+          const image = {
+            width: screenshot.width ?? 1,
+            height: screenshot.height ?? 1,
+          };
+          const start = normalizedPointToPixels(input.start, image);
+          const end = normalizedPointToPixels(input.end, image);
+          await adb.swipe(app, {
+            x1: start.x,
+            y1: start.y,
+            x2: end.x,
+            y2: end.y,
+            durationMs: input.durationMs,
+          });
+          return {
+            summary: 'Normalized swipe completed.',
+            data: {
+              x1: start.x,
+              y1: start.y,
+              x2: end.x,
+              y2: end.y,
+            },
+          };
         },
       },
       {

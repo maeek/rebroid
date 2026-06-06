@@ -3,11 +3,11 @@ import type { ListColumn } from './orchestrator-page-skeleton-types'
 
 export const TableSkeleton = ({
   columns,
-  minWidth,
+  minWidth = '64rem',
   rows = 6
 }: {
   columns: ListColumn[]
-  minWidth: string
+  minWidth?: string
   rows?: number
 }) => (
   <div className='overflow-hidden rounded-lg bg-background/20'>
@@ -18,12 +18,12 @@ export const TableSkeleton = ({
       >
         <div
           className='grid items-center gap-3 bg-background/30 px-4 py-3'
-          style={{ gridTemplateColumns: columns.map(column => column.width).join(' ') }}
+          style={{ gridTemplateColumns: columns.map(column => column.width ?? 'minmax(8rem,1fr)').join(' ') }}
         >
           {columns.map((column, index) => (
             <div
               key={index}
-              className={column.kind === 'actions' ? 'flex justify-end' : ''}
+              className={column.kind === 'actions' || column.kind === 'action' ? 'flex justify-end' : ''}
             >
               <Skeleton className={`h-3 ${column.headerWidth}`} />
             </div>
@@ -34,7 +34,7 @@ export const TableSkeleton = ({
           <div
             key={rowIndex}
             className='grid items-start gap-3 px-4 py-3'
-            style={{ gridTemplateColumns: columns.map(column => column.width).join(' ') }}
+            style={{ gridTemplateColumns: columns.map(column => column.width ?? 'minmax(8rem,1fr)').join(' ') }}
           >
             {columns.map((column, columnIndex) => {
               if (column.kind === 'stacked') {
@@ -60,7 +60,7 @@ export const TableSkeleton = ({
                 )
               }
 
-              if (column.kind === 'actions') {
+              if (column.kind === 'actions' || column.kind === 'action') {
                 return (
                   <div
                     key={columnIndex}

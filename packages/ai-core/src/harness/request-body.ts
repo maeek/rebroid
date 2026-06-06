@@ -20,26 +20,28 @@ export const buildChatRequestBody = ({
   model: AutomationAiProviderModel;
   provider: AutomationAiProvider;
   stream?: boolean;
-  tools: unknown[];
-}) => ({
-  model: model.id,
-  messages,
-  tools,
-  tool_choice: "auto",
-  stream,
-  temperature: model.settings.temperature ?? 0.2,
-  ...(model.settings.topP !== null && model.settings.topP !== undefined
-    ? { top_p: model.settings.topP }
-    : {}),
-  ...(provider.kind === "ollama"
-    ? {
-        options: ollamaOptions(model),
-        ...(model.settings.keepAlive
-          ? { keep_alive: model.settings.keepAlive }
-          : {}),
-      }
-    : {}),
-});
+  tools?: unknown[];
+}) => {
+  const hasTools = Array.isArray(tools) && tools.length > 0;
+  return {
+    model: model.id,
+    messages,
+    ...(hasTools ? { tools, tool_choice: "auto" } : {}),
+    stream,
+    temperature: model.settings.temperature ?? 0.2,
+    ...(model.settings.topP !== null && model.settings.topP !== undefined
+      ? { top_p: model.settings.topP }
+      : {}),
+    ...(provider.kind === "ollama"
+      ? {
+          options: ollamaOptions(model),
+          ...(model.settings.keepAlive
+            ? { keep_alive: model.settings.keepAlive }
+            : {}),
+        }
+      : {}),
+  };
+};
 
 export const ollamaOptions = (model: AutomationAiProviderModel) =>
   Object.fromEntries(

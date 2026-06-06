@@ -1,8 +1,8 @@
-export type ListColumnKind = 'stacked' | 'text' | 'badge' | 'actions'
+export type ListColumnKind = 'stacked' | 'text' | 'badge' | 'actions' | 'action'
 
 export type ListColumn = {
-  width: string
+  width?: string
   headerWidth: string
-  kind: ListColumnKind
+  kind?: ListColumnKind
   cellWidth?: string
 }

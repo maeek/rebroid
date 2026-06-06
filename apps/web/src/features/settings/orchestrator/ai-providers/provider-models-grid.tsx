@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { IconDownload, IconPlus, IconSettings, IconTrash } from '@tabler/icons-react'
 import { DataGrid } from '@/components/data-grid'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
@@ -57,6 +58,15 @@ export const ProviderModelsGrid = ({
   const [addOpen, setAddOpen] = useState(false)
   const selectedIndexes = modelRows.filter(model => selectedIds.has(model.rowId)).map(model => model.index)
   const settingsRow = modelRows.find(model => model.rowId === settingsRowId) ?? null
+  const toggleRole = useCallback(
+    (model: ProviderModelRow, role: 'planner' | 'vision', enabled: boolean) => {
+      const roles = new Set(model.roles ?? [])
+      if (enabled) roles.add(role)
+      else roles.delete(role)
+      onUpdateModel(model.index, { roles: Array.from(roles) })
+    },
+    [onUpdateModel]
+  )
 
   const columns = useMemo<ColumnDef<ProviderModelRow>[]>(
     () => [
@@ -87,6 +97,30 @@ export const ProviderModelsGrid = ({
               placeholder='Qwen 2.5 VL 7B'
               onChange={event => onUpdateModel(row.original.index, { label: event.target.value })}
             />
+          </div>
+        )
+      },
+      {
+        id: 'roles',
+        header: 'Roles',
+        size: 240,
+        meta: { label: 'Roles' },
+        cell: ({ row }) => (
+          <div className='flex min-h-10 items-center gap-4'>
+            <label className='flex items-center gap-2 text-sm'>
+              <Checkbox
+                checked={(row.original.roles ?? []).includes('planner')}
+                onCheckedChange={value => toggleRole(row.original, 'planner', value === true)}
+              />
+              Planner
+            </label>
+            <label className='flex items-center gap-2 text-sm'>
+              <Checkbox
+                checked={(row.original.roles ?? []).includes('vision')}
+                onCheckedChange={value => toggleRole(row.original, 'vision', value === true)}
+              />
+              Vision
+            </label>
           </div>
         )
       },
@@ -139,7 +173,7 @@ export const ProviderModelsGrid = ({
         )
       }
     ],
-    [initialProvider, isDownloadingModel, modelDownloads, onDownloadModel, onUpdateModel]
+    [initialProvider, isDownloadingModel, modelDownloads, onDownloadModel, onUpdateModel, toggleRole]
   )
 
   return (

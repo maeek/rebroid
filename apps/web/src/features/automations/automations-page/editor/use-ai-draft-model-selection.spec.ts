@@ -11,6 +11,7 @@ const catalog = [
       {
         id: 'small',
         label: 'Small',
+        roles: ['planner'],
         settings: {},
         default: false,
         enabled: true
@@ -18,6 +19,7 @@ const catalog = [
       {
         id: 'vision',
         label: 'Vision',
+        roles: ['planner', 'vision'],
         settings: {},
         default: true,
         enabled: true
@@ -32,6 +34,7 @@ const catalog = [
       {
         id: 'fast',
         label: 'Fast',
+        roles: ['planner'],
         settings: {},
         default: false,
         enabled: true

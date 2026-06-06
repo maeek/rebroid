@@ -134,6 +134,18 @@ export class DraftAutomationYamlDto {
   @IsString()
   @MaxLength(120)
   modelId?: string;
+
+  @ApiPropertyOptional({ example: 'local-ollama' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  visionProviderId?: string;
+
+  @ApiPropertyOptional({ example: 'qwen2.5vl:7b' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  visionModelId?: string;
 }
 
 export class RunAdHocAiConversationMessageDto {
@@ -208,6 +220,18 @@ export class RunAdHocAiAutomationDto {
   @IsString()
   @MaxLength(120)
   modelId?: string;
+
+  @ApiPropertyOptional({ example: 'local-ollama' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  visionProviderId?: string;
+
+  @ApiPropertyOptional({ example: 'qwen2.5vl:7b' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  visionModelId?: string;
 
   @ApiPropertyOptional({ example: 'msg_01HV4Y6N2R2N4SVJ8VJ7HJZJAA' })
   @IsOptional()

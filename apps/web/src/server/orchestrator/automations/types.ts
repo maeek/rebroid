@@ -139,6 +139,8 @@ export interface RunAdHocAiAutomationInput extends RunAutomationInput {
   conversation?: Array<{ role: 'user' | 'assistant'; content: string }>
   providerId?: string
   modelId?: string
+  visionProviderId?: string
+  visionModelId?: string
   clientMessageId?: string
   allowedTools?: string[]
   maxToolCalls?: number
@@ -149,6 +151,8 @@ export interface DraftAutomationYamlInput {
   prompt: string
   providerId?: string
   modelId?: string
+  visionProviderId?: string
+  visionModelId?: string
 }
 
 export interface AutomationYamlDraft {
@@ -168,6 +172,8 @@ export type AutomationRunEventType =
   | 'step.progress'
   | 'ai.model.started'
   | 'ai.model.completed'
+  | 'ai.perception.observed'
+  | 'ai.perception.summary'
   | 'ai.user.message'
   | 'ai.screenshot.observed'
   | 'ai.ui.observed'

@@ -27,6 +27,7 @@ import {
 import { OrchestratorSettingsDto } from './dto/orchestrator-settings.dto';
 import { UpdateOrchestratorSettingsDto } from './dto/update-orchestrator-settings.dto';
 import { SettingsService } from './settings.service';
+import type { AutomationAiProviderModelRole } from '@rebroid/ai-core/provider';
 
 @ApiTags('settings')
 @Controller('settings')
@@ -76,8 +77,9 @@ export class SettingsController {
   checkAiProviderHealth(
     @Param('providerId') providerId: string,
     @Query('modelId') modelId?: string,
+    @Query('role') role?: AutomationAiProviderModelRole,
   ) {
-    return this.settings.checkAiProviderHealth(providerId, modelId);
+    return this.settings.checkAiProviderHealth(providerId, modelId, role);
   }
 
   @Get('ai-providers/:providerId/remote-models')

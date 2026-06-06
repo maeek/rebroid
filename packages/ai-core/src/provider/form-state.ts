@@ -1,6 +1,7 @@
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,
+  AutomationAiProviderModelRole,
   ProviderFormState,
   ProviderModelRow,
 } from "./types";
@@ -18,6 +19,7 @@ export const emptyProvider = (): ProviderFormState => ({
 export const emptyModel = (): AutomationAiProviderModel => ({
   id: "",
   label: "",
+  roles: ["planner" as const],
   settings: {},
   enabled: true,
   default: false,
@@ -36,6 +38,9 @@ export const normalizeProviderForm = (
       ...model,
       id: model.id.trim(),
       label: model.label.trim() || model.id.trim(),
+      roles: Array.isArray(model.roles)
+        ? (model.roles as AutomationAiProviderModelRole[])
+        : (["planner"] as AutomationAiProviderModelRole[]),
       settings: model.settings ?? {},
     }))
     .filter((model) => model.id.length > 0),

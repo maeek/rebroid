@@ -273,6 +273,10 @@ export class DisplaySessionService {
           return false;
         }
 
+        if (candidate.surfaceKind === "main" && candidate.id !== session.id) {
+          return false;
+        }
+
         return (
           candidate.appId === session.appId &&
           candidate.udid === session.udid &&

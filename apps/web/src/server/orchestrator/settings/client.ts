@@ -48,10 +48,13 @@ export const orchestratorSettingsClient = {
     return emptyRequest<void>(`/settings/ai-providers/${encodeURIComponent(providerId)}`, { method: 'DELETE' })
   },
 
-  checkAiProviderHealth(providerId: string, modelId?: string) {
-    const params = modelId ? `?modelId=${encodeURIComponent(modelId)}` : ''
+  checkAiProviderHealth(providerId: string, modelId?: string, role?: 'planner' | 'vision') {
+    const params = new URLSearchParams()
+    if (modelId) params.set('modelId', modelId)
+    if (role) params.set('role', role)
+    const query = params.size > 0 ? `?${params.toString()}` : ''
     return emptyRequest<AutomationAiProviderHealth>(
-      `/settings/ai-providers/${encodeURIComponent(providerId)}/health${params}`
+      `/settings/ai-providers/${encodeURIComponent(providerId)}/health${query}`
     )
   },
 

@@ -6,7 +6,9 @@ import { keyAction } from './android/key.action'
 import { rotateDisplayAction } from './android/rotate-display.action'
 import { screenshotAction } from './android/screenshot.action'
 import { setClipboardAction } from './android/set-clipboard.action'
+import { swipeNormalizedAction } from './android/swipe-normalized.action'
 import { swipeAction } from './android/swipe.action'
+import { tapNormalizedAction } from './android/tap-normalized.action'
 import { tapTextAction } from './android/tap-text.action'
 import { tapAction } from './android/tap.action'
 import { viewerCommandAction } from './android/viewer-command.action'
@@ -33,6 +35,8 @@ import { removeBlockedCidrAction } from './network/remove-blocked-cidr.action'
 import { resetPolicyAction } from './network/reset-policy.action'
 import { setRestrictionsAction } from './network/set-restrictions.action'
 import { NoInputState } from './shared/action-fields'
+import { visionLocateAction } from './vision/locate.action'
+import { visionObserveAction } from './vision/observe.action'
 import type {
   AutomationActionCategory,
   AutomationActionDefinition,
@@ -49,6 +53,7 @@ const actionCategories: AutomationActionCategory[] = [
   'Assertions',
   'Flow',
   'Debug',
+  'Vision',
   'AI'
 ]
 
@@ -59,7 +64,9 @@ const actionDefinitions = [
   keyAction,
   adbShellAction,
   tapAction,
+  tapNormalizedAction,
   swipeAction,
+  swipeNormalizedAction,
   inputTextAction,
   setClipboardAction,
   getClipboardAction,
@@ -86,6 +93,8 @@ const actionDefinitions = [
   failAction,
   logAction,
   saveScreenshotAction,
+  visionObserveAction,
+  visionLocateAction,
   aiRunAction
 ] satisfies AutomationActionDefinition[]
 
@@ -94,17 +103,19 @@ const actionDefinitionByUses = new Map(actionDefinitions.map(definition => [defi
 const fallbackCategory = (uses: string): AutomationActionCategory =>
   uses.startsWith('ai.')
     ? 'AI'
-    : uses.startsWith('container.network.')
-      ? 'Network'
-      : uses.startsWith('assert.')
-        ? 'Assertions'
-        : uses.startsWith('flow.')
-          ? 'Flow'
-          : uses.startsWith('debug.') || uses.startsWith('artifact.')
-            ? 'Debug'
-            : uses.includes('File')
-              ? 'Files'
-              : 'Device'
+    : uses.startsWith('vision.')
+      ? 'Vision'
+      : uses.startsWith('container.network.')
+        ? 'Network'
+        : uses.startsWith('assert.')
+          ? 'Assertions'
+          : uses.startsWith('flow.')
+            ? 'Flow'
+            : uses.startsWith('debug.') || uses.startsWith('artifact.')
+              ? 'Debug'
+              : uses.includes('File')
+                ? 'Files'
+                : 'Device'
 
 const fallbackIconKey = (category: AutomationActionCategory): AutomationActionIconKey => {
   switch (category) {
@@ -122,6 +133,8 @@ const fallbackIconKey = (category: AutomationActionCategory): AutomationActionIc
       return 'route'
     case 'Debug':
       return 'debug'
+    case 'Vision':
+      return 'search'
     case 'AI':
       return 'sparkles'
     case 'Device':

@@ -107,8 +107,11 @@ export const deleteAutomationAiProviderAction = async (providerId: string) => {
   revalidateOrchestratorSettingsPage()
 }
 
-export const checkAutomationAiProviderHealthAction = async (providerId: string, modelId?: string) =>
-  orchestratorSettingsClient.checkAiProviderHealth(providerId, modelId)
+export const checkAutomationAiProviderHealthAction = async (
+  providerId: string,
+  modelId?: string,
+  role?: 'planner' | 'vision'
+) => orchestratorSettingsClient.checkAiProviderHealth(providerId, modelId, role)
 
 export const listAutomationAiProviderRemoteModelsAction = async (providerId: string) => {
   await requireAdminUser()

@@ -5,7 +5,9 @@ export const SCREEN_MUTATING_TOOLS = new Set([
   'android.rotateDisplay',
   'android.setClipboard',
   'android.swipe',
+  'android.swipeNormalized',
   'android.tap',
+  'android.tapNormalized',
   'android.viewerCommand',
 ]);
 

@@ -38,6 +38,8 @@ export const aiRunAction: AutomationActionDefinition = {
     prompt: stringValue(input, 'prompt') || 'Inspect the screen and complete the requested task.',
     ...(stringValue(input, 'providerId') ? { providerId: stringValue(input, 'providerId') } : {}),
     ...(stringValue(input, 'modelId') ? { modelId: stringValue(input, 'modelId') } : {}),
+    ...(stringValue(input, 'visionProviderId') ? { visionProviderId: stringValue(input, 'visionProviderId') } : {}),
+    ...(stringValue(input, 'visionModelId') ? { visionModelId: stringValue(input, 'visionModelId') } : {}),
     ...(stringArrayValue(input, 'allowedTools').length > 0
       ? { allowedTools: stringArrayValue(input, 'allowedTools') }
       : {}),
@@ -49,10 +51,16 @@ export const aiRunAction: AutomationActionDefinition = {
     const prompt = stringValue(input, 'prompt').trim()
     const provider = stringValue(input, 'providerId')
     const model = stringValue(input, 'modelId')
+    const visionProvider = stringValue(input, 'visionProviderId')
+    const visionModel = stringValue(input, 'visionModelId')
     const maxToolCalls = numberValue(input, 'maxToolCalls', 20)
     const timeoutSeconds = Math.round(numberValue(input, 'timeoutMs', 120000) / 1000)
     const preview = prompt.length > 72 ? `${prompt.slice(0, 72)}...` : prompt || 'No prompt'
-    return `${preview} · ${provider || 'default provider'}${model ? `/${model}` : ''} · ${timeoutSeconds}s · ${maxToolCalls} calls`
+    const vision =
+      visionProvider || visionModel
+        ? ` · vision ${visionProvider || 'default'}${visionModel ? `/${visionModel}` : ''}`
+        : ''
+    return `${preview} · planner ${provider || 'default'}${model ? `/${model}` : ''}${vision} · ${timeoutSeconds}s · ${maxToolCalls} calls`
   },
   renderEditor: props => <AiRunEditor {...props} />
 }
@@ -64,12 +72,33 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
   const [isCheckingHealth, setIsCheckingHealth] = useState(false)
   const patchInputRef = useRef(patchInput)
   const providerId = stringValue(input, 'providerId')
-  const selectedProvider = catalog.find(provider => provider.id === providerId) ?? catalog[0]
+  const plannerCatalog = useMemo(
+    () =>
+      catalog
+        .map(provider => ({ ...provider, models: provider.models.filter(model => model.roles?.includes('planner')) }))
+        .filter(provider => provider.models.length > 0),
+    [catalog]
+  )
+  const visionCatalog = useMemo(
+    () =>
+      catalog
+        .map(provider => ({ ...provider, models: provider.models.filter(model => model.roles?.includes('vision')) }))
+        .filter(provider => provider.models.length > 0),
+    [catalog]
+  )
+  const selectedProvider = plannerCatalog.find(provider => provider.id === providerId) ?? plannerCatalog[0]
   const modelId = stringValue(input, 'modelId')
   const selectedModel =
     selectedProvider?.models.find(model => model.id === modelId) ??
     selectedProvider?.models.find(model => model.default) ??
     selectedProvider?.models[0]
+  const visionProviderId = stringValue(input, 'visionProviderId')
+  const selectedVisionProvider = visionCatalog.find(provider => provider.id === visionProviderId) ?? visionCatalog[0]
+  const visionModelId = stringValue(input, 'visionModelId')
+  const selectedVisionModel =
+    selectedVisionProvider?.models.find(model => model.id === visionModelId) ??
+    selectedVisionProvider?.models.find(model => model.default) ??
+    selectedVisionProvider?.models[0]
   const allowedTools = stringArrayValue(input, 'allowedTools')
   const selectableCommands = useMemo(
     () =>
@@ -89,14 +118,27 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
       .then(nextCatalog => {
         if (cancelled) return
         setCatalog(nextCatalog)
-        const provider = nextCatalog.find(item => item.id === providerId) ?? nextCatalog[0]
+        const plannerProviders = nextCatalog
+          .map(item => ({ ...item, models: item.models.filter(model => model.roles?.includes('planner')) }))
+          .filter(item => item.models.length > 0)
+        const visionProviders = nextCatalog
+          .map(item => ({ ...item, models: item.models.filter(model => model.roles?.includes('vision')) }))
+          .filter(item => item.models.length > 0)
+        const provider = plannerProviders.find(item => item.id === providerId) ?? plannerProviders[0]
         const model =
           provider?.models.find(item => item.id === modelId) ??
           provider?.models.find(item => item.default) ??
           provider?.models[0]
+        const visionProvider = visionProviders.find(item => item.id === visionProviderId) ?? visionProviders[0]
+        const visionModel =
+          visionProvider?.models.find(item => item.id === visionModelId) ??
+          visionProvider?.models.find(item => item.default) ??
+          visionProvider?.models[0]
         const patch: Record<string, unknown> = {}
         if (provider && provider.id !== providerId) patch.providerId = provider.id
         if (model && model.id !== modelId) patch.modelId = model.id
+        if (visionProvider && !visionProviderId) patch.visionProviderId = visionProvider.id
+        if (visionModel && !visionModelId) patch.visionModelId = visionModel.id
         if (Object.keys(patch).length > 0) patchInputRef.current(patch)
       })
       .finally(() => {
@@ -105,7 +147,7 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
     return () => {
       cancelled = true
     }
-  }, [modelId, providerId])
+  }, [modelId, providerId, visionModelId, visionProviderId])
 
   useEffect(() => {
     if (!selectedProvider || !selectedModel) {
@@ -116,7 +158,7 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
     setIsCheckingHealth(true)
     void import('@/server/orchestrator/settings/actions')
       .then(({ checkAutomationAiProviderHealthAction }) =>
-        checkAutomationAiProviderHealthAction(selectedProvider.id, selectedModel.id)
+        checkAutomationAiProviderHealthAction(selectedProvider.id, selectedModel.id, 'planner')
       )
       .then(result => {
         if (!cancelled) setHealth(result)
@@ -156,12 +198,12 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
       />
       <div className='grid grid-cols-[repeat(auto-fit,minmax(min(16rem,100%),1fr))] gap-4'>
         <div className='grid gap-2'>
-          <Label>Provider</Label>
+          <Label>Planner provider</Label>
           <Select
             value={selectedProvider?.id ?? ''}
-            disabled={catalog.length === 0}
+            disabled={plannerCatalog.length === 0}
             onValueChange={nextProviderId => {
-              const nextProvider = catalog.find(provider => provider.id === nextProviderId)
+              const nextProvider = plannerCatalog.find(provider => provider.id === nextProviderId)
               const nextModel = nextProvider?.models.find(model => model.default) ?? nextProvider?.models[0]
               patchInput({
                 providerId: nextProviderId,
@@ -170,10 +212,10 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
             }}
           >
             <SelectTrigger className='w-full'>
-              <SelectValue placeholder={isLoadingCatalog ? 'Loading providers...' : 'Select provider'} />
+              <SelectValue placeholder={isLoadingCatalog ? 'Loading providers...' : 'Select planner provider'} />
             </SelectTrigger>
             <SelectContent>
-              {catalog.map(provider => (
+              {plannerCatalog.map(provider => (
                 <SelectItem
                   key={provider.id}
                   value={provider.id}
@@ -185,7 +227,7 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
           </Select>
         </div>
         <div className='grid gap-2'>
-          <Label>Model</Label>
+          <Label>Planner model</Label>
           <Select
             value={selectedModel?.id ?? ''}
             disabled={!selectedProvider || selectedProvider.models.length === 0}
@@ -196,6 +238,57 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
             </SelectTrigger>
             <SelectContent>
               {(selectedProvider?.models ?? []).map(model => (
+                <SelectItem
+                  key={model.id}
+                  value={model.id}
+                >
+                  {model.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className='grid gap-2'>
+          <Label>Vision provider</Label>
+          <Select
+            value={selectedVisionProvider?.id ?? ''}
+            disabled={visionCatalog.length === 0}
+            onValueChange={nextProviderId => {
+              const nextProvider = visionCatalog.find(provider => provider.id === nextProviderId)
+              const nextModel = nextProvider?.models.find(model => model.default) ?? nextProvider?.models[0]
+              patchInput({
+                visionProviderId: nextProviderId,
+                ...(nextModel ? { visionModelId: nextModel.id } : {})
+              })
+            }}
+          >
+            <SelectTrigger className='w-full'>
+              <SelectValue placeholder='Optional vision provider' />
+            </SelectTrigger>
+            <SelectContent>
+              {visionCatalog.map(provider => (
+                <SelectItem
+                  key={provider.id}
+                  value={provider.id}
+                >
+                  {provider.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className='grid gap-2'>
+          <Label>Vision model</Label>
+          <Select
+            value={selectedVisionModel?.id ?? ''}
+            disabled={!selectedVisionProvider || selectedVisionProvider.models.length === 0}
+            onValueChange={nextModelId => patchInput({ visionModelId: nextModelId })}
+          >
+            <SelectTrigger className='w-full'>
+              <SelectValue placeholder='Optional vision model' />
+            </SelectTrigger>
+            <SelectContent>
+              {(selectedVisionProvider?.models ?? []).map(model => (
                 <SelectItem
                   key={model.id}
                   value={model.id}

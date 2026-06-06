@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
-import { SettingsPageSkeleton } from '@/features/settings/components/settings-page-skeleton'
 import { GroupsSettings } from '@/features/settings/users/groups-settings'
+import { GroupsPageSkeleton } from '@/features/settings/users/user-page-skeletons'
 import { userService } from '@/server/auth/user'
 
 const UserGroupsSettingsContent = async () => {
@@ -11,15 +11,7 @@ const UserGroupsSettingsContent = async () => {
 
 export default function UserGroupsSettingsPage() {
   return (
-    <Suspense
-      fallback={
-        <SettingsPageSkeleton
-          title='Groups'
-          sectionTitle='Existing groups'
-          rows={3}
-        />
-      }
-    >
+    <Suspense fallback={<GroupsPageSkeleton />}>
       <UserGroupsSettingsContent />
     </Suspense>
   )

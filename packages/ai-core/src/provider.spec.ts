@@ -24,6 +24,7 @@ const provider: AutomationAiProvider = {
     {
       id: " qwen ",
       label: " ",
+      roles: ["planner"],
       settings: {},
       enabled: true,
       default: true,
@@ -31,6 +32,7 @@ const provider: AutomationAiProvider = {
     {
       id: " ",
       label: "Ignored",
+      roles: ["planner"],
       settings: {},
       enabled: false,
       default: false,
@@ -76,6 +78,7 @@ describe("AI provider core", () => {
           {
             id: "gpt-4o",
             label: "gpt-4o",
+            roles: ["planner"],
             settings: {
               systemPrompt: null,
               temperature: null,
@@ -105,12 +108,17 @@ describe("AI provider core", () => {
     );
   });
 
-  it("does not include model capability fields", () => {
+  it("normalizes explicit model roles", () => {
     assert.deepEqual(
-      normalizeAiModel({ id: "gpt-4o", label: "gpt-4o" }),
+      normalizeAiModel({
+        id: "gpt-4o",
+        label: "gpt-4o",
+        roles: ["planner", "vision", "bad"],
+      }),
       {
         id: "gpt-4o",
         label: "gpt-4o",
+        roles: ["planner", "vision"],
         settings: {
           systemPrompt: null,
           temperature: null,
