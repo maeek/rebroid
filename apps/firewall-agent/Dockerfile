@@ -3,12 +3,15 @@ WORKDIR /workspace
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/firewall-agent/package.json apps/firewall-agent/package.json
+COPY packages/firewall-policy-core/package.json packages/firewall-policy-core/package.json
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --filter rebroid-firewall-agent... --frozen-lockfile
-RUN pnpm --filter rebroid-firewall-agent deploy --prod /out
+COPY packages/firewall-policy-core /workspace/packages/firewall-policy-core
+COPY apps/firewall-agent /workspace/apps/firewall-agent
+RUN pnpm --filter @rebroid/firewall-policy-core build
 WORKDIR /workspace/apps/firewall-agent
-COPY apps/firewall-agent/tsconfig.json ./
-COPY apps/firewall-agent/src ./src
 RUN pnpm build
+WORKDIR /workspace
+RUN pnpm --filter rebroid-firewall-agent deploy --prod /out
 
 FROM node:24-alpine
 RUN apk add --no-cache iptables ip6tables nftables curl

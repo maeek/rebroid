@@ -9,6 +9,9 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat python3 make g++
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json apps/web/package.json
+COPY packages/ai-core/package.json packages/ai-core/package.json
+COPY packages/automation-core/package.json packages/automation-core/package.json
+COPY packages/firewall-policy-core/package.json packages/firewall-policy-core/package.json
 COPY packages/orchestrator-client/package.json packages/orchestrator-client/package.json
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --filter rebroid-web... --frozen-lockfile
 
@@ -20,8 +23,12 @@ ARG DISPLAY_SIDECAR_INTERNAL_BASE_URL=http://rebroid-display-sidecar:8000
 ENV NEXT_PROXY_CLIENT_MAX_BODY_SIZE=${NEXT_PROXY_CLIENT_MAX_BODY_SIZE}
 ENV DISPLAY_SIDECAR_INTERNAL_BASE_URL=${DISPLAY_SIDECAR_INTERNAL_BASE_URL}
 COPY --from=deps /workspace /workspace
+COPY packages/ai-core /workspace/packages/ai-core
+COPY packages/automation-core /workspace/packages/automation-core
+COPY packages/firewall-policy-core /workspace/packages/firewall-policy-core
 COPY packages/orchestrator-client /workspace/packages/orchestrator-client
 COPY apps/web ./
+RUN pnpm --filter @rebroid/ai-core --filter @rebroid/automation-core --filter @rebroid/firewall-policy-core build
 RUN pnpm build
 
 FROM node:24-alpine AS runner

@@ -8,19 +8,27 @@ FROM base AS deps
 RUN apk add --no-cache --virtual .build-deps python3 make g++
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/orchestrator/package.json apps/orchestrator/package.json
+COPY packages/ai-core/package.json packages/ai-core/package.json
+COPY packages/automation-core/package.json packages/automation-core/package.json
+COPY packages/firewall-policy-core/package.json packages/firewall-policy-core/package.json
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --filter rebroid-orchestrator... --frozen-lockfile
-RUN pnpm --filter rebroid-orchestrator deploy --prod /out
 
 FROM base AS builder
-WORKDIR /workspace/apps/orchestrator
 COPY --from=deps /workspace /workspace
-COPY apps/orchestrator ./
+COPY packages/ai-core /workspace/packages/ai-core
+COPY packages/automation-core /workspace/packages/automation-core
+COPY packages/firewall-policy-core /workspace/packages/firewall-policy-core
+COPY apps/orchestrator /workspace/apps/orchestrator
+RUN pnpm --filter @rebroid/ai-core --filter @rebroid/automation-core --filter @rebroid/firewall-policy-core build
+WORKDIR /workspace/apps/orchestrator
 RUN pnpm build
+WORKDIR /workspace
+RUN pnpm --filter rebroid-orchestrator deploy --prod /out
 
 FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=deps /out ./
+COPY --from=builder /out ./
 COPY --from=builder /workspace/apps/orchestrator/dist ./dist
 COPY --chmod=755 apps/orchestrator/docker-entrypoint.sh /usr/local/bin/rebroid-orchestrator-entrypoint
 RUN mkdir -p /app/data /app/uploads /app/secrets /run/rebroid-firewall && chown -R node:node /app /run/rebroid-firewall
