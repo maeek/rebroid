@@ -26,7 +26,7 @@ import {
   formatPlatformDate
 } from '@/features/orchestrator/components/platform-detail-parts'
 import { toast } from '@/hooks/use-toast'
-import { removePlatformImageAction } from '@/server/orchestrator/platform/actions'
+import { removePlatformImageAction } from '@/server/orchestrator/platform/image-actions'
 import type { PlatformImageDetails } from '@/server/orchestrator/platform/types'
 
 export const OrchestratorImageDetail = ({ details }: { details: PlatformImageDetails }) => {

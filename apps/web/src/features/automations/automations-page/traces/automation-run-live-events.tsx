@@ -8,7 +8,7 @@ import {
   cancelAutomationRunAction,
   createAutomationRunEventStreamUrlAction,
   listAutomationRunEventsAction
-} from '@/server/orchestrator/automations/actions'
+} from '@/server/orchestrator/automations/automation-run-actions'
 import type { AutomationRun, AutomationRunEvent } from '@/server/orchestrator/automations/types'
 
 const activeStatuses = new Set(['queued', 'running'])

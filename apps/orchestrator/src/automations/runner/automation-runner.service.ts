@@ -33,6 +33,7 @@ import {
 } from '../definition/automation-definition.types';
 import { AutomationStepResult } from './automation-runner.types';
 import { AutomationRunEventBus } from '../events/automation-run-event-bus.service';
+import { AutomationRunnerRecorderService } from './automation-runner-recorder.service';
 
 export enum AutomationRunStartPolicy {
   RequireRunning = 'require-running',
@@ -86,6 +87,7 @@ export class AutomationRunnerService {
     private readonly registry: AutomationCommandRegistryService,
     private readonly aiHarness: AutomationAiHarnessService,
     private readonly events: AutomationRunEventBus,
+    private readonly recorder: AutomationRunnerRecorderService,
     private readonly conditions: AutomationConditionService,
     private readonly adb: AndroidAppsSidecarAdbService,
     private readonly display: AndroidAppsDisplaySidecarService,
@@ -366,20 +368,16 @@ export class AutomationRunnerService {
     } catch (error) {
       const completedAt = new Date().toISOString();
       const message = getErrorMessage(error);
-      state.outputsByStepId.set(step.id, null);
-      state.results.push({
-        stepId: step.id,
-        uses: `flow.${step.type}`,
-        parentStepId: options.parentStepId ?? null,
-        path: options.path,
-        status: 'failed',
-        startedAt: completedAt,
+      await this.recorder.recordStepFailed(
+        run,
+        state,
+        step.id,
+        `flow.${step.type}`,
+        options,
         completedAt,
-        output: null,
-        error: message,
-      });
-      run.error = message;
-      await this.saveRunResults(run, state.results);
+        message,
+        false,
+      );
       return { failed: true, stopped: false };
     }
   }
@@ -391,15 +389,13 @@ export class AutomationRunnerService {
     options: StepExecutionOptions,
   ): Promise<StepExecutionResult> {
     const startedAt = new Date().toISOString();
-    await this.events.emit({
-      runId: state.runId,
-      ownerUserId: run.ownerUserId,
-      type: 'step.started',
-      stepId: step.id,
-      parentStepId: options.parentStepId ?? null,
-      message: `Starting ${step.uses}.`,
-      data: { uses: step.uses, path: options.path },
-    });
+    await this.recorder.recordActionStarted(
+      run,
+      state,
+      step.id,
+      step.uses,
+      options,
+    );
     try {
       const executeTool = async (tool: {
         name: string;
@@ -428,61 +424,29 @@ export class AutomationRunnerService {
         path: options.path,
         toolExecutor: executeTool,
       });
-      const completedAt = new Date().toISOString();
-      const output = {
-        summary: result.summary,
-        ...(result.data ?? {}),
-      };
-      state.outputsByStepId.set(step.id, output);
-      state.results.push({
-        stepId: step.id,
-        uses: step.uses,
-        parentStepId: options.parentStepId ?? null,
-        path: options.path,
-        status: 'success',
+      await this.recorder.recordActionCompleted(
+        run,
+        state,
+        step.id,
+        step.uses,
+        options,
         startedAt,
-        completedAt,
-        output,
-        error: null,
-      });
-      await this.saveRunResults(run, state.results);
-      await this.events.emit({
-        runId: state.runId,
-        ownerUserId: run.ownerUserId,
-        type: 'step.completed',
-        stepId: step.id,
-        parentStepId: options.parentStepId ?? null,
-        message: result.summary,
-        data: { uses: step.uses, output },
-      });
+        result,
+      );
 
       return { failed: false, stopped: result.data?.stop === true };
     } catch (error) {
-      const completedAt = new Date().toISOString();
       const message = getErrorMessage(error);
-      state.outputsByStepId.set(step.id, null);
-      state.results.push({
-        stepId: step.id,
-        uses: step.uses,
-        parentStepId: options.parentStepId ?? null,
-        path: options.path,
-        status: 'failed',
+      await this.recorder.recordStepFailed(
+        run,
+        state,
+        step.id,
+        step.uses,
+        options,
         startedAt,
-        completedAt,
-        output: null,
-        error: message,
-      });
-      run.error = message;
-      await this.saveRunResults(run, state.results);
-      await this.events.emit({
-        runId: state.runId,
-        ownerUserId: run.ownerUserId,
-        type: 'step.failed',
-        stepId: step.id,
-        parentStepId: options.parentStepId ?? null,
         message,
-        data: { uses: step.uses },
-      });
+        true,
+      );
       return { failed: true, stopped: false };
     }
   }
@@ -595,40 +559,13 @@ export class AutomationRunnerService {
     options: StepExecutionOptions,
     output: Record<string, unknown>,
   ) {
-    const now = new Date().toISOString();
-    const result = {
-      summary: output.branch ? String(output.branch) : uses,
-      ...output,
-    };
-    state.outputsByStepId.set(stepId, result);
-    state.results.push({
+    await this.recorder.recordControlCompleted(
+      run,
+      state,
       stepId,
       uses,
-      parentStepId: options.parentStepId ?? null,
-      path: options.path,
-      status: 'success' as const,
-      startedAt: now,
-      completedAt: now,
-      output: result,
-      error: null,
-    });
-    await this.saveRunResults(run, state.results);
-    await this.events.emit({
-      runId: state.runId,
-      ownerUserId: run.ownerUserId,
-      type: 'step.completed',
-      stepId,
-      parentStepId: options.parentStepId ?? null,
-      message: result.summary,
-      data: { uses, output: result },
-    });
-  }
-
-  private async saveRunResults(
-    run: Awaited<ReturnType<AutomationRunsRepository['save']>>,
-    results: AutomationStepResult[],
-  ) {
-    run.stepResultsJson = JSON.stringify(results);
-    await this.runs.save(run);
+      options,
+      output,
+    );
   }
 }

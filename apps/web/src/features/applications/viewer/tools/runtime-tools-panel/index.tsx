@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type KeyboardEvent } from 'react'
 import {
   IconCast,
   IconChevronDown,
@@ -97,6 +97,26 @@ export const RuntimeToolsPanel = () => {
   )
   const [activeTool, setActiveTool] = useState<RuntimeToolId | null>(() => tools[0]?.id ?? 'streaming')
 
+  const handleToolTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, toolId: RuntimeToolId) => {
+    const currentIndex = tools.findIndex(tool => tool.id === toolId)
+    if (currentIndex === -1) return
+
+    const keyToIndex: Record<string, number> = {
+      ArrowLeft: currentIndex - 1,
+      ArrowRight: currentIndex + 1,
+      Home: 0,
+      End: tools.length - 1
+    }
+    const nextIndex = keyToIndex[event.key]
+
+    if (nextIndex === undefined) return
+
+    event.preventDefault()
+    const nextTool = tools[(nextIndex + tools.length) % tools.length]
+    setActiveTool(nextTool.id)
+    document.getElementById(`runtime-tool-tab-${nextTool.id}`)?.focus()
+  }
+
   const renderToolContent = (toolId: RuntimeToolId, inline = false) => {
     const sectionClassName = inline
       ? 'rounded-none border-0 bg-transparent p-0 shadow-none backdrop-blur-none'
@@ -107,7 +127,7 @@ export const RuntimeToolsPanel = () => {
         <ClipboardToolsSection
           app={app}
           permissions={permissions}
-          className={sectionClassName}
+          className={cn(sectionClassName, inline && 'px-0')}
           hideHeader={inline}
         />
       )
@@ -118,7 +138,7 @@ export const RuntimeToolsPanel = () => {
         <DownloadsToolsSection
           app={app}
           permissions={permissions}
-          className={sectionClassName}
+          className={cn(sectionClassName, inline && 'px-0')}
           hideHeader={inline}
         />
       )
@@ -126,7 +146,7 @@ export const RuntimeToolsPanel = () => {
 
     if (toolId === 'logs') {
       return (
-        <div className='min-h-30 px-4 max-h-300 overflow-auto'>
+        <div className='min-h-30 max-h-300 overflow-auto'>
           <AppLogsContent app={app} />
         </div>
       )
@@ -151,7 +171,7 @@ export const RuntimeToolsPanel = () => {
         <AutomationStatusToolsSection
           app={app}
           latestRun={latestAutomationRun}
-          className={sectionClassName}
+          className={cn(sectionClassName, inline && 'px-0')}
           hideHeader={inline}
         />
       )
@@ -163,7 +183,7 @@ export const RuntimeToolsPanel = () => {
           app={app}
           permissions={permissions}
           onAppChange={setApp}
-          className={sectionClassName}
+          className={cn(sectionClassName, inline && 'px-0')}
           hideHeader={inline}
         />
       )
@@ -173,7 +193,7 @@ export const RuntimeToolsPanel = () => {
       <StreamingToolsSection
         viewerSettings={viewerSettings}
         onViewerSettingsChange={setViewerSettings}
-        className={sectionClassName}
+        className={cn(sectionClassName, inline && 'px-0')}
         hideHeader={inline}
       />
     )
@@ -228,7 +248,7 @@ export const RuntimeToolsPanel = () => {
                 })}
               >
                 <div className='min-h-0 overflow-hidden'>
-                  <div className='border-t border-border/60 py-4'>{renderToolContent(tool.id, true)}</div>
+                  <div className='border-t border-border/60 p-4'>{renderToolContent(tool.id, true)}</div>
                 </div>
               </div>
             </div>
@@ -236,17 +256,27 @@ export const RuntimeToolsPanel = () => {
         })}
       </div>
 
-      <div className='hidden flex-col gap-4 md:flex rounded-lg border border-border/70 bg-card/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] backdrop-blur-md'>
-        <div className='w-full flex items-center gap-2 border-b-2 border-border/70 pt-1 pb-2 px-2'>
+      <div className='hidden min-w-0 flex-col overflow-hidden rounded-lg border border-border/70 bg-card/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] backdrop-blur-md md:flex'>
+        <div
+          role='tablist'
+          aria-label='Runtime tools'
+          className='flex w-full min-w-0 items-center gap-2 overflow-x-auto border-b border-border/70 p-2 [scrollbar-width:thin]'
+        >
           {tools.map(tool => (
             <button
               key={tool.id}
               type='button'
+              id={`runtime-tool-tab-${tool.id}`}
+              role='tab'
+              aria-selected={activeTool === tool.id}
+              aria-controls={`runtime-tool-panel-${tool.id}`}
+              tabIndex={activeTool === tool.id ? 0 : -1}
               onClick={() => setActiveTool(tool.id)}
+              onKeyDown={event => handleToolTabKeyDown(event, tool.id)}
               className={cn(
-                'py-3 px-5 flex gap-2 items-center translate-y-0.5 text-sm rounded-md hover:text-primary transition-all duration-100 cursor-pointer',
+                'flex shrink-0 items-center gap-2 rounded-md px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors hover:bg-card/45 hover:text-primary focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none',
                 {
-                  'bg-primary/10': activeTool === tool.id
+                  'bg-primary/10 text-foreground': activeTool === tool.id
                 }
               )}
             >
@@ -255,7 +285,12 @@ export const RuntimeToolsPanel = () => {
             </button>
           ))}
         </div>
-        <div className='pb-4'>
+        <div
+          id={activeTool ? `runtime-tool-panel-${activeTool}` : undefined}
+          role='tabpanel'
+          aria-labelledby={activeTool ? `runtime-tool-tab-${activeTool}` : undefined}
+          className='p-4'
+        >
           {tools.find(tool => tool.id === activeTool)?.id &&
             renderToolContent(tools.find(tool => tool.id === activeTool)!.id, true)}
         </div>

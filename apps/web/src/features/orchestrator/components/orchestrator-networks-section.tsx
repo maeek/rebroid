@@ -20,7 +20,7 @@ import { Section } from '@/components/ui/section'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Visible } from '@/components/ui/visible'
 import { toast } from '@/hooks/use-toast'
-import { removePlatformNetworkAction } from '@/server/orchestrator/platform/actions'
+import { removePlatformNetworkAction } from '@/server/orchestrator/platform/network-actions'
 import { PlatformResourceScopeFilter } from './platform-resource-scope-filter'
 import type {
   PlatformNetwork,

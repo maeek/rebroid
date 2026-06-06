@@ -36,6 +36,7 @@ import { UpdateAndroidApplicationApkDto } from '../dto/update-android-applicatio
 import { AndroidAppLifecycleJobKind } from '../entities/android-app-lifecycle-job.entity';
 import { AndroidApplicationsRepository } from '../../persistence/android-applications.repository';
 import { AndroidApplicationFactory } from './android-application.factory';
+import { AndroidAppsApkInstallLifecycleService } from './android-apps-apk-install-lifecycle.service';
 import { AndroidAppLifecycleJobsService } from './android-app-lifecycle-jobs.service';
 import { AndroidAppsRuntimePreparationService } from './android-apps-runtime-preparation.service';
 import { AndroidAppsRemovalService } from './android-apps-removal.service';
@@ -61,6 +62,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     private readonly runtimeNetwork: AndroidAppsRuntimeNetworkService,
     private readonly state: AndroidAppsStateService,
     private readonly jobs: AndroidAppLifecycleJobsService,
+    private readonly apkInstallLifecycle: AndroidAppsApkInstallLifecycleService,
     private readonly runtimePreparation: AndroidAppsRuntimePreparationService,
     private readonly applicationFactory: AndroidApplicationFactory,
     private readonly removal: AndroidAppsRemovalService,
@@ -385,7 +387,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
         apkPackageName: app.apkPackageName,
       });
     } else {
-      await this.startApkInstallInBackground(
+      await this.apkInstallLifecycle.begin(
         app,
         'Installing APK inside Android before launch. Viewer is available while installation finishes.',
       );
@@ -403,97 +405,6 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
       containerId: app.containerId,
     });
     await this.state.save(app);
-  }
-
-  /** Keeps the viewer available while a missing APK is installed after startup. */
-  private async startApkInstallInBackground(
-    app: AndroidApplication,
-    statusMessage: string,
-  ) {
-    this.tracker.ensureActive(app.id);
-    app.status = AndroidApplicationStatus.Running;
-    app.lifecycleStage = AndroidApplicationLifecycleStage.ApkInstalling;
-    app.statusMessage = statusMessage;
-    app.lastError = null;
-    await this.logs.appendLifecycle(app.id, {
-      status: AndroidApplicationStatus.Running,
-      lifecycleStage: AndroidApplicationLifecycleStage.ApkInstalling,
-      statusMessage,
-    });
-    await this.state.setLifecycle(app.id, {
-      status: AndroidApplicationStatus.Running,
-      lifecycleStage: AndroidApplicationLifecycleStage.ApkInstalling,
-      statusMessage,
-      lastError: null,
-    });
-    await this.jobs.enqueue(app.id, AndroidAppLifecycleJobKind.InstallApk, {
-      statusMessage,
-    });
-    this.scheduleApkInstall(app.id, statusMessage);
-  }
-
-  /** Finishes an APK install after the runtime has been exposed. */
-  private async completeApkInstallInBackground(
-    applicationId: string,
-    statusMessage: string,
-  ) {
-    try {
-      await this.jobs.markRunning(
-        applicationId,
-        AndroidAppLifecycleJobKind.InstallApk,
-      );
-      const app = await this.state.getStored(applicationId);
-      this.tracker.ensureActive(applicationId);
-      await this.apkProvisioning.installApk(app, statusMessage);
-      await this.logs.append(app.id, 'Background APK install finished', {
-        apkPackageName: app.apkPackageName,
-      });
-      this.tracker.ensureActive(applicationId);
-      await this.apkProvisioning.launchInstalledApk(app);
-      app.status = AndroidApplicationStatus.Running;
-      app.lifecycleStage = AndroidApplicationLifecycleStage.Ready;
-      app.statusMessage = 'Application is running.';
-      app.lastError = null;
-      app.provisioningCompletedAt = new Date();
-      await this.logs.append(app.id, 'Application marked running', {
-        containerId: app.containerId,
-      });
-      await this.state.save(app);
-      await this.jobs.complete(
-        applicationId,
-        AndroidAppLifecycleJobKind.InstallApk,
-      );
-    } catch (error) {
-      if (this.tracker.isCancellationError(error)) {
-        this.logger.log(
-          `Background APK install cancelled for ${applicationId}.`,
-        );
-        await this.jobs.complete(
-          applicationId,
-          AndroidAppLifecycleJobKind.InstallApk,
-        );
-        return;
-      }
-
-      const message = getErrorMessage(error);
-      await this.jobs.markFailed(
-        applicationId,
-        AndroidAppLifecycleJobKind.InstallApk,
-        message,
-      );
-      this.logger.error(
-        `Background APK install failed for ${applicationId}: ${message}`,
-      );
-      await this.state.setLifecycle(applicationId, {
-        status: AndroidApplicationStatus.Running,
-        lifecycleStage: AndroidApplicationLifecycleStage.Error,
-        statusMessage: `APK install failed: ${message}`,
-        lastError: message,
-      });
-      await this.logs.append(applicationId, 'Background APK install failed', {
-        error: message,
-      });
-    }
   }
 
   /** Stops an app container. */
@@ -555,7 +466,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     await this.state.save(app);
 
     if (app.status === AndroidApplicationStatus.Running) {
-      await this.startApkInstallInBackground(
+      await this.apkInstallLifecycle.begin(
         app,
         'Installing updated APK. Viewer is available while installation finishes.',
       );
@@ -675,7 +586,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
           statusMessage:
             'Resuming APK installation after orchestrator restart.',
         });
-        this.scheduleApkInstall(
+        this.apkInstallLifecycle.resume(
           app.id,
           'Resuming APK installation after orchestrator restart.',
         );
@@ -720,28 +631,13 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
         continue;
       }
       if (job.kind === AndroidAppLifecycleJobKind.InstallApk) {
-        this.scheduleApkInstall(
+        this.apkInstallLifecycle.resume(
           app.id,
-          this.apkInstallStatusMessage(job.payloadJson),
+          this.apkInstallLifecycle.statusMessageFromPayload(job.payloadJson),
         );
       }
     }
     return restoredApplicationIds;
-  }
-
-  private apkInstallStatusMessage(payloadJson: string | null) {
-    if (!payloadJson) {
-      return 'Resuming APK installation after orchestrator restart.';
-    }
-
-    try {
-      const payload = JSON.parse(payloadJson) as { statusMessage?: unknown };
-      return typeof payload.statusMessage === 'string'
-        ? payload.statusMessage
-        : 'Resuming APK installation after orchestrator restart.';
-    } catch {
-      return 'Resuming APK installation after orchestrator restart.';
-    }
   }
 
   private scheduleProvisioning(applicationId: string) {
@@ -753,12 +649,6 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
   private scheduleStart(applicationId: string) {
     this.scheduleBackgroundJob(`start:${applicationId}`, () =>
       this.startInBackground(applicationId),
-    );
-  }
-
-  private scheduleApkInstall(applicationId: string, statusMessage: string) {
-    this.scheduleBackgroundJob(`install-apk:${applicationId}`, () =>
-      this.completeApkInstallInBackground(applicationId, statusMessage),
     );
   }
 

@@ -11,6 +11,7 @@ import { AndroidAppsLifecycleController } from './controllers/android-apps-lifec
 import { AndroidAppsRuntimeNetworkModule } from '../network/android-apps-runtime-network.module';
 import { AndroidAppsProvisioningModule } from '../provisioning/android-apps-provisioning.module';
 import { AndroidAppsViewerModule } from '../viewer/android-apps-viewer.module';
+import { AndroidAppsApkInstallLifecycleService } from './services/android-apps-apk-install-lifecycle.service';
 import { AndroidApplicationFactory } from './services/android-application.factory';
 import { AndroidAppsLifecycleService } from './services/android-apps-lifecycle.service';
 import { AndroidAppsRemovalService } from './services/android-apps-removal.service';
@@ -33,6 +34,7 @@ import { LifecycleBackgroundJobRunner } from './services/lifecycle-background-jo
   ],
   controllers: [AndroidAppsLifecycleController],
   providers: [
+    AndroidAppsApkInstallLifecycleService,
     AndroidApplicationFactory,
     AndroidAppsLifecycleService,
     AndroidAppsRemovalService,

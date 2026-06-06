@@ -1,5 +1,5 @@
 import { OrchestratorContainersPageClient } from '@/features/orchestrator/components/orchestrator-containers-page-client'
-import { listPlatformContainersGridAction } from '@/server/orchestrator/platform/actions'
+import { listPlatformContainersGridAction } from '@/server/orchestrator/platform/container-actions'
 import type { PlatformContainersGridQuery } from '@/server/orchestrator/platform/types'
 
 type ContainersSearchParams = Record<string, string | string[] | undefined>

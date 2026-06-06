@@ -12,17 +12,16 @@ import type {
   AutomationAiProviderModel,
   AutomationAiRunInput,
 } from './automation-ai.types';
-
-interface ChatMessage {
-  role: 'system' | 'user' | 'assistant' | 'tool';
-  content: string | null;
-  tool_call_id?: string;
-  tool_calls?: Array<{
-    id: string;
-    type: 'function';
-    function: { name: string; arguments: string };
-  }>;
-}
+import {
+  allowedToolMatcher,
+  buildChatRequestBody,
+  buildInitialMessages,
+  buildToolDefinitions,
+  chatCompletionsEndpoint,
+  mapUsesByToolName,
+  parseArguments,
+  type ChatMessage,
+} from './automation-ai-harness-utils';
 
 @Injectable()
 export class AutomationAiHarnessService {
@@ -38,36 +37,12 @@ export class AutomationAiHarnessService {
       input.modelId,
     );
     const deadline = Date.now() + input.timeoutMs;
-    const allowed = this.allowedTools(input.allowedTools);
-    const tools = this.registry
-      .listCommands()
-      .filter((command) => command.uses !== 'ai.run' && allowed(command.uses))
-      .map((command) => ({
-        type: 'function' as const,
-        function: {
-          name: toolName(command.uses),
-          description: `${command.label}. ${command.description}`,
-          parameters: command.inputSchema,
-        },
-      }));
-    const usesByToolName = new Map(
-      this.registry
-        .listCommands()
-        .map((command) => [toolName(command.uses), command.uses]),
-    );
+    const commands = this.registry.listCommands();
+    const allowed = allowedToolMatcher(input.allowedTools);
+    const tools = buildToolDefinitions(commands, allowed);
+    const usesByToolName = mapUsesByToolName(commands);
 
-    const messages: ChatMessage[] = [
-      {
-        role: 'system',
-        content: [
-          'You are controlling an Android automation through typed tools. Use tools only when needed, keep progress concise, and finish with a short visible summary. Never invent tool results.',
-          model.settings.systemPrompt,
-        ]
-          .filter(Boolean)
-          .join('\n\n'),
-      },
-      { role: 'user', content: input.prompt },
-    ];
+    const messages = buildInitialMessages(input, model);
     let toolCalls = 0;
     let finalText = '';
 
@@ -181,11 +156,6 @@ export class AutomationAiHarnessService {
     };
   }
 
-  private allowedTools(allowedTools?: string[]) {
-    const allowed = new Set((allowedTools ?? []).filter(Boolean));
-    return (uses: string) => allowed.size === 0 || allowed.has(uses);
-  }
-
   private async chat(
     provider: AutomationAiProvider,
     model: AutomationAiProviderModel,
@@ -199,11 +169,7 @@ export class AutomationAiHarnessService {
       Math.max(1, deadline - Date.now()),
     );
     try {
-      const endpoint =
-        provider.kind === 'ollama'
-          ? `${provider.baseUrl.replace(/\/+$/, '')}/v1/chat/completions`
-          : `${provider.baseUrl.replace(/\/+$/, '')}/chat/completions`;
-      const response = await fetch(endpoint, {
+      const response = await fetch(chatCompletionsEndpoint(provider), {
         method: 'POST',
         signal: controller.signal,
         headers: {
@@ -212,22 +178,9 @@ export class AutomationAiHarnessService {
             ? { authorization: `Bearer ${provider.apiKey}` }
             : {}),
         },
-        body: JSON.stringify({
-          model: model.id,
-          messages,
-          tools,
-          tool_choice: 'auto',
-          temperature: model.settings.temperature ?? 0.2,
-          ...(model.settings.topP !== null && model.settings.topP !== undefined
-            ? { top_p: model.settings.topP }
-            : {}),
-          ...(provider.kind === 'ollama'
-            ? {
-                options: ollamaOptions(model),
-                ...(model.settings.keepAlive ? { keep_alive: model.settings.keepAlive } : {}),
-              }
-            : {}),
-        }),
+        body: JSON.stringify(
+          buildChatRequestBody({ provider, model, messages, tools }),
+        ),
       });
       if (!response.ok) {
         throw new BadRequestException(
@@ -259,26 +212,3 @@ export class AutomationAiHarnessService {
     });
   }
 }
-
-const toolName = (uses: string) => uses.replace(/[^a-zA-Z0-9_]/g, '__');
-
-const parseArguments = (value: string) => {
-  try {
-    const parsed = JSON.parse(value || '{}') as unknown;
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? (parsed as Record<string, unknown>)
-      : {};
-  } catch {
-    return {};
-  }
-};
-
-const ollamaOptions = (model: AutomationAiProviderModel) =>
-  Object.fromEntries(
-    [
-      ['num_ctx', model.settings.numCtx],
-      ['repeat_penalty', model.settings.repeatPenalty],
-      ['seed', model.settings.seed],
-      ['top_k', model.settings.topK],
-    ].filter(([, value]) => value !== null && value !== undefined),
-  );

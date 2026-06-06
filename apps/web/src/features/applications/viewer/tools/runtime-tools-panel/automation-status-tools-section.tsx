@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { AutomationRunLiveEvents } from '@/features/automations/automations-page/traces/automation-run-live-events'
 import { cn } from '@/lib/utils'
-import { listActiveAutomationRunsAction } from '@/server/orchestrator/automations/actions'
+import { listActiveAutomationRunsAction } from '@/server/orchestrator/automations/automation-run-actions'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { AutomationRun } from '@/server/orchestrator/automations/types'
 
@@ -83,7 +83,7 @@ export const AutomationStatusToolsSection = ({
         <div
           className={cn(
             'text-sm text-secondary-foreground',
-            hideHeader ? 'px-4 py-2' : 'rounded-md border border-dashed border-border/70 p-3'
+            hideHeader ? 'py-2' : 'rounded-md border border-dashed border-border/70 p-3'
           )}
         >
           No active automation runs for this app.

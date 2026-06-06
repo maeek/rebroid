@@ -2,7 +2,7 @@ import { PlatformPageHeader } from '@/features/orchestrator/components/platform-
 import { OrchestratorNetworkDetail } from '@/features/orchestrator/details/orchestrator-network-detail'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { StatusSplash } from '@/features/shell/components/status-splash'
-import { getPlatformNetworkAction } from '@/server/orchestrator/platform/actions'
+import { getPlatformNetworkAction } from '@/server/orchestrator/platform/network-actions'
 
 export default async function OrchestratorNetworkDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params

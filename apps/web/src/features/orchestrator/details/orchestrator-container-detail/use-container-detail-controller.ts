@@ -15,7 +15,7 @@ import {
   getPlatformContainerStatsAction,
   removePlatformContainerAction,
   stopPlatformContainerAction
-} from '@/server/orchestrator/platform/actions'
+} from '@/server/orchestrator/platform/container-actions'
 import type {
   PlatformContainerDetails,
   PlatformContainerLog,

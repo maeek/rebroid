@@ -25,7 +25,7 @@ import {
   formatPlatformDate
 } from '@/features/orchestrator/components/platform-detail-parts'
 import { toast } from '@/hooks/use-toast'
-import { removePlatformNetworkAction } from '@/server/orchestrator/platform/actions'
+import { removePlatformNetworkAction } from '@/server/orchestrator/platform/network-actions'
 type NetworkDetailModel = {
   id: string
   shortId: string

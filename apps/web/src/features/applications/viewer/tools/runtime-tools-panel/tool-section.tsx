@@ -21,7 +21,7 @@ export const ToolSection = ({
 }) => (
   <section
     className={cn(
-      'flex w-full flex-col gap-4 px-5 max-md:px-4',
+      'flex w-full flex-col gap-4 px-5 max-md:px-0',
       {
         'rounded-lg border border-border/70 bg-card/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] backdrop-blur-md':
           hideHeader

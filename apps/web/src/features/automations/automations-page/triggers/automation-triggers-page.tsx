@@ -18,7 +18,7 @@ import {
   deleteAutomationTriggerAction,
   runAutomationTriggerAction,
   updateAutomationTriggerAction
-} from '@/server/orchestrator/automations/actions'
+} from '@/server/orchestrator/automations/automation-trigger-actions'
 import { AutomationDeleteDialog } from '../shared/automation-delete-dialog'
 import { AutomationEmptySplash } from '../shared/automation-empty-splash'
 import { compactGridParams, sortFromSearchParam, sortToSearchParam } from '../shared/grid-query-utils'

@@ -20,7 +20,10 @@ import { Section } from '@/components/ui/section'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Visible } from '@/components/ui/visible'
 import { toast } from '@/hooks/use-toast'
-import { removePlatformContainerAction, stopPlatformContainerAction } from '@/server/orchestrator/platform/actions'
+import {
+  removePlatformContainerAction,
+  stopPlatformContainerAction
+} from '@/server/orchestrator/platform/container-actions'
 import { createContainerColumns } from './orchestrator-containers-table-parts'
 import {
   compactPlatformGridParams,

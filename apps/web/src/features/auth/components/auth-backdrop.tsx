@@ -1,9 +1,11 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { AndroidLogo3D } from '@/components/ui/android-logo-3d'
 
 const PixelBlast = dynamic(() => import('@/components/ui/pixel-blast'), {
+  ssr: false
+})
+const AndroidLogo3D = dynamic(() => import('@/components/ui/android-logo-3d').then(mod => mod.AndroidLogo3D), {
   ssr: false
 })
 

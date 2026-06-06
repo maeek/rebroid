@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
@@ -9,10 +9,9 @@ import { cn } from '@/lib/utils'
 import {
   createAutomationAction,
   deleteAutomationAction,
-  draftAutomationYamlAction,
   updateAutomationAction,
   validateAutomationYamlAction
-} from '@/server/orchestrator/automations/actions'
+} from '@/server/orchestrator/automations/automation-management-actions'
 import { AutomationStepsList } from '../steps/list/automation-steps-list'
 import { AutomationDetailsSection } from './automation-details-section'
 import {
@@ -25,16 +24,16 @@ import { workflowFileName } from './automation-editor-utils'
 import { AutomationYamlEditorSection } from './automation-yaml-editor-section'
 import {
   automationToForm,
-  buildYaml,
   definitionToForm,
   defaultForm,
   formToSaveInput,
   type AutomationFormState,
   type AutomationStepForm
 } from './builder-utils'
-import { useAiDraftModelSelection } from './use-ai-draft-model-selection'
+import { useAutomationAiDraft } from './use-automation-ai-draft'
 import { cloneAutomationForm, useAutomationEditorHistory } from './use-automation-editor-history'
 import { useAutomationEditorSelection } from './use-automation-editor-selection'
+import { useAutomationEditorYaml } from './use-automation-editor-yaml'
 import { useUnsavedAutomationNavigation } from './use-unsaved-automation-navigation'
 import type { AutomationEditorPageProps } from './types'
 import type { Automation } from '@/server/orchestrator/automations/types'
@@ -55,32 +54,23 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
     toggleBlock,
     yamlStepKey
   } = useAutomationEditorSelection(form.steps)
-  const [yamlOpen, setYamlOpen] = useState(false)
-  const [yamlDraft, setYamlDraft] = useState('')
-  const [yamlValid, setYamlValid] = useState(true)
-  const [yamlError, setYamlError] = useState<string | null>(null)
-  const [aiDraftOpen, setAiDraftOpen] = useState(false)
-  const [aiDraftPrompt, setAiDraftPrompt] = useState('')
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const importInputRef = useRef<HTMLInputElement | null>(null)
   const isNew = !automation
   const title = isNew ? 'New workflow' : automation.name
   const {
-    canDraftFromPrompt,
-    catalog: aiModelCatalog,
-    model: selectedAiDraftModel,
-    provider: selectedAiDraftProvider,
-    setModelId: setAiDraftModelId,
-    setProviderId: setAiDraftProviderId
-  } = useAiDraftModelSelection()
-  const currentYaml = useMemo(() => {
-    try {
-      return buildYaml(form)
-    } catch {
-      return automation?.yaml ?? ''
-    }
-  }, [automation?.yaml, form])
+    currentYaml,
+    setYamlDraft,
+    setYamlError,
+    setYamlOpen,
+    setYamlValid,
+    toggleYamlEditor,
+    yamlDraft,
+    yamlError,
+    yamlOpen,
+    yamlValid
+  } = useAutomationEditorYaml({ automation, form, setForm })
   const { commitEditorChange, currentSnapshot, hasUnsavedHistory, resetEditorHistory } = useAutomationEditorHistory({
     form,
     yamlOpen,
@@ -94,6 +84,25 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
       hasUnsavedChanges: hasUnsavedHistory,
       push: router.push
     })
+  const {
+    aiDraftOpen,
+    aiDraftPrompt,
+    aiModelCatalog,
+    canDraftFromPrompt,
+    draftFromPrompt,
+    selectedAiDraftModel,
+    selectedAiDraftProvider,
+    setAiDraftModelId,
+    setAiDraftOpen,
+    setAiDraftPrompt,
+    setAiDraftProviderId
+  } = useAutomationAiDraft({
+    commitEditorChange,
+    setBusy,
+    setYamlError,
+    setYamlValid,
+    workflowId: automation?.id ?? form.id
+  })
 
   const updateForm = (patch: Partial<AutomationFormState>) =>
     commitEditorChange(() => ({
@@ -107,30 +116,6 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
 
   const updateStepAt = (index: number, step: AutomationStepForm) => {
     updateSteps(form.steps.map((item, itemIndex) => (itemIndex === index ? step : item)))
-  }
-
-  const openYamlEditor = () => {
-    setYamlDraft(currentYaml)
-    setYamlValid(true)
-    setYamlError(null)
-    setYamlOpen(true)
-  }
-
-  const openVisualEditor = () => {
-    if (!yamlValid) {
-      toast({
-        title: 'YAML is invalid',
-        description: yamlError ?? 'Fix the YAML before switching back to the visual editor.',
-        variant: 'destructive'
-      })
-      return
-    }
-    setYamlOpen(false)
-  }
-
-  const toggleYamlEditor = () => {
-    if (yamlOpen) openVisualEditor()
-    else openYamlEditor()
   }
 
   const showTraces = () => {
@@ -215,37 +200,6 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
     importInputRef.current?.click()
   }
 
-  const draftFromPrompt = async () => {
-    const prompt = aiDraftPrompt.trim()
-    if (!prompt || !selectedAiDraftProvider || !selectedAiDraftModel) return
-    setBusy(true)
-    try {
-      const draft = await draftAutomationYamlAction({
-        prompt,
-        providerId: selectedAiDraftProvider.id,
-        modelId: selectedAiDraftModel.id
-      })
-      const nextForm = definitionToForm(draft.definition, automation?.id ?? form.id)
-      commitEditorChange(() => ({
-        form: nextForm,
-        yamlOpen: true,
-        yamlDraft: draft.yaml
-      }))
-      setYamlValid(true)
-      setYamlError(null)
-      setAiDraftOpen(false)
-      setAiDraftPrompt('')
-    } catch (error) {
-      toast({
-        title: 'Could not draft automation',
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
-      })
-    } finally {
-      setBusy(false)
-    }
-  }
-
   const handleWorkflowImport = async (file: File | null) => {
     if (!file) return
     setBusy(true)
@@ -277,31 +231,6 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
       if (importInputRef.current) importInputRef.current.value = ''
     }
   }
-
-  useEffect(() => {
-    if (!yamlOpen) return
-
-    let canceled = false
-    const timeout = window.setTimeout(() => {
-      void validateAutomationYamlAction(yamlDraft).then(validation => {
-        if (canceled) return
-        if (!validation.valid || !validation.definition) {
-          setYamlValid(false)
-          setYamlError(validation.errors[0] ?? 'Automation YAML is invalid.')
-          return
-        }
-
-        setYamlValid(true)
-        setYamlError(null)
-        setForm(definitionToForm(validation.definition, automation?.id ?? form.id))
-      })
-    }, 450)
-
-    return () => {
-      canceled = true
-      window.clearTimeout(timeout)
-    }
-  }, [automation?.id, form.id, yamlDraft, yamlOpen])
 
   return (
     <ProtectedStackPageLayout mainClassName='gap-0'>

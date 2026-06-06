@@ -1,5 +1,5 @@
 import { OrchestratorImagesPageClient } from '@/features/orchestrator/components/orchestrator-images-page-client'
-import { listPlatformImagesGridAction } from '@/server/orchestrator/platform/actions'
+import { listPlatformImagesGridAction } from '@/server/orchestrator/platform/image-actions'
 import type { PlatformImagesGridQuery } from '@/server/orchestrator/platform/types'
 
 type ImagesSearchParams = Record<string, string | string[] | undefined>

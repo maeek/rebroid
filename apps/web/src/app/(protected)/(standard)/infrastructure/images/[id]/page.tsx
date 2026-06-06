@@ -3,7 +3,7 @@ import { OrchestratorImageDetail } from '@/features/orchestrator/details/orchest
 import { imageDisplayName } from '@/features/orchestrator/domain/image-display-name'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { StatusSplash } from '@/features/shell/components/status-splash'
-import { getPlatformImageAction } from '@/server/orchestrator/platform/actions'
+import { getPlatformImageAction } from '@/server/orchestrator/platform/image-actions'
 
 export default async function OrchestratorImageDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params

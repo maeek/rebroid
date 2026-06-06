@@ -1,9 +1,4 @@
-'use server'
-
 import { imageDisplayName } from '@/features/orchestrator/domain/image-display-name'
-import { recordAuditEvent } from '@/server/audit/events'
-import { revalidateOrchestratorPages, requireAdminUser } from '../shared'
-import { orchestratorPlatformClient } from './client'
 import type {
   PlatformContainer,
   PlatformContainersGridPage,
@@ -16,25 +11,31 @@ import type {
   PlatformNetworksGridQuery
 } from './types'
 
-export const listPlatformContainersAction = async () => {
-  await requireAdminUser()
-  return orchestratorPlatformClient.listPlatformContainers()
-}
+const pageBounds = (query: { page?: number; pageSize?: number }) => ({
+  page: Math.max(Math.trunc(query.page ?? 1), 1),
+  pageSize: Math.min(Math.max(Math.trunc(query.pageSize ?? 20), 1), 100)
+})
+
+const parseSorting = (sort: string | undefined, fallback: string, fields: Set<string>, descDefault: boolean) =>
+  (sort || fallback)
+    .split(',')
+    .map(part => {
+      const [id, direction] = part.split(':')
+      if (!id || !fields.has(id)) return null
+      return {
+        id,
+        desc: descDefault ? direction !== 'asc' : direction === 'desc'
+      }
+    })
+    .filter((item): item is { id: string; desc: boolean } => Boolean(item))
+    .slice(0, 3)
 
 const containerSortFields = new Set(['name', 'state', 'image', 'applicationId'])
 
 const containerName = (container: PlatformContainer) => container.names[0] ?? container.shortId
 
 const sortContainers = (containers: PlatformContainer[], sort?: string) => {
-  const sorting = (sort || 'name:asc')
-    .split(',')
-    .map(part => {
-      const [id, direction] = part.split(':')
-      if (!id || !containerSortFields.has(id)) return null
-      return { id, desc: direction === 'desc' }
-    })
-    .filter((item): item is { id: string; desc: boolean } => Boolean(item))
-    .slice(0, 3)
+  const sorting = parseSorting(sort, 'name:asc', containerSortFields, false)
 
   return [...containers].sort((left, right) => {
     if (left.orphaned !== right.orphaned) return left.orphaned ? -1 : 1
@@ -52,14 +53,12 @@ const sortContainers = (containers: PlatformContainer[], sort?: string) => {
   })
 }
 
-export const listPlatformContainersGridAction = async (
+export const platformContainersGridPage = (
+  containers: PlatformContainer[],
   query: PlatformContainersGridQuery = {}
-): Promise<PlatformContainersGridPage> => {
-  await requireAdminUser()
-  const page = Math.max(Math.trunc(query.page ?? 1), 1)
-  const pageSize = Math.min(Math.max(Math.trunc(query.pageSize ?? 20), 1), 100)
+): PlatformContainersGridPage => {
+  const { page, pageSize } = pageBounds(query)
   const search = query.q?.trim().toLowerCase()
-  const containers = await orchestratorPlatformClient.listPlatformContainers()
   const orphanedCount = containers.filter(container => container.orphaned).length
   const scoped = query.scope === 'all' ? containers : containers.filter(container => container.managed)
   const filtered = search
@@ -88,38 +87,10 @@ export const listPlatformContainersGridAction = async (
   return { items: sorted.slice(offset, offset + pageSize), total: sorted.length, page, pageSize, orphanedCount }
 }
 
-export const getPlatformContainerAction = async (id: string) => {
-  await requireAdminUser()
-  return orchestratorPlatformClient.getPlatformContainer(id)
-}
-
-export const getPlatformContainerLogsAction = async (id: string, tail = 500) => {
-  await requireAdminUser()
-  return orchestratorPlatformClient.getPlatformContainerLogs(id, tail)
-}
-
-export const getPlatformContainerStatsAction = async (id: string) => {
-  await requireAdminUser()
-  return orchestratorPlatformClient.getPlatformContainerStats(id)
-}
-
-export const listPlatformImagesAction = async () => {
-  await requireAdminUser()
-  return orchestratorPlatformClient.listPlatformImages()
-}
-
 const imageSortFields = new Set(['name', 'sizeBytes', 'createdAt', 'containers'])
 
 const sortImages = (images: PlatformImage[], sort?: string) => {
-  const sorting = (sort || 'createdAt:desc')
-    .split(',')
-    .map(part => {
-      const [id, direction] = part.split(':')
-      if (!id || !imageSortFields.has(id)) return null
-      return { id, desc: direction !== 'asc' }
-    })
-    .filter((item): item is { id: string; desc: boolean } => Boolean(item))
-    .slice(0, 3)
+  const sorting = parseSorting(sort, 'createdAt:desc', imageSortFields, true)
 
   return [...images].sort((left, right) => {
     for (const item of sorting) {
@@ -140,14 +111,12 @@ const sortImages = (images: PlatformImage[], sort?: string) => {
   })
 }
 
-export const listPlatformImagesGridAction = async (
+export const platformImagesGridPage = (
+  images: PlatformImage[],
   query: PlatformImagesGridQuery = {}
-): Promise<PlatformImagesGridPage> => {
-  await requireAdminUser()
-  const page = Math.max(Math.trunc(query.page ?? 1), 1)
-  const pageSize = Math.min(Math.max(Math.trunc(query.pageSize ?? 20), 1), 100)
+): PlatformImagesGridPage => {
+  const { page, pageSize } = pageBounds(query)
   const search = query.q?.trim().toLowerCase()
-  const images = await orchestratorPlatformClient.listPlatformImages()
   const scoped = query.scope === 'all' ? images : images.filter(image => image.managed)
   const filtered = search
     ? scoped.filter(image =>
@@ -175,44 +144,10 @@ export const listPlatformImagesGridAction = async (
   }
 }
 
-export const getPlatformImageAction = async (id: string) => {
-  await requireAdminUser()
-  return orchestratorPlatformClient.getPlatformImage(id)
-}
-
-export const removePlatformImageAction = async (id: string, force = false) => {
-  const admin = await requireAdminUser()
-  const result = await orchestratorPlatformClient.removePlatformImage(id, force)
-  recordAuditEvent({
-    actorUserId: admin.id,
-    actorLabel: admin.name || admin.username || admin.id,
-    category: 'docker',
-    action: 'docker.image.remove',
-    resourceType: 'docker_image',
-    resourceId: id,
-    details: { force }
-  })
-  revalidateOrchestratorPages()
-  return result
-}
-
-export const listPlatformNetworksAction = async () => {
-  await requireAdminUser()
-  return orchestratorPlatformClient.listPlatformNetworks()
-}
-
 const networkSortFields = new Set(['name', 'driver', 'scope', 'containers'])
 
 const sortNetworks = (networks: PlatformNetwork[], sort?: string) => {
-  const sorting = (sort || 'name:asc')
-    .split(',')
-    .map(part => {
-      const [id, direction] = part.split(':')
-      if (!id || !networkSortFields.has(id)) return null
-      return { id, desc: direction === 'desc' }
-    })
-    .filter((item): item is { id: string; desc: boolean } => Boolean(item))
-    .slice(0, 3)
+  const sorting = parseSorting(sort, 'name:asc', networkSortFields, false)
 
   return [...networks].sort((left, right) => {
     if (left.managed !== right.managed) return left.managed ? -1 : 1
@@ -229,14 +164,12 @@ const sortNetworks = (networks: PlatformNetwork[], sort?: string) => {
   })
 }
 
-export const listPlatformNetworksGridAction = async (
+export const platformNetworksGridPage = (
+  networks: PlatformNetwork[],
   query: PlatformNetworksGridQuery = {}
-): Promise<PlatformNetworksGridPage> => {
-  await requireAdminUser()
-  const page = Math.max(Math.trunc(query.page ?? 1), 1)
-  const pageSize = Math.min(Math.max(Math.trunc(query.pageSize ?? 20), 1), 100)
+): PlatformNetworksGridPage => {
+  const { page, pageSize } = pageBounds(query)
   const search = query.q?.trim().toLowerCase()
-  const networks = await orchestratorPlatformClient.listPlatformNetworks()
   const scoped = query.scope === 'all' ? networks : networks.filter(network => network.managed)
   const filtered = search
     ? scoped.filter(network =>
@@ -258,55 +191,4 @@ export const listPlatformNetworksGridAction = async (
   const sorted = sortNetworks(filtered, query.sort)
   const offset = (page - 1) * pageSize
   return { items: sorted.slice(offset, offset + pageSize), total: sorted.length, page, pageSize }
-}
-
-export const getPlatformNetworkAction = async (id: string) => {
-  await requireAdminUser()
-  return orchestratorPlatformClient.getPlatformNetwork(id)
-}
-
-export const removePlatformNetworkAction = async (id: string) => {
-  const admin = await requireAdminUser()
-  const result = await orchestratorPlatformClient.removePlatformNetwork(id)
-  recordAuditEvent({
-    actorUserId: admin.id,
-    actorLabel: admin.name || admin.username || admin.id,
-    category: 'docker',
-    action: 'docker.network.remove',
-    resourceType: 'docker_network',
-    resourceId: id
-  })
-  revalidateOrchestratorPages()
-  return result
-}
-
-export const stopPlatformContainerAction = async (id: string) => {
-  const admin = await requireAdminUser()
-  const result = await orchestratorPlatformClient.stopPlatformContainer(id)
-  recordAuditEvent({
-    actorUserId: admin.id,
-    actorLabel: admin.name || admin.username || admin.id,
-    category: 'docker',
-    action: 'docker.container.stop',
-    resourceType: 'docker_container',
-    resourceId: id
-  })
-  revalidateOrchestratorPages()
-  return result
-}
-
-export const removePlatformContainerAction = async (id: string, force = false) => {
-  const admin = await requireAdminUser()
-  const result = await orchestratorPlatformClient.removePlatformContainer(id, force)
-  recordAuditEvent({
-    actorUserId: admin.id,
-    actorLabel: admin.name || admin.username || admin.id,
-    category: 'docker',
-    action: 'docker.container.remove',
-    resourceType: 'docker_container',
-    resourceId: id,
-    details: { force }
-  })
-  revalidateOrchestratorPages()
-  return result
 }

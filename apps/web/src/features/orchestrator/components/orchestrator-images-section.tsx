@@ -21,7 +21,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { imageDisplayName } from '@/features/orchestrator/domain/image-display-name'
 import { toast } from '@/hooks/use-toast'
 import { formatUtcDate } from '@/lib/format'
-import { removePlatformImageAction } from '@/server/orchestrator/platform/actions'
+import { removePlatformImageAction } from '@/server/orchestrator/platform/image-actions'
 import { PlatformResourceScopeFilter } from './platform-resource-scope-filter'
 import type {
   PlatformImage,

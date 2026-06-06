@@ -1,6 +1,7 @@
 import { AutomationTriggersPage } from '@/features/automations/automations-page/triggers/automation-triggers-page'
 import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
-import { listAutomationTriggersGridAction, listAutomationsAction } from '@/server/orchestrator/automations/actions'
+import { listAutomationsAction } from '@/server/orchestrator/automations/automation-management-actions'
+import { listAutomationTriggersGridAction } from '@/server/orchestrator/automations/automation-trigger-actions'
 import type { AutomationLastStatus, AutomationTriggersGridQuery } from '@/server/orchestrator/automations/types'
 
 type AutomationTriggersSearchParams = Record<string, string | string[] | undefined>

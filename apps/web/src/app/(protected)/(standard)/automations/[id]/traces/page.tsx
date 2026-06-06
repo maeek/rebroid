@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation'
 import { AutomationTracesPage } from '@/features/automations/automations-page/traces/automation-traces-page'
 import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
-import { getAutomationAction, listAutomationRunsAction } from '@/server/orchestrator/automations/actions'
+import { getAutomationAction } from '@/server/orchestrator/automations/automation-management-actions'
+import { listAutomationRunsAction } from '@/server/orchestrator/automations/automation-run-actions'
 
 export default async function AutomationTracesRoute({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params

@@ -2,7 +2,10 @@ import { PlatformPageHeader } from '@/features/orchestrator/components/platform-
 import { OrchestratorContainerDetail } from '@/features/orchestrator/details/orchestrator-container-detail/orchestrator-container-detail'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { StatusSplash } from '@/features/shell/components/status-splash'
-import { getPlatformContainerAction, getPlatformContainerLogsAction } from '@/server/orchestrator/platform/actions'
+import {
+  getPlatformContainerAction,
+  getPlatformContainerLogsAction
+} from '@/server/orchestrator/platform/container-actions'
 
 export default async function OrchestratorContainerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params

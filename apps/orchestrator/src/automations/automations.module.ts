@@ -17,10 +17,13 @@ import { AutomationDefinitionService } from './definition/automation-definition.
 import { AutomationRunEventBus } from './events/automation-run-event-bus.service';
 import { AutomationRunEventStreamService } from './events/automation-run-event-stream.service';
 import { AutomationsPersistenceModule } from './persistence/automations-persistence.module';
+import { AutomationRunnerRecorderService } from './runner/automation-runner-recorder.service';
 import { AutomationRunnerService } from './runner/automation-runner.service';
 import { AutomationCronRegistryService } from './scheduler/automation-cron-registry.service';
 import { AutomationScheduleService } from './scheduler/automation-schedule.service';
+import { AutomationsDtoMapper } from './services/automations-dto-mapper.service';
 import { AutomationsService } from './services/automations.service';
+import { AutomationTriggerSchedulerService } from './services/automation-trigger-scheduler.service';
 
 @Module({
   imports: [
@@ -44,9 +47,12 @@ import { AutomationsService } from './services/automations.service';
     AutomationCommandRegistryService,
     AutomationConditionService,
     AutomationDefinitionService,
+    AutomationRunnerRecorderService,
     AutomationRunnerService,
     AutomationCronRegistryService,
     AutomationScheduleService,
+    AutomationsDtoMapper,
+    AutomationTriggerSchedulerService,
     AutomationsService,
   ],
   exports: [AutomationRunEventStreamService],

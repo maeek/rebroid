@@ -11,10 +11,7 @@ import { AutomationDefinitionService } from '../definition/automation-definition
 import { AutomationDefinition } from '../definition/automation-definition.types';
 import {
   AutomationCommandDto,
-  AutomationDto,
   AutomationsGridPageDto,
-  AutomationRunDto,
-  AutomationTriggerDto,
   AutomationTriggersGridPageDto,
   AutomationRunEventDto,
   AutomationRunEventStreamTokenDto,
@@ -34,14 +31,12 @@ import {
   AutomationLastStatus,
 } from '../entities/automation.entity';
 import {
-  AutomationRun,
   AutomationRunStatus,
   AutomationRunTrigger,
 } from '../entities/automation-run.entity';
 import {
   AutomationStartPolicy,
   AutomationTrigger,
-  AutomationTriggerType,
 } from '../entities/automation-trigger.entity';
 import { AutomationRunsRepository } from '../persistence/automation-runs.repository';
 import { AutomationTriggersRepository } from '../persistence/automation-triggers.repository';
@@ -50,53 +45,22 @@ import {
   AutomationRunStartPolicy,
   AutomationRunnerService,
 } from '../runner/automation-runner.service';
-import { AutomationStepResult } from '../runner/automation-runner.types';
-import { AutomationCronRegistryService } from '../scheduler/automation-cron-registry.service';
-import { AutomationScheduleService } from '../scheduler/automation-schedule.service';
 import { AutomationRunEventBus } from '../events/automation-run-event-bus.service';
 import { AutomationRunEventStreamService } from '../events/automation-run-event-stream.service';
+import { normalizeAutomationTags } from '../tags/automation-tags';
+import { AutomationTriggerSchedulerService } from './automation-trigger-scheduler.service';
+import { AutomationsDtoMapper } from './automations-dto-mapper.service';
 import {
-  normalizeAutomationTags,
-  parseAutomationTagsJson,
-} from '../tags/automation-tags';
-
-const toIso = (value: Date | string | null | undefined) =>
-  value ? new Date(value).toISOString() : null;
+  automationGridFacets,
+  automationTriggerGridFacets,
+  filterAutomationGridItems,
+  filterAutomationTriggerGridItems,
+  sortAutomationGridItems,
+  sortAutomationTriggerGridItems,
+} from './automations-grid-utils';
 
 const stringifyTags = (value: unknown) =>
   JSON.stringify(normalizeAutomationTags(value, 'tags') ?? []);
-
-const tagNames = (value: { tags: { name: string }[] }) =>
-  value.tags.map((tag) => tag.name);
-
-const automationGridSortFields = new Set([
-  'name',
-  'lastRunAt',
-  'lastStatus',
-  'createdAt',
-  'updatedAt',
-]);
-
-const automationTriggerGridSortFields = new Set([
-  'name',
-  'enabled',
-  'nextRunAt',
-  'lastRunAt',
-  'lastStatus',
-  'updatedAt',
-]);
-
-const compareNullableDates = (left: string | null, right: string | null) => {
-  if (!left && !right) return 0;
-  if (!left) return 1;
-  if (!right) return -1;
-  return new Date(left).getTime() - new Date(right).getTime();
-};
-
-interface ScheduleTriggerConfig {
-  cronExpression: string;
-  startPolicy: AutomationStartPolicy;
-}
 
 @Injectable()
 export class AutomationsService implements OnModuleInit {
@@ -108,10 +72,10 @@ export class AutomationsService implements OnModuleInit {
     private readonly definitions: AutomationDefinitionService,
     private readonly registry: AutomationCommandRegistryService,
     private readonly runner: AutomationRunnerService,
-    private readonly cronRegistry: AutomationCronRegistryService,
-    private readonly schedule: AutomationScheduleService,
     private readonly events: AutomationRunEventBus,
     private readonly eventStream: AutomationRunEventStreamService,
+    private readonly mapper: AutomationsDtoMapper,
+    private readonly triggerScheduler: AutomationTriggerSchedulerService,
   ) {}
 
   async onModuleInit() {
@@ -131,7 +95,7 @@ export class AutomationsService implements OnModuleInit {
         this.backfillAutomationLastRun(automation),
       ),
     );
-    return automations.map((automation) => this.toDto(automation));
+    return automations.map((automation) => this.mapper.automation(automation));
   }
 
   async listGrid(
@@ -162,47 +126,22 @@ export class AutomationsService implements OnModuleInit {
       targetApplicationIdsByAutomation.set(trigger.automationId, appIds);
     }
 
-    const facets = {
-      tags: [
-        ...new Set(
-          automations.flatMap((automation) => tagNames(this.toDto(automation))),
-        ),
-      ].sort((left, right) => left.localeCompare(right)),
-      targetApplicationIds: [
-        ...new Set(triggers.map((trigger) => trigger.targetApplicationId)),
-      ].sort((left, right) => left.localeCompare(right)),
-    };
-
-    const search = query.q?.trim().toLowerCase();
-    const tag = query.tag?.trim();
+    const automationDtos = automations.map((automation) =>
+      this.mapper.automation(automation),
+    );
+    const facets = automationGridFacets(
+      automationDtos,
+      triggers.map((trigger) => trigger.targetApplicationId),
+    );
     const lastRun = query.lastRun ?? 'all';
-    const filtered = automations
-      .map((automation) => this.toDto(automation))
-      .filter((automation) => {
-        const targetApplicationIds =
-          targetApplicationIdsByAutomation.get(automation.id) ??
-          new Set<string>();
-        return (
-          (!search ||
-            [
-              automation.name,
-              automation.description,
-              automation.lastStatus,
-              ...tagNames(automation),
-            ]
-              .filter(Boolean)
-              .join(' ')
-              .toLowerCase()
-              .includes(search)) &&
-          (!tag || tagNames(automation).includes(tag)) &&
-          (!query.status || automation.lastStatus === query.status) &&
-          (!query.targetApplicationId ||
-            targetApplicationIds.has(query.targetApplicationId)) &&
-          this.matchesAutomationLastRun(automation, lastRun)
-        );
-      });
+    const filtered = filterAutomationGridItems({
+      automations: automationDtos,
+      lastRun,
+      query,
+      targetApplicationIdsByAutomation,
+    });
 
-    const sorted = this.sortAutomationGridItems(filtered, query.sort);
+    const sorted = sortAutomationGridItems(filtered, query.sort);
     const offset = (page - 1) * pageSize;
     return {
       items: sorted.slice(offset, offset + pageSize),
@@ -216,7 +155,7 @@ export class AutomationsService implements OnModuleInit {
   async get(ownerUserId: string, id: string) {
     const automation = await this.getEntity(ownerUserId, id);
     await this.backfillAutomationLastRun(automation);
-    return this.toDto(automation);
+    return this.mapper.automation(automation);
   }
 
   async create(dto: CreateAutomationDto) {
@@ -230,7 +169,7 @@ export class AutomationsService implements OnModuleInit {
       lastRunAt: null,
       lastError: null,
     });
-    return this.toDto(await this.automations.save(automation));
+    return this.mapper.automation(await this.automations.save(automation));
   }
 
   async update(ownerUserId: string, id: string, dto: UpdateAutomationDto) {
@@ -242,19 +181,19 @@ export class AutomationsService implements OnModuleInit {
       automation.definitionJson = JSON.stringify(definition);
     }
 
-    return this.toDto(await this.automations.save(automation));
+    return this.mapper.automation(await this.automations.save(automation));
   }
 
   async remove(ownerUserId: string, id: string) {
     const automation = await this.getEntity(ownerUserId, id);
     for (const trigger of await this.triggers.listByOwner(ownerUserId)) {
       if (trigger.automationId === automation.id) {
-        this.cronRegistry.unregisterTrigger(trigger.id);
+        this.triggerScheduler.unregister(trigger.id);
       }
     }
     await this.triggers.deleteByAutomation(ownerUserId, automation.id);
     await this.automations.remove(automation);
-    return this.toDto(automation);
+    return this.mapper.automation(automation);
   }
 
   validateYaml(yaml: string) {
@@ -311,7 +250,7 @@ export class AutomationsService implements OnModuleInit {
         ),
       },
     );
-    return this.toRunDto(run);
+    return this.mapper.run(run);
   }
 
   async run(ownerUserId: string, id: string, dto: RunAutomationDto) {
@@ -333,19 +272,19 @@ export class AutomationsService implements OnModuleInit {
     automation.lastRunAt = new Date();
     automation.lastError = null;
     await this.automations.save(automation);
-    return this.toRunDto(run);
+    return this.mapper.run(run);
   }
 
   async listRuns(ownerUserId: string, automationId: string, limit?: number) {
     await this.getEntity(ownerUserId, automationId);
     return (
       await this.runs.listForAutomation(ownerUserId, automationId, limit)
-    ).map((run) => this.toRunDto(run));
+    ).map((run) => this.mapper.run(run));
   }
 
   async listActiveRuns(ownerUserId: string) {
     return (await this.runs.listActive(ownerUserId)).map((run) =>
-      this.toRunDto(run),
+      this.mapper.run(run),
     );
   }
 
@@ -354,11 +293,11 @@ export class AutomationsService implements OnModuleInit {
     if (!run) {
       throw new NotFoundException(`Automation run "${id}" was not found.`);
     }
-    return this.toRunDto(run);
+    return this.mapper.run(run);
   }
 
   async cancelRun(ownerUserId: string, id: string) {
-    return this.toRunDto(await this.runner.cancel(ownerUserId, id));
+    return this.mapper.run(await this.runner.cancel(ownerUserId, id));
   }
 
   async listRunEvents(
@@ -380,7 +319,7 @@ export class AutomationsService implements OnModuleInit {
 
   async listTriggers(ownerUserId: string) {
     return (await this.triggers.listByOwner(ownerUserId)).map((trigger) =>
-      this.toTriggerDto(trigger),
+      this.mapper.trigger(trigger),
     );
   }
 
@@ -397,48 +336,21 @@ export class AutomationsService implements OnModuleInit {
       this.triggers.listByOwner(ownerUserId),
       this.automations.listByOwner(ownerUserId),
     ]);
-    const automationById = new Map(
-      automations.map((automation) => [automation.id, automation]),
+    const automationNamesById = new Map(
+      automations.map((automation) => [automation.id, automation.name]),
     );
-    const triggerDtos = triggers.map((trigger) => this.toTriggerDto(trigger));
-    const facets = {
-      tags: [
-        ...new Set(triggerDtos.flatMap((trigger) => tagNames(trigger))),
-      ].sort((left, right) => left.localeCompare(right)),
-      targetApplicationIds: [
-        ...new Set(triggerDtos.map((trigger) => trigger.targetApplicationId)),
-      ].sort((left, right) => left.localeCompare(right)),
-    };
+    const triggerDtos = triggers.map((trigger) => this.mapper.trigger(trigger));
+    const facets = automationTriggerGridFacets(triggerDtos);
 
-    const search = query.q?.trim().toLowerCase();
-    const tag = query.tag?.trim();
     const lastRun = query.lastRun ?? 'all';
-    const filtered = triggerDtos.filter((trigger) => {
-      const automation = automationById.get(trigger.automationId);
-      return (
-        (!search ||
-          [
-            trigger.name,
-            trigger.targetApplicationId,
-            trigger.profileName,
-            trigger.lastStatus,
-            automation?.name,
-            ...tagNames(trigger),
-          ]
-            .filter(Boolean)
-            .join(' ')
-            .toLowerCase()
-            .includes(search)) &&
-        (!tag || tagNames(trigger).includes(tag)) &&
-        (!query.targetApplicationId ||
-          trigger.targetApplicationId === query.targetApplicationId) &&
-        (!query.enabled || String(trigger.enabled) === query.enabled) &&
-        (!query.status || trigger.lastStatus === query.status) &&
-        this.matchesAutomationTriggerLastRun(trigger, lastRun)
-      );
+    const filtered = filterAutomationTriggerGridItems({
+      automationNamesById,
+      lastRun,
+      query,
+      triggers: triggerDtos,
     });
 
-    const sorted = this.sortAutomationTriggerGridItems(filtered, query.sort);
+    const sorted = sortAutomationTriggerGridItems(filtered, query.sort);
     const offset = (page - 1) * pageSize;
     return {
       items: sorted.slice(offset, offset + pageSize),
@@ -450,14 +362,14 @@ export class AutomationsService implements OnModuleInit {
   }
 
   async getTrigger(ownerUserId: string, id: string) {
-    return this.toTriggerDto(await this.getTriggerEntity(ownerUserId, id));
+    return this.mapper.trigger(await this.getTriggerEntity(ownerUserId, id));
   }
 
   async createTrigger(dto: CreateAutomationTriggerDto) {
     const ownerUserId = dto.ownerUserId.trim();
     await this.getEntity(ownerUserId, dto.automationId);
     await this.assertTargetApplication(ownerUserId, dto.targetApplicationId);
-    const triggerConfig = this.normalizeTriggerConfig(
+    const triggerConfig = this.triggerScheduler.normalizeConfig(
       dto.triggerType,
       dto.triggerConfig,
     );
@@ -478,11 +390,14 @@ export class AutomationsService implements OnModuleInit {
       nextRunAt:
         dto.enabled === false
           ? null
-          : this.nextRunForTrigger(dto.triggerType, triggerConfig),
+          : this.triggerScheduler.nextRunForTrigger(
+              dto.triggerType,
+              triggerConfig,
+            ),
     });
     const saved = await this.triggers.save(trigger);
     this.registerTrigger(saved);
-    return this.toTriggerDto(saved);
+    return this.mapper.trigger(saved);
   }
 
   async updateTrigger(
@@ -519,42 +434,42 @@ export class AutomationsService implements OnModuleInit {
       trigger.triggerType = dto.triggerType;
     }
     if (dto.triggerConfig !== undefined || dto.triggerType !== undefined) {
-      const triggerConfig = this.normalizeTriggerConfig(
+      const triggerConfig = this.triggerScheduler.normalizeConfig(
         trigger.triggerType,
-        dto.triggerConfig ?? this.parseTriggerConfig(trigger),
+        dto.triggerConfig ?? this.mapper.triggerConfig(trigger),
       );
       trigger.triggerConfigJson = JSON.stringify(triggerConfig);
     }
     trigger.nextRunAt = trigger.enabled
-      ? this.nextRunForTrigger(
+      ? this.triggerScheduler.nextRunForTrigger(
           trigger.triggerType,
-          this.parseTriggerConfig(trigger),
+          this.mapper.triggerConfig(trigger),
         )
       : null;
     const saved = await this.triggers.save(trigger);
     this.registerTrigger(saved);
-    return this.toTriggerDto(saved);
+    return this.mapper.trigger(saved);
   }
 
   async removeTrigger(ownerUserId: string, id: string) {
     const trigger = await this.getTriggerEntity(ownerUserId, id);
-    this.cronRegistry.unregisterTrigger(trigger.id);
+    this.triggerScheduler.unregister(trigger.id);
     await this.triggers.remove(trigger);
-    return this.toTriggerDto(trigger);
+    return this.mapper.trigger(trigger);
   }
 
   async runTrigger(ownerUserId: string, id: string) {
     const trigger = await this.getTriggerEntity(ownerUserId, id);
     const automation = await this.getEntity(ownerUserId, trigger.automationId);
     const run = await this.enqueueTriggerRun(trigger, automation);
-    return this.toRunDto(run);
+    return this.mapper.run(run);
   }
 
   private async enqueueTriggerRun(
     trigger: AutomationTrigger,
     automation: Automation,
   ) {
-    const config = this.parseScheduleTriggerConfig(trigger);
+    const config = this.triggerScheduler.parseScheduleConfig(trigger);
     const run = await this.runner.enqueue(
       automation,
       AutomationRunTrigger.Schedule,
@@ -575,7 +490,7 @@ export class AutomationsService implements OnModuleInit {
     trigger.lastRunAt = now;
     trigger.lastError = null;
     trigger.nextRunAt = trigger.enabled
-      ? this.schedule.nextRun(config.cronExpression)
+      ? this.triggerScheduler.nextRunForTrigger(trigger.triggerType, config)
       : null;
     await Promise.all([
       this.automations.save(automation),
@@ -625,50 +540,8 @@ export class AutomationsService implements OnModuleInit {
     );
   }
 
-  private normalizeTriggerConfig(
-    triggerType: AutomationTriggerType,
-    config: Record<string, unknown>,
-  ) {
-    if (triggerType !== AutomationTriggerType.Schedule) {
-      throw new BadRequestException(
-        `Automation trigger type "${triggerType}" is not supported yet.`,
-      );
-    }
-    const cronExpressionValue = config.cronExpression;
-    if (typeof cronExpressionValue !== 'string') {
-      throw new BadRequestException(
-        'triggerConfig.cronExpression is required for schedule triggers.',
-      );
-    }
-    const startPolicy =
-      config.startPolicy === AutomationStartPolicy.RequireRunning
-        ? AutomationStartPolicy.RequireRunning
-        : AutomationStartPolicy.StartIfNeeded;
-
-    return {
-      cronExpression: this.schedule.validateCronExpression(cronExpressionValue),
-      startPolicy,
-    } satisfies ScheduleTriggerConfig;
-  }
-
-  private nextRunForTrigger(
-    triggerType: AutomationTriggerType,
-    config: Record<string, unknown>,
-  ) {
-    if (triggerType !== AutomationTriggerType.Schedule) {
-      return null;
-    }
-    return this.schedule.nextRun(
-      (config as unknown as ScheduleTriggerConfig).cronExpression,
-    );
-  }
-
   private registerTrigger(trigger: AutomationTrigger) {
-    const cronExpression =
-      trigger.triggerType === AutomationTriggerType.Schedule
-        ? this.parseScheduleTriggerConfig(trigger).cronExpression
-        : null;
-    this.cronRegistry.registerTrigger(trigger, cronExpression, () => {
+    this.triggerScheduler.register(trigger, () => {
       void this.runScheduledTrigger(trigger.id);
     });
   }
@@ -691,22 +564,12 @@ export class AutomationsService implements OnModuleInit {
       trigger.lastStatus = AutomationLastStatus.Failed;
       trigger.lastError =
         error instanceof Error ? error.message : String(error);
-      trigger.nextRunAt = this.schedule.nextRun(
-        this.parseScheduleTriggerConfig(trigger).cronExpression,
+      trigger.nextRunAt = this.triggerScheduler.nextRunForTrigger(
+        trigger.triggerType,
+        this.triggerScheduler.parseScheduleConfig(trigger),
       );
       await this.triggers.save(trigger);
     }
-  }
-
-  private parseTriggerConfig(trigger: AutomationTrigger) {
-    return JSON.parse(trigger.triggerConfigJson) as Record<string, unknown>;
-  }
-
-  private parseScheduleTriggerConfig(trigger: AutomationTrigger) {
-    return this.normalizeTriggerConfig(
-      AutomationTriggerType.Schedule,
-      this.parseTriggerConfig(trigger),
-    );
   }
 
   private toRunnerStartPolicy(policy: AutomationStartPolicy) {
@@ -783,172 +646,5 @@ export class AutomationsService implements OnModuleInit {
           : AutomationLastStatus.Running;
     automation.lastError = run.error;
     await this.automations.save(automation);
-  }
-
-  private matchesAutomationLastRun(
-    automation: AutomationDto,
-    filter: ListAutomationsGridQueryDto['lastRun'],
-  ) {
-    if (!filter || filter === 'all') return true;
-    if (filter === 'never') return automation.lastRunAt === null;
-    if (!automation.lastRunAt) return false;
-    const days = filter === '7d' ? 7 : filter === '30d' ? 30 : 90;
-    return (
-      new Date(automation.lastRunAt).getTime() >=
-      Date.now() - days * 24 * 60 * 60 * 1000
-    );
-  }
-
-  private matchesAutomationTriggerLastRun(
-    trigger: AutomationTriggerDto,
-    filter: ListAutomationTriggersGridQueryDto['lastRun'],
-  ) {
-    if (!filter || filter === 'all') return true;
-    if (filter === 'never') return trigger.lastRunAt === null;
-    if (!trigger.lastRunAt) return false;
-    const days = filter === '7d' ? 7 : filter === '30d' ? 30 : 90;
-    return (
-      new Date(trigger.lastRunAt).getTime() >=
-      Date.now() - days * 24 * 60 * 60 * 1000
-    );
-  }
-
-  private sortAutomationGridItems(items: AutomationDto[], sort?: string) {
-    const sorting = (sort || 'updatedAt:desc')
-      .split(',')
-      .map((part) => {
-        const [id, direction] = part.split(':');
-        if (!id || !automationGridSortFields.has(id)) return null;
-        return { id, desc: direction !== 'asc' };
-      })
-      .filter((item): item is { id: string; desc: boolean } => Boolean(item))
-      .slice(0, 3);
-
-    return [...items].sort((left, right) => {
-      for (const sortItem of sorting) {
-        const multiplier = sortItem.desc ? -1 : 1;
-        let result = 0;
-        if (sortItem.id === 'name') {
-          result = left.name.localeCompare(right.name);
-        } else if (sortItem.id === 'lastStatus') {
-          result = left.lastStatus.localeCompare(right.lastStatus);
-        } else if (sortItem.id === 'lastRunAt') {
-          result = compareNullableDates(left.lastRunAt, right.lastRunAt);
-        } else if (sortItem.id === 'createdAt') {
-          result =
-            new Date(left.createdAt).getTime() -
-            new Date(right.createdAt).getTime();
-        } else if (sortItem.id === 'updatedAt') {
-          result =
-            new Date(left.updatedAt).getTime() -
-            new Date(right.updatedAt).getTime();
-        }
-
-        if (result !== 0) return result * multiplier;
-      }
-      return left.id.localeCompare(right.id);
-    });
-  }
-
-  private sortAutomationTriggerGridItems(
-    items: AutomationTriggerDto[],
-    sort?: string,
-  ) {
-    const sorting = (sort || 'updatedAt:desc')
-      .split(',')
-      .map((part) => {
-        const [id, direction] = part.split(':');
-        if (!id || !automationTriggerGridSortFields.has(id)) return null;
-        return { id, desc: direction !== 'asc' };
-      })
-      .filter((item): item is { id: string; desc: boolean } => Boolean(item))
-      .slice(0, 3);
-
-    return [...items].sort((left, right) => {
-      for (const sortItem of sorting) {
-        const multiplier = sortItem.desc ? -1 : 1;
-        let result = 0;
-        if (sortItem.id === 'name') {
-          result = left.name.localeCompare(right.name);
-        } else if (sortItem.id === 'enabled') {
-          result = Number(left.enabled) - Number(right.enabled);
-        } else if (sortItem.id === 'lastStatus') {
-          result = left.lastStatus.localeCompare(right.lastStatus);
-        } else if (sortItem.id === 'lastRunAt') {
-          result = compareNullableDates(left.lastRunAt, right.lastRunAt);
-        } else if (sortItem.id === 'nextRunAt') {
-          result = compareNullableDates(left.nextRunAt, right.nextRunAt);
-        } else if (sortItem.id === 'updatedAt') {
-          result =
-            new Date(left.updatedAt).getTime() -
-            new Date(right.updatedAt).getTime();
-        }
-
-        if (result !== 0) return result * multiplier;
-      }
-      return left.id.localeCompare(right.id);
-    });
-  }
-
-  private toDto(automation: Automation): AutomationDto {
-    const definition = JSON.parse(
-      automation.definitionJson,
-    ) as AutomationDefinition;
-    return {
-      id: automation.id,
-      ownerUserId: automation.ownerUserId,
-      name: automation.name,
-      description: automation.description,
-      tags: definition.metadata.tags ?? [],
-      definition,
-      yaml: this.definitions.toYaml(definition),
-      lastRunAt: toIso(automation.lastRunAt),
-      lastStatus: automation.lastStatus,
-      lastError: automation.lastError,
-      createdAt: toIso(automation.createdAt) ?? new Date().toISOString(),
-      updatedAt: toIso(automation.updatedAt) ?? new Date().toISOString(),
-    };
-  }
-
-  private toRunDto(run: AutomationRun): AutomationRunDto {
-    return {
-      id: run.id,
-      automationId: run.automationId,
-      automationTriggerId: run.automationTriggerId,
-      ownerUserId: run.ownerUserId,
-      targetApplicationId: run.targetApplicationId,
-      targetProfileMode: run.targetProfileMode,
-      targetProfileName: run.targetProfileName,
-      trigger: run.trigger,
-      status: run.status,
-      startedAt: toIso(run.startedAt),
-      completedAt: toIso(run.completedAt),
-      stepResults: JSON.parse(run.stepResultsJson) as AutomationStepResult[],
-      error: run.error,
-      createdAt: toIso(run.createdAt) ?? new Date().toISOString(),
-      updatedAt: toIso(run.updatedAt) ?? new Date().toISOString(),
-    };
-  }
-
-  private toTriggerDto(trigger: AutomationTrigger): AutomationTriggerDto {
-    return {
-      id: trigger.id,
-      ownerUserId: trigger.ownerUserId,
-      name: trigger.name,
-      automationId: trigger.automationId,
-      targetApplicationId: trigger.targetApplicationId,
-      profileMode: trigger.profileMode,
-      profileName: trigger.profileName,
-      enabled: trigger.enabled,
-      tags: parseAutomationTagsJson(trigger.tagsJson),
-      triggerType: trigger.triggerType,
-      triggerConfig: this.parseTriggerConfig(trigger),
-      lastRunAt: toIso(trigger.lastRunAt),
-      nextRunAt: toIso(trigger.nextRunAt),
-      lastStatus: trigger.lastStatus,
-      lastError: trigger.lastError,
-      createdAt: toIso(trigger.createdAt) ?? new Date().toISOString(),
-      updatedAt: toIso(trigger.updatedAt) ?? new Date().toISOString(),
-    };
   }
 }

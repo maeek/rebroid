@@ -1,5 +1,5 @@
 import { OrchestratorNetworksPageClient } from '@/features/orchestrator/components/orchestrator-networks-page-client'
-import { listPlatformNetworksGridAction } from '@/server/orchestrator/platform/actions'
+import { listPlatformNetworksGridAction } from '@/server/orchestrator/platform/network-actions'
 import type { PlatformNetworksGridQuery } from '@/server/orchestrator/platform/types'
 
 type NetworksSearchParams = Record<string, string | string[] | undefined>
