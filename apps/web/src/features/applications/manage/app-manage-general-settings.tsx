@@ -62,12 +62,14 @@ export const AppManageGeneralSettings = ({
   return (
     <Section
       title='Application'
-      boxed
       titleClassName='pb-4'
       contentClassName='gap-5'
     >
-      <div className='grid gap-5 xl:grid-cols-[minmax(0,1fr)_18rem]'>
-        <div className='grid gap-4'>
+      <div className='grid gap-5 xl:grid-cols-[max-content_1fr]'>
+        <Visible when={iconSlot}>
+          <div className='border-border/60 xl:pr-5'>{iconSlot}</div>
+        </Visible>
+        <div className='grid gap-6'>
           <Setting
             label='Name'
             description='Display name shown in the UI for this app. Minimum 2 characters.'
@@ -105,9 +107,6 @@ export const AppManageGeneralSettings = ({
             </div>
           </Setting>
         </div>
-        <Visible when={iconSlot}>
-          <div className='border-border/60 xl:border-l xl:pl-5'>{iconSlot}</div>
-        </Visible>
       </div>
     </Section>
   )

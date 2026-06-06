@@ -110,7 +110,6 @@ export const AppInfoRuntimeSection = ({
   return (
     <Section
       title='Runtime'
-      boxed
       titleClassName='pb-4'
       contentClassName='flex-col'
     >

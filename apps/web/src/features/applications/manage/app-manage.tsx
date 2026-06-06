@@ -228,7 +228,7 @@ export default function AppManage({
             Owner: {currentApp.ownerDisplayName ?? currentApp.ownerUserId ?? 'Unknown'}
           </Badge>
         </Visible>
-        <div className='flex w-full min-w-0 flex-col gap-5 pb-24'>
+        <div className='flex w-full min-w-0 flex-col gap-10 pb-24'>
           <AppViewerStatusSection app={currentApp} />
           <div className='[&:empty]:hidden'>
             <AndroidNotifications app={currentApp} />

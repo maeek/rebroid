@@ -51,7 +51,6 @@ export const CreateAppNetworkAccessSection = ({
   return (
     <Section
       title='Network access'
-      boxed
       titleClassName='pb-4'
       contentClassName='gap-5'
     >

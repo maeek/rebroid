@@ -17,7 +17,6 @@ export const OrchestratorSettingsFieldsSection = ({
     <div className='flex min-w-0 flex-col gap-6'>
       <Section
         title='Runtime defaults'
-        boxed
         titleClassName='pb-4'
         contentClassName='gap-6'
       >

@@ -16,7 +16,6 @@ export const AppInfoOverviewSection = ({ app }: { app?: AppDefinition }) => {
   return (
     <Section
       title='Overview'
-      boxed
       titleClassName='pb-4'
       contentClassName='flex-col'
     >

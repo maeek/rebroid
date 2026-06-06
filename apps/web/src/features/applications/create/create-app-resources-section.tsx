@@ -16,7 +16,6 @@ export const AppFormResourcesSection = ({ values, resourceLimits, onChange }: Ap
   return (
     <Section
       title='Resources'
-      boxed
       contentClassName='gap-4'
       titleClassName='mb-4'
     >

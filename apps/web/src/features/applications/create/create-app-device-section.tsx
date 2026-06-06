@@ -33,7 +33,6 @@ export const CreateAppDeviceSection = ({
           <Badge variant={isRedroidRuntime ? 'default' : 'secondary'}>{isRedroidRuntime ? 'Redroid' : 'Custom'}</Badge>
         </div>
       }
-      boxed
       contentClassName='gap-4'
       titleClassName='mb-4'
     >

@@ -280,7 +280,6 @@ export const AppInfoNetworkSection = ({
   return (
     <Section
       title='Network'
-      boxed
       titleClassName='pb-4'
       contentClassName='flex-col'
     >

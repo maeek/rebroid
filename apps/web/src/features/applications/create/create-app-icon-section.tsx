@@ -28,7 +28,6 @@ export const AppFormIconSection = ({
   autoExtractIcon,
   hasExtractedIcon,
   disabled = false,
-  boxed = true,
   showDescription = true,
   showAutoExtract = true,
   onIconChange,
@@ -48,7 +47,6 @@ export const AppFormIconSection = ({
   return (
     <Section
       title={showDescription ? 'Icon' : undefined}
-      boxed={boxed}
       titleClassName='pb-1'
       contentClassName='gap-5'
     >
@@ -57,7 +55,7 @@ export const AppFormIconSection = ({
           Optional app icon for the web UI. Square images work best and are optimized locally before upload.
         </p>
       </Visible>
-      <div className='flex w-full flex-col items-center gap-5 max-sm:items-center'>
+      <div className='flex w-full flex-col items-center gap-5'>
         <AppIcon
           appId={appId}
           appName={appName || 'App'}

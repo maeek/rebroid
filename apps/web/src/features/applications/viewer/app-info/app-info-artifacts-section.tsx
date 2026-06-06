@@ -80,7 +80,6 @@ export const AppInfoArtifactsSection = ({ app }: { app?: AppDefinition }) => {
   return (
     <Section
       title='Artifacts'
-      boxed
       titleClassName='pb-4'
       contentClassName='flex-col'
     >

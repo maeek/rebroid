@@ -39,7 +39,6 @@ export const AppManageRuntimeSettings = ({
   return (
     <Section
       title='Runtime'
-      boxed
       titleClassName='pb-4'
       contentClassName='gap-5'
     >

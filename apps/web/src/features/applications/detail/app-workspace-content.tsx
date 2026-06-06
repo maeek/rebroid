@@ -12,28 +12,35 @@ export const AppWorkspaceContent = () => {
   const { app, isForeignOwnedApp } = useApplicationViewerApp()
 
   return (
-    <ProtectedSplitPageContent className='gap-5 pr-6'>
-      <div className='flex w-full flex-col gap-5'>
-        <PageBreadcrumbs items={[{ label: 'Apps', href: '/apps' }, { label: app.name }]} />
-        <AppViewerHeading
-          app={app}
-          showStatusBadge
-        >
-          <AppViewerActions mode='workspace' />
-        </AppViewerHeading>
-        <Visible when={isForeignOwnedApp}>
-          <Badge
-            variant='outline'
-            className='w-fit'
+    <>
+      <ProtectedSplitPageContent className='gap-5 pr-6 lg:flex-auto lg:items-stretch lg:h-[stretch] lg:min-h-full'>
+        <div className='flex w-full flex-col gap-5 grow'>
+          <PageBreadcrumbs items={[{ label: 'Apps', href: '/apps' }, { label: app.name }]} />
+          <AppViewerHeading
+            app={app}
+            showStatusBadge
           >
-            Owner: {app.ownerDisplayName ?? app.ownerUserId ?? 'Unknown'}
-          </Badge>
-        </Visible>
-      </div>
-      <div className='flex w-full justify-center rounded-lg p-2 max-sm:px-1 max-sm:py-2 sm:p-4'>
+            <AppViewerActions mode='workspace' />
+          </AppViewerHeading>
+          <Visible when={isForeignOwnedApp}>
+            <Badge
+              variant='outline'
+              className='w-fit'
+            >
+              Owner: {app.ownerDisplayName ?? app.ownerUserId ?? 'Unknown'}
+            </Badge>
+          </Visible>
+          <div className='hidden lg:flex flex-col grow'>
+            <RuntimeToolsPanel />
+          </div>
+        </div>
+      </ProtectedSplitPageContent>
+      <div className='flex w-full max-w-[min(100%,42rem)] items-start justify-center rounded-lg px-2 py-2 max-sm:px-1 max-sm:py-2 sm:p-4 lg:sticky lg:top-10 lg:flex-auto lg:self-stretch lg:h-[webkit-fill-available] lg:items-stretch lg:pr-4 lg:pt-6'>
         <AppViewerPane placement='top' />
       </div>
-      <RuntimeToolsPanel />
-    </ProtectedSplitPageContent>
+      <div className='w-full px-1 lg:hidden'>
+        <RuntimeToolsPanel />
+      </div>
+    </>
   )
 }

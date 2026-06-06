@@ -12,7 +12,6 @@ export const AppFormSessionSection = ({ values, onChange }: AppFormSessionSectio
   return (
     <Section
       title='Session'
-      boxed
       contentClassName='gap-4'
       titleClassName='mb-4'
     >

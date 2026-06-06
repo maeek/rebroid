@@ -2,7 +2,7 @@
 import { AppNotFoundSplash } from '@/features/applications/components/app-not-found-splash'
 import { AppDefinition } from '@/features/applications/domain/app-definition'
 import { resolveAppIconUrl } from '@/features/applications/icons/url'
-import { ProtectedSplitPageLayout, ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
+import { ProtectedSplitPageLayout } from '@/features/shell/components/protected-page-shell'
 import { PageBackdrop } from '../../shell/components/page-backdrop'
 import { AppViewerContent } from './app-viewer-content'
 import { AppViewerPane } from './app-viewer-pane'
@@ -49,16 +49,16 @@ const AppViewerPageContent = ({ viewMode = 'workspace' }: { viewMode?: 'workspac
 
   if (!isDetailsView) {
     return (
-      <ProtectedStackPageLayout
+      <ProtectedSplitPageLayout
         className='h-auto min-h-[calc(100vh-4rem)]'
-        mainClassName='min-h-[calc(100vh-4rem)] items-stretch'
+        mainClassName='h-auto min-h-[calc(100vh-4rem)] items-start'
       >
         <PageBackdrop
           imageSrc={app.icon ? resolveAppIconUrl(app.icon) : null}
           opacity={0.08}
         />
         <AppWorkspaceContent />
-      </ProtectedStackPageLayout>
+      </ProtectedSplitPageLayout>
     )
   }
 

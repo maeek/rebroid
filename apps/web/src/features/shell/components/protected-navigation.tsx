@@ -116,7 +116,7 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
       />
       <ul className={styles.list}>
         {items.map(({ name, Icon, href }) => {
-          const NavIcon = name === 'AI' && hasHealthyAiProvider ? GradientSparklesIcon : Icon
+          const NavIcon = name === 'AI' ? GradientSparklesIcon : Icon
 
           return (
             <NavLink

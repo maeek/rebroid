@@ -200,7 +200,7 @@ export const RuntimeToolsPanel = () => {
   }
 
   return (
-    <div className='flex w-full flex-col gap-4'>
+    <div className='flex w-full flex-col gap-4 max-sm:px-4'>
       <div className='grid gap-3 md:hidden'>
         {tools.map(tool => {
           const selected = activeTool === tool.id
@@ -256,11 +256,11 @@ export const RuntimeToolsPanel = () => {
         })}
       </div>
 
-      <div className='hidden min-w-0 flex-col overflow-hidden rounded-lg border border-border/70 bg-card/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] backdrop-blur-md md:flex'>
+      <div className='hidden min-w-0 flex-col overflow-hidden md:flex'>
         <div
           role='tablist'
           aria-label='Runtime tools'
-          className='flex w-full min-w-0 items-center gap-2 overflow-x-auto border-b border-border/70 p-2 [scrollbar-width:thin]'
+          className='flex w-full min-w-0 items-center gap-2 overflow-x-auto border-b border-border/70 py-2 [scrollbar-width:thin]'
         >
           {tools.map(tool => (
             <button
@@ -289,7 +289,7 @@ export const RuntimeToolsPanel = () => {
           id={activeTool ? `runtime-tool-panel-${activeTool}` : undefined}
           role='tabpanel'
           aria-labelledby={activeTool ? `runtime-tool-tab-${activeTool}` : undefined}
-          className='p-4'
+          className='py-4'
         >
           {tools.find(tool => tool.id === activeTool)?.id &&
             renderToolContent(tools.find(tool => tool.id === activeTool)!.id, true)}

@@ -270,7 +270,7 @@ export const CreateAppForm = ({
       </Visible>
       <form
         id={createFormId}
-        className='flex w-full flex-col gap-5 pt-2 pb-24'
+        className='flex w-full flex-col gap-10 pt-2 pb-24'
         onSubmit={event => void handleSubmit(event)}
       >
         <div className='flex items-center justify-between gap-4 flex-wrap'>

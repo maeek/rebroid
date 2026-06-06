@@ -122,7 +122,6 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
   return (
     <Section
       title='Network access'
-      boxed
       titleClassName='pb-4'
       contentClassName='gap-5'
     >

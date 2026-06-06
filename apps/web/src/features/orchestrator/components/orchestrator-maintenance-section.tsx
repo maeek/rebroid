@@ -117,7 +117,6 @@ export const OrchestratorMaintenanceSection = ({ onMaintenanceComplete }: { onMa
   return (
     <Section
       title='Maintenance'
-      boxed
       titleClassName='pb-4'
       contentClassName='gap-4'
       className='w-full'

@@ -89,12 +89,12 @@ export const AppManageIconPanel = ({
 
   if (compact) {
     return (
-      <div className='grid gap-4'>
+      <div className='flex w-full flex-col items-center gap-5'>
         <AppIcon
           appId={appId}
           appName={appName || 'App'}
           icon={icon}
-          className='mx-auto size-32 text-3xl max-xl:size-28 max-sm:size-24'
+          className='size-44 text-4xl shadow-[0_18px_60px_rgba(0,0,0,0.24)] max-sm:size-36'
         />
         <div className='flex w-full gap-2 max-sm:flex-col'>
           <Input

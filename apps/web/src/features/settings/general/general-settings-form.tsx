@@ -123,11 +123,10 @@ export const GeneralSettingsForm = ({ initialSettings }: { initialSettings: Orch
           </Button>
         </div>
       </section>
-      <section className='px-6 max-sm:px-4 w-full flex flex-col gap-6 pb-16'>
+      <section className='px-6 max-sm:px-4 w-full flex flex-col gap-10 pb-16'>
         <Section
           orientation='vertical'
           title='Frontend defaults'
-          boxed
           titleClassName='pb-4'
           contentClassName='gap-6'
         >
@@ -165,7 +164,6 @@ export const GeneralSettingsForm = ({ initialSettings }: { initialSettings: Orch
         <Section
           orientation='vertical'
           title='Streaming defaults'
-          boxed
           titleClassName='pb-4'
           contentClassName='gap-6'
         >

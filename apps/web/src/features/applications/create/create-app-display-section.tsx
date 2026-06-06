@@ -14,7 +14,6 @@ type CreateAppDisplaySectionProps = {
 export const CreateAppDisplaySection = ({ values, onChange }: CreateAppDisplaySectionProps) => (
   <Section
     title='Display size'
-    boxed
     contentClassName='gap-4'
     titleClassName='mb-4'
   >
