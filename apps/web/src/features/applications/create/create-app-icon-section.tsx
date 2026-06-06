@@ -57,7 +57,7 @@ export const AppFormIconSection = ({
           Optional app icon for the web UI. Square images work best and are optimized locally before upload.
         </p>
       </Visible>
-      <div className='flex w-full flex-col items-center gap-5 max-xl:items-start max-sm:items-center'>
+      <div className='flex w-full flex-col items-center gap-5 max-sm:items-center'>
         <AppIcon
           appId={appId}
           appName={appName || 'App'}

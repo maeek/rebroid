@@ -35,7 +35,7 @@ export const AppFormGeneralSection = ({
       contentClassName='gap-5'
     >
       <div className='grid gap-5 xl:grid-cols-[minmax(0,1fr)_18rem]'>
-        <div className='grid gap-4'>
+        <div className='flex flex-col gap-4'>
           <Setting
             label='Name'
             description='Display name shown in the UI for this app. Minimum 2 characters.'
