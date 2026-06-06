@@ -11,9 +11,23 @@ export interface ChatToolCall {
   function: { name: string; arguments: string };
 }
 
+export interface ChatTextContentPart {
+  type: "text";
+  text: string;
+}
+
+export interface ChatImageUrlContentPart {
+  type: "image_url";
+  image_url: {
+    url: string;
+  };
+}
+
+export type ChatContentPart = ChatTextContentPart | ChatImageUrlContentPart;
+
 export interface ChatMessage {
   role: "system" | "user" | "assistant" | "tool";
-  content: string | null;
+  content: string | ChatContentPart[] | null;
   tool_call_id?: string;
   tool_calls?: ChatToolCall[];
 }

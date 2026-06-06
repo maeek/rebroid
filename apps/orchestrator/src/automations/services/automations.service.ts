@@ -221,8 +221,10 @@ export class AutomationsService implements OnModuleInit {
     const definition = this.aiAutomationDefinition({
       name: 'Ad-hoc AI automation',
       prompt: dto.prompt,
+      conversation: dto.conversation,
       providerId: dto.providerId,
       modelId: dto.modelId,
+      clientMessageId: dto.clientMessageId,
       allowedTools: dto.allowedTools,
       maxToolCalls: dto.maxToolCalls,
       timeoutMs: dto.timeoutMs,
@@ -573,14 +575,18 @@ export class AutomationsService implements OnModuleInit {
     prompt,
     providerId,
     modelId,
+    conversation,
     allowedTools,
     maxToolCalls = 20,
     timeoutMs = 120_000,
+    clientMessageId,
   }: {
     name: string;
     prompt: string;
+    conversation?: Array<{ role: 'user' | 'assistant'; content: string }>;
     providerId?: string;
     modelId?: string;
+    clientMessageId?: string;
     allowedTools?: string[];
     maxToolCalls?: number;
     timeoutMs?: number;
@@ -600,8 +606,10 @@ export class AutomationsService implements OnModuleInit {
             uses: 'ai.run',
             with: {
               prompt,
+              ...(conversation ? { conversation } : {}),
               ...(providerId ? { providerId } : {}),
               ...(modelId ? { modelId } : {}),
+              ...(clientMessageId ? { clientMessageId } : {}),
               ...(allowedTools ? { allowedTools } : {}),
               maxToolCalls,
               timeoutMs,

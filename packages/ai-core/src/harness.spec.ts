@@ -86,10 +86,29 @@ describe("AI harness core", () => {
       {
         role: "system",
         content:
-          "You are controlling an Android automation through typed tools. Use tools only when needed, keep progress concise, and finish with a short visible summary. Never invent tool results.\n\nUse terse summaries.",
+          "You are an Android automation agent controlling a live device through typed tools.\nAlways inspect the latest screenshot before choosing screen actions.\nUse only the tools provided to you. Do not invent tool results or assume an action succeeded without observing the screen again.\nAfter every screen-changing action, wait for the fresh screenshot observation before deciding the next action.\nPrefer semantic or state-reading tools when they are available. Use coordinates only when they are clearly supported by the screenshot.\nContinue the observe/action/observe loop until the requested task is visibly complete, the app blocks progress, or a timeout/tool limit is reached.\nWrite concise visible progress and a short final answer. Do not reveal hidden reasoning.\n\nUse terse summaries.",
       },
       { role: "user", content: "Do it" },
     ]);
+    assert.deepEqual(
+      buildInitialMessages(
+        { prompt: "Do it", initialScreenshotDataUrl: "data:image/png;base64,abc" },
+        model,
+      )[1],
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: "Do it\n\nCurrent screenshot is attached. Inspect it before taking any action.",
+          },
+          {
+            type: "image_url",
+            image_url: { url: "data:image/png;base64,abc" },
+          },
+        ],
+      },
+    );
     assert.deepEqual(
       buildChatRequestBody({
         provider,

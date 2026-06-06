@@ -5,8 +5,19 @@ import type { AutomationCommandDefinition } from './automation-command.types';
 
 const aiRunSchema = z.object({
   prompt: z.string().trim().min(1).max(12_000),
+  conversation: z
+    .array(
+      z.object({
+        role: z.enum(['user', 'assistant']),
+        content: z.string().trim().min(1).max(12_000),
+      }),
+    )
+    .max(40)
+    .optional(),
   providerId: z.string().trim().min(1).max(80).optional(),
   modelId: z.string().trim().min(1).max(120).optional(),
+  clientMessageId: z.string().trim().min(1).max(120).optional(),
+  initialScreenshotDataUrl: z.string().trim().min(1).optional(),
   maxToolCalls: z.number().int().min(1).max(100).default(20),
   timeoutMs: z.number().int().min(1_000).max(900_000).default(120_000),
   allowedTools: z.array(z.string().trim().min(1).max(120)).max(100).optional(),

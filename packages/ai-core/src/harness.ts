@@ -1,5 +1,9 @@
 export { parseArguments } from "./harness/arguments";
-export { buildInitialMessages } from "./harness/messages";
+export {
+  AI_AUTOMATION_MASTER_SYSTEM_PROMPT,
+  buildInitialMessages,
+  buildScreenshotObservationMessage,
+} from "./harness/messages";
 export {
   buildChatRequestBody,
   chatCompletionsEndpoint,
@@ -13,6 +17,9 @@ export {
 } from "./harness/tools";
 export {
   type AutomationCommandLike,
+  type ChatContentPart,
+  type ChatImageUrlContentPart,
   type ChatMessage,
+  type ChatTextContentPart,
   type ChatToolCall,
 } from "./harness/types";

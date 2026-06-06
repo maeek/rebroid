@@ -136,8 +136,10 @@ export interface RunAutomationInput {
 
 export interface RunAdHocAiAutomationInput extends RunAutomationInput {
   prompt: string
+  conversation?: Array<{ role: 'user' | 'assistant'; content: string }>
   providerId?: string
   modelId?: string
+  clientMessageId?: string
   allowedTools?: string[]
   maxToolCalls?: number
   timeoutMs?: number
@@ -166,6 +168,8 @@ export type AutomationRunEventType =
   | 'step.progress'
   | 'ai.model.started'
   | 'ai.model.completed'
+  | 'ai.user.message'
+  | 'ai.screenshot.observed'
   | 'ai.message.delta'
   | 'ai.message.completed'
   | 'ai.tool.started'

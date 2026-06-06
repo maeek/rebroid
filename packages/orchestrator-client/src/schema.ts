@@ -2392,6 +2392,12 @@ export interface components {
             yaml: string;
             definition: components["schemas"]["AutomationDefinitionDto"];
         };
+        RunAdHocAiConversationMessageDto: {
+            /** @enum {string} */
+            role: "user" | "assistant";
+            /** @example Open settings. */
+            content: string;
+        };
         RunAdHocAiAutomationDto: {
             /** @example user_123 */
             ownerUserId: string;
@@ -2408,10 +2414,13 @@ export interface components {
             startPolicy: "require-running" | "start-if-needed";
             /** @example Open settings and verify Wi-Fi is visible. */
             prompt: string;
+            conversation?: components["schemas"]["RunAdHocAiConversationMessageDto"][];
             /** @example local-ollama */
             providerId?: string;
             /** @example qwen2.5vl:7b */
             modelId?: string;
+            /** @example msg_01HV4Y6N2R2N4SVJ8VJ7HJZJAA */
+            clientMessageId?: string;
             allowedTools?: string[];
             /** @default 20 */
             maxToolCalls: number;

@@ -10,6 +10,8 @@ export type AutomationRunEventType =
   | 'step.progress'
   | 'ai.model.started'
   | 'ai.model.completed'
+  | 'ai.user.message'
+  | 'ai.screenshot.observed'
   | 'ai.message.delta'
   | 'ai.message.completed'
   | 'ai.tool.started'

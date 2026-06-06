@@ -136,6 +136,18 @@ export class DraftAutomationYamlDto {
   modelId?: string;
 }
 
+export class RunAdHocAiConversationMessageDto {
+  @ApiProperty({ enum: ['user', 'assistant'] })
+  @IsIn(['user', 'assistant'])
+  role!: 'user' | 'assistant';
+
+  @ApiProperty({ example: 'Open settings.' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(12000)
+  content!: string;
+}
+
 export class RunAdHocAiAutomationDto {
   @ApiProperty({ example: 'user_123' })
   @IsString()
@@ -176,6 +188,15 @@ export class RunAdHocAiAutomationDto {
   @MaxLength(12000)
   prompt!: string;
 
+  @ApiPropertyOptional({
+    type: RunAdHocAiConversationMessageDto,
+    isArray: true,
+  })
+  @IsOptional()
+  @IsArray()
+  @IsObject({ each: true })
+  conversation?: RunAdHocAiConversationMessageDto[];
+
   @ApiPropertyOptional({ example: 'local-ollama' })
   @IsOptional()
   @IsString()
@@ -187,6 +208,12 @@ export class RunAdHocAiAutomationDto {
   @IsString()
   @MaxLength(120)
   modelId?: string;
+
+  @ApiPropertyOptional({ example: 'msg_01HV4Y6N2R2N4SVJ8VJ7HJZJAA' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  clientMessageId?: string;
 
   @ApiPropertyOptional({ type: String, isArray: true })
   @IsOptional()

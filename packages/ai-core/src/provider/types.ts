@@ -44,12 +44,20 @@ export interface AutomationAiProviderRemoteModel {
 
 export interface AutomationAiRunInput {
   prompt: string;
+  conversation?: AutomationAiConversationMessage[];
   providerId?: string;
   modelId?: string;
+  clientMessageId?: string;
+  initialScreenshotDataUrl?: string;
   maxToolCalls: number;
   timeoutMs: number;
   allowedTools?: string[];
   requireFinalAnswer: boolean;
+}
+
+export interface AutomationAiConversationMessage {
+  role: "user" | "assistant";
+  content: string;
 }
 
 export interface AutomationAiToolRequest {

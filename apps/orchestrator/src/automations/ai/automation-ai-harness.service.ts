@@ -7,6 +7,7 @@ import {
   allowedToolMatcher,
   buildChatRequestBody,
   buildInitialMessages,
+  buildScreenshotObservationMessage,
   buildToolDefinitions,
   chatCompletionsEndpoint,
   mapUsesByToolName,
@@ -23,6 +24,50 @@ import { AutomationRunEventBus } from '../events/automation-run-event-bus.servic
 import { AutomationAiProviderService } from './automation-ai-provider.service';
 import type { AutomationAiHarnessContext } from './automation-ai.types';
 
+const SCREEN_MUTATING_TOOLS = new Set([
+  'android.adbShell',
+  'android.inputText',
+  'android.key',
+  'android.rotateDisplay',
+  'android.setClipboard',
+  'android.swipe',
+  'android.tap',
+  'android.viewerCommand',
+]);
+
+const textContent = (content: ChatMessage['content']) =>
+  typeof content === 'string'
+    ? content
+    : Array.isArray(content)
+      ? content
+          .filter((part) => part.type === 'text')
+          .map((part) => part.text)
+          .join('\n')
+      : '';
+
+const sanitizeToolData = (data: Record<string, unknown> = {}) =>
+  Object.fromEntries(
+    Object.entries(data).map(([key, value]) => [
+      key,
+      key === 'dataUrl' && typeof value === 'string'
+        ? '[redacted image data]'
+        : value,
+    ]),
+  );
+
+const screenshotFromData = (data?: Record<string, unknown>) => {
+  const dataUrl = typeof data?.dataUrl === 'string' ? data.dataUrl : '';
+  if (!dataUrl) return null;
+  return {
+    dataUrl,
+    mimeType: typeof data?.mimeType === 'string' ? data.mimeType : 'image/png',
+    capturedAt:
+      typeof data?.capturedAt === 'string'
+        ? data.capturedAt
+        : new Date().toISOString(),
+  };
+};
+
 @Injectable()
 export class AutomationAiHarnessService {
   constructor(
@@ -36,22 +81,51 @@ export class AutomationAiHarnessService {
       input.providerId,
       input.modelId,
     );
+    if (!model.supportsTools) {
+      throw new BadRequestException(
+        `AI model "${model.id}" does not support tool calls.`,
+      );
+    }
+    if (!model.supportsVision) {
+      throw new BadRequestException(
+        `AI model "${model.id}" does not support screenshots. Select a vision-capable model for Android automation.`,
+      );
+    }
+
     const deadline = Date.now() + input.timeoutMs;
     const commands = this.registry.listCommands();
     const allowed = allowedToolMatcher(input.allowedTools);
     const tools = buildToolDefinitions(commands, allowed);
     const usesByToolName = mapUsesByToolName(commands);
 
-    const messages = buildInitialMessages(input, model);
+    await this.emit(context, 'ai.user.message', input.prompt, {
+      clientMessageId: input.clientMessageId ?? null,
+    });
+    const initialScreenshot = input.initialScreenshotDataUrl
+      ? {
+          dataUrl: input.initialScreenshotDataUrl,
+          mimeType: 'image/png',
+          capturedAt: new Date().toISOString(),
+        }
+      : await this.captureScreenshot(context, 'Initial screenshot captured.', {
+          clientMessageId: input.clientMessageId,
+          reason: 'initial',
+        });
+    const messages = buildInitialMessages(
+      { ...input, initialScreenshotDataUrl: initialScreenshot.dataUrl },
+      model,
+    );
     let toolCalls = 0;
     let finalText = '';
 
     await this.emit(context, 'ai.model.started', `Using ${provider.label}`, {
       providerId: provider.id,
       modelId: model.id,
+      clientMessageId: input.clientMessageId ?? null,
     });
 
     while (Date.now() < deadline) {
+      this.assertNotCanceled(context.abortSignal);
       const response = await this.chat(
         provider,
         model,
@@ -64,10 +138,12 @@ export class AutomationAiHarnessService {
       if (!choice) {
         throw new BadRequestException('AI provider returned no message.');
       }
-      const content = typeof choice.content === 'string' ? choice.content : '';
+      const content = textContent(choice.content);
       if (content.trim()) {
         finalText = content.trim();
-        await this.emit(context, 'ai.message.completed', finalText);
+        await this.emit(context, 'ai.message.completed', finalText, {
+          clientMessageId: input.clientMessageId ?? null,
+        });
       }
       const calls = Array.isArray(choice.tool_calls) ? choice.tool_calls : [];
       messages.push({
@@ -80,6 +156,7 @@ export class AutomationAiHarnessService {
       }
 
       for (const call of calls) {
+        this.assertNotCanceled(context.abortSignal);
         if (toolCalls >= input.maxToolCalls) {
           await this.emit(
             context,
@@ -87,6 +164,7 @@ export class AutomationAiHarnessService {
             'AI tool-call limit reached.',
             {
               maxToolCalls: input.maxToolCalls,
+              clientMessageId: input.clientMessageId ?? null,
             },
           );
           throw new RequestTimeoutException(
@@ -104,31 +182,70 @@ export class AutomationAiHarnessService {
         await this.emit(context, 'ai.tool.arguments', uses, {
           uses,
           arguments: args,
+          clientMessageId: input.clientMessageId ?? null,
         });
         await this.emit(context, 'ai.tool.started', `Calling ${uses}`, {
           uses,
+          clientMessageId: input.clientMessageId ?? null,
         });
         try {
           const result = await context.toolExecutor({
             name: uses,
             arguments: args,
           });
+          const sanitizedData = sanitizeToolData(result.data);
           await this.emit(context, 'ai.tool.completed', result.summary, {
             uses,
-            output: result.data ?? {},
+            output: sanitizedData,
+            clientMessageId: input.clientMessageId ?? null,
           });
           messages.push({
             role: 'tool',
             tool_call_id: call.id,
             content: JSON.stringify({
               summary: result.summary,
-              ...(result.data ?? {}),
+              ...sanitizedData,
             }),
           });
+
+          const toolScreenshot = screenshotFromData(result.data);
+          if (toolScreenshot) {
+            await this.emitScreenshot(context, {
+              ...toolScreenshot,
+              summary: 'Screenshot captured by tool.',
+              clientMessageId: input.clientMessageId,
+              reason: 'tool',
+            });
+            messages.push(
+              buildScreenshotObservationMessage({
+                dataUrl: toolScreenshot.dataUrl,
+                summary: 'Screenshot captured by tool.',
+              }),
+            );
+          } else if (SCREEN_MUTATING_TOOLS.has(uses)) {
+            const screenshot = await this.captureScreenshot(
+              context,
+              `Fresh screenshot captured after ${uses}.`,
+              {
+                clientMessageId: input.clientMessageId,
+                reason: 'after-tool',
+                uses,
+              },
+            );
+            messages.push(
+              buildScreenshotObservationMessage({
+                dataUrl: screenshot.dataUrl,
+                summary: `Fresh screenshot captured after ${uses}.`,
+              }),
+            );
+          }
         } catch (error) {
           const message =
             error instanceof Error ? error.message : 'Tool call failed.';
-          await this.emit(context, 'ai.tool.failed', message, { uses });
+          await this.emit(context, 'ai.tool.failed', message, {
+            uses,
+            clientMessageId: input.clientMessageId ?? null,
+          });
           throw error;
         }
       }
@@ -147,7 +264,7 @@ export class AutomationAiHarnessService {
       context,
       'ai.model.completed',
       finalText || 'AI step completed.',
-      { toolCalls },
+      { toolCalls, clientMessageId: input.clientMessageId ?? null },
     );
     return {
       summary:
@@ -198,6 +315,70 @@ export class AutomationAiHarnessService {
       abortSignal?.removeEventListener('abort', onAbort);
       clearTimeout(timeout);
     }
+  }
+
+  private assertNotCanceled(abortSignal?: AbortSignal) {
+    if (abortSignal?.aborted) {
+      throw new BadRequestException('AI automation was canceled.');
+    }
+  }
+
+  private async captureScreenshot(
+    context: AutomationAiHarnessContext,
+    summary: string,
+    data: Record<string, unknown> = {},
+  ) {
+    try {
+      const result = await context.adb.screenshot(context.app);
+      await this.emitScreenshot(context, {
+        dataUrl: result.dataUrl,
+        mimeType: result.mimeType,
+        capturedAt: result.capturedAt,
+        summary,
+        clientMessageId:
+          typeof data.clientMessageId === 'string'
+            ? data.clientMessageId
+            : undefined,
+        reason: typeof data.reason === 'string' ? data.reason : undefined,
+        uses: typeof data.uses === 'string' ? data.uses : undefined,
+      });
+      return result;
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? `Screenshot capture failed: ${error.message}`
+          : 'Screenshot capture failed.';
+      await this.emit(context, 'ai.tool.failed', message, {
+        uses: 'android.screenshot',
+        clientMessageId:
+          typeof data.clientMessageId === 'string'
+            ? data.clientMessageId
+            : null,
+      });
+      throw new BadRequestException(message);
+    }
+  }
+
+  private emitScreenshot(
+    context: AutomationAiHarnessContext,
+    input: {
+      dataUrl: string;
+      mimeType: string;
+      capturedAt: string;
+      summary: string;
+      clientMessageId?: string;
+      reason?: string;
+      uses?: string;
+    },
+  ) {
+    return this.emit(context, 'ai.screenshot.observed', input.summary, {
+      dataUrl: input.dataUrl,
+      mimeType: input.mimeType,
+      capturedAt: input.capturedAt,
+      clientMessageId: input.clientMessageId ?? null,
+      reason: input.reason ?? null,
+      uses: input.uses ?? null,
+    });
   }
 
   private emit(
