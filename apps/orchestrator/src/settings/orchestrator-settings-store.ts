@@ -9,7 +9,7 @@ import {
   normalizeAiProviders,
 } from './ai-provider-settings';
 import { OrchestratorSettingsDto } from './dto/orchestrator-settings.dto';
-import type { AutomationAiProvider } from '../automations/ai/automation-ai.types';
+import type { AutomationAiProvider } from '@rebroid/ai-core/provider';
 
 export type StoredOrchestratorSettings = OrchestratorSettingsDto & {
   aiProviders: AutomationAiProvider[];

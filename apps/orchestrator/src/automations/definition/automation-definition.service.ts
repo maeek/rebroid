@@ -2,8 +2,8 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { parse, stringify } from 'yaml';
 import { AutomationCommandRegistryService } from '../commands/automation-command-registry.service';
 import { AutomationConditionService } from '../condition/automation-condition.service';
-import { controlStepOutputs } from '../condition/automation-condition.constants';
 import { normalizeAutomationTags } from '../tags/automation-tags';
+import { controlStepOutputs } from '@rebroid/automation-core/metadata';
 import {
   AUTOMATION_API_VERSION,
   AUTOMATION_KIND,
@@ -11,7 +11,7 @@ import {
   AutomationDefinitionStep,
   AutomationDefinitionMetadata,
   AutomationSwitchCase,
-} from './automation-definition.types';
+} from '@rebroid/automation-core/definition';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value);

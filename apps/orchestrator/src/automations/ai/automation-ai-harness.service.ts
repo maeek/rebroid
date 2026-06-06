@@ -3,15 +3,6 @@ import {
   Injectable,
   RequestTimeoutException,
 } from '@nestjs/common';
-import { AutomationCommandRegistryService } from '../commands/automation-command-registry.service';
-import { AutomationRunEventBus } from '../events/automation-run-event-bus.service';
-import { AutomationAiProviderService } from './automation-ai-provider.service';
-import type {
-  AutomationAiHarnessContext,
-  AutomationAiProvider,
-  AutomationAiProviderModel,
-  AutomationAiRunInput,
-} from './automation-ai.types';
 import {
   allowedToolMatcher,
   buildChatRequestBody,
@@ -21,7 +12,16 @@ import {
   mapUsesByToolName,
   parseArguments,
   type ChatMessage,
-} from './automation-ai-harness-utils';
+} from '@rebroid/ai-core/harness';
+import type {
+  AutomationAiProvider,
+  AutomationAiProviderModel,
+  AutomationAiRunInput,
+} from '@rebroid/ai-core/provider';
+import { AutomationCommandRegistryService } from '../commands/automation-command-registry.service';
+import { AutomationRunEventBus } from '../events/automation-run-event-bus.service';
+import { AutomationAiProviderService } from './automation-ai-provider.service';
+import type { AutomationAiHarnessContext } from './automation-ai.types';
 
 @Injectable()
 export class AutomationAiHarnessService {

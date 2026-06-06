@@ -1,16 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { request } from 'node:http';
+import type { FirewallAgentPolicy } from '@rebroid/firewall-policy-core/policy';
 
 const FIREWALL_AGENT_TIMEOUT_MS = 5_000;
-
-export interface FirewallAgentPolicy {
-  containerId: string;
-  containerIp: string;
-  enabled: boolean;
-  allowCidrs: string[];
-  generation: number;
-}
 
 export interface FirewallAgentResponse {
   ok?: boolean;

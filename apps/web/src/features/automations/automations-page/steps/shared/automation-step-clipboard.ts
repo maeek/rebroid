@@ -6,7 +6,7 @@ import type {
   AutomationSwitchCaseForm,
   AutomationSwitchStepForm
 } from '../../editor/builder-utils'
-import type { AutomationConditionExpression, AutomationValueRef } from '@/server/orchestrator/automations/types'
+import type { AutomationConditionExpression, AutomationValueRef } from '@rebroid/automation-core/definition'
 
 const stepClipboardPayloadType = 'rebroid.workflow.step'
 

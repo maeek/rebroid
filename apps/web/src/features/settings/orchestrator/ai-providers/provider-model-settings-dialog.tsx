@@ -12,8 +12,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import type { ProviderModelRow } from './provider-utils'
 import type { AutomationAiProviderModel } from '@/server/orchestrator/settings/types'
+import type { ProviderModelRow } from '@rebroid/ai-core/provider'
 
 export const ProviderModelSettingsDialog = ({
   model,

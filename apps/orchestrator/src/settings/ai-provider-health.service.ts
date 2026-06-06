@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { AutomationAiProvider } from '../automations/ai/automation-ai.types';
+import type { AutomationAiProvider } from '@rebroid/ai-core/provider';
 import type { AutomationAiProviderHealthDto } from './dto/automation-ai-provider.dto';
 
 @Injectable()

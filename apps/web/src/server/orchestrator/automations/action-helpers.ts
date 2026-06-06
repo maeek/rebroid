@@ -6,12 +6,8 @@ import {
   ownedRuntimeControlMessage
 } from '../applications/actions/common/action-helpers'
 import { orchestratorAutomationsClient } from './client'
-import type {
-  AutomationDefinition,
-  AutomationDefinitionStep,
-  RunAutomationInput,
-  SaveAutomationTriggerInput
-} from './types'
+import type { RunAutomationInput, SaveAutomationTriggerInput } from './types'
+import type { AutomationDefinition, AutomationDefinitionStep } from '@rebroid/automation-core/definition'
 
 export type CurrentAutomationUser = Awaited<ReturnType<typeof getCurrentUserContext>>
 

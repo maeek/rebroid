@@ -18,7 +18,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@rebroid/automation-core": "workspace:*",
     "@fastify/helmet": "^13.0.2",
+    "@rebroid/ai-core": "workspace:*",
+    "@rebroid/firewall-policy-core": "workspace:*",
     "@nestjs/common": "^11.1.24",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.1.24",

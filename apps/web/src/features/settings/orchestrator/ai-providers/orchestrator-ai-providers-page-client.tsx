@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
+import { emptyProvider, normalizeProviderForm, type ProviderFormState } from '@rebroid/ai-core/provider'
 import { IconPlus } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -15,7 +16,6 @@ import {
   updateAutomationAiProviderAction
 } from '@/server/orchestrator/settings/actions'
 import { ProviderDialog } from './provider-dialog'
-import { emptyProvider, normalizeProviderForm, type ProviderFormState } from './provider-utils'
 import { ProvidersGrid } from './providers-grid'
 import type { AutomationAiProvider } from '@/server/orchestrator/settings/types'
 

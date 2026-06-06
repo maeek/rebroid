@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { normalizeProviderForm, type ProviderFormState } from '@rebroid/ai-core/provider'
 import { IconRefresh } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -16,7 +17,6 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { checkAutomationAiProviderCandidateHealthAction } from '@/server/orchestrator/settings/actions'
-import { normalizeProviderForm, type ProviderFormState } from './provider-utils'
 import type { AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
 
 export const ProviderDialog = ({

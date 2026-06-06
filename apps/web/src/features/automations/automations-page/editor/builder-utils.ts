@@ -5,8 +5,8 @@ import {
   getDefaultActionInput,
   normalizeActionInput
 } from '../actions/action-registry'
+import type { Automation, SaveAutomationInput } from '@/server/orchestrator/automations/types'
 import type {
-  Automation,
   AutomationActionStep,
   AutomationConditionStep,
   AutomationDefinition,
@@ -15,9 +15,8 @@ import type {
   AutomationValueRef,
   AutomationRepeatStep,
   AutomationSwitchStep,
-  AutomationTag,
-  SaveAutomationInput
-} from '@/server/orchestrator/automations/types'
+  AutomationTag
+} from '@rebroid/automation-core/definition'
 
 export interface AutomationActionStepForm {
   kind: 'action'

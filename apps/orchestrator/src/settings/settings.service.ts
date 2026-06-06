@@ -13,12 +13,12 @@ import {
   normalizeDefaultModel,
   resolveUpdatedApiKey,
 } from './ai-provider-settings';
+import type { AutomationAiProviderModel } from '@rebroid/ai-core/provider';
 import { AiProviderHealthService } from './ai-provider-health.service';
 import { AiProviderModelDownloadService } from './ai-provider-model-download.service';
 import { OrchestratorSettingsDto } from './dto/orchestrator-settings.dto';
 import { OrchestratorSettingsStore } from './orchestrator-settings-store';
 import { UpdateOrchestratorSettingsDto } from './dto/update-orchestrator-settings.dto';
-import type { AutomationAiProviderModel } from '../automations/ai/automation-ai.types';
 import type {
   AutomationAiProviderHealthDto,
   CreateAutomationAiProviderDto,

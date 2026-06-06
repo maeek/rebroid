@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { inferModelCapabilities, type ProviderModelRow } from '@rebroid/ai-core/provider'
 import { IconDownload, IconPlus, IconSettings, IconTrash } from '@tabler/icons-react'
 import { DataGrid } from '@/components/data-grid'
 import { Badge } from '@/components/ui/badge'
@@ -10,7 +11,6 @@ import { Switch } from '@/components/ui/switch'
 import { ProviderHealthBadge } from './provider-health-badge'
 import { ProviderModelDownloadDialog, ProviderModelDownloadProgress } from './provider-model-download'
 import { ProviderModelSettingsDialog } from './provider-model-settings-dialog'
-import { inferModelCapabilities, type ProviderModelRow } from './provider-utils'
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,

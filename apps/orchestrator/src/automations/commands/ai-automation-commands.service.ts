@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import type { AutomationAiRunInput } from '@rebroid/ai-core/provider';
 import { z } from 'zod';
 import type { AutomationCommandDefinition } from './automation-command.types';
-import type { AutomationAiRunInput } from '../ai/automation-ai.types';
 
 const aiRunSchema = z.object({
   prompt: z.string().trim().min(1).max(12_000),

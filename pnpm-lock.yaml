@@ -85,6 +85,9 @@ importers:
 
   apps/firewall-agent:
     dependencies:
+      '@rebroid/firewall-policy-core':
+        specifier: workspace:*
+        version: link:../../packages/firewall-policy-core
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -128,6 +131,15 @@ importers:
       '@nestjs/typeorm':
         specifier: ^11.0.1
         version: 11.0.1(@nestjs/common@11.1.24(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.24)(reflect-metadata@0.2.2)(rxjs@7.8.2)(typeorm@1.0.0(better-sqlite3@12.10.0)(ts-node@10.9.2(@types/node@25.9.1)(typescript@6.0.3)))
+      '@rebroid/ai-core':
+        specifier: workspace:*
+        version: link:../../packages/ai-core
+      '@rebroid/automation-core':
+        specifier: workspace:*
+        version: link:../../packages/automation-core
+      '@rebroid/firewall-policy-core':
+        specifier: workspace:*
+        version: link:../../packages/firewall-policy-core
       better-sqlite3:
         specifier: ^12.4.1
         version: 12.10.0
@@ -285,6 +297,15 @@ importers:
       '@radix-ui/react-tooltip':
         specifier: ^1.2.8
         version: 1.2.8(@types/react-dom@19.2.3(@types/react@19.2.16))(@types/react@19.2.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@rebroid/ai-core':
+        specifier: workspace:*
+        version: link:../../packages/ai-core
+      '@rebroid/automation-core':
+        specifier: workspace:*
+        version: link:../../packages/automation-core
+      '@rebroid/firewall-policy-core':
+        specifier: workspace:*
+        version: link:../../packages/firewall-policy-core
       '@rebroid/orchestrator-client':
         specifier: workspace:*
         version: link:../../packages/orchestrator-client
@@ -496,6 +517,42 @@ importers:
       whatwg-fetch:
         specifier: ^3.6.20
         version: 3.6.20
+
+  packages/ai-core:
+    devDependencies:
+      '@types/node':
+        specifier: ^25.9.1
+        version: 25.9.1
+      prettier:
+        specifier: ^3.8.3
+        version: 3.8.3
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  packages/automation-core:
+    devDependencies:
+      '@types/node':
+        specifier: ^25.9.1
+        version: 25.9.1
+      prettier:
+        specifier: ^3.8.3
+        version: 3.8.3
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  packages/firewall-policy-core:
+    devDependencies:
+      '@types/node':
+        specifier: ^25.9.1
+        version: 25.9.1
+      prettier:
+        specifier: ^3.8.3
+        version: 3.8.3
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
 
   packages/orchestrator-client:
     dependencies:

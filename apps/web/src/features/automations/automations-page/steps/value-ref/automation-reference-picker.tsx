@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { buildReferenceOptions, referenceOptionId, valueRefFromReferenceId } from './automation-value-ref-utils'
 import type { AutomationStepReferenceOption } from './automation-value-ref-constants'
-import type { AutomationValueRef } from '@/server/orchestrator/automations/types'
+import type { AutomationValueRef } from '@rebroid/automation-core/definition'
 
 export function AutomationReferencePicker({
   id,

@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import type { ProviderFormState } from './provider-utils'
+import type { ProviderFormState } from '@rebroid/ai-core/provider'
 
 export const ProviderEnabledSection = ({
   enabled,

@@ -8,7 +8,7 @@ import { ApplicationProfileMode } from '../../android-apps/application-profile-m
 import { AndroidAppsStateService } from '../../android-apps/common/services/android-apps-state.service';
 import { AutomationCommandRegistryService } from '../commands/automation-command-registry.service';
 import { AutomationDefinitionService } from '../definition/automation-definition.service';
-import { AutomationDefinition } from '../definition/automation-definition.types';
+import { AutomationDefinition } from '@rebroid/automation-core/definition';
 import {
   AutomationCommandDto,
   AutomationsGridPageDto,

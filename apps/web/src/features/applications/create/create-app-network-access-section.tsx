@@ -1,9 +1,9 @@
+import { allowsBroadInternetAccess } from '@rebroid/firewall-policy-core/policy'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { NetworkAccessInput } from '@/features/applications/viewer/app-info/network-access-input'
 import { Setting } from '@/features/settings/components/setting'
 import { toast } from '@/hooks/use-toast'
-import { allowsBroadInternetAccess } from '@/shared/permissions/permissions'
 import type { CreateAppFormValues } from './create-app-form.types'
 
 type CreateAppNetworkAccessSectionProps = {

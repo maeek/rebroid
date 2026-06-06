@@ -1,11 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { toast } from '@/hooks/use-toast'
-import {
-  downloadAutomationAiProviderModelAction,
-  getAutomationAiProviderModelDownloadAction,
-  updateAutomationAiProviderAction
-} from '@/server/orchestrator/settings/actions'
 import {
   createProviderModelRows,
   emptyModel,
@@ -13,7 +6,14 @@ import {
   setDefaultProviderModelAt,
   updateProviderModelAt,
   type ProviderFormState
-} from './provider-utils'
+} from '@rebroid/ai-core/provider'
+import { useRouter } from 'next/navigation'
+import { toast } from '@/hooks/use-toast'
+import {
+  downloadAutomationAiProviderModelAction,
+  getAutomationAiProviderModelDownloadAction,
+  updateAutomationAiProviderAction
+} from '@/server/orchestrator/settings/actions'
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,

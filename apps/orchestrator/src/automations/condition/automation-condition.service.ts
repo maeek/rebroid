@@ -4,41 +4,19 @@ import {
   AutomationConditionOperator,
   AutomationConditionRule,
   AutomationValueRef,
-} from '../definition/automation-definition.types';
-import { runContextOutputs } from './automation-condition.constants';
+} from '@rebroid/automation-core/definition';
+import {
+  conditionOperators,
+  runContextOutputs,
+  unaryOperators,
+} from '@rebroid/automation-core/metadata';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 
-const conditionOperators = new Set<AutomationConditionOperator>([
-  'equals',
-  'notEquals',
-  'contains',
-  'doesNotContain',
-  'exists',
-  'doesNotExist',
-  'isEmpty',
-  'isNotEmpty',
-  'isTrue',
-  'isFalse',
-  'greaterThan',
-  'greaterThanOrEqual',
-  'lessThan',
-  'lessThanOrEqual',
-  'matches',
-  'lengthEquals',
-  'lengthGreaterThan',
-  'lengthLessThan',
-]);
-
-const unaryOperators = new Set<AutomationConditionOperator>([
-  'exists',
-  'doesNotExist',
-  'isEmpty',
-  'isNotEmpty',
-  'isTrue',
-  'isFalse',
-]);
+const conditionOperatorSet = new Set<AutomationConditionOperator>(
+  conditionOperators,
+);
 
 export interface AutomationConditionRuntimeState {
   runId: string;
@@ -153,7 +131,7 @@ export class AutomationConditionService {
     }
     if (
       typeof value.operator !== 'string' ||
-      !conditionOperators.has(value.operator as AutomationConditionOperator)
+      !conditionOperatorSet.has(value.operator as AutomationConditionOperator)
     ) {
       throw new BadRequestException(`${path}.operator is invalid.`);
     }

@@ -1,7 +1,8 @@
 'use server'
 
+import { allowsBroadInternetAccess } from '@rebroid/firewall-policy-core/policy'
 import { recordAuditEvent } from '@/server/audit/events'
-import { allowsBroadInternetAccess, hasPermission, isRedroidImage } from '@/shared/permissions/permissions'
+import { hasPermission, isRedroidImage } from '@/shared/permissions/permissions'
 import { applyRedroidDefaultContainerArgs } from '@/shared/runtime/redroid-runtime'
 import { getCurrentOwnerUserId, getCurrentUserContext } from '../../../current-user'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'

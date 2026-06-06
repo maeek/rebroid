@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { AutomationDefinitionService } from '../definition/automation-definition.service';
-import { AutomationDefinition } from '../definition/automation-definition.types';
+import { AutomationDefinition } from '@rebroid/automation-core/definition';
 import {
   AutomationDto,
   AutomationRunDto,

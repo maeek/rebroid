@@ -1,24 +1,30 @@
-import type { AutomationCommandDto } from '../dto/automation.dto';
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,
   AutomationAiRunInput,
-} from './automation-ai.types';
+} from "./provider";
+
+export interface AutomationCommandLike {
+  uses: string;
+  label: string;
+  description: string;
+  inputSchema: unknown;
+}
 
 export interface ChatToolCall {
   id: string;
-  type: 'function';
+  type: "function";
   function: { name: string; arguments: string };
 }
 
 export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant' | 'tool';
+  role: "system" | "user" | "assistant" | "tool";
   content: string | null;
   tool_call_id?: string;
   tool_calls?: ChatToolCall[];
 }
 
-export const toolName = (uses: string) => uses.replace(/[^a-zA-Z0-9_]/g, '__');
+export const toolName = (uses: string) => uses.replace(/[^a-zA-Z0-9_]/g, "__");
 
 export const allowedToolMatcher = (allowedTools?: string[]) => {
   const allowed = new Set((allowedTools ?? []).filter(Boolean));
@@ -26,13 +32,13 @@ export const allowedToolMatcher = (allowedTools?: string[]) => {
 };
 
 export const buildToolDefinitions = (
-  commands: AutomationCommandDto[],
+  commands: AutomationCommandLike[],
   allowed: (uses: string) => boolean,
 ) =>
   commands
-    .filter((command) => command.uses !== 'ai.run' && allowed(command.uses))
+    .filter((command) => command.uses !== "ai.run" && allowed(command.uses))
     .map((command) => ({
-      type: 'function' as const,
+      type: "function" as const,
       function: {
         name: toolName(command.uses),
         description: `${command.label}. ${command.description}`,
@@ -41,29 +47,29 @@ export const buildToolDefinitions = (
     }));
 
 export const mapUsesByToolName = (
-  commands: Pick<AutomationCommandDto, 'uses'>[],
+  commands: Pick<AutomationCommandLike, "uses">[],
 ) => new Map(commands.map((command) => [toolName(command.uses), command.uses]));
 
 export const buildInitialMessages = (
-  input: Pick<AutomationAiRunInput, 'prompt'>,
+  input: Pick<AutomationAiRunInput, "prompt">,
   model: AutomationAiProviderModel,
 ): ChatMessage[] => [
   {
-    role: 'system',
+    role: "system",
     content: [
-      'You are controlling an Android automation through typed tools. Use tools only when needed, keep progress concise, and finish with a short visible summary. Never invent tool results.',
+      "You are controlling an Android automation through typed tools. Use tools only when needed, keep progress concise, and finish with a short visible summary. Never invent tool results.",
       model.settings.systemPrompt,
     ]
       .filter(Boolean)
-      .join('\n\n'),
+      .join("\n\n"),
   },
-  { role: 'user', content: input.prompt },
+  { role: "user", content: input.prompt },
 ];
 
 export const chatCompletionsEndpoint = (provider: AutomationAiProvider) =>
-  provider.kind === 'ollama'
-    ? `${provider.baseUrl.replace(/\/+$/, '')}/v1/chat/completions`
-    : `${provider.baseUrl.replace(/\/+$/, '')}/chat/completions`;
+  provider.kind === "ollama"
+    ? `${provider.baseUrl.replace(/\/+$/, "")}/v1/chat/completions`
+    : `${provider.baseUrl.replace(/\/+$/, "")}/chat/completions`;
 
 export const buildChatRequestBody = ({
   messages,
@@ -79,12 +85,12 @@ export const buildChatRequestBody = ({
   model: model.id,
   messages,
   tools,
-  tool_choice: 'auto',
+  tool_choice: "auto",
   temperature: model.settings.temperature ?? 0.2,
   ...(model.settings.topP !== null && model.settings.topP !== undefined
     ? { top_p: model.settings.topP }
     : {}),
-  ...(provider.kind === 'ollama'
+  ...(provider.kind === "ollama"
     ? {
         options: ollamaOptions(model),
         ...(model.settings.keepAlive
@@ -96,8 +102,8 @@ export const buildChatRequestBody = ({
 
 export const parseArguments = (value: string) => {
   try {
-    const parsed = JSON.parse(value || '{}') as unknown;
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+    const parsed = JSON.parse(value || "{}") as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
       ? (parsed as Record<string, unknown>)
       : {};
   } catch {
@@ -108,9 +114,9 @@ export const parseArguments = (value: string) => {
 export const ollamaOptions = (model: AutomationAiProviderModel) =>
   Object.fromEntries(
     [
-      ['num_ctx', model.settings.numCtx],
-      ['repeat_penalty', model.settings.repeatPenalty],
-      ['seed', model.settings.seed],
-      ['top_k', model.settings.topK],
+      ["num_ctx", model.settings.numCtx],
+      ["repeat_penalty", model.settings.repeatPenalty],
+      ["seed", model.settings.seed],
+      ["top_k", model.settings.topK],
     ].filter(([, value]) => value !== null && value !== undefined),
   );

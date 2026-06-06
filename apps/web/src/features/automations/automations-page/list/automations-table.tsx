@@ -16,12 +16,11 @@ import { AutomationsTableToolbar } from './automations-table-toolbar'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
 import type {
   Automation,
-  AutomationDefinitionStep,
   AutomationsGridPage,
   AutomationsGridQuery,
-  AutomationTag,
   AutomationTrigger
 } from '@/server/orchestrator/automations/types'
+import type { AutomationDefinitionStep, AutomationTag } from '@rebroid/automation-core/definition'
 import type { ColumnDef } from '@tanstack/react-table'
 
 const statusVariant = (status: Automation['lastStatus']) => {

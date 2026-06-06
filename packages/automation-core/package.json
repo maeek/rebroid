@@ -1,0 +1,29 @@
+{
+  "name": "@rebroid/automation-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "sideEffects": false,
+  "exports": {
+    "./definition": {
+      "types": "./dist/definition.d.ts",
+      "default": "./dist/definition.js"
+    },
+    "./metadata": {
+      "types": "./dist/metadata.d.ts",
+      "default": "./dist/metadata.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "test": "pnpm build && node --test \"dist/**/*.spec.js\"",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "prettier": "^3.8.3",
+    "typescript": "^6.0.3"
+  }
+}

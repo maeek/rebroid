@@ -1,11 +1,11 @@
 'use client'
 
+import { operatorsForType } from '@rebroid/automation-core/metadata'
 import { IconPlus, IconTrash } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AutomationReferencePicker } from '../value-ref/automation-reference-picker'
-import { operatorsForType } from '../value-ref/automation-value-ref-constants'
 import {
   conditionOperatorLabel,
   defaultCompareValue,
@@ -21,7 +21,7 @@ import type {
   AutomationConditionOperator,
   AutomationConditionRule,
   AutomationValueRef
-} from '@/server/orchestrator/automations/types'
+} from '@rebroid/automation-core/definition'
 
 const createCondition = (): AutomationConditionRule => ({
   value: { source: 'runContext', key: 'targetApplicationId' },

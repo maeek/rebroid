@@ -1,4 +1,4 @@
-import { controlOutputOptions } from '../value-ref/automation-value-ref-constants'
+import { controlStepOutputs } from '@rebroid/automation-core/metadata'
 import type { AutomationStepForm } from '../../editor/builder-utils'
 import type { AutomationStepReferenceOption } from '../value-ref/automation-value-ref-constants'
 import type { AutomationCommand } from '@/server/orchestrator/automations/types'
@@ -22,7 +22,7 @@ export const collectStepReferenceOptions = (
           id,
           label: command?.label ?? stepLabel(item),
           uses,
-          outputs: item.kind === 'action' ? (command?.outputs ?? []) : (controlOutputOptions[uses] ?? [])
+          outputs: item.kind === 'action' ? (command?.outputs ?? []) : (controlStepOutputs[uses] ?? [])
         })
       }
 

@@ -10,7 +10,8 @@ import { dateLabel, scheduleLabel } from '@/features/settings/scheduled-tasks/sc
 import { AutomationTagBadge } from '../shared/automation-tag-badge'
 import { getScheduleCron, statusLabel, statusVariant } from './automation-trigger-utils'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
-import type { Automation, AutomationTag, AutomationTrigger } from '@/server/orchestrator/automations/types'
+import type { Automation, AutomationTrigger } from '@/server/orchestrator/automations/types'
+import type { AutomationTag } from '@rebroid/automation-core/definition'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
 
 function TriggerTags({ tags }: { tags: AutomationTag[] }) {

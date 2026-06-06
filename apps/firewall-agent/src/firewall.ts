@@ -1,24 +1,16 @@
 import { execFileSync } from "node:child_process";
+import {
+  firewallChainName,
+  validatePolicies,
+  validatePolicy,
+  type FirewallPolicy,
+} from "@rebroid/firewall-policy-core/policy";
 
 const ROOT_CHAIN = "REBROID_FW";
 const NEXT_SUFFIX = "_NEXT";
 const APP_CHAIN_PREFIX = "RB_APP_";
 const LEGACY_APP_CHAIN_PREFIX = "REBROID_APP_";
 const NFT_TABLE = "rebroid_fw";
-const MAX_ALLOW_CIDRS = 256;
-const APPLICATION_ID = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,63}$/;
-const CONTAINER_ID = /^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$/;
-const IPV4_CIDR =
-  /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}\/(3[0-2]|[12]?\d)$/;
-
-export interface FirewallPolicy {
-  applicationId: string;
-  containerId: string;
-  containerIp: string;
-  enabled: boolean;
-  allowCidrs: string[];
-  generation: number;
-}
 
 export interface FirewallAdapter {
   name: string;
@@ -48,60 +40,8 @@ const run = (
   }
 };
 
-export const chainName = (applicationId: string) =>
-  `${APP_CHAIN_PREFIX}${applicationId.replace(/-/g, "").slice(0, 16).toUpperCase()}`;
-
-export const validatePolicy = (
-  applicationId: string,
-  body: Partial<FirewallPolicy>,
-): FirewallPolicy => {
-  if (!APPLICATION_ID.test(applicationId))
-    throw new Error("Invalid application id.");
-  if (!CONTAINER_ID.test(body.containerId ?? ""))
-    throw new Error("Invalid container id.");
-  if (!IPV4_CIDR.test(`${body.containerIp}/32`))
-    throw new Error("Invalid container address.");
-  if (!Number.isSafeInteger(body.generation) || (body.generation ?? -1) < 0) {
-    throw new Error("Invalid policy generation.");
-  }
-  if (
-    !Array.isArray(body.allowCidrs) ||
-    body.allowCidrs.length > MAX_ALLOW_CIDRS
-  ) {
-    throw new Error("Invalid allowlist.");
-  }
-  if (
-    !body.allowCidrs.every(
-      (cidr) => typeof cidr === "string" && IPV4_CIDR.test(cidr),
-    )
-  ) {
-    throw new Error("Only IPv4 CIDRs are supported.");
-  }
-  return {
-    applicationId,
-    containerId: body.containerId!,
-    containerIp: body.containerIp!,
-    enabled: body.enabled !== false,
-    allowCidrs: [...new Set(body.allowCidrs)],
-    generation: body.generation!,
-  };
-};
-
-export const validatePolicies = (body: {
-  policies?: Partial<FirewallPolicy>[];
-}) => {
-  if (!Array.isArray(body.policies)) throw new Error("Invalid policy list.");
-  const desired = new Map<string, FirewallPolicy>();
-  for (const policy of body.policies) {
-    if (typeof policy.applicationId !== "string")
-      throw new Error("Invalid application id.");
-    desired.set(
-      policy.applicationId,
-      validatePolicy(policy.applicationId, policy),
-    );
-  }
-  return desired;
-};
+export const chainName = firewallChainName;
+export { validatePolicies, validatePolicy, type FirewallPolicy };
 
 export class IptablesAdapter implements FirewallAdapter {
   readonly name: string;

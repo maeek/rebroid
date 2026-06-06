@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@rebroid/firewall-policy-core": "workspace:*",
     "zod": "^4.4.3"
   },
   "devDependencies": {

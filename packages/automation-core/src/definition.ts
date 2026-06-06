@@ -1,5 +1,18 @@
-export const AUTOMATION_API_VERSION = 'rebroid.io/automation/v1' as const;
-export const AUTOMATION_KIND = 'AndroidAutomation' as const;
+export const AUTOMATION_API_VERSION = "rebroid.io/automation/v1" as const;
+export const AUTOMATION_KIND = "AndroidAutomation" as const;
+
+export type AutomationValueType =
+  | "string"
+  | "number"
+  | "boolean"
+  | "array"
+  | "object"
+  | "unknown";
+
+export interface AutomationTag {
+  name: string;
+  color: string;
+}
 
 export interface AutomationDefinitionMetadata {
   name: string;
@@ -7,10 +20,15 @@ export interface AutomationDefinitionMetadata {
   tags?: AutomationTag[];
 }
 
-export interface AutomationTag {
-  name: string;
-  color: string;
+export interface AutomationCommandOutputMetadata {
+  key: string;
+  label: string;
+  type: AutomationValueType;
+  description: string;
+  example?: unknown;
 }
+
+export type AutomationCommandOutput = AutomationCommandOutputMetadata;
 
 export interface AutomationActionStep {
   id: string;
@@ -19,36 +37,36 @@ export interface AutomationActionStep {
 }
 
 export type AutomationConditionOperator =
-  | 'equals'
-  | 'notEquals'
-  | 'contains'
-  | 'doesNotContain'
-  | 'exists'
-  | 'doesNotExist'
-  | 'isEmpty'
-  | 'isNotEmpty'
-  | 'isTrue'
-  | 'isFalse'
-  | 'greaterThan'
-  | 'greaterThanOrEqual'
-  | 'lessThan'
-  | 'lessThanOrEqual'
-  | 'matches'
-  | 'lengthEquals'
-  | 'lengthGreaterThan'
-  | 'lengthLessThan';
+  | "equals"
+  | "notEquals"
+  | "contains"
+  | "doesNotContain"
+  | "exists"
+  | "doesNotExist"
+  | "isEmpty"
+  | "isNotEmpty"
+  | "isTrue"
+  | "isFalse"
+  | "greaterThan"
+  | "greaterThanOrEqual"
+  | "lessThan"
+  | "lessThanOrEqual"
+  | "matches"
+  | "lengthEquals"
+  | "lengthGreaterThan"
+  | "lengthLessThan";
 
 export type AutomationValueRef =
   | {
-      source: 'literal';
+      source: "literal";
       value?: unknown;
     }
   | {
-      source: 'runContext';
+      source: "runContext";
       key: string;
     }
   | {
-      source: 'stepOutput';
+      source: "stepOutput";
       stepId: string;
       outputKey: string;
     };
@@ -74,7 +92,7 @@ export interface AutomationSwitchCase {
 
 export interface AutomationConditionStep {
   id: string;
-  type: 'condition';
+  type: "condition";
   condition: AutomationConditionExpression;
   then: AutomationDefinitionStep[];
   else?: AutomationDefinitionStep[];
@@ -82,7 +100,7 @@ export interface AutomationConditionStep {
 
 export interface AutomationSwitchStep {
   id: string;
-  type: 'switch';
+  type: "switch";
   value: AutomationValueRef;
   cases: AutomationSwitchCase[];
   default?: AutomationDefinitionStep[];
@@ -90,7 +108,7 @@ export interface AutomationSwitchStep {
 
 export interface AutomationRepeatStep {
   id: string;
-  type: 'repeat';
+  type: "repeat";
   count?: number;
   while?: AutomationConditionExpression;
   maxIterations: number;

@@ -25,12 +25,12 @@ import {
 import { AutomationRunsRepository } from '../persistence/automation-runs.repository';
 import { AutomationTriggersRepository } from '../persistence/automation-triggers.repository';
 import { AutomationsRepository } from '../persistence/automations.repository';
-import { AutomationDefinition } from '../definition/automation-definition.types';
+import { AutomationDefinition } from '@rebroid/automation-core/definition';
 import {
   AutomationDefinitionStep,
   AutomationRepeatStep,
   AutomationSwitchStep,
-} from '../definition/automation-definition.types';
+} from '@rebroid/automation-core/definition';
 import { AutomationStepResult } from './automation-runner.types';
 import { AutomationRunEventBus } from '../events/automation-run-event-bus.service';
 import { AutomationRunnerRecorderService } from './automation-runner-recorder.service';

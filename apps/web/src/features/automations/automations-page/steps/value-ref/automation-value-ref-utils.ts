@@ -1,9 +1,4 @@
-import {
-  operatorLabels,
-  operatorsForType,
-  runContextOutputOptions,
-  unaryOperators
-} from './automation-value-ref-constants'
+import { operatorLabels, operatorsForType, runContextOutputs, unaryOperators } from '@rebroid/automation-core/metadata'
 import type {
   AutomationReferenceOption,
   AutomationStepReferenceOption,
@@ -14,7 +9,7 @@ import type {
   AutomationCommandOutput,
   AutomationValueRef,
   AutomationValueType
-} from '@/server/orchestrator/automations/types'
+} from '@rebroid/automation-core/definition'
 
 export const referenceOptionId = (value: AutomationValueRef) => {
   if (value.source === 'runContext') return `context:${value.key}`
@@ -35,7 +30,7 @@ export const valueRefFromReferenceId = (id: string, references: AutomationRefere
 }
 
 export const buildReferenceOptions = (stepOptions: AutomationStepReferenceOption[]): AutomationReferenceOption[] => [
-  ...runContextOutputOptions.map(output => ({
+  ...runContextOutputs.map(output => ({
     id: `context:${output.key}`,
     label: output.label,
     group: 'Run context' as const,
@@ -61,7 +56,7 @@ export const outputForValueRef = (
   value: AutomationValueRef,
   stepOptions: AutomationStepReferenceOption[]
 ): AutomationCommandOutput | undefined => {
-  if (value.source === 'runContext') return runContextOutputOptions.find(output => output.key === value.key)
+  if (value.source === 'runContext') return runContextOutputs.find(output => output.key === value.key)
   if (value.source === 'stepOutput') {
     return stepOptions.find(step => step.id === value.stepId)?.outputs.find(output => output.key === value.outputKey)
   }
@@ -113,7 +108,7 @@ export const defaultCompareValue = (type: AutomationValueType): AutomationValueR
 export const valueRefLabel = (value: AutomationValueRef, stepOptions: AutomationStepReferenceOption[]) => {
   if (value.source === 'literal') return literalLabel(value.value)
   if (value.source === 'runContext') {
-    return runContextOutputOptions.find(output => output.key === value.key)?.label ?? value.key
+    return runContextOutputs.find(output => output.key === value.key)?.label ?? value.key
   }
   const step = stepOptions.find(option => option.id === value.stepId)
   const output = step?.outputs.find(item => item.key === value.outputKey)
