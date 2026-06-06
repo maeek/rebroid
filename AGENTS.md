@@ -87,3 +87,4 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 - Run the smallest meaningful checks for the changed area, then broader checks when touching shared packages, API contracts, or cross-app behavior.
 - Use `pnpm check` before finishing large or cross-cutting work when time permits.
 - If you cannot run a relevant check, state exactly what was not run and why.
+- Review AGENTS.md file and update it if the change affects any agent's behavior, capabilities, or assumptions.
