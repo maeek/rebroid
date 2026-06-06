@@ -5,6 +5,7 @@ import type {
   AutomationAiProviderHealth,
   AutomationAiProviderModel,
   AutomationAiProviderModelDownload,
+  AutomationAiProviderRemoteModel,
   CleanupUploadedApksResponse,
   OrchestratorSettingsResponse
 } from './types'
@@ -51,6 +52,12 @@ export const orchestratorSettingsClient = {
     const params = modelId ? `?modelId=${encodeURIComponent(modelId)}` : ''
     return emptyRequest<AutomationAiProviderHealth>(
       `/settings/ai-providers/${encodeURIComponent(providerId)}/health${params}`
+    )
+  },
+
+  listAiProviderRemoteModels(providerId: string) {
+    return emptyRequest<AutomationAiProviderRemoteModel[]>(
+      `/settings/ai-providers/${encodeURIComponent(providerId)}/remote-models`
     )
   },
 

@@ -248,6 +248,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/settings/ai-providers/{providerId}/remote-models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SettingsController_listAiProviderRemoteModels"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/settings/ai-providers/{providerId}": {
         parameters: {
             query?: never;
@@ -1877,6 +1893,13 @@ export interface components {
             updatedAt: string;
             finishedAt?: string | null;
         };
+        AutomationAiProviderRemoteModelDto: {
+            id: string;
+            label: string;
+            family?: string;
+            parameterSize?: string;
+            quantizationLevel?: string;
+        };
         AutomationAiModelCatalogProviderDto: {
             id: string;
             label: string;
@@ -3186,6 +3209,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AutomationAiProviderHealthDto"];
+                };
+            };
+        };
+    };
+    SettingsController_listAiProviderRemoteModels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationAiProviderRemoteModelDto"][];
                 };
             };
         };

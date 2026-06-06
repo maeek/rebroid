@@ -16,6 +16,7 @@ export interface AutomationCommandContext {
   stepId?: string;
   parentStepId?: string | null;
   path?: string;
+  abortSignal?: AbortSignal;
   toolExecutor?: (tool: {
     name: string;
     arguments: Record<string, unknown>;

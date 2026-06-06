@@ -7,6 +7,7 @@ export interface AutomationAiHarnessContext extends AutomationCommandContext {
   stepId: string;
   parentStepId?: string | null;
   path: string;
+  abortSignal?: AbortSignal;
   toolExecutor: (
     tool: AutomationAiToolRequest,
   ) => Promise<{ summary: string; data?: Record<string, unknown> }>;

@@ -110,6 +110,11 @@ export const deleteAutomationAiProviderAction = async (providerId: string) => {
 export const checkAutomationAiProviderHealthAction = async (providerId: string, modelId?: string) =>
   orchestratorSettingsClient.checkAiProviderHealth(providerId, modelId)
 
+export const listAutomationAiProviderRemoteModelsAction = async (providerId: string) => {
+  await requireAdminUser()
+  return orchestratorSettingsClient.listAiProviderRemoteModels(providerId)
+}
+
 export const createAutomationAiProviderModelAction = async (providerId: string, input: AutomationAiProviderModel) => {
   const admin = await requireAdminUser()
   const result = await orchestratorSettingsClient.createAiProviderModel(providerId, input)

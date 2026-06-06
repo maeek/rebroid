@@ -1,5 +1,5 @@
-import { type ReactNode } from 'react'
-import { IconDownload } from '@tabler/icons-react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { IconDownload, IconPlus, IconRefresh } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -13,112 +13,210 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import type { AutomationAiProviderModelDownload } from '@/server/orchestrator/settings/types'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import type {
+  AutomationAiProviderModelDownload,
+  AutomationAiProviderRemoteModel
+} from '@/server/orchestrator/settings/types'
 
-export const ProviderModelDownloadDialog = ({
+const DOWNLOAD_VALUE = '__download__'
+
+export const ProviderModelAddDialog = ({
   open,
-  isDownloading,
-  modelId,
-  label,
+  isSubmitting,
+  isLoadingRemoteModels,
+  providerKind,
+  remoteModels,
+  remoteModelsError,
+  onLoadRemoteModels,
   onOpenChange,
-  onModelIdChange,
-  onLabelChange,
-  onSubmit
+  onAddExisting,
+  onDownload
 }: {
   open: boolean
-  isDownloading: boolean
-  modelId: string
-  label: string
+  isSubmitting: boolean
+  isLoadingRemoteModels: boolean
+  providerKind: string
+  remoteModels: AutomationAiProviderRemoteModel[]
+  remoteModelsError: string | null
+  onLoadRemoteModels: () => void | Promise<void>
   onOpenChange: (open: boolean) => void
-  onModelIdChange: (modelId: string) => void
-  onLabelChange: (label: string) => void
-  onSubmit: () => void
-}) => (
-  <Dialog
-    open={open}
-    onOpenChange={nextOpen => {
-      if (!nextOpen && isDownloading) return
-      onOpenChange(nextOpen)
-    }}
-  >
-    <DialogContent className='sm:max-w-xl'>
-      <DialogHeader>
-        <DialogTitle>Download Ollama model</DialogTitle>
-        <DialogDescription>
-          Pull a model into the configured Ollama server and add it to this provider when the download completes.
-        </DialogDescription>
-      </DialogHeader>
-      <div className='grid gap-4'>
-        <Field
-          label='Model ID'
-          description='Use the Ollama model name, for example qwen3.5:latest.'
-        >
-          <Input
-            value={modelId}
-            placeholder='qwen3.5:latest'
-            onChange={event => onModelIdChange(event.target.value)}
-          />
-        </Field>
-        <Field
-          label='Label'
-          description='Optional display name shown in tables and model selectors.'
-        >
-          <Input
-            value={label}
-            placeholder='Qwen 3.5 Latest'
-            onChange={event => onLabelChange(event.target.value)}
-          />
-        </Field>
-        <p className='text-sm text-secondary-foreground'>
-          The download runs in the background after it starts. Progress is shown in the Models section.
-        </p>
-      </div>
-      <DialogFooter>
-        <DialogClose asChild>
+  onAddExisting: (modelId: string, label?: string) => boolean | Promise<boolean>
+  onDownload: (modelId: string, label?: string) => Promise<void>
+}) => {
+  const [selectedValue, setSelectedValue] = useState('')
+  const [downloadModelId, setDownloadModelId] = useState('')
+  const [downloadLabel, setDownloadLabel] = useState('')
+  const canListRemoteModels = providerKind === 'ollama'
+  const selectedRemoteModel = useMemo(
+    () => remoteModels.find(model => model.id === selectedValue),
+    [remoteModels, selectedValue]
+  )
+  const isDownloadMode = selectedValue === DOWNLOAD_VALUE || !canListRemoteModels
+
+  useEffect(() => {
+    if (!open) return
+    setSelectedValue('')
+    setDownloadModelId('')
+    setDownloadLabel('')
+    if (canListRemoteModels) void onLoadRemoteModels()
+  }, [canListRemoteModels, onLoadRemoteModels, open])
+
+  const submit = async () => {
+    if (isDownloadMode) {
+      try {
+        await onDownload(downloadModelId, downloadLabel)
+        onOpenChange(false)
+      } catch {
+        // The controller owns the toast. Keep the dialog open so the model ID can be corrected.
+      }
+      return
+    }
+    if (selectedRemoteModel && (await onAddExisting(selectedRemoteModel.id, selectedRemoteModel.label))) {
+      onOpenChange(false)
+    }
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={nextOpen => {
+        if (!nextOpen && isSubmitting) return
+        onOpenChange(nextOpen)
+      }}
+    >
+      <DialogContent className='sm:max-w-xl'>
+        <DialogHeader>
+          <DialogTitle>Add model</DialogTitle>
+          <DialogDescription>
+            Select a model already available on the provider or start a background download.
+          </DialogDescription>
+        </DialogHeader>
+        <div className='grid gap-4'>
+          {canListRemoteModels ? (
+            <Field
+              label='Available model'
+              description='Models reported by the configured Ollama server.'
+            >
+              <div className='flex gap-2'>
+                <Select
+                  value={selectedValue}
+                  onValueChange={setSelectedValue}
+                  disabled={isLoadingRemoteModels}
+                >
+                  <SelectTrigger className='w-full'>
+                    <SelectValue placeholder={isLoadingRemoteModels ? 'Loading models' : 'Select model'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {remoteModels.map(model => (
+                      <SelectItem
+                        key={model.id}
+                        value={model.id}
+                      >
+                        <span>{model.label || model.id}</span>
+                        {model.parameterSize ? (
+                          <span className='text-xs text-secondary-foreground'>{model.parameterSize}</span>
+                        ) : null}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value={DOWNLOAD_VALUE}>Download new model</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  type='button'
+                  variant='secondary'
+                  size='icon'
+                  disabled={isLoadingRemoteModels}
+                  aria-label='Refresh available models'
+                  onClick={() => void onLoadRemoteModels()}
+                >
+                  <IconRefresh className={isLoadingRemoteModels ? 'size-4 animate-spin' : 'size-4'} />
+                </Button>
+              </div>
+              {remoteModelsError ? <p className='text-xs text-destructive'>{remoteModelsError}</p> : null}
+              {!remoteModelsError && !isLoadingRemoteModels && remoteModels.length === 0 ? (
+                <p className='text-xs text-secondary-foreground'>
+                  No installed models were reported. Download a new model to add it.
+                </p>
+              ) : null}
+            </Field>
+          ) : null}
+          {isDownloadMode ? (
+            <>
+              <Field
+                label='Model ID'
+                description='Use the provider model name, for example qwen3.5:latest.'
+              >
+                <Input
+                  value={downloadModelId}
+                  placeholder='qwen3.5:latest'
+                  onChange={event => setDownloadModelId(event.target.value)}
+                />
+              </Field>
+              <Field
+                label='Label'
+                description='Optional display name shown in tables and model selectors.'
+              >
+                <Input
+                  value={downloadLabel}
+                  placeholder='Qwen 3.5 Latest'
+                  onChange={event => setDownloadLabel(event.target.value)}
+                />
+              </Field>
+              <p className='text-sm text-secondary-foreground'>
+                The model row is added immediately. Download progress is shown in that row.
+              </p>
+            </>
+          ) : null}
+        </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button
+              type='button'
+              variant='secondary'
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+          </DialogClose>
           <Button
             type='button'
-            variant='secondary'
-            disabled={isDownloading}
+            disabled={
+              isSubmitting || (isDownloadMode ? !downloadModelId.trim() : !selectedRemoteModel || isLoadingRemoteModels)
+            }
+            onClick={() => void submit()}
           >
-            Cancel
+            {isDownloadMode ? (
+              <IconDownload className={isSubmitting ? 'size-4 animate-pulse' : 'size-4'} />
+            ) : (
+              <IconPlus className='size-4' />
+            )}
+            {isSubmitting ? 'Starting' : isDownloadMode ? 'Add and download' : 'Add model'}
           </Button>
-        </DialogClose>
-        <Button
-          type='button'
-          disabled={isDownloading || !modelId.trim()}
-          onClick={onSubmit}
-        >
-          <IconDownload className={isDownloading ? 'size-4 animate-pulse' : 'size-4'} />
-          {isDownloading ? 'Starting' : 'Start download'}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
-)
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
-export const ProviderModelDownloadProgress = ({ download }: { download: AutomationAiProviderModelDownload }) => {
+export const ProviderModelDownloadStatus = ({ download }: { download: AutomationAiProviderModelDownload }) => {
   const isActive = download.status === 'queued' || download.status === 'running'
   const percent = typeof download.percent === 'number' ? download.percent : null
   return (
-    <div className='rounded-md border border-border/70 bg-background/35 px-4 py-3'>
-      <div className='flex flex-wrap items-center justify-between gap-3'>
-        <div className='min-w-0'>
-          <div className='flex flex-wrap items-center gap-2'>
-            <Badge
-              variant={
-                download.status === 'completed' ? 'status' : download.status === 'failed' ? 'destructive' : 'secondary'
-              }
-            >
-              {download.status === 'completed' ? 'Downloaded' : download.status === 'failed' ? 'Error' : 'Downloading'}
-            </Badge>
-            <span className='font-medium'>{download.modelId}</span>
-          </div>
-          <p className='mt-1 break-words text-sm text-secondary-foreground'>{download.message}</p>
-        </div>
-        {percent !== null ? <span className='text-sm text-secondary-foreground'>{percent}%</span> : null}
+    <div className='grid min-w-40 gap-1'>
+      <div className='flex items-center gap-2'>
+        <Badge
+          variant={
+            download.status === 'completed' ? 'status' : download.status === 'failed' ? 'destructive' : 'secondary'
+          }
+        >
+          {download.status === 'completed' ? 'Downloaded' : download.status === 'failed' ? 'Error' : 'Downloading'}
+        </Badge>
+        {percent !== null ? <span className='text-xs text-secondary-foreground'>{percent}%</span> : null}
       </div>
+      <p className='line-clamp-2 text-xs text-secondary-foreground'>{download.message}</p>
       {isActive ? (
-        <div className='mt-3 h-2 overflow-hidden rounded-full bg-muted'>
+        <div className='h-1.5 overflow-hidden rounded-full bg-muted'>
           <div
             className='h-full rounded-full bg-primary transition-all'
             style={{ width: `${percent ?? 8}%` }}

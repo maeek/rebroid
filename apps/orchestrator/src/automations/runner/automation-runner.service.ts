@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { getErrorMessage } from '../../common/error-message';
 import { AndroidApplicationStatus } from '../../android-apps/android-application-status';
 import { ApplicationProfileMode } from '../../android-apps/application-profile-mode';
@@ -65,6 +66,7 @@ interface ExecutionState {
 }
 
 interface StepExecutionOptions {
+  abortSignal?: AbortSignal;
   parentStepId?: string | null;
   path: string;
 }
@@ -74,9 +76,20 @@ interface StepExecutionResult {
   stopped: boolean;
 }
 
+interface RunnableAutomation {
+  definition: AutomationDefinition;
+  entity: Automation;
+  ephemeral: boolean;
+}
+
 @Injectable()
 export class AutomationRunnerService {
   private readonly canceledRunIds = new Set<string>();
+  private readonly ephemeralAutomations = new Map<string, RunnableAutomation>();
+  private readonly activeRunAbortControllers = new Map<
+    string,
+    AbortController
+  >();
 
   constructor(
     private readonly automations: AutomationsRepository,
@@ -99,6 +112,56 @@ export class AutomationRunnerService {
     trigger: AutomationRunTrigger,
     options: AutomationRunTargetOptions = {},
   ) {
+    return this.enqueueRunnable(
+      {
+        definition: JSON.parse(
+          automation.definitionJson,
+        ) as AutomationDefinition,
+        entity: automation,
+        ephemeral: false,
+      },
+      trigger,
+      options,
+    );
+  }
+
+  async enqueueEphemeral(
+    ownerUserId: string,
+    definition: AutomationDefinition,
+    trigger: AutomationRunTrigger,
+    options: AutomationRunTargetOptions = {},
+  ) {
+    const now = new Date();
+    const automation = this.automations.create({
+      id: `ephemeral-ai-${randomUUID()}`,
+      ownerUserId: ownerUserId.trim(),
+      name: definition.metadata.name,
+      description: definition.metadata.description ?? null,
+      definitionJson: JSON.stringify(definition),
+      lastStatus: AutomationLastStatus.Running,
+      lastRunAt: now,
+      lastError: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    this.ephemeralAutomations.set(automation.id, {
+      definition,
+      entity: automation,
+      ephemeral: true,
+    });
+    return this.enqueueRunnable(
+      { definition, entity: automation, ephemeral: true },
+      trigger,
+      options,
+    );
+  }
+
+  private async enqueueRunnable(
+    runnable: RunnableAutomation,
+    trigger: AutomationRunTrigger,
+    options: AutomationRunTargetOptions = {},
+  ) {
+    const automation = runnable.entity;
     const resolvedTarget = options.targetApplicationId;
     if (!resolvedTarget) {
       throw new ConflictException(
@@ -152,6 +215,7 @@ export class AutomationRunnerService {
       return run;
     }
     this.canceledRunIds.add(run.id);
+    this.activeRunAbortControllers.get(run.id)?.abort();
     run.status = AutomationRunStatus.Canceled;
     run.completedAt = new Date();
     run.error = 'Canceled by user.';
@@ -235,20 +299,20 @@ export class AutomationRunnerService {
   }
 
   async execute(runId: string, automationId: string) {
-    const automations = await this.automations.findByIds([automationId]);
-    const automation = automations[0];
-    if (!automation) {
+    const runnable = await this.resolveRunnableAutomation(automationId);
+    if (!runnable) {
       return;
     }
+    const automation = runnable.entity;
     const run = await this.runs.findByOwnerAndId(automation.ownerUserId, runId);
     if (!run || terminalStatuses.has(run.status)) {
       return;
     }
 
     const app = await this.apps.get(run.targetApplicationId);
-    const definition = JSON.parse(
-      automation.definitionJson,
-    ) as AutomationDefinition;
+    const definition = runnable.definition;
+    const abortController = new AbortController();
+    this.activeRunAbortControllers.set(run.id, abortController);
     const results: AutomationStepResult[] = [];
     run.status = AutomationRunStatus.Running;
     run.startedAt = new Date();
@@ -275,8 +339,9 @@ export class AutomationRunnerService {
       definition.spec.steps,
       state,
       run,
-      { path: 'steps' },
+      { path: 'steps', abortSignal: abortController.signal },
     );
+    this.activeRunAbortControllers.delete(run.id);
     const canceled = this.canceledRunIds.has(run.id);
     const failed = execution.failed;
 
@@ -305,6 +370,38 @@ export class AutomationRunnerService {
             : 'Automation completed.',
     });
 
+    if (runnable.ephemeral) {
+      this.ephemeralAutomations.delete(automation.id);
+      return;
+    }
+
+    await this.updatePersistedAutomationAfterRun(automation, run, failed);
+  }
+
+  private async resolveRunnableAutomation(
+    automationId: string,
+  ): Promise<RunnableAutomation | null> {
+    const ephemeral = this.ephemeralAutomations.get(automationId);
+    if (ephemeral) {
+      return ephemeral;
+    }
+    const automations = await this.automations.findByIds([automationId]);
+    const automation = automations[0];
+    if (!automation) {
+      return null;
+    }
+    return {
+      definition: JSON.parse(automation.definitionJson) as AutomationDefinition,
+      entity: automation,
+      ephemeral: false,
+    };
+  }
+
+  private async updatePersistedAutomationAfterRun(
+    automation: Automation,
+    run: Awaited<ReturnType<AutomationRunsRepository['save']>>,
+    failed: boolean,
+  ) {
     automation.lastStatus =
       run.status === AutomationRunStatus.Canceled || failed
         ? AutomationLastStatus.Failed
@@ -330,7 +427,7 @@ export class AutomationRunnerService {
     steps: AutomationDefinitionStep[],
     state: ExecutionState,
     run: Awaited<ReturnType<AutomationRunsRepository['save']>>,
-    options: { parentStepId?: string | null; path: string },
+    options: StepExecutionOptions,
   ): Promise<StepExecutionResult> {
     for (const [index, step] of steps.entries()) {
       if (this.canceledRunIds.has(run.id)) {
@@ -339,6 +436,7 @@ export class AutomationRunnerService {
       const result = await this.executeStep(state, run, step, {
         parentStepId: options.parentStepId ?? null,
         path: `${options.path}[${index}]`,
+        abortSignal: options.abortSignal,
       });
       if (result.failed || result.stopped) {
         return result;
@@ -422,6 +520,7 @@ export class AutomationRunnerService {
         stepId: step.id,
         parentStepId: options.parentStepId ?? null,
         path: options.path,
+        abortSignal: options.abortSignal,
         toolExecutor: executeTool,
       });
       await this.recorder.recordActionCompleted(
@@ -477,6 +576,7 @@ export class AutomationRunnerService {
       state,
       run,
       {
+        abortSignal: options.abortSignal,
         parentStepId: step.id,
         path: `${options.path}.${matched ? 'then' : 'else'}`,
       },
@@ -506,6 +606,7 @@ export class AutomationRunnerService {
       branch: matchingIndex === -1 ? 'default' : `case-${matchingIndex + 1}`,
     });
     return this.executeSteps(selectedSteps, state, run, {
+      abortSignal: options.abortSignal,
       parentStepId: step.id,
       path:
         matchingIndex === -1
@@ -538,6 +639,7 @@ export class AutomationRunnerService {
         break;
       }
       const result = await this.executeSteps(step.steps, state, run, {
+        abortSignal: options.abortSignal,
         parentStepId: step.id,
         path: `${options.path}.steps[${iterations}]`,
       });

@@ -58,6 +58,7 @@ export class AutomationAiHarnessService {
         messages,
         tools,
         deadline,
+        context.abortSignal,
       );
       const choice = response.choices?.[0]?.message;
       if (!choice) {
@@ -162,12 +163,15 @@ export class AutomationAiHarnessService {
     messages: ChatMessage[],
     tools: unknown[],
     deadline: number,
+    abortSignal?: AbortSignal,
   ) {
     const controller = new AbortController();
     const timeout = setTimeout(
       () => controller.abort(),
       Math.max(1, deadline - Date.now()),
     );
+    const onAbort = () => controller.abort();
+    abortSignal?.addEventListener('abort', onAbort, { once: true });
     try {
       const response = await fetch(chatCompletionsEndpoint(provider), {
         method: 'POST',
@@ -191,6 +195,7 @@ export class AutomationAiHarnessService {
         choices?: Array<{ message?: ChatMessage }>;
       };
     } finally {
+      abortSignal?.removeEventListener('abort', onAbort);
       clearTimeout(timeout);
     }
   }

@@ -202,6 +202,23 @@ export class AutomationAiProviderModelDownloadDto {
   finishedAt?: string | null;
 }
 
+export class AutomationAiProviderRemoteModelDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  label!: string;
+
+  @ApiPropertyOptional()
+  family?: string;
+
+  @ApiPropertyOptional()
+  parameterSize?: string;
+
+  @ApiPropertyOptional()
+  quantizationLevel?: string;
+}
+
 export class AutomationAiModelCatalogProviderDto {
   @ApiProperty()
   id!: string;

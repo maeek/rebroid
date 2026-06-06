@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   createProviderModelRows,
   emptyModel,
+  inferModelCapabilities,
   normalizeProviderForm,
   setDefaultProviderModelAt,
   updateProviderModelAt,
@@ -10,14 +11,17 @@ import {
 import { useRouter } from 'next/navigation'
 import { toast } from '@/hooks/use-toast'
 import {
+  createAutomationAiProviderModelAction,
   downloadAutomationAiProviderModelAction,
   getAutomationAiProviderModelDownloadAction,
+  listAutomationAiProviderRemoteModelsAction,
   updateAutomationAiProviderAction
 } from '@/server/orchestrator/settings/actions'
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,
-  AutomationAiProviderModelDownload
+  AutomationAiProviderModelDownload,
+  AutomationAiProviderRemoteModel
 } from '@/server/orchestrator/settings/types'
 
 export const useAiProviderEditController = (initialProvider: AutomationAiProvider) => {
@@ -27,7 +31,10 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
   )
   const [isSaving, setIsSaving] = useState(false)
   const [isDownloadingModel, setIsDownloadingModel] = useState(false)
-  const [modelDownload, setModelDownload] = useState<AutomationAiProviderModelDownload | null>(null)
+  const [modelDownloads, setModelDownloads] = useState<Record<string, AutomationAiProviderModelDownload>>({})
+  const [remoteModels, setRemoteModels] = useState<AutomationAiProviderRemoteModel[]>([])
+  const [isLoadingRemoteModels, setIsLoadingRemoteModels] = useState(false)
+  const [remoteModelsError, setRemoteModelsError] = useState<string | null>(null)
   const modelRows = useMemo(() => createProviderModelRows(provider.models), [provider.models])
 
   const updateProvider = (patch: Partial<ProviderFormState>) => setProvider(current => ({ ...current, ...patch }))
@@ -72,45 +79,113 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
     []
   )
 
-  const addModel = () =>
-    updateProvider({
-      models: [...provider.models, { ...emptyModel(), default: provider.models.length === 0 }]
-    })
+  const addModel = useCallback(
+    async (modelId: string, label?: string) => {
+      const normalizedModelId = modelId.trim()
+      if (!normalizedModelId) {
+        toast({
+          title: 'Model ID is required',
+          description: 'Select or enter a model before adding it.',
+          variant: 'destructive'
+        })
+        return false
+      }
+
+      if (provider.models.some(model => model.id === normalizedModelId)) {
+        toast({
+          title: 'Model already exists',
+          description: normalizedModelId,
+          variant: 'destructive'
+        })
+        return false
+      }
+
+      const nextLabel = label?.trim() || normalizedModelId
+      const nextModel = {
+        ...emptyModel(),
+        id: normalizedModelId,
+        label: nextLabel,
+        ...inferModelCapabilities({ id: normalizedModelId, label: nextLabel }),
+        default: provider.models.length === 0
+      }
+
+      try {
+        const savedModel = await createAutomationAiProviderModelAction(initialProvider.id, nextModel)
+        setProvider(current => ({
+          ...current,
+          models: [...current.models, savedModel]
+        }))
+        toast({ title: 'AI model added', description: normalizedModelId })
+        router.refresh()
+        return true
+      } catch (error) {
+        toast({
+          title: 'Could not add AI model',
+          description: error instanceof Error ? error.message : 'Unknown error',
+          variant: 'destructive'
+        })
+        return false
+      }
+    },
+    [initialProvider.id, provider.models, router]
+  )
 
   useEffect(() => {
-    if (!modelDownload || !['queued', 'running'].includes(modelDownload.status)) return
+    const activeDownloads = Object.values(modelDownloads).filter(download =>
+      ['queued', 'running'].includes(download.status)
+    )
+    if (activeDownloads.length === 0) return
 
     const interval = window.setInterval(() => {
-      void getAutomationAiProviderModelDownloadAction(initialProvider.id, modelDownload.id)
-        .then(next => {
-          setModelDownload(next)
-          if (next.status === 'completed') {
-            toast({ title: 'AI model downloaded', description: next.modelId })
-            router.refresh()
-          }
-          if (next.status === 'failed') {
-            toast({
-              title: 'Could not download AI model',
-              description: next.message,
-              variant: 'destructive'
-            })
-          }
-        })
-        .catch(error => {
-          setModelDownload(current =>
-            current
-              ? {
-                  ...current,
-                  status: 'failed',
-                  message: error instanceof Error ? error.message : 'Could not read download progress.'
-                }
-              : current
-          )
-        })
+      for (const download of activeDownloads) {
+        void getAutomationAiProviderModelDownloadAction(initialProvider.id, download.id)
+          .then(next => {
+            setModelDownloads(current => ({ ...current, [next.modelId]: next }))
+            if (next.status === 'completed') {
+              toast({ title: 'AI model downloaded', description: next.modelId })
+              router.refresh()
+            }
+            if (next.status === 'failed') {
+              toast({
+                title: 'Could not download AI model',
+                description: next.message,
+                variant: 'destructive'
+              })
+            }
+          })
+          .catch(error => {
+            setModelDownloads(current => ({
+              ...current,
+              [download.modelId]: {
+                ...download,
+                status: 'failed',
+                message: error instanceof Error ? error.message : 'Could not read download progress.'
+              }
+            }))
+          })
+      }
     }, 1500)
 
     return () => window.clearInterval(interval)
-  }, [initialProvider.id, modelDownload, router])
+  }, [initialProvider.id, modelDownloads, router])
+
+  const loadRemoteModels = useCallback(async () => {
+    if (initialProvider.kind !== 'ollama') {
+      setRemoteModels([])
+      setRemoteModelsError(null)
+      return
+    }
+    setIsLoadingRemoteModels(true)
+    setRemoteModelsError(null)
+    try {
+      setRemoteModels(await listAutomationAiProviderRemoteModelsAction(initialProvider.id))
+    } catch (error) {
+      setRemoteModels([])
+      setRemoteModelsError(error instanceof Error ? error.message : 'Could not list provider models.')
+    } finally {
+      setIsLoadingRemoteModels(false)
+    }
+  }, [initialProvider.id, initialProvider.kind])
 
   const downloadModel = async (modelId: string, label?: string) => {
     const normalizedModelId = modelId.trim()
@@ -129,7 +204,24 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
         modelId: normalizedModelId,
         label: label?.trim() || undefined
       })
-      setModelDownload(job)
+      setModelDownloads(current => ({ ...current, [job.modelId]: job }))
+      setProvider(current => {
+        if (current.models.some(model => model.id === normalizedModelId)) return current
+        const nextLabel = label?.trim() || normalizedModelId
+        return {
+          ...current,
+          models: [
+            ...current.models,
+            {
+              ...emptyModel(),
+              id: normalizedModelId,
+              label: nextLabel,
+              ...inferModelCapabilities({ id: normalizedModelId, label: nextLabel }),
+              default: current.models.length === 0
+            }
+          ]
+        }
+      })
       toast({ title: 'AI model download started', description: normalizedModelId })
     } catch (error) {
       toast({
@@ -179,12 +271,16 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
     addModel,
     downloadModel,
     isDownloadingModel,
+    isLoadingRemoteModels,
     isSaving,
-    modelDownload,
+    loadRemoteModels,
+    modelDownloads,
     modelRows,
     provider,
     removeModel,
     removeModels,
+    remoteModels,
+    remoteModelsError,
     saveProvider,
     setDefaultModel,
     updateModel,

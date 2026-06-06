@@ -9,12 +9,13 @@ import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Switch } from '@/components/ui/switch'
 import { ProviderHealthBadge } from './provider-health-badge'
-import { ProviderModelDownloadDialog, ProviderModelDownloadProgress } from './provider-model-download'
+import { ProviderModelAddDialog, ProviderModelDownloadStatus } from './provider-model-download'
 import { ProviderModelSettingsDialog } from './provider-model-settings-dialog'
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,
-  AutomationAiProviderModelDownload
+  AutomationAiProviderModelDownload,
+  AutomationAiProviderRemoteModel
 } from '@/server/orchestrator/settings/types'
 import type { ColumnDef } from '@tanstack/react-table'
 
@@ -29,11 +30,15 @@ export const ProviderModelsGrid = ({
   onSetDefaultModel,
   onUpdateModel,
   isDownloadingModel,
-  modelDownload
+  isLoadingRemoteModels,
+  modelDownloads,
+  remoteModels,
+  remoteModelsError,
+  onLoadRemoteModels
 }: {
   initialProvider: AutomationAiProvider
   modelRows: ProviderModelRow[]
-  onAddModel: () => void
+  onAddModel: (modelId: string, label?: string) => boolean | Promise<boolean>
   onBulkRemoveModels: (indexes: number[]) => void
   onBulkUpdateModels: (indexes: number[], patch: Partial<AutomationAiProviderModel>) => void
   onDownloadModel: (modelId: string, label?: string) => Promise<void>
@@ -41,31 +46,16 @@ export const ProviderModelsGrid = ({
   onSetDefaultModel: (index: number) => void
   onUpdateModel: (index: number, patch: Partial<AutomationAiProviderModel>) => void
   isDownloadingModel: boolean
-  modelDownload: AutomationAiProviderModelDownload | null
+  isLoadingRemoteModels: boolean
+  modelDownloads: Record<string, AutomationAiProviderModelDownload>
+  remoteModels: AutomationAiProviderRemoteModel[]
+  remoteModelsError: string | null
+  onLoadRemoteModels: () => void | Promise<void>
 }) => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [settingsRow, setSettingsRow] = useState<ProviderModelRow | null>(null)
-  const [downloadOpen, setDownloadOpen] = useState(false)
-  const [downloadModelId, setDownloadModelId] = useState('')
-  const [downloadLabel, setDownloadLabel] = useState('')
+  const [addOpen, setAddOpen] = useState(false)
   const selectedIndexes = modelRows.filter(model => selectedIds.has(model.rowId)).map(model => model.index)
-
-  const openDownload = (model?: ProviderModelRow) => {
-    setDownloadModelId(model?.id ?? '')
-    setDownloadLabel(model?.label ?? '')
-    setDownloadOpen(true)
-  }
-
-  const submitDownload = async () => {
-    try {
-      await onDownloadModel(downloadModelId, downloadLabel)
-      setDownloadOpen(false)
-      setDownloadModelId('')
-      setDownloadLabel('')
-    } catch {
-      // The controller owns the toast. Keep the dialog open so the model ID can be corrected.
-    }
-  }
 
   const columns = useMemo<ColumnDef<ProviderModelRow>[]>(
     () => [
@@ -129,19 +119,37 @@ export const ProviderModelsGrid = ({
       {
         id: 'health',
         header: 'Health',
-        size: 150,
+        size: 260,
         meta: { label: 'Health' },
         cell: ({ row }) => (
           <div className='flex min-h-10 items-center'>
-            <ProviderHealthBadge
-              provider={initialProvider}
-              modelId={row.original.id}
-            />
+            {modelDownloads[row.original.id] ? (
+              <ProviderModelDownloadStatus download={modelDownloads[row.original.id]} />
+            ) : (
+              <div className='flex min-h-10 items-center gap-2'>
+                <ProviderHealthBadge
+                  provider={initialProvider}
+                  modelId={row.original.id}
+                />
+                {initialProvider.kind === 'ollama' ? (
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='sm'
+                    disabled={isDownloadingModel}
+                    onClick={() => void onDownloadModel(row.original.id, row.original.label)}
+                  >
+                    <IconDownload className='size-4' />
+                    Pull
+                  </Button>
+                ) : null}
+              </div>
+            )}
           </div>
         )
       }
     ],
-    [initialProvider, onUpdateModel]
+    [initialProvider, isDownloadingModel, modelDownloads, onDownloadModel, onUpdateModel]
   )
 
   return (
@@ -154,27 +162,16 @@ export const ProviderModelsGrid = ({
           </p>
         </div>
         <div className='flex flex-wrap items-center gap-2'>
-          {initialProvider.kind === 'ollama' ? (
-            <Button
-              type='button'
-              variant='secondary'
-              onClick={() => openDownload()}
-            >
-              <IconDownload className='size-4' />
-              Download model
-            </Button>
-          ) : null}
           <Button
             type='button'
             variant='secondary'
-            onClick={onAddModel}
+            onClick={() => setAddOpen(true)}
           >
             <IconPlus className='size-4' />
             Add model
           </Button>
         </div>
       </div>
-      {modelDownload ? <ProviderModelDownloadProgress download={modelDownload} /> : null}
       {selectedIds.size > 0 ? (
         <div className='flex flex-wrap items-center justify-between gap-3'>
           <span className='text-sm text-secondary-foreground'>{selectedIds.size} selected</span>
@@ -229,9 +226,9 @@ export const ProviderModelsGrid = ({
               Settings
             </ContextMenuItem>
             {initialProvider.kind === 'ollama' ? (
-              <ContextMenuItem onSelect={() => openDownload(row.original)}>
+              <ContextMenuItem onSelect={() => void onDownloadModel(row.original.id, row.original.label)}>
                 <IconDownload className='mr-2 size-4' />
-                Download model
+                Pull model
               </ContextMenuItem>
             ) : null}
             <ContextMenuItem
@@ -252,15 +249,17 @@ export const ProviderModelsGrid = ({
         onClose={() => setSettingsRow(null)}
         onChange={(index, patch) => onUpdateModel(index, patch)}
       />
-      <ProviderModelDownloadDialog
-        open={downloadOpen}
-        isDownloading={isDownloadingModel}
-        modelId={downloadModelId}
-        label={downloadLabel}
-        onOpenChange={setDownloadOpen}
-        onModelIdChange={setDownloadModelId}
-        onLabelChange={setDownloadLabel}
-        onSubmit={() => void submitDownload()}
+      <ProviderModelAddDialog
+        open={addOpen}
+        isSubmitting={isDownloadingModel}
+        isLoadingRemoteModels={isLoadingRemoteModels}
+        providerKind={initialProvider.kind}
+        remoteModels={remoteModels}
+        remoteModelsError={remoteModelsError}
+        onLoadRemoteModels={onLoadRemoteModels}
+        onOpenChange={setAddOpen}
+        onAddExisting={onAddModel}
+        onDownload={onDownloadModel}
       />
     </Section>
   )

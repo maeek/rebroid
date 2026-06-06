@@ -17,6 +17,7 @@ import {
   AutomationAiProviderDto,
   AutomationAiProviderModelDownloadDto,
   AutomationAiProviderModelDto,
+  AutomationAiProviderRemoteModelDto,
   CreateAutomationAiProviderDto,
   CreateAutomationAiProviderModelDto,
   DownloadAutomationAiProviderModelDto,
@@ -77,6 +78,12 @@ export class SettingsController {
     @Query('modelId') modelId?: string,
   ) {
     return this.settings.checkAiProviderHealth(providerId, modelId);
+  }
+
+  @Get('ai-providers/:providerId/remote-models')
+  @ApiOkResponse({ type: AutomationAiProviderRemoteModelDto, isArray: true })
+  listAiProviderRemoteModels(@Param('providerId') providerId: string) {
+    return this.settings.listAiProviderRemoteModels(providerId);
   }
 
   @Patch('ai-providers/:providerId')

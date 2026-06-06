@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   IconCircleCheck,
   IconCircleDashed,
   IconCircleX,
+  IconPlayerStop,
   IconSend,
   IconSettings,
   IconSparkles
@@ -17,7 +18,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { AutomationRunLiveEvents } from '@/features/automations/automations-page/traces/automation-run-live-events'
 import { cn } from '@/lib/utils'
-import { runAdHocAiAutomationAction } from '@/server/orchestrator/automations/automation-run-actions'
+import {
+  cancelAutomationRunAction,
+  runAdHocAiAutomationAction
+} from '@/server/orchestrator/automations/automation-run-actions'
 import {
   checkAutomationAiProviderHealthAction,
   listAutomationAiModelCatalogAction
@@ -62,6 +66,7 @@ export const AiAgentToolsSection = ({
   const [modelId, setModelId] = useState('')
   const [run, setRun] = useState<AutomationRun | null>(null)
   const [isRunning, setIsRunning] = useState(false)
+  const [isCanceling, setIsCanceling] = useState(false)
   const [health, setHealth] = useState<AutomationAiProviderHealth | null>(null)
   const [isCheckingHealth, setIsCheckingHealth] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -143,6 +148,25 @@ export const AiAgentToolsSection = ({
       setIsRunning(false)
     }
   }
+
+  const canCancelRun = run?.status === 'queued' || run?.status === 'running'
+
+  const cancelRun = async () => {
+    if (!run || !canCancelRun) return
+    setIsCanceling(true)
+    setError(null)
+    try {
+      setRun(await cancelAutomationRunAction(run.id))
+    } catch (cancelError) {
+      setError(cancelError instanceof Error ? cancelError.message : 'AI automation could not be canceled.')
+    } finally {
+      setIsCanceling(false)
+    }
+  }
+
+  const updateRunStatus = useCallback((status: AutomationRun['status']) => {
+    setRun(current => (current ? { ...current, status } : current))
+  }, [])
 
   return (
     <section className={cn('grid gap-4 rounded-md border border-border/70 bg-background/35 p-4', className)}>
@@ -276,14 +300,27 @@ export const AiAgentToolsSection = ({
           <span className='text-xs text-secondary-foreground'>
             Progress and tool calls appear below as soon as the run starts.
           </span>
-          <Button
-            type='button'
-            disabled={isRunning || !prompt.trim() || !selectedProvider || !selectedModel}
-            onClick={() => void submit()}
-          >
-            <IconSend className='size-4' />
-            Run
-          </Button>
+          <div className='flex items-center gap-2'>
+            {canCancelRun ? (
+              <Button
+                type='button'
+                variant='secondary'
+                disabled={isCanceling}
+                onClick={() => void cancelRun()}
+              >
+                <IconPlayerStop className='size-4' />
+                {isCanceling ? 'Canceling' : 'Cancel'}
+              </Button>
+            ) : null}
+            <Button
+              type='button'
+              disabled={isRunning || !prompt.trim() || !selectedProvider || !selectedModel}
+              onClick={() => void submit()}
+            >
+              <IconSend className='size-4' />
+              Run
+            </Button>
+          </div>
         </div>
         {error ? <div className='text-xs text-destructive'>{error}</div> : null}
       </div>
@@ -291,6 +328,8 @@ export const AiAgentToolsSection = ({
         <AutomationRunLiveEvents
           run={run}
           compact
+          allowCancel={false}
+          onStatusChange={updateRunStatus}
         />
       ) : (
         <div className='rounded-md border border-dashed border-border/70 p-3 text-sm text-secondary-foreground'>

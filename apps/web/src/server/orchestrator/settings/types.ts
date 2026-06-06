@@ -4,6 +4,7 @@ export type CleanupUploadedApksResponse = OrchestratorApiSchemas['CleanupUploade
 export type OrchestratorSettingsResponse = OrchestratorApiSchemas['OrchestratorSettingsDto']
 export type AutomationAiProviderModel = OrchestratorApiSchemas['AutomationAiProviderModelDto']
 export type AutomationAiProviderModelDownload = OrchestratorApiSchemas['AutomationAiProviderModelDownloadDto']
+export type AutomationAiProviderRemoteModel = OrchestratorApiSchemas['AutomationAiProviderRemoteModelDto']
 export type AutomationAiProvider = OrchestratorApiSchemas['AutomationAiProviderDto']
 export type AutomationAiModelCatalogProvider = OrchestratorApiSchemas['AutomationAiModelCatalogProviderDto']
 export type AutomationAiProviderHealth = OrchestratorApiSchemas['AutomationAiProviderHealthDto']

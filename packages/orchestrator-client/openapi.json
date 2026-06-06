@@ -513,6 +513,39 @@
         ]
       }
     },
+    "/api/v1/settings/ai-providers/{providerId}/remote-models": {
+      "get": {
+        "operationId": "SettingsController_listAiProviderRemoteModels",
+        "parameters": [
+          {
+            "name": "providerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AutomationAiProviderRemoteModelDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ]
+      }
+    },
     "/api/v1/settings/ai-providers/{providerId}": {
       "patch": {
         "operationId": "SettingsController_updateAiProvider",
@@ -5329,6 +5362,30 @@
           "message",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "AutomationAiProviderRemoteModelDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "family": {
+            "type": "string"
+          },
+          "parameterSize": {
+            "type": "string"
+          },
+          "quantizationLevel": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label"
         ]
       },
       "AutomationAiModelCatalogProviderDto": {

@@ -22,11 +22,17 @@ export {
   resolveUpdatedApiKey,
 } from "./provider/normalization";
 export {
+  parseProviderRemoteModels,
+  providerModelsUrl,
+  providerRemoteModelsUrl,
+} from "./provider/remote-models";
+export {
   AiProviderConfigurationError,
   type AutomationAiProvider,
   type AutomationAiProviderKind,
   type AutomationAiProviderModel,
   type AutomationAiProviderModelSettings,
+  type AutomationAiProviderRemoteModel,
   type AutomationAiRunInput,
   type AutomationAiToolRequest,
   type ProviderFormState,

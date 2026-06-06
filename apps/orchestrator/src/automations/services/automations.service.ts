@@ -227,19 +227,9 @@ export class AutomationsService implements OnModuleInit {
       maxToolCalls: dto.maxToolCalls,
       timeoutMs: dto.timeoutMs,
     });
-    const automation = await this.automations.save(
-      this.automations.create({
-        ownerUserId: dto.ownerUserId.trim(),
-        name: definition.metadata.name,
-        description: definition.metadata.description ?? null,
-        definitionJson: JSON.stringify(definition),
-        lastStatus: AutomationLastStatus.Running,
-        lastRunAt: new Date(),
-        lastError: null,
-      }),
-    );
-    const run = await this.runner.enqueue(
-      automation,
+    const run = await this.runner.enqueueEphemeral(
+      dto.ownerUserId,
+      definition,
       AutomationRunTrigger.Manual,
       {
         targetApplicationId: dto.targetApplicationId,

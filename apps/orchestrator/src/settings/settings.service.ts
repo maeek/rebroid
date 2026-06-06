@@ -158,6 +158,21 @@ export class SettingsService {
     return this.aiProviderHealth.checkProviderConnection(provider);
   }
 
+  async listAiProviderRemoteModels(providerId: string) {
+    const settings = await this.getStoredSettings();
+    const provider = settings.aiProviders.find(
+      (item) => item.id === providerId,
+    );
+    if (!provider) {
+      throw new NotFoundException(`AI provider "${providerId}" was not found.`);
+    }
+    try {
+      return await this.aiProviderHealth.listRemoteModels(provider);
+    } catch (error) {
+      throw new BadRequestException(this.aiProviderHealth.errorMessage(error));
+    }
+  }
+
   async createAiProvider(dto: CreateAutomationAiProviderDto) {
     const settings = await this.getStoredSettings();
     if (

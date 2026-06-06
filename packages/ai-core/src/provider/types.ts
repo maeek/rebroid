@@ -34,6 +34,14 @@ export interface AutomationAiProviderModelSettings {
   keepAlive?: string | null;
 }
 
+export interface AutomationAiProviderRemoteModel {
+  id: string;
+  label: string;
+  family?: string;
+  parameterSize?: string;
+  quantizationLevel?: string;
+}
+
 export interface AutomationAiRunInput {
   prompt: string;
   providerId?: string;

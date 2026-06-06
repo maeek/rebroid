@@ -20,14 +20,18 @@ export const OrchestratorAiProviderEditPageClient = ({
   const {
     addModel,
     isSaving,
+    isLoadingRemoteModels,
+    loadRemoteModels,
+    modelDownloads,
     modelRows,
     provider,
+    remoteModels,
+    remoteModelsError,
     removeModel,
     saveProvider,
     setDefaultModel,
     downloadModel,
     isDownloadingModel,
-    modelDownload,
     removeModels,
     updateModel,
     updateModels,
@@ -77,7 +81,11 @@ export const OrchestratorAiProviderEditPageClient = ({
           onSetDefaultModel={setDefaultModel}
           onUpdateModel={updateModel}
           isDownloadingModel={isDownloadingModel}
-          modelDownload={modelDownload}
+          isLoadingRemoteModels={isLoadingRemoteModels}
+          modelDownloads={modelDownloads}
+          remoteModels={remoteModels}
+          remoteModelsError={remoteModelsError}
+          onLoadRemoteModels={loadRemoteModels}
         />
       </section>
     </ProtectedStackPageLayout>

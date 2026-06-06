@@ -34,12 +34,14 @@ export function AutomationRunLiveEvents({
   run,
   compact = false,
   showHeader = true,
-  allowCancel = true
+  allowCancel = true,
+  onStatusChange
 }: {
   run: AutomationRun
   compact?: boolean
   showHeader?: boolean
   allowCancel?: boolean
+  onStatusChange?: (status: AutomationRun['status']) => void
 }) {
   const [events, setEvents] = useState<AutomationRunEvent[]>([])
   const [isCanceling, setIsCanceling] = useState(false)
@@ -60,6 +62,12 @@ export function AutomationRunLiveEvents({
         }
         return [...byId.values()].sort((left, right) => left.sequence - right.sequence)
       })
+      for (const event of nextEvents) {
+        if (event.type === 'run.started') onStatusChange?.('running')
+        if (event.type === 'run.completed') onStatusChange?.('success')
+        if (event.type === 'run.failed') onStatusChange?.('failed')
+        if (event.type === 'run.canceled') onStatusChange?.('canceled')
+      }
     }
 
     const connect = async () => {
@@ -84,7 +92,7 @@ export function AutomationRunLiveEvents({
       closed = true
       socket?.close()
     }
-  }, [run.id, run.status])
+  }, [onStatusChange, run.id, run.status])
 
   const visibleEvents = useMemo(
     () => events.filter(event => event.type !== 'heartbeat' && event.message.trim().length > 0),

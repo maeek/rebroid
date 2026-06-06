@@ -1,6 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { AutomationAiProvider } from '@rebroid/ai-core/provider';
-import type { AutomationAiProviderHealthDto } from './dto/automation-ai-provider.dto';
+import {
+  parseProviderRemoteModels,
+  providerModelsUrl,
+  providerRemoteModelsUrl,
+  type AutomationAiProvider,
+} from '@rebroid/ai-core/provider';
+import type {
+  AutomationAiProviderHealthDto,
+  AutomationAiProviderRemoteModelDto,
+} from './dto/automation-ai-provider.dto';
 
 @Injectable()
 export class AiProviderHealthService {
@@ -35,7 +43,7 @@ export class AiProviderHealthService {
     }
 
     try {
-      const response = await fetch(this.modelsUrl(provider), {
+      const response = await fetch(providerModelsUrl(provider), {
         headers: provider.apiKey
           ? { Authorization: `Bearer ${provider.apiKey}` }
           : undefined,
@@ -87,7 +95,7 @@ export class AiProviderHealthService {
 
   async checkProviderConnection(provider: AutomationAiProvider) {
     try {
-      const response = await fetch(this.modelsUrl(provider), {
+      const response = await fetch(providerModelsUrl(provider), {
         headers: provider.apiKey
           ? { Authorization: `Bearer ${provider.apiKey}` }
           : undefined,
@@ -117,6 +125,22 @@ export class AiProviderHealthService {
     }
   }
 
+  async listRemoteModels(
+    provider: AutomationAiProvider,
+  ): Promise<AutomationAiProviderRemoteModelDto[]> {
+    const response = await fetch(providerRemoteModelsUrl(provider), {
+      headers: provider.apiKey
+        ? { Authorization: `Bearer ${provider.apiKey}` }
+        : undefined,
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!response.ok) {
+      throw new Error(`Provider returned HTTP ${response.status}.`);
+    }
+
+    return parseProviderRemoteModels(provider, await response.json());
+  }
+
   errorMessage(error: unknown) {
     if (!(error instanceof Error)) return 'Provider health check failed.';
 
@@ -140,13 +164,6 @@ export class AiProviderHealthService {
     return uniqueDetails.length > 0
       ? `${error.message}: ${uniqueDetails.join(' ')}`
       : error.message;
-  }
-
-  private modelsUrl(provider: AutomationAiProvider) {
-    if (provider.kind === 'ollama') {
-      return `${provider.baseUrl.replace(/\/+$/, '')}/v1/models`;
-    }
-    return `${provider.baseUrl.replace(/\/+$/, '')}/models`;
   }
 
   private healthResult(
