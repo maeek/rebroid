@@ -1,3 +1,5 @@
+import { Suspense } from 'react'
+import { AutomationsListPageSkeleton } from '@/features/automations/automations-page/automation-page-skeletons'
 import { AutomationsListPage } from '@/features/automations/automations-page/list/automations-list-page'
 import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
 import { listAutomationsGridAction } from '@/server/orchestrator/automations/automation-management-actions'
@@ -25,7 +27,7 @@ const automationsGridQueryFromSearchParams = (searchParams: AutomationsSearchPar
   }
 }
 
-export default async function AutomationsRoute({ searchParams }: { searchParams?: Promise<AutomationsSearchParams> }) {
+const AutomationsRouteContent = async ({ searchParams }: { searchParams?: Promise<AutomationsSearchParams> }) => {
   const gridQuery = automationsGridQueryFromSearchParams((await searchParams) ?? {})
   const [automationsPage, applications, triggers] = await Promise.all([
     listAutomationsGridAction(gridQuery),
@@ -40,5 +42,13 @@ export default async function AutomationsRoute({ searchParams }: { searchParams?
       gridQuery={gridQuery}
       initialTriggers={triggers}
     />
+  )
+}
+
+export default function AutomationsRoute({ searchParams }: { searchParams?: Promise<AutomationsSearchParams> }) {
+  return (
+    <Suspense fallback={<AutomationsListPageSkeleton />}>
+      <AutomationsRouteContent searchParams={searchParams} />
+    </Suspense>
   )
 }
