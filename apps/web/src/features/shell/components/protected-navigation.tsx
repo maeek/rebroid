@@ -3,9 +3,14 @@
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Visible } from '@/components/ui/visible'
 import { recentAppsUpdatedEvent, type RecentApp } from '@/features/applications/recent/recent-apps'
 import { usePollingQuery } from '@/hooks/use-polling-query'
+import {
+  checkAutomationAiProviderHealthAction,
+  listAutomationAiModelCatalogAction
+} from '@/server/orchestrator/settings/actions'
 import { listRecentAppsAction } from '@/server/recent-apps/actions'
 import {
   appSections,
@@ -33,6 +38,7 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
   const pathname = usePathname()
   const { data: session } = useSession()
   const [role, setRole] = useState(initialUser.role)
+  const [hasHealthyAiProvider, setHasHealthyAiProvider] = useState(false)
   const { data: recentApps = [], mutate: refreshRecentApps } = usePollingQuery<RecentApp[]>(
     'navigation:recent-apps',
     () => listRecentAppsAction(),
@@ -54,6 +60,43 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
     }
   }, [refreshRecentApps])
 
+  useEffect(() => {
+    if (!isAdmin) {
+      setHasHealthyAiProvider(false)
+      return
+    }
+
+    let cancelled = false
+
+    const checkAiProviderReachability = async () => {
+      try {
+        const catalog = await listAutomationAiModelCatalogAction()
+        const candidates = catalog
+          .map(provider => ({
+            provider,
+            model: provider.models.find(model => model.default) ?? provider.models[0]
+          }))
+          .filter(item => item.model)
+        const results = await Promise.allSettled(
+          candidates.map(({ provider, model }) => checkAutomationAiProviderHealthAction(provider.id, model.id))
+        )
+
+        if (cancelled) return
+        setHasHealthyAiProvider(results.some(result => result.status === 'fulfilled' && result.value.status === 'ok'))
+      } catch {
+        if (!cancelled) setHasHealthyAiProvider(false)
+      }
+    }
+
+    void checkAiProviderReachability()
+    const interval = window.setInterval(() => void checkAiProviderReachability(), 60_000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(interval)
+    }
+  }, [isAdmin])
+
   const isActivePath = (href: string, exact = false) =>
     exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`)
 
@@ -72,17 +115,21 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
         variant={variant}
       />
       <ul className={styles.list}>
-        {items.map(({ name, Icon, href }) => (
-          <NavLink
-            key={href}
-            href={href}
-            label={name}
-            Icon={Icon}
-            isActive={itemIsActive(href)}
-            variant={variant}
-            onNavigate={onNavigate}
-          />
-        ))}
+        {items.map(({ name, Icon, href }) => {
+          const NavIcon = name === 'AI' && hasHealthyAiProvider ? GradientSparklesIcon : Icon
+
+          return (
+            <NavLink
+              key={href}
+              href={href}
+              label={name}
+              Icon={NavIcon}
+              isActive={itemIsActive(href)}
+              variant={variant}
+              onNavigate={onNavigate}
+            />
+          )
+        })}
       </ul>
     </>
   )

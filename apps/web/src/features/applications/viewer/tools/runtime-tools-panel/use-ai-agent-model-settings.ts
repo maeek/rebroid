@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   checkAutomationAiProviderHealthAction,
   listAutomationAiModelCatalogAction
@@ -60,6 +60,28 @@ export const useAiAgentModelSettings = () => {
     if (health?.status === 'disabled') return 'Selected provider/model is disabled.'
     return null
   }, [health, selectedModel, selectedProvider])
+
+  const checkSelectedPlannerHealth = useCallback(async () => {
+    if (!selectedProvider || !selectedModel) {
+      setHealth(null)
+      return
+    }
+
+    setIsCheckingHealth(true)
+    try {
+      setHealth(await checkAutomationAiProviderHealthAction(selectedProvider.id, selectedModel.id, 'planner'))
+    } catch (healthError) {
+      setHealth({
+        providerId: selectedProvider.id,
+        modelId: selectedModel.id,
+        status: 'error',
+        message: healthError instanceof Error ? healthError.message : 'Health check failed.',
+        checkedAt: new Date().toISOString()
+      })
+    } finally {
+      setIsCheckingHealth(false)
+    }
+  }, [selectedModel, selectedProvider])
 
   useEffect(() => {
     let cancelled = false
@@ -123,6 +145,7 @@ export const useAiAgentModelSettings = () => {
     isCheckingHealth,
     modelIsValid,
     plannerCatalog,
+    recheckHealth: checkSelectedPlannerHealth,
     selectedModel,
     selectedProvider,
     selectedVisionModel,

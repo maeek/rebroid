@@ -1,4 +1,4 @@
-import { IconCircleCheck, IconCircleDashed, IconCircleX, IconSettings } from '@tabler/icons-react'
+import { IconCircleCheck, IconCircleDashed, IconCircleX, IconRefresh, IconSettings } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -49,6 +49,7 @@ export const AiAgentSettingsPopover = ({
   catalog,
   health,
   isCheckingHealth,
+  onRecheckHealth,
   selectedModel,
   selectedProvider,
   selectedVisionModel,
@@ -65,6 +66,7 @@ export const AiAgentSettingsPopover = ({
   catalog: AutomationAiModelCatalogProvider[]
   health: AutomationAiProviderHealth | null
   isCheckingHealth: boolean
+  onRecheckHealth: () => void
   selectedModel: AutomationAiModelCatalogProvider['models'][number] | undefined
   selectedProvider: AutomationAiModelCatalogProvider | undefined
   selectedVisionModel: AutomationAiModelCatalogProvider['models'][number] | undefined
@@ -224,13 +226,26 @@ export const AiAgentSettingsPopover = ({
           </div>
         </div>
         <div className='rounded-md border border-border/70 bg-background/25 px-3 py-2 text-xs text-secondary-foreground'>
-          <div className='flex items-center gap-2 font-medium text-foreground'>
-            {healthIcon(health, isCheckingHealth)}
-            Provider health
+          <div className='flex items-center justify-between gap-3'>
+            <div className='flex min-w-0 items-center gap-2 font-medium text-foreground'>
+              {healthIcon(health, isCheckingHealth)}
+              Planner health
+            </div>
+            <Button
+              type='button'
+              variant='ghost'
+              size='icon'
+              className='size-8'
+              disabled={!selectedModel || isCheckingHealth}
+              aria-label='Re-check planner health'
+              onClick={onRecheckHealth}
+            >
+              <IconRefresh className={isCheckingHealth ? 'size-4 animate-spin' : 'size-4'} />
+            </Button>
           </div>
           <div className='mt-1'>
             {isCheckingHealth
-              ? 'Checking selected provider/model...'
+              ? 'Checking selected planner provider/model...'
               : health
                 ? `${healthLabel(health)} - ${health.message}`
                 : 'No provider selected.'}

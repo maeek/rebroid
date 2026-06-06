@@ -88,8 +88,11 @@ export class VisionAutomationCommandsService {
             0,
             input.maxDetections,
           );
+          const uiStatus = observation.uiXml
+            ? `UI hierarchy ${observation.uiXml.status}, ${observation.uiXml.nodeCount} node(s)`
+            : 'UI hierarchy unavailable';
           return {
-            summary: `Screen observed: ${detections.length} element(s) detected.`,
+            summary: `Screen observed: ${detections.length} element(s) detected. ${uiStatus}.`,
             data: {
               width: observation.image.width,
               height: observation.image.height,

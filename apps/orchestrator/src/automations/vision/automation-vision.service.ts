@@ -48,7 +48,9 @@ export class AutomationVisionService {
     this.assertNotCanceled(context.abortSignal);
     const screenshot = await context.adb.screenshot(context.app);
     const aiImage = await optimizeAiScreenshot(screenshot);
-    const ui = await context.adb.dumpUi(context.app).catch(() => null);
+    const ui = await context.adb.dumpUi(context.app).catch((error: unknown) => ({
+      error: error instanceof Error ? error.message : 'UI hierarchy dump failed.',
+    }));
     const image = {
       width: aiImage.width ?? 1,
       height: aiImage.height ?? 1,
@@ -56,10 +58,28 @@ export class AutomationVisionService {
       capturedAt: screenshot.capturedAt,
       source: 'screenshot' as const,
     };
-    const preparedUi = ui ? prepareUiXml(ui.xml) : null;
+    const uiDumpAvailable = 'xml' in ui;
+    const preparedUi = uiDumpAvailable ? prepareUiXml(ui.xml) : null;
     const detections = preparedUi
       ? extractUiDetections(preparedUi.xml, image)
       : [];
+    const uiXml = preparedUi
+      ? {
+          bytes: Buffer.byteLength(preparedUi.xml),
+          nodeCount: preparedUi.nodeCount,
+          status:
+            preparedUi.nodeCount > 0
+              ? ('available' as const)
+              : ('empty' as const),
+          truncated: preparedUi.truncated,
+        }
+      : {
+          bytes: 0,
+          error: uiDumpAvailable ? undefined : ui.error,
+          nodeCount: 0,
+          status: 'failed' as const,
+          truncated: false,
+        };
     const summary = visionModel
       ? await this.describeWithVisionModel({
           aiImage,
@@ -74,15 +94,7 @@ export class AutomationVisionService {
       aiImage,
       detections: sortDetections(detections).slice(0, 80),
       ...(summary ? { summary } : {}),
-      ...(preparedUi
-        ? {
-            uiXml: {
-              bytes: Buffer.byteLength(preparedUi.xml),
-              nodeCount: preparedUi.nodeCount,
-              truncated: preparedUi.truncated,
-            },
-          }
-        : {}),
+      uiXml,
     };
   }
 
@@ -116,7 +128,7 @@ export class AutomationVisionService {
     const lines = [
       `Screen observation: ${observation.image.width}x${observation.image.height}, captured ${observation.image.capturedAt}.`,
       observation.uiXml
-        ? `UI hierarchy: ${observation.uiXml.nodeCount} node(s), ${observation.uiXml.bytes} byte(s), truncated=${observation.uiXml.truncated}.`
+        ? `UI hierarchy: ${observation.uiXml.status}, ${observation.uiXml.nodeCount} node(s), ${observation.uiXml.bytes} byte(s), truncated=${observation.uiXml.truncated}${observation.uiXml.error ? `, error=${observation.uiXml.error}` : ''}.`
         : 'UI hierarchy: unavailable.',
       observation.summary ? `Vision summary: ${observation.summary}` : '',
       'Detected elements use normalized bounds and centers in 0..1 screen coordinates:',

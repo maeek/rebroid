@@ -17,6 +17,9 @@ import type {
   AutomationAiProviderRemoteModelDto,
 } from './dto/automation-ai-provider.dto';
 
+const PROVIDER_MODEL_LIST_TIMEOUT_MS = 15_000;
+const MODEL_ROLE_PROBE_TIMEOUT_MS = 60_000;
+
 @Injectable()
 export class AiProviderHealthService {
   async checkProviderHealth(
@@ -63,7 +66,7 @@ export class AiProviderHealthService {
         headers: provider.apiKey
           ? { Authorization: `Bearer ${provider.apiKey}` }
           : undefined,
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(PROVIDER_MODEL_LIST_TIMEOUT_MS),
       });
       if (!response.ok) {
         return this.healthResult(
@@ -108,7 +111,7 @@ export class AiProviderHealthService {
         provider.id,
         model?.id,
         'error',
-        this.errorMessage(error),
+        this.providerModelListErrorMessage(error),
       );
     }
   }
@@ -146,7 +149,7 @@ export class AiProviderHealthService {
             ? { Authorization: `Bearer ${provider.apiKey}` }
             : {}),
         },
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(MODEL_ROLE_PROBE_TIMEOUT_MS),
         body: JSON.stringify(
           buildChatRequestBody({
             provider,
@@ -168,16 +171,21 @@ export class AiProviderHealthService {
       }
       return null;
     } catch (error) {
+      const roleLabel = role === 'planner' ? 'Planner' : 'Vision';
       return this.healthResult(
         provider.id,
         model.id,
         'error',
-        `${role === 'planner' ? 'Planner' : 'Vision'} role check failed: ${this.errorMessage(error)}`,
+        this.isTimeoutError(error)
+          ? `${roleLabel} role check timed out after ${MODEL_ROLE_PROBE_TIMEOUT_MS / 1000}s while probing model "${model.id}". The provider may still be loading the model; retry the health check when it is ready.`
+          : `${roleLabel} role check failed: ${this.errorMessage(error)}`,
       );
     }
   }
 
-  private roleProbeMessages(role: AutomationAiProviderModelRole): ChatMessage[] {
+  private roleProbeMessages(
+    role: AutomationAiProviderModelRole,
+  ): ChatMessage[] {
     if (role === 'vision') {
       return [
         {
@@ -203,7 +211,7 @@ export class AiProviderHealthService {
         headers: provider.apiKey
           ? { Authorization: `Bearer ${provider.apiKey}` }
           : undefined,
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(PROVIDER_MODEL_LIST_TIMEOUT_MS),
       });
       if (!response.ok) {
         return this.healthResult(
@@ -224,7 +232,7 @@ export class AiProviderHealthService {
         provider.id,
         undefined,
         'error',
-        this.errorMessage(error),
+        this.providerModelListErrorMessage(error),
       );
     }
   }
@@ -236,13 +244,31 @@ export class AiProviderHealthService {
       headers: provider.apiKey
         ? { Authorization: `Bearer ${provider.apiKey}` }
         : undefined,
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(PROVIDER_MODEL_LIST_TIMEOUT_MS),
     });
     if (!response.ok) {
       throw new Error(`Provider returned HTTP ${response.status}.`);
     }
 
     return parseProviderRemoteModels(provider, await response.json());
+  }
+
+  private providerModelListErrorMessage(error: unknown) {
+    if (this.isTimeoutError(error)) {
+      return `Provider model list check timed out after ${PROVIDER_MODEL_LIST_TIMEOUT_MS / 1000}s.`;
+    }
+
+    return this.errorMessage(error);
+  }
+
+  private isTimeoutError(error: unknown) {
+    if (!(error instanceof Error)) return false;
+
+    return (
+      error.name === 'TimeoutError' ||
+      error.name === 'AbortError' ||
+      /aborted due to timeout/i.test(error.message)
+    );
   }
 
   errorMessage(error: unknown) {

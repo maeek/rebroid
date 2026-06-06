@@ -32,7 +32,9 @@ export interface VisionObservation {
   summary?: string;
   uiXml?: {
     bytes: number;
+    error?: string;
     nodeCount: number;
+    status: "available" | "empty" | "failed";
     truncated: boolean;
   };
 }

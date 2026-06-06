@@ -80,6 +80,19 @@ const shellSchema = z.object({
   timeoutMs: z.number().int().min(100).max(120_000).optional().default(15_000),
 });
 
+const androidSettingSchema = z.object({
+  namespace: z.enum(['system', 'secure', 'global']),
+  key: z
+    .string()
+    .trim()
+    .min(1)
+    .max(120)
+    .regex(/^[A-Za-z0-9_.:-]+$/, {
+      message: 'Setting key contains unsupported characters.',
+    }),
+  timeoutMs: timeoutSchema,
+});
+
 const remotePathSchema = z
   .string()
   .min(1)
@@ -463,6 +476,41 @@ export class AndroidAutomationCommandsService {
           throw new Error(
             `Text "${text}" was not found within ${timeoutMs}ms.`,
           );
+        },
+      },
+      {
+        uses: 'android.getSetting',
+        label: 'Get Android setting',
+        description: 'Reads one Android setting with settings get <namespace> <key>.',
+        requiredPermissions: ['automations:run-adb-shell'],
+        schema: androidSettingSchema,
+        outputs: [
+          {
+            key: 'value',
+            label: 'Value',
+            type: 'string',
+            description: 'Setting value returned by Android.',
+          },
+        ],
+        execute: async (
+          { key, namespace, timeoutMs }: z.infer<typeof androidSettingSchema>,
+          { app, adb }: AutomationCommandContext,
+        ) => {
+          const result = await adb.shell(
+            app,
+            `settings get ${namespace} ${key}`,
+            timeoutMs,
+          );
+          if (result.exitCode !== 0) {
+            throw new Error(
+              `settings get ${namespace} ${key} failed with exit code ${result.exitCode}: ${result.stderr || result.stdout}`,
+            );
+          }
+          const value = result.stdout.trim();
+          return {
+            summary: `Read Android ${namespace} setting "${key}".`,
+            data: { value },
+          };
         },
       },
       {

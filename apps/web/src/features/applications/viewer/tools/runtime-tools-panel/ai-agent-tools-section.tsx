@@ -1,6 +1,7 @@
 'use client'
 
 import { IconPlayerPlay, IconPlayerStop, IconSend, IconSparkles, IconTrash } from '@tabler/icons-react'
+import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -37,6 +38,7 @@ export const AiAgentToolsSection = ({
     plannerCatalog,
     prompt,
     queuedTurn,
+    recheckHealth,
     runQueuedTurn,
     selectedModel,
     selectedProvider,
@@ -61,7 +63,11 @@ export const AiAgentToolsSection = ({
     <section className={cn('grid gap-4 p-4', className)}>
       {hideHeader ? null : (
         <div className='flex items-center gap-2'>
-          <IconSparkles className='size-4 text-primary' />
+          {health?.status === 'ok' ? (
+            <GradientSparklesIcon className='size-4' />
+          ) : (
+            <IconSparkles className='size-4 text-primary' />
+          )}
           <div>
             <h3 className='text-sm font-semibold'>AI agent</h3>
             <p className='text-xs text-secondary-foreground'>Run a session-only Android automation chat.</p>
@@ -101,6 +107,7 @@ export const AiAgentToolsSection = ({
               catalog={plannerCatalog}
               health={health}
               isCheckingHealth={isCheckingHealth}
+              onRecheckHealth={() => void recheckHealth()}
               selectedModel={selectedModel}
               selectedProvider={selectedProvider}
               selectedVisionModel={selectedVisionModel}
