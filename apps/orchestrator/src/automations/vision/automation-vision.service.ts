@@ -128,11 +128,20 @@ export class AutomationVisionService {
   }
 
   summarizeForPlanner(observation: AutomationScreenObservation) {
+    const visionState = observation.summary
+      ? `Vision model summary: available.`
+      : 'Vision model summary: unavailable; planner cannot inspect screenshot pixels directly and must rely on UI XML detections/text.';
+    const visibilityWarning =
+      !observation.summary && observation.detections.length === 0
+        ? 'Visibility warning: no UI XML detections and no vision summary are available. The planner should ask the user for more context or use non-visual state-reading tools instead of guessing screen contents.'
+        : '';
     const lines = [
       `Screen observation: ${observation.image.width}x${observation.image.height}, captured ${observation.image.capturedAt}.`,
       observation.uiXml
         ? `UI hierarchy: ${observation.uiXml.status}, ${observation.uiXml.nodeCount} node(s), ${observation.uiXml.bytes} byte(s), truncated=${observation.uiXml.truncated}${observation.uiXml.error ? `, error=${observation.uiXml.error}` : ''}.`
         : 'UI hierarchy: unavailable.',
+      visionState,
+      visibilityWarning,
       observation.summary ? `Vision summary: ${observation.summary}` : '',
       'Detected elements use normalized bounds and centers in 0..1 screen coordinates:',
       ...observation.detections.slice(0, 40).map((detection, index) =>

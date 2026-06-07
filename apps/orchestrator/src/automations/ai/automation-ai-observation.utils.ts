@@ -4,6 +4,7 @@ export const SCREEN_MUTATING_TOOLS = new Set([
   'android.key',
   'android.rotateDisplay',
   'android.setClipboard',
+  'android.launchPackage',
   'android.swipe',
   'android.swipeNormalized',
   'android.tap',

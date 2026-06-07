@@ -19,6 +19,7 @@ const knownV1Uses = [
   'android.swipeNormalized',
   'android.inputText',
   'android.key',
+  'android.listPackages',
   'android.launchPackage',
   'android.setClipboard',
   'android.getClipboard',

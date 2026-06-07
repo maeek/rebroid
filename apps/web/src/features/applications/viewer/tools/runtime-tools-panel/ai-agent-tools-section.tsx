@@ -79,18 +79,14 @@ export const AiAgentToolsSection = ({
         ref={transcriptRef}
         className='flex min-h-0 flex-1 flex-col gap-4 overflow-auto pb-2 pr-1 motion-safe:scroll-smooth'
       >
-        {turns.length === 0 ? (
-          <div className='rounded-md border border-dashed border-border/70 p-3 text-sm text-secondary-foreground'>
-            Send a message to start an ephemeral AI run. Screenshots, tool calls, and responses appear here.
-          </div>
-        ) : (
-          turns.map(turn => (
-            <ChatTurnView
-              key={turn.id}
-              turn={turn}
-            />
-          ))
-        )}
+        {turns.length === 0
+          ? null
+          : turns.map(turn => (
+              <ChatTurnView
+                key={turn.id}
+                turn={turn}
+              />
+            ))}
       </div>
 
       <div className='shrink-0 rounded-lg border border-border/70 bg-card/25 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]'>
@@ -100,7 +96,7 @@ export const AiAgentToolsSection = ({
         <Textarea
           value={prompt}
           rows={4}
-          placeholder='Ask the AI to inspect the current screen and operate this app.'
+          placeholder='Ask the AI to perform a task, call a tool, or take an action...'
           onChange={event => setPrompt(event.target.value)}
           onKeyDown={event => {
             if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
@@ -108,13 +104,13 @@ export const AiAgentToolsSection = ({
               void submit()
             }
           }}
-          className='min-h-24 resize-none border-0 bg-transparent p-1 shadow-none focus-visible:ring-0'
+          className='min-h-24 resize-none border-0 p-1 shadow-none focus-visible:ring-0'
         />
         {selectionMessage ? <div className='text-xs text-destructive'>{selectionMessage}</div> : null}
         {error ? <div className='text-xs text-destructive'>{error}</div> : null}
         <div className='mt-3 flex flex-wrap items-center justify-between gap-3'>
           <span className='text-xs text-secondary-foreground max-sm:w-full'>
-            Each message starts an ephemeral run with a fresh screenshot. Timeout: {adHocTimeoutMs / 60000} minutes.
+            Run timeout: {adHocTimeoutMs / 60000} minutes.
           </span>
           <div className='flex min-w-0 flex-wrap items-center justify-end gap-2 w-full'>
             <AiAgentModelStatus

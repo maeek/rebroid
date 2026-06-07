@@ -147,6 +147,12 @@ export class AdbService {
     return this.adb(["-s", udid, "shell", ...args], timeoutMs);
   }
 
+  async shellResult(udid: string, args: string[], timeoutMs = 15_000) {
+    return this.adb(["-s", udid, "shell", ...args], timeoutMs, {
+      rejectOnNonZero: false,
+    });
+  }
+
   async pushFile(
     udid: string,
     source: string,
@@ -453,7 +459,7 @@ export class AdbService {
   }
 
   async shellCommand(udid: string, command: string, timeoutMs = 15_000) {
-    return this.shell(udid, ["sh", "-lc", command], timeoutMs);
+    return this.shellResult(udid, ["sh", "-c", command], timeoutMs);
   }
 
   async dumpUi(udid: string) {
@@ -615,7 +621,12 @@ export class AdbService {
     };
   }
 
-  private adb(args: string[], timeoutMs: number) {
+  private adb(
+    args: string[],
+    timeoutMs: number,
+    options: { rejectOnNonZero?: boolean } = {},
+  ) {
+    const rejectOnNonZero = options.rejectOnNonZero ?? true;
     return new Promise<CommandResult>((resolve, reject) => {
       const child = spawn(this.adbPath, args, {
         stdio: ["ignore", "pipe", "pipe"],
@@ -653,7 +664,7 @@ export class AdbService {
           return;
         }
 
-        if (result.exitCode !== 0) {
+        if (rejectOnNonZero && result.exitCode !== 0) {
           reject(
             new InternalServerErrorException(
               `adb ${args.join(" ")} failed with exit code ${result.exitCode}: ${result.stderr || result.stdout}`,

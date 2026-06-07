@@ -4,6 +4,7 @@ import { getClipboardAction } from './android/get-clipboard.action'
 import { inputTextAction } from './android/input-text.action'
 import { keyAction } from './android/key.action'
 import { launchPackageAction } from './android/launch-package.action'
+import { listPackagesAction } from './android/list-packages.action'
 import { rotateDisplayAction } from './android/rotate-display.action'
 import { screenshotAction } from './android/screenshot.action'
 import { setClipboardAction } from './android/set-clipboard.action'
@@ -63,6 +64,7 @@ const actionDefinitions = [
   viewerCommandAction,
   rotateDisplayAction,
   keyAction,
+  listPackagesAction,
   launchPackageAction,
   adbShellAction,
   tapAction,

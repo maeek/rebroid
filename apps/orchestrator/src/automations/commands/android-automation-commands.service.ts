@@ -77,6 +77,13 @@ const packageNameSchema = z.object({
   timeoutMs: timeoutSchema,
 });
 
+const listPackagesSchema = z.object({
+  query: z.string().trim().max(120).optional().default(''),
+  includeSystem: z.boolean().optional().default(false),
+  maxResults: z.number().int().min(1).max(200).optional().default(50),
+  timeoutMs: timeoutSchema,
+});
+
 const waitSchema = z.object({
   durationMs: z.number().int().min(1).max(120_000),
 });
@@ -424,6 +431,91 @@ export class AndroidAutomationCommandsService {
               mimeType: result.mimeType,
               capturedAt: result.capturedAt,
               dataUrl: result.dataUrl,
+            },
+          };
+        },
+      },
+      {
+        uses: 'android.listPackages',
+        label: 'List packages',
+        description:
+          'Lists installed Android packages, optionally filtered by package-name text.',
+        requiredPermissions: ['automations:run'],
+        schema: listPackagesSchema,
+        outputs: [
+          {
+            key: 'packages',
+            label: 'Packages',
+            type: 'array',
+            description: 'Matching Android package names.',
+          },
+          {
+            key: 'total',
+            label: 'Total',
+            type: 'number',
+            description: 'Total matching packages before maxResults truncation.',
+          },
+          {
+            key: 'truncated',
+            label: 'Truncated',
+            type: 'boolean',
+            description: 'Whether more matching packages were omitted.',
+          },
+        ],
+        execute: async (
+          {
+            includeSystem,
+            maxResults,
+            query,
+            timeoutMs,
+          }: z.infer<typeof listPackagesSchema>,
+          { app, adb }: AutomationCommandContext,
+        ) => {
+          let result = await adb.shell(
+            app,
+            `pm list packages${includeSystem ? '' : ' -3'}`,
+            timeoutMs,
+          );
+          if (result.exitCode !== 0) {
+            result = await adb.shell(
+              app,
+              `cmd package list packages${includeSystem ? '' : ' -3'}`,
+              timeoutMs,
+            );
+          }
+          if (result.exitCode !== 0) {
+            return {
+              summary: `Package list unavailable: ${result.stderr || result.stdout || `exit ${result.exitCode}`}`,
+              data: {
+                packages: [],
+                total: 0,
+                truncated: false,
+                includeSystem,
+                query,
+                exitCode: result.exitCode,
+              },
+            };
+          }
+          const normalizedQuery = query.trim().toLowerCase();
+          const packages = result.stdout
+            .split(/\r?\n/)
+            .map((line) => line.trim().replace(/^package:/, ''))
+            .filter(Boolean)
+            .filter((packageName) =>
+              normalizedQuery
+                ? packageName.toLowerCase().includes(normalizedQuery)
+                : true,
+            )
+            .sort((left, right) => left.localeCompare(right));
+          const visiblePackages = packages.slice(0, maxResults);
+          return {
+            summary: `Found ${packages.length} package(s)${query ? ` matching "${query}"` : ''}.`,
+            data: {
+              packages: visiblePackages,
+              total: packages.length,
+              truncated: packages.length > visiblePackages.length,
+              includeSystem,
+              query,
             },
           };
         },
