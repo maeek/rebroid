@@ -1,4 +1,4 @@
-import { IconSparkles } from '@tabler/icons-react'
+import { IconChevronDown, IconSparkles } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
 import { currentStreamingText, type ChatTurn, type ChatTurnStatus } from './ai-agent-chat-utils'
 import type { AutomationRunEvent } from '@/server/orchestrator/automations/types'
@@ -29,37 +29,6 @@ const chatTurnTitle = (turn: ChatTurn) => {
 const eventToolName = (event: AutomationRunEvent) =>
   typeof event.data.uses === 'string' ? event.data.uses : event.message
 
-const toolLabels: Record<string, string> = {
-  'android.adbShell': 'ADB shell',
-  'android.deleteFile': 'Delete file',
-  'android.dumpUi': 'Dump UI hierarchy',
-  'android.fileExists': 'File exists',
-  'android.getClipboard': 'Get clipboard',
-  'android.inputText': 'Input text',
-  'android.key': 'Key event',
-  'android.listFiles': 'List files',
-  'android.pullFile': 'Pull file',
-  'android.pushFile': 'Push file',
-  'android.rotateDisplay': 'Rotate display',
-  'android.screenshot': 'Screenshot',
-  'android.setClipboard': 'Set clipboard',
-  'android.swipe': 'Swipe',
-  'android.swipeNormalized': 'Swipe normalized',
-  'android.tap': 'Tap',
-  'android.tapNormalized': 'Tap normalized',
-  'android.tapText': 'Tap text',
-  'android.viewerCommand': 'Viewer command',
-  'android.wait': 'Wait',
-  'android.waitForText': 'Wait for text',
-  'vision.locate': 'Locate on screen',
-  'vision.observe': 'Observe screen'
-}
-
-const eventToolLabel = (event: AutomationRunEvent) => {
-  const uses = eventToolName(event)
-  return toolLabels[uses] ?? uses
-}
-
 export const ChatTurnView = ({ turn }: { turn: ChatTurn }) => {
   const visibleEvents = turn.events.filter(
     event => event.type !== 'heartbeat' && event.type !== 'ai.message.delta' && event.message.trim().length > 0
@@ -71,11 +40,11 @@ export const ChatTurnView = ({ turn }: { turn: ChatTurn }) => {
   const hasCompletedResponse = turn.events.some(event => event.type === 'ai.message.completed')
   const streamingText = hasCompletedResponse ? '' : currentStreamingText(turn)
   return (
-    <article className='grid gap-2'>
+    <article className='grid gap-3 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2'>
       <div className='ml-auto max-w-[85%] rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground'>
         {turn.prompt}
       </div>
-      <div className='grid gap-2 p-3'>
+      <div className='grid gap-2 rounded-lg bg-background/15 p-3'>
         <div className='flex items-center justify-start gap-3'>
           <div className='flex min-w-0 items-center gap-2'>
             <IconSparkles className='size-4 shrink-0 text-primary' />
@@ -117,7 +86,7 @@ export const ChatTurnView = ({ turn }: { turn: ChatTurn }) => {
 
 const WorkingIndicator = ({ status }: { status: ChatTurnStatus }) => (
   <div className='flex items-center gap-2 text-sm text-secondary-foreground'>
-    <span>{status === 'canceling' ? 'Canceling' : 'Working'}</span>
+    <span className='motion-safe:animate-pulse'>{status === 'canceling' ? 'Canceling' : 'Working'}...</span>
     <span className='flex items-center gap-1'>
       <span className='size-1.5 animate-bounce rounded-full bg-primary [animation-delay:-0.2s]' />
       <span className='size-1.5 animate-bounce rounded-full bg-primary [animation-delay:-0.1s]' />
@@ -187,23 +156,28 @@ const ChatEventView = ({ event }: { event: AutomationRunEvent }) => {
   }
   if (event.type === 'ai.tool.arguments') {
     return (
-      <div className='font-mono text-xs text-secondary-foreground'>
-        args: {eventToolLabel(event)} <span className='text-muted-foreground'>({eventToolName(event)})</span>{' '}
-        {compactJson(event.data.arguments)}
-      </div>
+      <details className='group text-sm text-secondary-foreground'>
+        <summary className='flex cursor-pointer list-none items-center gap-1'>
+          Used tool <span className='text-muted-foreground'>({eventToolName(event)})</span>
+          <IconChevronDown className='size-3.5 transition-transform group-open:rotate-180' />
+        </summary>
+        <pre className='mt-1 whitespace-pre-wrap break-words rounded-md bg-background/35 p-2 font-mono text-xs text-muted-foreground'>
+          {compactJson(event.data.arguments)}
+        </pre>
+      </details>
     )
   }
   if (event.type === 'ai.tool.started') {
     return (
-      <div className='font-mono text-xs text-secondary-foreground'>
-        tool: {eventToolLabel(event)} <span className='text-muted-foreground'>({eventToolName(event)})</span>
+      <div className='text-sm text-secondary-foreground'>
+        Using tool <span className='text-muted-foreground'>({eventToolName(event)})</span>
       </div>
     )
   }
   if (event.type === 'ai.tool.completed') {
     return (
-      <div className='font-mono text-xs text-secondary-foreground'>
-        done: {eventToolLabel(event)} <span className='text-muted-foreground'>({eventToolName(event)})</span>
+      <div className='text-sm text-secondary-foreground'>
+        Used tool <span className='text-muted-foreground'>({eventToolName(event)})</span>
       </div>
     )
   }
@@ -214,7 +188,7 @@ const ChatEventView = ({ event }: { event: AutomationRunEvent }) => {
     return <div className='text-xs text-destructive'>Run canceled.</div>
   }
   if (event.type === 'run.started' || event.type === 'run.queued' || event.type === 'ai.model.started') {
-    return <div className='font-mono text-xs text-secondary-foreground'>{event.message}</div>
+    return <div className='text-xs text-secondary-foreground'>{event.message}</div>
   }
   return null
 }

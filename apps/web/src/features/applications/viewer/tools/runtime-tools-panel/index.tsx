@@ -1,9 +1,8 @@
 'use client'
 
-import { useMemo, useState, type KeyboardEvent } from 'react'
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react'
 import {
   IconCast,
-  IconChevronDown,
   IconClipboard,
   IconFolder,
   IconLogs,
@@ -96,6 +95,13 @@ export const RuntimeToolsPanel = () => {
     ]
   )
   const [activeTool, setActiveTool] = useState<RuntimeToolId | null>(() => tools[0]?.id ?? 'streaming')
+  const activeToolIsAvailable = tools.some(tool => tool.id === activeTool)
+  const selectedToolId = activeToolIsAvailable ? activeTool : (tools[0]?.id ?? null)
+
+  useEffect(() => {
+    if (!selectedToolId || selectedToolId === activeTool) return
+    setActiveTool(selectedToolId)
+  }, [activeTool, selectedToolId])
 
   const handleToolTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, toolId: RuntimeToolId) => {
     const currentIndex = tools.findIndex(tool => tool.id === toolId)
@@ -173,6 +179,10 @@ export const RuntimeToolsPanel = () => {
           latestRun={latestAutomationRun}
           className={cn(sectionClassName, inline && 'px-0')}
           hideHeader={inline}
+          onRunStarted={run => {
+            setLatestAutomationRun(run)
+            setActiveTool('automations')
+          }}
         />
       )
     }
@@ -200,63 +210,8 @@ export const RuntimeToolsPanel = () => {
   }
 
   return (
-    <div className='flex w-full flex-col gap-4 max-sm:px-4'>
-      <div className='grid gap-3 md:hidden'>
-        {tools.map(tool => {
-          const selected = activeTool === tool.id
-
-          return (
-            <div
-              key={tool.id}
-              className={cn(
-                'overflow-hidden rounded-2xl border bg-card/25 transition-colors',
-                selected ? 'ring-1 ring-primary/20' : 'border-border/70'
-              )}
-            >
-              <button
-                type='button'
-                className={cn(
-                  'flex w-full items-center gap-3 px-4 py-4 text-left transition-colors',
-                  selected ? 'bg-card/55' : 'hover:bg-card/40'
-                )}
-                onClick={() => setActiveTool(current => (current === tool.id ? null : tool.id))}
-              >
-                <span
-                  className={cn(
-                    'flex size-10 shrink-0 items-center justify-center rounded-lg border transition-colors',
-                    selected
-                      ? 'border-primary/40 bg-primary/20 text-primary'
-                      : 'border-border/70 bg-background/40 text-secondary-foreground'
-                  )}
-                >
-                  <tool.Icon className='size-5' />
-                </span>
-                <span className='min-w-0 grow'>
-                  <span className='block font-medium'>{tool.title}</span>
-                  <span className='mt-1 block truncate text-xs text-secondary-foreground'>{tool.description}</span>
-                </span>
-                <IconChevronDown
-                  className={cn('size-4 shrink-0 text-secondary-foreground transition-transform duration-300', {
-                    'rotate-180 text-primary': selected
-                  })}
-                />
-              </button>
-              <div
-                className={cn('grid transition-all duration-300 ease-out', {
-                  'grid-rows-[1fr] opacity-100': selected,
-                  'grid-rows-[0fr] opacity-0': !selected
-                })}
-              >
-                <div className='min-h-0 overflow-hidden'>
-                  <div className='border-t border-border/60 p-4'>{renderToolContent(tool.id, true)}</div>
-                </div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      <div className='hidden min-w-0 flex-col overflow-hidden md:flex'>
+    <div className='flex min-h-0 w-full flex-1 flex-col gap-4 max-sm:px-4'>
+      <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
         <div
           role='tablist'
           aria-label='Runtime tools'
@@ -268,31 +223,35 @@ export const RuntimeToolsPanel = () => {
               type='button'
               id={`runtime-tool-tab-${tool.id}`}
               role='tab'
-              aria-selected={activeTool === tool.id}
+              aria-selected={selectedToolId === tool.id}
               aria-controls={`runtime-tool-panel-${tool.id}`}
-              tabIndex={activeTool === tool.id ? 0 : -1}
+              tabIndex={selectedToolId === tool.id ? 0 : -1}
               onClick={() => setActiveTool(tool.id)}
               onKeyDown={event => handleToolTabKeyDown(event, tool.id)}
               className={cn(
                 'flex shrink-0 items-center gap-2 rounded-md px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors hover:bg-card/45 hover:text-primary focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none',
                 {
-                  'bg-primary/10 text-foreground': activeTool === tool.id
+                  'bg-primary/10 text-foreground': selectedToolId === tool.id
                 }
               )}
             >
-              <tool.Icon className={cn('size-5', { 'text-primary': activeTool === tool.id })} />
+              <tool.Icon className={cn('size-5', { 'text-primary': selectedToolId === tool.id })} />
               {tool.title}
             </button>
           ))}
         </div>
         <div
-          id={activeTool ? `runtime-tool-panel-${activeTool}` : undefined}
+          id={selectedToolId ? `runtime-tool-panel-${selectedToolId}` : undefined}
           role='tabpanel'
-          aria-labelledby={activeTool ? `runtime-tool-tab-${activeTool}` : undefined}
-          className='py-4'
+          aria-labelledby={selectedToolId ? `runtime-tool-tab-${selectedToolId}` : undefined}
+          className={cn(
+            'min-h-0 py-4',
+            selectedToolId === 'ai-agent'
+              ? 'flex h-[min(70dvh,36rem)] flex-1 flex-col overflow-hidden md:h-auto lg:h-full'
+              : 'overflow-auto'
+          )}
         >
-          {tools.find(tool => tool.id === activeTool)?.id &&
-            renderToolContent(tools.find(tool => tool.id === activeTool)!.id, true)}
+          {selectedToolId ? renderToolContent(selectedToolId, true) : null}
         </div>
       </div>
     </div>

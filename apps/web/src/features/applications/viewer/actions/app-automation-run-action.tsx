@@ -21,9 +21,9 @@ import { toast } from '@/hooks/use-toast'
 import { listRunnableAutomationsAction } from '@/server/orchestrator/automations/automation-management-actions'
 import { runAutomationAction } from '@/server/orchestrator/automations/automation-run-actions'
 import type { ApplicationProfileMode } from '@/server/orchestrator/applications/types'
-import type { Automation } from '@/server/orchestrator/automations/types'
+import type { Automation, AutomationRun } from '@/server/orchestrator/automations/types'
 
-export const AppAutomationRunAction = () => {
+export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: AutomationRun) => void }) => {
   const { app } = useApplicationViewerContext()
   const [open, setOpen] = useState(false)
   const [automations, setAutomations] = useState<Automation[]>([])
@@ -69,6 +69,7 @@ export const AppAutomationRunAction = () => {
         startPolicy: startIfNeeded ? 'start-if-needed' : 'require-running'
       })
       toast({ title: 'Automation queued', description: `Run ${result.id.slice(0, 8)} started.` })
+      onRunStarted?.(result)
       setOpen(false)
     } catch (error) {
       toast({

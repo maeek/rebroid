@@ -29,7 +29,7 @@ export const AppViewerActions = ({
   const canStop = hasPermission(permissions, 'applications:stop')
   const canViewLogs = canUseRuntime && hasPermission(permissions, 'applications:view-logs')
   const canDelete = mode !== 'workspace' && hasPermission(permissions, 'applications:delete')
-  const canRunAutomations = canUseRuntime && hasPermission(permissions, 'automations:run')
+  const canRunAutomations = mode === 'details' && canUseRuntime && hasPermission(permissions, 'automations:run')
   const showSettingsAction = Boolean(app?.id) && (mode === 'workspace' || mode === 'details')
   const showLogsAction = canViewLogs && mode === 'details'
 

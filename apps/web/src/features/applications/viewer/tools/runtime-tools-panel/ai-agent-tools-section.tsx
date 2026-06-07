@@ -60,7 +60,7 @@ export const AiAgentToolsSection = ({
   } = useAiAgentChatSession({ app, onRunStarted })
 
   return (
-    <section className={cn('grid gap-4 p-4', className)}>
+    <section className={cn('flex min-h-0 flex-1 flex-col gap-4 p-4', className)}>
       {hideHeader ? null : (
         <div className='flex items-center gap-2'>
           {health?.status === 'ok' ? (
@@ -77,7 +77,7 @@ export const AiAgentToolsSection = ({
 
       <div
         ref={transcriptRef}
-        className='grid gap-3 overflow-auto pr-1'
+        className='flex min-h-0 flex-1 flex-col gap-4 overflow-auto pb-2 pr-1 motion-safe:scroll-smooth'
       >
         {turns.length === 0 ? (
           <div className='rounded-md border border-dashed border-border/70 p-3 text-sm text-secondary-foreground'>
@@ -93,10 +93,30 @@ export const AiAgentToolsSection = ({
         )}
       </div>
 
-      <div className='grid gap-2'>
-        <div className='flex flex-wrap items-center justify-between gap-3'>
+      <div className='shrink-0 rounded-lg border border-border/70 bg-card/25 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]'>
+        <div className='flex flex-wrap items-center justify-between gap-3 pb-2'>
           <Label>Message</Label>
-          <div className='flex min-w-0 items-center gap-2'>
+        </div>
+        <Textarea
+          value={prompt}
+          rows={4}
+          placeholder='Ask the AI to inspect the current screen and operate this app.'
+          onChange={event => setPrompt(event.target.value)}
+          onKeyDown={event => {
+            if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+              event.preventDefault()
+              void submit()
+            }
+          }}
+          className='min-h-24 resize-none border-0 bg-transparent p-0 shadow-none focus-visible:ring-0'
+        />
+        {selectionMessage ? <div className='text-xs text-destructive'>{selectionMessage}</div> : null}
+        {error ? <div className='text-xs text-destructive'>{error}</div> : null}
+        <div className='mt-3 flex flex-wrap items-center justify-between gap-3'>
+          <span className='text-xs text-secondary-foreground max-sm:w-full'>
+            Each message starts an ephemeral run with a fresh screenshot. Timeout: {adHocTimeoutMs / 60000} minutes.
+          </span>
+          <div className='flex min-w-0 flex-wrap items-center justify-end gap-2'>
             <AiAgentModelStatus
               health={health}
               isCheckingHealth={isCheckingHealth}
@@ -120,27 +140,6 @@ export const AiAgentToolsSection = ({
               timeoutMinutesInput={timeoutMinutesInput}
               visionCatalog={visionCatalog}
             />
-          </div>
-        </div>
-        <Textarea
-          value={prompt}
-          rows={4}
-          placeholder='Ask the AI to inspect the current screen and operate this app.'
-          onChange={event => setPrompt(event.target.value)}
-          onKeyDown={event => {
-            if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-              event.preventDefault()
-              void submit()
-            }
-          }}
-        />
-        {selectionMessage ? <div className='text-xs text-destructive'>{selectionMessage}</div> : null}
-        {error ? <div className='text-xs text-destructive'>{error}</div> : null}
-        <div className='flex flex-wrap items-center justify-between gap-3'>
-          <span className='text-xs text-secondary-foreground'>
-            Each message starts an ephemeral run with a fresh screenshot. Timeout: {adHocTimeoutMs / 60000} minutes.
-          </span>
-          <div className='flex items-center gap-2'>
             {queuedTurn && !activeTurn ? (
               <Button
                 type='button'
@@ -175,11 +174,12 @@ export const AiAgentToolsSection = ({
             ) : null}
             <Button
               type='button'
+              size='icon'
               disabled={!canSubmit}
+              aria-label={activeTurn ? 'Queue message' : 'Send message'}
               onClick={() => void submit()}
             >
               <IconSend className='size-4' />
-              {activeTurn ? 'Queue' : 'Send'}
             </Button>
           </div>
         </div>

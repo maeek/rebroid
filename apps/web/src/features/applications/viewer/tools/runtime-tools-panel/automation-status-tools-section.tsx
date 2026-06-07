@@ -5,6 +5,7 @@ import { IconRefresh, IconRobot } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { AutomationRunLiveEvents } from '@/features/automations/automations-page/traces/automation-run-live-events'
+import { AppAutomationRunAction } from '@/features/applications/viewer/actions/app-automation-run-action'
 import { cn } from '@/lib/utils'
 import { listActiveAutomationRunsAction } from '@/server/orchestrator/automations/automation-run-actions'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
@@ -14,12 +15,14 @@ export const AutomationStatusToolsSection = ({
   app,
   latestRun,
   className,
-  hideHeader
+  hideHeader,
+  onRunStarted
 }: {
   app: AppDefinition
   latestRun?: AutomationRun | null
   className?: string
   hideHeader?: boolean
+  onRunStarted?: (run: AutomationRun) => void
 }) => {
   const [runs, setRuns] = useState<AutomationRun[]>([])
   const [selectedRunId, setSelectedRunId] = useState<string | null>(latestRun?.id ?? null)
@@ -59,15 +62,16 @@ export const AutomationStatusToolsSection = ({
 
   return (
     <section className={cn('grid gap-4 rounded-md border border-border/70 bg-background/35 p-4', className)}>
-      {hideHeader ? null : (
-        <div className='flex items-center justify-between gap-3'>
-          <div className='flex items-center gap-2'>
-            <IconRobot className='size-4 text-primary' />
-            <div>
-              <h3 className='text-sm font-semibold'>Automations</h3>
-              <p className='text-xs text-secondary-foreground'>Active automation runs for this application.</p>
-            </div>
+      <div className='flex flex-wrap items-center justify-between gap-3'>
+        <div className={cn('flex items-center gap-2', hideHeader && 'sr-only')}>
+          <IconRobot className='size-4 text-primary' />
+          <div>
+            <h3 className='text-sm font-semibold'>Automations</h3>
+            <p className='text-xs text-secondary-foreground'>Active automation runs for this application.</p>
           </div>
+        </div>
+        <div className='flex items-center gap-2'>
+          <AppAutomationRunAction onRunStarted={onRunStarted} />
           <Button
             type='button'
             variant='secondary'
@@ -78,7 +82,7 @@ export const AutomationStatusToolsSection = ({
             Refresh
           </Button>
         </div>
-      )}
+      </div>
       {visibleRuns.length === 0 ? (
         <div
           className={cn(

@@ -14,7 +14,7 @@ export const AppWorkspaceContent = () => {
   return (
     <>
       <ProtectedSplitPageContent className='gap-5 pr-6 lg:flex-auto lg:items-stretch lg:h-[stretch] lg:min-h-full'>
-        <div className='flex w-full flex-col gap-5 grow'>
+        <div className='flex w-full grow flex-col gap-5 lg:min-h-0 lg:flex-1'>
           <PageBreadcrumbs items={[{ label: 'Apps', href: '/apps' }, { label: app.name }]} />
           <AppViewerHeading
             app={app}
@@ -30,7 +30,7 @@ export const AppWorkspaceContent = () => {
               Owner: {app.ownerDisplayName ?? app.ownerUserId ?? 'Unknown'}
             </Badge>
           </Visible>
-          <div className='hidden lg:flex flex-col grow'>
+          <div className='hidden grow flex-col lg:flex lg:min-h-0 lg:flex-1'>
             <RuntimeToolsPanel />
           </div>
         </div>
