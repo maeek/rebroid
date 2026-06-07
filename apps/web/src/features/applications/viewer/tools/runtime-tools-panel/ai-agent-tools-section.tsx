@@ -108,7 +108,7 @@ export const AiAgentToolsSection = ({
               void submit()
             }
           }}
-          className='min-h-24 resize-none border-0 bg-transparent p-0 shadow-none focus-visible:ring-0'
+          className='min-h-24 resize-none border-0 bg-transparent p-1 shadow-none focus-visible:ring-0'
         />
         {selectionMessage ? <div className='text-xs text-destructive'>{selectionMessage}</div> : null}
         {error ? <div className='text-xs text-destructive'>{error}</div> : null}
@@ -116,7 +116,7 @@ export const AiAgentToolsSection = ({
           <span className='text-xs text-secondary-foreground max-sm:w-full'>
             Each message starts an ephemeral run with a fresh screenshot. Timeout: {adHocTimeoutMs / 60000} minutes.
           </span>
-          <div className='flex min-w-0 flex-wrap items-center justify-end gap-2'>
+          <div className='flex min-w-0 flex-wrap items-center justify-end gap-2 w-full'>
             <AiAgentModelStatus
               health={health}
               isCheckingHealth={isCheckingHealth}

@@ -65,6 +65,18 @@ const keySchema = z.object({
 
 const screenshotSchema = z.object({});
 
+const packageNameSchema = z.object({
+  packageName: z
+    .string()
+    .trim()
+    .min(1)
+    .max(255)
+    .regex(/^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/, {
+      message: 'Package name must be a valid Android package identifier.',
+    }),
+  timeoutMs: timeoutSchema,
+});
+
 const waitSchema = z.object({
   durationMs: z.number().int().min(1).max(120_000),
 });
@@ -412,6 +424,80 @@ export class AndroidAutomationCommandsService {
               mimeType: result.mimeType,
               capturedAt: result.capturedAt,
               dataUrl: result.dataUrl,
+            },
+          };
+        },
+      },
+      {
+        uses: 'android.launchPackage',
+        label: 'Launch package',
+        description:
+          'Checks whether an Android package is installed, then attempts to launch its launcher activity.',
+        requiredPermissions: ['automations:run'],
+        schema: packageNameSchema,
+        outputs: [
+          {
+            key: 'installed',
+            label: 'Installed',
+            type: 'boolean',
+            description: 'Whether the package exists on the Android device.',
+          },
+          {
+            key: 'launched',
+            label: 'Launched',
+            type: 'boolean',
+            description: 'Whether Android accepted the launch request.',
+          },
+          {
+            key: 'reason',
+            label: 'Reason',
+            type: 'string',
+            description: 'Failure reason when the package could not be launched.',
+          },
+        ],
+        execute: async (
+          { packageName, timeoutMs }: z.infer<typeof packageNameSchema>,
+          { app, adb }: AutomationCommandContext,
+        ) => {
+          const pathResult = await adb.shell(
+            app,
+            `pm path ${packageName}`,
+            timeoutMs,
+          );
+          if (pathResult.exitCode !== 0 || !pathResult.stdout.trim()) {
+            return {
+              summary: `Package ${packageName} is not installed. Ask the user to install it or choose another route.`,
+              data: {
+                packageName,
+                installed: false,
+                launched: false,
+                reason:
+                  (pathResult.stderr || pathResult.stdout).trim() ||
+                  'Package not found.',
+              },
+            };
+          }
+
+          const launchResult = await adb.shell(
+            app,
+            `monkey -p ${packageName} -c android.intent.category.LAUNCHER 1`,
+            timeoutMs,
+          );
+          const output = [launchResult.stdout, launchResult.stderr]
+            .map((part) => part.trim())
+            .filter(Boolean)
+            .join('\n');
+          const launched = launchResult.exitCode === 0;
+          return {
+            summary: launched
+              ? `Launched ${packageName}.`
+              : `Package ${packageName} could not be launched.`,
+            data: {
+              packageName,
+              installed: true,
+              launched,
+              exitCode: launchResult.exitCode,
+              reason: launched ? null : output || 'Launcher activity failed.',
             },
           };
         },

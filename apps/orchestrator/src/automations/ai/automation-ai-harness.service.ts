@@ -154,6 +154,23 @@ export class AutomationAiHarnessService {
           arguments: sanitizeAiDataForEvent(args),
           clientMessageId: input.clientMessageId ?? null,
         });
+        const blockedToolResult = this.blockedToolResult(uses, args);
+        if (blockedToolResult) {
+          await this.emit(context, 'ai.tool.failed', blockedToolResult.summary, {
+            uses,
+            clientMessageId: input.clientMessageId ?? null,
+          });
+          messages.push({
+            role: 'tool',
+            tool_call_id: call.id,
+            content: JSON.stringify({
+              ...blockedToolResult,
+              failed: true,
+              recoverable: true,
+            }),
+          });
+          continue;
+        }
         await this.emit(context, 'ai.tool.started', `Calling ${uses}`, {
           uses,
           clientMessageId: input.clientMessageId ?? null,
@@ -198,6 +215,9 @@ export class AutomationAiHarnessService {
             );
           }
         } catch (error) {
+          if (context.abortSignal?.aborted) {
+            throw error;
+          }
           const message =
             error instanceof Error
               ? sanitizeAiText(error.message)
@@ -206,7 +226,16 @@ export class AutomationAiHarnessService {
             uses,
             clientMessageId: input.clientMessageId ?? null,
           });
-          throw error;
+          messages.push({
+            role: 'tool',
+            tool_call_id: call.id,
+            content: JSON.stringify({
+              summary: `Tool ${uses} failed: ${message}`,
+              error: message,
+              failed: true,
+              recoverable: true,
+            }),
+          });
         }
       }
     }
@@ -366,6 +395,21 @@ export class AutomationAiHarnessService {
 
   private isAbortError(error: unknown) {
     return error instanceof Error && error.name === 'AbortError';
+  }
+
+  private blockedToolResult(uses: string, args: Record<string, unknown>) {
+    if (uses !== 'android.adbShell') {
+      return null;
+    }
+    const command = typeof args.command === 'string' ? args.command : '';
+    if (!/\b(pm|cmd\s+package)\s+install\b|\binstall-existing\b/.test(command)) {
+      return null;
+    }
+    return {
+      summary:
+        'Installing Android applications is not allowed during AI automation. Ask the user to install the app or choose another route.',
+      error: 'Android app installation is blocked for AI automation.',
+    };
   }
 
   private assertNotCanceled(abortSignal?: AbortSignal) {

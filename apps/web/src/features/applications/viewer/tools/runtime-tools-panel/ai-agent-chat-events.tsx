@@ -115,7 +115,7 @@ export const ChatTurnView = ({ turn }: { turn: ChatTurn }) => {
       <div className='ml-auto max-w-[85%] rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground'>
         {turn.prompt}
       </div>
-      <div className='grid gap-2 rounded-lg bg-background/15 p-3'>
+      <div className='grid gap-2 py-3'>
         <div className='flex items-center justify-start gap-3'>
           <div className='flex min-w-0 items-center gap-2'>
             <IconSparkles className='size-4 shrink-0 text-primary' />

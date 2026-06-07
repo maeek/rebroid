@@ -14,9 +14,12 @@ const knownV1Uses = [
   'android.viewerCommand',
   'android.rotateDisplay',
   'android.tap',
+  'android.tapNormalized',
   'android.swipe',
+  'android.swipeNormalized',
   'android.inputText',
   'android.key',
+  'android.launchPackage',
   'android.setClipboard',
   'android.getClipboard',
   'android.screenshot',
@@ -42,7 +45,9 @@ const knownV1Uses = [
   'flow.stop',
   'flow.fail',
   'debug.log',
-  'artifact.saveScreenshot'
+  'artifact.saveScreenshot',
+  'vision.observe',
+  'vision.locate'
 ]
 
 describe('automation action registry', () => {
