@@ -457,21 +457,39 @@ export class AdbService {
   }
 
   async dumpUi(udid: string) {
-    await this.shell(
-      udid,
-      ["sh", "-lc", "uiautomator dump /sdcard/rebroid-window.xml >/dev/null"],
-      10_000,
-    );
-    const result = await this.shell(
-      udid,
-      ["cat", "/sdcard/rebroid-window.xml"],
-      10_000,
-    );
-    return result.stdout;
+    const dumpPath = `/data/local/tmp/rebroid-window-${Date.now()}-${Math.random().toString(36).slice(2)}.xml`;
+    try {
+      await this.shell(
+        udid,
+        [
+          "sh",
+          "-lc",
+          `rm -f ${this.shellQuote(dumpPath)} && uiautomator dump ${this.shellQuote(dumpPath)} >/dev/null`,
+        ],
+        10_000,
+      );
+      const result = await this.shell(udid, ["cat", dumpPath], 10_000);
+      const xml = result.stdout.trim();
+      if (!xml.includes("<hierarchy")) {
+        throw new InternalServerErrorException(
+          "UI hierarchy dump did not produce hierarchy XML.",
+        );
+      }
+      return xml;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `UI hierarchy dump failed: ${this.errorMessage(error)}`,
+      );
+    } finally {
+      await this.shell(udid, ["rm", "-f", dumpPath], 5_000).catch(() => {});
+    }
   }
 
   async tapText(udid: string, text: string) {
-    const xml = await this.dumpUi(udid);
+    const xml = await this.dumpUi(udid).catch(() => "");
+    if (!xml) {
+      return { found: false, x: null, y: null };
+    }
     const escaped = this.escapeRegExp(this.escapeXml(text));
     const pattern = new RegExp(
       `<node\\b[^>]*(?:text="${escaped}"|content-desc="${escaped}")[^>]*bounds="\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]"`,
@@ -583,6 +601,10 @@ export class AdbService {
 
   private escapeRegExp(value: string) {
     return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  private errorMessage(error: unknown) {
+    return error instanceof Error ? error.message : String(error);
   }
 
   private noop(): CommandResult {

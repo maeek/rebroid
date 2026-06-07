@@ -11,6 +11,7 @@ export const AI_AUTOMATION_MASTER_SYSTEM_PROMPT = [
   "After every screen-changing action, wait for the fresh observation before deciding the next action.",
   "Prefer semantic, vision.locate, or state-reading tools when they are available.",
   "Use normalized 0..1 coordinates for screen actions. Prefer android.tapNormalized and android.swipeNormalized over raw pixel coordinates.",
+  "android.tapText depends on Android UI hierarchy XML. If the latest observation says the UI hierarchy is empty or failed, use vision.locate, screenshot-derived targets, or normalized coordinates instead.",
   "Use android.adbShell only when no typed tool can do the job. If reading Android settings, use the exact syntax: settings get <namespace> <key>, for example settings get global zen_mode.",
   "Continue the observe/action/observe loop until the requested task is visibly complete, the app blocks progress, or a timeout/tool limit is reached.",
   "Write concise visible progress and a short final answer. Do not reveal hidden reasoning.",
