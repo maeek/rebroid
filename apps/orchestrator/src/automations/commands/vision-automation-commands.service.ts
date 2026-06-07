@@ -80,7 +80,10 @@ export class VisionAutomationCommandsService {
           inputDefaults: { maxDetections: 40 },
           yamlSnippetFields: ['maxDetections'],
         },
-        execute: async (rawInput: unknown, context: AutomationCommandContext) => {
+        execute: async (
+          rawInput: unknown,
+          context: AutomationCommandContext,
+        ) => {
           const input = observeSchema.parse(rawInput);
           const visionModel = await this.resolveVisionModel(input);
           const observation = await this.vision.observe(context, visionModel);
@@ -135,7 +138,10 @@ export class VisionAutomationCommandsService {
           },
           yamlSnippetFields: ['query', 'threshold', 'maxResults'],
         },
-        execute: async (rawInput: unknown, context: AutomationCommandContext) => {
+        execute: async (
+          rawInput: unknown,
+          context: AutomationCommandContext,
+        ) => {
           const input = locateSchema.parse(rawInput);
           const visionModel = await this.resolveVisionModel(input);
           const result = await this.vision.locate(

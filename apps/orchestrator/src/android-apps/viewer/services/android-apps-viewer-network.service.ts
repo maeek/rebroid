@@ -26,15 +26,28 @@ export class AndroidAppsViewerNetworkService {
 
   /** Makes sure the viewer sidecar is on the app network. */
   async prepareNetwork(app: AndroidApplication) {
+    const applicationId = app?.id;
+    if (!applicationId) {
+      this.logger.warn(
+        'Could not prepare display sidecar network: application id is missing.',
+      );
+      return;
+    }
+    if (!app.networkName) {
+      this.logger.warn(
+        `Could not prepare display sidecar network for ${applicationId}: network name is missing.`,
+      );
+      return;
+    }
     try {
       await this.ensureNetworkPrepared(app);
     } catch (error) {
       const message = getErrorMessage(error);
       this.logger.warn(
-        `Could not prepare display sidecar network for ${app.id}: ${message}`,
+        `Could not prepare display sidecar network for ${applicationId}: ${message}`,
       );
-      await this.logs.append(
-        app.id,
+      await this.appendLifecycleLog(
+        applicationId,
         'Display sidecar network preparation failed',
         {
           networkName: app.networkName,
@@ -53,12 +66,16 @@ export class AndroidAppsViewerNetworkService {
         const sidecarTarget = await this.sidecar.ensureSidecarOnNetwork(
           app.networkName,
         );
-        await this.logs.append(app.id, 'Display sidecar network prepared', {
-          networkName: app.networkName,
-          configured: sidecarTarget.configured,
-          connected: sidecarTarget.connected,
-          message: sidecarTarget.message,
-        });
+        await this.appendLifecycleLog(
+          app.id,
+          'Display sidecar network prepared',
+          {
+            networkName: app.networkName,
+            configured: sidecarTarget.configured,
+            connected: sidecarTarget.connected,
+            message: sidecarTarget.message,
+          },
+        );
         return sidecarTarget;
       },
     );
@@ -66,20 +83,41 @@ export class AndroidAppsViewerNetworkService {
 
   /** Removes the viewer sidecar from the app network. */
   async releaseNetwork(app: AndroidApplication) {
+    const applicationId = app.id;
+    if (!applicationId) {
+      this.logger.warn(
+        'Could not release display sidecar network: application id is missing.',
+      );
+      return;
+    }
+    if (!app.networkName) {
+      this.logger.warn(
+        `Could not release display sidecar network for ${applicationId}: network name is missing.`,
+      );
+      return;
+    }
     try {
       await this.sidecar.detachSidecarFromNetwork(app.networkName);
-      await this.logs.append(app.id, 'Display sidecar network released', {
-        networkName: app.networkName,
-      });
+      await this.appendLifecycleLog(
+        applicationId,
+        'Display sidecar network released',
+        {
+          networkName: app.networkName,
+        },
+      );
     } catch (error) {
       const message = getErrorMessage(error);
       this.logger.warn(
-        `Could not release display sidecar network for ${app.id}: ${message}`,
+        `Could not release display sidecar network for ${applicationId}: ${message}`,
       );
-      await this.logs.append(app.id, 'Display sidecar network release failed', {
-        networkName: app.networkName,
-        message,
-      });
+      await this.appendLifecycleLog(
+        applicationId,
+        'Display sidecar network release failed',
+        {
+          networkName: app.networkName,
+          message,
+        },
+      );
     }
   }
 
@@ -113,24 +151,32 @@ export class AndroidAppsViewerNetworkService {
     await this.reapplyNetworkPolicy(app);
     await this.ensureRedroidTcpAdb(app);
 
-    await this.logs.append(app.id, 'Preparing display sidecar ADB target', {
-      networkName: app.networkName,
-      containerName: app.containerName,
-      containerId: app.containerId,
-      adbHost,
-      adbPort: app.adbPort,
-    });
+    await this.appendLifecycleLog(
+      app.id,
+      'Preparing display sidecar ADB target',
+      {
+        networkName: app.networkName,
+        containerName: app.containerName,
+        containerId: app.containerId,
+        adbHost,
+        adbPort: app.adbPort,
+      },
+    );
 
     const result = await this.sidecar.connectAdb(adbHost, app.adbPort);
-    await this.logs.append(app.id, 'Display sidecar ADB target prepared', {
-      adbHost,
-      adbPort: app.adbPort,
-      configured: result.configured,
-      connected: result.connected,
-      message: result.message,
-      error: result.error?.message ?? null,
-      errorCode: result.error?.code ?? null,
-    });
+    await this.appendLifecycleLog(
+      app.id,
+      'Display sidecar ADB target prepared',
+      {
+        adbHost,
+        adbPort: app.adbPort,
+        configured: result.configured,
+        connected: result.connected,
+        message: result.message,
+        error: result.error?.message ?? null,
+        errorCode: result.error?.code ?? null,
+      },
+    );
 
     return result;
   }
@@ -197,16 +243,20 @@ export class AndroidAppsViewerNetworkService {
         ],
         { timeoutMs: 10_000 },
       );
-      await this.logs.append(app.id, 'Redroid TCP ADB ensured for viewer', {
-        adbPort: app.adbPort,
-        message: result.stdout.trim(),
-      });
+      await this.appendLifecycleLog(
+        app.id,
+        'Redroid TCP ADB ensured for viewer',
+        {
+          adbPort: app.adbPort,
+          message: result.stdout.trim(),
+        },
+      );
     } catch (error) {
       const message = getErrorMessage(error);
       this.logger.warn(
         `Could not ensure Redroid TCP ADB for viewer ${app.id}: ${message}`,
       );
-      await this.logs.append(
+      await this.appendLifecycleLog(
         app.id,
         'Redroid TCP ADB ensure failed for viewer',
         {
@@ -215,5 +265,14 @@ export class AndroidAppsViewerNetworkService {
         },
       );
     }
+  }
+
+  private async appendLifecycleLog(
+    applicationId: string | undefined,
+    message: string,
+    context: unknown,
+  ) {
+    if (!applicationId) return;
+    await this.logs.append(applicationId, message, context);
   }
 }

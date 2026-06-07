@@ -55,12 +55,7 @@ export const optimizeAiScreenshot = async (
       height: metadata.height ?? null,
     };
   } catch {
-    return fallbackScreenshot(
-      screenshot,
-      parsed.buffer.length,
-      null,
-      null,
-    );
+    return fallbackScreenshot(screenshot, parsed.buffer.length, null, null);
   }
 };
 

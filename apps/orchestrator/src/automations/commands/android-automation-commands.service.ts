@@ -228,7 +228,8 @@ export class AndroidAutomationCommandsService {
       {
         uses: 'android.swipeNormalized',
         label: 'Swipe normalized',
-        description: 'Swipes between normalized screen coordinates from 0 to 1.',
+        description:
+          'Swipes between normalized screen coordinates from 0 to 1.',
         requiredPermissions: ['automations:run'],
         schema: swipeNormalizedSchema,
         outputs: [
@@ -481,7 +482,8 @@ export class AndroidAutomationCommandsService {
       {
         uses: 'android.getSetting',
         label: 'Get Android setting',
-        description: 'Reads one Android setting with settings get <namespace> <key>.',
+        description:
+          'Reads one Android setting with settings get <namespace> <key>.',
         requiredPermissions: ['automations:run-adb-shell'],
         schema: androidSettingSchema,
         outputs: [

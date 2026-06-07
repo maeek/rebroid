@@ -509,6 +509,13 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
 
   /** Finishes removal outside the request so Docker container locks cannot block the UI. */
   private scheduleRemoval(app: AndroidApplication, removeData: boolean) {
+    if (!app?.id) {
+      this.logger.warn(
+        'Skipping removal background job scheduling because application id is missing.',
+      );
+      return;
+    }
+
     this.scheduleBackgroundJob(`remove:${app.id}`, () =>
       this.removeInBackground(app, removeData),
     );
@@ -518,28 +525,39 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     app: AndroidApplication,
     removeData: boolean,
   ) {
-    await this.jobs.markRunning(app.id, AndroidAppLifecycleJobKind.Remove);
+    const applicationId = app?.id;
+    if (!applicationId) {
+      this.logger.warn(
+        'Skipping removal cleanup because application id is missing.',
+      );
+      return;
+    }
+
+    await this.jobs.markRunning(
+      applicationId,
+      AndroidAppLifecycleJobKind.Remove,
+    );
     const maxAttempts = 12;
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
         await this.removal.cleanupRemovedApplication(app, removeData);
         await this.applications.remove(app);
-        await this.logs.remove(app.id);
-        await this.jobs.removeForApplication(app.id);
+        await this.logs.remove(applicationId);
+        await this.jobs.removeForApplication(applicationId);
         return;
       } catch (error) {
         const message = getErrorMessage(error);
         this.logger.warn(
-          `Removal cleanup attempt ${attempt}/${maxAttempts} failed for ${app.id}: ${message}`,
+          `Removal cleanup attempt ${attempt}/${maxAttempts} failed for ${applicationId}: ${message}`,
         );
         if (attempt === maxAttempts) {
           await this.jobs.markFailed(
-            app.id,
+            applicationId,
             AndroidAppLifecycleJobKind.Remove,
             message,
           );
           await this.logs
-            .append(app.id, 'Removal cleanup paused', { error: message })
+            .append(applicationId, 'Removal cleanup paused', { error: message })
             .catch(() => undefined);
           return;
         }

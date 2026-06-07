@@ -133,6 +133,10 @@ export class AndroidAppsDisplaySidecarService {
   }
 
   async releaseSessionsForApp(appId: string) {
+    if (!appId) {
+      return;
+    }
+
     await this.request(`/sessions/apps/${encodeURIComponent(appId)}`, {
       method: 'DELETE',
     });
@@ -307,16 +311,23 @@ export class AndroidAppsDisplaySidecarService {
       .getOrThrow<string>('app.displaySidecar.internalBaseUrl')
       .replace(/\/$/, '');
     const secret = this.config.get<string>('app.sharedSecret');
+    const hasBody =
+      init.body !== undefined &&
+      init.body !== null &&
+      `${init.body}`.length > 0;
+    const headers = new Headers(init.headers);
+    if (hasBody && !headers.has('content-type')) {
+      headers.set('content-type', 'application/json');
+    }
+    if (secret) {
+      headers.set('x-rebroid-sidecar-secret', secret);
+    }
     const normalizedPath = path.startsWith('/rebroid/display')
       ? path
       : `/rebroid/display${path}`;
     return fetch(`${baseUrl}${normalizedPath}`, {
       ...init,
-      headers: {
-        'content-type': 'application/json',
-        ...(secret ? { 'x-rebroid-sidecar-secret': secret } : {}),
-        ...(init.headers ?? {}),
-      },
+      headers,
       signal: AbortSignal.timeout(20_000),
     }).catch((error) => {
       throw new ConflictException(

@@ -344,9 +344,7 @@ export class AutomationAiHarnessService {
     const flush = async (force = false) => {
       if (!pendingDelta) return;
       const shouldFlush =
-        force ||
-        pendingDelta.length >= 160 ||
-        Date.now() - lastFlushAt >= 150;
+        force || pendingDelta.length >= 160 || Date.now() - lastFlushAt >= 150;
       if (!shouldFlush) return;
       const delta = pendingDelta;
       pendingDelta = '';

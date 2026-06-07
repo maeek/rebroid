@@ -44,7 +44,7 @@ export const aiRunAction: AutomationActionDefinition = {
       ? { allowedTools: stringArrayValue(input, 'allowedTools') }
       : {}),
     maxToolCalls: Math.min(Math.max(numberValue(input, 'maxToolCalls', 20), 1), 100),
-    timeoutMs: Math.min(Math.max(numberValue(input, 'timeoutMs', 120000), 1000), 900000),
+    timeoutMs: Math.min(Math.max(numberValue(input, 'timeoutMs', 120000), 1000), 360_0000),
     requireFinalAnswer: booleanValue(input, 'requireFinalAnswer', true)
   }),
   summary: input => {

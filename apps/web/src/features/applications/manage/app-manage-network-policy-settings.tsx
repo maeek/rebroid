@@ -1,12 +1,12 @@
+'use client'
+
 import { useEffect, useRef, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Section } from '@/components/ui/section'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Visible } from '@/components/ui/visible'
+import { getInvalidCidrMessage } from '@/features/applications/components/app-form-utils'
+import { AppNetworkPolicyEditorSection } from '@/features/applications/components/app-network-policy-editor-section'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
-import { NetworkAccessInput } from '@/features/applications/viewer/app-info/network-access-input'
-import { Setting } from '@/features/settings/components/setting'
 import { toast } from '@/hooks/use-toast'
 import { formatDateLocale } from '@/lib/format'
 import {
@@ -20,9 +20,9 @@ type AppManageNetworkPolicySettingsProps = {
   onUpdated: (app: AppDefinition) => void
 }
 
-const verticalSettingClassName = 'flex-col items-start w-full'
 const getPolicyStatus = (app: AppDefinition) =>
   app.networkPolicyResult?.status ?? app.networkPolicyStatus ?? 'not applied'
+
 const getPolicyMessage = (app: AppDefinition) =>
   app.networkPolicyResult?.hint ?? app.networkPolicyResult?.message ?? app.networkPolicyMessage
 
@@ -111,76 +111,53 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
     setNetworkPolicyAllowCidrs(current => current.filter(entry => entry !== cidr))
   }
 
-  const handleInvalidNetworkPolicyCidr = (value: string) => {
+  const showInvalidCidrToast = (value: string) => {
     toast({
       title: 'Invalid CIDR',
-      description: `${value} is not a valid IPv4 address or CIDR range.`,
+      description: getInvalidCidrMessage(value),
       variant: 'destructive'
     })
   }
 
   return (
-    <Section
+    <AppNetworkPolicyEditorSection
       title='Network access'
-      titleClassName='pb-4'
-      contentClassName='gap-5'
-    >
-      <div className='flex flex-col gap-2'>
-        <div className='flex flex-wrap items-center gap-2'>
-          <Badge variant={networkPolicyEnabled ? 'status' : 'secondary'}>
-            {networkPolicyEnabled ? 'Restricted' : 'Unrestricted'}
-          </Badge>
-          <Badge
-            variant={app.networkPolicyResult?.status === 'error' ? 'destructive' : 'secondary'}
-            className='capitalize'
-          >
-            {getPolicyStatus(app)}
-          </Badge>
-          <Visible when={app.networkPolicyAppliedAt}>
-            <span className='text-xs text-secondary-foreground'>
-              Applied {formatDateLocale(app.networkPolicyAppliedAt as Date)}
-            </span>
+      topSection={
+        <div className='flex flex-col gap-2'>
+          <div className='flex flex-wrap items-center gap-2'>
+            <Badge variant={networkPolicyEnabled ? 'status' : 'secondary'}>
+              {networkPolicyEnabled ? 'Restricted' : 'Unrestricted'}
+            </Badge>
+            <Badge
+              variant={app.networkPolicyResult?.status === 'error' ? 'destructive' : 'secondary'}
+              className='capitalize'
+            >
+              {getPolicyStatus(app)}
+            </Badge>
+            <Visible when={app.networkPolicyAppliedAt}>
+              <span className='text-xs text-secondary-foreground'>
+                Applied {formatDateLocale(app.networkPolicyAppliedAt as Date)}
+              </span>
+            </Visible>
+          </div>
+          <Visible when={getPolicyMessage(app)}>
+            <p className='text-sm text-secondary-foreground'>{getPolicyMessage(app)}</p>
           </Visible>
         </div>
-        <Visible when={getPolicyMessage(app)}>
-          <p className='text-sm text-secondary-foreground'>{getPolicyMessage(app)}</p>
-        </Visible>
-      </div>
-      <Setting
-        label='Mode'
-        description='Choose whether Android traffic is limited to the API and explicit CIDR ranges.'
-        className={verticalSettingClassName}
-        variant='vertical'
-      >
-        <Select
-          value={networkPolicyEnabled ? 'enabled' : 'disabled'}
-          onValueChange={value => {
-            isDirtyRef.current = true
-            setNetworkPolicyEnabled(value === 'enabled')
-          }}
-        >
-          <SelectTrigger className='w-full'>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value='enabled'>Only API plus allowlist</SelectItem>
-            <SelectItem value='disabled'>Disabled</SelectItem>
-          </SelectContent>
-        </Select>
-      </Setting>
-      <div className='flex w-full flex-col gap-3'>
-        <div className='grid gap-1'>
-          <div className='text-sm font-bold text-foreground'>Allowlist</div>
-          <p className='text-xs leading-relaxed text-muted-foreground'>Add app-specific IPv4 ranges when needed.</p>
-        </div>
-        <NetworkAccessInput
-          cidrs={networkPolicyAllowCidrs}
-          disabled={isSaving}
-          isBusy={isSaving}
-          onAddCidr={handleAddNetworkPolicyCidr}
-          onRemoveCidr={handleRemoveNetworkPolicyCidr}
-          onInvalidCidr={handleInvalidNetworkPolicyCidr}
-        />
+      }
+      modeValue={networkPolicyEnabled}
+      canEnableUnrestricted
+      modeDescription='Choose whether Android traffic is limited to the API and explicit CIDR ranges.'
+      onModeChange={value => {
+        isDirtyRef.current = true
+        setNetworkPolicyEnabled(value)
+      }}
+      allowCidrs={networkPolicyAllowCidrs}
+      onAddCidr={handleAddNetworkPolicyCidr}
+      onRemoveCidr={handleRemoveNetworkPolicyCidr}
+      onInvalidCidr={showInvalidCidrToast}
+      isBusy={isSaving}
+      sectionActions={
         <div className='flex gap-2'>
           <Button
             type='button'
@@ -198,7 +175,9 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
             Apply now
           </Button>
         </div>
-      </div>
-    </Section>
+      }
+      restrictedLabel='Only API plus allowlist'
+      unrestrictedLabel='Disabled'
+    />
   )
 }

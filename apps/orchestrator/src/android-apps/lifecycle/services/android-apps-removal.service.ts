@@ -28,15 +28,47 @@ export class AndroidAppsRemovalService {
     app: AndroidApplication,
     removeData: boolean,
   ) {
-    await this.networkPolicy.remove(app);
+    if (app?.id) {
+      await this.networkPolicy.remove(app);
+    } else {
+      this.logger.warn(
+        'Skipping firewall policy cleanup for removal because application id is missing.',
+      );
+    }
+
     if (app.containerId) {
       await this.lifecycle.removeContainer(app.containerId);
       app.containerId = null;
     }
-    await this.lifecycle.removeContainerByName(app.containerName);
-    this.releaseDisplaySessionsInBackground(app.id, 'removing');
-    await this.runtimeNetwork.releaseRuntimeSupport(app);
-    await this.networks.removeNetwork(app.networkName);
+
+    if (app.containerName) {
+      await this.lifecycle.removeContainerByName(app.containerName);
+    } else {
+      this.logger.warn(
+        'Skipping container removal by name because container name is missing.',
+      );
+    }
+    if (app?.id) {
+      this.releaseDisplaySessionsInBackground(app.id, 'removing');
+    } else {
+      this.logger.warn(
+        'Skipping display session cleanup during removal because application id is missing.',
+      );
+    }
+    if (app?.id) {
+      await this.runtimeNetwork.releaseRuntimeSupport(app);
+    } else {
+      this.logger.warn(
+        'Skipping runtime-sidecar network release during removal because application id is missing.',
+      );
+    }
+    if (app.networkName) {
+      await this.networks.removeNetwork(app.networkName);
+    } else {
+      this.logger.warn(
+        'Skipping app network cleanup during removal because network name is missing.',
+      );
+    }
 
     if (!removeData) {
       return;
@@ -44,11 +76,13 @@ export class AndroidAppsRemovalService {
 
     const volumeNames = new Set([
       app.volumeName,
-      ...parseSavedProfiles(app.savedProfilesJson).map(
-        (profile) =>
-          this.networkIsolation.namesFor(app.id, app.name, profile.name)
-            .volumeName,
-      ),
+      ...(app.id
+        ? parseSavedProfiles(app.savedProfilesJson).map(
+            (profile) =>
+              this.networkIsolation.namesFor(app.id, app.name, profile.name)
+                .volumeName,
+          )
+        : []),
     ]);
     await Promise.all(
       [...volumeNames].map((volumeName) =>
@@ -58,6 +92,13 @@ export class AndroidAppsRemovalService {
   }
 
   releaseDisplaySessionsInBackground(applicationId: string, operation: string) {
+    if (!applicationId) {
+      this.logger.warn(
+        `Could not release display sessions while ${operation}: application id is missing.`,
+      );
+      return;
+    }
+
     void this.displaySidecar
       .releaseSessionsForApp(applicationId)
       .catch((error) => {

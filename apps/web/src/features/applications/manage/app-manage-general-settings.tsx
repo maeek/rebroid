@@ -1,11 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTopLoader } from 'nextjs-toploader'
-import { Input } from '@/components/ui/input'
-import { Section } from '@/components/ui/section'
-import { Visible } from '@/components/ui/visible'
 import { uploadApkWithFeedback } from '@/features/applications/apks/upload-apk-with-feedback'
-import { Setting } from '@/features/settings/components/setting'
+import { AppIdentitySection } from '@/features/applications/components/app-identity-section'
 import { useOrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 import { toast } from '@/hooks/use-toast'
 import { updateApkAction } from '@/server/orchestrator/applications/actions/configuration/create-update-actions'
@@ -21,8 +18,6 @@ type AppManageGeneralSettingsProps = {
   iconSlot?: ReactNode
   onAppNameChange: (value: string) => void
 }
-
-const verticalSettingClassName = 'flex-col items-start w-full'
 
 export const AppManageGeneralSettings = ({
   app,
@@ -60,54 +55,17 @@ export const AppManageGeneralSettings = ({
   }
 
   return (
-    <Section
-      title='Application'
-      titleClassName='pb-4'
-      contentClassName='gap-5'
-    >
-      <div className='grid gap-5 xl:grid-cols-[max-content_1fr]'>
-        <Visible when={iconSlot}>
-          <div className='border-border/60 xl:pr-5'>{iconSlot}</div>
-        </Visible>
-        <div className='grid gap-6'>
-          <Setting
-            label='Name'
-            description='Display name shown in the UI for this app. Minimum 2 characters.'
-            variant='vertical'
-            className={verticalSettingClassName}
-            required
-          >
-            <Input
-              value={values.name}
-              required
-              aria-required='true'
-              minLength={2}
-              onChange={event => onAppNameChange(event.target.value)}
-            />
-          </Setting>
-          <Setting
-            label='APK file'
-            description='Upload a replacement Android package when app metadata or binaries need to change.'
-            variant='vertical'
-            className={verticalSettingClassName}
-          >
-            <div className='flex w-full flex-col gap-2'>
-              <Input
-                type='file'
-                accept='.apk,application/vnd.android.package-archive'
-                disabled={isUploadingApk}
-                onChange={event => {
-                  void handleApkUpload(event.target.files?.[0] ?? null)
-                  event.target.value = ''
-                }}
-              />
-              <p className='text-sm text-secondary-foreground'>
-                {app?.apkOriginalName ? `Current APK: ${app.apkOriginalName}` : 'No APK uploaded'}
-              </p>
-            </div>
-          </Setting>
-        </div>
-      </div>
-    </Section>
+    <AppIdentitySection
+      valuesName={values.name}
+      nameLabel='Name'
+      nameDescription='Display name shown in the UI for this app. Minimum 2 characters.'
+      onNameChange={onAppNameChange}
+      uploadedApkLabel={app?.apkOriginalName ? `Current APK: ${app.apkOriginalName}` : 'No APK uploaded'}
+      isUploadingApk={isUploadingApk}
+      onApkSelect={file => {
+        void handleApkUpload(file)
+      }}
+      iconSlot={iconSlot}
+    />
   )
 }

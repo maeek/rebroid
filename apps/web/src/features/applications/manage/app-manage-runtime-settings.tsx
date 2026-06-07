@@ -1,11 +1,12 @@
+'use client'
+
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { NumberSliderField } from '@/components/ui/number-slider-field'
 import { Section } from '@/components/ui/section'
-import { Textarea } from '@/components/ui/textarea'
 import { Visible } from '@/components/ui/visible'
-import { Setting } from '@/features/settings/components/setting'
+import { AppContainerRuntimeSection } from '@/features/applications/components/app-container-runtime-section'
+import { AppResourceLimitsSection } from '@/features/applications/components/app-resource-limits-section'
+import { AppRuntimeSection } from '@/features/applications/components/app-runtime-section'
 import { cn } from '@/lib/utils'
 import type { AppFormValues } from '@/features/applications/create/create-app-form.types'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
@@ -22,8 +23,6 @@ type AppManageRuntimeSettingsProps = {
   canViewBackendDetails: boolean
 }
 
-const verticalSettingClassName = 'flex-col items-start w-full'
-
 export const AppManageRuntimeSettings = ({
   app,
   values,
@@ -36,6 +35,9 @@ export const AppManageRuntimeSettings = ({
 }: AppManageRuntimeSettingsProps) => {
   const [showAdvanced, setShowAdvanced] = useState(false)
 
+  const showContainerImage = canViewBackendDetails
+  const showContainerArgs = canChangeContainerArgs && showAdvanced
+
   return (
     <Section
       title='Runtime'
@@ -43,59 +45,18 @@ export const AppManageRuntimeSettings = ({
       contentClassName='gap-5'
     >
       <Visible when={canChangeSessionLimit}>
-        <Setting
-          label='Inactivity timeout'
-          description='How long the app can stay idle before it stops automatically. Use -1 for no automatic stop.'
-          variant='vertical'
-          className={verticalSettingClassName}
-        >
-          <Input
-            value={values.inactivityTimeoutSeconds}
-            min={-1}
-            max={86400}
-            type='number'
-            onChange={event => onChange({ inactivityTimeoutSeconds: Number(event.target.value) })}
-          />
-        </Setting>
+        <AppRuntimeSection
+          values={values}
+          onChange={onChange}
+        />
       </Visible>
       <Visible when={canChangeResources}>
-        <div className='grid gap-4 md:grid-cols-2'>
-          <Setting
-            label='RAM limit'
-            description='Optional memory limit in MB. Leave empty to use the runtime default.'
-            variant='vertical'
-            className={verticalSettingClassName}
-          >
-            <NumberSliderField
-              value={values.memoryLimitMb}
-              min={128}
-              max={resourceLimits?.maxMemoryMb}
-              placeholder='MB'
-              suffix=' MB'
-              rangeLabel='RAM limit range'
-              allowEmpty
-              onValueChange={value => onChange({ memoryLimitMb: value })}
-            />
-          </Setting>
-          <Setting
-            label='CPU limit'
-            description='Optional CPU quota in cores. Fractional values like 0.5 are allowed.'
-            variant='vertical'
-            className={verticalSettingClassName}
-          >
-            <NumberSliderField
-              value={values.cpuLimitCpus}
-              min={0.1}
-              max={resourceLimits?.maxCpuCpus}
-              step={0.1}
-              placeholder='cores'
-              suffix=' cores'
-              rangeLabel='CPU limit range'
-              allowEmpty
-              onValueChange={value => onChange({ cpuLimitCpus: value })}
-            />
-          </Setting>
-        </div>
+        <AppResourceLimitsSection
+          values={values}
+          resourceLimits={resourceLimits}
+          onChange={onChange}
+          descriptionForMemory='Optional memory limit in MB. Leave empty to use the runtime default.'
+        />
       </Visible>
       <Visible when={canViewBackendDetails || canChangeContainerArgs}>
         <div className='flex flex-col gap-2 border-t border-border/60 pt-4'>
@@ -108,34 +69,24 @@ export const AppManageRuntimeSettings = ({
               }
             )}
           >
-            <div className='min-h-0 grid gap-4'>
-              <Visible when={canViewBackendDetails}>
-                <Setting
-                  label='Image'
-                  className={verticalSettingClassName}
-                  variant='vertical'
-                >
-                  <Input
-                    value={app?.containerImage ?? ''}
-                    readOnly
-                  />
-                </Setting>
-              </Visible>
-              <Visible when={canChangeContainerArgs}>
-                <Setting
-                  label='Container arguments'
-                  description='Optional Docker Cmd override. Use a long-running command for images that would otherwise exit immediately, for example sleep infinity.'
-                  className={verticalSettingClassName}
-                  variant='vertical'
-                >
-                  <Textarea
-                    value={values.customContainerArgs}
-                    placeholder='sleep infinity'
-                    onChange={event => onChange({ customContainerArgs: event.target.value })}
-                  />
-                </Setting>
-              </Visible>
-            </div>
+            <Visible when={showContainerImage || showContainerArgs}>
+              <div className='min-h-0 grid gap-4'>
+                <AppContainerRuntimeSection
+                  containerImage={app?.containerImage ?? ''}
+                  showContainerImage={showContainerImage}
+                  containerImageMode='readonly'
+                  containerImageLabel='Image'
+                  containerImageDescription='The managed container image for this app runtime.'
+                  showContainerArgs={showContainerArgs}
+                  containerArgsValue={values.customContainerArgs}
+                  containerArgsMode='editable'
+                  onContainerArgsChange={value => onChange({ customContainerArgs: value })}
+                  containerArgsLabel='Container arguments'
+                  containerArgsDescription='Optional Docker Cmd override. Use a long-running command for images that would otherwise exit immediately, for example sleep infinity.'
+                  containerArgsPlaceholder='sleep infinity'
+                />
+              </div>
+            </Visible>
           </div>
           <Button
             type='button'

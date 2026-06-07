@@ -1,23 +1,22 @@
 import { describe, expect, it } from '@jest/globals'
 import { defaultViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
-import type { ScrcpySession } from '@/server/orchestrator/applications/types'
 import { buildDisplayViewerSurfaces } from './display-viewer-surfaces'
+import type { ScrcpySession } from '@/server/orchestrator/applications/types'
 
-const createSession = (displaySession: NonNullable<ScrcpySession['displaySession']>): ScrcpySession =>
-  ({
-    applicationId: 'app-1',
-    transport: 'webrtc',
-    udid: 'adb:5555',
-    proxyRemote: 'tcp:8886',
-    player: 'webcodecs',
-    viewerServiceConfigured: true,
-    viewerTargetConnected: true,
-    viewerMessage: null,
-    viewerError: null,
-    adbHost: 'adb',
-    adbPort: 5555,
-    displaySession
-  }) as ScrcpySession
+const createSession = (displaySession: NonNullable<ScrcpySession['displaySession']>): ScrcpySession => ({
+  applicationId: 'app-1',
+  transport: 'webrtc',
+  udid: 'adb:5555',
+  proxyRemote: 'tcp:8886',
+  player: 'webcodecs',
+  viewerServiceConfigured: true,
+  viewerTargetConnected: true,
+  viewerMessage: null,
+  viewerError: null,
+  adbHost: 'adb',
+  adbPort: 5555,
+  displaySession
+})
 
 describe('buildDisplayViewerSurfaces', () => {
   it('collapses duplicate main surfaces from sibling sidecar sessions', () => {

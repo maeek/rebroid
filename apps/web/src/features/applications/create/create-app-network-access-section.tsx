@@ -1,8 +1,6 @@
 import { allowsBroadInternetAccess } from '@rebroid/firewall-policy-core/policy'
-import { Section } from '@/components/ui/section'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { NetworkAccessInput } from '@/features/applications/viewer/app-info/network-access-input'
-import { Setting } from '@/features/settings/components/setting'
+import { getInvalidCidrMessage } from '@/features/applications/components/app-form-utils'
+import { AppNetworkPolicyEditorSection } from '@/features/applications/components/app-network-policy-editor-section'
 import { toast } from '@/hooks/use-toast'
 import type { CreateAppFormValues } from './create-app-form.types'
 
@@ -11,8 +9,6 @@ type CreateAppNetworkAccessSectionProps = {
   canUseInternet: boolean
   onChange: (patch: Partial<CreateAppFormValues>) => void
 }
-
-const verticalSettingClassName = 'flex-col items-start w-full'
 
 export const CreateAppNetworkAccessSection = ({
   values,
@@ -43,59 +39,24 @@ export const CreateAppNetworkAccessSection = ({
   const handleInvalidCidr = (value: string) => {
     toast({
       title: 'Invalid CIDR',
-      description: `${value} is not a valid IPv4 address or CIDR range.`,
+      description: getInvalidCidrMessage(value),
       variant: 'destructive'
     })
   }
 
   return (
-    <Section
+    <AppNetworkPolicyEditorSection
       title='Network access'
-      titleClassName='pb-4'
-      contentClassName='gap-5'
-    >
-      <p className='text-sm text-secondary-foreground'>
-        Choose outbound access before the app is provisioned. API/default destinations are applied automatically.
-      </p>
-
-      <Setting
-        label='Mode'
-        description='Limit Android traffic to the API and explicit CIDR ranges, or allow unrestricted outbound access.'
-        className={verticalSettingClassName}
-        variant='vertical'
-      >
-        <Select
-          value={values.networkPolicyEnabled ? 'enabled' : 'disabled'}
-          onValueChange={value => onChange({ networkPolicyEnabled: value === 'enabled' })}
-        >
-          <SelectTrigger className='w-full'>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value='enabled'>Only API plus allowlist</SelectItem>
-            <SelectItem
-              value='disabled'
-              disabled={!canUseInternet}
-            >
-              Unrestricted outbound access
-            </SelectItem>
-          </SelectContent>
-        </Select>
-      </Setting>
-
-      <div className='flex w-full flex-col gap-3'>
-        <div className='grid gap-1'>
-          <div className='text-sm font-bold text-foreground'>Allowlist</div>
-          <p className='text-xs leading-relaxed text-muted-foreground'>Add app-specific IPv4 ranges when needed.</p>
-        </div>
-        <NetworkAccessInput
-          cidrs={values.networkPolicyAllowCidrs}
-          disabled={!values.networkPolicyEnabled}
-          onAddCidr={handleAddCidr}
-          onRemoveCidr={handleRemoveCidr}
-          onInvalidCidr={handleInvalidCidr}
-        />
-      </div>
-    </Section>
+      sectionDescription='Choose outbound access before the app is provisioned. API/default destinations are applied automatically.'
+      modeDescription='Limit Android traffic to the API and explicit CIDR ranges, or allow unrestricted outbound access.'
+      unrestrictedLabel='Unrestricted outbound access'
+      modeValue={values.networkPolicyEnabled}
+      onModeChange={value => onChange({ networkPolicyEnabled: value })}
+      canEnableUnrestricted={canUseInternet}
+      allowCidrs={values.networkPolicyAllowCidrs}
+      onAddCidr={handleAddCidr}
+      onRemoveCidr={handleRemoveCidr}
+      onInvalidCidr={handleInvalidCidr}
+    />
   )
 }

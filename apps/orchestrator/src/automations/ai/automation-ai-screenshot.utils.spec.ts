@@ -35,9 +35,9 @@ describe('optimizeAiScreenshot', () => {
     const outputMetadata = await sharp(
       Buffer.from(result.dataUrl.split(',')[1] ?? '', 'base64'),
     ).metadata();
-    expect(Math.max(outputMetadata.width ?? 0, outputMetadata.height ?? 0)).toBe(
-      720,
-    );
+    expect(
+      Math.max(outputMetadata.width ?? 0, outputMetadata.height ?? 0),
+    ).toBe(720);
   });
 
   it('keeps the original screenshot when the data URL cannot be decoded', async () => {

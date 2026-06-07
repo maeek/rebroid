@@ -48,9 +48,12 @@ export class AutomationVisionService {
     this.assertNotCanceled(context.abortSignal);
     const screenshot = await context.adb.screenshot(context.app);
     const aiImage = await optimizeAiScreenshot(screenshot);
-    const ui = await context.adb.dumpUi(context.app).catch((error: unknown) => ({
-      error: error instanceof Error ? error.message : 'UI hierarchy dump failed.',
-    }));
+    const ui = await context.adb
+      .dumpUi(context.app)
+      .catch((error: unknown) => ({
+        error:
+          error instanceof Error ? error.message : 'UI hierarchy dump failed.',
+      }));
     const image = {
       width: aiImage.width ?? 1,
       height: aiImage.height ?? 1,
@@ -242,7 +245,9 @@ export class AutomationVisionService {
 
   private assertNotCanceled(abortSignal?: AbortSignal) {
     if (abortSignal?.aborted) {
-      throw new BadRequestException('Automation vision operation was canceled.');
+      throw new BadRequestException(
+        'Automation vision operation was canceled.',
+      );
     }
   }
 }

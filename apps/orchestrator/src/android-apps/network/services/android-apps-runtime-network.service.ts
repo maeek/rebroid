@@ -38,6 +38,10 @@ export class AndroidAppsRuntimeNetworkService {
 
   /** Releases viewer network support before deleting the app network. */
   async releaseRuntimeSupport(app: AndroidApplication) {
+    if (!app?.id || !app?.networkName) {
+      return;
+    }
+
     await this.viewerNetwork.releaseNetwork(app);
   }
 

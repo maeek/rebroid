@@ -257,7 +257,7 @@ export class RunAdHocAiAutomationDto {
   @IsOptional()
   @IsInt()
   @Min(1000)
-  @Max(900000)
+  @Max(360_0000)
   timeoutMs?: number;
 }
 

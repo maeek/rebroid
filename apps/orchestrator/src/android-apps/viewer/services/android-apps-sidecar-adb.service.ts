@@ -183,15 +183,22 @@ export class AndroidAppsSidecarAdbService {
       .getOrThrow<string>('app.displaySidecar.internalBaseUrl')
       .replace(/\/$/, '');
     const secret = this.config.get<string>('app.sharedSecret');
+    const hasBody =
+      init.body !== undefined &&
+      init.body !== null &&
+      `${init.body}`.length > 0;
+    const headers = new Headers(init.headers);
+    if (hasBody && !headers.has('content-type')) {
+      headers.set('content-type', 'application/json');
+    }
+    if (secret) {
+      headers.set('x-rebroid-sidecar-secret', secret);
+    }
     const response = await fetch(
       `${baseUrl}/rebroid/adb/${encodeURIComponent(udid)}${path}`,
       {
         ...init,
-        headers: {
-          'content-type': 'application/json',
-          ...(secret ? { 'x-rebroid-sidecar-secret': secret } : {}),
-          ...(init.headers ?? {}),
-        },
+        headers,
         signal: AbortSignal.timeout(20_000),
       },
     ).catch((error) => {

@@ -53,8 +53,8 @@ describe('automation AI observation utilities', () => {
         '400 Bad Request - model does not support images',
       ),
     ).toBe(true);
-    expect(isImageInputUnsupportedProviderMessage('500 Internal Server Error')).toBe(
-      false,
-    );
+    expect(
+      isImageInputUnsupportedProviderMessage('500 Internal Server Error'),
+    ).toBe(false);
   });
 });
