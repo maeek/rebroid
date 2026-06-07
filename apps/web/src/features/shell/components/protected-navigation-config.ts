@@ -12,9 +12,9 @@ import {
   IconRobot,
   IconServerSpark,
   IconShield,
-  IconSparkles,
   IconUsers
 } from '@tabler/icons-react'
+import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 
 export type NavigationVariant = 'sidebar' | 'drawer'
 
@@ -39,7 +39,7 @@ export const userSections: NavigationItem[] = [
 export const orchestratorSections: NavigationItem[] = [
   { name: 'Overview', Icon: IconChartHistogram, href: '/orchestrator' },
   { name: 'Settings', Icon: IconAdjustments, href: '/orchestrator/settings' },
-  { name: 'AI', Icon: IconSparkles, href: '/orchestrator/ai-providers' }
+  { name: 'AI', Icon: GradientSparklesIcon, href: '/orchestrator/ai-providers' }
 ]
 
 export const infrastructureSections: NavigationItem[] = [

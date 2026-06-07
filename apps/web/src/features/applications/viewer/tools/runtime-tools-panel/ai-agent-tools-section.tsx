@@ -77,7 +77,7 @@ export const AiAgentToolsSection = ({
 
       <div
         ref={transcriptRef}
-        className='grid max-h-96 gap-3 overflow-auto pr-1'
+        className='grid gap-3 overflow-auto pr-1'
       >
         {turns.length === 0 ? (
           <div className='rounded-md border border-dashed border-border/70 p-3 text-sm text-secondary-foreground'>
