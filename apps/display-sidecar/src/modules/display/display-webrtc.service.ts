@@ -265,11 +265,7 @@ export class DisplayWebrtcService {
     );
     this.sessions.touch(sessionId);
     if (message.type === "action") {
-      await this.executeAction(
-        sessionId,
-        session.udid,
-        message.command,
-      );
+      await this.executeAction(sessionId, session.udid, message.command);
     } else if (message.type === "keyboard") {
       const handled = this.scrcpy.sendKeyboardEvent(sessionId, message);
       if (!handled) {

@@ -10,6 +10,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/orchestrator/package.json apps/orchestrator/package.json
 COPY packages/ai-core/package.json packages/ai-core/package.json
 COPY packages/automation-core/package.json packages/automation-core/package.json
+COPY packages/application-core/package.json packages/application-core/package.json
 COPY packages/firewall-policy-core/package.json packages/firewall-policy-core/package.json
 COPY packages/vision-core/package.json packages/vision-core/package.json
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --filter rebroid-orchestrator... --frozen-lockfile
@@ -18,10 +19,11 @@ FROM base AS builder
 COPY --from=deps /workspace /workspace
 COPY packages/ai-core /workspace/packages/ai-core
 COPY packages/automation-core /workspace/packages/automation-core
+COPY packages/application-core /workspace/packages/application-core
 COPY packages/firewall-policy-core /workspace/packages/firewall-policy-core
 COPY packages/vision-core /workspace/packages/vision-core
 COPY apps/orchestrator /workspace/apps/orchestrator
-RUN pnpm --filter @rebroid/ai-core --filter @rebroid/automation-core --filter @rebroid/firewall-policy-core --filter @rebroid/vision-core build
+RUN pnpm --filter @rebroid/application-core --filter @rebroid/ai-core --filter @rebroid/automation-core --filter @rebroid/firewall-policy-core --filter @rebroid/vision-core build
 WORKDIR /workspace/apps/orchestrator
 RUN pnpm build
 WORKDIR /workspace

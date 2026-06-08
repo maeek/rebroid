@@ -28,6 +28,7 @@
     "@nestjs/swagger": "^11.4.4",
     "@nestjs/typeorm": "^11.0.1",
     "@rebroid/ai-core": "workspace:*",
+    "@rebroid/application-core": "workspace:*",
     "@rebroid/automation-core": "workspace:*",
     "@rebroid/firewall-policy-core": "workspace:*",
     "@rebroid/vision-core": "workspace:*",

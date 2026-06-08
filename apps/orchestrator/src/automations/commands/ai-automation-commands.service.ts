@@ -45,10 +45,37 @@ export class AiAutomationCommandsService {
             description: 'Visible final answer from the AI step.',
           },
           {
+            key: 'status',
+            label: 'Status',
+            type: 'string',
+            description:
+              'AI run status: completed, blocked, or failed-to-run.',
+          },
+          {
+            key: 'completed',
+            label: 'Completed',
+            type: 'boolean',
+            description: 'Whether the AI run reached a terminal result.',
+          },
+          {
             key: 'toolCalls',
             label: 'Tool calls',
             type: 'number',
             description: 'Number of tool calls executed by the AI step.',
+          },
+          {
+            key: 'blockedReason',
+            label: 'Blocked reason',
+            type: 'string',
+            description:
+              'Why the AI run was blocked before returning a final answer.',
+          },
+          {
+            key: 'evidence',
+            label: 'Evidence',
+            type: 'object',
+            description:
+              'Execution evidence including tool-call count and limit status.',
           },
         ],
         editor: {

@@ -92,11 +92,7 @@ export class DisplayControlGateway implements OnGatewayConnection {
     message: DisplayControlMessage,
   ) {
     if (message.type === "action") {
-      return this.executeAction(
-        sessionId,
-        udid,
-        message.command,
-      );
+      return this.executeAction(sessionId, udid, message.command);
     }
 
     if (message.type === "keyboard") {

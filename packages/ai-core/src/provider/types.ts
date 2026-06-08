@@ -66,6 +66,10 @@ export interface AutomationAiConversationMessage {
 export interface AutomationAiToolRequest {
   name: string;
   arguments: Record<string, unknown>;
+  intent?: string;
+  expectedOutcome?: string;
+  envelopeValid?: boolean;
+  toolCallId?: string;
 }
 
 export type ProviderFormState = AutomationAiProvider;

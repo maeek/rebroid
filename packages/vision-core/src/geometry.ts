@@ -92,10 +92,7 @@ export const pixelBoxToNormalized = (
   });
 };
 
-export const pointWithinBox = (
-  point: NormalizedPoint,
-  box: NormalizedBox,
-) => {
+export const pointWithinBox = (point: NormalizedPoint, box: NormalizedBox) => {
   const p = normalizePoint(point);
   const b = normalizeBox(box);
   return (

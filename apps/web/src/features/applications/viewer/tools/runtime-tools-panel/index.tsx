@@ -1,15 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react'
-import {
-  IconCast,
-  IconClipboard,
-  IconFolder,
-  IconLogs,
-  IconRobot,
-  IconSparkles,
-  IconWorld
-} from '@tabler/icons-react'
+import { IconCast, IconClipboard, IconFolder, IconLogs, IconRobot, IconSparkles, IconWorld } from '@tabler/icons-react'
 import { useApplicationViewerApp } from '@/features/applications/detail/application-viewer-context'
 import { AppLogsContent } from '@/features/applications/viewer/logs/app-logs-content'
 import { cn } from '@/lib/utils'

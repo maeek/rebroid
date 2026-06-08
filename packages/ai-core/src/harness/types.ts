@@ -5,6 +5,19 @@ export interface AutomationCommandLike {
   inputSchema: unknown;
 }
 
+export interface AutomationToolEnvelopeInput {
+  intent: string;
+  expectedOutcome: string;
+  input: Record<string, unknown>;
+}
+
+export interface AutomationToolEnvelopeResult {
+  intent: string;
+  expectedOutcome: string;
+  input: Record<string, unknown>;
+  envelopeValid: boolean;
+}
+
 export interface ChatToolCall {
   id: string;
   type: "function";

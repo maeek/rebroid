@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Section } from '@/components/ui/section'
 import { cn } from '@/lib/utils'
-import { getRedroidDisplayProfile, redroidDisplayProfiles } from '@/shared/runtime/redroid-runtime'
+import { getRedroidDisplayProfile, redroidDisplayProfiles } from '@rebroid/application-core/redroid-runtime'
 import type { CreateAppFormValues } from './create-app-form.types'
 
 type CreateAppDisplaySectionProps = {
@@ -18,7 +18,7 @@ export const CreateAppDisplaySection = ({ values, onChange }: CreateAppDisplaySe
     titleClassName='mb-4'
   >
     <div className='grid grid-cols-2 gap-3 max-sm:max-h-[27rem] max-sm:grid-cols-1 max-sm:overflow-y-auto max-sm:pr-1'>
-      {redroidDisplayProfiles.map(profile => {
+      {redroidDisplayProfiles.map((profile: (typeof redroidDisplayProfiles)[number]) => {
         const selected = values.redroidDisplayProfileId === profile.id
         const Icon = profile.kind === 'tablet' ? IconDeviceTablet : IconDeviceMobile
 

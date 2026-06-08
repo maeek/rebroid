@@ -10,7 +10,7 @@ import { buildDisplayViewerSurfaces } from '@/features/applications/viewer/displ
 import { getToastErrorDescription } from '@/features/applications/viewer/utils/viewer-error-utils'
 import { StatusSplash } from '@/features/shell/components/status-splash'
 import { getScrcpySessionAction } from '@/server/orchestrator/applications/actions/runtime/viewer-actions'
-import { getRedroidDisplayDimensionsFromArgs } from '@/shared/runtime/redroid-runtime'
+import { getRedroidDisplayDimensionsFromArgs } from '@rebroid/application-core/redroid-runtime'
 import { ViewerActivityKeepalive } from './viewer-activity-keepalive'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'

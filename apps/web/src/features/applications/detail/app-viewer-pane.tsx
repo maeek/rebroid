@@ -11,7 +11,7 @@ import { StatusSplash } from '@/features/shell/components/status-splash'
 import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { startApplicationAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
-import { getRedroidDisplayDimensionsFromArgs } from '@/shared/runtime/redroid-runtime'
+import { getRedroidDisplayDimensionsFromArgs } from '@rebroid/application-core/redroid-runtime'
 import { useApplicationViewerApp } from './application-viewer-context'
 import type { ViewerOrientation } from '@/features/applications/viewer/player/android-viewer'
 

@@ -16,7 +16,10 @@ import { toast } from '@/hooks/use-toast'
 import { setAppIconAction } from '@/server/app-icons/actions/set-app-icon-action'
 import { createApplicationAction } from '@/server/orchestrator/applications/actions/configuration/create-update-actions'
 import { hasPermission, isRedroidImage, type PermissionMap } from '@/shared/permissions/permissions'
-import { applyRedroidDisplayContainerArgs, defaultRedroidDisplayProfileId } from '@/shared/runtime/redroid-runtime'
+import {
+  applyRedroidDisplayContainerArgs,
+  defaultRedroidDisplayProfileId,
+} from '@rebroid/application-core/redroid-runtime'
 import { CreateAppDeviceSection } from './create-app-device-section'
 import { CreateAppDisplaySection } from './create-app-display-section'
 import { AppFormGeneralSection } from './create-app-general-section'

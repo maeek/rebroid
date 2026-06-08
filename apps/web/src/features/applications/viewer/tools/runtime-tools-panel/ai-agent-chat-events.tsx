@@ -9,9 +9,9 @@ const compactValue = (value: unknown) => {
   if (typeof value === 'string') return value
   if (typeof value === 'number' || typeof value === 'boolean') return String(value)
   try {
-    return JSON.stringify(value)
+    return JSON.stringify(value) ?? '[unserializable]'
   } catch {
-    return String(value)
+    return Object.prototype.toString.call(value)
   }
 }
 

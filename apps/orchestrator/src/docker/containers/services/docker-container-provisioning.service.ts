@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ApplicationProfileMode } from '../../../android-apps/application-profile-mode';
 import { DockerEngineService } from '../../docker-engine.service';
 import { ApplicationContainerSpec } from '../../docker.types';
-import { parseCommandLine } from '../../docker.utils';
+import { parseCommandLine } from '@rebroid/application-core/command-line';
 import { DockerImageRuntimeService } from '../../images/services/docker-image-runtime.service';
 import { DockerContainerLifecycleService } from './docker-container-lifecycle.service';
 

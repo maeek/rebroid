@@ -32,6 +32,7 @@
     "@radix-ui/react-toast": "^1.2.15",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@rebroid/ai-core": "workspace:*",
+    "@rebroid/application-core": "workspace:*",
     "@rebroid/automation-core": "workspace:*",
     "@rebroid/firewall-policy-core": "workspace:*",
     "@rebroid/orchestrator-client": "workspace:*",

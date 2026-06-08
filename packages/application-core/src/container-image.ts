@@ -7,13 +7,13 @@ export const resolveContainerImage = (
     return trimmedImage;
   }
 
-  const firstSegment = trimmedImage.split('/')[0] ?? '';
+  const firstSegment = trimmedImage.split("/")[0] ?? "";
   const hasExplicitRegistry =
-    firstSegment === 'localhost' ||
-    firstSegment.includes('.') ||
-    firstSegment.includes(':');
+    firstSegment === "localhost" ||
+    firstSegment.includes(".") ||
+    firstSegment.includes(":");
 
   return hasExplicitRegistry
     ? trimmedImage
-    : `${registry.replace(/\/+$/, '')}/${trimmedImage}`;
+    : `${registry.replace(/\/+$/, "")}/${trimmedImage}`;
 };

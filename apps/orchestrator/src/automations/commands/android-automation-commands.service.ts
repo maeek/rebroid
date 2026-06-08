@@ -453,7 +453,8 @@ export class AndroidAutomationCommandsService {
             key: 'total',
             label: 'Total',
             type: 'number',
-            description: 'Total matching packages before maxResults truncation.',
+            description:
+              'Total matching packages before maxResults truncation.',
           },
           {
             key: 'truncated',
@@ -544,7 +545,8 @@ export class AndroidAutomationCommandsService {
             key: 'reason',
             label: 'Reason',
             type: 'string',
-            description: 'Failure reason when the package could not be launched.',
+            description:
+              'Failure reason when the package could not be launched.',
           },
         ],
         execute: async (

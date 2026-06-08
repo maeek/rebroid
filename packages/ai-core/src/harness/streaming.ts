@@ -139,7 +139,8 @@ const parseToolCallDeltas = (value: unknown): ChatToolCallDelta[] => {
   for (const item of value) {
     if (!item || typeof item !== "object") continue;
     const record = item as Record<string, unknown>;
-    const index = typeof record.index === "number" ? record.index : output.length;
+    const index =
+      typeof record.index === "number" ? record.index : output.length;
     const functionValue = record.function;
     const functionRecord =
       functionValue && typeof functionValue === "object"

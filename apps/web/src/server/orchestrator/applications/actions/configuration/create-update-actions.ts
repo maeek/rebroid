@@ -3,7 +3,7 @@
 import { allowsBroadInternetAccess } from '@rebroid/firewall-policy-core/policy'
 import { recordAuditEvent } from '@/server/audit/events'
 import { hasPermission, isRedroidImage } from '@/shared/permissions/permissions'
-import { applyRedroidDefaultContainerArgs } from '@/shared/runtime/redroid-runtime'
+import { applyRedroidDefaultContainerArgs } from '@rebroid/application-core/redroid-runtime'
 import { getCurrentOwnerUserId, getCurrentUserContext } from '../../../current-user'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
 import { orchestratorAppCatalogClient } from '../../catalog-client'

@@ -12,6 +12,10 @@
     "./metadata": {
       "types": "./dist/metadata.d.ts",
       "default": "./dist/metadata.js"
+    },
+    "./command-registry": {
+      "types": "./dist/command-registry.d.ts",
+      "default": "./dist/command-registry.js"
     }
   },
   "scripts": {

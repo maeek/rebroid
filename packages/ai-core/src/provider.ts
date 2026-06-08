@@ -7,9 +7,7 @@ export {
   setDefaultProviderModelAt,
   updateProviderModelAt,
 } from "./provider/form-state";
-export {
-  normalizeDefaultModel,
-} from "./provider/default-model";
+export { normalizeDefaultModel } from "./provider/default-model";
 export {
   maskProvider,
   normalizeAiModel,

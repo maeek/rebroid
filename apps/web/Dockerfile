@@ -11,6 +11,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json apps/web/package.json
 COPY packages/ai-core/package.json packages/ai-core/package.json
 COPY packages/automation-core/package.json packages/automation-core/package.json
+COPY packages/application-core/package.json packages/application-core/package.json
 COPY packages/firewall-policy-core/package.json packages/firewall-policy-core/package.json
 COPY packages/orchestrator-client/package.json packages/orchestrator-client/package.json
 COPY packages/vision-core/package.json packages/vision-core/package.json
@@ -26,11 +27,12 @@ ENV DISPLAY_SIDECAR_INTERNAL_BASE_URL=${DISPLAY_SIDECAR_INTERNAL_BASE_URL}
 COPY --from=deps /workspace /workspace
 COPY packages/ai-core /workspace/packages/ai-core
 COPY packages/automation-core /workspace/packages/automation-core
+COPY packages/application-core /workspace/packages/application-core
 COPY packages/firewall-policy-core /workspace/packages/firewall-policy-core
 COPY packages/orchestrator-client /workspace/packages/orchestrator-client
 COPY packages/vision-core /workspace/packages/vision-core
 COPY apps/web ./
-RUN pnpm --filter @rebroid/ai-core --filter @rebroid/automation-core --filter @rebroid/firewall-policy-core --filter @rebroid/vision-core build
+RUN pnpm --filter @rebroid/application-core --filter @rebroid/ai-core --filter @rebroid/automation-core --filter @rebroid/firewall-policy-core --filter @rebroid/vision-core build
 RUN pnpm build
 
 FROM node:24-alpine AS runner

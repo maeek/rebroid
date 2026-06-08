@@ -12,6 +12,10 @@
     "./harness": {
       "types": "./dist/harness.d.ts",
       "default": "./dist/harness.js"
+    },
+    "./observation": {
+      "types": "./dist/observation.d.ts",
+      "default": "./dist/observation.js"
     }
   },
   "scripts": {

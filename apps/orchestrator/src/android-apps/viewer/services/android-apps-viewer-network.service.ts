@@ -7,7 +7,7 @@ import { NetworkPolicyService } from '../../../network-policy/services/network-p
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
-import { isRedroidImageName } from '../../provisioning/utils/redroid-runtime.utils';
+import { isRedroidImageName } from '@rebroid/application-core/redroid-runtime';
 
 @Injectable()
 export class AndroidAppsViewerNetworkService {

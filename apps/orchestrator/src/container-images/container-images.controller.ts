@@ -18,6 +18,7 @@ import { DockerImageRuntimeService } from '../docker/images/services/docker-imag
 import { SettingsService } from '../settings/settings.service';
 import { PullContainerImageDto } from './dto/pull-container-image.dto';
 import { RemoveContainerImageDto } from './dto/remove-container-image.dto';
+import { resolveContainerImage } from '@rebroid/application-core/container-image';
 
 @ApiTags('platform-container-images')
 @Controller('platform/container-images')
@@ -46,7 +47,7 @@ export class ContainerImagesController {
   })
   async pull(@Body() dto: PullContainerImageDto) {
     const settings = await this.settings.getSettings();
-    const image = this.resolveContainerImage(
+    const image = resolveContainerImage(
       dto.image,
       settings.dockerImageRegistry,
     );
@@ -72,22 +73,5 @@ export class ContainerImagesController {
       decodeURIComponent(image),
       query.force ?? false,
     );
-  }
-
-  private resolveContainerImage(image: string, registry: string | null) {
-    const trimmedImage = image.trim();
-    if (!registry) {
-      return trimmedImage;
-    }
-
-    const firstSegment = trimmedImage.split('/')[0] ?? '';
-    const hasExplicitRegistry =
-      firstSegment === 'localhost' ||
-      firstSegment.includes('.') ||
-      firstSegment.includes(':');
-
-    return hasExplicitRegistry
-      ? trimmedImage
-      : `${registry.replace(/\/+$/, '')}/${trimmedImage}`;
   }
 }

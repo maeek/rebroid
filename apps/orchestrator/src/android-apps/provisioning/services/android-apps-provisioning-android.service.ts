@@ -14,7 +14,7 @@ import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
 import { AndroidAppsViewerNetworkService } from '../../viewer/services/android-apps-viewer-network.service';
-import { isRedroidImageName } from '../utils/redroid-runtime.utils';
+import { isRedroidImageName } from '@rebroid/application-core/redroid-runtime';
 
 interface AndroidBootReadiness {
   ready: boolean;

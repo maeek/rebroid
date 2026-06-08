@@ -25,6 +25,8 @@ export {
 } from "./harness/tools";
 export {
   type AutomationCommandLike,
+  type AutomationToolEnvelopeInput,
+  type AutomationToolEnvelopeResult,
   type ChatContentPart,
   type ChatImageUrlContentPart,
   type ChatMessage,

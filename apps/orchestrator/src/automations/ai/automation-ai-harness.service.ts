@@ -15,6 +15,7 @@ import {
   mapUsesByToolName,
   parseArguments,
   type ChatMessage,
+  type AutomationToolEnvelopeResult,
 } from '@rebroid/ai-core/harness';
 import type {
   AutomationAiProvider,
@@ -153,19 +154,47 @@ export class AutomationAiHarnessService {
             `AI requested unsupported tool "${call.function.name}".`,
           );
         }
-        const args = parseArguments(call.function.arguments);
+        const parsedArguments = parseArguments(call.function.arguments);
+        const parsedToolCall = this.parseToolCallArguments(
+          uses,
+          parsedArguments,
+        );
+        if (!parsedToolCall.envelopeValid) {
+          await this.emit(context, 'ai.guardrail.triggered', 'Tool call envelope is not in the expected shape.', {
+            uses,
+            toolCallId: call.id,
+            data: sanitizeAiDataForEvent({
+              intent: parsedToolCall.intent,
+              expectedOutcome: parsedToolCall.expectedOutcome,
+              input: parsedToolCall.input,
+            }),
+            clientMessageId: input.clientMessageId ?? null,
+          });
+        }
         toolCalls += 1;
         await this.emit(context, 'ai.tool.arguments', uses, {
           uses,
-          arguments: sanitizeAiDataForEvent(args),
+          intent: parsedToolCall.intent,
+          expectedOutcome: parsedToolCall.expectedOutcome,
+          envelopeValid: parsedToolCall.envelopeValid,
+          arguments: sanitizeAiDataForEvent(parsedToolCall.input),
           clientMessageId: input.clientMessageId ?? null,
         });
-        const blockedToolResult = this.blockedToolResult(uses, args);
+        const blockedToolResult = this.blockedToolResult(
+          uses,
+          parsedToolCall.input,
+          parsedToolCall,
+        );
         if (blockedToolResult) {
-          await this.emit(context, 'ai.tool.failed', blockedToolResult.summary, {
-            uses,
-            clientMessageId: input.clientMessageId ?? null,
-          });
+          await this.emit(
+            context,
+            'ai.tool.failed',
+            blockedToolResult.summary,
+            {
+              uses,
+              clientMessageId: input.clientMessageId ?? null,
+            },
+          );
           messages.push({
             role: 'tool',
             tool_call_id: call.id,
@@ -184,7 +213,11 @@ export class AutomationAiHarnessService {
         try {
           const result = await context.toolExecutor({
             name: uses,
-            arguments: args,
+            arguments: parsedToolCall.input,
+            intent: parsedToolCall.intent,
+            expectedOutcome: parsedToolCall.expectedOutcome,
+            envelopeValid: parsedToolCall.envelopeValid,
+            toolCallId: call.id,
           });
           const eventData = sanitizeAiDataForEvent(result.data ?? {});
           const modelData = sanitizeAiDataForModel(result.data ?? {});
@@ -254,18 +287,35 @@ export class AutomationAiHarnessService {
         'AI automation finished without a final answer.',
       );
     }
+    const toolResult = finalText || undefined;
+    const completed = !!toolResult || !input.requireFinalAnswer;
+    const status = completed ? 'completed' : 'blocked';
+    const summary = toolResult || 'AI step completed without a final answer.';
 
     await this.emit(
       context,
       'ai.model.completed',
-      finalText || 'AI step completed.',
+      toolResult || 'AI step completed.',
       { toolCalls, clientMessageId: input.clientMessageId ?? null },
     );
     return {
       summary:
-        finalText ||
+        toolResult ||
         `AI step completed after ${toolCalls} tool call${toolCalls === 1 ? '' : 's'}.`,
-      data: { finalText, toolCalls },
+      data: {
+        status,
+        completed,
+        finalText: toolResult,
+        toolCalls,
+        blockedReason: completed ? null : 'final answer was not provided',
+        evidence: {
+          toolCallsUsed: toolCalls,
+          maxToolCalls: input.maxToolCalls,
+          toolLimitReached: toolCalls >= input.maxToolCalls,
+          timedOut: Date.now() >= deadline,
+        },
+        summary,
+      },
     };
   }
 
@@ -453,19 +503,92 @@ export class AutomationAiHarnessService {
     }
   }
 
-  private blockedToolResult(uses: string, args: Record<string, unknown>) {
+  private blockedToolResult(
+    uses: string,
+    args: Record<string, unknown>,
+    toolCall: AutomationToolEnvelopeResult,
+  ) {
     if (uses !== 'android.adbShell') {
       return null;
     }
     const command = typeof args.command === 'string' ? args.command : '';
-    if (!/\b(pm|cmd\s+package)\s+install\b|\binstall-existing\b/.test(command)) {
+    if (!this.isDangerousShellCommand(command)) {
       return null;
     }
     return {
       summary:
         'Installing Android applications is not allowed during AI automation. Ask the user to install the app or choose another route.',
       error: 'Android app installation is blocked for AI automation.',
+      expectedIntent:
+        toolCall.intent.length > 0
+          ? toolCall.intent
+          : undefined,
+      expectedOutcome:
+        toolCall.expectedOutcome.length > 0
+          ? toolCall.expectedOutcome
+          : undefined,
+      envelopeValid: toolCall.envelopeValid,
     };
+  }
+
+  private isDangerousShellCommand(commandText: string) {
+    const lowered = commandText.toLowerCase();
+    return (
+      /\b(pm|cmd\s+package)\s+install\b|\binstall-existing\b/.test(lowered) ||
+      /\brm\s+(-rf|-[^\s]+\s+)?\/\s*(data|system|sdcard|storage)\b/.test(lowered) ||
+      /\bsu\b/.test(lowered) ||
+      /\breboot\b/.test(lowered)
+    );
+  }
+
+  private parseToolCallArguments(
+    uses: string,
+    rawArguments: Record<string, unknown>,
+  ): AutomationToolEnvelopeResult {
+    if (!this.isObjectRecord(rawArguments)) {
+      return {
+        intent: `Legacy tool call shape for ${uses}.`,
+        expectedOutcome: 'Model returned a malformed tool argument object.',
+        input: {},
+        envelopeValid: false,
+      };
+    }
+    const hasEnvelope =
+      typeof rawArguments.intent === 'string' &&
+      typeof rawArguments.expectedOutcome === 'string' &&
+      rawArguments.input != null &&
+      typeof rawArguments.input === 'object' &&
+      !Array.isArray(rawArguments.input);
+    if (!hasEnvelope) {
+      return {
+        intent:
+          typeof rawArguments.intent === 'string'
+            ? sanitizeAiText(rawArguments.intent, 140)
+            : `Legacy tool call for ${uses}.`,
+        expectedOutcome:
+          typeof rawArguments.expectedOutcome === 'string'
+            ? sanitizeAiText(rawArguments.expectedOutcome, 220)
+            : 'No explicit expected outcome was supplied.',
+        input: rawArguments,
+        envelopeValid: false,
+      };
+    }
+    return {
+      intent: sanitizeAiText(rawArguments.intent, 140),
+      expectedOutcome: sanitizeAiText(rawArguments.expectedOutcome, 220),
+      input: rawArguments.input as Record<string, unknown>,
+      envelopeValid: true,
+    };
+  }
+
+  private isObjectRecord(
+    value: unknown,
+  ): value is Record<string, unknown> {
+    return (
+      value != null &&
+      typeof value === 'object' &&
+      !Array.isArray(value)
+    );
   }
 
   private assertNotCanceled(abortSignal?: AbortSignal) {

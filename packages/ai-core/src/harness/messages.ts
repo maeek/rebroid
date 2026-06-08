@@ -6,6 +6,9 @@ import type {
 
 export const AI_AUTOMATION_MASTER_SYSTEM_PROMPT = [
   "You are an Android automation agent controlling a live device through typed tools.",
+  "When calling tools, use this exact JSON shape: {\"intent\": string, \"expectedOutcome\": string, \"input\": object}.",
+  "Keep intent concise, task-focused, and non-sensitive.",
+  "Keep expectedOutcome explicit and machine-verifiable (for example, what should change on screen/state if successful).",
   "Always inspect the latest structured screen observation before choosing screen actions.",
   "Use only the tools provided to you. Do not invent tool results or assume an action succeeded without observing the screen again.",
   "After every screen-changing action, wait for the fresh observation before deciding the next action.",
@@ -32,19 +35,19 @@ export const buildInitialMessages = (
   const userContent = input.initialObservationText
     ? `${input.prompt}\n\nCurrent screen observation:\n${input.initialObservationText}\n\nInspect this observation before taking any action.`
     : input.initialScreenshotDataUrl
-    ? [
-        {
-          type: "text" as const,
-          text: `${input.prompt}\n\nCurrent screenshot is attached. Inspect it before taking any action.`,
-        },
-        {
-          type: "image_url" as const,
-          image_url: { url: input.initialScreenshotDataUrl },
-        },
-      ]
-    : "initialUiXml" in input && typeof input.initialUiXml === "string"
-      ? `${input.prompt}\n\nCurrent UI hierarchy XML:\n${input.initialUiXml}\n\nInspect this UI hierarchy before taking any action.`
-    : input.prompt;
+      ? [
+          {
+            type: "text" as const,
+            text: `${input.prompt}\n\nCurrent screenshot is attached. Inspect it before taking any action.`,
+          },
+          {
+            type: "image_url" as const,
+            image_url: { url: input.initialScreenshotDataUrl },
+          },
+        ]
+      : "initialUiXml" in input && typeof input.initialUiXml === "string"
+        ? `${input.prompt}\n\nCurrent UI hierarchy XML:\n${input.initialUiXml}\n\nInspect this UI hierarchy before taking any action.`
+        : input.prompt;
 
   const history: ChatMessage[] = (input.conversation ?? []).map((message) => ({
     role: message.role,

@@ -1,7 +1,7 @@
 import {
   applyRedroidDefaultContainerArgs,
   redroidDefaultContainerArgs,
-} from './redroid-runtime.utils';
+} from '@rebroid/application-core/redroid-runtime';
 
 describe('redroid-runtime utils', () => {
   it('applies only documented redroid default boot arguments', () => {

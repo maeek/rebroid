@@ -18,7 +18,7 @@ import { ViewerSplash } from '@/features/applications/viewer/display/display-vie
 import { buildDisplayViewerSurfaces } from '@/features/applications/viewer/display/display-viewer-surfaces'
 import { getApplicationAction } from '@/server/orchestrator/applications/actions/queries/get-application-action'
 import { getScrcpySessionAction } from '@/server/orchestrator/applications/actions/runtime/viewer-actions'
-import { getRedroidDisplayDimensionsFromArgs } from '@/shared/runtime/redroid-runtime'
+import { getRedroidDisplayDimensionsFromArgs } from '@rebroid/application-core/redroid-runtime'
 import { ViewerActivityKeepalive, ViewerStartupRefresh } from './viewer-activity-keepalive'
 import type { AndroidApplication, ScrcpySession } from '@/server/orchestrator/applications/types'
 

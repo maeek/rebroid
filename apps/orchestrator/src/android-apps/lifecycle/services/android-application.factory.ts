@@ -10,9 +10,9 @@ import {
   AndroidApplicationStatus,
 } from '../../android-application-status';
 import { CreateAndroidApplicationDto } from '../../common/dto/create-android-application.dto';
-import { resolveContainerImage } from '../../common/utils/android-apps-container-image.utils';
+import { resolveContainerImage } from '@rebroid/application-core/container-image';
 import { rememberSavedProfile } from '../../common/utils/android-apps-profile-history.utils';
-import { applyRedroidDefaultContainerArgs } from '../../provisioning/utils/redroid-runtime.utils';
+import { applyRedroidDefaultContainerArgs } from '@rebroid/application-core/redroid-runtime';
 
 type ApplicationSettings = Awaited<ReturnType<SettingsService['getSettings']>>;
 

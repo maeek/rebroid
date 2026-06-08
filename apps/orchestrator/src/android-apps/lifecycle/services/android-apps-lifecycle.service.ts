@@ -29,7 +29,7 @@ import { stoppedStatusMessage } from '../../common/utils/android-apps-status-mes
 import { AndroidAppsRuntimeNetworkService } from '../../network/services/android-apps-runtime-network.service';
 import { AndroidAppsProvisioningApkService } from '../../provisioning/services/android-apps-provisioning-apk.service';
 import { AndroidAppsProvisioningService } from '../../provisioning/services/android-apps-provisioning.service';
-import { applyRedroidDefaultContainerArgs } from '../../provisioning/utils/redroid-runtime.utils';
+import { applyRedroidDefaultContainerArgs } from '@rebroid/application-core/redroid-runtime';
 import { StartAndroidApplicationDto } from '../dto/start-android-application.dto';
 import { SwitchApplicationProfileDto } from '../dto/switch-application-profile.dto';
 import { UpdateAndroidApplicationApkDto } from '../dto/update-android-application-apk.dto';

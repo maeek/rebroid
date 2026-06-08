@@ -1,13 +1,9 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { pointWithinBox } from '@rebroid/vision-core/geometry';
 import {
-  pointWithinBox,
-  type NormalizedBox,
-} from '@rebroid/vision-core/geometry';
-import {
-  createDetection,
+  extractUiDetections,
   matchesDetectionQuery,
   sortDetections,
-  type VisionDetection,
 } from '@rebroid/vision-core/observation';
 import type {
   AutomationAiProvider,
@@ -30,10 +26,6 @@ import type {
   AutomationVisionLocateInput,
   AutomationVisionLocateOutput,
 } from './automation-vision.types';
-
-const BOUNDS_PATTERN = /\[(\d+),(\d+)]\[(\d+),(\d+)]/;
-const XML_NODE_PATTERN = /<node\b[^>]*>/g;
-const XML_ATTRIBUTE_PATTERN = /([\w:-]+)="([^"]*)"/g;
 
 @Injectable()
 export class AutomationVisionService {
@@ -260,76 +252,3 @@ export class AutomationVisionService {
     }
   }
 }
-
-const extractUiDetections = (
-  xml: string,
-  image: { width: number; height: number },
-): VisionDetection[] => {
-  const detections: VisionDetection[] = [];
-  for (const match of xml.matchAll(XML_NODE_PATTERN)) {
-    const attributes = attributesOf(match[0]);
-    const bounds = boundsOf(attributes.bounds, image);
-    if (!bounds) continue;
-    const text = cleanAttribute(attributes.text);
-    const description = cleanAttribute(attributes['content-desc']);
-    const resourceId = cleanAttribute(attributes['resource-id']);
-    const className = cleanAttribute(attributes.class);
-    const label = text || description || resourceId || className;
-    if (!label) continue;
-    detections.push(
-      createDetection({
-        id: `ui-${detections.length + 1}`,
-        label,
-        ...(text ? { text } : {}),
-        ...(description ? { description } : {}),
-        ...(className ? { role: className.split('.').pop() ?? className } : {}),
-        confidence: text || description ? 0.92 : 0.72,
-        bounds,
-        source: 'ui-xml',
-      }),
-    );
-  }
-  return detections;
-};
-
-const attributesOf = (node: string) => {
-  const attributes: Record<string, string> = {};
-  for (const match of node.matchAll(XML_ATTRIBUTE_PATTERN)) {
-    attributes[match[1]] = decodeXml(match[2]);
-  }
-  return attributes;
-};
-
-const cleanAttribute = (value: string | undefined) => {
-  const next = value?.trim();
-  return next && next !== 'false' && next !== 'true' ? next : '';
-};
-
-const boundsOf = (
-  value: string | undefined,
-  image: { width: number; height: number },
-): NormalizedBox | null => {
-  const match = value?.match(BOUNDS_PATTERN);
-  if (!match) return null;
-  const left = Number(match[1]);
-  const top = Number(match[2]);
-  const right = Number(match[3]);
-  const bottom = Number(match[4]);
-  if (![left, top, right, bottom].every(Number.isFinite)) return null;
-  const width = Math.max(1, image.width);
-  const height = Math.max(1, image.height);
-  return {
-    left: left / width,
-    top: top / height,
-    width: Math.max(0, right - left) / width,
-    height: Math.max(0, bottom - top) / height,
-  };
-};
-
-const decodeXml = (value: string) =>
-  value
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&');

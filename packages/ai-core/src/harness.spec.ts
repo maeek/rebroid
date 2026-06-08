@@ -78,22 +78,54 @@ describe("AI harness core", () => {
     );
   });
 
+  it("wraps tool inputs into a typed execution envelope", () => {
+    const [tool] = buildToolDefinitions(
+      [
+        {
+          uses: "android.tap",
+          label: "Tap",
+          description: "Tap screen",
+          inputSchema: { type: "object", properties: { x: { type: "number" } } },
+        },
+      ],
+      () => true,
+    );
+    assert.equal(tool.type, "function");
+    assert.equal(tool.function.name, "android__tap");
+    assert.deepEqual(tool.function.parameters.required, [
+      "intent",
+      "expectedOutcome",
+      "input",
+    ]);
+    assert.equal(tool.function.parameters.properties?.intent.type, "string");
+    assert.equal(tool.function.parameters.properties?.expectedOutcome.type, "string");
+    assert.deepEqual(tool.function.parameters.properties?.input, {
+      type: "object",
+      properties: { x: { type: "number" } },
+    });
+  });
+
   it("builds chat messages and provider request bodies", () => {
+    const initialMessages = buildInitialMessages({ prompt: "Do it" }, model);
     assert.equal(
       chatCompletionsEndpoint(provider),
       "http://localhost:11434/v1/chat/completions",
     );
-    assert.deepEqual(buildInitialMessages({ prompt: "Do it" }, model), [
-      {
-        role: "system",
-        content:
-          "You are an Android automation agent controlling a live device through typed tools.\nAlways inspect the latest structured screen observation before choosing screen actions.\nUse only the tools provided to you. Do not invent tool results or assume an action succeeded without observing the screen again.\nAfter every screen-changing action, wait for the fresh observation before deciding the next action.\nPrefer semantic, vision.locate, or state-reading tools when they are available.\nUse runtime context and android.listPackages to discover installed packages. Do not guess package names for apps that are not listed or otherwise confirmed.\nUse android.launchPackage to open an installed Android package. If it reports that the package is missing or cannot be launched, do not retry the same package blindly; inspect the screen or choose another route.\nNever install Android applications or packages. If a required app is missing, stop the evaluation and ask the user to install or provide the app instead of trying to install it yourself.\nIf UI XML and vision observations do not provide enough visible context, say what context is missing and ask the user instead of guessing.\nUse normalized 0..1 coordinates for screen actions. Prefer android.tapNormalized and android.swipeNormalized over raw pixel coordinates.\nandroid.tapText depends on Android UI hierarchy XML. If the latest observation says the UI hierarchy is empty or failed, use vision.locate, screenshot-derived targets, or normalized coordinates instead.\nTool failures are observations. If one tool fails, use the failure message and latest screen state to decide whether to continue, try a different tool, or stop with a clear final answer.\nUse android.adbShell only when no typed tool can do the job. If reading Android settings, use the exact syntax: settings get <namespace> <key>, for example settings get global zen_mode.\nContinue the observe/action/observe loop until the requested task is visibly complete, the app blocks progress, or a timeout/tool limit is reached.\nWrite concise visible progress and a short final answer. Do not reveal hidden reasoning.\n\nUse terse summaries.",
-      },
-      { role: "user", content: "Do it" },
-    ]);
+    assert.equal(initialMessages.length, 2);
+    assert.equal(initialMessages[0].role, "system");
+    assert.ok(
+      typeof initialMessages[0].content === "string" &&
+        initialMessages[0].content.includes(
+          "When calling tools, use this exact JSON shape",
+        ),
+    );
+    assert.deepEqual(initialMessages[1], { role: "user", content: "Do it" });
     assert.deepEqual(
       buildInitialMessages(
-        { prompt: "Do it", initialScreenshotDataUrl: "data:image/png;base64,abc" },
+        {
+          prompt: "Do it",
+          initialScreenshotDataUrl: "data:image/png;base64,abc",
+        },
         model,
       )[1],
       {
@@ -142,7 +174,10 @@ describe("AI harness core", () => {
 
   it("builds text-only UI XML observations", () => {
     assert.deepEqual(
-      buildInitialMessages({ prompt: "Do it", initialUiXml: "<hierarchy />" }, model)[1],
+      buildInitialMessages(
+        { prompt: "Do it", initialUiXml: "<hierarchy />" },
+        model,
+      )[1],
       {
         role: "user",
         content:

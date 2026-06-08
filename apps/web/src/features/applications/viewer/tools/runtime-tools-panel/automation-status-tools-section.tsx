@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { IconRefresh, IconRobot } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { AutomationRunLiveEvents } from '@/features/automations/automations-page/traces/automation-run-live-events'
 import { AppAutomationRunAction } from '@/features/applications/viewer/actions/app-automation-run-action'
+import { AutomationRunLiveEvents } from '@/features/automations/automations-page/traces/automation-run-live-events'
 import { cn } from '@/lib/utils'
 import { listActiveAutomationRunsAction } from '@/server/orchestrator/automations/automation-run-actions'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
@@ -74,7 +74,7 @@ export const AutomationStatusToolsSection = ({
           <AppAutomationRunAction onRunStarted={onRunStarted} />
           <Button
             type='button'
-            variant='secondary'
+            variant='ghost'
             disabled={isRefreshing}
             onClick={() => void loadRuns()}
           >

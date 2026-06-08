@@ -134,6 +134,9 @@ importers:
       '@rebroid/ai-core':
         specifier: workspace:*
         version: link:../../packages/ai-core
+      '@rebroid/application-core':
+        specifier: workspace:*
+        version: link:../../packages/application-core
       '@rebroid/automation-core':
         specifier: workspace:*
         version: link:../../packages/automation-core
@@ -306,6 +309,9 @@ importers:
       '@rebroid/ai-core':
         specifier: workspace:*
         version: link:../../packages/ai-core
+      '@rebroid/application-core':
+        specifier: workspace:*
+        version: link:../../packages/application-core
       '@rebroid/automation-core':
         specifier: workspace:*
         version: link:../../packages/automation-core
@@ -528,6 +534,18 @@ importers:
         version: 3.6.20
 
   packages/ai-core:
+    devDependencies:
+      '@types/node':
+        specifier: ^25.9.1
+        version: 25.9.1
+      prettier:
+        specifier: ^3.8.3
+        version: 3.8.3
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  packages/application-core:
     devDependencies:
       '@types/node':
         specifier: ^25.9.1

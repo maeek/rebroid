@@ -1,9 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
-  normalizedPointToPixels,
-  pixelBoxToNormalized,
-} from "./geometry";
+import { normalizedPointToPixels, pixelBoxToNormalized } from "./geometry";
 
 test("normalizedPointToPixels clamps normalized coordinates", () => {
   assert.deepEqual(
