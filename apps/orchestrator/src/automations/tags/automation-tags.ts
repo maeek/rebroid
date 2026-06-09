@@ -1,11 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
-
-export interface AutomationTag {
-  name: string;
-  color: string;
-}
-
-export const DEFAULT_AUTOMATION_TAG_COLOR = '#64748b';
+import {
+  AutomationTag,
+  DEFAULT_AUTOMATION_TAG_COLOR,
+} from '@rebroid/automation-core/definition';
 
 const hexColorPattern = /^#[0-9a-fA-F]{6}$/;
 

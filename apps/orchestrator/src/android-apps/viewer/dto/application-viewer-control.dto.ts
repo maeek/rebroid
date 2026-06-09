@@ -1,23 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsIn } from 'class-validator';
+import {
+  viewerCommands,
+  type ViewerCommand,
+} from '@rebroid/application-core/viewer-control';
 
-export const applicationViewerControlCommands = [
-  'back',
-  'home',
-  'recents',
-  'wake',
-  'power',
-  'volume-up',
-  'volume-down',
-  'mute',
-  'rotate',
-  'expand-notifications',
-  'expand-settings',
-  'collapse-panels',
-] as const;
-
-export type ApplicationViewerControlCommand =
-  (typeof applicationViewerControlCommands)[number];
+export type ApplicationViewerControlCommand = ViewerCommand;
+export const applicationViewerControlCommands = viewerCommands;
 
 export class ApplicationViewerControlDto {
   @ApiProperty({

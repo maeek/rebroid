@@ -1,5 +1,7 @@
 import type { AutomationCommandOutputMetadata } from "./definition";
 
+export type { AutomationCommandOutputMetadata } from "./definition";
+
 export interface AutomationCommandEditorMetadata {
   inputDefaults: Record<string, unknown>;
   inputFieldOrder: string[];

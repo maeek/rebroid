@@ -18,6 +18,7 @@
     "zod": "^4.4.3",
     "@fastify/helmet": "^13.0.2",
     "@nestjs/common": "^11.1.24",
+    "@rebroid/application-core": "workspace:*",
     "@nestjs/core": "^11.1.24",
     "@nestjs/platform-fastify": "^11.1.24",
     "@nestjs/platform-ws": "^11.1.24",

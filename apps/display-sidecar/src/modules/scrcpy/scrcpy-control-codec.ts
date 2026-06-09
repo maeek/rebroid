@@ -1,4 +1,4 @@
-import type { ViewerCommand } from "../adb/adb.service";
+import { viewerCommands, type ViewerCommand } from "@rebroid/application-core/viewer-control";
 import {
   ScrcpyKeyboardEventPayload,
   ScrcpyTouchEventPayload,
@@ -28,21 +28,7 @@ const ANDROID_META_SHIFT_ON = 0x1;
 const ANDROID_META_ALT_ON = 0x2;
 const ANDROID_META_CTRL_ON = 0x1000;
 
-export const VIEWER_CONTROL_COMMANDS = new Set<ViewerCommand>([
-  "back",
-  "home",
-  "recents",
-  "power",
-  "wake",
-  "sleep",
-  "volume-up",
-  "volume-down",
-  "mute",
-  "rotate",
-  "expand-notifications",
-  "expand-settings",
-  "collapse-panels",
-]);
+export const VIEWER_CONTROL_COMMANDS = new Set<ViewerCommand>(viewerCommands);
 
 const CONTROL_KEY_CODES: Partial<Record<ViewerCommand, number>> = {
   back: 4,

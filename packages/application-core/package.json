@@ -16,6 +16,10 @@
     "./command-line": {
       "types": "./dist/command-line.d.ts",
       "default": "./dist/command-line.js"
+    },
+    "./viewer-control": {
+      "types": "./dist/viewer-control.d.ts",
+      "default": "./dist/viewer-control.js"
     }
   },
   "scripts": {

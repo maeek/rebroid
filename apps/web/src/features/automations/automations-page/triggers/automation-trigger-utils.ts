@@ -1,7 +1,7 @@
 import {
   defaultSchedule,
   scheduleToCron
-} from '@/features/settings/scheduled-tasks/scheduled-tasks-page/schedule-utils'
+} from '@rebroid/automation-core/schedule'
 import type { AndroidApplication, ApplicationProfileMode } from '@/server/orchestrator/applications/types'
 import type {
   AutomationLastStatus,

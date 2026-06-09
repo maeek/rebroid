@@ -14,6 +14,8 @@ export interface AutomationTag {
   color: string;
 }
 
+export const DEFAULT_AUTOMATION_TAG_COLOR = "#64748b" as const;
+
 export interface AutomationDefinitionMetadata {
   name: string;
   description?: string;

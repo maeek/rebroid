@@ -4,6 +4,10 @@ import { AndroidAppsNetworkPolicyService } from '../../android-apps/network/serv
 import { AndroidAppsDisplaySidecarService } from '../../android-apps/viewer/services/android-apps-display-sidecar.service';
 import { AndroidAppsSidecarAdbService } from '../../android-apps/viewer/services/android-apps-sidecar-adb.service';
 import type { AutomationAiHarnessService } from '../ai/automation-ai-harness.service';
+import type {
+  AutomationCommandEditorMetadata,
+  AutomationCommandOutputMetadata,
+} from '@rebroid/automation-core/command-registry';
 
 export interface AutomationCommandContext {
   app: AndroidApplication;
@@ -28,34 +32,9 @@ export interface AutomationCommandResult {
   data?: Record<string, unknown>;
 }
 
-export type AutomationValueType =
-  | 'string'
-  | 'number'
-  | 'boolean'
-  | 'array'
-  | 'object'
-  | 'unknown';
-
-export interface AutomationCommandOutputMetadata {
-  key: string;
-  label: string;
-  type: AutomationValueType;
-  description: string;
-  example?: unknown;
-}
-
 export interface AutomationCommandEditorExample {
   label: string;
   input: Record<string, unknown>;
-}
-
-export interface AutomationCommandEditorMetadata {
-  inputDefaults: Record<string, unknown>;
-  inputFieldOrder: string[];
-  yamlSnippetFields: string[];
-  category?: string;
-  iconKey?: string;
-  examples?: AutomationCommandEditorExample[];
 }
 
 export type AutomationCommandEditorMetadataOverride =
@@ -81,3 +60,6 @@ export type AutomationCommandCatalogEntry = Pick<
   AutomationCommandDefinition,
   'uses' | 'label' | 'description' | 'requiredPermissions'
 >;
+
+export type { AutomationCommandEditorMetadata };
+export type { AutomationCommandOutputMetadata };

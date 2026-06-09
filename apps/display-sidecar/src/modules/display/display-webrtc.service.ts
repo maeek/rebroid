@@ -2,7 +2,8 @@ import { ConflictException, Injectable, Logger } from "@nestjs/common";
 import { ChildProcess, spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { Writable } from "node:stream";
-import { AdbService, ViewerCommand } from "../adb/adb.service";
+import { AdbService } from "../adb/adb.service";
+import { type ViewerCommand } from "@rebroid/application-core/viewer-control";
 import { ScrcpyService } from "../scrcpy/scrcpy.service";
 import { VIEWER_CONTROL_COMMANDS } from "../scrcpy/scrcpy-control-codec";
 import {

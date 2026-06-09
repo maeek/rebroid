@@ -1,4 +1,4 @@
-import type { ScheduleDraft } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/types'
+import type { ScheduleDraft } from '@rebroid/automation-core/schedule'
 import type { ApplicationProfileMode } from '@/server/orchestrator/applications/types'
 import type { AutomationStartPolicy } from '@/server/orchestrator/automations/types'
 import type { AutomationTag } from '@rebroid/automation-core/definition'

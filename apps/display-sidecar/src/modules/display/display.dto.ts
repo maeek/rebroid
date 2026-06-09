@@ -1,20 +1,5 @@
+import { viewerCommands } from "@rebroid/application-core/viewer-control";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-
-export const viewerCommands = [
-  "back",
-  "home",
-  "recents",
-  "power",
-  "wake",
-  "sleep",
-  "volume-up",
-  "volume-down",
-  "mute",
-  "rotate",
-  "expand-notifications",
-  "expand-settings",
-  "collapse-panels",
-] as const;
 
 export type DisplaySessionStatus =
   | "created"

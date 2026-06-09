@@ -9,7 +9,7 @@ import {
   cronToSchedule,
   defaultSchedule,
   scheduleToCron
-} from '@/features/settings/scheduled-tasks/scheduled-tasks-page/schedule-utils'
+} from '@rebroid/automation-core/schedule'
 import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
 import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { toast } from '@/hooks/use-toast'

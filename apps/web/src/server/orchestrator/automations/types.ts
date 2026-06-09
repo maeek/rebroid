@@ -1,4 +1,5 @@
 import type { AutomationCommandOutput, AutomationDefinition, AutomationTag } from '@rebroid/automation-core/definition'
+import type { AutomationCommandEditorMetadata } from '@rebroid/automation-core/command-registry'
 
 export type AutomationLastStatus = 'never_run' | 'success' | 'failed' | 'running'
 export type AutomationRunStatus = 'queued' | 'running' | 'success' | 'failed' | 'canceled'
@@ -77,20 +78,6 @@ export interface AutomationCommand {
   inputSchema: Record<string, unknown>
   outputs: AutomationCommandOutput[]
   editor: AutomationCommandEditorMetadata
-}
-
-export interface AutomationCommandEditorExample {
-  label: string
-  input: Record<string, unknown>
-}
-
-export interface AutomationCommandEditorMetadata {
-  inputDefaults: Record<string, unknown>
-  inputFieldOrder: string[]
-  yamlSnippetFields: string[]
-  category?: string
-  iconKey?: string
-  examples?: AutomationCommandEditorExample[]
 }
 
 export interface AutomationStepResult {

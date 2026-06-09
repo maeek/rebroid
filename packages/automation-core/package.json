@@ -16,6 +16,10 @@
     "./command-registry": {
       "types": "./dist/command-registry.d.ts",
       "default": "./dist/command-registry.js"
+    },
+    "./schedule": {
+      "types": "./dist/schedule.d.ts",
+      "default": "./dist/schedule.js"
     }
   },
   "scripts": {

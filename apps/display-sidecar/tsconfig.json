@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
+    "module": "node16",
     "declaration": false,
     "removeComments": true,
     "emitDecoratorMetadata": true,
@@ -15,7 +15,7 @@
     "strict": true,
     "skipLibCheck": true,
     "types": ["node"],
-    "moduleResolution": "node",
+    "moduleResolution": "node16",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "ignoreDeprecations": "6.0"

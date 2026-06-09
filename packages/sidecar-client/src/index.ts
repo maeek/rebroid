@@ -1,7 +1,8 @@
 import createClient from 'openapi-fetch'
-import type { paths } from './schema'
+import type { components, paths } from './schema'
 
 export type SidecarApiPaths = paths
+export type SidecarApiSchemas = components["schemas"]
 
 export const createSidecarClient = (baseUrl: string, sharedSecret: string) =>
   createClient<paths>({
