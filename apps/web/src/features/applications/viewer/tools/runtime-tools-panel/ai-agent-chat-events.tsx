@@ -207,7 +207,7 @@ const WorkingIndicator = ({ status }: { status: ChatTurnStatus }) => (
     <span className='flex items-center gap-1'>
       <GradientSparklesIcon className='size-4' />
     </span>
-    <span className='motion-safe:animate-pulse'>{status === 'canceling' ? 'Canceling' : 'Working'}...</span>
+    <span className='motion-safe:animate-pulse'>{status === 'canceling' ? 'Canceling' : 'Thinking'}</span>
   </div>
 )
 
