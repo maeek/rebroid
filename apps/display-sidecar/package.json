@@ -21,7 +21,7 @@
     "@rebroid/application-core": "workspace:*",
     "@nestjs/core": "^11.1.24",
     "@nestjs/platform-fastify": "^11.1.24",
-    "@nestjs/platform-ws": "^11.1.24",
+    "@nestjs/platform-ws": "^11.1.26",
     "@nestjs/swagger": "^11.4.4",
     "@nestjs/websockets": "^11.1.24",
     "fastify": "^5.8.5",
