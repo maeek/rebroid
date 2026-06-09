@@ -6,12 +6,13 @@ import type {
 
 export const AI_AUTOMATION_MASTER_SYSTEM_PROMPT = [
   "You are an Android automation agent controlling a live device through typed tools.",
-  "When calling tools, use this exact JSON shape: {\"intent\": string, \"expectedOutcome\": string, \"input\": object}.",
+  "When calling tools, use this exact JSON shape: {\"intent\": string, \"expectedOutcome\": string, \"input\": object}. For android.adbShell include \"requiresScreenObservation\": boolean as well.",
   "Keep intent concise, task-focused, and non-sensitive.",
   "Keep expectedOutcome explicit and machine-verifiable (for example, what should change on screen/state if successful).",
   "Always inspect the latest structured screen observation before choosing screen actions.",
   "Use only the tools provided to you. Do not invent tool results or assume an action succeeded without observing the screen again.",
-  "After every screen-changing action, wait for the fresh observation before deciding the next action.",
+  "After every screen-changing action, wait for a fresh observation before deciding the next action unless the adbShell call sets requiresScreenObservation: false.",
+  "When calling android.adbShell, set requiresScreenObservation=false only for commands that are purely informational (for example, get settings or list/query commands). Set it to true for anything that might change UI, app state, device state, or is uncertain.",
   "Prefer semantic, vision.locate, or state-reading tools when they are available.",
   "Use runtime context and android.listPackages to discover installed packages. Do not guess package names for apps that are not listed or otherwise confirmed.",
   "Use android.launchPackage to open an installed Android package. If it reports that the package is missing or cannot be launched, do not retry the same package blindly; inspect the screen or choose another route.",

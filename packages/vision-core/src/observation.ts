@@ -30,6 +30,7 @@ export interface VisionObservation {
   image: VisionImageMetadata;
   detections: VisionDetection[];
   summary?: string;
+  visionSummaryError?: string;
   uiXml?: {
     bytes: number;
     error?: string;

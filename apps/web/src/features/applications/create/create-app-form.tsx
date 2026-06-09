@@ -18,7 +18,7 @@ import { createApplicationAction } from '@/server/orchestrator/applications/acti
 import { hasPermission, isRedroidImage, type PermissionMap } from '@/shared/permissions/permissions'
 import {
   applyRedroidDisplayContainerArgs,
-  defaultRedroidDisplayProfileId,
+  defaultRedroidDisplayProfileId
 } from '@rebroid/application-core/redroid-runtime'
 import { CreateAppDeviceSection } from './create-app-device-section'
 import { CreateAppDisplaySection } from './create-app-display-section'

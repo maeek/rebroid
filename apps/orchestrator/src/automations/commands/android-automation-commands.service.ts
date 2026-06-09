@@ -726,8 +726,29 @@ export class AndroidAutomationCommandsService {
           { app, adb }: AutomationCommandContext,
         ) => {
           const result = await adb.shell(app, command, timeoutMs);
+          const stdout = result.stdout.trim();
+          const stderr = result.stderr.trim();
+          const preview = (value: string) =>
+            value.length > 800 ? `${value.slice(0, 800)}...` : value;
+
+          const summaryParts: string[] =
+            result.exitCode === 0
+              ? [`Shell command exited with ${result.exitCode}.`]
+              : [
+                  `Shell command failed with exit code ${result.exitCode}.`,
+                  ...(stdout || stderr
+                    ? [`${stdout || stderr}`]
+                    : ['No command output was returned.']),
+                ];
+          if (stdout) {
+            summaryParts.push(`stdout: ${preview(stdout)}`);
+          }
+          if (stderr) {
+            summaryParts.push(`stderr: ${preview(stderr)}`);
+          }
+
           return {
-            summary: `Shell command exited with ${result.exitCode}.`,
+            summary: summaryParts.join(' '),
             data: {
               stdout: result.stdout,
               stderr: result.stderr,

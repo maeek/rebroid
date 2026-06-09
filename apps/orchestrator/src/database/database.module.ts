@@ -12,6 +12,7 @@ import { AutomationTrigger } from '../automations/entities/automation-trigger.en
 import { Automation } from '../automations/entities/automation.entity';
 import { ScheduledTask } from '../scheduled-tasks/entities/scheduled-task.entity';
 import { InitializeSqliteSchema1800000000000 } from './migrations/1800000000000-initialize-sqlite-schema';
+import { AddAutomationRunEventsTable1800000000001 } from './migrations/1800000000001-add-automation-run-events-table';
 
 @Module({
   imports: [
@@ -34,7 +35,10 @@ import { InitializeSqliteSchema1800000000000 } from './migrations/1800000000000-
             AutomationRunEvent,
             AutomationTrigger,
           ],
-          migrations: [InitializeSqliteSchema1800000000000],
+          migrations: [
+            InitializeSqliteSchema1800000000000,
+            AddAutomationRunEventsTable1800000000001,
+          ],
           migrationsRun: true,
           synchronize: false,
         };

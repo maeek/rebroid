@@ -6,6 +6,7 @@ import {
   sanitizeAiDataForModel,
   providerErrorDetailFromText,
   sanitizeAiDataForEvent,
+  isDangerousAdbShellCommand,
 } from "./observation";
 
 describe("ai observation utilities", () => {
@@ -107,5 +108,31 @@ describe("ai observation utilities", () => {
       String(sanitizeAiDataForEvent("x".repeat(10_000))).length > 4_000,
       true,
     );
+  });
+
+  it("classifies destructive adb shell commands", () => {
+    assert.equal(
+      isDangerousAdbShellCommand("pm install /sdcard/app.apk"),
+      true,
+    );
+    assert.equal(
+      isDangerousAdbShellCommand("cmd package install-existing com.example"),
+      true,
+    );
+    assert.equal(isDangerousAdbShellCommand("rm -rf /sdcard/Download"), true);
+    assert.equal(isDangerousAdbShellCommand("su -c ls /"), true);
+    assert.equal(isDangerousAdbShellCommand("reboot"), true);
+  });
+
+  it("allows non-destructive adb shell commands", () => {
+    assert.equal(isDangerousAdbShellCommand("pm list packages"), false);
+    assert.equal(isDangerousAdbShellCommand("settings get global hidden_api_policy"), false);
+    assert.equal(isDangerousAdbShellCommand("wm size"), false);
+    assert.equal(isDangerousAdbShellCommand("ls /sdcard | head -20"), false);
+  });
+
+  it("returns false for empty or whitespace commands", () => {
+    assert.equal(isDangerousAdbShellCommand(""), false);
+    assert.equal(isDangerousAdbShellCommand("   "), false);
   });
 });

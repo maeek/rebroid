@@ -15,19 +15,37 @@ const compactValue = (value: unknown) => {
   }
 }
 
-const compactArgumentRows = (value: unknown) => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return []
-
-  return Object.entries(value)
-    .slice(0, 12)
-    .map(([key, item]) => {
+const compactValueRows = (value: unknown) => {
+  if (value === null || value === undefined) return []
+  if (Array.isArray(value)) {
+    return value.slice(0, 12).map((item, index) => {
       const text = compactValue(item)
       return {
-        key,
+        key: `item ${index + 1}`,
         value: text.length > 180 ? `${text.slice(0, 180)}...` : text
       }
     })
+  }
+  if (typeof value === 'object') {
+    return Object.entries(value)
+      .slice(0, 12)
+      .map(([key, item]) => {
+        const text = compactValue(item)
+        return {
+          key,
+          value: text.length > 180 ? `${text.slice(0, 180)}...` : text
+        }
+      })
+  }
+  return [
+    {
+      key: 'value',
+      value: compactValue(value)
+    }
+  ]
 }
+
+const compactArgumentRows = compactValueRows
 
 const runStatusBadgeVariant = (status: ChatTurnStatus) =>
   status === 'failed' || status === 'canceled' ? 'destructive' : 'secondary'
@@ -51,6 +69,7 @@ type ToolTimelineItem = {
   name: string
   status: 'using' | 'used' | 'failed'
   arguments: Array<{ key: string; value: string }>
+  output: Array<{ key: string; value: string }>
   error: string | null
 }
 
@@ -95,6 +114,7 @@ const buildTimelineItems = (events: AutomationRunEvent[]): EventTimelineItem[] =
       name,
       status: 'using',
       arguments: [],
+      output: [],
       error: null
     }
 
@@ -104,6 +124,7 @@ const buildTimelineItems = (events: AutomationRunEvent[]): EventTimelineItem[] =
 
     if (event.type === 'ai.tool.completed') {
       pendingTool.status = 'used'
+      pendingTool.output = compactArgumentRows(event.data.output !== undefined ? event.data.output : event.data)
       flushTool()
     }
 
@@ -193,6 +214,7 @@ const WorkingIndicator = ({ status }: { status: ChatTurnStatus }) => (
 const ToolEventView = ({ item }: { item: ToolTimelineItem }) => {
   const label = item.status === 'failed' ? 'Tool failed' : item.status === 'used' ? 'Used tool' : 'Using tool'
   const hasArguments = item.arguments.length > 0
+  const hasOutput = item.output.length > 0
 
   return (
     <div className='grid gap-1 text-xs text-muted-foreground'>
@@ -200,7 +222,9 @@ const ToolEventView = ({ item }: { item: ToolTimelineItem }) => {
         <summary className='flex cursor-pointer list-none items-center gap-1'>
           <span>{label}</span>
           <span>({item.name})</span>
-          {hasArguments ? <IconChevronDown className='size-3 transition-transform group-open:rotate-180' /> : null}
+          {hasArguments || hasOutput ? (
+            <IconChevronDown className='size-3 transition-transform group-open:rotate-180' />
+          ) : null}
         </summary>
         {hasArguments ? (
           <dl className='mt-1 grid max-w-full gap-1 rounded-md bg-background/25 p-2 text-[11px] text-muted-foreground/80'>
@@ -211,6 +235,19 @@ const ToolEventView = ({ item }: { item: ToolTimelineItem }) => {
               >
                 <dt className='min-w-0 font-medium text-muted-foreground'>{argument.key}</dt>
                 <dd className='min-w-0 overflow-hidden wrap-anywhere'>{argument.value}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
+        {hasOutput ? (
+          <dl className='mt-1 grid max-w-full gap-1 rounded-md bg-background/25 p-2 text-[11px] text-muted-foreground/80'>
+            {item.output.map(output => (
+              <div
+                key={output.key}
+                className='grid min-w-0 gap-0.5 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-2'
+              >
+                <dt className='min-w-0 font-medium text-muted-foreground'>{output.key}</dt>
+                <dd className='min-w-0 overflow-hidden wrap-anywhere'>{output.value}</dd>
               </div>
             ))}
           </dl>

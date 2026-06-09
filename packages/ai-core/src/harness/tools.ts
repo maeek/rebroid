@@ -14,6 +14,7 @@ export const buildToolDefinitions = (
   commands
     .filter((command) => command.uses !== "ai.run" && allowed(command.uses))
     .map((command) => {
+      const adbShellCommand = command.uses === "android.adbShell";
       const commandInputSchema =
         command.inputSchema && !Array.isArray(command.inputSchema)
           ? command.inputSchema
@@ -45,6 +46,15 @@ export const buildToolDefinitions = (
                 typeof commandInputSchema === "object"
                   ? commandInputSchema
                   : { type: "object", properties: {}, additionalProperties: true },
+              ...(adbShellCommand
+                ? {
+                    requiresScreenObservation: {
+                      type: "boolean",
+                      description:
+                        "Set to false only for adbShell commands that read state; true otherwise.",
+                    },
+                  }
+                : {}),
             },
             required: ["intent", "expectedOutcome", "input"],
             additionalProperties: false,

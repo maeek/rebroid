@@ -207,7 +207,7 @@ export const RuntimeToolsPanel = () => {
         <div
           role='tablist'
           aria-label='Runtime tools'
-          className='flex w-full min-w-0 items-center gap-2 overflow-x-auto border-b border-border/70 py-2 [scrollbar-width:thin]'
+          className='flex w-full min-w-0 items-center gap-1 overflow-x-auto scrollbar-thin py-1 px-1.5 rounded-md bg-background/30'
         >
           {tools.map(tool => (
             <button
@@ -221,7 +221,7 @@ export const RuntimeToolsPanel = () => {
               onClick={() => setActiveTool(tool.id)}
               onKeyDown={event => handleToolTabKeyDown(event, tool.id)}
               className={cn(
-                'flex shrink-0 items-center gap-2 rounded-md px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors hover:bg-card/45 hover:text-primary focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none',
+                'flex shrink-0 items-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors hover:bg-primary/8 hover:text-primary focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none',
                 {
                   'bg-primary/10 text-foreground': selectedToolId === tool.id
                 }

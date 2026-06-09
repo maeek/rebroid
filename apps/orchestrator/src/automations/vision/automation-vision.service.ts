@@ -75,22 +75,56 @@ export class AutomationVisionService {
           status: 'failed' as const,
           truncated: false,
         };
-    const summary = visionModel
-      ? await this.describeWithVisionModel({
+    const { summary, visionSummaryError } = visionModel
+      ? await this.describeWithVisionModelSafe({
           aiImage,
           context,
           deadline,
           ...visionModel,
         })
-      : undefined;
+      : { summary: undefined, visionSummaryError: undefined };
 
     return {
       image,
       aiImage,
       detections: sortDetections(detections).slice(0, 80),
       ...(summary ? { summary } : {}),
+      ...(visionSummaryError ? { visionSummaryError } : {}),
       uiXml,
     };
+  }
+
+  private async describeWithVisionModelSafe({
+    aiImage,
+    context,
+    deadline,
+    model,
+    provider,
+  }: {
+    aiImage: NonNullable<AutomationScreenObservation['aiImage']>;
+    context: Pick<AutomationCommandContext, 'abortSignal'>;
+    deadline?: number;
+    provider: AutomationAiProvider;
+    model: AutomationAiProviderModel;
+  }): Promise<{ summary?: string; visionSummaryError?: string }> {
+    try {
+      return {
+        summary: await this.describeWithVisionModel({
+          aiImage,
+          context,
+          deadline,
+          model,
+          provider,
+        }),
+      };
+    } catch (error) {
+      return {
+        visionSummaryError: sanitizeAiText(
+          error instanceof Error ? error.message : String(error),
+          3_000,
+        ),
+      };
+    }
   }
 
   async locate(
@@ -122,7 +156,9 @@ export class AutomationVisionService {
   summarizeForPlanner(observation: AutomationScreenObservation) {
     const visionState = observation.summary
       ? `Vision model summary: available.`
-      : 'Vision model summary: unavailable; planner cannot inspect screenshot pixels directly and must rely on UI XML detections/text.';
+      : observation.visionSummaryError
+        ? `Vision summary failed: ${observation.visionSummaryError}`
+        : 'Vision model summary: unavailable; planner cannot inspect screenshot pixels directly and must rely on UI XML detections/text.';
     const visibilityWarning =
       !observation.summary && observation.detections.length === 0
         ? 'Visibility warning: no UI XML detections and no vision summary are available. The planner should ask the user for more context or use non-visual state-reading tools instead of guessing screen contents.'

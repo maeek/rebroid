@@ -9,12 +9,14 @@ export interface AutomationToolEnvelopeInput {
   intent: string;
   expectedOutcome: string;
   input: Record<string, unknown>;
+  requiresScreenObservation?: boolean;
 }
 
 export interface AutomationToolEnvelopeResult {
   intent: string;
   expectedOutcome: string;
   input: Record<string, unknown>;
+  requiresScreenObservation?: boolean;
   envelopeValid: boolean;
 }
 

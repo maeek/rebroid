@@ -27,6 +27,7 @@ import { AutomationRunEventBus } from '../events/automation-run-event-bus.servic
 import { AutomationAiProviderService } from './automation-ai-provider.service';
 import {
   SCREEN_MUTATING_TOOLS,
+  isDangerousAdbShellCommand,
   providerErrorDetailFromText,
   sanitizeAiDataForEvent,
   sanitizeAiDataForModel,
@@ -171,18 +172,19 @@ export class AutomationAiHarnessService {
             clientMessageId: input.clientMessageId ?? null,
           });
         }
-        toolCalls += 1;
         await this.emit(context, 'ai.tool.arguments', uses, {
           uses,
           intent: parsedToolCall.intent,
           expectedOutcome: parsedToolCall.expectedOutcome,
           envelopeValid: parsedToolCall.envelopeValid,
+          requiresScreenObservation:
+            parsedToolCall.requiresScreenObservation ?? null,
           arguments: sanitizeAiDataForEvent(parsedToolCall.input),
           clientMessageId: input.clientMessageId ?? null,
         });
+        toolCalls += 1;
         const blockedToolResult = this.blockedToolResult(
           uses,
-          parsedToolCall.input,
           parsedToolCall,
         );
         if (blockedToolResult) {
@@ -238,7 +240,12 @@ export class AutomationAiHarnessService {
             }),
           });
 
-          if (SCREEN_MUTATING_TOOLS.has(uses)) {
+          if (
+            await this.shouldObserveAfterTool({
+              uses,
+              toolCall: parsedToolCall,
+            })
+          ) {
             const observation = await this.observeScreen({
               context,
               input,
@@ -420,6 +427,34 @@ export class AutomationAiHarnessService {
     return providerErrorDetailFromText(text);
   }
 
+  private async shouldObserveAfterTool({
+    uses,
+    toolCall,
+  }: {
+    uses: string;
+    toolCall: AutomationToolEnvelopeResult;
+  }): Promise<boolean> {
+    if (!SCREEN_MUTATING_TOOLS.has(uses)) {
+      return false;
+    }
+
+    if (uses !== 'android.adbShell') {
+      return true;
+    }
+
+    const command =
+      typeof toolCall.input.command === 'string'
+        ? toolCall.input.command
+        : '';
+    if (!command.trim()) {
+      return true;
+    }
+    if (toolCall.requiresScreenObservation === false) {
+      return false;
+    }
+    return true;
+  }
+
   private async consumeStream(
     body: ReadableStream<Uint8Array>,
     onContentDelta?: (delta: string) => Promise<void>,
@@ -505,20 +540,21 @@ export class AutomationAiHarnessService {
 
   private blockedToolResult(
     uses: string,
-    args: Record<string, unknown>,
     toolCall: AutomationToolEnvelopeResult,
   ) {
     if (uses !== 'android.adbShell') {
       return null;
     }
-    const command = typeof args.command === 'string' ? args.command : '';
-    if (!this.isDangerousShellCommand(command)) {
+    const command =
+      typeof toolCall.input.command === 'string' ? toolCall.input.command : '';
+    if (!isDangerousAdbShellCommand(command)) {
       return null;
     }
     return {
       summary:
-        'Installing Android applications is not allowed during AI automation. Ask the user to install the app or choose another route.',
-      error: 'Android app installation is blocked for AI automation.',
+        'This adbShell command is blocked because it may modify device state dangerously. Ask the user for a safer route.',
+      error:
+        'Potentially destructive adbShell command blocked during AI automation.',
       expectedIntent:
         toolCall.intent.length > 0
           ? toolCall.intent
@@ -529,16 +565,6 @@ export class AutomationAiHarnessService {
           : undefined,
       envelopeValid: toolCall.envelopeValid,
     };
-  }
-
-  private isDangerousShellCommand(commandText: string) {
-    const lowered = commandText.toLowerCase();
-    return (
-      /\b(pm|cmd\s+package)\s+install\b|\binstall-existing\b/.test(lowered) ||
-      /\brm\s+(-rf|-[^\s]+\s+)?\/\s*(data|system|sdcard|storage)\b/.test(lowered) ||
-      /\bsu\b/.test(lowered) ||
-      /\breboot\b/.test(lowered)
-    );
   }
 
   private parseToolCallArguments(
@@ -559,6 +585,15 @@ export class AutomationAiHarnessService {
       rawArguments.input != null &&
       typeof rawArguments.input === 'object' &&
       !Array.isArray(rawArguments.input);
+    const requiresScreenObservation =
+      typeof rawArguments.requiresScreenObservation === 'boolean'
+        ? rawArguments.requiresScreenObservation
+        : undefined;
+    const requiresScreenObservationWellFormed =
+      uses !== 'android.adbShell'
+        ? true
+        : rawArguments.requiresScreenObservation === undefined ||
+          typeof rawArguments.requiresScreenObservation === 'boolean';
     if (!hasEnvelope) {
       return {
         intent:
@@ -570,6 +605,8 @@ export class AutomationAiHarnessService {
             ? sanitizeAiText(rawArguments.expectedOutcome, 220)
             : 'No explicit expected outcome was supplied.',
         input: rawArguments,
+        requiresScreenObservation:
+          uses === 'android.adbShell' ? true : undefined,
         envelopeValid: false,
       };
     }
@@ -577,7 +614,11 @@ export class AutomationAiHarnessService {
       intent: sanitizeAiText(rawArguments.intent, 140),
       expectedOutcome: sanitizeAiText(rawArguments.expectedOutcome, 220),
       input: rawArguments.input as Record<string, unknown>,
-      envelopeValid: true,
+      requiresScreenObservation:
+        uses === 'android.adbShell'
+          ? requiresScreenObservation ?? true
+          : undefined,
+      envelopeValid: hasEnvelope && requiresScreenObservationWellFormed,
     };
   }
 

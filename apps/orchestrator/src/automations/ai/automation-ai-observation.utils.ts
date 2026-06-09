@@ -1,5 +1,6 @@
 export {
   SCREEN_MUTATING_TOOLS,
+  isDangerousAdbShellCommand,
   isImageInputUnsupportedProviderMessage,
   prepareUiXml,
   providerErrorDetailFromText,
