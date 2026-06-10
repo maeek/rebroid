@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { catalogByRole, selectCatalogModel, selectCatalogProvider } from '@/shared/automation/automation-ai-catalog'
 import { NumberField, TextareaField } from '../shared/action-fields'
 import type { AutomationActionDefinition } from '../automation-action-definition'
 import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
@@ -72,33 +73,15 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
   const [isCheckingHealth, setIsCheckingHealth] = useState(false)
   const patchInputRef = useRef(patchInput)
   const providerId = stringValue(input, 'providerId')
-  const plannerCatalog = useMemo(
-    () =>
-      catalog
-        .map(provider => ({ ...provider, models: provider.models.filter(model => model.roles?.includes('planner')) }))
-        .filter(provider => provider.models.length > 0),
-    [catalog]
-  )
-  const visionCatalog = useMemo(
-    () =>
-      catalog
-        .map(provider => ({ ...provider, models: provider.models.filter(model => model.roles?.includes('vision')) }))
-        .filter(provider => provider.models.length > 0),
-    [catalog]
-  )
-  const selectedProvider = plannerCatalog.find(provider => provider.id === providerId) ?? plannerCatalog[0]
+  const plannerCatalog = useMemo(() => catalogByRole(catalog, 'planner'), [catalog])
+  const visionCatalog = useMemo(() => catalogByRole(catalog, 'vision'), [catalog])
+  const selectedProvider = selectCatalogProvider(plannerCatalog, providerId)
   const modelId = stringValue(input, 'modelId')
-  const selectedModel =
-    selectedProvider?.models.find(model => model.id === modelId) ??
-    selectedProvider?.models.find(model => model.default) ??
-    selectedProvider?.models[0]
+  const selectedModel = selectCatalogModel(selectedProvider, modelId)
   const visionProviderId = stringValue(input, 'visionProviderId')
-  const selectedVisionProvider = visionCatalog.find(provider => provider.id === visionProviderId) ?? visionCatalog[0]
+  const selectedVisionProvider = selectCatalogProvider(visionCatalog, visionProviderId)
   const visionModelId = stringValue(input, 'visionModelId')
-  const selectedVisionModel =
-    selectedVisionProvider?.models.find(model => model.id === visionModelId) ??
-    selectedVisionProvider?.models.find(model => model.default) ??
-    selectedVisionProvider?.models[0]
+  const selectedVisionModel = selectCatalogModel(selectedVisionProvider, visionModelId)
   const allowedTools = stringArrayValue(input, 'allowedTools')
   const selectableCommands = useMemo(
     () =>
@@ -118,22 +101,12 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
       .then(nextCatalog => {
         if (cancelled) return
         setCatalog(nextCatalog)
-        const plannerProviders = nextCatalog
-          .map(item => ({ ...item, models: item.models.filter(model => model.roles?.includes('planner')) }))
-          .filter(item => item.models.length > 0)
-        const visionProviders = nextCatalog
-          .map(item => ({ ...item, models: item.models.filter(model => model.roles?.includes('vision')) }))
-          .filter(item => item.models.length > 0)
-        const provider = plannerProviders.find(item => item.id === providerId) ?? plannerProviders[0]
-        const model =
-          provider?.models.find(item => item.id === modelId) ??
-          provider?.models.find(item => item.default) ??
-          provider?.models[0]
-        const visionProvider = visionProviders.find(item => item.id === visionProviderId) ?? visionProviders[0]
-        const visionModel =
-          visionProvider?.models.find(item => item.id === visionModelId) ??
-          visionProvider?.models.find(item => item.default) ??
-          visionProvider?.models[0]
+        const plannerProviders = catalogByRole(nextCatalog, 'planner')
+        const visionProviders = catalogByRole(nextCatalog, 'vision')
+        const provider = selectCatalogProvider(plannerProviders, providerId)
+        const model = selectCatalogModel(provider, modelId)
+        const visionProvider = selectCatalogProvider(visionProviders, visionProviderId)
+        const visionModel = selectCatalogModel(visionProvider, visionModelId)
         const patch: Record<string, unknown> = {}
         if (provider && provider.id !== providerId) patch.providerId = provider.id
         if (model && model.id !== modelId) patch.modelId = model.id
@@ -204,7 +177,7 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
             disabled={plannerCatalog.length === 0}
             onValueChange={nextProviderId => {
               const nextProvider = plannerCatalog.find(provider => provider.id === nextProviderId)
-              const nextModel = nextProvider?.models.find(model => model.default) ?? nextProvider?.models[0]
+              const nextModel = selectCatalogModel(nextProvider, '')
               patchInput({
                 providerId: nextProviderId,
                 ...(nextModel ? { modelId: nextModel.id } : {})
@@ -255,7 +228,7 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
             disabled={visionCatalog.length === 0}
             onValueChange={nextProviderId => {
               const nextProvider = visionCatalog.find(provider => provider.id === nextProviderId)
-              const nextModel = nextProvider?.models.find(model => model.default) ?? nextProvider?.models[0]
+              const nextModel = selectCatalogModel(nextProvider, '')
               patchInput({
                 visionProviderId: nextProviderId,
                 ...(nextModel ? { visionModelId: nextModel.id } : {})

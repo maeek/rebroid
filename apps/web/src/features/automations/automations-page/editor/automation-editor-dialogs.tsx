@@ -12,6 +12,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { selectCatalogModel } from '@/shared/automation/automation-ai-catalog'
 import type { AutomationAiModelCatalogProvider } from '@/server/orchestrator/settings/types'
 
 export const AiDraftDialog = ({
@@ -40,10 +41,7 @@ export const AiDraftDialog = ({
   onPromptChange: (prompt: string) => void
 }) => {
   const selectedProvider = catalog.find(provider => provider.id === providerId) ?? catalog[0]
-  const selectedModel =
-    selectedProvider?.models.find(model => model.id === modelId) ??
-    selectedProvider?.models.find(model => model.default) ??
-    selectedProvider?.models[0]
+  const selectedModel = selectCatalogModel(selectedProvider, modelId)
 
   return (
     <Dialog
@@ -64,7 +62,7 @@ export const AiDraftDialog = ({
                 disabled={catalog.length === 0}
                 onValueChange={nextProviderId => {
                   const nextProvider = catalog.find(provider => provider.id === nextProviderId)
-                  const nextModel = nextProvider?.models.find(model => model.default) ?? nextProvider?.models[0]
+                  const nextModel = selectCatalogModel(nextProvider, '')
                   onProviderChange(nextProviderId)
                   onModelChange(nextModel?.id ?? '')
                 }}

@@ -163,150 +163,185 @@ export class AutomationDefinitionService {
     seenIds.add(id);
 
     if (type === 'condition') {
-      const condition = this.conditions.normalizeExpression(
-        rawStep.condition,
-        `${path}.condition`,
-      );
-      this.conditions.validateExpressionReferences(
-        condition,
-        availableStepOutputs,
-        `${path}.condition`,
-      );
-      const branchOutputs = cloneAvailableStepOutputs(availableStepOutputs);
-      branchOutputs.set(id, outputKeysForUses('flow.condition'));
-      return {
+      return this.normalizeConditionStep(
+        rawStep,
         id,
-        type,
-        condition,
-        then: this.normalizeNestedSteps(
-          rawStep.then,
-          seenIds,
-          `${path}.then`,
-          id,
-          cloneAvailableStepOutputs(branchOutputs),
-        ),
-        ...(rawStep.else === undefined
-          ? {}
-          : {
-              else: this.normalizeNestedSteps(
-                rawStep.else,
-                seenIds,
-                `${path}.else`,
-                id,
-                cloneAvailableStepOutputs(branchOutputs),
-              ),
-            }),
-      };
+        path,
+        seenIds,
+        availableStepOutputs,
+      );
     }
 
     if (type === 'switch') {
-      if (!Array.isArray(rawStep.cases)) {
-        throw new BadRequestException(`Step "${id}" cases must be an array.`);
-      }
-      const caseOutputs = cloneAvailableStepOutputs(availableStepOutputs);
-      caseOutputs.set(id, outputKeysForUses('flow.switch'));
-      const cases: AutomationSwitchCase[] = rawStep.cases.map(
-        (rawCase, caseIndex) => {
-          if (!isRecord(rawCase)) {
-            throw new BadRequestException(
-              `Step "${id}" case ${caseIndex + 1} must be an object.`,
-            );
-          }
-          return {
-            value: rawCase.value,
-            steps: this.normalizeNestedSteps(
-              rawCase.steps,
-              seenIds,
-              `${path}.cases[${caseIndex}].steps`,
-              id,
-              cloneAvailableStepOutputs(caseOutputs),
-            ),
-          };
-        },
-      );
-      return {
+      return this.normalizeSwitchStep(
+        rawStep,
         id,
-        type,
-        value: this.normalizeSwitchValueRef(
-          rawStep.value,
-          `${path}.value`,
-          availableStepOutputs,
-        ),
-        cases,
-        ...(rawStep.default === undefined
-          ? {}
-          : {
-              default: this.normalizeNestedSteps(
-                rawStep.default,
-                seenIds,
-                `${path}.default`,
-                id,
-                cloneAvailableStepOutputs(caseOutputs),
-              ),
-            }),
-      };
+        path,
+        seenIds,
+        availableStepOutputs,
+      );
     }
 
     if (type === 'repeat') {
-      const count =
-        rawStep.count === undefined
-          ? undefined
-          : this.normalizePositiveInteger(rawStep.count, `Step "${id}" count`);
-      const predicate =
-        rawStep.while === undefined
-          ? undefined
-          : this.conditions.normalizeExpression(rawStep.while, `${path}.while`);
-      if (predicate) {
-        this.conditions.validateExpressionReferences(
-          predicate,
-          availableStepOutputs,
-          `${path}.while`,
-        );
-      }
-      if (count === undefined && predicate === undefined) {
-        throw new BadRequestException(
-          `Step "${id}" must define count or while.`,
-        );
-      }
-      if (count !== undefined && predicate !== undefined) {
-        throw new BadRequestException(
-          `Step "${id}" cannot define both count and while.`,
-        );
-      }
-      const maxIterations = this.normalizePositiveInteger(
-        rawStep.maxIterations ?? count,
-        `Step "${id}" maxIterations`,
-      );
-      if (maxIterations > 1000) {
-        throw new BadRequestException(
-          `Step "${id}" maxIterations must be 1000 or fewer.`,
-        );
-      }
-      return {
+      return this.normalizeRepeatStep(
+        rawStep,
         id,
-        type,
-        ...(count === undefined ? {} : { count }),
-        ...(predicate === undefined ? {} : { while: predicate }),
-        maxIterations,
-        steps: this.normalizeNestedSteps(
-          rawStep.steps,
-          seenIds,
-          `${path}.steps`,
-          id,
-          cloneAvailableStepOutputs(availableStepOutputs),
-        ),
-      };
+        path,
+        seenIds,
+        availableStepOutputs,
+      );
     }
 
     if (typeof rawStep.uses !== 'string' || !rawStep.uses.trim()) {
       throw new BadRequestException(`Step ${index + 1} must define uses.`);
     }
-    const uses = rawStep.uses.trim();
+    return this.normalizeActionStep(rawStep, id);
+  }
+
+  private normalizeConditionStep(
+    rawStep: Record<string, unknown>,
+    id: string,
+    path: string,
+    seenIds: Set<string>,
+    availableStepOutputs: Map<string, Set<string>>,
+  ) {
+    const condition = this.conditions.normalizeExpression(
+      rawStep.condition,
+      `${path}.condition`,
+    );
+    this.conditions.validateExpressionReferences(
+      condition,
+      availableStepOutputs,
+      `${path}.condition`,
+    );
+    const branchOutputs = cloneAvailableStepOutputs(availableStepOutputs);
+    branchOutputs.set(id, outputKeysForUses('flow.condition'));
+    return {
+      id,
+      type: 'condition' as const,
+      condition,
+      then: this.normalizeNestedSteps(
+        rawStep.then,
+        seenIds,
+        `${path}.then`,
+        id,
+        cloneAvailableStepOutputs(branchOutputs),
+      ),
+      ...(rawStep.else === undefined
+        ? {}
+        : {
+            else: this.normalizeNestedSteps(
+              rawStep.else,
+              seenIds,
+              `${path}.else`,
+              id,
+              cloneAvailableStepOutputs(branchOutputs),
+            ),
+          }),
+    };
+  }
+
+  private normalizeSwitchStep(
+    rawStep: Record<string, unknown>,
+    id: string,
+    path: string,
+    seenIds: Set<string>,
+    availableStepOutputs: Map<string, Set<string>>,
+  ) {
+    if (!Array.isArray(rawStep.cases)) {
+      throw new BadRequestException(`Step "${id}" cases must be an array.`);
+    }
+    const caseOutputs = cloneAvailableStepOutputs(availableStepOutputs);
+    caseOutputs.set(id, outputKeysForUses('flow.switch'));
+    const cases: AutomationSwitchCase[] = rawStep.cases.map((rawCase, caseIndex) => {
+      if (!isRecord(rawCase)) {
+        throw new BadRequestException(
+          `Step "${id}" case ${caseIndex + 1} must be an object.`,
+        );
+      }
+      return {
+        value: rawCase.value,
+        steps: this.normalizeNestedSteps(
+          rawCase.steps,
+          seenIds,
+          `${path}.cases[${caseIndex}].steps`,
+          id,
+          cloneAvailableStepOutputs(caseOutputs),
+        ),
+      };
+    });
+    return {
+      id,
+      type: 'switch' as const,
+      value: this.normalizeSwitchValueRef(rawStep.value, `${path}.value`, availableStepOutputs),
+      cases,
+      ...(rawStep.default === undefined
+        ? {}
+        : {
+            default: this.normalizeNestedSteps(
+              rawStep.default,
+              seenIds,
+              `${path}.default`,
+              id,
+              cloneAvailableStepOutputs(caseOutputs),
+            ),
+          }),
+    };
+  }
+
+  private normalizeRepeatStep(
+    rawStep: Record<string, unknown>,
+    id: string,
+    path: string,
+    seenIds: Set<string>,
+    availableStepOutputs: Map<string, Set<string>>,
+  ) {
+    const count =
+      rawStep.count === undefined ? undefined : this.normalizePositiveInteger(rawStep.count, `Step "${id}" count`);
+    const predicate =
+      rawStep.while === undefined ? undefined : this.conditions.normalizeExpression(rawStep.while, `${path}.while`);
+    if (predicate) {
+      this.conditions.validateExpressionReferences(
+        predicate,
+        availableStepOutputs,
+        `${path}.while`,
+      );
+    }
+    if (count === undefined && predicate === undefined) {
+      throw new BadRequestException(`Step "${id}" must define count or while.`);
+    }
+    if (count !== undefined && predicate !== undefined) {
+      throw new BadRequestException(`Step "${id}" cannot define both count and while.`);
+    }
+    const maxIterations = this.normalizePositiveInteger(
+      rawStep.maxIterations ?? count,
+      `Step "${id}" maxIterations`,
+    );
+    if (maxIterations > 1000) {
+      throw new BadRequestException(`Step "${id}" maxIterations must be 1000 or fewer.`);
+    }
+    return {
+      id,
+      type: 'repeat' as const,
+      ...(count === undefined ? {} : { count }),
+      ...(predicate === undefined ? {} : { while: predicate }),
+      maxIterations,
+      steps: this.normalizeNestedSteps(
+        rawStep.steps,
+        seenIds,
+        `${path}.steps`,
+        id,
+        cloneAvailableStepOutputs(availableStepOutputs),
+      ),
+    };
+  }
+
+  private normalizeActionStep(rawStep: Record<string, unknown>, id: string) {
+    const uses = typeof rawStep.uses === 'string' ? rawStep.uses.trim() : '';
     const input = rawStep.with === undefined ? {} : rawStep.with;
     if (!isRecord(input)) {
       throw new BadRequestException(`Step "${id}" with must be an object.`);
     }
-
     return {
       id,
       uses,

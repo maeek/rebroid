@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { selectCatalogModel } from '@/shared/automation/automation-ai-catalog'
 import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
 
 const healthLabel = (health: AutomationAiProviderHealth) =>
@@ -115,7 +116,7 @@ export const AiAgentSettingsPopover = ({
               disabled={catalog.length === 0}
               onValueChange={nextProviderId => {
                 const nextProvider = catalog.find(provider => provider.id === nextProviderId)
-                const nextModel = nextProvider?.models.find(model => model.default) ?? nextProvider?.models[0]
+                const nextModel = selectCatalogModel(nextProvider, '')
                 setProviderId(nextProviderId)
                 setModelId(nextModel?.id ?? '')
               }}
@@ -164,7 +165,7 @@ export const AiAgentSettingsPopover = ({
               disabled={visionCatalog.length === 0}
               onValueChange={nextProviderId => {
                 const nextProvider = visionCatalog.find(provider => provider.id === nextProviderId)
-                const nextModel = nextProvider?.models.find(model => model.default) ?? nextProvider?.models[0]
+                const nextModel = selectCatalogModel(nextProvider, '')
                 setVisionProviderId(nextProviderId)
                 setVisionModelId(nextModel?.id ?? '')
               }}

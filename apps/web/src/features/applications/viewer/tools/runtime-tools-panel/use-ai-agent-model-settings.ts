@@ -3,6 +3,7 @@ import {
   checkAutomationAiProviderHealthAction,
   listAutomationAiModelCatalogAction
 } from '@/server/orchestrator/settings/actions'
+import { catalogByRole, selectCatalogModel, selectCatalogProvider } from '@/shared/automation/automation-ai-catalog'
 import { clampAdHocTimeoutMinutes, DEFAULT_AD_HOC_AI_TIMEOUT_MINUTES } from './ai-agent-chat-utils'
 import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
 
@@ -26,30 +27,13 @@ export const useAiAgentModelSettings = () => {
   const [health, setHealth] = useState<AutomationAiProviderHealth | null>(null)
   const [isCheckingHealth, setIsCheckingHealth] = useState(false)
 
-  const plannerCatalog = useMemo(
-    () =>
-      catalog
-        .map(provider => ({ ...provider, models: provider.models.filter(model => model.roles?.includes('planner')) }))
-        .filter(provider => provider.models.length > 0),
-    [catalog]
-  )
-  const visionCatalog = useMemo(
-    () =>
-      catalog
-        .map(provider => ({ ...provider, models: provider.models.filter(model => model.roles?.includes('vision')) }))
-        .filter(provider => provider.models.length > 0),
-    [catalog]
-  )
-  const selectedProvider = plannerCatalog.find(provider => provider.id === providerId) ?? plannerCatalog[0]
-  const selectedModel =
-    selectedProvider?.models.find(model => model.id === modelId) ??
-    selectedProvider?.models.find(model => model.default) ??
-    selectedProvider?.models[0]
-  const selectedVisionProvider = visionCatalog.find(provider => provider.id === visionProviderId) ?? visionCatalog[0]
-  const selectedVisionModel =
-    selectedVisionProvider?.models.find(model => model.id === visionModelId) ??
-    selectedVisionProvider?.models.find(model => model.default) ??
-    selectedVisionProvider?.models[0]
+  const plannerCatalog = useMemo(() => catalogByRole(catalog, 'planner'), [catalog])
+  const visionCatalog = useMemo(() => catalogByRole(catalog, 'vision'), [catalog])
+
+  const selectedProvider = selectCatalogProvider(plannerCatalog, providerId)
+  const selectedModel = selectCatalogModel(selectedProvider, modelId)
+  const selectedVisionProvider = selectCatalogProvider(visionCatalog, visionProviderId)
+  const selectedVisionModel = selectCatalogModel(selectedVisionProvider, visionModelId)
   const modelIsValid = isValidAgentModel(selectedProvider, selectedModel, health)
   const adHocTimeoutMinutes = clampAdHocTimeoutMinutes(Number(timeoutMinutesInput))
   const adHocTimeoutMs = adHocTimeoutMinutes * 60_000
@@ -88,16 +72,12 @@ export const useAiAgentModelSettings = () => {
     void listAutomationAiModelCatalogAction().then(nextCatalog => {
       if (cancelled) return
       setCatalog(nextCatalog)
-      const plannerProviders = nextCatalog
-        .map(item => ({ ...item, models: item.models.filter(model => model.roles?.includes('planner')) }))
-        .filter(item => item.models.length > 0)
-      const visionProviders = nextCatalog
-        .map(item => ({ ...item, models: item.models.filter(model => model.roles?.includes('vision')) }))
-        .filter(item => item.models.length > 0)
+      const plannerProviders = catalogByRole(nextCatalog, 'planner')
+      const visionProviders = catalogByRole(nextCatalog, 'vision')
       const provider = plannerProviders[0]
-      const model = provider?.models.find(item => item.default) ?? provider?.models[0]
+      const model = selectCatalogModel(provider, '')
       const visionProvider = visionProviders[0]
-      const visionModel = visionProvider?.models.find(item => item.default) ?? visionProvider?.models[0]
+      const visionModel = selectCatalogModel(visionProvider, '')
       setProviderId(provider?.id ?? '')
       setModelId(model?.id ?? '')
       setVisionProviderId(visionProvider?.id ?? '')

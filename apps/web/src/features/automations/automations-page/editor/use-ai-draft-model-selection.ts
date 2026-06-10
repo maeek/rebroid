@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { listAutomationAiModelCatalogAction } from '@/server/orchestrator/settings/actions'
+import { selectCatalogModel } from '@/shared/automation/automation-ai-catalog'
 import { selectAiDraftProviderAndModel } from './ai-draft-model-selection-utils'
 import type { AutomationAiModelCatalogProvider } from '@/server/orchestrator/settings/types'
 
@@ -18,7 +19,7 @@ export const useAiDraftModelSelection = () => {
       if (cancelled) return
       setCatalog(nextCatalog)
       const nextProvider = nextCatalog[0]
-      const nextModel = nextProvider?.models.find(item => item.default) ?? nextProvider?.models[0]
+      const nextModel = selectCatalogModel(nextProvider, '')
       setProviderId(nextProvider?.id ?? '')
       setModelId(nextModel?.id ?? '')
     })

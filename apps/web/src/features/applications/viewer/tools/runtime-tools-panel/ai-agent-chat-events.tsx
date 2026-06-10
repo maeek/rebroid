@@ -1,54 +1,10 @@
-import { IconChevronDown, IconSparkles } from '@tabler/icons-react'
-import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
-import { Badge } from '@/components/ui/badge'
-import { currentStreamingText, type ChatTurn, type ChatTurnStatus } from './ai-agent-chat-utils'
-import type { AutomationRunEvent } from '@/server/orchestrator/automations/types'
-
-const compactValue = (value: unknown) => {
-  if (value === null || value === undefined) return 'null'
-  if (typeof value === 'string') return value
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
-  try {
-    return JSON.stringify(value) ?? '[unserializable]'
-  } catch {
-    return Object.prototype.toString.call(value)
-  }
-}
-
-const compactValueRows = (value: unknown) => {
-  if (value === null || value === undefined) return []
-  if (Array.isArray(value)) {
-    return value.slice(0, 12).map((item, index) => {
-      const text = compactValue(item)
-      return {
-        key: `item ${index + 1}`,
-        value: text.length > 180 ? `${text.slice(0, 180)}...` : text
-      }
-    })
-  }
-  if (typeof value === 'object') {
-    return Object.entries(value)
-      .slice(0, 12)
-      .map(([key, item]) => {
-        const text = compactValue(item)
-        return {
-          key,
-          value: text.length > 180 ? `${text.slice(0, 180)}...` : text
-        }
-      })
-  }
-  return [
-    {
-      key: 'value',
-      value: compactValue(value)
-    }
-  ]
-}
-
-const compactArgumentRows = compactValueRows
-
-const runStatusBadgeVariant = (status: ChatTurnStatus) =>
-  status === 'failed' || status === 'canceled' ? 'destructive' : 'secondary'
+import { IconSparkles } from '@tabler/icons-react'
+import { buildTimelineItems } from './ai-agent-chat-event-utils'
+import { ChatEventView } from './ai-agent-chat-event-views/chat-event-view'
+import { ChatStatusBadge } from './ai-agent-chat-event-views/chat-status-badge'
+import { ToolEventView } from './ai-agent-chat-event-views/tool-event-view'
+import { WorkingIndicator } from './ai-agent-chat-event-views/working-indicator'
+import { currentStreamingText, type ChatTurn } from './ai-agent-chat-utils'
 
 const chatTurnTitle = (turn: ChatTurn) => {
   if (turn.status === 'queued') return 'Queued'
@@ -58,85 +14,6 @@ const chatTurnTitle = (turn: ChatTurn) => {
   if (turn.status === 'success') return 'Done'
   if (turn.status === 'canceled') return 'Canceled'
   return 'Failed'
-}
-
-const eventToolName = (event: AutomationRunEvent) =>
-  typeof event.data.uses === 'string' ? event.data.uses : event.message
-
-type ToolTimelineItem = {
-  type: 'tool'
-  key: string
-  name: string
-  status: 'using' | 'used' | 'failed'
-  arguments: Array<{ key: string; value: string }>
-  output: Array<{ key: string; value: string }>
-  error: string | null
-}
-
-type EventTimelineItem =
-  | {
-      type: 'event'
-      event: AutomationRunEvent
-    }
-  | ToolTimelineItem
-
-const isToolEvent = (event: AutomationRunEvent) =>
-  event.type === 'ai.tool.arguments' ||
-  event.type === 'ai.tool.started' ||
-  event.type === 'ai.tool.completed' ||
-  event.type === 'ai.tool.failed'
-
-const buildTimelineItems = (events: AutomationRunEvent[]): EventTimelineItem[] => {
-  const items: EventTimelineItem[] = []
-  let pendingTool: ToolTimelineItem | null = null
-
-  const flushTool = () => {
-    if (!pendingTool) return
-    items.push(pendingTool)
-    pendingTool = null
-  }
-
-  for (const event of events) {
-    if (!isToolEvent(event)) {
-      flushTool()
-      items.push({ type: 'event', event })
-      continue
-    }
-
-    const name = eventToolName(event)
-    if (pendingTool && pendingTool.name !== name) {
-      flushTool()
-    }
-
-    pendingTool ??= {
-      type: 'tool',
-      key: event.id,
-      name,
-      status: 'using',
-      arguments: [],
-      output: [],
-      error: null
-    }
-
-    if (event.type === 'ai.tool.arguments') {
-      pendingTool.arguments = compactArgumentRows(event.data.arguments)
-    }
-
-    if (event.type === 'ai.tool.completed') {
-      pendingTool.status = 'used'
-      pendingTool.output = compactArgumentRows(event.data.output !== undefined ? event.data.output : event.data)
-      flushTool()
-    }
-
-    if (event.type === 'ai.tool.failed') {
-      pendingTool.status = 'failed'
-      pendingTool.error = event.message
-      flushTool()
-    }
-  }
-
-  flushTool()
-  return items
 }
 
 export const ChatTurnView = ({ turn }: { turn: ChatTurn }) => {
@@ -161,12 +38,7 @@ export const ChatTurnView = ({ turn }: { turn: ChatTurn }) => {
             <IconSparkles className='size-4 shrink-0 text-primary' />
             <span className='truncate text-sm font-medium'>AI agent</span>
           </div>
-          <Badge
-            variant={runStatusBadgeVariant(turn.status)}
-            className='capitalize'
-          >
-            {chatTurnTitle(turn)}
-          </Badge>
+          <ChatStatusBadge status={turn.status}>{chatTurnTitle(turn)}</ChatStatusBadge>
         </div>
         {turn.error ? <div className='text-xs text-destructive'>{turn.error}</div> : null}
         {turn.status === 'queued' ? (
@@ -200,130 +72,4 @@ export const ChatTurnView = ({ turn }: { turn: ChatTurn }) => {
       </div>
     </article>
   )
-}
-
-const WorkingIndicator = ({ status }: { status: ChatTurnStatus }) => (
-  <div className='flex items-center gap-2 text-sm text-secondary-foreground'>
-    <span className='flex items-center gap-1'>
-      <GradientSparklesIcon className='size-4' />
-    </span>
-    <span className='motion-safe:animate-pulse'>{status === 'canceling' ? 'Canceling' : 'Thinking'}</span>
-  </div>
-)
-
-const ToolEventView = ({ item }: { item: ToolTimelineItem }) => {
-  const label = item.status === 'failed' ? 'Tool failed' : item.status === 'used' ? 'Used tool' : 'Using tool'
-  const hasArguments = item.arguments.length > 0
-  const hasOutput = item.output.length > 0
-
-  return (
-    <div className='grid gap-1 text-xs text-muted-foreground'>
-      <details className='group'>
-        <summary className='flex cursor-pointer list-none items-center gap-1'>
-          <span>{label}</span>
-          <span>({item.name})</span>
-          {hasArguments || hasOutput ? (
-            <IconChevronDown className='size-3 transition-transform group-open:rotate-180' />
-          ) : null}
-        </summary>
-        {hasArguments ? (
-          <dl className='mt-1 grid max-w-full gap-1 rounded-md bg-background/25 p-2 text-[11px] text-muted-foreground/80'>
-            {item.arguments.map(argument => (
-              <div
-                key={argument.key}
-                className='grid min-w-0 gap-0.5 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-2'
-              >
-                <dt className='min-w-0 font-medium text-muted-foreground'>{argument.key}</dt>
-                <dd className='min-w-0 overflow-hidden wrap-anywhere'>{argument.value}</dd>
-              </div>
-            ))}
-          </dl>
-        ) : null}
-        {hasOutput ? (
-          <dl className='mt-1 grid max-w-full gap-1 rounded-md bg-background/25 p-2 text-[11px] text-muted-foreground/80'>
-            {item.output.map(output => (
-              <div
-                key={output.key}
-                className='grid min-w-0 gap-0.5 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-2'
-              >
-                <dt className='min-w-0 font-medium text-muted-foreground'>{output.key}</dt>
-                <dd className='min-w-0 overflow-hidden wrap-anywhere'>{output.value}</dd>
-              </div>
-            ))}
-          </dl>
-        ) : null}
-      </details>
-      {item.error ? <div className='wrap-anywhere text-destructive/85'>{item.error}</div> : null}
-    </div>
-  )
-}
-
-const ChatEventView = ({ event }: { event: AutomationRunEvent }) => {
-  if (event.type === 'ai.user.message' || event.type === 'ai.message.delta') return null
-  if (event.type === 'ai.screenshot.observed') {
-    const dimensions =
-      typeof event.data.width === 'number' && typeof event.data.height === 'number'
-        ? ` ${event.data.width}x${event.data.height}`
-        : ''
-    const bytes = typeof event.data.bytes === 'number' ? ` ${Math.round(event.data.bytes / 1024)} KB` : ''
-    return (
-      <div className='text-xs text-secondary-foreground'>
-        {event.message}
-        {dimensions || bytes ? (
-          <span className='text-muted-foreground'>
-            {' '}
-            ({[dimensions.trim(), bytes.trim()].filter(Boolean).join(', ')})
-          </span>
-        ) : null}
-      </div>
-    )
-  }
-  if (event.type === 'ai.ui.observed') {
-    const bytes = typeof event.data.bytes === 'number' ? ` ${Math.round(event.data.bytes / 1024)} KB` : ''
-    const nodeCount = typeof event.data.nodeCount === 'number' ? ` ${event.data.nodeCount} nodes` : ''
-    return (
-      <div className='text-xs text-secondary-foreground'>
-        {event.message}
-        {bytes || nodeCount ? (
-          <span className='text-muted-foreground'>
-            {' '}
-            ({[nodeCount.trim(), bytes.trim()].filter(Boolean).join(', ')})
-          </span>
-        ) : null}
-      </div>
-    )
-  }
-  if (event.type === 'ai.perception.observed') {
-    const dimensions =
-      typeof event.data.width === 'number' && typeof event.data.height === 'number'
-        ? ` ${event.data.width}x${event.data.height}`
-        : ''
-    const detections = typeof event.data.detections === 'number' ? ` ${event.data.detections} detected` : ''
-    return (
-      <div className='text-xs text-secondary-foreground'>
-        {event.message}
-        {dimensions || detections ? (
-          <span className='text-muted-foreground'>
-            {' '}
-            ({[dimensions.trim(), detections.trim()].filter(Boolean).join(', ')})
-          </span>
-        ) : null}
-      </div>
-    )
-  }
-  if (event.type === 'ai.perception.summary') {
-    return <div className='text-xs text-secondary-foreground'>{event.message}</div>
-  }
-  if (event.type === 'ai.message.completed') {
-    return <div className='whitespace-pre-wrap text-sm text-foreground'>{event.message}</div>
-  }
-  if (isToolEvent(event)) return null
-  if (event.type === 'ai.tool.failed' || event.type === 'ai.guardrail.triggered' || event.type === 'run.failed') {
-    return <div className='text-xs text-destructive'>{event.message}</div>
-  }
-  if (event.type === 'run.canceled') {
-    return <div className='text-xs text-destructive'>Run canceled.</div>
-  }
-  if (event.type === 'run.started' || event.type === 'run.queued' || event.type === 'ai.model.started') return null
-  return null
 }
