@@ -12,7 +12,7 @@ export const TopBarUnprotected = () => {
   const { setTheme } = useTheme()
 
   return (
-    <div className='flex justify-between h-16 w-dvw shrink-0 sticky top-0 z-10'>
+    <div className='flex justify-between h-16 w-dvw shrink-0 fixed top-0 z-10'>
       <div className={classNames(sectionClasses, 'justify-start')}>
         <Link href='/'>
           <span className='text-xl font-black underline underline-offset-4 decoration-primary decoration-solid z-99 text-foreground'>
