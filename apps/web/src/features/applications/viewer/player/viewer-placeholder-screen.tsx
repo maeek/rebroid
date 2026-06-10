@@ -8,19 +8,22 @@ import { ImagePullProgress } from '@/features/applications/viewer/components/ima
 import { getViewerPlaceholder } from '@/features/applications/viewer/player/viewer-placeholder'
 import { cn } from '@/lib/utils'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { ViewerPlaceholder } from '@/features/applications/viewer/player/viewer-placeholder'
 
 export const ViewerPlaceholderScreen = ({
   app,
   canStart,
   isStarting,
-  onStart
+  onStart,
+  placeholder
 }: {
   app?: AppDefinition
   canStart?: boolean
   isStarting?: boolean
   onStart?: () => void
+  placeholder?: ViewerPlaceholder
 }) => {
-  const viewerPlaceholder = useMemo(() => getViewerPlaceholder(app), [app])
+  const viewerPlaceholder = useMemo(() => placeholder ?? getViewerPlaceholder(app), [app, placeholder])
 
   return (
     <div className='relative flex h-full w-full items-center justify-center overflow-hidden px-6'>

@@ -33,6 +33,7 @@ export const useAiAgentChatSession = ({
   const [activeTurnId, setActiveTurnId] = useState<string | null>(null)
   const [isCanceling, setIsCanceling] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const transcriptRef = useRef<HTMLDivElement | null>(null)
   const runSequencesRef = useRef(new Map<string, number>())
@@ -67,33 +68,41 @@ export const useAiAgentChatSession = ({
     let cancelled = false
 
     const loadHistory = async () => {
-      const history = await listAdHocAiAutomationRunHistoryAction(app.id, 20)
-      const loadedTurns = history.map(item => chatTurnFromRun(item.run, item.events))
-      if (cancelled) return
-      const orderedTurns = loadedTurns.sort(
-        (left, right) => new Date(left.run?.createdAt ?? '').getTime() - new Date(right.run?.createdAt ?? '').getTime()
-      )
-      for (const turn of orderedTurns) {
-        if (!turn.run || turn.events.length === 0) continue
-        runSequencesRef.current.set(turn.run.id, Math.max(...turn.events.map(event => event.sequence)))
-      }
-      setTurns(current => {
-        const byRunId = new Map(current.filter(turn => turn.run).map(turn => [turn.run?.id, turn]))
-        const currentWithoutRuns = current.filter(turn => !turn.run)
+      setIsLoadingHistory(true)
+      try {
+        const history = await listAdHocAiAutomationRunHistoryAction(app.id, 20)
+        const loadedTurns = history.map(item => chatTurnFromRun(item.run, item.events))
+        if (cancelled) return
+        const orderedTurns = loadedTurns.sort(
+          (left, right) =>
+            new Date(left.run?.createdAt ?? '').getTime() - new Date(right.run?.createdAt ?? '').getTime()
+        )
         for (const turn of orderedTurns) {
-          if (!turn.run) continue
-          byRunId.set(turn.run.id, turn)
+          if (!turn.run || turn.events.length === 0) continue
+          runSequencesRef.current.set(turn.run.id, Math.max(...turn.events.map(event => event.sequence)))
         }
-        return [...currentWithoutRuns, ...byRunId.values()]
-      })
-      const active = [...orderedTurns].reverse().find(turn => turn.run && activeRunStatuses.has(turn.run.status))
-      if (active) setActiveTurnId(active.id)
+        setTurns(current => {
+          const byRunId = new Map(current.filter(turn => turn.run).map(turn => [turn.run?.id, turn]))
+          const currentWithoutRuns = current.filter(turn => !turn.run)
+          for (const turn of orderedTurns) {
+            if (!turn.run) continue
+            byRunId.set(turn.run.id, turn)
+          }
+          return [...currentWithoutRuns, ...byRunId.values()]
+        })
+        const active = [...orderedTurns].reverse().find(turn => turn.run && activeRunStatuses.has(turn.run.status))
+        if (active) setActiveTurnId(active.id)
+      } catch (historyError) {
+        if (cancelled) return
+        setError(historyError instanceof Error ? historyError.message : 'AI chat history could not be loaded.')
+      } finally {
+        if (!cancelled) {
+          setIsLoadingHistory(false)
+        }
+      }
     }
 
-    void loadHistory().catch(historyError => {
-      if (cancelled) return
-      setError(historyError instanceof Error ? historyError.message : 'AI chat history could not be loaded.')
-    })
+    void loadHistory()
 
     return () => {
       cancelled = true
@@ -312,6 +321,7 @@ export const useAiAgentChatSession = ({
     isCanceling,
     isCheckingHealth,
     isClearing,
+    isLoadingHistory,
     plannerCatalog,
     prompt,
     queuedTurn,

@@ -13,7 +13,7 @@ export const AppWorkspaceContent = () => {
 
   return (
     <>
-      <ProtectedSplitPageContent className='gap-5 pr-6 lg:flex-auto lg:items-stretch lg:h-[stretch] lg:min-h-full min-w-0'>
+      <ProtectedSplitPageContent className='min-w-0 gap-5 pr-6 lg:min-h-[calc(100dvh-4rem)] lg:flex-1 lg:self-stretch lg:items-stretch'>
         <div className='flex w-full grow flex-col gap-5 lg:min-h-0 lg:flex-1'>
           <PageBreadcrumbs items={[{ label: 'Apps', href: '/apps' }, { label: app.name }]} />
           <AppViewerHeading
@@ -30,12 +30,12 @@ export const AppWorkspaceContent = () => {
               Owner: {app.ownerDisplayName ?? app.ownerUserId ?? 'Unknown'}
             </Badge>
           </Visible>
-          <div className='hidden grow flex-col lg:flex lg:min-h-0 lg:flex-1'>
+          <div className='hidden min-h-[24rem] grow flex-col lg:flex lg:min-h-0 lg:flex-1'>
             <RuntimeToolsPanel />
           </div>
         </div>
       </ProtectedSplitPageContent>
-      <div className='flex w-full max-w-[min(100%,42rem)] items-start justify-center rounded-lg px-2 py-2 max-sm:px-1 max-sm:py-2 sm:p-4 lg:sticky lg:top-10 lg:flex-auto lg:self-stretch lg:h-[webkit-fill-available] lg:items-stretch lg:pr-4 lg:pt-6'>
+      <div className='flex w-full max-w-[min(100%,42rem)] items-start justify-center rounded-lg px-2 py-2 max-sm:px-1 max-sm:py-2 sm:p-4 lg:sticky lg:top-10 lg:min-h-[calc(100dvh-4rem)] lg:flex-1 lg:self-stretch lg:items-stretch lg:pr-4 lg:pt-6'>
         <AppViewerPane placement='top' />
       </div>
       <div className='w-full px-1 lg:hidden'>

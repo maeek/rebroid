@@ -10,9 +10,7 @@ import {
 import {
   AndroidPanelsMenu,
   CaptureScreenshotButton,
-  FullscreenButton,
-  KeyboardCaptureButton,
-  PopoutButton
+  KeyboardCaptureButton
 } from '@/features/applications/viewer/display/viewer-control-bar/controls/control-buttons'
 import { useViewerControlContext } from '@/features/applications/viewer/display/viewer-control-bar/viewer-control-context'
 
@@ -26,15 +24,12 @@ export const StandardViewerControls = () => {
     canControl,
     controlsDisabled,
     controlIcon,
-    fullscreen,
     isCapturing,
     keyboardCaptureEnabled,
     runtimeAvailable,
     sendControl,
     surfaceActions,
     onCaptureScreenshot,
-    onOpenPopout,
-    onToggleFullscreen,
     onToggleKeyboardCapture
   } = useViewerControlContext()
 
@@ -84,15 +79,6 @@ export const StandardViewerControls = () => {
         />
       </Visible>
       {surfaceActions}
-      <FullscreenButton
-        className={standardControlButtonClassName}
-        fullscreen={fullscreen}
-        onToggleFullscreen={onToggleFullscreen}
-      />
-      <PopoutButton
-        className={standardControlButtonClassName}
-        onOpenPopout={onOpenPopout}
-      />
       <Visible when={!canControl && runtimeAvailable}>
         <div className='text-xs text-muted-foreground'>Viewer controls are disabled by permissions.</div>
       </Visible>

@@ -7,12 +7,19 @@ import { Visible } from '@/components/ui/visible'
 import { DisplayViewerProvider } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-context'
 import { DisplayViewerShell } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-shell'
 import { buildDisplayViewerSurfaces } from '@/features/applications/viewer/display/display-viewer-surfaces'
+import {
+  getViewerFrameClassName,
+  getViewerFrameLayout,
+  getViewerFrameStyle
+} from '@/features/applications/viewer/player/android-viewer-layout'
+import { ViewerPlaceholderScreen } from '@/features/applications/viewer/player/viewer-placeholder-screen'
 import { getToastErrorDescription } from '@/features/applications/viewer/utils/viewer-error-utils'
 import { StatusSplash } from '@/features/shell/components/status-splash'
 import { getScrcpySessionAction } from '@/server/orchestrator/applications/actions/runtime/viewer-actions'
 import { getRedroidDisplayDimensionsFromArgs } from '@rebroid/application-core/redroid-runtime'
 import { ViewerActivityKeepalive } from './viewer-activity-keepalive'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { ViewerOrientation } from '@/features/applications/viewer/player/android-viewer'
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
 import type { ScrcpySession } from '@/server/orchestrator/applications/types'
 
@@ -55,6 +62,36 @@ const EmbeddedViewerSplash = ({
     />
   </div>
 )
+
+const viewerOrientation = (app: AppDefinition): ViewerOrientation => {
+  const display = getRedroidDisplayDimensionsFromArgs(app.containerArgs)
+  return display.width >= display.height ? 'landscape' : 'portrait'
+}
+
+const DisplayLoadingSurface = ({ app, description }: { app: AppDefinition; description: string }) => {
+  const layout = getViewerFrameLayout(app, viewerOrientation(app))
+
+  return (
+    <div className='flex min-h-136 w-full items-center justify-center p-4 sm:p-6'>
+      <div
+        className={getViewerFrameClassName(false)}
+        style={getViewerFrameStyle(layout, false)}
+      >
+        <ViewerPlaceholderScreen
+          app={app}
+          placeholder={{
+            title: 'Starting live display',
+            description,
+            toneClassName: 'text-primary',
+            Icon: IconLoader2,
+            showSpinner: true,
+            showProgress: false
+          }}
+        />
+      </div>
+    </div>
+  )
+}
 
 export const DisplayViewerEmbed = ({
   app,
@@ -146,11 +183,9 @@ export const DisplayViewerEmbed = ({
 
   if (!session) {
     return (
-      <EmbeddedViewerSplash
-        title='Starting live display'
+      <DisplayLoadingSurface
+        app={app}
         description='Rebroid is opening the app screen.'
-        detail='Preparing the display session...'
-        icon={<IconLoader2 className='size-10 animate-spin' />}
       />
     )
   }
@@ -168,11 +203,9 @@ export const DisplayViewerEmbed = ({
 
   if (!session.displaySession?.viewerPath || surfaces.length === 0) {
     return (
-      <EmbeddedViewerSplash
-        title='Starting live display'
-        description='The app is running, but the live display session is still getting ready.'
-        detail='Retrying automatically...'
-        icon={<IconLoader2 className='size-10 animate-spin' />}
+      <DisplayLoadingSurface
+        app={app}
+        description='Preparing the display session.'
       />
     )
   }

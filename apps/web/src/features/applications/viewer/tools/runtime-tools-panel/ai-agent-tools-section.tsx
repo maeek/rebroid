@@ -4,6 +4,7 @@ import { IconPlayerPlay, IconPlayerStop, IconSend, IconSparkles, IconTrash } fro
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { ChatTurnView } from './ai-agent-chat-events'
@@ -11,6 +12,41 @@ import { AiAgentModelStatus, AiAgentSettingsPopover } from './ai-agent-settings-
 import { useAiAgentChatSession } from './use-ai-agent-chat-session'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { AutomationRun } from '@/server/orchestrator/automations/types'
+
+const AiAgentTranscriptSkeleton = () => (
+  <div
+    aria-label='Loading AI chat history'
+    className='grid gap-3'
+  >
+    {Array.from({ length: 3 }).map((_, index) => (
+      <div
+        key={index}
+        className='grid gap-2 rounded-lg border border-border/60 bg-background/25 p-3'
+      >
+        <div className='flex items-center gap-2'>
+          <Skeleton className='size-6 rounded-full' />
+          <Skeleton className='h-3 w-28' />
+        </div>
+        <Skeleton className='h-3 w-full' />
+        <Skeleton className='h-3 w-4/5' />
+      </div>
+    ))}
+  </div>
+)
+
+const AiAgentEmptyTranscript = () => (
+  <div className='flex min-h-40 flex-1 items-center justify-center rounded-lg border border-dashed border-border/70 bg-background/20 p-6 text-center'>
+    <div className='grid max-w-sm place-items-center gap-3'>
+      <div className='flex size-10 items-center justify-center rounded-full border border-primary/25 bg-primary/10 text-primary'>
+        <IconSparkles className='size-5' />
+      </div>
+      <div className='grid gap-1'>
+        <div className='text-sm font-medium'>AI agent ready</div>
+        <p className='text-xs text-secondary-foreground'>Ready while the display connects.</p>
+      </div>
+    </div>
+  </div>
+)
 
 export const AiAgentToolsSection = ({
   app,
@@ -35,6 +71,7 @@ export const AiAgentToolsSection = ({
     isCanceling,
     isCheckingHealth,
     isClearing,
+    isLoadingHistory,
     plannerCatalog,
     prompt,
     queuedTurn,
@@ -77,16 +114,18 @@ export const AiAgentToolsSection = ({
 
       <div
         ref={transcriptRef}
-        className='flex min-h-0 flex-1 flex-col gap-4 overflow-auto pb-2 pr-1 motion-safe:scroll-smooth'
+        className='flex min-h-0 max-h-[min(46dvh,26rem)] flex-col gap-4 overflow-auto pb-2 pr-1 motion-safe:scroll-smooth'
       >
-        {turns.length === 0
-          ? null
-          : turns.map(turn => (
+        {isLoadingHistory ? <AiAgentTranscriptSkeleton /> : null}
+        {!isLoadingHistory && turns.length === 0 ? <AiAgentEmptyTranscript /> : null}
+        {!isLoadingHistory
+          ? turns.map(turn => (
               <ChatTurnView
                 key={turn.id}
                 turn={turn}
               />
-            ))}
+            ))
+          : null}
       </div>
 
       <div className='shrink-0 rounded-lg border border-border/70 bg-card/25 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]'>
