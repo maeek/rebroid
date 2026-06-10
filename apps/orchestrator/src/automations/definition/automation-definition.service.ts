@@ -253,27 +253,33 @@ export class AutomationDefinitionService {
     }
     const caseOutputs = cloneAvailableStepOutputs(availableStepOutputs);
     caseOutputs.set(id, outputKeysForUses('flow.switch'));
-    const cases: AutomationSwitchCase[] = rawStep.cases.map((rawCase, caseIndex) => {
-      if (!isRecord(rawCase)) {
-        throw new BadRequestException(
-          `Step "${id}" case ${caseIndex + 1} must be an object.`,
-        );
-      }
-      return {
-        value: rawCase.value,
-        steps: this.normalizeNestedSteps(
-          rawCase.steps,
-          seenIds,
-          `${path}.cases[${caseIndex}].steps`,
-          id,
-          cloneAvailableStepOutputs(caseOutputs),
-        ),
-      };
-    });
+    const cases: AutomationSwitchCase[] = rawStep.cases.map(
+      (rawCase, caseIndex) => {
+        if (!isRecord(rawCase)) {
+          throw new BadRequestException(
+            `Step "${id}" case ${caseIndex + 1} must be an object.`,
+          );
+        }
+        return {
+          value: rawCase.value,
+          steps: this.normalizeNestedSteps(
+            rawCase.steps,
+            seenIds,
+            `${path}.cases[${caseIndex}].steps`,
+            id,
+            cloneAvailableStepOutputs(caseOutputs),
+          ),
+        };
+      },
+    );
     return {
       id,
       type: 'switch' as const,
-      value: this.normalizeSwitchValueRef(rawStep.value, `${path}.value`, availableStepOutputs),
+      value: this.normalizeSwitchValueRef(
+        rawStep.value,
+        `${path}.value`,
+        availableStepOutputs,
+      ),
       cases,
       ...(rawStep.default === undefined
         ? {}
@@ -297,9 +303,13 @@ export class AutomationDefinitionService {
     availableStepOutputs: Map<string, Set<string>>,
   ) {
     const count =
-      rawStep.count === undefined ? undefined : this.normalizePositiveInteger(rawStep.count, `Step "${id}" count`);
+      rawStep.count === undefined
+        ? undefined
+        : this.normalizePositiveInteger(rawStep.count, `Step "${id}" count`);
     const predicate =
-      rawStep.while === undefined ? undefined : this.conditions.normalizeExpression(rawStep.while, `${path}.while`);
+      rawStep.while === undefined
+        ? undefined
+        : this.conditions.normalizeExpression(rawStep.while, `${path}.while`);
     if (predicate) {
       this.conditions.validateExpressionReferences(
         predicate,
@@ -311,14 +321,18 @@ export class AutomationDefinitionService {
       throw new BadRequestException(`Step "${id}" must define count or while.`);
     }
     if (count !== undefined && predicate !== undefined) {
-      throw new BadRequestException(`Step "${id}" cannot define both count and while.`);
+      throw new BadRequestException(
+        `Step "${id}" cannot define both count and while.`,
+      );
     }
     const maxIterations = this.normalizePositiveInteger(
       rawStep.maxIterations ?? count,
       `Step "${id}" maxIterations`,
     );
     if (maxIterations > 1000) {
-      throw new BadRequestException(`Step "${id}" maxIterations must be 1000 or fewer.`);
+      throw new BadRequestException(
+        `Step "${id}" maxIterations must be 1000 or fewer.`,
+      );
     }
     return {
       id,

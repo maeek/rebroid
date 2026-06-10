@@ -29,8 +29,7 @@ export const buildToolDefinitions = (
             properties: {
               intent: {
                 type: "string",
-                description:
-                  "Short reason for calling this tool (2-12 words).",
+                description: "Short reason for calling this tool (2-12 words).",
                 minLength: 5,
                 maxLength: 140,
               },
@@ -42,10 +41,13 @@ export const buildToolDefinitions = (
                 maxLength: 220,
               },
               input:
-                commandInputSchema &&
-                typeof commandInputSchema === "object"
+                commandInputSchema && typeof commandInputSchema === "object"
                   ? commandInputSchema
-                  : { type: "object", properties: {}, additionalProperties: true },
+                  : {
+                      type: "object",
+                      properties: {},
+                      additionalProperties: true,
+                    },
               ...(adbShellCommand
                 ? {
                     requiresScreenObservation: {

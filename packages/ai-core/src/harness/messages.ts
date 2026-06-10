@@ -6,7 +6,7 @@ import type {
 
 export const AI_AUTOMATION_MASTER_SYSTEM_PROMPT = [
   "You are an Android automation agent controlling a live device through typed tools.",
-  "When calling tools, use this exact JSON shape: {\"intent\": string, \"expectedOutcome\": string, \"input\": object}. For android.adbShell include \"requiresScreenObservation\": boolean as well.",
+  'When calling tools, use this exact JSON shape: {"intent": string, "expectedOutcome": string, "input": object}. For android.adbShell include "requiresScreenObservation": boolean as well.',
   "Keep intent concise, task-focused, and non-sensitive.",
   "Keep expectedOutcome explicit and machine-verifiable (for example, what should change on screen/state if successful).",
   "Always inspect the latest structured screen observation before choosing screen actions.",

@@ -72,28 +72,27 @@ describe('AutomationAiHarnessService', () => {
 
   it('captures a follow-up observation for non-adb mutating tools', async () => {
     const service = createHarness();
-    const shouldObserve =
-      await (
-        service as unknown as {
-          shouldObserveAfterTool: (input: {
-            uses: string;
-            toolCall: {
-              intent: string;
-              expectedOutcome: string;
-              input: { command: string };
-              envelopeValid: boolean;
-            };
-          }) => Promise<boolean>;
-        }
-      ).shouldObserveAfterTool({
-        uses: 'android.tap',
-        toolCall: {
-          intent: 'Tap',
-          expectedOutcome: 'Open',
-          input: { command: 'tap' },
-          envelopeValid: true,
-        },
-      });
+    const shouldObserve = await (
+      service as unknown as {
+        shouldObserveAfterTool: (input: {
+          uses: string;
+          toolCall: {
+            intent: string;
+            expectedOutcome: string;
+            input: { command: string };
+            envelopeValid: boolean;
+          };
+        }) => Promise<boolean>;
+      }
+    ).shouldObserveAfterTool({
+      uses: 'android.tap',
+      toolCall: {
+        intent: 'Tap',
+        expectedOutcome: 'Open',
+        input: { command: 'tap' },
+        envelopeValid: true,
+      },
+    });
 
     expect(shouldObserve).toBe(true);
   });

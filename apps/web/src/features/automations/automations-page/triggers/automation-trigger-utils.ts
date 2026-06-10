@@ -1,7 +1,4 @@
-import {
-  defaultSchedule,
-  scheduleToCron
-} from '@rebroid/automation-core/schedule'
+import { defaultSchedule, scheduleToCron } from '@rebroid/automation-core/schedule'
 import type { AndroidApplication, ApplicationProfileMode } from '@/server/orchestrator/applications/types'
 import type {
   AutomationLastStatus,

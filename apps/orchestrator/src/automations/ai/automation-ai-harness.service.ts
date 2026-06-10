@@ -161,16 +161,21 @@ export class AutomationAiHarnessService {
           parsedArguments,
         );
         if (!parsedToolCall.envelopeValid) {
-          await this.emit(context, 'ai.guardrail.triggered', 'Tool call envelope is not in the expected shape.', {
-            uses,
-            toolCallId: call.id,
-            data: sanitizeAiDataForEvent({
-              intent: parsedToolCall.intent,
-              expectedOutcome: parsedToolCall.expectedOutcome,
-              input: parsedToolCall.input,
-            }),
-            clientMessageId: input.clientMessageId ?? null,
-          });
+          await this.emit(
+            context,
+            'ai.guardrail.triggered',
+            'Tool call envelope is not in the expected shape.',
+            {
+              uses,
+              toolCallId: call.id,
+              data: sanitizeAiDataForEvent({
+                intent: parsedToolCall.intent,
+                expectedOutcome: parsedToolCall.expectedOutcome,
+                input: parsedToolCall.input,
+              }),
+              clientMessageId: input.clientMessageId ?? null,
+            },
+          );
         }
         await this.emit(context, 'ai.tool.arguments', uses, {
           uses,
@@ -183,10 +188,7 @@ export class AutomationAiHarnessService {
           clientMessageId: input.clientMessageId ?? null,
         });
         toolCalls += 1;
-        const blockedToolResult = this.blockedToolResult(
-          uses,
-          parsedToolCall,
-        );
+        const blockedToolResult = this.blockedToolResult(uses, parsedToolCall);
         if (blockedToolResult) {
           await this.emit(
             context,
@@ -443,9 +445,7 @@ export class AutomationAiHarnessService {
     }
 
     const command =
-      typeof toolCall.input.command === 'string'
-        ? toolCall.input.command
-        : '';
+      typeof toolCall.input.command === 'string' ? toolCall.input.command : '';
     if (!command.trim()) {
       return true;
     }
@@ -555,10 +555,7 @@ export class AutomationAiHarnessService {
         'This adbShell command is blocked because it may modify device state dangerously. Ask the user for a safer route.',
       error:
         'Potentially destructive adbShell command blocked during AI automation.',
-      expectedIntent:
-        toolCall.intent.length > 0
-          ? toolCall.intent
-          : undefined,
+      expectedIntent: toolCall.intent.length > 0 ? toolCall.intent : undefined,
       expectedOutcome:
         toolCall.expectedOutcome.length > 0
           ? toolCall.expectedOutcome
@@ -616,20 +613,14 @@ export class AutomationAiHarnessService {
       input: rawArguments.input as Record<string, unknown>,
       requiresScreenObservation:
         uses === 'android.adbShell'
-          ? requiresScreenObservation ?? true
+          ? (requiresScreenObservation ?? true)
           : undefined,
       envelopeValid: hasEnvelope && requiresScreenObservationWellFormed,
     };
   }
 
-  private isObjectRecord(
-    value: unknown,
-  ): value is Record<string, unknown> {
-    return (
-      value != null &&
-      typeof value === 'object' &&
-      !Array.isArray(value)
-    );
+  private isObjectRecord(value: unknown): value is Record<string, unknown> {
+    return value != null && typeof value === 'object' && !Array.isArray(value);
   }
 
   private assertNotCanceled(abortSignal?: AbortSignal) {

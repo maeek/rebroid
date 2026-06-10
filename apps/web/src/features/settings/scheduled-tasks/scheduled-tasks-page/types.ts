@@ -1,4 +1,4 @@
-import type { ScheduleDraft, ScheduleFrequency } from '@rebroid/automation-core/schedule';
+import type { ScheduleDraft, ScheduleFrequency } from '@rebroid/automation-core/schedule'
 import type {
   SaveScheduledTaskInput,
   ScheduledTask,
@@ -13,7 +13,7 @@ export type FormState = Omit<SaveScheduledTaskInput, 'cronExpression'> & {
   schedule: ScheduleDraft
 }
 
-export type { ScheduleDraft, ScheduleFrequency };
+export type { ScheduleDraft, ScheduleFrequency }
 
 export type ScheduledTasksPageProps = {
   initialActions: ScheduledTaskAction[]

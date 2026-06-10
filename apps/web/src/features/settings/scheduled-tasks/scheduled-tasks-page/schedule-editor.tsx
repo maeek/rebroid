@@ -3,10 +3,7 @@
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Visible } from '@/components/ui/visible'
-import {
-  defaultSchedule,
-  weekdays
-} from '@/features/settings/scheduled-tasks/scheduled-tasks-page/schedule-utils'
+import { defaultSchedule, weekdays } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/schedule-utils'
 import type { ScheduleDraft, ScheduleFrequency } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/types'
 
 const clampInteger = (value: number, minimum: number, maximum: number) =>

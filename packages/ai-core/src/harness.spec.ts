@@ -85,7 +85,10 @@ describe("AI harness core", () => {
           uses: "android.tap",
           label: "Tap",
           description: "Tap screen",
-          inputSchema: { type: "object", properties: { x: { type: "number" } } },
+          inputSchema: {
+            type: "object",
+            properties: { x: { type: "number" } },
+          },
         },
       ],
       () => true,
@@ -98,7 +101,10 @@ describe("AI harness core", () => {
       "input",
     ]);
     assert.equal(tool.function.parameters.properties?.intent.type, "string");
-    assert.equal(tool.function.parameters.properties?.expectedOutcome.type, "string");
+    assert.equal(
+      tool.function.parameters.properties?.expectedOutcome.type,
+      "string",
+    );
     assert.deepEqual(tool.function.parameters.properties?.input, {
       type: "object",
       properties: { x: { type: "number" } },

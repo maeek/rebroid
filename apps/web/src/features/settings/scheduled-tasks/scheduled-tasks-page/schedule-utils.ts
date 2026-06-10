@@ -5,25 +5,23 @@ import {
   defaultSchedule,
   scheduleToCron,
   type ScheduleDraft,
-  weekdays,
+  weekdays
 } from '@rebroid/automation-core/schedule'
 
 export { cronToSchedule, defaultSchedule, scheduleToCron, weekdays }
 
 export type { ScheduleDraft }
 
-export const actionNeedsDanglingOnly = (type: ScheduledTaskActionType) =>
-  type === 'prune_images'
+export const actionNeedsDanglingOnly = (type: ScheduledTaskActionType) => type === 'prune_images'
 
-export const actionNeedsRetentionDays = (type: ScheduledTaskActionType) =>
-  type === 'clean_runtime_logs'
+export const actionNeedsRetentionDays = (type: ScheduledTaskActionType) => type === 'clean_runtime_logs'
 
 export const defaultForm = (actionType: ScheduledTaskActionType): FormState => ({
   name: '',
   enabled: true,
   actionType,
   payload: {},
-  schedule: defaultSchedule,
+  schedule: defaultSchedule
 })
 
 export const scheduleLabel = (cronExpression: string) => {
@@ -32,7 +30,7 @@ export const scheduleLabel = (cronExpression: string) => {
     return `Every ${schedule.intervalHours} ${schedule.intervalHours === 1 ? 'hour' : 'hours'}`
   }
   if (schedule.frequency === 'weekly') {
-    return `Every ${weekdays.find((day) => day.value === schedule.weekday)?.label ?? 'week'} at ${schedule.time}`
+    return `Every ${weekdays.find(day => day.value === schedule.weekday)?.label ?? 'week'} at ${schedule.time}`
   }
   if (schedule.frequency === 'monthly') {
     return `Monthly on day ${schedule.monthDay} at ${schedule.time}`
@@ -40,8 +38,7 @@ export const scheduleLabel = (cronExpression: string) => {
   return `Every day at ${schedule.time}`
 }
 
-export const dateLabel = (value: string | null) =>
-  value ? new Date(value).toLocaleString() : '-'
+export const dateLabel = (value: string | null) => (value ? new Date(value).toLocaleString() : '-')
 
 export const statusVariant = (status: ScheduledTask['lastStatus']) => {
   if (status === 'success') return 'status'
@@ -62,7 +59,7 @@ export const taskToForm = (task: ScheduledTask): FormState => ({
   predefinedKey: task.predefinedKey,
   actionType: task.actionType,
   payload: task.payload ?? {},
-  schedule: cronToSchedule(task.cronExpression),
+  schedule: cronToSchedule(task.cronExpression)
 })
 
 export const normalizePayload = (form: FormState) => {

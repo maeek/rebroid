@@ -126,7 +126,10 @@ describe("ai observation utilities", () => {
 
   it("allows non-destructive adb shell commands", () => {
     assert.equal(isDangerousAdbShellCommand("pm list packages"), false);
-    assert.equal(isDangerousAdbShellCommand("settings get global hidden_api_policy"), false);
+    assert.equal(
+      isDangerousAdbShellCommand("settings get global hidden_api_policy"),
+      false,
+    );
     assert.equal(isDangerousAdbShellCommand("wm size"), false);
     assert.equal(isDangerousAdbShellCommand("ls /sdcard | head -20"), false);
   });

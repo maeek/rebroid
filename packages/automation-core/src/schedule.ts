@@ -27,7 +27,10 @@ export const weekdays = [
 ] as const;
 
 const clampInteger = (value: number, minimum: number, maximum: number) =>
-  Math.min(maximum, Math.max(minimum, Math.trunc(Number.isFinite(value) ? value : minimum)));
+  Math.min(
+    maximum,
+    Math.max(minimum, Math.trunc(Number.isFinite(value) ? value : minimum)),
+  );
 
 const timeParts = (time: string) => {
   const [hour = "3", minute = "0"] = time.split(":");
@@ -73,7 +76,9 @@ export const cronToSchedule = (cronExpression: string): ScheduleDraft => {
       ...defaultSchedule,
       frequency: "weekly",
       time: `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
-      weekday: weekdays.some((day) => day.value === dayOfWeek) ? dayOfWeek : "0",
+      weekday: weekdays.some((day) => day.value === dayOfWeek)
+        ? dayOfWeek
+        : "0",
     };
   }
   if (dayOfMonth && dayOfMonth !== "*" && month === "*" && dayOfWeek === "*") {

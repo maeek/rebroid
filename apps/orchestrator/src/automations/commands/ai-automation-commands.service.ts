@@ -48,8 +48,7 @@ export class AiAutomationCommandsService {
             key: 'status',
             label: 'Status',
             type: 'string',
-            description:
-              'AI run status: completed, blocked, or failed-to-run.',
+            description: 'AI run status: completed, blocked, or failed-to-run.',
           },
           {
             key: 'completed',

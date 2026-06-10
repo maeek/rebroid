@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner, Table } from 'typeorm';
 
-export class AddAutomationRunEventsTable1800000000001
-  implements MigrationInterface
-{
+export class AddAutomationRunEventsTable1800000000001 implements MigrationInterface {
   name = 'AddAutomationRunEventsTable1800000000001';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

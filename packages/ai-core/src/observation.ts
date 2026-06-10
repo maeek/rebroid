@@ -18,7 +18,8 @@ export const SCREEN_MUTATING_TOOLS = new Set([
   "android.viewerCommand",
 ]);
 
-const DANGEROUS_INSTALL_RE = /\b(?:pm|cmd\s+package)\b[^;\n&|]*\binstall(?:-existing)?\b/;
+const DANGEROUS_INSTALL_RE =
+  /\b(?:pm|cmd\s+package)\b[^;\n&|]*\binstall(?:-existing)?\b/;
 const DANGEROUS_RM_RE =
   /\brm\b[^;\n&|]*\s+[^;\n&|]*\/(?:data|system|sdcard|storage)\b/;
 const DANGEROUS_REBOOT_RE = /\breboot\b/;
