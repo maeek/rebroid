@@ -3,6 +3,7 @@ import type { AutomationRunEvent } from '@/server/orchestrator/automations/types
 export type CompactValueRow = {
   key: string
   value: string
+  format: 'inline' | 'pre'
 }
 
 export type ToolTimelineItem = {
@@ -33,6 +34,20 @@ export const compactValue = (value: unknown) => {
   }
 }
 
+const PRE_FORMATTED_KEYS = new Set([
+  'stdout',
+  'stderr',
+  'output',
+  'command',
+  'stack',
+  'trace',
+  'logs',
+  'log',
+])
+
+const valueFormatForKey = (key: string): CompactValueRow['format'] =>
+  PRE_FORMATTED_KEYS.has(key.toLowerCase()) ? 'pre' : 'inline'
+
 export const compactValueRows = (value: unknown): CompactValueRow[] => {
   if (value === null || value === undefined) return []
   if (Array.isArray(value)) {
@@ -40,7 +55,8 @@ export const compactValueRows = (value: unknown): CompactValueRow[] => {
       const text = compactValue(item)
       return {
         key: `item ${index + 1}`,
-        value: text.length > 180 ? `${text.slice(0, 180)}...` : text
+        value: text,
+        format: 'inline',
       }
     })
   }
@@ -51,14 +67,16 @@ export const compactValueRows = (value: unknown): CompactValueRow[] => {
         const text = compactValue(item)
         return {
           key,
-          value: text.length > 180 ? `${text.slice(0, 180)}...` : text
+          value: text,
+          format: valueFormatForKey(key),
         }
       })
   }
   return [
     {
       key: 'value',
-      value: compactValue(value)
+      value: compactValue(value),
+      format: 'inline',
     }
   ]
 }

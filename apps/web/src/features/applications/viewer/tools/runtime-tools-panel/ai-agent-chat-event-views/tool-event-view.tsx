@@ -1,12 +1,38 @@
 import { IconChevronDown } from '@tabler/icons-react'
 import type { ToolTimelineItem } from '../ai-agent-chat-event-utils'
 
-const ToolEventRow = ({ item }: { item: { key: string; value: string } }) => (
-  <div className='grid min-w-0 gap-0.5 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-2'>
-    <dt className='min-w-0 font-medium text-muted-foreground'>{item.key}</dt>
-    <dd className='min-w-0 overflow-hidden wrap-anywhere'>{item.value}</dd>
-  </div>
-)
+type ToolEventRowValue = {
+  key: string
+  value: string | number | boolean | null | undefined
+  format?: 'inline' | 'pre'
+}
+
+const ToolEventRow = ({ item }: { item: ToolEventRowValue }) => {
+  const isPre = item.format === 'pre'
+  const valueText =
+    typeof item.value === 'string'
+      ? item.value
+      : item.value === null || item.value === undefined
+        ? ''
+        : typeof item.value === 'object'
+          ? JSON.stringify(item.value) ?? String(item.value)
+          : String(item.value)
+
+  return (
+    <div className='grid min-w-0 gap-0.5 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-2'>
+      <dt className='min-w-0 font-medium text-muted-foreground'>{item.key}</dt>
+      {isPre ? (
+        <dd className='min-w-0'>
+          <pre className='overflow-auto whitespace-pre-wrap rounded-sm bg-background/20 p-1 font-mono text-[11px] break-all text-muted-foreground/90'>
+            {valueText}
+          </pre>
+        </dd>
+      ) : (
+        <dd className='min-w-0 overflow-hidden wrap-anywhere'>{valueText}</dd>
+      )}
+    </div>
+  )
+}
 
 export const ToolEventView = ({ item }: { item: ToolTimelineItem }) => {
   const label = item.status === 'failed' ? 'Tool failed' : item.status === 'used' ? 'Used tool' : 'Using tool'

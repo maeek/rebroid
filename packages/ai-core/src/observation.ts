@@ -39,6 +39,7 @@ export const isDangerousAdbShellCommand = (commandText: string): boolean => {
 const UI_XML_MAX_CHARS = 80_000;
 const PROVIDER_ERROR_MAX_CHARS = 500;
 const EVENT_STRING_MAX_CHARS = 4_000;
+const TOOL_EVENT_OUTPUT_STRING_MAX_CHARS = 120_000;
 const MODEL_TOOL_STRING_MAX_CHARS = 12_000;
 const SANITIZE_MAX_DEPTH = 4;
 const REDACTED_BINARY = "[redacted binary data]";
@@ -89,6 +90,9 @@ export const sanitizeAiDataForEvent = (value: unknown) =>
 
 export const sanitizeAiDataForModel = (value: unknown) =>
   sanitizeAiData(value, MODEL_TOOL_STRING_MAX_CHARS);
+
+export const sanitizeAiDataForToolOutput = (value: unknown) =>
+  sanitizeAiData(value, TOOL_EVENT_OUTPUT_STRING_MAX_CHARS);
 
 export const providerErrorDetailFromText = (text: string) => {
   if (!text.trim()) return "";

@@ -38,7 +38,6 @@ export const StreamingToolsSection = ({
   const playerCapabilities = useMemo(() => getViewerPlayerCapabilities(), [])
   const selectedPlayer = viewerPlayerDefinitions.find(player => player.value === viewerSettings.player)
   const selectedCapability = playerCapabilities[viewerSettings.player]
-  const [showAdvanced, setShowAdvanced] = useState(false)
 
   const updateSettings = (patch: Partial<ViewerSettings>) => {
     onViewerSettingsChange(normalizeViewerSettings({ ...viewerSettings, ...patch }))
@@ -107,15 +106,7 @@ export const StreamingToolsSection = ({
         </StreamingSetting>
 
         <div className='flex flex-col gap-2'>
-          <div
-            className={cn(
-              'grid overflow-hidden transition-[grid-template-rows,opacity,padding-top,padding-bottom] duration-200 ease-out',
-              {
-                'grid-rows-[1fr] opacity-100': showAdvanced,
-                'grid-rows-[0fr] opacity-0 pt-0 pb-0': !showAdvanced
-              }
-            )}
-          >
+          <div className='grid overflow-hidden transition-[grid-template-rows,opacity,padding-top,padding-bottom] duration-200 ease-out grid-rows-[1fr] opacity-100'>
             <div className='min-h-0 flex flex-col gap-4'>
               <StreamingSetting label='Max size'>
                 <Select
@@ -145,13 +136,6 @@ export const StreamingToolsSection = ({
               />
             </div>
           </div>
-          <Button
-            className='my-2'
-            variant='ghost'
-            onClick={() => setShowAdvanced(current => !current)}
-          >
-            {showAdvanced ? 'Hide advanced settings' : 'Show advanced settings'}
-          </Button>
         </div>
       </div>
     </ToolSection>

@@ -21,7 +21,7 @@ export const TopBarProtected = ({ initialUser }: { initialUser: ShellUser }) => 
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   return (
-    <div className='sticky top-0 z-50 flex h-16 w-full max-w-full shrink-0 justify-between overflow-hidden bg-transparent max-sm:px-1'>
+    <div className='fixed top-0 z-50 flex h-16 w-full max-w-full shrink-0 justify-between overflow-hidden bg-transparent max-sm:px-1'>
       <div
         aria-hidden='true'
         className='pointer-events-none absolute inset-x-0 bottom-0 backdrop-blur-xl h-full'

@@ -4,6 +4,7 @@ import {
   isImageInputUnsupportedProviderMessage,
   prepareUiXml,
   sanitizeAiDataForModel,
+  sanitizeAiDataForToolOutput,
   providerErrorDetailFromText,
   sanitizeAiDataForEvent,
   isDangerousAdbShellCommand,
@@ -107,6 +108,14 @@ describe("ai observation utilities", () => {
     assert.equal(
       String(sanitizeAiDataForEvent("x".repeat(10_000))).length > 4_000,
       true,
+    );
+  });
+
+  it("keeps long tool output text values less aggressively truncated", () => {
+    assert.equal(sanitizeAiDataForToolOutput("x".repeat(80_000)), "x".repeat(80_000));
+    assert.equal(
+      sanitizeAiDataForToolOutput("y".repeat(120_000)),
+      "y".repeat(120_000),
     );
   });
 

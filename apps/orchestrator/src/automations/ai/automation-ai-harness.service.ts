@@ -30,6 +30,7 @@ import {
   isDangerousAdbShellCommand,
   providerErrorDetailFromText,
   sanitizeAiDataForEvent,
+  sanitizeAiDataForToolOutput,
   sanitizeAiDataForModel,
   sanitizeAiText,
 } from './automation-ai-observation.utils';
@@ -223,7 +224,7 @@ export class AutomationAiHarnessService {
             envelopeValid: parsedToolCall.envelopeValid,
             toolCallId: call.id,
           });
-          const eventData = sanitizeAiDataForEvent(result.data ?? {});
+          const eventData = sanitizeAiDataForToolOutput(result.data ?? {});
           const modelData = sanitizeAiDataForModel(result.data ?? {});
           const summary = sanitizeAiText(result.summary);
           await this.emit(context, 'ai.tool.completed', summary, {

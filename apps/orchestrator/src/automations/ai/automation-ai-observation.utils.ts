@@ -5,6 +5,7 @@ export {
   prepareUiXml,
   providerErrorDetailFromText,
   sanitizeAiDataForEvent,
+  sanitizeAiDataForToolOutput,
   sanitizeAiDataForModel,
   sanitizeAiText,
 } from '@rebroid/ai-core/observation';

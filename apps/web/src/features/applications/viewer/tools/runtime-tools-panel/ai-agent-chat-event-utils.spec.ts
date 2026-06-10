@@ -84,4 +84,45 @@ describe('buildTimelineItems', () => {
       status: 'used'
     })
   })
+
+  it('keeps stdout/stderr rows as preformatted text', () => {
+    const events: AutomationRunEvent[] = [
+      event('ai.tool.arguments', {
+        id: 'a1',
+        data: {
+          uses: 'android.adbShell',
+          arguments: {
+            command: 'echo hello',
+          },
+        },
+      }),
+      event('ai.tool.completed', {
+        id: 'a2',
+        data: {
+          uses: 'android.adbShell',
+          output: {
+            stdout: 'line1\nline2\nline3',
+            stderr: '',
+          },
+        },
+      }),
+    ]
+
+    const timeline = buildTimelineItems(events)
+    const toolOutput = timeline[0]
+
+    if (toolOutput.type !== 'tool') {
+      throw new Error('Expected tool timeline item')
+    }
+
+    expect(toolOutput.output).toHaveLength(2)
+    expect(toolOutput.output[0]).toMatchObject({
+      key: 'stdout',
+      format: 'pre',
+    })
+    expect(toolOutput.output[1]).toMatchObject({
+      key: 'stderr',
+      format: 'pre',
+    })
+  })
 })
