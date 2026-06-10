@@ -1,8 +1,7 @@
 'use client'
 
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { getViewerPlayerCapabilities } from '@/features/applications/viewer/player/viewer-player-capabilities'
 import {
@@ -11,7 +10,6 @@ import {
   viewerStreamingPresets
 } from '@/features/applications/viewer/settings/viewer-settings'
 import { ViewerStreamingSliderFields } from '@/features/applications/viewer/settings/viewer-streaming-slider-fields'
-import { cn } from '@/lib/utils'
 import { ToolSection } from './tool-section'
 import type { ViewerSettings, ViewerStreamingPreset } from '@/features/applications/viewer/settings/viewer-settings'
 
