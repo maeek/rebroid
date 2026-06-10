@@ -207,7 +207,7 @@ export const RuntimeToolsPanel = () => {
         <div
           role='tablist'
           aria-label='Runtime tools'
-          className='flex w-full min-w-0 items-center gap-1 overflow-x-auto scrollbar-thin py-1 px-1.5 rounded-md bg-background/30'
+          className='flex w-full min-w-0 items-center gap-1 overflow-x-auto scrollbar-thin py-1 px-1.5 rounded-md bg-background/30 border border-border/70'
         >
           {tools.map(tool => (
             <button
