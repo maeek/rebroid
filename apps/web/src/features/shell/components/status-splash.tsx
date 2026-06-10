@@ -61,7 +61,7 @@ export const StatusSplash = ({
           <p className='text-secondary-foreground'>{description}</p>
         </div>
         <Visible when={detail}>
-          <p className='w-full rounded-md bg-background/50 p-3 text-xs text-muted-foreground text-center'>{detail}</p>
+          <p className='w-full text-xs text-muted-foreground text-center'>{detail}</p>
         </Visible>
         <Visible when={primaryAction || secondaryAction}>
           <div className='flex flex-wrap items-center justify-center gap-3'>
