@@ -1,6 +1,6 @@
 'use client'
 
-import { IconArrowsMaximize, IconArrowsMinimize, IconExternalLink, IconLoader2, IconX } from '@tabler/icons-react'
+import { IconExternalLink, IconLoader2, IconX } from '@tabler/icons-react'
 import { Visible } from '@/components/ui/visible'
 import { IconActionButton } from '@/features/applications/viewer/display/display-viewer-shell/surface/icon-action-button'
 import { cn } from '@/lib/utils'
@@ -9,18 +9,14 @@ import type { DisplayViewerSurface } from '@/features/applications/viewer/displa
 export const SurfaceChrome = ({
   isActive,
   isClosing,
-  fullscreen,
   surface,
   onClose,
-  onToggleFullscreen,
   onOpenPopout
 }: {
   isActive: boolean
   isClosing: boolean
-  fullscreen: boolean
   surface: DisplayViewerSurface
   onClose: () => void
-  onToggleFullscreen: () => void
   onOpenPopout: () => void
 }) => (
   <div
@@ -34,12 +30,6 @@ export const SurfaceChrome = ({
       <span className='max-w-32 truncate text-xs font-medium'>{surface.name}</span>
     </div>
     <div className='flex shrink-0 items-center gap-1'>
-      <IconActionButton
-        label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-        onClick={onToggleFullscreen}
-      >
-        {fullscreen ? <IconArrowsMinimize className='size-3.5' /> : <IconArrowsMaximize className='size-3.5' />}
-      </IconActionButton>
       <IconActionButton
         label='Open viewer in new window'
         onClick={onOpenPopout}

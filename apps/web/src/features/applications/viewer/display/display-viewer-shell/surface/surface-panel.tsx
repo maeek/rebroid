@@ -20,7 +20,6 @@ export const SurfacePanel = ({ surface }: { surface: DisplayViewerSurface }) => 
     onOpenPopout,
     onSelect,
     onSurfaceElement,
-    onToggleFullscreen,
     onViewportElement,
     viewportSize
   } = useDisplayViewerSurface(surface)
@@ -37,9 +36,7 @@ export const SurfacePanel = ({ surface }: { surface: DisplayViewerSurface }) => 
         isActive={isActive}
         surface={surface}
         isClosing={isClosing}
-        fullscreen={fullscreenSurface}
         onClose={onClose}
-        onToggleFullscreen={onToggleFullscreen}
         onOpenPopout={onOpenPopout}
       />
       <div
