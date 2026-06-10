@@ -25,7 +25,7 @@ export function AutomationStepAddRow({
       <DropdownMenuTrigger asChild>
         <Button
           type='button'
-          variant='ghost'
+          variant='outline'
           className='h-9 w-full justify-start gap-2 rounded-md border border-dashed border-border/60 bg-background/15 px-3 text-secondary-foreground hover:bg-secondary/40 hover:text-foreground'
         >
           <IconPlus className='size-4' />

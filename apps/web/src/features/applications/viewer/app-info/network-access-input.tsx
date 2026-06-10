@@ -76,7 +76,7 @@ export const NetworkAccessInput = ({
     <div className='w-full space-y-2'>
       <div
         className={cn(
-          'flex min-h-11 w-full flex-wrap items-center gap-2 rounded-md border border-input bg-input dark:bg-white/5 px-3 py-2',
+          'flex min-h-11 w-full flex-wrap items-center gap-2 rounded-md border border-input bg-input dark:bg-white/7 backdrop-blur-2xl px-3 py-2',
           {
             'cursor-not-allowed opacity-60': disabled || isBusy
           }

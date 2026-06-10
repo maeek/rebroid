@@ -79,7 +79,6 @@ export const AutomationStatusToolsSection = ({
             onClick={() => void loadRuns()}
           >
             <IconRefresh className='size-4' />
-            Refresh
           </Button>
         </div>
       </div>

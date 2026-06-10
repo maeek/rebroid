@@ -290,7 +290,7 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
               return (
                 <label
                   key={command.uses}
-                  className='flex min-w-0 items-start gap-2 rounded-sm px-2 py-1 text-sm hover:bg-white/5'
+                  className='flex min-w-0 items-start gap-2 rounded-sm px-2 py-1 text-sm hover:bg-white/7'
                 >
                   <Checkbox
                     checked={checked}

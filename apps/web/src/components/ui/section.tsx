@@ -40,7 +40,7 @@ export const Section = ({
       className={cn(
         'flex flex-col w-full rounded-lg',
         {
-          'border border-border/70 bg-card/40 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md max-sm:p-4':
+          'border border-border/70 bg-card/40 dark:bg-white/2 backdrop-blur-2xl p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] max-sm:p-4':
             boxed,
           'p-0': boxedCollapsible
         },

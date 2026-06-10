@@ -59,7 +59,7 @@ export function AutomationActionPicker({
         <Button
           type='button'
           variant='input'
-          className='h-auto min-h-11 w-full justify-between gap-3 px-3 py-2 text-left'
+          className='h-auto min-h-11 w-full justify-between gap-3 px-3 py-2 text-left dark:bg-white/7 backdrop-blur-2xl'
         >
           <span className='flex min-w-0 items-center gap-3'>
             <span className='flex size-8 shrink-0 items-center justify-center rounded-md bg-background/70 text-primary'>
@@ -117,7 +117,9 @@ export function AutomationActionPicker({
                         type='button'
                         className={classNames(
                           'grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-md px-2 py-2 text-left transition',
-                          selected ? 'bg-primary/15 text-foreground' : 'hover:bg-secondary/60'
+                          selected
+                            ? 'bg-primary/15 dark:bg-white/10 text-foreground'
+                            : 'hover:bg-secondary/60 dark:hover:bg-white/7'
                         )}
                         onClick={() => selectAction(command.uses)}
                       >

@@ -91,7 +91,7 @@ export function AutomationTagsInput({
   return (
     <div className='grid gap-2'>
       <Label htmlFor={id}>{label}</Label>
-      <div className='flex min-h-11 w-full flex-wrap items-center gap-2 rounded-md border border-input bg-input px-3 py-2 dark:bg-white/5 focus-visible:border-primary/60 hover:bg-input/84 hover:border-primary/40'>
+      <div className='flex min-h-11 w-full flex-wrap items-center gap-2 rounded-md border border-input bg-input px-3 py-2 dark:bg-white/7 backdrop-blur-2xl focus-visible:border-primary/60 hover:bg-input/84 hover:border-primary/40'>
         {value.map(tag => (
           <Popover
             key={tag.name}

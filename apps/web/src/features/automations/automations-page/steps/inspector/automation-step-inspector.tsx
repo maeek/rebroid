@@ -35,7 +35,7 @@ export function AutomationStepInspector({
   return (
     <>
       <aside className='hidden min-w-0 xl:block'>
-        <div className='overflow-hidden rounded-lg border border-border/70 bg-card/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md'>
+        <div className='overflow-hidden rounded-lg border border-border/70 bg-card/40 dark:bg-white/7 backdrop-blur-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]'>
           {step ? (
             <AutomationStepInspectorContent
               step={step}

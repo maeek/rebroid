@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 type InputProps = React.InputHTMLAttributes<HTMLInputElement>
 
 const inputBaseClassName =
-  'h-9 w-full rounded-md border border-border/70 bg-input/72 text-sm backdrop-blur-xs transition-[background-color,border-color,color] duration-75 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-primary/60 hover:bg-input/84 disabled:cursor-not-allowed disabled:opacity-50'
+  'h-9 w-full rounded-md border border-border/70 bg-black/5 dark:bg-white/5 backdrop-blur-2xl text-sm transition-[background-color,border-color,color] duration-75 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-primary/60 hover:bg-black/7 dark:hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50'
 
 const textInputClassName = 'px-4 py-1 hover:border-primary/40'
 

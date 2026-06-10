@@ -7,6 +7,7 @@ import {
   IconArrowUp,
   IconChevronDown,
   IconCopy,
+  IconCopyCheck,
   IconDotsVertical,
   IconFileCode,
   IconGripVertical,
@@ -227,9 +228,10 @@ export function AutomationStepOutlineRow({
                   Copy
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className='px-3 py-2'
+                  className='gap-2 px-3 py-2'
                   onSelect={onDuplicate}
                 >
+                  <IconCopyCheck className='size-4' />
                   Duplicate
                 </DropdownMenuItem>
                 <DropdownMenuItem

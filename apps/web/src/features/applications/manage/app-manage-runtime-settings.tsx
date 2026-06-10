@@ -90,7 +90,7 @@ export const AppManageRuntimeSettings = ({
           </div>
           <Button
             type='button'
-            variant='ghost'
+            variant='outline'
             className='w-full'
             onClick={() => setShowAdvanced(current => !current)}
           >
