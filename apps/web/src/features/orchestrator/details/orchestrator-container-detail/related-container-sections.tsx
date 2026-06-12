@@ -3,12 +3,12 @@
 import { Section } from '@/components/ui/section'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Visible } from '@/components/ui/visible'
-import { PlatformDetailRow, formatPlatformDate } from '@/features/orchestrator/components/platform-detail-parts'
 import { useContainerDetailContext } from '@/features/orchestrator/details/orchestrator-container-detail/container-detail-context'
 import {
   getRelatedImageSize,
   getRelatedImageTags
 } from '@/features/orchestrator/details/orchestrator-container-detail/container-detail-utils'
+import { PlatformDetailRow, formatPlatformDate } from '@/shared/ui/platform/platform-detail-parts'
 
 export const RelatedImageSection = () => {
   const { details } = useContainerDetailContext()

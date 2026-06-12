@@ -1,6 +1,6 @@
+import { getRedroidDisplayDimensionsFromArgs } from '@rebroid/application-core/redroid-runtime'
 import { getProtectedViewerShellUrl } from '@/features/applications/viewer/display/display-viewer-url'
 import { cn } from '@/lib/utils'
-import { getRedroidDisplayDimensionsFromArgs } from '@rebroid/application-core/redroid-runtime'
 import type { ViewerOrientation } from './android-viewer'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'

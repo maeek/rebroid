@@ -23,3 +23,25 @@ export const isTransientAdbConnectionError = (message: string) => {
     normalized.includes('device offline')
   );
 };
+
+export const webrtcUdpPortBinding = (portRange: string) => {
+  const [start, end] = portRange.split('-').map((value) => Number(value));
+  if (
+    !Number.isInteger(start) ||
+    !Number.isInteger(end) ||
+    start <= 0 ||
+    end < start
+  ) {
+    return null;
+  }
+
+  const portBindings: Record<string, { HostIp: string; HostPort: string }[]> =
+    {};
+  const exposedPorts: Record<string, Record<string, never>> = {};
+  for (let port = start; port <= end; port += 1) {
+    const key = `${port}/udp`;
+    portBindings[key] = [{ HostIp: '0.0.0.0', HostPort: String(port) }];
+    exposedPorts[key] = {};
+  }
+  return { portBindings, exposedPorts };
+};

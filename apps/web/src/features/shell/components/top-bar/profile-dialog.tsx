@@ -14,10 +14,10 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { UserAvatarInput } from '@/features/settings/users/components/user-avatar-input'
 import { toast } from '@/hooks/use-toast'
 import { changeCurrentPasswordAction } from '@/server/users/actions/change-current-password-action'
 import { updateCurrentProfileAction } from '@/server/users/actions/update-current-profile-action'
+import { UserAvatarInput } from '@/shared/ui/user-avatar/user-avatar-input'
 
 export const ProfileDialog = ({
   open,

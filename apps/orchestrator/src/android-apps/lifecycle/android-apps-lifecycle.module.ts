@@ -16,6 +16,7 @@ import { AndroidApplicationFactory } from './services/android-application.factor
 import { AndroidAppsLifecycleService } from './services/android-apps-lifecycle.service';
 import { AndroidAppsRemovalService } from './services/android-apps-removal.service';
 import { AndroidAppsRuntimePreparationService } from './services/android-apps-runtime-preparation.service';
+import { AndroidAppsStartLifecycleService } from './services/android-apps-start-lifecycle.service';
 import { LifecycleBackgroundJobRunner } from './services/lifecycle-background-job-runner.service';
 
 @Module({
@@ -39,6 +40,7 @@ import { LifecycleBackgroundJobRunner } from './services/lifecycle-background-jo
     AndroidAppsLifecycleService,
     AndroidAppsRemovalService,
     AndroidAppsRuntimePreparationService,
+    AndroidAppsStartLifecycleService,
     LifecycleBackgroundJobRunner,
   ],
   exports: [AndroidAppsLifecycleService],

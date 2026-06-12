@@ -1,15 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { createWriteStream } from 'node:fs';
-import {
-  mkdir,
-  mkdtemp,
-  readdir,
-  readFile,
-  rm,
-  stat,
-  unlink,
-  writeFile,
-} from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
@@ -20,14 +11,13 @@ import {
 } from '../../../common/http-upload';
 import { DockerContainerArchiveService } from '../../../docker/containers/services/docker-container-archive.service';
 import { DockerContainerExecService } from '../../../docker/containers/services/docker-container-exec.service';
-import { DockerResourceRuntimeService } from '../../../docker/resources/services/docker-resource-runtime.service';
-import { NetworkIsolationService } from '../../../network-isolation/network-isolation.service';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
 import { ApplicationRuntimeFileUploadDto } from '../dto/application-runtime-file.dto';
 import { ApplicationRuntimeFilesQueryDto } from '../dto/application-runtime-files-query.dto';
 import { parseDownloadFiles } from '../utils/android-apps-runtime-file.utils';
+import { RuntimeDownloadVolumeService } from './runtime-download-volume.service';
 import { RuntimeFilePathService } from './runtime-file-path.service';
 import { RuntimeUploadStreamService } from './runtime-upload-stream.service';
 
@@ -36,11 +26,10 @@ export class RuntimeDownloadFilesService {
   constructor(
     private readonly archive: DockerContainerArchiveService,
     private readonly exec: DockerContainerExecService,
-    private readonly networkIsolation: NetworkIsolationService,
-    private readonly resources: DockerResourceRuntimeService,
     private readonly logs: AndroidAppsLogService,
     private readonly state: AndroidAppsStateService,
     private readonly paths: RuntimeFilePathService,
+    private readonly volumes: RuntimeDownloadVolumeService,
     private readonly uploads: RuntimeUploadStreamService,
   ) {}
 
@@ -53,12 +42,7 @@ export class RuntimeDownloadFilesService {
       return this.listRunningDownloadFiles(app);
     }
 
-    const directory = await this.getPersistentDownloadDirectory(app, query);
-    if (!directory) {
-      return [];
-    }
-
-    return this.listVolumeDownloadFiles(directory);
+    return this.volumes.listFiles(app, query);
   }
 
   async uploadDownloadFile(
@@ -83,18 +67,8 @@ export class RuntimeDownloadFilesService {
 
     const fileName = this.paths.sanitizeFileName(file.originalname);
     if (!this.paths.shouldUseRunningContainer(app, query)) {
-      const directory = await this.getPersistentDownloadDirectory(app, query, {
-        create: true,
-      });
-      if (!directory) {
-        throw new ConflictException(
-          'Temporary profiles can only transfer files while the app is running.',
-        );
-      }
-
-      await mkdir(directory, { recursive: true });
-      await writeFile(join(directory, fileName), file.buffer, { mode: 0o644 });
-      return this.uploadResult(fileName, file.size);
+      await this.volumes.storeBuffer(app, fileName, file.buffer, query);
+      return this.volumes.uploadResult(fileName, file.size);
     }
 
     await this.exec.execInContainer(app.containerId!, [
@@ -111,7 +85,7 @@ export class RuntimeDownloadFilesService {
     await this.prepareRunningDownloadFile(app, fileName);
     this.scanRunningDownloadFileInBackground(app, fileName);
 
-    return this.uploadResult(fileName, file.size);
+    return this.volumes.uploadResult(fileName, file.size);
   }
 
   async downloadFile(
@@ -122,14 +96,7 @@ export class RuntimeDownloadFilesService {
     const app = await this.state.get(id);
     const safeFileName = this.paths.sanitizeFileName(fileName);
     if (!this.paths.shouldUseRunningContainer(app, query)) {
-      const directory = await this.getPersistentDownloadDirectory(app, query);
-      if (!directory) {
-        throw new ConflictException(
-          'Temporary profiles can only transfer files while the app is running.',
-        );
-      }
-
-      const content = await readFile(join(directory, safeFileName));
+      const content = await this.volumes.readFile(app, safeFileName, query);
       return this.downloadResult(safeFileName, content);
     }
 
@@ -171,52 +138,10 @@ export class RuntimeDownloadFilesService {
   ) {
     const fileName = this.paths.sanitizeFileName(originalName);
     if (!this.paths.shouldUseRunningContainer(app, query)) {
-      return this.storePersistentDownloadFileStream(
-        app,
-        stream,
-        fileName,
-        query,
-      );
+      return this.volumes.storeStream(app, stream, fileName, query);
     }
 
     return this.storeRunningDownloadFileStream(app, stream, fileName);
-  }
-
-  private async storePersistentDownloadFileStream(
-    app: AndroidApplication,
-    stream: Readable,
-    fileName: string,
-    query: ApplicationRuntimeFilesQueryDto,
-  ): Promise<ApplicationRuntimeFileUploadDto> {
-    const directory = await this.getPersistentDownloadDirectory(app, query, {
-      create: true,
-    });
-    if (!directory) {
-      stream.resume();
-      throw new ConflictException(
-        'Temporary profiles can only transfer files while the app is running.',
-      );
-    }
-
-    await mkdir(directory, { recursive: true });
-    const targetPath = join(directory, fileName);
-    let sizeBytes = 0;
-    const counter = this.uploads.createByteCounter((bytes) => {
-      sizeBytes += bytes;
-    });
-
-    try {
-      await pipeline(
-        stream,
-        counter,
-        createWriteStream(targetPath, { mode: 0o644 }),
-      );
-    } catch (error) {
-      await unlink(targetPath).catch(() => undefined);
-      throw error;
-    }
-
-    return this.uploadResult(fileName, sizeBytes);
   }
 
   private async storeRunningDownloadFileStream(
@@ -257,7 +182,7 @@ export class RuntimeDownloadFilesService {
       );
     }
 
-    return this.uploadResult(fileName, sizeBytes);
+    return this.volumes.uploadResult(fileName, sizeBytes);
   }
 
   private async prepareRunningDownloadFile(
@@ -327,79 +252,6 @@ export class RuntimeDownloadFilesService {
         'run_with_timeout 20 scan_file || true',
       ].join('\n'),
     ]);
-  }
-
-  private async getPersistentDownloadDirectory(
-    app: AndroidApplication,
-    query: ApplicationRuntimeFilesQueryDto,
-    options: { create?: boolean } = {},
-  ) {
-    const profileName = this.paths.persistentProfileName(app, query);
-    if (!profileName) {
-      return null;
-    }
-
-    const volumeName = this.networkIsolation.namesFor(
-      app.id,
-      app.name,
-      profileName,
-    ).volumeName;
-
-    if (options.create) {
-      await this.resources.createVolume(app.id, volumeName);
-    }
-
-    const volume = await this.resources.inspectVolume(volumeName);
-    if (!volume?.Mountpoint) {
-      return null;
-    }
-
-    return join(volume.Mountpoint, 'media', '0', 'Download');
-  }
-
-  private async listVolumeDownloadFiles(directory: string) {
-    let entries: string[];
-    try {
-      entries = await readdir(directory);
-    } catch {
-      return [];
-    }
-
-    const files = await Promise.all(
-      entries.map(async (name) => {
-        const safeName = this.paths.sanitizeFileName(name);
-        const path = join(directory, safeName);
-        const fileStat = await stat(path).catch(() => null);
-        if (!fileStat?.isFile()) {
-          return null;
-        }
-
-        return {
-          name: safeName,
-          path: `${this.paths.downloadDirectory}/${safeName}`,
-          type: 'file' as const,
-          sizeBytes: fileStat.size,
-          itemCount: null,
-          modifiedAt: fileStat.mtime.toISOString(),
-        };
-      }),
-    );
-
-    return files
-      .filter((file): file is NonNullable<typeof file> => Boolean(file))
-      .sort((left, right) => left.name.localeCompare(right.name));
-  }
-
-  private uploadResult(fileName: string, sizeBytes: number) {
-    return {
-      uploaded: true,
-      name: fileName,
-      path: `${this.paths.downloadDirectory}/${fileName}`,
-      type: 'file' as const,
-      sizeBytes,
-      itemCount: null,
-      modifiedAt: new Date().toISOString(),
-    };
   }
 
   private downloadResult(fileName: string, content: Buffer) {

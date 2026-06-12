@@ -9,6 +9,7 @@ import { AndroidAppsRuntimeDeviceService } from './services/android-apps-runtime
 import { AndroidAppsRuntimeDiagnosticsService } from './services/android-apps-runtime-diagnostics.service';
 import { RuntimeDataFilesService } from './services/runtime-data-files.service';
 import { RuntimeDownloadFilesService } from './services/runtime-download-files.service';
+import { RuntimeDownloadVolumeService } from './services/runtime-download-volume.service';
 import { RuntimeFilePathService } from './services/runtime-file-path.service';
 import { RuntimeUploadStreamService } from './services/runtime-upload-stream.service';
 
@@ -26,6 +27,7 @@ import { RuntimeUploadStreamService } from './services/runtime-upload-stream.ser
     AndroidAppsRuntimeDiagnosticsService,
     RuntimeDataFilesService,
     RuntimeDownloadFilesService,
+    RuntimeDownloadVolumeService,
     RuntimeFilePathService,
     RuntimeUploadStreamService,
   ],

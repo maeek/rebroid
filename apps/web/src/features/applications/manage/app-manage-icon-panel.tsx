@@ -2,19 +2,19 @@ import { useState, type ChangeEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Visible } from '@/components/ui/visible'
-import { AppIcon } from '@/features/applications/components/app-icon'
 import { AppFormIconSection } from '@/features/applications/create/create-app-icon-section'
-import { optimizeIconFile } from '@/features/applications/icons/icon-metadata'
-import { notifyRecentAppsUpdated } from '@/features/applications/recent/recent-apps'
+import { toast } from '@/hooks/use-toast'
+import { removeAppIconAction } from '@/server/app-icons/actions/remove-app-icon-action'
+import { setAppIconAction } from '@/server/app-icons/actions/set-app-icon-action'
+import { optimizeIconFile } from '@/shared/model/media/icon-metadata'
+import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
 import {
   apkSizeLabel,
   isFileWithinApkLimit,
   useOrchestratorUiSettings
-} from '@/features/settings/hooks/use-orchestrator-ui-settings'
-import { toast } from '@/hooks/use-toast'
-import { removeAppIconAction } from '@/server/app-icons/actions/remove-app-icon-action'
-import { setAppIconAction } from '@/server/app-icons/actions/set-app-icon-action'
-import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
+} from '@/shared/model/settings/use-orchestrator-ui-settings'
+import { AppIcon } from '@/shared/ui/app-icon/app-icon'
+import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 
 type AppManageIconPanelProps = {
   appId: string

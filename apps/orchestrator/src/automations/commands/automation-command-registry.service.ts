@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, OnModuleInit } from '@nestjs/common';
 import { ZodError, toJSONSchema } from 'zod';
-import { AutomationCommandDto } from '../dto/automation.dto';
+import { AutomationCommandDto } from '../dto/automation-command.dto';
 import {
   AutomationCommandContext,
   AutomationCommandDefinition,

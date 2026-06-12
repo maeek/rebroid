@@ -15,7 +15,7 @@ const ToolEventRow = ({ item }: { item: ToolEventRowValue }) => {
       : item.value === null || item.value === undefined
         ? ''
         : typeof item.value === 'object'
-          ? JSON.stringify(item.value) ?? String(item.value)
+          ? (JSON.stringify(item.value) ?? String(item.value))
           : String(item.value)
 
   return (

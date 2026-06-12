@@ -1,5 +1,5 @@
 import { IconLoader2, IconRefresh } from '@tabler/icons-react'
-import { formatPlatformBytes, formatPlatformDate } from '@/features/orchestrator/components/platform-detail-parts'
+import { formatPlatformBytes, formatPlatformDate } from '@/shared/ui/platform/platform-detail-parts'
 import type { PlatformContainerDetails, PlatformContainerStats } from '@/server/orchestrator/platform/types'
 
 export const containerStatsRefreshIntervalMs = 15_000

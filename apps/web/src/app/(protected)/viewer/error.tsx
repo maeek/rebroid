@@ -1,7 +1,7 @@
 'use client'
 
 import { IconAlertTriangle } from '@tabler/icons-react'
-import { StatusSplash } from '@/features/shell/components/status-splash'
+import { StatusSplash } from '@/shared/ui/status-splash'
 
 export default function ViewerErrorPage({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (

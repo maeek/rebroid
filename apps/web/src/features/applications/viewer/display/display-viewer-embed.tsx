@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
+import { getRedroidDisplayDimensionsFromArgs } from '@rebroid/application-core/redroid-runtime'
 import { IconAlertTriangle, IconDeviceDesktop, IconLoader2 } from '@tabler/icons-react'
 import { Visible } from '@/components/ui/visible'
 import { DisplayViewerProvider } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-context'
@@ -14,9 +15,8 @@ import {
 } from '@/features/applications/viewer/player/android-viewer-layout'
 import { ViewerPlaceholderScreen } from '@/features/applications/viewer/player/viewer-placeholder-screen'
 import { getToastErrorDescription } from '@/features/applications/viewer/utils/viewer-error-utils'
-import { StatusSplash } from '@/features/shell/components/status-splash'
 import { getScrcpySessionAction } from '@/server/orchestrator/applications/actions/runtime/viewer-actions'
-import { getRedroidDisplayDimensionsFromArgs } from '@rebroid/application-core/redroid-runtime'
+import { StatusSplash } from '@/shared/ui/status-splash'
 import { ViewerActivityKeepalive } from './viewer-activity-keepalive'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { ViewerOrientation } from '@/features/applications/viewer/player/android-viewer'

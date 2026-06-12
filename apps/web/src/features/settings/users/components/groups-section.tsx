@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { IconPlus, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
-import { DataGrid } from '@/components/data-grid'
 import { Button } from '@/components/ui/button'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import {
@@ -20,6 +19,7 @@ import { Section } from '@/components/ui/section'
 import { toast } from '@/hooks/use-toast'
 import { createUserGroupAction } from '@/server/users/actions/create-user-group-action'
 import { deleteUserGroupAction } from '@/server/users/actions/delete-user-group-action'
+import { DataGrid } from '@/shared/ui/data-grid'
 import type { UserGroup } from '@/server/auth/user'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
 

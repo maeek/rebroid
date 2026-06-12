@@ -1,9 +1,9 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { DataGrid } from '@/components/data-grid'
 import { Badge } from '@/components/ui/badge'
-import { AutomationRunLiveEvents } from './automation-run-live-events'
+import { AutomationRunLiveEvents } from '@/shared/ui/automation/automation-run-live-events'
+import { DataGrid } from '@/shared/ui/data-grid'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
 import type { AutomationRun, AutomationRunStatus } from '@/server/orchestrator/automations/types'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'

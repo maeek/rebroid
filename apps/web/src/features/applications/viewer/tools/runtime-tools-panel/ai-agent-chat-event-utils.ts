@@ -34,16 +34,7 @@ export const compactValue = (value: unknown) => {
   }
 }
 
-const PRE_FORMATTED_KEYS = new Set([
-  'stdout',
-  'stderr',
-  'output',
-  'command',
-  'stack',
-  'trace',
-  'logs',
-  'log',
-])
+const PRE_FORMATTED_KEYS = new Set(['stdout', 'stderr', 'output', 'command', 'stack', 'trace', 'logs', 'log'])
 
 const valueFormatForKey = (key: string): CompactValueRow['format'] =>
   PRE_FORMATTED_KEYS.has(key.toLowerCase()) ? 'pre' : 'inline'
@@ -56,7 +47,7 @@ export const compactValueRows = (value: unknown): CompactValueRow[] => {
       return {
         key: `item ${index + 1}`,
         value: text,
-        format: 'inline',
+        format: 'inline'
       }
     })
   }
@@ -68,7 +59,7 @@ export const compactValueRows = (value: unknown): CompactValueRow[] => {
         return {
           key,
           value: text,
-          format: valueFormatForKey(key),
+          format: valueFormatForKey(key)
         }
       })
   }
@@ -76,7 +67,7 @@ export const compactValueRows = (value: unknown): CompactValueRow[] => {
     {
       key: 'value',
       value: compactValue(value),
-      format: 'inline',
+      format: 'inline'
     }
   ]
 }

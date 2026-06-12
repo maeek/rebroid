@@ -2,18 +2,18 @@
 
 import { useEffect, useState } from 'react'
 import { IconLoader2 } from '@tabler/icons-react'
-import { OrchestratorMaintenanceSection } from '@/features/orchestrator/components/orchestrator-maintenance-section'
-import { OrchestratorSettingsFieldsSection } from '@/features/orchestrator/components/orchestrator-settings-fields-section'
-import { OrchestratorSettingsHeader } from '@/features/orchestrator/components/orchestrator-settings-header'
+import { OrchestratorMaintenanceSection } from '@/features/settings/orchestrator/orchestrator-maintenance-section'
+import { OrchestratorSettingsFieldsSection } from '@/features/settings/orchestrator/orchestrator-settings-fields-section'
+import { OrchestratorSettingsHeader } from '@/features/settings/orchestrator/orchestrator-settings-header'
+import { toast } from '@/hooks/use-toast'
+import { getOrchestratorHealthAction } from '@/server/orchestrator/diagnostics/actions'
 import {
   resetOrchestratorUiSettings,
   saveOrchestratorUiSettings
-} from '@/features/settings/hooks/use-orchestrator-ui-settings'
-import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
-import { StatusSplash } from '@/features/shell/components/status-splash'
-import { toast } from '@/hooks/use-toast'
-import { getOrchestratorHealthAction } from '@/server/orchestrator/diagnostics/actions'
-import type { OrchestratorUiSettings } from '@/features/settings/domain/orchestrator-ui-settings'
+} from '@/shared/model/settings/use-orchestrator-ui-settings'
+import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StatusSplash } from '@/shared/ui/status-splash'
+import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 type SaveOrchestratorUiSettingsInput = Pick<
   OrchestratorUiSettings,

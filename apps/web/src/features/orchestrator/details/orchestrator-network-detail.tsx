@@ -19,13 +19,9 @@ import { Section } from '@/components/ui/section'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Visible } from '@/components/ui/visible'
 import { ContainerStateBadge } from '@/features/orchestrator/components/orchestrator-containers-table-parts'
-import {
-  PlatformDetailRow,
-  PlatformJsonBlock,
-  formatPlatformDate
-} from '@/features/orchestrator/components/platform-detail-parts'
 import { toast } from '@/hooks/use-toast'
 import { removePlatformNetworkAction } from '@/server/orchestrator/platform/network-actions'
+import { PlatformDetailRow, PlatformJsonBlock, formatPlatformDate } from '@/shared/ui/platform/platform-detail-parts'
 type NetworkDetailModel = {
   id: string
   shortId: string

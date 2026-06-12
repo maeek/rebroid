@@ -2,7 +2,34 @@ import { mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import Database from 'better-sqlite3'
 import 'server-only'
+import {
+  auditOrderBy,
+  auditRetentionCutoff,
+  auditSelectColumns,
+  auditWhere,
+  normalizeAuditDetails,
+  normalizeAuditPagination,
+  parseAuditRow
+} from './audit-model'
 import { initialWebSchema } from './migrations/0000-initial'
+import type {
+  AuditEventFilters,
+  AuditEventInput,
+  AuditEventOutcome,
+  AuditEventPage,
+  AuditEventRow,
+  AuditEventSort
+} from './audit-model'
+
+export type {
+  AuditEvent,
+  AuditEventFilters,
+  AuditEventInput,
+  AuditEventOutcome,
+  AuditEventPage,
+  AuditEventSort,
+  AuditEventSortField
+} from './audit-model'
 
 type WebDatabase = {
   client: Database.Database
@@ -155,87 +182,6 @@ export const updateWebState = <Result>(key: string, update: (current: string | n
   })()
 }
 
-export type AuditEventOutcome = 'success' | 'failure'
-
-export type AuditEventInput = {
-  actorUserId?: string | null
-  actorLabel?: string | null
-  action: string
-  category: string
-  resourceType?: string | null
-  resourceId?: string | null
-  resourceLabel?: string | null
-  outcome?: AuditEventOutcome
-  details?: Record<string, unknown>
-  sourceIp?: string | null
-  userAgent?: string | null
-}
-
-export type AuditEvent = {
-  id: number
-  actorUserId: string | null
-  actorLabel: string
-  action: string
-  category: string
-  resourceType: string | null
-  resourceId: string | null
-  resourceLabel: string | null
-  outcome: AuditEventOutcome
-  details: Record<string, unknown>
-  sourceIp: string | null
-  userAgent: string | null
-  createdAt: string
-}
-
-export type AuditEventFilters = {
-  search?: string
-  actorUserId?: string
-  category?: string
-  action?: string
-  resourceType?: string
-  resourceId?: string
-  outcome?: AuditEventOutcome
-  from?: string
-  to?: string
-}
-
-export type AuditEventPage = {
-  events: AuditEvent[]
-  total: number
-  page: number
-  pageSize: number
-  summary: {
-    success: number
-    failure: number
-    lastEventAt: string | null
-  }
-}
-
-export type AuditEventSortField = 'createdAt' | 'actorLabel' | 'action' | 'category' | 'outcome' | 'resourceLabel'
-export type AuditEventSort = { id: AuditEventSortField; desc: boolean }
-
-type AuditEventRow = {
-  id: number
-  actor_user_id: string | null
-  actor_label: string
-  action: string
-  category: string
-  resource_type: string | null
-  resource_id: string | null
-  resource_label: string | null
-  outcome: AuditEventOutcome
-  details_json: string
-  source_ip: string | null
-  user_agent: string | null
-  created_at: string
-}
-
-const normalizeAuditDetails = (details: Record<string, unknown> | undefined) =>
-  JSON.stringify(details ?? {}, (_key, value: unknown) => {
-    if (typeof value === 'bigint') return value.toString()
-    return value
-  })
-
 export const appendAuditEvent = (input: AuditEventInput) => {
   openDatabase()
     .client.prepare(
@@ -257,114 +203,11 @@ export const appendAuditEvent = (input: AuditEventInput) => {
     )
 }
 
-const parseAuditRow = (row: AuditEventRow): AuditEvent => ({
-  id: row.id,
-  actorUserId: row.actor_user_id,
-  actorLabel: row.actor_label,
-  action: row.action,
-  category: row.category,
-  resourceType: row.resource_type,
-  resourceId: row.resource_id,
-  resourceLabel: row.resource_label,
-  outcome: row.outcome,
-  details: JSON.parse(row.details_json) as Record<string, unknown>,
-  sourceIp: row.source_ip,
-  userAgent: row.user_agent,
-  createdAt: row.created_at
-})
-
-const auditSelectColumns = [
-  'id',
-  'actor_user_id',
-  'actor_label',
-  'action',
-  'category',
-  'resource_type',
-  'resource_id',
-  'resource_label',
-  'outcome',
-  'details_json',
-  'source_ip',
-  'user_agent',
-  'created_at'
-].join(', ')
-
-const auditWhere = (filters: AuditEventFilters = {}) => {
-  const clauses: string[] = []
-  const values: Array<string> = []
-  const search = filters.search?.trim()
-  if (search) {
-    const pattern = `%${search.toLowerCase()}%`
-    clauses.push(
-      "(lower(action) LIKE ? OR lower(category) LIKE ? OR lower(actor_label) LIKE ? OR lower(coalesce(resource_type, '')) LIKE ? OR lower(coalesce(resource_id, '')) LIKE ? OR lower(coalesce(resource_label, '')) LIKE ? OR lower(details_json) LIKE ?)"
-    )
-    values.push(pattern, pattern, pattern, pattern, pattern, pattern, pattern)
-  }
-  if (filters.actorUserId) {
-    clauses.push('actor_user_id = ?')
-    values.push(filters.actorUserId)
-  }
-  if (filters.category) {
-    clauses.push('category = ?')
-    values.push(filters.category)
-  }
-  if (filters.action) {
-    clauses.push('action = ?')
-    values.push(filters.action)
-  }
-  if (filters.resourceType) {
-    clauses.push('resource_type = ?')
-    values.push(filters.resourceType)
-  }
-  if (filters.resourceId) {
-    clauses.push('resource_id = ?')
-    values.push(filters.resourceId)
-  }
-  if (filters.outcome) {
-    clauses.push('outcome = ?')
-    values.push(filters.outcome)
-  }
-  if (filters.from) {
-    clauses.push('created_at >= ?')
-    values.push(filters.from)
-  }
-  if (filters.to) {
-    clauses.push('created_at <= ?')
-    values.push(filters.to)
-  }
-
-  return {
-    sql: clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '',
-    values
-  }
-}
-
-const auditSortColumns: Record<AuditEventSortField, string> = {
-  createdAt: 'created_at',
-  actorLabel: 'actor_label',
-  action: 'action',
-  category: 'category',
-  outcome: 'outcome',
-  resourceLabel: 'resource_label'
-}
-
-const auditOrderBy = (sorting: AuditEventSort[] = []) => {
-  const clauses = sorting
-    .map(sort => {
-      const column = auditSortColumns[sort.id]
-      return column ? `${column} ${sort.desc ? 'DESC' : 'ASC'}` : null
-    })
-    .filter((clause): clause is string => Boolean(clause))
-
-  return clauses.length > 0 ? `${clauses.join(', ')}, id DESC` : 'created_at DESC, id DESC'
-}
-
 export const listAuditEvents = (
   filters: AuditEventFilters = {},
   options: { page?: number; pageSize?: number; sorting?: AuditEventSort[] } = {}
 ): AuditEventPage => {
-  const page = Math.max(Math.trunc(options.page ?? 1), 1)
-  const pageSize = Math.min(Math.max(Math.trunc(options.pageSize ?? 20), 1), 100)
+  const { page, pageSize } = normalizeAuditPagination(options.page, options.pageSize)
   const where = auditWhere(filters)
   const client = openDatabase().client
   const total = (
@@ -448,8 +291,8 @@ export const purgeAuditEvents = () => {
 }
 
 export const pruneAuditEventsOlderThan = (retentionDays: number) => {
-  if (!Number.isFinite(retentionDays) || retentionDays < 1) return 0
-  const cutoff = new Date(Date.now() - Math.trunc(retentionDays) * 24 * 60 * 60 * 1000).toISOString()
+  const cutoff = auditRetentionCutoff(retentionDays)
+  if (!cutoff) return 0
   const result = openDatabase().client.prepare('DELETE FROM audit_events WHERE created_at < ?').run(cutoff)
   return result.changes
 }

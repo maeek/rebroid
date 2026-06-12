@@ -18,23 +18,26 @@ import { useTopLoader } from 'nextjs-toploader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/hooks/use-toast'
-import { formatDateLocale } from '@/lib/format'
 import {
   downloadApplicationRuntimeFileAction,
   listApplicationFilesAction
 } from '@/server/orchestrator/applications/actions/runtime/file-actions'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
-import { downloadDataUrl, formatBytes, runtimeActionErrorToast } from './runtime-tools-panel.utils'
+import {
+  parentRuntimePath,
+  runtimeFileEntryDetail,
+  runtimeFileEntrySubtitle,
+  runtimeFilesRootPath,
+  runtimePathForPartIndex,
+  runtimePathParts,
+  topLoaderProgressForUpload,
+  type BrowserView
+} from './downloads-tools-section-model'
+import { downloadDataUrl, runtimeActionErrorToast } from './runtime-tools-panel.utils'
 import { ToolSection } from './tool-section'
 import { uploadDownloadFileWithProgress } from './upload-download-file'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { ApplicationRuntimeFile } from '@/server/orchestrator/applications/types'
-
-type BrowserView = 'list' | 'tiles'
-
-const rootPath = '/data'
-const parentPath = (path: string) => path.slice(0, path.lastIndexOf('/')) || rootPath
-const itemLabel = (count: number | null) => `${count ?? 0} item${count === 1 ? '' : 's'}`
 
 export const DownloadsToolsSection = ({
   app,
@@ -51,7 +54,7 @@ export const DownloadsToolsSection = ({
   const canTransferFiles = hasPermission(permissions, 'applications:transfer-files')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const topLoader = useTopLoader()
-  const [currentPath, setCurrentPath] = useState(rootPath)
+  const [currentPath, setCurrentPath] = useState(runtimeFilesRootPath)
   const [files, setFiles] = useState<ApplicationRuntimeFile[]>([])
   const [view, setView] = useState<BrowserView>('list')
   const [isDragging, setIsDragging] = useState(false)
@@ -76,7 +79,7 @@ export const DownloadsToolsSection = ({
   )
 
   useEffect(() => {
-    setCurrentPath(rootPath)
+    setCurrentPath(runtimeFilesRootPath)
   }, [app.id])
 
   useEffect(() => {
@@ -99,7 +102,7 @@ export const DownloadsToolsSection = ({
       path: currentPath,
       onProgress: progress => {
         setUploadProgress(progress)
-        topLoader.setProgress(Math.min(Math.max(progress / 100, 0.08), 0.95))
+        topLoader.setProgress(topLoaderProgressForUpload(progress))
       }
     })
       .then(() => {
@@ -136,9 +139,7 @@ export const DownloadsToolsSection = ({
 
   if (!canTransferFiles) return null
 
-  const pathParts = currentPath.split('/').filter(Boolean)
-  const entryDetail = (entry: ApplicationRuntimeFile) =>
-    entry.type === 'directory' ? itemLabel(entry.itemCount) : formatBytes(entry.sizeBytes ?? 0)
+  const pathParts = runtimePathParts(currentPath)
 
   return (
     <ToolSection
@@ -162,7 +163,7 @@ export const DownloadsToolsSection = ({
           <div className='flex flex-wrap items-center justify-between gap-3 border-b border-border/60 px-4 py-3'>
             <div className='flex min-w-0 items-center gap-1 text-sm'>
               {pathParts.map((part, index) => {
-                const path = `/${pathParts.slice(0, index + 1).join('/')}`
+                const path = runtimePathForPartIndex(pathParts, index)
                 const active = path === currentPath
                 return (
                   <span
@@ -190,8 +191,8 @@ export const DownloadsToolsSection = ({
                 type='button'
                 size='sm'
                 variant='ghost'
-                disabled={currentPath === rootPath}
-                onClick={() => setCurrentPath(parentPath(currentPath))}
+                disabled={currentPath === runtimeFilesRootPath}
+                onClick={() => setCurrentPath(parentRuntimePath(currentPath))}
                 aria-label='Go to parent folder'
               >
                 <IconArrowUp className='size-4' />
@@ -249,10 +250,7 @@ export const DownloadsToolsSection = ({
                     )}
                     <span className='min-w-0'>
                       <span className='block truncate font-medium hover:underline'>{entry.name}</span>
-                      <span className='block text-xs text-secondary-foreground'>
-                        {entryDetail(entry)}
-                        {entry.modifiedAt ? ` • ${formatDateLocale(entry.modifiedAt)}` : ''}
-                      </span>
+                      <span className='block text-xs text-secondary-foreground'>{runtimeFileEntrySubtitle(entry)}</span>
                     </span>
                   </button>
                   {entry.type === 'file' ? (
@@ -284,7 +282,7 @@ export const DownloadsToolsSection = ({
                     <IconFile className='size-8 text-muted-foreground' />
                   )}
                   <span className='w-full truncate text-sm font-medium'>{entry.name}</span>
-                  <span className='text-xs text-muted-foreground'>{entryDetail(entry)}</span>
+                  <span className='text-xs text-muted-foreground'>{runtimeFileEntryDetail(entry)}</span>
                 </button>
               ))}
             </div>

@@ -16,7 +16,7 @@ import {
   getRefreshIcon,
   isStatsRefreshDisabled
 } from '@/features/orchestrator/details/orchestrator-container-detail/container-detail-utils'
-import { QuickGlanceCard } from '@/features/settings/components/quick-glance-card'
+import { QuickGlanceCard } from '@/shared/ui/settings/quick-glance-card'
 
 export const LiveResourcesSection = () => {
   const { details } = useContainerDetailContext()

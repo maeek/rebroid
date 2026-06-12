@@ -1,10 +1,10 @@
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
+import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
+import { TableSkeleton } from '@/shared/ui/skeletons/table-skeleton'
 import { DetailRowsSkeleton } from './detail-rows-skeleton'
 import { JsonBlockSkeleton } from './json-block-skeleton'
-import { PageHeaderSkeleton } from './page-header-skeleton'
-import { TableSkeleton } from './table-skeleton'
 
 export const PlatformContainerDetailPageSkeleton = ({ titleWidth }: { titleWidth: string }) => (
   <ProtectedStackPageLayout mainClassName='gap-2'>

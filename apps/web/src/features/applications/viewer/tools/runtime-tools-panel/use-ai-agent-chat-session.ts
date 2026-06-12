@@ -8,11 +8,19 @@ import {
   runAdHocAiAutomationAction
 } from '@/server/orchestrator/automations/automation-run-actions'
 import {
+  collectLatestRunSequences,
+  createPromptTurn,
+  findActiveHistoryTurnId,
+  findTerminalRunStatus,
+  latestEventSequence,
+  mergeHistoryTurns,
+  mergeRunEventsIntoTurns,
+  sortChatTurnsByRunCreatedAt
+} from './ai-agent-chat-session-model'
+import {
   activeRunStatuses,
   chatTurnFromRun,
   conversationBeforeTurn,
-  terminalRunStatuses,
-  updateRunStatusFromEvent,
   type ChatConversationMessage,
   type ChatTurn,
   type ChatTurnStatus
@@ -73,25 +81,13 @@ export const useAiAgentChatSession = ({
         const history = await listAdHocAiAutomationRunHistoryAction(app.id, 20)
         const loadedTurns = history.map(item => chatTurnFromRun(item.run, item.events))
         if (cancelled) return
-        const orderedTurns = loadedTurns.sort(
-          (left, right) =>
-            new Date(left.run?.createdAt ?? '').getTime() - new Date(right.run?.createdAt ?? '').getTime()
-        )
-        for (const turn of orderedTurns) {
-          if (!turn.run || turn.events.length === 0) continue
-          runSequencesRef.current.set(turn.run.id, Math.max(...turn.events.map(event => event.sequence)))
+        const orderedTurns = sortChatTurnsByRunCreatedAt(loadedTurns)
+        for (const [runId, sequence] of collectLatestRunSequences(orderedTurns)) {
+          runSequencesRef.current.set(runId, sequence)
         }
-        setTurns(current => {
-          const byRunId = new Map(current.filter(turn => turn.run).map(turn => [turn.run?.id, turn]))
-          const currentWithoutRuns = current.filter(turn => !turn.run)
-          for (const turn of orderedTurns) {
-            if (!turn.run) continue
-            byRunId.set(turn.run.id, turn)
-          }
-          return [...currentWithoutRuns, ...byRunId.values()]
-        })
-        const active = [...orderedTurns].reverse().find(turn => turn.run && activeRunStatuses.has(turn.run.status))
-        if (active) setActiveTurnId(active.id)
+        setTurns(current => mergeHistoryTurns(current, orderedTurns))
+        const loadedActiveTurnId = findActiveHistoryTurnId(orderedTurns)
+        if (loadedActiveTurnId) setActiveTurnId(loadedActiveTurnId)
       } catch (historyError) {
         if (cancelled) return
         setError(historyError instanceof Error ? historyError.message : 'AI chat history could not be loaded.')
@@ -115,38 +111,10 @@ export const useAiAgentChatSession = ({
 
   const appendRunEvents = useCallback((runId: string, nextEvents: AutomationRunEvent[]) => {
     if (nextEvents.length === 0) return
-    const nextSequence = Math.max(runSequencesRef.current.get(runId) ?? 0, ...nextEvents.map(event => event.sequence))
+    const nextSequence = latestEventSequence(runSequencesRef.current.get(runId) ?? 0, nextEvents)
     runSequencesRef.current.set(runId, nextSequence)
-    setTurns(current =>
-      current.map(turn => {
-        if (turn.run?.id !== runId) return turn
-        const byId = new Map(turn.events.map(event => [event.id, event]))
-        for (const event of nextEvents) {
-          byId.set(event.id, event)
-        }
-        const statusEvent = nextEvents.map(updateRunStatusFromEvent).find(Boolean)
-        const nextStatus =
-          statusEvent === 'success'
-            ? 'success'
-            : statusEvent === 'failed'
-              ? 'failed'
-              : statusEvent === 'canceled'
-                ? 'canceled'
-                : statusEvent === 'running'
-                  ? 'running'
-                  : turn.status
-        return {
-          ...turn,
-          status: nextStatus,
-          run: statusEvent ? { ...turn.run, status: statusEvent } : turn.run,
-          events: [...byId.values()].sort((left, right) => left.sequence - right.sequence)
-        }
-      })
-    )
-    const terminalStatus = nextEvents
-      .map(updateRunStatusFromEvent)
-      .find(status => status && terminalRunStatuses.has(status))
-    if (terminalStatus) {
+    setTurns(current => mergeRunEventsIntoTurns(current, runId, nextEvents))
+    if (findTerminalRunStatus(nextEvents)) {
       setActiveTurnId(null)
     }
   }, [])
@@ -238,13 +206,7 @@ export const useAiAgentChatSession = ({
   const submit = async () => {
     const text = prompt.trim()
     if (!text || !modelIsValid) return
-    const nextTurn: ChatTurn = {
-      id: crypto.randomUUID(),
-      prompt: text,
-      status: activeTurn ? 'queued' : 'starting',
-      run: null,
-      events: []
-    }
+    const nextTurn = createPromptTurn({ id: crypto.randomUUID(), prompt: text, hasActiveTurn: Boolean(activeTurn) })
     setTurns(current => [...current, nextTurn])
     setPrompt('')
     if (!activeTurn) {

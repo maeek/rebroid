@@ -1,13 +1,13 @@
 import { cache } from 'react'
+import { getWebSettings } from '@/server/web-settings/store'
 import {
   defaultRuntimeSettingsResponse,
   defaultWebSettingsResponse,
   normalizeOrchestratorUiSettings
-} from '@/features/settings/domain/orchestrator-ui-settings'
-import { getWebSettings } from '@/server/web-settings/store'
+} from '@/shared/model/settings/orchestrator-ui-settings'
 import { getOrchestratorBaseUrl } from './config'
 import { orchestratorSettingsClient } from './settings/client'
-import type { OrchestratorUiSettings } from '@/features/settings/domain/orchestrator-ui-settings'
+import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 export const getServerOrchestratorUiSettings = cache(async (): Promise<OrchestratorUiSettings> => {
   const [webSettings, orchestratorSettings] = await Promise.all([

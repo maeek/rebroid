@@ -1,7 +1,6 @@
 'use client'
 
 import { Section } from '@/components/ui/section'
-import { PlatformJsonBlock } from '@/features/orchestrator/components/platform-detail-parts'
 import { ContainerActionDialog } from '@/features/orchestrator/details/orchestrator-container-detail/container-action-dialog'
 import {
   ContainerDetailProvider,
@@ -14,6 +13,7 @@ import {
   RelatedImageSection,
   RelatedNetworksSection
 } from '@/features/orchestrator/details/orchestrator-container-detail/related-container-sections'
+import { PlatformJsonBlock } from '@/shared/ui/platform/platform-detail-parts'
 import type { PlatformContainerDetails, PlatformContainerLog } from '@/server/orchestrator/platform/types'
 
 export const OrchestratorContainerDetail = ({

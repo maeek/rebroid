@@ -4,10 +4,10 @@ import { IconBell } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Visible } from '@/components/ui/visible'
-import { NotificationCard } from '@/features/applications/viewer/notifications/notification-card'
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { cn } from '@/lib/utils'
 import { listRunningApplicationNotificationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
+import { NotificationCard } from '@/shared/ui/notifications/notification-card'
 import type { RunningApplicationNotifications } from '@/server/orchestrator/applications/types'
 
 const refreshIntervalMs = 10000

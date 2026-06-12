@@ -15,7 +15,6 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Visible } from '@/components/ui/visible'
-import { ScheduleEditor } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/schedule-editor'
 import {
   actionNeedsDanglingOnly,
   actionNeedsRetentionDays
@@ -24,6 +23,7 @@ import {
   useScheduledTasksContext,
   useScheduledTasksControllerContext
 } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-context'
+import { ScheduleEditor } from '@/shared/ui/schedule/schedule-editor'
 import type { ScheduledTaskActionType } from '@/server/orchestrator/scheduled-tasks/types'
 
 export const ScheduledTaskFormDialog = () => {

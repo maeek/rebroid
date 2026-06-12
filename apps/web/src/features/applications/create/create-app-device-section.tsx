@@ -1,9 +1,9 @@
+import { redroidDefaultsLabel, redroidDisplayArgsForProfile } from '@rebroid/application-core/redroid-runtime'
 import { Fragment } from 'react/jsx-runtime'
 import { Badge } from '@/components/ui/badge'
 import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
 import { AppContainerRuntimeSection } from '@/features/applications/components/app-container-runtime-section'
-import { redroidDefaultsLabel, redroidDisplayArgsForProfile } from '@rebroid/application-core/redroid-runtime'
 import type { CreateAppFormValues } from './create-app-form.types'
 
 type CreateAppDeviceSectionProps = {

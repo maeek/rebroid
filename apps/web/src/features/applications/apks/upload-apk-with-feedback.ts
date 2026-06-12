@@ -1,6 +1,6 @@
 import { uploadApkWithProgress } from '@/features/applications/apks/upload'
-import { apkSizeLabel, isFileWithinApkLimit } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 import { toast } from '@/hooks/use-toast'
+import { apkSizeLabel, isFileWithinApkLimit } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import type { UploadedApk } from '@/server/orchestrator/applications/types'
 
 type TopLoader = {

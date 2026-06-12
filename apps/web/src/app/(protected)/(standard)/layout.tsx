@@ -3,7 +3,7 @@ import { SquircleSVG } from '@/features/applications/components/squircle-svg'
 import Sidebar from '@/features/shell/components/sidebar'
 import { TopBarProtected } from '@/features/shell/components/top-bar/top-bar'
 import { getCurrentUser } from '@/server/auth/authorization'
-import { PageBackdropProvider } from '../../../features/shell/components/page-backdrop'
+import { PageBackdropProvider } from '@/shared/ui/page/page-backdrop'
 
 export default async function FilesLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser()

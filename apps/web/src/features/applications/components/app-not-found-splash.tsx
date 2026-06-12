@@ -1,7 +1,7 @@
 'use client'
 
 import { IconDeviceMobileQuestion } from '@tabler/icons-react'
-import { StatusSplash } from '@/features/shell/components/status-splash'
+import { StatusSplash } from '@/shared/ui/status-splash'
 
 export const AppNotFoundSplash = () => {
   return (

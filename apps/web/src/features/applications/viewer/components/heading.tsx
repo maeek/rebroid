@@ -1,9 +1,9 @@
 import { ReactNode } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Visible } from '@/components/ui/visible'
-import { AppIcon } from '@/features/applications/components/app-icon'
 import { AppDefinition } from '@/features/applications/domain/app-definition'
 import { cn } from '@/lib/utils'
+import { AppIcon } from '@/shared/ui/app-icon/app-icon'
 
 const appStatusBadgeVariant = (status?: AppDefinition['status']) => {
   if (status === 'error') {

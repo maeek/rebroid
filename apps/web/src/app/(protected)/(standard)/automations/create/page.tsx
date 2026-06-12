@@ -1,8 +1,5 @@
-import { AutomationEditorPage } from '@/features/automations/automations-page/editor/automation-editor-page'
-import { listAutomationCommandsAction } from '@/server/orchestrator/automations/automation-management-actions'
+import { AutomationCreatePageEntry } from '@/features/automations/pages/automation-create/page-entry'
 
-export default async function CreateAutomationRoute() {
-  const commands = await listAutomationCommandsAction()
-
-  return <AutomationEditorPage initialCommands={commands} />
+export default function CreateAutomationRoute() {
+  return <AutomationCreatePageEntry />
 }

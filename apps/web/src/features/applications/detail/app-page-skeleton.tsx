@@ -1,6 +1,6 @@
 import { Skeleton } from '@/components/ui/skeleton'
-import { PageBreadcrumbsSkeleton } from '@/features/shell/components/page-breadcrumbs-skeleton'
-import { ProtectedSplitPageContent, ProtectedSplitPageLayout } from '@/features/shell/components/protected-page-shell'
+import { PageBreadcrumbsSkeleton } from '@/shared/ui/page/page-breadcrumbs-skeleton'
+import { ProtectedSplitPageContent, ProtectedSplitPageLayout } from '@/shared/ui/page/protected-page-shell'
 
 export const AppPageSkeleton = () => (
   <ProtectedSplitPageLayout>

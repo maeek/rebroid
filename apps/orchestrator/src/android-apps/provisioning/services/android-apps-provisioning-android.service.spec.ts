@@ -1,4 +1,8 @@
-import { parseAndroidBootReadiness } from './android-apps-provisioning-android.service';
+import {
+  androidBootDiagnosticSummary,
+  parseAndroidBootReadiness,
+  truncateDiagnosticText,
+} from '../utils/android-apps-android-provisioning.utils';
 
 describe('AndroidAppsProvisioningAndroidService boot readiness', () => {
   it('ignores sys.boot_completed as a readiness shortcut', () => {
@@ -46,5 +50,33 @@ describe('AndroidAppsProvisioningAndroidService boot readiness', () => {
 
     expect(readiness.ready).toBe(false);
     expect(readiness.probe).toContain('init.svc.surfaceflinger=stopped');
+  });
+});
+
+describe('Android boot diagnostics utils', () => {
+  it('summarizes binder and permission failures', () => {
+    expect(
+      androidBootDiagnosticSummary(
+        'cannot access /dev/binder: no such file\npermission denied',
+      ),
+    ).toBe(
+      'binder devices may be missing inside the runtime container; container permissions or security profile may be blocking Redroid',
+    );
+  });
+
+  it('summarizes ashmem failures with memfd hint', () => {
+    expect(
+      androidBootDiagnosticSummary(
+        "couldn't create ashmem region\nro.boot.use_memfd=true",
+      ),
+    ).toContain(
+      'Android display stack is still trying to use ashmem even though memfd is enabled',
+    );
+  });
+
+  it('truncates long diagnostics with omitted character count', () => {
+    expect(truncateDiagnosticText('abcdef', 3)).toBe(
+      'abc\n... truncated 3 chars',
+    );
   });
 });

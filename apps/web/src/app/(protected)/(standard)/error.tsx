@@ -1,8 +1,8 @@
 'use client'
 
 import { IconAlertTriangle } from '@tabler/icons-react'
-import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
-import { StatusSplash } from '@/features/shell/components/status-splash'
+import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StatusSplash } from '@/shared/ui/status-splash'
 
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (

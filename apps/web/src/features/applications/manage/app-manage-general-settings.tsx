@@ -3,12 +3,12 @@ import { useRouter } from 'next/navigation'
 import { useTopLoader } from 'nextjs-toploader'
 import { uploadApkWithFeedback } from '@/features/applications/apks/upload-apk-with-feedback'
 import { AppIdentitySection } from '@/features/applications/components/app-identity-section'
-import { useOrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 import { toast } from '@/hooks/use-toast'
 import { updateApkAction } from '@/server/orchestrator/applications/actions/configuration/create-update-actions'
+import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import type { AppFormValues } from '@/features/applications/create/create-app-form.types'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
+import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 
 type AppManageGeneralSettingsProps = {
   app?: AppDefinition

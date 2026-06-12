@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import {
   loadSavedApplicationProfiles,
   rememberApplicationProfile
-} from '@/features/applications/profiles/profile-history'
+} from '@/shared/model/application-profile/profile-history'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { SetSavedProfiles } from '@/features/applications/viewer/actions/app-viewer-power-action/types'
 import type { ApplicationProfileMode } from '@/server/orchestrator/applications/types'

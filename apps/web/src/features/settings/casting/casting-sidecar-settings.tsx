@@ -2,12 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { IconLoader2, IconRestore, IconTrash } from '@tabler/icons-react'
-import { DataGrid, DataGridPagination, DataGridToolbar } from '@/components/data-grid'
 import { Button } from '@/components/ui/button'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Section } from '@/components/ui/section'
-import { PlatformDetailRow } from '@/features/orchestrator/components/platform-detail-parts'
-import { PlatformStatusBanner } from '@/features/orchestrator/components/platform-status-banner'
 import { toast } from '@/hooks/use-toast'
 import {
   getOrchestratorHealthAction,
@@ -15,6 +12,9 @@ import {
   repairDisplaySidecarAction,
   releaseDisplaySidecarSessionAction
 } from '@/server/orchestrator/diagnostics/actions'
+import { DataGrid, DataGridPagination, DataGridToolbar } from '@/shared/ui/data-grid'
+import { PlatformDetailRow } from '@/shared/ui/platform/platform-detail-parts'
+import { PlatformStatusBanner } from '@/shared/ui/platform/platform-status-banner'
 import { createCastingSessionColumns } from './casting-sessions-grid'
 import {
   activeStatuses,

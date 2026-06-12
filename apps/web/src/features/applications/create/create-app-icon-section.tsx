@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Switch } from '@/components/ui/switch'
 import { Visible } from '@/components/ui/visible'
-import { AppIcon } from '@/features/applications/components/app-icon'
+import { AppIcon } from '@/shared/ui/app-icon/app-icon'
 
 type AppFormIconSectionProps = {
   appId?: string

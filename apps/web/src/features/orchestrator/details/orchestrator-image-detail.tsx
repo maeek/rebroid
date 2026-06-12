@@ -19,14 +19,14 @@ import { Section } from '@/components/ui/section'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Visible } from '@/components/ui/visible'
 import { ContainerStateBadge } from '@/features/orchestrator/components/orchestrator-containers-table-parts'
+import { toast } from '@/hooks/use-toast'
+import { removePlatformImageAction } from '@/server/orchestrator/platform/image-actions'
 import {
   PlatformDetailRow,
   PlatformJsonBlock,
   formatPlatformBytes,
   formatPlatformDate
-} from '@/features/orchestrator/components/platform-detail-parts'
-import { toast } from '@/hooks/use-toast'
-import { removePlatformImageAction } from '@/server/orchestrator/platform/image-actions'
+} from '@/shared/ui/platform/platform-detail-parts'
 import type { PlatformImageDetails } from '@/server/orchestrator/platform/types'
 
 export const OrchestratorImageDetail = ({ details }: { details: PlatformImageDetails }) => {

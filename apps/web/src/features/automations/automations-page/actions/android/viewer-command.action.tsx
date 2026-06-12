@@ -1,7 +1,7 @@
+import { viewerCommands } from '@rebroid/application-core/viewer-control'
 import { SelectField } from '../shared/action-fields'
 import { normalizeStringInput, stringInputValue } from '../shared/input-values'
 import type { AutomationActionDefinition } from '../automation-action-definition'
-import { viewerCommands } from '@rebroid/application-core/viewer-control'
 
 export const viewerCommandAction: AutomationActionDefinition = {
   uses: 'android.viewerCommand',

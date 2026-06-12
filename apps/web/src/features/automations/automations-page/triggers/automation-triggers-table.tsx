@@ -2,11 +2,11 @@
 
 import { useMemo } from 'react'
 import { IconEdit, IconPlayerPlayFilled, IconTrash } from '@tabler/icons-react'
-import { DataGrid } from '@/components/data-grid'
 import { Badge } from '@/components/ui/badge'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Switch } from '@/components/ui/switch'
-import { dateLabel, scheduleLabel } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/schedule-utils'
+import { dateLabel, scheduleLabel } from '@/shared/model/schedule/schedule-format'
+import { DataGrid } from '@/shared/ui/data-grid'
 import { AutomationTagBadge } from '../shared/automation-tag-badge'
 import { getScheduleCron, statusLabel, statusVariant } from './automation-trigger-utils'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'

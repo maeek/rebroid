@@ -1,7 +1,7 @@
 import { IconTrash } from '@tabler/icons-react'
-import { DataGridToolbar } from '@/components/data-grid'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DataGridToolbar } from '@/shared/ui/data-grid'
 import { allFilterValue } from '../shared/grid-query-utils'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
 import type { AutomationsGridPage, AutomationsGridQuery } from '@/server/orchestrator/automations/types'

@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Visible } from '@/components/ui/visible'
-import { recentAppsUpdatedEvent, type RecentApp } from '@/features/applications/recent/recent-apps'
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { listRecentAppsAction } from '@/server/recent-apps/actions'
+import { recentAppsUpdatedEvent, type RecentApp } from '@/shared/model/recent-apps/recent-apps'
 import {
   appSections,
   automationSections,

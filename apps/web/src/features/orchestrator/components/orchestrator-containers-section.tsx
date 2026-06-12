@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { IconEye, IconPlayerStopFilled, IconTerminal2, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { DataGrid, DataGridPagination, DataGridToolbar } from '@/components/data-grid'
 import { Button } from '@/components/ui/button'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import {
@@ -24,11 +23,21 @@ import {
   removePlatformContainerAction,
   stopPlatformContainerAction
 } from '@/server/orchestrator/platform/container-actions'
+import { DataGrid, DataGridPagination, DataGridToolbar } from '@/shared/ui/data-grid'
+import {
+  buildContainersGridHref,
+  canRunBulkContainerAction,
+  selectVisibleOrphanedContainerIds,
+  shouldStopContainerInBulkAction,
+  summarizeContainerBulkActionResults,
+  type ContainerBulkActionType
+} from './orchestrator-containers-section-model'
 import { createContainerColumns } from './orchestrator-containers-table-parts'
 import {
-  compactPlatformGridParams,
   platformSortFromSearchParam,
-  platformSortToSearchParam
+  platformSortToSearchParam,
+  retainVisiblePlatformSelection,
+  selectedPlatformItemsFromIds
 } from './orchestrator-grid-query-utils'
 import { PlatformResourceScopeFilter } from './platform-resource-scope-filter'
 import type {
@@ -62,8 +71,7 @@ export const OrchestratorContainersSection = ({
   }, [gridQuery.q])
 
   useEffect(() => {
-    const currentPageIds = new Set(containersPage.items.map(container => container.id))
-    setSelectedIds(current => new Set(Array.from(current).filter(id => currentPageIds.has(id))))
+    setSelectedIds(current => retainVisiblePlatformSelection(containersPage.items, current))
   }, [containersPage.items])
 
   useEffect(() => {
@@ -73,18 +81,10 @@ export const OrchestratorContainersSection = ({
     }
   }, [onRefreshComplete, refreshKey, router])
 
-  const selectedContainers = containersPage.items.filter(container => selectedIds.has(container.id))
+  const selectedContainers = selectedPlatformItemsFromIds(containersPage.items, selectedIds)
 
-  const pushGridParams = (patch: Partial<PlatformContainersGridQuery>) => {
-    const params = compactPlatformGridParams({
-      q: patch.q ?? gridQuery.q,
-      scope: patch.scope ?? gridQuery.scope ?? 'managed',
-      sort: patch.sort ?? gridQuery.sort,
-      page: patch.page ?? gridQuery.page ?? 1,
-      pageSize: patch.pageSize ?? gridQuery.pageSize ?? containersPage.pageSize
-    })
-    router.push(`/infrastructure/containers${params.size ? `?${params.toString()}` : ''}`)
-  }
+  const pushGridParams = (patch: Partial<PlatformContainersGridQuery>) =>
+    router.push(buildContainersGridHref({ gridQuery, pageSize: containersPage.pageSize, patch }))
 
   const runContainerAction = async () => {
     if (!pendingAction) return
@@ -111,14 +111,14 @@ export const OrchestratorContainersSection = ({
     }
   }
 
-  const runBulkAction = async (type: 'stop' | 'remove') => {
+  const runBulkAction = async (type: ContainerBulkActionType) => {
     if (selectedContainers.length === 0) return
 
     setBusyId('bulk')
     try {
       const results = await Promise.allSettled(
         selectedContainers.map(async container => {
-          if (type === 'stop' && container.state === 'running') {
+          if (type === 'stop' && shouldStopContainerInBulkAction(container)) {
             await stopPlatformContainerAction(container.id)
           }
           if (type === 'remove') {
@@ -126,29 +126,16 @@ export const OrchestratorContainersSection = ({
           }
         })
       )
-      const failedCount = results.filter(result => result.status === 'rejected').length
       setSelectedIds(new Set())
       router.refresh()
-      toast(
-        failedCount > 0
-          ? {
-              title: type === 'stop' ? 'Some containers could not be stopped' : 'Some containers could not be removed',
-              description: `${failedCount} request${failedCount === 1 ? '' : 's'} failed.`,
-              variant: 'destructive'
-            }
-          : { title: type === 'stop' ? 'Selected containers stopped' : 'Selected containers removed' }
-      )
+      toast(summarizeContainerBulkActionResults(results, type))
     } finally {
       setBusyId(null)
     }
   }
 
   const selectVisibleOrphaned = () => {
-    const next = new Set(selectedIds)
-    for (const container of containersPage.items) {
-      if (container.orphaned) next.add(container.id)
-    }
-    setSelectedIds(next)
+    setSelectedIds(selectVisibleOrphanedContainerIds(containersPage.items, selectedIds))
   }
 
   const columns = useMemo(() => createContainerColumns(), [])
@@ -191,7 +178,7 @@ export const OrchestratorContainersSection = ({
               <Button
                 type='button'
                 variant='ghost'
-                disabled={busyId === 'bulk' || selectedContainers.length === 0}
+                disabled={busyId === 'bulk' || !canRunBulkContainerAction(selectedContainers)}
                 onClick={() => void runBulkAction('stop')}
               >
                 Stop selected
@@ -199,7 +186,7 @@ export const OrchestratorContainersSection = ({
               <Button
                 type='button'
                 variant='ghost'
-                disabled={busyId === 'bulk' || selectedContainers.length === 0}
+                disabled={busyId === 'bulk' || !canRunBulkContainerAction(selectedContainers)}
                 onClick={() => void runBulkAction('remove')}
               >
                 Remove selected

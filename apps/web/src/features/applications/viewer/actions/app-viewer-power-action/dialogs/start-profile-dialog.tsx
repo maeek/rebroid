@@ -11,8 +11,8 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Visible } from '@/components/ui/visible'
-import { ApplicationProfilePicker } from '@/features/applications/profiles/profile-picker'
 import { useRuntimePowerActionContext } from '@/features/applications/viewer/actions/app-viewer-power-action/runtime-power-action-context'
+import { ApplicationProfilePicker } from '@/shared/ui/application-profile/application-profile-picker'
 
 export const StartProfileDialog = () => {
   const {

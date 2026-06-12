@@ -5,6 +5,7 @@ import { ContainerNetworkAutomationCommandsService } from '../commands/container
 import { GenericAutomationCommandsService } from '../commands/generic-automation-commands.service';
 import { VisionAutomationCommandsService } from '../commands/vision-automation-commands.service';
 import { AutomationConditionService } from '../condition/automation-condition.service';
+import { AutomationDefinitionNormalizerService } from './automation-definition-normalizer.service';
 import { AutomationDefinitionService } from './automation-definition.service';
 
 const createService = () => {
@@ -17,9 +18,13 @@ const createService = () => {
   );
   registry.onModuleInit();
   const conditions = new AutomationConditionService();
+  const normalizer = new AutomationDefinitionNormalizerService(
+    registry,
+    conditions,
+  );
   return {
     registry,
-    service: new AutomationDefinitionService(registry, conditions),
+    service: new AutomationDefinitionService(normalizer),
   };
 };
 

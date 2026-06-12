@@ -3,14 +3,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { IconLoader2, IconShieldCheck } from '@tabler/icons-react'
 import Link from 'next/link'
-import { DataGrid, DataGridPagination, DataGridToolbar } from '@/components/data-grid'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
 import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Visible } from '@/components/ui/visible'
-import { PlatformStatusBanner } from '@/features/orchestrator/components/platform-status-banner'
 import { toast } from '@/hooks/use-toast'
 import {
   applyNetworkPolicyAction,
@@ -19,38 +17,34 @@ import {
 } from '@/server/orchestrator/applications/actions/configuration/network-policy-actions'
 import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
 import { getOrchestratorHealthAction } from '@/server/orchestrator/diagnostics/actions'
+import { DataGrid, DataGridPagination, DataGridToolbar } from '@/shared/ui/data-grid'
+import { PlatformStatusBanner } from '@/shared/ui/platform/platform-status-banner'
+import {
+  clampFirewallPageIndex,
+  firewallAllowlistDisplay,
+  firewallPolicyResultDisplay,
+  firewallReconcileActionState,
+  firewallRestrictionLabel,
+  filterFirewallApplications,
+  mergeFirewallApplications,
+  paginateFirewallApplications,
+  replaceFirewallApplication,
+  retainVisibleFirewallSelection,
+  selectedFirewallApplicationsFromIds,
+  sortFirewallApplications
+} from './firewall-settings-model'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
 import type { ServiceHealth } from '@/server/orchestrator/diagnostics/types'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
 
-const visibleCidrCount = 3
-
-const sortApplications = (applications: AndroidApplication[], sorting: SortingState) => {
-  const activeSorting = sorting.length > 0 ? sorting : [{ id: 'name', desc: false }]
-  return [...applications].sort((left, right) => {
-    for (const item of activeSorting) {
-      const multiplier = item.desc ? -1 : 1
-      let result = 0
-      if (item.id === 'name') result = left.name.localeCompare(right.name)
-      else if (item.id === 'runtime') result = left.status.currentStatus.localeCompare(right.status.currentStatus)
-      else if (item.id === 'result') {
-        result = (left.network.policy.result?.code ?? left.network.policy.status ?? '').localeCompare(
-          right.network.policy.result?.code ?? right.network.policy.status ?? ''
-        )
-      } else if (item.id === 'restricted') {
-        result = Number(left.network.policy.enabled) - Number(right.network.policy.enabled)
-      }
-      if (result !== 0) return result * multiplier
-    }
-    return left.id.localeCompare(right.id)
-  })
-}
-
 const AllowlistBadges = ({ cidrs }: { cidrs: string[] }) => {
-  if (cidrs.length === 0) return <span className='text-sm text-secondary-foreground'>No custom CIDRs</span>
+  const { empty, hiddenCidrs, visibleCidrs } = firewallAllowlistDisplay(cidrs)
+
+  if (empty) return <span className='text-sm text-secondary-foreground'>No custom CIDRs</span>
+
   return (
     <div className='flex max-w-[24rem] flex-wrap gap-1'>
-      {cidrs.slice(0, visibleCidrCount).map(cidr => (
+      {visibleCidrs.map(cidr => (
         <Badge
           key={cidr}
           variant='secondary'
@@ -58,12 +52,12 @@ const AllowlistBadges = ({ cidrs }: { cidrs: string[] }) => {
           {cidr}
         </Badge>
       ))}
-      <Visible when={cidrs.length > visibleCidrCount}>
+      <Visible when={hiddenCidrs.length > 0}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Badge variant='outline'>+{cidrs.length - visibleCidrCount}</Badge>
+            <Badge variant='outline'>+{hiddenCidrs.length}</Badge>
           </TooltipTrigger>
-          <TooltipContent className='max-w-sm break-all'>{cidrs.slice(visibleCidrCount).join(', ')}</TooltipContent>
+          <TooltipContent className='max-w-sm break-all'>{hiddenCidrs.join(', ')}</TooltipContent>
         </Tooltip>
       </Visible>
     </div>
@@ -90,46 +84,36 @@ export const FirewallSettings = ({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [pageIndex, setPageIndex] = useState(0)
   const [pageSize, setPageSize] = useState(20)
-  const filteredApplications = useMemo(() => {
-    const query = submittedSearch.trim().toLowerCase()
-    if (!query) return applications
-    return applications.filter(application =>
-      [
-        application.id,
-        application.name,
-        application.status.currentStatus,
-        application.network.policy.status,
-        ...application.network.policy.allowCidrs
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-        .includes(query)
-    )
-  }, [applications, submittedSearch])
+  const filteredApplications = useMemo(
+    () => filterFirewallApplications(applications, submittedSearch),
+    [applications, submittedSearch]
+  )
   const sortedApplications = useMemo(
-    () => sortApplications(filteredApplications, sorting),
+    () => sortFirewallApplications(filteredApplications, sorting),
     [filteredApplications, sorting]
   )
   const paginatedApplications = useMemo(
-    () => sortedApplications.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize),
+    () => paginateFirewallApplications(sortedApplications, pageIndex, pageSize),
     [pageIndex, pageSize, sortedApplications]
   )
-  const selectedApplications = sortedApplications.filter(application => selectedIds.has(application.id))
+  const selectedApplications = selectedFirewallApplicationsFromIds(sortedApplications, selectedIds)
+  const reconcileAction = firewallReconcileActionState({
+    applicationCount: applications.length,
+    busy,
+    selectedCount: selectedApplications.length
+  })
 
   useEffect(() => setPageIndex(0), [submittedSearch])
   useEffect(() => {
-    const pageCount = Math.max(Math.ceil(sortedApplications.length / pageSize), 1)
-    if (pageIndex >= pageCount) setPageIndex(pageCount - 1)
+    const nextPageIndex = clampFirewallPageIndex(sortedApplications.length, pageSize, pageIndex)
+    if (pageIndex !== nextPageIndex) setPageIndex(nextPageIndex)
   }, [pageIndex, pageSize, sortedApplications.length])
   useEffect(() => {
-    const visibleIds = new Set(sortedApplications.map(application => application.id))
-    setSelectedIds(current => new Set(Array.from(current).filter(id => visibleIds.has(id))))
+    setSelectedIds(current => retainVisibleFirewallSelection(sortedApplications, current))
   }, [sortedApplications])
 
   const replaceApplication = useCallback(
-    (application: AndroidApplication) =>
-      setApplications(current => current.map(item => (item.id === application.id ? application : item))),
+    (application: AndroidApplication) => setApplications(current => replaceFirewallApplication(current, application)),
     []
   )
 
@@ -190,8 +174,7 @@ export const FirewallSettings = ({
         return
       }
       const updated = await Promise.all(targets.map(application => applyNetworkPolicyAction(application.id)))
-      const updatedById = new Map(updated.map(application => [application.id, application]))
-      setApplications(current => current.map(application => updatedById.get(application.id) ?? application))
+      setApplications(current => mergeFirewallApplications(current, updated))
       setSelectedIds(new Set())
       toast({ title: 'Selected network access policies reconciled' })
     } catch (error) {
@@ -250,13 +233,13 @@ export const FirewallSettings = ({
         size: 176,
         meta: { label: 'Result' },
         cell: ({ row }) => {
-          const policy = row.original.network.policy
+          const result = firewallPolicyResultDisplay(row.original)
           return (
             <Badge
               className='capitalize'
-              variant={policy.result?.status === 'error' ? 'destructive' : 'secondary'}
+              variant={result.variant}
             >
-              {policy.result?.code ?? policy.status ?? 'Not applied'}
+              {result.label}
             </Badge>
           )
         }
@@ -268,14 +251,12 @@ export const FirewallSettings = ({
         size: 176,
         meta: { label: 'Restricted' },
         cell: ({ row }) => {
-          const policy = row.original.network.policy
+          const label = firewallRestrictionLabel(row.original)
           return (
             <label className='flex items-center justify-end gap-2'>
-              <span className='text-xs text-secondary-foreground'>
-                {policy.enabled ? 'Restricted' : 'Unrestricted'}
-              </span>
+              <span className='text-xs text-secondary-foreground'>{label}</span>
               <Switch
-                checked={policy.enabled}
+                checked={row.original.network.policy.enabled}
                 disabled={busy !== null}
                 aria-label={`Toggle restricted network access for ${row.original.name}`}
                 onCheckedChange={checked => void setRestricted(row.original, checked)}
@@ -310,17 +291,15 @@ export const FirewallSettings = ({
             <Button
               type='button'
               variant='ghost'
-              disabled={busy !== null || applications.length === 0}
+              disabled={reconcileAction.disabled}
               onClick={() => void reconcileSelected()}
             >
-              {busy === 'reconcile' ? (
+              {reconcileAction.busy ? (
                 <IconLoader2 className='size-4 animate-spin' />
               ) : (
                 <IconShieldCheck className='size-4' />
               )}
-              {selectedApplications.length > 0
-                ? `Reconcile ${selectedApplications.length} selected`
-                : 'Prune stale rules'}
+              {reconcileAction.label}
             </Button>
           }
         />

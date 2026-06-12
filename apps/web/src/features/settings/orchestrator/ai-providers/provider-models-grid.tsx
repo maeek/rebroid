@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
 import { IconDownload, IconPlus, IconSettings, IconTrash } from '@tabler/icons-react'
-import { DataGrid } from '@/components/data-grid'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -8,9 +7,16 @@ import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Switch } from '@/components/ui/switch'
+import { DataGrid } from '@/shared/ui/data-grid'
 import { ProviderHealthBadge } from './provider-health-badge'
 import { ProviderModelAddDialog, ProviderModelDownloadStatus } from './provider-model-download'
 import { ProviderModelSettingsDialog } from './provider-model-settings-dialog'
+import {
+  findProviderModelSettingsRow,
+  nextProviderModelRoles,
+  selectedProviderModelIndexes,
+  type ProviderModelRole
+} from './provider-models-grid-model'
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,
@@ -56,14 +62,11 @@ export const ProviderModelsGrid = ({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [settingsRowId, setSettingsRowId] = useState<string | null>(null)
   const [addOpen, setAddOpen] = useState(false)
-  const selectedIndexes = modelRows.filter(model => selectedIds.has(model.rowId)).map(model => model.index)
-  const settingsRow = modelRows.find(model => model.rowId === settingsRowId) ?? null
+  const selectedIndexes = selectedProviderModelIndexes(modelRows, selectedIds)
+  const settingsRow = findProviderModelSettingsRow(modelRows, settingsRowId)
   const toggleRole = useCallback(
-    (model: ProviderModelRow, role: 'planner' | 'vision', enabled: boolean) => {
-      const roles = new Set(model.roles ?? [])
-      if (enabled) roles.add(role)
-      else roles.delete(role)
-      onUpdateModel(model.index, { roles: Array.from(roles) })
+    (model: ProviderModelRow, role: ProviderModelRole, enabled: boolean) => {
+      onUpdateModel(model.index, { roles: nextProviderModelRoles(model.roles, role, enabled) })
     },
     [onUpdateModel]
   )

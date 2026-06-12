@@ -1,6 +1,6 @@
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
-import { Setting } from '@/features/settings/components/setting'
+import { Setting } from '@/shared/ui/settings/setting'
 
 type AppRuntimeSectionProps = {
   values: {

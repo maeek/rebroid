@@ -1,9 +1,11 @@
 import type {
   AutomationDto,
-  AutomationTriggerDto,
-  ListAutomationTriggersGridQueryDto,
   ListAutomationsGridQueryDto,
 } from '../dto/automation.dto';
+import type {
+  AutomationTriggerDto,
+  ListAutomationTriggersGridQueryDto,
+} from '../dto/automation-trigger.dto';
 
 export const tagNames = (value: { tags: { name: string }[] }) =>
   value.tags.map((tag) => tag.name);

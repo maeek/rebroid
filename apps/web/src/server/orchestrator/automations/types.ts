@@ -1,5 +1,5 @@
-import type { AutomationCommandOutput, AutomationDefinition, AutomationTag } from '@rebroid/automation-core/definition'
 import type { AutomationCommandEditorMetadata } from '@rebroid/automation-core/command-registry'
+import type { AutomationCommandOutput, AutomationDefinition, AutomationTag } from '@rebroid/automation-core/definition'
 
 export type AutomationLastStatus = 'never_run' | 'success' | 'failed' | 'running'
 export type AutomationRunStatus = 'queued' | 'running' | 'success' | 'failed' | 'canceled'

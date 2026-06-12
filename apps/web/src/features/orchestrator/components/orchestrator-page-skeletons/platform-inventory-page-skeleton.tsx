@@ -1,9 +1,9 @@
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
-import { PageHeaderSkeleton } from './page-header-skeleton'
-import { TableSkeleton } from './table-skeleton'
-import type { ListColumn } from './orchestrator-page-skeleton-types'
+import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
+import { TableSkeleton } from '@/shared/ui/skeletons/table-skeleton'
+import type { ListColumn } from '@/shared/ui/skeletons/list-skeleton-types'
 
 export const PlatformInventoryPageSkeleton = ({
   titleWidth,

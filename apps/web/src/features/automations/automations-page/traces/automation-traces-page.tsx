@@ -1,5 +1,5 @@
-import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
-import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
+import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
+import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { AutomationTracesSection } from './automation-traces-section'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
 import type { Automation, AutomationRun } from '@/server/orchestrator/automations/types'

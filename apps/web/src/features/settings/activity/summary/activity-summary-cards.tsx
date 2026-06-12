@@ -1,4 +1,4 @@
-import { QuickGlanceCard } from '@/features/settings/components/quick-glance-card'
+import { QuickGlanceCard } from '@/shared/ui/settings/quick-glance-card'
 import { useActivityData } from '../activity-context'
 import { metricNumber, relativeTime } from '../activity-format'
 

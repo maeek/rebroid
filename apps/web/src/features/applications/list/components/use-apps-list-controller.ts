@@ -2,8 +2,22 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { sortApps, type AppsListSortMode } from '@/features/applications/domain/app-sort'
 import { getAppsRefreshIntervalMs } from '@/features/applications/domain/refresh'
-import { notifyRecentAppsUpdated } from '@/features/applications/recent/recent-apps'
-import { useOrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
+import {
+  optimisticRemovingApp,
+  optimisticStartingApp,
+  optimisticStoppingApp
+} from '@/features/applications/list/model/apps-list-optimistic-state'
+import {
+  mergeAppsListRefresh,
+  type AppsListRefreshOverride
+} from '@/features/applications/list/model/apps-list-refresh'
+import {
+  deriveAppsListSelection,
+  fulfilledBulkDeleteAppIds,
+  retainVisibleSelectedIds,
+  summarizeBulkDeleteAppsResult,
+  summarizeBulkStopAppsResult
+} from '@/features/applications/list/model/apps-list-selection'
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
@@ -14,10 +28,12 @@ import {
   stopApplicationAction
 } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { forgetRecentAppAction } from '@/server/recent-apps/actions'
+import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
+import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import type { AppsListContextValue, BulkAction, PendingAppAction } from './apps-list-context'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
+import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 
 const listApplications = async () => {
   const response = await fetch('/api/applications', { cache: 'no-store' })
@@ -45,7 +61,7 @@ export const useAppsListController = ({
   const [bulkAction, setBulkAction] = useState<BulkAction | null>(null)
   const [pendingAppAction, setPendingAppAction] = useState<PendingAppAction | null>(null)
   const [isBulkWorking, setIsBulkWorking] = useState(false)
-  const pendingRefreshOverridesRef = useRef<Map<string, { app: AppDefinition; expiresAt: number | null }>>(new Map())
+  const pendingRefreshOverridesRef = useRef<Map<string, AppsListRefreshOverride>>(new Map())
   const hiddenRemovingIdsRef = useRef<Set<string>>(new Set())
   const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
   const refreshIntervalMs = getAppsRefreshIntervalMs(apps, settings.appListRefreshIntervalSeconds * 1000)
@@ -55,7 +71,7 @@ export const useAppsListController = ({
   }, [yourApps])
 
   useEffect(() => {
-    setSelectedIds(current => new Set(apps.filter(app => current.has(app.id)).map(app => app.id)))
+    setSelectedIds(current => retainVisibleSelectedIds(apps, current))
 
     if (apps.length === 0) {
       setIsManaging(false)
@@ -74,28 +90,17 @@ export const useAppsListController = ({
     }
 
     setApps(current => {
-      const currentIcons = new Map(current.map(app => [app.id, app.icon]))
-      const currentOwnerNames = new Map(current.map(app => [app.id, app.ownerDisplayName]))
+      const { apps: nextApps, expiredOverrideIds } = mergeAppsListRefresh({
+        currentApps: current,
+        refreshedApps: refreshedApps.map(mapAndroidApplicationToAppDefinition),
+        hiddenRemovingIds: hiddenRemovingIdsRef.current,
+        pendingOverrides: pendingRefreshOverridesRef.current,
+        nowMs: Date.now()
+      })
 
-      return refreshedApps
-        .filter(item => !hiddenRemovingIdsRef.current.has(item.id))
-        .map(item => {
-          const app = mapAndroidApplicationToAppDefinition(item)
-          const nextApp = {
-            ...app,
-            icon: currentIcons.get(app.id) ?? app.icon,
-            ownerDisplayName: currentOwnerNames.get(app.id) ?? app.ownerDisplayName
-          }
-          const override = pendingRefreshOverridesRef.current.get(nextApp.id)
-          if (!override) {
-            return nextApp
-          }
-          if (override.expiresAt !== null && override.expiresAt <= Date.now()) {
-            pendingRefreshOverridesRef.current.delete(nextApp.id)
-            return nextApp
-          }
-          return override.app
-        })
+      expiredOverrideIds.forEach(id => pendingRefreshOverridesRef.current.delete(id))
+
+      return nextApps
     })
   }, [refreshedApps])
 
@@ -120,22 +125,7 @@ export const useAppsListController = ({
 
   const startApp = async (app: AppDefinition) => {
     try {
-      updateApp(
-        {
-          ...app,
-          running: false,
-          status: 'provisioning',
-          lifecycleStage: 'container_starting',
-          statusMessage: 'Starting app.',
-          statusDetail: {
-            code: 'container_starting',
-            title: 'Starting container',
-            description: 'Starting app.',
-            tone: 'progress'
-          }
-        },
-        true
-      )
+      updateApp(optimisticStartingApp(app), true)
       const updated = await startApplicationAction(app.id)
       updateApp(mapAndroidApplicationToAppDefinition(updated))
     } catch (error) {
@@ -150,22 +140,7 @@ export const useAppsListController = ({
 
   const stopApp = async (app: AppDefinition) => {
     try {
-      updateApp(
-        {
-          ...app,
-          running: false,
-          status: 'stopped',
-          lifecycleStage: 'stopping',
-          statusMessage: 'Stopping app.',
-          statusDetail: {
-            code: 'stopping',
-            title: 'Stopping app',
-            description: 'Stopping app.',
-            tone: 'progress'
-          }
-        },
-        true
-      )
+      updateApp(optimisticStoppingApp(app), true)
       const updated = await stopApplicationAction(app.id)
       updateApp(mapAndroidApplicationToAppDefinition(updated))
     } catch (error) {
@@ -180,21 +155,7 @@ export const useAppsListController = ({
 
   const deleteApp = async (app: AppDefinition) => {
     try {
-      updateApp(
-        {
-          ...app,
-          status: 'removing',
-          lifecycleStage: 'removing',
-          statusMessage: 'Removing app.',
-          statusDetail: {
-            code: 'removing',
-            title: 'Removing app',
-            description: 'Removing app.',
-            tone: 'progress'
-          }
-        },
-        true
-      )
+      updateApp(optimisticRemovingApp(app), true)
       await deleteApplicationAction(app.id, settings.removeDataOnDelete)
       await removeAppIconAction(app.id)
       await forgetRecentAppAction(app.id).then(notifyRecentAppsUpdated)
@@ -229,13 +190,12 @@ export const useAppsListController = ({
   }
 
   const sortedApps = useMemo(() => sortApps(apps, sortMode), [apps, sortMode])
-  const selectedApps = sortedApps.filter(app => selectedIds.has(app.id))
-  const stoppableSelectedApps = selectedApps.filter(
-    app => app.ownerUserId === currentOwnerUserId && app.running && app.status !== 'removing'
-  )
-  const deletableSelectedApps = selectedApps.filter(app => app.status !== 'removing')
-  const allSelected = sortedApps.length > 0 && selectedIds.size === sortedApps.length
-  const activeBulkApps = bulkAction === 'stop' ? stoppableSelectedApps : deletableSelectedApps
+  const { activeBulkApps, allSelected, deletableSelectedApps, stoppableSelectedApps } = deriveAppsListSelection({
+    apps: sortedApps,
+    selectedIds,
+    currentOwnerUserId,
+    bulkAction
+  })
 
   const toggleSelectAll = () => {
     if (allSelected) {
@@ -249,22 +209,7 @@ export const useAppsListController = ({
   const handleBulkStop = async (appsToStop: AppDefinition[]) => {
     setIsBulkWorking(true)
     appsToStop.forEach(app => {
-      updateApp(
-        {
-          ...app,
-          running: false,
-          status: 'stopped',
-          lifecycleStage: 'stopping',
-          statusMessage: 'Stopping app.',
-          statusDetail: {
-            code: 'stopping',
-            title: 'Stopping app',
-            description: 'Stopping app.',
-            tone: 'progress'
-          }
-        },
-        true
-      )
+      updateApp(optimisticStoppingApp(app), true)
     })
 
     const results = await Promise.allSettled(
@@ -273,7 +218,6 @@ export const useAppsListController = ({
         return mapAndroidApplicationToAppDefinition(updated)
       })
     )
-    const failedCount = results.filter(result => result.status === 'rejected').length
 
     results.forEach((result, index) => {
       const originalApp = appsToStop[index]
@@ -290,15 +234,7 @@ export const useAppsListController = ({
       updateApp(originalApp)
     })
 
-    if (failedCount > 0) {
-      toast({
-        title: 'Some apps could not be stopped',
-        description: `${failedCount} stop request failed.`,
-        variant: 'destructive'
-      })
-    } else {
-      toast({ title: 'Selected apps stopped' })
-    }
+    toast(summarizeBulkStopAppsResult(results))
 
     setIsBulkWorking(false)
     setBulkAction(null)
@@ -308,21 +244,7 @@ export const useAppsListController = ({
   const handleBulkDelete = async (appsToDelete: AppDefinition[]) => {
     setIsBulkWorking(true)
     appsToDelete.forEach(app => {
-      updateApp(
-        {
-          ...app,
-          status: 'removing',
-          lifecycleStage: 'removing',
-          statusMessage: 'Removing app.',
-          statusDetail: {
-            code: 'removing',
-            title: 'Removing app',
-            description: 'Removing app.',
-            tone: 'progress'
-          }
-        },
-        true
-      )
+      updateApp(optimisticRemovingApp(app), true)
     })
 
     const results = await Promise.allSettled(
@@ -333,10 +255,7 @@ export const useAppsListController = ({
         return app.id
       })
     )
-    const removedIds = results
-      .filter((result): result is PromiseFulfilledResult<string> => result.status === 'fulfilled')
-      .map(result => result.value)
-    const failedCount = results.length - removedIds.length
+    const removedIds = fulfilledBulkDeleteAppIds(results)
 
     removedIds.forEach(removeApp)
     appsToDelete.forEach((app, index) => {
@@ -345,15 +264,7 @@ export const useAppsListController = ({
       }
     })
 
-    if (failedCount > 0) {
-      toast({
-        title: 'Some apps could not be deleted',
-        description: `${failedCount} delete request failed.`,
-        variant: 'destructive'
-      })
-    } else {
-      toast({ title: 'Selected apps deleted' })
-    }
+    toast(summarizeBulkDeleteAppsResult(results, removedIds))
 
     setIsBulkWorking(false)
     setBulkAction(null)

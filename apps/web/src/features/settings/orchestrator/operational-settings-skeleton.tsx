@@ -1,9 +1,9 @@
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
-import { PageHeaderSkeleton } from '@/features/orchestrator/components/orchestrator-page-skeletons/page-header-skeleton'
-import { TableSkeleton } from '@/features/orchestrator/components/orchestrator-page-skeletons/table-skeleton'
-import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
-import type { ListColumn } from '@/features/orchestrator/components/orchestrator-page-skeletons/orchestrator-page-skeleton-types'
+import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
+import { TableSkeleton } from '@/shared/ui/skeletons/table-skeleton'
+import type { ListColumn } from '@/shared/ui/skeletons/list-skeleton-types'
 
 export const OperationalSettingsSkeleton = ({
   title,

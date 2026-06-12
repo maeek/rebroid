@@ -1,11 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { AutomationDefinitionService } from '../definition/automation-definition.service';
 import { AutomationDefinition } from '@rebroid/automation-core/definition';
-import {
-  AutomationDto,
-  AutomationRunDto,
-  AutomationTriggerDto,
-} from '../dto/automation.dto';
+import { AutomationDto } from '../dto/automation.dto';
+import { AutomationRunDto } from '../dto/automation-run.dto';
+import { AutomationTriggerDto } from '../dto/automation-trigger.dto';
 import { Automation } from '../entities/automation.entity';
 import { AutomationRun } from '../entities/automation-run.entity';
 import { AutomationTrigger } from '../entities/automation-trigger.entity';

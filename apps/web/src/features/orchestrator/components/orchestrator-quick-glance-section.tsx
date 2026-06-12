@@ -2,10 +2,10 @@
 
 import { useEffect } from 'react'
 import { Visible } from '@/components/ui/visible'
-import { useSystemResources } from '@/features/orchestrator/hooks/use-system-resources'
-import { QuickGlanceCard } from '@/features/settings/components/quick-glance-card'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { formatDateLocale } from '@/lib/format'
+import { useSystemResources } from '@/shared/model/platform/use-system-resources'
+import { QuickGlanceCard } from '@/shared/ui/settings/quick-glance-card'
 
 const formatBytes = (bytes: number) => {
   if (bytes === 0) {

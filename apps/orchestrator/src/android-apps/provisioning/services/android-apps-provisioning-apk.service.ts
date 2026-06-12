@@ -11,6 +11,12 @@ import {
 } from '../../android-application-status';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
+import {
+  buildLaunchPackageCommand,
+  buildPmInstallCommand,
+  resolveInstalledPackageName,
+  shellQuote,
+} from '../utils/android-apps-apk-provisioning.utils';
 
 @Injectable()
 export class AndroidAppsProvisioningApkService {
@@ -69,7 +75,7 @@ export class AndroidAppsProvisioningApkService {
     await this.exec.execInContainer(app.containerId, [
       'sh',
       '-lc',
-      `chmod 0644 ${this.shellQuote(targetPath)} && sync`,
+      `chmod 0644 ${shellQuote(targetPath)} && sync`,
     ]);
     const stagedApk = await this.inspectStagedApk(app.containerId, targetPath);
     await this.logs.append(app.id, 'APK copied into runtime container', {
@@ -87,11 +93,12 @@ export class AndroidAppsProvisioningApkService {
       app.containerId,
       targetPath,
     );
-    const packageName = await this.resolveInstalledPackageName(
-      app.containerId,
+    const packagesAfter = await this.listThirdPartyPackages(app.containerId);
+    const packageName = resolveInstalledPackageName({
       packagesBefore,
-      app.apkPackageName ?? declaredPackageName,
-    );
+      packagesAfter,
+      existingPackageName: app.apkPackageName ?? declaredPackageName,
+    });
 
     if (!packageName) {
       throw new InternalServerErrorException(
@@ -123,11 +130,11 @@ export class AndroidAppsProvisioningApkService {
 
     const packageName =
       app.apkPackageName ??
-      (await this.resolveInstalledPackageName(
-        app.containerId,
-        [],
-        await this.extractPackageNameFromApk(app),
-      ));
+      resolveInstalledPackageName({
+        packagesBefore: [],
+        packagesAfter: await this.listThirdPartyPackages(app.containerId),
+        existingPackageName: await this.extractPackageNameFromApk(app),
+      });
     if (!packageName) {
       await this.logs.append(app.id, 'APK launch skipped', {
         reason: 'Could not determine installed package name.',
@@ -192,7 +199,7 @@ export class AndroidAppsProvisioningApkService {
       return await this.exec.execInContainerWithOutput(containerId, [
         'sh',
         '-lc',
-        this.pmInstallCommand(targetPath),
+        buildPmInstallCommand(targetPath),
       ]);
     } catch (error) {
       await this.logs.append(applicationId, 'APK install command failed', {
@@ -225,7 +232,7 @@ export class AndroidAppsProvisioningApkService {
       return await this.exec.execInContainerWithOutput(containerId, [
         'sh',
         '-lc',
-        this.launchPackageCommand(packageName),
+        buildLaunchPackageCommand(packageName),
       ]);
     } catch (error) {
       await this.logs.append(
@@ -252,54 +259,6 @@ export class AndroidAppsProvisioningApkService {
     }
   }
 
-  /** Builds the shell script used for APK install. */
-  private pmInstallCommand(apkPath: string) {
-    return [
-      `apk_path=${this.shellQuote(apkPath)}`,
-      'run_with_timeout() {',
-      '  timeout_seconds="$1"',
-      '  shift',
-      '  "$@" &',
-      '  pid=$!',
-      '  elapsed=0',
-      '  while kill -0 "$pid" 2>/dev/null; do',
-      '    if [ "$elapsed" -ge "$timeout_seconds" ]; then',
-      '      kill "$pid" 2>/dev/null || true',
-      '      wait "$pid" 2>/dev/null || true',
-      '      echo "pm install timed out after ${timeout_seconds}s" >&2',
-      '      return 124',
-      '    fi',
-      '    sleep 1',
-      '    elapsed=$((elapsed + 1))',
-      '  done',
-      '  wait "$pid"',
-      '}',
-      'run_streamed_install() {',
-      '  pm install -r -t -g -S "$apk_size" - < "$apk_path"',
-      '}',
-      'echo "Installing APK from staged file: $apk_path"',
-      'if run_with_timeout 180 pm install -r -t -g "$apk_path"; then',
-      '  exit 0',
-      'fi',
-      'path_status=$?',
-      'echo "pm install from staged file failed with exit code ${path_status}; retrying streamed install" >&2',
-      'apk_size=$(wc -c < "$apk_path" | tr -d " ")',
-      'if [ -z "$apk_size" ] || [ "$apk_size" -le 0 ]; then',
-      '  echo "staged APK is empty or unreadable: $apk_path" >&2',
-      '  exit 1',
-      'fi',
-      'run_with_timeout 180 run_streamed_install',
-    ].join('\n');
-  }
-
-  /** Builds the shell script used for launching an installed package. */
-  private launchPackageCommand(packageName: string) {
-    return [
-      `package_name=${this.shellQuote(packageName)}`,
-      'monkey -p "$package_name" -c android.intent.category.LAUNCHER 1',
-    ].join('\n');
-  }
-
   /** Reads third-party package names from Android package manager. */
   private async listThirdPartyPackages(containerId: string) {
     const result = await this.exec.execInContainerWithOutput(containerId, [
@@ -320,7 +279,7 @@ export class AndroidAppsProvisioningApkService {
       'sh',
       '-lc',
       [
-        `apk_path=${this.shellQuote(apkPath)}`,
+        `apk_path=${shellQuote(apkPath)}`,
         'ls -l "$apk_path"',
         'printf "bytes="',
         'wc -c < "$apk_path" | tr -d " "',
@@ -331,33 +290,6 @@ export class AndroidAppsProvisioningApkService {
       stdout: result.stdout.trim() || null,
       stderr: result.stderr.trim() || null,
     };
-  }
-
-  /** Determines the app package after install, preferring newly added packages. */
-  private async resolveInstalledPackageName(
-    containerId: string,
-    packagesBefore: string[],
-    existingPackageName: string | null,
-  ) {
-    const packagesAfter = await this.listThirdPartyPackages(containerId);
-
-    if (existingPackageName && packagesAfter.includes(existingPackageName)) {
-      return existingPackageName;
-    }
-
-    const before = new Set(packagesBefore);
-    const newlyInstalled = packagesAfter.filter(
-      (packageName) => !before.has(packageName),
-    );
-    if (newlyInstalled.length === 1) {
-      return newlyInstalled[0];
-    }
-
-    if (newlyInstalled.length > 1) {
-      return newlyInstalled.sort()[0];
-    }
-
-    return packagesAfter.length === 1 ? packagesAfter[0] : null;
   }
 
   /** Reads the declared package name from the APK file when available. */
@@ -371,10 +303,5 @@ export class AndroidAppsProvisioningApkService {
     } catch {
       return null;
     }
-  }
-
-  /** Escapes a string for safe shell use. */
-  private shellQuote(value: string) {
-    return `'${value.replaceAll("'", "'\\''")}'`;
   }
 }

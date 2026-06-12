@@ -1,5 +1,4 @@
 import { IconCalendarStats, IconDotsVertical, IconDownload, IconFilter, IconTrash, IconX } from '@tabler/icons-react'
-import { DataGridToolbar } from '@/components/data-grid'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -10,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
+import { DataGridToolbar } from '@/shared/ui/data-grid'
 import { useActivityController } from '../activity-context'
 
 export const ActivityEventsToolbar = () => {

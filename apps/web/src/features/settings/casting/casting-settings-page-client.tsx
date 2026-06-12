@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { PlatformPageHeader } from '@/features/orchestrator/components/platform-page-header'
-import { PlatformPageRefreshButton } from '@/features/orchestrator/components/platform-page-refresh-button'
-import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
+import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
+import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
+import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { CastingSidecarSettings } from './casting-sidecar-settings'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
 import type { DisplaySidecarSession, ServiceHealth } from '@/server/orchestrator/diagnostics/types'

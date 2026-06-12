@@ -3,7 +3,7 @@ import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Visible } from '@/components/ui/visible'
 import { NetworkAccessInput } from '@/features/applications/viewer/app-info/network-access-input'
-import { Setting } from '@/features/settings/components/setting'
+import { Setting } from '@/shared/ui/settings/setting'
 import { verticalSettingClassName } from './app-form-utils'
 
 type AppNetworkPolicyEditorSectionProps = {

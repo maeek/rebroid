@@ -1,26 +1,5 @@
-import { notFound } from 'next/navigation'
-import { AutomationTracesPage } from '@/features/automations/automations-page/traces/automation-traces-page'
-import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
-import { getAutomationAction } from '@/server/orchestrator/automations/automation-management-actions'
-import { listAutomationRunsAction } from '@/server/orchestrator/automations/automation-run-actions'
+import { AutomationTracesPageEntry } from '@/features/automations/pages/automation-traces/page-entry'
 
-export default async function AutomationTracesRoute({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const automation = await getAutomationAction(id).catch(() => null)
-  if (!automation) {
-    notFound()
-  }
-
-  const [applications, runs] = await Promise.all([
-    listApplicationsAction({ reconcile: false }),
-    listAutomationRunsAction(id, 50)
-  ])
-
-  return (
-    <AutomationTracesPage
-      applications={applications}
-      automation={automation}
-      runs={runs}
-    />
-  )
+export default function AutomationTracesRoute({ params }: { params: Promise<{ id: string }> }) {
+  return <AutomationTracesPageEntry params={params} />
 }

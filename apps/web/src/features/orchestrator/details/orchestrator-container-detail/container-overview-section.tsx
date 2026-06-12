@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
 import { ContainerStateBadge } from '@/features/orchestrator/components/orchestrator-containers-table-parts'
-import { PlatformDetailRow, formatPlatformDate } from '@/features/orchestrator/components/platform-detail-parts'
 import {
   useContainerDetailContext,
   useContainerDetailControllerContext
@@ -15,6 +14,7 @@ import {
   formatContainerNetworks,
   formatContainerPorts
 } from '@/features/orchestrator/details/orchestrator-container-detail/container-detail-utils'
+import { PlatformDetailRow, formatPlatformDate } from '@/shared/ui/platform/platform-detail-parts'
 import type { PlatformContainerDetails } from '@/server/orchestrator/platform/types'
 
 const ContainerOverviewHeader = ({ container }: { container: PlatformContainerDetails['container'] }) => {

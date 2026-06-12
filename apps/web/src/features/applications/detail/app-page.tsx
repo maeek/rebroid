@@ -1,14 +1,14 @@
 'use client'
 import { AppNotFoundSplash } from '@/features/applications/components/app-not-found-splash'
 import { AppDefinition } from '@/features/applications/domain/app-definition'
-import { resolveAppIconUrl } from '@/features/applications/icons/url'
-import { ProtectedSplitPageLayout } from '@/features/shell/components/protected-page-shell'
-import { PageBackdrop } from '../../shell/components/page-backdrop'
+import { resolveAppIconUrl } from '@/shared/model/media/image-url'
+import { PageBackdrop } from '@/shared/ui/page/page-backdrop'
+import { ProtectedSplitPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { AppViewerContent } from './app-viewer-content'
 import { AppViewerPane } from './app-viewer-pane'
 import { AppWorkspaceContent } from './app-workspace-content'
 import { ApplicationViewerProvider, useApplicationViewerContext } from './application-viewer-context'
-import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
+import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import type { PermissionMap } from '@/shared/permissions/permissions'
 
 export const AppViewerPage = ({

@@ -10,28 +10,32 @@ import {
 } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import {
-  AutomationCommandDto,
   AutomationDto,
   AutomationsGridPageDto,
-  AutomationRunEventDto,
-  AutomationRunEventStreamTokenDto,
-  AutomationRunDto,
-  AutomationTriggerDto,
-  AutomationTriggersGridPageDto,
   AutomationYamlDraftDto,
   AutomationValidationDto,
   CreateAutomationDto,
-  CreateAutomationTriggerDto,
   DraftAutomationYamlDto,
-  ListAutomationTriggersGridQueryDto,
-  ListAutomationRunsQueryDto,
   ListAutomationsGridQueryDto,
-  RunAdHocAiAutomationDto,
-  RunAutomationDto,
-  UpdateAutomationTriggerDto,
   UpdateAutomationDto,
   ValidateAutomationYamlDto,
 } from '../dto/automation.dto';
+import { AutomationCommandDto } from '../dto/automation-command.dto';
+import {
+  AutomationRunDto,
+  AutomationRunEventDto,
+  AutomationRunEventStreamTokenDto,
+  ListAutomationRunsQueryDto,
+  RunAdHocAiAutomationDto,
+  RunAutomationDto,
+} from '../dto/automation-run.dto';
+import {
+  AutomationTriggerDto,
+  AutomationTriggersGridPageDto,
+  CreateAutomationTriggerDto,
+  ListAutomationTriggersGridQueryDto,
+  UpdateAutomationTriggerDto,
+} from '../dto/automation-trigger.dto';
 import { AutomationsService } from '../services/automations.service';
 
 @ApiTags('automations')

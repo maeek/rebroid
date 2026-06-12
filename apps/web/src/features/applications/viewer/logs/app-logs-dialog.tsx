@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogTrigger
 } from '@/components/ui/dialog'
-import { LogsConsole } from '@/features/orchestrator/logs/logs-console'
+import { LogsConsole } from '@/shared/ui/logs/logs-console'
 import { AppLogsControls } from './app-logs-controls'
 import { useApplicationLogs } from './use-application-logs'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'

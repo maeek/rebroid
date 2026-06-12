@@ -9,7 +9,7 @@ import {
   viewerPlayerDefinitions,
   viewerStreamingPresets
 } from '@/features/applications/viewer/settings/viewer-settings'
-import { ViewerStreamingSliderFields } from '@/features/applications/viewer/settings/viewer-streaming-slider-fields'
+import { ViewerStreamingSliderFields } from '@/shared/ui/settings/viewer-streaming-slider-fields'
 import { ToolSection } from './tool-section'
 import type { ViewerSettings, ViewerStreamingPreset } from '@/features/applications/viewer/settings/viewer-settings'
 

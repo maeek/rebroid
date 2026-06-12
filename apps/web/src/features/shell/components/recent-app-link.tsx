@@ -4,10 +4,10 @@ import classNames from 'classnames'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Visible } from '@/components/ui/visible'
-import { AppIcon } from '@/features/applications/components/app-icon'
 import { startApplicationAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
+import { AppIcon } from '@/shared/ui/app-icon/app-icon'
 import { variantStyles, type NavigationVariant } from './protected-navigation-config'
-import type { RecentApp } from '@/features/applications/recent/recent-apps'
+import type { RecentApp } from '@/shared/model/recent-apps/recent-apps'
 
 export const RecentAppLink = ({
   app,

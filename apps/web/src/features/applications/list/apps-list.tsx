@@ -1,6 +1,6 @@
 'use client'
 import { Visible } from '@/components/ui/visible'
-import { StatusSplash } from '@/features/shell/components/status-splash'
+import { StatusSplash } from '@/shared/ui/status-splash'
 import { AppsListBulkDialog } from './components/apps-list-bulk-dialog'
 import { AppsListProvider } from './components/apps-list-context'
 import { AppsListEmptyState } from './components/apps-list-empty-state'
@@ -8,7 +8,7 @@ import { AppsListHeader } from './components/apps-list-header'
 import { AppsListItem } from './components/apps-list-item'
 import { useAppsListController } from './components/use-apps-list-controller'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
+import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 
 export const AppsList = ({
   yourApps,

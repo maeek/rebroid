@@ -2,9 +2,9 @@
 
 import { IconTerminal2 } from '@tabler/icons-react'
 import { Section } from '@/components/ui/section'
-import { formatPlatformDate } from '@/features/orchestrator/components/platform-detail-parts'
 import { useContainerDetailControllerContext } from '@/features/orchestrator/details/orchestrator-container-detail/container-detail-context'
-import { LogsConsole } from '@/features/orchestrator/logs/logs-console'
+import { LogsConsole } from '@/shared/ui/logs/logs-console'
+import { formatPlatformDate } from '@/shared/ui/platform/platform-detail-parts'
 
 export const ContainerLogsSection = () => {
   const { isRefreshingLogs, logs, refreshLogs } = useContainerDetailControllerContext()

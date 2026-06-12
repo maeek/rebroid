@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { IconEye, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { DataGrid, DataGridPagination, DataGridToolbar } from '@/components/data-grid'
 import { Button } from '@/components/ui/button'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import {
@@ -22,47 +21,33 @@ import { imageDisplayName } from '@/features/orchestrator/domain/image-display-n
 import { toast } from '@/hooks/use-toast'
 import { formatUtcDate } from '@/lib/format'
 import { removePlatformImageAction } from '@/server/orchestrator/platform/image-actions'
+import { DataGrid, DataGridPagination, DataGridToolbar } from '@/shared/ui/data-grid'
+import {
+  platformSortFromSearchParam,
+  platformSortToSearchParam,
+  retainVisiblePlatformSelection,
+  selectedPlatformItemsFromIds,
+  summarizePlatformBulkRemoveResults
+} from './orchestrator-grid-query-utils'
+import {
+  buildImagesGridHref,
+  canRemoveSelectedImages,
+  formatImageContainerCount,
+  formatImageSize,
+  getImageRemoveDialogLabel,
+  getImageSecondaryLabel
+} from './orchestrator-images-section-model'
 import { PlatformResourceScopeFilter } from './platform-resource-scope-filter'
 import type {
   PlatformImage,
   PlatformImagesGridPage,
   PlatformImagesGridQuery
 } from '@/server/orchestrator/platform/types'
-import type { ColumnDef, SortingState } from '@tanstack/react-table'
-
-const formatBytes = (bytes: number) => {
-  if (!bytes) return '0 B'
-  const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
-  return `${(bytes / 1024 ** index).toFixed(2)} ${units[index]}`
-}
-
-const compactParams = (values: Record<string, string | number | undefined>) => {
-  const params = new URLSearchParams()
-  for (const [key, value] of Object.entries(values)) {
-    const text = String(value ?? '').trim()
-    if (text && !(key === 'scope' && text === 'managed')) params.set(key, text)
-  }
-  return params
-}
-
-const sortToSearchParam = (sorting: SortingState) =>
-  sorting.length === 0 ? undefined : sorting.map(item => `${item.id}:${item.desc ? 'desc' : 'asc'}`).join(',')
-
-const sortFromSearchParam = (sort: string | undefined): SortingState =>
-  (sort ?? 'createdAt:desc')
-    .split(',')
-    .map(part => {
-      const [id, direction] = part.split(':')
-      if (!id) return null
-      return { id, desc: direction !== 'asc' }
-    })
-    .filter((item): item is SortingState[number] => Boolean(item))
-    .slice(0, 3)
+import type { ColumnDef } from '@tanstack/react-table'
 
 const ImageNameCell = ({ image }: { image: PlatformImage }) => {
   const name = imageDisplayName(image)
-  const secondary = image.repoTags.length > 1 ? image.repoTags.slice(1).join(', ') : image.repoDigests[0]
+  const secondary = getImageSecondaryLabel(image)
 
   return (
     <div className='flex min-w-[18rem] flex-col gap-1'>
@@ -98,15 +83,17 @@ export const OrchestratorImagesSection = ({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [pendingRemove, setPendingRemove] = useState<PlatformImage | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
-  const sorting = useMemo(() => sortFromSearchParam(gridQuery.sort), [gridQuery.sort])
+  const sorting = useMemo(
+    () => platformSortFromSearchParam(gridQuery.sort, { defaultSort: 'createdAt:desc', missingDirection: 'desc' }),
+    [gridQuery.sort]
+  )
 
   useEffect(() => {
     setSearch(gridQuery.q ?? '')
   }, [gridQuery.q])
 
   useEffect(() => {
-    const currentPageIds = new Set(imagesPage.items.map(image => image.id))
-    setSelectedIds(current => new Set(Array.from(current).filter(id => currentPageIds.has(id))))
+    setSelectedIds(current => retainVisiblePlatformSelection(imagesPage.items, current))
   }, [imagesPage.items])
 
   useEffect(() => {
@@ -116,17 +103,10 @@ export const OrchestratorImagesSection = ({
     }
   }, [onRefreshComplete, refreshKey, router])
 
-  const selectedImages = imagesPage.items.filter(image => selectedIds.has(image.id))
+  const selectedImages = selectedPlatformItemsFromIds(imagesPage.items, selectedIds)
 
   const pushGridParams = (patch: Partial<PlatformImagesGridQuery>) => {
-    const params = compactParams({
-      q: patch.q ?? gridQuery.q,
-      scope: patch.scope ?? gridQuery.scope ?? 'managed',
-      sort: patch.sort ?? gridQuery.sort,
-      page: patch.page ?? gridQuery.page ?? 1,
-      pageSize: patch.pageSize ?? gridQuery.pageSize ?? imagesPage.pageSize
-    })
-    router.push(`/infrastructure/images${params.size ? `?${params.toString()}` : ''}`)
+    router.push(buildImagesGridHref({ gridQuery, pageSize: imagesPage.pageSize, patch }))
   }
 
   const removeImage = async () => {
@@ -153,18 +133,9 @@ export const OrchestratorImagesSection = ({
     setBusyId('bulk')
     try {
       const results = await Promise.allSettled(selectedImages.map(image => removePlatformImageAction(image.id)))
-      const failedCount = results.filter(result => result.status === 'rejected').length
       setSelectedIds(new Set())
       router.refresh()
-      toast(
-        failedCount > 0
-          ? {
-              title: 'Some images could not be removed',
-              description: `${failedCount} remove request failed.`,
-              variant: 'destructive'
-            }
-          : { title: 'Selected images removed' }
-      )
+      toast(summarizePlatformBulkRemoveResults(results, 'image'))
     } finally {
       setBusyId(null)
     }
@@ -187,7 +158,7 @@ export const OrchestratorImagesSection = ({
         size: 144,
         meta: { label: 'Size' },
         cell: ({ row }) => (
-          <span className='text-sm text-secondary-foreground'>{formatBytes(row.original.sizeBytes)}</span>
+          <span className='text-sm text-secondary-foreground'>{formatImageSize(row.original.sizeBytes)}</span>
         )
       },
       {
@@ -208,7 +179,7 @@ export const OrchestratorImagesSection = ({
         meta: { label: 'Containers' },
         cell: ({ row }) => (
           <span className='text-sm text-secondary-foreground'>
-            {row.original.containers < 0 ? 'unknown' : row.original.containers}
+            {formatImageContainerCount(row.original.containers)}
           </span>
         )
       },
@@ -244,7 +215,7 @@ export const OrchestratorImagesSection = ({
             <Button
               type='button'
               variant='ghost'
-              disabled={busyId === 'bulk' || selectedImages.length === 0}
+              disabled={busyId === 'bulk' || !canRemoveSelectedImages(selectedImages)}
               onClick={() => void removeSelectedImages()}
             >
               Remove selected
@@ -263,7 +234,7 @@ export const OrchestratorImagesSection = ({
             sorting={sorting}
             onSortingChange={updater => {
               const nextSorting = typeof updater === 'function' ? updater(sorting) : updater
-              pushGridParams({ sort: sortToSearchParam(nextSorting), page: 1 })
+              pushGridParams({ sort: platformSortToSearchParam(nextSorting), page: 1 })
             }}
             selection={{
               selectedIds,
@@ -329,7 +300,7 @@ export const OrchestratorImagesSection = ({
             <DialogDescription className='space-y-3'>
               <span className='block'>This removes the selected image from the container engine.</span>
               <span className='block rounded-md border border-border/60 bg-background/50 px-3 py-2 font-mono text-xs text-foreground break-all'>
-                {pendingRemove ? imageDisplayName(pendingRemove) : 'the selected image'}
+                {getImageRemoveDialogLabel(pendingRemove)}
               </span>
               <span className='block'>
                 Images used by containers may need cleanup or force removal from Docker directly.

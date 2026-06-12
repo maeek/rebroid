@@ -6,22 +6,21 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { catalogByRole, selectCatalogModel, selectCatalogProvider } from '@/shared/automation/automation-ai-catalog'
 import { NumberField, TextareaField } from '../shared/action-fields'
+import {
+  booleanValue,
+  buildAiRunCatalogPatch,
+  defaultAiRunInput,
+  healthLabel,
+  nextAllowedAiRunTools,
+  normalizeAiRunInput,
+  numberValue,
+  selectableAiRunCommands,
+  stringArrayValue,
+  stringValue,
+  summarizeAiRunInput
+} from './ai-run.model'
 import type { AutomationActionDefinition } from '../automation-action-definition'
 import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
-
-const stringValue = (input: Record<string, unknown>, key: string) => (typeof input[key] === 'string' ? input[key] : '')
-
-const numberValue = (input: Record<string, unknown>, key: string, fallback: number) =>
-  typeof input[key] === 'number' && Number.isFinite(input[key]) ? input[key] : fallback
-
-const booleanValue = (input: Record<string, unknown>, key: string, fallback: boolean) =>
-  typeof input[key] === 'boolean' ? input[key] : fallback
-
-const stringArrayValue = (input: Record<string, unknown>, key: string) =>
-  Array.isArray(input[key]) ? input[key].filter((item): item is string => typeof item === 'string') : []
-
-const healthLabel = (health: AutomationAiProviderHealth) =>
-  health.status === 'ok' ? 'Online' : health.status === 'disabled' ? 'Disabled' : 'Error'
 
 export const aiRunAction: AutomationActionDefinition = {
   uses: 'ai.run',
@@ -29,40 +28,9 @@ export const aiRunAction: AutomationActionDefinition = {
   iconKey: 'sparkles',
   label: 'AI run',
   description: 'Runs an AI harness that can call permitted automation tools to satisfy a prompt.',
-  defaultInput: () => ({
-    prompt: 'Inspect the screen and complete the requested task.',
-    maxToolCalls: 20,
-    timeoutMs: 120000,
-    requireFinalAnswer: true
-  }),
-  normalizeInput: input => ({
-    prompt: stringValue(input, 'prompt') || 'Inspect the screen and complete the requested task.',
-    ...(stringValue(input, 'providerId') ? { providerId: stringValue(input, 'providerId') } : {}),
-    ...(stringValue(input, 'modelId') ? { modelId: stringValue(input, 'modelId') } : {}),
-    ...(stringValue(input, 'visionProviderId') ? { visionProviderId: stringValue(input, 'visionProviderId') } : {}),
-    ...(stringValue(input, 'visionModelId') ? { visionModelId: stringValue(input, 'visionModelId') } : {}),
-    ...(stringArrayValue(input, 'allowedTools').length > 0
-      ? { allowedTools: stringArrayValue(input, 'allowedTools') }
-      : {}),
-    maxToolCalls: Math.min(Math.max(numberValue(input, 'maxToolCalls', 20), 1), 100),
-    timeoutMs: Math.min(Math.max(numberValue(input, 'timeoutMs', 120000), 1000), 360_0000),
-    requireFinalAnswer: booleanValue(input, 'requireFinalAnswer', true)
-  }),
-  summary: input => {
-    const prompt = stringValue(input, 'prompt').trim()
-    const provider = stringValue(input, 'providerId')
-    const model = stringValue(input, 'modelId')
-    const visionProvider = stringValue(input, 'visionProviderId')
-    const visionModel = stringValue(input, 'visionModelId')
-    const maxToolCalls = numberValue(input, 'maxToolCalls', 20)
-    const timeoutSeconds = Math.round(numberValue(input, 'timeoutMs', 120000) / 1000)
-    const preview = prompt.length > 72 ? `${prompt.slice(0, 72)}...` : prompt || 'No prompt'
-    const vision =
-      visionProvider || visionModel
-        ? ` · vision ${visionProvider || 'default'}${visionModel ? `/${visionModel}` : ''}`
-        : ''
-    return `${preview} · planner ${provider || 'default'}${model ? `/${model}` : ''}${vision} · ${timeoutSeconds}s · ${maxToolCalls} calls`
-  },
+  defaultInput: defaultAiRunInput,
+  normalizeInput: normalizeAiRunInput,
+  summary: summarizeAiRunInput,
   renderEditor: props => <AiRunEditor {...props} />
 }
 
@@ -83,11 +51,7 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
   const visionModelId = stringValue(input, 'visionModelId')
   const selectedVisionModel = selectCatalogModel(selectedVisionProvider, visionModelId)
   const allowedTools = stringArrayValue(input, 'allowedTools')
-  const selectableCommands = useMemo(
-    () =>
-      commands.filter(command => command.uses !== 'ai.run').sort((left, right) => left.uses.localeCompare(right.uses)),
-    [commands]
-  )
+  const selectableCommands = useMemo(() => selectableAiRunCommands(commands), [commands])
 
   useEffect(() => {
     patchInputRef.current = patchInput
@@ -101,17 +65,13 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
       .then(nextCatalog => {
         if (cancelled) return
         setCatalog(nextCatalog)
-        const plannerProviders = catalogByRole(nextCatalog, 'planner')
-        const visionProviders = catalogByRole(nextCatalog, 'vision')
-        const provider = selectCatalogProvider(plannerProviders, providerId)
-        const model = selectCatalogModel(provider, modelId)
-        const visionProvider = selectCatalogProvider(visionProviders, visionProviderId)
-        const visionModel = selectCatalogModel(visionProvider, visionModelId)
-        const patch: Record<string, unknown> = {}
-        if (provider && provider.id !== providerId) patch.providerId = provider.id
-        if (model && model.id !== modelId) patch.modelId = model.id
-        if (visionProvider && !visionProviderId) patch.visionProviderId = visionProvider.id
-        if (visionModel && !visionModelId) patch.visionModelId = visionModel.id
+        const patch = buildAiRunCatalogPatch({
+          catalog: nextCatalog,
+          modelId,
+          providerId,
+          visionModelId,
+          visionProviderId
+        })
         if (Object.keys(patch).length > 0) patchInputRef.current(patch)
       })
       .finally(() => {
@@ -155,11 +115,7 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
   }, [selectedModel, selectedProvider])
 
   const toggleTool = (uses: string, enabled: boolean) => {
-    const next = new Set(allowedTools.length === 0 ? selectableCommands.map(command => command.uses) : allowedTools)
-    if (enabled) next.add(uses)
-    else next.delete(uses)
-    const selected = Array.from(next)
-    patchInput({ allowedTools: selected.length === selectableCommands.length ? [] : selected })
+    patchInput({ allowedTools: nextAllowedAiRunTools({ allowedTools, commands: selectableCommands, enabled, uses }) })
   }
 
   return (

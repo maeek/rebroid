@@ -16,10 +16,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Visible } from '@/components/ui/visible'
 import { useApplicationViewerContext } from '@/features/applications/detail/application-viewer-context'
-import { ApplicationProfilePicker } from '@/features/applications/profiles/profile-picker'
 import { toast } from '@/hooks/use-toast'
 import { listRunnableAutomationsAction } from '@/server/orchestrator/automations/automation-management-actions'
 import { runAutomationAction } from '@/server/orchestrator/automations/automation-run-actions'
+import { ApplicationProfilePicker } from '@/shared/ui/application-profile/application-profile-picker'
 import type { ApplicationProfileMode } from '@/server/orchestrator/applications/types'
 import type { Automation, AutomationRun } from '@/server/orchestrator/automations/types'
 

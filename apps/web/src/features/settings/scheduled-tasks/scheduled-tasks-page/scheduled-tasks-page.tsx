@@ -2,14 +2,14 @@
 
 import { IconPlus } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
-import { PlatformPageHeader } from '@/features/orchestrator/components/platform-page-header'
 import { ScheduledTaskFormDialog } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-task-form-dialog'
 import {
   ScheduledTasksProvider,
   useScheduledTasksControllerContext
 } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-context'
 import { ScheduledTasksTable } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-table'
-import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
+import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
+import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 import type { ScheduledTasksPageProps } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/types'
 
 export function ScheduledTasksPage(props: ScheduledTasksPageProps) {

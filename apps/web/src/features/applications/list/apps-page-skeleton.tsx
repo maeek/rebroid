@@ -1,5 +1,5 @@
 import { Skeleton } from '@/components/ui/skeleton'
-import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
+import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 
 export const AppsPageSkeleton = ({ withLayout = true }: { withLayout?: boolean }) => {
   const content = (

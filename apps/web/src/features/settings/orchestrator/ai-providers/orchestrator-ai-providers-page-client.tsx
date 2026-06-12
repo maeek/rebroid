@@ -5,9 +5,6 @@ import { emptyProvider, normalizeProviderForm, type ProviderFormState } from '@r
 import { IconPlus } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { PlatformPageHeader } from '@/features/orchestrator/components/platform-page-header'
-import { PlatformPageRefreshButton } from '@/features/orchestrator/components/platform-page-refresh-button'
-import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { toast } from '@/hooks/use-toast'
 import {
   checkAutomationAiProviderCandidateHealthAction,
@@ -15,6 +12,9 @@ import {
   deleteAutomationAiProviderAction,
   updateAutomationAiProviderAction
 } from '@/server/orchestrator/settings/actions'
+import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
+import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
+import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { ProviderDialog } from './provider-dialog'
 import { ProvidersGrid } from './providers-grid'
 import type { AutomationAiProvider } from '@/server/orchestrator/settings/types'

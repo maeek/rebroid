@@ -1,19 +1,5 @@
-import { CreateAppForm } from '@/features/applications/create/create-app-form'
-import { ProtectedSplitPageContent, ProtectedSplitPageLayout } from '@/features/shell/components/protected-page-shell'
-import { getCurrentUserContext } from '@/server/orchestrator/current-user'
-import { getServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
+import { CreateAppPageEntry } from '@/features/applications/pages/create-app/page-entry'
 
-export default async function CreateAppPage() {
-  const [initialSettings, user] = await Promise.all([getServerOrchestratorUiSettings(), getCurrentUserContext()])
-
-  return (
-    <ProtectedSplitPageLayout>
-      <ProtectedSplitPageContent>
-        <CreateAppForm
-          initialSettings={initialSettings}
-          permissions={user.permissions}
-        />
-      </ProtectedSplitPageContent>
-    </ProtectedSplitPageLayout>
-  )
+export default function CreateAppPage() {
+  return <CreateAppPageEntry />
 }

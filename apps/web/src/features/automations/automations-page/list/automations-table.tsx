@@ -4,14 +4,25 @@ import { useEffect, useMemo, useState } from 'react'
 import { IconActivityHeartbeat, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { DataGrid, DataGridPagination } from '@/components/data-grid'
 import { Badge } from '@/components/ui/badge'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { toast } from '@/hooks/use-toast'
 import { deleteAutomationAction } from '@/server/orchestrator/automations/automation-management-actions'
+import { DataGrid, DataGridPagination } from '@/shared/ui/data-grid'
 import { AutomationDeleteDialog } from '../shared/automation-delete-dialog'
 import { AutomationTagBadge } from '../shared/automation-tag-badge'
-import { compactGridParams, sortFromSearchParam, sortToSearchParam } from '../shared/grid-query-utils'
+import { sortFromSearchParam, sortToSearchParam } from '../shared/grid-query-utils'
+import {
+  automationStatusLabel,
+  automationTriggerAppIdsByAutomationId,
+  buildAutomationsGridHref,
+  countActiveAutomationFilters,
+  countAutomationSteps,
+  deletedAutomationIdsFromResults,
+  retainPageAutomationSelection,
+  selectedAutomationsFromIds,
+  summarizeAutomationDeleteResults
+} from './automations-table-model'
 import { AutomationsTableToolbar } from './automations-table-toolbar'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
 import type {
@@ -20,18 +31,13 @@ import type {
   AutomationsGridQuery,
   AutomationTrigger
 } from '@/server/orchestrator/automations/types'
-import type { AutomationDefinitionStep, AutomationTag } from '@rebroid/automation-core/definition'
+import type { AutomationTag } from '@rebroid/automation-core/definition'
 import type { ColumnDef } from '@tanstack/react-table'
 
 const statusVariant = (status: Automation['lastStatus']) => {
   if (status === 'success') return 'status'
   if (status === 'failed') return 'destructive'
   return 'secondary'
-}
-
-const statusLabel = (status: Automation['lastStatus']) => {
-  if (status === 'never_run') return 'Never run'
-  return status === 'success' ? 'Success' : status === 'running' ? 'Running' : 'Failed'
 }
 
 const formatDate = (value: string | null) =>
@@ -41,18 +47,6 @@ const formatDate = (value: string | null) =>
         timeStyle: 'short'
       }).format(new Date(value))
     : '-'
-
-const stepCount = (steps: AutomationDefinitionStep[]): number =>
-  steps.reduce((count, step) => {
-    if ('uses' in step) return count + 1
-    if (step.type === 'condition') return count + 1 + stepCount(step.then) + stepCount(step.else ?? [])
-    if (step.type === 'switch') {
-      return (
-        count + 1 + step.cases.reduce((sum, item) => sum + stepCount(item.steps), 0) + stepCount(step.default ?? [])
-      )
-    }
-    return count + 1 + stepCount(step.steps)
-  }, 0)
 
 const WorkflowTags = ({ tags }: { tags: AutomationTag[] }) => (
   <div className='flex flex-wrap gap-1'>
@@ -93,62 +87,28 @@ export function AutomationsTable({
   }, [gridQuery.q])
 
   useEffect(() => {
-    const currentPageIds = new Set(automationsPage.items.map(automation => automation.id))
-    setSelectedIds(current => new Set(Array.from(current).filter(id => currentPageIds.has(id))))
+    setSelectedIds(current => retainPageAutomationSelection(automationsPage.items, current))
   }, [automationsPage.items])
 
   const appNameById = useMemo(() => new Map(applications.map(app => [app.id, app.name])), [applications])
-  const automationAppIds = useMemo(() => {
-    const map = new Map<string, Set<string>>()
-    for (const trigger of triggers) {
-      const set = map.get(trigger.automationId) ?? new Set<string>()
-      set.add(trigger.targetApplicationId)
-      map.set(trigger.automationId, set)
-    }
-    return map
-  }, [triggers])
-  const selectedAutomations = automationsPage.items.filter(automation => selectedIds.has(automation.id))
-  const activeFilterCount = [gridQuery.tag, gridQuery.targetApplicationId, gridQuery.status, gridQuery.lastRun].filter(
-    Boolean
-  ).length
+  const automationAppIds = useMemo(() => automationTriggerAppIdsByAutomationId(triggers), [triggers])
+  const selectedAutomations = selectedAutomationsFromIds(automationsPage.items, selectedIds)
+  const activeFilterCount = countActiveAutomationFilters(gridQuery)
 
   const pushGridParams = (patch: Partial<AutomationsGridQuery>) => {
-    const params = compactGridParams({
-      q: patch.q ?? gridQuery.q,
-      tag: patch.tag ?? gridQuery.tag,
-      targetApplicationId: patch.targetApplicationId ?? gridQuery.targetApplicationId,
-      status: patch.status ?? gridQuery.status,
-      lastRun: patch.lastRun ?? gridQuery.lastRun,
-      sort: patch.sort ?? gridQuery.sort,
-      page: patch.page ?? gridQuery.page ?? 1,
-      pageSize: patch.pageSize ?? gridQuery.pageSize ?? automationsPage.pageSize
-    })
-    router.push(`/automations${params.size ? `?${params.toString()}` : ''}`)
+    router.push(buildAutomationsGridHref({ gridQuery, pageSize: automationsPage.pageSize, patch }))
   }
 
   const deleteMany = async (items: Automation[]) => {
     setBusy(true)
     const results = await Promise.allSettled(items.map(item => deleteAutomationAction(item.id)))
-    const deletedIds = new Set(
-      results
-        .map((result, index) => (result.status === 'fulfilled' ? items[index]?.id : null))
-        .filter((id): id is string => Boolean(id))
-    )
-    const failedCount = results.length - deletedIds.size
+    const deletedIds = deletedAutomationIdsFromResults(items, results)
     setSelectedIds(current => new Set(Array.from(current).filter(id => !deletedIds.has(id))))
     setPendingDelete(null)
     setBulkDeleteOpen(false)
     setBusy(false)
     router.refresh()
-    toast(
-      failedCount > 0
-        ? {
-            title: 'Some workflows could not be deleted',
-            description: `${failedCount} delete request failed.`,
-            variant: 'destructive'
-          }
-        : { title: items.length === 1 ? 'Workflow deleted' : 'Selected workflows deleted' }
-    )
+    toast(summarizeAutomationDeleteResults(items, deletedIds, results))
   }
 
   const columns = useMemo<ColumnDef<Automation>[]>(
@@ -206,7 +166,7 @@ export function AutomationsTable({
         enableSorting: false,
         meta: { label: 'Steps' },
         cell: ({ row }) => {
-          const count = stepCount(row.original.definition.spec.steps)
+          const count = countAutomationSteps(row.original.definition.spec.steps)
           return (
             <span className='text-sm text-secondary-foreground'>
               {count} {count === 1 ? 'step' : 'steps'}
@@ -231,7 +191,9 @@ export function AutomationsTable({
         size: 128,
         meta: { label: 'Status' },
         cell: ({ row }) => (
-          <Badge variant={statusVariant(row.original.lastStatus)}>{statusLabel(row.original.lastStatus)}</Badge>
+          <Badge variant={statusVariant(row.original.lastStatus)}>
+            {automationStatusLabel(row.original.lastStatus)}
+          </Badge>
         )
       }
     ],

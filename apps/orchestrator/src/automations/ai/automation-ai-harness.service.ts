@@ -1,34 +1,22 @@
 import {
   BadRequestException,
   Injectable,
-  Logger,
   RequestTimeoutException,
 } from '@nestjs/common';
 import {
   allowedToolMatcher,
-  buildChatRequestBody,
   buildInitialMessages,
   buildScreenObservationMessage,
   buildToolDefinitions,
-  chatCompletionsEndpoint,
-  consumeChatCompletionStream,
   mapUsesByToolName,
   parseArguments,
   type ChatMessage,
-  type AutomationToolEnvelopeResult,
 } from '@rebroid/ai-core/harness';
-import type {
-  AutomationAiProvider,
-  AutomationAiProviderModel,
-  AutomationAiRunInput,
-} from '@rebroid/ai-core/provider';
+import type { AutomationAiRunInput } from '@rebroid/ai-core/provider';
 import { AutomationCommandRegistryService } from '../commands/automation-command-registry.service';
 import { AutomationRunEventBus } from '../events/automation-run-event-bus.service';
 import { AutomationAiProviderService } from './automation-ai-provider.service';
 import {
-  SCREEN_MUTATING_TOOLS,
-  isDangerousAdbShellCommand,
-  providerErrorDetailFromText,
   sanitizeAiDataForEvent,
   sanitizeAiDataForToolOutput,
   sanitizeAiDataForModel,
@@ -36,6 +24,13 @@ import {
 } from './automation-ai-observation.utils';
 import type { AutomationAiHarnessContext } from './automation-ai.types';
 import { AutomationPerceptionService } from '../vision/automation-perception.service';
+import {
+  blockedToolResult,
+  parseToolCallArguments,
+  shouldObserveAfterTool,
+} from './automation-ai-tool-policy';
+import { AutomationAiRuntimeContextService } from './automation-ai-runtime-context.service';
+import { AutomationAiChatClientService } from './automation-ai-chat-client.service';
 
 const textContent = (content: ChatMessage['content']) =>
   typeof content === 'string'
@@ -49,13 +44,13 @@ const textContent = (content: ChatMessage['content']) =>
 
 @Injectable()
 export class AutomationAiHarnessService {
-  private readonly logger = new Logger(AutomationAiHarnessService.name);
-
   constructor(
     private readonly providers: AutomationAiProviderService,
     private readonly registry: AutomationCommandRegistryService,
     private readonly events: AutomationRunEventBus,
     private readonly perception: AutomationPerceptionService,
+    private readonly runtimeContext: AutomationAiRuntimeContextService,
+    private readonly chatClient: AutomationAiChatClientService,
   ) {}
 
   async run(input: AutomationAiRunInput, context: AutomationAiHarnessContext) {
@@ -79,7 +74,7 @@ export class AutomationAiHarnessService {
       deadline,
       reason: 'initial',
     });
-    const runtimeContext = await this.runtimeContextForPlanner(context);
+    const runtimeContext = await this.runtimeContext.buildForPlanner(context);
     const messages = buildInitialMessages(
       {
         ...input,
@@ -100,19 +95,19 @@ export class AutomationAiHarnessService {
 
     while (Date.now() < deadline) {
       this.assertNotCanceled(context.abortSignal);
-      const response = await this.chat(
+      const response = await this.chatClient.chat({
         provider,
         model,
         messages,
         tools,
         deadline,
-        context.abortSignal,
-        async (delta) => {
+        abortSignal: context.abortSignal,
+        onContentDelta: async (delta) => {
           await this.emit(context, 'ai.message.delta', delta, {
             clientMessageId: input.clientMessageId ?? null,
           });
         },
-      );
+      });
       const choice = response.choices?.[0]?.message;
       if (!choice) {
         throw new BadRequestException('AI provider returned no message.');
@@ -157,10 +152,7 @@ export class AutomationAiHarnessService {
           );
         }
         const parsedArguments = parseArguments(call.function.arguments);
-        const parsedToolCall = this.parseToolCallArguments(
-          uses,
-          parsedArguments,
-        );
+        const parsedToolCall = parseToolCallArguments(uses, parsedArguments);
         if (!parsedToolCall.envelopeValid) {
           await this.emit(
             context,
@@ -189,22 +181,17 @@ export class AutomationAiHarnessService {
           clientMessageId: input.clientMessageId ?? null,
         });
         toolCalls += 1;
-        const blockedToolResult = this.blockedToolResult(uses, parsedToolCall);
-        if (blockedToolResult) {
-          await this.emit(
-            context,
-            'ai.tool.failed',
-            blockedToolResult.summary,
-            {
-              uses,
-              clientMessageId: input.clientMessageId ?? null,
-            },
-          );
+        const blockedResult = blockedToolResult(uses, parsedToolCall);
+        if (blockedResult) {
+          await this.emit(context, 'ai.tool.failed', blockedResult.summary, {
+            uses,
+            clientMessageId: input.clientMessageId ?? null,
+          });
           messages.push({
             role: 'tool',
             tool_call_id: call.id,
             content: JSON.stringify({
-              ...blockedToolResult,
+              ...blockedResult,
               failed: true,
               recoverable: true,
             }),
@@ -244,7 +231,7 @@ export class AutomationAiHarnessService {
           });
 
           if (
-            await this.shouldObserveAfterTool({
+            shouldObserveAfterTool({
               uses,
               toolCall: parsedToolCall,
             })
@@ -329,77 +316,6 @@ export class AutomationAiHarnessService {
     };
   }
 
-  private async chat(
-    provider: AutomationAiProvider,
-    model: AutomationAiProviderModel,
-    messages: ChatMessage[],
-    tools: unknown[],
-    deadline: number,
-    abortSignal?: AbortSignal,
-    onContentDelta?: (delta: string) => Promise<void>,
-  ) {
-    const controller = new AbortController();
-    const timeout = setTimeout(
-      () => controller.abort(),
-      Math.max(1, deadline - Date.now()),
-    );
-    const onAbort = () => controller.abort();
-    abortSignal?.addEventListener('abort', onAbort, { once: true });
-    try {
-      let response: Response;
-      try {
-        response = await fetch(chatCompletionsEndpoint(provider), {
-          method: 'POST',
-          signal: controller.signal,
-          headers: {
-            'content-type': 'application/json',
-            ...(provider.apiKey
-              ? { authorization: `Bearer ${provider.apiKey}` }
-              : {}),
-          },
-          body: JSON.stringify(
-            buildChatRequestBody({
-              provider,
-              model,
-              messages,
-              tools,
-              stream: true,
-            }),
-          ),
-        });
-      } catch (error) {
-        if (abortSignal?.aborted) {
-          throw new BadRequestException('AI automation was canceled.');
-        }
-        if (Date.now() >= deadline || this.isAbortError(error)) {
-          throw new RequestTimeoutException(
-            'AI automation timed out waiting for the provider response.',
-          );
-        }
-        throw error;
-      }
-      if (!response.ok) {
-        const detail = await this.readProviderError(response);
-        this.logger.warn(
-          `AI provider request failed for provider=${provider.id} model=${model.id}: ${response.status} ${response.statusText}`,
-        );
-        throw new BadRequestException(
-          `AI provider request failed: ${response.status} ${response.statusText}${detail ? ` - ${detail}` : ''}`,
-        );
-      }
-      if (!response.body) {
-        throw new BadRequestException(
-          'AI provider did not return a streaming response body.',
-        );
-      }
-      const result = await this.consumeStream(response.body, onContentDelta);
-      return { choices: [{ message: result.message }] };
-    } finally {
-      abortSignal?.removeEventListener('abort', onAbort);
-      clearTimeout(timeout);
-    }
-  }
-
   private observeScreen({
     context,
     input,
@@ -423,205 +339,6 @@ export class AutomationAiHarnessService {
       reason,
       uses,
     });
-  }
-
-  private async readProviderError(response: Response) {
-    const text = await response.text().catch(() => '');
-    return providerErrorDetailFromText(text);
-  }
-
-  private async shouldObserveAfterTool({
-    uses,
-    toolCall,
-  }: {
-    uses: string;
-    toolCall: AutomationToolEnvelopeResult;
-  }): Promise<boolean> {
-    if (!SCREEN_MUTATING_TOOLS.has(uses)) {
-      return false;
-    }
-
-    if (uses !== 'android.adbShell') {
-      return true;
-    }
-
-    const command =
-      typeof toolCall.input.command === 'string' ? toolCall.input.command : '';
-    if (!command.trim()) {
-      return true;
-    }
-    if (toolCall.requiresScreenObservation === false) {
-      return false;
-    }
-    return true;
-  }
-
-  private async consumeStream(
-    body: ReadableStream<Uint8Array>,
-    onContentDelta?: (delta: string) => Promise<void>,
-  ) {
-    let pendingDelta = '';
-    let lastFlushAt = Date.now();
-    const flush = async (force = false) => {
-      if (!pendingDelta) return;
-      const shouldFlush =
-        force || pendingDelta.length >= 160 || Date.now() - lastFlushAt >= 150;
-      if (!shouldFlush) return;
-      const delta = pendingDelta;
-      pendingDelta = '';
-      lastFlushAt = Date.now();
-      await onContentDelta?.(sanitizeAiText(delta, 2_000));
-    };
-
-    const result = await consumeChatCompletionStream({
-      body,
-      onUpdate: async ({ contentDelta }) => {
-        if (!contentDelta) return;
-        pendingDelta += contentDelta;
-        await flush(false);
-      },
-    });
-    await flush(true);
-    return result;
-  }
-
-  private isAbortError(error: unknown) {
-    return error instanceof Error && error.name === 'AbortError';
-  }
-
-  private async runtimeContextForPlanner(context: AutomationAiHarnessContext) {
-    const packageContext = await this.installedPackageContext(context);
-    return [
-      'Runtime context:',
-      `- Rebroid app name: ${sanitizeAiText(context.app.name, 200)}`,
-      context.app.apkPackageName
-        ? `- Recorded uploaded APK package: ${context.app.apkPackageName}`
-        : '- Recorded uploaded APK package: none',
-      packageContext,
-      '- Before launching an app by package, use the recorded package or a package listed here. If the needed package is missing, ask the user for it instead of guessing or installing it.',
-      '- If more package detail is needed, call android.listPackages with a narrow query.',
-    ].join('\n');
-  }
-
-  private async installedPackageContext(context: AutomationAiHarnessContext) {
-    try {
-      let result = await context.adb.shell(
-        context.app,
-        'pm list packages -3',
-        5_000,
-      );
-      if (result.exitCode !== 0) {
-        result = await context.adb.shell(
-          context.app,
-          'cmd package list packages -3',
-          5_000,
-        );
-      }
-      if (result.exitCode !== 0) {
-        return `- Installed third-party packages: unavailable (${sanitizeAiText(result.stderr || result.stdout, 300)}).`;
-      }
-      const packages = result.stdout
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .map((line) => line.replace(/^package:/, ''))
-        .filter(Boolean)
-        .sort((left, right) => left.localeCompare(right));
-      const visiblePackages = packages.slice(0, 25);
-      const suffix =
-        packages.length > visiblePackages.length
-          ? `; ${packages.length - visiblePackages.length} more omitted`
-          : '';
-      return visiblePackages.length > 0
-        ? `- Installed third-party packages (${visiblePackages.length}/${packages.length}): ${visiblePackages.join(', ')}${suffix}.`
-        : '- Installed third-party packages: none reported.';
-    } catch (error) {
-      return `- Installed third-party packages: unavailable (${sanitizeAiText(error instanceof Error ? error.message : error, 300)}).`;
-    }
-  }
-
-  private blockedToolResult(
-    uses: string,
-    toolCall: AutomationToolEnvelopeResult,
-  ) {
-    if (uses !== 'android.adbShell') {
-      return null;
-    }
-    const command =
-      typeof toolCall.input.command === 'string' ? toolCall.input.command : '';
-    if (!isDangerousAdbShellCommand(command)) {
-      return null;
-    }
-    return {
-      summary:
-        'This adbShell command is blocked because it may modify device state dangerously. Ask the user for a safer route.',
-      error:
-        'Potentially destructive adbShell command blocked during AI automation.',
-      expectedIntent: toolCall.intent.length > 0 ? toolCall.intent : undefined,
-      expectedOutcome:
-        toolCall.expectedOutcome.length > 0
-          ? toolCall.expectedOutcome
-          : undefined,
-      envelopeValid: toolCall.envelopeValid,
-    };
-  }
-
-  private parseToolCallArguments(
-    uses: string,
-    rawArguments: Record<string, unknown>,
-  ): AutomationToolEnvelopeResult {
-    if (!this.isObjectRecord(rawArguments)) {
-      return {
-        intent: `Legacy tool call shape for ${uses}.`,
-        expectedOutcome: 'Model returned a malformed tool argument object.',
-        input: {},
-        envelopeValid: false,
-      };
-    }
-    const hasEnvelope =
-      typeof rawArguments.intent === 'string' &&
-      typeof rawArguments.expectedOutcome === 'string' &&
-      rawArguments.input != null &&
-      typeof rawArguments.input === 'object' &&
-      !Array.isArray(rawArguments.input);
-    const requiresScreenObservation =
-      typeof rawArguments.requiresScreenObservation === 'boolean'
-        ? rawArguments.requiresScreenObservation
-        : undefined;
-    const requiresScreenObservationWellFormed =
-      uses !== 'android.adbShell'
-        ? true
-        : rawArguments.requiresScreenObservation === undefined ||
-          typeof rawArguments.requiresScreenObservation === 'boolean';
-    if (!hasEnvelope) {
-      return {
-        intent:
-          typeof rawArguments.intent === 'string'
-            ? sanitizeAiText(rawArguments.intent, 140)
-            : `Legacy tool call for ${uses}.`,
-        expectedOutcome:
-          typeof rawArguments.expectedOutcome === 'string'
-            ? sanitizeAiText(rawArguments.expectedOutcome, 220)
-            : 'No explicit expected outcome was supplied.',
-        input: rawArguments,
-        requiresScreenObservation:
-          uses === 'android.adbShell' ? true : undefined,
-        envelopeValid: false,
-      };
-    }
-    return {
-      intent: sanitizeAiText(rawArguments.intent, 140),
-      expectedOutcome: sanitizeAiText(rawArguments.expectedOutcome, 220),
-      input: rawArguments.input as Record<string, unknown>,
-      requiresScreenObservation:
-        uses === 'android.adbShell'
-          ? (requiresScreenObservation ?? true)
-          : undefined,
-      envelopeValid: hasEnvelope && requiresScreenObservationWellFormed,
-    };
-  }
-
-  private isObjectRecord(value: unknown): value is Record<string, unknown> {
-    return value != null && typeof value === 'object' && !Array.isArray(value);
   }
 
   private assertNotCanceled(abortSignal?: AbortSignal) {

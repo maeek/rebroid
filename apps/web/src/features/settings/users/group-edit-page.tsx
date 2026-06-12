@@ -8,36 +8,21 @@ import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { useResourceLimitBounds } from '@/features/settings/hooks/use-resource-limit-bounds'
-import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
-import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { toast } from '@/hooks/use-toast'
 import { updateUserGroupAction } from '@/server/users/actions/update-user-group-action'
+import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
+import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
+import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { LabeledField } from './components/labeled-field'
 import { PermissionSwitchTable } from './components/permission-switch-table'
 import { QuotaFields } from './components/quota-fields'
-import type { UserGroup, UserRole } from '@/server/auth/user'
-import type { PermissionMap, ResourceQuota } from '@/shared/permissions/permissions'
-
-type GroupDraft = {
-  name: string
-  description: string
-  role: UserRole
-  permissions: PermissionMap
-  quotas: Partial<ResourceQuota>
-}
-
-const toDraft = (group: UserGroup): GroupDraft => ({
-  name: group.name,
-  description: group.description,
-  role: group.role,
-  permissions: group.permissions,
-  quotas: group.quotas
-})
+import { buildGroupUpdateInput, toGroupDraft, type GroupDraft } from './group-edit-page-model'
+import { toUserRole } from './user-edit-page-model'
+import type { UserGroup } from '@/server/auth/user'
 
 export const GroupEditPage = ({ group }: { group: UserGroup }) => {
   const router = useRouter()
-  const [draft, setDraft] = useState(() => toDraft(group))
+  const [draft, setDraft] = useState(() => toGroupDraft(group))
   const [isSaving, setIsSaving] = useState(false)
   const resourceLimits = useResourceLimitBounds(true)
 
@@ -48,13 +33,7 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
   const saveGroup = async () => {
     setIsSaving(true)
     try {
-      await updateUserGroupAction(group.id, {
-        name: draft.name,
-        description: draft.description,
-        role: draft.role,
-        permissions: draft.permissions,
-        quotas: draft.quotas
-      })
+      await updateUserGroupAction(group.id, buildGroupUpdateInput(draft))
       toast({ title: 'Group saved' })
       router.refresh()
     } catch (error) {
@@ -119,7 +98,7 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
               >
                 <Select
                   value={draft.role}
-                  onValueChange={value => updateDraft({ role: value === 'admin' ? 'admin' : 'user' })}
+                  onValueChange={value => updateDraft({ role: toUserRole(value) })}
                 >
                   <SelectTrigger>
                     <SelectValue />

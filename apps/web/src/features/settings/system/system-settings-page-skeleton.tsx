@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
-import { PageBreadcrumbsSkeleton } from '@/features/shell/components/page-breadcrumbs-skeleton'
-import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
+import { PageBreadcrumbsSkeleton } from '@/shared/ui/page/page-breadcrumbs-skeleton'
+import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 
 const BoxedSectionSkeleton = ({ titleWidth = 'w-32', children }: { titleWidth?: string; children?: ReactNode }) => (
   <div className='rounded-lg border border-border/70 bg-card/40 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] max-sm:p-4'>

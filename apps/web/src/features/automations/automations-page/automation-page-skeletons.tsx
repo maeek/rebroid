@@ -1,7 +1,7 @@
 import { Skeleton } from '@/components/ui/skeleton'
-import { TableSkeleton } from '@/features/orchestrator/components/orchestrator-page-skeletons/table-skeleton'
-import { PageBreadcrumbsSkeleton } from '@/features/shell/components/page-breadcrumbs-skeleton'
-import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
+import { PageBreadcrumbsSkeleton } from '@/shared/ui/page/page-breadcrumbs-skeleton'
+import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { TableSkeleton } from '@/shared/ui/skeletons/table-skeleton'
 
 const AutomationHeaderSkeleton = ({
   breadcrumbWidths = ['w-24', 'w-24'],

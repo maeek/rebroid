@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Textarea } from '@/components/ui/textarea'
 import { Visible } from '@/components/ui/visible'
-import { Setting } from '@/features/settings/components/setting'
+import { Setting } from '@/shared/ui/settings/setting'
 import { verticalSettingClassName } from './app-form-utils'
 
 type FieldMode = 'editable' | 'readonly'

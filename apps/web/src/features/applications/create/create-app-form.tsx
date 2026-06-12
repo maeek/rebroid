@@ -7,67 +7,32 @@ import { useTopLoader } from 'nextjs-toploader'
 import { Button } from '@/components/ui/button'
 import { Visible } from '@/components/ui/visible'
 import { uploadApkWithFeedback } from '@/features/applications/apks/upload-apk-with-feedback'
-import { optimizeIconFile } from '@/features/applications/icons/icon-metadata'
-import { useOrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
-import { useResourceLimitBounds } from '@/features/settings/hooks/use-resource-limit-bounds'
-import { PageBackdrop } from '@/features/shell/components/page-backdrop'
-import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
 import { toast } from '@/hooks/use-toast'
 import { setAppIconAction } from '@/server/app-icons/actions/set-app-icon-action'
 import { createApplicationAction } from '@/server/orchestrator/applications/actions/configuration/create-update-actions'
+import { optimizeIconFile } from '@/shared/model/media/icon-metadata'
+import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
+import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
 import { hasPermission, isRedroidImage, type PermissionMap } from '@/shared/permissions/permissions'
-import {
-  applyRedroidDisplayContainerArgs,
-  defaultRedroidDisplayProfileId
-} from '@rebroid/application-core/redroid-runtime'
+import { PageBackdrop } from '@/shared/ui/page/page-backdrop'
+import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
 import { CreateAppDeviceSection } from './create-app-device-section'
 import { CreateAppDisplaySection } from './create-app-display-section'
+import {
+  appNameFromApk,
+  buildCreateApplicationInput,
+  getCustomDisplayConfig,
+  getInitialCreateAppFormValues,
+  isCreateAppSubmitDisabled
+} from './create-app-form-model'
 import { AppFormGeneralSection } from './create-app-general-section'
 import { AppFormIconSection } from './create-app-icon-section'
 import { CreateAppNetworkAccessSection } from './create-app-network-access-section'
 import { AppFormResourcesSection } from './create-app-resources-section'
 import { AppFormSessionSection } from './create-app-session-section'
 import type { CreateAppFormValues } from './create-app-form.types'
-import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
 import type { UploadedApk } from '@/server/orchestrator/applications/types'
-
-const getInitialFormValues = (settings: OrchestratorUiSettings): CreateAppFormValues => ({
-  name: '',
-  containerImage: settings.defaultContainerImage,
-  inactivityTimeoutSeconds: settings.defaultInactivityTimeoutSeconds,
-  memoryLimitMb: '',
-  cpuLimitCpus: '',
-  customContainerArgs: '',
-  redroidDisplayProfileId: defaultRedroidDisplayProfileId,
-  redroidCustomDisplayWidth: '1080',
-  redroidCustomDisplayHeight: '2340',
-  redroidCustomDisplayDpi: '440',
-  redroidExtraArgs: '',
-  networkPolicyEnabled: true,
-  networkPolicyAllowCidrs: []
-})
-
-const appNameFromApk = (file: File, uploaded?: UploadedApk | null) =>
-  uploaded?.displayName?.trim() ||
-  file.name
-    .replace(/\.apk$/i, '')
-    .replace(/[_-]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-
-const parseCustomDisplayValue = (value: string) => {
-  const parsed = Number(value)
-
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null
-}
-
-const getCustomDisplayConfig = (values: CreateAppFormValues) => {
-  const width = parseCustomDisplayValue(values.redroidCustomDisplayWidth)
-  const height = parseCustomDisplayValue(values.redroidCustomDisplayHeight)
-  const dpi = parseCustomDisplayValue(values.redroidCustomDisplayDpi)
-
-  return width && height && dpi ? { width, height, dpi } : null
-}
+import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 
 export const CreateAppForm = ({
   initialSettings,
@@ -79,7 +44,7 @@ export const CreateAppForm = ({
   const topLoader = useTopLoader()
   const createFormId = useId()
   const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
-  const [formValues, setFormValues] = useState<CreateAppFormValues>(() => getInitialFormValues(settings))
+  const [formValues, setFormValues] = useState<CreateAppFormValues>(() => getInitialCreateAppFormValues(settings))
   const [uploadedApk, setUploadedApk] = useState<UploadedApk | null>(null)
   const [isUploadingApk, setIsUploadingApk] = useState(false)
   const [manualIconPreview, setManualIconPreview] = useState<string | null>(null)
@@ -117,14 +82,15 @@ export const CreateAppForm = ({
   }
 
   const trimmedName = formValues.name.trim()
-  const isSubmitDisabled =
-    isCreating ||
-    isUploadingApk ||
-    trimmedName.length < 2 ||
-    (isRedroidRuntime &&
-      canChangeContainerArgs &&
-      formValues.redroidDisplayProfileId === 'custom' &&
-      !customDisplayConfig)
+  const isSubmitDisabled = isCreateAppSubmitDisabled({
+    canChangeContainerArgs,
+    customDisplayConfig,
+    isCreating,
+    isRedroidRuntime,
+    isUploadingApk,
+    trimmedName,
+    values: formValues
+  })
 
   const handleIconChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null
@@ -174,7 +140,7 @@ export const CreateAppForm = ({
 
       setUploadedApk(uploaded)
       if (!formValues.name.trim()) {
-        updateFormValues({ name: appNameFromApk(file, uploaded) })
+        updateFormValues({ name: appNameFromApk(file.name, uploaded) })
       }
 
       if (!uploaded.extractedIconDataUrl) {
@@ -199,30 +165,21 @@ export const CreateAppForm = ({
     topLoader.setProgress(0.1)
 
     try {
-      const createdApp = await createApplicationAction({
-        name: trimmedName,
-        containerImage: canChangeBaseImage ? formValues.containerImage.trim() || undefined : undefined,
-        inactivityTimeoutSeconds: canChangeSessionLimit ? formValues.inactivityTimeoutSeconds || undefined : undefined,
-        memoryLimitMb: canChangeResources && formValues.memoryLimitMb ? Number(formValues.memoryLimitMb) : undefined,
-        cpuLimitCpus: canChangeResources && formValues.cpuLimitCpus ? Number(formValues.cpuLimitCpus) : undefined,
-        containerArgs: canChangeContainerArgs
-          ? (isRedroidRuntime
-              ? applyRedroidDisplayContainerArgs(
-                  formValues.containerImage,
-                  formValues.redroidDisplayProfileId,
-                  formValues.redroidExtraArgs,
-                  customDisplayConfig ?? undefined
-                )
-              : formValues.customContainerArgs.trim()) || undefined
-          : undefined,
-        uploadedApkId: uploadedApk?.id,
-        ...(canConfigureEgress
-          ? {
-              networkPolicyEnabled: canUseInternet ? formValues.networkPolicyEnabled : true,
-              networkPolicyAllowCidrs: formValues.networkPolicyAllowCidrs
-            }
-          : {})
-      })
+      const createdApp = await createApplicationAction(
+        buildCreateApplicationInput({
+          canChangeBaseImage,
+          canChangeContainerArgs,
+          canChangeResources,
+          canChangeSessionLimit,
+          canConfigureEgress,
+          canUseInternet,
+          customDisplayConfig,
+          isRedroidRuntime,
+          trimmedName,
+          uploadedApk,
+          values: formValues
+        })
+      )
 
       topLoader.setProgress(iconPreview ? 0.65 : 0.9)
 

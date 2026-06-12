@@ -6,15 +6,14 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type Dockerode from 'dockerode';
-import type { Readable } from 'node:stream';
 import { DockerContainerLifecycleService } from '../../containers/services/docker-container-lifecycle.service';
 import { DockerEngineService } from '../../docker-engine.service';
-import { DockerImageRuntimeService } from '../../images/services/docker-image-runtime.service';
 import { ServiceHealth, ViewerTargetStatus } from '../../docker.types';
 import { DockerSidecarAdbService } from './docker-sidecar-adb.service';
 import { DockerSidecarApiService } from './docker-sidecar-api.service';
-import { DockerSidecarBuildContextService } from './docker-sidecar-build-context.service';
+import { DockerSidecarImageService } from './docker-sidecar-image.service';
 import { DockerSidecarNetworkService } from './docker-sidecar-network.service';
+import { webrtcUdpPortBinding } from '../utils/docker-sidecar.utils';
 
 @Injectable()
 export class DockerSidecarService implements OnModuleInit {
@@ -36,11 +35,10 @@ export class DockerSidecarService implements OnModuleInit {
     private readonly config: ConfigService,
     private readonly engine: DockerEngineService,
     private readonly lifecycle: DockerContainerLifecycleService,
-    private readonly images: DockerImageRuntimeService,
     private readonly sidecarAdb: DockerSidecarAdbService,
     private readonly sidecarApi: DockerSidecarApiService,
     private readonly sidecarNetwork: DockerSidecarNetworkService,
-    private readonly buildContext: DockerSidecarBuildContextService,
+    private readonly sidecarImages: DockerSidecarImageService,
   ) {
     this.displaySidecarContainerId = this.config.get<string>(
       'app.displaySidecar.containerId',
@@ -326,7 +324,10 @@ export class DockerSidecarService implements OnModuleInit {
       return null;
     }
 
-    await this.ensureSidecarImage();
+    await this.sidecarImages.ensureImage(
+      this.displaySidecarImage,
+      this.displaySidecarBuildContext,
+    );
     const hostConfig: Dockerode.HostConfig = {
       AutoRemove: false,
       PublishAllPorts: false,
@@ -343,7 +344,9 @@ export class DockerSidecarService implements OnModuleInit {
         ],
       };
     }
-    const webrtcPortBinding = this.webrtcUdpPortBinding();
+    const webrtcPortBinding = webrtcUdpPortBinding(
+      this.displaySidecarWebrtcUdpPortRange,
+    );
     if (webrtcPortBinding) {
       hostConfig.PortBindings = {
         ...(hostConfig.PortBindings ?? {}),
@@ -398,29 +401,6 @@ export class DockerSidecarService implements OnModuleInit {
     return container;
   }
 
-  private webrtcUdpPortBinding() {
-    const [start, end] = this.displaySidecarWebrtcUdpPortRange
-      .split('-')
-      .map((value) => Number(value));
-    if (
-      !Number.isInteger(start) ||
-      !Number.isInteger(end) ||
-      start <= 0 ||
-      end < start
-    ) {
-      return null;
-    }
-
-    const portBindings: NonNullable<Dockerode.HostConfig['PortBindings']> = {};
-    const exposedPorts: Record<string, Record<string, never>> = {};
-    for (let port = start; port <= end; port += 1) {
-      const key = `${port}/udp`;
-      portBindings[key] = [{ HostIp: '0.0.0.0', HostPort: String(port) }];
-      exposedPorts[key] = {};
-    }
-    return { portBindings, exposedPorts };
-  }
-
   private async initializeSidecarOnStartup() {
     return this.queueSidecarMutation(async () => {
       const sidecar = await this.ensureSidecarUnlocked();
@@ -473,58 +453,6 @@ export class DockerSidecarService implements OnModuleInit {
       this.displaySidecarContainerName,
     );
     return existing ? this.docker.getContainer(existing.Id) : null;
-  }
-
-  /**
-   * Builds the sidecar image from the local build context when it is missing.
-   */
-  private async ensureSidecarImage() {
-    if (await this.images.imageExists(this.displaySidecarImage)) {
-      return;
-    }
-
-    this.logger.log(
-      `Building missing display sidecar image ${this.displaySidecarImage} from ${this.displaySidecarBuildContext}.`,
-    );
-    const context = await this.buildContext.createTar(
-      this.displaySidecarBuildContext,
-    );
-    await this.engine.longOperation(
-      'sidecar_build',
-      'Build display sidecar image',
-      async (docker, signal) => {
-        const stream = await docker.buildImage(context, {
-          t: this.displaySidecarImage,
-          abortSignal: signal,
-        });
-        await new Promise<void>((resolve, reject) => {
-          const abort = () =>
-            (stream as unknown as Readable).destroy(
-              new Error('Display sidecar build aborted.'),
-            );
-          signal.addEventListener('abort', abort, { once: true });
-          docker.modem.followProgress(
-            stream,
-            (error) => {
-              signal.removeEventListener('abort', abort);
-              if (error) {
-                reject(error);
-                return;
-              }
-
-              resolve();
-            },
-            (event) => {
-              const message =
-                event.stream?.trim() || event.errorDetail?.message;
-              if (message) {
-                this.logger.debug(`[display-sidecar build] ${message}`);
-              }
-            },
-          );
-        });
-      },
-    );
   }
 
   /**

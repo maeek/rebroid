@@ -13,11 +13,11 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Section } from '@/components/ui/section'
-import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
-import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { toast } from '@/hooks/use-toast'
 import { deleteUserAction } from '@/server/users/actions/delete-user-action'
 import { setUserDisabledAction } from '@/server/users/actions/set-user-disabled-action'
+import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
+import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { CreateUserDialog } from './components/create-user-dialog'
 import { UsersGrid } from './components/users-grid'
 import type { PublicUser, UserGroup } from '@/server/auth/user'

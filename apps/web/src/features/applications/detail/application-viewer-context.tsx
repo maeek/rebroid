@@ -5,7 +5,6 @@ import type { Dispatch, ReactNode, SetStateAction } from 'react'
 import { AppDefinition } from '@/features/applications/domain/app-definition'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { getAppRefreshIntervalMs } from '@/features/applications/domain/refresh'
-import { notifyRecentAppsUpdated } from '@/features/applications/recent/recent-apps'
 import {
   loadViewerSettings,
   saveViewerSettings,
@@ -15,9 +14,10 @@ import {
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { getApplicationAction } from '@/server/orchestrator/applications/actions/queries/get-application-action'
 import { rememberRecentAppAction } from '@/server/recent-apps/actions'
+import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
 import { hasPermission } from '@/shared/permissions/permissions'
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
-import type { OrchestratorUiSettings } from '@/features/settings/hooks/use-orchestrator-ui-settings'
+import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import type { PermissionMap } from '@/shared/permissions/permissions'
 
 type ApplicationViewerContextValue = {

@@ -92,9 +92,9 @@ describe('buildTimelineItems', () => {
         data: {
           uses: 'android.adbShell',
           arguments: {
-            command: 'echo hello',
-          },
-        },
+            command: 'echo hello'
+          }
+        }
       }),
       event('ai.tool.completed', {
         id: 'a2',
@@ -102,10 +102,10 @@ describe('buildTimelineItems', () => {
           uses: 'android.adbShell',
           output: {
             stdout: 'line1\nline2\nline3',
-            stderr: '',
-          },
-        },
-      }),
+            stderr: ''
+          }
+        }
+      })
     ]
 
     const timeline = buildTimelineItems(events)
@@ -118,11 +118,11 @@ describe('buildTimelineItems', () => {
     expect(toolOutput.output).toHaveLength(2)
     expect(toolOutput.output[0]).toMatchObject({
       key: 'stdout',
-      format: 'pre',
+      format: 'pre'
     })
     expect(toolOutput.output[1]).toMatchObject({
       key: 'stderr',
-      format: 'pre',
+      format: 'pre'
     })
   })
 })

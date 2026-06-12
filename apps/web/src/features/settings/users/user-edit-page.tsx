@@ -10,72 +10,29 @@ import { Label } from '@/components/ui/label'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { useResourceLimitBounds } from '@/features/settings/hooks/use-resource-limit-bounds'
-import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
-import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { toast } from '@/hooks/use-toast'
 import { updateUserAction } from '@/server/users/actions/update-user-action'
-import { allPermissionIds, type PermissionMap, type ResourceQuota } from '@/shared/permissions/permissions'
+import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
+import { PageBackdrop } from '@/shared/ui/page/page-backdrop'
+import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
+import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { UserAvatarInput } from '@/shared/ui/user-avatar/user-avatar-input'
 import { getHslColorFromCharCode, getHslColorFromCharCodeForeground } from '@/utils/hsl-from-text'
-import { PageBackdrop } from '../../shell/components/page-backdrop'
 import { GroupMembershipPicker } from './components/group-membership-picker'
 import { LabeledField } from './components/labeled-field'
-import { PermissionSwitchTable, type PermissionInheritanceMap } from './components/permission-switch-table'
+import { PermissionSwitchTable } from './components/permission-switch-table'
 import { QuotaFields } from './components/quota-fields'
-import { UserAvatarInput } from './components/user-avatar-input'
-import type { PublicUser, UserGroup, UserRole } from '@/server/auth/user'
-
-type UserDraft = {
-  username: string
-  name: string
-  password: string
-  role: UserRole
-  groupIds: string[]
-  disabled: boolean
-  avatarDataUrl: string | null
-  permissionOverrides: PermissionMap
-  quotas: Partial<ResourceQuota>
-}
-
-const toDraft = (user: PublicUser): UserDraft => ({
-  username: user.username,
-  name: user.name,
-  password: '',
-  role: user.role,
-  groupIds: user.groupIds,
-  disabled: user.disabled,
-  avatarDataUrl: user.avatarDataUrl,
-  permissionOverrides: user.permissionOverrides,
-  quotas: user.quotas
-})
-
-const getInheritanceMap = (groups: UserGroup[], groupIds: string[], role: UserRole): PermissionInheritanceMap => {
-  const assignedGroups = groups.filter(group => groupIds.includes(group.id))
-
-  return allPermissionIds.reduce<PermissionInheritanceMap>((inheritance, permissionId) => {
-    const inheritedFrom = assignedGroups
-      .filter(group => group.permissions[permissionId] === true)
-      .map(group => group.name)
-
-    if (role === 'admin' && inheritedFrom.length === 0) {
-      inheritedFrom.push('Admin role')
-    }
-
-    if (inheritedFrom.length > 0) {
-      inheritance[permissionId] = inheritedFrom
-    }
-
-    return inheritance
-  }, {})
-}
+import { buildUserUpdateInput, getPermissionInheritanceMap, toUserDraft, toUserRole } from './user-edit-page-model'
+import type { UserDraft } from './user-edit-page-model'
+import type { PublicUser, UserGroup } from '@/server/auth/user'
 
 export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserGroup[] }) => {
   const router = useRouter()
-  const [draft, setDraft] = useState(() => toDraft(user))
+  const [draft, setDraft] = useState(() => toUserDraft(user))
   const [isSaving, setIsSaving] = useState(false)
   const resourceLimits = useResourceLimitBounds(true)
   const inheritedPermissions = useMemo(
-    () => getInheritanceMap(groups, draft.groupIds, draft.role),
+    () => getPermissionInheritanceMap(groups, draft.groupIds, draft.role),
     [draft.groupIds, draft.role, groups]
   )
 
@@ -86,17 +43,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
   const saveUser = async () => {
     setIsSaving(true)
     try {
-      await updateUserAction(user.id, {
-        username: draft.username,
-        name: draft.name,
-        password: draft.password || undefined,
-        role: draft.role,
-        groupIds: draft.groupIds,
-        disabled: draft.disabled,
-        avatarDataUrl: draft.avatarDataUrl,
-        permissionOverrides: draft.permissionOverrides,
-        quotas: draft.quotas
-      })
+      await updateUserAction(user.id, buildUserUpdateInput(draft))
       toast({ title: 'User saved' })
       router.refresh()
     } catch (error) {
@@ -202,7 +149,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
               >
                 <Select
                   value={draft.role}
-                  onValueChange={value => updateDraft({ role: value === 'admin' ? 'admin' : 'user' })}
+                  onValueChange={value => updateDraft({ role: toUserRole(value) })}
                 >
                   <SelectTrigger>
                     <SelectValue className='w-auto' />

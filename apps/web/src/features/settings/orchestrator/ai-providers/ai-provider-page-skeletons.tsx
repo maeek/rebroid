@@ -1,7 +1,7 @@
 import { Skeleton } from '@/components/ui/skeleton'
-import { PageHeaderSkeleton } from '@/features/orchestrator/components/orchestrator-page-skeletons/page-header-skeleton'
-import { TableSkeleton } from '@/features/orchestrator/components/orchestrator-page-skeletons/table-skeleton'
-import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
+import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
+import { TableSkeleton } from '@/shared/ui/skeletons/table-skeleton'
 
 const ProviderConnectionSkeleton = () => (
   <div className='rounded-lg border border-border/70 bg-card/40 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] max-sm:p-4'>

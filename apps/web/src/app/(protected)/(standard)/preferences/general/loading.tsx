@@ -1,4 +1,4 @@
-import { SettingsPageSkeleton } from '@/features/settings/components/settings-page-skeleton'
+import { SettingsPageSkeleton } from '@/shared/ui/settings/settings-page-skeleton'
 
 export default function Loading() {
   return (

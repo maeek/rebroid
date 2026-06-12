@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { IconEdit, IconPlayerPlayFilled, IconTrash } from '@tabler/icons-react'
-import { DataGrid } from '@/components/data-grid'
 import { Badge } from '@/components/ui/badge'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Switch } from '@/components/ui/switch'
@@ -16,6 +15,7 @@ import {
 import { useScheduledTasksControllerContext } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-context'
 import { ScheduledTaskBulkBar } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-table-parts'
 import { sortTasks } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-table-utils'
+import { DataGrid } from '@/shared/ui/data-grid'
 import type { ScheduledTask } from '@/server/orchestrator/scheduled-tasks/types'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
 

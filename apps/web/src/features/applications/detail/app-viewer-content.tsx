@@ -4,8 +4,8 @@ import { AppViewerActions } from '@/features/applications/viewer/actions/app-vie
 import { AppInfo } from '@/features/applications/viewer/app-info/app-info'
 import { AppViewerHeading } from '@/features/applications/viewer/components/heading'
 import { AndroidNotifications } from '@/features/applications/viewer/notifications/android-notifications'
-import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
-import { ProtectedSplitPageContent } from '@/features/shell/components/protected-page-shell'
+import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
+import { ProtectedSplitPageContent } from '@/shared/ui/page/protected-page-shell'
 import { AppViewerStatusSection } from './app-viewer-status-section'
 import { useApplicationViewerApp } from './application-viewer-context'
 

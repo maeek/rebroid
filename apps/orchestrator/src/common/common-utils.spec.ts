@@ -19,9 +19,9 @@ describe('common utilities', () => {
     expect(parseJsonStringArray('invalid json')).toEqual([]);
   });
 
-  it('formats unknown errors with a configurable fallback', () => {
+  it('formats errors and thrown strings with a configurable fallback', () => {
     expect(getErrorMessage(new Error('boom'))).toBe('boom');
-    expect(getErrorMessage('boom')).toBe('Unknown error');
+    expect(getErrorMessage('boom')).toBe('boom');
     expect(getErrorMessage(null, 'Unknown Docker error')).toBe(
       'Unknown Docker error',
     );

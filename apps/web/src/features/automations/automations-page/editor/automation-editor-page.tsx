@@ -2,16 +2,15 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
-import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import {
   createAutomationAction,
   deleteAutomationAction,
-  updateAutomationAction,
-  validateAutomationYamlAction
+  updateAutomationAction
 } from '@/server/orchestrator/automations/automation-management-actions'
+import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
+import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { AutomationStepsList } from '../steps/list/automation-steps-list'
 import { AutomationDetailsSection } from './automation-details-section'
 import {
@@ -20,11 +19,9 @@ import {
   UnsavedAutomationChangesDialog
 } from './automation-editor-dialogs'
 import { AutomationEditorHeader } from './automation-editor-header'
-import { workflowFileName } from './automation-editor-utils'
 import { AutomationYamlEditorSection } from './automation-yaml-editor-section'
 import {
   automationToForm,
-  definitionToForm,
   defaultForm,
   formToSaveInput,
   type AutomationFormState,
@@ -34,6 +31,7 @@ import { useAutomationAiDraft } from './use-automation-ai-draft'
 import { cloneAutomationForm, useAutomationEditorHistory } from './use-automation-editor-history'
 import { useAutomationEditorSelection } from './use-automation-editor-selection'
 import { useAutomationEditorYaml } from './use-automation-editor-yaml'
+import { useAutomationWorkflowFiles } from './use-automation-workflow-files'
 import { useUnsavedAutomationNavigation } from './use-unsaved-automation-navigation'
 import type { AutomationEditorPageProps } from './types'
 import type { Automation } from '@/server/orchestrator/automations/types'
@@ -102,6 +100,22 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
     setYamlError,
     setYamlValid,
     workflowId: automation?.id ?? form.id
+  })
+  const { exportWorkflow, handleWorkflowImport, importWorkflow } = useAutomationWorkflowFiles({
+    automationId: automation?.id,
+    commitEditorChange,
+    currentYaml,
+    form,
+    importInputRef,
+    resetSelectionForSteps,
+    setBusy,
+    setYamlError,
+    setYamlValid,
+    title,
+    yamlDraft,
+    yamlError,
+    yamlOpen,
+    yamlValid
   })
 
   const updateForm = (patch: Partial<AutomationFormState>) =>
@@ -173,62 +187,6 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
         variant: 'destructive'
       })
       setBusy(false)
-    }
-  }
-
-  const exportWorkflow = () => {
-    if (yamlOpen && !yamlValid) {
-      toast({
-        title: 'YAML is invalid',
-        description: yamlError ?? 'Fix the YAML before exporting.',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    const yaml = yamlOpen ? yamlDraft : currentYaml
-    const blob = new Blob([`${yaml.trimEnd()}\n`], { type: 'text/yaml;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = `${workflowFileName(form.name || title)}.yaml`
-    anchor.click()
-    URL.revokeObjectURL(url)
-  }
-
-  const importWorkflow = () => {
-    importInputRef.current?.click()
-  }
-
-  const handleWorkflowImport = async (file: File | null) => {
-    if (!file) return
-    setBusy(true)
-    try {
-      const yaml = await file.text()
-      const validation = await validateAutomationYamlAction(yaml)
-      if (!validation.valid || !validation.definition) {
-        throw new Error(validation.errors[0] ?? 'Workflow YAML is invalid.')
-      }
-
-      const nextForm = definitionToForm(validation.definition, automation?.id ?? form.id)
-      commitEditorChange(() => ({
-        form: nextForm,
-        yamlOpen,
-        yamlDraft: validation.yaml ?? yaml
-      }))
-      resetSelectionForSteps(nextForm.steps)
-      setYamlValid(true)
-      setYamlError(null)
-      toast({ title: 'Workflow imported' })
-    } catch (error) {
-      toast({
-        title: 'Could not import workflow',
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
-      })
-    } finally {
-      setBusy(false)
-      if (importInputRef.current) importInputRef.current.value = ''
     }
   }
 

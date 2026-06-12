@@ -3,11 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { IconPlus } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
-import { DataGridPagination } from '@/components/data-grid'
 import { Button } from '@/components/ui/button'
-import { cronToSchedule, defaultSchedule, scheduleToCron } from '@rebroid/automation-core/schedule'
-import { PageBreadcrumbs } from '@/features/shell/components/page-breadcrumbs'
-import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
 import { toast } from '@/hooks/use-toast'
 import {
   createAutomationTriggerAction,
@@ -15,32 +11,32 @@ import {
   runAutomationTriggerAction,
   updateAutomationTriggerAction
 } from '@/server/orchestrator/automations/automation-trigger-actions'
+import { DataGridPagination } from '@/shared/ui/data-grid'
+import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
+import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { AutomationDeleteDialog } from '../shared/automation-delete-dialog'
 import { AutomationEmptySplash } from '../shared/automation-empty-splash'
-import { compactGridParams, sortFromSearchParam, sortToSearchParam } from '../shared/grid-query-utils'
+import { sortFromSearchParam, sortToSearchParam } from '../shared/grid-query-utils'
 import { AutomationTriggerFormDialog } from './automation-trigger-form-dialog'
-import { appProfileMode, appProfileName, getScheduleCron, getStartPolicy } from './automation-trigger-utils'
+import {
+  activeTriggerFilterCount,
+  applyTriggerTargetApplication,
+  buildAutomationTriggersGridHref,
+  deletedTriggerIdsFromResults,
+  editTriggerFormState,
+  hasActiveTriggerFilters,
+  newTriggerFormState,
+  retainVisibleTriggerSelection,
+  selectedTriggersFromIds,
+  summarizeTriggerBulkDeleteResults,
+  summarizeTriggerBulkUpdateResults,
+  triggerFormSavePayload
+} from './automation-triggers-page-model'
 import { AutomationTriggersTable } from './automation-triggers-table'
 import { AutomationTriggerBulkBar, AutomationTriggersToolbar } from './automation-triggers-toolbar'
 import type { TriggerFormState } from './automation-trigger-types'
 import type { AutomationTriggersPageProps } from '../editor/types'
-import type { AndroidApplication, ApplicationProfileMode } from '@/server/orchestrator/applications/types'
-import type {
-  Automation,
-  AutomationTrigger,
-  AutomationTriggersGridQuery
-} from '@/server/orchestrator/automations/types'
-
-const defaultTriggerName = (automation: Automation | undefined, app: AndroidApplication | undefined) => {
-  if (automation && app) return `${automation.name} on ${app.name}`
-  return 'New workflow trigger'
-}
-
-const hasActiveTriggerFilters = (query: AutomationTriggersGridQuery) =>
-  Boolean(query.q || query.tag || query.targetApplicationId || query.enabled || query.status || query.lastRun)
-
-const activeTriggerFilterCount = (query: AutomationTriggersGridQuery) =>
-  [query.tag, query.targetApplicationId, query.enabled, query.status, query.lastRun].filter(Boolean).length
+import type { AutomationTrigger, AutomationTriggersGridQuery } from '@/server/orchestrator/automations/types'
 
 export function AutomationTriggersPage({
   initialApplications,
@@ -63,8 +59,7 @@ export function AutomationTriggersPage({
   }, [gridQuery.q])
 
   useEffect(() => {
-    const currentPageIds = new Set(triggersPage.items.map(trigger => trigger.id))
-    setSelectedIds(current => new Set(Array.from(current).filter(id => currentPageIds.has(id))))
+    setSelectedIds(current => retainVisibleTriggerSelection(triggersPage.items, current))
   }, [triggersPage.items])
 
   const automationById = useMemo(
@@ -77,21 +72,10 @@ export function AutomationTriggersPage({
   )
   const selectedApplication = form ? applicationById.get(form.targetApplicationId) : undefined
   const canCreate = initialAutomations.length > 0 && initialApplications.length > 0
-  const selectedTriggers = triggersPage.items.filter(trigger => selectedIds.has(trigger.id))
+  const selectedTriggers = selectedTriggersFromIds(triggersPage.items, selectedIds)
 
   const pushGridParams = (patch: Partial<AutomationTriggersGridQuery>) => {
-    const params = compactGridParams({
-      q: patch.q ?? gridQuery.q,
-      tag: patch.tag ?? gridQuery.tag,
-      targetApplicationId: patch.targetApplicationId ?? gridQuery.targetApplicationId,
-      enabled: patch.enabled ?? gridQuery.enabled,
-      status: patch.status ?? gridQuery.status,
-      lastRun: patch.lastRun ?? gridQuery.lastRun,
-      sort: patch.sort ?? gridQuery.sort,
-      page: patch.page ?? gridQuery.page ?? 1,
-      pageSize: patch.pageSize ?? gridQuery.pageSize ?? triggersPage.pageSize
-    })
-    router.push(`/automations/triggers${params.size ? `?${params.toString()}` : ''}`)
+    router.push(buildAutomationTriggersGridHref({ gridQuery, pageSize: triggersPage.pageSize, patch }))
   }
 
   const openCreate = () => {
@@ -99,67 +83,24 @@ export function AutomationTriggersPage({
     const app = initialApplications[0]
     if (!automation || !app) return
 
-    setForm({
-      name: defaultTriggerName(automation, app),
-      automationId: automation.id,
-      targetApplicationId: app.id,
-      profileMode: appProfileMode(app),
-      profileName: appProfileName(app),
-      enabled: true,
-      tags: [],
-      schedule: defaultSchedule,
-      startPolicy: 'start-if-needed'
-    })
+    setForm(newTriggerFormState({ automation, app }))
   }
 
   const openEdit = (trigger: AutomationTrigger) => {
     const app = applicationById.get(trigger.targetApplicationId)
-    setForm({
-      id: trigger.id,
-      name: trigger.name,
-      automationId: trigger.automationId,
-      targetApplicationId: trigger.targetApplicationId,
-      profileMode: (trigger.profileMode as ApplicationProfileMode | null) ?? appProfileMode(app),
-      profileName: trigger.profileName ?? appProfileName(app),
-      enabled: trigger.enabled,
-      tags: trigger.tags,
-      schedule: cronToSchedule(getScheduleCron(trigger)),
-      startPolicy: getStartPolicy(trigger)
-    })
+    setForm(editTriggerFormState({ trigger, app }))
   }
 
   const updateTargetApplication = (targetApplicationId: string) => {
     const app = applicationById.get(targetApplicationId)
-    setForm(current =>
-      current
-        ? {
-            ...current,
-            targetApplicationId,
-            profileMode: appProfileMode(app),
-            profileName: appProfileName(app)
-          }
-        : current
-    )
+    setForm(current => (current ? applyTriggerTargetApplication(current, targetApplicationId, app) : current))
   }
 
   const save = async () => {
     if (!form) return
     setSaving(true)
     try {
-      const payload = {
-        name: form.name.trim(),
-        automationId: form.automationId,
-        targetApplicationId: form.targetApplicationId,
-        profileMode: form.profileMode,
-        profileName: form.profileName.trim() || 'default',
-        enabled: form.enabled,
-        tags: form.tags,
-        triggerType: 'schedule' as const,
-        triggerConfig: {
-          cronExpression: scheduleToCron(form.schedule),
-          startPolicy: form.startPolicy
-        }
-      }
+      const payload = triggerFormSavePayload(form)
       await (form.id ? updateAutomationTriggerAction(form.id, payload) : createAutomationTriggerAction(payload))
       setForm(null)
       router.refresh()
@@ -232,40 +173,18 @@ export function AutomationTriggersPage({
     const results = await Promise.allSettled(
       items.map(trigger => updateAutomationTriggerAction(trigger.id, { enabled }))
     )
-    const failedCount = results.filter(result => result.status === 'rejected').length
     router.refresh()
-    toast(
-      failedCount > 0
-        ? {
-            title: 'Some triggers could not be updated',
-            description: `${failedCount} update request failed.`,
-            variant: 'destructive'
-          }
-        : { title: enabled ? 'Selected triggers enabled' : 'Selected triggers disabled' }
-    )
+    toast(summarizeTriggerBulkUpdateResults(results, enabled))
   }
 
   const deleteSelected = async () => {
     const items = selectedTriggers
     const results = await Promise.allSettled(items.map(trigger => deleteAutomationTriggerAction(trigger.id)))
-    const deletedIds = new Set(
-      results
-        .map((result, index) => (result.status === 'fulfilled' ? items[index]?.id : null))
-        .filter((id): id is string => Boolean(id))
-    )
-    const failedCount = results.length - deletedIds.size
+    const deletedIds = deletedTriggerIdsFromResults(results, items)
     setSelectedIds(current => new Set(Array.from(current).filter(id => !deletedIds.has(id))))
     setBulkDeleteOpen(false)
     router.refresh()
-    toast(
-      failedCount > 0
-        ? {
-            title: 'Some triggers could not be deleted',
-            description: `${failedCount} delete request failed.`,
-            variant: 'destructive'
-          }
-        : { title: 'Selected triggers deleted' }
-    )
+    toast(summarizeTriggerBulkDeleteResults(results, deletedIds))
   }
 
   return (

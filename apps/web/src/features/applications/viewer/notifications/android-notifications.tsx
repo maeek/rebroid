@@ -8,7 +8,7 @@ import { Visible } from '@/components/ui/visible'
 import { AppDefinition } from '@/features/applications/domain/app-definition'
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { getAndroidNotificationsAction } from '@/server/orchestrator/applications/actions/runtime/notification-actions'
-import { NotificationCard } from './notification-card'
+import { NotificationCard } from '@/shared/ui/notifications/notification-card'
 import type { AndroidNotification } from '@/server/orchestrator/applications/types'
 
 export const AndroidNotifications = ({ app }: { app: AppDefinition }) => {

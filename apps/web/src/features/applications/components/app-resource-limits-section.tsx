@@ -1,6 +1,6 @@
 import { NumberSliderField } from '@/components/ui/number-slider-field'
 import { Section } from '@/components/ui/section'
-import { Setting } from '@/features/settings/components/setting'
+import { Setting } from '@/shared/ui/settings/setting'
 import { verticalSettingClassName } from './app-form-utils'
 import type { ResourceLimitBounds } from '@/server/orchestrator/diagnostics/resource-limits'
 

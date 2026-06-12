@@ -1,7 +1,7 @@
-import type { ScheduleDraft } from '@rebroid/automation-core/schedule'
 import type { ApplicationProfileMode } from '@/server/orchestrator/applications/types'
 import type { AutomationStartPolicy } from '@/server/orchestrator/automations/types'
 import type { AutomationTag } from '@rebroid/automation-core/definition'
+import type { ScheduleDraft } from '@rebroid/automation-core/schedule'
 
 export type TriggerFormState = {
   id?: string

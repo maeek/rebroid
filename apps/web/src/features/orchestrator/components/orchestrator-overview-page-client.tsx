@@ -3,10 +3,10 @@
 import { useState } from 'react'
 import { Section } from '@/components/ui/section'
 import { DockerMetricsDashboard } from '@/features/orchestrator/metrics/docker-metrics-dashboard'
-import { ProtectedStackPageLayout } from '@/features/shell/components/protected-page-shell'
+import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
+import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
+import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { OrchestratorQuickGlanceSection } from './orchestrator-quick-glance-section'
-import { PlatformPageHeader } from './platform-page-header'
-import { PlatformPageRefreshButton } from './platform-page-refresh-button'
 
 export const OrchestratorOverviewPageClient = () => {
   const [refreshKey, setRefreshKey] = useState(0)
