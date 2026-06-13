@@ -53,9 +53,11 @@ export class AutomationCommandRegistryService implements OnModuleInit {
           outputs,
           editor,
         }) => {
-          const inputSchema = toJSONSchema(this.get(uses).schema, {
-            unrepresentable: 'any',
-          }) as Record<string, unknown>;
+          const inputSchema = normalizeDefaultedJsonSchemaRequired(
+            toJSONSchema(this.get(uses).schema, {
+              unrepresentable: 'any',
+            }) as Record<string, unknown>,
+          );
 
           return {
             uses,
@@ -112,3 +114,54 @@ export class AutomationCommandRegistryService implements OnModuleInit {
     return command;
   }
 }
+
+const normalizeDefaultedJsonSchemaRequired = (
+  schema: unknown,
+): Record<string, unknown> => {
+  const normalized = normalizeJsonSchemaNode(schema);
+  return isRecord(normalized) ? normalized : {};
+};
+
+const normalizeJsonSchemaNode = (schema: unknown): unknown => {
+  if (Array.isArray(schema)) {
+    return schema.map((item) => normalizeJsonSchemaNode(item));
+  }
+  if (!isRecord(schema)) {
+    return schema;
+  }
+
+  const normalized = Object.fromEntries(
+    Object.entries(schema).map(([key, value]) => [
+      key,
+      normalizeJsonSchemaNode(value),
+    ]),
+  );
+  if (!isRecord(normalized.properties)) {
+    return normalized;
+  }
+
+  const defaultedProperties = new Set(
+    Object.entries(normalized.properties)
+      .filter(
+        ([, propertySchema]) =>
+          isRecord(propertySchema) &&
+          Object.prototype.hasOwnProperty.call(propertySchema, 'default'),
+      )
+      .map(([propertyName]) => propertyName),
+  );
+  if (defaultedProperties.size === 0 || !Array.isArray(normalized.required)) {
+    return normalized;
+  }
+
+  return {
+    ...normalized,
+    required: normalized.required.filter(
+      (propertyName) =>
+        typeof propertyName !== 'string' ||
+        !defaultedProperties.has(propertyName),
+    ),
+  };
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value);

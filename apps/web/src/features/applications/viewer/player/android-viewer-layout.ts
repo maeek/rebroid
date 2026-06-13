@@ -77,6 +77,5 @@ export const getViewerFrameStyle = (layout: ViewerFrameLayout, fullscreen?: bool
 export const getViewerFrameClassName = (fullscreen?: boolean) =>
   cn('relative flex w-full items-center justify-center overflow-hidden bg-black transition-all duration-150', {
     'h-full max-h-full max-w-full': fullscreen,
-    'rounded-2xl border border-surface-border/55 shadow-[0_18px_48px_rgba(0,0,0,0.28)] ring-1 ring-white/5 oled:border-surface-border/65 oled:bg-surface-panel oled:shadow-none oled:ring-white/8':
-      !fullscreen
+    'rounded-2xl border border-surface-border/55 shadow-[0_18px_48px_rgba(0,0,0,0.28)] ring-1 ring-white/5': !fullscreen
   })

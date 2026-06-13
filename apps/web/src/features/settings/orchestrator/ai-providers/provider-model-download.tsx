@@ -112,10 +112,15 @@ export const ProviderModelAddDialog = ({
                       <SelectItem
                         key={model.id}
                         value={model.id}
+                        label={
+                          model.parameterSize
+                            ? `${model.label || model.id} ${model.parameterSize}`
+                            : model.label || model.id
+                        }
                       >
                         <span>{model.label || model.id}</span>
                         {model.parameterSize ? (
-                          <span className='text-xs text-foreground-muted'>{model.parameterSize}</span>
+                          <span className='ml-2 text-xs text-foreground-muted'>{model.parameterSize}</span>
                         ) : null}
                       </SelectItem>
                     ))}

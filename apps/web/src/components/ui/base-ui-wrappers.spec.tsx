@@ -125,6 +125,24 @@ describe('Base UI wrapper compatibility', () => {
     expect(onSwitchChange).toHaveBeenCalledWith(true, expect.any(Object))
   })
 
+  it('shows Select item labels instead of raw values', async () => {
+    render(
+      <Select value='name-asc'>
+        <SelectTrigger aria-label='Sort apps'>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value='name-asc'>Name A-Z</SelectItem>
+          <SelectItem value='name-desc'>Name Z-A</SelectItem>
+        </SelectContent>
+      </Select>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: /sort apps/i }).textContent).toContain('Name A-Z')
+    })
+  })
+
   it('keeps Slider change callbacks array-shaped', () => {
     const onSliderChange = jest.fn()
 

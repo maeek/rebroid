@@ -273,5 +273,15 @@ spec:
       inputFieldOrder: [],
       yamlSnippetFields: [],
     });
+    expect(commands.get('android.swipe')?.inputSchema.required).toEqual([
+      'x1',
+      'y1',
+      'x2',
+      'y2',
+    ]);
+    expect(commands.get('android.listPackages')?.inputSchema.required).toEqual(
+      [],
+    );
+    expect(commands.get('ai.run')?.inputSchema.required).toEqual(['prompt']);
   });
 });

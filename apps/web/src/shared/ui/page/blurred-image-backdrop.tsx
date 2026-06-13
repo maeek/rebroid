@@ -14,7 +14,7 @@ type BackdropLayer = Required<Pick<BlurredImageBackdropProps, 'fallbackBackgroun
   imageSrc?: string | null
 }
 
-const defaultFallbackBackground = 'radial-gradient(circle at top left, hsl(var(--primary) / 0.8), transparent 42%)'
+const defaultFallbackBackground = 'hsl(var(--primary) / 0.045)'
 
 const toLayer = ({
   imageSrc,
@@ -73,22 +73,28 @@ export const BlurredImageBackdrop = ({
       aria-hidden='true'
       className='pointer-events-none fixed inset-0 z-0 isolate overflow-hidden oled:hidden'
     >
-      {layers.map((layer, index) => (
-        <div
-          key={index}
-          className={cn(
-            'absolute inset-0 bg-primary/80 blur-3xl transition-opacity duration-200 ease-out will-change-opacity',
-            className
-          )}
-          style={{
-            backgroundImage: layer.imageSrc ? `url("${layer.imageSrc}")` : layer.fallbackBackground,
-            backgroundSize: layer.imageSrc ? '1000% 1000%' : '100% 100%',
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'top left',
-            opacity: index === activeIndex ? layer.opacity : 0
-          }}
-        />
-      ))}
+      {layers.map((layer, index) => {
+        const hasImage = Boolean(layer.imageSrc)
+
+        return (
+          <div
+            key={index}
+            className={cn(
+              'absolute inset-0 transition-opacity duration-200 ease-out will-change-opacity',
+              hasImage && 'bg-primary/80 blur-3xl',
+              className
+            )}
+            style={{
+              background: hasImage ? undefined : layer.fallbackBackground,
+              backgroundImage: hasImage ? `url("${layer.imageSrc}")` : undefined,
+              backgroundSize: hasImage ? '1000% 1000%' : undefined,
+              backgroundRepeat: hasImage ? 'no-repeat' : undefined,
+              backgroundPosition: hasImage ? 'top left' : undefined,
+              opacity: index === activeIndex ? (hasImage ? layer.opacity : 1) : 0
+            }}
+          />
+        )
+      })}
     </div>
   )
 }

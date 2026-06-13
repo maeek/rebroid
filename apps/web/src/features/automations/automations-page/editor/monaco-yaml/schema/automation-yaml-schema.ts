@@ -1,4 +1,5 @@
 import type { AutomationCommand } from '@/server/orchestrator/automations/types'
+import { conditionOperators, runContextOutputs, unaryOperators } from '@rebroid/automation-core/metadata'
 
 type JsonSchema = Record<string, unknown>
 
@@ -19,18 +20,7 @@ const valueRefSchema: JsonSchema = {
       properties: {
         source: { enum: ['runContext'] },
         key: {
-          enum: [
-            'runId',
-            'trigger',
-            'targetApplicationId',
-            'targetProfileMode',
-            'targetProfileName',
-            'app.id',
-            'app.packageName',
-            'app.status',
-            'app.profileName',
-            'app.profileMode'
-          ]
+          enum: runContextOutputs.map(output => output.key)
         }
       },
       additionalProperties: false
@@ -48,36 +38,30 @@ const valueRefSchema: JsonSchema = {
   ]
 }
 
+const nonUnaryConditionOperators = conditionOperators.filter(operator => !unaryOperators.has(operator))
+
 const conditionRuleSchema: JsonSchema = {
-  type: 'object',
-  required: ['value', 'operator'],
-  properties: {
-    value: valueRefSchema,
-    operator: {
-      enum: [
-        'equals',
-        'notEquals',
-        'contains',
-        'doesNotContain',
-        'exists',
-        'doesNotExist',
-        'isEmpty',
-        'isNotEmpty',
-        'isTrue',
-        'isFalse',
-        'greaterThan',
-        'greaterThanOrEqual',
-        'lessThan',
-        'lessThanOrEqual',
-        'matches',
-        'lengthEquals',
-        'lengthGreaterThan',
-        'lengthLessThan'
-      ]
+  oneOf: [
+    {
+      type: 'object',
+      required: ['value', 'operator'],
+      properties: {
+        value: valueRefSchema,
+        operator: { enum: [...unaryOperators] }
+      },
+      additionalProperties: false
     },
-    compare: valueRefSchema
-  },
-  additionalProperties: false
+    {
+      type: 'object',
+      required: ['value', 'operator', 'compare'],
+      properties: {
+        value: valueRefSchema,
+        operator: { enum: nonUnaryConditionOperators },
+        compare: valueRefSchema
+      },
+      additionalProperties: false
+    }
+  ]
 }
 
 const conditionExpressionSchema: JsonSchema = {
@@ -88,16 +72,16 @@ const conditionExpressionSchema: JsonSchema = {
       type: 'array',
       minItems: 1,
       items: {
-        type: 'object',
-        required: ['conditions'],
-        properties: {
-          conditions: {
-            type: 'array',
-            minItems: 1,
-            items: conditionRuleSchema
-          }
-        },
-        additionalProperties: false
+            type: 'object',
+            required: ['conditions'],
+            properties: {
+              conditions: {
+                type: 'array',
+                minItems: 1,
+                items: conditionRuleSchema
+              }
+            },
+            additionalProperties: false
       }
     }
   },
@@ -105,20 +89,24 @@ const conditionExpressionSchema: JsonSchema = {
 }
 
 export const buildAutomationYamlSchema = (commands: AutomationCommand[]): JsonSchema => {
-  const actionSteps = commands.map(command => ({
-    type: 'object',
-    required: ['id', 'uses', 'with'],
-    properties: {
-      id: { type: 'string', description: 'Unique step identifier.' },
-      uses: { enum: [command.uses], description: command.description },
-      with: {
-        description: `${command.label} input.`,
-        default: command.editor.inputDefaults,
-        ...command.inputSchema
-      }
-    },
-    additionalProperties: false
-  }))
+  const actionSteps = commands.map(command => {
+    const required = requiredPropertiesOf(command.inputSchema).length > 0 ? ['uses', 'with'] : ['uses']
+
+    return {
+      type: 'object',
+      required,
+      properties: {
+        id: { type: 'string', description: 'Unique step identifier.' },
+        uses: { enum: [command.uses], description: command.description },
+        with: {
+          description: `${command.label} input.`,
+          default: command.editor.inputDefaults,
+          ...command.inputSchema
+        }
+      },
+      additionalProperties: false
+    }
+  })
 
   return {
     $schema: 'http://json-schema.org/draft-07/schema#',
@@ -171,7 +159,7 @@ export const buildAutomationYamlSchema = (commands: AutomationCommand[]): JsonSc
           ...actionSteps,
           {
             type: 'object',
-            required: ['id', 'type', 'condition', 'then'],
+            required: ['type', 'condition', 'then'],
             properties: {
               id: { type: 'string' },
               type: { enum: ['condition'] },
@@ -183,7 +171,7 @@ export const buildAutomationYamlSchema = (commands: AutomationCommand[]): JsonSc
           },
           {
             type: 'object',
-            required: ['id', 'type', 'value', 'cases'],
+            required: ['type', 'value', 'cases'],
             properties: {
               id: { type: 'string' },
               type: { enum: ['switch'] },
@@ -205,17 +193,32 @@ export const buildAutomationYamlSchema = (commands: AutomationCommand[]): JsonSc
             additionalProperties: false
           },
           {
-            type: 'object',
-            required: ['id', 'type', 'maxIterations', 'steps'],
-            properties: {
-              id: { type: 'string' },
-              type: { enum: ['repeat'] },
-              count: { type: 'integer', minimum: 1 },
-              while: conditionExpressionSchema,
-              maxIterations: { type: 'integer', minimum: 1, maximum: 1000 },
-              steps: { type: 'array', minItems: 1, items: { $ref: '#/definitions/step' } }
-            },
-            additionalProperties: false
+            oneOf: [
+              {
+                type: 'object',
+                required: ['type', 'count', 'steps'],
+                properties: {
+                  id: { type: 'string' },
+                  type: { enum: ['repeat'] },
+                  count: { type: 'integer', minimum: 1 },
+                  maxIterations: { type: 'integer', minimum: 1, maximum: 1000 },
+                  steps: { type: 'array', minItems: 1, items: { $ref: '#/definitions/step' } }
+                },
+                additionalProperties: false
+              },
+              {
+                type: 'object',
+                required: ['type', 'while', 'maxIterations', 'steps'],
+                properties: {
+                  id: { type: 'string' },
+                  type: { enum: ['repeat'] },
+                  while: conditionExpressionSchema,
+                  maxIterations: { type: 'integer', minimum: 1, maximum: 1000 },
+                  steps: { type: 'array', minItems: 1, items: { $ref: '#/definitions/step' } }
+                },
+                additionalProperties: false
+              }
+            ]
           }
         ]
       }
@@ -229,3 +232,8 @@ export const buildAutomationActionInputYamlSchema = (command?: AutomationCommand
   title: command ? `${command.label} input` : 'Action input',
   ...(command?.inputSchema ?? { type: 'object', additionalProperties: true })
 })
+
+const requiredPropertiesOf = (schema: unknown): string[] =>
+  schema && typeof schema === 'object' && !Array.isArray(schema) && Array.isArray((schema as JsonSchema).required)
+    ? ((schema as JsonSchema).required as unknown[]).filter((item): item is string => typeof item === 'string')
+    : []

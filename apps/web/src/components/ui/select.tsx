@@ -6,12 +6,24 @@ import { IconCheck, IconChevronDown, IconChevronUp } from '@tabler/icons-react'
 import { getBaseChildren, getBaseRender } from '@/components/ui/base-render'
 import {
   controlHoverClassName,
+  floatingLayerClassName,
   controlSurfaceClassName,
   floatingSurfaceClassName,
   focusRingClassName,
   interactiveItemClassName
 } from '@/components/ui/surface-classes'
 import { cn } from '@/lib/utils'
+
+type SelectLabelRegistry = {
+  labels: Map<string, string>
+  registerLabel: (value: string, label: string) => () => void
+}
+
+const SelectLabelContext = React.createContext<SelectLabelRegistry | null>(null)
+
+type SelectItemProps = Omit<React.ComponentProps<typeof SelectPrimitive.Item>, 'value'> & {
+  value?: string
+}
 
 type SelectRootProps<Value extends string = string> = Omit<
   SelectPrimitive.Root.Props<Value>,
@@ -22,26 +34,137 @@ type SelectRootProps<Value extends string = string> = Omit<
   value?: Value
 }
 
-function Select<Value extends string = string>({ onValueChange, ...props }: SelectRootProps<Value>) {
-  return (
-    <SelectPrimitive.Root
-      data-slot='select'
-      onValueChange={value => {
-        if (value !== null) {
-          onValueChange?.(value)
+const getSelectItemText = (children: React.ReactNode): string => {
+  if (children === null || children === undefined || typeof children === 'boolean') {
+    return ''
+  }
+
+  if (typeof children === 'string' || typeof children === 'number') {
+    return String(children)
+  }
+
+  if (Array.isArray(children)) {
+    const childNodes = children as React.ReactNode[]
+
+    return childNodes
+      .map(child => getSelectItemText(child))
+      .filter(Boolean)
+      .join(' ')
+  }
+
+  if (React.isValidElement<{ children?: React.ReactNode }>(children)) {
+    return getSelectItemText(children.props.children)
+  }
+
+  return ''
+}
+
+const collectSelectLabels = (children: React.ReactNode, labels = new Map<string, string>()) => {
+  React.Children.forEach(children, child => {
+    if (!React.isValidElement<{ children?: React.ReactNode; label?: unknown; value?: unknown }>(child)) {
+      return
+    }
+
+    const itemValue = child.props.value
+
+    if (child.type === SelectItem && typeof itemValue === 'string') {
+      const label = typeof child.props.label === 'string' ? child.props.label : getSelectItemText(child.props.children)
+
+      if (label.length > 0) {
+        labels.set(itemValue, label)
+      }
+    }
+
+    collectSelectLabels(child.props.children, labels)
+  })
+
+  return labels
+}
+
+function Select<Value extends string = string>({ onValueChange, children, ...props }: SelectRootProps<Value>) {
+  const staticLabels = React.useMemo(() => collectSelectLabels(children), [children])
+  const [registeredLabels, setRegisteredLabels] = React.useState(() => new Map<string, string>())
+
+  const registerLabel = React.useCallback((value: string, label: string) => {
+    setRegisteredLabels(current => {
+      if (current.get(value) === label) {
+        return current
+      }
+
+      const next = new Map(current)
+      next.set(value, label)
+      return next
+    })
+
+    return () => {
+      setRegisteredLabels(current => {
+        if (current.get(value) !== label) {
+          return current
         }
-      }}
-      {...props}
-    />
+
+        const next = new Map(current)
+        next.delete(value)
+        return next
+      })
+    }
+  }, [])
+
+  const labels = React.useMemo(() => new Map([...staticLabels, ...registeredLabels]), [registeredLabels, staticLabels])
+
+  const labelContext = React.useMemo<SelectLabelRegistry>(
+    () => ({
+      labels,
+      registerLabel
+    }),
+    [labels, registerLabel]
+  )
+
+  return (
+    <SelectLabelContext.Provider value={labelContext}>
+      <SelectPrimitive.Root
+        data-slot='select'
+        onValueChange={value => {
+          if (value !== null) {
+            onValueChange?.(value)
+          }
+        }}
+        {...props}
+      >
+        {children}
+      </SelectPrimitive.Root>
+    </SelectLabelContext.Provider>
   )
 }
 
-function SelectValue({ ...props }: React.ComponentProps<typeof SelectPrimitive.Value>) {
+function SelectValue({ children, placeholder, ...props }: React.ComponentProps<typeof SelectPrimitive.Value>) {
+  const labelContext = React.useContext(SelectLabelContext)
+
   return (
     <SelectPrimitive.Value
       data-slot='select-value'
+      placeholder={placeholder}
       {...props}
-    />
+    >
+      {value => {
+        if (typeof children === 'function') {
+          return children(value)
+        }
+
+        if (children !== undefined && children !== null) {
+          return children
+        }
+
+        if (value === null || value === undefined || value === '') {
+          return placeholder
+        }
+
+        if (Array.isArray(value)) {
+          return value.map(item => labelContext?.labels.get(String(item)) ?? String(item)).join(', ')
+        }
+
+        return labelContext?.labels.get(String(value)) ?? String(value)
+      }}
+    </SelectPrimitive.Value>
   )
 }
 
@@ -100,6 +223,7 @@ function SelectContent({
       <SelectPrimitive.Positioner
         align={align}
         alignItemWithTrigger={alignItemWithTrigger}
+        className={floatingLayerClassName}
         side={side}
         sideOffset={sideOffset}
       >
@@ -124,7 +248,20 @@ function SelectContent({
   )
 }
 
-function SelectItem({ className, children, ...props }: React.ComponentProps<typeof SelectPrimitive.Item>) {
+function SelectItem({ className, children, value, ...props }: SelectItemProps) {
+  const labelContext = React.useContext(SelectLabelContext)
+  const registerLabel = labelContext?.registerLabel
+  const explicitLabel = typeof props.label === 'string' ? props.label : undefined
+  const label = React.useMemo(() => explicitLabel ?? getSelectItemText(children), [children, explicitLabel])
+
+  React.useLayoutEffect(() => {
+    if (!registerLabel || value === undefined || label.length === 0) {
+      return undefined
+    }
+
+    return registerLabel(value, label)
+  }, [label, registerLabel, value])
+
   return (
     <SelectPrimitive.Item
       data-slot='select-item'
@@ -133,6 +270,7 @@ function SelectItem({ className, children, ...props }: React.ComponentProps<type
         interactiveItemClassName,
         className
       )}
+      value={value}
       {...props}
     >
       <span className='absolute right-2 flex size-3.5 items-center justify-center'>

@@ -2,6 +2,7 @@ import { automationYamlCompletionContext, type AutomationYamlCompletionContext }
 import {
   enumValues,
   propertiesOf,
+  schemaContextForCurrentProperty,
   schemaForCurrentProperty,
   type JsonSchema,
   yamlScalar
@@ -29,7 +30,7 @@ export const createAutomationYamlCompletionProvider = ({
       ...stepSkeletonSuggestions(monaco, context, position, commands),
       ...tagSkeletonSuggestions(monaco, context, position),
       ...propertyValueSuggestions(monaco, model, position, linePrefix, range, commands, schema),
-      ...propertyNameSuggestions(monaco, context, linePrefix, range, commands, schema)
+      ...propertyNameSuggestions(monaco, model, position, context, linePrefix, range, commands, schema)
     ]
 
     return { suggestions }
@@ -186,7 +187,7 @@ const propertyValueSuggestions = (
   commands: AutomationCommand[],
   schema: JsonSchema
 ) => {
-  const match = linePrefix.match(/^\s*([\w-]+):\s*([\w.-]*)$/)
+  const match = linePrefix.match(/^\s*(?:-\s*)?([\w-]+):\s*([\w.-]*)$/)
   if (!match) return []
 
   const propertyName = match[1] ?? ''
@@ -208,6 +209,8 @@ const propertyValueSuggestions = (
 
 const propertyNameSuggestions = (
   monaco: typeof Monaco,
+  model: Monaco.editor.ITextModel,
+  position: Monaco.Position,
   context: AutomationYamlCompletionContext,
   linePrefix: string,
   range: Monaco.IRange,
@@ -218,11 +221,15 @@ const propertyNameSuggestions = (
   if (!match || context.kind === 'step-list-item') return []
 
   const query = match[2] ?? ''
+  const schemaContext =
+    context.kind === 'with-property' ? schemaContextForCurrentProperty(model, position, query, commands) : null
   const activeSchema =
-    context.kind === 'with-property' ? commands.find(command => command.uses === context.uses)?.inputSchema : schema
+    context.kind === 'with-property'
+      ? (schemaContext?.parentSchema ?? commands.find(command => command.uses === context.uses)?.inputSchema)
+      : schema
   const propertyNames =
     context.kind === 'with-property'
-      ? (commands.find(command => command.uses === context.uses)?.editor.inputFieldOrder ?? [])
+      ? orderedPropertyNames(commands.find(command => command.uses === context.uses)?.editor.inputFieldOrder ?? [], activeSchema)
       : Object.keys(propertiesOf(activeSchema))
   const indentPrefix = context.kind === 'with-property' && linePrefix.trim() === '' ? ' '.repeat(context.indent) : ''
 
@@ -246,3 +253,11 @@ const completionRange = (monaco: typeof Monaco, position: Monaco.Position, lineP
 const snippetInsertTextRules = (monaco: typeof Monaco) =>
   monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet |
   monaco.languages.CompletionItemInsertTextRule.KeepWhitespace
+
+const orderedPropertyNames = (preferredOrder: string[], schema: unknown) => {
+  const propertyNames = Object.keys(propertiesOf(schema))
+  return [
+    ...preferredOrder.filter(propertyName => propertyNames.includes(propertyName)),
+    ...propertyNames.filter(propertyName => !preferredOrder.includes(propertyName))
+  ]
+}

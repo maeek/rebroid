@@ -39,10 +39,7 @@ export const ProviderConnectionSection = ({
   provider: ProviderFormState
   onChange: (patch: Partial<ProviderFormState>) => void
 }) => (
-  <Section
-    boxed
-    contentClassName='gap-5'
-  >
+  <Section contentClassName='gap-5'>
     <div>
       <h3 className='text-sm font-semibold'>Provider</h3>
       <p className='text-xs text-foreground-muted'>

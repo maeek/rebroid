@@ -3,7 +3,11 @@
 import * as React from 'react'
 import { Tooltip as TooltipPrimitive } from '@base-ui/react/tooltip'
 import { getBaseChildren, getBaseRender } from '@/components/ui/base-render'
-import { floatingSurfaceClassName, triggerResetClassName } from '@/components/ui/surface-classes'
+import {
+  floatingLayerClassName,
+  floatingSurfaceClassName,
+  triggerResetClassName
+} from '@/components/ui/surface-classes'
 import { cn } from '@/lib/utils'
 
 const TooltipProvider = ({
@@ -55,6 +59,7 @@ const TooltipContent = React.forwardRef<
   <TooltipPrimitive.Portal>
     <TooltipPrimitive.Positioner
       align={align}
+      className={floatingLayerClassName}
       side={side}
       sideOffset={sideOffset}
     >

@@ -90,7 +90,7 @@ export const SettingsPageSkeleton = ({
               {Array.from({ length: 5 }).map((_, index) => (
                 <div
                   key={index}
-                  className='flex w-full items-center justify-between gap-4 rounded-lg border border-border/70 bg-secondary/55 p-3.5 max-sm:flex-col max-sm:items-stretch'
+                  className='flex w-full items-center justify-between gap-4 rounded-lg border border-surface-border/55 bg-surface-band/50 p-3.5 max-sm:flex-col max-sm:items-stretch'
                 >
                   <div className='flex min-w-0 items-start gap-3'>
                     <Skeleton className='size-9 rounded-md' />

@@ -3,11 +3,10 @@ import {
   allowsAdditionalProperties,
   enumValues,
   indentation,
-  inputSchemaForCurrentProperty,
   isRecord,
   propertiesOf,
   requiredPropertiesOf,
-  schemaForCurrentProperty,
+  schemaContextForCurrentProperty,
   workflowContext,
   type JsonSchema
 } from './automation-yaml-language-utils'
@@ -56,30 +55,35 @@ export const validateAutomationYamlModel = ({
       continue
     }
 
-    const propertyMatch = line.match(/^(\s*)([\w-]+)(:\s*)([^\s#]*)/)
+    const propertyMatch = line.match(/^(\s*)(?:-\s*)?([\w-]+)(:\s*)([^\s#]*)/)
     if (!propertyMatch) continue
 
     const propertyName = propertyMatch[2] ?? ''
     const rawValue = propertyMatch[4] ?? ''
+    const propertyStartOffset = line.indexOf(propertyName)
     const position = new monaco.Position(lineNumber, line.length + 1)
-    const inputSchema = inputSchemaForCurrentProperty(model, position, commands)
+    const schemaContext = schemaContextForCurrentProperty(model, position, propertyName, commands)
 
-    if (inputSchema && !allowsAdditionalProperties(inputSchema) && !(propertyName in propertiesOf(inputSchema))) {
-      markers.push(unknownPropertyMarker(monaco, lineNumber, (propertyMatch[1] ?? '').length, propertyName))
+    if (
+      schemaContext?.parentSchema &&
+      !allowsAdditionalProperties(schemaContext.parentSchema) &&
+      !(propertyName in propertiesOf(schemaContext.parentSchema))
+    ) {
+      markers.push(unknownPropertyMarker(monaco, lineNumber, propertyStartOffset, propertyName))
       continue
     }
 
-    const propertySchema = schemaForCurrentProperty(model, position, propertyName, commands, schema)
+    const propertySchema = schemaContext?.propertySchema ?? propertiesOf(schema)[propertyName]
     const values = enumValues(propertySchema)
     const value = rawValue.replace(/^['"]|['"]$/g, '')
     if (values.length > 0 && !values.includes(value)) {
       markers.push(
         enumMarker(
           monaco,
-          lineNumber,
-          (propertyMatch[1] ?? '').length + propertyName.length + (propertyMatch[3] ?? '').length,
-          rawValue,
-          values
+            lineNumber,
+            line.indexOf(rawValue, propertyStartOffset + propertyName.length),
+            rawValue,
+            values
         )
       )
     }

@@ -5,6 +5,7 @@ import { Menu as DropdownMenuPrimitive } from '@base-ui/react/menu'
 import { IconChevronRight } from '@tabler/icons-react'
 import { getBaseChildren, getBaseRender } from '@/components/ui/base-render'
 import {
+  floatingLayerClassName,
   floatingSurfaceClassName,
   interactiveItemClassName,
   triggerResetClassName
@@ -98,6 +99,7 @@ const DropdownMenuSubContent = React.forwardRef<
 >(({ className, sideOffset = 4, align = 'start', side, ...props }, ref) => (
   <DropdownMenuPrimitive.Positioner
     align={align}
+    className={floatingLayerClassName}
     side={side}
     sideOffset={sideOffset}
   >
@@ -121,6 +123,7 @@ const DropdownMenuContent = React.forwardRef<
   <DropdownMenuPrimitive.Portal>
     <DropdownMenuPrimitive.Positioner
       align={align}
+      className={floatingLayerClassName}
       side={side}
       sideOffset={sideOffset}
     >

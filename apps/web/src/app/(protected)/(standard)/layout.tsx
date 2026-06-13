@@ -10,12 +10,7 @@ export default async function FilesLayout({ children }: { children: React.ReactN
 
   return (
     <TooltipProvider>
-      <PageBackdropProvider
-        defaultBackdrop={{
-          imageSrc: user.avatarDataUrl,
-          opacity: 0.08
-        }}
-      >
+      <PageBackdropProvider>
         <div className='main-layout relative z-10 pt-16'>
           <TopBarProtected initialUser={user} />
           <div className='h-[calc(100%-4rem)] w-full'>

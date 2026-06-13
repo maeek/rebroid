@@ -1,27 +1,26 @@
 import { Skeleton } from '@/components/ui/skeleton'
 
 export const DisplayViewerPageSkeleton = () => (
-  <main className='relative flex min-h-screen flex-col overflow-hidden bg-background'>
-    <div className='absolute left-4 top-4 z-10 flex items-center gap-2 rounded-lg border border-border/70 bg-surface-panel/78 p-2 backdrop-blur-md'>
-      <Skeleton className='h-9 w-9' />
-      <Skeleton className='h-9 w-9' />
-      <Skeleton className='h-9 w-24' />
+  <main className='relative flex h-screen w-screen flex-col overflow-hidden bg-background'>
+    <div className='flex shrink-0 items-center gap-2 px-2 py-2 sm:px-6 sm:py-3'>
+      <Skeleton className='h-9 w-28 rounded-md' />
+      <Skeleton className='size-9 rounded-full' />
     </div>
-    <div className='absolute right-4 top-4 z-10 flex items-center gap-2 rounded-lg border border-border/70 bg-surface-panel/78 p-2 backdrop-blur-md'>
-      <Skeleton className='h-9 w-9' />
-      <Skeleton className='h-9 w-9' />
-      <Skeleton className='h-9 w-9' />
-    </div>
-    <div className='flex min-h-screen items-center justify-center px-6 py-12'>
-      <div className='relative flex w-full max-w-[min(88vw,34rem)] justify-center'>
-        <Skeleton className='aspect-[9/16] w-full rounded-4xl border border-border/70' />
-        <div className='absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-border/70 bg-surface-panel/82 px-3 py-2 backdrop-blur-md'>
-          <Skeleton className='h-8 w-8 rounded-full' />
-          <Skeleton className='h-8 w-8 rounded-full' />
-          <Skeleton className='h-8 w-8 rounded-full' />
-          <Skeleton className='h-8 w-8 rounded-full' />
+    <div className='min-h-0 flex-1 overflow-hidden px-2 py-2 sm:px-6 sm:py-3'>
+      <div className='flex h-full w-full items-center justify-center'>
+        <div className='flex h-full max-h-[calc(100dvh-7.75rem)] w-auto max-w-full aspect-[9/16] flex-col overflow-hidden rounded-lg shadow-2xl'>
+          <Skeleton className='h-10 w-full rounded-t-lg' />
+          <Skeleton className='min-h-0 flex-1 rounded-b-lg border border-border/70' />
         </div>
       </div>
+    </div>
+    <div className='flex shrink-0 items-center justify-center gap-2 px-1 pb-2 sm:px-3 sm:pb-3'>
+      {Array.from({ length: 10 }).map((_, index) => (
+        <Skeleton
+          key={index}
+          className='size-8 rounded-full'
+        />
+      ))}
     </div>
   </main>
 )

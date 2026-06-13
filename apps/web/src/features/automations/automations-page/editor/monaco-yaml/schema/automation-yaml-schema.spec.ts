@@ -44,6 +44,35 @@ describe('automation YAML schema', () => {
     expect(properties.with.default).toEqual({})
     expect((schema.definitions as Record<string, Record<string, unknown>>).step.defaultSnippets).toBeUndefined()
   })
+
+  it('allows server-generated action ids and optional input blocks without required fields', () => {
+    const schema = buildAutomationYamlSchema([
+      {
+        ...commands[0],
+        inputSchema: { type: 'object', properties: {}, required: [], additionalProperties: false },
+        editor: { inputDefaults: {}, inputFieldOrder: [], yamlSnippetFields: [] }
+      }
+    ])
+    const actionStep = stepVariants(schema)[0] as Record<string, unknown>
+
+    expect(actionStep.required).toEqual(['uses'])
+  })
+
+  it('requires action input blocks when non-default fields are required', () => {
+    const schema = buildAutomationYamlSchema(commands)
+    const actionStep = stepVariants(schema)[0] as Record<string, unknown>
+
+    expect(actionStep.required).toEqual(['uses', 'with'])
+  })
+
+  it('allows count repeat steps to omit maxIterations', () => {
+    const schema = buildAutomationYamlSchema(commands)
+    const repeatStep = stepVariants(schema)[3] as Record<string, unknown>
+    const repeatVariants = repeatStep.oneOf as Array<Record<string, unknown>>
+
+    expect(repeatVariants[0]?.required).toEqual(['type', 'count', 'steps'])
+    expect(repeatVariants[1]?.required).toEqual(['type', 'while', 'maxIterations', 'steps'])
+  })
 })
 
 const stepVariants = (schema: Record<string, unknown>) => {

@@ -1,5 +1,6 @@
 import type { AutomationCommand } from '@/server/orchestrator/automations/types'
 import type * as Monaco from 'monaco-editor'
+import { isMap, isScalar, isSeq, parseDocument, type ParsedNode } from 'yaml'
 
 export type JsonSchema = Record<string, unknown>
 
@@ -33,10 +34,8 @@ export const schemaForCurrentProperty = (
   commands: AutomationCommand[],
   schema: JsonSchema
 ) => {
-  const context = workflowContext(model, position)
-  if (context?.uses) {
-    return propertiesOf(commands.find(command => command.uses === context.uses)?.inputSchema)[propertyName]
-  }
+  const schemaContext = schemaContextForCurrentProperty(model, position, propertyName, commands)
+  if (schemaContext?.propertySchema) return schemaContext.propertySchema
 
   return propertiesOf(schema)[propertyName]
 }
@@ -50,6 +49,30 @@ export const inputSchemaForCurrentProperty = (
   if (!context?.uses) return null
 
   return commands.find(command => command.uses === context.uses)?.inputSchema ?? null
+}
+
+export const schemaContextForCurrentProperty = (
+  model: Monaco.editor.ITextModel,
+  position: Monaco.Position,
+  propertyName: string,
+  commands: AutomationCommand[]
+): { parentSchema: JsonSchema | null; propertySchema: JsonSchema | null } | null => {
+  const document = parseDocument(model.getValue(), { prettyErrors: false })
+  const path = ensureCurrentPropertyPath(pathAt(document.contents, Math.max(0, offsetAt(model, position) - 1)), propertyName)
+  const withIndex = path.lastIndexOf('with')
+  if (withIndex === -1) return null
+
+  const uses = nearestUsesFromPath(document.contents, path.slice(0, withIndex)) ?? workflowContext(model, position)?.uses
+  const inputSchema = commands.find(command => command.uses === uses)?.inputSchema
+  if (!inputSchema) return null
+
+  const inputPath = path.slice(withIndex + 1)
+  if (inputPath.length === 0) return null
+
+  return {
+    parentSchema: schemaAtPath(inputSchema, inputPath.slice(0, -1)),
+    propertySchema: schemaAtPath(inputSchema, inputPath)
+  }
 }
 
 export const workflowContext = (model: Monaco.editor.ITextModel, position: Monaco.Position) => {
@@ -87,4 +110,96 @@ const inferredBlankLineIndent = (model: Monaco.editor.ITextModel, lineNumber: nu
   }
 
   return null
+}
+
+const ensureCurrentPropertyPath = (path: Array<string | number>, propertyName: string) => {
+  if (path.at(-1) === propertyName) return path
+  const withIndex = path.lastIndexOf('with')
+  return withIndex === -1 ? path : [...path, propertyName]
+}
+
+const schemaAtPath = (schema: unknown, path: Array<string | number>): JsonSchema | null => {
+  let current: unknown = schema
+
+  for (const pathItem of path) {
+    if (!isRecord(current)) return null
+    if (typeof pathItem === 'number') {
+      current = current.items
+      continue
+    }
+    current = propertiesOf(current)[pathItem]
+  }
+
+  return isRecord(current) ? current : null
+}
+
+const pathAt = (
+  node: ParsedNode | null,
+  offset: number,
+  path: Array<string | number> = []
+): Array<string | number> => {
+  if (!node || !containsOffset(node, offset)) return path
+
+  if (isMap(node)) {
+    for (const pair of node.items) {
+      const key = isScalar(pair.key) ? String(pair.key.value) : null
+      if (!key || !pair.value || !containsOffset(pair.value, offset)) continue
+      return pathAt(pair.value, offset, [...path, key])
+    }
+    return path
+  }
+
+  if (isSeq(node)) {
+    for (let index = 0; index < node.items.length; index += 1) {
+      const item = node.items[index]
+      if (!item || !containsOffset(item, offset)) continue
+      return pathAt(item, offset, [...path, index])
+    }
+  }
+
+  return path
+}
+
+const nearestUsesFromPath = (root: ParsedNode | null, stepPath: Array<string | number>) => {
+  const node = nodeAtPath(root, stepPath)
+  if (!node || !isMap(node)) return null
+
+  const usesPair = node.items.find(pair => isScalar(pair.key) && pair.key.value === 'uses')
+  return usesPair?.value && isScalar(usesPair.value) ? String(usesPair.value.value) : null
+}
+
+const nodeAtPath = (node: ParsedNode | null, path: Array<string | number>): ParsedNode | null => {
+  let current = node
+
+  for (const pathItem of path) {
+    if (typeof pathItem === 'string') {
+      if (!current || !isMap(current)) return null
+      const pair = current.items.find(item => isScalar(item.key) && item.key.value === pathItem)
+      current = pair?.value ? pair.value : null
+      continue
+    }
+
+    if (!current || !isSeq(current)) return null
+    current = current.items[pathItem] ? current.items[pathItem] : null
+  }
+
+  return current
+}
+
+const containsOffset = (node: ParsedNode, offset: number) => {
+  const range = node.range
+  if (!range) return false
+  const [start, , end] = range
+  return offset >= start && offset <= end
+}
+
+const offsetAt = (model: Monaco.editor.ITextModel, position: Monaco.Position) => {
+  if ('getOffsetAt' in model && typeof model.getOffsetAt === 'function') return model.getOffsetAt(position)
+
+  let offset = 0
+  for (let lineNumber = 1; lineNumber < position.lineNumber; lineNumber += 1) {
+    offset += model.getLineContent(lineNumber).length + 1
+  }
+
+  return offset + position.column - 1
 }

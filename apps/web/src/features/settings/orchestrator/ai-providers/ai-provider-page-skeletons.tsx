@@ -1,10 +1,14 @@
+import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
 import { TableSkeleton } from '@/shared/ui/skeletons/table-skeleton'
 
 const ProviderConnectionSkeleton = () => (
-  <div className='rounded-lg border border-border/70 bg-surface-panel/50 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] max-sm:p-4'>
+  <Section
+    boxed
+    contentClassName='gap-5'
+  >
     <div className='mb-5 grid gap-2'>
       <Skeleton className='h-4 w-24' />
       <Skeleton className='h-3 w-full max-w-lg opacity-70' />
@@ -21,7 +25,7 @@ const ProviderConnectionSkeleton = () => (
         </div>
       ))}
     </div>
-  </div>
+  </Section>
 )
 
 export const AiProvidersPageSkeleton = () => (
@@ -54,7 +58,10 @@ export const AiProviderEditPageSkeleton = () => (
       actionCount={2}
     />
     <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
-      <div className='rounded-lg border border-border/70 bg-surface-panel/50 p-4'>
+      <Section
+        boxed
+        contentClassName='gap-0'
+      >
         <div className='flex flex-wrap items-center justify-between gap-3'>
           <div className='grid gap-2'>
             <Skeleton className='h-4 w-28' />
@@ -62,7 +69,7 @@ export const AiProviderEditPageSkeleton = () => (
           </div>
           <Skeleton className='h-6 w-16 rounded-full' />
         </div>
-      </div>
+      </Section>
       <ProviderConnectionSkeleton />
       <div className='grid gap-4'>
         <div className='flex flex-wrap items-center justify-between gap-3'>

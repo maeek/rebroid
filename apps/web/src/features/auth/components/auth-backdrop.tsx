@@ -27,7 +27,7 @@ export const AuthBackdrop = () => (
         transparent
       />
     </div>
-    <div className='absolute inset-x-0 bottom-[-1px] flex items-end justify-center overflow-hidden lg:bg-[radial-gradient(#29573c7a,transparent)]'>
+    <div className='absolute inset-x-0 bottom-[-1px] flex items-end justify-center overflow-hidden'>
       <AndroidLogo3D className='auth-android-enter block w-[min(92vw,1600px)] max-w-none translate-y-px' />
     </div>
   </div>

@@ -16,6 +16,8 @@ const chipInputSurfaceClassName =
 const floatingSurfaceClassName =
   'border border-surface-border/80 bg-surface-elevated/96 text-foreground shadow-md supports-[backdrop-filter]:bg-surface-elevated/78 supports-[backdrop-filter]:backdrop-blur-2xl oled:border-surface-border/45 oled:bg-surface-elevated oled:shadow-none oled:supports-[backdrop-filter]:bg-surface-elevated/96'
 
+const floatingLayerClassName = 'z-[70]'
+
 const panelSurfaceClassName =
   'border border-surface-border/55 bg-surface-panel/86 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] supports-[backdrop-filter]:bg-surface-panel/48 supports-[backdrop-filter]:backdrop-blur-md oled:border-surface-border/30 oled:bg-surface-panel/92 oled:shadow-none oled:supports-[backdrop-filter]:bg-surface-panel/84'
 
@@ -31,6 +33,7 @@ export {
   bandSurfaceClassName,
   chipInputSurfaceClassName,
   controlHoverClassName,
+  floatingLayerClassName,
   controlSurfaceClassName,
   floatingSurfaceClassName,
   focusRingClassName,

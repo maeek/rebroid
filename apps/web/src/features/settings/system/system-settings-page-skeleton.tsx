@@ -1,13 +1,18 @@
 import type { ReactNode } from 'react'
+import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageBreadcrumbsSkeleton } from '@/shared/ui/page/page-breadcrumbs-skeleton'
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 
 const BoxedSectionSkeleton = ({ titleWidth = 'w-32', children }: { titleWidth?: string; children?: ReactNode }) => (
-  <div className='rounded-lg border border-border/70 bg-surface-panel/50 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] max-sm:p-4'>
-    <Skeleton className={`mb-4 h-5 ${titleWidth}`} />
+  <Section
+    boxed
+    className='h-full min-w-0'
+    title={<Skeleton className={`h-5 ${titleWidth}`} />}
+    titleClassName='pb-4'
+  >
     {children}
-  </div>
+  </Section>
 )
 
 export const SystemSettingsPageSkeleton = () => (
@@ -56,14 +61,15 @@ export const SystemSettingsPageSkeleton = () => (
       </div>
       <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-4'>
         {Array.from({ length: 4 }).map((_, index) => (
-          <div
+          <Section
             key={index}
-            className='grid gap-3 rounded-lg border border-border/70 bg-surface-panel/50 p-4'
+            boxed
+            contentClassName='gap-3'
           >
             <Skeleton className='h-3 w-28' />
             <Skeleton className='h-7 w-20' />
             <Skeleton className='h-3 w-full opacity-70' />
-          </div>
+          </Section>
         ))}
       </div>
       <div className='grid min-w-0 gap-6 xl:grid-cols-[minmax(20rem,24rem)_minmax(0,1fr)]'>

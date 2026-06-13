@@ -77,7 +77,7 @@ const ViewerPlaceholderBackground = ({ app }: { app?: AppDefinition }) => (
         />
       </div>
     </Visible>
-    <div className='absolute inset-0 bg-background/60 dark:bg-background/68' />
+    <div className='absolute inset-0 bg-background/60 dark:bg-background/68 oled:bg-surface-panel/92' />
   </>
 )
 

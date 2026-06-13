@@ -17,7 +17,7 @@ export const TableSkeleton = ({
         style={{ minWidth }}
       >
         <div
-          className='grid items-center gap-3 bg-surface-band/40 px-4 py-3'
+          className='grid items-center gap-3 bg-surface-band/55 px-4 py-3'
           style={{ gridTemplateColumns: columns.map(column => column.width ?? 'minmax(8rem,1fr)').join(' ') }}
         >
           {columns.map((column, index) => (
@@ -33,7 +33,7 @@ export const TableSkeleton = ({
         {Array.from({ length: rows }).map((_, rowIndex) => (
           <div
             key={rowIndex}
-            className='grid items-start gap-3 border-t border-border/70 px-4 py-3'
+            className='grid min-h-16 items-center gap-3 border-t border-border/70 px-4 py-3'
             style={{ gridTemplateColumns: columns.map(column => column.width ?? 'minmax(8rem,1fr)').join(' ') }}
           >
             {columns.map((column, columnIndex) => {
@@ -64,16 +64,19 @@ export const TableSkeleton = ({
                 return (
                   <div
                     key={columnIndex}
-                    className='flex justify-end gap-2'
+                    className='flex min-h-10 items-center justify-end gap-2'
                   >
-                    <Skeleton className='h-9 w-9' />
+                    <Skeleton className='size-9' />
                     <Skeleton className='h-9 w-20' />
                   </div>
                 )
               }
 
               return (
-                <div key={columnIndex}>
+                <div
+                  key={columnIndex}
+                  className='min-w-0'
+                >
                   <Skeleton className={`h-4 ${column.cellWidth ?? 'w-[70%]'}`} />
                 </div>
               )

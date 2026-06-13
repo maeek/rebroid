@@ -97,6 +97,38 @@ const commands: AutomationCommand[] = [
       inputFieldOrder: ['x1', 'y1', 'x2', 'y2', 'durationMs'],
       yamlSnippetFields: ['x1', 'y1', 'x2', 'y2', 'durationMs']
     }
+  },
+  {
+    uses: 'ai.run',
+    label: 'AI run',
+    description: 'Runs an AI harness.',
+    requiredPermissions: ['automations:run-ai'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prompt: { type: 'string' },
+        conversation: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              role: { type: 'string', enum: ['user', 'assistant'] },
+              content: { type: 'string' }
+            },
+            required: ['role', 'content'],
+            additionalProperties: false
+          }
+        }
+      },
+      required: ['prompt'],
+      additionalProperties: false
+    },
+    outputs: [{ key: 'summary', label: 'Summary', type: 'string', description: 'Step summary.' }],
+    editor: {
+      inputDefaults: {},
+      inputFieldOrder: ['prompt', 'conversation'],
+      yamlSnippetFields: ['prompt']
+    }
   }
 ]
 
@@ -161,6 +193,22 @@ describe('automation YAML completions', () => {
     expect(suggestions.map(suggestion => suggestion.label)).toEqual(['home'])
   })
 
+  it('suggests enum values inside nested array item inputs', () => {
+    const suggestions = completeAtEnd(
+      `spec:
+  steps:
+    - id: ai
+      uses: ai.run
+      with:
+        prompt: Inspect
+        conversation:
+          - role: a`,
+      8
+    )
+
+    expect(suggestions.map(suggestion => suggestion.label)).toEqual(['assistant'])
+  })
+
   it('suggests step skeletons after a bare item in a step array', () => {
     const suggestions = completeAtEnd(
       `spec:
@@ -173,6 +221,7 @@ describe('automation YAML completions', () => {
       'android.viewerCommand',
       'network.resetPolicy',
       'android.swipe',
+      'ai.run',
       'Condition step',
       'Repeat step',
       'Switch step'
@@ -203,6 +252,7 @@ describe('automation YAML completions', () => {
       'android.viewerCommand',
       'network.resetPolicy',
       'android.swipe',
+      'ai.run',
       'Condition step',
       'Repeat step',
       'Switch step'

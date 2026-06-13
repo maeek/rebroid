@@ -187,6 +187,7 @@ function waitForActiveVideo(
 function waitForTrack(
   connection: RTCPeerConnection,
   video: HTMLVideoElement,
+  audioRequested: boolean,
 ): Promise<void> {
   const mediaStream = new MediaStream();
   video.srcObject = mediaStream;
@@ -207,13 +208,26 @@ function waitForTrack(
         mediaStream.addTrack(event.track);
       }
       if (event.track.kind === "video") {
-        void video.play().catch(() => undefined);
+        void playVideoWithAutoplayFallback(video, audioRequested);
         cleanup();
         resolve();
       }
     };
     connection.addEventListener("track", onTrack);
   });
+}
+
+async function playVideoWithAutoplayFallback(
+  video: HTMLVideoElement,
+  audioRequested: boolean,
+): Promise<void> {
+  video.muted = !audioRequested;
+  try {
+    await video.play();
+  } catch {
+    video.muted = true;
+    await video.play().catch(() => undefined);
+  }
 }
 
 function waitForConnectedTrackAndFrame(
@@ -276,6 +290,9 @@ export function createWebrtcStream({
   video.addEventListener(
     "pointerdown",
     () => {
+      if (config.audio) {
+        video.muted = false;
+      }
       void video.play().catch(() => undefined);
     },
     { passive: true },
@@ -328,7 +345,7 @@ export function createWebrtcStream({
     const offer = await connection.createOffer();
     await connection.setLocalDescription(offer);
     await waitForIceGathering(connection);
-    const trackReady = waitForTrack(connection, video);
+    const trackReady = waitForTrack(connection, video, config.audio);
 
     const response = await fetch(
       `/rebroid/display/public/sessions/${encodeURIComponent(config.sessionId)}/webrtc/offer`,

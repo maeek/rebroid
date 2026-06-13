@@ -3,7 +3,11 @@
 import * as React from 'react'
 import { Popover as PopoverPrimitive } from '@base-ui/react/popover'
 import { getBaseChildren, getBaseRender } from '@/components/ui/base-render'
-import { floatingSurfaceClassName, triggerResetClassName } from '@/components/ui/surface-classes'
+import {
+  floatingLayerClassName,
+  floatingSurfaceClassName,
+  triggerResetClassName
+} from '@/components/ui/surface-classes'
 import { cn } from '@/lib/utils'
 
 const Popover = PopoverPrimitive.Root
@@ -41,6 +45,7 @@ const PopoverContent = React.forwardRef<
   <PopoverPrimitive.Portal>
     <PopoverPrimitive.Positioner
       align={align}
+      className={floatingLayerClassName}
       collisionPadding={collisionPadding}
       side={side}
       sideOffset={sideOffset}

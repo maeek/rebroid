@@ -3,7 +3,11 @@
 import * as React from 'react'
 import { ContextMenu as ContextMenuPrimitive } from '@base-ui/react/context-menu'
 import { getBaseChildren, getBaseRender } from '@/components/ui/base-render'
-import { floatingSurfaceClassName, interactiveItemClassName } from '@/components/ui/surface-classes'
+import {
+  floatingLayerClassName,
+  floatingSurfaceClassName,
+  interactiveItemClassName
+} from '@/components/ui/surface-classes'
 import { cn } from '@/lib/utils'
 
 type MenuSelectEvent = React.MouseEvent<HTMLElement> & {
@@ -48,7 +52,10 @@ function ContextMenuContent({
 }) {
   return (
     <ContextMenuPrimitive.Portal>
-      <ContextMenuPrimitive.Positioner sideOffset={sideOffset}>
+      <ContextMenuPrimitive.Positioner
+        className={floatingLayerClassName}
+        sideOffset={sideOffset}
+      >
         <ContextMenuPrimitive.Popup
           data-slot='context-menu-content'
           className={cn(

@@ -211,7 +211,7 @@ export const DisplayViewerEmbed = ({
   }
 
   return (
-    <div className='relative h-[min(70dvh,58rem)] min-h-[26rem] w-full overflow-hidden rounded-2xl border border-surface-border/55 bg-black shadow-[0_18px_48px_rgba(0,0,0,0.28)] ring-1 ring-white/5 oled:border-surface-border/65 oled:bg-surface-panel oled:shadow-none oled:ring-white/8 sm:h-[min(78dvh,58rem)] sm:min-h-[34rem]'>
+    <div className='relative h-[min(70dvh,58rem)] min-h-104 w-full overflow-hidden sm:h-[min(78dvh,58rem)] sm:min-h-136'>
       <ViewerActivityKeepalive applicationId={session.applicationId} />
       <Visible when={!session.viewerTargetConnected}>
         <div className='absolute left-3 right-3 top-3 z-20 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning backdrop-blur-md'>
@@ -235,7 +235,7 @@ export const DisplayViewerEmbed = ({
           }
         }}
       >
-        <DisplayViewerShell className='h-full w-full bg-transparent' />
+        <DisplayViewerShell className='h-full w-full !bg-transparent' />
       </DisplayViewerProvider>
     </div>
   )
