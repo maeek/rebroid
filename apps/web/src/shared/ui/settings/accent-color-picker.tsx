@@ -39,7 +39,7 @@ export const AccentColorPicker = ({
             onClick={() => onChange(preset.id)}
           >
             <span>
-              {selected ? <IconCheck className='size-3.5 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.55)]' /> : null}
+              {selected ? <IconCheck className='size-5 text-black drop-shadow-[0_1px_1px_rgba(0,0,0,0.55)]' /> : null}
             </span>
           </button>
         )
