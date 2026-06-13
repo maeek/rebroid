@@ -95,11 +95,11 @@ function DialogContent({
   return (
     <DialogPortal data-slot='dialog-portal'>
       <DialogOverlay />
-      <DialogPrimitive.Viewport className='pointer-events-none fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4'>
+      <DialogPrimitive.Viewport className='scrollbar-thin pointer-events-none fixed inset-0 z-50 flex items-center justify-center overflow-x-hidden overflow-y-auto p-4'>
         <DialogPrimitive.Popup
           data-slot='dialog-content'
           className={cn(
-            'pointer-events-auto relative grid w-full max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] gap-4 overflow-y-auto rounded-lg p-6 shadow-2xl shadow-black/45 duration-200 data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 sm:max-w-lg',
+            'scrollbar-thin pointer-events-auto relative grid w-full max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] gap-4 overflow-x-hidden overflow-y-auto rounded-lg p-6 shadow-2xl shadow-black/45 duration-200 data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 sm:max-w-lg',
             floatingSurfaceClassName,
             className
           )}

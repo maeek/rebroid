@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 type InputProps = React.InputHTMLAttributes<HTMLInputElement>
 
 const inputBaseClassName = cn(
-  'h-9 w-full rounded-md text-sm transition-[background-color,border-color,color,box-shadow] duration-75 placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50',
+  'h-9 min-w-0 w-full rounded-md text-sm transition-[background-color,border-color,color,box-shadow] duration-75 placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50',
   controlSurfaceClassName,
   controlHoverClassName,
   focusRingClassName

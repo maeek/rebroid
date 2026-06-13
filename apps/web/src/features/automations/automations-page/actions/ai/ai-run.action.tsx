@@ -239,7 +239,7 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
       </div>
       <div className='grid gap-2'>
         <Label>Allowed tools</Label>
-        <div className='max-h-56 overflow-y-auto rounded-md border border-border/70 bg-surface-band/35 p-3'>
+        <div className='scrollbar-thin max-h-56 overflow-x-hidden overflow-y-auto rounded-md border border-border/70 bg-surface-band/35 p-3'>
           <div className='grid grid-cols-[repeat(auto-fit,minmax(min(15rem,100%),1fr))] gap-2'>
             {selectableCommands.map(command => {
               const checked = allowedTools.length === 0 || allowedTools.includes(command.uses)

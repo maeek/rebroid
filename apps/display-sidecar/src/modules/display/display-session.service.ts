@@ -21,6 +21,19 @@ const DEFAULT_VIRTUAL_DISPLAY: DisplayNewDisplayConfig = {
   height: 720,
   dpi: 160,
 };
+const DEFAULT_DISPLAY_CAPABILITIES = [
+  "video",
+  "audio",
+  "control",
+  "clipboard",
+  "files",
+  "screenshot",
+  "diagnostics",
+] as const;
+const DISPLAY_CAPABILITY_ALIASES: Record<string, string> = {
+  stream: "video",
+  input: "control",
+};
 
 @Injectable()
 export class DisplaySessionService {
@@ -61,14 +74,7 @@ export class DisplaySessionService {
       maxExpiresAt: new Date(
         now.getTime() + this.config.sessionMaxLifetimeSeconds * 1000,
       ).toISOString(),
-      capabilities: body.capabilities ?? [
-        "stream",
-        "audio",
-        "clipboard",
-        "files",
-        "input",
-        "screenshot",
-      ],
+      capabilities: this.normalizeCapabilities(body.capabilities),
     };
 
     this.sessions.set(session.id, session);
@@ -181,9 +187,10 @@ export class DisplaySessionService {
   }
 
   assertCapability(session: DisplaySession, capability: string) {
-    if (!session.capabilities.includes(capability)) {
+    const normalized = this.normalizeCapability(capability);
+    if (!session.capabilities.includes(normalized)) {
       throw new BadRequestException(
-        `Display session does not allow ${capability}.`,
+        `Display session does not allow ${normalized}.`,
       );
     }
   }
@@ -220,14 +227,7 @@ export class DisplaySessionService {
 
   private findReusable(body: CreateDisplaySessionBody) {
     const now = Date.now();
-    const capabilities = body.capabilities ?? [
-      "stream",
-      "audio",
-      "clipboard",
-      "files",
-      "input",
-      "screenshot",
-    ];
+    const capabilities = this.normalizeCapabilities(body.capabilities);
     return [...this.sessions.values()].find((session) => {
       if (session.status === "released" || session.status === "expired") {
         return false;
@@ -247,10 +247,24 @@ export class DisplaySessionService {
   }
 
   private sameCapabilities(left: string[], right: string[]) {
+    const normalizedLeft = this.normalizeCapabilities(left);
+    const normalizedRight = this.normalizeCapabilities(right);
     return (
-      left.length === right.length &&
-      left.every((capability) => right.includes(capability))
+      normalizedLeft.length === normalizedRight.length &&
+      normalizedLeft.every((capability) => normalizedRight.includes(capability))
     );
+  }
+
+  private normalizeCapabilities(capabilities?: string[]) {
+    const normalized = (capabilities ?? [...DEFAULT_DISPLAY_CAPABILITIES])
+      .map((capability) => this.normalizeCapability(capability))
+      .filter(Boolean);
+    return [...new Set(normalized)];
+  }
+
+  private normalizeCapability(capability: string) {
+    const trimmed = capability.trim();
+    return DISPLAY_CAPABILITY_ALIASES[trimmed] ?? trimmed;
   }
 
   private expireOldSessions() {

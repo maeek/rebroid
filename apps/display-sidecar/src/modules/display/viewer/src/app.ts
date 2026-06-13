@@ -7,6 +7,7 @@ import { createPageLifecycle } from "./page-lifecycle";
 import { setupTouchInput } from "./touch-input";
 import { createViewerUi } from "./ui";
 import { createWebrtcStream } from "./webrtc-stream";
+import type { DisplayTransport } from "./types";
 
 const config = readViewerConfig();
 const elements = getViewerElements();
@@ -50,12 +51,14 @@ const controlChannel = createControlChannel({
   lifecycle,
   onMessage: handleSidecarMessage,
 });
+let displayStream: DisplayTransport | null = null;
 const decoder = createH264Decoder({
   canvas: elements.canvas,
   context: elements.context,
   ui,
+  onStall: () => displayStream?.scheduleReconnect(),
 });
-const displayStream = createDisplayStream({
+displayStream = createDisplayStream({
   config,
   decoder,
   ui,
@@ -72,7 +75,7 @@ const startWebsocket = () => {
     }),
     controlChannel,
   });
-  displayStream.connect().catch(() => displayStream.scheduleReconnect());
+  displayStream?.connect().catch(() => displayStream?.scheduleReconnect());
 };
 
 const webrtcStream = createWebrtcStream({

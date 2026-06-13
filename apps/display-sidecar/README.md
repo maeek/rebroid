@@ -181,7 +181,7 @@ continue with video only.
 | `ADB_PATH` | `adb` | ADB executable path. |
 | `ADB_TEXT_OUTPUT_MAX_BYTES` | `2097152` | Max buffered text output for ADB commands. |
 | `ADB_BINARY_OUTPUT_MAX_BYTES` | `67108864` | Max buffered binary output for screenshots and other binary ADB output. |
-| `SCRCPY_TUNNEL_MODE` | auto | Optional tunnel strategy override: `direct`, `forward`, or `reverse`. |
+| `SCRCPY_TUNNEL_MODE` | auto | Optional tunnel strategy override: `direct`, `forward`, or `reverse`. Auto mode keeps the known-good startup path by trying direct first, then forward. |
 | `SCRCPY_CONTROL_CHANNEL` | `true` | Enables scrcpy control channel when not set to `false`. |
 | `SCRCPY_LOGCAT_ON_SERVER_EXIT` | `true` | Collects recent Android diagnostics when scrcpy exits early. |
 
@@ -222,6 +222,7 @@ The build compiles the NestJS service, compiles the browser viewer assets, rewri
 - WebRTC needs the configured UDP port range published all the way to the browser path.
 - Set `DISPLAY_WEBRTC_ICE_HOST` when the browser is outside the Docker host or the sidecar advertises an unreachable container IP.
 - Browser playback works best when served through HTTPS, because browser media and clipboard APIs are stricter on insecure origins.
+- The default scrcpy tunnel strategy keeps the Redroid-verified startup order by trying direct sockets before forward fallback. Use `SCRCPY_TUNNEL_MODE=reverse` only when the deployment environment requires reverse tunneling.
 - Redroid 13/14 display streaming requires scrcpy server 4.0 or newer. The sidecar reports its bundled server version from `/rebroid/display/capabilities`.
 - Redroid 15/16 display streaming is blocked for now because current images can boot and answer ADB while still failing scrcpy video startup.
 - Virtual displays are experimental and limited to one extra surface per app until Redroid resource behavior is proven under load.

@@ -11,7 +11,7 @@
     "lint": "tsc --noEmit -p tsconfig.json",
     "start": "node dist/main.js",
     "start:dev": "ts-node -r tsconfig-paths/register src/main.ts",
-    "test": "node --test",
+    "test": "pnpm build && node --test \"dist/**/*.spec.js\"",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/modules/display/viewer/tsconfig.json"
   },
   "dependencies": {

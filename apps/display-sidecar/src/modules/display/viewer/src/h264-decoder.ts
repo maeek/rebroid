@@ -7,6 +7,7 @@ type H264DecoderOptions = {
   canvas: HTMLCanvasElement;
   context: CanvasRenderingContext2D;
   ui: ViewerUi;
+  onStall?: (reason: string) => void;
 };
 
 function h264CodecFromSps(spsBytes: Uint8Array<ArrayBufferLike>): string {
@@ -35,6 +36,7 @@ export function createH264Decoder({
   canvas,
   context,
   ui,
+  onStall,
 }: H264DecoderOptions): DisplayDecoder {
   let decoder: VideoDecoder | null = null;
   let configured = false;
@@ -66,6 +68,7 @@ export function createH264Decoder({
     pendingNals = [];
     streamBuffer = new Uint8Array(0);
     timestamp = 0;
+    framesDecoded = 0;
     needsKeyFrame = true;
     configured = false;
     codecName = null;
@@ -123,6 +126,7 @@ export function createH264Decoder({
         }
         if (framesDecoded === 0) {
           ui.showStarting("Waiting for a clean frame...");
+          onStall?.("decoder failed before first frame");
         }
       },
     });

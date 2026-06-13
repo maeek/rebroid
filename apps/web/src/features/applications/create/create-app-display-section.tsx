@@ -17,7 +17,7 @@ export const CreateAppDisplaySection = ({ values, onChange }: CreateAppDisplaySe
     contentClassName='gap-4'
     titleClassName='mb-4'
   >
-    <div className='grid grid-cols-2 gap-3 max-sm:max-h-[27rem] max-sm:grid-cols-1 max-sm:overflow-y-auto max-sm:pr-1'>
+    <div className='scrollbar-thin grid grid-cols-2 gap-3 overflow-x-hidden max-sm:max-h-[27rem] max-sm:grid-cols-1 max-sm:overflow-y-auto max-sm:pr-1'>
       {redroidDisplayProfiles.map((profile: (typeof redroidDisplayProfiles)[number]) => {
         const selected = values.redroidDisplayProfileId === profile.id
         const Icon = profile.kind === 'tablet' ? IconDeviceTablet : IconDeviceMobile

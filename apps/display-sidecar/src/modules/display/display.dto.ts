@@ -45,7 +45,7 @@ export class CreateDisplaySessionDto {
   ttlSeconds?: number;
 
   @ApiPropertyOptional({
-    example: ["stream", "clipboard", "input", "screenshot"],
+    example: ["video", "audio", "control", "clipboard", "screenshot"],
     description: "Informational capability labels assigned to the session.",
     type: [String],
   })
@@ -174,7 +174,7 @@ export class DisplaySessionDto {
   maxExpiresAt!: string;
 
   @ApiProperty({
-    example: ["stream", "clipboard", "input", "screenshot"],
+    example: ["video", "audio", "control", "clipboard", "screenshot"],
     type: [String],
   })
   capabilities!: string[];

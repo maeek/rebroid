@@ -23,7 +23,7 @@ export const AccentColorPicker = ({
     <div
       role='radiogroup'
       aria-label='Accent color'
-      className='flex gap-2'
+      className='flex flex-wrap gap-2'
     >
       {accentColorPresets.map(preset => {
         const selected = value === preset.id

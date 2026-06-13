@@ -45,7 +45,7 @@ export const TopBarProtected = ({ initialUser }: { initialUser: ShellUser }) => 
           <DrawerContent className='max-h-[85dvh] overflow-hidden rounded-t-xl border-border/80 bg-background/95'>
             <DrawerTitle className='sr-only'>Navigation</DrawerTitle>
             <DrawerDescription className='sr-only'>Navigate between apps and settings pages.</DrawerDescription>
-            <div className='max-h-[80dvh] overflow-y-auto'>
+            <div className='scrollbar-thin max-h-[80dvh] overflow-x-hidden overflow-y-auto'>
               <ProtectedNavigation
                 variant='drawer'
                 initialUser={initialUser}

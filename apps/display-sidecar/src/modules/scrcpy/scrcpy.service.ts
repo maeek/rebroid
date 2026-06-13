@@ -8,6 +8,14 @@ import { DirectAdbConnection } from "./direct-adb-connection";
 import { H264Mp4Recorder } from "./h264-mp4-recorder";
 import { ScrcpyControlCodec } from "./scrcpy-control-codec";
 import {
+  SCRCPY_CODEC_H264,
+  SCRCPY_CODEC_H265,
+  SCRCPY_CODEC_OPUS,
+  ScrcpyPacketParser,
+} from "./scrcpy-packet-parser";
+import type { ScrcpyPacket } from "./scrcpy-packet-parser";
+import { ScrcpyStreamLiveness } from "./scrcpy-stream-liveness";
+import {
   ForwardedVideoSocket,
   SCRCPY_WS_OPEN,
   ScrcpyAudioPacket,
@@ -27,7 +35,7 @@ const WS_HIGH_WATERMARK_BYTES = 8 * 1024 * 1024;
 const WS_LOW_WATERMARK_BYTES = 2 * 1024 * 1024;
 const STREAM_RESTART_BACKOFF_MS = 500;
 const SCRCPY_CONNECT_RETRY_DELAY_MS = 100;
-const REVERSE_SOCKET_ACCEPT_TIMEOUT_MS = 1_500;
+const REVERSE_SOCKET_ACCEPT_TIMEOUT_MS = 5_000;
 const AUXILIARY_SOCKET_CONNECT_TIMEOUT_MS = 2_000;
 const MAX_QUEUED_CONTROL_MESSAGES = 128;
 const MAX_QUEUED_CONTROL_AGE_MS = 10_000;
@@ -54,14 +62,6 @@ const SCRCPY_STABLE_I_FRAME_INTERVAL = Number(
 );
 const DEVICE_MESSAGE_CLIPBOARD = 0;
 const DEVICE_MESSAGE_ACK_CLIPBOARD = 1;
-const SCRCPY_PACKET_HEADER_BYTES = 12;
-const SCRCPY_CODEC_H264 = 0x68323634;
-const SCRCPY_CODEC_H265 = 0x68323635;
-const SCRCPY_CODEC_OPUS = 0x6f707573;
-const SCRCPY_PACKET_FLAG_SESSION = 0x80;
-const SCRCPY_PACKET_FLAG_CONFIG = 0x40;
-const SCRCPY_PACKET_PTS_MASK = (1n << 61n) - 1n;
-const MAX_SCRCPY_PACKET_BYTES = 16 * 1024 * 1024;
 const AUDIO_PACKET_MAGIC = Buffer.from("RA01");
 const AUDIO_PACKET_HEADER_BYTES = AUDIO_PACKET_MAGIC.length + 1 + 8;
 const AUDIO_CONFIGURATION_FAILURE_REASON =
@@ -109,12 +109,6 @@ interface ReverseSocketAcceptor {
   close: () => Promise<void>;
 }
 
-interface ScrcpyPacket {
-  data: Buffer;
-  timestampUs: bigint;
-  config: boolean;
-}
-
 interface ScrcpyCompatibilityProbe {
   androidRelease: string;
   androidSdk: number | null;
@@ -151,71 +145,6 @@ interface CompletedRecording {
   data: Buffer;
 }
 
-class ScrcpyPacketParser {
-  private buffer = Buffer.alloc(0);
-  private codecRead = false;
-
-  constructor(
-    private readonly expectedCodec: number,
-    private readonly allowSessionPackets: boolean,
-    private readonly onPacket: (packet: ScrcpyPacket) => void,
-    private readonly onDisabled?: () => void,
-  ) {}
-
-  push(chunk: Buffer) {
-    this.buffer = Buffer.concat([this.buffer, chunk]);
-
-    if (!this.codecRead) {
-      if (this.buffer.length < 4) {
-        return;
-      }
-      const codec = this.buffer.readUInt32BE(0);
-      this.buffer = this.buffer.subarray(4);
-      this.codecRead = true;
-      if (codec === 0) {
-        this.onDisabled?.();
-        this.buffer = Buffer.alloc(0);
-        return;
-      }
-      if (codec === 1) {
-        throw new Error("scrcpy stream configuration failed on the device");
-      }
-      if (codec !== this.expectedCodec) {
-        throw new Error(
-          `Unexpected scrcpy stream codec: 0x${codec.toString(16)}`,
-        );
-      }
-    }
-
-    while (this.buffer.length >= SCRCPY_PACKET_HEADER_BYTES) {
-      if ((this.buffer[0] & SCRCPY_PACKET_FLAG_SESSION) !== 0) {
-        if (!this.allowSessionPackets) {
-          throw new Error("Unexpected scrcpy session packet in audio stream");
-        }
-        this.buffer = this.buffer.subarray(SCRCPY_PACKET_HEADER_BYTES);
-        continue;
-      }
-
-      const packetBytes = this.buffer.readUInt32BE(8);
-      if (!packetBytes || packetBytes > MAX_SCRCPY_PACKET_BYTES) {
-        throw new Error(`Invalid scrcpy packet length: ${packetBytes}`);
-      }
-      const totalBytes = SCRCPY_PACKET_HEADER_BYTES + packetBytes;
-      if (this.buffer.length < totalBytes) {
-        return;
-      }
-
-      const ptsAndFlags = this.buffer.readBigUInt64BE(0);
-      this.onPacket({
-        data: this.buffer.subarray(SCRCPY_PACKET_HEADER_BYTES, totalBytes),
-        timestampUs: ptsAndFlags & SCRCPY_PACKET_PTS_MASK,
-        config: (this.buffer[0] & SCRCPY_PACKET_FLAG_CONFIG) !== 0,
-      });
-      this.buffer = this.buffer.subarray(totalBytes);
-    }
-  }
-}
-
 @Injectable()
 export class ScrcpyService {
   private readonly logger = new Logger(ScrcpyService.name);
@@ -231,6 +160,7 @@ export class ScrcpyService {
   private readonly lastLogcatDiagnosticsAt = new Map<string, number>();
   private readonly activeRecordings = new Map<string, ActiveRecording>();
   private readonly completedRecordings = new Map<string, CompletedRecording>();
+  private readonly scrcpyServerPushes = new Set<string>();
 
   constructor(
     private readonly adb: AdbService,
@@ -248,6 +178,10 @@ export class ScrcpyService {
       compatibilityMode: options.compatibilityMode ?? "normal",
     };
     this.assertCompatibleScrcpyServerVersion();
+    const previousClient = this.streamClients.get(options.sessionId);
+    if (previousClient && previousClient !== options.client) {
+      previousClient.close?.(1012, "Display stream replaced");
+    }
     this.streamingSessions.add(options.sessionId);
     this.streamClients.set(options.sessionId, options.client);
     const compatibilityProbe = await this.collectCompatibilityProbe(
@@ -522,18 +456,22 @@ export class ScrcpyService {
     options: ScrcpyStreamOptions,
     registerStop: (stop: () => Promise<void>) => void,
   ): Promise<ScrcpyAttemptResult> {
-    if (SCRCPY_TUNNEL_MODE === "forward") {
+    if (
+      SCRCPY_TUNNEL_MODE === "reverse" ||
+      SCRCPY_TUNNEL_MODE === "direct" ||
+      SCRCPY_TUNNEL_MODE === "forward"
+    ) {
       return this.streamRawVideoAttemptWithTunnel(
         options,
         registerStop,
-        "forward",
+        SCRCPY_TUNNEL_MODE,
       );
     }
 
-    const modes: ScrcpyTunnelMode[] =
-      SCRCPY_TUNNEL_MODE === "reverse"
-        ? ["reverse", "direct", "forward"]
-        : ["direct", "forward"];
+    // Preserve the known-good startup path. Reverse tunneling changes scrcpy
+    // server/socket timing enough to break some Redroid starts, so it remains
+    // an explicit SCRCPY_TUNNEL_MODE=reverse override rather than auto-first.
+    const modes: ScrcpyTunnelMode[] = ["direct", "forward"];
     let lastError: unknown;
 
     for (const mode of modes) {
@@ -576,6 +514,7 @@ export class ScrcpyService {
     let streamSocket: ScrcpySocket | null = null;
     let audioSocket: ScrcpySocket | null = null;
     let controlSocket: ScrcpySocket | null = null;
+    let liveness: ScrcpyStreamLiveness | null = null;
     let bytesForwarded = 0;
     const startedAt = Date.now();
     let forwardActive = false;
@@ -604,6 +543,8 @@ export class ScrcpyService {
       streamSocket?.destroy();
       audioSocket?.destroy();
       controlSocket?.destroy();
+      liveness?.stop();
+      liveness = null;
       directConnection?.destroy();
       this.controlSockets.delete(options.sessionId);
       this.controlUnavailableSessions.delete(options.sessionId);
@@ -653,11 +594,7 @@ export class ScrcpyService {
     try {
       this.controlUnavailableSessions.delete(options.sessionId);
       await this.adb.ensureConnected(options.udid);
-      await this.adb.pushFile(
-        options.udid,
-        this.config.scrcpyServerPath,
-        "/data/local/tmp/rebroid-scrcpy-server.jar",
-      );
+      await this.ensureScrcpyServerPushed(options.udid);
       if (tunnelMode === "reverse") {
         reverseAcceptor = await this.createReverseSocketAcceptor();
         localPort = reverseAcceptor.port;
@@ -820,6 +757,7 @@ export class ScrcpyService {
 
       const forwardVideoPayload = (packet: ScrcpyPacket) => {
         options.onActivity?.();
+        liveness?.recordVideoPacket(packet);
         const chunk = packet.data;
         if (!chunk.length) {
           return;
@@ -895,26 +833,33 @@ export class ScrcpyService {
       return await new Promise<ScrcpyAttemptResult>((resolve) => {
         resolveAttempt = resolve;
         registerStop(cleanup);
+        liveness = new ScrcpyStreamLiveness({
+          onTimeout: (reason) => {
+            this.runInBackground(cleanup(reason), `[${logPrefix}] cleanup`);
+          },
+        });
+        liveness.start();
 
         if (options.audio) {
-          const videoParser = new ScrcpyPacketParser(
-            options.codec === "h265" ? SCRCPY_CODEC_H265 : SCRCPY_CODEC_H264,
-            true,
-            forwardVideoPayload,
-          );
+          const videoParser = new ScrcpyPacketParser({
+            expectedCodec:
+              options.codec === "h265" ? SCRCPY_CODEC_H265 : SCRCPY_CODEC_H264,
+            allowSessionPackets: true,
+            onPacket: forwardVideoPayload,
+          });
           const audioParser = audioSocket
-            ? new ScrcpyPacketParser(
-                SCRCPY_CODEC_OPUS,
-                false,
-                forwardAudioPayload,
-                () => {
+            ? new ScrcpyPacketParser({
+                expectedCodec: SCRCPY_CODEC_OPUS,
+                allowSessionPackets: false,
+                onPacket: forwardAudioPayload,
+                onDisabled: () => {
                   this.logger.debug(
                     `[${logPrefix}] Android audio capture is unavailable; continuing with video only`,
                   );
                   this.sendJson(options.client, { type: "audio-disabled" });
                   audioSocket?.destroy();
                 },
-              )
+              })
             : null;
           videoParser.push(connectedVideo.initialPayload);
           streamSocket?.on("data", (chunk: Buffer) => {
@@ -939,11 +884,12 @@ export class ScrcpyService {
           });
           audioSocket?.resume();
         } else {
-          const videoParser = new ScrcpyPacketParser(
-            options.codec === "h265" ? SCRCPY_CODEC_H265 : SCRCPY_CODEC_H264,
-            true,
-            forwardVideoPayload,
-          );
+          const videoParser = new ScrcpyPacketParser({
+            expectedCodec:
+              options.codec === "h265" ? SCRCPY_CODEC_H265 : SCRCPY_CODEC_H264,
+            allowSessionPackets: true,
+            onPacket: forwardVideoPayload,
+          });
           videoParser.push(connectedVideo.initialPayload);
           streamSocket?.on("data", (chunk: Buffer) => {
             try {
@@ -1089,7 +1035,6 @@ export class ScrcpyService {
       "cleanup=false",
       "keep_active=true",
       "power_on=true",
-      "raw_stream=true",
       "send_device_meta=false",
       "send_frame_meta=true",
       `send_dummy_byte=${tunnelMode === "reverse" ? "false" : "true"}`,
@@ -1159,6 +1104,23 @@ export class ScrcpyService {
       process: this.adb.spawnAdb(command),
       detached: false,
     };
+  }
+
+  private async ensureScrcpyServerPushed(udid: string) {
+    const key = `${udid}:${this.config.scrcpyVersion}:${this.config.scrcpyServerPath}`;
+    const remotePath = "/data/local/tmp/rebroid-scrcpy-server.jar";
+    if (this.scrcpyServerPushes.has(key)) {
+      const stillPresent = await this.adb
+        .fileExists(udid, remotePath)
+        .catch(() => false);
+      if (stillPresent) {
+        return;
+      }
+      this.scrcpyServerPushes.delete(key);
+    }
+
+    await this.adb.pushFile(udid, this.config.scrcpyServerPath, remotePath);
+    this.scrcpyServerPushes.add(key);
   }
 
   private shouldLaunchDetached(tunnelMode: ScrcpyTunnelMode) {
@@ -1679,7 +1641,9 @@ export class ScrcpyService {
     const shortAndroidStreamExit =
       result.reason.startsWith("display server exited with code 0") ||
       result.reason === "display stream socket closed" ||
-      result.reason === "display control socket closed";
+      result.reason === "display control socket closed" ||
+      result.reason === "display stream first keyframe timed out" ||
+      result.reason === "display stream video progress timed out";
 
     if (
       !shortAndroidStreamExit ||
@@ -2029,6 +1993,8 @@ export class ScrcpyService {
       reason.startsWith("display server exited") ||
       reason.startsWith("display server launcher exited") ||
       reason.includes("display stream socket") ||
+      reason.includes("display stream first keyframe") ||
+      reason.includes("display stream video progress") ||
       reason.includes("display control socket")
     );
   }

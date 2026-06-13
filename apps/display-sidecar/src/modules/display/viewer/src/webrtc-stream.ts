@@ -21,6 +21,20 @@ type WebrtcAnswer = {
   iceServers?: string[];
 };
 
+type VideoFrameCallbackMetadata = {
+  presentedFrames?: number;
+  mediaTime?: number;
+};
+
+type VideoWithFrameCallback = HTMLVideoElement & {
+  requestVideoFrameCallback?: (
+    callback: (now: number, metadata: VideoFrameCallbackMetadata) => void,
+  ) => number;
+  cancelVideoFrameCallback?: (handle: number) => void;
+};
+
+const webrtcFrameProgressTimeoutMs = 12_000;
+
 function waitForIceGathering(peer: RTCPeerConnection): Promise<void> {
   if (peer.iceGatheringState === "complete") {
     return Promise.resolve();
@@ -134,6 +148,107 @@ function closePeer(
 ): void {
   clearVideo(video);
   peer?.close();
+}
+
+function videoTracks(video: HTMLVideoElement): MediaStreamTrack[] {
+  return video.srcObject instanceof MediaStream
+    ? video.srcObject.getVideoTracks()
+    : [];
+}
+
+function videoFrameCallbackApi(video: HTMLVideoElement) {
+  const candidate = video as unknown as VideoWithFrameCallback;
+  const request =
+    typeof candidate.requestVideoFrameCallback === "function"
+      ? candidate.requestVideoFrameCallback.bind(candidate)
+      : null;
+  const cancel =
+    typeof candidate.cancelVideoFrameCallback === "function"
+      ? candidate.cancelVideoFrameCallback.bind(candidate)
+      : null;
+  return { request, cancel };
+}
+
+function watchVideoProgress(
+  peer: RTCPeerConnection,
+  video: HTMLVideoElement,
+  onStall: () => void,
+): () => void {
+  const frameCallback = videoFrameCallbackApi(video);
+  let stopped = false;
+  let lastProgressAt = Date.now();
+  let frameCallbackHandle: number | null = null;
+  let lastPresentedFrames = 0;
+  let lastCurrentTime = video.currentTime;
+
+  const markProgress = () => {
+    lastProgressAt = Date.now();
+  };
+  const stalled = () =>
+    Date.now() - lastProgressAt >= webrtcFrameProgressTimeoutMs &&
+    (peer.connectionState === "connected" ||
+      peer.iceConnectionState === "connected" ||
+      peer.iceConnectionState === "completed");
+  const failIfStalled = () => {
+    if (!stopped && stalled()) {
+      onStall();
+    }
+  };
+
+  const interval = window.setInterval(() => {
+    if (frameCallback.request) {
+      failIfStalled();
+      return;
+    }
+    if (
+      video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+      video.currentTime !== lastCurrentTime
+    ) {
+      lastCurrentTime = video.currentTime;
+      markProgress();
+    }
+    failIfStalled();
+  }, 1_000);
+
+  const requestNextFrame = () => {
+    if (stopped || !frameCallback.request) {
+      return;
+    }
+    frameCallbackHandle = frameCallback.request((_now, metadata) => {
+      if (stopped) {
+        return;
+      }
+      const presentedFrames = metadata.presentedFrames ?? 0;
+      if (
+        presentedFrames > lastPresentedFrames ||
+        metadata.mediaTime !== undefined
+      ) {
+        lastPresentedFrames = presentedFrames;
+        markProgress();
+      }
+      requestNextFrame();
+    });
+  };
+  requestNextFrame();
+
+  const onEnded = () => onStall();
+  const onPause = () => failIfStalled();
+  for (const track of videoTracks(video)) {
+    track.addEventListener("ended", onEnded);
+    track.addEventListener("mute", onPause);
+  }
+
+  return () => {
+    stopped = true;
+    window.clearInterval(interval);
+    if (frameCallbackHandle !== null && frameCallback.cancel) {
+      frameCallback.cancel(frameCallbackHandle);
+    }
+    for (const track of videoTracks(video)) {
+      track.removeEventListener("ended", onEnded);
+      track.removeEventListener("mute", onPause);
+    }
+  };
 }
 
 function reportConnectionFailure(
@@ -286,6 +401,7 @@ export function createWebrtcStream({
 }: WebrtcStreamOptions) {
   let peer: RTCPeerConnection | null = null;
   let fallbackStarted = false;
+  let stopFrameProgressMonitor: (() => void) | null = null;
 
   video.addEventListener(
     "pointerdown",
@@ -303,6 +419,8 @@ export function createWebrtcStream({
       return;
     }
     fallbackStarted = true;
+    stopFrameProgressMonitor?.();
+    stopFrameProgressMonitor = null;
     const activePeer = peer;
     peer = null;
     closePeer(activePeer, video);
@@ -310,6 +428,8 @@ export function createWebrtcStream({
   };
 
   lifecycle.onClose(() => {
+    stopFrameProgressMonitor?.();
+    stopFrameProgressMonitor = null;
     closePeer(peer, video);
   });
 
@@ -381,6 +501,11 @@ export function createWebrtcStream({
     }
     await connection.setRemoteDescription({ type: "answer", sdp: answer.sdp });
     await waitForConnectedTrackAndFrame(connection, video, ui, trackReady);
+    stopFrameProgressMonitor?.();
+    stopFrameProgressMonitor = watchVideoProgress(connection, video, () => {
+      console.warn("WebRTC video stopped advancing; falling back.");
+      startFallback();
+    });
   }
 
   return {

@@ -108,7 +108,7 @@ function AutomationStepInspectorContent({
   const yamlMode = step.kind === 'action' && yamlStepKey === step.clientKey
 
   return (
-    <div className='grid max-h-[calc(100dvh-7rem)] min-w-0 grid-rows-[auto_minmax(0,1fr)]'>
+    <div className='grid max-h-[calc(100dvh-7rem)] min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden'>
       <AutomationStepInspectorHeader
         step={step}
         command={command}
@@ -116,7 +116,7 @@ function AutomationStepInspectorContent({
         onToggleYaml={step.kind === 'action' ? () => onYamlStepKeyChange(yamlMode ? null : step.clientKey) : undefined}
         onClose={onClose}
       />
-      <div className='min-h-0 overflow-y-auto px-4 py-4'>
+      <div className='scrollbar-thin min-h-0 overflow-x-hidden overflow-y-auto px-4 py-4'>
         {step.kind === 'action' ? (
           yamlMode ? (
             <AutomationStepYamlEditor

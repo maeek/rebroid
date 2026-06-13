@@ -57,17 +57,17 @@ const DrawerContent = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <DrawerPortal>
     <DrawerOverlay />
-    <DrawerPrimitive.Viewport className='pointer-events-none fixed inset-0 z-50 flex items-end'>
+    <DrawerPrimitive.Viewport className='pointer-events-none fixed inset-0 z-50 flex items-end overflow-x-hidden'>
       <DrawerPrimitive.Popup
         ref={ref}
         className={cn(
-          'pointer-events-auto inset-x-0 bottom-0 mt-24 flex max-h-dvh w-full flex-col rounded-t-[10px] p-0 data-[closed]:animate-out data-[open]:animate-in data-[closed]:slide-out-to-bottom data-[open]:slide-in-from-bottom',
+          'scrollbar-thin pointer-events-auto inset-x-0 bottom-0 mt-24 flex max-h-dvh w-full flex-col overflow-x-hidden rounded-t-[10px] p-0 data-[closed]:animate-out data-[open]:animate-in data-[closed]:slide-out-to-bottom data-[open]:slide-in-from-bottom',
           floatingSurfaceClassName,
           className
         )}
         {...props}
       >
-        <DrawerPrimitive.Content>
+        <DrawerPrimitive.Content className='min-h-0 overflow-hidden'>
           <div className='mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted-foreground/55' />
           {children}
         </DrawerPrimitive.Content>

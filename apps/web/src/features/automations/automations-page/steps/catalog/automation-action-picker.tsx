@@ -95,7 +95,7 @@ export function AutomationActionPicker({
             />
           </div>
           <div
-            className='max-h-[min(24rem,calc(var(--available-height)-5rem))] overflow-y-auto overscroll-contain pr-1'
+            className='scrollbar-thin max-h-[min(24rem,calc(var(--available-height)-5rem))] overflow-x-hidden overflow-y-auto overscroll-contain pr-1'
             onTouchMoveCapture={event => event.stopPropagation()}
             onWheelCapture={event => event.stopPropagation()}
           >

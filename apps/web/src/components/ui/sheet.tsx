@@ -28,7 +28,7 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = 'SheetOverlay'
 
 const sheetVariants = cva(
-  'fixed z-50 gap-4 p-6 shadow-lg transition ease-in-out data-[closed]:duration-300 data-[open]:duration-500 data-[open]:animate-in data-[closed]:animate-out',
+  'scrollbar-thin fixed z-50 gap-4 overflow-x-hidden p-6 shadow-lg transition ease-in-out data-[closed]:duration-300 data-[open]:duration-500 data-[open]:animate-in data-[closed]:animate-out',
   {
     variants: {
       side: {

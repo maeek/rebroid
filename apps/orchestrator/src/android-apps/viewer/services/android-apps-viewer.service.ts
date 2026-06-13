@@ -12,10 +12,18 @@ import { AndroidAppsViewerNetworkService } from './android-apps-viewer-network.s
 
 @Injectable()
 export class AndroidAppsViewerService {
+  private static readonly viewerTargetReadyCacheTtlMs = 10_000;
   private readonly logger = new Logger(AndroidAppsViewerService.name);
   private readonly viewerTargetPreparations = new Map<
     string,
     Promise<{ adbHost: string; viewerTarget: ViewerTargetStatus }>
+  >();
+  private readonly viewerTargetReadyCache = new Map<
+    string,
+    {
+      expiresAt: number;
+      result: { adbHost: string; viewerTarget: ViewerTargetStatus };
+    }
   >();
 
   constructor(
@@ -77,16 +85,35 @@ export class AndroidAppsViewerService {
     app: Awaited<ReturnType<AndroidAppsViewerService['getRunningRuntimeApp']>>,
   ) {
     const key = `${app.id}:${app.containerId}`;
+    const cached = this.viewerTargetReadyCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.result;
+    }
+    this.viewerTargetReadyCache.delete(key);
+
     const existing = this.viewerTargetPreparations.get(key);
     if (existing) {
       return existing;
     }
 
-    const pending = this.prepareViewerTargetOnce(app).finally(() => {
-      if (this.viewerTargetPreparations.get(key) === pending) {
-        this.viewerTargetPreparations.delete(key);
-      }
-    });
+    const pending = this.prepareViewerTargetOnce(app)
+      .then((result) => {
+        if (result.viewerTarget.connected) {
+          this.viewerTargetReadyCache.set(key, {
+            expiresAt:
+              Date.now() + AndroidAppsViewerService.viewerTargetReadyCacheTtlMs,
+            result,
+          });
+        } else {
+          this.viewerTargetReadyCache.delete(key);
+        }
+        return result;
+      })
+      .finally(() => {
+        if (this.viewerTargetPreparations.get(key) === pending) {
+          this.viewerTargetPreparations.delete(key);
+        }
+      });
     this.viewerTargetPreparations.set(key, pending);
     return pending;
   }

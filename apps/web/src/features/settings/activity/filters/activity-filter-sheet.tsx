@@ -24,7 +24,7 @@ export const ActivityFilterSheet = () => {
           </SheetDescription>
         </SheetHeader>
 
-        <div className='min-h-0 overflow-y-auto p-6'>
+        <div className='scrollbar-thin min-h-0 overflow-x-hidden overflow-y-auto p-6'>
           <div className='grid gap-6'>
             <section className='grid gap-3'>
               <div>

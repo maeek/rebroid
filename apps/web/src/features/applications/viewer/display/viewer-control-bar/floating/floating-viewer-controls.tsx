@@ -90,7 +90,7 @@ const FloatingToolbarShell = ({
     <div
       className={cn(
         'flex flex-col items-center gap-1 rounded-xl border border-border/70 bg-surface-elevated/92 p-1 shadow-2xl backdrop-blur-xl',
-        expanded && 'max-h-[calc(100dvh-1rem)] overflow-y-auto'
+        expanded && 'scrollbar-thin max-h-[calc(100dvh-1rem)] overflow-x-hidden overflow-y-auto'
       )}
     >
       {children}

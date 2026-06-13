@@ -65,7 +65,7 @@ export const AndroidNotifications = ({ app }: { app: AppDefinition }) => {
             <DialogTitle>Android notifications</DialogTitle>
             <DialogDescription>Live notifications reported by the Android app session.</DialogDescription>
           </DialogHeader>
-          <div className='grid max-h-[min(60vh,34rem)] gap-3 overflow-y-auto pr-1'>
+          <div className='scrollbar-thin grid max-h-[min(60vh,34rem)] gap-3 overflow-x-hidden overflow-y-auto pr-1'>
             {visibleNotifications.map(renderNotificationCard)}
           </div>
         </DialogContent>

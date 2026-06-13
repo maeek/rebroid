@@ -828,9 +828,10 @@ export interface components {
             /**
              * @description Informational capability labels assigned to the session.
              * @example [
-             *       "stream",
+             *       "video",
+             *       "audio",
+             *       "control",
              *       "clipboard",
-             *       "input",
              *       "screenshot"
              *     ]
              */
@@ -925,9 +926,10 @@ export interface components {
             maxExpiresAt: string;
             /**
              * @example [
-             *       "stream",
+             *       "video",
+             *       "audio",
+             *       "control",
              *       "clipboard",
-             *       "input",
              *       "screenshot"
              *     ]
              */

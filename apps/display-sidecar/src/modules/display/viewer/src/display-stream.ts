@@ -25,6 +25,9 @@ type StreamTextMessage = {
   text?: unknown;
 };
 
+const firstFrameTimeoutMs = 8_000;
+const videoProgressTimeoutMs = 12_000;
+
 function parseTextMessage(text: string): StreamTextMessage | null {
   try {
     const payload: unknown = JSON.parse(text);
@@ -48,8 +51,11 @@ export function createDisplayStream({
   let reconnectAttempt = 0;
   let streamGeneration = 0;
   let streamQueue: Promise<void> = Promise.resolve();
+  let firstFrameTimer = 0;
+  let progressTimer = 0;
 
   lifecycle.onClose(() => {
+    clearStreamTimers();
     audioPlayer.reset();
     if (activeWs?.readyState === WebSocket.OPEN) {
       activeWs.close(1000, "viewer closed");
@@ -57,9 +63,73 @@ export function createDisplayStream({
   });
 
   function resetForReconnect() {
+    clearStreamTimers();
     streamQueue = Promise.resolve();
     decoder.reset();
     audioPlayer.reset();
+  }
+
+  function clearStreamTimers() {
+    if (firstFrameTimer) {
+      window.clearTimeout(firstFrameTimer);
+      firstFrameTimer = 0;
+    }
+    if (progressTimer) {
+      window.clearTimeout(progressTimer);
+      progressTimer = 0;
+    }
+  }
+
+  function forceReconnect(reason: string): void {
+    if (lifecycle.isClosing()) {
+      return;
+    }
+    console.warn(reason);
+    if (
+      activeWs?.readyState === WebSocket.OPEN ||
+      activeWs?.readyState === WebSocket.CONNECTING
+    ) {
+      activeWs.close(4000, reason);
+    }
+    scheduleReconnect();
+  }
+
+  function armFirstFrameTimer(generation: number): void {
+    if (firstFrameTimer || decoder.hasFrames()) {
+      return;
+    }
+    firstFrameTimer = window.setTimeout(() => {
+      firstFrameTimer = 0;
+      if (generation !== streamGeneration || decoder.hasFrames()) {
+        return;
+      }
+      ui.showStatus(
+        "Reconnecting...",
+        "Starting live display",
+        "Rebroid is opening the app screen.",
+      );
+      forceReconnect("Display stream did not deliver a decodable first frame.");
+    }, firstFrameTimeoutMs);
+  }
+
+  function armProgressTimer(generation: number): void {
+    if (!decoder.hasFrames()) {
+      return;
+    }
+    if (firstFrameTimer) {
+      window.clearTimeout(firstFrameTimer);
+      firstFrameTimer = 0;
+    }
+    if (progressTimer) {
+      window.clearTimeout(progressTimer);
+    }
+    progressTimer = window.setTimeout(() => {
+      progressTimer = 0;
+      if (generation !== streamGeneration || !decoder.hasFrames()) {
+        return;
+      }
+      forceReconnect("Display stream stopped delivering video progress.");
+    }, videoProgressTimeoutMs);
   }
 
   function scheduleReconnect(event?: CloseEvent): void {
@@ -67,9 +137,9 @@ export function createDisplayStream({
       return;
     }
 
+    const hadFrames = decoder.hasFrames();
     streamGeneration += 1;
     resetForReconnect();
-    const hadFrames = decoder.hasFrames();
     if (!hadFrames && reconnectAttempt >= 8) {
       console.warn("Display stream closed before video was decoded.", {
         code: event?.code,
@@ -219,6 +289,9 @@ export function createDisplayStream({
           "Starting live display",
           "Rebroid is opening the app screen.",
         );
+        armFirstFrameTimer(generation);
+      } else {
+        armProgressTimer(generation);
       }
     });
 
@@ -237,6 +310,9 @@ export function createDisplayStream({
         .then(() => {
           if (decoder.hasFrames()) {
             reconnectAttempt = 0;
+            armProgressTimer(generation);
+          } else {
+            armFirstFrameTimer(generation);
           }
         })
         .catch((error) => {

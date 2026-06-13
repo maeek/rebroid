@@ -65,7 +65,7 @@ export const TopBarNotifications = () => {
           </div>
         </Visible>
         <Visible when={notifications.length > 0}>
-          <div className='grid max-h-[min(70vh,32rem)] gap-4 overflow-y-auto pr-1'>
+          <div className='scrollbar-thin grid max-h-[min(70vh,32rem)] gap-4 overflow-x-hidden overflow-y-auto pr-1'>
             {notifications.map(app => (
               <div
                 key={app.appId}
