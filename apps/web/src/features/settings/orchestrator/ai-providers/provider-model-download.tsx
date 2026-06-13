@@ -115,7 +115,7 @@ export const ProviderModelAddDialog = ({
                       >
                         <span>{model.label || model.id}</span>
                         {model.parameterSize ? (
-                          <span className='text-xs text-secondary-foreground'>{model.parameterSize}</span>
+                          <span className='text-xs text-foreground-muted'>{model.parameterSize}</span>
                         ) : null}
                       </SelectItem>
                     ))}
@@ -135,7 +135,7 @@ export const ProviderModelAddDialog = ({
               </div>
               {remoteModelsError ? <p className='text-xs text-destructive'>{remoteModelsError}</p> : null}
               {!remoteModelsError && !isLoadingRemoteModels && remoteModels.length === 0 ? (
-                <p className='text-xs text-secondary-foreground'>
+                <p className='text-xs text-foreground-muted'>
                   No installed models were reported. Download a new model to add it.
                 </p>
               ) : null}
@@ -163,7 +163,7 @@ export const ProviderModelAddDialog = ({
                   onChange={event => setDownloadLabel(event.target.value)}
                 />
               </Field>
-              <p className='text-sm text-secondary-foreground'>
+              <p className='text-sm text-foreground-muted'>
                 The model row is added immediately. Download progress is shown in that row.
               </p>
             </>
@@ -212,9 +212,9 @@ export const ProviderModelDownloadStatus = ({ download }: { download: Automation
         >
           {download.status === 'completed' ? 'Downloaded' : download.status === 'failed' ? 'Error' : 'Downloading'}
         </Badge>
-        {percent !== null ? <span className='text-xs text-secondary-foreground'>{percent}%</span> : null}
+        {percent !== null ? <span className='text-xs text-foreground-muted'>{percent}%</span> : null}
       </div>
-      <p className='line-clamp-2 text-xs text-secondary-foreground'>{download.message}</p>
+      <p className='line-clamp-2 text-xs text-foreground-muted'>{download.message}</p>
       {isActive ? (
         <div className='h-1.5 overflow-hidden rounded-full bg-muted'>
           <div
@@ -231,7 +231,7 @@ const Field = ({ label, description, children }: { label: string; description: s
   <div className='grid gap-2'>
     <div className='grid gap-1'>
       <Label>{label}</Label>
-      <p className='text-xs text-secondary-foreground'>{description}</p>
+      <p className='text-xs text-foreground-muted'>{description}</p>
     </div>
     {children}
   </div>

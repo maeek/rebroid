@@ -1,31 +1,75 @@
 'use client'
 
 import * as React from 'react'
-import * as TooltipPrimitive from '@radix-ui/react-tooltip'
+import { Tooltip as TooltipPrimitive } from '@base-ui/react/tooltip'
+import { getBaseChildren, getBaseRender } from '@/components/ui/base-render'
+import { floatingSurfaceClassName, triggerResetClassName } from '@/components/ui/surface-classes'
 import { cn } from '@/lib/utils'
 
-const TooltipProvider = TooltipPrimitive.Provider
+const TooltipProvider = ({
+  delayDuration,
+  skipDelayDuration,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Provider> & {
+  delayDuration?: number
+  skipDelayDuration?: number
+}) => (
+  <TooltipPrimitive.Provider
+    delay={delayDuration}
+    timeout={skipDelayDuration}
+    {...props}
+  />
+)
 
 const Tooltip = TooltipPrimitive.Root
 
-const TooltipTrigger = TooltipPrimitive.Trigger
+const TooltipTrigger = ({
+  asChild,
+  children,
+  className,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Trigger> & {
+  asChild?: boolean
+}) => {
+  const view = getBaseRender(asChild, children)
+
+  return (
+    <TooltipPrimitive.Trigger
+      render={view}
+      className={cn(!asChild && triggerResetClassName, className)}
+      {...props}
+    >
+      {getBaseChildren(asChild, children)}
+    </TooltipPrimitive.Trigger>
+  )
+}
 
 const TooltipContent = React.forwardRef<
-  React.ElementRef<typeof TooltipPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => (
+  React.ElementRef<typeof TooltipPrimitive.Popup>,
+  React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Popup> & {
+    align?: 'start' | 'center' | 'end'
+    side?: 'top' | 'right' | 'bottom' | 'left'
+    sideOffset?: number
+  }
+>(({ className, align = 'center', side = 'top', sideOffset = 4, ...props }, ref) => (
   <TooltipPrimitive.Portal>
-    <TooltipPrimitive.Content
-      ref={ref}
+    <TooltipPrimitive.Positioner
+      align={align}
+      side={side}
       sideOffset={sideOffset}
-      className={cn(
-        'z-50 overflow-hidden rounded-md bg-popover/50 px-3 py-1.5 text-xs text-foreground animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
-        className
-      )}
-      {...props}
-    />
+    >
+      <TooltipPrimitive.Popup
+        ref={ref}
+        className={cn(
+          'z-50 overflow-hidden rounded-md px-3 py-1.5 text-xs animate-in fade-in-0 zoom-in-95 data-[closed]:animate-out data-[closed]:fade-out-0 data-[closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
+          floatingSurfaceClassName,
+          className
+        )}
+        {...props}
+      />
+    </TooltipPrimitive.Positioner>
   </TooltipPrimitive.Portal>
 ))
-TooltipContent.displayName = TooltipPrimitive.Content.displayName
+TooltipContent.displayName = 'TooltipContent'
 
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }

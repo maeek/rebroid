@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import { PlatformRouteUnavailable } from '@/shared/ui/page/platform-route-unavailable'
 import { PlatformInventoryPageSkeleton } from '../../components/loaders/orchestrator-page-skeletons'
 import { OrchestratorImagesPageClient } from '../../components/orchestrator-images-page-client'
 import { loadInfrastructureImagesPageData, type ImagesSearchParams } from './page-data.server'
@@ -20,7 +21,22 @@ const ImagesPageFallback = () => (
 )
 
 const InfrastructureImagesPageContent = async ({ searchParams }: { searchParams?: Promise<ImagesSearchParams> }) => {
-  const { gridQuery, imagesPage } = await loadInfrastructureImagesPageData((await searchParams) ?? {})
+  const { gridQuery, imagesPage, orchestratorError } = await loadInfrastructureImagesPageData(
+    (await searchParams) ?? {}
+  )
+
+  if (orchestratorError) {
+    return (
+      <PlatformRouteUnavailable
+        title='Images'
+        description='Local images available to application containers, custom runtimes, and platform sidecars.'
+        detail={orchestratorError}
+        href='/infrastructure/images'
+        breadcrumbRoot={{ label: 'Infrastructure' }}
+      />
+    )
+  }
+
   return (
     <OrchestratorImagesPageClient
       imagesPage={imagesPage}

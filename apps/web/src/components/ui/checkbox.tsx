@@ -1,8 +1,9 @@
 'use client'
 
 import * as React from 'react'
-import * as CheckboxPrimitive from '@radix-ui/react-checkbox'
-import { CheckIcon } from '@radix-ui/react-icons'
+import { Checkbox as CheckboxPrimitive } from '@base-ui/react/checkbox'
+import { IconCheck } from '@tabler/icons-react'
+import { controlHoverClassName, controlSurfaceClassName, focusRingClassName } from '@/components/ui/surface-classes'
 import { cn } from '@/lib/utils'
 
 const Checkbox = React.forwardRef<
@@ -12,13 +13,16 @@ const Checkbox = React.forwardRef<
   <CheckboxPrimitive.Root
     ref={ref}
     className={cn(
-      'peer size-4 shrink-0 rounded-[0.4rem] border border-border/70 bg-input/72 shadow-sm backdrop-blur-xs transition-[background-color,border-color,color,box-shadow] hover:bg-input/84 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-primary/35 data-[state=checked]:bg-primary/85 data-[state=checked]:text-primary-foreground',
+      'peer size-4 shrink-0 rounded-[0.4rem] transition-[background-color,border-color,color,box-shadow] disabled:cursor-not-allowed disabled:opacity-50 data-[checked]:border-primary/35 data-[checked]:bg-primary data-[checked]:text-primary-foreground',
+      controlSurfaceClassName,
+      controlHoverClassName,
+      focusRingClassName,
       className
     )}
     {...props}
   >
     <CheckboxPrimitive.Indicator className={cn('flex items-center justify-center text-current')}>
-      <CheckIcon className='size-4' />
+      <IconCheck className='size-4' />
     </CheckboxPrimitive.Indicator>
   </CheckboxPrimitive.Root>
 ))

@@ -17,10 +17,10 @@ import type { DockerMetricsSnapshot } from '@/server/orchestrator/diagnostics/ty
 
 const summaryCards = (metrics: DockerMetricsSnapshot) =>
   [
-    ['Success', metrics.totals.success, 'Completed Docker operations', 'border-l-green-500/50'],
-    ['Errors', metrics.totals.errors, 'Failed Docker operations', 'border-l-red-500/50'],
-    ['Timeouts', metrics.totals.timeouts, 'Operations that exceeded timeout', 'border-l-yellow-500/50'],
-    ['Retries', metrics.totals.retries, 'Retry attempts across operations', 'border-l-blue-500/50'],
+    ['Success', metrics.totals.success, 'Completed Docker operations', 'border-l-success/50'],
+    ['Errors', metrics.totals.errors, 'Failed Docker operations', 'border-l-destructive/50'],
+    ['Timeouts', metrics.totals.timeouts, 'Operations that exceeded timeout', 'border-l-warning/50'],
+    ['Retries', metrics.totals.retries, 'Retry attempts across operations', 'border-l-primary/50'],
     ['Slow operations', metrics.totals.slow, 'Exceeded the slow-operation warning', '']
   ] as const
 
@@ -115,9 +115,9 @@ export function DockerMetricsDashboard({
         titleClassName='pb-4'
         contentClassName='gap-4'
       >
-        <div className='overflow-hidden rounded-lg border border-border/60 bg-background/25'>
+        <div className='overflow-hidden rounded-lg border border-border/60 bg-surface-band/35'>
           <Table>
-            <TableHeader className='bg-background/45'>
+            <TableHeader className='bg-surface-band/55'>
               <TableRow className='hover:bg-transparent'>
                 <TableHead>Class</TableHead>
                 <TableHead>Operation</TableHead>
@@ -152,12 +152,12 @@ export function DockerMetricsDashboard({
         contentClassName='gap-4'
       >
         <Visible when={data.events.length === 0}>
-          <p className='text-sm text-secondary-foreground'>No slow or failed Docker operations recorded.</p>
+          <p className='text-sm text-foreground-muted'>No slow or failed Docker operations recorded.</p>
         </Visible>
         <Visible when={data.events.length > 0}>
-          <div className='overflow-hidden rounded-lg border border-border/60 bg-background/25'>
+          <div className='overflow-hidden rounded-lg border border-border/60 bg-surface-band/35'>
             <Table>
-              <TableHeader className='bg-background/45'>
+              <TableHeader className='bg-surface-band/55'>
                 <TableRow className='hover:bg-transparent'>
                   <TableHead>Time</TableHead>
                   <TableHead>Class</TableHead>

@@ -20,7 +20,7 @@ const ActivityEventsContent = () => {
         title={
           <div>
             <div>Audit trail</div>
-            <div className='mt-1 text-sm font-normal text-secondary-foreground'>
+            <div className='mt-1 text-sm font-normal text-foreground-muted'>
               Search, filter, export, and inspect administrative activity.
             </div>
           </div>

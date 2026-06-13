@@ -44,6 +44,7 @@ export const AppIdentitySection = ({
   return (
     <Section
       title='Application'
+      surface='band'
       titleClassName='pb-4'
       contentClassName='gap-5'
     >
@@ -81,7 +82,7 @@ export const AppIdentitySection = ({
                 onChange={handleApkSelect}
               />
               <Visible when={uploadedApkLabel}>
-                <p className='text-sm text-secondary-foreground'>{uploadedApkLabel}</p>
+                <p className='text-sm text-foreground-muted'>{uploadedApkLabel}</p>
               </Visible>
             </div>
           </Setting>

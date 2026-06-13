@@ -95,7 +95,7 @@ export function AutomationTracesSection({
         size: 176,
         meta: { label: 'Started' },
         cell: ({ row }) => (
-          <span className='text-sm text-secondary-foreground'>
+          <span className='text-sm text-foreground-muted'>
             {dateLabel(row.original.startedAt ?? row.original.createdAt)}
           </span>
         )
@@ -106,7 +106,7 @@ export function AutomationTracesSection({
         header: 'Source',
         size: 144,
         meta: { label: 'Source' },
-        cell: ({ row }) => <span className='text-sm text-secondary-foreground'>{triggerLabel(row.original)}</span>
+        cell: ({ row }) => <span className='text-sm text-foreground-muted'>{triggerLabel(row.original)}</span>
       },
       {
         id: 'target',
@@ -119,7 +119,7 @@ export function AutomationTracesSection({
           return (
             <div className='grid gap-1 text-sm'>
               <span className='truncate text-foreground'>{application?.name ?? row.original.targetApplicationId}</span>
-              <span className='truncate text-secondary-foreground'>
+              <span className='truncate text-foreground-muted'>
                 {row.original.targetProfileName ?? 'default'} / {row.original.targetProfileMode ?? 'persistent'}
               </span>
             </div>
@@ -132,7 +132,7 @@ export function AutomationTracesSection({
         header: 'Steps',
         size: 160,
         meta: { label: 'Steps' },
-        cell: ({ row }) => <span className='text-sm text-secondary-foreground'>{stepProgressLabel(row.original)}</span>
+        cell: ({ row }) => <span className='text-sm text-foreground-muted'>{stepProgressLabel(row.original)}</span>
       },
       {
         id: 'duration',
@@ -140,7 +140,7 @@ export function AutomationTracesSection({
         header: 'Duration',
         size: 112,
         meta: { label: 'Duration' },
-        cell: ({ row }) => <span className='text-sm text-secondary-foreground'>{durationLabel(row.original)}</span>
+        cell: ({ row }) => <span className='text-sm text-foreground-muted'>{durationLabel(row.original)}</span>
       },
       {
         id: 'status',
@@ -194,7 +194,7 @@ export function AutomationTracesSection({
         onSortingChange={updater => setSorting(current => (typeof updater === 'function' ? updater(current) : updater))}
         minWidth='72rem'
         emptyState={
-          <div className='text-center text-secondary-foreground'>
+          <div className='text-center text-foreground-muted'>
             No traces yet. Run this flow from an app or trigger to inspect execution history here.
           </div>
         }

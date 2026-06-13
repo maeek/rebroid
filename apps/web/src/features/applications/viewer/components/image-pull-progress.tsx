@@ -19,7 +19,7 @@ export const ImagePullProgress = ({
   }
 
   if (!progress) {
-    return <span className={cn('text-secondary-foreground text-sm', textClassName)}>{statusMessage}</span>
+    return <span className={cn('text-foreground-muted text-sm', textClassName)}>{statusMessage}</span>
   }
 
   const progressLabel = `${progress.current} / ${progress.total}${progress.layerId ? ` (${progress.layerId})` : ''}`
@@ -28,7 +28,7 @@ export const ImagePullProgress = ({
     <div className={cn('flex w-full min-w-0 flex-col gap-2', className)}>
       <div className='flex flex-wrap items-baseline gap-x-2 gap-y-1'>
         <span className={cn('text-sm text-foreground', textClassName)}>{progress.status}</span>
-        <span className='text-sm text-secondary-foreground'>{progressLabel}</span>
+        <span className='text-sm text-foreground-muted'>{progressLabel}</span>
       </div>
       <div
         aria-label={`${progress.status}: ${progressLabel}`}

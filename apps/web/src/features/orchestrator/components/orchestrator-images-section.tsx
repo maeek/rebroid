@@ -158,7 +158,7 @@ export const OrchestratorImagesSection = ({
         size: 144,
         meta: { label: 'Size' },
         cell: ({ row }) => (
-          <span className='text-sm text-secondary-foreground'>{formatImageSize(row.original.sizeBytes)}</span>
+          <span className='text-sm text-foreground-muted'>{formatImageSize(row.original.sizeBytes)}</span>
         )
       },
       {
@@ -168,7 +168,7 @@ export const OrchestratorImagesSection = ({
         size: 144,
         meta: { label: 'Created' },
         cell: ({ row }) => (
-          <span className='text-sm text-secondary-foreground'>{formatUtcDate(row.original.createdAt)}</span>
+          <span className='text-sm text-foreground-muted'>{formatUtcDate(row.original.createdAt)}</span>
         )
       },
       {
@@ -178,9 +178,7 @@ export const OrchestratorImagesSection = ({
         size: 128,
         meta: { label: 'Containers' },
         cell: ({ row }) => (
-          <span className='text-sm text-secondary-foreground'>
-            {formatImageContainerCount(row.original.containers)}
-          </span>
+          <span className='text-sm text-foreground-muted'>{formatImageContainerCount(row.original.containers)}</span>
         )
       },
       {
@@ -189,7 +187,7 @@ export const OrchestratorImagesSection = ({
         size: 224,
         enableSorting: false,
         meta: { label: 'ID' },
-        cell: ({ row }) => <span className='text-sm text-secondary-foreground'>{row.original.shortId}</span>
+        cell: ({ row }) => <span className='text-sm text-foreground-muted'>{row.original.shortId}</span>
       }
     ],
     []
@@ -242,7 +240,7 @@ export const OrchestratorImagesSection = ({
             }}
             minWidth='72rem'
             emptyState={
-              <div className='text-center text-secondary-foreground'>
+              <div className='text-center text-foreground-muted'>
                 {gridQuery.q ? 'No images match this search.' : 'No images are visible to Docker.'}
               </div>
             }
@@ -299,7 +297,7 @@ export const OrchestratorImagesSection = ({
             <DialogTitle>Remove image?</DialogTitle>
             <DialogDescription className='space-y-3'>
               <span className='block'>This removes the selected image from the container engine.</span>
-              <span className='block rounded-md border border-border/60 bg-background/50 px-3 py-2 font-mono text-xs text-foreground break-all'>
+              <span className='block rounded-md border border-border/60 bg-surface-band/60 px-3 py-2 font-mono text-xs text-foreground break-all'>
                 {getImageRemoveDialogLabel(pendingRemove)}
               </span>
               <span className='block'>

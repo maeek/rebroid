@@ -4,9 +4,14 @@ import { GeneralSettingsForm } from '../../general-settings-form'
 import { getPreferencesGeneralPageData } from './page-data.server'
 
 const PreferencesGeneralContent = async () => {
-  const { initialSettings } = await getPreferencesGeneralPageData()
+  const { currentUser, initialSettings } = await getPreferencesGeneralPageData()
 
-  return <GeneralSettingsForm initialSettings={initialSettings} />
+  return (
+    <GeneralSettingsForm
+      initialAccentColor={currentUser.accentColor}
+      initialSettings={initialSettings}
+    />
+  )
 }
 
 export default function PreferencesGeneralPageEntry() {

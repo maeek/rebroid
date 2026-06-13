@@ -70,7 +70,7 @@ export function SystemSettingsPage() {
                 contentClassName='gap-3'
                 className='h-full'
               >
-                <p className='text-sm text-secondary-foreground'>
+                <p className='text-sm text-foreground-muted'>
                   Operating-system level CPU and memory stats for the machine running the orchestrator.
                 </p>
                 <DetailsTable systemUtilization={systemUtilization} />
@@ -82,7 +82,7 @@ export function SystemSettingsPage() {
                 contentClassName='gap-3'
                 className='h-full'
               >
-                <p className='text-sm text-secondary-foreground'>
+                <p className='text-sm text-foreground-muted'>
                   Live aggregated Docker stats across managed app containers, shown separately from host-level usage.
                 </p>
                 <Visible when={resourcesError}>

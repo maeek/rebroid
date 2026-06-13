@@ -43,7 +43,7 @@ export const ViewerPlaceholderScreen = ({
           <div className='flex flex-col gap-2'>
             <h3 className='text-lg font-medium text-foreground'>{viewerPlaceholder.title}</h3>
             <Visible when={!viewerPlaceholder.showProgress}>
-              <p className='text-sm text-secondary-foreground break-all'>{viewerPlaceholder.description}</p>
+              <p className='text-sm text-foreground-muted break-all'>{viewerPlaceholder.description}</p>
             </Visible>
           </div>
         </div>

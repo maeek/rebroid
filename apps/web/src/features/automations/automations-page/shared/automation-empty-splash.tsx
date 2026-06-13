@@ -61,11 +61,11 @@ export function AutomationEmptySplash({
             <div className='absolute inset-0 rounded-full bg-primary/10' />
             <div className='absolute size-20 rounded-full bg-secondary/80' />
             <Icon className='relative size-12 text-primary' />
-            <IconDeviceMobileCog className='absolute -right-1 bottom-3 size-8 text-secondary-foreground' />
+            <IconDeviceMobileCog className='absolute -right-1 bottom-3 size-8 text-foreground-muted' />
           </div>
           <div className='flex flex-col gap-2'>
             <h3 className='text-2xl font-medium'>{content.title}</h3>
-            <p className='text-secondary-foreground'>{content.description}</p>
+            <p className='text-foreground-muted'>{content.description}</p>
           </div>
           {content.href ? (
             <Link href={content.href}>{action}</Link>

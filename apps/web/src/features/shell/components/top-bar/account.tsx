@@ -75,6 +75,7 @@ export const TopBarAccount = ({ initialUser }: { initialUser: ShellUser }) => {
         open={profileOpen}
         name={displayName}
         avatar={avatar}
+        initialAccentColor={initialUser.accentColor}
         onOpenChange={setProfileOpen}
         onAvatarSaved={setAvatar}
       />

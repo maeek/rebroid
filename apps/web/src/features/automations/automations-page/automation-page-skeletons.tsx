@@ -1,4 +1,6 @@
 import { Skeleton } from '@/components/ui/skeleton'
+import { panelSurfaceClassName } from '@/components/ui/surface-classes'
+import { cn } from '@/lib/utils'
 import { PageBreadcrumbsSkeleton } from '@/shared/ui/page/page-breadcrumbs-skeleton'
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { TableSkeleton } from '@/shared/ui/skeletons/table-skeleton'
@@ -81,50 +83,94 @@ export const AutomationTriggersPageSkeleton = () => (
 )
 
 export const AutomationEditorPageSkeleton = () => (
-  <ProtectedStackPageLayout mainClassName='gap-2'>
+  <ProtectedStackPageLayout mainClassName='gap-0'>
     <AutomationHeaderSkeleton
       breadcrumbWidths={['w-24', 'w-24', 'w-36']}
       titleWidth='w-56'
       actionWidth='w-64'
     />
-    <section className='grid w-full gap-6 px-6 pb-16 max-sm:px-4 xl:grid-cols-[minmax(0,1fr)_minmax(28rem,0.75fr)]'>
-      <div className='grid content-start gap-6'>
-        <div className='rounded-lg border border-border/70 bg-card/40 p-6 max-sm:p-4'>
-          <Skeleton className='mb-5 h-5 w-24' />
-          <div className='grid gap-4 md:grid-cols-2'>
-            {Array.from({ length: 4 }).map((_, index) => (
-              <div
-                key={index}
-                className='grid gap-2'
-              >
-                <Skeleton className='h-4 w-24' />
+    <section className='grid gap-6 px-6 pb-16 pt-2 max-sm:px-4'>
+      <div className='flex min-w-0 items-start gap-6 max-[1280px]:flex-wrap'>
+        <div className='grid min-w-0 content-start gap-6 flex-2/5'>
+          <section className='flex w-full flex-col gap-4 pb-4'>
+            <div className='flex h-8 items-center justify-between gap-3'>
+              <Skeleton className='h-7 w-24' />
+            </div>
+            <div className='grid gap-4'>
+              <div className='grid gap-2'>
+                <Skeleton className='h-4 w-16' />
                 <Skeleton className='h-10 w-full' />
               </div>
-            ))}
-          </div>
+              <div className='grid gap-2'>
+                <Skeleton className='h-4 w-24' />
+                <Skeleton className='h-24 w-full' />
+              </div>
+              <div className='grid gap-2'>
+                <Skeleton className='h-4 w-14' />
+                <Skeleton className='h-10 w-full rounded-md' />
+              </div>
+            </div>
+          </section>
+
+          <section className='grid min-w-0 content-start gap-3'>
+            <div className='flex h-8 items-center justify-between gap-3'>
+              <Skeleton className='h-7 w-20' />
+            </div>
+            <div className='grid min-w-0 gap-2 rounded-md'>
+              <div className='relative grid min-h-10 gap-2'>
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <div
+                    key={index}
+                    data-automation-step-item='true'
+                    className='grid min-h-14 rounded-md border border-border/60 bg-surface-panel/45'
+                  >
+                    <div className='grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-2 py-1.5'>
+                      <Skeleton className='size-8 rounded-md' />
+                      <div className='grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 px-1 py-1'>
+                        <Skeleton className='size-8 rounded-md' />
+                        <span className='grid min-w-0 gap-1'>
+                          <Skeleton className='h-4 w-44 max-w-full' />
+                          <Skeleton className='h-3 w-64 max-w-full' />
+                        </span>
+                      </div>
+                      <div className='flex items-center gap-0.5'>
+                        <Skeleton className='size-8 rounded-md' />
+                        <Skeleton className='size-8 rounded-md' />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Skeleton className='h-10 w-full rounded-md' />
+            </div>
+          </section>
         </div>
-        <div className='rounded-lg border border-border/70 bg-card/40 p-6 max-sm:p-4'>
-          <div className='mb-5 flex items-center justify-between gap-3'>
-            <Skeleton className='h-5 w-24' />
-            <Skeleton className='h-9 w-28' />
-          </div>
-          <div className='grid gap-3'>
-            {Array.from({ length: 5 }).map((_, index) => (
-              <Skeleton
-                key={index}
-                className='h-16 w-full'
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-      <div className='rounded-lg border border-border/70 bg-card/40 p-6 max-sm:p-4'>
-        <Skeleton className='mb-5 h-5 w-28' />
-        <div className='grid gap-4'>
-          <Skeleton className='h-10 w-full' />
-          <Skeleton className='h-32 w-full' />
-          <Skeleton className='h-10 w-full' />
-          <Skeleton className='h-10 w-full' />
+
+        <div className='sticky top-24 grid max-h-[calc(100dvh-7rem)] min-w-0 content-start gap-6 overflow-hidden flex-3/5 shrink-0'>
+          <aside className='hidden min-w-0 xl:block'>
+            <div className={cn('overflow-hidden rounded-lg', panelSurfaceClassName)}>
+              <div className='grid max-h-[calc(100dvh-7rem)] min-w-0 grid-rows-[auto_minmax(0,1fr)]'>
+                <div className='flex min-h-14 items-center justify-between gap-3 border-b border-border/60 px-4 py-3'>
+                  <div className='grid min-w-0 gap-1'>
+                    <Skeleton className='h-5 w-36' />
+                    <Skeleton className='h-3 w-48' />
+                  </div>
+                  <Skeleton className='size-9 rounded-md' />
+                </div>
+                <div className='grid gap-4 px-4 py-4'>
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <div
+                      key={index}
+                      className='grid gap-2'
+                    >
+                      <Skeleton className='h-4 w-24' />
+                      <Skeleton className='h-10 w-full' />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </aside>
         </div>
       </div>
     </section>

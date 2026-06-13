@@ -36,11 +36,11 @@ export function AutomationStepInspectorHeader({
         <div className='min-w-0'>
           <div className='flex min-w-0 items-center gap-2'>
             <h3 className='truncate text-base font-medium'>{stepTitle(step, command)}</h3>
-            <span className='rounded-sm border border-border/60 px-1.5 py-0.5 text-[0.625rem] uppercase tracking-normal text-secondary-foreground'>
+            <span className='rounded-sm border border-border/60 px-1.5 py-0.5 text-[0.625rem] uppercase tracking-normal text-foreground-muted'>
               {stepKindLabel(step)}
             </span>
           </div>
-          <p className='truncate text-xs text-secondary-foreground'>{stepSummary(step)}</p>
+          <p className='truncate text-xs text-foreground-muted'>{stepSummary(step)}</p>
         </div>
       </div>
       <div className='flex shrink-0 items-center gap-1'>

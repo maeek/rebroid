@@ -121,7 +121,7 @@ export const UsersGrid = ({
         header: 'Role',
         size: 144,
         meta: { label: 'Role' },
-        cell: ({ row }) => <span className='capitalize text-sm text-secondary-foreground'>{row.original.role}</span>
+        cell: ({ row }) => <span className='capitalize text-sm text-foreground-muted'>{row.original.role}</span>
       },
       {
         id: 'groups',
@@ -161,8 +161,8 @@ export const UsersGrid = ({
   return (
     <div className='grid gap-3'>
       {selectedUsers.length > 0 ? (
-        <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-input bg-card/40 px-4 py-3 text-sm'>
-          <span className='text-secondary-foreground'>{selectedUsers.length} selected</span>
+        <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-surface-border bg-surface-panel/50 px-4 py-3 text-sm'>
+          <span className='text-foreground-muted'>{selectedUsers.length} selected</span>
           <div className='flex flex-wrap gap-2'>
             <Button
               type='button'
@@ -206,7 +206,7 @@ export const UsersGrid = ({
           onSelectedIdsChange: setSelectedIds
         }}
         minWidth='64rem'
-        emptyState={<div className='text-center text-secondary-foreground'>No users have been created.</div>}
+        emptyState={<div className='text-center text-foreground-muted'>No users have been created.</div>}
         rowContextMenu={row => {
           const hasBulkSelection = selectedIds.has(row.original.id) && selectedUsers.length > 1
           return (

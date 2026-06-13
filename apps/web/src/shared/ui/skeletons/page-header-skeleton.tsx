@@ -35,7 +35,7 @@ export const PageHeaderSkeleton = ({
           {Array.from({ length: actionCount }).map((_, index) => (
             <Skeleton
               key={index}
-              className='h-10 w-28 bg-transparent'
+              className='h-10 w-28'
             />
           ))}
         </div>

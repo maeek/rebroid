@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { AppPageSkeleton } from '@/features/applications/detail/app-page-skeleton'
+import { AppManagePageSkeleton } from '@/features/applications/detail/app-page-skeleton'
 import AppManage from '@/features/applications/manage/app-manage'
 import { getApplicationPageData } from '@/server/orchestrator/applications/page-data'
 
@@ -10,7 +10,7 @@ const ManageAppPageContent = async ({ params }: { params: Promise<{ slug: string
 
 export const ManageAppPageEntry = ({ params }: { params: Promise<{ slug: string }> }) => {
   return (
-    <Suspense fallback={<AppPageSkeleton />}>
+    <Suspense fallback={<AppManagePageSkeleton />}>
       <ManageAppPageContent params={params} />
     </Suspense>
   )

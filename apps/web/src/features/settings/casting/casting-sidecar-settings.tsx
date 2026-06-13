@@ -215,7 +215,7 @@ export const CastingSidecarSettings = ({
           }}
           minWidth='76rem'
           emptyState={
-            <div className='text-center text-secondary-foreground'>
+            <div className='text-center text-foreground-muted'>
               {submittedSearch ? 'No sessions match this search.' : 'No casting sessions are known to the sidecar.'}
             </div>
           }

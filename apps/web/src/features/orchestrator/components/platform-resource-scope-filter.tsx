@@ -13,7 +13,7 @@ export const PlatformResourceScopeFilter = ({
 }) => (
   <Select
     value={value}
-    onValueChange={nextValue => onValueChange(nextValue as PlatformResourceScope)}
+    onValueChange={nextValue => onValueChange(nextValue)}
   >
     <SelectTrigger className='w-48'>
       <SelectValue />

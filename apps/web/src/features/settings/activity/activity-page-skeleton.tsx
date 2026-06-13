@@ -14,7 +14,7 @@ export const ActivityPageSkeleton = () => (
         {Array.from({ length: 4 }).map((_, index) => (
           <div
             key={index}
-            className='grid gap-3 rounded-lg border border-border/70 bg-card/40 p-4'
+            className='grid gap-3 rounded-md border border-l-4 border-border/60 bg-surface-panel/50 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md'
           >
             <Skeleton className='h-3 w-28' />
             <Skeleton className='h-8 w-16' />
@@ -42,6 +42,13 @@ export const ActivityPageSkeleton = () => (
           ]}
           rows={7}
         />
+        <div className='flex items-center justify-between gap-3'>
+          <Skeleton className='h-4 w-40 opacity-70' />
+          <div className='flex items-center gap-2'>
+            <Skeleton className='h-9 w-24' />
+            <Skeleton className='h-9 w-24' />
+          </div>
+        </div>
       </div>
     </section>
   </ProtectedStackPageLayout>

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import bcrypt from 'bcrypt'
 import { readWebState, writeWebState } from '@/server/storage/database'
+import { defaultAccentColor, isAccentColor } from '@/shared/model/theme/accent-color'
 import {
   defaultUserPermissions,
   fullPermissions,
@@ -52,6 +53,7 @@ const defaultAdminUser = async (): Promise<StoredUser> => {
     disabled: false,
     sessionVersion: 1,
     avatarDataUrl: null,
+    accentColor: 'blue',
     permissionOverrides: {},
     quotas: {},
     passwordHash: await hashPassword(initialPassword),
@@ -136,6 +138,7 @@ const authenticate = async (username: string, password: string) => {
     name: user.name,
     email: null,
     image: user.avatarDataUrl,
+    accentColor: user.accentColor,
     role: user.role,
     sessionVersion: user.sessionVersion
   }
@@ -165,6 +168,9 @@ const createUser = async ({
       throw new Error(`Username is required and password must be at least ${minimumPasswordLength} characters.`)
     }
     validateAvatarDataUrl(input.avatarDataUrl)
+    if (input.accentColor !== undefined && !isAccentColor(input.accentColor)) {
+      throw new Error('Unsupported accent color.')
+    }
     if (file.users.some(user => user.username === normalizedUsername)) {
       throw new Error('Username already exists.')
     }
@@ -180,6 +186,7 @@ const createUser = async ({
       disabled: input.disabled ?? false,
       sessionVersion: 1,
       avatarDataUrl: input.avatarDataUrl ?? null,
+      accentColor: input.accentColor ?? defaultAccentColor,
       permissionOverrides: input.permissionOverrides ?? {},
       quotas: input.quotas ?? {},
       passwordHash: await hashPassword(password),
@@ -229,6 +236,10 @@ const updateUser = async (id: string, input: UserEditorInput) =>
       validateAvatarDataUrl(input.avatarDataUrl)
       user.avatarDataUrl = input.avatarDataUrl
     }
+    if (input.accentColor !== undefined && !isAccentColor(input.accentColor)) {
+      throw new Error('Unsupported accent color.')
+    }
+    if (input.accentColor !== undefined) user.accentColor = input.accentColor
     if (input.permissionOverrides !== undefined) user.permissionOverrides = input.permissionOverrides
     if (input.quotas !== undefined) user.quotas = input.quotas
 

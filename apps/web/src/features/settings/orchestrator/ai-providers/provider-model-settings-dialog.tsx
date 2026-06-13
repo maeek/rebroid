@@ -134,7 +134,7 @@ const Field = ({ label, description, children }: { label: string; description: s
   <div className='grid gap-2'>
     <div className='grid gap-1'>
       <Label>{label}</Label>
-      <p className='text-xs text-secondary-foreground'>{description}</p>
+      <p className='text-xs text-foreground-muted'>{description}</p>
     </div>
     {children}
   </div>

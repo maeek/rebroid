@@ -16,9 +16,9 @@ const terminalStatuses = new Set(['success', 'failed', 'canceled'])
 
 const eventTone = (type: AutomationRunEvent['type']) => {
   if (type.endsWith('.failed') || type === 'ai.guardrail.triggered') return 'text-destructive'
-  if (type.startsWith('ai.tool')) return 'text-secondary-foreground'
+  if (type.startsWith('ai.tool')) return 'text-foreground-muted'
   if (type.startsWith('ai.message') || type.startsWith('ai.model')) return 'text-foreground'
-  return 'text-secondary-foreground'
+  return 'text-foreground-muted'
 }
 
 const textValue = (value: unknown) => (typeof value === 'string' ? value : '')
@@ -134,12 +134,12 @@ export function AutomationRunLiveEvents({
   const displayStatus = isCanceling && activeStatuses.has(run.status) ? 'canceling' : localStatus
 
   return (
-    <div className={compact ? 'grid gap-2' : 'grid gap-3 rounded-md border border-border/70 bg-background/40 p-3'}>
+    <div className={compact ? 'grid gap-2' : 'grid gap-3 rounded-md border border-border/70 bg-surface-band/50 p-3'}>
       {showHeader ? (
         <div className='flex items-center justify-between gap-3'>
           <div className='min-w-0'>
             <div className='truncate text-sm font-medium'>Run {run.id.slice(0, 8)}</div>
-            <div className='truncate text-xs text-secondary-foreground'>{run.targetApplicationId}</div>
+            <div className='truncate text-xs text-foreground-muted'>{run.targetApplicationId}</div>
           </div>
           <div className='flex items-center gap-2'>
             <Badge
@@ -171,7 +171,7 @@ export function AutomationRunLiveEvents({
         }
       >
         {visibleEvents.length === 0 ? (
-          <div className='text-secondary-foreground'>Waiting for events...</div>
+          <div className='text-foreground-muted'>Waiting for events...</div>
         ) : (
           visibleEvents.map(event => (
             <div

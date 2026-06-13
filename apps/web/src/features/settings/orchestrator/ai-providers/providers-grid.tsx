@@ -47,7 +47,7 @@ export const ProvidersGrid = ({
             >
               {row.original.label}
             </Link>
-            <div className='truncate text-xs text-secondary-foreground'>{row.original.id}</div>
+            <div className='truncate text-xs text-foreground-muted'>{row.original.id}</div>
           </div>
         )
       },
@@ -127,7 +127,7 @@ export const ProvidersGrid = ({
     <Section contentClassName='gap-4'>
       {selectedIds.size > 0 ? (
         <div className='flex flex-wrap items-center justify-between gap-3'>
-          <span className='text-sm text-secondary-foreground'>{selectedIds.size} selected</span>
+          <span className='text-sm text-foreground-muted'>{selectedIds.size} selected</span>
           <div className='flex flex-wrap items-center gap-2'>
             <Button
               type='button'
@@ -165,7 +165,7 @@ export const ProvidersGrid = ({
         getRowId={provider => provider.id}
         selection={{ selectedIds, onSelectedIdsChange }}
         minWidth='74rem'
-        emptyState={<div className='text-center text-secondary-foreground'>No AI providers configured.</div>}
+        emptyState={<div className='text-center text-foreground-muted'>No AI providers configured.</div>}
         rowContextMenu={row => {
           const provider = row.original
           return (

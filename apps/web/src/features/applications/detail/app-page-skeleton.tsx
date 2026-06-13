@@ -1,71 +1,187 @@
+import type { ReactNode } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { bandSurfaceClassName, panelSurfaceClassName } from '@/components/ui/surface-classes'
+import { cn } from '@/lib/utils'
 import { PageBreadcrumbsSkeleton } from '@/shared/ui/page/page-breadcrumbs-skeleton'
 import { ProtectedSplitPageContent, ProtectedSplitPageLayout } from '@/shared/ui/page/protected-page-shell'
 
-export const AppPageSkeleton = () => (
-  <ProtectedSplitPageLayout>
-    <ProtectedSplitPageContent>
-      <PageBreadcrumbsSkeleton itemWidths={['w-16', 'w-32', 'w-20']} />
-      <div className='flex w-full items-center justify-between gap-4 max-sm:flex-col max-sm:items-start'>
-        <div className='flex min-w-0 items-center gap-4'>
-          <Skeleton className='size-14 rounded-2xl' />
-          <div className='grid gap-2'>
-            <Skeleton className='h-8 w-48 max-sm:h-7' />
-            <Skeleton className='h-5 w-24 rounded-full' />
-          </div>
-        </div>
-        <div className='flex gap-2 max-sm:w-full'>
-          <Skeleton className='h-10 w-10' />
-          <Skeleton className='h-10 w-24 max-sm:flex-1' />
-        </div>
+const AppHeadingSkeleton = ({ showStatus = true, actionCount = 2 }: { showStatus?: boolean; actionCount?: number }) => (
+  <div className='flex w-full flex-wrap items-center justify-between gap-4 py-4 max-sm:pb-0'>
+    <div className='flex min-w-0 items-center gap-4 overflow-hidden'>
+      <Skeleton className='size-10 shrink-0 rounded-[24%]' />
+      <Skeleton className='h-8 w-48 max-w-[calc(100vw-12rem)] max-sm:h-7 max-sm:w-32' />
+      {showStatus ? <Skeleton className='h-5 w-20 shrink-0 rounded-full' /> : null}
+    </div>
+    <div className='flex shrink-0 gap-2 max-sm:w-full'>
+      {Array.from({ length: actionCount }).map((_, index) => (
+        <Skeleton
+          key={index}
+          className={cn('h-10', index === 0 ? 'w-10' : 'w-24 max-sm:flex-1')}
+        />
+      ))}
+    </div>
+  </div>
+)
+
+const RuntimeToolsSkeleton = ({ compact = false }: { compact?: boolean }) => (
+  <div className={cn('flex min-h-0 w-full flex-1 flex-col gap-4', compact && 'px-4')}>
+    <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
+      <div className='flex w-full min-w-0 items-center gap-1 overflow-x-auto rounded-md border border-border/70 bg-surface-band/40 px-1.5 py-1'>
+        {['w-32', 'w-28', 'w-36'].map((width, index) => (
+          <Skeleton
+            key={index}
+            className={cn('h-10 shrink-0 rounded-md', width)}
+          />
+        ))}
       </div>
-      <div className='flex w-full min-w-0 flex-col gap-5 pb-24'>
-        <div className='grid gap-3 rounded-lg border border-border/70 bg-card/40 p-4 sm:grid-cols-3'>
-          {Array.from({ length: 3 }).map((_, index) => (
-            <div
+      <div className='min-h-0 overflow-auto py-4'>
+        <div className='flex flex-col gap-4'>
+          {Array.from({ length: 6 }).map((_, index) => (
+            <label
               key={index}
-              className='grid gap-2'
+              className='flex min-w-0 flex-col gap-1.5 lg:flex-row lg:items-center lg:py-1'
             >
-              <Skeleton className='h-3 w-20' />
-              <Skeleton className='h-5 w-28' />
-            </div>
+              <Skeleton className='h-3 w-28 lg:flex-1/4' />
+              <div className='grid w-full min-w-0 gap-1.5 lg:max-w-100'>
+                <Skeleton className='h-9 w-full' />
+                {index > 2 ? <Skeleton className='h-3 w-full' /> : null}
+              </div>
+            </label>
           ))}
         </div>
-        <div className='rounded-lg border border-border/70 bg-card/40 p-6 max-sm:p-4'>
-          <Skeleton className='mb-5 h-5 w-36' />
-          <div className='grid gap-4 md:grid-cols-2'>
-            {Array.from({ length: 4 }).map((_, index) => (
-              <div
-                key={index}
-                className='grid gap-2'
-              >
-                <Skeleton className='h-4 w-28' />
-                <Skeleton className='h-10 w-full' />
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className='rounded-lg border border-border/70 bg-card/40 p-6 max-sm:p-4'>
-          <Skeleton className='mb-5 h-5 w-32' />
-          <div className='grid gap-4'>
-            <Skeleton className='h-10 w-full' />
-            <Skeleton className='h-10 w-full' />
-            <Skeleton className='h-28 w-full' />
-          </div>
-        </div>
-        <div className='rounded-lg border border-border/70 bg-card/40 p-6 max-sm:p-4'>
-          <Skeleton className='mb-5 h-5 w-16' />
-          <Skeleton className='h-72 w-full' />
+      </div>
+    </div>
+  </div>
+)
+
+const ViewerPaneSkeleton = ({ workspace = true }: { workspace?: boolean }) => (
+  <div
+    className={cn(
+      'flex w-full items-start justify-center rounded-lg px-2 py-2 max-sm:px-1 max-sm:py-2 sm:p-4 lg:sticky lg:top-10 lg:self-stretch lg:items-stretch lg:pr-4 lg:pt-6',
+      workspace ? 'max-w-[min(100%,42rem)] lg:min-h-[calc(100dvh-4rem)] lg:flex-1' : 'max-w-[min(100%,42rem)]'
+    )}
+  >
+    <div className='relative flex w-full items-center justify-center'>
+      <Skeleton className='aspect-[9/16] w-full max-w-sm rounded-4xl border border-border/70' />
+    </div>
+  </div>
+)
+
+const StatusSectionSkeleton = () => (
+  <div className='flex w-full flex-row rounded-xl border border-primary/20 bg-primary/10 px-4 py-3'>
+    <Skeleton className='mr-4 size-6 shrink-0 rounded-full' />
+    <div className='flex w-full grow flex-col gap-2'>
+      <div className='flex items-center gap-2'>
+        <Skeleton className='h-5 w-36' />
+        <Skeleton className='h-5 w-20 rounded-full' />
+      </div>
+      <Skeleton className='h-3 w-full max-w-xl opacity-70' />
+    </div>
+  </div>
+)
+
+const BandSectionSkeleton = ({
+  titleWidth = 'w-32',
+  children,
+  className
+}: {
+  titleWidth?: string
+  children: ReactNode
+  className?: string
+}) => (
+  <section className={cn('flex w-full flex-col rounded-xl p-6 max-sm:p-4', bandSurfaceClassName, className)}>
+    <Skeleton className={cn('mb-5 h-5', titleWidth)} />
+    <div className='flex flex-col gap-5'>{children}</div>
+  </section>
+)
+
+const SettingSkeleton = ({ withDescription = true, tall = false }: { withDescription?: boolean; tall?: boolean }) => (
+  <div className='flex w-full flex-col gap-3'>
+    <Skeleton className='h-4 w-36' />
+    {withDescription ? <Skeleton className='h-3 w-full max-w-2xl opacity-70' /> : null}
+    <Skeleton className={cn('w-full', tall ? 'h-24' : 'h-10')} />
+  </div>
+)
+
+export const AppPageSkeleton = () => (
+  <ProtectedSplitPageLayout
+    className='h-auto min-h-[calc(100vh-4rem)]'
+    mainClassName='h-auto min-h-[calc(100vh-4rem)] items-start'
+  >
+    <ProtectedSplitPageContent className='min-w-0 gap-5 pr-6 lg:min-h-[calc(100dvh-4rem)] lg:flex-1 lg:self-stretch lg:items-stretch'>
+      <div className='flex w-full grow flex-col gap-5 lg:min-h-0 lg:flex-1'>
+        <PageBreadcrumbsSkeleton itemWidths={['w-16', 'w-32']} />
+        <AppHeadingSkeleton showStatus />
+        <div className='hidden min-h-[24rem] grow flex-col lg:flex lg:min-h-0 lg:flex-1'>
+          <RuntimeToolsSkeleton />
         </div>
       </div>
     </ProtectedSplitPageContent>
-    <div className='flex w-full max-w-[min(100%,42rem)] flex-col items-center justify-start gap-4 max-lg:px-6 max-sm:px-4 lg:sticky lg:top-10 lg:self-start lg:pr-4 lg:pt-6'>
-      <Skeleton className='aspect-[9/16] w-full max-w-sm rounded-4xl' />
-      <div className='grid w-full max-w-sm gap-3 rounded-lg border border-border/70 bg-card/40 p-4'>
-        <Skeleton className='h-4 w-28' />
-        <Skeleton className='h-9 w-full' />
-        <Skeleton className='h-9 w-full' />
-      </div>
+    <ViewerPaneSkeleton />
+    <div className='w-full px-1 lg:hidden'>
+      <RuntimeToolsSkeleton compact />
     </div>
+  </ProtectedSplitPageLayout>
+)
+
+export const AppManagePageSkeleton = () => (
+  <ProtectedSplitPageLayout>
+    <ProtectedSplitPageContent>
+      <PageBreadcrumbsSkeleton itemWidths={['w-16', 'w-32', 'w-20']} />
+      <AppHeadingSkeleton
+        showStatus={false}
+        actionCount={2}
+      />
+      <div className='flex w-full min-w-0 flex-col gap-10 pb-24'>
+        <StatusSectionSkeleton />
+        <BandSectionSkeleton
+          titleWidth='w-28'
+          className='gap-0'
+        >
+          <div className='grid gap-5 xl:grid-cols-[max-content_1fr]'>
+            <div className='flex flex-col items-center gap-4 xl:w-76 xl:pr-5'>
+              <Skeleton className='size-44 rounded-[24%]' />
+              <Skeleton className='h-10 w-full' />
+            </div>
+            <div className='flex flex-col gap-6'>
+              <SettingSkeleton />
+              <SettingSkeleton />
+            </div>
+          </div>
+        </BandSectionSkeleton>
+        <BandSectionSkeleton titleWidth='w-24'>
+          <SettingSkeleton />
+          <div className='grid gap-5'>
+            <SettingSkeleton />
+            <SettingSkeleton />
+          </div>
+          <div className='border-t border-border/60 pt-4'>
+            <Skeleton className='h-10 w-full' />
+          </div>
+        </BandSectionSkeleton>
+        <BandSectionSkeleton titleWidth='w-32'>
+          <div className='flex flex-wrap gap-2'>
+            <Skeleton className='h-5 w-24 rounded-full' />
+            <Skeleton className='h-5 w-28 rounded-full' />
+          </div>
+          <SettingSkeleton />
+          <div className='flex w-full flex-col gap-3'>
+            <div className='grid gap-1'>
+              <Skeleton className='h-4 w-20' />
+              <Skeleton className='h-3 w-full max-w-2xl opacity-70' />
+            </div>
+            <Skeleton className='h-11 w-full' />
+          </div>
+          <div className='flex gap-2'>
+            <Skeleton className='h-10 w-24' />
+            <Skeleton className='h-10 w-24' />
+          </div>
+        </BandSectionSkeleton>
+        <section className={cn('flex w-full flex-col rounded-xl p-6 max-sm:p-4', panelSurfaceClassName)}>
+          <Skeleton className='mb-5 h-5 w-16' />
+          <Skeleton className='min-h-[20rem] w-full' />
+        </section>
+      </div>
+    </ProtectedSplitPageContent>
   </ProtectedSplitPageLayout>
 )

@@ -19,7 +19,7 @@ export const AppActionDialogSummary = ({
       <div
         className={classNames('flex size-9 shrink-0 items-center justify-center rounded-full', {
           'bg-secondary/70 text-secondary-foreground': tone === 'neutral',
-          'bg-amber-400/12 text-amber-300': tone === 'warning',
+          'bg-warning/12 text-warning': tone === 'warning',
           'bg-destructive/12 text-destructive': tone === 'destructive'
         })}
       >

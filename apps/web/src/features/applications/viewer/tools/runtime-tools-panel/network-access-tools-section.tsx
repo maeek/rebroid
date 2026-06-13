@@ -108,7 +108,7 @@ export const NetworkAccessToolsSection = ({
       hideHeader={hideHeader}
     >
       <div className='flex flex-col gap-4'>
-        <div className='flex flex-wrap items-center justify-between gap-3 rounded-md border border-border/70 bg-background/30 px-3 py-3'>
+        <div className='flex flex-wrap items-center justify-between gap-3 rounded-md border border-border/70 bg-surface-band/40 px-3 py-3'>
           <div className='min-w-0'>
             <div className='flex flex-wrap items-center gap-2'>
               <p className='text-sm font-medium'>Restrict outbound access</p>
@@ -116,7 +116,7 @@ export const NetworkAccessToolsSection = ({
                 {app.networkPolicyEnabled ? 'Enabled' : 'Disabled'}
               </Badge>
             </div>
-            <p className='mt-1 text-xs text-secondary-foreground'>
+            <p className='mt-1 text-xs text-foreground-muted'>
               {app.networkPolicyEnabled
                 ? 'Only API/default destinations and the CIDRs below are allowed.'
                 : 'Restrictions are disabled. The app can access any outbound destination.'}

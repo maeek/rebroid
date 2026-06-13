@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { controlHoverClassName, controlSurfaceClassName, focusRingClassName } from '@/components/ui/surface-classes'
 import { cn } from '@/lib/utils'
 
 type TextareaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement>
@@ -7,8 +8,10 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(({ classNa
   return (
     <textarea
       className={cn(
-        'flex min-h-25 w-full rounded-md border border-border/70 bg-input/72 dark:bg-white/5 backdrop-blur-2xl px-3 py-2 text-sm shadow-sm transition-[background-color,border-color,color] placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
-        'text-sm duration-75 focus-visible:border-primary/60 hover:bg-input/84 hover:border-primary/40 disabled:cursor-not-allowed disabled:opacity-50',
+        'flex min-h-25 w-full rounded-md px-3 py-2 text-sm transition-[background-color,border-color,color,box-shadow] duration-75 placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50',
+        controlSurfaceClassName,
+        controlHoverClassName,
+        focusRingClassName,
         className
       )}
       ref={ref}

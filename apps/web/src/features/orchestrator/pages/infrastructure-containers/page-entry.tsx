@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import { PlatformRouteUnavailable } from '@/shared/ui/page/platform-route-unavailable'
 import { PlatformInventoryPageSkeleton } from '../../components/loaders/orchestrator-page-skeletons'
 import { OrchestratorContainersPageClient } from '../../components/orchestrator-containers-page-client'
 import { loadInfrastructureContainersPageData, type ContainersSearchParams } from './page-data.server'
@@ -24,7 +25,22 @@ const InfrastructureContainersPageContent = async ({
 }: {
   searchParams?: Promise<ContainersSearchParams>
 }) => {
-  const { containersPage, gridQuery } = await loadInfrastructureContainersPageData((await searchParams) ?? {})
+  const { containersPage, gridQuery, orchestratorError } = await loadInfrastructureContainersPageData(
+    (await searchParams) ?? {}
+  )
+
+  if (orchestratorError) {
+    return (
+      <PlatformRouteUnavailable
+        title='Containers'
+        description='Docker containers visible to the platform. Managed application containers are shown first.'
+        detail={orchestratorError}
+        href='/infrastructure/containers'
+        breadcrumbRoot={{ label: 'Infrastructure' }}
+      />
+    )
+  }
+
   return (
     <OrchestratorContainersPageClient
       containersPage={containersPage}

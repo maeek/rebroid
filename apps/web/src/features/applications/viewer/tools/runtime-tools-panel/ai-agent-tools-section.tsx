@@ -21,7 +21,7 @@ const AiAgentTranscriptSkeleton = () => (
     {Array.from({ length: 3 }).map((_, index) => (
       <div
         key={index}
-        className='grid gap-2 rounded-lg border border-border/60 bg-background/25 p-3'
+        className='grid gap-2 rounded-lg border border-border/60 bg-surface-band/35 p-3'
       >
         <div className='flex items-center gap-2'>
           <Skeleton className='size-6 rounded-full' />
@@ -42,7 +42,7 @@ const AiAgentEmptyTranscript = () => (
       </div>
       <div className='grid gap-1'>
         <div className='text-sm font-medium'>AI agent ready</div>
-        <p className='text-xs text-secondary-foreground'>Ready while the display connects.</p>
+        <p className='text-xs text-foreground-muted'>Ready while the display connects.</p>
       </div>
     </div>
   </div>
@@ -107,7 +107,7 @@ export const AiAgentToolsSection = ({
           )}
           <div>
             <h3 className='text-sm font-semibold'>AI agent</h3>
-            <p className='text-xs text-secondary-foreground'>Run a session-only Android automation chat.</p>
+            <p className='text-xs text-foreground-muted'>Run a session-only Android automation chat.</p>
           </div>
         </div>
       )}
@@ -128,7 +128,7 @@ export const AiAgentToolsSection = ({
           : null}
       </div>
 
-      <div className='shrink-0 rounded-lg border border-border/70 bg-card/25 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]'>
+      <div className='shrink-0 rounded-lg border border-border/70 bg-surface-panel/34 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]'>
         <div className='flex flex-wrap items-center justify-between gap-3 pb-2'>
           <Label>Message</Label>
         </div>
@@ -148,7 +148,7 @@ export const AiAgentToolsSection = ({
         {selectionMessage ? <div className='text-xs text-destructive'>{selectionMessage}</div> : null}
         {error ? <div className='text-xs text-destructive'>{error}</div> : null}
         <div className='mt-3 flex flex-wrap items-center justify-between gap-3'>
-          <span className='text-xs text-secondary-foreground max-sm:w-full'>
+          <span className='text-xs text-foreground-muted max-sm:w-full'>
             Run timeout: {adHocTimeoutMs / 60000} minutes.
           </span>
           <div className='flex min-w-0 flex-wrap items-center justify-end gap-2 w-full'>

@@ -48,17 +48,18 @@ export const NavLink = ({ href, label, Icon, isActive, variant, onNavigate }: Na
   const styles = variantStyles[variant]
 
   return (
-    <Link
-      href={href}
-      onClick={onNavigate}
-    >
-      <li className={classNames(styles.item, isActive && styles.activeItem)}>
+    <li>
+      <Link
+        href={href}
+        className={classNames(styles.item, isActive && styles.activeItem)}
+        onClick={onNavigate}
+      >
         <div className={styles.iconWrap}>
           <Icon className={styles.icon} />
         </div>
         <span className={styles.label}>{label}</span>
-      </li>
-    </Link>
+      </Link>
+    </li>
   )
 }
 
@@ -111,23 +112,21 @@ export const NestedNavigationMenu = ({
       <Visible when={isOpen}>
         <ul className={styles.nestedList}>
           {items.map(({ name, Icon, href: itemHref }) => (
-            <Link
-              key={itemHref}
-              href={itemHref}
-              onClick={onNavigate}
-            >
-              <li
+            <li key={itemHref}>
+              <Link
+                href={itemHref}
                 className={classNames(
                   styles.nestedItem,
                   isActivePath(itemHref, itemHref === href) && styles.nestedActiveItem
                 )}
+                onClick={onNavigate}
               >
                 <div className={styles.nestedIconWrap}>
                   <Icon className={styles.nestedIcon} />
                 </div>
                 <span className='truncate'>{name}</span>
-              </li>
-            </Link>
+              </Link>
+            </li>
           ))}
         </ul>
       </Visible>

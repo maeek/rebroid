@@ -42,12 +42,12 @@ export const ChatTurnView = ({ turn }: { turn: ChatTurn }) => {
         </div>
         {turn.error ? <div className='text-xs text-destructive'>{turn.error}</div> : null}
         {turn.status === 'queued' ? (
-          <div className='text-sm text-secondary-foreground'>
+          <div className='text-sm text-foreground-muted'>
             Waiting for the active run to finish. Use Run next to start it.
           </div>
         ) : null}
         {visibleEvents.length === 0 && turn.status !== 'queued' ? (
-          <div className='text-sm text-secondary-foreground'>Waiting for the agent to start...</div>
+          <div className='text-sm text-foreground-muted'>Waiting for the agent to start...</div>
         ) : null}
         {timelineItems.map(item =>
           item.type === 'tool' ? (

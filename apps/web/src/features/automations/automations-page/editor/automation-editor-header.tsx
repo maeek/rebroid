@@ -132,7 +132,7 @@ export const AutomationEditorHeader = ({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 disabled={busy}
-                className='gap-2 px-3 py-2 text-red-300'
+                className='gap-2 px-3 py-2 text-destructive'
                 onSelect={onDelete}
               >
                 <IconTrash className='size-4' />

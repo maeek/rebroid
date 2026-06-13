@@ -98,7 +98,7 @@ export function AutomationStepOutlineRow({
           'group relative grid min-h-14 rounded-md border transition-colors',
           selected
             ? 'border-primary/45 bg-primary/8 shadow-[0_0_0_1px_hsl(var(--primary)/0.08)]'
-            : 'border-border/60 bg-card/35 hover:border-border/80 hover:bg-card/50',
+            : 'border-border/60 bg-surface-panel/45 hover:border-border/80 hover:bg-surface-panel/60',
           isDragging ? 'pointer-events-none opacity-0' : null
         )}
       >
@@ -107,7 +107,7 @@ export function AutomationStepOutlineRow({
           <button
             type='button'
             ref={setActivatorNodeRef}
-            className='flex size-8 cursor-grab items-center justify-center rounded-md text-secondary-foreground hover:bg-secondary/60 active:cursor-grabbing'
+            className='flex size-8 cursor-grab items-center justify-center rounded-md text-foreground-muted hover:bg-secondary/60 active:cursor-grabbing'
             aria-label='Drag step'
             {...attributes}
             {...listeners}
@@ -133,11 +133,11 @@ export function AutomationStepOutlineRow({
             <span className='min-w-0'>
               <span className='flex min-w-0 items-center gap-2'>
                 <span className='truncate text-sm font-medium'>{stepTitle(step, command)}</span>
-                <span className='hidden rounded-sm border border-border/60 px-1.5 py-0.5 text-[0.625rem] uppercase tracking-normal text-secondary-foreground sm:inline'>
+                <span className='hidden rounded-sm border border-border/60 px-1.5 py-0.5 text-[0.625rem] uppercase tracking-normal text-foreground-muted sm:inline'>
                   {stepKindLabel(step)}
                 </span>
               </span>
-              <span className='block truncate text-xs text-secondary-foreground'>{stepSummary(step)}</span>
+              <span className='block truncate text-xs text-foreground-muted'>{stepSummary(step)}</span>
             </span>
           </button>
 
@@ -235,7 +235,7 @@ export function AutomationStepOutlineRow({
                   Duplicate
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className='gap-2 px-3 py-2 text-red-300'
+                  className='gap-2 px-3 py-2 text-destructive'
                   onSelect={onDelete}
                 >
                   <IconTrash className='size-4' />

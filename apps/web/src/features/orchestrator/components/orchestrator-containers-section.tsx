@@ -214,7 +214,7 @@ export const OrchestratorContainersSection = ({
             }}
             minWidth='90rem'
             emptyState={
-              <div className='text-center text-secondary-foreground'>
+              <div className='text-center text-foreground-muted'>
                 {gridQuery.q ? 'No containers match this search.' : 'No containers are visible to Docker.'}
               </div>
             }

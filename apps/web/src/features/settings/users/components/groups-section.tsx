@@ -73,7 +73,7 @@ export const GroupsSection = ({
       header: 'Role',
       size: 128,
       meta: { label: 'Role' },
-      cell: ({ row }) => <span className='capitalize text-sm text-secondary-foreground'>{row.original.role}</span>
+      cell: ({ row }) => <span className='capitalize text-sm text-foreground-muted'>{row.original.role}</span>
     }
   ]
 
@@ -134,7 +134,7 @@ export const GroupsSection = ({
           boxed
           contentClassName='gap-3'
         >
-          <p className='text-sm text-secondary-foreground'>
+          <p className='text-sm text-foreground-muted'>
             Groups provide default permissions and quotas. User-level settings can override them when needed.
           </p>
           <div className='flex flex-wrap gap-2'>
@@ -156,8 +156,8 @@ export const GroupsSection = ({
           </div>
         </Section>
         {selectedGroups.length > 0 ? (
-          <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-input bg-card/40 px-4 py-3 text-sm'>
-            <span className='text-secondary-foreground'>{selectedGroups.length} selected</span>
+          <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-surface-border bg-surface-panel/50 px-4 py-3 text-sm'>
+            <span className='text-foreground-muted'>{selectedGroups.length} selected</span>
             <Button
               type='button'
               variant='destructive'
@@ -185,7 +185,7 @@ export const GroupsSection = ({
             onSelectedIdsChange: setSelectedIds
           }}
           minWidth='38rem'
-          emptyState={<div className='text-center text-secondary-foreground'>No groups have been created.</div>}
+          emptyState={<div className='text-center text-foreground-muted'>No groups have been created.</div>}
           rowContextMenu={row => {
             const hasBulkSelection = selectedIds.has(row.original.id) && selectedGroups.length > 1
             return (

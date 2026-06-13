@@ -179,7 +179,7 @@ export function AutomationStepOutlineListView({
         </div>
 
         {steps.length === 0 ? (
-          <div className='rounded-md border border-dashed border-border/60 px-3 py-3 text-center text-sm text-secondary-foreground'>
+          <div className='rounded-md border border-dashed border-border/60 px-3 py-3 text-center text-sm text-foreground-muted'>
             Drop steps here
           </div>
         ) : null}

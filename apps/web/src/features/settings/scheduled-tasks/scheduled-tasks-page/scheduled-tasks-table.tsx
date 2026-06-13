@@ -70,7 +70,7 @@ export const ScheduledTasksTable = () => {
               <span className='font-medium text-foreground'>{row.original.name}</span>
               <Badge variant='secondary'>{row.original.kind === 'predefined' ? 'Built-in' : 'Custom'}</Badge>
             </div>
-            <span className='text-secondary-foreground'>{actionLabel(row.original)}</span>
+            <span className='text-foreground-muted'>{actionLabel(row.original)}</span>
             <Visible when={row.original.lastError}>
               <span className='max-w-lg truncate text-destructive'>{row.original.lastError}</span>
             </Visible>
@@ -99,7 +99,7 @@ export const ScheduledTasksTable = () => {
         size: 176,
         meta: { label: 'Schedule' },
         cell: ({ row }) => (
-          <span className='text-sm text-secondary-foreground'>{scheduleLabel(row.original.cronExpression)}</span>
+          <span className='text-sm text-foreground-muted'>{scheduleLabel(row.original.cronExpression)}</span>
         )
       },
       {
@@ -108,9 +108,7 @@ export const ScheduledTasksTable = () => {
         header: 'Next run',
         size: 176,
         meta: { label: 'Next run' },
-        cell: ({ row }) => (
-          <span className='text-sm text-secondary-foreground'>{dateLabel(row.original.nextRunAt)}</span>
-        )
+        cell: ({ row }) => <span className='text-sm text-foreground-muted'>{dateLabel(row.original.nextRunAt)}</span>
       },
       {
         id: 'lastRunAt',
@@ -118,9 +116,7 @@ export const ScheduledTasksTable = () => {
         header: 'Last run',
         size: 176,
         meta: { label: 'Last run' },
-        cell: ({ row }) => (
-          <span className='text-sm text-secondary-foreground'>{dateLabel(row.original.lastRunAt)}</span>
-        )
+        cell: ({ row }) => <span className='text-sm text-foreground-muted'>{dateLabel(row.original.lastRunAt)}</span>
       },
       {
         id: 'enabled',
@@ -168,7 +164,7 @@ export const ScheduledTasksTable = () => {
           onSelectedIdsChange: setSelectedIds
         }}
         minWidth='82rem'
-        emptyState={<div className='text-center text-secondary-foreground'>No scheduled tasks configured.</div>}
+        emptyState={<div className='text-center text-foreground-muted'>No scheduled tasks configured.</div>}
         rowContextMenu={row => {
           const hasBulkSelection = selectedIds.has(row.original.id) && selectedTasks.length > 1
           return (

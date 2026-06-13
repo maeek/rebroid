@@ -250,7 +250,7 @@ export const DownloadsToolsSection = ({
                     )}
                     <span className='min-w-0'>
                       <span className='block truncate font-medium hover:underline'>{entry.name}</span>
-                      <span className='block text-xs text-secondary-foreground'>{runtimeFileEntrySubtitle(entry)}</span>
+                      <span className='block text-xs text-foreground-muted'>{runtimeFileEntrySubtitle(entry)}</span>
                     </span>
                   </button>
                   {entry.type === 'file' ? (
@@ -273,7 +273,7 @@ export const DownloadsToolsSection = ({
                 <button
                   key={entry.path}
                   type='button'
-                  className='flex min-w-0 flex-col items-center gap-2 rounded-md border border-border/60 bg-background/25 px-3 py-4 text-center hover:bg-accent/50'
+                  className='flex min-w-0 flex-col items-center gap-2 rounded-md border border-border/60 bg-surface-band/35 px-3 py-4 text-center hover:bg-accent/50'
                   onClick={() => (entry.type === 'directory' ? setCurrentPath(entry.path) : handleDownload(entry))}
                 >
                   {entry.type === 'directory' ? (
@@ -301,7 +301,7 @@ export const DownloadsToolsSection = ({
               'flex min-h-24 w-full flex-col items-center justify-center gap-2 border-t border-dashed px-4 py-5 text-center transition',
               {
                 'border-primary/70 bg-primary/10 text-foreground': isDragging,
-                'border-border/90 bg-secondary/35 text-secondary-foreground': !isDragging,
+                'border-border/90 bg-surface-band/55 text-foreground-muted': !isDragging,
                 'hover:border-primary/55 hover:bg-secondary/45': !isUploading
               }
             )}

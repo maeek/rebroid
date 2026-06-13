@@ -3,14 +3,13 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 const alertVariants = cva(
-  'relative w-full rounded-lg border border-input px-4 py-3 text-sm [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg~*]:pl-7',
+  'relative w-full rounded-lg border border-control-border/70 px-4 py-3 text-sm [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg~*]:pl-7',
   {
     variants: {
       variant: {
-        default: 'bg-card/60 hover:bg-card/50 text-foreground',
-        destructive:
-          'border-destructive/50 text-destructive dark:text-destructive-foreground dark:border-destructive [&>svg]:text-destructive',
-        update: 'bg-green-500/10 hover:bg-card/50 text-foreground hover:bg-green-500/20'
+        default: 'bg-surface-panel/92 text-foreground supports-[backdrop-filter]:bg-surface-panel/58',
+        destructive: 'border-destructive/50 bg-destructive/10 text-destructive [&>svg]:text-destructive',
+        update: 'border-success/35 bg-success/10 text-foreground hover:bg-success/18'
       }
     },
     defaultVariants: {

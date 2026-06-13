@@ -10,8 +10,8 @@ const AndroidLogo3D = dynamic(() => import('@/components/ui/android-logo-3d').th
 })
 
 export const AuthBackdrop = () => (
-  <div className='pointer-events-none absolute top-0 left-0 inset-0 opacity-40 overflow-hidden max-w-screen flex items-end justify-center w-full h-full'>
-    <div className='w-full h-full'>
+  <div className='pointer-events-none fixed inset-0 flex h-dvh w-screen items-end justify-center overflow-hidden opacity-40 oled:hidden'>
+    <div className='absolute inset-0 h-full w-full'>
       <PixelBlast
         className='w-full h-full'
         variant='square'
@@ -27,8 +27,8 @@ export const AuthBackdrop = () => (
         transparent
       />
     </div>
-    <div className='absolute top-unset bottom-0 inset-0 overflow-hidden max-w-screen flex items-end justify-center lg:bg-[radial-gradient(#29573c7a,transparent)]'>
-      <AndroidLogo3D className='max-w-400' />
+    <div className='absolute inset-x-0 bottom-[-1px] flex items-end justify-center overflow-hidden lg:bg-[radial-gradient(#29573c7a,transparent)]'>
+      <AndroidLogo3D className='auth-android-enter block w-[min(92vw,1600px)] max-w-none translate-y-px' />
     </div>
   </div>
 )

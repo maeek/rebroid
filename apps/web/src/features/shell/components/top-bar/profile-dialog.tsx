@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { IconDeviceFloppy } from '@tabler/icons-react'
 import { signOut } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
@@ -16,19 +16,25 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/hooks/use-toast'
 import { changeCurrentPasswordAction } from '@/server/users/actions/change-current-password-action'
+import { updateCurrentAccentColorAction } from '@/server/users/actions/update-current-accent-color-action'
 import { updateCurrentProfileAction } from '@/server/users/actions/update-current-profile-action'
+import { useAccentColorPreference } from '@/shared/model/theme/use-accent-color'
+import { AccentColorPicker } from '@/shared/ui/settings/accent-color-picker'
 import { UserAvatarInput } from '@/shared/ui/user-avatar/user-avatar-input'
+import type { AccentColor } from '@/shared/model/theme/accent-color'
 
 export const ProfileDialog = ({
   open,
   name,
   avatar,
+  initialAccentColor,
   onOpenChange,
   onAvatarSaved
 }: {
   open: boolean
   name: string
   avatar: string | null
+  initialAccentColor: AccentColor
   onOpenChange: (open: boolean) => void
   onAvatarSaved: (avatar: string | null) => void
 }) => {
@@ -38,6 +44,19 @@ export const ProfileDialog = ({
   const [newPassword, setNewPassword] = useState('')
   const [confirmNewPassword, setConfirmNewPassword] = useState('')
   const [isChangingPassword, setIsChangingPassword] = useState(false)
+  const saveAccentColor = useCallback(async (nextAccentColor: AccentColor) => {
+    await updateCurrentAccentColorAction(nextAccentColor)
+  }, [])
+  const { accentColor, setAccentColor } = useAccentColorPreference({
+    initialAccentColor,
+    saveAccentColor,
+    onSaveError: error =>
+      toast({
+        title: 'Could not save accent color',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
+      })
+  })
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
@@ -103,6 +122,11 @@ export const ProfileDialog = ({
           name={name}
           avatar={draftAvatar}
           onChange={setDraftAvatar}
+        />
+        <AccentColorPicker
+          className='border-t border-border/60 pt-4'
+          value={accentColor}
+          onChange={setAccentColor}
         />
         <section className='grid gap-3 border-t border-border/60 pt-4'>
           <div>

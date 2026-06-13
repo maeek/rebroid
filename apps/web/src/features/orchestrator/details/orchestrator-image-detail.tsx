@@ -115,7 +115,7 @@ export const OrchestratorImageDetail = ({ details }: { details: PlatformImageDet
           titleClassName='pb-2'
         >
           <Visible when={details.relatedContainers.length > 0}>
-            <div className='overflow-hidden rounded-lg border border-border/60 bg-background/25'>
+            <div className='overflow-hidden rounded-lg border border-border/60 bg-surface-band/35'>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -132,9 +132,7 @@ export const OrchestratorImageDetail = ({ details }: { details: PlatformImageDet
                       <TableCell>
                         <ContainerStateBadge state={container.state} />
                       </TableCell>
-                      <TableCell className='text-secondary-foreground'>
-                        {container.applicationId ?? 'unmanaged'}
-                      </TableCell>
+                      <TableCell className='text-foreground-muted'>{container.applicationId ?? 'unmanaged'}</TableCell>
                       <TableCell className='text-right'>
                         <Button
                           asChild
@@ -152,7 +150,7 @@ export const OrchestratorImageDetail = ({ details }: { details: PlatformImageDet
             </div>
           </Visible>
           <Visible when={details.relatedContainers.length === 0}>
-            <p className='text-sm text-secondary-foreground'>No local containers reference this image.</p>
+            <p className='text-sm text-foreground-muted'>No local containers reference this image.</p>
           </Visible>
         </Section>
 

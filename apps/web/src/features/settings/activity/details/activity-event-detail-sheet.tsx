@@ -42,7 +42,7 @@ const ActivityEventDetailContent = ({ event }: { event: AuditEvent }) => (
     </div>
     <div>
       <Label>Details JSON</Label>
-      <pre className='mt-2 max-h-[32rem] overflow-auto rounded-lg border border-border/70 bg-background/60 p-4 font-mono text-xs text-secondary-foreground'>
+      <pre className='mt-2 max-h-[32rem] overflow-auto rounded-lg border border-border/70 bg-background/60 p-4 font-mono text-xs text-foreground-muted'>
         {formatDetails(event.details)}
       </pre>
     </div>

@@ -18,7 +18,7 @@ function TriggerTags({ tags }: { tags: AutomationTag[] }) {
   return (
     <div className='flex flex-wrap gap-1'>
       {tags.length === 0 ? (
-        <span className='text-sm text-secondary-foreground'>-</span>
+        <span className='text-sm text-foreground-muted'>-</span>
       ) : (
         tags.map(tag => (
           <AutomationTagBadge
@@ -82,9 +82,7 @@ export function AutomationTriggersTable({
                 <Badge variant='secondary'>Schedule</Badge>
                 <Badge variant={statusVariant(trigger.lastStatus)}>{statusLabel(trigger.lastStatus)}</Badge>
               </div>
-              <span className='truncate text-sm text-secondary-foreground'>
-                {automation?.name ?? trigger.automationId}
-              </span>
+              <span className='truncate text-sm text-foreground-muted'>{automation?.name ?? trigger.automationId}</span>
               {trigger.lastError ? (
                 <span className='truncate text-sm text-destructive'>{trigger.lastError}</span>
               ) : null}
@@ -110,7 +108,7 @@ export function AutomationTriggersTable({
           const trigger = row.original
           const application = applicationById.get(trigger.targetApplicationId)
           return (
-            <div className='grid gap-1 text-sm text-secondary-foreground'>
+            <div className='grid gap-1 text-sm text-foreground-muted'>
               <span className='truncate text-foreground'>{application?.name ?? trigger.targetApplicationId}</span>
               <span className='truncate'>
                 {trigger.profileName ?? 'default'} / {trigger.profileMode ?? 'persistent'}
@@ -126,7 +124,7 @@ export function AutomationTriggersTable({
         enableSorting: false,
         meta: { label: 'Schedule' },
         cell: ({ row }) => (
-          <span className='text-sm text-secondary-foreground'>{scheduleLabel(getScheduleCron(row.original))}</span>
+          <span className='text-sm text-foreground-muted'>{scheduleLabel(getScheduleCron(row.original))}</span>
         )
       },
       {
@@ -135,9 +133,7 @@ export function AutomationTriggersTable({
         header: 'Next run',
         size: 176,
         meta: { label: 'Next run' },
-        cell: ({ row }) => (
-          <span className='text-sm text-secondary-foreground'>{dateLabel(row.original.nextRunAt)}</span>
-        )
+        cell: ({ row }) => <span className='text-sm text-foreground-muted'>{dateLabel(row.original.nextRunAt)}</span>
       },
       {
         id: 'lastRunAt',
@@ -145,9 +141,7 @@ export function AutomationTriggersTable({
         header: 'Last trace',
         size: 176,
         meta: { label: 'Last trace' },
-        cell: ({ row }) => (
-          <span className='text-sm text-secondary-foreground'>{dateLabel(row.original.lastRunAt)}</span>
-        )
+        cell: ({ row }) => <span className='text-sm text-foreground-muted'>{dateLabel(row.original.lastRunAt)}</span>
       },
       {
         id: 'enabled',
@@ -188,7 +182,7 @@ export function AutomationTriggersTable({
         onSelectedIdsChange
       }}
       minWidth='86rem'
-      emptyState={<div className='text-center text-secondary-foreground'>No triggers match the current filters.</div>}
+      emptyState={<div className='text-center text-foreground-muted'>No triggers match the current filters.</div>}
       rowContextMenu={row => {
         const hasBulkSelection = selectedIds.has(row.original.id) && selectedIds.size > 1
         return (

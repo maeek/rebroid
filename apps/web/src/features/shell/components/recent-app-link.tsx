@@ -80,7 +80,7 @@ export const RecentAppLink = ({
           type='button'
           title={`Start ${app.name}`}
           aria-label={`Start ${app.name}`}
-          className='mr-0.5 flex size-7 shrink-0 items-center justify-center rounded-full text-secondary-foreground opacity-0 transition hover:bg-primary/15 hover:text-primary focus:opacity-100 group-hover:opacity-100'
+          className='mr-0.5 flex size-7 shrink-0 items-center justify-center rounded-full text-foreground-muted opacity-0 transition hover:bg-primary/15 hover:text-primary focus:opacity-100 group-hover:opacity-100'
           onClick={() => void startAndOpen()}
         >
           <IconPlayerPlayFilled className='size-4' />

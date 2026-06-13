@@ -20,7 +20,7 @@ const ActivityEventBadges = ({ event }: { event: AuditEvent }) => (
 const ActivityEventTargetCell = ({ event }: { event: AuditEvent }) => (
   <div>
     <div className='truncate font-medium'>{event.resourceLabel ?? event.resourceId ?? 'none'}</div>
-    <div className='mt-1 truncate font-mono text-xs text-secondary-foreground'>
+    <div className='mt-1 truncate font-mono text-xs text-foreground-muted'>
       {event.resourceId ?? event.resourceType ?? 'No resource id'}
     </div>
   </div>
@@ -28,11 +28,11 @@ const ActivityEventTargetCell = ({ event }: { event: AuditEvent }) => (
 
 const ActivityEventsEmptyState = ({ resetFilters }: { resetFilters: () => void }) => (
   <div className='mx-auto flex max-w-md flex-col items-center text-center'>
-    <div className='mb-3 rounded-full border border-border/70 bg-card/60 p-3'>
-      <IconSearch className='size-6 text-secondary-foreground' />
+    <div className='mb-3 rounded-full border border-border/70 bg-surface-panel/70 p-3'>
+      <IconSearch className='size-6 text-foreground-muted' />
     </div>
     <div className='font-medium'>No activity found</div>
-    <p className='mt-1 text-sm text-secondary-foreground'>
+    <p className='mt-1 text-sm text-foreground-muted'>
       Try clearing filters or widening the date range. New audit events appear here after actions finish.
     </p>
     <Button
@@ -59,7 +59,7 @@ export const ActivityEventsDataTable = () => {
         cell: ({ row }) => (
           <div className='flex items-start gap-3'>
             <div className='mt-0.5 rounded-lg border border-border/60 bg-secondary/50 p-2'>
-              <IconShieldCheck className='size-4 text-secondary-foreground' />
+              <IconShieldCheck className='size-4 text-foreground-muted' />
             </div>
             <div className='min-w-0'>
               <div className='font-medium'>{formatAction(row.original.action)}</div>
@@ -77,9 +77,7 @@ export const ActivityEventsDataTable = () => {
         cell: ({ row }) => (
           <div>
             <div className='font-medium'>{row.original.actorLabel}</div>
-            <div className='mt-1 font-mono text-xs text-secondary-foreground'>
-              {row.original.actorUserId ?? 'system'}
-            </div>
+            <div className='mt-1 font-mono text-xs text-foreground-muted'>{row.original.actorUserId ?? 'system'}</div>
           </div>
         )
       },
@@ -108,7 +106,7 @@ export const ActivityEventsDataTable = () => {
         cell: ({ row }) => (
           <div>
             <div>{new Date(row.original.createdAt).toLocaleString()}</div>
-            <div className='mt-1 text-xs text-secondary-foreground'>{row.original.createdAt}</div>
+            <div className='mt-1 text-xs text-foreground-muted'>{row.original.createdAt}</div>
           </div>
         )
       }

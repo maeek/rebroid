@@ -1,6 +1,7 @@
 import { type KeyboardEvent, useState } from 'react'
 import { IconX } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
+import { chipInputSurfaceClassName } from '@/components/ui/surface-classes'
 import { cn } from '@/lib/utils'
 
 type NetworkAccessInputProps = {
@@ -76,7 +77,8 @@ export const NetworkAccessInput = ({
     <div className='w-full space-y-2'>
       <div
         className={cn(
-          'flex min-h-11 w-full flex-wrap items-center gap-2 rounded-md border border-input bg-input dark:bg-white/7 backdrop-blur-2xl px-3 py-2',
+          'flex min-h-11 w-full flex-wrap items-center gap-2 rounded-md px-3 py-2',
+          chipInputSurfaceClassName,
           {
             'cursor-not-allowed opacity-60': disabled || isBusy
           }
@@ -86,11 +88,12 @@ export const NetworkAccessInput = ({
           <Badge
             key={cidr}
             variant='secondary'
-            className='flex items-center gap-1 rounded-md border border-border/60 bg-secondary px-2 py-1 text-xs font-medium'
+            className='flex items-center gap-1 rounded-md border border-control-border/80 bg-muted/80 px-2 py-1 text-xs font-medium text-foreground-muted shadow-xs'
           >
             <span>{cidr}</span>
             <button
               type='button'
+              aria-label={`Remove ${cidr}`}
               className='cursor-pointer rounded-sm text-muted-foreground transition hover:text-foreground'
               disabled={disabled || isBusy}
               onClick={() => onRemoveCidr(cidr)}

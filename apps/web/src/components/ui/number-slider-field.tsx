@@ -58,7 +58,7 @@ export const NumberSliderField = ({
   }
 
   return (
-    <div className={cn('flex  w-full gap-3 flex-col', className)}>
+    <div className={cn('flex w-full flex-col gap-2', className)}>
       <div className='flex min-w-0 items-center gap-2'>
         <Input
           className='min-w-0'
@@ -72,7 +72,7 @@ export const NumberSliderField = ({
           onChange={event => onValueChange(event.target.value)}
         />
         <Visible when={inputSuffix}>
-          <span className='shrink-0 whitespace-nowrap text-sm text-secondary-foreground'>{inputSuffix}</span>
+          <span className='shrink-0 whitespace-nowrap text-sm text-foreground-muted'>{inputSuffix}</span>
         </Visible>
         <Visible when={allowEmpty}>
           <Button
@@ -87,7 +87,7 @@ export const NumberSliderField = ({
         </Visible>
       </div>
       <Visible when={hasMax}>
-        <div className='grid w-full gap-2 min-w-0'>
+        <div className='grid w-full min-w-0 gap-1'>
           <Slider
             aria-label={rangeLabel}
             min={min}
@@ -100,7 +100,7 @@ export const NumberSliderField = ({
             }}
             className='min-w-0'
           />
-          <div className='flex items-center justify-between text-[11px] leading-none text-muted-foreground'>
+          <div className='flex items-center justify-between px-0.5 text-[10px] font-medium leading-none text-foreground-subtle'>
             <span>
               {min}
               {suffix}

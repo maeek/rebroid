@@ -95,7 +95,7 @@ export const AutomationsTableToolbar = ({
           value={gridQuery.status ?? allFilterValue}
           onValueChange={value =>
             onUpdateGrid({
-              status: value === allFilterValue ? undefined : (value as AutomationsGridQuery['status']),
+              status: value === allFilterValue ? undefined : value,
               page: 1
             })
           }
@@ -115,7 +115,7 @@ export const AutomationsTableToolbar = ({
           value={gridQuery.lastRun ?? allFilterValue}
           onValueChange={value =>
             onUpdateGrid({
-              lastRun: value === allFilterValue ? undefined : (value as AutomationsGridQuery['lastRun']),
+              lastRun: value === allFilterValue ? undefined : value,
               page: 1
             })
           }

@@ -31,7 +31,7 @@ export const AppLogsControls = ({
         <SelectItem value='adb'>ADB logcat</SelectItem>
       </SelectContent>
     </Select>
-    <label className='ml-auto flex items-center gap-2 text-sm text-secondary-foreground max-sm:ml-0'>
+    <label className='ml-auto flex items-center gap-2 text-sm text-foreground-muted max-sm:ml-0'>
       Live
       <Switch
         checked={isLive}

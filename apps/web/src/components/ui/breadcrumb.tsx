@@ -1,6 +1,6 @@
 import * as React from 'react'
-import { ChevronRightIcon } from '@radix-ui/react-icons'
-import { Slot } from '@radix-ui/react-slot'
+import { IconChevronRight } from '@tabler/icons-react'
+import { PrimitiveSlot } from '@/components/ui/primitive-slot'
 import { cn } from '@/lib/utils'
 
 const Breadcrumb = React.forwardRef<
@@ -48,7 +48,7 @@ const BreadcrumbLink = React.forwardRef<
     asChild?: boolean
   }
 >(({ asChild, className, ...props }, ref) => {
-  const Comp = asChild ? Slot : 'a'
+  const Comp = asChild ? PrimitiveSlot : 'a'
 
   return (
     <Comp
@@ -81,7 +81,7 @@ const BreadcrumbSeparator = ({ children, className, ...props }: React.ComponentP
     className={cn('[&>svg]:size-3.5', className)}
     {...props}
   >
-    {children ?? <ChevronRightIcon />}
+    {children ?? <IconChevronRight />}
   </li>
 )
 BreadcrumbSeparator.displayName = 'BreadcrumbSeparator'

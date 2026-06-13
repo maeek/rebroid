@@ -28,7 +28,7 @@ export function AutomationTracesPage({
           />
           <div className='grid gap-2'>
             <h2 className='min-w-0 truncate text-3xl font-medium max-sm:text-xl'>{automation.name} traces</h2>
-            <p className='max-w-3xl text-sm text-secondary-foreground'>Execution history for this workflow.</p>
+            <p className='max-w-3xl text-sm text-foreground-muted'>Execution history for this workflow.</p>
           </div>
         </div>
       </section>

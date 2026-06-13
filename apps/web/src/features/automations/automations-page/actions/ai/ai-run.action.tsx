@@ -229,7 +229,7 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
           </Select>
         </div>
       </div>
-      <div className='rounded-md border border-border/70 bg-background/25 px-3 py-2 text-xs text-secondary-foreground'>
+      <div className='rounded-md border border-border/70 bg-surface-band/35 px-3 py-2 text-xs text-foreground-muted'>
         <span className='font-medium text-foreground'>Provider health: </span>
         {isCheckingHealth
           ? 'Checking selected provider/model...'
@@ -239,7 +239,7 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
       </div>
       <div className='grid gap-2'>
         <Label>Allowed tools</Label>
-        <div className='max-h-56 overflow-y-auto rounded-md border border-border/70 bg-background/25 p-3'>
+        <div className='max-h-56 overflow-y-auto rounded-md border border-border/70 bg-surface-band/35 p-3'>
           <div className='grid grid-cols-[repeat(auto-fit,minmax(min(15rem,100%),1fr))] gap-2'>
             {selectableCommands.map(command => {
               const checked = allowedTools.length === 0 || allowedTools.includes(command.uses)
@@ -254,14 +254,14 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
                   />
                   <span className='min-w-0'>
                     <span className='block truncate font-medium'>{command.label}</span>
-                    <span className='block truncate text-xs text-secondary-foreground'>{command.uses}</span>
+                    <span className='block truncate text-xs text-foreground-muted'>{command.uses}</span>
                   </span>
                 </label>
               )
             })}
           </div>
         </div>
-        <p className='text-xs text-secondary-foreground'>All tools are allowed until one tool is unchecked.</p>
+        <p className='text-xs text-foreground-muted'>All tools are allowed until one tool is unchecked.</p>
       </div>
       <div className='grid grid-cols-[repeat(auto-fit,minmax(min(14rem,100%),1fr))] gap-4'>
         <NumberField
@@ -275,10 +275,10 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
           suffix='ms'
           onChange={timeoutMs => patchInput({ timeoutMs })}
         />
-        <label className='flex items-center justify-between gap-3 rounded-md border border-border/70 bg-background/25 px-3 py-2 min-[42rem]:col-span-full'>
+        <label className='flex items-center justify-between gap-3 rounded-md border border-border/70 bg-surface-band/35 px-3 py-2 min-[42rem]:col-span-full'>
           <span>
             <span className='block text-sm font-medium'>Require final answer</span>
-            <span className='block text-xs text-secondary-foreground'>
+            <span className='block text-xs text-foreground-muted'>
               Fail when the AI stops without a visible summary.
             </span>
           </span>

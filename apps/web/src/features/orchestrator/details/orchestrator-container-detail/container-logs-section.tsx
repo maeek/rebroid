@@ -27,7 +27,7 @@ export const ContainerLogsSection = () => {
         emptyMessage='No logs returned for this container.'
         collectedAtPrefix='Recent Docker logs collected at'
         formatCollectedAt={formatPlatformDate}
-        controls={<p className='text-sm text-secondary-foreground'>Recent Docker logs for this container.</p>}
+        controls={<p className='text-sm text-foreground-muted'>Recent Docker logs for this container.</p>}
         outputClassName='max-h-128 rounded-lg bg-black/35 leading-6'
       />
     </Section>

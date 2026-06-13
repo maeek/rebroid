@@ -91,7 +91,7 @@ export function DataGrid<TData>({
     <div className={cn('grid gap-3', className)}>
       <div
         ref={tableContainerRef}
-        className='overflow-x-auto overflow-y-hidden rounded-xl border border-border/70 bg-background/25'
+        className='overflow-x-auto overflow-y-hidden rounded-xl border border-border/70 bg-surface-band/35'
         style={{ minWidth: 0 }}
       >
         <div style={{ minWidth }}>

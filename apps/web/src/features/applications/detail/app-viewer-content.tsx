@@ -37,7 +37,7 @@ export const AppViewerContent = () => {
         permissions={permissions}
         onAppChange={setApp}
       />
-      <div className='mt-4 flex w-full items-center justify-center gap-2 select-none text-lg font-black text-secondary-foreground md:hidden'>
+      <div className='mt-4 flex w-full items-center justify-center gap-2 select-none text-lg font-black text-foreground-muted md:hidden'>
         <div>•</div>
         <div>•</div>
         <div>•</div>

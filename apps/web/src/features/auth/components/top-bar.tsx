@@ -1,6 +1,5 @@
 'use client'
-import { GitHubLogoIcon } from '@radix-ui/react-icons'
-import { IconSunMoon } from '@tabler/icons-react'
+import { IconBrandGithub, IconSunMoon } from '@tabler/icons-react'
 import classNames from 'classnames'
 import Link from 'next/link'
 import { useTheme } from 'next-themes'
@@ -25,12 +24,13 @@ export const TopBarUnprotected = () => {
           href='https://github.com/maeek/rebroid'
           target='_blank'
           rel='noopener noreferrer'
+          aria-label='Open Rebroid on GitHub'
           className='text-foreground transition-colors duration-200 flex items-center gap-x-1 hover:text-primary'
         >
-          <GitHubLogoIcon className='w-6 h-6' />
+          <IconBrandGithub className='size-6' />
         </a>
         <DropdownMenu>
-          <DropdownMenuTrigger>
+          <DropdownMenuTrigger aria-label='Choose theme'>
             <IconSunMoon className='size-6' />
           </DropdownMenuTrigger>
           <DropdownMenuContent>

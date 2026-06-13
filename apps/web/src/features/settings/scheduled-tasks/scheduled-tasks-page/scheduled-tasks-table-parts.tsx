@@ -19,8 +19,8 @@ export const ScheduledTaskBulkBar = ({
   onRun: () => void
 }) =>
   selectedCount > 0 ? (
-    <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-input bg-card/40 px-4 py-3 text-sm'>
-      <span className='text-secondary-foreground'>{selectedCount} selected</span>
+    <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-surface-border bg-surface-panel/50 px-4 py-3 text-sm'>
+      <span className='text-foreground-muted'>{selectedCount} selected</span>
       <div className='flex flex-wrap gap-2'>
         <Button
           type='button'

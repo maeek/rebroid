@@ -1,3 +1,5 @@
+'use client'
+
 import { IconPlus } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -24,7 +26,7 @@ export function AutomationsListPage({
           <div className='flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-start'>
             <div className='grid gap-2'>
               <h2 className='text-3xl font-medium max-sm:text-xl'>Workflows</h2>
-              <p className='max-w-3xl text-sm text-secondary-foreground'>User-owned Android automation workflows.</p>
+              <p className='max-w-3xl text-sm text-foreground-muted'>User-owned Android automation workflows.</p>
             </div>
             <Button
               asChild

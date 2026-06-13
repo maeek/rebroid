@@ -135,13 +135,13 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
               {getPolicyStatus(app)}
             </Badge>
             <Visible when={app.networkPolicyAppliedAt}>
-              <span className='text-xs text-secondary-foreground'>
+              <span className='text-xs text-foreground-muted'>
                 Applied {formatDateLocale(app.networkPolicyAppliedAt as Date)}
               </span>
             </Visible>
           </div>
           <Visible when={getPolicyMessage(app)}>
-            <p className='text-sm text-secondary-foreground'>{getPolicyMessage(app)}</p>
+            <p className='text-sm text-foreground-muted'>{getPolicyMessage(app)}</p>
           </Visible>
         </div>
       }

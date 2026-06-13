@@ -29,7 +29,7 @@ const FloatingToolbarHandle = ({
 }) => (
   <button
     type='button'
-    className='flex size-9 touch-none select-none items-center justify-center rounded-lg text-secondary-foreground hover:bg-secondary active:cursor-grabbing'
+    className='flex size-9 touch-none select-none items-center justify-center rounded-lg text-foreground-muted hover:bg-secondary active:cursor-grabbing'
     aria-label='Move viewer toolbar'
     onPointerDown={onPointerDown}
     onPointerMove={onPointerMove}
@@ -89,7 +89,7 @@ const FloatingToolbarShell = ({
   >
     <div
       className={cn(
-        'flex flex-col items-center gap-1 rounded-xl border border-border/70 bg-card/90 p-1 shadow-2xl backdrop-blur-xl',
+        'flex flex-col items-center gap-1 rounded-xl border border-border/70 bg-surface-elevated/92 p-1 shadow-2xl backdrop-blur-xl',
         expanded && 'max-h-[calc(100dvh-1rem)] overflow-y-auto'
       )}
     >

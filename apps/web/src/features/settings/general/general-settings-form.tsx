@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { IconDeviceFloppy, IconRotateClockwise } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,12 +9,16 @@ import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { toast } from '@/hooks/use-toast'
+import { updateCurrentAccentColorAction } from '@/server/users/actions/update-current-accent-color-action'
 import { resetGeneralUiSettings, saveGeneralUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
+import { useAccentColorPreference } from '@/shared/model/theme/use-accent-color'
 import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { AccentColorPicker } from '@/shared/ui/settings/accent-color-picker'
 import { Setting } from '@/shared/ui/settings/setting'
 import { ViewerStreamingSliderFields } from '@/shared/ui/settings/viewer-streaming-slider-fields'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
+import type { AccentColor } from '@/shared/model/theme/accent-color'
 
 const numberValue = (value: number, fallback: number) => (Number.isFinite(value) ? value : fallback)
 
@@ -48,9 +52,28 @@ const toGeneralUiSettings = (settings: OrchestratorUiSettings): SaveGeneralUiSet
   defaultViewerSoundEnabled: settings.defaultViewerSoundEnabled
 })
 
-export const GeneralSettingsForm = ({ initialSettings }: { initialSettings: OrchestratorUiSettings }) => {
+export const GeneralSettingsForm = ({
+  initialAccentColor,
+  initialSettings
+}: {
+  initialAccentColor: AccentColor
+  initialSettings: OrchestratorUiSettings
+}) => {
   const [settings, setSettings] = useState(initialSettings)
   const [isSaving, setIsSaving] = useState(false)
+  const saveAccentColor = useCallback(async (nextAccentColor: AccentColor) => {
+    await updateCurrentAccentColorAction(nextAccentColor)
+  }, [])
+  const { accentColor, setAccentColor } = useAccentColorPreference({
+    initialAccentColor,
+    saveAccentColor,
+    onSaveError: error =>
+      toast({
+        title: 'Could not save accent color',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
+      })
+  })
 
   useEffect(() => {
     setSettings(initialSettings)
@@ -124,6 +147,17 @@ export const GeneralSettingsForm = ({ initialSettings }: { initialSettings: Orch
         </div>
       </section>
       <section className='px-6 max-sm:px-4 w-full flex flex-col gap-10 pb-16'>
+        <Section
+          orientation='vertical'
+          title='Appearance'
+          titleClassName='pb-4'
+          contentClassName='gap-6'
+        >
+          <AccentColorPicker
+            value={accentColor}
+            onChange={setAccentColor}
+          />
+        </Section>
         <Section
           orientation='vertical'
           title='Frontend defaults'

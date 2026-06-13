@@ -23,7 +23,7 @@ export const AppIcon = ({
   return (
     <div
       className={cn(
-        'flex aspect-square items-center justify-center overflow-hidden rounded-[24%] bg-slate-400/20 text-sm font-semibold text-secondary-foreground transition-all',
+        'flex aspect-square items-center justify-center overflow-hidden rounded-[24%] bg-muted/70 text-sm font-semibold text-foreground-muted transition-all',
         className
       )}
       style={{

@@ -75,7 +75,7 @@ export const OrchestratorSettingsFieldsSection = ({
                 })
               }
             />
-            <span className='text-sm text-secondary-foreground'>seconds</span>
+            <span className='text-sm text-foreground-muted'>seconds</span>
           </div>
         </Setting>
         <Setting
@@ -96,7 +96,7 @@ export const OrchestratorSettingsFieldsSection = ({
                 })
               }
             />
-            <span className='text-sm text-secondary-foreground'>MB</span>
+            <span className='text-sm text-foreground-muted'>MB</span>
           </div>
         </Setting>
       </Section>

@@ -110,7 +110,7 @@ export const GroupEditPageSkeleton = () => (
 const EditBodySkeleton = ({ leftTitle }: { leftTitle: string }) => (
   <section className='grid w-full gap-6 px-6 pb-16 max-sm:px-4 xl:grid-cols-[minmax(0,1fr)_minmax(28rem,0.85fr)]'>
     <div className='grid content-start gap-6'>
-      <div className='rounded-lg border border-border/70 bg-card/40 p-6 max-sm:p-4'>
+      <div className='rounded-lg border border-border/70 bg-surface-panel/50 p-6 max-sm:p-4'>
         <Skeleton className={`mb-5 h-5 ${leftTitle}`} />
         <div className='grid gap-4 md:grid-cols-2'>
           {Array.from({ length: 4 }).map((_, index) => (
@@ -124,7 +124,7 @@ const EditBodySkeleton = ({ leftTitle }: { leftTitle: string }) => (
           ))}
         </div>
       </div>
-      <div className='rounded-lg border border-border/70 bg-card/40 p-6 max-sm:p-4'>
+      <div className='rounded-lg border border-border/70 bg-surface-panel/50 p-6 max-sm:p-4'>
         <Skeleton className='mb-5 h-5 w-20' />
         <div className='grid gap-4 md:grid-cols-2'>
           {Array.from({ length: 4 }).map((_, index) => (
@@ -139,7 +139,7 @@ const EditBodySkeleton = ({ leftTitle }: { leftTitle: string }) => (
         </div>
       </div>
     </div>
-    <div className='rounded-lg border border-border/70 bg-card/40 p-6 max-sm:p-4'>
+    <div className='rounded-lg border border-border/70 bg-surface-panel/50 p-6 max-sm:p-4'>
       <Skeleton className='mb-5 h-5 w-28' />
       <div className='grid gap-3'>
         {Array.from({ length: 10 }).map((_, index) => (

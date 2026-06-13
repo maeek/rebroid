@@ -58,7 +58,7 @@ export const StatusSplash = ({
         </div>
         <div className='flex flex-col gap-2'>
           <h2 className='text-2xl font-medium'>{title}</h2>
-          <p className='text-secondary-foreground'>{description}</p>
+          <p className='text-foreground-muted'>{description}</p>
         </div>
         <Visible when={detail}>
           <p className='w-full text-xs text-muted-foreground text-center'>{detail}</p>

@@ -16,11 +16,11 @@ export const AppsListEmptyState = () => {
               <div className='absolute inset-0 rounded-full bg-primary/10' />
               <div className='absolute size-20 rounded-full bg-secondary/80' />
               <IconBrandAndroid className='relative size-12 text-primary' />
-              <IconServerBolt className='absolute -right-1 bottom-3 size-8 text-secondary-foreground' />
+              <IconServerBolt className='absolute -right-1 bottom-3 size-8 text-foreground-muted' />
             </div>
             <div className='flex flex-col gap-2'>
               <h3 className='text-2xl font-medium'>No Android apps yet</h3>
-              <p className='text-secondary-foreground'>
+              <p className='text-foreground-muted'>
                 Create your first isolated app, upload an APK if needed, and Rebroid will prepare it.
               </p>
             </div>

@@ -62,7 +62,7 @@ export const StreamingToolsSection = ({
         </div>
       }
       description={
-        <div className='flex flex-wrap items-center gap-x-1 text-xs text-secondary-foreground'>
+        <div className='flex flex-wrap items-center gap-x-1 text-xs text-foreground-muted'>
           <span>{streamingSummary}</span>
           <span>•</span>
           <span>{rendererNote}</span>
@@ -90,7 +90,7 @@ export const StreamingToolsSection = ({
         <StreamingSetting label='Preset'>
           <Select
             value={viewerSettings.preset}
-            onValueChange={value => applyPreset(value as ViewerStreamingPreset)}
+            onValueChange={value => applyPreset(value)}
           >
             <SelectTrigger className='w-full lg:max-w-100'>
               <SelectValue />

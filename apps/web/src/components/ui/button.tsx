@@ -1,28 +1,27 @@
 import * as React from 'react'
-import { Slot } from '@radix-ui/react-slot'
 import { cva, type VariantProps } from 'class-variance-authority'
+import { PrimitiveSlot } from '@/components/ui/primitive-slot'
+import { controlHoverClassName, controlSurfaceClassName, focusRingClassName } from '@/components/ui/surface-classes'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer backdrop-blur-xs",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer",
   {
     variants: {
       variant: {
         default:
-          'border-primary/20 bg-primary/80 text-primary-foreground hover:bg-primary/92 dark:shadow-[inset_0_0_10px_0_rgba(255,255,255,0.2)]! shadow-[inset_0_0_15px_0_rgba(0,0,0,0.2)]!',
+          'border-primary/30 bg-primary text-primary-foreground hover:bg-primary/90 shadow-[inset_0_0_15px_0_rgba(0,0,0,0.16)] dark:shadow-[inset_0_0_10px_0_rgba(255,255,255,0.16)]',
         destructive:
-          'border-destructive/25 bg-destructive/65 text-foreground hover:bg-destructive/78 dark:shadow-[inset_0_0_10px_0_rgba(255,255,255,0.2)]! shadow-[inset_0_0_15px_0_rgba(0,0,0,0.2)]!',
-        outline:
-          'border-border/70 bg-background/55 hover:bg-accent/70 hover:text-accent-foreground dark:bg-primary/7 dark:hover:bg-primary/10 shadow-[inset_0_0_20px_0_rgba(0,0,0,0.05)]',
+          'border-destructive/30 bg-destructive text-destructive-foreground hover:bg-destructive/88 shadow-[inset_0_0_15px_0_rgba(0,0,0,0.16)] dark:shadow-[inset_0_0_10px_0_rgba(255,255,255,0.12)]',
+        outline: cn(controlSurfaceClassName, controlHoverClassName, 'hover:text-foreground'),
         secondary:
-          'border-border/70 bg-secondary/72 text-secondary-foreground hover:bg-secondary/86 hover:text-foreground shadow-[inset_0_0_20px_0_rgba(0,0,0,0.05)] dark:shadow-[inset_0_0_20px_0_rgba(255,255,255,0.05)]',
-        input:
-          'border-border/70 bg-input/72 text-foreground hover:bg-input/88 shadow-[inset_0_0_20px_0_rgba(0,0,0,0.05)] dark:shadow-[inset_0_0_20px_0_rgba(255,255,255,0.05)]',
+          'border-border/70 bg-secondary text-secondary-foreground hover:bg-secondary/86 hover:text-foreground shadow-[inset_0_0_20px_0_rgba(0,0,0,0.05)] dark:shadow-[inset_0_0_20px_0_rgba(255,255,255,0.05)]',
+        input: cn(controlSurfaceClassName, controlHoverClassName),
         ghost:
-          'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 shadow-[inset_0_0_20px_0_rgba(0,0,0,0.05)] dark:shadow-[inset_0_0_20px_0_rgba(255,255,255,0.05)]',
+          'border-transparent hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/60 shadow-[inset_0_0_20px_0_rgba(0,0,0,0.05)] dark:shadow-[inset_0_0_20px_0_rgba(255,255,255,0.05)]',
         link: 'text-primary underline-offset-4 hover:underline border-none',
         update:
-          'border-green-500/20 bg-green-500/22 text-foreground underline-offset-4 hover:bg-green-500/30 shadow-[inset_0_0_20px_0_rgba(0,0,0,0.05)] dark:shadow-[inset_0_0_20px_0_rgba(255,255,255,0.05)]'
+          'border-success/30 bg-success/14 text-foreground underline-offset-4 hover:bg-success/22 shadow-[inset_0_0_20px_0_rgba(0,0,0,0.05)] dark:shadow-[inset_0_0_20px_0_rgba(255,255,255,0.05)]'
       },
       size: {
         default: 'h-9 px-4 py-2 has-[>svg]:px-3',
@@ -48,12 +47,12 @@ function Button({
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
   }) {
-  const Comp = asChild ? Slot : 'button'
+  const Comp = asChild ? PrimitiveSlot : 'button'
 
   return (
     <Comp
       data-slot='button'
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={cn(focusRingClassName, buttonVariants({ variant, size, className }))}
       {...props}
     />
   )

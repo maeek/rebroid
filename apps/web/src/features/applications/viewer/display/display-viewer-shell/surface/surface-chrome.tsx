@@ -25,7 +25,7 @@ export const SurfaceChrome = ({
 }) => (
   <div
     className={cn(
-      'flex h-7 shrink-0 items-center justify-between gap-2 rounded-t-lg border border-b-0 border-border/70 bg-card/90 px-1.5 text-foreground shadow-md backdrop-blur-md',
+      'flex h-7 shrink-0 items-center justify-between gap-2 rounded-t-lg border border-b-0 border-border/70 bg-surface-elevated/92 px-1.5 text-foreground shadow-md backdrop-blur-md',
       'w-full min-w-0',
       isActive && 'bg-secondary/80'
     )}

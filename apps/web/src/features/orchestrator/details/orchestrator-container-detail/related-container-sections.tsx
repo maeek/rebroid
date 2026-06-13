@@ -37,7 +37,7 @@ export const RelatedImageSection = () => {
         </>
       </Visible>
       <Visible when={!relatedImage}>
-        <p className='text-sm text-secondary-foreground'>The related image is no longer present locally.</p>
+        <p className='text-sm text-foreground-muted'>The related image is no longer present locally.</p>
       </Visible>
     </Section>
   )
@@ -53,7 +53,7 @@ export const RelatedNetworksSection = () => {
       contentClassName='gap-3'
     >
       <Visible when={networks.length > 0}>
-        <div className='overflow-hidden rounded-lg border border-border/60 bg-background/25'>
+        <div className='overflow-hidden rounded-lg border border-border/60 bg-surface-band/35'>
           <Table>
             <TableHeader>
               <TableRow>
@@ -66,8 +66,8 @@ export const RelatedNetworksSection = () => {
               {networks.map(network => (
                 <TableRow key={network.id}>
                   <TableCell className='font-medium'>{network.name}</TableCell>
-                  <TableCell className='text-secondary-foreground'>{network.driver}</TableCell>
-                  <TableCell className='text-secondary-foreground'>
+                  <TableCell className='text-foreground-muted'>{network.driver}</TableCell>
+                  <TableCell className='text-foreground-muted'>
                     {network.subnets.length > 0 ? network.subnets.join(', ') : 'none'}
                   </TableCell>
                 </TableRow>
@@ -77,7 +77,7 @@ export const RelatedNetworksSection = () => {
         </div>
       </Visible>
       <Visible when={networks.length === 0}>
-        <p className='text-sm text-secondary-foreground'>No related networks were found for this container.</p>
+        <p className='text-sm text-foreground-muted'>No related networks were found for this container.</p>
       </Visible>
     </Section>
   )

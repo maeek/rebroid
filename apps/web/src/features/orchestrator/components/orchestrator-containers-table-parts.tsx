@@ -75,7 +75,7 @@ export const createContainerColumns = (): ColumnDef<PlatformContainer>[] => [
     header: 'Image',
     size: 384,
     meta: { label: 'Image' },
-    cell: ({ row }) => <div className='truncate text-sm text-secondary-foreground'>{row.original.image}</div>
+    cell: ({ row }) => <div className='truncate text-sm text-foreground-muted'>{row.original.image}</div>
   },
   {
     id: 'applicationId',
@@ -84,7 +84,7 @@ export const createContainerColumns = (): ColumnDef<PlatformContainer>[] => [
     size: 256,
     meta: { label: 'Application' },
     cell: ({ row }) => (
-      <div className='truncate text-sm text-secondary-foreground'>{row.original.applicationId ?? 'unmanaged'}</div>
+      <div className='truncate text-sm text-foreground-muted'>{row.original.applicationId ?? 'unmanaged'}</div>
     )
   },
   {
@@ -94,7 +94,7 @@ export const createContainerColumns = (): ColumnDef<PlatformContainer>[] => [
     enableSorting: false,
     meta: { label: 'Networks' },
     cell: ({ row }) => (
-      <div className='flex flex-wrap gap-1 text-sm text-secondary-foreground'>
+      <div className='flex flex-wrap gap-1 text-sm text-foreground-muted'>
         {row.original.networks.length > 0
           ? row.original.networks.map(network => (
               <Link

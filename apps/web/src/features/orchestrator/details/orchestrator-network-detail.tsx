@@ -143,7 +143,7 @@ export const OrchestratorNetworkDetail = ({ details }: OrchestratorNetworkDetail
           titleClassName='pb-2'
         >
           <Visible when={details.relatedContainers.length > 0}>
-            <div className='overflow-hidden rounded-lg border border-border/60 bg-background/25'>
+            <div className='overflow-hidden rounded-lg border border-border/60 bg-surface-band/35'>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -160,7 +160,7 @@ export const OrchestratorNetworkDetail = ({ details }: OrchestratorNetworkDetail
                       <TableCell>
                         <ContainerStateBadge state={container.state} />
                       </TableCell>
-                      <TableCell className='text-secondary-foreground'>{container.image}</TableCell>
+                      <TableCell className='text-foreground-muted'>{container.image}</TableCell>
                       <TableCell className='text-right'>
                         <Button
                           asChild
@@ -178,7 +178,7 @@ export const OrchestratorNetworkDetail = ({ details }: OrchestratorNetworkDetail
             </div>
           </Visible>
           <Visible when={details.relatedContainers.length === 0}>
-            <p className='text-sm text-secondary-foreground'>No local containers are attached to this network.</p>
+            <p className='text-sm text-foreground-muted'>No local containers are attached to this network.</p>
           </Visible>
         </Section>
 

@@ -95,7 +95,7 @@ export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'to
           />
         </Visible>
         <Visible when={!canAttach}>
-          <div className='flex min-h-112 w-full items-center justify-center rounded-4xl border border-white/10 bg-card/55 p-6 backdrop-blur-xl'>
+          <div className='flex min-h-112 w-full items-center justify-center rounded-4xl border border-white/10 bg-surface-panel/64 p-6 backdrop-blur-xl'>
             <StatusSplash
               title='Separate session required'
               description='This app belongs to another user. Open it as your own copy to start a private viewer session.'

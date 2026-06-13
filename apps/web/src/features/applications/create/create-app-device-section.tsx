@@ -64,7 +64,7 @@ export const CreateAppDeviceSection = ({
           contentClassName='gap-2'
         >
           <div className='font-bold text-sm text-foreground'>Redroid base arguments</div>
-          <div className='rounded-md border border-border/80 bg-card/30 p-3 text-xs text-muted-foreground'>
+          <div className='rounded-md border border-border/80 bg-surface-panel/38 p-3 text-xs text-muted-foreground'>
             <div className='grid gap-2'>
               <p>
                 Applied automatically for Redroid images. The managed ADB endpoint uses TCP port 5555. Extra arguments

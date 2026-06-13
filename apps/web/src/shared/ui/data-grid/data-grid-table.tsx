@@ -43,7 +43,7 @@ export const DataGridTable = <TData,>({
         minWidth: minWidth ?? renderedTableWidth
       }}
     >
-      <TableHeader className='bg-background/45'>
+      <TableHeader className='bg-surface-band/55'>
         {table.getHeaderGroups().map(headerGroup => (
           <TableRow
             key={headerGroup.id}
@@ -129,8 +129,8 @@ export const DataGridTable = <TData,>({
             >
               {emptyState ?? (
                 <div className='mx-auto flex max-w-md flex-col items-center text-center'>
-                  <div className='mb-3 rounded-full border border-border/70 bg-card/60 p-3'>
-                    <IconSearch className='size-6 text-secondary-foreground' />
+                  <div className='mb-3 rounded-full border border-border/70 bg-surface-panel/70 p-3'>
+                    <IconSearch className='size-6 text-foreground-muted' />
                   </div>
                   <div className='font-medium'>No rows found</div>
                 </div>
@@ -142,6 +142,12 @@ export const DataGridTable = <TData,>({
             const rowContent = (
               <TableRow
                 key={row.id}
+                className={cn(
+                  'hover:bg-surface-band/50 data-[state=selected]:border-primary/25',
+                  'data-[state=selected]:bg-primary/8 data-[state=selected]:shadow-[inset_2px_0_0_hsl(var(--primary))]',
+                  'data-[state=selected]:hover:bg-primary/12 dark:data-[state=selected]:bg-primary/10',
+                  'oled:data-[state=selected]:bg-primary/12 oled:data-[state=selected]:hover:bg-primary/16'
+                )}
                 data-state={selection?.selectedIds.has(getRowId(row.original)) ? 'selected' : undefined}
                 onContextMenu={() => onContextMenuRow(row)}
               >

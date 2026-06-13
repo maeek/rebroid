@@ -87,7 +87,7 @@ export const AppFormIconSection = ({
           <div className='flex w-full items-center justify-between gap-4'>
             <div className='flex min-w-0 flex-col'>
               <span className='text-sm font-medium'>Auto extract from APK</span>
-              <span className='text-xs text-secondary-foreground'>
+              <span className='text-xs text-foreground-muted'>
                 {hasExtractedIcon
                   ? 'A launcher icon was found during APK upload.'
                   : 'Upload an APK to extract its launcher icon.'}

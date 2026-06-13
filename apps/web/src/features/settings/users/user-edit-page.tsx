@@ -83,7 +83,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
             </Avatar>
             <div className='min-w-0'>
               <h2 className='truncate text-3xl font-medium max-sm:text-xl'>{draft.name || draft.username}</h2>
-              <p className='text-sm text-secondary-foreground'>Account settings, quotas, groups, and permissions.</p>
+              <p className='text-sm text-foreground-muted'>Account settings, quotas, groups, and permissions.</p>
             </div>
           </div>
           <div className='flex gap-4 items-center'>
@@ -164,7 +164,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
             {/* <Setting
               label='Active Account'
               description='Disabled users cannot sign in and their future actions are denied.'
-              className='rounded-lg bg-background/45 px-4 py-3'
+              className='rounded-lg bg-surface-band/55 px-4 py-3'
             >
               <Switch
                 checked={!draft.disabled}
@@ -201,7 +201,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
           title={
             <div>
               <div>Permissions</div>
-              <p className='mt-1 text-sm font-normal text-secondary-foreground'>
+              <p className='mt-1 text-sm font-normal text-foreground-muted'>
                 Group permissions are inherited. Toggling a permission here creates a user-level override.
               </p>
             </div>

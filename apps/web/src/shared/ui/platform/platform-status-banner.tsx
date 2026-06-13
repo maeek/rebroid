@@ -13,13 +13,13 @@ const statusTone = (status: string, ok: boolean) => {
 
   if (ok || status === 'healthy') {
     return {
-      banner: 'border-green-400/25 bg-green-400/10',
+      banner: 'border-success/35 bg-success/10',
       badge: 'status' as const
     }
   }
 
   return {
-    banner: 'border-amber-500/35 bg-amber-500/10',
+    banner: 'border-warning/35 bg-warning/10',
     badge: 'warning' as const
   }
 }
@@ -44,7 +44,7 @@ export const PlatformStatusBanner = ({
   return (
     <div
       className={cn(
-        'rounded-lg border px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md',
+        'rounded-lg border px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] supports-[backdrop-filter]:backdrop-blur-md',
         tone.banner
       )}
     >
@@ -56,7 +56,7 @@ export const PlatformStatusBanner = ({
           >
             {status}
           </Badge>
-          <span className='min-w-0 text-sm text-secondary-foreground'>{message}</span>
+          <span className='min-w-0 text-sm text-foreground-muted'>{message}</span>
         </div>
         {actions}
       </div>
@@ -65,7 +65,7 @@ export const PlatformStatusBanner = ({
           title={detailTitle}
           collapsible
           className='mt-3'
-          titleClassName='border-t border-border/60 pt-3 text-sm text-secondary-foreground'
+          titleClassName='border-t border-border/60 pt-3 text-sm text-foreground-muted'
           contentClassName='gap-3'
         >
           {details}

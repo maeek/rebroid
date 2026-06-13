@@ -138,7 +138,7 @@ export const ProviderModelsGrid = ({
               checked={row.original.enabled}
               onCheckedChange={enabled => onUpdateModel(row.original.index, { enabled })}
             />
-            <span className='text-sm text-secondary-foreground'>{row.original.enabled ? 'Enabled' : 'Disabled'}</span>
+            <span className='text-sm text-foreground-muted'>{row.original.enabled ? 'Enabled' : 'Disabled'}</span>
             {row.original.default ? <Badge variant='outline'>Default</Badge> : null}
           </div>
         )
@@ -184,7 +184,7 @@ export const ProviderModelsGrid = ({
       <div className='flex flex-wrap items-center justify-between gap-3'>
         <div>
           <h3 className='text-sm font-semibold'>Models</h3>
-          <p className='text-xs text-secondary-foreground'>
+          <p className='text-xs text-foreground-muted'>
             Good local starting points: Qwen2.5-VL 7B/32B or Llama 3.1/3.2 tool-capable variants.
           </p>
         </div>
@@ -201,7 +201,7 @@ export const ProviderModelsGrid = ({
       </div>
       {selectedIds.size > 0 ? (
         <div className='flex flex-wrap items-center justify-between gap-3'>
-          <span className='text-sm text-secondary-foreground'>{selectedIds.size} selected</span>
+          <span className='text-sm text-foreground-muted'>{selectedIds.size} selected</span>
           <div className='flex flex-wrap items-center gap-2'>
             <Button
               type='button'
@@ -245,7 +245,7 @@ export const ProviderModelsGrid = ({
         getRowId={model => model.rowId}
         selection={{ selectedIds, onSelectedIdsChange: setSelectedIds }}
         minWidth='74rem'
-        emptyState={<div className='text-center text-secondary-foreground'>No models configured.</div>}
+        emptyState={<div className='text-center text-foreground-muted'>No models configured.</div>}
         rowContextMenu={row => (
           <>
             <ContextMenuItem onSelect={() => setSettingsRowId(row.original.rowId)}>

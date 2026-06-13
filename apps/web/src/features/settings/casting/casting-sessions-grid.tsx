@@ -34,7 +34,7 @@ export const createCastingSessionColumns = ({
     header: 'Session ID',
     size: 224,
     meta: { label: 'Session ID' },
-    cell: ({ row }) => <span className='truncate text-sm text-secondary-foreground'>{row.original.id}</span>
+    cell: ({ row }) => <span className='truncate text-sm text-foreground-muted'>{row.original.id}</span>
   },
   {
     id: 'status',
@@ -51,7 +51,7 @@ export const createCastingSessionColumns = ({
     size: 192,
     meta: { label: 'Last activity' },
     cell: ({ row }) => (
-      <span className='text-sm text-secondary-foreground'>{formatTimestamp(row.original.lastActivityAt)}</span>
+      <span className='text-sm text-foreground-muted'>{formatTimestamp(row.original.lastActivityAt)}</span>
     )
   },
   {
@@ -60,9 +60,7 @@ export const createCastingSessionColumns = ({
     header: 'Expires',
     size: 192,
     meta: { label: 'Expires' },
-    cell: ({ row }) => (
-      <span className='text-sm text-secondary-foreground'>{formatTimestamp(row.original.expiresAt)}</span>
-    )
+    cell: ({ row }) => <span className='text-sm text-foreground-muted'>{formatTimestamp(row.original.expiresAt)}</span>
   }
 ]
 

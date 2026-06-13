@@ -91,7 +91,7 @@ export const NotificationCard = ({
         <p className={cn('truncate font-semibold text-foreground', compact ? 'mt-0.5 text-sm' : 'mt-1 text-sm')}>
           {notification.title}
         </p>
-        <p className={cn('text-secondary-foreground', compact ? 'mt-0.5 line-clamp-2 text-xs' : 'mt-1 text-sm')}>
+        <p className={cn('text-foreground-muted', compact ? 'mt-0.5 line-clamp-2 text-xs' : 'mt-1 text-sm')}>
           {notification.text}
         </p>
       </div>

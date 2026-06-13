@@ -68,7 +68,7 @@ export const ActivityEventsToolbar = () => {
       />
 
       <div className='flex min-h-7 flex-wrap items-center gap-2'>
-        <span className='flex items-center gap-1 text-sm text-secondary-foreground'>
+        <span className='flex items-center gap-1 text-sm text-foreground-muted'>
           <IconFilter className='size-4' />
           {controller.activeFilters.length === 0
             ? 'No filters applied'
@@ -80,7 +80,7 @@ export const ActivityEventsToolbar = () => {
             variant='secondary'
             className='gap-1 py-1 font-normal'
           >
-            <span className='text-secondary-foreground'>{label}</span>
+            <span className='text-foreground-muted'>{label}</span>
             {value}
             <button
               type='button'

@@ -71,7 +71,7 @@ export const BlurredImageBackdrop = ({
   return (
     <div
       aria-hidden='true'
-      className='pointer-events-none fixed inset-0 z-0 isolate overflow-hidden'
+      className='pointer-events-none fixed inset-0 z-0 isolate overflow-hidden oled:hidden'
     >
       {layers.map((layer, index) => (
         <div

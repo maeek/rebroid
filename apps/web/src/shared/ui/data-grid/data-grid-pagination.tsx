@@ -26,7 +26,7 @@ export function DataGridPagination({
   const lastItem = Math.min((pageIndex + 1) * pageSize, totalItems)
 
   return (
-    <div className='flex flex-wrap items-center justify-between gap-3 text-sm text-secondary-foreground'>
+    <div className='flex flex-wrap items-center justify-between gap-3 text-sm text-foreground-muted'>
       <div>
         {firstItem}-{lastItem} of {totalItems}
       </div>

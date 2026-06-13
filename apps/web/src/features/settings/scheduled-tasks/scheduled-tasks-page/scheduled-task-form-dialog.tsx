@@ -24,7 +24,6 @@ import {
   useScheduledTasksControllerContext
 } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-context'
 import { ScheduleEditor } from '@/shared/ui/schedule/schedule-editor'
-import type { ScheduledTaskActionType } from '@/server/orchestrator/scheduled-tasks/types'
 
 export const ScheduledTaskFormDialog = () => {
   const { initialActions } = useScheduledTasksContext()
@@ -81,7 +80,7 @@ export const ScheduledTaskFormDialog = () => {
               onValueChange={value =>
                 setForm(current => ({
                   ...current,
-                  actionType: value as ScheduledTaskActionType,
+                  actionType: value,
                   payload: {}
                 }))
               }
@@ -100,7 +99,7 @@ export const ScheduledTaskFormDialog = () => {
                 ))}
               </SelectContent>
             </Select>
-            <p className='text-sm text-secondary-foreground'>{actionByType.get(form.actionType)?.description}</p>
+            <p className='text-sm text-foreground-muted'>{actionByType.get(form.actionType)?.description}</p>
           </div>
           <ScheduleEditor
             schedule={form.schedule}
@@ -136,7 +135,7 @@ export const ScheduledTaskFormDialog = () => {
                     }))
                   }
                 />
-                <span className='text-sm text-secondary-foreground'>days</span>
+                <span className='text-sm text-foreground-muted'>days</span>
               </div>
             </div>
           </Visible>

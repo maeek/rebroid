@@ -52,11 +52,12 @@ export const AppNetworkPolicyEditorSection = ({
   return (
     <Section
       title={title}
+      surface='band'
       titleClassName={titleClassName}
       contentClassName={contentClassName}
     >
       <Visible when={sectionDescription}>
-        <p className='text-sm text-secondary-foreground'>{sectionDescription}</p>
+        <p className='text-sm text-foreground-muted'>{sectionDescription}</p>
       </Visible>
       <Visible when={topSection}>{topSection}</Visible>
       <Setting

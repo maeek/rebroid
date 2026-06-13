@@ -121,7 +121,7 @@ function SwitchBlockSettings({
           </Button>
         </div>
         {step.cases.length === 0 ? (
-          <p className='rounded-md border border-dashed border-border/60 px-3 py-4 text-center text-sm text-secondary-foreground'>
+          <p className='rounded-md border border-dashed border-border/60 px-3 py-4 text-center text-sm text-foreground-muted'>
             No cases yet.
           </p>
         ) : null}
@@ -173,7 +173,7 @@ function RepeatBlockSettings({
         <Label>Mode</Label>
         <Select
           value={step.mode}
-          onValueChange={mode => onChange({ ...step, mode: mode as AutomationRepeatStepForm['mode'] })}
+          onValueChange={mode => onChange({ ...step, mode: mode })}
         >
           <SelectTrigger className='w-48 max-w-full'>
             <SelectValue />

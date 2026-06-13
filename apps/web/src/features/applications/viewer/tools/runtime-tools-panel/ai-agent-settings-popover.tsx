@@ -13,11 +13,11 @@ const healthLabel = (health: AutomationAiProviderHealth) =>
 
 const healthIcon = (health: AutomationAiProviderHealth | null, isCheckingHealth: boolean) => {
   if (isCheckingHealth) {
-    return <IconCircleDashed className='size-4 animate-spin text-secondary-foreground' />
+    return <IconCircleDashed className='size-4 animate-spin text-foreground-muted' />
   }
 
   if (!health) {
-    return <IconCircleDashed className='size-4 text-secondary-foreground' />
+    return <IconCircleDashed className='size-4 text-foreground-muted' />
   }
 
   if (health.status === 'ok') {
@@ -36,7 +36,7 @@ export const AiAgentModelStatus = ({
   isCheckingHealth: boolean
   selectedModel: AutomationAiModelCatalogProvider['models'][number] | undefined
 }) => (
-  <div className='hidden min-w-0 items-center gap-2 rounded-md border border-border/70 bg-background/25 px-3 py-2 text-xs text-secondary-foreground sm:flex'>
+  <div className='hidden min-w-0 items-center gap-2 rounded-md border border-border/70 bg-surface-band/35 px-3 py-2 text-xs text-foreground-muted sm:flex'>
     {healthIcon(health, isCheckingHealth)}
     <span className='min-w-0 truncate'>
       {selectedModel?.label ?? 'No model selected'}
@@ -104,7 +104,7 @@ export const AiAgentSettingsPopover = ({
       <div className='grid gap-4'>
         <div className='grid gap-1'>
           <div className='text-sm font-medium'>AI settings</div>
-          <div className='text-xs text-secondary-foreground'>
+          <div className='text-xs text-foreground-muted'>
             Choose a planner model for tool calls and an optional vision model for screen summaries.
           </div>
         </div>
@@ -221,12 +221,12 @@ export const AiAgentSettingsPopover = ({
                 if (/^\d{0,2}$/.test(value)) setTimeoutMinutesInput(value)
               }}
             />
-            <div className='text-xs text-secondary-foreground'>
+            <div className='text-xs text-foreground-muted'>
               Maximum run time in minutes before the agent is stopped.
             </div>
           </div>
         </div>
-        <div className='rounded-md border border-border/70 bg-background/25 px-3 py-2 text-xs text-secondary-foreground'>
+        <div className='rounded-md border border-border/70 bg-surface-band/35 px-3 py-2 text-xs text-foreground-muted'>
           <div className='flex items-center justify-between gap-3'>
             <div className='flex min-w-0 items-center gap-2 font-medium text-foreground'>
               {healthIcon(health, isCheckingHealth)}

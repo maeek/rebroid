@@ -1,7 +1,7 @@
 import { Skeleton } from '@/components/ui/skeleton'
 
 export const JsonBlockSkeleton = ({ lines = 10, dark = false }: { lines?: number; dark?: boolean }) => (
-  <div className={dark ? 'rounded-lg bg-black/25 p-4' : 'rounded-lg bg-background/30 p-4'}>
+  <div className={dark ? 'rounded-lg bg-black/25 p-4' : 'rounded-lg bg-surface-band/40 p-4'}>
     <div className='flex flex-col gap-3'>
       {Array.from({ length: lines }).map((_, index) => (
         <Skeleton

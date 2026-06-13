@@ -20,7 +20,7 @@ export const ProviderEnabledSection = ({
     <div className='flex items-center justify-between gap-4'>
       <div>
         <Label>Enabled</Label>
-        <p className='text-xs text-secondary-foreground'>
+        <p className='text-xs text-foreground-muted'>
           Enabled providers with enabled models appear in automation editors.
         </p>
       </div>
@@ -45,7 +45,7 @@ export const ProviderConnectionSection = ({
   >
     <div>
       <h3 className='text-sm font-semibold'>Provider</h3>
-      <p className='text-xs text-secondary-foreground'>
+      <p className='text-xs text-foreground-muted'>
         Local providers can use Ollama or any OpenAI-compatible /v1 endpoint.
       </p>
     </div>
@@ -76,7 +76,7 @@ export const ProviderConnectionSection = ({
       >
         <Select
           value={provider.kind}
-          onValueChange={kind => onChange({ kind: kind as ProviderFormState['kind'] })}
+          onValueChange={kind => onChange({ kind: kind })}
         >
           <SelectTrigger className='w-full'>
             <SelectValue />
@@ -117,7 +117,7 @@ const Field = ({ label, description, children }: { label: string; description: s
   <div className='grid gap-2'>
     <div className='grid gap-1'>
       <Label>{label}</Label>
-      <p className='text-xs text-secondary-foreground'>{description}</p>
+      <p className='text-xs text-foreground-muted'>{description}</p>
     </div>
     {children}
   </div>

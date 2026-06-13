@@ -4,7 +4,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Visible } from '@/components/ui/visible'
 import { useAppsListContext } from './apps-list-context'
 import { AppsListTitle } from './apps-list-title'
-import type { AppsListSortMode } from '@/features/applications/domain/app-sort'
 
 export const AppsListHeader = () => {
   const {
@@ -29,7 +28,7 @@ export const AppsListHeader = () => {
         <div className='flex items-center gap-2 max-sm:flex-wrap max-sm:justify-end'>
           <Select
             value={sortMode}
-            onValueChange={value => setSortMode(value as AppsListSortMode)}
+            onValueChange={value => setSortMode(value)}
           >
             <SelectTrigger
               aria-label='Sort apps'
@@ -93,11 +92,9 @@ export const AppsListHeader = () => {
         </div>
       </div>
       <Visible when={isManaging}>
-        <div className='mx-6 mb-3 flex items-center justify-between gap-3 rounded-lg border border-input bg-card/40 px-4 py-3 text-sm max-sm:mx-4 max-sm:flex-col max-sm:items-start my-3'>
-          <span className='text-secondary-foreground'>
-            {selectionCount} selected. Choose apps, then run a bulk action.
-          </span>
-          <span className='text-secondary-foreground'>
+        <div className='mx-6 mb-3 flex items-center justify-between gap-3 rounded-lg border border-surface-border bg-surface-panel/50 px-4 py-3 text-sm max-sm:mx-4 max-sm:flex-col max-sm:items-start my-3'>
+          <span className='text-foreground-muted'>{selectionCount} selected. Choose apps, then run a bulk action.</span>
+          <span className='text-foreground-muted'>
             Stop targets: {stoppableSelectedCount} - Delete targets: {deletableSelectedCount}
           </span>
         </div>

@@ -40,7 +40,7 @@ import type { ColumnDef, SortingState } from '@tanstack/react-table'
 const AllowlistBadges = ({ cidrs }: { cidrs: string[] }) => {
   const { empty, hiddenCidrs, visibleCidrs } = firewallAllowlistDisplay(cidrs)
 
-  if (empty) return <span className='text-sm text-secondary-foreground'>No custom CIDRs</span>
+  if (empty) return <span className='text-sm text-foreground-muted'>No custom CIDRs</span>
 
   return (
     <div className='flex max-w-[24rem] flex-wrap gap-1'>
@@ -215,7 +215,7 @@ export const FirewallSettings = ({
         size: 128,
         meta: { label: 'Runtime' },
         cell: ({ row }) => (
-          <span className='capitalize text-sm text-secondary-foreground'>{row.original.status.currentStatus}</span>
+          <span className='capitalize text-sm text-foreground-muted'>{row.original.status.currentStatus}</span>
         )
       },
       {
@@ -254,7 +254,7 @@ export const FirewallSettings = ({
           const label = firewallRestrictionLabel(row.original)
           return (
             <label className='flex items-center justify-end gap-2'>
-              <span className='text-xs text-secondary-foreground'>{label}</span>
+              <span className='text-xs text-foreground-muted'>{label}</span>
               <Switch
                 checked={row.original.network.policy.enabled}
                 disabled={busy !== null}
@@ -322,7 +322,7 @@ export const FirewallSettings = ({
             }}
             minWidth='74rem'
             emptyState={
-              <div className='text-center text-secondary-foreground'>
+              <div className='text-center text-foreground-muted'>
                 {submittedSearch ? 'No policies match this search.' : 'No application containers are configured.'}
               </div>
             }

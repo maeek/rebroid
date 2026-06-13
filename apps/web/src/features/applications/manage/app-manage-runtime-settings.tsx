@@ -41,6 +41,7 @@ export const AppManageRuntimeSettings = ({
   return (
     <Section
       title='Runtime'
+      surface='band'
       titleClassName='pb-4'
       contentClassName='gap-5'
     >

@@ -25,7 +25,7 @@ export function AutomationStepDragPreview({
       </span>
       <span className='min-w-0'>
         <span className='block truncate text-sm font-medium'>{stepTitle(step, command)}</span>
-        <span className='block truncate text-xs text-secondary-foreground'>{stepSummary(step)}</span>
+        <span className='block truncate text-xs text-foreground-muted'>{stepSummary(step)}</span>
       </span>
     </div>
   )

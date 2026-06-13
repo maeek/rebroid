@@ -35,7 +35,7 @@ export function AutomationStepInspector({
   return (
     <>
       <aside className='hidden min-w-0 xl:block'>
-        <div className='overflow-hidden rounded-lg border border-border/70 bg-card/40 dark:bg-white/7 backdrop-blur-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]'>
+        <div className='overflow-hidden rounded-lg border border-border/70 bg-surface-panel/50 dark:bg-white/7 backdrop-blur-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]'>
           {step ? (
             <AutomationStepInspectorContent
               step={step}
@@ -47,7 +47,7 @@ export function AutomationStepInspector({
               onChange={onChange}
             />
           ) : (
-            <div className='px-4 py-10 text-center text-sm text-secondary-foreground'>Select a step to edit.</div>
+            <div className='px-4 py-10 text-center text-sm text-foreground-muted'>Select a step to edit.</div>
           )}
         </div>
       </aside>

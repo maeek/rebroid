@@ -61,13 +61,13 @@ export const AutomationStatusToolsSection = ({
   const selectedRun = visibleRuns.find(run => run.id === selectedRunId) ?? visibleRuns[0] ?? null
 
   return (
-    <section className={cn('grid gap-4 rounded-md border border-border/70 bg-background/35 p-4', className)}>
+    <section className={cn('grid gap-4 rounded-md border border-border/70 bg-surface-band/45 p-4', className)}>
       <div className='flex flex-wrap items-center justify-between gap-3'>
         <div className={cn('flex items-center gap-2', hideHeader && 'sr-only')}>
           <IconRobot className='size-4 text-primary' />
           <div>
             <h3 className='text-sm font-semibold'>Automations</h3>
-            <p className='text-xs text-secondary-foreground'>Active automation runs for this application.</p>
+            <p className='text-xs text-foreground-muted'>Active automation runs for this application.</p>
           </div>
         </div>
         <div className='flex items-center gap-2'>
@@ -85,7 +85,7 @@ export const AutomationStatusToolsSection = ({
       {visibleRuns.length === 0 ? (
         <div
           className={cn(
-            'text-sm text-secondary-foreground',
+            'text-sm text-foreground-muted',
             hideHeader ? 'py-2' : 'rounded-md border border-dashed border-border/70 p-3'
           )}
         >
@@ -102,7 +102,7 @@ export const AutomationStatusToolsSection = ({
                   'grid gap-1 rounded-md border px-3 py-2 text-left text-sm transition',
                   selectedRun?.id === run.id
                     ? 'border-primary/35 bg-primary/10'
-                    : 'border-border/70 bg-background/25 hover:bg-background/40'
+                    : 'border-border/70 bg-surface-band/35 hover:bg-surface-band/50'
                 )}
                 onClick={() => setSelectedRunId(run.id)}
               >
@@ -115,7 +115,7 @@ export const AutomationStatusToolsSection = ({
                     {run.status}
                   </Badge>
                 </span>
-                <span className='truncate text-xs text-secondary-foreground'>{run.trigger}</span>
+                <span className='truncate text-xs text-foreground-muted'>{run.trigger}</span>
               </button>
             ))}
           </div>

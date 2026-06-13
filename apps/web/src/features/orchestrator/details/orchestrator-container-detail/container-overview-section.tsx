@@ -112,7 +112,7 @@ export const ContainerOverviewSection = () => {
   return (
     <Section
       boxed
-      className='bg-card/40'
+      className='bg-surface-panel/50'
       contentClassName='gap-5'
     >
       <ContainerOverviewHeader container={container} />

@@ -31,7 +31,7 @@ export const LiveResourcesSection = () => {
       <div className='flex flex-wrap items-center justify-between gap-3'>
         <div>
           <h3 className='font-medium'>Live resources</h3>
-          <p className='mt-1 text-sm text-secondary-foreground'>Docker stats sampled for this container.</p>
+          <p className='mt-1 text-sm text-foreground-muted'>Docker stats sampled for this container.</p>
         </div>
         <Button
           type='button'
@@ -71,7 +71,7 @@ export const LiveResourcesSection = () => {
           hint='Summed across container interfaces'
         />
       </div>
-      <div className='text-xs text-secondary-foreground'>{formatStatsSample(containerState, stats)}</div>
+      <div className='text-xs text-foreground-muted'>{formatStatsSample(containerState, stats)}</div>
     </Section>
   )
 }

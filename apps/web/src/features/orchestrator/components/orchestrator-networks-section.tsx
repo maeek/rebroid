@@ -157,7 +157,7 @@ export const OrchestratorNetworksSection = ({
         header: 'Driver',
         size: 128,
         meta: { label: 'Driver' },
-        cell: ({ row }) => <span className='text-sm text-secondary-foreground'>{row.original.driver}</span>
+        cell: ({ row }) => <span className='text-sm text-foreground-muted'>{row.original.driver}</span>
       },
       {
         id: 'scope',
@@ -165,7 +165,7 @@ export const OrchestratorNetworksSection = ({
         header: 'Scope',
         size: 112,
         meta: { label: 'Scope' },
-        cell: ({ row }) => <span className='text-sm text-secondary-foreground'>{row.original.scope}</span>
+        cell: ({ row }) => <span className='text-sm text-foreground-muted'>{row.original.scope}</span>
       },
       {
         id: 'subnets',
@@ -174,7 +174,7 @@ export const OrchestratorNetworksSection = ({
         enableSorting: false,
         meta: { label: 'Subnet' },
         cell: ({ row }) => (
-          <div className='truncate text-sm text-secondary-foreground'>
+          <div className='truncate text-sm text-foreground-muted'>
             {row.original.subnets.length > 0 ? row.original.subnets.join(', ') : 'none'}
           </div>
         )
@@ -186,7 +186,7 @@ export const OrchestratorNetworksSection = ({
         enableSorting: false,
         meta: { label: 'Gateway' },
         cell: ({ row }) => (
-          <div className='truncate text-sm text-secondary-foreground'>
+          <div className='truncate text-sm text-foreground-muted'>
             {row.original.gateways.length > 0 ? row.original.gateways.join(', ') : 'none'}
           </div>
         )
@@ -197,7 +197,7 @@ export const OrchestratorNetworksSection = ({
         header: 'Containers',
         size: 128,
         meta: { label: 'Containers' },
-        cell: ({ row }) => <span className='text-sm text-secondary-foreground'>{row.original.containers.length}</span>
+        cell: ({ row }) => <span className='text-sm text-foreground-muted'>{row.original.containers.length}</span>
       }
     ],
     []
@@ -250,7 +250,7 @@ export const OrchestratorNetworksSection = ({
             }}
             minWidth='82rem'
             emptyState={
-              <div className='text-center text-secondary-foreground'>
+              <div className='text-center text-foreground-muted'>
                 {gridQuery.q ? 'No networks match this search.' : 'No networks are visible to Docker.'}
               </div>
             }

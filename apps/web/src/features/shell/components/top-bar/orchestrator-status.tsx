@@ -51,11 +51,11 @@ const mergeDockerAndRuntimeService = (health: OrchestratorHealth | null, fallbac
 const getOrchestratorHealth = getOrchestratorHealthSummaryAction
 const dotTone = (status: DisplayServiceStatus) => {
   if (status === 'healthy') {
-    return 'bg-green-400'
+    return 'bg-success'
   }
 
   if (status === 'unhealthy' || status === 'degraded') {
-    return 'bg-amber-400'
+    return 'bg-warning'
   }
 
   return 'bg-destructive'
@@ -63,11 +63,11 @@ const dotTone = (status: DisplayServiceStatus) => {
 
 const badgeTone = (status: DisplayServiceStatus) => {
   if (status === 'healthy') {
-    return 'border-green-400/30 bg-green-400/10 text-green-400'
+    return 'border-success/35 bg-success/10 text-success'
   }
 
   if (status === 'unhealthy' || status === 'degraded') {
-    return 'border-amber-400/35 bg-amber-400/10 text-amber-300'
+    return 'border-warning/35 bg-warning/10 text-warning'
   }
 
   return 'border-destructive/35 bg-destructive/15 text-destructive'
@@ -162,8 +162,8 @@ export const OrchestratorStatus = () => {
             'flex max-w-[18rem] items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
             {
               'border-border/70 bg-secondary/50 text-secondary-foreground': state === 'checking',
-              'border-green-400/30 bg-green-400/10 text-green-400': state === 'online',
-              'border-amber-400/40 bg-amber-400/10 text-amber-300': state === 'degraded',
+              'border-success/35 bg-success/10 text-success': state === 'online',
+              'border-warning/40 bg-warning/10 text-warning': state === 'degraded',
               'border-destructive/50 bg-destructive/15 text-destructive': state === 'offline'
             }
           )}
@@ -176,7 +176,7 @@ export const OrchestratorStatus = () => {
         align='start'
         collisionPadding={16}
         sideOffset={8}
-        className='w-80 border-border/70 bg-card/95 p-2 backdrop-blur-xl'
+        className='w-80 p-2'
       >
         <div className='space-y-0'>
           {serviceRows(health, message).map(({ name, href, service }) => (
@@ -198,7 +198,7 @@ export const OrchestratorStatus = () => {
                   {service.status}
                 </span>
               </div>
-              <IconChevronRight className='size-4 shrink-0 text-secondary-foreground' />
+              <IconChevronRight className='size-4 shrink-0 text-foreground-muted' />
             </Link>
           ))}
         </div>

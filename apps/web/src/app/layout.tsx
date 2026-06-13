@@ -10,6 +10,7 @@ import { PwaRegister } from '@/components/pwa-register'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/toaster'
 import { getServerAuthSession } from '@/server/auth/auth'
+import { getAccentColorDataAttribute } from '@/shared/model/theme/accent-color'
 // eslint-disable-next-line import/order
 import './globals.scss'
 
@@ -69,6 +70,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       dir='ltr'
       suppressHydrationWarning
       className={ubuntu.className}
+      data-accent={getAccentColorDataAttribute(session?.user?.accentColor)}
       style={
         {
           '--font-ubuntu': ubuntu.style.fontFamily
@@ -76,26 +78,29 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       }
     >
       <body>
-        <ThemeProvider
-          attribute='class'
-          defaultTheme='dark'
-          enableSystem
-          disableTransitionOnChange
-          nonce={nonce}
-        >
-          <NextTopLoader
-            color='var(--primary)'
-            height={2}
-            showSpinner={false}
-            shadow={false}
-            template='<div class="bar" role="bar"></div>'
-            zIndex={9999}
-          />
-          <div id='modal-root' />
-          <PwaRegister />
-          <Providers session={session}>{children}</Providers>
-          <Toaster />
-        </ThemeProvider>
+        <div className='root'>
+          <ThemeProvider
+            attribute='class'
+            defaultTheme='dark'
+            enableSystem
+            themes={['light', 'dark', 'oled']}
+            disableTransitionOnChange
+            nonce={nonce}
+          >
+            <NextTopLoader
+              color='hsl(var(--primary))'
+              height={2}
+              showSpinner={false}
+              shadow={false}
+              template='<div class="bar" role="bar"></div>'
+              zIndex={9999}
+            />
+            <div id='modal-root' />
+            <PwaRegister />
+            <Providers session={session}>{children}</Providers>
+            <Toaster />
+          </ThemeProvider>
+        </div>
       </body>
     </html>
   )

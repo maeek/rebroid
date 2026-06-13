@@ -27,7 +27,7 @@ export const TopBarNotifications = () => {
         <button
           type='button'
           aria-label='Notifications'
-          className='relative inline-flex size-10 shrink-0 items-center justify-center rounded-full text-secondary-foreground transition hover:bg-secondary/70 hover:text-foreground'
+          className='relative inline-flex size-10 shrink-0 items-center justify-center rounded-full text-foreground-muted transition hover:bg-secondary/70 hover:text-foreground'
         >
           <IconBell className='size-5' />
           <Visible when={totalCount > 0}>
@@ -46,12 +46,12 @@ export const TopBarNotifications = () => {
         align='start'
         collisionPadding={16}
         sideOffset={8}
-        className='w-[min(24rem,calc(100vw-2rem))] border-border/70 bg-card/95 p-3 backdrop-blur-xl'
+        className='w-[min(24rem,calc(100vw-2rem))] border-border/70 bg-surface-elevated/96 p-3 backdrop-blur-xl'
       >
         <div className='flex items-start justify-between gap-3 pb-3'>
           <div>
             <p className='text-sm font-semibold text-foreground'>Notifications</p>
-            <p className='text-xs text-secondary-foreground'>Live notifications from your running apps.</p>
+            <p className='text-xs text-foreground-muted'>Live notifications from your running apps.</p>
           </div>
           <Visible when={totalCount > 0}>
             <span className='rounded-full border border-border/70 bg-secondary/60 px-2 py-0.5 text-[10px] font-semibold text-secondary-foreground'>

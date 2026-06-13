@@ -128,7 +128,7 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
                 </SelectContent>
               </Select>
               <Visible when={!loading && automations.length === 0}>
-                <p className='text-sm text-secondary-foreground'>No automations are available yet.</p>
+                <p className='text-sm text-foreground-muted'>No automations are available yet.</p>
               </Visible>
             </div>
             <ApplicationProfilePicker

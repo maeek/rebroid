@@ -29,7 +29,7 @@ export const ActivityFilterSheet = () => {
             <section className='grid gap-3'>
               <div>
                 <h4 className='font-medium'>Who and what</h4>
-                <p className='text-sm text-secondary-foreground'>Narrow events by the user and affected resource.</p>
+                <p className='text-sm text-foreground-muted'>Narrow events by the user and affected resource.</p>
               </div>
               <ActivityFilterField label='Actor'>
                 <Select
@@ -88,9 +88,7 @@ export const ActivityFilterSheet = () => {
             <section className='grid gap-3 border-t border-border/60 pt-5'>
               <div>
                 <h4 className='font-medium'>Event classification</h4>
-                <p className='text-sm text-secondary-foreground'>
-                  Use category, action, and outcome for review workflows.
-                </p>
+                <p className='text-sm text-foreground-muted'>Use category, action, and outcome for review workflows.</p>
               </div>
               <ActivityFilterField label='Category'>
                 <Select
@@ -169,7 +167,7 @@ export const ActivityFilterSheet = () => {
             <section className='grid gap-3 border-t border-border/60 pt-5'>
               <div>
                 <h4 className='font-medium'>Time range</h4>
-                <p className='text-sm text-secondary-foreground'>Pick a preset or choose exact calendar dates.</p>
+                <p className='text-sm text-foreground-muted'>Pick a preset or choose exact calendar dates.</p>
               </div>
               <div className='grid grid-cols-3 gap-2'>
                 {[1, 7, 30].map(days => (

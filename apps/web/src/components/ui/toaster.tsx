@@ -1,33 +1,57 @@
 'use client'
 
-import { Toast, ToastClose, ToastDescription, ToastProvider, ToastTitle, ToastViewport } from '@/components/ui/toast'
+import {
+  Toast,
+  ToastClose,
+  ToastContent,
+  ToastDescription,
+  ToastProvider,
+  ToastTitle,
+  ToastViewport
+} from '@/components/ui/toast'
 import { Visible } from '@/components/ui/visible'
-import { useToast } from '@/hooks/use-toast'
+import { TOAST_LIMIT, toastManager, useToast } from '@/hooks/use-toast'
 
 export function Toaster() {
+  return (
+    <ToastProvider
+      limit={TOAST_LIMIT}
+      toastManager={toastManager}
+    >
+      <ToastViewport>
+        <ToastList />
+      </ToastViewport>
+    </ToastProvider>
+  )
+}
+
+function ToastList() {
   const { toasts } = useToast()
 
   return (
-    <ToastProvider>
-      {toasts.map(function ({ id, title, description, ...props }) {
+    <>
+      {toasts.map(currentToast => {
+        const { id, title, description } = currentToast
+        const variant = currentToast.data?.variant ?? (currentToast.type === 'destructive' ? 'destructive' : 'default')
+
         return (
           <Toast
             key={id}
-            {...props}
+            toast={currentToast}
+            variant={variant}
           >
-            <div className='grid flex-1 gap-1 pr-2'>
+            <ToastContent>
               <Visible when={title}>
                 <ToastTitle>{title}</ToastTitle>
               </Visible>
               <Visible when={description}>
                 <ToastDescription>{description}</ToastDescription>
               </Visible>
-            </div>
+            </ToastContent>
             <ToastClose />
           </Toast>
         )
       })}
-      <ToastViewport />
-    </ToastProvider>
+    </>
   )
 }

@@ -33,7 +33,7 @@ export function NumberField({
           value={String(value)}
           onChange={event => onChange(Number(event.target.value || 0))}
         />
-        {suffix ? <span className='text-xs text-secondary-foreground'>{suffix}</span> : null}
+        {suffix ? <span className='text-xs text-foreground-muted'>{suffix}</span> : null}
       </div>
     </div>
   )
@@ -151,5 +151,5 @@ export function SegmentedField({
 }
 
 export function NoInputState({ message = 'No settings.' }: { message?: string }) {
-  return <p className='rounded-md bg-background/35 px-3 py-3 text-sm text-secondary-foreground'>{message}</p>
+  return <p className='rounded-md bg-surface-band/45 px-3 py-3 text-sm text-foreground-muted'>{message}</p>
 }

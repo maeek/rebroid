@@ -1,12 +1,23 @@
 import { Suspense } from 'react'
 import { AutomationsListPageSkeleton } from '../../automations-page/automation-page-skeletons'
 import { AutomationsListPage } from '../../automations-page/list/automations-list-page'
+import { AutomationPageUnavailable } from '../../automations-page/shared/automation-page-unavailable'
 import { loadAutomationsListPageData, type AutomationsSearchParams } from './page-data.server'
 
 const AutomationsListPageContent = async ({ searchParams }: { searchParams?: Promise<AutomationsSearchParams> }) => {
-  const { applications, automationsPage, gridQuery, triggers } = await loadAutomationsListPageData(
+  const { applications, automationsPage, gridQuery, orchestratorError, triggers } = await loadAutomationsListPageData(
     (await searchParams) ?? {}
   )
+
+  if (orchestratorError) {
+    return (
+      <AutomationPageUnavailable
+        title='Workflows'
+        detail={orchestratorError}
+        href='/automations'
+      />
+    )
+  }
 
   return (
     <AutomationsListPage

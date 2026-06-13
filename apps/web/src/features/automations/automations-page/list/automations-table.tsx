@@ -51,7 +51,7 @@ const formatDate = (value: string | null) =>
 const WorkflowTags = ({ tags }: { tags: AutomationTag[] }) => (
   <div className='flex flex-wrap gap-1'>
     {tags.length === 0 ? (
-      <span className='text-sm text-secondary-foreground'>-</span>
+      <span className='text-sm text-foreground-muted'>-</span>
     ) : (
       tags.map(tag => (
         <AutomationTagBadge
@@ -129,7 +129,7 @@ export function AutomationsTable({
               >
                 {row.original.name}
               </Link>
-              <span className='line-clamp-1 text-sm text-secondary-foreground'>
+              <span className='line-clamp-1 text-sm text-foreground-muted'>
                 {row.original.description || 'No description'}
               </span>
             </div>
@@ -153,7 +153,7 @@ export function AutomationsTable({
         cell: ({ row }) => {
           const appIds = Array.from(automationAppIds.get(row.original.id) ?? [])
           return (
-            <span className='text-sm text-secondary-foreground'>
+            <span className='text-sm text-foreground-muted'>
               {appIds.length === 0 ? '-' : appIds.map(id => appNameById.get(id) ?? id).join(', ')}
             </span>
           )
@@ -168,7 +168,7 @@ export function AutomationsTable({
         cell: ({ row }) => {
           const count = countAutomationSteps(row.original.definition.spec.steps)
           return (
-            <span className='text-sm text-secondary-foreground'>
+            <span className='text-sm text-foreground-muted'>
               {count} {count === 1 ? 'step' : 'steps'}
             </span>
           )
@@ -180,9 +180,7 @@ export function AutomationsTable({
         header: 'Last run',
         size: 176,
         meta: { label: 'Last run' },
-        cell: ({ row }) => (
-          <span className='text-sm text-secondary-foreground'>{formatDate(row.original.lastRunAt)}</span>
-        )
+        cell: ({ row }) => <span className='text-sm text-foreground-muted'>{formatDate(row.original.lastRunAt)}</span>
       },
       {
         id: 'lastStatus',
@@ -233,9 +231,7 @@ export function AutomationsTable({
           onSelectedIdsChange: setSelectedIds
         }}
         minWidth='72rem'
-        emptyState={
-          <div className='text-center text-secondary-foreground'>No workflows match the current filters.</div>
-        }
+        emptyState={<div className='text-center text-foreground-muted'>No workflows match the current filters.</div>}
         rowContextMenu={row => {
           const hasBulkSelection = selectedIds.has(row.original.id) && selectedAutomations.length > 1
           return (

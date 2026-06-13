@@ -18,6 +18,7 @@ const storedUser = (overrides: Partial<StoredUser> = {}): StoredUser => ({
   disabled: false,
   sessionVersion: 1,
   avatarDataUrl: null,
+  accentColor: 'blue',
   permissionOverrides: {},
   quotas: {},
   passwordHash: '$2hash',
@@ -44,6 +45,7 @@ describe('user model', () => {
 
     expect(publicUser).toMatchObject({
       id: 'user-1',
+      accentColor: 'blue',
       groupIds: ['users'],
       effectiveQuotas: expect.objectContaining({ maxOpenApps: 3 })
     })
@@ -55,7 +57,8 @@ describe('user model', () => {
       name: 'name',
       role: 'user',
       groupIds: ['users'],
-      sessionVersion: 1
+      sessionVersion: 1,
+      accentColor: 'blue'
     })
     expect(normalizeGroups([{ id: 'admins', name: 'Admins', role: 'admin' }])[0]).toMatchObject({
       id: 'admins',

@@ -69,4 +69,15 @@ describe('userService.changeOwnPassword', () => {
       ])
     )
   })
+
+  it('updates and authenticates the stored accent color', async () => {
+    const user = await userService.createUser({ username: 'user', password: 'original-password' })
+
+    await userService.updateUser(user.id, { accentColor: 'purple' })
+
+    await expect(userService.getUserById(user.id)).resolves.toMatchObject({ accentColor: 'purple' })
+    await expect(userService.authenticate('user', 'original-password')).resolves.toMatchObject({
+      accentColor: 'purple'
+    })
+  })
 })

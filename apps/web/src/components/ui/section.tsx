@@ -1,8 +1,11 @@
 'use client'
 import { ReactNode, useState } from 'react'
 import { IconChevronDown } from '@tabler/icons-react'
+import { bandSurfaceClassName, panelSurfaceClassName } from '@/components/ui/surface-classes'
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
+
+type SectionSurface = 'plain' | 'band' | 'panel'
 
 export const Section = ({
   className,
@@ -12,7 +15,8 @@ export const Section = ({
   collapsible,
   contentClassName,
   titleClassName,
-  boxed
+  boxed,
+  surface
 }: {
   className?: string
   children?: ReactNode
@@ -22,9 +26,11 @@ export const Section = ({
   titleClassName?: string
   contentClassName?: string
   boxed?: boolean
+  surface?: SectionSurface
 }) => {
   const [isOpen, setIsOpen] = useState(false)
-  const boxedCollapsible = Boolean(boxed && collapsible)
+  const resolvedSurface = surface ?? (boxed ? 'panel' : 'plain')
+  const panelCollapsible = resolvedSurface === 'panel' && Boolean(collapsible)
   const content = (
     <div
       className={cn('flex', contentClassName, {
@@ -36,13 +42,16 @@ export const Section = ({
   )
 
   return (
-    <div
+    <section
+      aria-label={typeof title === 'string' ? title : undefined}
+      data-slot='section'
+      data-surface={resolvedSurface}
       className={cn(
-        'flex flex-col w-full rounded-lg',
+        'flex flex-col w-full rounded-xl',
         {
-          'border border-border/70 bg-card/40 dark:bg-white/2 backdrop-blur-2xl p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] max-sm:p-4':
-            boxed,
-          'p-0': boxedCollapsible
+          [cn(bandSurfaceClassName, 'p-6 max-sm:p-4')]: resolvedSurface === 'band',
+          [cn(panelSurfaceClassName, 'p-6 max-sm:p-4')]: resolvedSurface === 'panel',
+          'p-0': panelCollapsible
         },
         className
       )}
@@ -53,7 +62,7 @@ export const Section = ({
             'flex items-center justify-between',
             {
               'cursor-pointer': collapsible,
-              'px-6 py-5 pb-5 max-sm:px-4 max-sm:py-4 max-sm:pb-4': boxedCollapsible
+              'px-6 py-5 pb-5 max-sm:px-4 max-sm:py-4 max-sm:pb-4': panelCollapsible
             },
             titleClassName
           )}
@@ -75,9 +84,9 @@ export const Section = ({
           className={cn(
             'grid overflow-hidden transition-[grid-template-rows,opacity,padding-top,padding-bottom] duration-200 ease-out',
             {
-              'px-6 max-sm:px-4': boxedCollapsible,
+              'px-6 max-sm:px-4': panelCollapsible,
               'grid-rows-[1fr] opacity-100 pt-2': isOpen,
-              'pb-6 max-sm:pb-4': isOpen && boxedCollapsible,
+              'pb-6 max-sm:pb-4': isOpen && panelCollapsible,
               'grid-rows-[0fr] opacity-0 pt-0 pb-0': !isOpen
             }
           )}
@@ -86,6 +95,6 @@ export const Section = ({
         </div>
       </Visible>
       <Visible when={!(title && collapsible)}>{content}</Visible>
-    </div>
+    </section>
   )
 }

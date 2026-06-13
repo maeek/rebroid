@@ -11,7 +11,7 @@ export const ScheduledTasksPageSkeleton = () => (
       actionCount={1}
     />
     <section className='grid w-full gap-6 px-6 pb-16 max-sm:px-4'>
-      <div className='overflow-hidden rounded-lg border border-border/70 bg-card/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md'>
+      <div className='overflow-hidden rounded-lg border border-border/70 bg-surface-panel/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md'>
         <div className='border-b border-border/60 px-5 py-4 max-sm:px-4'>
           <div className='grid gap-2'>
             <Skeleton className='h-5 w-16' />

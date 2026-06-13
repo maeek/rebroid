@@ -4,6 +4,7 @@ import Credentials from 'next-auth/providers/credentials'
 import { z } from 'zod'
 import { recordAuditEvent } from '@/server/audit/events'
 import { consumeRateLimit } from '@/server/rate-limit/in-memory'
+import { defaultAccentColor, isAccentColor } from '@/shared/model/theme/accent-color'
 import { userService } from './user'
 
 const credentialsSchema = z.object({
@@ -29,6 +30,9 @@ export const authOptions: NextAuthOptions = {
       if (user?.image !== undefined) {
         token.picture = user.image
       }
+      if (user && 'accentColor' in user && isAccentColor(user.accentColor)) {
+        token.accentColor = user.accentColor
+      }
       return token
     },
     async session({ session, token, user: _user }) {
@@ -39,6 +43,8 @@ export const authOptions: NextAuthOptions = {
       session.user.role = currentUser?.role ?? token.role
       session.user.sessionVersion = token.sessionVersion
       session.user.image = currentUser?.avatarDataUrl ?? (typeof token.picture === 'string' ? token.picture : null)
+      session.user.accentColor =
+        currentUser?.accentColor ?? (isAccentColor(token.accentColor) ? token.accentColor : defaultAccentColor)
       return session
     }
   },

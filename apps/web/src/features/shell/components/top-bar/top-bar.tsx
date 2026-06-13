@@ -32,7 +32,7 @@ export const TopBarProtected = ({ initialUser }: { initialUser: ShellUser }) => 
             <button
               type='button'
               aria-label={drawerOpen ? 'Close navigation' : 'Open navigation'}
-              className='inline-flex size-10 shrink-0 items-center justify-center rounded-md text-secondary-foreground transition hover:bg-secondary/70 hover:text-foreground active:scale-95 lg:hidden'
+              className='inline-flex size-10 shrink-0 items-center justify-center rounded-md text-foreground-muted transition hover:bg-secondary/70 hover:text-foreground active:scale-95 lg:hidden'
             >
               <Visible when={drawerOpen}>
                 <IconX className='size-5' />

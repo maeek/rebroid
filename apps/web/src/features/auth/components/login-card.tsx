@@ -49,7 +49,7 @@ export default function LoginCard() {
 
   return (
     <>
-      <Card className='mx-auto w-full max-w-md border-white/10 bg-card/45 shadow-2xl backdrop-blur-xl max-sm:border-0 max-sm:border-transparent! max-sm:bg-transparent! max-sm:shadow-none! max-sm:backdrop-blur-none! max-sm:roundend-none! max-sm:mx-0 max-sm:max-w-full'>
+      <Card className='mx-auto w-full max-w-md border-white/10 bg-surface-panel/58 shadow-2xl backdrop-blur-xl max-sm:border-0 max-sm:border-transparent! max-sm:bg-transparent! max-sm:shadow-none! max-sm:backdrop-blur-none! max-sm:roundend-none! max-sm:mx-0 max-sm:max-w-full'>
         <CardHeader className='max-sm:px-0 flex-row gap-4 items-start'>
           <div className='flex size-14 items-center justify-center rounded-lg border border-primary/30 bg-primary/15 text-primary'>
             <IconLockAccess className='size-10' />

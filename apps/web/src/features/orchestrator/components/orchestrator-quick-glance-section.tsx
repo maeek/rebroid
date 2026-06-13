@@ -107,7 +107,7 @@ export const OrchestratorQuickGlanceSection = ({
           className='border-l-primary/50'
         />
       </div>
-      <div className='text-xs text-secondary-foreground'>
+      <div className='text-xs text-foreground-muted'>
         Container stats are sampled live when this panel refreshes.
         {resources?.containerStatsCollectedAt
           ? ` Last sample: ${formatDateLocale(resources.containerStatsCollectedAt)}`

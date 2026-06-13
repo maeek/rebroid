@@ -25,7 +25,7 @@ export const PlatformPageHeader = ({
         <div className='flex flex-col gap-2 pt-4'>
           <h2 className='text-3xl font-medium max-sm:text-xl'>{title}</h2>
           <Visible when={description}>
-            <p className='max-w-3xl text-sm text-secondary-foreground'>{description}</p>
+            <p className='max-w-3xl text-sm text-foreground-muted'>{description}</p>
           </Visible>
         </div>
       </div>

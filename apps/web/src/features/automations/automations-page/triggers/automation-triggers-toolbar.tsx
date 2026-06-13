@@ -81,7 +81,7 @@ export const AutomationTriggersToolbar = ({
           value={gridQuery.enabled ?? allFilterValue}
           onValueChange={value =>
             onUpdateGrid({
-              enabled: value === allFilterValue ? undefined : (value as AutomationTriggersGridQuery['enabled']),
+              enabled: value === allFilterValue ? undefined : value,
               page: 1
             })
           }
@@ -99,7 +99,7 @@ export const AutomationTriggersToolbar = ({
           value={gridQuery.status ?? allFilterValue}
           onValueChange={value =>
             onUpdateGrid({
-              status: value === allFilterValue ? undefined : (value as AutomationTriggersGridQuery['status']),
+              status: value === allFilterValue ? undefined : value,
               page: 1
             })
           }
@@ -119,7 +119,7 @@ export const AutomationTriggersToolbar = ({
           value={gridQuery.lastRun ?? allFilterValue}
           onValueChange={value =>
             onUpdateGrid({
-              lastRun: value === allFilterValue ? undefined : (value as AutomationTriggersGridQuery['lastRun']),
+              lastRun: value === allFilterValue ? undefined : value,
               page: 1
             })
           }
@@ -152,8 +152,8 @@ export const AutomationTriggerBulkBar = ({
   onEnable: () => void
 }) => (
   <Visible when={selectedCount > 0}>
-    <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-input bg-card/40 px-4 py-3 text-sm'>
-      <span className='text-secondary-foreground'>{selectedCount} selected</span>
+    <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-surface-border bg-surface-panel/50 px-4 py-3 text-sm'>
+      <span className='text-foreground-muted'>{selectedCount} selected</span>
       <div className='flex flex-wrap gap-2'>
         <Button
           size='sm'

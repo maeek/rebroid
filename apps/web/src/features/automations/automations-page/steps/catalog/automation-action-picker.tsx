@@ -59,7 +59,7 @@ export function AutomationActionPicker({
         <Button
           type='button'
           variant='input'
-          className='h-auto min-h-11 w-full justify-between gap-3 px-3 py-2 text-left dark:bg-white/7 backdrop-blur-2xl'
+          className='h-auto min-h-11 w-full justify-between gap-3 px-3 py-2 text-left'
         >
           <span className='flex min-w-0 items-center gap-3'>
             <span className='flex size-8 shrink-0 items-center justify-center rounded-md bg-background/70 text-primary'>
@@ -70,24 +70,23 @@ export function AutomationActionPicker({
             </span>
             <span className='min-w-0'>
               <span className='block truncate text-sm font-medium'>{selectedCommand?.label ?? value}</span>
-              <span className='block truncate text-xs text-secondary-foreground'>
+              <span className='block truncate text-xs text-foreground-muted'>
                 {selectedCommand?.description ?? value}
               </span>
             </span>
           </span>
-          <IconChevronDown className='size-4 shrink-0 text-secondary-foreground' />
+          <IconChevronDown className='size-4 shrink-0 text-foreground-muted' />
         </Button>
       </PopoverTrigger>
       <PopoverContent
         align='start'
-        data-vaul-no-drag
-        className='max-h-[calc(var(--radix-popover-content-available-height)-0.5rem)] w-[min(34rem,calc(100vw-2rem))] overflow-hidden p-2'
+        className='max-h-[calc(var(--available-height)-0.5rem)] w-[min(34rem,calc(100vw-2rem))] overflow-hidden p-2'
         onTouchMoveCapture={event => event.stopPropagation()}
         onWheelCapture={event => event.stopPropagation()}
       >
         <div className='grid gap-2'>
           <div className='relative'>
-            <IconSearch className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-secondary-foreground' />
+            <IconSearch className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-foreground-muted' />
             <Input
               value={query}
               placeholder='Search actions'
@@ -96,8 +95,7 @@ export function AutomationActionPicker({
             />
           </div>
           <div
-            data-vaul-no-drag
-            className='max-h-[min(24rem,calc(var(--radix-popover-content-available-height)-5rem))] overflow-y-auto overscroll-contain pr-1'
+            className='max-h-[min(24rem,calc(var(--available-height)-5rem))] overflow-y-auto overscroll-contain pr-1'
             onTouchMoveCapture={event => event.stopPropagation()}
             onWheelCapture={event => event.stopPropagation()}
           >
@@ -107,7 +105,7 @@ export function AutomationActionPicker({
                   key={group.category}
                   className='grid gap-1 py-2 first:pt-0'
                 >
-                  <div className='px-2 text-xs font-medium uppercase text-secondary-foreground'>{group.category}</div>
+                  <div className='px-2 text-xs font-medium uppercase text-foreground-muted'>{group.category}</div>
                   {group.commands.map(command => {
                     const selected = command.uses === value
 
@@ -117,9 +115,7 @@ export function AutomationActionPicker({
                         type='button'
                         className={classNames(
                           'grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-md px-2 py-2 text-left transition',
-                          selected
-                            ? 'bg-primary/15 dark:bg-white/10 text-foreground'
-                            : 'hover:bg-secondary/60 dark:hover:bg-white/7'
+                          selected ? 'bg-primary/15 text-foreground' : 'hover:bg-secondary/60'
                         )}
                         onClick={() => selectAction(command.uses)}
                       >
@@ -131,7 +127,7 @@ export function AutomationActionPicker({
                         </span>
                         <span className='min-w-0'>
                           <span className='block truncate text-sm font-medium'>{command.label || command.uses}</span>
-                          <span className='block truncate text-xs text-secondary-foreground'>
+                          <span className='block truncate text-xs text-foreground-muted'>
                             {command.description || command.uses}
                           </span>
                         </span>
@@ -142,7 +138,7 @@ export function AutomationActionPicker({
                 </div>
               ))
             ) : (
-              <p className='px-2 py-6 text-center text-sm text-secondary-foreground'>No actions found.</p>
+              <p className='px-2 py-6 text-center text-sm text-foreground-muted'>No actions found.</p>
             )}
           </div>
         </div>

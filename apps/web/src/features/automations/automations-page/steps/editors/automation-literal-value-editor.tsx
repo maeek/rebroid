@@ -4,7 +4,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { literalKind as resolveLiteralKind, defaultLiteralValue } from '../value-ref/automation-value-ref-utils'
-import type { LiteralKind } from '../value-ref/automation-value-ref-constants'
 
 const literalInputValue = (value: unknown) => {
   if (typeof value === 'string') return value
@@ -31,7 +30,7 @@ export function AutomationLiteralValueEditor({
         <Label htmlFor={`${id}-type`}>Type</Label>
         <Select
           value={kind}
-          onValueChange={nextKind => onChange(defaultLiteralValue(nextKind as LiteralKind))}
+          onValueChange={nextKind => onChange(defaultLiteralValue(nextKind))}
         >
           <SelectTrigger
             id={`${id}-type`}

@@ -189,7 +189,7 @@ export async function DisplayViewerPage({
       >
         <DisplayViewerShell />
       </DisplayViewerProvider>
-      <div className='pointer-events-none absolute inset-0 hidden items-center justify-center bg-background/80 text-secondary-foreground'>
+      <div className='pointer-events-none absolute inset-0 hidden items-center justify-center bg-background/80 text-foreground-muted'>
         <IconLoader2 className='size-8 animate-spin' />
       </div>
     </main>

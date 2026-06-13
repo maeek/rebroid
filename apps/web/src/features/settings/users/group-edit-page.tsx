@@ -61,7 +61,7 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
         <div className='flex items-center justify-between gap-3 pt-4 max-sm:flex-col max-sm:items-start'>
           <div>
             <h2 className='text-3xl font-medium max-sm:text-xl'>{draft.name || group.name}</h2>
-            <p className='text-sm text-secondary-foreground'>Default permissions and quotas for group members.</p>
+            <p className='text-sm text-foreground-muted'>Default permissions and quotas for group members.</p>
           </div>
           <Button
             disabled={isSaving}
@@ -135,7 +135,7 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
           title={
             <div>
               <div>Permissions</div>
-              <p className='mt-1 text-sm font-normal text-secondary-foreground'>
+              <p className='mt-1 text-sm font-normal text-foreground-muted'>
                 These permissions are inherited by every group member.
               </p>
             </div>

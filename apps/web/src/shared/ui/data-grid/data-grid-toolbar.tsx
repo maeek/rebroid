@@ -108,7 +108,7 @@ export function DataGridToolbar({
         ) : null}
       </div>
       <div className='flex min-h-9 shrink-0 flex-wrap items-center justify-end gap-3'>
-        {selectedCount > 0 ? <span className='text-sm text-secondary-foreground'>{selectedCount} selected</span> : null}
+        {selectedCount > 0 ? <span className='text-sm text-foreground-muted'>{selectedCount} selected</span> : null}
         {actions}
       </div>
     </form>

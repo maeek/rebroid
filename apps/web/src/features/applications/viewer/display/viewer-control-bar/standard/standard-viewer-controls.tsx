@@ -16,7 +16,7 @@ import { useViewerControlContext } from '@/features/applications/viewer/display/
 
 const standardControlButtonClassName = 'size-8'
 const standardControlGroupClassName =
-  'flex h-8 items-center overflow-hidden rounded-md border border-border/60 bg-secondary/35'
+  'flex h-8 items-center overflow-hidden rounded-md border border-border/60 bg-surface-band/55'
 
 export const StandardViewerControls = () => {
   const {

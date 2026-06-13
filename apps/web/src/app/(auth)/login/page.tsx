@@ -9,7 +9,7 @@ export default function Login() {
             <h1 className='mt-5 text-5xl font-semibold leading-tight text-foreground'>
               Run isolated Android apps from the browser.
             </h1>
-            <p className='mt-5 max-w-md text-base leading-7 text-secondary-foreground'>
+            <p className='mt-5 max-w-md text-base leading-7 text-foreground-muted'>
               Rebroid provides private Android workspaces that anyone can access from the browser.
             </p>
           </div>

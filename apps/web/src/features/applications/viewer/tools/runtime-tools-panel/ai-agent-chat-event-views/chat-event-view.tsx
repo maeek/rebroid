@@ -34,7 +34,7 @@ export const ChatEventView = ({ event }: { event: AutomationRunEvent }) => {
         className={
           event.type === 'ai.message.completed'
             ? 'whitespace-pre-wrap text-sm text-foreground'
-            : 'text-xs text-secondary-foreground'
+            : 'text-xs text-foreground-muted'
         }
       >
         {event.message}

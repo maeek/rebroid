@@ -22,12 +22,12 @@ export const formatPlatformBytes = (bytes: number) => {
 export const PlatformDetailRow = ({ label, value }: { label: string; value: ReactNode }) => (
   <div className='grid grid-cols-[11rem_minmax(0,1fr)] gap-4 border-b border-border/50 py-3 text-sm last:border-b-0 max-sm:grid-cols-1 max-sm:gap-1'>
     <div className='font-medium uppercase text-muted-foreground'>{label}</div>
-    <div className='min-w-0 break-all text-right text-secondary-foreground max-sm:text-left'>{value ?? 'none'}</div>
+    <div className='min-w-0 break-all text-right text-foreground-muted max-sm:text-left'>{value ?? 'none'}</div>
   </div>
 )
 
 export const PlatformJsonBlock = ({ value }: { value: unknown }) => (
-  <pre className='max-h-[28rem] overflow-auto rounded-lg border border-border/60 bg-background/45 p-4 font-mono text-xs leading-6 text-secondary-foreground'>
+  <pre className='max-h-[28rem] overflow-auto rounded-lg border border-border/60 bg-surface-band/55 p-4 font-mono text-xs leading-6 text-foreground-muted'>
     {JSON.stringify(value, null, 2)}
   </pre>
 )

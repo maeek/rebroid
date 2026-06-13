@@ -100,7 +100,7 @@ export const ProviderDialog = ({
               >
                 <Select
                   value={provider.kind}
-                  onValueChange={kind => update({ kind: kind as ProviderFormState['kind'] })}
+                  onValueChange={kind => update({ kind: kind })}
                 >
                   <SelectTrigger className='w-full'>
                     <SelectValue />
@@ -140,10 +140,10 @@ export const ProviderDialog = ({
                       <Badge variant={health.status === 'ok' ? 'status' : 'destructive'}>
                         {health.status === 'ok' ? 'Online' : 'Error'}
                       </Badge>
-                      <span className='min-w-0 break-words text-sm text-secondary-foreground'>{health.message}</span>
+                      <span className='min-w-0 break-words text-sm text-foreground-muted'>{health.message}</span>
                     </>
                   ) : (
-                    <span className='text-sm text-secondary-foreground'>Check the provider before saving.</span>
+                    <span className='text-sm text-foreground-muted'>Check the provider before saving.</span>
                   )}
                 </div>
                 <Button
@@ -159,7 +159,7 @@ export const ProviderDialog = ({
               <div className='flex items-center justify-between gap-3'>
                 <div>
                   <Label>Enabled</Label>
-                  <p className='text-xs text-secondary-foreground'>
+                  <p className='text-xs text-foreground-muted'>
                     Keep disabled until at least one usable model is configured.
                   </p>
                 </div>
@@ -197,7 +197,7 @@ const Field = ({ label, description, children }: { label: string; description: s
   <div className='grid gap-2'>
     <div className='grid gap-1'>
       <Label>{label}</Label>
-      <p className='text-xs text-secondary-foreground'>{description}</p>
+      <p className='text-xs text-foreground-muted'>{description}</p>
     </div>
     {children}
   </div>

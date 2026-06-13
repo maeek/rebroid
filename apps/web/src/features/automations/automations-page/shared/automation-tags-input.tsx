@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { chipInputSurfaceClassName } from '@/components/ui/surface-classes'
+import { cn } from '@/lib/utils'
 import {
   createAutomationTag,
   defaultAutomationTagColor,
@@ -91,7 +93,12 @@ export function AutomationTagsInput({
   return (
     <div className='grid gap-2'>
       <Label htmlFor={id}>{label}</Label>
-      <div className='flex min-h-11 w-full flex-wrap items-center gap-2 rounded-md border border-input bg-input px-3 py-2 dark:bg-white/7 backdrop-blur-2xl focus-visible:border-primary/60 hover:bg-input/84 hover:border-primary/40'>
+      <div
+        className={cn(
+          'flex min-h-11 w-full flex-wrap items-center gap-2 rounded-md px-3 py-2',
+          chipInputSurfaceClassName
+        )}
+      >
         {value.map(tag => (
           <Popover
             key={tag.name}
@@ -101,7 +108,7 @@ export function AutomationTagsInput({
             <PopoverTrigger asChild>
               <button
                 type='button'
-                className='flex max-w-full items-center gap-1 rounded-md border border-white/10 px-2 py-1 text-xs font-medium shadow-sm transition hover:ring-1 hover:ring-primary/50'
+                className='flex max-w-full items-center gap-1 rounded-md border border-white/20 px-2 py-1 text-xs font-medium shadow-xs transition hover:ring-2 hover:ring-ring/35'
                 style={{ backgroundColor: tag.color, color: colorText(tag.color) }}
               >
                 <span className='truncate'>{tag.name}</span>
@@ -166,11 +173,11 @@ function TagEditor({
       <div className='flex items-center justify-between gap-3'>
         <div className='min-w-0'>
           <div className='truncate text-sm font-medium'>Tag settings</div>
-          <div className='truncate text-xs text-secondary-foreground'>{tag.name}</div>
+          <div className='truncate text-xs text-foreground-muted'>{tag.name}</div>
         </div>
         <button
           type='button'
-          className='rounded-md p-1 text-secondary-foreground hover:bg-secondary/70 hover:text-foreground'
+          className='rounded-md p-1 text-foreground-muted hover:bg-secondary/70 hover:text-foreground'
           aria-label='Close tag settings'
           onClick={onClose}
         >
@@ -198,7 +205,7 @@ function TagEditor({
           <input
             type='color'
             value={colorValid ? color : defaultAutomationTagColor}
-            className='h-9 w-10 rounded-md border border-border/70 bg-input p-1'
+            className='h-9 w-10 rounded-md border border-control-border bg-control p-1'
             aria-label='Tag color'
             onChange={event => {
               setColor(event.target.value)

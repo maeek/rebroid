@@ -68,7 +68,7 @@ const MaintenanceActionCard = ({
         <div className='rounded-md bg-destructive/10 p-2 text-destructive'>{icon}</div>
         <div className='flex flex-col gap-1'>
           <h3 className='font-medium text-foreground'>{title}</h3>
-          <p className='text-sm leading-5 text-secondary-foreground'>{description}</p>
+          <p className='text-sm leading-5 text-foreground-muted'>{description}</p>
         </div>
       </div>
       <Button
@@ -121,7 +121,7 @@ export const OrchestratorMaintenanceSection = ({ onMaintenanceComplete }: { onMa
       contentClassName='gap-4'
       className='w-full'
     >
-      <p className='text-sm text-secondary-foreground'>
+      <p className='text-sm text-foreground-muted'>
         Run one-off Docker cleanup tasks without leaving settings. Recurring cleanup is managed from Scheduled tasks.
       </p>
       <div className='grid gap-3'>
@@ -207,12 +207,12 @@ export const OrchestratorMaintenanceSection = ({ onMaintenanceComplete }: { onMa
       <div className='rounded-md bg-destructive/10 p-4 text-foreground'>
         <div className='flex items-center justify-between gap-4 max-sm:flex-col max-sm:items-stretch'>
           <div className='flex min-w-0 items-start gap-3'>
-            <div className='rounded-md bg-background/50 p-2 text-destructive'>
+            <div className='rounded-md bg-surface-band/60 p-2 text-destructive'>
               <IconRecycle className='size-5' />
             </div>
             <div>
               <h3 className='font-medium text-foreground'>Full cleanup</h3>
-              <p className='text-sm leading-5 text-secondary-foreground'>
+              <p className='text-sm leading-5 text-foreground-muted'>
                 Prunes stopped containers, unused networks, dangling images, and unused volumes in one pass.
               </p>
             </div>

@@ -50,7 +50,7 @@ export const ToolEventView = ({ item }: { item: ToolTimelineItem }) => {
           ) : null}
         </summary>
         {hasArguments ? (
-          <dl className='mt-1 grid max-w-full gap-1 rounded-md bg-background/25 p-2 text-[11px] text-muted-foreground/80'>
+          <dl className='mt-1 grid max-w-full gap-1 rounded-md bg-surface-band/35 p-2 text-[11px] text-muted-foreground/80'>
             {item.arguments.map(argument => (
               <ToolEventRow
                 key={argument.key}
@@ -60,7 +60,7 @@ export const ToolEventView = ({ item }: { item: ToolTimelineItem }) => {
           </dl>
         ) : null}
         {hasOutput ? (
-          <dl className='mt-1 grid max-w-full gap-1 rounded-md bg-background/25 p-2 text-[11px] text-muted-foreground/80'>
+          <dl className='mt-1 grid max-w-full gap-1 rounded-md bg-surface-band/35 p-2 text-[11px] text-muted-foreground/80'>
             {item.output.map(output => (
               <ToolEventRow
                 key={output.key}

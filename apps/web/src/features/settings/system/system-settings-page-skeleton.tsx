@@ -4,7 +4,7 @@ import { PageBreadcrumbsSkeleton } from '@/shared/ui/page/page-breadcrumbs-skele
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 
 const BoxedSectionSkeleton = ({ titleWidth = 'w-32', children }: { titleWidth?: string; children?: ReactNode }) => (
-  <div className='rounded-lg border border-border/70 bg-card/40 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] max-sm:p-4'>
+  <div className='rounded-lg border border-border/70 bg-surface-panel/50 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] max-sm:p-4'>
     <Skeleton className={`mb-4 h-5 ${titleWidth}`} />
     {children}
   </div>
@@ -58,7 +58,7 @@ export const SystemSettingsPageSkeleton = () => (
         {Array.from({ length: 4 }).map((_, index) => (
           <div
             key={index}
-            className='grid gap-3 rounded-lg border border-border/70 bg-card/40 p-4'
+            className='grid gap-3 rounded-lg border border-border/70 bg-surface-panel/50 p-4'
           >
             <Skeleton className='h-3 w-28' />
             <Skeleton className='h-7 w-20' />

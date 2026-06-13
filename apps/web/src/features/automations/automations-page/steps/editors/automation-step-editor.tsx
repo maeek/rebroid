@@ -28,7 +28,7 @@ export function AutomationStepEditor({
     return (
       <Section
         boxed={boxed}
-        contentClassName='text-sm text-secondary-foreground'
+        contentClassName='text-sm text-foreground-muted'
       >
         Select a step to edit.
       </Section>

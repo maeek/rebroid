@@ -40,11 +40,11 @@ const ScheduledTasksPageContent = () => {
         }
       />
       <section className='grid w-full gap-6 px-6 pb-16 max-sm:px-4'>
-        <div className='overflow-hidden rounded-lg border border-border/70 bg-card/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md'>
+        <div className='overflow-hidden rounded-lg border border-border/70 bg-surface-panel/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md'>
           <div className='border-b border-border/60 px-5 py-4 max-sm:px-4'>
             <div className='grid gap-1'>
               <h3 className='font-medium text-foreground'>Tasks</h3>
-              <p className='text-sm text-secondary-foreground'>
+              <p className='text-sm text-foreground-muted'>
                 {controller.enabledCount} enabled · {controller.tasks.length - controller.enabledCount} paused ·{' '}
                 {controller.failedCount} failed
               </p>

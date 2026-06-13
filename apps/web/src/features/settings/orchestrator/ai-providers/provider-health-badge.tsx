@@ -23,12 +23,12 @@ const healthVariant = (health: AutomationAiProviderHealth | null) =>
 
 const healthBannerClassName = (health: AutomationAiProviderHealth | null) =>
   health?.status === 'ok'
-    ? 'border-green-400/25 bg-green-400/10'
+    ? 'border-success/30 bg-success/10'
     : health?.status === 'disabled'
-      ? 'border-border/70 bg-background/25'
+      ? 'border-border/70 bg-surface-band/35'
       : health
         ? 'border-destructive/40 bg-destructive/10'
-        : 'border-border/70 bg-background/25'
+        : 'border-border/70 bg-surface-band/35'
 
 const healthMessage = (health: AutomationAiProviderHealth | null, isChecking: boolean) => {
   if (isChecking) return 'Checking selected provider/model...'
@@ -147,9 +147,7 @@ export const ProviderHealthBanner = ({ provider }: { provider: AutomationAiProvi
         >
           {healthLabel(health, isChecking)}
         </Badge>
-        <span className='min-w-0 break-words text-sm text-secondary-foreground'>
-          {healthMessage(health, isChecking)}
-        </span>
+        <span className='min-w-0 break-words text-sm text-foreground-muted'>{healthMessage(health, isChecking)}</span>
       </div>
       <Button
         type='button'

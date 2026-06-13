@@ -80,7 +80,7 @@ export function AutomationConditionBuilder({
             key={groupIndex}
             className='grid gap-2'
           >
-            {groupIndex > 0 ? <div className='text-xs font-medium text-secondary-foreground'>Or</div> : null}
+            {groupIndex > 0 ? <div className='text-xs font-medium text-foreground-muted'>Or</div> : null}
             <div className='grid gap-2'>
               {group.conditions.map((condition, conditionIndex) => (
                 <ConditionRow
@@ -166,13 +166,13 @@ function ConditionRow({
   }
 
   return (
-    <div className='grid gap-3 rounded-md border border-border/50 bg-background/35 p-3'>
+    <div className='grid gap-3 rounded-md border border-border/50 bg-surface-band/45 p-3'>
       <div className='grid grid-cols-[minmax(0,1fr)_auto] gap-3'>
         <div className='grid grid-cols-[repeat(auto-fit,minmax(min(14rem,100%),1fr))] gap-3'>
           {condition.value.source === 'literal' ? (
             <div className='grid gap-2'>
               <Label>Value</Label>
-              <div className='rounded-md border border-border/60 bg-input/40 px-3 py-2 text-sm'>
+              <div className='rounded-md border border-border/60 bg-control/40 px-3 py-2 text-sm'>
                 {valueRefLabel(condition.value, stepOptions)}
               </div>
             </div>
@@ -189,7 +189,7 @@ function ConditionRow({
             <Label htmlFor={`${id}-operator`}>Condition</Label>
             <Select
               value={operator}
-              onValueChange={nextOperator => setOperator(nextOperator as AutomationConditionOperator)}
+              onValueChange={nextOperator => setOperator(nextOperator)}
             >
               <SelectTrigger
                 id={`${id}-operator`}

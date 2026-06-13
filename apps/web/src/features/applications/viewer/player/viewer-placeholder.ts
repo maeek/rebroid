@@ -23,7 +23,7 @@ type ViewerPlaceholderRule = {
 const fallbackPlaceholder: ViewerPlaceholderRule = {
   title: 'Viewer unavailable',
   description: 'The live viewer is not available for this environment.',
-  toneClassName: 'text-secondary-foreground',
+  toneClassName: 'text-foreground-muted',
   Icon: IconAlertTriangle
 }
 
@@ -53,7 +53,7 @@ const statusPlaceholders: Partial<Record<AppDefinition['status'], ViewerPlacehol
   stopped: {
     title: 'App is stopped',
     description: 'Start the app to open the live viewer.',
-    toneClassName: 'text-secondary-foreground',
+    toneClassName: 'text-foreground-muted',
     Icon: IconPlayerPlay
   }
 }
@@ -61,7 +61,7 @@ const statusPlaceholders: Partial<Record<AppDefinition['status'], ViewerPlacehol
 const unloadedPlaceholder: ViewerPlaceholder = {
   title: 'Viewer unavailable',
   description: 'App details are still loading.',
-  toneClassName: 'text-secondary-foreground',
+  toneClassName: 'text-foreground-muted',
   Icon: IconPlayerPlay,
   showSpinner: false,
   showProgress: false

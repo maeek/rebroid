@@ -45,7 +45,7 @@ export const ContainerActionDialog = () => {
           <DialogDescription>{copy.description}</DialogDescription>
         </DialogHeader>
         <Visible when={pendingAction === 'remove'}>
-          <label className='flex items-start gap-3 rounded-lg border border-border/60 bg-background/35 px-3 py-3'>
+          <label className='flex items-start gap-3 rounded-lg border border-border/60 bg-surface-band/45 px-3 py-3'>
             <Checkbox
               checked={forceRemove}
               onCheckedChange={checked => setForceRemove(checked === true)}
@@ -53,7 +53,7 @@ export const ContainerActionDialog = () => {
             />
             <div className='space-y-1 text-sm'>
               <div className='font-medium'>Force removal</div>
-              <p className='text-secondary-foreground'>
+              <p className='text-foreground-muted'>
                 Sends Docker a forced delete request and retries briefly if removal is already in progress. Persistent
                 volumes are not removed by this action.
               </p>

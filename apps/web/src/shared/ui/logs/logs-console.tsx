@@ -84,7 +84,7 @@ export const LogsConsole = ({
       </div>
       <pre
         className={cn(
-          'min-h-0 overflow-auto rounded-md border border-border/60 bg-background/65 p-4 font-mono text-xs leading-5 text-secondary-foreground',
+          'min-h-0 overflow-auto rounded-md border border-border/45 bg-surface-band/55 p-4 font-mono text-xs leading-5 text-foreground-muted supports-[backdrop-filter]:bg-background/34',
           outputClassName
         )}
       >

@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import { PlatformRouteUnavailable } from '@/shared/ui/page/platform-route-unavailable'
 import { PlatformInventoryPageSkeleton } from '../../components/loaders/orchestrator-page-skeletons'
 import { OrchestratorNetworksPageClient } from '../../components/orchestrator-networks-page-client'
 import { loadInfrastructureNetworksPageData, type NetworksSearchParams } from './page-data.server'
@@ -25,7 +26,22 @@ const InfrastructureNetworksPageContent = async ({
 }: {
   searchParams?: Promise<NetworksSearchParams>
 }) => {
-  const { gridQuery, networksPage } = await loadInfrastructureNetworksPageData((await searchParams) ?? {})
+  const { gridQuery, networksPage, orchestratorError } = await loadInfrastructureNetworksPageData(
+    (await searchParams) ?? {}
+  )
+
+  if (orchestratorError) {
+    return (
+      <PlatformRouteUnavailable
+        title='Networks'
+        description='Docker networks visible to the platform, including application isolation networks.'
+        detail={orchestratorError}
+        href='/infrastructure/networks'
+        breadcrumbRoot={{ label: 'Infrastructure' }}
+      />
+    )
+  }
+
   return (
     <OrchestratorNetworksPageClient
       networksPage={networksPage}

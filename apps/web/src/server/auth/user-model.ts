@@ -1,3 +1,4 @@
+import { defaultAccentColor, isAccentColor, type AccentColor } from '@/shared/model/theme/accent-color'
 import {
   defaultUserPermissions,
   defaultUserQuota,
@@ -31,6 +32,7 @@ export type PublicUser = {
   disabled: boolean
   sessionVersion: number
   avatarDataUrl: string | null
+  accentColor: AccentColor
   permissionOverrides: PermissionMap
   effectivePermissions: PermissionMap
   quotas: Partial<ResourceQuota>
@@ -47,6 +49,7 @@ export type UserEditorInput = {
   groupIds?: string[]
   disabled?: boolean
   avatarDataUrl?: string | null
+  accentColor?: AccentColor
   permissionOverrides?: PermissionMap
   quotas?: Partial<ResourceQuota>
 }
@@ -135,6 +138,7 @@ export const toPublicUser = (file: UsersFile, user: StoredUser): PublicUser => {
     disabled: user.disabled,
     sessionVersion: user.sessionVersion,
     avatarDataUrl: user.avatarDataUrl,
+    accentColor: user.accentColor,
     permissionOverrides: user.permissionOverrides,
     effectivePermissions,
     quotas: user.quotas,
@@ -160,6 +164,7 @@ export const normalizeUser = (
     disabled: user.disabled ?? false,
     sessionVersion: user.sessionVersion ?? 1,
     avatarDataUrl: user.avatarDataUrl ?? null,
+    accentColor: isAccentColor(user.accentColor) ? user.accentColor : defaultAccentColor,
     permissionOverrides: user.permissionOverrides ?? {},
     quotas: user.quotas ?? {},
     passwordHash: user.passwordHash,
