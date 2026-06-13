@@ -11,10 +11,12 @@ import { getHslColorFromCharCode, getHslColorFromCharCodeForeground } from '@/ut
 export const UserAvatarInput = ({
   name,
   avatar,
+  disabled = false,
   onChange
 }: {
   name: string
   avatar: string | null
+  disabled?: boolean
   onChange: (avatar: string | null) => void
 }) => {
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -52,6 +54,7 @@ export const UserAvatarInput = ({
           asChild
           type='button'
           variant='secondary'
+          disabled={disabled}
         >
           <label>
             <IconUpload className='size-4' />
@@ -60,6 +63,7 @@ export const UserAvatarInput = ({
               className='hidden'
               type='file'
               accept='image/*'
+              disabled={disabled}
               onChange={event => void handleFileChange(event)}
             />
           </label>
@@ -67,7 +71,7 @@ export const UserAvatarInput = ({
         <Button
           type='button'
           variant='ghost'
-          disabled={!avatar}
+          disabled={disabled || !avatar}
           onClick={() => onChange(null)}
         >
           Clear avatar

@@ -1,17 +1,9 @@
 'use client'
 
-import { useCallback, useState } from 'react'
-import { IconDeviceFloppy } from '@tabler/icons-react'
+import { useCallback, useEffect, useState } from 'react'
 import { signOut } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/hooks/use-toast'
@@ -39,7 +31,7 @@ export const ProfileDialog = ({
   onAvatarSaved: (avatar: string | null) => void
 }) => {
   const [draftAvatar, setDraftAvatar] = useState(avatar)
-  const [isSaving, setIsSaving] = useState(false)
+  const [isSavingAvatar, setIsSavingAvatar] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmNewPassword, setConfirmNewPassword] = useState('')
@@ -58,6 +50,10 @@ export const ProfileDialog = ({
       })
   })
 
+  useEffect(() => {
+    setDraftAvatar(avatar)
+  }, [avatar])
+
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
       setCurrentPassword('')
@@ -67,21 +63,24 @@ export const ProfileDialog = ({
     onOpenChange(nextOpen)
   }
 
-  const saveProfile = async () => {
-    setIsSaving(true)
+  const saveAvatar = async (nextAvatar: string | null) => {
+    const previousAvatar = draftAvatar
+    setDraftAvatar(nextAvatar)
+    setIsSavingAvatar(true)
+
     try {
-      const user = await updateCurrentProfileAction({ avatarDataUrl: draftAvatar })
+      const user = await updateCurrentProfileAction({ avatarDataUrl: nextAvatar })
       onAvatarSaved(user.avatarDataUrl)
-      handleOpenChange(false)
-      toast({ title: 'Profile saved' })
+      toast({ title: nextAvatar ? 'Avatar uploaded' : 'Avatar cleared' })
     } catch (error) {
+      setDraftAvatar(previousAvatar)
       toast({
-        title: 'Could not save profile',
+        title: 'Could not update avatar',
         description: error instanceof Error ? error.message : 'Unknown error',
         variant: 'destructive'
       })
     } finally {
-      setIsSaving(false)
+      setIsSavingAvatar(false)
     }
   }
 
@@ -121,7 +120,8 @@ export const ProfileDialog = ({
         <UserAvatarInput
           name={name}
           avatar={draftAvatar}
-          onChange={setDraftAvatar}
+          disabled={isSavingAvatar}
+          onChange={nextAvatar => void saveAvatar(nextAvatar)}
         />
         <AccentColorPicker
           className='border-t border-border/60 pt-4'
@@ -173,15 +173,6 @@ export const ProfileDialog = ({
             Change password
           </Button>
         </section>
-        <DialogFooter>
-          <Button
-            disabled={isSaving}
-            onClick={() => void saveProfile()}
-          >
-            <IconDeviceFloppy className='size-4' />
-            Save profile
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
