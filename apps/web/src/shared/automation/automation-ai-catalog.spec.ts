@@ -1,5 +1,14 @@
 import { describe, expect, it } from '@jest/globals'
-import { catalogByRole, selectCatalogModel, selectCatalogProvider } from './automation-ai-catalog'
+import {
+  aiModelDisplayName,
+  aiModelSubtitle,
+  aiProviderKindLabel,
+  catalogByRole,
+  nextCatalogProviderAndModel,
+  selectCatalogModel,
+  selectCatalogProvider,
+  selectCatalogProviderAndModel
+} from './automation-ai-catalog'
 import type { AutomationAiModelCatalogProvider } from '@/server/orchestrator/settings/types'
 
 const catalog = [
@@ -68,5 +77,28 @@ describe('automation-ai-catalog', () => {
 
     expect(provider?.id).toBe('planner-only')
     expect(model?.id).toBe('p-default')
+  })
+
+  it('selects provider and model together', () => {
+    const selected = selectCatalogProviderAndModel(catalog, 'planner-only', 'p-extra')
+
+    expect(selected.provider?.id).toBe('planner-only')
+    expect(selected.model?.id).toBe('p-extra')
+  })
+
+  it('selects the next provider default model when provider changes', () => {
+    const selected = nextCatalogProviderAndModel(catalog, 'vision-only')
+
+    expect(selected.provider?.id).toBe('vision-only')
+    expect(selected.model?.id).toBe('v-default')
+  })
+
+  it('formats provider and model labels for picker surfaces', () => {
+    const provider = catalog[1]
+    const model = provider?.models[0]
+
+    expect(aiProviderKindLabel('openai-compatible')).toBe('OpenAI-compatible')
+    expect(aiModelDisplayName(model)).toBe('Vision Default')
+    expect(aiModelSubtitle(provider, model)).toBe('OpenAI-compatible · Vision Only')
   })
 })

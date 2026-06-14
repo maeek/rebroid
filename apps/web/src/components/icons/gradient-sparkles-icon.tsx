@@ -12,7 +12,7 @@ export const GradientSparklesIcon = ({ className }: { className?: string }) => {
       width='24'
       height='24'
       fill='none'
-      strokeWidth='2'
+      strokeWidth='1.9'
       strokeLinecap='round'
       strokeLinejoin='round'
       className={cn('h-6 w-6', className)}
@@ -21,18 +21,18 @@ export const GradientSparklesIcon = ({ className }: { className?: string }) => {
       <defs>
         <linearGradient
           id={gradientId}
-          x1='0%'
-          y1='100%'
-          x2='100%'
-          y2='0%'
-          gradientUnits='objectBoundingBox'
+          x1='4'
+          y1='20'
+          x2='20'
+          y2='4'
+          gradientUnits='userSpaceOnUse'
         >
           <stop
             offset='0%'
             stopColor='#22d3ee'
           />
           <stop
-            offset='45%'
+            offset='42%'
             stopColor='#38bdf8'
           />
           <stop
@@ -42,11 +42,26 @@ export const GradientSparklesIcon = ({ className }: { className?: string }) => {
         </linearGradient>
       </defs>
       <g style={{ stroke: `url(#${gradientId})` }}>
-        <path d='M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z' />
-        <path d='M5 3v4' />
-        <path d='M19 17v4' />
-        <path d='M3 5h4' />
-        <path d='M17 19h4' />
+        <path d='M12 3.1l1.55 4.98a3.16 3.16 0 0 0 2.08 2.08L20.6 12l-4.97 1.84a3.16 3.16 0 0 0-2.08 2.08L12 20.9l-1.55-4.98a3.16 3.16 0 0 0-2.08-2.08L3.4 12l4.97-1.84a3.16 3.16 0 0 0 2.08-2.08L12 3.1z' />
+        <path
+          d='M9.65 14.6h4.7'
+          opacity='0.74'
+        />
+      </g>
+      <g
+        fill={`url(#${gradientId})`}
+        stroke='none'
+      >
+        <circle
+          cx='10.35'
+          cy='11.95'
+          r='0.85'
+        />
+        <circle
+          cx='13.65'
+          cy='11.95'
+          r='0.85'
+        />
       </g>
     </svg>
   )

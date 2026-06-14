@@ -71,10 +71,10 @@ export const viewerStreamingPresets: Record<ViewerStreamingPreset, ViewerStreami
 export const defaultViewerSettings: ViewerSettings = {
   ...viewerStreamingPresets.balanced,
   keyboardCaptureEnabled: false,
-  soundEnabled: true
+  soundEnabled: false
 }
 
-export const viewerSettingsStorageKey = 'rebroid.viewer.settings.v6'
+export const viewerSettingsStorageKey = 'rebroid.viewer.settings.v7'
 
 const isViewerTransport = (value: unknown): value is ViewerTransport => value === 'webrtc' || value === 'websocket'
 

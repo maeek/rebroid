@@ -416,7 +416,7 @@ export class DisplayController {
       maxFps: body.maxFps,
       maxSize: body.maxSize,
       iFrameInterval: body.iFrameInterval,
-      audio: body.audio !== false,
+      audio: body.audio === true,
     });
   }
 

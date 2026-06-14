@@ -2179,14 +2179,14 @@ export interface components {
              * @example home
              * @enum {string}
              */
-            command: "back" | "home" | "recents" | "wake" | "power" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-notifications" | "expand-settings" | "collapse-panels";
+            command: "back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-notifications" | "expand-settings" | "collapse-panels";
         };
         ApplicationViewerControlResponseDto: {
             /**
              * @example home
              * @enum {string}
              */
-            command: "back" | "home" | "recents" | "wake" | "power" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-notifications" | "expand-settings" | "collapse-panels";
+            command: "back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-notifications" | "expand-settings" | "collapse-panels";
             /** @example true */
             executed: boolean;
             /** @example Viewer control command executed. */
@@ -2397,6 +2397,13 @@ export interface components {
             visionProviderId?: string;
             /** @example qwen2.5vl:7b */
             visionModelId?: string;
+            /**
+             * @example [
+             *       "android.tapNormalized",
+             *       "android.waitForText"
+             *     ]
+             */
+            allowedTools?: string[];
         };
         AutomationYamlDraftDto: {
             yaml: string;

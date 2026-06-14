@@ -23,6 +23,7 @@ export type ViewerUi = {
   showFailure: (text: string) => void;
   showCanvas: () => void;
   showVideo: () => void;
+  preserveVideoFrame: (source: HTMLVideoElement) => boolean;
   showStarting: (text?: string) => void;
   showCompatibility: (mode: string, message?: string) => void;
 };
@@ -97,11 +98,31 @@ export type TouchInputPayload =
 
 export type DisplayDecoder = {
   appendStreamBytes: (bytes: Uint8Array<ArrayBufferLike>) => Promise<void>;
+  appendVideoPacket: (bytes: Uint8Array<ArrayBufferLike>) => Promise<void>;
   reset: () => void;
   hasFrames: () => boolean;
+  debugState: () => JsonRecord;
 };
 
 export type DisplayTransport = {
   connect: () => Promise<void>;
   scheduleReconnect: () => void;
+};
+
+export type ViewerStreamStatusCode =
+  | "audio-disabled"
+  | "reconnecting"
+  | "transport-fallback"
+  | "first-frame-timeout"
+  | "video-stalled"
+  | "stream-error";
+
+export type ViewerStreamStatusSeverity = "info" | "warning" | "error";
+
+export type ViewerStreamStatus = {
+  code: ViewerStreamStatusCode;
+  severity: ViewerStreamStatusSeverity;
+  blocking: boolean;
+  message: string;
+  transport?: "webrtc" | "websocket";
 };

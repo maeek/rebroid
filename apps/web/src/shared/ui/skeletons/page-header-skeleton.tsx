@@ -4,11 +4,13 @@ import { PageBreadcrumbsSkeleton } from '@/shared/ui/page/page-breadcrumbs-skele
 
 export const PageHeaderSkeleton = ({
   titleWidth,
+  hasTitlePrefix = false,
   hasParent = false,
   includeOrchestratorBreadcrumb = true,
   actionCount = 0
 }: {
   titleWidth: string
+  hasTitlePrefix?: boolean
   hasParent?: boolean
   includeOrchestratorBreadcrumb?: boolean
   actionCount?: number
@@ -26,7 +28,12 @@ export const PageHeaderSkeleton = ({
           ]}
         />
         <div className='flex flex-col gap-2 pt-4'>
-          <Skeleton className={`h-10 ${titleWidth} max-sm:h-8`} />
+          <div className='flex items-center gap-2.5'>
+            <Visible when={hasTitlePrefix}>
+              <Skeleton className='size-7 rounded-sm max-sm:size-5' />
+            </Visible>
+            <Skeleton className={`h-10 ${titleWidth} max-sm:h-8`} />
+          </div>
           <Skeleton className='h-4 w-full max-w-3xl opacity-70' />
         </div>
       </div>

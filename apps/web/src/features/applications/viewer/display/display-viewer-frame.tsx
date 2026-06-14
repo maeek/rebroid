@@ -8,6 +8,10 @@ import {
   viewerControlCommandEventType,
   viewerControlMessageType
 } from '@/features/applications/viewer/player/viewer-keyboard-relay'
+import {
+  isDisplayViewerStreamStatus,
+  type DisplayViewerStreamStatus
+} from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { ViewerControlCommandEventDetail } from '@/features/applications/viewer/player/viewer-keyboard-relay'
 
 const isKeyboardCaptureMessage = (value: unknown): value is { type: string; enabled: boolean } => {
@@ -48,10 +52,12 @@ const isViewerControlMessage = (value: unknown): value is { type: string; comman
 export const DisplayViewerFrame = ({
   src,
   keyboardCaptureEnabled,
+  onStreamStatus,
   surfaceId
 }: {
   src: string
   keyboardCaptureEnabled: boolean
+  onStreamStatus?: (status: DisplayViewerStreamStatus) => void
   surfaceId?: string
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -106,6 +112,12 @@ export const DisplayViewerFrame = ({
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       const viewerOrigin = getViewerOrigin()
+      const isFrameSource = event.source === iframeRef.current?.contentWindow
+      if (event.origin === viewerOrigin && isFrameSource && isDisplayViewerStreamStatus(event.data)) {
+        onStreamStatus?.(event.data)
+        return
+      }
+
       if (event.origin !== viewerOrigin || !isKeyboardCaptureMessage(event.data)) {
         if (
           event.origin === viewerOrigin &&
@@ -126,7 +138,7 @@ export const DisplayViewerFrame = ({
     return () => {
       window.removeEventListener('message', handleMessage)
     }
-  }, [getViewerOrigin, postKeyboardCapturePreference, surfaceId])
+  }, [getViewerOrigin, onStreamStatus, postKeyboardCapturePreference, surfaceId])
 
   useEffect(() => {
     const relayControlCommand = (event: Event) => {

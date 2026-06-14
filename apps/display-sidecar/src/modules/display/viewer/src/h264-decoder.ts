@@ -2,7 +2,6 @@ import { concatBytes, findStartCodes } from "./bytes";
 import type { DisplayDecoder, ViewerUi } from "./types";
 
 const videoFrameDurationUs = 16_667;
-
 type H264DecoderOptions = {
   canvas: HTMLCanvasElement;
   context: CanvasRenderingContext2D;
@@ -30,6 +29,32 @@ function h264NalType(nal: Uint8Array<ArrayBufferLike>): number {
 
 function isH264Slice(type: number): boolean {
   return type === 1 || type === 5;
+}
+
+function h264NalTypes(nals: Uint8Array<ArrayBufferLike>[]): number[] {
+  return nals.map((nal) => h264NalType(nal));
+}
+
+export function splitAnnexBPacket(
+  bytes: Uint8Array<ArrayBufferLike>,
+): Uint8Array<ArrayBufferLike>[] {
+  const starts = findStartCodes(bytes);
+  if (!starts.length) {
+    return [];
+  }
+
+  const nals: Uint8Array<ArrayBufferLike>[] = [];
+  for (let i = 0; i < starts.length; i += 1) {
+    const current = starts[i]!;
+    const next = starts[i + 1];
+    const start = current.index + current.length;
+    const end = next ? next.index : bytes.byteLength;
+    const nal = bytes.slice(start, end);
+    if (nal.byteLength > 0) {
+      nals.push(nal);
+    }
+  }
+  return nals;
 }
 
 export function createH264Decoder({
@@ -108,6 +133,13 @@ export function createH264Decoder({
         context.drawImage(frame, 0, 0, canvas.width, canvas.height);
         frame.close();
         framesDecoded += 1;
+        if (framesDecoded === 1) {
+          console.debug("Display decoder rendered first frame.", {
+            codec: codecName,
+            canvasWidth: canvas.width,
+            canvasHeight: canvas.height,
+          });
+        }
         ui.showCanvas();
       },
       error(error) {
@@ -134,34 +166,30 @@ export function createH264Decoder({
     configured = true;
   }
 
-  async function flushAccessUnit(): Promise<void> {
-    clearTimeout(flushTimer);
-    if (!pendingNals.length) {
-      return;
-    }
-
+  function decodeAccessUnit(
+    nals: Uint8Array<ArrayBufferLike>[],
+  ): Promise<void> {
     if (!decoder || !configured) {
-      pendingNals = [];
-      return;
+      return Promise.resolve();
     }
 
-    const hasIdr = pendingNals.some((nal) => h264NalType(nal) === 5);
+    const hasIdr = nals.some((nal) => h264NalType(nal) === 5);
     if (needsKeyFrame && !hasIdr) {
-      pendingNals = [];
-      return;
+      return Promise.resolve();
     }
 
     if (hasIdr && (!sps || !pps)) {
-      pendingNals = [];
       needsKeyFrame = true;
-      return;
+      return Promise.resolve();
     }
 
-    const nals =
-      hasIdr && sps && pps ? [sps, pps, ...pendingNals] : pendingNals;
-    pendingNals = [];
+    const chunkNals = hasIdr && sps && pps ? [sps, pps, ...nals] : nals;
+    if (!chunkNals.some((nal) => isH264Slice(h264NalType(nal)))) {
+      return Promise.resolve();
+    }
+
     const chunkBytes = concatBytes(
-      nals.map((nal) => concatBytes([new Uint8Array([0, 0, 0, 1]), nal])),
+      chunkNals.map((nal) => concatBytes([new Uint8Array([0, 0, 0, 1]), nal])),
     );
     const chunk = new EncodedVideoChunk({
       type: hasIdr ? "key" : "delta",
@@ -179,6 +207,18 @@ export function createH264Decoder({
       console.warn("Could not decode display chunk.", error);
       needsKeyFrame = true;
     }
+    return Promise.resolve();
+  }
+
+  async function flushAccessUnit(): Promise<void> {
+    clearTimeout(flushTimer);
+    if (!pendingNals.length) {
+      return;
+    }
+
+    const accessUnit = pendingNals;
+    pendingNals = [];
+    await decodeAccessUnit(accessUnit);
   }
 
   function scheduleFlush() {
@@ -242,9 +282,41 @@ export function createH264Decoder({
     streamBuffer = streamBuffer.slice(starts[starts.length - 1].index);
   }
 
+  async function appendVideoPacket(
+    bytes: Uint8Array<ArrayBufferLike>,
+  ): Promise<void> {
+    const packet = concatBytes([streamBuffer, bytes]);
+    streamBuffer = new Uint8Array(0);
+    const nals = splitAnnexBPacket(packet);
+    const accessUnit: Uint8Array<ArrayBufferLike>[] = [];
+    for (const nal of nals) {
+      const type = h264NalType(nal);
+      if (type === 7) {
+        sps = nal;
+        await configureDecoder(h264CodecFromSps(nal));
+      } else if (type === 8) {
+        pps = nal;
+      } else {
+        accessUnit.push(nal);
+      }
+    }
+    await decodeAccessUnit(accessUnit);
+  }
+
   return {
     appendStreamBytes,
+    appendVideoPacket,
     reset,
     hasFrames: () => framesDecoded > 0,
+    debugState: () => ({
+      framesDecoded,
+      configured,
+      codecName,
+      pendingNalTypes: h264NalTypes(pendingNals),
+      streamBufferBytes: streamBuffer.byteLength,
+      needsKeyFrame,
+      hasSps: Boolean(sps),
+      hasPps: Boolean(pps),
+    }),
   };
 }

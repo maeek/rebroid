@@ -1,4 +1,5 @@
-import { IconAlertTriangle, IconSparkles, IconTrash } from '@tabler/icons-react'
+import { IconAlertTriangle, IconTrash } from '@tabler/icons-react'
+import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -9,10 +10,9 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 import { selectCatalogModel } from '@/shared/automation/automation-ai-catalog'
+import { AiModelPicker } from '@/shared/ui/ai/ai-model-picker'
+import { AiPromptComposer } from '@/shared/ui/ai/ai-prompt-composer'
 import type { AutomationAiModelCatalogProvider } from '@/server/orchestrator/settings/types'
 
 export const AiDraftDialog = ({
@@ -48,82 +48,49 @@ export const AiDraftDialog = ({
       open={open}
       onOpenChange={onOpenChange}
     >
-      <DialogContent>
+      <DialogContent className='sm:max-w-lg'>
         <DialogHeader>
-          <DialogTitle>Draft automation</DialogTitle>
+          <DialogTitle className='flex items-center gap-2'>
+            <GradientSparklesIcon className='size-5' />
+            Draft automation
+          </DialogTitle>
           <DialogDescription>Generate a runnable AI automation draft into the YAML editor.</DialogDescription>
         </DialogHeader>
-        <div className='grid gap-4'>
-          <div className='grid gap-3 md:grid-cols-2'>
-            <div className='grid gap-2'>
-              <Label>Provider</Label>
-              <Select
-                value={selectedProvider?.id ?? ''}
-                disabled={catalog.length === 0}
-                onValueChange={nextProviderId => {
-                  const nextProvider = catalog.find(provider => provider.id === nextProviderId)
-                  const nextModel = selectCatalogModel(nextProvider, '')
-                  onProviderChange(nextProviderId)
-                  onModelChange(nextModel?.id ?? '')
-                }}
+        <AiPromptComposer
+          value={prompt}
+          rows={6}
+          variant='plain'
+          placeholder='Describe the workflow this automation should perform.'
+          textareaClassName='min-h-32'
+          onChange={onPromptChange}
+          onSubmit={() => {
+            if (busy || !prompt.trim() || !selectedProvider || !selectedModel) return
+            onDraft()
+          }}
+          modelControl={
+            <AiModelPicker
+              catalog={catalog}
+              selectedProvider={selectedProvider}
+              selectedModel={selectedModel}
+              onProviderChange={onProviderChange}
+              onModelChange={onModelChange}
+            />
+          }
+          actions={
+            <>
+              <DialogClose asChild>
+                <Button variant='secondary'>Cancel</Button>
+              </DialogClose>
+              <Button
+                disabled={busy || !prompt.trim() || !selectedProvider || !selectedModel}
+                onClick={onDraft}
               >
-                <SelectTrigger className='w-full'>
-                  <SelectValue placeholder='Select provider' />
-                </SelectTrigger>
-                <SelectContent>
-                  {catalog.map(provider => (
-                    <SelectItem
-                      key={provider.id}
-                      value={provider.id}
-                    >
-                      {provider.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className='grid gap-2'>
-              <Label>Model</Label>
-              <Select
-                value={selectedModel?.id ?? ''}
-                disabled={!selectedProvider}
-                onValueChange={onModelChange}
-              >
-                <SelectTrigger className='w-full'>
-                  <SelectValue placeholder='Select model' />
-                </SelectTrigger>
-                <SelectContent>
-                  {(selectedProvider?.models ?? []).map(model => (
-                    <SelectItem
-                      key={model.id}
-                      value={model.id}
-                    >
-                      {model.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <Textarea
-            value={prompt}
-            rows={6}
-            placeholder='Describe the workflow this automation should perform.'
-            onChange={event => onPromptChange(event.target.value)}
-          />
-        </div>
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant='secondary'>Cancel</Button>
-          </DialogClose>
-          <Button
-            disabled={busy || !prompt.trim() || !selectedProvider || !selectedModel}
-            onClick={onDraft}
-          >
-            <IconSparkles className='size-4' />
-            Draft
-          </Button>
-        </DialogFooter>
+                <GradientSparklesIcon className='size-4' />
+                Draft
+              </Button>
+            </>
+          }
+        />
       </DialogContent>
     </Dialog>
   )

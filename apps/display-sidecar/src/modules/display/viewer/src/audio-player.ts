@@ -10,7 +10,12 @@ export type ViewerAudioPacket = {
 
 export type ViewerAudioPlayer = {
   appendPacket: (packet: ViewerAudioPacket) => Promise<void>;
+  disable: (reason?: string) => void;
   reset: () => void;
+};
+
+type ViewerAudioPlayerOptions = {
+  onDisabled?: (reason: string) => void;
 };
 
 export function parseViewerAudioPacket(
@@ -31,10 +36,13 @@ export function parseViewerAudioPacket(
   };
 }
 
-export function createViewerAudioPlayer(): ViewerAudioPlayer {
+export function createViewerAudioPlayer({
+  onDisabled,
+}: ViewerAudioPlayerOptions = {}): ViewerAudioPlayer {
   let decoder: AudioDecoder | null = null;
   let context: AudioContext | null = null;
   let configured = false;
+  let disabled = false;
   let scheduledAt = 0;
   let description: Uint8Array<ArrayBufferLike> | undefined;
 
@@ -96,8 +104,7 @@ export function createViewerAudioPlayer(): ViewerAudioPlayer {
       output: schedule,
       error(error) {
         console.warn("Display audio decoder failed.", error);
-        configured = false;
-        decoder = null;
+        disable("Live display audio decoding failed.");
       },
     });
     decoder.configure(config);
@@ -115,6 +122,15 @@ export function createViewerAudioPlayer(): ViewerAudioPlayer {
     scheduledAt = 0;
   }
 
+  function disable(reason = "Live display audio is unavailable.") {
+    if (disabled) {
+      return;
+    }
+    disabled = true;
+    reset();
+    onDisabled?.(reason);
+  }
+
   window.addEventListener(
     "pointerdown",
     () => {
@@ -127,20 +143,33 @@ export function createViewerAudioPlayer(): ViewerAudioPlayer {
 
   return {
     async appendPacket(packet) {
+      if (disabled) {
+        return;
+      }
       if (packet.config) {
         description = packet.data;
         reset();
         return;
       }
-      await configure();
-      decoder?.decode(
-        new EncodedAudioChunk({
-          type: "key",
-          timestamp: packet.timestamp,
-          data: packet.data,
-        }),
-      );
+      try {
+        await configure();
+        decoder?.decode(
+          new EncodedAudioChunk({
+            type: "key",
+            timestamp: packet.timestamp,
+            data: packet.data,
+          }),
+        );
+      } catch (error) {
+        console.warn("Display audio playback is disabled.", error);
+        disable(
+          error instanceof Error
+            ? error.message
+            : "Live display audio is unavailable.",
+        );
+      }
     },
+    disable,
     reset,
   };
 }

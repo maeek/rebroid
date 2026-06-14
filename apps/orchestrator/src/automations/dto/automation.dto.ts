@@ -1,9 +1,11 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   IsEnum,
   IsIn,
   IsInt,
+  IsArray,
   IsObject,
   IsOptional,
   IsString,
@@ -79,6 +81,18 @@ export class DraftAutomationYamlDto {
   @IsString()
   @MaxLength(120)
   visionModelId?: string;
+
+  @ApiPropertyOptional({
+    type: String,
+    isArray: true,
+    example: ['android.tapNormalized', 'android.waitForText'],
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(100)
+  @IsString({ each: true })
+  @MaxLength(120, { each: true })
+  allowedTools?: string[];
 }
 
 export class AutomationYamlDraftDto {

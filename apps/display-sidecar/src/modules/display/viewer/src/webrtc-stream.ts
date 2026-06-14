@@ -4,6 +4,8 @@ import type {
   ViewerConfig,
   ViewerUi,
 } from "./types";
+import { rememberWebsocketFallback } from "./config";
+import { emitViewerStreamStatus } from "./stream-status";
 
 type WebrtcStreamOptions = {
   config: ViewerConfig;
@@ -419,8 +421,17 @@ export function createWebrtcStream({
       return;
     }
     fallbackStarted = true;
+    rememberWebsocketFallback(config.sessionId);
     stopFrameProgressMonitor?.();
     stopFrameProgressMonitor = null;
+    ui.preserveVideoFrame(video);
+    emitViewerStreamStatus({
+      code: "transport-fallback",
+      severity: "warning",
+      blocking: false,
+      message: "WebRTC stopped delivering frames. Switching to WebSocket.",
+      transport: "websocket",
+    });
     const activePeer = peer;
     peer = null;
     closePeer(activePeer, video);

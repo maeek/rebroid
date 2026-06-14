@@ -5,10 +5,10 @@ import {
   IconDownload,
   IconEye,
   IconFileCode,
-  IconSparkles,
   IconTrash,
   IconUpload
 } from '@tabler/icons-react'
+import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -59,7 +59,7 @@ export const AutomationEditorHeader = ({
           aria-label='Draft workflow from prompt'
           onClick={onDraftFromPrompt}
         >
-          <IconSparkles className='size-4' />
+          <GradientSparklesIcon className='size-4' />
         </Button>
       ) : null}
       <Button
@@ -106,7 +106,7 @@ export const AutomationEditorHeader = ({
               className='gap-2 px-3 py-2'
               onSelect={onDraftFromPrompt}
             >
-              <IconSparkles className='size-4' />
+              <GradientSparklesIcon className='size-4' />
               Draft from prompt
             </DropdownMenuItem>
           ) : null}

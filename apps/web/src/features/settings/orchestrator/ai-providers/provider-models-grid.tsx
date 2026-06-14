@@ -1,12 +1,12 @@
-import { useCallback, useMemo, useState } from 'react'
-import { IconDownload, IconPlus, IconSettings, IconTrash } from '@tabler/icons-react'
-import { Badge } from '@/components/ui/badge'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { IconCheck, IconDownload, IconPencil, IconPlus, IconSettings, IconTrash, IconX } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Switch } from '@/components/ui/switch'
+import { AiModelStateBadges } from '@/shared/ui/ai/ai-model-badges'
 import { DataGrid } from '@/shared/ui/data-grid'
 import { ProviderHealthBadge } from './provider-health-badge'
 import { ProviderModelAddDialog, ProviderModelDownloadStatus } from './provider-model-download'
@@ -25,6 +25,94 @@ import type {
 } from '@/server/orchestrator/settings/types'
 import type { ProviderModelRow } from '@rebroid/ai-core/provider'
 import type { ColumnDef } from '@tanstack/react-table'
+
+const ProviderModelLabelCell = ({
+  model,
+  onUpdateModel
+}: {
+  model: ProviderModelRow
+  onUpdateModel: (index: number, patch: Partial<AutomationAiProviderModel>) => void
+}) => {
+  const [isEditing, setIsEditing] = useState(false)
+  const [draftLabel, setDraftLabel] = useState(model.label)
+
+  useEffect(() => {
+    if (!isEditing) setDraftLabel(model.label)
+  }, [isEditing, model.label])
+
+  const startEditing = () => {
+    setDraftLabel(model.label)
+    setIsEditing(true)
+  }
+
+  const cancelEditing = () => {
+    setDraftLabel(model.label)
+    setIsEditing(false)
+  }
+
+  const saveLabel = () => {
+    onUpdateModel(model.index, { label: draftLabel })
+    setIsEditing(false)
+  }
+
+  if (isEditing) {
+    return (
+      <div className='flex min-h-10 min-w-0 items-center gap-2'>
+        <Input
+          value={draftLabel}
+          placeholder='Qwen 2.5 VL 7B'
+          autoFocus
+          onChange={event => setDraftLabel(event.target.value)}
+          onKeyDown={event => {
+            if (event.key === 'Enter') saveLabel()
+            if (event.key === 'Escape') cancelEditing()
+          }}
+        />
+        <Button
+          type='button'
+          variant='ghost'
+          size='icon'
+          className='size-8'
+          aria-label='Save label'
+          onClick={saveLabel}
+        >
+          <IconCheck className='size-4' />
+        </Button>
+        <Button
+          type='button'
+          variant='ghost'
+          size='icon'
+          className='size-8'
+          aria-label='Cancel label edit'
+          onClick={cancelEditing}
+        >
+          <IconX className='size-4' />
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className='flex min-h-10 min-w-0 items-center gap-2'>
+      <span
+        className='min-w-0 truncate text-sm font-medium text-foreground'
+        title={model.label || model.id}
+      >
+        {model.label || model.id}
+      </span>
+      <Button
+        type='button'
+        variant='ghost'
+        size='icon'
+        className='size-8'
+        aria-label={`Edit label for ${model.id}`}
+        onClick={startEditing}
+      >
+        <IconPencil className='size-4' />
+      </Button>
+    </div>
+  )
+}
 
 export const ProviderModelsGrid = ({
   initialProvider,
@@ -79,12 +167,13 @@ export const ProviderModelsGrid = ({
         size: 260,
         meta: { label: 'Model ID' },
         cell: ({ row }) => (
-          <div className='flex min-h-10 items-center'>
-            <Input
-              value={row.original.id}
-              placeholder='qwen2.5vl:7b'
-              onChange={event => onUpdateModel(row.original.index, { id: event.target.value })}
-            />
+          <div className='flex min-h-10 min-w-0 items-center'>
+            <span
+              className='min-w-0 truncate font-mono text-sm font-medium text-foreground'
+              title={row.original.id}
+            >
+              {row.original.id}
+            </span>
           </div>
         )
       },
@@ -94,13 +183,10 @@ export const ProviderModelsGrid = ({
         size: 260,
         meta: { label: 'Label' },
         cell: ({ row }) => (
-          <div className='flex min-h-10 items-center'>
-            <Input
-              value={row.original.label}
-              placeholder='Qwen 2.5 VL 7B'
-              onChange={event => onUpdateModel(row.original.index, { label: event.target.value })}
-            />
-          </div>
+          <ProviderModelLabelCell
+            model={row.original}
+            onUpdateModel={onUpdateModel}
+          />
         )
       },
       {
@@ -138,8 +224,10 @@ export const ProviderModelsGrid = ({
               checked={row.original.enabled}
               onCheckedChange={enabled => onUpdateModel(row.original.index, { enabled })}
             />
-            <span className='text-sm text-foreground-muted'>{row.original.enabled ? 'Enabled' : 'Disabled'}</span>
-            {row.original.default ? <Badge variant='outline'>Default</Badge> : null}
+            <AiModelStateBadges
+              enabled={row.original.enabled}
+              isDefault={row.original.default}
+            />
           </div>
         )
       },

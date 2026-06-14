@@ -247,7 +247,7 @@ export class DisplayWebrtcOfferDto {
   @ApiPropertyOptional({ example: 1 })
   iFrameInterval?: number;
 
-  @ApiPropertyOptional({ example: true, default: true })
+  @ApiPropertyOptional({ example: false, default: false })
   audio?: boolean;
 }
 

@@ -69,7 +69,7 @@ const numberParam = (value: string | undefined, fallback: number) => {
 export const viewerSettingsFromSearchParams = (searchParams: ViewerSearchParams | undefined): ViewerSettings =>
   normalizeViewerSettings({
     keyboardCaptureEnabled: searchParams?.keyboard === '1',
-    soundEnabled: searchParams?.sound !== '0',
+    soundEnabled: searchParams?.sound === '1',
     player: isViewerPlayer(searchParams?.player) ? searchParams.player : undefined,
     transport: searchParams?.transport === 'websocket' ? 'websocket' : 'webrtc',
     bitrateMbps: numberParam(searchParams?.bitrateMbps, defaultViewerSettings.bitrateMbps),

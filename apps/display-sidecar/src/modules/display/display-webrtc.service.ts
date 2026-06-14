@@ -365,6 +365,7 @@ export class DisplayWebrtcService {
 class BridgeScrcpyClient extends EventEmitter implements ScrcpyStreamClient {
   readyState: number = SCRCPY_WS_OPEN;
   bufferedAmount = 0;
+  audioBufferedAmount = 0;
 
   constructor(
     private readonly process: ChildProcess,
@@ -409,11 +410,11 @@ class BridgeScrcpyClient extends EventEmitter implements ScrcpyStreamClient {
     const header = Buffer.alloc(12);
     header.writeBigInt64BE(packet.timestampUs);
     header.writeUInt32BE(packet.data.byteLength, 8);
-    this.bufferedAmount += header.byteLength + packet.data.byteLength;
+    this.audioBufferedAmount += header.byteLength + packet.data.byteLength;
     this.audioInput.write(Buffer.concat([header, packet.data]), (error) => {
-      this.bufferedAmount = Math.max(
+      this.audioBufferedAmount = Math.max(
         0,
-        this.bufferedAmount - header.byteLength - packet.data.byteLength,
+        this.audioBufferedAmount - header.byteLength - packet.data.byteLength,
       );
       done?.(error ?? undefined);
     });

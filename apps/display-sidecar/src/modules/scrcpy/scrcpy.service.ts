@@ -15,6 +15,7 @@ import {
 } from "./scrcpy-packet-parser";
 import type { ScrcpyPacket } from "./scrcpy-packet-parser";
 import { ScrcpyStreamLiveness } from "./scrcpy-stream-liveness";
+import { ScrcpyVideoPacketMerger } from "./scrcpy-video-packet-merger";
 import {
   ForwardedVideoSocket,
   SCRCPY_WS_OPEN,
@@ -34,6 +35,7 @@ const SOCKET_CONNECT_TIMEOUT_MS = 10_000;
 const WS_HIGH_WATERMARK_BYTES = 8 * 1024 * 1024;
 const WS_LOW_WATERMARK_BYTES = 2 * 1024 * 1024;
 const STREAM_RESTART_BACKOFF_MS = 500;
+const STREAM_HEARTBEAT_INTERVAL_MS = 5_000;
 const SCRCPY_CONNECT_RETRY_DELAY_MS = 100;
 const REVERSE_SOCKET_ACCEPT_TIMEOUT_MS = 5_000;
 const AUXILIARY_SOCKET_CONNECT_TIMEOUT_MS = 2_000;
@@ -161,6 +163,7 @@ export class ScrcpyService {
   private readonly activeRecordings = new Map<string, ActiveRecording>();
   private readonly completedRecordings = new Map<string, CompletedRecording>();
   private readonly scrcpyServerPushes = new Set<string>();
+  private readonly audioDisabledSessions = new Set<string>();
 
   constructor(
     private readonly adb: AdbService,
@@ -172,10 +175,18 @@ export class ScrcpyService {
     let stopCurrentAttempt: (() => Promise<void>) | null = null;
     let streamedOnce = false;
     let restartAttempt = 0;
+    if (!options.audio) {
+      this.audioDisabledSessions.delete(options.sessionId);
+    }
     let effectiveOptions: ScrcpyStreamOptions = {
       ...options,
+      audio: options.audio && !this.audioDisabledSessions.has(options.sessionId),
       control: options.control ?? true,
-      compatibilityMode: options.compatibilityMode ?? "normal",
+      compatibilityMode:
+        options.compatibilityMode ??
+        (options.audio && this.audioDisabledSessions.has(options.sessionId)
+          ? "audio-disabled"
+          : "normal"),
     };
     this.assertCompatibleScrcpyServerVersion();
     const previousClient = this.streamClients.get(options.sessionId);
@@ -193,8 +204,11 @@ export class ScrcpyService {
       message: this.compatibilityProbeSummary(compatibilityProbe),
     });
 
-    options.client.once("close", () => {
+    options.client.once("close", (code, reason) => {
       clientClosed = true;
+      this.logger.debug(
+        `[scrcpy:${options.udid}:${options.sessionId}] stream client closed code=${code ?? "unknown"} reason=${reason?.toString() || ""}`,
+      );
       this.runInBackground(
         stopCurrentAttempt?.(),
         `[scrcpy:${options.udid}:${options.sessionId}] client close cleanup`,
@@ -312,6 +326,7 @@ export class ScrcpyService {
       .get(sessionId)
       ?.close?.(1000, "Display session released");
     this.streamClients.delete(sessionId);
+    this.audioDisabledSessions.delete(sessionId);
     this.finishRecordingForSession(sessionId);
   }
 
@@ -515,7 +530,11 @@ export class ScrcpyService {
     let audioSocket: ScrcpySocket | null = null;
     let controlSocket: ScrcpySocket | null = null;
     let liveness: ScrcpyStreamLiveness | null = null;
+    let heartbeatTimer: NodeJS.Timeout | null = null;
     let bytesForwarded = 0;
+    let videoConfigPackets = 0;
+    let videoMediaPackets = 0;
+    let videoKeyFrames = 0;
     const startedAt = Date.now();
     let forwardActive = false;
     let reverseActive = false;
@@ -530,7 +549,7 @@ export class ScrcpyService {
       released = true;
 
       this.logger.debug(
-        `[${logPrefix}] closing scrcpy attempt: ${reason}; bytes=${bytesForwarded}; durationMs=${Date.now() - startedAt}; clientState=${options.client.readyState}`,
+        `[${logPrefix}] closing scrcpy attempt: ${reason}; bytes=${bytesForwarded}; mediaPackets=${videoMediaPackets}; keyframes=${videoKeyFrames}; configPackets=${videoConfigPackets}; durationMs=${Date.now() - startedAt}; clientState=${options.client.readyState}`,
       );
 
       if (this.shouldCollectDeviceDiagnostics(reason)) {
@@ -543,6 +562,10 @@ export class ScrcpyService {
       streamSocket?.destroy();
       audioSocket?.destroy();
       controlSocket?.destroy();
+      if (heartbeatTimer) {
+        clearInterval(heartbeatTimer);
+        heartbeatTimer = null;
+      }
       liveness?.stop();
       liveness = null;
       directConnection?.destroy();
@@ -743,6 +766,7 @@ export class ScrcpyService {
         this.flushQueuedControlMessages(options.sessionId);
       }
       if (options.audio && !audioSocket) {
+        this.audioDisabledSessions.add(options.sessionId);
         this.sendJson(options.client, { type: "audio-disabled" });
       }
       options.onActivity?.();
@@ -755,14 +779,47 @@ export class ScrcpyService {
         udid: options.udid,
       });
 
+      heartbeatTimer = setInterval(() => {
+        this.sendJson(options.client, { type: "heartbeat" });
+      }, STREAM_HEARTBEAT_INTERVAL_MS);
+      heartbeatTimer.unref?.();
+
+      const videoPacketMerger = new ScrcpyVideoPacketMerger();
       const forwardVideoPayload = (packet: ScrcpyPacket) => {
         options.onActivity?.();
-        liveness?.recordVideoPacket(packet);
-        const chunk = packet.data;
+        if (packet.config) {
+          videoConfigPackets += 1;
+          if (videoConfigPackets === 1) {
+            this.logger.debug(
+              `[${logPrefix}] first video config packet received; bytes=${packet.data.byteLength}`,
+            );
+          }
+        }
+        const configPrepended = videoPacketMerger.hasPendingConfig();
+        const mergedPacket = videoPacketMerger.merge(packet);
+        if (!mergedPacket) {
+          return;
+        }
+        videoMediaPackets += 1;
+        if (videoMediaPackets === 1) {
+          this.logger.debug(
+            `[${logPrefix}] first video media packet received; keyFrame=${mergedPacket.keyFrame}; bytes=${mergedPacket.data.byteLength}`,
+          );
+        }
+        if (mergedPacket.keyFrame) {
+          videoKeyFrames += 1;
+          if (videoKeyFrames === 1) {
+            this.logger.debug(
+              `[${logPrefix}] first video keyframe received; bytes=${mergedPacket.data.byteLength}; configPrepended=${configPrepended}`,
+            );
+          }
+        }
+        liveness?.recordVideoPacket(mergedPacket);
+        const chunk = mergedPacket.data;
         if (!chunk.length) {
           return;
         }
-        this.recordVideoPacket(options.sessionId, packet);
+        this.recordVideoPacket(options.sessionId, mergedPacket);
         if (options.client.readyState === SCRCPY_WS_OPEN) {
           bytesForwarded += chunk.byteLength;
           if (options.client.bufferedAmount > WS_HIGH_WATERMARK_BYTES) {
@@ -789,28 +846,38 @@ export class ScrcpyService {
           });
         }
       };
+      const disableAudio = (reason: string) => {
+        if (!audioSocket) {
+          return;
+        }
+        this.audioDisabledSessions.add(options.sessionId);
+        this.logger.debug(`[${logPrefix}] ${reason}; continuing video only`);
+        this.sendJson(options.client, { type: "audio-disabled" });
+        audioSocket.destroy();
+        audioSocket = null;
+      };
       const forwardAudioPayload = (packet: ScrcpyAudioPacket) => {
         options.onActivity?.();
-        if (options.client.readyState !== SCRCPY_WS_OPEN) {
+        if (options.client.readyState !== SCRCPY_WS_OPEN || !audioSocket) {
           return;
         }
         bytesForwarded += packet.data.byteLength;
-        if (options.client.bufferedAmount > WS_HIGH_WATERMARK_BYTES) {
+        const audioBufferedAmount =
+          options.client.audioBufferedAmount ?? options.client.bufferedAmount;
+        if (audioBufferedAmount > WS_HIGH_WATERMARK_BYTES) {
           audioSocket?.pause();
         }
         const done = (error?: Error) => {
           if (error) {
-            this.runInBackground(
-              cleanup(`display audio send failed: ${error.message}`),
-              `[${logPrefix}] audio cleanup`,
-            );
+            disableAudio(`display audio send failed: ${error.message}`);
             return;
           }
           if (
             audioSocket &&
             !audioSocket.destroyed &&
             options.client.readyState === SCRCPY_WS_OPEN &&
-            options.client.bufferedAmount < WS_LOW_WATERMARK_BYTES
+            (options.client.audioBufferedAmount ?? options.client.bufferedAmount) <
+              WS_LOW_WATERMARK_BYTES
           ) {
             audioSocket.resume();
           }
@@ -853,11 +920,7 @@ export class ScrcpyService {
                 allowSessionPackets: false,
                 onPacket: forwardAudioPayload,
                 onDisabled: () => {
-                  this.logger.debug(
-                    `[${logPrefix}] Android audio capture is unavailable; continuing with video only`,
-                  );
-                  this.sendJson(options.client, { type: "audio-disabled" });
-                  audioSocket?.destroy();
+                  disableAudio("Android audio capture is unavailable");
                 },
               })
             : null;
@@ -876,10 +939,7 @@ export class ScrcpyService {
             try {
               audioParser?.push(chunk);
             } catch (error) {
-              this.runInBackground(
-                cleanup(`invalid audio stream: ${this.errorMessage(error)}`),
-                `[${logPrefix}] audio parser cleanup`,
-              );
+              disableAudio(`invalid audio stream: ${this.errorMessage(error)}`);
             }
           });
           audioSocket?.resume();
@@ -1604,6 +1664,7 @@ export class ScrcpyService {
     probe: ScrcpyCompatibilityProbe | null,
   ): ScrcpyStreamOptions {
     if (options.audio) {
+      this.audioDisabledSessions.add(options.sessionId);
       return {
         ...options,
         audio: false,
@@ -1630,7 +1691,12 @@ export class ScrcpyService {
     options: ScrcpyStreamOptions,
     result: ScrcpyAttemptResult,
   ): ScrcpyStreamOptions {
-    if (options.audio && result.reason === AUDIO_CONFIGURATION_FAILURE_REASON) {
+    if (
+      options.audio &&
+      (result.reason === AUDIO_CONFIGURATION_FAILURE_REASON ||
+        this.audioDisabledSessions.has(options.sessionId))
+    ) {
+      this.audioDisabledSessions.add(options.sessionId);
       return {
         ...options,
         audio: false,
@@ -1642,8 +1708,7 @@ export class ScrcpyService {
       result.reason.startsWith("display server exited with code 0") ||
       result.reason === "display stream socket closed" ||
       result.reason === "display control socket closed" ||
-      result.reason === "display stream first keyframe timed out" ||
-      result.reason === "display stream video progress timed out";
+      result.reason === "display stream first keyframe timed out";
 
     if (
       !shortAndroidStreamExit ||
@@ -1994,7 +2059,6 @@ export class ScrcpyService {
       reason.startsWith("display server launcher exited") ||
       reason.includes("display stream socket") ||
       reason.includes("display stream first keyframe") ||
-      reason.includes("display stream video progress") ||
       reason.includes("display control socket")
     );
   }

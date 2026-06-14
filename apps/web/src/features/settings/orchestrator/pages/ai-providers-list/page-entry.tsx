@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { PlatformRouteUnavailable } from '@/shared/ui/page/platform-route-unavailable'
 import { AiProvidersPageSkeleton } from '../../ai-providers/ai-provider-page-skeletons'
 import { OrchestratorAiProvidersPageClient } from '../../ai-providers/orchestrator-ai-providers-page-client'
@@ -11,6 +12,7 @@ const AiProvidersListContent = async () => {
     return (
       <PlatformRouteUnavailable
         title='AI providers'
+        titlePrefix={<GradientSparklesIcon className='size-8 max-sm:size-5' />}
         description='Configure OpenAI, Ollama, and OpenAI-compatible providers used by AI automation steps.'
         detail={orchestratorError}
         href='/orchestrator/ai-providers'

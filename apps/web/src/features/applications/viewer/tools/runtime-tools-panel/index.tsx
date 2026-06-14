@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react'
-import { IconCast, IconClipboard, IconFolder, IconLogs, IconRobot, IconSparkles, IconWorld } from '@tabler/icons-react'
+import { IconCast, IconClipboard, IconFolder, IconLogs, IconRobot, IconWorld } from '@tabler/icons-react'
+import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { useApplicationViewerApp } from '@/features/applications/detail/application-viewer-context'
 import { AppLogsContent } from '@/features/applications/viewer/logs/app-logs-content'
 import { cn } from '@/lib/utils'
@@ -27,7 +28,7 @@ export const RuntimeToolsPanel = () => {
               id: 'ai-agent' as const,
               title: 'AI agent',
               description: 'Run ad-hoc automation',
-              Icon: IconSparkles
+              Icon: GradientSparklesIcon
             }
           : null,
         hasPermission(permissions, 'automations:run')

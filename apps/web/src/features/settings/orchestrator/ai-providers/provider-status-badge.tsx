@@ -1,4 +1,3 @@
-import { Badge } from '@/components/ui/badge'
+import { AiModelStateBadges } from '@/shared/ui/ai/ai-model-badges'
 
-export const ProviderStatusBadge = ({ enabled }: { enabled: boolean }) =>
-  enabled ? <Badge variant='status'>Enabled</Badge> : <Badge variant='secondary'>Disabled</Badge>
+export const ProviderStatusBadge = ({ enabled }: { enabled: boolean }) => <AiModelStateBadges enabled={enabled} />

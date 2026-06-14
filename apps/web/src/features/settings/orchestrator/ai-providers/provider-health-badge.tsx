@@ -2,24 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { IconRefresh } from '@tabler/icons-react'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { AiHealthBadge } from '@/shared/ui/ai/ai-health-indicator'
 import type { AutomationAiProvider, AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
-
-const healthLabel = (health: AutomationAiProviderHealth | null, isChecking: boolean) =>
-  health
-    ? health.status === 'ok'
-      ? 'Online'
-      : health.status === 'disabled'
-        ? 'Disabled'
-        : 'Error'
-    : isChecking
-      ? 'Checking'
-      : 'Unknown'
-
-const healthVariant = (health: AutomationAiProviderHealth | null) =>
-  health?.status === 'ok' ? 'status' : health?.status === 'disabled' ? 'secondary' : health ? 'destructive' : 'outline'
 
 const healthBannerClassName = (health: AutomationAiProviderHealth | null) =>
   health?.status === 'ok'
@@ -75,17 +61,12 @@ export const ProviderHealthBadge = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provider.id, selectedModelId])
 
-  const label = healthLabel(health, isChecking)
-
   return (
     <div className={cn('flex min-w-0 items-center gap-2', compact && 'text-xs')}>
-      <Badge
-        variant={healthVariant(health)}
-        className='capitalize'
-        title={health?.message}
-      >
-        {label}
-      </Badge>
+      <AiHealthBadge
+        health={health}
+        isChecking={isChecking}
+      />
       {compact ? null : (
         <Button
           type='button'
@@ -141,12 +122,10 @@ export const ProviderHealthBanner = ({ provider }: { provider: AutomationAiProvi
       )}
     >
       <div className='flex min-w-0 flex-wrap items-center gap-3'>
-        <Badge
-          className='capitalize'
-          variant={healthVariant(health)}
-        >
-          {healthLabel(health, isChecking)}
-        </Badge>
+        <AiHealthBadge
+          health={health}
+          isChecking={isChecking}
+        />
         <span className='min-w-0 break-words text-sm text-foreground-muted'>{healthMessage(health, isChecking)}</span>
       </div>
       <Button

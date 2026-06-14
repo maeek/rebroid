@@ -1,10 +1,12 @@
 import { useMemo } from 'react'
 import { IconPencil, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
+import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Section } from '@/components/ui/section'
+import { AiProviderKindBadge } from '@/shared/ui/ai/ai-model-badges'
 import { DataGrid } from '@/shared/ui/data-grid'
 import { ProviderHealthBadge } from './provider-health-badge'
 import { ProviderStatusBadge } from './provider-status-badge'
@@ -58,7 +60,7 @@ export const ProvidersGrid = ({
         meta: { label: 'Kind' },
         cell: ({ row }) => (
           <div className='flex min-h-10 items-center'>
-            <Badge variant='secondary'>{row.original.kind}</Badge>
+            <AiProviderKindBadge kind={row.original.kind} />
           </div>
         )
       },
@@ -165,7 +167,12 @@ export const ProvidersGrid = ({
         getRowId={provider => provider.id}
         selection={{ selectedIds, onSelectedIdsChange }}
         minWidth='74rem'
-        emptyState={<div className='text-center text-foreground-muted'>No AI providers configured.</div>}
+        emptyState={
+          <div className='flex items-center justify-center gap-2 text-center text-foreground-muted'>
+            <GradientSparklesIcon className='size-4' />
+            No AI providers configured.
+          </div>
+        }
         rowContextMenu={row => {
           const provider = row.original
           return (

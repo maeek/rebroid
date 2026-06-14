@@ -140,6 +140,7 @@ export interface DraftAutomationYamlInput {
   modelId?: string
   visionProviderId?: string
   visionModelId?: string
+  allowedTools?: string[]
 }
 
 export interface AutomationYamlDraft {

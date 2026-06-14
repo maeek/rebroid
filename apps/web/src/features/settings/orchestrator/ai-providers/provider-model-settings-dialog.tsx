@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react'
+import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -39,7 +40,10 @@ export const ProviderModelSettingsDialog = ({
     >
       <DialogContent className='sm:max-w-2xl'>
         <DialogHeader>
-          <DialogTitle>Model settings</DialogTitle>
+          <DialogTitle className='flex items-center gap-2'>
+            <GradientSparklesIcon className='size-5' />
+            Model settings
+          </DialogTitle>
           <DialogDescription>Configure optional model-level prompt and Ollama generation settings.</DialogDescription>
         </DialogHeader>
         {model ? (

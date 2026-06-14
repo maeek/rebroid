@@ -32,6 +32,7 @@ export const AiProvidersPageSkeleton = () => (
   <ProtectedStackPageLayout mainClassName='gap-2'>
     <PageHeaderSkeleton
       titleWidth='w-44'
+      hasTitlePrefix
       actionCount={2}
     />
     <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
@@ -54,6 +55,7 @@ export const AiProviderEditPageSkeleton = () => (
   <ProtectedStackPageLayout mainClassName='gap-2'>
     <PageHeaderSkeleton
       titleWidth='w-48'
+      hasTitlePrefix
       hasParent
       actionCount={2}
     />

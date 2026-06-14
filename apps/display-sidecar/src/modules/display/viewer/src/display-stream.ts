@@ -8,6 +8,10 @@ import {
   parseViewerAudioPacket,
   type ViewerAudioPlayer,
 } from "./audio-player";
+import {
+  emitViewerStreamStatus,
+  statusFromCompatibility,
+} from "./stream-status";
 
 type DisplayStreamOptions = {
   config: ViewerConfig;
@@ -26,7 +30,7 @@ type StreamTextMessage = {
 };
 
 const firstFrameTimeoutMs = 8_000;
-const videoProgressTimeoutMs = 12_000;
+const streamHeartbeatTimeoutMs = 15_000;
 
 function parseTextMessage(text: string): StreamTextMessage | null {
   try {
@@ -52,7 +56,8 @@ export function createDisplayStream({
   let streamGeneration = 0;
   let streamQueue: Promise<void> = Promise.resolve();
   let firstFrameTimer = 0;
-  let progressTimer = 0;
+  let heartbeatTimer = 0;
+  let hasVisibleFrame = false;
 
   lifecycle.onClose(() => {
     clearStreamTimers();
@@ -74,9 +79,9 @@ export function createDisplayStream({
       window.clearTimeout(firstFrameTimer);
       firstFrameTimer = 0;
     }
-    if (progressTimer) {
-      window.clearTimeout(progressTimer);
-      progressTimer = 0;
+    if (heartbeatTimer) {
+      window.clearTimeout(heartbeatTimer);
+      heartbeatTimer = 0;
     }
   }
 
@@ -85,6 +90,13 @@ export function createDisplayStream({
       return;
     }
     console.warn(reason);
+    emitViewerStreamStatus({
+      code: hasVisibleFrame ? "video-stalled" : "first-frame-timeout",
+      severity: hasVisibleFrame ? "warning" : "error",
+      blocking: !hasVisibleFrame,
+      message: reason,
+      transport: "websocket",
+    });
     if (
       activeWs?.readyState === WebSocket.OPEN ||
       activeWs?.readyState === WebSocket.CONNECTING
@@ -103,33 +115,34 @@ export function createDisplayStream({
       if (generation !== streamGeneration || decoder.hasFrames()) {
         return;
       }
-      ui.showStatus(
-        "Reconnecting...",
-        "Starting live display",
-        "Rebroid is opening the app screen.",
-      );
+      if (!hasVisibleFrame) {
+        console.warn("Display stream first-frame debug state.", {
+          decoder: decoder.debugState(),
+        });
+        ui.showStatus(
+          "Reconnecting...",
+          "Starting live display",
+          "Rebroid is opening the app screen.",
+        );
+      }
       forceReconnect("Display stream did not deliver a decodable first frame.");
     }, firstFrameTimeoutMs);
   }
 
-  function armProgressTimer(generation: number): void {
-    if (!decoder.hasFrames()) {
+  function markStreamAlive(generation: number): void {
+    if (generation !== streamGeneration) {
       return;
     }
-    if (firstFrameTimer) {
-      window.clearTimeout(firstFrameTimer);
-      firstFrameTimer = 0;
+    if (heartbeatTimer) {
+      window.clearTimeout(heartbeatTimer);
     }
-    if (progressTimer) {
-      window.clearTimeout(progressTimer);
-    }
-    progressTimer = window.setTimeout(() => {
-      progressTimer = 0;
-      if (generation !== streamGeneration || !decoder.hasFrames()) {
+    heartbeatTimer = window.setTimeout(() => {
+      heartbeatTimer = 0;
+      if (generation !== streamGeneration) {
         return;
       }
-      forceReconnect("Display stream stopped delivering video progress.");
-    }, videoProgressTimeoutMs);
+      forceReconnect("Display stream stopped sending heartbeats.");
+    }, streamHeartbeatTimeoutMs);
   }
 
   function scheduleReconnect(event?: CloseEvent): void {
@@ -137,7 +150,7 @@ export function createDisplayStream({
       return;
     }
 
-    const hadFrames = decoder.hasFrames();
+    const hadFrames = hasVisibleFrame || decoder.hasFrames();
     streamGeneration += 1;
     resetForReconnect();
     if (!hadFrames && reconnectAttempt >= 8) {
@@ -163,6 +176,13 @@ export function createDisplayStream({
         reason: event?.reason,
       });
     }
+    emitViewerStreamStatus({
+      code: "reconnecting",
+      severity: hadFrames ? "info" : "warning",
+      blocking: !hadFrames,
+      message: "Reconnecting live display...",
+      transport: "websocket",
+    });
 
     reconnectTimer = window.setTimeout(() => {
       reconnectTimer = 0;
@@ -176,15 +196,32 @@ export function createDisplayStream({
   async function handleTextMessage(text: string): Promise<void> {
     const payload = parseTextMessage(text);
     if (!payload) {
-      if (!decoder.hasFrames()) {
+      markStreamAlive(streamGeneration);
+      if (!hasVisibleFrame && !decoder.hasFrames()) {
         ui.showStatus("Preparing live display...");
       }
       return;
     }
 
+    markStreamAlive(streamGeneration);
+    if (payload.type === "heartbeat") {
+      return;
+    }
+
     if (payload.type === "reconnecting") {
+      const hadFrames = hasVisibleFrame || decoder.hasFrames();
       resetForReconnect();
-      if (!decoder.hasFrames()) {
+      emitViewerStreamStatus({
+        code: "reconnecting",
+        severity: hadFrames ? "info" : "warning",
+        blocking: !hadFrames,
+        message:
+          typeof payload.message === "string"
+            ? payload.message
+            : "Reconnecting live display...",
+        transport: "websocket",
+      });
+      if (!hadFrames) {
         ui.showStatus(
           typeof payload.message === "string"
             ? payload.message
@@ -195,11 +232,25 @@ export function createDisplayStream({
     }
 
     if (payload.type === "compatibility") {
+      const status = statusFromCompatibility({
+        mode: payload.mode,
+        message: payload.message,
+        diagnostic: payload.diagnostic,
+        transport: "websocket",
+        hasVisibleFrame: hasVisibleFrame || decoder.hasFrames(),
+      });
+      if (status) {
+        emitViewerStreamStatus(status);
+      }
       ui.showCompatibility(
         typeof payload.mode === "string" ? payload.mode : "normal",
         typeof payload.message === "string" ? payload.message : undefined,
       );
-      if (!decoder.hasFrames() && typeof payload.diagnostic === "string") {
+      if (
+        status?.blocking &&
+        !hasVisibleFrame &&
+        typeof payload.diagnostic === "string"
+      ) {
         ui.showStatus(payload.diagnostic.slice(0, 180));
       }
       return;
@@ -219,11 +270,11 @@ export function createDisplayStream({
     }
 
     if (payload.type === "audio-disabled") {
-      audioPlayer.reset();
+      audioPlayer.disable("Audio capture is disabled for this stream.");
       return;
     }
 
-    if (!decoder.hasFrames()) {
+    if (!hasVisibleFrame && !decoder.hasFrames()) {
       ui.showStatus(
         typeof payload.message === "string"
           ? payload.message
@@ -235,12 +286,13 @@ export function createDisplayStream({
   async function handleBinaryMessage(data: unknown): Promise<void> {
     if (data instanceof ArrayBuffer) {
       const bytes = new Uint8Array(data);
+      markStreamAlive(streamGeneration);
       const audioPacket = parseViewerAudioPacket(bytes);
       if (audioPacket) {
         await audioPlayer.appendPacket(audioPacket);
         return;
       }
-      await decoder.appendStreamBytes(bytes);
+      await decoder.appendVideoPacket(bytes);
       return;
     }
 
@@ -283,7 +335,7 @@ export function createDisplayStream({
       if (generation !== streamGeneration) {
         return;
       }
-      if (!decoder.hasFrames()) {
+      if (!hasVisibleFrame && !decoder.hasFrames()) {
         ui.showStatus(
           "Waiting for the first frame...",
           "Starting live display",
@@ -291,7 +343,7 @@ export function createDisplayStream({
         );
         armFirstFrameTimer(generation);
       } else {
-        armProgressTimer(generation);
+        markStreamAlive(generation);
       }
     });
 
@@ -309,8 +361,13 @@ export function createDisplayStream({
         .then(() => handleBinaryMessage(event.data))
         .then(() => {
           if (decoder.hasFrames()) {
+            hasVisibleFrame = true;
             reconnectAttempt = 0;
-            armProgressTimer(generation);
+            if (firstFrameTimer) {
+              window.clearTimeout(firstFrameTimer);
+              firstFrameTimer = 0;
+            }
+            markStreamAlive(generation);
           } else {
             armFirstFrameTimer(generation);
           }
@@ -334,7 +391,7 @@ export function createDisplayStream({
       if (generation !== streamGeneration) {
         return;
       }
-      if (!decoder.hasFrames()) {
+      if (!hasVisibleFrame && !decoder.hasFrames()) {
         ui.showStatus(
           "Reconnecting...",
           "Starting live display",

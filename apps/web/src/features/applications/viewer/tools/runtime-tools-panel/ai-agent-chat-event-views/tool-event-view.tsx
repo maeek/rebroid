@@ -1,4 +1,5 @@
 import { IconChevronDown } from '@tabler/icons-react'
+import { AiToolDetails } from '@/shared/ui/ai/ai-message'
 import type { ToolTimelineItem } from '../ai-agent-chat-event-utils'
 
 type ToolEventRowValue = {
@@ -50,24 +51,24 @@ export const ToolEventView = ({ item }: { item: ToolTimelineItem }) => {
           ) : null}
         </summary>
         {hasArguments ? (
-          <dl className='mt-1 grid max-w-full gap-1 rounded-md bg-surface-band/35 p-2 text-[11px] text-muted-foreground/80'>
+          <AiToolDetails className='mt-1'>
             {item.arguments.map(argument => (
               <ToolEventRow
                 key={argument.key}
                 item={argument}
               />
             ))}
-          </dl>
+          </AiToolDetails>
         ) : null}
         {hasOutput ? (
-          <dl className='mt-1 grid max-w-full gap-1 rounded-md bg-surface-band/35 p-2 text-[11px] text-muted-foreground/80'>
+          <AiToolDetails className='mt-1'>
             {item.output.map(output => (
               <ToolEventRow
                 key={output.key}
                 item={output}
               />
             ))}
-          </dl>
+          </AiToolDetails>
         ) : null}
       </details>
       {item.error ? <div className='wrap-anywhere text-destructive/85'>{item.error}</div> : null}

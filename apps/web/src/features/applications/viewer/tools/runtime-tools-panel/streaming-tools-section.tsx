@@ -3,6 +3,7 @@
 import { useMemo, type ReactNode } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { getViewerPlayerCapabilities } from '@/features/applications/viewer/player/viewer-player-capabilities'
 import {
   normalizeViewerSettings,
@@ -85,6 +86,19 @@ export const StreamingToolsSection = ({
               <SelectItem value='websocket'>WebSocket</SelectItem>
             </SelectContent>
           </Select>
+        </StreamingSetting>
+
+        <StreamingSetting label='Sound capture'>
+          <div className='flex min-w-0 items-center gap-3'>
+            <Switch
+              checked={viewerSettings.soundEnabled}
+              onCheckedChange={enabled => updateSettings({ soundEnabled: Boolean(enabled) })}
+              aria-label='Enable Android sound capture'
+            />
+            <span className='text-xs text-foreground-muted'>
+              {viewerSettings.soundEnabled ? 'Request Android audio for this stream.' : 'Video-only stream.'}
+            </span>
+          </div>
         </StreamingSetting>
 
         <StreamingSetting label='Preset'>

@@ -8,6 +8,7 @@ import {
   getDisplayViewportSize,
   getFullscreenMediaSize
 } from '@/features/applications/viewer/display/display-viewer-shell/surface/surface-layout'
+import type { DisplayViewerStreamStatus } from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { DisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-surfaces'
 
 type DisplayViewerShellState = ReturnType<typeof useDisplayViewerShellState>
@@ -85,7 +86,9 @@ export const useDisplayViewerSurface = (surface: DisplayViewerSurface) => {
     rotateSurface,
     rotatedSurfaceIds,
     setActiveSurfaceId,
+    setSurfaceStreamStatus,
     surfaceElementsRef,
+    streamStatuses,
     surfaceViewportElementsRef,
     toggleFullscreen,
     toggleKeyboardCapture,
@@ -117,12 +120,14 @@ export const useDisplayViewerSurface = (surface: DisplayViewerSurface) => {
     keyboardCaptureEnabled,
     mediaSize,
     recording: viewerActions.recordingsBySurfaceId[surface.id],
+    streamStatus: streamStatuses[surface.id],
     viewportSize,
     onCaptureScreenshot: viewerActions.captureScreenshot,
     onClose: () => viewerActions.closeDisplay(surface),
     onOpenPopout: () => openViewerPopout(applicationId, surface),
     onRotate: () => rotateSurface(surface),
     onSelect: () => setActiveSurfaceId(surface.id),
+    onStreamStatus: (status: DisplayViewerStreamStatus) => setSurfaceStreamStatus(surface.id, status),
     onSurfaceElement: (element: HTMLElement | null) => {
       surfaceElementsRef.current[surface.id] = element
     },

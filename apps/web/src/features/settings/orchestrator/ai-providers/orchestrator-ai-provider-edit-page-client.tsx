@@ -1,6 +1,7 @@
 'use client'
 
 import { IconDeviceFloppy } from '@tabler/icons-react'
+import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -42,6 +43,7 @@ export const OrchestratorAiProviderEditPageClient = ({
     <ProtectedStackPageLayout mainClassName='gap-2'>
       <PlatformPageHeader
         title={initialProvider.label}
+        titlePrefix={<GradientSparklesIcon className='size-8 max-sm:size-5' />}
         parent={{ label: 'AI providers', href: '/orchestrator/ai-providers' }}
         description='Edit provider connection details and the models exposed to AI automation steps.'
         actions={
@@ -65,7 +67,7 @@ export const OrchestratorAiProviderEditPageClient = ({
         }
       />
       <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
-        {provider.enabled ? <ProviderHealthBanner provider={initialProvider} /> : null}
+        <ProviderHealthBanner provider={initialProvider} />
         <ProviderConnectionSection
           provider={provider}
           onChange={updateProvider}

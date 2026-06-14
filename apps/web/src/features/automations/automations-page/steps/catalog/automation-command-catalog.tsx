@@ -18,13 +18,13 @@ import {
   IconSearch,
   IconScreenshot,
   IconShieldLock,
-  IconSparkles,
   IconSwipe,
   IconTerminal2,
   IconTrash,
   IconTypography,
   IconX
 } from '@tabler/icons-react'
+import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import {
   getAutomationActionCategories,
   getAutomationActionCategory,
@@ -88,7 +88,7 @@ function AutomationActionIcon({ iconKey, className }: { iconKey: AutomationActio
     case 'shield':
       return <IconShieldLock className={className} />
     case 'sparkles':
-      return <IconSparkles className={className} />
+      return <GradientSparklesIcon className={className} />
     case 'swipe':
       return <IconSwipe className={className} />
     case 'terminal':

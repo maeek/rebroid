@@ -36,14 +36,6 @@ export class AiProviderHealthService {
         `AI model "${modelId}" was not found for provider "${provider.id}".`,
       );
     }
-    if (!provider.enabled) {
-      return this.healthResult(
-        provider.id,
-        model?.id,
-        'disabled',
-        'Provider is disabled.',
-      );
-    }
     if (model && !model.enabled) {
       return this.healthResult(
         provider.id,

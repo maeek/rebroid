@@ -3,15 +3,62 @@ import type { ViewerConfig, ViewerElements } from "./types";
 export const keyboardEventMessageType = "rebroid-viewer-keyboard-event";
 export const keyboardCaptureMessageType = "rebroid-viewer-keyboard-capture";
 export const viewerControlMessageType = "rebroid-viewer-control-event";
+export const viewerStreamStatusMessageType = "rebroid-viewer-stream-status";
+const websocketFallbackTtlMs = 2 * 60_000;
+const websocketFallbackKeyPrefix = "rebroid.display.websocket-fallback.";
+
+function websocketFallbackKey(sessionId: string) {
+  return `${websocketFallbackKeyPrefix}${sessionId}`;
+}
+
+export function rememberWebsocketFallback(sessionId: string | null): void {
+  if (!sessionId) {
+    return;
+  }
+
+  try {
+    sessionStorage.setItem(
+      websocketFallbackKey(sessionId),
+      String(Date.now() + websocketFallbackTtlMs),
+    );
+  } catch {
+    // Session storage may be unavailable in hardened browser modes.
+  }
+}
+
+function hasWebsocketFallback(sessionId: string | null): boolean {
+  if (!sessionId) {
+    return false;
+  }
+
+  try {
+    const key = websocketFallbackKey(sessionId);
+    const expiresAt = Number(sessionStorage.getItem(key));
+    if (Number.isFinite(expiresAt) && expiresAt > Date.now()) {
+      return true;
+    }
+    sessionStorage.removeItem(key);
+  } catch {
+    return false;
+  }
+
+  return false;
+}
 
 export function readViewerConfig(): ViewerConfig {
   const params = new URLSearchParams(location.search);
+  const sessionId = params.get("sessionId");
+  const requestedTransport =
+    params.get("transport") === "websocket" ? "websocket" : "webrtc";
   return {
     params,
-    sessionId: params.get("sessionId"),
+    sessionId,
     token: params.get("token"),
-    transport: params.get("transport") === "websocket" ? "websocket" : "webrtc",
-    audio: params.get("audio") !== "0",
+    transport:
+      requestedTransport === "websocket" || hasWebsocketFallback(sessionId)
+        ? "websocket"
+        : "webrtc",
+    audio: params.get("audio") === "1",
     streamDefaults: {
       codec: "h264",
       maxSize: "1080",

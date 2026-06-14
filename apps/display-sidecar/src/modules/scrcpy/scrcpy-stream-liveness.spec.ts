@@ -8,7 +8,6 @@ test("times out when the stream never delivers a first keyframe", async () => {
   const reasons: string[] = [];
   const liveness = new ScrcpyStreamLiveness({
     firstKeyFrameTimeoutMs: 5,
-    videoProgressTimeoutMs: 50,
     onTimeout: (reason) => reasons.push(reason),
   });
 
@@ -19,11 +18,10 @@ test("times out when the stream never delivers a first keyframe", async () => {
   assert.deepEqual(reasons, ["display stream first keyframe timed out"]);
 });
 
-test("times out when video progress stops after a keyframe", async () => {
+test("keeps a static stream alive after the first keyframe", async () => {
   const reasons: string[] = [];
   const liveness = new ScrcpyStreamLiveness({
     firstKeyFrameTimeoutMs: 50,
-    videoProgressTimeoutMs: 5,
     onTimeout: (reason) => reasons.push(reason),
   });
 
@@ -31,14 +29,13 @@ test("times out when video progress stops after a keyframe", async () => {
   liveness.recordVideoPacket({ config: false, keyFrame: true });
   await wait(20);
 
-  assert.deepEqual(reasons, ["display stream video progress timed out"]);
+  assert.deepEqual(reasons, []);
 });
 
 test("does not time out after it is stopped", async () => {
   const reasons: string[] = [];
   const liveness = new ScrcpyStreamLiveness({
     firstKeyFrameTimeoutMs: 5,
-    videoProgressTimeoutMs: 5,
     onTimeout: (reason) => reasons.push(reason),
   });
 

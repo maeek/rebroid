@@ -5,6 +5,10 @@ import { createDisplayStream } from "./display-stream";
 import { createH264Decoder } from "./h264-decoder";
 import { createPageLifecycle } from "./page-lifecycle";
 import { setupTouchInput } from "./touch-input";
+import {
+  emitViewerStreamStatus,
+  statusFromCompatibility,
+} from "./stream-status";
 import { createViewerUi } from "./ui";
 import { createWebrtcStream } from "./webrtc-stream";
 import type { DisplayTransport } from "./types";
@@ -13,9 +17,30 @@ const config = readViewerConfig();
 const elements = getViewerElements();
 const ui = createViewerUi(elements);
 const lifecycle = createPageLifecycle();
-const audioPlayer = createViewerAudioPlayer();
+let activeTransport = config.transport;
+const emitAudioDisabled = (message = "Audio capture is disabled for this stream.") => {
+  emitViewerStreamStatus({
+    code: "audio-disabled",
+    severity: "info",
+    blocking: false,
+    message,
+    transport: activeTransport,
+  });
+};
+const audioPlayer = createViewerAudioPlayer({
+  onDisabled: emitAudioDisabled,
+});
 const handleSidecarMessage = (message: Record<string, unknown>) => {
   if (message.type === "compatibility") {
+    const status = statusFromCompatibility({
+      mode: message.mode,
+      message: message.message,
+      hasVisibleFrame: true,
+      transport: activeTransport,
+    });
+    if (status) {
+      emitViewerStreamStatus(status);
+    }
     ui.showCompatibility(
       typeof message.mode === "string" ? message.mode : "normal",
       typeof message.message === "string" ? message.message : undefined,
@@ -23,19 +48,20 @@ const handleSidecarMessage = (message: Record<string, unknown>) => {
     return;
   }
   if (message.type === "audio-disabled") {
-    audioPlayer.reset();
-    ui.showCompatibility(
-      "audio-disabled",
-      "Audio capture is disabled for this stream.",
-    );
+    audioPlayer.disable("Audio capture is disabled for this stream.");
     return;
   }
   if (message.type === "reconnecting") {
-    ui.showStatus(
-      typeof message.message === "string"
-        ? message.message
-        : "Reconnecting live display...",
-    );
+    emitViewerStreamStatus({
+      code: "reconnecting",
+      severity: "info",
+      blocking: false,
+      message:
+        typeof message.message === "string"
+          ? message.message
+          : "Reconnecting live display...",
+      transport: activeTransport,
+    });
   }
 };
 document.addEventListener(
@@ -66,6 +92,7 @@ displayStream = createDisplayStream({
   audioPlayer,
 });
 const startWebsocket = () => {
+  activeTransport = "websocket";
   controlChannel.connect();
   setupTouchInput({
     target: elements.canvas,

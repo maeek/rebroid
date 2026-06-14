@@ -1,14 +1,13 @@
 'use client'
 
-import { IconPlayerPlay, IconPlayerStop, IconSend, IconSparkles, IconTrash } from '@tabler/icons-react'
+import { IconPlayerPlay, IconPlayerStop, IconSend, IconTrash } from '@tabler/icons-react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
+import { AiPromptComposer } from '@/shared/ui/ai/ai-prompt-composer'
 import { ChatTurnView } from './ai-agent-chat-events'
-import { AiAgentModelStatus, AiAgentSettingsPopover } from './ai-agent-settings-popover'
+import { AiAgentSettingsPopover } from './ai-agent-settings-popover'
 import { useAiAgentChatSession } from './use-ai-agent-chat-session'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { AutomationRun } from '@/server/orchestrator/automations/types'
@@ -38,10 +37,13 @@ const AiAgentEmptyTranscript = () => (
   <div className='flex min-h-40 flex-1 items-center justify-center rounded-lg border border-dashed border-border/70 bg-background/20 p-6 text-center'>
     <div className='grid max-w-sm place-items-center gap-3'>
       <div className='flex size-10 items-center justify-center rounded-full border border-primary/25 bg-primary/10 text-primary'>
-        <IconSparkles className='size-5' />
+        <GradientSparklesIcon className='size-5' />
       </div>
       <div className='grid gap-1'>
-        <div className='text-sm font-medium'>AI agent ready</div>
+        <div className='flex items-center justify-center gap-2 text-sm font-medium'>
+          <GradientSparklesIcon className='size-4' />
+          AI agent ready
+        </div>
         <p className='text-xs text-foreground-muted'>Ready while the display connects.</p>
       </div>
     </div>
@@ -100,11 +102,7 @@ export const AiAgentToolsSection = ({
     <section className={cn('flex min-h-0 flex-1 flex-col gap-4 p-4', className)}>
       {hideHeader ? null : (
         <div className='flex items-center gap-2'>
-          {health?.status === 'ok' ? (
-            <GradientSparklesIcon className='size-4' />
-          ) : (
-            <IconSparkles className='size-4 text-primary' />
-          )}
+          <GradientSparklesIcon className='size-4' />
           <div>
             <h3 className='text-sm font-semibold'>AI agent</h3>
             <p className='text-xs text-foreground-muted'>Run a session-only Android automation chat.</p>
@@ -128,53 +126,36 @@ export const AiAgentToolsSection = ({
           : null}
       </div>
 
-      <div className='shrink-0 rounded-lg border border-border/70 bg-surface-panel/34 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]'>
-        <div className='flex flex-wrap items-center justify-between gap-3 pb-2'>
-          <Label>Message</Label>
-        </div>
-        <Textarea
-          value={prompt}
-          rows={4}
-          placeholder='Ask the AI to perform a task, call a tool, or take an action...'
-          onChange={event => setPrompt(event.target.value)}
-          onKeyDown={event => {
-            if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-              event.preventDefault()
-              void submit()
-            }
-          }}
-          className='min-h-24 resize-none border-0 p-1 shadow-none focus-visible:ring-0'
-        />
-        {selectionMessage ? <div className='text-xs text-destructive'>{selectionMessage}</div> : null}
-        {error ? <div className='text-xs text-destructive'>{error}</div> : null}
-        <div className='mt-3 flex flex-wrap items-center justify-between gap-3'>
-          <span className='text-xs text-foreground-muted max-sm:w-full'>
-            Run timeout: {adHocTimeoutMs / 60000} minutes.
-          </span>
-          <div className='flex min-w-0 flex-wrap items-center justify-end gap-2 w-full'>
-            <AiAgentModelStatus
-              health={health}
-              isCheckingHealth={isCheckingHealth}
-              selectedModel={selectedModel}
-            />
-            <AiAgentSettingsPopover
-              adHocTimeoutMinutes={adHocTimeoutMinutes}
-              catalog={plannerCatalog}
-              health={health}
-              isCheckingHealth={isCheckingHealth}
-              onRecheckHealth={() => void recheckHealth()}
-              selectedModel={selectedModel}
-              selectedProvider={selectedProvider}
-              selectedVisionModel={selectedVisionModel}
-              selectedVisionProvider={selectedVisionProvider}
-              setModelId={setModelId}
-              setProviderId={setProviderId}
-              setVisionModelId={setVisionModelId}
-              setVisionProviderId={setVisionProviderId}
-              setTimeoutMinutesInput={setTimeoutMinutesInput}
-              timeoutMinutesInput={timeoutMinutesInput}
-              visionCatalog={visionCatalog}
-            />
+      <AiPromptComposer
+        value={prompt}
+        rows={4}
+        placeholder='Ask the AI to perform a task, call a tool, or take an action...'
+        metadata={`Run timeout: ${adHocTimeoutMs / 60000} minutes.`}
+        errors={[selectionMessage, error]}
+        onChange={setPrompt}
+        onSubmit={() => void submit()}
+        modelControl={
+          <AiAgentSettingsPopover
+            adHocTimeoutMinutes={adHocTimeoutMinutes}
+            catalog={plannerCatalog}
+            health={health}
+            isCheckingHealth={isCheckingHealth}
+            onRecheckHealth={() => void recheckHealth()}
+            selectedModel={selectedModel}
+            selectedProvider={selectedProvider}
+            selectedVisionModel={selectedVisionModel}
+            selectedVisionProvider={selectedVisionProvider}
+            setModelId={setModelId}
+            setProviderId={setProviderId}
+            setVisionModelId={setVisionModelId}
+            setVisionProviderId={setVisionProviderId}
+            setTimeoutMinutesInput={setTimeoutMinutesInput}
+            timeoutMinutesInput={timeoutMinutesInput}
+            visionCatalog={visionCatalog}
+          />
+        }
+        actions={
+          <>
             {queuedTurn && !activeTurn ? (
               <Button
                 type='button'
@@ -216,9 +197,9 @@ export const AiAgentToolsSection = ({
             >
               <IconSend className='size-4' />
             </Button>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
     </section>
   )
 }

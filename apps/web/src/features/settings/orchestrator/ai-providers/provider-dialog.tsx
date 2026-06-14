@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { normalizeProviderForm, type ProviderFormState } from '@rebroid/ai-core/provider'
 import { IconRefresh } from '@tabler/icons-react'
-import { Badge } from '@/components/ui/badge'
+import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { checkAutomationAiProviderCandidateHealthAction } from '@/server/orchestrator/settings/actions'
+import { AiHealthBadge } from '@/shared/ui/ai/ai-health-indicator'
 import type { AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
 
 export const ProviderDialog = ({
@@ -66,7 +67,10 @@ export const ProviderDialog = ({
     >
       <DialogContent className='sm:max-w-xl'>
         <DialogHeader>
-          <DialogTitle>Add AI provider</DialogTitle>
+          <DialogTitle className='flex items-center gap-2'>
+            <GradientSparklesIcon className='size-5' />
+            Add AI provider
+          </DialogTitle>
           <DialogDescription>
             Configure the provider connection first. Add models from the provider editor after it is created.
           </DialogDescription>
@@ -137,9 +141,10 @@ export const ProviderDialog = ({
                 <div className='flex min-w-0 flex-wrap items-center gap-3'>
                   {health ? (
                     <>
-                      <Badge variant={health.status === 'ok' ? 'status' : 'destructive'}>
-                        {health.status === 'ok' ? 'Online' : 'Error'}
-                      </Badge>
+                      <AiHealthBadge
+                        health={health}
+                        isChecking={isCheckingHealth}
+                      />
                       <span className='min-w-0 break-words text-sm text-foreground-muted'>{health.message}</span>
                     </>
                   ) : (

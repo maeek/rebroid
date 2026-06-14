@@ -19,7 +19,11 @@ export interface ScrcpyAudioPacket {
 export interface ScrcpyStreamClient {
   readyState: number;
   bufferedAmount: number;
-  once: (event: "close", listener: () => void) => unknown;
+  audioBufferedAmount?: number;
+  once: (
+    event: "close",
+    listener: (code?: number, reason?: Buffer) => void,
+  ) => unknown;
   send: (...args: any[]) => unknown;
   sendAudio?: (
     packet: ScrcpyAudioPacket,

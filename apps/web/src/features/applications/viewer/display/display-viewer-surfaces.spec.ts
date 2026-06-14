@@ -19,6 +19,118 @@ const createSession = (displaySession: NonNullable<ScrcpySession['displaySession
 })
 
 describe('buildDisplayViewerSurfaces', () => {
+  it('defaults viewer surfaces to video-only audio parameters', () => {
+    const session = createSession({
+      id: 'session-current',
+      appId: 'app-1',
+      surfaceId: 'main',
+      surfaceKind: 'main',
+      displayName: 'Main display',
+      status: 'created',
+      createdAt: '2026-06-06T10:00:00.000Z',
+      lastActivityAt: '2026-06-06T10:00:00.000Z',
+      expiresAt: '2026-06-06T10:05:00.000Z',
+      maxExpiresAt: '2026-06-06T11:00:00.000Z',
+      capabilities: ['video', 'control'],
+      streamPath: '/rebroid/display/stream?sessionId=session-current',
+      viewerPath: '/viewer/display?sessionId=session-current',
+      webrtcOfferPath: '/rebroid/display/public/sessions/session-current/webrtc/offer',
+      surface: {
+        id: 'main',
+        sessionId: 'session-current',
+        kind: 'main',
+        name: 'Main display',
+        status: 'created',
+        createdAt: '2026-06-06T10:00:00.000Z',
+        lastActivityAt: '2026-06-06T10:00:00.000Z',
+        streamPath: '/rebroid/display/stream?sessionId=session-current',
+        viewerPath: '/viewer/display?sessionId=session-current',
+        webrtcOfferPath: '/rebroid/display/public/sessions/session-current/webrtc/offer'
+      },
+      surfaces: [
+        {
+          id: 'main',
+          sessionId: 'session-current',
+          kind: 'main',
+          name: 'Main display',
+          status: 'created',
+          createdAt: '2026-06-06T10:00:00.000Z',
+          lastActivityAt: '2026-06-06T10:00:00.000Z',
+          streamPath: '/rebroid/display/stream?sessionId=session-current',
+          viewerPath: '/viewer/display?sessionId=session-current',
+          webrtcOfferPath: '/rebroid/display/public/sessions/session-current/webrtc/offer'
+        }
+      ]
+    })
+
+    const surfaces = buildDisplayViewerSurfaces({
+      session,
+      baseUrl: 'https://display.test',
+      soundEnabled: defaultViewerSettings.soundEnabled,
+      settings: defaultViewerSettings,
+      mainDisplaySize: { width: 1080, height: 1920 },
+      controlsEnabled: true
+    })
+
+    expect(surfaces[0].src).toContain('audio=0')
+  })
+
+  it('requests audio when sound capture is enabled', () => {
+    const session = createSession({
+      id: 'session-current',
+      appId: 'app-1',
+      surfaceId: 'main',
+      surfaceKind: 'main',
+      displayName: 'Main display',
+      status: 'created',
+      createdAt: '2026-06-06T10:00:00.000Z',
+      lastActivityAt: '2026-06-06T10:00:00.000Z',
+      expiresAt: '2026-06-06T10:05:00.000Z',
+      maxExpiresAt: '2026-06-06T11:00:00.000Z',
+      capabilities: ['video', 'control'],
+      streamPath: '/rebroid/display/stream?sessionId=session-current',
+      viewerPath: '/viewer/display?sessionId=session-current',
+      webrtcOfferPath: '/rebroid/display/public/sessions/session-current/webrtc/offer',
+      surface: {
+        id: 'main',
+        sessionId: 'session-current',
+        kind: 'main',
+        name: 'Main display',
+        status: 'created',
+        createdAt: '2026-06-06T10:00:00.000Z',
+        lastActivityAt: '2026-06-06T10:00:00.000Z',
+        streamPath: '/rebroid/display/stream?sessionId=session-current',
+        viewerPath: '/viewer/display?sessionId=session-current',
+        webrtcOfferPath: '/rebroid/display/public/sessions/session-current/webrtc/offer'
+      },
+      surfaces: [
+        {
+          id: 'main',
+          sessionId: 'session-current',
+          kind: 'main',
+          name: 'Main display',
+          status: 'created',
+          createdAt: '2026-06-06T10:00:00.000Z',
+          lastActivityAt: '2026-06-06T10:00:00.000Z',
+          streamPath: '/rebroid/display/stream?sessionId=session-current',
+          viewerPath: '/viewer/display?sessionId=session-current',
+          webrtcOfferPath: '/rebroid/display/public/sessions/session-current/webrtc/offer'
+        }
+      ]
+    })
+
+    const surfaces = buildDisplayViewerSurfaces({
+      session,
+      baseUrl: 'https://display.test',
+      soundEnabled: true,
+      settings: { ...defaultViewerSettings, soundEnabled: true },
+      mainDisplaySize: { width: 1080, height: 1920 },
+      controlsEnabled: true
+    })
+
+    expect(surfaces[0].src).toContain('audio=1')
+  })
+
   it('collapses duplicate main surfaces from sibling sidecar sessions', () => {
     const session = createSession({
       id: 'session-current',

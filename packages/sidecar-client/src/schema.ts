@@ -1059,8 +1059,8 @@ export interface components {
             /** @example 1 */
             iFrameInterval?: number;
             /**
-             * @default true
-             * @example true
+             * @default false
+             * @example false
              */
             audio: boolean;
         };

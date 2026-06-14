@@ -9,11 +9,6 @@ jest.mock('./use-ai-agent-chat-session', () => ({
   useAiAgentChatSession: jest.fn()
 }))
 
-jest.mock('./ai-agent-settings-popover', () => ({
-  AiAgentModelStatus: () => <div>No model selected</div>,
-  AiAgentSettingsPopover: () => <button type='button'>Settings</button>
-}))
-
 const app: AppDefinition = {
   id: 'app_1',
   name: 'Scooby doo',
@@ -108,6 +103,7 @@ describe('AiAgentToolsSection', () => {
 
     expect(screen.getByLabelText('Loading AI chat history')).toBeTruthy()
     expect(screen.getByPlaceholderText('Ask the AI to perform a task, call a tool, or take an action...')).toBeTruthy()
+    expect(screen.getByText('No model')).toBeTruthy()
   })
 
   it('shows an empty ready state when there are no turns', () => {
@@ -116,6 +112,7 @@ describe('AiAgentToolsSection', () => {
     render(<AiAgentToolsSection app={app} />)
 
     expect(screen.getByText('AI agent ready')).toBeTruthy()
+    expect(screen.getByText('No model')).toBeTruthy()
     expect(screen.queryByLabelText('Loading AI chat history')).toBeNull()
   })
 })

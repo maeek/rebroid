@@ -2,7 +2,10 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
+	"strings"
 	"testing"
+	"time"
 )
 
 func annexBNal(nal []byte) []byte {
@@ -72,5 +75,47 @@ func TestOfferLatestSampleDropsStaleFrames(t *testing.T) {
 	second := <-samples
 	if !bytes.Equal(first, []byte{2}) || !bytes.Equal(second, []byte{3}) {
 		t.Fatalf("expected queue to keep latest samples [2, 3], got [%x, %x]", first, second)
+	}
+}
+
+func opusPacket(pts uint64, payload []byte) []byte {
+	out := make([]byte, 12+len(payload))
+	binary.BigEndian.PutUint64(out, pts)
+	binary.BigEndian.PutUint32(out[8:], uint32(len(payload)))
+	copy(out[12:], payload)
+	return out
+}
+
+func TestReadOpusPacket(t *testing.T) {
+	payload := []byte{0x11, 0x22, 0x33}
+	packet, pts, err := readOpusPacket(bytes.NewReader(opusPacket(42_000, payload)))
+	if err != nil {
+		t.Fatalf("expected opus packet, got error: %v", err)
+	}
+	if pts != 42_000 {
+		t.Fatalf("expected pts 42000, got %d", pts)
+	}
+	if !bytes.Equal(packet, payload) {
+		t.Fatalf("expected payload %x, got %x", payload, packet)
+	}
+}
+
+func TestReadOpusPacketRejectsInvalidLength(t *testing.T) {
+	header := make([]byte, 12)
+	binary.BigEndian.PutUint32(header[8:], 0)
+	if _, _, err := readOpusPacket(bytes.NewReader(header)); err == nil || !strings.Contains(err.Error(), "invalid opus packet length") {
+		t.Fatalf("expected invalid length error, got %v", err)
+	}
+}
+
+func TestOpusDurationUsesPTS(t *testing.T) {
+	if got := opusDuration(10_000, 30_000); got != 20*time.Millisecond {
+		t.Fatalf("expected 20ms, got %s", got)
+	}
+	if got := opusDuration(30_000, 10_000); got != defaultOpusDuration {
+		t.Fatalf("expected default duration for negative pts delta, got %s", got)
+	}
+	if got := opusDuration(0, 2_000_000); got != defaultOpusDuration {
+		t.Fatalf("expected default duration for large pts delta, got %s", got)
 	}
 }

@@ -1,9 +1,11 @@
+import type { ReactNode } from 'react'
 import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { StatusSplash } from '@/shared/ui/status-splash'
 
 export const PlatformRouteUnavailable = ({
   title,
+  titlePrefix,
   description,
   detail,
   href,
@@ -11,6 +13,7 @@ export const PlatformRouteUnavailable = ({
   actionLabel = 'Refresh'
 }: {
   title: string
+  titlePrefix?: ReactNode
   description: string
   detail: string | null
   href: string
@@ -20,6 +23,7 @@ export const PlatformRouteUnavailable = ({
   <ProtectedStackPageLayout mainClassName='gap-2'>
     <PlatformPageHeader
       title={title}
+      titlePrefix={titlePrefix}
       description={description}
       breadcrumbRoot={breadcrumbRoot}
     />

@@ -4,12 +4,14 @@ import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
 
 export const PlatformPageHeader = ({
   title,
+  titlePrefix,
   description,
   actions,
   parent,
   breadcrumbRoot = { label: 'Orchestrator', href: '/orchestrator' }
 }: {
   title: string
+  titlePrefix?: ReactNode
   description?: string
   actions?: ReactNode
   parent?: { label: string; href: string }
@@ -23,7 +25,10 @@ export const PlatformPageHeader = ({
           items={[...(breadcrumbRoot ? [breadcrumbRoot] : []), ...(parent ? [parent] : []), { label: title }]}
         />
         <div className='flex flex-col gap-2 pt-4'>
-          <h2 className='text-3xl font-medium max-sm:text-xl'>{title}</h2>
+          <h2 className='flex items-center gap-2.5 text-3xl font-medium max-sm:text-xl'>
+            {titlePrefix}
+            <span>{title}</span>
+          </h2>
           <Visible when={description}>
             <p className='max-w-3xl text-sm text-foreground-muted'>{description}</p>
           </Visible>

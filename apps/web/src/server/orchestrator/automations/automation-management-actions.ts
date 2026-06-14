@@ -2,7 +2,12 @@
 
 import { revalidatePath } from 'next/cache'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
-import { assertAutomationPermission, assertDefinitionPermissions, recordAutomationAudit } from './action-helpers'
+import {
+  assertAutomationPermission,
+  assertDefinitionPermissions,
+  listPermittedAiTools,
+  recordAutomationAudit
+} from './action-helpers'
 import { orchestratorAutomationsClient } from './client'
 import type { DraftAutomationYamlInput, SaveAutomationInput } from './types'
 
@@ -26,7 +31,10 @@ export const draftAutomationYamlAction = async (input: DraftAutomationYamlInput)
   const user = await getCurrentUserContext()
   assertAutomationPermission(user, 'automations:manage')
   assertAutomationPermission(user, 'automations:run-ai')
-  const draft = await orchestratorAutomationsClient.draftYaml(input)
+  const draft = await orchestratorAutomationsClient.draftYaml({
+    ...input,
+    allowedTools: await listPermittedAiTools(user)
+  })
   await assertDefinitionPermissions(user, draft.definition)
   return draft
 }

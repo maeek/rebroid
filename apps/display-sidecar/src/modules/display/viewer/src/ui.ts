@@ -30,6 +30,23 @@ export function createViewerUi(elements: ViewerElements): ViewerUi {
       video.classList.remove("hidden");
       message?.classList.add("hidden");
     },
+    preserveVideoFrame(source: HTMLVideoElement) {
+      if (
+        source.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
+        source.videoWidth <= 0 ||
+        source.videoHeight <= 0
+      ) {
+        return false;
+      }
+
+      canvas.width = source.videoWidth;
+      canvas.height = source.videoHeight;
+      elements.context.drawImage(source, 0, 0, canvas.width, canvas.height);
+      canvas.classList.remove("hidden");
+      video.classList.add("hidden");
+      message?.classList.add("hidden");
+      return true;
+    },
     showStarting(text = "Rebroid is opening the app screen.") {
       showStatus(
         text,
@@ -37,25 +54,12 @@ export function createViewerUi(elements: ViewerElements): ViewerUi {
         "Rebroid is opening the app screen.",
       );
     },
-    showCompatibility(mode: string, detail?: string) {
+    showCompatibility(_mode: string, _detail?: string) {
       if (!compatibility) {
         return;
       }
-      if (!mode || mode === "normal") {
-        compatibility.classList.add("hidden");
-        compatibility.textContent = "";
-        return;
-      }
-      const label =
-        mode === "audio-disabled"
-          ? "Audio disabled"
-          : mode === "stream-control-disabled"
-            ? "ADB control fallback"
-            : mode === "stable-video"
-              ? "Stable video mode"
-              : mode;
-      compatibility.textContent = detail ? `${label}: ${detail}` : label;
-      compatibility.classList.remove("hidden");
+      compatibility.classList.add("hidden");
+      compatibility.textContent = "";
     },
   };
 }

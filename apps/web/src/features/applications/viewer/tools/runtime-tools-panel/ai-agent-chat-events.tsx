@@ -1,4 +1,4 @@
-import { IconSparkles } from '@tabler/icons-react'
+import { AiAssistantBlock, AiAssistantText, AiUserMessage } from '@/shared/ui/ai/ai-message'
 import { buildTimelineItems } from './ai-agent-chat-event-utils'
 import { ChatEventView } from './ai-agent-chat-event-views/chat-event-view'
 import { ChatStatusBadge } from './ai-agent-chat-event-views/chat-status-badge'
@@ -29,25 +29,14 @@ export const ChatTurnView = ({ turn }: { turn: ChatTurn }) => {
   const streamingText = hasCompletedResponse ? '' : currentStreamingText(turn)
   return (
     <article className='grid gap-3 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2'>
-      <div className='ml-auto max-w-[85%] rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground'>
-        {turn.prompt}
-      </div>
-      <div className='grid gap-2 py-3'>
-        <div className='flex items-center justify-start gap-3'>
-          <div className='flex min-w-0 items-center gap-2'>
-            <IconSparkles className='size-4 shrink-0 text-primary' />
-            <span className='truncate text-sm font-medium'>AI agent</span>
-          </div>
-          <ChatStatusBadge status={turn.status}>{chatTurnTitle(turn)}</ChatStatusBadge>
-        </div>
+      <AiUserMessage>{turn.prompt}</AiUserMessage>
+      <AiAssistantBlock meta={<ChatStatusBadge status={turn.status}>{chatTurnTitle(turn)}</ChatStatusBadge>}>
         {turn.error ? <div className='text-xs text-destructive'>{turn.error}</div> : null}
         {turn.status === 'queued' ? (
-          <div className='text-sm text-foreground-muted'>
-            Waiting for the active run to finish. Use Run next to start it.
-          </div>
+          <AiAssistantText muted>Waiting for the active run to finish. Use Run next to start it.</AiAssistantText>
         ) : null}
         {visibleEvents.length === 0 && turn.status !== 'queued' ? (
-          <div className='text-sm text-foreground-muted'>Waiting for the agent to start...</div>
+          <AiAssistantText muted>Waiting for the agent to start...</AiAssistantText>
         ) : null}
         {timelineItems.map(item =>
           item.type === 'tool' ? (
@@ -63,13 +52,13 @@ export const ChatTurnView = ({ turn }: { turn: ChatTurn }) => {
           )
         )}
         {streamingText ? (
-          <div className='whitespace-pre-wrap text-sm text-foreground'>
+          <AiAssistantText>
             {streamingText}
             <span className='ml-0.5 animate-pulse text-primary'>▍</span>
-          </div>
+          </AiAssistantText>
         ) : null}
         {isWorking && !hasFinalResponse ? <WorkingIndicator status={turn.status} /> : null}
-      </div>
+      </AiAssistantBlock>
     </article>
   )
 }

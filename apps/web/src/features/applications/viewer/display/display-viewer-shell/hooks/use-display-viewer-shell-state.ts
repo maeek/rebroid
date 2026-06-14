@@ -3,7 +3,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useDisplayViewerActions } from '@/features/applications/viewer/display/display-viewer-shell/hooks/use-display-viewer-actions'
 import { useFullscreenState } from '@/features/applications/viewer/display/display-viewer-shell/hooks/use-fullscreen-state'
+import type { DisplayViewerStreamStatus } from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { DisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-surfaces'
+
+const transientStreamStatusCodes = new Set<DisplayViewerStreamStatus['code']>([
+  'reconnecting',
+  'first-frame-timeout',
+  'video-stalled',
+  'stream-error'
+])
+const transientStreamStatusTtlMs = 6_000
 
 export const useDisplayViewerShellState = ({
   applicationId,
@@ -22,8 +31,11 @@ export const useDisplayViewerShellState = ({
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const surfaceElementsRef = useRef<Record<string, HTMLElement | null>>({})
   const surfaceViewportElementsRef = useRef<Record<string, HTMLDivElement | null>>({})
+  const surfaceSessionIdsRef = useRef<Record<string, string>>({})
   const scrollSettleTimerRef = useRef<number | null>(null)
+  const streamStatusTimersRef = useRef<Record<string, number | undefined>>({})
   const [rotatedSurfaceIds, setRotatedSurfaceIds] = useState<Record<string, boolean>>({})
+  const [streamStatuses, setStreamStatuses] = useState<Record<string, DisplayViewerStreamStatus | undefined>>({})
   const [workspaceHeight, setWorkspaceHeight] = useState(0)
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 })
   const [fullscreenSurfaceId, setFullscreenSurfaceId] = useState<string | null>(null)
@@ -55,17 +67,37 @@ export const useDisplayViewerShellState = ({
   }, [activeSurfaceId, orderedSurfaces])
 
   useEffect(() => {
+    const surfaceIds = new Set(orderedSurfaces.map(surface => surface.id))
+    const nextSurfaceSessionIds = Object.fromEntries(orderedSurfaces.map(surface => [surface.id, surface.sessionId]))
+    const surfaceSessionChanged = (surfaceId: string) =>
+      surfaceSessionIdsRef.current[surfaceId] !== undefined &&
+      surfaceSessionIdsRef.current[surfaceId] !== nextSurfaceSessionIds[surfaceId]
     setRotatedSurfaceIds(current =>
+      Object.fromEntries(Object.entries(current).filter(([surfaceId]) => surfaceIds.has(surfaceId)))
+    )
+    setStreamStatuses(current =>
       Object.fromEntries(
-        Object.entries(current).filter(([surfaceId]) => orderedSurfaces.some(surface => surface.id === surfaceId))
+        Object.entries(current).filter(([surfaceId]) => surfaceIds.has(surfaceId) && !surfaceSessionChanged(surfaceId))
       )
     )
+    for (const [surfaceId, timer] of Object.entries(streamStatusTimersRef.current)) {
+      if ((!surfaceIds.has(surfaceId) || surfaceSessionChanged(surfaceId)) && timer !== undefined) {
+        window.clearTimeout(timer)
+        delete streamStatusTimersRef.current[surfaceId]
+      }
+    }
+    surfaceSessionIdsRef.current = nextSurfaceSessionIds
   }, [orderedSurfaces])
 
   useEffect(
     () => () => {
       if (scrollSettleTimerRef.current !== null) {
         window.clearTimeout(scrollSettleTimerRef.current)
+      }
+      for (const timer of Object.values(streamStatusTimersRef.current)) {
+        if (timer !== undefined) {
+          window.clearTimeout(timer)
+        }
       }
     },
     []
@@ -171,6 +203,35 @@ export const useDisplayViewerShellState = ({
     }
   }
 
+  const setSurfaceStreamStatus = (surfaceId: string, status: DisplayViewerStreamStatus) => {
+    const existingTimer = streamStatusTimersRef.current[surfaceId]
+    if (existingTimer !== undefined) {
+      window.clearTimeout(existingTimer)
+      delete streamStatusTimersRef.current[surfaceId]
+    }
+
+    setStreamStatuses(current => ({
+      ...current,
+      [surfaceId]: status
+    }))
+
+    if (transientStreamStatusCodes.has(status.code)) {
+      streamStatusTimersRef.current[surfaceId] = window.setTimeout(() => {
+        delete streamStatusTimersRef.current[surfaceId]
+        setStreamStatuses(current => {
+          if (current[surfaceId] !== status) {
+            return current
+          }
+
+          return {
+            ...current,
+            [surfaceId]: undefined
+          }
+        })
+      }, transientStreamStatusTtlMs)
+    }
+  }
+
   const scrollSurfaceIntoView = (surfaceId: string) => {
     surfaceElementsRef.current[surfaceId]?.scrollIntoView({
       behavior: 'smooth',
@@ -187,7 +248,9 @@ export const useDisplayViewerShellState = ({
     orderedSurfaces,
     rotatedSurfaceIds,
     scrollContainerRef,
+    setSurfaceStreamStatus,
     surfaceViewportElementsRef,
+    streamStatuses,
     viewerActions,
     windowSize,
     workspaceHeight,

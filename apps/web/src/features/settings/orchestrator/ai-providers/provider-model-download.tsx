@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { IconDownload, IconPlus, IconRefresh } from '@tabler/icons-react'
+import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -87,7 +88,10 @@ export const ProviderModelAddDialog = ({
     >
       <DialogContent className='sm:max-w-xl'>
         <DialogHeader>
-          <DialogTitle>Add model</DialogTitle>
+          <DialogTitle className='flex items-center gap-2'>
+            <GradientSparklesIcon className='size-5' />
+            Add model
+          </DialogTitle>
           <DialogDescription>
             Select a model already available on the provider or start a background download.
           </DialogDescription>

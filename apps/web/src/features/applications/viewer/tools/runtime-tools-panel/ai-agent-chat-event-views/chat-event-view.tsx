@@ -1,3 +1,4 @@
+import { AiAssistantText } from '@/shared/ui/ai/ai-message'
 import { ObservationEventDetails } from './observation-event-details'
 import { observationValues } from './observation-values'
 import type { AutomationRunEvent } from '@/server/orchestrator/automations/types'
@@ -29,17 +30,7 @@ export const ChatEventView = ({ event }: { event: AutomationRunEvent }) => {
     )
   }
   if (event.type === 'ai.perception.summary' || event.type === 'ai.message.completed') {
-    return (
-      <div
-        className={
-          event.type === 'ai.message.completed'
-            ? 'whitespace-pre-wrap text-sm text-foreground'
-            : 'text-xs text-foreground-muted'
-        }
-      >
-        {event.message}
-      </div>
-    )
+    return <AiAssistantText muted={event.type === 'ai.perception.summary'}>{event.message}</AiAssistantText>
   }
   if (event.type === 'ai.tool.failed' || event.type === 'ai.guardrail.triggered' || event.type === 'run.failed') {
     return <div className='text-xs text-destructive'>{event.message}</div>

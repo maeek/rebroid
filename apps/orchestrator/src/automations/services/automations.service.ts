@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { ApplicationProfileMode } from '../../android-apps/application-profile-mode';
 import { AutomationAiDefinitionFactory } from '../ai/automation-ai-definition.factory';
+import { AutomationAiYamlDraftService } from '../ai/automation-ai-yaml-draft.service';
 import { AutomationCommandDto } from '../dto/automation-command.dto';
 import { AutomationCommandRegistryService } from '../commands/automation-command-registry.service';
 import { AutomationDefinitionService } from '../definition/automation-definition.service';
@@ -55,6 +56,7 @@ export class AutomationsService {
     private readonly queries: AutomationsQueryService,
     private readonly targetApplications: AutomationTargetApplicationService,
     private readonly aiDefinitions: AutomationAiDefinitionFactory,
+    private readonly aiYamlDrafts: AutomationAiYamlDraftService,
     private readonly automationTriggers: AutomationTriggersService,
   ) {}
 
@@ -114,19 +116,8 @@ export class AutomationsService {
     return this.definitions.validateYaml(yaml);
   }
 
-  draftYaml(dto: DraftAutomationYamlDto): AutomationYamlDraftDto {
-    const definition = this.aiDefinitions.create({
-      name: 'AI drafted automation',
-      prompt: dto.prompt,
-      providerId: dto.providerId,
-      modelId: dto.modelId,
-      visionProviderId: dto.visionProviderId,
-      visionModelId: dto.visionModelId,
-    });
-    return {
-      definition,
-      yaml: this.definitions.toYaml(definition),
-    };
+  draftYaml(dto: DraftAutomationYamlDto): Promise<AutomationYamlDraftDto> {
+    return this.aiYamlDrafts.draft(dto);
   }
 
   async runAdHocAi(dto: RunAdHocAiAutomationDto) {

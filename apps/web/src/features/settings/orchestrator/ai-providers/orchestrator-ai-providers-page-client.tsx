@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { emptyProvider, normalizeProviderForm, type ProviderFormState } from '@rebroid/ai-core/provider'
 import { IconPlus } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
+import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/hooks/use-toast'
 import {
@@ -156,6 +157,7 @@ export const OrchestratorAiProvidersPageClient = ({
     <ProtectedStackPageLayout mainClassName='gap-2'>
       <PlatformPageHeader
         title='AI providers'
+        titlePrefix={<GradientSparklesIcon className='size-8 max-sm:size-5' />}
         description='Configure OpenAI, Ollama, and OpenAI-compatible providers used by AI automation steps.'
         actions={
           <div className='flex items-center gap-2'>
