@@ -1,7 +1,11 @@
 export { parseArguments } from "./harness/arguments";
 export {
   AI_AUTOMATION_MASTER_SYSTEM_PROMPT,
+  buildExecutePlanMessage,
+  buildFinalRecoveryMessage,
   buildInitialMessages,
+  buildPublicPlanRequestMessage,
+  buildReplanMessage,
   buildScreenshotObservationMessage,
   buildScreenObservationMessage,
   buildUiXmlObservationMessage,
@@ -11,6 +15,7 @@ export {
   chatCompletionsEndpoint,
   ollamaOptions,
 } from "./harness/request-body";
+export { normalizePublicAiText } from "./harness/public-text";
 export {
   consumeChatCompletionStream,
   type ChatCompletionStreamResult,

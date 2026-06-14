@@ -134,6 +134,34 @@ export interface RunAdHocAiAutomationInput extends RunAutomationInput {
   timeoutMs?: number
 }
 
+export interface AiPromptSuggestionContextEvent {
+  type: string
+  message: string
+}
+
+export interface SuggestAdHocAiPromptsInput {
+  targetApplicationId: string
+  appName: string
+  profileMode?: string | null
+  profileName?: string | null
+  currentPrompt?: string
+  conversation?: Array<{ role: 'user' | 'assistant'; content: string }>
+  recentEvents?: AiPromptSuggestionContextEvent[]
+  providerId?: string
+  modelId?: string
+  allowedTools?: string[]
+}
+
+export interface AiPromptSuggestion {
+  id: string
+  label: string
+  prompt: string
+}
+
+export interface AiPromptSuggestions {
+  suggestions: AiPromptSuggestion[]
+}
+
 export interface DraftAutomationYamlInput {
   prompt: string
   providerId?: string
@@ -208,6 +236,10 @@ export type AutomationRunEventType =
   | 'step.progress'
   | 'ai.model.started'
   | 'ai.model.completed'
+  | 'ai.orientation.completed'
+  | 'ai.plan.proposed'
+  | 'ai.plan.updated'
+  | 'ai.action.decided'
   | 'ai.perception.observed'
   | 'ai.perception.summary'
   | 'ai.user.message'

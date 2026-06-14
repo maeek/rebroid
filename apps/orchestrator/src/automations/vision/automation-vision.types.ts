@@ -24,4 +24,5 @@ export interface AutomationVisionLocateOutput {
   matches: VisionDetection[];
   query: string;
   threshold: number;
+  reason?: string;
 }

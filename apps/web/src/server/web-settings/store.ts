@@ -11,6 +11,7 @@ const defaultWebSettings: WebSettings = {
   defaultViewerIFrameInterval: 1,
   defaultViewerKeyboardCaptureEnabled: false,
   defaultViewerSoundEnabled: true,
+  aiContextualSuggestionsEnabled: true,
   auditRetentionDays: 30
 }
 
@@ -63,6 +64,10 @@ const normalize = (value: Partial<WebSettings>): WebSettings => ({
     typeof value.defaultViewerSoundEnabled === 'boolean'
       ? value.defaultViewerSoundEnabled
       : defaultWebSettings.defaultViewerSoundEnabled,
+  aiContextualSuggestionsEnabled:
+    typeof value.aiContextualSuggestionsEnabled === 'boolean'
+      ? value.aiContextualSuggestionsEnabled
+      : defaultWebSettings.aiContextualSuggestionsEnabled,
   auditRetentionDays: numberInRange(value.auditRetentionDays, defaultWebSettings.auditRetentionDays, 1, 3650)
 })
 

@@ -6,10 +6,15 @@ import {
 } from '@nestjs/common';
 import {
   allowedToolMatcher,
+  buildExecutePlanMessage,
+  buildFinalRecoveryMessage,
   buildInitialMessages,
+  buildPublicPlanRequestMessage,
+  buildReplanMessage,
   buildScreenObservationMessage,
   buildToolDefinitions,
   mapUsesByToolName,
+  normalizePublicAiText,
   parseArguments,
   type ChatMessage,
 } from '@rebroid/ai-core/harness';
@@ -44,6 +49,30 @@ const textContent = (content: ChatMessage['content']) =>
           .join('\n')
       : '';
 
+const observationEventData = (
+  observation: Awaited<ReturnType<AutomationPerceptionService['observe']>>,
+) => ({
+  width: observation.observation.image.width,
+  height: observation.observation.image.height,
+  uiStatus: observation.observation.uiXml?.status ?? 'unavailable',
+  uiNodes: observation.observation.uiXml?.nodeCount ?? null,
+  detections: observation.observation.detections.length,
+  hasVisionSummary: Boolean(observation.observation.summary),
+});
+
+const isVisionLocateMiss = (
+  uses: string,
+  input: Record<string, unknown>,
+  data: Record<string, unknown> | undefined,
+) =>
+  uses === 'vision.locate' &&
+  data?.found === false &&
+  typeof input.query === 'string' &&
+  input.query.trim().length > 0;
+
+const locateMissKey = (input: Record<string, unknown>) =>
+  typeof input.query === 'string' ? input.query.trim().toLowerCase() : '';
+
 @Injectable()
 export class AutomationAiHarnessService {
   private readonly logger = new Logger(AutomationAiHarnessService.name);
@@ -68,6 +97,7 @@ export class AutomationAiHarnessService {
     const allowed = allowedToolMatcher(input.allowedTools);
     const tools = buildToolDefinitions(commands, allowed);
     const usesByToolName = mapUsesByToolName(commands);
+    const locateMisses = new Map<string, number>();
 
     await this.emit(context, 'ai.user.message', input.prompt, {
       clientMessageId: input.clientMessageId ?? null,
@@ -97,6 +127,39 @@ export class AutomationAiHarnessService {
       clientMessageId: input.clientMessageId ?? null,
     });
 
+    await this.emit(
+      context,
+      'ai.orientation.completed',
+      initialObservation.observation.summary
+        ? 'Initial screen orientation completed with vision.'
+        : 'Initial screen orientation completed.',
+      {
+        ...observationEventData(initialObservation),
+        clientMessageId: input.clientMessageId ?? null,
+      },
+    );
+
+    const publicPlanRequest = buildPublicPlanRequestMessage({
+      prompt: input.prompt,
+    });
+    const publicPlan = await this.requestNoToolText({
+      provider,
+      model,
+      messages: [...messages, publicPlanRequest],
+      deadline,
+      abortSignal: context.abortSignal,
+      fallback:
+        'Current screen: observed. Goal: complete the requested Android task. Next moves: use the latest observation, navigate or inspect state first, then act. First action: choose the safest available tool. Replan if a tool fails or the screen changes.',
+    });
+    await this.emit(context, 'ai.plan.proposed', publicPlan, {
+      clientMessageId: input.clientMessageId ?? null,
+    });
+    messages.push(publicPlanRequest, {
+      role: 'assistant',
+      content: publicPlan,
+    });
+    messages.push(buildExecutePlanMessage(publicPlan));
+
     while (Date.now() < deadline) {
       this.assertNotCanceled(context.abortSignal);
       const response = await this.chatClient.chat({
@@ -117,13 +180,23 @@ export class AutomationAiHarnessService {
         throw new BadRequestException('AI provider returned no message.');
       }
       const content = textContent(choice.content);
-      if (content.trim()) {
-        finalText = content.trim();
+      const calls = Array.isArray(choice.tool_calls) ? choice.tool_calls : [];
+      if (content.trim() && calls.length === 0) {
+        finalText = normalizePublicAiText(content);
         await this.emit(context, 'ai.message.completed', finalText, {
           clientMessageId: input.clientMessageId ?? null,
         });
+      } else if (content.trim()) {
+        await this.emit(
+          context,
+          'ai.plan.updated',
+          normalizePublicAiText(content),
+          {
+            reason: 'model-progress',
+            clientMessageId: input.clientMessageId ?? null,
+          },
+        );
       }
-      const calls = Array.isArray(choice.tool_calls) ? choice.tool_calls : [];
       messages.push({
         role: 'assistant',
         content: content || null,
@@ -166,6 +239,16 @@ export class AutomationAiHarnessService {
             `Accepted legacy AI tool-call shape for run=${context.runId ?? 'unknown'} provider=${provider.id} model=${model.id} tool=${uses}`,
           );
         }
+        await this.emit(
+          context,
+          'ai.action.decided',
+          parsedToolCall.intent || `Use ${uses}`,
+          {
+            uses,
+            expectedOutcome: parsedToolCall.expectedOutcome,
+            clientMessageId: input.clientMessageId ?? null,
+          },
+        );
         await this.emit(context, 'ai.tool.arguments', uses, {
           uses,
           intent: parsedToolCall.intent,
@@ -225,6 +308,26 @@ export class AutomationAiHarnessService {
                 : { data: modelData }),
             }),
           });
+          if (
+            isVisionLocateMiss(uses, parsedToolCall.input, result.data ?? {})
+          ) {
+            const key = locateMissKey(parsedToolCall.input);
+            const misses = (locateMisses.get(key) ?? 0) + 1;
+            locateMisses.set(key, misses);
+            const reason =
+              misses >= 2
+                ? `Repeated search for "${parsedToolCall.input.query}" found nothing on the current screen. The target is likely not visible here; choose navigation, state discovery, or stop with a clear blocker.`
+                : `Search for "${parsedToolCall.input.query}" found nothing on the current screen. Update the plan before trying another route.`;
+            await this.replan({
+              context,
+              input,
+              provider,
+              model,
+              messages,
+              deadline,
+              reason,
+            });
+          }
 
           if (
             shouldObserveAfterTool({
@@ -245,6 +348,16 @@ export class AutomationAiHarnessService {
                 summary: `Fresh screenshot captured after ${uses}.`,
               }),
             );
+            await this.replan({
+              context,
+              input,
+              provider,
+              model,
+              messages,
+              deadline,
+              reason: `Screen changed after ${uses}.`,
+              observation: observation.plannerText,
+            });
           }
         } catch (error) {
           if (context.abortSignal?.aborted) {
@@ -268,6 +381,15 @@ export class AutomationAiHarnessService {
               recoverable: true,
             }),
           });
+          await this.replan({
+            context,
+            input,
+            provider,
+            model,
+            messages,
+            deadline,
+            reason: `Tool ${uses} failed: ${message}`,
+          });
         }
       }
     }
@@ -276,9 +398,22 @@ export class AutomationAiHarnessService {
       throw new RequestTimeoutException('AI automation timed out.');
     }
     if (input.requireFinalAnswer && !finalText) {
-      throw new BadRequestException(
-        'AI automation finished without a final answer.',
-      );
+      finalText = await this.requestNoToolText({
+        provider,
+        model,
+        messages: [
+          ...messages,
+          buildFinalRecoveryMessage({ prompt: input.prompt }),
+        ],
+        deadline,
+        abortSignal: context.abortSignal,
+        fallback:
+          'I could not complete the task. The current screen and tool results did not provide enough confirmed context to finish safely.',
+      });
+      await this.emit(context, 'ai.message.completed', finalText, {
+        clientMessageId: input.clientMessageId ?? null,
+        recovered: true,
+      });
     }
     const toolResult = finalText || undefined;
     const completed = !!toolResult || !input.requireFinalAnswer;
@@ -341,6 +476,69 @@ export class AutomationAiHarnessService {
     if (abortSignal?.aborted) {
       throw new BadRequestException('AI automation was canceled.');
     }
+  }
+
+  private async replan({
+    context,
+    input,
+    provider,
+    model,
+    messages,
+    deadline,
+    reason,
+    observation,
+  }: {
+    context: AutomationAiHarnessContext;
+    input: Pick<AutomationAiRunInput, 'clientMessageId'>;
+    provider: Parameters<AutomationAiChatClientService['chat']>[0]['provider'];
+    model: Parameters<AutomationAiChatClientService['chat']>[0]['model'];
+    messages: ChatMessage[];
+    deadline: number;
+    reason: string;
+    observation?: string;
+  }) {
+    const request = buildReplanMessage({ reason, observation });
+    const plan = await this.requestNoToolText({
+      provider,
+      model,
+      messages: [...messages, request],
+      deadline,
+      abortSignal: context.abortSignal,
+      fallback: `Plan update: ${reason}`,
+    });
+    await this.emit(context, 'ai.plan.updated', plan, {
+      reason,
+      clientMessageId: input.clientMessageId ?? null,
+    });
+    messages.push(request, { role: 'assistant', content: plan });
+    messages.push(buildExecutePlanMessage(plan));
+  }
+
+  private async requestNoToolText({
+    provider,
+    model,
+    messages,
+    deadline,
+    abortSignal,
+    fallback,
+  }: {
+    provider: Parameters<AutomationAiChatClientService['chat']>[0]['provider'];
+    model: Parameters<AutomationAiChatClientService['chat']>[0]['model'];
+    messages: ChatMessage[];
+    deadline: number;
+    abortSignal?: AbortSignal;
+    fallback: string;
+  }) {
+    const response = await this.chatClient.chat({
+      provider,
+      model,
+      messages,
+      tools: [],
+      deadline,
+      abortSignal,
+    });
+    const content = textContent(response.choices?.[0]?.message?.content).trim();
+    return normalizePublicAiText(sanitizeAiText(content || fallback, 4_000));
   }
 
   private emit(

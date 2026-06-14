@@ -33,6 +33,7 @@ type SaveGeneralUiSettingsInput = Pick<
   | 'defaultViewerIFrameInterval'
   | 'defaultViewerKeyboardCaptureEnabled'
   | 'defaultViewerSoundEnabled'
+  | 'aiContextualSuggestionsEnabled'
 >
 
 const persistGeneralUiSettings = saveGeneralUiSettings
@@ -49,7 +50,8 @@ const toGeneralUiSettings = (settings: OrchestratorUiSettings): SaveGeneralUiSet
   defaultViewerMaxSize: settings.defaultViewerMaxSize,
   defaultViewerIFrameInterval: settings.defaultViewerIFrameInterval,
   defaultViewerKeyboardCaptureEnabled: settings.defaultViewerKeyboardCaptureEnabled,
-  defaultViewerSoundEnabled: settings.defaultViewerSoundEnabled
+  defaultViewerSoundEnabled: settings.defaultViewerSoundEnabled,
+  aiContextualSuggestionsEnabled: settings.aiContextualSuggestionsEnabled
 })
 
 export const GeneralSettingsForm = ({
@@ -192,6 +194,23 @@ export const GeneralSettingsForm = ({
             <Switch
               checked={settings.removeDataOnDelete}
               onCheckedChange={checked => updateSettings({ removeDataOnDelete: checked })}
+            />
+          </Setting>
+        </Section>
+        <Section
+          orientation='vertical'
+          title='AI agent'
+          titleClassName='pb-4'
+          contentClassName='gap-6'
+        >
+          <Setting
+            label='Generate contextual suggestions'
+            description='Use the selected AI model to refresh prompt suggestion chips from the current app and conversation context.'
+            className='w-full py-3'
+          >
+            <Switch
+              checked={settings.aiContextualSuggestionsEnabled}
+              onCheckedChange={checked => updateSettings({ aiContextualSuggestionsEnabled: checked })}
             />
           </Setting>
         </Section>

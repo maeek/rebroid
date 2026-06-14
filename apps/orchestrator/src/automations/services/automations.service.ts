@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { ApplicationProfileMode } from '../../android-apps/application-profile-mode';
 import { AutomationAiDefinitionFactory } from '../ai/automation-ai-definition.factory';
+import { AutomationAiSuggestionsService } from '../ai/automation-ai-suggestions.service';
 import { AutomationAiYamlDraftService } from '../ai/automation-ai-yaml-draft.service';
 import { AutomationCommandDto } from '../dto/automation-command.dto';
 import { AutomationCommandRegistryService } from '../commands/automation-command-registry.service';
@@ -19,6 +20,7 @@ import {
   AutomationRunEventStreamTokenDto,
   RunAdHocAiAutomationDto,
   RunAutomationDto,
+  SuggestAdHocAiPromptsDto,
 } from '../dto/automation-run.dto';
 import {
   CreateAutomationTriggerDto,
@@ -55,6 +57,7 @@ export class AutomationsService {
     private readonly queries: AutomationsQueryService,
     private readonly targetApplications: AutomationTargetApplicationService,
     private readonly aiDefinitions: AutomationAiDefinitionFactory,
+    private readonly aiSuggestions: AutomationAiSuggestionsService,
     private readonly aiYamlDrafts: AutomationAiYamlDraftService,
     private readonly automationTriggers: AutomationTriggersService,
   ) {}
@@ -151,6 +154,14 @@ export class AutomationsService {
       },
     );
     return this.mapper.run(run);
+  }
+
+  async suggestAdHocAiPrompts(dto: SuggestAdHocAiPromptsDto) {
+    await this.targetApplications.assertOwnerAccess(
+      dto.ownerUserId,
+      dto.targetApplicationId,
+    );
+    return this.aiSuggestions.suggest(dto);
   }
 
   async listAdHocAiRuns(

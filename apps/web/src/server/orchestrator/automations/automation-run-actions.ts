@@ -13,7 +13,7 @@ import {
   recordAutomationAudit
 } from './action-helpers'
 import { orchestratorAutomationsClient } from './client'
-import type { RunAdHocAiAutomationInput, RunAutomationInput } from './types'
+import type { RunAdHocAiAutomationInput, RunAutomationInput, SuggestAdHocAiPromptsInput } from './types'
 
 export const runAutomationAction = async (id: string, input: RunAutomationInput) => {
   const user = await getCurrentUserContext()
@@ -50,6 +50,18 @@ export const runAdHocAiAutomationAction = async (input: RunAdHocAiAutomationInpu
     targetApplicationId: run.targetApplicationId
   })
   return run
+}
+
+export const suggestAdHocAiPromptsAction = async (input: SuggestAdHocAiPromptsInput) => {
+  const user = await getCurrentUserContext()
+  assertAutomationPermission(user, 'automations:run')
+  assertAutomationPermission(user, 'automations:run-ai')
+  await assertTargetApplication(input.targetApplicationId)
+  assertRunProfilePermission(user, input)
+  return orchestratorAutomationsClient.suggestAdHocAiPrompts(user.ownerUserId, {
+    ...input,
+    allowedTools: await listPermittedAiTools(user)
+  })
 }
 
 export const cancelAutomationRunAction = async (runId: string) => {

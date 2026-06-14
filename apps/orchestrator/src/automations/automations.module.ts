@@ -9,6 +9,7 @@ import { AutomationAiChatClientService } from './ai/automation-ai-chat-client.se
 import { AutomationAiHarnessService } from './ai/automation-ai-harness.service';
 import { AutomationAiProviderService } from './ai/automation-ai-provider.service';
 import { AutomationAiRuntimeContextService } from './ai/automation-ai-runtime-context.service';
+import { AutomationAiSuggestionsService } from './ai/automation-ai-suggestions.service';
 import { AutomationAiYamlDraftService } from './ai/automation-ai-yaml-draft.service';
 import { AndroidAutomationCommandsService } from './commands/android-automation-commands.service';
 import { AiAutomationCommandsService } from './commands/ai-automation-commands.service';
@@ -61,6 +62,7 @@ import { AutomationVisionService } from './vision/automation-vision.service';
     AutomationAiChatClientService,
     AutomationAiProviderService,
     AutomationAiRuntimeContextService,
+    AutomationAiSuggestionsService,
     AutomationAiYamlDraftService,
     AutomationAiHarnessService,
     AutomationVisionService,

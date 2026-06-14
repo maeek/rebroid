@@ -163,7 +163,7 @@ export class VisionAutomationCommandsService {
             summary:
               result.matches.length > 0
                 ? `Found ${result.matches.length} match(es) for "${input.query}".`
-                : `No matches found for "${input.query}".`,
+                : `No matches found for "${input.query}".${result.reason ? ` ${result.reason}` : ''}`,
             data: {
               ...result,
               found: result.matches.length > 0,

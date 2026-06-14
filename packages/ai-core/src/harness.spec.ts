@@ -3,12 +3,17 @@ import { describe, it } from "node:test";
 import {
   allowedToolMatcher,
   buildChatRequestBody,
+  buildExecutePlanMessage,
+  buildFinalRecoveryMessage,
   buildInitialMessages,
+  buildPublicPlanRequestMessage,
+  buildReplanMessage,
   buildUiXmlObservationMessage,
   buildToolDefinitions,
   chatCompletionsEndpoint,
   consumeChatCompletionStream,
   mapUsesByToolName,
+  normalizePublicAiText,
   parseArguments,
   toolName,
 } from "./harness";
@@ -207,10 +212,70 @@ describe("AI harness core", () => {
     );
   });
 
+  it("builds public planning and recovery messages", () => {
+    const planRequest = buildPublicPlanRequestMessage({
+      prompt: "Turn on dark mode",
+    });
+
+    assert.equal(planRequest.role, "user");
+    const planContent =
+      typeof planRequest.content === "string" ? planRequest.content : "";
+    assert.ok(planContent);
+    assert.ok(planContent.includes("Task: Turn on dark mode"));
+    assert.ok(planContent.includes("Current screen"));
+    assert.ok(planContent.includes("public execution plan"));
+    assert.ok(planContent.includes("Markdown text only"));
+    assert.ok(!planContent.includes("hidden reasoning"));
+
+    const executeMessage = buildExecutePlanMessage(
+      "1. Open Settings.\n2. Find Display.\n3. Toggle dark mode.",
+    );
+    assert.equal(executeMessage.role, "user");
+    const executeContent =
+      typeof executeMessage.content === "string" ? executeMessage.content : "";
+    assert.ok(executeContent.includes("Execute the public plan"));
+
+    const replanMessage = buildReplanMessage({
+      reason: "vision.locate did not find dark mode toggle.",
+      observation:
+        "Screen captured: 0 UI hierarchy element(s) detected. Vision summary received.",
+    });
+    assert.equal(replanMessage.role, "user");
+    const replanContent =
+      typeof replanMessage.content === "string" ? replanMessage.content : "";
+    assert.ok(replanContent.includes("Reason:"));
+    assert.ok(replanContent.includes("Latest observation:"));
+
+    const recoveryMessage = buildFinalRecoveryMessage({
+      prompt: "Turn on dark mode",
+    });
+    assert.equal(recoveryMessage.role, "user");
+    const recoveryContent =
+      typeof recoveryMessage.content === "string"
+        ? recoveryMessage.content
+        : "";
+    assert.ok(recoveryContent.includes("final answer"));
+  });
+
   it("parses tool arguments defensively", () => {
     assert.deepEqual(parseArguments('{"x":1}'), { x: 1 });
     assert.deepEqual(parseArguments("[]"), {});
     assert.deepEqual(parseArguments("bad"), {});
+  });
+
+  it("normalizes JSON-like public model text into markdown", () => {
+    assert.equal(
+      normalizePublicAiText(
+        '{"Current screen":"Android home screen","Goal":"Enable system-wide dark mode"}',
+      ),
+      "- **Current screen:** Android home screen\n- **Goal:** Enable system-wide dark mode",
+    );
+    assert.equal(
+      normalizePublicAiText(
+        '{"Result":"Blocked"}\n{"Reason":"Settings path was not visible"}',
+      ),
+      "- **Result:** Blocked\n\n- **Reason:** Settings path was not visible",
+    );
   });
 
   it("consumes streamed assistant text", async () => {

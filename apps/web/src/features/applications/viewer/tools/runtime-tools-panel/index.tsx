@@ -8,6 +8,7 @@ import { useApplicationViewerApp } from '@/features/applications/detail/applicat
 import { AppLogsContent } from '@/features/applications/viewer/logs/app-logs-content'
 import { cn } from '@/lib/utils'
 import { draftWorkflowFromAdHocRunAction } from '@/server/orchestrator/automations/automation-management-actions'
+import { suggestAdHocAiPromptsAction } from '@/server/orchestrator/automations/automation-run-actions'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { AiAgentToolsSection } from './ai-agent-tools-section'
 import { AutomationStatusToolsSection } from './automation-status-tools-section'
@@ -21,7 +22,8 @@ type RuntimeToolId = 'clipboard' | 'files' | 'streaming' | 'network-access' | 'l
 
 export const RuntimeToolsPanel = () => {
   const router = useRouter()
-  const { app, permissions, setApp, setViewerSettings, viewerSettings, viewerStreamMetrics } = useApplicationViewerApp()
+  const { app, initialSettings, permissions, setApp, setViewerSettings, viewerSettings, viewerStreamMetrics } =
+    useApplicationViewerApp()
   const [latestAutomationRun, setLatestAutomationRun] = useState<AutomationRun | null>(null)
   const latestStreamMetrics = useMemo(
     () =>
@@ -167,7 +169,9 @@ export const RuntimeToolsPanel = () => {
           app={app}
           canSaveWorkflow={hasPermission(permissions, 'automations:manage')}
           className={sectionClassName}
+          contextualSuggestionsEnabled={initialSettings.aiContextualSuggestionsEnabled}
           draftWorkflowFromRun={draftWorkflowFromAdHocRunAction}
+          generatePromptSuggestions={suggestAdHocAiPromptsAction}
           hideHeader={inline}
           openWorkflowDraft={() => router.push('/automations/create')}
           onRunStarted={run => {
@@ -254,7 +258,7 @@ export const RuntimeToolsPanel = () => {
           className={cn(
             'min-h-0 py-4',
             selectedToolId === 'ai-agent'
-              ? 'flex h-[min(70dvh,36rem)] flex-1 flex-col overflow-hidden md:h-auto lg:h-full'
+              ? 'flex h-[min(70dvh,36rem)] flex-1 flex-col overflow-hidden md:h-[calc(100dvh-18rem)] md:max-h-[48rem] lg:h-full lg:max-h-none'
               : 'overflow-auto'
           )}
         >

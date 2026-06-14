@@ -9,13 +9,15 @@ import type {
   AutomationRun,
   AutomationRunEvent,
   AutomationRunEventStreamToken,
+  AiPromptSuggestions,
   AutomationTrigger,
   AutomationValidation,
   DraftAutomationYamlInput,
   RunAdHocAiAutomationInput,
   RunAutomationInput,
   SaveAutomationInput,
-  SaveAutomationTriggerInput
+  SaveAutomationTriggerInput,
+  SuggestAdHocAiPromptsInput
 } from './types'
 
 const ownerQuery = (ownerUserId: string) => {
@@ -114,6 +116,10 @@ export const orchestratorAutomationsClient = {
 
   runAdHocAi(ownerUserId: string, input: RunAdHocAiAutomationInput) {
     return jsonRequest<AutomationRun>('/automations/ai/runs', 'POST', { ownerUserId, ...input })
+  },
+
+  suggestAdHocAiPrompts(ownerUserId: string, input: SuggestAdHocAiPromptsInput) {
+    return jsonRequest<AiPromptSuggestions>('/automations/ai/suggestions', 'POST', { ownerUserId, ...input })
   },
 
   listAdHocAiRuns(ownerUserId: string, targetApplicationId: string, limit = 20) {

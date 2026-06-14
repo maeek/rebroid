@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { normalizePublicAiText } from '@rebroid/ai-core/harness'
 import Markdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
@@ -80,7 +81,7 @@ export const AiAssistantMarkdownText = ({
       remarkPlugins={[remarkGfm]}
       components={markdownComponents}
     >
-      {text}
+      {normalizePublicAiText(text)}
     </Markdown>
     {cursor}
   </div>

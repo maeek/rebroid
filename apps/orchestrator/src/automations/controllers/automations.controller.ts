@@ -27,9 +27,11 @@ import {
   AutomationRunDto,
   AutomationRunEventDto,
   AutomationRunEventStreamTokenDto,
+  AiPromptSuggestionsDto,
   ListAutomationRunsQueryDto,
   RunAdHocAiAutomationDto,
   RunAutomationDto,
+  SuggestAdHocAiPromptsDto,
 } from '../dto/automation-run.dto';
 import {
   AutomationTriggerDto,
@@ -86,6 +88,12 @@ export class AutomationsController {
   @ApiCreatedResponse({ type: AutomationRunDto })
   runAdHocAi(@Body() dto: RunAdHocAiAutomationDto) {
     return this.automations.runAdHocAi(dto);
+  }
+
+  @Post('ai/suggestions')
+  @ApiOkResponse({ type: AiPromptSuggestionsDto })
+  suggestAdHocAiPrompts(@Body() dto: SuggestAdHocAiPromptsDto) {
+    return this.automations.suggestAdHocAiPrompts(dto);
   }
 
   @Get('ai/runs')

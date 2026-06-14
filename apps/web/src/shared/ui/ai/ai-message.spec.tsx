@@ -16,4 +16,12 @@ describe('AiAssistantMarkdownText', () => {
     expect(screen.queryByRole('link', { name: 'raw' })).toBeNull()
     expect(screen.getByText('raw').tagName.toLowerCase()).toBe('p')
   })
+
+  it('renders JSON-like public assistant text as markdown rows', () => {
+    render(<AiAssistantMarkdownText text={'{"Current screen":"Home","Goal":"Open Settings"}'} />)
+
+    expect(screen.getByText('Current screen:')).toBeTruthy()
+    expect(screen.getByText(/Home/)).toBeTruthy()
+    expect(screen.queryByText(/"Current screen"/)).toBeNull()
+  })
 })

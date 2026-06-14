@@ -1,9 +1,10 @@
 import { createRef } from 'react'
 import { describe, expect, it, jest } from '@jest/globals'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { AiAgentToolsSection } from './ai-agent-tools-section'
 import { useAiAgentChatSession } from './use-ai-agent-chat-session'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { AiPromptSuggestion, SuggestAdHocAiPromptsInput } from '@/server/orchestrator/automations/types'
 
 jest.mock('./use-ai-agent-chat-session', () => ({
   useAiAgentChatSession: jest.fn()
@@ -121,8 +122,8 @@ describe('AiAgentToolsSection', () => {
 
     render(<AiAgentToolsSection app={app} />)
 
-    expect(screen.getByLabelText('AI agent transcript').className).toContain('md:flex-1')
-    expect(screen.getByLabelText('AI agent transcript').className).toContain('overflow-auto')
+    expect(screen.getByLabelText('AI agent transcript').className).toContain('flex-1')
+    expect(screen.getByLabelText('AI agent transcript').className).toContain('overflow-y-auto')
   })
 
   it('keeps clear available and delegates clearing to the session', () => {
@@ -147,5 +148,68 @@ describe('AiAgentToolsSection', () => {
     fireEvent.click(screen.getByRole('button', { name: /clear/i }))
 
     expect(clearConversation).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders generated contextual suggestions when enabled', async () => {
+    const generatePromptSuggestions = jest.fn<
+      (input: SuggestAdHocAiPromptsInput) => Promise<{ suggestions: AiPromptSuggestion[] }>
+    >(() =>
+      Promise.resolve({
+        suggestions: [{ id: 'dynamic', label: 'Dynamic chip', prompt: 'Inspect the current screen.' }]
+      })
+    )
+    jest.mocked(useAiAgentChatSession).mockReturnValue(
+      chatSession({
+        selectedProvider: { id: 'provider_1', label: 'Provider', kind: 'ollama', models: [] },
+        selectedModel: {
+          id: 'model_1',
+          label: 'Model',
+          roles: ['planner'],
+          enabled: true,
+          default: true,
+          settings: {}
+        }
+      })
+    )
+
+    render(
+      <AiAgentToolsSection
+        app={app}
+        generatePromptSuggestions={generatePromptSuggestions}
+      />
+    )
+
+    await waitFor(() => expect(screen.getByText('Dynamic chip')).toBeTruthy())
+    expect(generatePromptSuggestions.mock.calls[0]?.[0]).toMatchObject({ targetApplicationId: app.id })
+  })
+
+  it('uses static suggestions when contextual generation is disabled', () => {
+    const generatePromptSuggestions = jest.fn<
+      (input: SuggestAdHocAiPromptsInput) => Promise<{ suggestions: AiPromptSuggestion[] }>
+    >(() => Promise.resolve({ suggestions: [] }))
+    jest.mocked(useAiAgentChatSession).mockReturnValue(
+      chatSession({
+        selectedProvider: { id: 'provider_1', label: 'Provider', kind: 'ollama', models: [] },
+        selectedModel: {
+          id: 'model_1',
+          label: 'Model',
+          roles: ['planner'],
+          enabled: true,
+          default: true,
+          settings: {}
+        }
+      })
+    )
+
+    render(
+      <AiAgentToolsSection
+        app={app}
+        contextualSuggestionsEnabled={false}
+        generatePromptSuggestions={generatePromptSuggestions}
+      />
+    )
+
+    expect(screen.getByText('Verify login')).toBeTruthy()
+    expect(generatePromptSuggestions).not.toHaveBeenCalled()
   })
 })

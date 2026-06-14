@@ -10,5 +10,6 @@ export interface WebSettings {
   defaultViewerIFrameInterval: number
   defaultViewerKeyboardCaptureEnabled: boolean
   defaultViewerSoundEnabled: boolean
+  aiContextualSuggestionsEnabled: boolean
   auditRetentionDays: number
 }

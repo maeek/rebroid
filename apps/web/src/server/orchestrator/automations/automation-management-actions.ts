@@ -107,6 +107,9 @@ const promptFromAdHocRun = ({
       [
         'ai.tool.completed',
         'ai.tool.failed',
+        'ai.plan.proposed',
+        'ai.plan.updated',
+        'ai.action.decided',
         'ai.ui.observed',
         'ai.perception.summary',
         'ai.screenshot.observed',

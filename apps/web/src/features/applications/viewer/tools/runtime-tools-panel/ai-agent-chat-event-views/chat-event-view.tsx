@@ -32,6 +32,12 @@ export const ChatEventView = ({ event }: { event: AutomationRunEvent }) => {
   if (event.type === 'ai.message.completed') {
     return <AiAssistantMarkdownText text={event.message} />
   }
+  if (event.type === 'ai.plan.proposed' || event.type === 'ai.plan.updated') {
+    return <AiAssistantMarkdownText text={event.message} />
+  }
+  if (event.type === 'ai.orientation.completed' || event.type === 'ai.action.decided') {
+    return <AiAssistantText muted>{event.message}</AiAssistantText>
+  }
   if (event.type === 'ai.perception.summary') {
     return <AiAssistantText muted>{event.message}</AiAssistantText>
   }

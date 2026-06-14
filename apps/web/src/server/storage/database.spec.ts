@@ -32,12 +32,14 @@ describe('web state database', () => {
   it('stores web settings transactionally', async () => {
     await Promise.all([
       saveWebSettings({ removeDataOnDelete: false }),
-      saveWebSettings({ defaultViewerBitrateMbps: 8 })
+      saveWebSettings({ defaultViewerBitrateMbps: 8 }),
+      saveWebSettings({ aiContextualSuggestionsEnabled: false })
     ])
 
     await expect(getWebSettings()).resolves.toMatchObject({
       removeDataOnDelete: false,
-      defaultViewerBitrateMbps: 8
+      defaultViewerBitrateMbps: 8,
+      aiContextualSuggestionsEnabled: false
     })
   })
 

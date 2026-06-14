@@ -19,6 +19,7 @@ export interface OrchestratorUiSettings {
   defaultViewerIFrameInterval: number
   defaultViewerKeyboardCaptureEnabled: boolean
   defaultViewerSoundEnabled: boolean
+  aiContextualSuggestionsEnabled: boolean
   auditRetentionDays: number
 }
 
@@ -33,6 +34,7 @@ export type GeneralUiSettings = Pick<
   | 'defaultViewerIFrameInterval'
   | 'defaultViewerKeyboardCaptureEnabled'
   | 'defaultViewerSoundEnabled'
+  | 'aiContextualSuggestionsEnabled'
 >
 
 export type RuntimeUiSettings = Pick<
@@ -56,6 +58,7 @@ export const defaultOrchestratorUiSettings: OrchestratorUiSettings = {
   defaultViewerIFrameInterval: 1,
   defaultViewerKeyboardCaptureEnabled: false,
   defaultViewerSoundEnabled: true,
+  aiContextualSuggestionsEnabled: true,
   auditRetentionDays: 30
 }
 
@@ -69,6 +72,7 @@ export const defaultWebSettingsResponse: WebSettingsResponse = {
   defaultViewerIFrameInterval: defaultOrchestratorUiSettings.defaultViewerIFrameInterval,
   defaultViewerKeyboardCaptureEnabled: defaultOrchestratorUiSettings.defaultViewerKeyboardCaptureEnabled,
   defaultViewerSoundEnabled: defaultOrchestratorUiSettings.defaultViewerSoundEnabled,
+  aiContextualSuggestionsEnabled: defaultOrchestratorUiSettings.aiContextualSuggestionsEnabled,
   auditRetentionDays: defaultOrchestratorUiSettings.auditRetentionDays
 }
 
@@ -116,6 +120,10 @@ export const normalizeOrchestratorUiSettings = (
     typeof web.defaultViewerSoundEnabled === 'boolean'
       ? web.defaultViewerSoundEnabled
       : defaultOrchestratorUiSettings.defaultViewerSoundEnabled,
+  aiContextualSuggestionsEnabled:
+    typeof web.aiContextualSuggestionsEnabled === 'boolean'
+      ? web.aiContextualSuggestionsEnabled
+      : defaultOrchestratorUiSettings.aiContextualSuggestionsEnabled,
   auditRetentionDays:
     typeof web.auditRetentionDays === 'number'
       ? web.auditRetentionDays

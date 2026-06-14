@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { IconPlayerPlay, IconPlayerStop, IconSend, IconTrash } from '@tabler/icons-react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
@@ -13,9 +13,14 @@ import { ChatTurnView } from './ai-agent-chat-events'
 import { aiAgentPromptPresets } from './ai-agent-prompt-presets'
 import { AiAgentSettingsPopover } from './ai-agent-settings-popover'
 import { useAiAgentChatSession } from './use-ai-agent-chat-session'
-import type { ChatTurn } from './ai-agent-chat-utils'
+import { conversationBeforeTurn, terminalRunStatuses, type ChatTurn } from './ai-agent-chat-utils'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { AutomationRun, AutomationYamlDraft } from '@/server/orchestrator/automations/types'
+import type {
+  AiPromptSuggestion,
+  AutomationRun,
+  AutomationYamlDraft,
+  SuggestAdHocAiPromptsInput
+} from '@/server/orchestrator/automations/types'
 
 type DraftWorkflowFromRun = (input: {
   runId: string
@@ -24,6 +29,8 @@ type DraftWorkflowFromRun = (input: {
   visionProviderId?: string
   visionModelId?: string
 }) => Promise<AutomationYamlDraft>
+
+type GeneratePromptSuggestions = (input: SuggestAdHocAiPromptsInput) => Promise<{ suggestions: AiPromptSuggestion[] }>
 
 const AiAgentTranscriptSkeleton = () => (
   <div
@@ -67,7 +74,9 @@ export const AiAgentToolsSection = ({
   app,
   canSaveWorkflow = false,
   className,
+  contextualSuggestionsEnabled = true,
   draftWorkflowFromRun,
+  generatePromptSuggestions,
   hideHeader,
   openWorkflowDraft,
   onRunStarted
@@ -75,12 +84,17 @@ export const AiAgentToolsSection = ({
   app: AppDefinition
   canSaveWorkflow?: boolean
   className?: string
+  contextualSuggestionsEnabled?: boolean
   draftWorkflowFromRun?: DraftWorkflowFromRun
+  generatePromptSuggestions?: GeneratePromptSuggestions
   hideHeader?: boolean
   openWorkflowDraft?: () => void
   onRunStarted?: (run: AutomationRun) => void
 }) => {
   const [draftingRunId, setDraftingRunId] = useState<string | null>(null)
+  const fallbackSuggestions = useMemo(() => aiAgentPromptPresets(app), [app.id, app.name])
+  const [suggestions, setSuggestions] = useState<AiPromptSuggestion[]>(fallbackSuggestions)
+  const turnsRef = useRef<ChatTurn[]>([])
   const {
     activeTurn,
     adHocTimeoutMinutes,
@@ -117,7 +131,67 @@ export const AiAgentToolsSection = ({
     turns,
     visionCatalog
   } = useAiAgentChatSession({ app, onRunStarted })
-  const presets = useMemo(() => aiAgentPromptPresets(app), [app])
+
+  useEffect(() => {
+    turnsRef.current = turns
+  }, [turns])
+
+  const terminalTurnsKey = useMemo(
+    () =>
+      turns
+        .filter(turn => !turn.run || terminalRunStatuses.has(turn.run.status))
+        .map(turn => `${turn.id}:${turn.status}:${turn.events.at(-1)?.sequence ?? 0}`)
+        .join('|'),
+    [turns]
+  )
+
+  useEffect(() => {
+    if (!contextualSuggestionsEnabled || !generatePromptSuggestions || !selectedProvider || !selectedModel) {
+      setSuggestions(fallbackSuggestions)
+      return
+    }
+    if (activeTurn) return
+
+    let cancelled = false
+    const currentTurns = turnsRef.current
+    const recentEvents = currentTurns
+      .flatMap(turn => turn.events)
+      .filter(event => event.message.trim().length > 0)
+      .slice(-20)
+      .map(event => ({ type: event.type, message: event.message }))
+
+    void generatePromptSuggestions({
+      targetApplicationId: app.id,
+      appName: app.name,
+      profileMode: app.profileMode,
+      profileName: app.profileName,
+      conversation: conversationBeforeTurn('__suggestions__', currentTurns),
+      recentEvents,
+      providerId: selectedProvider.id,
+      modelId: selectedModel.id
+    })
+      .then(result => {
+        if (cancelled || result.suggestions.length === 0) return
+        setSuggestions(result.suggestions)
+      })
+      .catch(() => undefined)
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    activeTurn,
+    app.id,
+    app.name,
+    app.profileMode,
+    app.profileName,
+    contextualSuggestionsEnabled,
+    fallbackSuggestions,
+    generatePromptSuggestions,
+    selectedModel,
+    selectedProvider,
+    terminalTurnsKey
+  ])
 
   const applyPreset = (presetPrompt: string) => {
     setPrompt(current => (current.trim() ? `${current.trim()}\n\n${presetPrompt}` : presetPrompt))
@@ -170,7 +244,7 @@ export const AiAgentToolsSection = ({
       <div
         ref={transcriptRef}
         aria-label='AI agent transcript'
-        className='flex min-h-0 max-h-[min(46dvh,26rem)] flex-col gap-4 overflow-auto pb-2 pr-1 motion-safe:scroll-smooth md:max-h-none md:flex-1'
+        className='flex min-h-0 max-h-[min(46dvh,26rem)] flex-1 flex-col gap-4 overflow-y-auto pb-2 pr-1 motion-safe:scroll-smooth md:max-h-none'
       >
         {isLoadingHistory ? <AiAgentTranscriptSkeleton /> : null}
         {!isLoadingHistory && turns.length === 0 ? <AiAgentEmptyTranscript /> : null}
@@ -189,94 +263,96 @@ export const AiAgentToolsSection = ({
           : null}
       </div>
 
-      <div className='flex flex-wrap gap-2'>
-        {presets.map(preset => (
-          <Button
-            key={preset.id}
-            type='button'
-            size='sm'
-            variant='secondary'
-            onClick={() => applyPreset(preset.prompt)}
-          >
-            {preset.label}
-          </Button>
-        ))}
-      </div>
-
-      <AiPromptComposer
-        value={prompt}
-        rows={4}
-        placeholder='Ask the AI to perform a task, call a tool, or take an action...'
-        metadata={`Run timeout: ${adHocTimeoutMs / 60000} minutes.`}
-        errors={[selectionMessage, error]}
-        onChange={setPrompt}
-        onSubmit={() => void submit()}
-        modelControl={
-          <AiAgentSettingsPopover
-            adHocTimeoutMinutes={adHocTimeoutMinutes}
-            catalog={plannerCatalog}
-            health={health}
-            isCheckingHealth={isCheckingHealth}
-            onRecheckHealth={() => void recheckHealth()}
-            selectedModel={selectedModel}
-            selectedProvider={selectedProvider}
-            selectedVisionModel={selectedVisionModel}
-            selectedVisionProvider={selectedVisionProvider}
-            setModelId={setModelId}
-            setProviderId={setProviderId}
-            setVisionModelId={setVisionModelId}
-            setVisionProviderId={setVisionProviderId}
-            setTimeoutMinutesInput={setTimeoutMinutesInput}
-            timeoutMinutesInput={timeoutMinutesInput}
-            visionCatalog={visionCatalog}
-          />
-        }
-        actions={
-          <>
-            {queuedTurn && !activeTurn ? (
-              <Button
-                type='button'
-                variant='secondary'
-                onClick={() => void runQueuedTurn()}
-              >
-                <IconPlayerPlay className='size-4' />
-                Run next
-              </Button>
-            ) : null}
-            {turns.length > 0 ? (
-              <Button
-                type='button'
-                variant='secondary'
-                disabled={isClearing}
-                onClick={() => void clearConversation()}
-              >
-                <IconTrash className='size-4' />
-                {isClearing ? 'Clearing' : 'Clear'}
-              </Button>
-            ) : null}
-            {showCancelRun ? (
-              <Button
-                type='button'
-                variant='secondary'
-                disabled={isCanceling || activeTurn?.status === 'canceling'}
-                onClick={() => void cancelRun()}
-              >
-                <IconPlayerStop className='size-4' />
-                {isCanceling ? 'Canceling' : 'Cancel'}
-              </Button>
-            ) : null}
+      <div className='grid shrink-0 gap-3'>
+        <div className='flex flex-wrap gap-2'>
+          {suggestions.map(preset => (
             <Button
+              key={preset.id}
               type='button'
-              size='icon'
-              disabled={!canSubmit}
-              aria-label={activeTurn ? 'Queue message' : 'Send message'}
-              onClick={() => void submit()}
+              size='sm'
+              variant='secondary'
+              onClick={() => applyPreset(preset.prompt)}
             >
-              <IconSend className='size-4' />
+              {preset.label}
             </Button>
-          </>
-        }
-      />
+          ))}
+        </div>
+
+        <AiPromptComposer
+          value={prompt}
+          rows={4}
+          placeholder='Ask the AI to perform a task, call a tool, or take an action...'
+          metadata={`Run timeout: ${adHocTimeoutMs / 60000} minutes.`}
+          errors={[selectionMessage, error]}
+          onChange={setPrompt}
+          onSubmit={() => void submit()}
+          modelControl={
+            <AiAgentSettingsPopover
+              adHocTimeoutMinutes={adHocTimeoutMinutes}
+              catalog={plannerCatalog}
+              health={health}
+              isCheckingHealth={isCheckingHealth}
+              onRecheckHealth={() => void recheckHealth()}
+              selectedModel={selectedModel}
+              selectedProvider={selectedProvider}
+              selectedVisionModel={selectedVisionModel}
+              selectedVisionProvider={selectedVisionProvider}
+              setModelId={setModelId}
+              setProviderId={setProviderId}
+              setVisionModelId={setVisionModelId}
+              setVisionProviderId={setVisionProviderId}
+              setTimeoutMinutesInput={setTimeoutMinutesInput}
+              timeoutMinutesInput={timeoutMinutesInput}
+              visionCatalog={visionCatalog}
+            />
+          }
+          actions={
+            <>
+              {queuedTurn && !activeTurn ? (
+                <Button
+                  type='button'
+                  variant='secondary'
+                  onClick={() => void runQueuedTurn()}
+                >
+                  <IconPlayerPlay className='size-4' />
+                  Run next
+                </Button>
+              ) : null}
+              {turns.length > 0 ? (
+                <Button
+                  type='button'
+                  variant='secondary'
+                  disabled={isClearing}
+                  onClick={() => void clearConversation()}
+                >
+                  <IconTrash className='size-4' />
+                  {isClearing ? 'Clearing' : 'Clear'}
+                </Button>
+              ) : null}
+              {showCancelRun ? (
+                <Button
+                  type='button'
+                  variant='secondary'
+                  disabled={isCanceling || activeTurn?.status === 'canceling'}
+                  onClick={() => void cancelRun()}
+                >
+                  <IconPlayerStop className='size-4' />
+                  {isCanceling ? 'Canceling' : 'Cancel'}
+                </Button>
+              ) : null}
+              <Button
+                type='button'
+                size='icon'
+                disabled={!canSubmit}
+                aria-label={activeTurn ? 'Queue message' : 'Send message'}
+                onClick={() => void submit()}
+              >
+                <IconSend className='size-4' />
+              </Button>
+            </>
+          }
+        />
+      </div>
     </section>
   )
 }
