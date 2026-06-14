@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, type ReactNode } from 'react'
+import { IconActivityHeartbeat, IconGauge, IconNetwork } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
@@ -12,6 +13,7 @@ import {
 } from '@/features/applications/viewer/settings/viewer-settings'
 import { ViewerStreamingSliderFields } from '@/shared/ui/settings/viewer-streaming-slider-fields'
 import { ToolSection } from './tool-section'
+import type { DisplayViewerStreamMetrics } from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { ViewerSettings, ViewerStreamingPreset } from '@/features/applications/viewer/settings/viewer-settings'
 
 const maxSizeOptions = [0, 1080, 1440, 1920]
@@ -23,14 +25,50 @@ const StreamingSetting = ({ label, children }: { label: string; children: ReactN
   </label>
 )
 
+const metricIsFresh = (metrics: DisplayViewerStreamMetrics | null | undefined) =>
+  Boolean(metrics && Date.now() - metrics.collectedAt < 5_000)
+
+const metricValue = (value: number | undefined, digits = 0) =>
+  typeof value === 'number' && Number.isFinite(value) ? value.toFixed(digits) : '--'
+
+const StreamingMetricBadges = ({ metrics }: { metrics?: DisplayViewerStreamMetrics | null }) => {
+  const fresh = metricIsFresh(metrics)
+
+  return (
+    <div className='grid gap-2 sm:grid-cols-3'>
+      <div className='flex items-center gap-2 rounded-md border border-border/70 bg-surface-band/35 px-3 py-2 text-xs'>
+        <IconActivityHeartbeat className='size-4 text-primary' />
+        <span className='text-foreground-muted'>FPS</span>
+        <span className='ml-auto font-medium text-foreground'>{fresh ? metricValue(metrics?.fps) : '--'}</span>
+      </div>
+      <div className='flex items-center gap-2 rounded-md border border-border/70 bg-surface-band/35 px-3 py-2 text-xs'>
+        <IconGauge className='size-4 text-primary' />
+        <span className='text-foreground-muted'>Bitrate</span>
+        <span className='ml-auto font-medium text-foreground'>
+          {fresh ? `${metricValue(metrics?.bitrateMbps, 1)} Mbps` : '--'}
+        </span>
+      </div>
+      <div className='flex items-center gap-2 rounded-md border border-border/70 bg-surface-band/35 px-3 py-2 text-xs'>
+        <IconNetwork className='size-4 text-primary' />
+        <span className='text-foreground-muted'>Latency</span>
+        <span className='ml-auto font-medium text-foreground'>
+          {fresh && typeof metrics?.latencyMs === 'number' ? `${metricValue(metrics.latencyMs)} ms` : '--'}
+        </span>
+      </div>
+    </div>
+  )
+}
+
 export const StreamingToolsSection = ({
   viewerSettings,
   onViewerSettingsChange,
+  streamMetrics,
   className,
   hideHeader
 }: {
   viewerSettings: ViewerSettings
   onViewerSettingsChange: (settings: ViewerSettings) => void
+  streamMetrics?: DisplayViewerStreamMetrics | null
   className?: string
   hideHeader?: boolean
 }) => {
@@ -110,12 +148,15 @@ export const StreamingToolsSection = ({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value='bandwidth'>Bandwidth</SelectItem>
+              <SelectItem value='low-latency'>Low latency</SelectItem>
               <SelectItem value='balanced'>Balanced</SelectItem>
-              <SelectItem value='quality'>Quality</SelectItem>
+              <SelectItem value='high-quality'>High quality</SelectItem>
+              <SelectItem value='bandwidth-saver'>Bandwidth saver</SelectItem>
             </SelectContent>
           </Select>
         </StreamingSetting>
+
+        <StreamingMetricBadges metrics={streamMetrics} />
 
         <div className='flex flex-col gap-2'>
           <div className='grid overflow-hidden transition-[grid-template-rows,opacity,padding-top,padding-bottom] duration-200 ease-out grid-rows-[1fr] opacity-100'>

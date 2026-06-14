@@ -883,22 +883,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/automations/draft-yaml": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AutomationsController_draftYaml"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/automations/ai/runs": {
         parameters: {
             query?: never;
@@ -1585,6 +1569,22 @@ export interface paths {
         get: operations["HealthController_diagnosticsSummary"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/automations/draft-yaml/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AutomationsController_draftYamlStream"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2404,10 +2404,7 @@ export interface components {
              *     ]
              */
             allowedTools?: string[];
-        };
-        AutomationYamlDraftDto: {
-            yaml: string;
-            definition: components["schemas"]["AutomationDefinitionDto"];
+            clarifications?: components["schemas"]["DraftAutomationYamlClarificationDto"][];
         };
         RunAdHocAiConversationMessageDto: {
             /** @enum {string} */
@@ -2855,6 +2852,12 @@ export interface components {
             display: boolean;
             firewall: boolean;
             services: components["schemas"]["OrchestratorDiagnosticsServicesDto"];
+        };
+        DraftAutomationYamlClarificationDto: {
+            /** @example Which app package should this workflow launch? */
+            question: string;
+            /** @example Use the uploaded app package. */
+            answer: string;
         };
     };
     responses: never;
@@ -4355,29 +4358,6 @@ export interface operations {
             };
         };
     };
-    AutomationsController_draftYaml: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DraftAutomationYamlDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AutomationYamlDraftDto"];
-                };
-            };
-        };
-    };
     AutomationsController_listAdHocAiRuns: {
         parameters: {
             query: {
@@ -5615,6 +5595,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrchestratorDiagnosticsDto"];
+                };
+            };
+        };
+    };
+    AutomationsController_draftYamlStream: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftAutomationYamlDto"];
+            };
+        };
+        responses: {
+            /** @description Server-sent draft generation events. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
                 };
             };
         };

@@ -94,8 +94,13 @@ export class VisionAutomationCommandsService {
           const uiStatus = observation.uiXml
             ? `UI hierarchy ${observation.uiXml.status}, ${observation.uiXml.nodeCount} node(s)`
             : 'UI hierarchy unavailable';
+          const visionStatus = observation.summary
+            ? 'Vision summary available'
+            : observation.visionSummaryError
+              ? `Vision summary failed: ${observation.visionSummaryError}`
+              : 'Vision summary unavailable';
           return {
-            summary: `Screen observed: ${detections.length} element(s) detected. ${uiStatus}.`,
+            summary: `Screen captured: ${detections.length} UI hierarchy element(s) detected. ${uiStatus}. ${visionStatus}.`,
             data: {
               width: observation.image.width,
               height: observation.image.height,

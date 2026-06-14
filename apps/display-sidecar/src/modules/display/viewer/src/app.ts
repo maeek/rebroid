@@ -5,6 +5,7 @@ import { createDisplayStream } from "./display-stream";
 import { createH264Decoder } from "./h264-decoder";
 import { createPageLifecycle } from "./page-lifecycle";
 import { setupTouchInput } from "./touch-input";
+import { createStreamMetricsReporter } from "./stream-metrics";
 import {
   emitViewerStreamStatus,
   statusFromCompatibility,
@@ -18,7 +19,9 @@ const elements = getViewerElements();
 const ui = createViewerUi(elements);
 const lifecycle = createPageLifecycle();
 let activeTransport = config.transport;
-const emitAudioDisabled = (message = "Audio capture is disabled for this stream.") => {
+const emitAudioDisabled = (
+  message = "Audio capture is disabled for this stream.",
+) => {
   emitViewerStreamStatus({
     code: "audio-disabled",
     severity: "info",
@@ -78,10 +81,18 @@ const controlChannel = createControlChannel({
   onMessage: handleSidecarMessage,
 });
 let displayStream: DisplayTransport | null = null;
+const websocketMetricsReporter = createStreamMetricsReporter({
+  transport: "websocket",
+  getSize: () => ({
+    width: elements.canvas.width,
+    height: elements.canvas.height,
+  }),
+});
 const decoder = createH264Decoder({
   canvas: elements.canvas,
   context: elements.context,
   ui,
+  onFrame: websocketMetricsReporter.addFrame,
   onStall: () => displayStream?.scheduleReconnect(),
 });
 displayStream = createDisplayStream({
@@ -90,6 +101,7 @@ displayStream = createDisplayStream({
   ui,
   lifecycle,
   audioPlayer,
+  metricsReporter: websocketMetricsReporter,
 });
 const startWebsocket = () => {
   activeTransport = "websocket";

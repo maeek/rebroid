@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useDisplayViewerActions } from '@/features/applications/viewer/display/display-viewer-shell/hooks/use-display-viewer-actions'
 import { useFullscreenState } from '@/features/applications/viewer/display/display-viewer-shell/hooks/use-fullscreen-state'
-import type { DisplayViewerStreamStatus } from '@/features/applications/viewer/display/display-viewer-stream-status'
+import type {
+  DisplayViewerStreamMetrics,
+  DisplayViewerStreamStatus
+} from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { DisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-surfaces'
 
 const transientStreamStatusCodes = new Set<DisplayViewerStreamStatus['code']>([
@@ -19,13 +22,15 @@ export const useDisplayViewerShellState = ({
   surfaces,
   initialKeyboardCaptureEnabled,
   onSurfacesChanged,
-  onKeyboardCaptureChange
+  onKeyboardCaptureChange,
+  onStreamMetrics
 }: {
   applicationId: string
   surfaces: DisplayViewerSurface[]
   initialKeyboardCaptureEnabled: boolean
   onSurfacesChanged?: () => void
   onKeyboardCaptureChange?: (enabled: boolean) => void
+  onStreamMetrics?: (surfaceId: string, metrics: DisplayViewerStreamMetrics) => void
 }) => {
   const [keyboardCaptureEnabled, setKeyboardCaptureEnabled] = useState(initialKeyboardCaptureEnabled)
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
@@ -36,6 +41,7 @@ export const useDisplayViewerShellState = ({
   const streamStatusTimersRef = useRef<Record<string, number | undefined>>({})
   const [rotatedSurfaceIds, setRotatedSurfaceIds] = useState<Record<string, boolean>>({})
   const [streamStatuses, setStreamStatuses] = useState<Record<string, DisplayViewerStreamStatus | undefined>>({})
+  const [streamMetrics, setStreamMetrics] = useState<Record<string, DisplayViewerStreamMetrics | undefined>>({})
   const [workspaceHeight, setWorkspaceHeight] = useState(0)
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 })
   const [fullscreenSurfaceId, setFullscreenSurfaceId] = useState<string | null>(null)
@@ -76,6 +82,11 @@ export const useDisplayViewerShellState = ({
       Object.fromEntries(Object.entries(current).filter(([surfaceId]) => surfaceIds.has(surfaceId)))
     )
     setStreamStatuses(current =>
+      Object.fromEntries(
+        Object.entries(current).filter(([surfaceId]) => surfaceIds.has(surfaceId) && !surfaceSessionChanged(surfaceId))
+      )
+    )
+    setStreamMetrics(current =>
       Object.fromEntries(
         Object.entries(current).filter(([surfaceId]) => surfaceIds.has(surfaceId) && !surfaceSessionChanged(surfaceId))
       )
@@ -232,6 +243,14 @@ export const useDisplayViewerShellState = ({
     }
   }
 
+  const setSurfaceStreamMetrics = (surfaceId: string, metrics: DisplayViewerStreamMetrics) => {
+    setStreamMetrics(current => ({
+      ...current,
+      [surfaceId]: metrics
+    }))
+    onStreamMetrics?.(surfaceId, metrics)
+  }
+
   const scrollSurfaceIntoView = (surfaceId: string) => {
     surfaceElementsRef.current[surfaceId]?.scrollIntoView({
       behavior: 'smooth',
@@ -248,8 +267,10 @@ export const useDisplayViewerShellState = ({
     orderedSurfaces,
     rotatedSurfaceIds,
     scrollContainerRef,
+    setSurfaceStreamMetrics,
     setSurfaceStreamStatus,
     surfaceViewportElementsRef,
+    streamMetrics,
     streamStatuses,
     viewerActions,
     windowSize,

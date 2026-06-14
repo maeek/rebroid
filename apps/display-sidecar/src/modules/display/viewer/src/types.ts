@@ -126,3 +126,13 @@ export type ViewerStreamStatus = {
   message: string;
   transport?: "webrtc" | "websocket";
 };
+
+export type ViewerStreamMetrics = {
+  transport: "webrtc" | "websocket";
+  fps?: number;
+  bitrateMbps?: number;
+  latencyMs?: number;
+  width?: number;
+  height?: number;
+  collectedAt: number;
+};

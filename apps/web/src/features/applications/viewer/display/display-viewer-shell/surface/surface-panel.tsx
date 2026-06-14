@@ -19,6 +19,7 @@ export const SurfacePanel = ({ surface }: { surface: DisplayViewerSurface }) => 
     onClose,
     onOpenPopout,
     onSelect,
+    onStreamMetrics,
     onStreamStatus,
     onSurfaceElement,
     onToggleFullscreen,
@@ -60,6 +61,7 @@ export const SurfacePanel = ({ surface }: { surface: DisplayViewerSurface }) => 
           <DisplayViewerFrame
             src={surface.src}
             keyboardCaptureEnabled={keyboardCaptureEnabled}
+            onStreamMetrics={onStreamMetrics}
             onStreamStatus={onStreamStatus}
             surfaceId={surface.id}
           />

@@ -12,6 +12,7 @@ import {
   emitViewerStreamStatus,
   statusFromCompatibility,
 } from "./stream-status";
+import type { StreamMetricsReporter } from "./stream-metrics";
 
 type DisplayStreamOptions = {
   config: ViewerConfig;
@@ -19,6 +20,7 @@ type DisplayStreamOptions = {
   ui: ViewerUi;
   lifecycle: PageLifecycle;
   audioPlayer: ViewerAudioPlayer;
+  metricsReporter: StreamMetricsReporter;
 };
 
 type StreamTextMessage = {
@@ -49,6 +51,7 @@ export function createDisplayStream({
   ui,
   lifecycle,
   audioPlayer,
+  metricsReporter,
 }: DisplayStreamOptions) {
   let activeWs: WebSocket | null = null;
   let reconnectTimer = 0;
@@ -61,6 +64,7 @@ export function createDisplayStream({
 
   lifecycle.onClose(() => {
     clearStreamTimers();
+    metricsReporter.stop();
     audioPlayer.reset();
     if (activeWs?.readyState === WebSocket.OPEN) {
       activeWs.close(1000, "viewer closed");
@@ -72,6 +76,7 @@ export function createDisplayStream({
     streamQueue = Promise.resolve();
     decoder.reset();
     audioPlayer.reset();
+    metricsReporter.start();
   }
 
   function clearStreamTimers() {
@@ -286,6 +291,7 @@ export function createDisplayStream({
   async function handleBinaryMessage(data: unknown): Promise<void> {
     if (data instanceof ArrayBuffer) {
       const bytes = new Uint8Array(data);
+      metricsReporter.addBytes(bytes.byteLength);
       markStreamAlive(streamGeneration);
       const audioPacket = parseViewerAudioPacket(bytes);
       if (audioPacket) {
@@ -314,6 +320,7 @@ export function createDisplayStream({
       return;
     }
 
+    metricsReporter.start();
     const generation = ++streamGeneration;
     const protocol = location.protocol === "https:" ? "wss:" : "ws:";
     const streamParams = new URLSearchParams(location.search);

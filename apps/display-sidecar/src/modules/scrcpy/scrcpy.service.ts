@@ -15,7 +15,8 @@ import {
 } from "./scrcpy-packet-parser";
 import type { ScrcpyPacket } from "./scrcpy-packet-parser";
 import { ScrcpyStreamLiveness } from "./scrcpy-stream-liveness";
-import { ScrcpyVideoPacketMerger } from "./scrcpy-video-packet-merger";
+import { ScrcpyStreamSessionRegistry } from "./scrcpy-stream-session-registry";
+import { ScrcpyVideoPacketForwarder } from "./scrcpy-video-packet-forwarder";
 import {
   ForwardedVideoSocket,
   SCRCPY_WS_OPEN,
@@ -153,7 +154,6 @@ export class ScrcpyService {
   private readonly controlCodec = new ScrcpyControlCodec();
   private readonly controlSockets = new Map<string, ActiveControlSocket>();
   private readonly streamingSessions = new Set<string>();
-  private readonly streamClients = new Map<string, ScrcpyStreamClient>();
   private readonly controlUnavailableSessions = new Set<string>();
   private readonly queuedControlMessages = new Map<
     string,
@@ -163,7 +163,7 @@ export class ScrcpyService {
   private readonly activeRecordings = new Map<string, ActiveRecording>();
   private readonly completedRecordings = new Map<string, CompletedRecording>();
   private readonly scrcpyServerPushes = new Set<string>();
-  private readonly audioDisabledSessions = new Set<string>();
+  private readonly streamSessions = new ScrcpyStreamSessionRegistry();
 
   constructor(
     private readonly adb: AdbService,
@@ -175,26 +175,9 @@ export class ScrcpyService {
     let stopCurrentAttempt: (() => Promise<void>) | null = null;
     let streamedOnce = false;
     let restartAttempt = 0;
-    if (!options.audio) {
-      this.audioDisabledSessions.delete(options.sessionId);
-    }
-    let effectiveOptions: ScrcpyStreamOptions = {
-      ...options,
-      audio: options.audio && !this.audioDisabledSessions.has(options.sessionId),
-      control: options.control ?? true,
-      compatibilityMode:
-        options.compatibilityMode ??
-        (options.audio && this.audioDisabledSessions.has(options.sessionId)
-          ? "audio-disabled"
-          : "normal"),
-    };
     this.assertCompatibleScrcpyServerVersion();
-    const previousClient = this.streamClients.get(options.sessionId);
-    if (previousClient && previousClient !== options.client) {
-      previousClient.close?.(1012, "Display stream replaced");
-    }
+    let effectiveOptions = this.streamSessions.beginStream(options);
     this.streamingSessions.add(options.sessionId);
-    this.streamClients.set(options.sessionId, options.client);
     const compatibilityProbe = await this.collectCompatibilityProbe(
       options.udid,
       `scrcpy:${options.udid}:${options.sessionId}`,
@@ -315,18 +298,12 @@ export class ScrcpyService {
       }
     } finally {
       this.streamingSessions.delete(options.sessionId);
-      if (this.streamClients.get(options.sessionId) === options.client) {
-        this.streamClients.delete(options.sessionId);
-      }
+      this.streamSessions.clearStreamClient(options.sessionId, options.client);
     }
   }
 
   closeSession(sessionId: string) {
-    this.streamClients
-      .get(sessionId)
-      ?.close?.(1000, "Display session released");
-    this.streamClients.delete(sessionId);
-    this.audioDisabledSessions.delete(sessionId);
+    this.streamSessions.closeSession(sessionId);
     this.finishRecordingForSession(sessionId);
   }
 
@@ -532,9 +509,7 @@ export class ScrcpyService {
     let liveness: ScrcpyStreamLiveness | null = null;
     let heartbeatTimer: NodeJS.Timeout | null = null;
     let bytesForwarded = 0;
-    let videoConfigPackets = 0;
-    let videoMediaPackets = 0;
-    let videoKeyFrames = 0;
+    let videoPacketForwarder: ScrcpyVideoPacketForwarder | null = null;
     const startedAt = Date.now();
     let forwardActive = false;
     let reverseActive = false;
@@ -548,8 +523,13 @@ export class ScrcpyService {
       }
       released = true;
 
+      const videoStats = videoPacketForwarder?.snapshot() ?? {
+        mediaPackets: 0,
+        keyFrames: 0,
+        configPackets: 0,
+      };
       this.logger.debug(
-        `[${logPrefix}] closing scrcpy attempt: ${reason}; bytes=${bytesForwarded}; mediaPackets=${videoMediaPackets}; keyframes=${videoKeyFrames}; configPackets=${videoConfigPackets}; durationMs=${Date.now() - startedAt}; clientState=${options.client.readyState}`,
+        `[${logPrefix}] closing scrcpy attempt: ${reason}; bytes=${bytesForwarded}; mediaPackets=${videoStats.mediaPackets}; keyframes=${videoStats.keyFrames}; configPackets=${videoStats.configPackets}; durationMs=${Date.now() - startedAt}; clientState=${options.client.readyState}`,
       );
 
       if (this.shouldCollectDeviceDiagnostics(reason)) {
@@ -766,7 +746,7 @@ export class ScrcpyService {
         this.flushQueuedControlMessages(options.sessionId);
       }
       if (options.audio && !audioSocket) {
-        this.audioDisabledSessions.add(options.sessionId);
+        this.streamSessions.markAudioDisabled(options.sessionId);
         this.sendJson(options.client, { type: "audio-disabled" });
       }
       options.onActivity?.();
@@ -784,35 +764,28 @@ export class ScrcpyService {
       }, STREAM_HEARTBEAT_INTERVAL_MS);
       heartbeatTimer.unref?.();
 
-      const videoPacketMerger = new ScrcpyVideoPacketMerger();
+      videoPacketForwarder = new ScrcpyVideoPacketForwarder();
       const forwardVideoPayload = (packet: ScrcpyPacket) => {
         options.onActivity?.();
-        if (packet.config) {
-          videoConfigPackets += 1;
-          if (videoConfigPackets === 1) {
-            this.logger.debug(
-              `[${logPrefix}] first video config packet received; bytes=${packet.data.byteLength}`,
-            );
-          }
+        const forwarded = videoPacketForwarder!.accept(packet);
+        if (forwarded.firstConfigPacket) {
+          this.logger.debug(
+            `[${logPrefix}] first video config packet received; bytes=${packet.data.byteLength}`,
+          );
         }
-        const configPrepended = videoPacketMerger.hasPendingConfig();
-        const mergedPacket = videoPacketMerger.merge(packet);
-        if (!mergedPacket) {
+        if (!forwarded.packet) {
           return;
         }
-        videoMediaPackets += 1;
-        if (videoMediaPackets === 1) {
+        const mergedPacket = forwarded.packet;
+        if (forwarded.firstMediaPacket) {
           this.logger.debug(
             `[${logPrefix}] first video media packet received; keyFrame=${mergedPacket.keyFrame}; bytes=${mergedPacket.data.byteLength}`,
           );
         }
-        if (mergedPacket.keyFrame) {
-          videoKeyFrames += 1;
-          if (videoKeyFrames === 1) {
-            this.logger.debug(
-              `[${logPrefix}] first video keyframe received; bytes=${mergedPacket.data.byteLength}; configPrepended=${configPrepended}`,
-            );
-          }
+        if (forwarded.firstKeyFrame) {
+          this.logger.debug(
+            `[${logPrefix}] first video keyframe received; bytes=${mergedPacket.data.byteLength}; configPrepended=${forwarded.configPrepended}`,
+          );
         }
         liveness?.recordVideoPacket(mergedPacket);
         const chunk = mergedPacket.data;
@@ -850,7 +823,7 @@ export class ScrcpyService {
         if (!audioSocket) {
           return;
         }
-        this.audioDisabledSessions.add(options.sessionId);
+        this.streamSessions.markAudioDisabled(options.sessionId);
         this.logger.debug(`[${logPrefix}] ${reason}; continuing video only`);
         this.sendJson(options.client, { type: "audio-disabled" });
         audioSocket.destroy();
@@ -1664,7 +1637,7 @@ export class ScrcpyService {
     probe: ScrcpyCompatibilityProbe | null,
   ): ScrcpyStreamOptions {
     if (options.audio) {
-      this.audioDisabledSessions.add(options.sessionId);
+      this.streamSessions.markAudioDisabled(options.sessionId);
       return {
         ...options,
         audio: false,
@@ -1694,9 +1667,9 @@ export class ScrcpyService {
     if (
       options.audio &&
       (result.reason === AUDIO_CONFIGURATION_FAILURE_REASON ||
-        this.audioDisabledSessions.has(options.sessionId))
+        this.streamSessions.isAudioDisabled(options.sessionId))
     ) {
-      this.audioDisabledSessions.add(options.sessionId);
+      this.streamSessions.markAudioDisabled(options.sessionId);
       return {
         ...options,
         audio: false,

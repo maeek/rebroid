@@ -1,6 +1,6 @@
 import { createRef } from 'react'
 import { describe, expect, it, jest } from '@jest/globals'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { AiAgentToolsSection } from './ai-agent-tools-section'
 import { useAiAgentChatSession } from './use-ai-agent-chat-session'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
@@ -114,5 +114,38 @@ describe('AiAgentToolsSection', () => {
     expect(screen.getByText('AI agent ready')).toBeTruthy()
     expect(screen.getByText('No model')).toBeTruthy()
     expect(screen.queryByLabelText('Loading AI chat history')).toBeNull()
+  })
+
+  it('uses the transcript as the desktop scroll area', () => {
+    jest.mocked(useAiAgentChatSession).mockReturnValue(chatSession())
+
+    render(<AiAgentToolsSection app={app} />)
+
+    expect(screen.getByLabelText('AI agent transcript').className).toContain('md:flex-1')
+    expect(screen.getByLabelText('AI agent transcript').className).toContain('overflow-auto')
+  })
+
+  it('keeps clear available and delegates clearing to the session', () => {
+    const clearConversation = jest.fn<() => Promise<void>>(() => Promise.resolve())
+    jest.mocked(useAiAgentChatSession).mockReturnValue(
+      chatSession({
+        clearConversation,
+        turns: [
+          {
+            id: 'turn_1',
+            prompt: 'Find Downloads',
+            status: 'success',
+            run: null,
+            events: []
+          }
+        ]
+      })
+    )
+
+    render(<AiAgentToolsSection app={app} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /clear/i }))
+
+    expect(clearConversation).toHaveBeenCalledTimes(1)
   })
 })

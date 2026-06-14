@@ -23,6 +23,7 @@ export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'to
     canControlViewer,
     canStartCurrentApp,
     setApp,
+    setViewerStreamMetrics,
     setViewerSettings,
     viewerSettings
   } = useApplicationViewerApp()
@@ -81,6 +82,12 @@ export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'to
             canControlViewer={canControlViewer}
             canCaptureScreenshot={canCaptureScreenshot}
             onViewerSettingsChange={setViewerSettings}
+            onStreamMetrics={(surfaceId, metrics) =>
+              setViewerStreamMetrics(current => ({
+                ...current,
+                [surfaceId]: metrics
+              }))
+            }
           />
         </Visible>
         <Visible when={canAttach && !runtimeAvailable}>

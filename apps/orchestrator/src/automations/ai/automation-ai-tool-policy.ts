@@ -85,6 +85,9 @@ export const parseToolCallArguments = (
       : rawArguments.requiresScreenObservation === undefined ||
         typeof rawArguments.requiresScreenObservation === 'boolean';
   if (!hasEnvelope) {
+    const legacyInput = isObjectRecord(rawArguments.input)
+      ? rawArguments.input
+      : rawArguments;
     return {
       intent:
         typeof rawArguments.intent === 'string'
@@ -94,7 +97,7 @@ export const parseToolCallArguments = (
         typeof rawArguments.expectedOutcome === 'string'
           ? sanitizeAiText(rawArguments.expectedOutcome, 220)
           : 'No explicit expected outcome was supplied.',
-      input: rawArguments,
+      input: legacyInput,
       requiresScreenObservation: uses === 'android.adbShell' ? true : undefined,
       envelopeValid: false,
     };

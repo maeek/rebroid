@@ -10,7 +10,6 @@ import { AutomationCommandDto } from '../dto/automation-command.dto';
 import { AutomationCommandRegistryService } from '../commands/automation-command-registry.service';
 import { AutomationDefinitionService } from '../definition/automation-definition.service';
 import {
-  AutomationYamlDraftDto,
   CreateAutomationDto,
   DraftAutomationYamlDto,
   UpdateAutomationDto,
@@ -116,8 +115,8 @@ export class AutomationsService {
     return this.definitions.validateYaml(yaml);
   }
 
-  draftYaml(dto: DraftAutomationYamlDto): Promise<AutomationYamlDraftDto> {
-    return this.aiYamlDrafts.draft(dto);
+  draftYamlEvents(dto: DraftAutomationYamlDto, abortSignal?: AbortSignal) {
+    return this.aiYamlDrafts.draftEvents(dto, { abortSignal });
   }
 
   async runAdHocAi(dto: RunAdHocAiAutomationDto) {

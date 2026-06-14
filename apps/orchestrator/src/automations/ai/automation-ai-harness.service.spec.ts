@@ -1,4 +1,8 @@
-import { shouldObserveAfterTool } from './automation-ai-tool-policy';
+import {
+  parseToolCallArguments,
+  shouldObserveAfterTool,
+} from './automation-ai-tool-policy';
+import { applyRunVisionDefaults } from './automation-ai-vision-tool-defaults';
 
 const invokeShouldObserveAfterTool = (
   command: string,
@@ -54,5 +58,61 @@ describe('AutomationAiHarnessService', () => {
     });
 
     expect(shouldObserve).toBe(true);
+  });
+
+  it('accepts raw tool arguments as legacy command input', () => {
+    const parsed = parseToolCallArguments('vision.locate', {
+      query: 'Downloads',
+      maxResults: 3,
+    });
+
+    expect(parsed.envelopeValid).toBe(false);
+    expect(parsed.input).toEqual({ query: 'Downloads', maxResults: 3 });
+  });
+
+  it('accepts nested legacy input without full envelope metadata', () => {
+    const parsed = parseToolCallArguments('vision.locate', {
+      input: { query: 'Downloads' },
+    });
+
+    expect(parsed.envelopeValid).toBe(false);
+    expect(parsed.input).toEqual({ query: 'Downloads' });
+  });
+
+  it('injects selected run vision defaults into vision tools', () => {
+    const parsed = applyRunVisionDefaults(
+      'vision.locate',
+      {
+        intent: 'Find downloads',
+        expectedOutcome: 'Downloads text is located',
+        input: { query: 'Downloads' },
+        envelopeValid: false,
+      },
+      { visionProviderId: 'vision-provider', visionModelId: 'vision-model' },
+    );
+
+    expect(parsed.input).toEqual({
+      query: 'Downloads',
+      visionProviderId: 'vision-provider',
+      visionModelId: 'vision-model',
+    });
+  });
+
+  it('does not overwrite explicit vision tool provider input', () => {
+    const parsed = applyRunVisionDefaults(
+      'vision.observe',
+      {
+        intent: 'Observe screen',
+        expectedOutcome: 'Screen state is captured',
+        input: { visionProviderId: 'explicit-provider' },
+        envelopeValid: true,
+      },
+      { visionProviderId: 'run-provider', visionModelId: 'run-model' },
+    );
+
+    expect(parsed.input).toEqual({
+      visionProviderId: 'explicit-provider',
+      visionModelId: 'run-model',
+    });
   });
 });

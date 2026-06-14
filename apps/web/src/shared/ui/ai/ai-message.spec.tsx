@@ -1,0 +1,19 @@
+import { describe, expect, it } from '@jest/globals'
+import { render, screen } from '@testing-library/react'
+import { AiAssistantMarkdownText } from './ai-message'
+
+describe('AiAssistantMarkdownText', () => {
+  it('renders safe markdown without raw HTML', () => {
+    render(
+      <AiAssistantMarkdownText
+        text={'**Done**\n\n- One\n\n<a href="https://example.com">raw</a>\n\n[Link](https://example.com)'}
+      />
+    )
+
+    expect(screen.getByText('Done').tagName.toLowerCase()).toBe('strong')
+    expect(screen.getByText('One').tagName.toLowerCase()).toBe('li')
+    expect(screen.getByRole('link', { name: 'Link' }).getAttribute('href')).toBe('https://example.com')
+    expect(screen.queryByRole('link', { name: 'raw' })).toBeNull()
+    expect(screen.getByText('raw').tagName.toLowerCase()).toBe('p')
+  })
+})

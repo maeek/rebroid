@@ -16,6 +16,7 @@ import { getApplicationAction } from '@/server/orchestrator/applications/actions
 import { rememberRecentAppAction } from '@/server/recent-apps/actions'
 import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
 import { hasPermission } from '@/shared/permissions/permissions'
+import type { DisplayViewerStreamMetrics } from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import type { PermissionMap } from '@/shared/permissions/permissions'
@@ -30,7 +31,9 @@ type ApplicationViewerContextValue = {
   isForeignOwnedApp: boolean
   permissions: PermissionMap
   setApp: Dispatch<SetStateAction<AppDefinition | undefined>>
+  setViewerStreamMetrics: Dispatch<SetStateAction<Record<string, DisplayViewerStreamMetrics | undefined>>>
   setViewerSettings: Dispatch<SetStateAction<ViewerSettings>>
+  viewerStreamMetrics: Record<string, DisplayViewerStreamMetrics | undefined>
   viewerSettings: ViewerSettings
 }
 
@@ -66,6 +69,9 @@ export const ApplicationViewerProvider = ({
 }) => {
   const [currentApp, setCurrentApp] = useState(app)
   const [viewerSettings, setViewerSettings] = useState(() => viewerSettingsFromDefaults(initialSettings))
+  const [viewerStreamMetrics, setViewerStreamMetrics] = useState<
+    Record<string, DisplayViewerStreamMetrics | undefined>
+  >({})
   const [viewerSettingsHydrated, setViewerSettingsHydrated] = useState(false)
   const currentAppId = currentApp?.id
   const refreshIntervalMs = getAppRefreshIntervalMs(currentApp)
@@ -76,6 +82,7 @@ export const ApplicationViewerProvider = ({
 
   useEffect(() => {
     setCurrentApp(app)
+    setViewerStreamMetrics({})
   }, [app])
 
   useEffect(() => {
@@ -166,6 +173,8 @@ export const ApplicationViewerProvider = ({
         isForeignOwnedApp,
         permissions,
         setApp: setCurrentApp,
+        setViewerStreamMetrics,
+        viewerStreamMetrics,
         setViewerSettings,
         viewerSettings
       }}

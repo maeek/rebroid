@@ -1,12 +1,13 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import {
   createAutomationAction,
   deleteAutomationAction,
+  validateAutomationYamlAction,
   updateAutomationAction
 } from '@/server/orchestrator/automations/automation-management-actions'
 import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
@@ -23,10 +24,12 @@ import { AutomationYamlEditorSection } from './automation-yaml-editor-section'
 import {
   automationToForm,
   defaultForm,
+  definitionToForm,
   formToSaveInput,
   type AutomationFormState,
   type AutomationStepForm
 } from './builder-utils'
+import { consumePendingAutomationDraft } from './pending-automation-draft'
 import { useAutomationAiDraft } from './use-automation-ai-draft'
 import { cloneAutomationForm, useAutomationEditorHistory } from './use-automation-editor-history'
 import { useAutomationEditorSelection } from './use-automation-editor-selection'
@@ -85,15 +88,24 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
   const {
     aiDraftOpen,
     aiDraftPrompt,
+    aiDraftClarificationAnswer,
+    aiDraftClarificationQuestion,
+    aiDraftLog,
+    aiDraftResult,
+    aiDraftStatus,
     aiModelCatalog,
+    applyDraft,
     canDraftFromPrompt,
+    cancelDraft,
     draftFromPrompt,
     selectedAiDraftModel,
     selectedAiDraftProvider,
+    setAiDraftClarificationAnswer,
     setAiDraftModelId,
     setAiDraftOpen,
     setAiDraftPrompt,
-    setAiDraftProviderId
+    setAiDraftProviderId,
+    submitClarification
   } = useAutomationAiDraft({
     commitEditorChange,
     setBusy,
@@ -117,6 +129,50 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
     yamlOpen,
     yamlValid
   })
+
+  useEffect(() => {
+    if (!isNew) return
+    const pendingDraft = consumePendingAutomationDraft()
+    if (!pendingDraft) return
+
+    setBusy(true)
+    validateAutomationYamlAction(pendingDraft.yaml)
+      .then(validation => {
+        if (!validation.valid || !validation.definition) {
+          throw new Error(validation.errors[0] ?? 'Automation YAML is invalid.')
+        }
+        const nextForm = definitionToForm(validation.definition, form.id)
+        setForm(nextForm)
+        setYamlOpen(true)
+        setYamlDraft(validation.yaml ?? pendingDraft.yaml)
+        setYamlValid(true)
+        setYamlError(null)
+        resetSelectionForSteps(nextForm.steps)
+        resetEditorHistory({
+          form: nextForm,
+          yamlOpen: true,
+          yamlDraft: validation.yaml ?? pendingDraft.yaml
+        })
+        toast({ title: 'Workflow draft ready' })
+      })
+      .catch(error => {
+        toast({
+          title: 'Could not load workflow draft',
+          description: error instanceof Error ? error.message : 'Unknown error',
+          variant: 'destructive'
+        })
+      })
+      .finally(() => setBusy(false))
+  }, [
+    form.id,
+    isNew,
+    resetEditorHistory,
+    resetSelectionForSteps,
+    setYamlDraft,
+    setYamlError,
+    setYamlOpen,
+    setYamlValid
+  ])
 
   const updateForm = (patch: Partial<AutomationFormState>) =>
     commitEditorChange(() => ({
@@ -220,14 +276,23 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
         open={aiDraftOpen && canDraftFromPrompt}
         busy={busy}
         catalog={aiModelCatalog}
+        clarificationAnswer={aiDraftClarificationAnswer}
+        clarificationQuestion={aiDraftClarificationQuestion}
+        draftLog={aiDraftLog}
+        draftStatus={aiDraftStatus}
+        hasDraftResult={Boolean(aiDraftResult)}
         providerId={selectedAiDraftProvider?.id ?? ''}
         modelId={selectedAiDraftModel?.id ?? ''}
         prompt={aiDraftPrompt}
+        onApplyDraft={applyDraft}
+        onCancelDraft={cancelDraft}
         onDraft={() => void draftFromPrompt()}
+        onClarificationAnswerChange={setAiDraftClarificationAnswer}
         onModelChange={setAiDraftModelId}
         onOpenChange={setAiDraftOpen}
         onProviderChange={setAiDraftProviderId}
         onPromptChange={setAiDraftPrompt}
+        onSubmitClarification={() => void submitClarification()}
       />
 
       <section

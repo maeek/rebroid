@@ -19,6 +19,7 @@ import { getScrcpySessionAction } from '@/server/orchestrator/applications/actio
 import { StatusSplash } from '@/shared/ui/status-splash'
 import { ViewerActivityKeepalive } from './viewer-activity-keepalive'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { DisplayViewerStreamMetrics } from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { ViewerOrientation } from '@/features/applications/viewer/player/android-viewer'
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
 import type { ScrcpySession } from '@/server/orchestrator/applications/types'
@@ -98,13 +99,15 @@ export const DisplayViewerEmbed = ({
   viewerSettings,
   canControlViewer,
   canCaptureScreenshot,
-  onViewerSettingsChange
+  onViewerSettingsChange,
+  onStreamMetrics
 }: {
   app: AppDefinition
   viewerSettings: ViewerSettings
   canControlViewer: boolean
   canCaptureScreenshot: boolean
   onViewerSettingsChange?: (settings: ViewerSettings) => void
+  onStreamMetrics?: (surfaceId: string, metrics: DisplayViewerStreamMetrics) => void
 }) => {
   const baseUrl = useBrowserBaseUrl()
   const [session, setSession] = useState<ScrcpySession | null>(null)
@@ -211,7 +214,7 @@ export const DisplayViewerEmbed = ({
   }
 
   return (
-    <div className='relative h-[min(70dvh,58rem)] min-h-104 w-full overflow-hidden sm:h-[min(78dvh,58rem)] sm:min-h-136'>
+    <div className='relative h-[min(74dvh,62rem)] min-h-104 w-full overflow-hidden sm:h-[min(86dvh,64rem)] sm:min-h-136'>
       <ViewerActivityKeepalive applicationId={session.applicationId} />
       <Visible when={!session.viewerTargetConnected}>
         <div className='absolute left-3 right-3 top-3 z-20 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning backdrop-blur-md'>
@@ -232,7 +235,8 @@ export const DisplayViewerEmbed = ({
               ...viewerSettings,
               keyboardCaptureEnabled: enabled
             })
-          }
+          },
+          onStreamMetrics
         }}
       >
         <DisplayViewerShell className='h-full w-full !bg-transparent' />

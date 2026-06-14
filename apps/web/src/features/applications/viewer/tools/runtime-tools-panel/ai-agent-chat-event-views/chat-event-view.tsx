@@ -1,4 +1,4 @@
-import { AiAssistantText } from '@/shared/ui/ai/ai-message'
+import { AiAssistantMarkdownText, AiAssistantText } from '@/shared/ui/ai/ai-message'
 import { ObservationEventDetails } from './observation-event-details'
 import { observationValues } from './observation-values'
 import type { AutomationRunEvent } from '@/server/orchestrator/automations/types'
@@ -25,12 +25,15 @@ export const ChatEventView = ({ event }: { event: AutomationRunEvent }) => {
     return (
       <ObservationEventDetails
         label={event.message}
-        values={observationValues(event.data, { dimensions: true, detections: true })}
+        values={observationValues(event.data, { dimensions: true })}
       />
     )
   }
-  if (event.type === 'ai.perception.summary' || event.type === 'ai.message.completed') {
-    return <AiAssistantText muted={event.type === 'ai.perception.summary'}>{event.message}</AiAssistantText>
+  if (event.type === 'ai.message.completed') {
+    return <AiAssistantMarkdownText text={event.message} />
+  }
+  if (event.type === 'ai.perception.summary') {
+    return <AiAssistantText muted>{event.message}</AiAssistantText>
   }
   if (event.type === 'ai.tool.failed' || event.type === 'ai.guardrail.triggered' || event.type === 'run.failed') {
     return <div className='text-xs text-destructive'>{event.message}</div>

@@ -14,6 +14,9 @@ module.exports = {
   roots: ['<rootDir>/src'],
   setupFilesAfterEnv: ['<rootDir>/src/setup-tests.tsx'],
   testEnvironment: 'jsdom',
+  transformIgnorePatterns: [
+    '/node_modules/.pnpm/(?!(react-markdown|remark-[^@]+|rehype-[^@]+|unified|micromark[^@]*|mdast-[^@]+|hast-[^@]+|unist-[^@]+|vfile[^@]*|bail|ccount|character-entities[^@]*|comma-separated-tokens|decode-named-character-reference|devlop|escape-string-regexp|estree-util-is-identifier-name|html-url-attributes|inline-style-parser|is-plain-obj|longest-streak|markdown-table|property-information|space-separated-tokens|style-to-js|style-to-object|trim-lines|trough|web-namespaces|zwitch)@)'
+  ],
   transform: {
     '^.+\\.(js|jsx|mjs|cjs|ts|tsx)$': [
       'ts-jest',

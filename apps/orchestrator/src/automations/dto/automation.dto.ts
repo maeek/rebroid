@@ -13,6 +13,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
 import { AutomationLastStatus } from '../entities/automation.entity';
 import {
@@ -47,6 +48,20 @@ export class ValidateAutomationYamlDto {
   @ApiProperty({ example: 'apiVersion: rebroid.io/automation/v1\n...' })
   @IsString()
   yaml!: string;
+}
+
+export class DraftAutomationYamlClarificationDto {
+  @ApiProperty({ example: 'Which app package should this workflow launch?' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(500)
+  question!: string;
+
+  @ApiProperty({ example: 'Use the uploaded app package.' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(1000)
+  answer!: string;
 }
 
 export class DraftAutomationYamlDto {
@@ -93,14 +108,17 @@ export class DraftAutomationYamlDto {
   @IsString({ each: true })
   @MaxLength(120, { each: true })
   allowedTools?: string[];
-}
 
-export class AutomationYamlDraftDto {
-  @ApiProperty()
-  yaml!: string;
-
-  @ApiProperty({ type: AutomationDefinitionDto })
-  definition!: AutomationDefinitionDto;
+  @ApiPropertyOptional({
+    type: DraftAutomationYamlClarificationDto,
+    isArray: true,
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(5)
+  @ValidateNested({ each: true })
+  @Type(() => DraftAutomationYamlClarificationDto)
+  clarifications?: DraftAutomationYamlClarificationDto[];
 }
 
 export class ListAutomationsGridQueryDto {

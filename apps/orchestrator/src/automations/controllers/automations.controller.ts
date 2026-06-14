@@ -7,12 +7,14 @@ import {
   Patch,
   Post,
   Query,
+  Req,
+  Res,
 } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import {
   AutomationDto,
   AutomationsGridPageDto,
-  AutomationYamlDraftDto,
   AutomationValidationDto,
   CreateAutomationDto,
   DraftAutomationYamlDto,
@@ -55,10 +57,29 @@ export class AutomationsController {
     return this.automations.validateYaml(dto.yaml);
   }
 
-  @Post('draft-yaml')
-  @ApiCreatedResponse({ type: AutomationYamlDraftDto })
-  draftYaml(@Body() dto: DraftAutomationYamlDto) {
-    return this.automations.draftYaml(dto);
+  @Post('draft-yaml/stream')
+  @ApiOkResponse({
+    description: 'Server-sent draft generation events.',
+  })
+  async draftYamlStream(
+    @Body() dto: DraftAutomationYamlDto,
+    @Req() request: FastifyRequest,
+    @Res() reply: FastifyReply,
+  ) {
+    const abortController = new AbortController();
+    request.raw.on('close', () => abortController.abort());
+    reply
+      .header('content-type', 'text/event-stream; charset=utf-8')
+      .header('cache-control', 'no-store')
+      .header('connection', 'keep-alive');
+    for await (const event of this.automations.draftYamlEvents(
+      dto,
+      abortController.signal,
+    )) {
+      if (reply.raw.destroyed) break;
+      reply.raw.write(sseEvent(event.type, event));
+    }
+    if (!reply.raw.destroyed) reply.raw.end();
   }
 
   @Post('ai/runs')
@@ -255,3 +276,6 @@ export class AutomationsController {
     return this.automations.listRuns(query.ownerUserId, id, query.limit);
   }
 }
+
+const sseEvent = (eventName: string, payload: unknown) =>
+  `event: ${eventName}\ndata: ${JSON.stringify(payload)}\n\n`;

@@ -32,9 +32,10 @@ const normalize = (value: Partial<WebSettings>): WebSettings => ({
   removeDataOnDelete:
     typeof value.removeDataOnDelete === 'boolean' ? value.removeDataOnDelete : defaultWebSettings.removeDataOnDelete,
   defaultViewerPreset:
-    value.defaultViewerPreset === 'bandwidth' ||
+    value.defaultViewerPreset === 'low-latency' ||
     value.defaultViewerPreset === 'balanced' ||
-    value.defaultViewerPreset === 'quality'
+    value.defaultViewerPreset === 'high-quality' ||
+    value.defaultViewerPreset === 'bandwidth-saver'
       ? value.defaultViewerPreset
       : defaultWebSettings.defaultViewerPreset,
   defaultViewerBitrateMbps: numberInRange(

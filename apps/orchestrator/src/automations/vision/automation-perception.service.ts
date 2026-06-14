@@ -44,7 +44,7 @@ export class AutomationPerceptionService {
       type: 'ai.perception.observed',
       stepId: context.stepId,
       parentStepId: context.parentStepId ?? null,
-      message: `Screen observed: ${observation.detections.length} element(s) detected.`,
+      message: `Screen captured: ${observation.detections.length} UI hierarchy element(s) detected.`,
       data: {
         clientMessageId: context.clientMessageId ?? null,
         reason,
@@ -54,6 +54,7 @@ export class AutomationPerceptionService {
         capturedAt: observation.image.capturedAt,
         detections: observation.detections.length,
         uiNodes: observation.uiXml?.nodeCount ?? null,
+        uiStatus: observation.uiXml?.status ?? 'unavailable',
         hasVisionSummary: Boolean(observation.summary),
       },
     });

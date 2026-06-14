@@ -213,7 +213,12 @@ export const GeneralSettingsForm = ({
                 onValueChange={value =>
                   updateSettings({
                     defaultViewerPreset:
-                      value === 'bandwidth' || value === 'quality' || value === 'balanced' ? value : 'balanced'
+                      value === 'low-latency' ||
+                      value === 'balanced' ||
+                      value === 'high-quality' ||
+                      value === 'bandwidth-saver'
+                        ? value
+                        : 'balanced'
                   })
                 }
               >
@@ -221,9 +226,10 @@ export const GeneralSettingsForm = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value='bandwidth'>Bandwidth</SelectItem>
+                  <SelectItem value='low-latency'>Low latency</SelectItem>
                   <SelectItem value='balanced'>Balanced</SelectItem>
-                  <SelectItem value='quality'>Quality</SelectItem>
+                  <SelectItem value='high-quality'>High quality</SelectItem>
+                  <SelectItem value='bandwidth-saver'>Bandwidth saver</SelectItem>
                 </SelectContent>
               </Select>
             </Setting>

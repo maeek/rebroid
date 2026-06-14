@@ -2,16 +2,18 @@
 
 import { useCallback, useEffect, useRef } from 'react'
 import {
+  isDisplayViewerStreamMetrics,
+  isDisplayViewerStreamStatus,
+  type DisplayViewerStreamMetrics,
+  type DisplayViewerStreamStatus
+} from '@/features/applications/viewer/display/display-viewer-stream-status'
+import {
   addViewerKeyboardRelay,
   keyboardCaptureMessageType,
   keyboardEventMessageType,
   viewerControlCommandEventType,
   viewerControlMessageType
 } from '@/features/applications/viewer/player/viewer-keyboard-relay'
-import {
-  isDisplayViewerStreamStatus,
-  type DisplayViewerStreamStatus
-} from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { ViewerControlCommandEventDetail } from '@/features/applications/viewer/player/viewer-keyboard-relay'
 
 const isKeyboardCaptureMessage = (value: unknown): value is { type: string; enabled: boolean } => {
@@ -53,11 +55,13 @@ export const DisplayViewerFrame = ({
   src,
   keyboardCaptureEnabled,
   onStreamStatus,
+  onStreamMetrics,
   surfaceId
 }: {
   src: string
   keyboardCaptureEnabled: boolean
   onStreamStatus?: (status: DisplayViewerStreamStatus) => void
+  onStreamMetrics?: (metrics: DisplayViewerStreamMetrics) => void
   surfaceId?: string
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -117,6 +121,10 @@ export const DisplayViewerFrame = ({
         onStreamStatus?.(event.data)
         return
       }
+      if (event.origin === viewerOrigin && isFrameSource && isDisplayViewerStreamMetrics(event.data)) {
+        onStreamMetrics?.(event.data)
+        return
+      }
 
       if (event.origin !== viewerOrigin || !isKeyboardCaptureMessage(event.data)) {
         if (
@@ -138,7 +146,7 @@ export const DisplayViewerFrame = ({
     return () => {
       window.removeEventListener('message', handleMessage)
     }
-  }, [getViewerOrigin, onStreamStatus, postKeyboardCapturePreference, surfaceId])
+  }, [getViewerOrigin, onStreamMetrics, onStreamStatus, postKeyboardCapturePreference, surfaceId])
 
   useEffect(() => {
     const relayControlCommand = (event: Event) => {

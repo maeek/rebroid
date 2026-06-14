@@ -52,6 +52,10 @@ describe("AI harness core", () => {
       mapUsesByToolName([{ uses: "android.tap" }]).get("android__tap"),
       "android.tap",
     );
+    assert.equal(
+      mapUsesByToolName([{ uses: "vision.locate" }]).get("vision_locate"),
+      "vision.locate",
+    );
   });
 
   it("filters tools by allowed automation uses", () => {

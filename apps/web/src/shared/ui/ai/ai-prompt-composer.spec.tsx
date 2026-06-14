@@ -98,4 +98,53 @@ describe('AiModelPicker', () => {
     expect(screen.getByText('No model')).toBeTruthy()
     expect(screen.getByText('No enabled AI provider or model is configured.')).toBeTruthy()
   })
+
+  it('renders a read-only chip when one provider and one model are available', () => {
+    render(
+      <AiModelPicker
+        catalog={[catalog[0]!]}
+        selectedProvider={catalog[0]}
+        selectedModel={catalog[0]?.models[0]}
+        defaultOpen
+        onProviderChange={jest.fn()}
+        onModelChange={jest.fn()}
+      />
+    )
+
+    expect(screen.getByText('Qwen')).toBeTruthy()
+    expect(screen.queryByText('AI model')).toBeNull()
+    expect(screen.queryByText('Provider')).toBeNull()
+  })
+
+  it('hides provider selection when one provider has multiple models', () => {
+    const provider = {
+      ...catalog[0]!,
+      models: [
+        catalog[0]!.models[0]!,
+        {
+          id: 'deep',
+          label: 'Deep',
+          roles: ['planner'],
+          default: false,
+          enabled: true,
+          settings: {}
+        }
+      ]
+    } satisfies AutomationAiModelCatalogProvider
+
+    render(
+      <AiModelPicker
+        catalog={[provider]}
+        selectedProvider={provider}
+        selectedModel={provider.models[0]}
+        defaultOpen
+        onProviderChange={jest.fn()}
+        onModelChange={jest.fn()}
+      />
+    )
+
+    expect(screen.getByText('AI model')).toBeTruthy()
+    expect(screen.getByText('Model')).toBeTruthy()
+    expect(screen.queryByText('Provider')).toBeNull()
+  })
 })

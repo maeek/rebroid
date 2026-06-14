@@ -62,13 +62,13 @@ const ViewerPaneSkeleton = ({ workspace = true }: { workspace?: boolean }) => (
     )}
   >
     <div className='relative flex w-full items-center justify-center'>
-      <div className='relative flex h-[min(70dvh,58rem)] min-h-[26rem] w-full flex-col overflow-hidden rounded-2xl border border-surface-border/55 bg-transparent p-3 shadow-[0_18px_48px_rgba(0,0,0,0.22)] ring-1 ring-white/5 sm:h-[min(78dvh,58rem)] sm:min-h-[34rem]'>
+      <div className='relative flex h-[min(70dvh,58rem)] min-h-104 w-full flex-col overflow-hidden rounded-2xl bg-transparent p-3 sm:h-[min(78dvh,58rem)] sm:min-h-136'>
         <div className='flex shrink-0 items-center gap-2'>
           <Skeleton className='h-9 w-28 rounded-md' />
           <Skeleton className='h-9 w-9 rounded-full' />
         </div>
         <div className='flex min-h-0 flex-1 items-center justify-center px-2 py-3 sm:px-6'>
-          <div className='flex h-full max-h-[46rem] w-auto max-w-full aspect-[9/16] flex-col shadow-2xl'>
+          <div className='flex h-full max-h-184 w-auto max-w-full aspect-9/16 flex-col shadow-2xl'>
             <Skeleton className='h-8 w-full rounded-t-lg' />
             <Skeleton className='min-h-0 flex-1 rounded-b-lg border border-border/70' />
           </div>

@@ -1,6 +1,7 @@
 import type { ScrcpyTransport } from '@/server/orchestrator/applications/types'
 import type { OrchestratorSettingsResponse } from '@/server/orchestrator/settings/types'
 import type { WebSettings as WebSettingsResponse } from '@/server/web-settings/types'
+import type { ViewerStreamingPreset } from '@/shared/model/settings/viewer-streaming-preset'
 
 export interface OrchestratorUiSettings {
   orchestratorApiUrl: string
@@ -11,7 +12,7 @@ export interface OrchestratorUiSettings {
   appListRefreshIntervalSeconds: number
   removeDataOnDelete: boolean
   scrcpyTransport: ScrcpyTransport
-  defaultViewerPreset: 'bandwidth' | 'balanced' | 'quality'
+  defaultViewerPreset: ViewerStreamingPreset
   defaultViewerBitrateMbps: number
   defaultViewerMaxFps: number
   defaultViewerMaxSize: number
@@ -92,9 +93,10 @@ export const normalizeOrchestratorUiSettings = (
       ? web.removeDataOnDelete
       : defaultOrchestratorUiSettings.removeDataOnDelete,
   defaultViewerPreset:
-    web.defaultViewerPreset === 'bandwidth' ||
-    web.defaultViewerPreset === 'quality' ||
-    web.defaultViewerPreset === 'balanced'
+    web.defaultViewerPreset === 'low-latency' ||
+    web.defaultViewerPreset === 'balanced' ||
+    web.defaultViewerPreset === 'high-quality' ||
+    web.defaultViewerPreset === 'bandwidth-saver'
       ? web.defaultViewerPreset
       : defaultOrchestratorUiSettings.defaultViewerPreset,
   defaultViewerBitrateMbps:

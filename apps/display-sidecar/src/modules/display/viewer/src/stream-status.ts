@@ -1,5 +1,8 @@
-import { viewerStreamStatusMessageType } from "./config";
-import type { ViewerStreamStatus } from "./types";
+import {
+  viewerStreamMetricsMessageType,
+  viewerStreamStatusMessageType,
+} from "./config";
+import type { ViewerStreamMetrics, ViewerStreamStatus } from "./types";
 
 export type CompatibilityStatusInput = {
   mode?: unknown;
@@ -61,6 +64,16 @@ export function emitViewerStreamStatus(status: ViewerStreamStatus): void {
     {
       type: viewerStreamStatusMessageType,
       ...status,
+    },
+    window.location.origin,
+  );
+}
+
+export function emitViewerStreamMetrics(metrics: ViewerStreamMetrics): void {
+  window.parent.postMessage(
+    {
+      type: viewerStreamMetricsMessageType,
+      ...metrics,
     },
     window.location.origin,
   );

@@ -1,16 +1,29 @@
 'use client'
 
+import { useMemo, useState } from 'react'
 import { IconPlayerPlay, IconPlayerStop, IconSend, IconTrash } from '@tabler/icons-react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { storePendingAutomationDraft } from '@/features/automations/automations-page/editor/pending-automation-draft'
+import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { AiPromptComposer } from '@/shared/ui/ai/ai-prompt-composer'
 import { ChatTurnView } from './ai-agent-chat-events'
+import { aiAgentPromptPresets } from './ai-agent-prompt-presets'
 import { AiAgentSettingsPopover } from './ai-agent-settings-popover'
 import { useAiAgentChatSession } from './use-ai-agent-chat-session'
+import type { ChatTurn } from './ai-agent-chat-utils'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { AutomationRun } from '@/server/orchestrator/automations/types'
+import type { AutomationRun, AutomationYamlDraft } from '@/server/orchestrator/automations/types'
+
+type DraftWorkflowFromRun = (input: {
+  runId: string
+  providerId?: string
+  modelId?: string
+  visionProviderId?: string
+  visionModelId?: string
+}) => Promise<AutomationYamlDraft>
 
 const AiAgentTranscriptSkeleton = () => (
   <div
@@ -52,15 +65,22 @@ const AiAgentEmptyTranscript = () => (
 
 export const AiAgentToolsSection = ({
   app,
+  canSaveWorkflow = false,
   className,
+  draftWorkflowFromRun,
   hideHeader,
+  openWorkflowDraft,
   onRunStarted
 }: {
   app: AppDefinition
+  canSaveWorkflow?: boolean
   className?: string
+  draftWorkflowFromRun?: DraftWorkflowFromRun
   hideHeader?: boolean
+  openWorkflowDraft?: () => void
   onRunStarted?: (run: AutomationRun) => void
 }) => {
+  const [draftingRunId, setDraftingRunId] = useState<string | null>(null)
   const {
     activeTurn,
     adHocTimeoutMinutes,
@@ -97,9 +117,46 @@ export const AiAgentToolsSection = ({
     turns,
     visionCatalog
   } = useAiAgentChatSession({ app, onRunStarted })
+  const presets = useMemo(() => aiAgentPromptPresets(app), [app])
+
+  const applyPreset = (presetPrompt: string) => {
+    setPrompt(current => (current.trim() ? `${current.trim()}\n\n${presetPrompt}` : presetPrompt))
+  }
+
+  const saveTurnAsWorkflow = async (turn: ChatTurn) => {
+    if (!turn.run || !selectedProvider || !selectedModel || !draftWorkflowFromRun || draftingRunId) return
+    setDraftingRunId(turn.run.id)
+    try {
+      const draft = await draftWorkflowFromRun({
+        runId: turn.run.id,
+        providerId: selectedProvider.id,
+        modelId: selectedModel.id,
+        ...(selectedVisionProvider && selectedVisionModel
+          ? {
+              visionProviderId: selectedVisionProvider.id,
+              visionModelId: selectedVisionModel.id
+            }
+          : {})
+      })
+      storePendingAutomationDraft({ yaml: draft.yaml, sourceRunId: turn.run.id })
+      if (openWorkflowDraft) {
+        openWorkflowDraft()
+      } else {
+        window.location.href = '/automations/create'
+      }
+    } catch (draftError) {
+      toast({
+        title: 'Could not draft workflow',
+        description: draftError instanceof Error ? draftError.message : 'Unknown error',
+        variant: 'destructive'
+      })
+    } finally {
+      setDraftingRunId(null)
+    }
+  }
 
   return (
-    <section className={cn('flex min-h-0 flex-1 flex-col gap-4 p-4', className)}>
+    <section className={cn('flex min-h-0 flex-1 flex-col gap-4 p-4 md:h-full', className)}>
       {hideHeader ? null : (
         <div className='flex items-center gap-2'>
           <GradientSparklesIcon className='size-4' />
@@ -112,7 +169,8 @@ export const AiAgentToolsSection = ({
 
       <div
         ref={transcriptRef}
-        className='flex min-h-0 max-h-[min(46dvh,26rem)] flex-col gap-4 overflow-auto pb-2 pr-1 motion-safe:scroll-smooth'
+        aria-label='AI agent transcript'
+        className='flex min-h-0 max-h-[min(46dvh,26rem)] flex-col gap-4 overflow-auto pb-2 pr-1 motion-safe:scroll-smooth md:max-h-none md:flex-1'
       >
         {isLoadingHistory ? <AiAgentTranscriptSkeleton /> : null}
         {!isLoadingHistory && turns.length === 0 ? <AiAgentEmptyTranscript /> : null}
@@ -121,9 +179,28 @@ export const AiAgentToolsSection = ({
               <ChatTurnView
                 key={turn.id}
                 turn={turn}
+                canSaveWorkflow={canSaveWorkflow && Boolean(selectedProvider && selectedModel && draftWorkflowFromRun)}
+                isSavingWorkflow={draftingRunId === turn.run?.id}
+                onSaveWorkflow={completedTurn => {
+                  void saveTurnAsWorkflow(completedTurn)
+                }}
               />
             ))
           : null}
+      </div>
+
+      <div className='flex flex-wrap gap-2'>
+        {presets.map(preset => (
+          <Button
+            key={preset.id}
+            type='button'
+            size='sm'
+            variant='secondary'
+            onClick={() => applyPreset(preset.prompt)}
+          >
+            {preset.label}
+          </Button>
+        ))}
       </div>
 
       <AiPromptComposer

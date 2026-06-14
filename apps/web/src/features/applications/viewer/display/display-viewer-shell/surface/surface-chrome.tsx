@@ -9,8 +9,8 @@ import {
   IconLoader2,
   IconX
 } from '@tabler/icons-react'
-import { Visible } from '@/components/ui/visible'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Visible } from '@/components/ui/visible'
 import { IconActionButton } from '@/features/applications/viewer/display/display-viewer-shell/surface/icon-action-button'
 import { cn } from '@/lib/utils'
 import type { DisplayViewerStreamStatus } from '@/features/applications/viewer/display/display-viewer-stream-status'

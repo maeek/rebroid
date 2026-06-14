@@ -4,6 +4,7 @@ export const keyboardEventMessageType = "rebroid-viewer-keyboard-event";
 export const keyboardCaptureMessageType = "rebroid-viewer-keyboard-capture";
 export const viewerControlMessageType = "rebroid-viewer-control-event";
 export const viewerStreamStatusMessageType = "rebroid-viewer-stream-status";
+export const viewerStreamMetricsMessageType = "rebroid-viewer-stream-metrics";
 const websocketFallbackTtlMs = 2 * 60_000;
 const websocketFallbackKeyPrefix = "rebroid.display.websocket-fallback.";
 

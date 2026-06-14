@@ -6,6 +6,7 @@ type H264DecoderOptions = {
   canvas: HTMLCanvasElement;
   context: CanvasRenderingContext2D;
   ui: ViewerUi;
+  onFrame?: () => void;
   onStall?: (reason: string) => void;
 };
 
@@ -61,6 +62,7 @@ export function createH264Decoder({
   canvas,
   context,
   ui,
+  onFrame,
   onStall,
 }: H264DecoderOptions): DisplayDecoder {
   let decoder: VideoDecoder | null = null;
@@ -133,6 +135,7 @@ export function createH264Decoder({
         context.drawImage(frame, 0, 0, canvas.width, canvas.height);
         frame.close();
         framesDecoded += 1;
+        onFrame?.();
         if (framesDecoded === 1) {
           console.debug("Display decoder rendered first frame.", {
             codec: codecName,

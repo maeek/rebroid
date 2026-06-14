@@ -1,7 +1,9 @@
+import type { ViewerStreamingPreset } from '@/shared/model/settings/viewer-streaming-preset'
+
 export interface WebSettings {
   appListRefreshIntervalSeconds: number
   removeDataOnDelete: boolean
-  defaultViewerPreset: 'bandwidth' | 'balanced' | 'quality'
+  defaultViewerPreset: ViewerStreamingPreset
   defaultViewerBitrateMbps: number
   defaultViewerMaxFps: number
   defaultViewerMaxSize: number

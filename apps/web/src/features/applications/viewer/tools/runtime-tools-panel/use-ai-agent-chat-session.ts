@@ -46,6 +46,7 @@ export const useAiAgentChatSession = ({
   const transcriptRef = useRef<HTMLDivElement | null>(null)
   const runSequencesRef = useRef(new Map<string, number>())
   const cancelingRunIdRef = useRef<string | null>(null)
+  const conversationVersionRef = useRef(0)
   const {
     adHocTimeoutMinutes,
     adHocTimeoutMs,
@@ -74,13 +75,14 @@ export const useAiAgentChatSession = ({
 
   useEffect(() => {
     let cancelled = false
+    const version = conversationVersionRef.current
 
     const loadHistory = async () => {
       setIsLoadingHistory(true)
       try {
         const history = await listAdHocAiAutomationRunHistoryAction(app.id, 20)
         const loadedTurns = history.map(item => chatTurnFromRun(item.run, item.events))
-        if (cancelled) return
+        if (cancelled || version !== conversationVersionRef.current) return
         const orderedTurns = sortChatTurnsByRunCreatedAt(loadedTurns)
         for (const [runId, sequence] of collectLatestRunSequences(orderedTurns)) {
           runSequencesRef.current.set(runId, sequence)
@@ -89,10 +91,10 @@ export const useAiAgentChatSession = ({
         const loadedActiveTurnId = findActiveHistoryTurnId(orderedTurns)
         if (loadedActiveTurnId) setActiveTurnId(loadedActiveTurnId)
       } catch (historyError) {
-        if (cancelled) return
+        if (cancelled || version !== conversationVersionRef.current) return
         setError(historyError instanceof Error ? historyError.message : 'AI chat history could not be loaded.')
       } finally {
-        if (!cancelled) {
+        if (!cancelled && version === conversationVersionRef.current) {
           setIsLoadingHistory(false)
         }
       }
@@ -124,23 +126,25 @@ export const useAiAgentChatSession = ({
     if (!activeRun || !activeRunStatuses.has(activeRun.status)) return
     let closed = false
     let socket: WebSocket | null = null
+    const version = conversationVersionRef.current
 
     const connect = async () => {
       const after = runSequencesRef.current.get(activeRun.id) ?? 0
       runSequencesRef.current.set(activeRun.id, after)
       const initialEvents = await listAutomationRunEventsAction(activeRun.id, after)
-      if (closed) return
+      if (closed || version !== conversationVersionRef.current) return
       appendRunEvents(activeRun.id, initialEvents)
       const streamAfter = runSequencesRef.current.get(activeRun.id) ?? after
       const url = await createAutomationRunEventStreamUrlAction(activeRun.id, streamAfter)
-      if (closed) return
+      if (closed || version !== conversationVersionRef.current) return
       socket = new WebSocket(url)
       socket.onmessage = event => {
+        if (version !== conversationVersionRef.current) return
         const payload = JSON.parse(String(event.data)) as { type: string; event?: AutomationRunEvent }
         if (payload.type === 'event' && payload.event) appendRunEvents(activeRun.id, [payload.event])
       }
       socket.onclose = () => {
-        if (!closed) window.setTimeout(() => void connect(), 1500)
+        if (!closed && version === conversationVersionRef.current) window.setTimeout(() => void connect(), 1500)
       }
     }
 
@@ -256,13 +260,14 @@ export const useAiAgentChatSession = ({
 
   const clearConversation = async () => {
     if (isClearing) return
+    conversationVersionRef.current += 1
+    setTurns([])
+    setActiveTurnId(null)
+    runSequencesRef.current.clear()
     setIsClearing(true)
     setError(null)
     try {
       await clearAdHocAiAutomationRunsAction(app.id)
-      setTurns([])
-      setActiveTurnId(null)
-      runSequencesRef.current.clear()
     } catch (clearError) {
       setError(clearError instanceof Error ? clearError.message : 'AI conversation could not be cleared.')
     } finally {

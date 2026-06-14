@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   RequestTimeoutException,
 } from '@nestjs/common';
 import {
@@ -29,6 +30,7 @@ import {
   parseToolCallArguments,
   shouldObserveAfterTool,
 } from './automation-ai-tool-policy';
+import { applyRunVisionDefaults } from './automation-ai-vision-tool-defaults';
 import { AutomationAiRuntimeContextService } from './automation-ai-runtime-context.service';
 import { AutomationAiChatClientService } from './automation-ai-chat-client.service';
 
@@ -44,6 +46,8 @@ const textContent = (content: ChatMessage['content']) =>
 
 @Injectable()
 export class AutomationAiHarnessService {
+  private readonly logger = new Logger(AutomationAiHarnessService.name);
+
   constructor(
     private readonly providers: AutomationAiProviderService,
     private readonly registry: AutomationCommandRegistryService,
@@ -152,22 +156,14 @@ export class AutomationAiHarnessService {
           );
         }
         const parsedArguments = parseArguments(call.function.arguments);
-        const parsedToolCall = parseToolCallArguments(uses, parsedArguments);
+        const parsedToolCall = applyRunVisionDefaults(
+          uses,
+          parseToolCallArguments(uses, parsedArguments),
+          input,
+        );
         if (!parsedToolCall.envelopeValid) {
-          await this.emit(
-            context,
-            'ai.guardrail.triggered',
-            'Tool call envelope is not in the expected shape.',
-            {
-              uses,
-              toolCallId: call.id,
-              data: sanitizeAiDataForEvent({
-                intent: parsedToolCall.intent,
-                expectedOutcome: parsedToolCall.expectedOutcome,
-                input: parsedToolCall.input,
-              }),
-              clientMessageId: input.clientMessageId ?? null,
-            },
+          this.logger.debug(
+            `Accepted legacy AI tool-call shape for run=${context.runId ?? 'unknown'} provider=${provider.id} model=${model.id} tool=${uses}`,
           );
         }
         await this.emit(context, 'ai.tool.arguments', uses, {

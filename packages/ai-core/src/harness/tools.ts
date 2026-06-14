@@ -2,6 +2,13 @@ import type { AutomationCommandLike } from "./types";
 
 export const toolName = (uses: string) => uses.replace(/[^a-zA-Z0-9_]/g, "__");
 
+export const toolNameAliases = (uses: string) =>
+  [
+    toolName(uses),
+    uses.replace(/[^a-zA-Z0-9_]/g, "_"),
+    uses.replace(/[^a-zA-Z0-9_]/g, ""),
+  ].filter((name, index, names) => name && names.indexOf(name) === index);
+
 export const allowedToolMatcher = (allowedTools?: string[]) => {
   const allowed = new Set((allowedTools ?? []).filter(Boolean));
   return (uses: string) => allowed.size === 0 || allowed.has(uses);
@@ -67,4 +74,9 @@ export const buildToolDefinitions = (
 
 export const mapUsesByToolName = (
   commands: Pick<AutomationCommandLike, "uses">[],
-) => new Map(commands.map((command) => [toolName(command.uses), command.uses]));
+) =>
+  new Map(
+    commands.flatMap((command) =>
+      toolNameAliases(command.uses).map((name) => [name, command.uses]),
+    ),
+  );

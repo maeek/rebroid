@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import Markdown, { type Components } from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { cn } from '@/lib/utils'
 
@@ -34,6 +36,53 @@ export const AiAssistantBlock = ({
 export const AiAssistantText = ({ children, muted }: { children: ReactNode; muted?: boolean }) => (
   <div className={cn('whitespace-pre-wrap text-sm', muted ? 'text-foreground-muted' : 'text-foreground')}>
     {children}
+  </div>
+)
+
+const markdownComponents: Components = {
+  a: ({ children, href }) => {
+    const safeHref = typeof href === 'string' && /^(https?:|mailto:)/i.test(href) ? href : undefined
+    return (
+      <a
+        href={safeHref}
+        target='_blank'
+        rel='noreferrer'
+        className='font-medium text-primary underline underline-offset-2'
+      >
+        {children}
+      </a>
+    )
+  },
+  code: ({ children, className }) => (
+    <code className={cn('rounded bg-background/35 px-1 py-0.5 font-mono text-[0.85em]', className)}>{children}</code>
+  ),
+  li: ({ children }) => <li className='pl-1'>{children}</li>,
+  ol: ({ children }) => <ol className='my-1 list-decimal space-y-1 pl-5'>{children}</ol>,
+  p: ({ children }) => <p className='my-1 first:mt-0 last:mb-0'>{children}</p>,
+  pre: ({ children }) => (
+    <pre className='my-2 overflow-auto rounded-md bg-background/30 p-2 font-mono text-xs'>{children}</pre>
+  ),
+  ul: ({ children }) => <ul className='my-1 list-disc space-y-1 pl-5'>{children}</ul>
+}
+
+export const AiAssistantMarkdownText = ({
+  text,
+  muted,
+  cursor
+}: {
+  text: string
+  muted?: boolean
+  cursor?: ReactNode
+}) => (
+  <div className={cn('text-sm', muted ? 'text-foreground-muted' : 'text-foreground')}>
+    <Markdown
+      skipHtml
+      remarkPlugins={[remarkGfm]}
+      components={markdownComponents}
+    >
+      {text}
+    </Markdown>
+    {cursor}
   </div>
 )
 

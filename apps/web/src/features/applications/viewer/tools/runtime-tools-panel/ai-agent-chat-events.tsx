@@ -1,4 +1,6 @@
-import { AiAssistantBlock, AiAssistantText, AiUserMessage } from '@/shared/ui/ai/ai-message'
+import { IconLoader2, IconRoute } from '@tabler/icons-react'
+import { Button } from '@/components/ui/button'
+import { AiAssistantBlock, AiAssistantMarkdownText, AiAssistantText, AiUserMessage } from '@/shared/ui/ai/ai-message'
 import { buildTimelineItems } from './ai-agent-chat-event-utils'
 import { ChatEventView } from './ai-agent-chat-event-views/chat-event-view'
 import { ChatStatusBadge } from './ai-agent-chat-event-views/chat-status-badge'
@@ -16,7 +18,17 @@ const chatTurnTitle = (turn: ChatTurn) => {
   return 'Failed'
 }
 
-export const ChatTurnView = ({ turn }: { turn: ChatTurn }) => {
+export const ChatTurnView = ({
+  canSaveWorkflow,
+  isSavingWorkflow,
+  onSaveWorkflow,
+  turn
+}: {
+  canSaveWorkflow?: boolean
+  isSavingWorkflow?: boolean
+  onSaveWorkflow?: (turn: ChatTurn) => void
+  turn: ChatTurn
+}) => {
   const visibleEvents = turn.events.filter(
     event => event.type !== 'heartbeat' && event.type !== 'ai.message.delta' && event.message.trim().length > 0
   )
@@ -52,12 +64,26 @@ export const ChatTurnView = ({ turn }: { turn: ChatTurn }) => {
           )
         )}
         {streamingText ? (
-          <AiAssistantText>
-            {streamingText}
-            <span className='ml-0.5 animate-pulse text-primary'>▍</span>
-          </AiAssistantText>
+          <AiAssistantMarkdownText
+            text={streamingText}
+            cursor={<span className='ml-0.5 animate-pulse text-primary'>▍</span>}
+          />
         ) : null}
         {isWorking && !hasFinalResponse ? <WorkingIndicator status={turn.status} /> : null}
+        {turn.status === 'success' && turn.run && canSaveWorkflow ? (
+          <div className='flex justify-end pt-1'>
+            <Button
+              type='button'
+              size='sm'
+              variant='secondary'
+              disabled={isSavingWorkflow}
+              onClick={() => onSaveWorkflow?.(turn)}
+            >
+              {isSavingWorkflow ? <IconLoader2 className='size-4 animate-spin' /> : <IconRoute className='size-4' />}
+              {isSavingWorkflow ? 'Drafting' : 'Save as workflow'}
+            </Button>
+          </div>
+        ) : null}
       </AiAssistantBlock>
     </article>
   )

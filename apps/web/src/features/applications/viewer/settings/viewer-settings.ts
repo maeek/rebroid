@@ -1,4 +1,6 @@
-export type ViewerStreamingPreset = 'balanced' | 'bandwidth' | 'quality'
+import type { ViewerStreamingPreset } from '@/shared/model/settings/viewer-streaming-preset'
+
+export type { ViewerStreamingPreset } from '@/shared/model/settings/viewer-streaming-preset'
 export type ViewerPlayer = 'webcodecs'
 export type ViewerTransport = 'webrtc' | 'websocket'
 
@@ -36,14 +38,14 @@ export type ViewerSettings = ViewerStreamingSettings & {
 }
 
 export const viewerStreamingPresets: Record<ViewerStreamingPreset, ViewerStreamingSettings> = {
-  bandwidth: {
+  'low-latency': {
     player: 'webcodecs',
     transport: 'webrtc',
-    preset: 'bandwidth',
-    bitrateMbps: 1.5,
-    maxFps: 24,
+    preset: 'low-latency',
+    bitrateMbps: 5,
+    maxFps: 60,
     maxSize: 1080,
-    iFrameInterval: 2,
+    iFrameInterval: 1,
     fitToFrame: false
   },
   balanced: {
@@ -56,15 +58,25 @@ export const viewerStreamingPresets: Record<ViewerStreamingPreset, ViewerStreami
     iFrameInterval: 1,
     fitToFrame: false
   },
-  quality: {
+  'high-quality': {
     player: 'webcodecs',
     transport: 'webrtc',
-    preset: 'quality',
+    preset: 'high-quality',
     bitrateMbps: 15,
     maxFps: 60,
     maxSize: 0,
     iFrameInterval: 1,
     fitToFrame: true
+  },
+  'bandwidth-saver': {
+    player: 'webcodecs',
+    transport: 'webrtc',
+    preset: 'bandwidth-saver',
+    bitrateMbps: 1.5,
+    maxFps: 24,
+    maxSize: 1080,
+    iFrameInterval: 2,
+    fitToFrame: false
   }
 }
 
@@ -74,7 +86,7 @@ export const defaultViewerSettings: ViewerSettings = {
   soundEnabled: false
 }
 
-export const viewerSettingsStorageKey = 'rebroid.viewer.settings.v7'
+export const viewerSettingsStorageKey = 'rebroid.viewer.settings.v8'
 
 const isViewerTransport = (value: unknown): value is ViewerTransport => value === 'webrtc' || value === 'websocket'
 

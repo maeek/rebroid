@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react'
 import { IconCast, IconClipboard, IconFolder, IconLogs, IconRobot, IconWorld } from '@tabler/icons-react'
+import { useRouter } from 'next/navigation'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { useApplicationViewerApp } from '@/features/applications/detail/application-viewer-context'
 import { AppLogsContent } from '@/features/applications/viewer/logs/app-logs-content'
 import { cn } from '@/lib/utils'
+import { draftWorkflowFromAdHocRunAction } from '@/server/orchestrator/automations/automation-management-actions'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { AiAgentToolsSection } from './ai-agent-tools-section'
 import { AutomationStatusToolsSection } from './automation-status-tools-section'
@@ -18,8 +20,16 @@ import type { AutomationRun } from '@/server/orchestrator/automations/types'
 type RuntimeToolId = 'clipboard' | 'files' | 'streaming' | 'network-access' | 'logs' | 'ai-agent' | 'automations'
 
 export const RuntimeToolsPanel = () => {
-  const { app, permissions, setApp, setViewerSettings, viewerSettings } = useApplicationViewerApp()
+  const router = useRouter()
+  const { app, permissions, setApp, setViewerSettings, viewerSettings, viewerStreamMetrics } = useApplicationViewerApp()
   const [latestAutomationRun, setLatestAutomationRun] = useState<AutomationRun | null>(null)
+  const latestStreamMetrics = useMemo(
+    () =>
+      Object.values(viewerStreamMetrics)
+        .filter((metrics): metrics is NonNullable<typeof metrics> => Boolean(metrics))
+        .sort((left, right) => right.collectedAt - left.collectedAt)[0] ?? null,
+    [viewerStreamMetrics]
+  )
   const tools = useMemo(
     () =>
       [
@@ -155,8 +165,11 @@ export const RuntimeToolsPanel = () => {
       return (
         <AiAgentToolsSection
           app={app}
+          canSaveWorkflow={hasPermission(permissions, 'automations:manage')}
           className={sectionClassName}
+          draftWorkflowFromRun={draftWorkflowFromAdHocRunAction}
           hideHeader={inline}
+          openWorkflowDraft={() => router.push('/automations/create')}
           onRunStarted={run => {
             setLatestAutomationRun(run)
             setActiveTool('ai-agent')
@@ -196,6 +209,7 @@ export const RuntimeToolsPanel = () => {
       <StreamingToolsSection
         viewerSettings={viewerSettings}
         onViewerSettingsChange={setViewerSettings}
+        streamMetrics={latestStreamMetrics}
         className={cn(sectionClassName, inline && 'px-0')}
         hideHeader={inline}
       />

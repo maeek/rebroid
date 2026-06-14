@@ -64,6 +64,34 @@ export const AiModelPicker = ({
   onRecheckHealth?: () => void
 }) => {
   const hasVisionPicker = Boolean(onVisionProviderChange && onVisionModelChange)
+  const showProviderSelect = catalog.length > 1
+  const showVisionProviderSelect = visionCatalog.length > 1
+  const showReadOnlyPlannerChip =
+    !trigger && !hasVisionPicker && catalog.length === 1 && (selectedProvider?.models.length ?? 0) <= 1
+
+  if (showReadOnlyPlannerChip) {
+    return (
+      <div
+        className={cn(
+          'inline-flex h-8 min-w-0 max-w-full items-center justify-start gap-2 rounded-md px-2.5 text-sm font-medium',
+          controlSurfaceClassName
+        )}
+      >
+        <GradientSparklesIcon className='size-3.5 shrink-0' />
+        <span className='min-w-0 truncate text-xs font-medium'>{aiModelDisplayName(selectedModel)}</span>
+        {selectedProvider ? (
+          <span className='shrink-0 text-xs text-foreground-muted'>{aiProviderKindLabel(selectedProvider.kind)}</span>
+        ) : null}
+        {health !== undefined || isCheckingHealth ? (
+          <AiHealthIcon
+            health={health ?? null}
+            isChecking={isCheckingHealth}
+            className='size-3.5'
+          />
+        ) : null}
+      </div>
+    )
+  }
 
   return (
     <Popover defaultOpen={defaultOpen}>
@@ -108,34 +136,36 @@ export const AiModelPicker = ({
           </div>
 
           <div className='grid gap-3'>
-            <div className='grid gap-2'>
-              <Label>Provider</Label>
-              <Select
-                value={selectedProvider?.id ?? ''}
-                disabled={catalog.length === 0}
-                onValueChange={nextProviderId => {
-                  const nextSelection = nextCatalogProviderAndModel(catalog, nextProviderId)
-                  onProviderChange(nextProviderId)
-                  onModelChange(nextSelection.model?.id ?? '')
-                }}
-              >
-                <SelectTrigger className='w-full'>
-                  <SelectValue placeholder='Select provider' />
-                </SelectTrigger>
-                <SelectContent>
-                  {catalog.map(provider => (
-                    <SelectItem
-                      key={provider.id}
-                      value={provider.id}
-                      label={provider.label}
-                    >
-                      <span>{provider.label}</span>
-                      <span className='ml-2 text-xs text-foreground-muted'>{aiProviderKindLabel(provider.kind)}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {showProviderSelect ? (
+              <div className='grid gap-2'>
+                <Label>Provider</Label>
+                <Select
+                  value={selectedProvider?.id ?? ''}
+                  disabled={catalog.length === 0}
+                  onValueChange={nextProviderId => {
+                    const nextSelection = nextCatalogProviderAndModel(catalog, nextProviderId)
+                    onProviderChange(nextProviderId)
+                    onModelChange(nextSelection.model?.id ?? '')
+                  }}
+                >
+                  <SelectTrigger className='w-full'>
+                    <SelectValue placeholder='Select provider' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {catalog.map(provider => (
+                      <SelectItem
+                        key={provider.id}
+                        value={provider.id}
+                        label={provider.label}
+                      >
+                        <span>{provider.label}</span>
+                        <span className='ml-2 text-xs text-foreground-muted'>{aiProviderKindLabel(provider.kind)}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
 
             <div className='grid gap-2'>
               <Label>Model</Label>
@@ -160,36 +190,38 @@ export const AiModelPicker = ({
 
             {hasVisionPicker ? (
               <>
-                <div className='grid gap-2'>
-                  <Label>Vision provider</Label>
-                  <Select
-                    value={selectedVisionProvider?.id ?? ''}
-                    disabled={visionCatalog.length === 0}
-                    onValueChange={nextProviderId => {
-                      const nextSelection = nextCatalogProviderAndModel(visionCatalog, nextProviderId)
-                      onVisionProviderChange?.(nextProviderId)
-                      onVisionModelChange?.(nextSelection.model?.id ?? '')
-                    }}
-                  >
-                    <SelectTrigger className='w-full'>
-                      <SelectValue placeholder='Optional vision provider' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {visionCatalog.map(provider => (
-                        <SelectItem
-                          key={provider.id}
-                          value={provider.id}
-                          label={provider.label}
-                        >
-                          <span>{provider.label}</span>
-                          <span className='ml-2 text-xs text-foreground-muted'>
-                            {aiProviderKindLabel(provider.kind)}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {showVisionProviderSelect ? (
+                  <div className='grid gap-2'>
+                    <Label>Vision provider</Label>
+                    <Select
+                      value={selectedVisionProvider?.id ?? ''}
+                      disabled={visionCatalog.length === 0}
+                      onValueChange={nextProviderId => {
+                        const nextSelection = nextCatalogProviderAndModel(visionCatalog, nextProviderId)
+                        onVisionProviderChange?.(nextProviderId)
+                        onVisionModelChange?.(nextSelection.model?.id ?? '')
+                      }}
+                    >
+                      <SelectTrigger className='w-full'>
+                        <SelectValue placeholder='Optional vision provider' />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {visionCatalog.map(provider => (
+                          <SelectItem
+                            key={provider.id}
+                            value={provider.id}
+                            label={provider.label}
+                          >
+                            <span>{provider.label}</span>
+                            <span className='ml-2 text-xs text-foreground-muted'>
+                              {aiProviderKindLabel(provider.kind)}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
 
                 <div className='grid gap-2'>
                   <Label>Vision model</Label>

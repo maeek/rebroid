@@ -5,7 +5,10 @@ import type {
   ViewerUi,
 } from "./types";
 import { rememberWebsocketFallback } from "./config";
-import { emitViewerStreamStatus } from "./stream-status";
+import {
+  emitViewerStreamMetrics,
+  emitViewerStreamStatus,
+} from "./stream-status";
 
 type WebrtcStreamOptions = {
   config: ViewerConfig;
@@ -36,6 +39,7 @@ type VideoWithFrameCallback = HTMLVideoElement & {
 };
 
 const webrtcFrameProgressTimeoutMs = 12_000;
+const webrtcMetricsIntervalMs = 1_000;
 
 function waitForIceGathering(peer: RTCPeerConnection): Promise<void> {
   if (peer.iceGatheringState === "complete") {
@@ -393,6 +397,106 @@ function attachPeerFailureFallback(
   peer.addEventListener("iceconnectionstatechange", handleFailure);
 }
 
+function finiteNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : undefined;
+}
+
+function metricReportNumber(report: RTCStats, key: string): number | undefined {
+  return finiteNumber((report as unknown as Record<string, unknown>)[key]);
+}
+
+function isVideoInboundReport(report: RTCStats): boolean {
+  const record = report as unknown as Record<string, unknown>;
+  return (
+    report.type === "inbound-rtp" &&
+    record.kind === "video" &&
+    record.isRemote !== true
+  );
+}
+
+function isRoundTripReport(report: RTCStats): boolean {
+  const record = report as unknown as Record<string, unknown>;
+  return (
+    (report.type === "candidate-pair" &&
+      (record.selected === true || record.nominated === true)) ||
+    report.type === "remote-inbound-rtp"
+  );
+}
+
+function startWebrtcMetricsMonitor(
+  peer: RTCPeerConnection,
+  video: HTMLVideoElement,
+): () => void {
+  const frameCallback = videoFrameCallbackApi(video);
+  let stopped = false;
+  let frameCallbackHandle: number | null = null;
+  let callbackFrames = 0;
+  let lastBytes = 0;
+  let lastFrames = 0;
+  let lastAt = performance.now();
+
+  const requestNextFrame = () => {
+    if (stopped || !frameCallback.request) {
+      return;
+    }
+    frameCallbackHandle = frameCallback.request(() => {
+      callbackFrames += 1;
+      requestNextFrame();
+    });
+  };
+
+  requestNextFrame();
+
+  const timer = window.setInterval(() => {
+    const now = performance.now();
+    const elapsedSeconds = Math.max((now - lastAt) / 1000, 0.001);
+    void peer.getStats().then((stats) => {
+      let bytes = lastBytes;
+      let frames = callbackFrames;
+      let latencyMs: number | undefined;
+
+      stats.forEach((report) => {
+        if (isVideoInboundReport(report)) {
+          bytes = metricReportNumber(report, "bytesReceived") ?? bytes;
+          frames = metricReportNumber(report, "framesDecoded") ?? frames;
+        }
+        if (isRoundTripReport(report)) {
+          const seconds =
+            metricReportNumber(report, "currentRoundTripTime") ??
+            metricReportNumber(report, "roundTripTime");
+          if (seconds !== undefined) {
+            latencyMs = seconds * 1000;
+          }
+        }
+      });
+
+      emitViewerStreamMetrics({
+        transport: "webrtc",
+        fps: (frames - lastFrames) / elapsedSeconds,
+        bitrateMbps: ((bytes - lastBytes) * 8) / elapsedSeconds / 1_000_000,
+        latencyMs,
+        width: video.videoWidth || undefined,
+        height: video.videoHeight || undefined,
+        collectedAt: Date.now(),
+      });
+
+      lastBytes = bytes;
+      lastFrames = frames;
+      lastAt = now;
+    });
+  }, webrtcMetricsIntervalMs);
+
+  return () => {
+    stopped = true;
+    window.clearInterval(timer);
+    if (frameCallbackHandle !== null && frameCallback.cancel) {
+      frameCallback.cancel(frameCallbackHandle);
+    }
+  };
+}
+
 export function createWebrtcStream({
   config,
   video,
@@ -404,6 +508,7 @@ export function createWebrtcStream({
   let peer: RTCPeerConnection | null = null;
   let fallbackStarted = false;
   let stopFrameProgressMonitor: (() => void) | null = null;
+  let stopMetricsMonitor: (() => void) | null = null;
 
   video.addEventListener(
     "pointerdown",
@@ -424,6 +529,8 @@ export function createWebrtcStream({
     rememberWebsocketFallback(config.sessionId);
     stopFrameProgressMonitor?.();
     stopFrameProgressMonitor = null;
+    stopMetricsMonitor?.();
+    stopMetricsMonitor = null;
     ui.preserveVideoFrame(video);
     emitViewerStreamStatus({
       code: "transport-fallback",
@@ -441,6 +548,8 @@ export function createWebrtcStream({
   lifecycle.onClose(() => {
     stopFrameProgressMonitor?.();
     stopFrameProgressMonitor = null;
+    stopMetricsMonitor?.();
+    stopMetricsMonitor = null;
     closePeer(peer, video);
   });
 
@@ -517,6 +626,8 @@ export function createWebrtcStream({
       console.warn("WebRTC video stopped advancing; falling back.");
       startFallback();
     });
+    stopMetricsMonitor?.();
+    stopMetricsMonitor = startWebrtcMetricsMonitor(connection, video);
   }
 
   return {

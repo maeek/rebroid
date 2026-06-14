@@ -1,4 +1,4 @@
-import { emptyRequest, jsonRequest, request } from '../request'
+import { emptyRequest, jsonRequest, request, responseRequest } from '../request'
 import type {
   Automation,
   AutomationsGridPage,
@@ -10,7 +10,6 @@ import type {
   AutomationRunEvent,
   AutomationRunEventStreamToken,
   AutomationTrigger,
-  AutomationYamlDraft,
   AutomationValidation,
   DraftAutomationYamlInput,
   RunAdHocAiAutomationInput,
@@ -33,8 +32,12 @@ export const orchestratorAutomationsClient = {
     return jsonRequest<AutomationValidation>('/automations/validate-yaml', 'POST', { yaml })
   },
 
-  draftYaml(input: DraftAutomationYamlInput) {
-    return jsonRequest<AutomationYamlDraft>('/automations/draft-yaml', 'POST', input)
+  draftYamlStream(input: DraftAutomationYamlInput, signal?: AbortSignal) {
+    return responseRequest('/automations/draft-yaml/stream', {
+      method: 'POST',
+      body: JSON.stringify(input),
+      signal
+    })
   },
 
   list(ownerUserId: string) {
