@@ -21,7 +21,7 @@ const catalog = [
         id: 'p-default',
         label: 'Planner Default',
         roles: ['planner'],
-        default: true,
+        defaultFor: ['planner'],
         enabled: true,
         settings: {}
       },
@@ -29,7 +29,7 @@ const catalog = [
         id: 'p-extra',
         label: 'Planner Extra',
         roles: ['planner'],
-        default: false,
+        defaultFor: [],
         enabled: true,
         settings: {}
       }
@@ -44,7 +44,7 @@ const catalog = [
         id: 'v-default',
         label: 'Vision Default',
         roles: ['vision'],
-        default: false,
+        defaultFor: ['vision'],
         enabled: true,
         settings: {}
       }

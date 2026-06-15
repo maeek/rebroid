@@ -1773,8 +1773,8 @@ export interface components {
             settings: components["schemas"]["AutomationAiProviderModelSettingsDto"];
             /** @default true */
             enabled: boolean;
-            /** @default false */
-            default: boolean;
+            /** @default [] */
+            defaultFor: ("planner" | "vision")[];
         };
         AutomationAiProviderDto: {
             /** @example local-ollama */
@@ -1865,8 +1865,8 @@ export interface components {
             settings: components["schemas"]["AutomationAiProviderModelSettingsDto"];
             /** @default true */
             enabled: boolean;
-            /** @default false */
-            default: boolean;
+            /** @default [] */
+            defaultFor: ("planner" | "vision")[];
         };
         DownloadAutomationAiProviderModelDto: {
             /** @example qwen3.5:latest */
@@ -1903,8 +1903,8 @@ export interface components {
             settings?: components["schemas"]["AutomationAiProviderModelSettingsDto"];
             /** @default true */
             enabled: boolean;
-            /** @default false */
-            default: boolean;
+            /** @default [] */
+            defaultFor: ("planner" | "vision")[];
         };
         AutomationAiModelCatalogProviderDto: {
             id: string;

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { AutomationRunEventBus } from '../events/automation-run-event-bus.service';
 import { AutomationAiProviderService } from '../ai/automation-ai-provider.service';
 import type { AutomationAiHarnessContext } from '../ai/automation-ai.types';
+import type { AutomationVisionContext } from './automation-vision.types';
 import { AutomationVisionService } from './automation-vision.service';
 
 @Injectable()
@@ -18,12 +19,14 @@ export class AutomationPerceptionService {
     deadline,
     reason,
     uses,
+    visionContext,
   }: {
     context: AutomationAiHarnessContext;
     input: { visionProviderId?: string; visionModelId?: string };
     deadline?: number;
     reason: string;
     uses?: string;
+    visionContext?: AutomationVisionContext;
   }) {
     const visionModel =
       input.visionProviderId || input.visionModelId
@@ -37,6 +40,7 @@ export class AutomationPerceptionService {
       context,
       visionModel,
       deadline,
+      visionContext,
     );
     await this.events.emit({
       runId: context.runId,
@@ -56,6 +60,16 @@ export class AutomationPerceptionService {
         uiNodes: observation.uiXml?.nodeCount ?? null,
         uiStatus: observation.uiXml?.status ?? 'unavailable',
         hasVisionSummary: Boolean(observation.summary),
+        screenKind: observation.screenState?.screenKind ?? null,
+        rawScreenKind: observation.screenState?.rawScreenKind ?? null,
+        screenKindCorrectionReason:
+          observation.screenState?.correctionReason ?? null,
+        settingsAccessVisible:
+          observation.screenState?.settingsAccessVisible ?? null,
+        visionConfidence: observation.screenState?.confidence ?? null,
+        visibleText: observation.screenState?.visibleText.slice(0, 20) ?? [],
+        visionEvidence: observation.screenState?.evidence ?? [],
+        visionUncertainty: observation.screenState?.uncertainty ?? [],
       },
     });
     if (observation.summary) {
@@ -70,6 +84,17 @@ export class AutomationPerceptionService {
           clientMessageId: context.clientMessageId ?? null,
           reason,
           uses: uses ?? null,
+          screenKind: observation.screenState?.screenKind ?? null,
+          rawScreenKind: observation.screenState?.rawScreenKind ?? null,
+          screenKindCorrectionReason:
+            observation.screenState?.correctionReason ?? null,
+          settingsAccessVisible:
+            observation.screenState?.settingsAccessVisible ?? null,
+          visionConfidence: observation.screenState?.confidence ?? null,
+          visibleText: observation.screenState?.visibleText.slice(0, 20) ?? [],
+          controls: observation.screenState?.controls.slice(0, 20) ?? [],
+          evidence: observation.screenState?.evidence ?? [],
+          uncertainty: observation.screenState?.uncertainty ?? [],
         },
       });
     }

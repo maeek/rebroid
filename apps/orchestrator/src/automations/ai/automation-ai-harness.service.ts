@@ -9,14 +9,30 @@ import {
   buildExecutePlanMessage,
   buildFinalRecoveryMessage,
   buildInitialMessages,
+  buildMalformedToolCallRecoveryMessage,
+  buildNoToolActionRecoveryMessage,
   buildPublicPlanRequestMessage,
   buildReplanMessage,
+  buildScreenshotObservationMessage,
   buildScreenObservationMessage,
+  buildToolFailureRecoveryMessage,
+  applyRunVisionDefaults,
+  blockedToolResult,
+  classifyToolFailure,
+  classifyToolOutcome,
+  classifyAssistantResponseContent,
   buildToolDefinitions,
+  isSettingsOpenClaimConfirmed,
   mapUsesByToolName,
   normalizePublicAiText,
   parseArguments,
+  parseToolCallArguments,
+  preflightToolCall,
+  repeatedToolAttemptGuard,
+  shouldObserveAfterTool,
+  toolAttemptKey,
   type ChatMessage,
+  type ScreenObservationPolicySnapshot,
 } from '@rebroid/ai-core/harness';
 import type { AutomationAiRunInput } from '@rebroid/ai-core/provider';
 import { AutomationCommandRegistryService } from '../commands/automation-command-registry.service';
@@ -27,15 +43,10 @@ import {
   sanitizeAiDataForToolOutput,
   sanitizeAiDataForModel,
   sanitizeAiText,
+  isImageInputUnsupportedProviderMessage,
 } from './automation-ai-observation.utils';
 import type { AutomationAiHarnessContext } from './automation-ai.types';
 import { AutomationPerceptionService } from '../vision/automation-perception.service';
-import {
-  blockedToolResult,
-  parseToolCallArguments,
-  shouldObserveAfterTool,
-} from './automation-ai-tool-policy';
-import { applyRunVisionDefaults } from './automation-ai-vision-tool-defaults';
 import { AutomationAiRuntimeContextService } from './automation-ai-runtime-context.service';
 import { AutomationAiChatClientService } from './automation-ai-chat-client.service';
 
@@ -49,6 +60,19 @@ const textContent = (content: ChatMessage['content']) =>
           .join('\n')
       : '';
 
+const stripImagesFromMessages = (messages: ChatMessage[]): ChatMessage[] =>
+  messages.map((message) => {
+    if (!Array.isArray(message.content)) return message;
+    const textParts = message.content.filter((part) => part.type === 'text');
+    return {
+      ...message,
+      content:
+        textParts.length === 1
+          ? textParts[0].text
+          : textParts.map((part) => part.text).join('\n'),
+    };
+  });
+
 const observationEventData = (
   observation: Awaited<ReturnType<AutomationPerceptionService['observe']>>,
 ) => ({
@@ -58,6 +82,24 @@ const observationEventData = (
   uiNodes: observation.observation.uiXml?.nodeCount ?? null,
   detections: observation.observation.detections.length,
   hasVisionSummary: Boolean(observation.observation.summary),
+  screenKind: observation.observation.screenState?.screenKind ?? null,
+  rawScreenKind: observation.observation.screenState?.rawScreenKind ?? null,
+  screenKindCorrectionReason:
+    observation.observation.screenState?.correctionReason ?? null,
+  settingsAccessVisible:
+    observation.observation.screenState?.settingsAccessVisible ?? null,
+  visionConfidence: observation.observation.screenState?.confidence ?? null,
+});
+
+const observationSnapshot = (
+  observation: Awaited<ReturnType<AutomationPerceptionService['observe']>>,
+): ScreenObservationPolicySnapshot => ({
+  uiStatus: observation.observation.uiXml?.status ?? 'unavailable',
+  uiNodes: observation.observation.uiXml?.nodeCount ?? 0,
+  detections: observation.observation.detections.length,
+  screenKind: observation.observation.screenState?.screenKind ?? null,
+  visionConfidence: observation.observation.screenState?.confidence ?? null,
+  visionSummary: observation.observation.summary ?? null,
 });
 
 const isVisionLocateMiss = (
@@ -72,6 +114,66 @@ const isVisionLocateMiss = (
 
 const locateMissKey = (input: Record<string, unknown>) =>
   typeof input.query === 'string' ? input.query.trim().toLowerCase() : '';
+
+const confirmedFactFromToolResult = (
+  uses: string,
+  input: Record<string, unknown>,
+  data: Record<string, unknown>,
+) => {
+  if (uses === 'android.launchPackage') {
+    const packageName =
+      typeof data.packageName === 'string'
+        ? data.packageName
+        : typeof input.packageName === 'string'
+          ? input.packageName
+          : null;
+    if (!packageName) return null;
+    if (data.launched === true) {
+      return `android.launchPackage launched ${packageName}.`;
+    }
+    if (data.installed === false) {
+      return `android.launchPackage confirmed ${packageName} is not installed/launched.`;
+    }
+    if (data.launched === false) {
+      return `android.launchPackage confirmed ${packageName} was not launched.`;
+    }
+  }
+  if (uses === 'android.openSystemSettings') {
+    return data.opened === true
+      ? 'android.openSystemSettings opened the Android Settings main screen.'
+      : 'android.openSystemSettings did not open Android Settings.';
+  }
+  if (uses === 'android.listPackages') {
+    const total = typeof data.total === 'number' ? data.total : null;
+    const query =
+      typeof data.query === 'string' && data.query.trim()
+        ? ` matching "${data.query.trim()}"`
+        : '';
+    return total === null
+      ? 'android.listPackages returned package discovery results.'
+      : `android.listPackages found ${total} package(s)${query}.`;
+  }
+  if (uses === 'android.adbShell') {
+    const exitCode = typeof data.exitCode === 'number' ? data.exitCode : null;
+    return exitCode === null
+      ? 'android.adbShell returned a shell result.'
+      : `android.adbShell exited with code ${exitCode}.`;
+  }
+  return null;
+};
+
+const isMalformedProviderToolCallError = (error: unknown) => {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes('error parsing tool call') ||
+    message.includes('unexpected end of json input') ||
+    message.includes('malformed tool')
+  );
+};
+
+const MAX_NO_TOOL_PLAN_CONTINUATIONS = 3;
+const MAX_MALFORMED_TOOL_CALL_RECOVERIES = 2;
 
 @Injectable()
 export class AutomationAiHarnessService {
@@ -98,43 +200,71 @@ export class AutomationAiHarnessService {
     const tools = buildToolDefinitions(commands, allowed);
     const usesByToolName = mapUsesByToolName(commands);
     const locateMisses = new Map<string, number>();
+    const failedAttempts = new Map<string, number>();
+    const confirmedFacts: string[] = [];
+    let noToolPlanContinuations = 0;
+    let sharedMultimodalMode =
+      input.visionProviderId === provider.id &&
+      input.visionModelId === model.id &&
+      model.roles.includes('planner') &&
+      model.roles.includes('vision');
 
     await this.emit(context, 'ai.user.message', input.prompt, {
       clientMessageId: input.clientMessageId ?? null,
     });
-    const initialObservation = await this.observeScreen({
+    let latestObservation = await this.observeScreen({
       context,
       input,
       deadline,
       reason: 'initial',
+      sharedMultimodalMode,
+      visionContext: {
+        goal: input.prompt,
+      },
     });
     const runtimeContext = await this.runtimeContext.buildForPlanner(context);
     const messages = buildInitialMessages(
       {
         ...input,
-        initialObservationText: [runtimeContext, initialObservation.plannerText]
+        initialObservationText: [
+          runtimeContext,
+          this.plannerTextWithFacts(
+            latestObservation.plannerText,
+            confirmedFacts,
+          ),
+        ]
           .filter(Boolean)
           .join('\n\n'),
+        ...(sharedMultimodalMode && latestObservation.observation.aiImage
+          ? {
+              initialScreenshotDataUrl:
+                latestObservation.observation.aiImage.dataUrl,
+            }
+          : {}),
       },
       model,
     );
     let toolCalls = 0;
     let finalText = '';
+    let malformedToolCallRecoveries = 0;
 
     await this.emit(context, 'ai.model.started', `Using ${provider.label}`, {
       providerId: provider.id,
       modelId: model.id,
+      visionProviderId: input.visionProviderId ?? null,
+      visionModelId: input.visionModelId ?? null,
+      sharedMultimodalMode,
       clientMessageId: input.clientMessageId ?? null,
     });
 
     await this.emit(
       context,
       'ai.orientation.completed',
-      initialObservation.observation.summary
+      latestObservation.observation.summary
         ? 'Initial screen orientation completed with vision.'
         : 'Initial screen orientation completed.',
       {
-        ...observationEventData(initialObservation),
+        ...observationEventData(latestObservation),
         clientMessageId: input.clientMessageId ?? null,
       },
     );
@@ -162,40 +292,168 @@ export class AutomationAiHarnessService {
 
     while (Date.now() < deadline) {
       this.assertNotCanceled(context.abortSignal);
-      const response = await this.chatClient.chat({
-        provider,
-        model,
-        messages,
-        tools,
-        deadline,
-        abortSignal: context.abortSignal,
-        onContentDelta: async (delta) => {
-          await this.emit(context, 'ai.message.delta', delta, {
-            clientMessageId: input.clientMessageId ?? null,
+      let response: Awaited<ReturnType<AutomationAiChatClientService['chat']>>;
+      try {
+        response = await this.chatClient.chat({
+          provider,
+          model,
+          messages,
+          tools,
+          deadline,
+          abortSignal: context.abortSignal,
+          onContentDelta: async (delta) => {
+            await this.emit(context, 'ai.message.delta', delta, {
+              clientMessageId: input.clientMessageId ?? null,
+            });
+          },
+        });
+      } catch (error) {
+        if (
+          sharedMultimodalMode &&
+          error instanceof Error &&
+          isImageInputUnsupportedProviderMessage(error.message)
+        ) {
+          sharedMultimodalMode = false;
+          messages.splice(
+            0,
+            messages.length,
+            ...stripImagesFromMessages(messages),
+          );
+          await this.emit(
+            context,
+            'ai.guardrail.triggered',
+            'Selected planner rejected screenshot messages; falling back to separate vision observations.',
+            {
+              providerId: provider.id,
+              modelId: model.id,
+              compatibility: 'image-tools-unsupported',
+              clientMessageId: input.clientMessageId ?? null,
+            },
+          );
+          latestObservation = await this.observeScreen({
+            context,
+            input,
+            deadline,
+            reason: 'shared-multimodal-fallback',
+            visionContext: {
+              goal: input.prompt,
+              confirmedFacts,
+              latestHypothesis:
+                latestObservation.observation.screenState ?? undefined,
+            },
           });
-        },
-      });
+          messages.push(
+            buildScreenObservationMessage({
+              summary:
+                'Separate vision observation captured after shared multimodal fallback.',
+              observation: this.plannerTextWithFacts(
+                latestObservation.plannerText,
+                confirmedFacts,
+              ),
+            }),
+          );
+          continue;
+        }
+        if (
+          !isMalformedProviderToolCallError(error) ||
+          malformedToolCallRecoveries >= MAX_MALFORMED_TOOL_CALL_RECOVERIES
+        ) {
+          throw error;
+        }
+        malformedToolCallRecoveries += 1;
+        await this.emit(
+          context,
+          'ai.guardrail.triggered',
+          'AI provider rejected malformed tool-call JSON; requesting a corrected tool call.',
+          {
+            clientMessageId: input.clientMessageId ?? null,
+            recoveries: malformedToolCallRecoveries,
+          },
+        );
+        messages.push(buildMalformedToolCallRecoveryMessage());
+        continue;
+      }
+      malformedToolCallRecoveries = 0;
       const choice = response.choices?.[0]?.message;
       if (!choice) {
         throw new BadRequestException('AI provider returned no message.');
       }
       const content = textContent(choice.content);
       const calls = Array.isArray(choice.tool_calls) ? choice.tool_calls : [];
-      if (content.trim() && calls.length === 0) {
-        finalText = normalizePublicAiText(content);
-        await this.emit(context, 'ai.message.completed', finalText, {
-          clientMessageId: input.clientMessageId ?? null,
-        });
-      } else if (content.trim()) {
+      let noToolPlan: string | null = null;
+      const contentDecision = classifyAssistantResponseContent({
+        content,
+        toolCallCount: calls.length,
+        executedToolCalls: toolCalls,
+        noToolPlanContinuations,
+        maxNoToolPlanContinuations: MAX_NO_TOOL_PLAN_CONTINUATIONS,
+      });
+      noToolPlanContinuations = contentDecision.nextNoToolPlanContinuations;
+      let recoverNoTool = false;
+      if (contentDecision.action === 'continue-plan') {
+        if (calls.length === 0) {
+          noToolPlan = contentDecision.normalizedText;
+          await this.emit(context, 'ai.plan.updated', noToolPlan, {
+            reason: 'model-replan',
+            clientMessageId: input.clientMessageId ?? null,
+          });
+        } else {
+          await this.emit(
+            context,
+            'ai.plan.updated',
+            contentDecision.normalizedText,
+            {
+              reason: 'model-progress',
+              clientMessageId: input.clientMessageId ?? null,
+            },
+          );
+        }
+      } else if (contentDecision.action === 'recover-no-tool') {
+        recoverNoTool = true;
         await this.emit(
           context,
-          'ai.plan.updated',
-          normalizePublicAiText(content),
+          'ai.guardrail.triggered',
+          'AI claimed progress or blockage before calling any tool; requesting a concrete tool action.',
           {
-            reason: 'model-progress',
             clientMessageId: input.clientMessageId ?? null,
           },
         );
+        await this.emit(
+          context,
+          'ai.plan.updated',
+          contentDecision.normalizedText,
+          {
+            reason: 'premature-no-tool-blocker',
+            clientMessageId: input.clientMessageId ?? null,
+          },
+        );
+      } else if (contentDecision.action === 'guardrail') {
+        await this.emit(
+          context,
+          'ai.guardrail.triggered',
+          'AI repeated planning without choosing a tool.',
+          {
+            clientMessageId: input.clientMessageId ?? null,
+          },
+        );
+      } else if (contentDecision.action === 'final') {
+        const completionGuard = this.unconfirmedSettingsCompletionGuard({
+          prompt: input.prompt,
+          text: contentDecision.normalizedText,
+          confirmedFacts,
+          observation: latestObservation,
+        });
+        if (completionGuard) {
+          recoverNoTool = true;
+          await this.emit(context, 'ai.guardrail.triggered', completionGuard, {
+            clientMessageId: input.clientMessageId ?? null,
+          });
+        } else {
+          finalText = contentDecision.normalizedText;
+          await this.emit(context, 'ai.message.completed', finalText, {
+            clientMessageId: input.clientMessageId ?? null,
+          });
+        }
       }
       messages.push({
         role: 'assistant',
@@ -203,8 +461,19 @@ export class AutomationAiHarnessService {
         tool_calls: calls,
       });
       if (calls.length === 0) {
+        if (noToolPlan) {
+          messages.push(buildExecutePlanMessage(noToolPlan));
+          continue;
+        }
+        if (recoverNoTool) {
+          messages.push(
+            buildNoToolActionRecoveryMessage({ prompt: input.prompt }),
+          );
+          continue;
+        }
         break;
       }
+      noToolPlanContinuations = 0;
 
       for (const call of calls) {
         this.assertNotCanceled(context.abortSignal);
@@ -234,6 +503,100 @@ export class AutomationAiHarnessService {
           parseToolCallArguments(uses, parsedArguments),
           input,
         );
+        const attemptKey = toolAttemptKey(uses, parsedToolCall.input);
+        const repeatedGuard = repeatedToolAttemptGuard({
+          attempts: failedAttempts.get(attemptKey) ?? 0,
+          threshold: 1,
+        });
+        if (repeatedGuard) {
+          toolCalls += 1;
+          await this.emit(
+            context,
+            'ai.guardrail.triggered',
+            repeatedGuard.summary,
+            {
+              uses,
+              failureCategory: repeatedGuard.category,
+              recoveryHint: repeatedGuard.recoveryHint,
+              clientMessageId: input.clientMessageId ?? null,
+            },
+          );
+          await this.emit(context, 'ai.tool.failed', repeatedGuard.summary, {
+            uses,
+            failureCategory: repeatedGuard.category,
+            recoveryHint: repeatedGuard.recoveryHint,
+            clientMessageId: input.clientMessageId ?? null,
+          });
+          messages.push({
+            role: 'tool',
+            tool_call_id: call.id,
+            content: JSON.stringify({
+              summary: repeatedGuard.summary,
+              error: repeatedGuard.summary,
+              failureCategory: repeatedGuard.category,
+              recoveryHint: repeatedGuard.recoveryHint,
+              failed: true,
+              recoverable: true,
+            }),
+          });
+          messages.push(
+            buildToolFailureRecoveryMessage({
+              reason: `${repeatedGuard.summary} ${repeatedGuard.recoveryHint}`,
+            }),
+          );
+          continue;
+        }
+        const preflightGuard = preflightToolCall({
+          uses,
+          observation: observationSnapshot(latestObservation),
+        });
+        if (preflightGuard) {
+          toolCalls += 1;
+          this.recordFailedAttempt(failedAttempts, attemptKey);
+          await this.emit(
+            context,
+            'ai.guardrail.triggered',
+            preflightGuard.summary,
+            {
+              uses,
+              failureCategory: preflightGuard.category,
+              recoveryHint: preflightGuard.recoveryHint,
+              clientMessageId: input.clientMessageId ?? null,
+            },
+          );
+          await this.emit(context, 'ai.tool.failed', preflightGuard.summary, {
+            uses,
+            failureCategory: preflightGuard.category,
+            recoveryHint: preflightGuard.recoveryHint,
+            clientMessageId: input.clientMessageId ?? null,
+          });
+          messages.push({
+            role: 'tool',
+            tool_call_id: call.id,
+            content: JSON.stringify({
+              summary: preflightGuard.summary,
+              error: preflightGuard.summary,
+              failureCategory: preflightGuard.category,
+              recoveryHint: preflightGuard.recoveryHint,
+              failed: true,
+              recoverable: true,
+            }),
+          });
+          await this.replan({
+            context,
+            input,
+            provider,
+            model,
+            messages,
+            deadline,
+            reason: `${preflightGuard.summary} ${preflightGuard.recoveryHint}`,
+            observation: this.plannerTextWithFacts(
+              latestObservation.plannerText,
+              confirmedFacts,
+            ),
+          });
+          continue;
+        }
         if (!parsedToolCall.envelopeValid) {
           this.logger.debug(
             `Accepted legacy AI tool-call shape for run=${context.runId ?? 'unknown'} provider=${provider.id} model=${model.id} tool=${uses}`,
@@ -262,6 +625,7 @@ export class AutomationAiHarnessService {
         toolCalls += 1;
         const blockedResult = blockedToolResult(uses, parsedToolCall);
         if (blockedResult) {
+          this.recordFailedAttempt(failedAttempts, attemptKey);
           await this.emit(context, 'ai.tool.failed', blockedResult.summary, {
             uses,
             clientMessageId: input.clientMessageId ?? null,
@@ -275,6 +639,9 @@ export class AutomationAiHarnessService {
               recoverable: true,
             }),
           });
+          messages.push(
+            buildToolFailureRecoveryMessage({ reason: blockedResult.summary }),
+          );
           continue;
         }
         await this.emit(context, 'ai.tool.started', `Calling ${uses}`, {
@@ -282,6 +649,7 @@ export class AutomationAiHarnessService {
           clientMessageId: input.clientMessageId ?? null,
         });
         try {
+          const beforeObservation = latestObservation;
           const result = await context.toolExecutor({
             name: uses,
             arguments: parsedToolCall.input,
@@ -293,6 +661,69 @@ export class AutomationAiHarnessService {
           const eventData = sanitizeAiDataForToolOutput(result.data ?? {});
           const modelData = sanitizeAiDataForModel(result.data ?? {});
           const summary = sanitizeAiText(result.summary);
+          const toolFailed = this.resultIndicatesFailure(result.data ?? {});
+          if (toolFailed) {
+            this.recordFailedAttempt(failedAttempts, attemptKey);
+            this.recordConfirmedFact(
+              confirmedFacts,
+              uses,
+              parsedToolCall.input,
+              result.data ?? {},
+            );
+            const failure = classifyToolFailure({
+              uses,
+              message: summary,
+              data: result.data ?? {},
+            });
+            await this.emit(context, 'ai.tool.failed', failure.summary, {
+              uses,
+              failureCategory: failure.category,
+              recoveryHint: failure.recoveryHint,
+              output: eventData,
+              clientMessageId: input.clientMessageId ?? null,
+            });
+            messages.push({
+              role: 'tool',
+              tool_call_id: call.id,
+              content: JSON.stringify({
+                summary: failure.summary,
+                error: failure.summary,
+                failureCategory: failure.category,
+                recoveryHint: failure.recoveryHint,
+                failed: true,
+                recoverable: true,
+                ...(modelData && typeof modelData === 'object'
+                  ? (modelData as Record<string, unknown>)
+                  : { data: modelData }),
+              }),
+            });
+            await this.replan({
+              context,
+              input,
+              provider,
+              model,
+              messages,
+              deadline,
+              reason: `${failure.summary} ${failure.recoveryHint}`,
+              observation: this.plannerTextWithFacts(
+                latestObservation.plannerText,
+                confirmedFacts,
+              ),
+            });
+            messages.push(
+              buildToolFailureRecoveryMessage({
+                reason: `${failure.summary} ${failure.recoveryHint}`,
+              }),
+            );
+            continue;
+          }
+          failedAttempts.delete(attemptKey);
+          this.recordConfirmedFact(
+            confirmedFacts,
+            uses,
+            parsedToolCall.input,
+            result.data ?? {},
+          );
           await this.emit(context, 'ai.tool.completed', summary, {
             uses,
             output: eventData,
@@ -341,13 +772,68 @@ export class AutomationAiHarnessService {
               deadline,
               reason: 'after-tool',
               uses,
+              sharedMultimodalMode,
+              visionContext: {
+                goal: input.prompt,
+                lastAction: parsedToolCall.intent || `Use ${uses}`,
+                expectedOutcome: parsedToolCall.expectedOutcome,
+                confirmedFacts,
+                latestHypothesis:
+                  latestObservation.observation.screenState ?? undefined,
+              },
             });
-            messages.push(
-              buildScreenObservationMessage({
-                observation: observation.plannerText,
-                summary: `Fresh screenshot captured after ${uses}.`,
-              }),
+            const outcome = classifyToolOutcome({
+              uses,
+              before: observationSnapshot(beforeObservation),
+              after: observationSnapshot(observation),
+            });
+            latestObservation = observation;
+            const observationText = this.plannerTextWithFacts(
+              observation.plannerText,
+              confirmedFacts,
             );
+            if (
+              sharedMultimodalMode &&
+              observation.observation.aiImage?.dataUrl
+            ) {
+              messages.push(
+                buildScreenshotObservationMessage({
+                  dataUrl: observation.observation.aiImage.dataUrl,
+                  summary: [
+                    `Fresh observation captured after ${uses}. Verify whether the expected outcome happened before choosing the next action.`,
+                    '',
+                    'Current screen observation:',
+                    observationText,
+                  ].join('\n'),
+                }),
+              );
+            } else {
+              messages.push(
+                buildScreenObservationMessage({
+                  observation: observationText,
+                  summary: `Fresh observation captured after ${uses}. Verify whether the expected outcome happened before choosing the next action.`,
+                }),
+              );
+            }
+            if (outcome.category === 'no_effect') {
+              this.recordFailedAttempt(failedAttempts, attemptKey);
+              await this.emit(
+                context,
+                'ai.guardrail.triggered',
+                outcome.summary ?? 'The action had no observed effect.',
+                {
+                  uses,
+                  failureCategory: outcome.category,
+                  recoveryHint: outcome.recoveryHint,
+                  clientMessageId: input.clientMessageId ?? null,
+                },
+              );
+              messages.push(
+                buildToolFailureRecoveryMessage({
+                  reason: `${outcome.summary} ${outcome.recoveryHint}`,
+                }),
+              );
+            }
             await this.replan({
               context,
               input,
@@ -355,8 +841,11 @@ export class AutomationAiHarnessService {
               model,
               messages,
               deadline,
-              reason: `Screen changed after ${uses}.`,
-              observation: observation.plannerText,
+              reason: `Fresh observation after ${uses}.`,
+              observation: this.plannerTextWithFacts(
+                observation.plannerText,
+                confirmedFacts,
+              ),
             });
           }
         } catch (error) {
@@ -367,16 +856,25 @@ export class AutomationAiHarnessService {
             error instanceof Error
               ? sanitizeAiText(error.message)
               : 'Tool call failed.';
-          await this.emit(context, 'ai.tool.failed', message, {
+          this.recordFailedAttempt(failedAttempts, attemptKey);
+          const failure = classifyToolFailure({
             uses,
+            message,
+          });
+          await this.emit(context, 'ai.tool.failed', failure.summary, {
+            uses,
+            failureCategory: failure.category,
+            recoveryHint: failure.recoveryHint,
             clientMessageId: input.clientMessageId ?? null,
           });
           messages.push({
             role: 'tool',
             tool_call_id: call.id,
             content: JSON.stringify({
-              summary: `Tool ${uses} failed: ${message}`,
-              error: message,
+              summary: failure.summary,
+              error: failure.summary,
+              failureCategory: failure.category,
+              recoveryHint: failure.recoveryHint,
               failed: true,
               recoverable: true,
             }),
@@ -388,8 +886,17 @@ export class AutomationAiHarnessService {
             model,
             messages,
             deadline,
-            reason: `Tool ${uses} failed: ${message}`,
+            reason: `${failure.summary} ${failure.recoveryHint}`,
+            observation: this.plannerTextWithFacts(
+              latestObservation.plannerText,
+              confirmedFacts,
+            ),
           });
+          messages.push(
+            buildToolFailureRecoveryMessage({
+              reason: `${failure.summary} ${failure.recoveryHint}`,
+            }),
+          );
         }
       }
     }
@@ -442,6 +949,21 @@ export class AutomationAiHarnessService {
           toolLimitReached: toolCalls >= input.maxToolCalls,
           timedOut: Date.now() >= deadline,
         },
+        ai: {
+          plannerProviderId: provider.id,
+          plannerModelId: model.id,
+          visionProviderId: input.visionProviderId ?? null,
+          visionModelId: input.visionModelId ?? null,
+          sharedMultimodalMode,
+          latestScreenKind:
+            latestObservation.observation.screenState?.screenKind ?? null,
+          latestRawScreenKind:
+            latestObservation.observation.screenState?.rawScreenKind ?? null,
+          latestScreenKindCorrectionReason:
+            latestObservation.observation.screenState?.correctionReason ?? null,
+          latestVisionConfidence:
+            latestObservation.observation.screenState?.confidence ?? null,
+        },
         summary,
       },
     };
@@ -453,6 +975,8 @@ export class AutomationAiHarnessService {
     deadline,
     reason,
     uses,
+    sharedMultimodalMode,
+    visionContext,
   }: {
     context: AutomationAiHarnessContext;
     input: Pick<
@@ -462,14 +986,84 @@ export class AutomationAiHarnessService {
     deadline: number;
     reason: string;
     uses?: string;
+    sharedMultimodalMode?: boolean;
+    visionContext?: Parameters<
+      AutomationPerceptionService['observe']
+    >[0]['visionContext'];
   }) {
     return this.perception.observe({
       context: { ...context, clientMessageId: input.clientMessageId ?? null },
-      input,
+      input: sharedMultimodalMode ? {} : input,
       deadline,
       reason,
       uses,
+      visionContext,
     });
+  }
+
+  private plannerTextWithFacts(plannerText: string, confirmedFacts: string[]) {
+    const visibleFacts = confirmedFacts.slice(-12);
+    if (visibleFacts.length === 0) return plannerText;
+    return [
+      'Confirmed tool facts:',
+      ...visibleFacts.map((fact) => `- ${fact}`),
+      '',
+      plannerText,
+    ].join('\n');
+  }
+
+  private resultIndicatesFailure(data: Record<string, unknown>) {
+    return (
+      data.failed === true ||
+      data.opened === false ||
+      data.launched === false ||
+      (typeof data.exitCode === 'number' && data.exitCode !== 0)
+    );
+  }
+
+  private unconfirmedSettingsCompletionGuard({
+    prompt,
+    text,
+    confirmedFacts,
+    observation,
+  }: {
+    prompt: string;
+    text: string;
+    confirmedFacts: string[];
+    observation: Awaited<ReturnType<AutomationPerceptionService['observe']>>;
+  }) {
+    const taskMentionsSettings = /\bsettings?\b/i.test(prompt);
+    const textClaimsSettingsOpen =
+      /\bsettings?\b/i.test(text) &&
+      /\b(open|opened|visible|showing)\b/i.test(text);
+    if (!taskMentionsSettings || !textClaimsSettingsOpen) return null;
+    const screenState = observation.observation.screenState;
+    if (
+      isSettingsOpenClaimConfirmed({
+        screenKind: screenState?.screenKind ?? null,
+        confirmedFacts,
+        visibleText: screenState?.visibleText ?? [],
+      })
+    ) {
+      return null;
+    }
+    return 'AI claimed Settings was open without a confirmed Settings-app screen. Quick settings gear access is only a candidate next action, not task completion.';
+  }
+
+  private recordFailedAttempt(map: Map<string, number>, key: string) {
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+
+  private recordConfirmedFact(
+    facts: string[],
+    uses: string,
+    input: Record<string, unknown>,
+    data: Record<string, unknown>,
+  ) {
+    const fact = confirmedFactFromToolResult(uses, input, data);
+    if (!fact) return;
+    facts.push(fact);
+    if (facts.length > 30) facts.splice(0, facts.length - 30);
   }
 
   private assertNotCanceled(abortSignal?: AbortSignal) {

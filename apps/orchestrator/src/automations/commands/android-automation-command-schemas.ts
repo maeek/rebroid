@@ -42,11 +42,34 @@ export const swipeSchema = z.object({
   durationMs: z.number().int().min(50).max(5_000).optional().default(300),
 });
 
-export const swipeNormalizedSchema = z.object({
+const swipeNormalizedNestedSchema = z.object({
   start: normalizedPointSchema,
   end: normalizedPointSchema,
   durationMs: z.number().int().min(50).max(5_000).optional().default(300),
 });
+
+export const swipeNormalizedSchema = z.preprocess((value) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return value;
+  }
+  const record = value as Record<string, unknown>;
+  if ('start' in record || 'end' in record) {
+    return value;
+  }
+  if (
+    !('startX' in record) ||
+    !('startY' in record) ||
+    !('endX' in record) ||
+    !('endY' in record)
+  ) {
+    return value;
+  }
+  return {
+    start: { x: record.startX, y: record.startY },
+    end: { x: record.endX, y: record.endY },
+    durationMs: record.durationMs,
+  };
+}, swipeNormalizedNestedSchema);
 
 export const textSchema = z.object({
   text: z.string().max(20_000),
@@ -58,6 +81,8 @@ export const keySchema = z.object({
 
 export const screenshotSchema = z.object({});
 
+export const emptyInputSchema = z.object({});
+
 export const packageNameSchema = z.object({
   packageName: z
     .string()
@@ -67,6 +92,11 @@ export const packageNameSchema = z.object({
     .regex(/^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/, {
       message: 'Package name must be a valid Android package identifier.',
     }),
+  timeoutMs: timeoutSchema,
+});
+
+export const openSystemSettingsSchema = z.object({
+  screen: z.enum(['main']).optional().default('main'),
   timeoutMs: timeoutSchema,
 });
 

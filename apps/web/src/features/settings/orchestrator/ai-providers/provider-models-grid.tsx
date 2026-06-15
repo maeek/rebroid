@@ -138,7 +138,7 @@ export const ProviderModelsGrid = ({
   onBulkUpdateModels: (indexes: number[], patch: Partial<AutomationAiProviderModel>) => void
   onDownloadModel: (modelId: string, label?: string) => Promise<void>
   onRemoveModel: (index: number) => void
-  onSetDefaultModel: (index: number) => void
+  onSetDefaultModel: (index: number, role: ProviderModelRole) => void
   onUpdateModel: (index: number, patch: Partial<AutomationAiProviderModel>) => void
   isDownloadingModel: boolean
   isLoadingRemoteModels: boolean
@@ -216,20 +216,48 @@ export const ProviderModelsGrid = ({
       {
         id: 'state',
         header: 'State',
-        size: 220,
+        size: 330,
         meta: { label: 'State' },
-        cell: ({ row }) => (
-          <div className='flex min-h-10 items-center gap-3'>
-            <Switch
-              checked={row.original.enabled}
-              onCheckedChange={enabled => onUpdateModel(row.original.index, { enabled })}
-            />
-            <AiModelStateBadges
-              enabled={row.original.enabled}
-              isDefault={row.original.default}
-            />
-          </div>
-        )
+        cell: ({ row }) => {
+          const model = row.original
+          const defaultRoles = model.defaultFor ?? []
+          return (
+            <div className='flex min-h-10 flex-wrap items-center gap-3'>
+              <Switch
+                checked={model.enabled}
+                onCheckedChange={enabled => onUpdateModel(model.index, { enabled })}
+              />
+              <AiModelStateBadges
+                enabled={model.enabled}
+                defaultFor={defaultRoles}
+              />
+              <div className='flex flex-wrap items-center gap-1'>
+                {model.roles.includes('planner') ? (
+                  <Button
+                    type='button'
+                    variant={defaultRoles.includes('planner') ? 'secondary' : 'ghost'}
+                    size='sm'
+                    disabled={!model.enabled || defaultRoles.includes('planner')}
+                    onClick={() => onSetDefaultModel(model.index, 'planner')}
+                  >
+                    Planner default
+                  </Button>
+                ) : null}
+                {model.roles.includes('vision') ? (
+                  <Button
+                    type='button'
+                    variant={defaultRoles.includes('vision') ? 'secondary' : 'ghost'}
+                    size='sm'
+                    disabled={!model.enabled || defaultRoles.includes('vision')}
+                    onClick={() => onSetDefaultModel(model.index, 'vision')}
+                  >
+                    Vision default
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          )
+        }
       },
       {
         id: 'health',
@@ -264,7 +292,7 @@ export const ProviderModelsGrid = ({
         )
       }
     ],
-    [initialProvider, isDownloadingModel, modelDownloads, onDownloadModel, onUpdateModel, toggleRole]
+    [initialProvider, isDownloadingModel, modelDownloads, onDownloadModel, onSetDefaultModel, onUpdateModel, toggleRole]
   )
 
   return (
@@ -347,10 +375,24 @@ export const ProviderModelsGrid = ({
               </ContextMenuItem>
             ) : null}
             <ContextMenuItem
-              disabled={row.original.default || !row.original.enabled}
-              onSelect={() => onSetDefaultModel(row.original.index)}
+              disabled={
+                !row.original.enabled ||
+                !row.original.roles.includes('planner') ||
+                row.original.defaultFor.includes('planner')
+              }
+              onSelect={() => onSetDefaultModel(row.original.index, 'planner')}
             >
-              Set as default
+              Set as planner default
+            </ContextMenuItem>
+            <ContextMenuItem
+              disabled={
+                !row.original.enabled ||
+                !row.original.roles.includes('vision') ||
+                row.original.defaultFor.includes('vision')
+              }
+              onSelect={() => onSetDefaultModel(row.original.index, 'vision')}
+            >
+              Set as vision default
             </ContextMenuItem>
             <ContextMenuItem onSelect={() => onRemoveModel(row.original.index)}>
               <IconTrash className='mr-2 size-4' />

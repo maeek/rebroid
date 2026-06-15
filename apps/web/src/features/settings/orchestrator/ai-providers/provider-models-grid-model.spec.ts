@@ -14,7 +14,7 @@ const modelRow = (override: Partial<ProviderModelRow>): ProviderModelRow => ({
   roles: ['planner'],
   settings: {},
   enabled: true,
-  default: false,
+  defaultFor: [],
   ...override
 })
 

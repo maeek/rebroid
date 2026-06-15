@@ -13,7 +13,7 @@ const catalog = [
         label: 'Small',
         roles: ['planner'],
         settings: {},
-        default: false,
+        defaultFor: [],
         enabled: true
       },
       {
@@ -21,7 +21,7 @@ const catalog = [
         label: 'Vision',
         roles: ['planner', 'vision'],
         settings: {},
-        default: true,
+        defaultFor: ['planner'],
         enabled: true
       }
     ]
@@ -36,7 +36,7 @@ const catalog = [
         label: 'Fast',
         roles: ['planner'],
         settings: {},
-        default: false,
+        defaultFor: [],
         enabled: true
       }
     ]

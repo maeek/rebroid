@@ -53,7 +53,8 @@ const suggestionMessages = (dto: SuggestAdHocAiPromptsDto): ChatMessage[] => [
       'You generate concise Android automation prompt suggestions for a visible AI agent chat.',
       'Return JSON only, no markdown, no prose outside JSON.',
       'JSON shape: {"suggestions":[{"label":"short label","prompt":"concrete prompt"}]}.',
-      'Create 3 to 5 suggestions. Labels must be 32 characters or shorter. Prompts must be actionable and 500 characters or shorter.',
+      'Create 3 to 5 suggestions. Labels must be plain text, 2 to 5 words, no markdown, and 36 characters or shorter. Prompts must be actionable and 500 characters or shorter.',
+      'Use concrete Android actions. Avoid vague QA labels such as "smoke test", "verify login", or "capture flow" unless the current app context specifically asks for that.',
       'Use the current app, recent conversation, recent run events, and allowed tools. Do not invent device state.',
       'If the context mentions a device/system/platform task, suggest Android system routes before asking for a custom app.',
     ].join('\n'),
@@ -89,7 +90,7 @@ const parseSuggestions = (text: string): AiPromptSuggestionDto[] => {
   const suggestions = rawSuggestions.flatMap((item, index) => {
     if (!item || typeof item !== 'object') return [];
     const record = item as Record<string, unknown>;
-    const label = sanitizeSuggestionText(record.label, 32);
+    const label = sanitizeSuggestionLabel(record.label, index);
     const prompt = sanitizeSuggestionText(record.prompt, 500);
     if (!label || !prompt) return [];
     return [
@@ -109,23 +110,30 @@ const fallbackSuggestions = (
   {
     id: 'inspect-screen',
     label: 'Inspect screen',
-    prompt: `Inspect the current screen in ${dto.appName}, summarize what is visible, and suggest the safest next action.`,
+    prompt: `Inspect the current screen in ${dto.appName}. Report the visible app/screen, available controls, and the safest confirmed next action without guessing unlabeled icons.`,
   },
   {
-    id: 'find-settings',
-    label: 'Find settings',
+    id: 'open-settings',
+    label: 'Open Settings',
     prompt:
-      'Open the relevant Android system settings screen for the requested device-level task, verify the visible state, and report what changed.',
+      'Open Android system Settings using confirmed package or Settings intent routes, observe the result, and report the visible settings screen.',
   },
   {
-    id: 'extract-text',
-    label: 'Extract text',
+    id: 'find-package',
+    label: 'Find package',
+    prompt:
+      'List installed Android packages with a narrow query related to the task, then explain which package or route is confirmed.',
+  },
+  {
+    id: 'read-screen-text',
+    label: 'Read screen text',
     prompt: `Extract the important visible text from ${dto.appName}. Group labels, values, alerts, and navigation items.`,
   },
   {
-    id: 'smoke-test',
-    label: 'Smoke test',
-    prompt: `Run a basic smoke test for ${dto.appName}. Verify the screen is responsive and no blocking error is visible.`,
+    id: 'navigate-safely',
+    label: 'Navigate safely',
+    prompt:
+      'Use the latest observation to choose one confirmed navigation action, execute it, observe again, and stop if the expected screen is not reached.',
   },
 ];
 
@@ -141,6 +149,20 @@ const textContent = (content: ChatMessage['content']) =>
 
 const sanitizeSuggestionText = (value: unknown, maxLength: number) =>
   typeof value === 'string' ? sanitizeAiText(value, maxLength).trim() : '';
+
+const sanitizeSuggestionLabel = (value: unknown, index: number) => {
+  const raw = typeof value === 'string' ? value : '';
+  const label = raw
+    .replace(/\[truncated\s+\d+\s+chars?\]/gi, '')
+    .replace(/[*_`~]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const fallback = `Suggestion ${index + 1}`;
+  const normalized = label || fallback;
+  return normalized.length > 36
+    ? `${normalized.slice(0, 35).trimEnd()}…`
+    : normalized;
+};
 
 const suggestionId = (label: string, index: number) => {
   const id = label

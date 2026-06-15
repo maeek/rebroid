@@ -71,6 +71,7 @@ const chatSession = (
   isCheckingHealth: false,
   isClearing: false,
   isLoadingHistory: false,
+  onTranscriptScroll: jest.fn(),
   plannerCatalog: [],
   prompt: '',
   queuedTurn: undefined,
@@ -122,8 +123,12 @@ describe('AiAgentToolsSection', () => {
 
     render(<AiAgentToolsSection app={app} />)
 
-    expect(screen.getByLabelText('AI agent transcript').className).toContain('flex-1')
-    expect(screen.getByLabelText('AI agent transcript').className).toContain('overflow-y-auto')
+    const transcript = screen.getByLabelText('AI agent transcript')
+
+    expect(transcript.className).toContain('flex-1')
+    expect(transcript.className).toContain('overflow-y-auto')
+    expect(transcript.closest('section')?.className).toContain('h-full')
+    expect(transcript.closest('section')?.className).toContain('overflow-hidden')
   })
 
   it('keeps clear available and delegates clearing to the session', () => {
@@ -166,7 +171,7 @@ describe('AiAgentToolsSection', () => {
           label: 'Model',
           roles: ['planner'],
           enabled: true,
-          default: true,
+          defaultFor: ['planner'],
           settings: {}
         }
       })
@@ -180,7 +185,54 @@ describe('AiAgentToolsSection', () => {
     )
 
     await waitFor(() => expect(screen.getByText('Dynamic chip')).toBeTruthy())
+    expect(screen.getByRole('button', { name: 'Dynamic chip' }).className).toContain('border-transparent')
+    expect(screen.getByRole('button', { name: 'Dynamic chip' }).className).toContain('font-normal')
     expect(generatePromptSuggestions.mock.calls[0]?.[0]).toMatchObject({ targetApplicationId: app.id })
+  })
+
+  it('exports visible conversation turns as debug json', async () => {
+    const createObjectURL = jest.fn((object: Blob | MediaSource) => 'blob:debug-export')
+    const revokeObjectURL = jest.fn()
+    const click = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: createObjectURL })
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: revokeObjectURL })
+    jest.mocked(useAiAgentChatSession).mockReturnValue(
+      chatSession({
+        selectedProvider: { id: 'provider_1', label: 'Provider', kind: 'ollama', models: [] },
+        selectedModel: {
+          id: 'model_1',
+          label: 'Model',
+          roles: ['planner'],
+          enabled: true,
+          defaultFor: ['planner'],
+          settings: {}
+        },
+        turns: [
+          {
+            id: 'turn_1',
+            prompt: 'Turn on dark mode',
+            status: 'success',
+            run: null,
+            events: []
+          }
+        ]
+      })
+    )
+
+    render(<AiAgentToolsSection app={app} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /export/i }))
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1)
+    const exportedObject = createObjectURL.mock.calls[0]?.[0]
+    expect(exportedObject).toBeInstanceOf(Blob)
+    const blob = exportedObject as Blob
+    const payload = JSON.parse(await readBlobText(blob)) as { app: { id: string }; turns: Array<{ prompt: string }> }
+    expect(payload.app.id).toBe(app.id)
+    expect(payload.turns[0]?.prompt).toBe('Turn on dark mode')
+    expect(click).toHaveBeenCalledTimes(1)
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:debug-export')
+    click.mockRestore()
   })
 
   it('uses static suggestions when contextual generation is disabled', () => {
@@ -195,7 +247,7 @@ describe('AiAgentToolsSection', () => {
           label: 'Model',
           roles: ['planner'],
           enabled: true,
-          default: true,
+          defaultFor: ['planner'],
           settings: {}
         }
       })
@@ -209,7 +261,16 @@ describe('AiAgentToolsSection', () => {
       />
     )
 
-    expect(screen.getByText('Verify login')).toBeTruthy()
+    expect(screen.getByText('Inspect screen')).toBeTruthy()
+    expect(screen.getByText('Open Settings')).toBeTruthy()
     expect(generatePromptSuggestions).not.toHaveBeenCalled()
   })
 })
+
+const readBlobText = (blob: Blob) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(reader.error)
+    reader.readAsText(blob)
+  })

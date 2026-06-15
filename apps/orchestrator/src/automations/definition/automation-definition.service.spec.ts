@@ -273,6 +273,22 @@ spec:
       inputFieldOrder: [],
       yamlSnippetFields: [],
     });
+    expect(
+      commands.get('android.expandQuickSettings')?.inputSchema,
+    ).toMatchObject({
+      type: 'object',
+    });
+    expect(
+      commands.get('android.expandQuickSettings')?.inputSchema.required,
+    ).toBeUndefined();
+    expect(
+      commands.get('android.expandNotifications')?.inputSchema,
+    ).toMatchObject({
+      type: 'object',
+    });
+    expect(
+      commands.get('android.expandNotifications')?.inputSchema.required,
+    ).toBeUndefined();
     expect(commands.get('android.swipe')?.inputSchema.required).toEqual([
       'x1',
       'y1',

@@ -19,7 +19,7 @@ export interface AutomationAiProviderModel {
   roles: AutomationAiProviderModelRole[];
   settings: AutomationAiProviderModelSettings;
   enabled: boolean;
-  default: boolean;
+  defaultFor: AutomationAiProviderModelRole[];
 }
 
 export type AutomationAiProviderModelRole = "planner" | "vision";

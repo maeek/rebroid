@@ -6,15 +6,30 @@ import {
   buildExecutePlanMessage,
   buildFinalRecoveryMessage,
   buildInitialMessages,
+  buildMalformedToolCallRecoveryMessage,
+  buildNoToolActionRecoveryMessage,
   buildPublicPlanRequestMessage,
   buildReplanMessage,
   buildUiXmlObservationMessage,
   buildToolDefinitions,
   chatCompletionsEndpoint,
   consumeChatCompletionStream,
+  isPublicPlanText,
+  applyRunVisionDefaults,
+  blockedToolResult,
+  classifyToolFailure,
+  classifyToolOutcome,
+  classifyAssistantResponseContent,
+  correctScreenStateHypothesis,
+  isSettingsOpenClaimConfirmed,
   mapUsesByToolName,
   normalizePublicAiText,
   parseArguments,
+  parseToolCallArguments,
+  preflightToolCall,
+  repeatedToolAttemptGuard,
+  shouldObserveAfterTool,
+  toolAttemptKey,
   toolName,
 } from "./harness";
 import type {
@@ -47,7 +62,7 @@ const model: AutomationAiProviderModel = {
     keepAlive: "5m",
   },
   enabled: true,
-  default: true,
+  defaultFor: ["planner"],
 };
 
 describe("AI harness core", () => {
@@ -134,7 +149,40 @@ describe("AI harness core", () => {
           "When calling tools, use this exact JSON shape",
         ),
     );
+    assert.ok(
+      typeof initialMessages[0].content === "string" &&
+        initialMessages[0].content.includes(
+          "Do not identify unlabeled launcher icons as Settings",
+        ),
+    );
+    assert.ok(
+      typeof initialMessages[0].content === "string" &&
+        initialMessages[0].content.includes("android.expandQuickSettings"),
+    );
     assert.deepEqual(initialMessages[1], { role: "user", content: "Do it" });
+    assert.deepEqual(
+      buildInitialMessages(
+        {
+          prompt: "Do it",
+          initialScreenshotDataUrl: "data:image/png;base64,abc",
+          initialObservationText: "Screen observation",
+        },
+        model,
+      )[1],
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: "Do it\n\nCurrent screen observation:\nScreen observation\n\nCurrent screenshot is attached. Inspect both before taking any action.",
+          },
+          {
+            type: "image_url",
+            image_url: { url: "data:image/png;base64,abc" },
+          },
+        ],
+      },
+    );
     assert.deepEqual(
       buildInitialMessages(
         {
@@ -187,6 +235,44 @@ describe("AI harness core", () => {
     );
   });
 
+  it("corrects quick-settings screens mislabeled as Settings", () => {
+    const corrected = correctScreenStateHypothesis({
+      screenKind: "settings_app",
+      confidence: 0.9,
+      visibleText: ["Internet", "Bluetooth", "Battery Saver"],
+      controls: [{ label: "Settings gear", role: "icon" }],
+      evidence: ["Brightness slider and quick settings tiles visible."],
+      uncertainty: [],
+      summary: "Settings app opened.",
+    });
+
+    assert.equal(corrected.screenKind, "quick_settings");
+    assert.equal(corrected.settingsAccessVisible, true);
+    assert.ok(corrected.confidence < 0.9);
+    assert.ok(corrected.correctionReason?.includes("internet"));
+  });
+
+  it("does not treat quick settings as confirmed Settings app completion", () => {
+    assert.equal(
+      isSettingsOpenClaimConfirmed({
+        screenKind: "quick_settings",
+        confirmedFacts: [],
+        visibleText: ["Internet", "Bluetooth"],
+      }),
+      false,
+    );
+    assert.equal(
+      isSettingsOpenClaimConfirmed({
+        screenKind: "settings_app",
+        confirmedFacts: [
+          "android.openSystemSettings opened the Android Settings main screen.",
+        ],
+        visibleText: [],
+      }),
+      true,
+    );
+  });
+
   it("builds text-only UI XML observations", () => {
     assert.deepEqual(
       buildInitialMessages(
@@ -225,6 +311,8 @@ describe("AI harness core", () => {
     assert.ok(planContent.includes("Current screen"));
     assert.ok(planContent.includes("public execution plan"));
     assert.ok(planContent.includes("Markdown text only"));
+    assert.ok(planContent.includes("Do not label generic Android robot"));
+    assert.ok(planContent.includes("android.expandQuickSettings"));
     assert.ok(!planContent.includes("hidden reasoning"));
 
     const executeMessage = buildExecutePlanMessage(
@@ -245,6 +333,8 @@ describe("AI harness core", () => {
       typeof replanMessage.content === "string" ? replanMessage.content : "";
     assert.ok(replanContent.includes("Reason:"));
     assert.ok(replanContent.includes("Latest observation:"));
+    assert.ok(replanContent.includes("Do not retry guessed coordinate taps"));
+    assert.ok(replanContent.includes("android.expandNotifications"));
 
     const recoveryMessage = buildFinalRecoveryMessage({
       prompt: "Turn on dark mode",
@@ -255,6 +345,32 @@ describe("AI harness core", () => {
         ? recoveryMessage.content
         : "";
     assert.ok(recoveryContent.includes("final answer"));
+
+    const noToolRecoveryMessage = buildNoToolActionRecoveryMessage({
+      prompt: "Turn on dark mode",
+    });
+    const noToolRecoveryContent =
+      typeof noToolRecoveryMessage.content === "string"
+        ? noToolRecoveryMessage.content
+        : "";
+    assert.ok(noToolRecoveryContent.includes("no tool has been called"));
+    assert.ok(noToolRecoveryContent.includes("android.openSystemSettings"));
+
+    const malformedToolCallRecovery = buildMalformedToolCallRecoveryMessage();
+    const malformedToolCallRecoveryContent =
+      typeof malformedToolCallRecovery.content === "string"
+        ? malformedToolCallRecovery.content
+        : "";
+    assert.ok(
+      malformedToolCallRecoveryContent.includes(
+        "malformed JSON. No tool was executed",
+      ),
+    );
+    assert.ok(
+      malformedToolCallRecoveryContent.includes(
+        '"intent":"short action","expectedOutcome":"verifiable result","input":{...}',
+      ),
+    );
   });
 
   it("parses tool arguments defensively", () => {
@@ -275,6 +391,312 @@ describe("AI harness core", () => {
         '{"Result":"Blocked"}\n{"Reason":"Settings path was not visible"}',
       ),
       "- **Result:** Blocked\n\n- **Reason:** Settings path was not visible",
+    );
+  });
+
+  it("normalizes plain public plan labels into markdown bullets", () => {
+    const text = [
+      "Current screen: Home screen with search bar",
+      "Goal: Turn on dark mode theme",
+      "Next moves: Locate Settings using typed tools",
+      "First action: List installed packages",
+      "Replan if: Settings is missing",
+    ].join("\n");
+
+    assert.equal(
+      normalizePublicAiText(text),
+      [
+        "- **Current screen:** Home screen with search bar",
+        "- **Goal:** Turn on dark mode theme",
+        "- **Next moves:** Locate Settings using typed tools",
+        "- **First action:** List installed packages",
+        "- **Replan if:** Settings is missing",
+      ].join("\n"),
+    );
+    assert.equal(isPublicPlanText(text), true);
+  });
+
+  it("normalizes bare bold public plan labels into markdown bullets", () => {
+    const text = [
+      "**Current screen:** Home screen",
+      "**Goal:** Enable dark mode",
+      "**Result:** Not complete yet",
+    ].join("\n");
+
+    assert.equal(
+      normalizePublicAiText(text),
+      [
+        "- **Current screen:** Home screen",
+        "- **Goal:** Enable dark mode",
+        "- **Result:** Not complete yet",
+      ].join("\n"),
+    );
+  });
+
+  it("classifies no-tool public plans as continuations before the guardrail limit", () => {
+    assert.deepEqual(
+      classifyAssistantResponseContent({
+        content: "Current screen: Home\nGoal: Inspect packages",
+        toolCallCount: 0,
+        executedToolCalls: 0,
+        noToolPlanContinuations: 0,
+        maxNoToolPlanContinuations: 3,
+      }),
+      {
+        action: "continue-plan",
+        normalizedText:
+          "- **Current screen:** Home\n- **Goal:** Inspect packages",
+        nextNoToolPlanContinuations: 1,
+      },
+    );
+  });
+
+  it("classifies repeated no-tool public plans as a guardrail", () => {
+    assert.deepEqual(
+      classifyAssistantResponseContent({
+        content: "Current screen: Home\nGoal: Inspect packages",
+        toolCallCount: 0,
+        executedToolCalls: 1,
+        noToolPlanContinuations: 3,
+        maxNoToolPlanContinuations: 3,
+      }),
+      {
+        action: "guardrail",
+        normalizedText:
+          "- **Current screen:** Home\n- **Goal:** Inspect packages",
+        nextNoToolPlanContinuations: 3,
+      },
+    );
+  });
+
+  it("classifies no-tool non-plan content as final text", () => {
+    assert.deepEqual(
+      classifyAssistantResponseContent({
+        content: "Package list was inspected.",
+        toolCallCount: 0,
+        executedToolCalls: 1,
+        noToolPlanContinuations: 1,
+        maxNoToolPlanContinuations: 3,
+      }),
+      {
+        action: "final",
+        normalizedText: "Package list was inspected.",
+        nextNoToolPlanContinuations: 1,
+      },
+    );
+  });
+
+  it("classifies tool-bearing content as progress and resets plan continuation count", () => {
+    assert.deepEqual(
+      classifyAssistantResponseContent({
+        content: "Next action: list packages",
+        toolCallCount: 1,
+        executedToolCalls: 0,
+        noToolPlanContinuations: 2,
+        maxNoToolPlanContinuations: 3,
+      }),
+      {
+        action: "continue-plan",
+        normalizedText: "Next action: list packages",
+        nextNoToolPlanContinuations: 0,
+      },
+    );
+  });
+
+  it("classifies a no-tool attempted blocker as recoverable before any tool runs", () => {
+    assert.deepEqual(
+      classifyAssistantResponseContent({
+        content: [
+          "Current screen: Home screen",
+          "Goal: Turn on dark mode theme",
+          "Attempted: Opened Settings app.",
+          "Remaining: No further tool actions possible.",
+        ].join("\n"),
+        toolCallCount: 0,
+        executedToolCalls: 0,
+        noToolPlanContinuations: 0,
+        maxNoToolPlanContinuations: 3,
+      }),
+      {
+        action: "recover-no-tool",
+        normalizedText: [
+          "- **Current screen:** Home screen",
+          "- **Goal:** Turn on dark mode theme",
+          "- **Attempted:** Opened Settings app.",
+          "- **Remaining:** No further tool actions possible.",
+        ].join("\n"),
+        nextNoToolPlanContinuations: 1,
+      },
+    );
+  });
+
+  it("applies tool policy for observation, legacy arguments, vision defaults, and shell blocking", () => {
+    assert.equal(
+      shouldObserveAfterTool({
+        uses: "android.adbShell",
+        toolCall: {
+          intent: "Inspect",
+          expectedOutcome: "Read package output",
+          input: { command: "pm list packages" },
+          requiresScreenObservation: false,
+          envelopeValid: true,
+        },
+      }),
+      false,
+    );
+    assert.equal(
+      shouldObserveAfterTool({
+        uses: "android.tap",
+        toolCall: {
+          intent: "Tap",
+          expectedOutcome: "Open target",
+          input: { x: 0.5, y: 0.5 },
+          envelopeValid: true,
+        },
+      }),
+      true,
+    );
+    assert.equal(
+      shouldObserveAfterTool({
+        uses: "android.expandQuickSettings",
+        toolCall: {
+          intent: "Open quick settings",
+          expectedOutcome: "Quick settings panel is visible",
+          input: {},
+          envelopeValid: true,
+        },
+      }),
+      true,
+    );
+
+    const legacy = parseToolCallArguments("vision.locate", {
+      query: "Downloads",
+      maxResults: 3,
+    });
+    assert.equal(legacy.envelopeValid, false);
+    assert.deepEqual(legacy.input, { query: "Downloads", maxResults: 3 });
+
+    assert.deepEqual(
+      applyRunVisionDefaults(
+        "vision.locate",
+        {
+          intent: "Find downloads",
+          expectedOutcome: "Downloads text is located",
+          input: { query: "Downloads" },
+          envelopeValid: false,
+        },
+        { visionProviderId: "vision-provider", visionModelId: "vision-model" },
+      ).input,
+      {
+        query: "Downloads",
+        visionProviderId: "vision-provider",
+        visionModelId: "vision-model",
+      },
+    );
+
+    assert.equal(
+      blockedToolResult("android.adbShell", {
+        intent: "Install app",
+        expectedOutcome: "App is installed",
+        input: { command: "pm install /sdcard/app.apk" },
+        envelopeValid: true,
+      })?.error,
+      "Potentially destructive adbShell command blocked during AI automation.",
+    );
+  });
+
+  it("blocks text tools when UI hierarchy is unavailable", () => {
+    assert.deepEqual(
+      preflightToolCall({
+        uses: "android.tapText",
+        observation: {
+          uiStatus: "empty",
+          uiNodes: 0,
+          detections: 0,
+        },
+      }),
+      {
+        blocked: true,
+        category: "no_match",
+        summary:
+          "UI text lookup is unavailable because the latest UI hierarchy is empty or failed.",
+        recoveryHint:
+          "Use vision/location, normalized coordinates for visible targets, package/state discovery, or ask the user instead of retrying text lookup.",
+      },
+    );
+    assert.equal(
+      preflightToolCall({
+        uses: "android.tapText",
+        observation: { uiStatus: "available", uiNodes: 3 },
+      }),
+      null,
+    );
+  });
+
+  it("classifies repeated failed tool attempts", () => {
+    assert.equal(
+      toolAttemptKey("vision.locate", { maxResults: 1, query: "Settings" }),
+      toolAttemptKey("vision.locate", { query: "Settings", maxResults: 1 }),
+    );
+    assert.equal(repeatedToolAttemptGuard({ attempts: 0, threshold: 1 }), null);
+    assert.deepEqual(repeatedToolAttemptGuard({ attempts: 1, threshold: 1 }), {
+      blocked: true,
+      category: "failed",
+      summary:
+        "The same tool and arguments already failed on this screen. Repeating it is unlikely to help.",
+      recoveryHint:
+        "Choose a materially different route: a different tool, different target, navigation step, state-discovery command, or user clarification.",
+    });
+  });
+
+  it("classifies shell help output as a syntax failure", () => {
+    assert.deepEqual(
+      classifyToolFailure({
+        uses: "android.adbShell",
+        message: "Shell command failed with exit code 255.",
+        data: {
+          stdout:
+            "Activity manager (activity) commands:\n  help\n    Print this help text.",
+          exitCode: 255,
+        },
+      }),
+      {
+        category: "syntax_error",
+        summary:
+          "android.adbShell failed because Android returned command help instead of executing the request.",
+        recoveryHint:
+          "Use a typed tool when available, or revise the shell command syntax instead of repeating the same command.",
+      },
+    );
+  });
+
+  it("classifies unchanged screen state after mutating actions as no effect", () => {
+    assert.deepEqual(
+      classifyToolOutcome({
+        uses: "android.tapNormalized",
+        before: {
+          uiStatus: "empty",
+          uiNodes: 0,
+          detections: 0,
+          screenKind: "home",
+          visionSummary: "Home screen with gallery icon",
+        },
+        after: {
+          uiStatus: "empty",
+          uiNodes: 0,
+          detections: 0,
+          screenKind: "home",
+          visionSummary: "Home screen with gallery icon",
+        },
+      }),
+      {
+        changed: false,
+        category: "no_effect",
+        summary:
+          "android.tapNormalized completed, but the observed screen state did not change.",
+        recoveryHint:
+          "Treat the action as unconfirmed. Do not repeat the same action; choose a different target, navigation route, typed tool, or ask the user.",
+      },
     );
   });
 

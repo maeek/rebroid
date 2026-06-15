@@ -10,43 +10,43 @@ const appLabel = (app: AppDefinition) => `${app.name} (${app.id})`
 
 export const aiAgentPromptPresets = (app: AppDefinition): AiAgentPromptPreset[] => [
   {
-    id: 'verify-login',
-    label: 'Verify login',
+    id: 'inspect-screen',
+    label: 'Inspect screen',
     prompt: [
-      `Check whether ${appLabel(app)} appears to be signed in.`,
-      'Inspect the current screen, look for account/profile or login prompts, and report the evidence.'
+      `Inspect the current screen in ${appLabel(app)}.`,
+      'Report the visible app/screen, available controls, and the safest confirmed next action without guessing unlabeled icons.'
     ].join(' ')
   },
   {
-    id: 'search-text',
-    label: 'Search text',
+    id: 'open-settings',
+    label: 'Open Settings',
     prompt: [
-      `Search the visible UI in ${appLabel(app)} for "[text]".`,
-      'If it is present, explain where it appears; if not, try reasonable navigation and report the result.'
+      'Open Android system Settings using confirmed package or Settings intent routes.',
+      'Observe the result and report the visible settings screen.'
     ].join(' ')
   },
   {
-    id: 'capture-flow',
-    label: 'Capture flow',
+    id: 'find-package',
+    label: 'Find package',
     prompt: [
-      `Capture screenshots of the current flow in ${appLabel(app)}.`,
-      'Start with the current screen, navigate only when it is safe, and summarize each captured state.'
+      'List installed Android packages with a narrow query related to the task.',
+      'Explain which package or route is confirmed before launching anything.'
     ].join(' ')
   },
   {
-    id: 'extract-text',
-    label: 'Extract text',
+    id: 'read-screen-text',
+    label: 'Read screen text',
     prompt: [
       `Extract the important visible text from ${appLabel(app)}.`,
       'Group labels, values, alerts, and navigation items so the result is easy to scan.'
     ].join(' ')
   },
   {
-    id: 'smoke-test',
-    label: 'Smoke test app',
+    id: 'navigate-safely',
+    label: 'Navigate safely',
     prompt: [
-      `Run a basic smoke test for ${appLabel(app)}.`,
-      'Verify the app opens, the main screen is responsive, obvious navigation works, and no blocking error is visible.'
+      `Use the latest observation in ${appLabel(app)} to choose one confirmed navigation action.`,
+      'Execute it, observe again, and stop if the expected screen is not reached.'
     ].join(' ')
   }
 ]

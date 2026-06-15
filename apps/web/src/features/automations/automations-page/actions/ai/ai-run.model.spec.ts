@@ -41,7 +41,7 @@ const provider = (
       roles,
       settings: {},
       enabled: true,
-      default: isDefault
+      defaultFor: isDefault ? roles : []
     }
   ]
 })

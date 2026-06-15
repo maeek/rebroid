@@ -88,9 +88,15 @@ export class AutomationAiProviderModelDto {
   @IsBoolean()
   enabled!: boolean;
 
-  @ApiProperty({ default: false })
-  @IsBoolean()
-  default!: boolean;
+  @ApiPropertyOptional({
+    enum: ['planner', 'vision'],
+    isArray: true,
+    default: [],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsIn(['planner', 'vision'], { each: true })
+  defaultFor!: Array<'planner' | 'vision'>;
 }
 
 export class AutomationAiProviderDto {

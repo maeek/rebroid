@@ -13,6 +13,7 @@ import type {
 import {
   buildChatRequestBody,
   chatCompletionsEndpoint,
+  correctScreenStateHypothesis,
   type ChatMessage,
 } from '@rebroid/ai-core/harness';
 import type { AutomationCommandContext } from '../commands/automation-command.types';
@@ -24,6 +25,8 @@ import {
 import { optimizeAiScreenshot } from '../ai/automation-ai-screenshot.utils';
 import type {
   AutomationScreenObservation,
+  AutomationVisionContext,
+  AutomationVisionScreenState,
   AutomationVisionLocateInput,
   AutomationVisionLocateOutput,
 } from './automation-vision.types';
@@ -37,6 +40,7 @@ export class AutomationVisionService {
       model: AutomationAiProviderModel;
     },
     deadline?: number,
+    visionContext?: AutomationVisionContext,
   ): Promise<AutomationScreenObservation> {
     this.assertNotCanceled(context.abortSignal);
     const screenshot = await context.adb.screenshot(context.app);
@@ -76,11 +80,12 @@ export class AutomationVisionService {
           status: 'failed' as const,
           truncated: false,
         };
-    const { summary, visionSummaryError } = visionModel
+    const { screenState, summary, visionSummaryError } = visionModel
       ? await this.describeWithVisionModelSafe({
           aiImage,
           context,
           deadline,
+          visionContext,
           ...visionModel,
         })
       : { summary: undefined, visionSummaryError: undefined };
@@ -90,6 +95,7 @@ export class AutomationVisionService {
       aiImage,
       detections: sortDetections(detections).slice(0, 80),
       ...(summary ? { summary } : {}),
+      ...(screenState ? { screenState } : {}),
       ...(visionSummaryError ? { visionSummaryError } : {}),
       uiXml,
     };
@@ -101,23 +107,29 @@ export class AutomationVisionService {
     deadline,
     model,
     provider,
+    visionContext,
   }: {
     aiImage: NonNullable<AutomationScreenObservation['aiImage']>;
     context: Pick<AutomationCommandContext, 'abortSignal'>;
     deadline?: number;
     provider: AutomationAiProvider;
     model: AutomationAiProviderModel;
-  }): Promise<{ summary?: string; visionSummaryError?: string }> {
+    visionContext?: AutomationVisionContext;
+  }): Promise<{
+    screenState?: AutomationVisionScreenState;
+    summary?: string;
+    visionSummaryError?: string;
+  }> {
     try {
-      return {
-        summary: await this.describeWithVisionModel({
-          aiImage,
-          context,
-          deadline,
-          model,
-          provider,
-        }),
-      };
+      const screenState = await this.describeWithVisionModel({
+        aiImage,
+        context,
+        deadline,
+        model,
+        provider,
+        visionContext,
+      });
+      return { screenState, summary: screenState.summary };
     } catch (error) {
       return {
         visionSummaryError: sanitizeAiText(
@@ -326,7 +338,7 @@ export class AutomationVisionService {
 
   summarizeForPlanner(observation: AutomationScreenObservation) {
     const visionState = observation.summary
-      ? `Vision model summary: available.`
+      ? `Vision hypothesis: available${observation.screenState ? `, screenKind=${observation.screenState.screenKind}, confidence=${observation.screenState.confidence}` : ''}.`
       : observation.visionSummaryError
         ? `Vision summary failed: ${observation.visionSummaryError}`
         : 'Vision model summary: unavailable; planner cannot inspect screenshot pixels directly and must rely on UI hierarchy detections/text.';
@@ -341,7 +353,24 @@ export class AutomationVisionService {
         : 'UI hierarchy: unavailable.',
       visionState,
       visibilityWarning,
-      observation.summary ? `Vision summary: ${observation.summary}` : '',
+      observation.screenState
+        ? `Vision hypothesis details: ${JSON.stringify({
+            screenKind: observation.screenState.screenKind,
+            rawScreenKind: observation.screenState.rawScreenKind ?? null,
+            correctionReason: observation.screenState.correctionReason ?? null,
+            settingsAccessVisible:
+              observation.screenState.settingsAccessVisible ?? null,
+            confidence: observation.screenState.confidence,
+            visibleText: observation.screenState.visibleText,
+            controls: observation.screenState.controls,
+            evidence: observation.screenState.evidence,
+            uncertainty: observation.screenState.uncertainty,
+            summary: observation.screenState.summary,
+          })}`
+        : observation.summary
+          ? `Vision hypothesis summary: ${observation.summary}`
+          : '',
+      'Confirmed tool facts: none yet in this observation. Later tool results override conflicting vision hypotheses unless a newer observation proves otherwise.',
       'UI hierarchy detections use normalized bounds and centers in 0..1 screen coordinates:',
       ...observation.detections.slice(0, 40).map((detection, index) =>
         JSON.stringify({
@@ -366,13 +395,15 @@ export class AutomationVisionService {
     deadline,
     model,
     provider,
+    visionContext,
   }: {
     aiImage: NonNullable<AutomationScreenObservation['aiImage']>;
     context: Pick<AutomationCommandContext, 'abortSignal'>;
     deadline?: number;
     model: AutomationAiProviderModel;
     provider: AutomationAiProvider;
-  }) {
+    visionContext?: AutomationVisionContext;
+  }): Promise<AutomationVisionScreenState> {
     const controller = new AbortController();
     const timeoutMs = deadline
       ? Math.max(1, Math.min(30_000, deadline - Date.now()))
@@ -387,8 +418,12 @@ export class AutomationVisionService {
           role: 'system',
           content: [
             'You are a visual screen description model for Android automation.',
-            'Describe visible UI elements, text, app state, and likely tappable targets.',
-            'Return concise factual text only. Do not request tools.',
+            'Return JSON only. Do not request tools.',
+            'Treat app/screen identity as uncertain unless visible text, title, or distinctive controls support it.',
+            'Inspect icons and contextual clues, including gear/settings icons, but report them as candidate controls unless app identity is confirmed.',
+            'A quick-settings shade with brightness slider, Internet/Bluetooth tiles, power button, edit pencil, or status-shade layout is quick_settings, not settings_app. A gear icon there means settings access is visible, not that Settings is open.',
+            'Use screenKind values: home, quick_settings, notification_shade, settings_app, app_screen, unknown.',
+            'Use normalized 0..1 bounds for controls only when visually clear.',
             model.settings.systemPrompt,
           ]
             .filter(Boolean)
@@ -399,7 +434,24 @@ export class AutomationVisionService {
           content: [
             {
               type: 'text',
-              text: 'Describe this Android screen for a separate automation planner. Use normalized positions when useful.',
+              text: [
+                'Describe this Android screen for a separate automation planner.',
+                visionContext
+                  ? `Task context: ${JSON.stringify({
+                      goal: visionContext.goal ?? null,
+                      lastAction: visionContext.lastAction ?? null,
+                      expectedOutcome: visionContext.expectedOutcome ?? null,
+                      confirmedFacts: (
+                        visionContext.confirmedFacts ?? []
+                      ).slice(-8),
+                      latestHypothesis: visionContext.latestHypothesis ?? null,
+                    })}`
+                  : '',
+                'JSON shape: {"screenKind":"home|quick_settings|notification_shade|settings_app|app_screen|unknown","confidence":0.0,"visibleText":["..."],"controls":[{"label":"...","role":"button|icon|text|field|tile|unknown","bounds":{"left":0,"top":0,"width":0,"height":0},"confidence":0.0}],"evidence":["..."],"uncertainty":["..."],"summary":"one concise factual sentence"}.',
+                'If the screen could be multiple things, choose unknown or low confidence and explain uncertainty.',
+              ]
+                .filter(Boolean)
+                .join('\n'),
             },
             { type: 'image_url', image_url: { url: aiImage.dataUrl } },
           ],
@@ -444,7 +496,7 @@ export class AutomationVisionService {
                 .map((part) => part.text)
                 .join('\n')
             : '';
-      return sanitizeAiText(text, 4_000);
+      return parseVisionScreenStateResponse(text);
     } finally {
       context.abortSignal?.removeEventListener('abort', onAbort);
       clearTimeout(timeout);
@@ -471,6 +523,119 @@ type VisionLocateModelMatch = {
     height: number;
   };
 };
+
+const screenKinds = new Set([
+  'home',
+  'quick_settings',
+  'notification_shade',
+  'settings_app',
+  'app_screen',
+  'unknown',
+]);
+
+const parseVisionScreenStateResponse = (
+  text: string,
+): AutomationVisionScreenState => {
+  const parsed = parseJsonObject(extractJsonObject(text));
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return {
+      screenKind: 'unknown',
+      confidence: 0.25,
+      visibleText: [],
+      controls: [],
+      evidence: [],
+      uncertainty: ['Vision model did not return structured JSON.'],
+      summary: sanitizeAiText(text || 'Vision model returned no summary.', 800),
+    };
+  }
+  const record = parsed as Record<string, unknown>;
+  const requestedKind =
+    typeof record.screenKind === 'string' ? record.screenKind : 'unknown';
+  const confidence = clamp01(Number(record.confidence));
+  const controls = Array.isArray(record.controls) ? record.controls : [];
+  const rawScreenKind = screenKinds.has(requestedKind)
+    ? (requestedKind as AutomationVisionScreenState['screenKind'])
+    : 'unknown';
+  const rawSummary =
+    typeof record.summary === 'string'
+      ? sanitizeAiText(record.summary, 800)
+      : sanitizeAiText(text, 800);
+  const baseState: AutomationVisionScreenState = {
+    screenKind: rawScreenKind,
+    confidence,
+    visibleText: stringArray(record.visibleText, 30, 120),
+    controls: controls.flatMap((control) => normalizeVisionControl(control)),
+    evidence: stringArray(record.evidence, 12, 180),
+    uncertainty: stringArray(record.uncertainty, 12, 180),
+    summary: rawSummary,
+  };
+  const correction = correctScreenStateHypothesis(baseState);
+  return {
+    ...baseState,
+    screenKind: correction.screenKind,
+    confidence: correction.confidence,
+    settingsAccessVisible: correction.settingsAccessVisible,
+    ...(correction.screenKind !== rawScreenKind
+      ? {
+          rawScreenKind,
+          rawSummary,
+          correctionReason: correction.correctionReason,
+          uncertainty: [
+            ...baseState.uncertainty,
+            correction.correctionReason ??
+              'Screen kind was corrected by deterministic policy.',
+          ].slice(0, 12),
+        }
+      : {}),
+  };
+};
+
+const normalizeVisionControl = (
+  value: unknown,
+): AutomationVisionScreenState['controls'] => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
+  const record = value as Record<string, unknown>;
+  const label =
+    typeof record.label === 'string' ? sanitizeAiText(record.label, 120) : '';
+  if (!label) return [];
+  const bounds =
+    record.bounds && typeof record.bounds === 'object'
+      ? (record.bounds as Record<string, unknown>)
+      : null;
+  const left = Number(bounds?.left);
+  const top = Number(bounds?.top);
+  const width = Number(bounds?.width);
+  const height = Number(bounds?.height);
+  const normalizedBounds =
+    [left, top, width, height].every(Number.isFinite) &&
+    left >= 0 &&
+    top >= 0 &&
+    width > 0 &&
+    height > 0
+      ? { left, top, width, height }
+      : undefined;
+  return [
+    {
+      label,
+      ...(typeof record.role === 'string'
+        ? { role: sanitizeAiText(record.role, 40) }
+        : {}),
+      ...(normalizedBounds ? { bounds: normalizedBounds } : {}),
+      ...(Number.isFinite(Number(record.confidence))
+        ? { confidence: clamp01(Number(record.confidence)) }
+        : {}),
+    },
+  ];
+};
+
+const stringArray = (value: unknown, maxItems: number, maxLength: number) =>
+  (Array.isArray(value) ? value : [])
+    .filter((item): item is string => typeof item === 'string')
+    .slice(0, maxItems)
+    .map((item) => sanitizeAiText(item, maxLength));
+
+const clamp01 = (value: number) =>
+  Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
 
 const parseVisionLocateResponse = (
   text: string,

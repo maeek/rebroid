@@ -91,7 +91,8 @@ export const createAndroidInputAutomationCommands = () =>
     {
       uses: 'android.swipeNormalized',
       label: 'Swipe normalized',
-      description: 'Swipes between normalized screen coordinates from 0 to 1.',
+      description:
+        'Swipes between normalized screen coordinates from 0 to 1. Tool calls may use nested start/end points or flat startX/startY/endX/endY aliases.',
       requiredPermissions: ['automations:run'],
       schema: swipeNormalizedSchema,
       outputs: [

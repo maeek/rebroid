@@ -19,26 +19,32 @@ export const selectCatalogProvider = (
 
 export const selectCatalogModel = (
   provider: AutomationAiModelCatalogProvider | undefined,
-  modelId: string
+  modelId: string,
+  role?: AiModelRole
 ): AutomationAiModelCatalogProvider['models'][number] | undefined =>
   provider?.models.find(model => model.id === modelId) ??
-  provider?.models.find(model => model.default) ??
+  provider?.models.find(model => (role ? model.defaultFor?.includes(role) : model.defaultFor?.length)) ??
   provider?.models[0]
 
 export const selectCatalogProviderAndModel = (
   catalog: AutomationAiModelCatalogProvider[],
   providerId: string,
-  modelId: string
+  modelId: string,
+  role?: AiModelRole
 ) => {
   const provider = selectCatalogProvider(catalog, providerId)
-  const model = selectCatalogModel(provider, modelId)
+  const model = selectCatalogModel(provider, modelId, role)
 
   return { provider, model }
 }
 
-export const nextCatalogProviderAndModel = (catalog: AutomationAiModelCatalogProvider[], providerId: string) => {
+export const nextCatalogProviderAndModel = (
+  catalog: AutomationAiModelCatalogProvider[],
+  providerId: string,
+  role?: AiModelRole
+) => {
   const provider = selectCatalogProvider(catalog, providerId)
-  const model = selectCatalogModel(provider, '')
+  const model = selectCatalogModel(provider, '', role)
 
   return { provider, model }
 }

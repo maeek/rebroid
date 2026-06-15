@@ -79,18 +79,24 @@ export const createAndroidDeviceShellAutomationCommands = () =>
         const result = await adb.shell(app, command, timeoutMs);
         const stdout = result.stdout.trim();
         const stderr = result.stderr.trim();
+        const helpOutput = looksLikeShellHelp(stdout || stderr);
         const preview = (value: string) =>
           value.length > 800 ? `${value.slice(0, 800)}...` : value;
 
         const summaryParts: string[] =
           result.exitCode === 0
             ? [`Shell command exited with ${result.exitCode}.`]
-            : [
-                `Shell command failed with exit code ${result.exitCode}.`,
-                ...(stdout || stderr
-                  ? [`${stdout || stderr}`]
-                  : ['No command output was returned.']),
-              ];
+            : helpOutput
+              ? [
+                  `Shell command failed with exit code ${result.exitCode}: Android returned command help text.`,
+                  'Revise the command syntax or use a typed tool instead of repeating it.',
+                ]
+              : [
+                  `Shell command failed with exit code ${result.exitCode}.`,
+                  ...(stdout || stderr
+                    ? [`${stdout || stderr}`]
+                    : ['No command output was returned.']),
+                ];
         if (stdout) {
           summaryParts.push(`stdout: ${preview(stdout)}`);
         }
@@ -104,8 +110,27 @@ export const createAndroidDeviceShellAutomationCommands = () =>
             stdout: result.stdout,
             stderr: result.stderr,
             exitCode: result.exitCode,
+            ...(result.exitCode !== 0
+              ? {
+                  failed: true,
+                  failureCategory: helpOutput ? 'syntax_error' : 'failed',
+                  recoveryHint: helpOutput
+                    ? 'Use a typed tool when available, or correct the shell command syntax before retrying.'
+                    : 'Use the latest observation and choose a different confirmed route before retrying.',
+                }
+              : {}),
           },
         };
       },
     },
   ] as unknown as AutomationCommandDefinition[];
+
+const looksLikeShellHelp = (text: string) => {
+  const normalized = text.toLowerCase();
+  return (
+    /\busage:\s/.test(normalized) ||
+    /\bcommands:\s/.test(normalized) ||
+    normalized.includes('print this help text') ||
+    normalized.includes('no service specified; use -l to list')
+  );
+};

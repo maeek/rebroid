@@ -24,12 +24,12 @@ const ToolEventRow = ({ item }: { item: ToolEventRowValue }) => {
       <dt className='min-w-0 font-medium text-muted-foreground'>{item.key}</dt>
       {isPre ? (
         <dd className='min-w-0'>
-          <pre className='overflow-auto whitespace-pre-wrap rounded-sm bg-background/20 p-1 font-mono text-[11px] break-all text-muted-foreground/90'>
+          <pre className='max-h-72 overflow-auto whitespace-pre-wrap rounded-sm bg-background/20 p-1 font-mono text-[11px] break-all text-muted-foreground/90'>
             {valueText}
           </pre>
         </dd>
       ) : (
-        <dd className='min-w-0 overflow-hidden wrap-anywhere'>{valueText}</dd>
+        <dd className='min-w-0 overflow-hidden wrap-anywhere whitespace-pre-wrap'>{valueText}</dd>
       )}
     </div>
   )

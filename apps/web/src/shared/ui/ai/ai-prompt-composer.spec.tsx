@@ -15,7 +15,7 @@ const catalog = [
         id: 'qwen',
         label: 'Qwen',
         roles: ['planner'],
-        default: true,
+        defaultFor: ['planner'],
         enabled: true,
         settings: {}
       }
@@ -30,7 +30,7 @@ const catalog = [
         id: 'fast',
         label: 'Fast',
         roles: ['planner'],
-        default: true,
+        defaultFor: ['planner'],
         enabled: true,
         settings: {}
       }
@@ -125,7 +125,7 @@ describe('AiModelPicker', () => {
           id: 'deep',
           label: 'Deep',
           roles: ['planner'],
-          default: false,
+          defaultFor: [],
           enabled: true,
           settings: {}
         }

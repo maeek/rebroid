@@ -5,6 +5,7 @@ import {
   normalizeProviderForm,
   setDefaultProviderModelAt,
   updateProviderModelAt,
+  type AutomationAiProviderModelRole,
   type ProviderFormState
 } from '@rebroid/ai-core/provider'
 import { useRouter } from 'next/navigation'
@@ -70,10 +71,10 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
   }, [])
 
   const setDefaultModel = useCallback(
-    (index: number) =>
+    (index: number, role: AutomationAiProviderModelRole) =>
       setProvider(current => ({
         ...current,
-        models: setDefaultProviderModelAt(current.models, index)
+        models: setDefaultProviderModelAt(current.models, index, role)
       })),
     []
   )
@@ -104,7 +105,7 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
         ...emptyModel(),
         id: normalizedModelId,
         label: nextLabel,
-        default: provider.models.length === 0
+        defaultFor: provider.models.length === 0 ? (['planner'] as AutomationAiProviderModelRole[]) : []
       }
 
       try {
@@ -214,7 +215,7 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
               ...emptyModel(),
               id: normalizedModelId,
               label: nextLabel,
-              default: current.models.length === 0
+              defaultFor: current.models.length === 0 ? (['planner'] as AutomationAiProviderModelRole[]) : []
             }
           ]
         }

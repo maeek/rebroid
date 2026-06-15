@@ -29,8 +29,9 @@ export class AiProviderHealthService {
   ): Promise<AutomationAiProviderHealthDto> {
     const model = modelId
       ? provider.models.find((item) => item.id === modelId)
-      : (provider.models.find((item) => item.enabled && item.default) ??
-        provider.models.find((item) => item.enabled));
+      : (provider.models.find(
+          (item) => item.enabled && (!role || item.defaultFor.includes(role)),
+        ) ?? provider.models.find((item) => item.enabled));
     if (modelId && !model) {
       throw new NotFoundException(
         `AI model "${modelId}" was not found for provider "${provider.id}".`,

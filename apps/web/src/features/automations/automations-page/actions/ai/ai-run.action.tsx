@@ -45,11 +45,11 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
   const visionCatalog = useMemo(() => catalogByRole(catalog, 'vision'), [catalog])
   const selectedProvider = selectCatalogProvider(plannerCatalog, providerId)
   const modelId = stringValue(input, 'modelId')
-  const selectedModel = selectCatalogModel(selectedProvider, modelId)
+  const selectedModel = selectCatalogModel(selectedProvider, modelId, 'planner')
   const visionProviderId = stringValue(input, 'visionProviderId')
   const selectedVisionProvider = selectCatalogProvider(visionCatalog, visionProviderId)
   const visionModelId = stringValue(input, 'visionModelId')
-  const selectedVisionModel = selectCatalogModel(selectedVisionProvider, visionModelId)
+  const selectedVisionModel = selectCatalogModel(selectedVisionProvider, visionModelId, 'vision')
   const allowedTools = stringArrayValue(input, 'allowedTools')
   const selectableCommands = useMemo(() => selectableAiRunCommands(commands), [commands])
 
@@ -133,7 +133,7 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
             disabled={plannerCatalog.length === 0}
             onValueChange={nextProviderId => {
               const nextProvider = plannerCatalog.find(provider => provider.id === nextProviderId)
-              const nextModel = selectCatalogModel(nextProvider, '')
+              const nextModel = selectCatalogModel(nextProvider, '', 'planner')
               patchInput({
                 providerId: nextProviderId,
                 ...(nextModel ? { modelId: nextModel.id } : {})
@@ -184,7 +184,7 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
             disabled={visionCatalog.length === 0}
             onValueChange={nextProviderId => {
               const nextProvider = visionCatalog.find(provider => provider.id === nextProviderId)
-              const nextModel = selectCatalogModel(nextProvider, '')
+              const nextModel = selectCatalogModel(nextProvider, '', 'vision')
               patchInput({
                 visionProviderId: nextProviderId,
                 ...(nextModel ? { visionModelId: nextModel.id } : {})

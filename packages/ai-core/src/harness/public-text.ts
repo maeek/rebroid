@@ -1,4 +1,20 @@
 const fencedJsonPattern = /^```(?:json)?\s*([\s\S]*?)\s*```$/i;
+const publicPlanLabels = new Map([
+  ["current screen", "Current screen"],
+  ["goal", "Goal"],
+  ["next move", "Next move"],
+  ["next moves", "Next moves"],
+  ["first action", "First action"],
+  ["first action attempted", "First action attempted"],
+  ["attempted", "Attempted"],
+  ["result", "Result"],
+  ["reason", "Reason"],
+  ["remaining", "Remaining"],
+  ["blocked", "Blocked"],
+  ["blocker", "Blocker"],
+  ["replan", "Replan"],
+  ["replan if", "Replan if"],
+]);
 
 export const normalizePublicAiText = (text: string, maxLength = 4_000) => {
   const trimmed = text.trim();
@@ -13,7 +29,18 @@ export const normalizePublicAiText = (text: string, maxLength = 4_000) => {
   const lineMarkdown = jsonLinesToMarkdown(trimmed);
   if (lineMarkdown) return truncate(lineMarkdown, maxLength);
 
+  const planMarkdown = publicPlanLinesToMarkdown(trimmed);
+  if (planMarkdown) return truncate(planMarkdown, maxLength);
+
   return truncate(trimmed, maxLength);
+};
+
+export const isPublicPlanText = (text: string) => {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  if (parsePublicJsonText(trimmed) !== null) return true;
+  if (jsonLinesToMarkdown(trimmed)) return true;
+  return Boolean(publicPlanLinesToMarkdown(trimmed));
 };
 
 const parsePublicJsonText = (text: string) => {
@@ -49,6 +76,43 @@ const looksLikeJson = (text: string) => {
     (trimmed.startsWith("[") && trimmed.endsWith("]"))
   );
 };
+
+const publicPlanLinesToMarkdown = (text: string) => {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length < 2) return "";
+
+  let recognized = 0;
+  const rendered = lines.map((line) => {
+    const parsed = parsePlanLine(line);
+    if (!parsed) return line;
+    recognized += 1;
+    return `- **${parsed.label}:** ${parsed.value}`;
+  });
+
+  if (recognized < 2) return "";
+  return rendered.join("\n");
+};
+
+const parsePlanLine = (line: string) => {
+  const candidate = line.replace(/^[-*]\s+/, "").trim();
+  const boldMatch =
+    candidate.match(/^\*\*([^*:\n]{2,48})\*\*:\s*(.+)$/) ??
+    candidate.match(/^\*\*([^*:\n]{2,48}):\*\*\s*(.+)$/);
+  const plainMatch = candidate.match(/^([A-Za-z][A-Za-z /_-]{1,48}):\s*(.+)$/);
+  const label = (boldMatch?.[1] ?? plainMatch?.[1] ?? "").trim();
+  const value = (boldMatch?.[2] ?? plainMatch?.[2] ?? "").trim();
+  if (!label || !value) return null;
+
+  const normalizedLabel = publicPlanLabels.get(normalizeLabel(label));
+  if (!normalizedLabel) return null;
+  return { label: normalizedLabel, value };
+};
+
+const normalizeLabel = (label: string) =>
+  label.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
 
 const publicJsonToMarkdown = (value: unknown): string => {
   if (typeof value === "string") return value.trim();

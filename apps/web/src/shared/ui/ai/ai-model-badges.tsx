@@ -48,15 +48,22 @@ export const AiModelRoleBadges = ({
 
 export const AiModelStateBadges = ({
   enabled,
-  isDefault,
+  defaultFor,
   className
 }: {
   enabled: boolean
-  isDefault?: boolean
+  defaultFor?: AutomationAiProviderModel['defaultFor']
   className?: string
 }) => (
   <div className={cn('flex flex-wrap items-center gap-1', className)}>
     <Badge variant={enabled ? 'status' : 'secondary'}>{enabled ? 'Enabled' : 'Disabled'}</Badge>
-    {isDefault ? <Badge variant='outline'>Default</Badge> : null}
+    {(defaultFor ?? []).map(role => (
+      <Badge
+        key={role}
+        variant='outline'
+      >
+        {aiModelRoleLabel(role)} default
+      </Badge>
+    ))}
   </div>
 )

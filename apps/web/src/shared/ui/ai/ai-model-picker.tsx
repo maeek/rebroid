@@ -9,6 +9,7 @@ import { controlHoverClassName, controlSurfaceClassName, focusRingClassName } fr
 import { cn } from '@/lib/utils'
 import {
   aiModelDisplayName,
+  aiModelRoleLabel,
   aiProviderKindLabel,
   nextCatalogProviderAndModel
 } from '@/shared/automation/automation-ai-catalog'
@@ -24,7 +25,11 @@ const ModelSelectItem = ({ model }: { model: CatalogModel }) => (
     label={model.label || model.id}
   >
     <span className='min-w-0 truncate'>{model.label || model.id}</span>
-    {model.default ? <span className='ml-2 text-xs text-foreground-muted'>Default</span> : null}
+    {model.defaultFor.length > 0 ? (
+      <span className='ml-2 text-xs text-foreground-muted'>
+        {model.defaultFor.map(aiModelRoleLabel).join('/')} default
+      </span>
+    ) : null}
   </SelectItem>
 )
 
@@ -143,7 +148,7 @@ export const AiModelPicker = ({
                   value={selectedProvider?.id ?? ''}
                   disabled={catalog.length === 0}
                   onValueChange={nextProviderId => {
-                    const nextSelection = nextCatalogProviderAndModel(catalog, nextProviderId)
+                    const nextSelection = nextCatalogProviderAndModel(catalog, nextProviderId, 'planner')
                     onProviderChange(nextProviderId)
                     onModelChange(nextSelection.model?.id ?? '')
                   }}
@@ -197,7 +202,7 @@ export const AiModelPicker = ({
                       value={selectedVisionProvider?.id ?? ''}
                       disabled={visionCatalog.length === 0}
                       onValueChange={nextProviderId => {
-                        const nextSelection = nextCatalogProviderAndModel(visionCatalog, nextProviderId)
+                        const nextSelection = nextCatalogProviderAndModel(visionCatalog, nextProviderId, 'vision')
                         onVisionProviderChange?.(nextProviderId)
                         onVisionModelChange?.(nextSelection.model?.id ?? '')
                       }}

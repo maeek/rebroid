@@ -27,7 +27,7 @@ const provider: AutomationAiProvider = {
       roles: ["planner"],
       settings: {},
       enabled: true,
-      default: true,
+      defaultFor: ["planner"],
     },
     {
       id: " ",
@@ -35,7 +35,7 @@ const provider: AutomationAiProvider = {
       roles: ["planner"],
       settings: {},
       enabled: false,
-      default: false,
+      defaultFor: [],
     },
   ],
 };
@@ -90,21 +90,34 @@ describe("AI provider core", () => {
               keepAlive: null,
             },
             enabled: true,
-            default: true,
+            defaultFor: ["planner"],
           },
         ],
       },
     );
   });
 
-  it("keeps exactly one enabled default model", () => {
+  it("keeps exactly one enabled default model per role", () => {
     const models = [
       normalizeAiModel({ id: "a", label: "a", default: true, enabled: false }),
-      normalizeAiModel({ id: "b", label: "b", default: false, enabled: true }),
+      normalizeAiModel({
+        id: "b",
+        label: "b",
+        roles: ["planner", "vision"],
+        defaultFor: ["planner", "vision"],
+        enabled: true,
+      }),
+      normalizeAiModel({
+        id: "c",
+        label: "c",
+        roles: ["vision"],
+        defaultFor: ["vision"],
+        enabled: true,
+      }),
     ];
     assert.deepEqual(
-      normalizeDefaultModel(models).map((model) => model.default),
-      [false, true],
+      normalizeDefaultModel(models).map((model) => model.defaultFor),
+      [[], ["planner", "vision"], []],
     );
   });
 
@@ -130,7 +143,7 @@ describe("AI provider core", () => {
           keepAlive: null,
         },
         enabled: true,
-        default: false,
+        defaultFor: [],
       },
     );
   });
@@ -152,22 +165,27 @@ describe("AI provider core", () => {
     );
 
     const models = [
-      { ...normalizeProviderForm(provider).models[0], default: true },
+      {
+        ...normalizeProviderForm(provider).models[0],
+        defaultFor: ["planner" as const],
+      },
       {
         ...normalizeProviderForm(provider).models[0],
         id: "other",
-        default: false,
+        defaultFor: [],
       },
     ];
     assert.deepEqual(
-      updateProviderModelAt(models, 1, { default: true }).map(
-        (model) => model.default,
+      updateProviderModelAt(models, 1, { defaultFor: ["planner"] }).map(
+        (model) => model.defaultFor,
       ),
-      [false, true],
+      [[], ["planner"]],
     );
     assert.deepEqual(
-      setDefaultProviderModelAt(models, 1).map((model) => model.default),
-      [false, true],
+      setDefaultProviderModelAt(models, 1, "planner").map(
+        (model) => model.defaultFor,
+      ),
+      [[], ["planner"]],
     );
   });
 });

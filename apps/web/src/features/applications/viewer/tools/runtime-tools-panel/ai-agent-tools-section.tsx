@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { IconPlayerPlay, IconPlayerStop, IconSend, IconTrash } from '@tabler/icons-react'
+import { IconDownload, IconPlayerPlay, IconPlayerStop, IconSend, IconTrash } from '@tabler/icons-react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -10,10 +10,10 @@ import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { AiPromptComposer } from '@/shared/ui/ai/ai-prompt-composer'
 import { ChatTurnView } from './ai-agent-chat-events'
+import { conversationBeforeTurn, terminalRunStatuses, type ChatTurn } from './ai-agent-chat-utils'
 import { aiAgentPromptPresets } from './ai-agent-prompt-presets'
 import { AiAgentSettingsPopover } from './ai-agent-settings-popover'
 import { useAiAgentChatSession } from './use-ai-agent-chat-session'
-import { conversationBeforeTurn, terminalRunStatuses, type ChatTurn } from './ai-agent-chat-utils'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type {
   AiPromptSuggestion,
@@ -111,6 +111,7 @@ export const AiAgentToolsSection = ({
     plannerCatalog,
     prompt,
     queuedTurn,
+    onTranscriptScroll,
     recheckHealth,
     runQueuedTurn,
     selectedModel,
@@ -229,8 +230,63 @@ export const AiAgentToolsSection = ({
     }
   }
 
+  const exportConversation = () => {
+    const currentTurns = turnsRef.current
+    if (currentTurns.length === 0) return
+    try {
+      const exportedAt = new Date().toISOString()
+      const payload = {
+        exportedAt,
+        app: {
+          id: app.id,
+          name: app.name,
+          profileMode: app.profileMode,
+          profileName: app.profileName,
+          status: app.status,
+          lifecycleStage: app.lifecycleStage
+        },
+        planner: selectedProvider && selectedModel ? { provider: selectedProvider, model: selectedModel } : null,
+        vision:
+          selectedVisionProvider && selectedVisionModel
+            ? { provider: selectedVisionProvider, model: selectedVisionModel }
+            : null,
+        sharedMultimodalMode: Boolean(
+          selectedProvider &&
+          selectedModel &&
+          selectedVisionProvider &&
+          selectedVisionModel &&
+          selectedProvider.id === selectedVisionProvider.id &&
+          selectedModel.id === selectedVisionModel.id &&
+          selectedModel.roles.includes('vision')
+        ),
+        timeoutMs: adHocTimeoutMs,
+        turns: currentTurns
+      }
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      const safeAppName =
+        app.name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '') || app.id
+      link.href = url
+      link.download = `rebroid-ai-conversation-${safeAppName}-${exportedAt.replace(/[:.]/g, '-')}.json`
+      document.body.append(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } catch (exportError) {
+      toast({
+        title: 'Could not export conversation',
+        description: exportError instanceof Error ? exportError.message : 'Unknown error',
+        variant: 'destructive'
+      })
+    }
+  }
+
   return (
-    <section className={cn('flex min-h-0 flex-1 flex-col gap-4 p-4 md:h-full', className)}>
+    <section className={cn('flex h-full min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4', className)}>
       {hideHeader ? null : (
         <div className='flex items-center gap-2'>
           <GradientSparklesIcon className='size-4' />
@@ -245,6 +301,7 @@ export const AiAgentToolsSection = ({
         ref={transcriptRef}
         aria-label='AI agent transcript'
         className='flex min-h-0 max-h-[min(46dvh,26rem)] flex-1 flex-col gap-4 overflow-y-auto pb-2 pr-1 motion-safe:scroll-smooth md:max-h-none'
+        onScroll={onTranscriptScroll}
       >
         {isLoadingHistory ? <AiAgentTranscriptSkeleton /> : null}
         {!isLoadingHistory && turns.length === 0 ? <AiAgentEmptyTranscript /> : null}
@@ -264,13 +321,15 @@ export const AiAgentToolsSection = ({
       </div>
 
       <div className='grid shrink-0 gap-3'>
-        <div className='flex flex-wrap gap-2'>
+        <div className='flex flex-wrap gap-2 justify-end'>
           {suggestions.map(preset => (
             <Button
               key={preset.id}
               type='button'
               size='sm'
-              variant='secondary'
+              variant='ghost'
+              className='max-w-[18rem] justify-start overflow-hidden text-ellipsis rounded-full px-3 font-normal text-foreground-muted hover:text-foreground'
+              title={preset.label}
               onClick={() => applyPreset(preset.prompt)}
             >
               {preset.label}
@@ -316,6 +375,16 @@ export const AiAgentToolsSection = ({
                 >
                   <IconPlayerPlay className='size-4' />
                   Run next
+                </Button>
+              ) : null}
+              {turns.length > 0 ? (
+                <Button
+                  type='button'
+                  variant='secondary'
+                  onClick={exportConversation}
+                >
+                  <IconDownload className='size-4' />
+                  Export
                 </Button>
               ) : null}
               {turns.length > 0 ? (

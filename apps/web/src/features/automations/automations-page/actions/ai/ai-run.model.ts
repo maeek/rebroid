@@ -77,9 +77,9 @@ export const buildAiRunCatalogPatch = ({
   const plannerProviders = catalogByRole(catalog, 'planner')
   const visionProviders = catalogByRole(catalog, 'vision')
   const provider = selectCatalogProvider(plannerProviders, providerId)
-  const model = selectCatalogModel(provider, modelId)
+  const model = selectCatalogModel(provider, modelId, 'planner')
   const visionProvider = selectCatalogProvider(visionProviders, visionProviderId)
-  const visionModel = selectCatalogModel(visionProvider, visionModelId)
+  const visionModel = selectCatalogModel(visionProvider, visionModelId, 'vision')
   const patch: Record<string, unknown> = {}
   if (provider && provider.id !== providerId) patch.providerId = provider.id
   if (model && model.id !== modelId) patch.modelId = model.id

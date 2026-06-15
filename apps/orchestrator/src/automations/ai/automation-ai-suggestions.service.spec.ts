@@ -20,7 +20,7 @@ const model: AutomationAiProviderModel = {
   roles: ['planner'],
   settings: {},
   enabled: true,
-  default: true,
+  defaultFor: ['planner'],
 };
 
 describe('AutomationAiSuggestionsService', () => {
@@ -56,6 +56,48 @@ describe('AutomationAiSuggestionsService', () => {
           id: 'open-settings',
           label: 'Open settings',
           prompt: 'Open Android Settings and inspect Display options.',
+        },
+      ],
+    });
+  });
+
+  it('cleans generated labels without debug truncation markers or markdown', async () => {
+    const service = new AutomationAiSuggestionsService(
+      {
+        getProvider: jest.fn(async () => ({ provider, model })),
+      } as never,
+      {
+        chat: jest.fn(async () => ({
+          choices: [
+            {
+              message: {
+                role: 'assistant',
+                content: JSON.stringify({
+                  suggestions: [
+                    {
+                      label:
+                        '**Launch Settings package if present** [truncated 2 chars]',
+                      prompt: 'Launch Android Settings and inspect Display.',
+                    },
+                  ],
+                }),
+              },
+            },
+          ],
+        })),
+      } as never,
+    );
+
+    await expect(
+      service.suggest({
+        ownerUserId: 'owner',
+        targetApplicationId: 'app',
+        appName: 'Android 14',
+      }),
+    ).resolves.toMatchObject({
+      suggestions: [
+        {
+          label: 'Launch Settings package if present',
         },
       ],
     });

@@ -74,7 +74,8 @@ export class AiProviderSettingsService {
     );
     const model = modelId
       ? enabledModels.find((item) => item.id === modelId)
-      : (enabledModels.find((item) => item.default) ?? enabledModels[0]);
+      : (enabledModels.find((item) => item.defaultFor.includes(role)) ??
+        enabledModels[0]);
     if (!model) {
       throw new BadRequestException(
         `No enabled ${role} AI model is configured for provider "${provider.id}".`,

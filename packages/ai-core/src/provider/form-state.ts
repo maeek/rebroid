@@ -22,7 +22,7 @@ export const emptyModel = (): AutomationAiProviderModel => ({
   roles: ["planner" as const],
   settings: {},
   enabled: true,
-  default: false,
+  defaultFor: [],
 });
 
 export const normalizeProviderForm = (
@@ -41,6 +41,11 @@ export const normalizeProviderForm = (
       roles: Array.isArray(model.roles)
         ? (model.roles as AutomationAiProviderModelRole[])
         : (["planner"] as AutomationAiProviderModelRole[]),
+      defaultFor: Array.isArray(model.defaultFor)
+        ? (model.defaultFor as AutomationAiProviderModelRole[]).filter((role) =>
+            (model.roles ?? []).includes(role),
+          )
+        : [],
       settings: model.settings ?? {},
     }))
     .filter((model) => model.id.length > 0),
@@ -61,16 +66,35 @@ export const updateProviderModelAt = (
   patch: Partial<AutomationAiProviderModel>,
 ) =>
   models.map((model, modelIndex) => {
-    if (patch.default && modelIndex !== index)
-      return { ...model, default: false };
-    return modelIndex === index ? { ...model, ...patch } : model;
+    const nextModel = modelIndex === index ? { ...model, ...patch } : model;
+    if (patch.roles) {
+      nextModel.defaultFor = nextModel.defaultFor.filter((role) =>
+        patch.roles?.includes(role),
+      );
+    }
+    if (!patch.defaultFor) return nextModel;
+    return {
+      ...nextModel,
+      defaultFor:
+        modelIndex === index
+          ? patch.defaultFor
+          : nextModel.defaultFor.filter(
+              (role) => !patch.defaultFor?.includes(role),
+            ),
+    };
   });
 
 export const setDefaultProviderModelAt = (
   models: AutomationAiProviderModel[],
   index: number,
+  role: AutomationAiProviderModelRole,
 ) =>
   models.map((model, modelIndex) => ({
     ...model,
-    default: modelIndex === index,
+    defaultFor:
+      modelIndex === index
+        ? Array.from(new Set([...model.defaultFor, role])).filter((item) =>
+            model.roles.includes(item),
+          )
+        : model.defaultFor.filter((item) => item !== role),
   }));

@@ -6,5 +6,5 @@ export const selectAiDraftProviderAndModel = (
   providerId: string,
   modelId: string
 ) => {
-  return selectCatalogProviderAndModel(catalog, providerId, modelId)
+  return selectCatalogProviderAndModel(catalog, providerId, modelId, 'planner')
 }

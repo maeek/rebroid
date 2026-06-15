@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Section } from '@/components/ui/section'
 import { AiProviderKindBadge } from '@/shared/ui/ai/ai-model-badges'
+import { aiModelRoleLabel } from '@/shared/automation/automation-ai-catalog'
 import { DataGrid } from '@/shared/ui/data-grid'
 import { ProviderHealthBadge } from './provider-health-badge'
 import { ProviderStatusBadge } from './provider-status-badge'
@@ -89,7 +90,9 @@ export const ProvidersGrid = ({
                   variant={model.enabled ? 'outline' : 'secondary'}
                   className='max-w-full truncate'
                 >
-                  {model.default ? `${model.label} default` : model.label}
+                  {model.defaultFor.length > 0
+                    ? `${model.label} ${model.defaultFor.map(aiModelRoleLabel).join('/')} default`
+                    : model.label}
                 </Badge>
               ))}
               {row.original.models.length > 3 ? (

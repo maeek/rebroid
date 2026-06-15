@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { IconRefresh } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -26,6 +26,68 @@ const healthCache = new Map<string, AutomationAiProviderHealth>()
 
 const healthCacheKey = (providerId: string, modelId?: string) => `${providerId}:${modelId ?? '__provider__'}`
 
+type HealthCheckActivity = 'auto' | 'manual'
+
+const useProviderHealth = (provider: AutomationAiProvider, selectedModelId?: string) => {
+  const cacheKey = healthCacheKey(provider.id, selectedModelId)
+  const currentCacheKeyRef = useRef(cacheKey)
+  const activeCheckKeyRef = useRef<string | null>(null)
+  const [health, setHealth] = useState<AutomationAiProviderHealth | null>(() => healthCache.get(cacheKey) ?? null)
+  const [checkingActivity, setCheckingActivity] = useState<HealthCheckActivity | null>(null)
+
+  currentCacheKeyRef.current = cacheKey
+
+  const setCachedHealth = useCallback(
+    (nextHealth: AutomationAiProviderHealth) => {
+      healthCache.set(cacheKey, nextHealth)
+      if (currentCacheKeyRef.current === cacheKey) setHealth(nextHealth)
+    },
+    [cacheKey]
+  )
+
+  const checkHealth = useCallback(
+    async (activity: HealthCheckActivity = 'manual') => {
+      if (activeCheckKeyRef.current === cacheKey) {
+        if (activity === 'manual' && currentCacheKeyRef.current === cacheKey) setCheckingActivity('manual')
+        return
+      }
+
+      activeCheckKeyRef.current = cacheKey
+      if (currentCacheKeyRef.current === cacheKey) setCheckingActivity(activity)
+
+      try {
+        const { checkAutomationAiProviderHealthAction } = await import('@/server/orchestrator/settings/actions')
+        const nextHealth = await checkAutomationAiProviderHealthAction(provider.id, selectedModelId)
+        setCachedHealth(nextHealth)
+      } catch (error) {
+        setCachedHealth({
+          providerId: provider.id,
+          ...(selectedModelId ? { modelId: selectedModelId } : {}),
+          status: 'error',
+          message: error instanceof Error ? error.message : 'Health check failed.',
+          checkedAt: new Date().toISOString()
+        })
+      } finally {
+        if (activeCheckKeyRef.current === cacheKey) activeCheckKeyRef.current = null
+        if (currentCacheKeyRef.current === cacheKey) setCheckingActivity(null)
+      }
+    },
+    [cacheKey, provider.id, selectedModelId, setCachedHealth]
+  )
+
+  useEffect(() => {
+    setHealth(healthCache.get(cacheKey) ?? null)
+    void checkHealth('auto')
+  }, [cacheKey, checkHealth])
+
+  return {
+    checkHealth,
+    health,
+    isChecking: checkingActivity !== null,
+    isManualChecking: checkingActivity === 'manual'
+  }
+}
+
 export const ProviderHealthBadge = ({
   provider,
   modelId,
@@ -37,39 +99,9 @@ export const ProviderHealthBadge = ({
 }) => {
   const selectedModelId =
     modelId ??
-    provider.models.find(model => model.enabled && model.default)?.id ??
+    provider.models.find(model => model.enabled && model.defaultFor.length > 0)?.id ??
     provider.models.find(model => model.enabled)?.id
-  const cacheKey = healthCacheKey(provider.id, selectedModelId)
-  const [health, setHealth] = useState<AutomationAiProviderHealth | null>(() => healthCache.get(cacheKey) ?? null)
-  const [isChecking, setIsChecking] = useState(false)
-
-  const checkHealth = async () => {
-    setIsChecking(true)
-    try {
-      const { checkAutomationAiProviderHealthAction } = await import('@/server/orchestrator/settings/actions')
-      const nextHealth = await checkAutomationAiProviderHealthAction(provider.id, selectedModelId)
-      healthCache.set(cacheKey, nextHealth)
-      setHealth(nextHealth)
-    } catch (error) {
-      const nextHealth = {
-        providerId: provider.id,
-        ...(selectedModelId ? { modelId: selectedModelId } : {}),
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Health check failed.',
-        checkedAt: new Date().toISOString()
-      } satisfies AutomationAiProviderHealth
-      healthCache.set(cacheKey, nextHealth)
-      setHealth(nextHealth)
-    } finally {
-      setIsChecking(false)
-    }
-  }
-
-  useEffect(() => {
-    setHealth(healthCache.get(cacheKey) ?? null)
-    void checkHealth()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [provider.id, selectedModelId])
+  const { checkHealth, health, isChecking, isManualChecking } = useProviderHealth(provider, selectedModelId)
 
   return (
     <div className={cn('flex min-w-0 items-center gap-2', compact && 'text-xs')}>
@@ -83,11 +115,11 @@ export const ProviderHealthBadge = ({
           variant='ghost'
           size='icon'
           className='size-7 shrink-0'
-          disabled={isChecking}
+          disabled={isManualChecking}
           aria-label='Check AI provider health'
-          onClick={() => void checkHealth()}
+          onClick={() => void checkHealth('manual')}
         >
-          <IconRefresh className={cn('size-4', isChecking && 'animate-spin')} />
+          <IconRefresh className={cn('size-4', isManualChecking && 'animate-spin')} />
         </Button>
       )}
     </div>
@@ -96,39 +128,9 @@ export const ProviderHealthBadge = ({
 
 export const ProviderHealthBanner = ({ provider }: { provider: AutomationAiProvider }) => {
   const selectedModelId =
-    provider.models.find(model => model.enabled && model.default)?.id ??
+    provider.models.find(model => model.enabled && model.defaultFor.length > 0)?.id ??
     provider.models.find(model => model.enabled)?.id
-  const cacheKey = healthCacheKey(provider.id, selectedModelId)
-  const [health, setHealth] = useState<AutomationAiProviderHealth | null>(() => healthCache.get(cacheKey) ?? null)
-  const [isChecking, setIsChecking] = useState(false)
-
-  const checkHealth = async () => {
-    setIsChecking(true)
-    try {
-      const { checkAutomationAiProviderHealthAction } = await import('@/server/orchestrator/settings/actions')
-      const nextHealth = await checkAutomationAiProviderHealthAction(provider.id, selectedModelId)
-      healthCache.set(cacheKey, nextHealth)
-      setHealth(nextHealth)
-    } catch (error) {
-      const nextHealth = {
-        providerId: provider.id,
-        ...(selectedModelId ? { modelId: selectedModelId } : {}),
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Health check failed.',
-        checkedAt: new Date().toISOString()
-      } satisfies AutomationAiProviderHealth
-      healthCache.set(cacheKey, nextHealth)
-      setHealth(nextHealth)
-    } finally {
-      setIsChecking(false)
-    }
-  }
-
-  useEffect(() => {
-    setHealth(healthCache.get(cacheKey) ?? null)
-    void checkHealth()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [provider.id, selectedModelId])
+  const { checkHealth, health, isChecking, isManualChecking } = useProviderHealth(provider, selectedModelId)
 
   return (
     <div
@@ -149,11 +151,11 @@ export const ProviderHealthBanner = ({ provider }: { provider: AutomationAiProvi
         variant='ghost'
         size='icon'
         className='size-7 shrink-0'
-        disabled={isChecking}
+        disabled={isManualChecking}
         aria-label='Check AI provider health'
-        onClick={() => void checkHealth()}
+        onClick={() => void checkHealth('manual')}
       >
-        <IconRefresh className={cn('size-4', isChecking && 'animate-spin')} />
+        <IconRefresh className={cn('size-4', isManualChecking && 'animate-spin')} />
       </Button>
     </div>
   )

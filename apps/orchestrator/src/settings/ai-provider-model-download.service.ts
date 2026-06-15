@@ -248,7 +248,7 @@ export class AiProviderModelDownloadService {
       id: modelId,
       label: text(label) || provider.models[existingIndex]?.label || modelId,
       enabled: true,
-      default: provider.models.length === 0,
+      defaultFor: provider.models.length === 0 ? ['planner'] : [],
       settings: provider.models[existingIndex]?.settings ?? {},
     });
     const nextModels = [...provider.models];

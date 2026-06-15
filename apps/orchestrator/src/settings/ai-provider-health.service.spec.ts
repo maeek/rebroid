@@ -1,7 +1,9 @@
 import { AiProviderHealthService } from './ai-provider-health.service';
 import type { AutomationAiProvider } from '@rebroid/ai-core/provider';
 
-const provider = (override: Partial<AutomationAiProvider> = {}): AutomationAiProvider => ({
+const provider = (
+  override: Partial<AutomationAiProvider> = {},
+): AutomationAiProvider => ({
   id: 'local',
   label: 'Local',
   kind: 'openai-compatible',
@@ -24,7 +26,7 @@ const provider = (override: Partial<AutomationAiProvider> = {}): AutomationAiPro
         keepAlive: null,
       },
       enabled: true,
-      default: true,
+      defaultFor: ['planner'],
     },
   ],
   ...override,

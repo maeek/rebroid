@@ -61,7 +61,7 @@ export const AiDraftDialog = ({
   onSubmitClarification: () => void
 }) => {
   const selectedProvider = catalog.find(provider => provider.id === providerId) ?? catalog[0]
-  const selectedModel = selectCatalogModel(selectedProvider, modelId)
+  const selectedModel = selectCatalogModel(selectedProvider, modelId, 'planner')
   const running = draftStatus === 'running'
   const needsInput = draftStatus === 'needs-input'
   const completed = draftStatus === 'completed' && hasDraftResult

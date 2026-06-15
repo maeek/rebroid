@@ -29,6 +29,11 @@ import { useAiAgentModelSettings } from './use-ai-agent-model-settings'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { AutomationRun, AutomationRunEvent } from '@/server/orchestrator/automations/types'
 
+const transcriptAutoScrollThresholdPx = 80
+
+const isTranscriptNearBottom = (element: HTMLDivElement) =>
+  element.scrollHeight - element.scrollTop - element.clientHeight <= transcriptAutoScrollThresholdPx
+
 export const useAiAgentChatSession = ({
   app,
   onRunStarted
@@ -44,6 +49,7 @@ export const useAiAgentChatSession = ({
   const [isLoadingHistory, setIsLoadingHistory] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const transcriptRef = useRef<HTMLDivElement | null>(null)
+  const transcriptShouldStickToBottomRef = useRef(true)
   const runSequencesRef = useRef(new Map<string, number>())
   const cancelingRunIdRef = useRef<string | null>(null)
   const conversationVersionRef = useRef(0)
@@ -107,8 +113,16 @@ export const useAiAgentChatSession = ({
     }
   }, [app.id])
 
+  const onTranscriptScroll = useCallback(() => {
+    const transcript = transcriptRef.current
+    transcriptShouldStickToBottomRef.current = transcript ? isTranscriptNearBottom(transcript) : true
+  }, [])
+
   useEffect(() => {
-    transcriptRef.current?.scrollTo({ top: transcriptRef.current.scrollHeight, behavior: 'smooth' })
+    const transcript = transcriptRef.current
+    if (!transcript || !transcriptShouldStickToBottomRef.current) return
+    transcript.scrollTo({ top: transcript.scrollHeight, behavior: 'smooth' })
+    transcriptShouldStickToBottomRef.current = true
   }, [turns])
 
   const appendRunEvents = useCallback((runId: string, nextEvents: AutomationRunEvent[]) => {
@@ -308,6 +322,7 @@ export const useAiAgentChatSession = ({
     showCancelRun,
     submit,
     timeoutMinutesInput,
+    onTranscriptScroll,
     transcriptRef,
     turns,
     visionCatalog

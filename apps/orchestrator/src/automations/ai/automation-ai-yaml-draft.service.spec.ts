@@ -43,7 +43,7 @@ const model: AutomationAiProviderModel = {
     keepAlive: null,
   },
   enabled: true,
-  default: true,
+  defaultFor: ['planner'],
 };
 
 const validYaml = `

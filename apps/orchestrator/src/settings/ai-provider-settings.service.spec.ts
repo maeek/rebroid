@@ -33,7 +33,7 @@ const createSettings = (): StoredOrchestratorSettings => ({
             keepAlive: null,
           },
           enabled: true,
-          default: true,
+          defaultFor: ['planner'],
         },
         {
           id: 'vision',
@@ -50,7 +50,7 @@ const createSettings = (): StoredOrchestratorSettings => ({
             keepAlive: null,
           },
           enabled: true,
-          default: false,
+          defaultFor: [],
         },
       ],
     },

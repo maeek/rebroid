@@ -1,5 +1,5 @@
 import { defaultAiProviders, MASKED_API_KEY } from "./defaults";
-import { normalizeDefaultModel } from "./default-model";
+import { modelRoles, normalizeDefaultModel } from "./default-model";
 import {
   nullableInteger,
   nullableNumber,
@@ -12,8 +12,6 @@ import {
   type AutomationAiProviderModel,
   type AutomationAiProviderModelRole,
 } from "./types";
-
-const modelRoles: AutomationAiProviderModelRole[] = ["planner", "vision"];
 
 export const normalizeAiProviders = (value: unknown) => {
   if (!Array.isArray(value)) {
@@ -114,14 +112,39 @@ export const normalizeAiModel = (
       "AI provider model has invalid identity.",
     );
   }
+  const roles = normalizeAiModelRoles(model.roles);
   return {
     id,
     label,
-    roles: normalizeAiModelRoles(model.roles),
+    roles,
     settings: normalizeAiModelSettings(model.settings),
     enabled: model.enabled !== false,
-    default: model.default === true,
+    defaultFor: normalizeAiModelDefaultFor(model.defaultFor, roles, model),
   };
+};
+
+export const normalizeAiModelDefaultFor = (
+  rawDefaultFor: unknown,
+  roles: AutomationAiProviderModelRole[],
+  rawModel?: Record<string, unknown>,
+): AutomationAiProviderModelRole[] => {
+  if (Array.isArray(rawDefaultFor)) {
+    return Array.from(
+      new Set(
+        rawDefaultFor.filter(
+          (role): role is AutomationAiProviderModelRole =>
+            roles.includes(role as AutomationAiProviderModelRole) &&
+            modelRoles.includes(role as AutomationAiProviderModelRole),
+        ),
+      ),
+    );
+  }
+
+  if (rawModel?.default === true) {
+    return roles;
+  }
+
+  return [];
 };
 
 export const normalizeAiModelRoles = (

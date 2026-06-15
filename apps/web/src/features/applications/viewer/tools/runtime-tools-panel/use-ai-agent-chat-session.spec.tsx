@@ -74,7 +74,14 @@ describe('useAiAgentChatSession', () => {
       modelIsValid: true,
       plannerCatalog: [],
       recheckHealth: jest.fn<() => Promise<void>>(() => Promise.resolve()),
-      selectedModel: { id: 'model_1', label: 'Model', roles: ['planner'], enabled: true, default: true, settings: {} },
+      selectedModel: {
+        id: 'model_1',
+        label: 'Model',
+        roles: ['planner'],
+        enabled: true,
+        defaultFor: ['planner'],
+        settings: {}
+      },
       selectedProvider: { id: 'provider_1', label: 'Provider', kind: 'ollama', models: [] },
       selectedVisionModel: undefined,
       selectedVisionProvider: undefined,
@@ -116,4 +123,76 @@ describe('useAiAgentChatSession', () => {
 
     expect(result.current.isClearing).toBe(false)
   })
+
+  it('keeps transcript position when history arrives after the user scrolled up', async () => {
+    let resolveHistory: (
+      value: Awaited<ReturnType<typeof actions.listAdHocAiAutomationRunHistoryAction>>
+    ) => void = () => undefined
+    jest.mocked(actions.listAdHocAiAutomationRunHistoryAction).mockReturnValue(
+      new Promise(resolve => {
+        resolveHistory = resolve
+      })
+    )
+    const transcript = createTranscriptElement({ scrollTop: 700 })
+
+    const { result } = renderHook(() => useAiAgentChatSession({ app }))
+
+    act(() => {
+      ;(result.current.transcriptRef as { current: HTMLDivElement | null }).current = transcript.element
+      result.current.onTranscriptScroll()
+    })
+
+    await act(async () => {
+      resolveHistory([{ run, events: [userEvent] }])
+    })
+
+    await waitFor(() => expect(result.current.turns).toHaveLength(1))
+    expect(transcript.scrollTo).not.toHaveBeenCalled()
+  })
+
+  it('sticks to the transcript bottom when history arrives near the bottom', async () => {
+    let resolveHistory: (
+      value: Awaited<ReturnType<typeof actions.listAdHocAiAutomationRunHistoryAction>>
+    ) => void = () => undefined
+    jest.mocked(actions.listAdHocAiAutomationRunHistoryAction).mockReturnValue(
+      new Promise(resolve => {
+        resolveHistory = resolve
+      })
+    )
+    const transcript = createTranscriptElement({ scrollTop: 850 })
+
+    const { result } = renderHook(() => useAiAgentChatSession({ app }))
+
+    act(() => {
+      ;(result.current.transcriptRef as { current: HTMLDivElement | null }).current = transcript.element
+      result.current.onTranscriptScroll()
+    })
+
+    await act(async () => {
+      resolveHistory([{ run, events: [userEvent] }])
+    })
+
+    await waitFor(() => expect(result.current.turns).toHaveLength(1))
+    expect(transcript.scrollTo).toHaveBeenCalledWith({ top: 1000, behavior: 'smooth' })
+  })
 })
+
+const createTranscriptElement = ({
+  clientHeight = 100,
+  scrollHeight = 1000,
+  scrollTop
+}: {
+  clientHeight?: number
+  scrollHeight?: number
+  scrollTop: number
+}) => {
+  const element = document.createElement('div')
+  Object.defineProperty(element, 'clientHeight', { configurable: true, value: clientHeight })
+  Object.defineProperty(element, 'scrollHeight', { configurable: true, value: scrollHeight })
+  element.scrollTop = scrollTop
+  const scrollTo = jest.fn((options?: ScrollToOptions) => {
+    if (typeof options?.top === 'number') element.scrollTop = options.top
+  })
+  Object.defineProperty(element, 'scrollTo', { configurable: true, value: scrollTo })
+  return { element, scrollTo }
+}

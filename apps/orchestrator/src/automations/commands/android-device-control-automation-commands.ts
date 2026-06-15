@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  emptyInputSchema,
   rotateSchema,
   screenshotSchema,
   viewerCommandSchema,
@@ -35,6 +36,50 @@ export const createAndroidDeviceControlAutomationCommands = () =>
       ) => {
         await display.viewerControl(app, command);
         return { summary: `Sent ${command}.` };
+      },
+    },
+    {
+      uses: 'android.expandNotifications',
+      label: 'Expand notifications',
+      description:
+        'Opens the Android notification shade using the native status bar/viewer control. Prefer this over swipe gestures for notification shade access.',
+      requiredPermissions: ['automations:run'],
+      schema: emptyInputSchema,
+      execute: async (
+        _input: Record<string, never>,
+        { app, display }: AutomationCommandContext,
+      ) => {
+        await display.viewerControl(app, 'expand-notifications');
+        return { summary: 'Expanded notification shade.' };
+      },
+    },
+    {
+      uses: 'android.expandQuickSettings',
+      label: 'Expand quick settings',
+      description:
+        'Opens the Android quick settings panel using the native status bar/viewer control. Use this for quick settings tiles instead of swipeNormalized.',
+      requiredPermissions: ['automations:run'],
+      schema: emptyInputSchema,
+      execute: async (
+        _input: Record<string, never>,
+        { app, display }: AutomationCommandContext,
+      ) => {
+        await display.viewerControl(app, 'expand-settings');
+        return { summary: 'Expanded quick settings.' };
+      },
+    },
+    {
+      uses: 'android.collapsePanels',
+      label: 'Collapse panels',
+      description: 'Closes the Android notification or quick settings panel.',
+      requiredPermissions: ['automations:run'],
+      schema: emptyInputSchema,
+      execute: async (
+        _input: Record<string, never>,
+        { app, display }: AutomationCommandContext,
+      ) => {
+        await display.viewerControl(app, 'collapse-panels');
+        return { summary: 'Collapsed system panels.' };
       },
     },
     {

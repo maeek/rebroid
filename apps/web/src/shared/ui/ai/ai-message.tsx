@@ -22,7 +22,7 @@ export const AiAssistantBlock = ({
   children: ReactNode
   className?: string
 }) => (
-  <div className={cn('grid gap-2 rounded-lg border border-border/55 bg-surface-band/24 p-3', className)}>
+  <div className={cn('grid gap-2 p-3', className)}>
     <div className='flex min-w-0 flex-wrap items-center justify-between gap-2'>
       <div className='flex min-w-0 items-center gap-2'>
         <GradientSparklesIcon className='size-4 shrink-0' />
@@ -61,7 +61,7 @@ const markdownComponents: Components = {
   ol: ({ children }) => <ol className='my-1 list-decimal space-y-1 pl-5'>{children}</ol>,
   p: ({ children }) => <p className='my-1 first:mt-0 last:mb-0'>{children}</p>,
   pre: ({ children }) => (
-    <pre className='my-2 overflow-auto rounded-md bg-background/30 p-2 font-mono text-xs'>{children}</pre>
+    <pre className='my-2 max-h-72 overflow-auto rounded-md bg-background/30 p-2 font-mono text-xs'>{children}</pre>
   ),
   ul: ({ children }) => <ul className='my-1 list-disc space-y-1 pl-5'>{children}</ul>
 }

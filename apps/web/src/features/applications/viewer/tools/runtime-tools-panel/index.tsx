@@ -258,7 +258,7 @@ export const RuntimeToolsPanel = () => {
           className={cn(
             'min-h-0 py-4',
             selectedToolId === 'ai-agent'
-              ? 'flex h-[min(70dvh,36rem)] flex-1 flex-col overflow-hidden md:h-[calc(100dvh-18rem)] md:max-h-[48rem] lg:h-full lg:max-h-none'
+              ? 'flex h-[min(70dvh,36rem)] max-h-[36rem] flex-1 flex-col overflow-hidden md:h-[calc(100dvh-18rem)] md:max-h-[48rem] lg:h-[calc(100dvh-16rem)] lg:max-h-[52rem]'
               : 'overflow-auto'
           )}
         >

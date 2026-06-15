@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, jest } from '@jest/globals'
 import { ProviderHealthBadge } from './provider-health-badge'
 import type { AutomationAiProvider, AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
@@ -24,7 +24,7 @@ const provider = (id: string): AutomationAiProvider =>
         id: 'qwen',
         label: 'Qwen',
         enabled: true,
-        default: true,
+        defaultFor: ['planner'],
         roles: ['planner'],
         settings: {}
       }
@@ -76,6 +76,40 @@ describe('ProviderHealthBadge', () => {
 
     expect(screen.getByText('Online')).toBeTruthy()
     expect(screen.queryByText('Checking')).toBeNull()
+    const refreshButton = screen.getByRole('button', { name: 'Check AI provider health' })
+    expect(refreshButton).not.toHaveProperty('disabled', true)
+    expect(refreshButton.querySelector('svg')?.getAttribute('class')).not.toContain('animate-spin')
+
+    await act(async () => {
+      resolveRefresh(okHealth(providerId))
+    })
+  })
+
+  it('spins the refresh icon only for a manual health check', async () => {
+    const providerId = `provider_${crypto.randomUUID()}`
+    jest.mocked(actions.checkAutomationAiProviderHealthAction).mockResolvedValueOnce(okHealth(providerId))
+
+    render(
+      <ProviderHealthBadge
+        provider={provider(providerId)}
+        modelId='qwen'
+      />
+    )
+
+    await waitFor(() => expect(screen.getByText('Online')).toBeTruthy())
+
+    let resolveRefresh: (health: AutomationAiProviderHealth) => void = () => undefined
+    jest.mocked(actions.checkAutomationAiProviderHealthAction).mockReturnValueOnce(
+      new Promise<AutomationAiProviderHealth>(resolve => {
+        resolveRefresh = resolve
+      })
+    )
+
+    const refreshButton = screen.getByRole('button', { name: 'Check AI provider health' })
+    fireEvent.click(refreshButton)
+
+    await waitFor(() => expect(refreshButton).toHaveProperty('disabled', true))
+    expect(refreshButton.querySelector('svg')?.getAttribute('class')).toContain('animate-spin')
 
     await act(async () => {
       resolveRefresh(okHealth(providerId))

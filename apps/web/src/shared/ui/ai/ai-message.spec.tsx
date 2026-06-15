@@ -24,4 +24,21 @@ describe('AiAssistantMarkdownText', () => {
     expect(screen.getByText(/Home/)).toBeTruthy()
     expect(screen.queryByText(/"Current screen"/)).toBeNull()
   })
+
+  it('renders plain public plan labels as markdown rows', () => {
+    render(
+      <AiAssistantMarkdownText
+        text={[
+          'Current screen: Home screen with search bar',
+          'Goal: Turn on dark mode theme',
+          'Next moves: Locate Settings using typed tools'
+        ].join('\n')}
+      />
+    )
+
+    expect(screen.getByText('Current screen:')).toBeTruthy()
+    expect(screen.getByText('Goal:')).toBeTruthy()
+    expect(screen.getByText('Next moves:')).toBeTruthy()
+    expect(screen.queryByText(/\*\*Current screen:\*\*/)).toBeNull()
+  })
 })

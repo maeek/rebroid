@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   listPackagesSchema,
+  openSystemSettingsSchema,
   packageNameSchema,
   textWaitSchema,
 } from './android-automation-command-schemas';
@@ -97,6 +98,62 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
       },
     },
     {
+      uses: 'android.openSystemSettings',
+      label: 'Open Android Settings',
+      description:
+        'Opens the Android system Settings main screen using typed, internally managed Android intent routes.',
+      requiredPermissions: ['automations:run-adb-shell'],
+      schema: openSystemSettingsSchema,
+      outputs: [
+        {
+          key: 'opened',
+          label: 'Opened',
+          type: 'boolean',
+          description: 'Whether Android accepted a Settings launch route.',
+        },
+        {
+          key: 'attempts',
+          label: 'Attempts',
+          type: 'array',
+          description: 'Sanitized Settings launch routes attempted.',
+        },
+      ],
+      execute: async (
+        { timeoutMs }: z.infer<typeof openSystemSettingsSchema>,
+        { app, adb }: AutomationCommandContext,
+      ) => {
+        const attempts = [];
+        for (const command of [
+          'cmd activity start-activity -a android.settings.SETTINGS',
+          'am start -a android.settings.SETTINGS',
+        ]) {
+          const result = await adb.shell(app, command, timeoutMs);
+          attempts.push({
+            command,
+            exitCode: result.exitCode,
+            output: compactShellOutput(result.stdout, result.stderr),
+          });
+          if (result.exitCode === 0) {
+            return {
+              summary: 'Opened Android Settings.',
+              data: { opened: true, screen: 'main', attempts },
+            };
+          }
+        }
+        return {
+          summary: 'Android Settings could not be opened by typed routes.',
+          data: {
+            opened: false,
+            screen: 'main',
+            attempts,
+            failureCategory: 'not_found',
+            recoveryHint:
+              'Use package discovery, quick settings, visible UI navigation, or ask the user for the available settings surface.',
+          },
+        };
+      },
+    },
+    {
       uses: 'android.launchPackage',
       label: 'Launch package',
       description:
@@ -127,21 +184,20 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
         { packageName, timeoutMs }: z.infer<typeof packageNameSchema>,
         { app, adb }: AutomationCommandContext,
       ) => {
-        const pathResult = await adb.shell(
+        const installCheck = await checkPackageInstalled(
           app,
-          `pm path ${packageName}`,
+          adb,
+          packageName,
           timeoutMs,
         );
-        if (pathResult.exitCode !== 0 || !pathResult.stdout.trim()) {
+        if (!installCheck.installed) {
           return {
             summary: `Package ${packageName} is not installed. Ask the user to install it or choose another route.`,
             data: {
               packageName,
               installed: false,
               launched: false,
-              reason:
-                (pathResult.stderr || pathResult.stdout).trim() ||
-                'Package not found.',
+              reason: installCheck.reason,
             },
           };
         }
@@ -151,11 +207,27 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
           `monkey -p ${packageName} -c android.intent.category.LAUNCHER 1`,
           timeoutMs,
         );
-        const output = [launchResult.stdout, launchResult.stderr]
+        let output = [launchResult.stdout, launchResult.stderr]
           .map((part) => part.trim())
           .filter(Boolean)
           .join('\n');
-        const launched = launchResult.exitCode === 0;
+        let launched = launchResult.exitCode === 0;
+        let exitCode = launchResult.exitCode;
+
+        if (!launched && packageName === 'com.android.settings') {
+          const settingsResult = await adb.shell(
+            app,
+            'cmd activity start-activity -a android.settings.SETTINGS',
+            timeoutMs,
+          );
+          output = [settingsResult.stdout, settingsResult.stderr]
+            .map((part) => part.trim())
+            .filter(Boolean)
+            .join('\n');
+          launched = settingsResult.exitCode === 0;
+          exitCode = settingsResult.exitCode;
+        }
+
         return {
           summary: launched
             ? `Launched ${packageName}.`
@@ -164,7 +236,7 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
             packageName,
             installed: true,
             launched,
-            exitCode: launchResult.exitCode,
+            exitCode,
             reason: launched ? null : output || 'Launcher activity failed.',
           },
         };
@@ -230,3 +302,57 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
       },
     },
   ] as unknown as AutomationCommandDefinition[];
+
+const checkPackageInstalled = async (
+  app: AutomationCommandContext['app'],
+  adb: AutomationCommandContext['adb'],
+  packageName: string,
+  timeoutMs: number,
+) => {
+  const pathResult = await adb.shell(app, `pm path ${packageName}`, timeoutMs);
+  if (pathResult.exitCode === 0 && pathResult.stdout.trim()) {
+    return { installed: true, reason: null };
+  }
+
+  for (const command of [
+    `pm list packages ${packageName}`,
+    `cmd package list packages ${packageName}`,
+  ]) {
+    const listResult = await adb.shell(app, command, timeoutMs);
+    if (
+      listResult.exitCode === 0 &&
+      listResult.stdout
+        .split(/\r?\n/)
+        .map((line) => line.trim().replace(/^package:/, ''))
+        .includes(packageName)
+    ) {
+      return { installed: true, reason: null };
+    }
+  }
+
+  return {
+    installed: false,
+    reason:
+      (pathResult.stderr || pathResult.stdout).trim() || 'Package not found.',
+  };
+};
+
+const compactShellOutput = (stdout: string, stderr: string) => {
+  const output = [stdout, stderr]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join('\n');
+  if (!output) return '';
+  if (looksLikeShellHelp(output)) return 'Android command help text.';
+  return output.length > 300 ? `${output.slice(0, 300)}...` : output;
+};
+
+const looksLikeShellHelp = (text: string) => {
+  const normalized = text.toLowerCase();
+  return (
+    /\busage:\s/.test(normalized) ||
+    /\bcommands:\s/.test(normalized) ||
+    normalized.includes('print this help text') ||
+    normalized.includes('no service specified; use -l to list')
+  );
+};

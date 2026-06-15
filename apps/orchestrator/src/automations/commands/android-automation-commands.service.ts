@@ -7,6 +7,9 @@ import { AutomationCommandDefinition } from './automation-command.types';
 const androidCommandOrder = [
   'android.wait',
   'android.viewerCommand',
+  'android.expandNotifications',
+  'android.expandQuickSettings',
+  'android.collapsePanels',
   'android.rotateDisplay',
   'android.tap',
   'android.tapNormalized',
@@ -18,6 +21,7 @@ const androidCommandOrder = [
   'android.getClipboard',
   'android.screenshot',
   'android.listPackages',
+  'android.openSystemSettings',
   'android.launchPackage',
   'android.waitForText',
   'android.tapText',

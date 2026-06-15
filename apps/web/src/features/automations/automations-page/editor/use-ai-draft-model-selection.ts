@@ -19,7 +19,7 @@ export const useAiDraftModelSelection = () => {
       if (cancelled) return
       setCatalog(nextCatalog)
       const nextProvider = nextCatalog[0]
-      const nextModel = selectCatalogModel(nextProvider, '')
+      const nextModel = selectCatalogModel(nextProvider, '', 'planner')
       setProviderId(nextProvider?.id ?? '')
       setModelId(nextModel?.id ?? '')
     })
