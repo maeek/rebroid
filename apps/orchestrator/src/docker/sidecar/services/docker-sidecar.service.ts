@@ -14,6 +14,7 @@ import { DockerSidecarApiService } from './docker-sidecar-api.service';
 import { DockerSidecarImageService } from './docker-sidecar-image.service';
 import { DockerSidecarNetworkService } from './docker-sidecar-network.service';
 import { webrtcUdpPortBinding } from '../utils/docker-sidecar.utils';
+import { withHostTimezoneEnv } from '../../utils/docker-container-env.utils';
 
 @Injectable()
 export class DockerSidecarService implements OnModuleInit {
@@ -371,7 +372,7 @@ export class DockerSidecarService implements OnModuleInit {
         this.docker.createContainer({
           Image: this.displaySidecarImage,
           name: this.displaySidecarContainerName,
-          Env: [
+          Env: withHostTimezoneEnv([
             `PORT=${this.displaySidecarPort}`,
             ...(this.config.get<string>('app.sharedSecret')
               ? [
@@ -382,7 +383,7 @@ export class DockerSidecarService implements OnModuleInit {
             ...(this.displaySidecarWebrtcIceHost
               ? [`DISPLAY_WEBRTC_ICE_HOST=${this.displaySidecarWebrtcIceHost}`]
               : []),
-          ],
+          ]),
           ExposedPorts: {
             [`${this.displaySidecarPort}/tcp`]: {},
             ...(webrtcPortBinding?.exposedPorts ?? {}),

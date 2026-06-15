@@ -5,6 +5,7 @@ import { ApplicationContainerSpec } from '../../docker.types';
 import { parseCommandLine } from '@rebroid/application-core/command-line';
 import { DockerImageRuntimeService } from '../../images/services/docker-image-runtime.service';
 import { DockerContainerLifecycleService } from './docker-container-lifecycle.service';
+import { withHostTimezoneEnv } from '../../utils/docker-container-env.utils';
 
 const deviceMappingFromString = (value: string) => {
   const [hostPath, containerPath = hostPath, permissions = 'rwm'] = value
@@ -129,11 +130,11 @@ export class DockerContainerProvisioningService {
           Image: spec.image,
           name: spec.containerName,
           Cmd: parseCommandLine(spec.containerArgs),
-          Env: [
+          Env: withHostTimezoneEnv([
             `ADB_TCP_PORT=${spec.adbPort}`,
             `ANDROID_ADB_SERVER_PORT=${spec.adbPort}`,
             `PERSIST_ADB_TCP_PORT=${spec.adbPort}`,
-          ],
+          ]),
           ExposedPorts: {
             [`${spec.adbPort}/tcp`]: {},
           },
