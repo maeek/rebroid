@@ -6,6 +6,7 @@ import {
   matchesDetectionQuery,
   sortDetections,
 } from '@rebroid/vision-core/observation';
+import type { VisionDetection } from '@rebroid/vision-core/observation';
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,
@@ -14,7 +15,11 @@ import {
   buildChatRequestBody,
   chatCompletionsEndpoint,
   correctScreenStateHypothesis,
+  rankObservationCandidates,
+  reconcileScreenStateHypothesis,
+  summarizeObservationCandidates,
   type ChatMessage,
+  type AiObservationCandidate,
 } from '@rebroid/ai-core/harness';
 import type { AutomationCommandContext } from '../commands/automation-command.types';
 import {
@@ -30,9 +35,12 @@ import type {
   AutomationVisionLocateInput,
   AutomationVisionLocateOutput,
 } from './automation-vision.types';
+import { AutomationOcrService } from './automation-ocr.service';
 
 @Injectable()
 export class AutomationVisionService {
+  constructor(private readonly ocr: AutomationOcrService) {}
+
   async observe(
     context: Pick<AutomationCommandContext, 'adb' | 'app' | 'abortSignal'>,
     visionModel?: {
@@ -45,12 +53,35 @@ export class AutomationVisionService {
     this.assertNotCanceled(context.abortSignal);
     const screenshot = await context.adb.screenshot(context.app);
     const aiImage = await optimizeAiScreenshot(screenshot);
-    const ui = await context.adb
+    const uiPromise = context.adb
       .dumpUi(context.app)
       .catch((error: unknown) => ({
+        status: 'failed' as const,
         error:
           error instanceof Error ? error.message : 'UI hierarchy dump failed.',
       }));
+    const ocrPromise = this.ocr.recognize(aiImage, context.abortSignal);
+    const describedPromise: Promise<{
+      screenState?: AutomationVisionScreenState;
+      summary?: string;
+      visionSummaryError?: string;
+    }> = visionModel
+      ? this.describeWithVisionModelSafe({
+          aiImage,
+          context,
+          deadline,
+          visionContext,
+          ...visionModel,
+        })
+      : Promise.resolve({
+          summary: undefined,
+          visionSummaryError: undefined,
+        });
+    const [ui, ocr, described] = await Promise.all([
+      uiPromise,
+      ocrPromise,
+      describedPromise,
+    ]);
     const image = {
       width: aiImage.width ?? 1,
       height: aiImage.height ?? 1,
@@ -58,15 +89,20 @@ export class AutomationVisionService {
       capturedAt: screenshot.capturedAt,
       source: 'screenshot' as const,
     };
-    const uiDumpAvailable = 'xml' in ui;
-    const preparedUi = uiDumpAvailable ? prepareUiXml(ui.xml) : null;
+    const uiDumpAvailable = ui.status === 'available' && Boolean(ui.xml);
+    const uiDiagnostics = 'diagnostics' in ui ? ui.diagnostics : undefined;
+    const uiError = 'error' in ui ? ui.error : undefined;
+    const preparedUi = uiDumpAvailable && ui.xml ? prepareUiXml(ui.xml) : null;
     const detections = preparedUi
       ? extractUiDetections(preparedUi.xml, image)
       : [];
     const uiXml = preparedUi
       ? {
           bytes: Buffer.byteLength(preparedUi.xml),
+          detectionCount: detections.length,
+          diagnostics: uiDiagnostics,
           nodeCount: preparedUi.nodeCount,
+          rawNodeCount: uiDiagnostics?.rawNodeCount ?? preparedUi.nodeCount,
           status:
             preparedUi.nodeCount > 0
               ? ('available' as const)
@@ -75,20 +111,54 @@ export class AutomationVisionService {
         }
       : {
           bytes: 0,
-          error: uiDumpAvailable ? undefined : ui.error,
+          detectionCount: 0,
+          diagnostics: uiDiagnostics,
+          error: uiError,
           nodeCount: 0,
+          rawNodeCount: uiDiagnostics?.rawNodeCount ?? 0,
           status: 'failed' as const,
           truncated: false,
         };
-    const { screenState, summary, visionSummaryError } = visionModel
-      ? await this.describeWithVisionModelSafe({
-          aiImage,
-          context,
-          deadline,
-          visionContext,
-          ...visionModel,
+    const candidates = rankObservationCandidates({
+      candidates: this.buildObservationCandidates(
+        detections,
+        described.screenState?.controls ?? [],
+        ocr.detections,
+      ),
+      goal: visionContext?.goal,
+      maxCandidates: 30,
+    });
+    const reconciliation = described.screenState
+      ? reconcileScreenStateHypothesis({
+          state: described.screenState,
+          candidates,
+          confirmedFacts: visionContext?.confirmedFacts ?? [],
         })
-      : { summary: undefined, visionSummaryError: undefined };
+      : null;
+    const screenState =
+      described.screenState && reconciliation
+        ? {
+            ...described.screenState,
+            screenKind: reconciliation.screenKind,
+            confidence: reconciliation.confidence,
+            settingsAccessVisible: reconciliation.settingsAccessVisible,
+            rawScreenKind:
+              described.screenState.rawScreenKind ??
+              reconciliation.rawScreenKind,
+            ...(reconciliation.correctionReason
+              ? { correctionReason: reconciliation.correctionReason }
+              : {}),
+            ...(reconciliation.contradictionReason
+              ? {
+                  uncertainty: [
+                    reconciliation.contradictionReason,
+                    ...described.screenState.uncertainty,
+                  ].slice(0, 12),
+                }
+              : {}),
+          }
+        : undefined;
+    const summary = screenState?.summary ?? described.summary;
 
     return {
       image,
@@ -96,9 +166,76 @@ export class AutomationVisionService {
       detections: sortDetections(detections).slice(0, 80),
       ...(summary ? { summary } : {}),
       ...(screenState ? { screenState } : {}),
-      ...(visionSummaryError ? { visionSummaryError } : {}),
+      ...(described.visionSummaryError
+        ? { visionSummaryError: described.visionSummaryError }
+        : {}),
+      ocr,
+      candidates,
+      markedScreenshotId: `som-${image.capturedAt}`,
+      ...(reconciliation
+        ? {
+            reconciliation: {
+              rawScreenKind: reconciliation.rawScreenKind,
+              rawConfidence: reconciliation.rawConfidence,
+              visionReliable: reconciliation.visionReliable,
+              ...(reconciliation.contradictionReason
+                ? { contradictionReason: reconciliation.contradictionReason }
+                : {}),
+            },
+          }
+        : {}),
       uiXml,
     };
+  }
+
+  private buildObservationCandidates(
+    detections: VisionDetection[],
+    controls: AutomationVisionScreenState['controls'],
+    ocrDetections: VisionDetection[] = [],
+  ): AiObservationCandidate[] {
+    const uiCandidates = sortDetections(detections).map((detection, index) => ({
+      id: `ui-${index + 1}`,
+      label:
+        detection.label ??
+        detection.text ??
+        detection.description ??
+        `UI element ${index + 1}`,
+      source: 'ui-xml' as const,
+      ...(detection.role ? { role: detection.role } : {}),
+      confidence: detection.confidence,
+      evidence: [
+        detection.text ? `text=${detection.text}` : '',
+        detection.description ? `description=${detection.description}` : '',
+      ].filter(Boolean),
+      bounds: detection.bounds,
+    }));
+    const visionCandidates = controls.map((control, index) => ({
+      id: `vision-${index + 1}`,
+      label: control.label,
+      source: 'vision-model' as const,
+      ...(control.role ? { role: control.role } : {}),
+      confidence: control.confidence ?? 0.5,
+      ...(control.evidence ? { evidence: control.evidence } : {}),
+      ...(control.bounds ? { bounds: control.bounds } : {}),
+    }));
+    const ocrCandidates = sortDetections(ocrDetections).map(
+      (detection, index) => ({
+        id: `ocr-${index + 1}`,
+        label:
+          detection.label ??
+          detection.text ??
+          detection.description ??
+          `OCR text ${index + 1}`,
+        source: 'ocr' as const,
+        confidence: detection.confidence,
+        evidence: [
+          detection.text ? `text=${detection.text}` : '',
+          detection.description ? `description=${detection.description}` : '',
+        ].filter(Boolean),
+        bounds: detection.bounds,
+      }),
+    );
+    return [...uiCandidates, ...ocrCandidates, ...visionCandidates];
   }
 
   private async describeWithVisionModelSafe({
@@ -346,11 +483,16 @@ export class AutomationVisionService {
       !observation.summary && observation.detections.length === 0
         ? 'Visibility warning: no UI hierarchy detections and no vision summary are available. The planner should ask the user for more context, use non-visual Android state-reading tools, or request a configured vision model instead of guessing screen contents.'
         : '';
+    const ocrState = observation.ocr
+      ? `OCR: ${observation.ocr.status}, ${observation.ocr.detections.length} text box(es)${observation.ocr.elapsedMs !== undefined ? `, elapsedMs=${observation.ocr.elapsedMs}` : ''}${observation.ocr.error ? `, error=${observation.ocr.error}` : ''}.`
+      : 'OCR: unavailable.';
     const lines = [
       `Screen observation: ${observation.image.width}x${observation.image.height}, captured ${observation.image.capturedAt}.`,
       observation.uiXml
-        ? `UI hierarchy: ${observation.uiXml.status}, ${observation.uiXml.nodeCount} node(s), ${observation.uiXml.bytes} byte(s), truncated=${observation.uiXml.truncated}${observation.uiXml.error ? `, error=${observation.uiXml.error}` : ''}.`
+        ? `UI hierarchy: ${observation.uiXml.status}, ${observation.uiXml.nodeCount} node(s), ${observation.uiXml.detectionCount ?? observation.detections.length} labeled detection(s), ${observation.uiXml.bytes} byte(s), truncated=${observation.uiXml.truncated}${observation.uiXml.rawNodeCount !== undefined ? `, rawNodeCount=${observation.uiXml.rawNodeCount}` : ''}${observation.uiXml.error ? `, error=${observation.uiXml.error}` : ''}.`
         : 'UI hierarchy: unavailable.',
+      ocrState,
+      'Grounding precedence: confirmed Android facts > UI XML > OCR text > visual hypothesis.',
       visionState,
       visibilityWarning,
       observation.screenState
@@ -358,6 +500,7 @@ export class AutomationVisionService {
             screenKind: observation.screenState.screenKind,
             rawScreenKind: observation.screenState.rawScreenKind ?? null,
             correctionReason: observation.screenState.correctionReason ?? null,
+            reconciliation: observation.reconciliation ?? null,
             settingsAccessVisible:
               observation.screenState.settingsAccessVisible ?? null,
             confidence: observation.screenState.confidence,
@@ -370,6 +513,13 @@ export class AutomationVisionService {
         : observation.summary
           ? `Vision hypothesis summary: ${observation.summary}`
           : '',
+      observation.reconciliation?.contradictionReason
+        ? `Vision contradiction: ${observation.reconciliation.contradictionReason}`
+        : '',
+      summarizeObservationCandidates({
+        candidates: observation.candidates,
+        maxCandidates: 12,
+      }),
       'Confirmed tool facts: none yet in this observation. Later tool results override conflicting vision hypotheses unless a newer observation proves otherwise.',
       'UI hierarchy detections use normalized bounds and centers in 0..1 screen coordinates:',
       ...observation.detections.slice(0, 40).map((detection, index) =>
@@ -385,6 +535,20 @@ export class AutomationVisionService {
           source: detection.source,
         }),
       ),
+      observation.ocr?.detections.length
+        ? 'OCR detections use normalized bounds and centers in 0..1 screen coordinates:'
+        : '',
+      ...(observation.ocr?.detections.slice(0, 30).map((detection, index) =>
+        JSON.stringify({
+          n: index + 1,
+          label: detection.label,
+          text: detection.text,
+          confidence: detection.confidence,
+          bounds: detection.bounds,
+          center: detection.center,
+          source: detection.source,
+        }),
+      ) ?? []),
     ].filter(Boolean);
     return lines.join('\n');
   }
@@ -421,6 +585,7 @@ export class AutomationVisionService {
             'Return JSON only. Do not request tools.',
             'Treat app/screen identity as uncertain unless visible text, title, or distinctive controls support it.',
             'Inspect icons and contextual clues, including gear/settings icons, but report them as candidate controls unless app identity is confirmed.',
+            'List icon-only controls when they are visually important. Use cautious labels such as "settings access gear candidate" with confidence and evidence.',
             'A quick-settings shade with brightness slider, Internet/Bluetooth tiles, power button, edit pencil, or status-shade layout is quick_settings, not settings_app. A gear icon there means settings access is visible, not that Settings is open.',
             'Use screenKind values: home, quick_settings, notification_shade, settings_app, app_screen, unknown.',
             'Use normalized 0..1 bounds for controls only when visually clear.',
@@ -447,7 +612,7 @@ export class AutomationVisionService {
                       latestHypothesis: visionContext.latestHypothesis ?? null,
                     })}`
                   : '',
-                'JSON shape: {"screenKind":"home|quick_settings|notification_shade|settings_app|app_screen|unknown","confidence":0.0,"visibleText":["..."],"controls":[{"label":"...","role":"button|icon|text|field|tile|unknown","bounds":{"left":0,"top":0,"width":0,"height":0},"confidence":0.0}],"evidence":["..."],"uncertainty":["..."],"summary":"one concise factual sentence"}.',
+                'JSON shape: {"screenKind":"home|quick_settings|notification_shade|settings_app|app_screen|unknown","confidence":0.0,"visibleText":["..."],"controls":[{"label":"...","role":"button|icon|text|field|tile|unknown","bounds":{"left":0,"top":0,"width":0,"height":0},"confidence":0.0,"evidence":["..."]}],"evidence":["..."],"uncertainty":["..."],"summary":"one concise factual sentence"}.',
                 'If the screen could be multiple things, choose unknown or low confidence and explain uncertainty.',
               ]
                 .filter(Boolean)
@@ -552,7 +717,7 @@ const parseVisionScreenStateResponse = (
   const requestedKind =
     typeof record.screenKind === 'string' ? record.screenKind : 'unknown';
   const confidence = clamp01(Number(record.confidence));
-  const controls = Array.isArray(record.controls) ? record.controls : [];
+  const rawControls = Array.isArray(record.controls) ? record.controls : [];
   const rawScreenKind = screenKinds.has(requestedKind)
     ? (requestedKind as AutomationVisionScreenState['screenKind'])
     : 'unknown';
@@ -564,14 +729,19 @@ const parseVisionScreenStateResponse = (
     screenKind: rawScreenKind,
     confidence,
     visibleText: stringArray(record.visibleText, 30, 120),
-    controls: controls.flatMap((control) => normalizeVisionControl(control)),
+    controls: rawControls.flatMap((control) => normalizeVisionControl(control)),
     evidence: stringArray(record.evidence, 12, 180),
     uncertainty: stringArray(record.uncertainty, 12, 180),
     summary: rawSummary,
   };
   const correction = correctScreenStateHypothesis(baseState);
+  const controls = withSettingsAccessControl(
+    baseState.controls,
+    correction.settingsAccessVisible,
+  );
   return {
     ...baseState,
+    controls,
     screenKind: correction.screenKind,
     confidence: correction.confidence,
     settingsAccessVisible: correction.settingsAccessVisible,
@@ -588,6 +758,29 @@ const parseVisionScreenStateResponse = (
         }
       : {}),
   };
+};
+
+const withSettingsAccessControl = (
+  controls: AutomationVisionScreenState['controls'],
+  settingsAccessVisible: boolean,
+) => {
+  if (!settingsAccessVisible) return controls;
+  if (
+    controls.some((control) =>
+      /\b(settings?|gear|cog|settings access)\b/i.test(control.label),
+    )
+  ) {
+    return controls;
+  }
+  return [
+    {
+      label: 'Settings access candidate',
+      role: 'icon',
+      confidence: 0.5,
+      evidence: ['Screen-state evidence mentions settings or gear access.'],
+    },
+    ...controls,
+  ].slice(0, 30);
 };
 
 const normalizeVisionControl = (
@@ -623,6 +816,9 @@ const normalizeVisionControl = (
       ...(normalizedBounds ? { bounds: normalizedBounds } : {}),
       ...(Number.isFinite(Number(record.confidence))
         ? { confidence: clamp01(Number(record.confidence)) }
+        : {}),
+      ...(Array.isArray(record.evidence)
+        ? { evidence: stringArray(record.evidence, 4, 120) }
         : {}),
     },
   ];

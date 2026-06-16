@@ -5,12 +5,20 @@ type SlotProps = React.HTMLAttributes<HTMLElement> & {
   children?: React.ReactNode
 }
 
-function composeRefs<T>(...refs: Array<React.Ref<T> | undefined>) {
+type ActiveRef<T> = React.RefCallback<T> | React.RefObject<T | null>
+
+function isActiveRef<T>(ref: React.Ref<T> | null | undefined): ref is ActiveRef<T> {
+  return ref !== null && ref !== undefined
+}
+
+function composeRefs<T>(...refs: Array<React.Ref<T> | null | undefined>) {
+  const activeRefs = refs.filter(isActiveRef)
+  if (activeRefs.length === 0) {
+    return undefined
+  }
+
   return (node: T | null) => {
-    for (const ref of refs) {
-      if (!ref) {
-        continue
-      }
+    for (const ref of activeRefs) {
       if (typeof ref === 'function') {
         ref(node)
       } else {
@@ -27,6 +35,7 @@ const PrimitiveSlot = React.forwardRef<HTMLElement, SlotProps>(({ children, clas
 
   const childProps = children.props as React.HTMLAttributes<HTMLElement>
   const childRef = (children as React.ReactElement & { ref?: React.Ref<HTMLElement> }).ref
+  const composedRef = composeRefs(ref, childRef)
 
   const nextProps = {
     ...props,
@@ -35,9 +44,11 @@ const PrimitiveSlot = React.forwardRef<HTMLElement, SlotProps>(({ children, clas
     style: {
       ...style,
       ...childProps.style
-    },
-    ref: composeRefs(ref, childRef)
+    }
   } as React.HTMLAttributes<HTMLElement> & React.Attributes & { ref?: React.Ref<HTMLElement> }
+  if (composedRef) {
+    nextProps.ref = composedRef
+  }
 
   return React.cloneElement(
     children as React.ReactElement<Record<string, unknown>>,

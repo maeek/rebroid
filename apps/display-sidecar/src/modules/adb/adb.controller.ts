@@ -175,7 +175,7 @@ export class AdbController {
   @ApiOkResponse({ type: AdbUiDumpDto })
   async uiDump(@Param("udid") udid: string) {
     return {
-      xml: await this.adb.dumpUi(udid),
+      ...(await this.adb.dumpUi(udid)),
       dumpedAt: new Date().toISOString(),
     };
   }

@@ -124,6 +124,7 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
       ) => {
         const attempts = [];
         for (const command of [
+          'monkey -p com.android.settings -c android.intent.category.LAUNCHER 1',
           'cmd activity start-activity -a android.settings.SETTINGS',
           'am start -a android.settings.SETTINGS',
         ]) {
@@ -255,7 +256,7 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
         const deadline = Date.now() + timeoutMs;
         do {
           const dump = await adb.dumpUi(app);
-          if (dump.xml.includes(text)) {
+          if (dump.status === 'available' && dump.xml?.includes(text)) {
             return { summary: `Found text "${text}".` };
           }
           await new Promise((resolve) => setTimeout(resolve, intervalMs));

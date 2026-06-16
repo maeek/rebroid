@@ -17,13 +17,13 @@ import {
   selectedProviderModelIndexes,
   type ProviderModelRole
 } from './provider-models-grid-model'
+import { recommendAiModelForAutomation, type ProviderModelRow } from '@rebroid/ai-core/provider'
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,
   AutomationAiProviderModelDownload,
   AutomationAiProviderRemoteModel
 } from '@/server/orchestrator/settings/types'
-import type { ProviderModelRow } from '@rebroid/ai-core/provider'
 import type { ColumnDef } from '@tanstack/react-table'
 
 const ProviderModelLabelCell = ({
@@ -114,6 +114,27 @@ const ProviderModelLabelCell = ({
   )
 }
 
+const recommendationClassName = {
+  good: 'border-success/35 bg-success/10 text-success',
+  warning: 'border-warning/35 bg-warning/10 text-warning',
+  neutral: 'border-border bg-surface-subtle text-foreground-muted'
+} as const
+
+const ProviderModelRecommendation = ({ model }: { model: ProviderModelRow }) => {
+  const recommendation = recommendAiModelForAutomation(model)
+
+  return (
+    <div className='flex min-h-10 min-w-0 items-center'>
+      <span
+        className={`max-w-full truncate rounded-md border px-2 py-1 text-xs ${recommendationClassName[recommendation.level]}`}
+        title={recommendation.message}
+      >
+        {recommendation.title}
+      </span>
+    </div>
+  )
+}
+
 export const ProviderModelsGrid = ({
   initialProvider,
   modelRows,
@@ -190,6 +211,13 @@ export const ProviderModelsGrid = ({
         )
       },
       {
+        id: 'recommendation',
+        header: 'Recommendation',
+        size: 220,
+        meta: { label: 'Recommendation' },
+        cell: ({ row }) => <ProviderModelRecommendation model={row.original} />
+      },
+      {
         id: 'roles',
         header: 'Roles',
         size: 240,
@@ -231,30 +259,6 @@ export const ProviderModelsGrid = ({
                 enabled={model.enabled}
                 defaultFor={defaultRoles}
               />
-              <div className='flex flex-wrap items-center gap-1'>
-                {model.roles.includes('planner') ? (
-                  <Button
-                    type='button'
-                    variant={defaultRoles.includes('planner') ? 'secondary' : 'ghost'}
-                    size='sm'
-                    disabled={!model.enabled || defaultRoles.includes('planner')}
-                    onClick={() => onSetDefaultModel(model.index, 'planner')}
-                  >
-                    Planner default
-                  </Button>
-                ) : null}
-                {model.roles.includes('vision') ? (
-                  <Button
-                    type='button'
-                    variant={defaultRoles.includes('vision') ? 'secondary' : 'ghost'}
-                    size='sm'
-                    disabled={!model.enabled || defaultRoles.includes('vision')}
-                    onClick={() => onSetDefaultModel(model.index, 'vision')}
-                  >
-                    Vision default
-                  </Button>
-                ) : null}
-              </div>
             </div>
           )
         }
@@ -292,7 +296,7 @@ export const ProviderModelsGrid = ({
         )
       }
     ],
-    [initialProvider, isDownloadingModel, modelDownloads, onDownloadModel, onSetDefaultModel, onUpdateModel, toggleRole]
+    [initialProvider, isDownloadingModel, modelDownloads, onDownloadModel, onUpdateModel, toggleRole]
   )
 
   return (
@@ -301,7 +305,8 @@ export const ProviderModelsGrid = ({
         <div>
           <h3 className='text-sm font-semibold'>Models</h3>
           <p className='text-xs text-foreground-muted'>
-            Good local starting points: Qwen2.5-VL 7B/32B or Llama 3.1/3.2 tool-capable variants.
+            Good GUI-control starting points: Qwen2.5/3-VL, UI-TARS, GUI-Owl/GUI-Actor, or a tool-capable planner paired
+            with a GUI-oriented vision model.
           </p>
         </div>
         <div className='flex flex-wrap items-center gap-2'>
@@ -360,7 +365,7 @@ export const ProviderModelsGrid = ({
         pageSize={Math.max(modelRows.length, 1)}
         getRowId={model => model.rowId}
         selection={{ selectedIds, onSelectedIdsChange: setSelectedIds }}
-        minWidth='74rem'
+        minWidth='86rem'
         emptyState={<div className='text-center text-foreground-muted'>No models configured.</div>}
         rowContextMenu={row => (
           <>

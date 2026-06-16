@@ -19,6 +19,7 @@ services:
       DISPLAY_SIDECAR_CONTAINER_NAME: rebroid-display-sidecar-test
       DISPLAY_SIDECAR_INTERNAL_BASE_URL: http://rebroid-display-sidecar-test:8000
       DISPLAY_SIDECAR_AUTO_START: 'false'
+      OCR_SIDECAR_BASE_URL: http://rebroid-ocr-sidecar-test:8100
       MAX_APK_UPLOAD_SIZE_MB: ${MAX_APK_UPLOAD_SIZE_MB:-512}
     expose:
       - '4100'
@@ -96,6 +97,20 @@ services:
       platform:
         aliases:
           - rebroid-display-sidecar-test
+
+  ocr-sidecar:
+    build:
+      context: ..
+      dockerfile: apps/ocr-sidecar/Dockerfile
+    image: rebroid/ocr-sidecar:test
+    container_name: rebroid-ocr-sidecar-test
+    restart: unless-stopped
+    expose:
+      - '8100'
+    networks:
+      platform:
+        aliases:
+          - rebroid-ocr-sidecar-test
 
 volumes:
   orchestrator-test-data:

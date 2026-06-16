@@ -46,7 +46,7 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
       })
       .catch(error => {
         toast({
-          title: 'Could not load automations',
+          title: 'Could not load workflows',
           description: error instanceof Error ? error.message : 'Unknown error',
           variant: 'destructive'
         })
@@ -73,7 +73,7 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
       setOpen(false)
     } catch (error) {
       toast({
-        title: 'Could not run automation',
+        title: 'Could not run workflow',
         description: error instanceof Error ? error.message : 'Unknown error',
         variant: 'destructive'
       })
@@ -91,10 +91,10 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
             onClick={() => setOpen(true)}
           >
             <IconRobot className='size-4' />
-            Run automation
+            Run workflow
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Run automation</TooltipContent>
+        <TooltipContent>Run workflow</TooltipContent>
       </Tooltip>
       <Dialog
         open={open}
@@ -102,19 +102,19 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
       >
         <DialogContent className='sm:max-w-2xl'>
           <DialogHeader>
-            <DialogTitle>Run automation</DialogTitle>
-            <DialogDescription>Select an automation and runtime profile for this app.</DialogDescription>
+            <DialogTitle>Run workflow</DialogTitle>
+            <DialogDescription>Select a workflow and runtime profile for this app.</DialogDescription>
           </DialogHeader>
           <div className='grid gap-5'>
             <div className='grid gap-2'>
-              <label className='text-sm font-medium text-foreground'>Automation</label>
+              <label className='text-sm font-medium text-foreground'>Workflow</label>
               <Select
                 value={automationId}
                 disabled={loading || automations.length === 0}
                 onValueChange={setAutomationId}
               >
                 <SelectTrigger className='w-full'>
-                  <SelectValue placeholder={loading ? 'Loading automations...' : 'Choose automation'} />
+                  <SelectValue placeholder={loading ? 'Loading workflows...' : 'Choose workflow'} />
                 </SelectTrigger>
                 <SelectContent>
                   {automations.map(automation => (
@@ -128,7 +128,7 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
                 </SelectContent>
               </Select>
               <Visible when={!loading && automations.length === 0}>
-                <p className='text-sm text-foreground-muted'>No automations are available yet.</p>
+                <p className='text-sm text-foreground-muted'>No workflows are available yet.</p>
               </Visible>
             </div>
             <ApplicationProfilePicker

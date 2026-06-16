@@ -11,6 +11,7 @@ services:
     environment:
       DISPLAY_SIDECAR_AUTO_START: "false"
       FIREWALL_AGENT_SOCKET: /run/rebroid-firewall/agent.sock
+      OCR_SIDECAR_BASE_URL: http://rebroid-ocr-sidecar:8100
     expose:
       - "4100"
       - "8000"
@@ -81,6 +82,21 @@ services:
       platform:
         aliases:
           - rebroid-display-sidecar
+
+  ocr-sidecar:
+    platform: linux/amd64
+    build:
+      context: ..
+      dockerfile: apps/ocr-sidecar/Dockerfile
+    image: localhost/rebroid/ocr-sidecar:local
+    container_name: rebroid-ocr-sidecar
+    restart: unless-stopped
+    expose:
+      - "8100"
+    networks:
+      platform:
+        aliases:
+          - rebroid-ocr-sidecar
 
 volumes:
   orchestrator-data:

@@ -18,7 +18,7 @@ import { NetworkAccessToolsSection } from './network-access-tools-section'
 import { StreamingToolsSection } from './streaming-tools-section'
 import type { AutomationRun } from '@/server/orchestrator/automations/types'
 
-type RuntimeToolId = 'clipboard' | 'files' | 'streaming' | 'network-access' | 'logs' | 'ai-agent' | 'automations'
+type RuntimeToolId = 'clipboard' | 'files' | 'streaming' | 'network-access' | 'logs' | 'ai-agent' | 'workflows'
 
 export const RuntimeToolsPanel = () => {
   const router = useRouter()
@@ -39,14 +39,14 @@ export const RuntimeToolsPanel = () => {
           ? {
               id: 'ai-agent' as const,
               title: 'AI agent',
-              description: 'Run ad-hoc automation',
+              description: 'Run ad-hoc workflows with AI assistance',
               Icon: GradientSparklesIcon
             }
           : null,
         hasPermission(permissions, 'automations:run')
           ? {
-              id: 'automations' as const,
-              title: 'Automations',
+              id: 'workflows' as const,
+              title: 'Workflows',
               description: latestAutomationRun ? `Run ${latestAutomationRun.id.slice(0, 8)}` : 'Active runs',
               Icon: IconRobot
             }
@@ -182,7 +182,7 @@ export const RuntimeToolsPanel = () => {
       )
     }
 
-    if (toolId === 'automations') {
+    if (toolId === 'workflows') {
       return (
         <AutomationStatusToolsSection
           app={app}
@@ -191,7 +191,7 @@ export const RuntimeToolsPanel = () => {
           hideHeader={inline}
           onRunStarted={run => {
             setLatestAutomationRun(run)
-            setActiveTool('automations')
+            setActiveTool('workflows')
           }}
         />
       )

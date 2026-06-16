@@ -66,8 +66,8 @@ export const AutomationStatusToolsSection = ({
         <div className={cn('flex items-center gap-2', hideHeader && 'sr-only')}>
           <IconRobot className='size-4 text-primary' />
           <div>
-            <h3 className='text-sm font-semibold'>Automations</h3>
-            <p className='text-xs text-foreground-muted'>Active automation runs for this application.</p>
+            <h3 className='text-sm font-semibold'>Workflows</h3>
+            <p className='text-xs text-foreground-muted'>Active workflow runs for this application.</p>
           </div>
         </div>
         <div className='flex items-center gap-2'>
@@ -89,7 +89,7 @@ export const AutomationStatusToolsSection = ({
             hideHeader ? 'py-2' : 'rounded-md border border-dashed border-border/70 p-3'
           )}
         >
-          No active automation runs for this app.
+          No active workflow runs for this app.
         </div>
       ) : (
         <div className='grid gap-3 lg:grid-cols-[minmax(14rem,18rem)_minmax(0,1fr)]'>

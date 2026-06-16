@@ -6,7 +6,7 @@ import {
   type VisionImageSize,
 } from "./geometry";
 
-export type VisionDetectionSource = "ui-xml" | "cv" | "vision-model";
+export type VisionDetectionSource = "ui-xml" | "cv" | "vision-model" | "ocr";
 
 export interface VisionImageMetadata extends VisionImageSize {
   capturedAt: string;
@@ -33,10 +33,31 @@ export interface VisionObservation {
   visionSummaryError?: string;
   uiXml?: {
     bytes: number;
+    diagnostics?: {
+      command?: string;
+      compressed?: boolean;
+      durationMs?: number;
+      exitCode?: number | null;
+      stdout?: string;
+      stderr?: string;
+      xmlBytes?: number;
+      rawNodeCount?: number;
+    };
     error?: string;
     nodeCount: number;
+    detectionCount?: number;
+    rawNodeCount?: number;
     status: "available" | "empty" | "failed";
     truncated: boolean;
+  };
+  ocr?: {
+    status: "available" | "disabled" | "failed";
+    detections: VisionDetection[];
+    elapsedMs?: number;
+    engine?: string;
+    model?: string;
+    languages?: string[];
+    error?: string;
   };
 }
 

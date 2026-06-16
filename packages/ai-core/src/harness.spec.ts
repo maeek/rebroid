@@ -22,6 +22,10 @@ import {
   classifyAssistantResponseContent,
   correctScreenStateHypothesis,
   isSettingsOpenClaimConfirmed,
+  rankObservationCandidates,
+  reconcileScreenStateHypothesis,
+  summarizeObservationCandidates,
+  summarizeVisualAffordances,
   mapUsesByToolName,
   normalizePublicAiText,
   parseArguments,
@@ -29,6 +33,7 @@ import {
   preflightToolCall,
   repeatedToolAttemptGuard,
   shouldObserveAfterTool,
+  toolDisplayLabel,
   toolAttemptKey,
   toolName,
 } from "./harness";
@@ -159,6 +164,12 @@ describe("AI harness core", () => {
       typeof initialMessages[0].content === "string" &&
         initialMessages[0].content.includes("android.expandQuickSettings"),
     );
+    assert.ok(
+      typeof initialMessages[0].content === "string" &&
+        initialMessages[0].content.includes(
+          "open the app drawer by swiping up from the bottom edge",
+        ),
+    );
     assert.deepEqual(initialMessages[1], { role: "user", content: "Do it" });
     assert.deepEqual(
       buildInitialMessages(
@@ -252,6 +263,97 @@ describe("AI harness core", () => {
     assert.ok(corrected.correctionReason?.includes("internet"));
   });
 
+  it("downgrades weak Settings-app VLM claims without confirming landmarks", () => {
+    const reconciled = reconcileScreenStateHypothesis({
+      state: {
+        screenKind: "settings_app",
+        confidence: 0.95,
+        visibleText: [],
+        controls: [
+          {
+            label: "Settings category list item",
+            role: "list_item",
+            confidence: 0.9,
+            evidence: ["The element is part of a scrollable settings list."],
+          },
+        ],
+        evidence: ["Represents actionable setting."],
+        uncertainty: [],
+        summary: "Android Settings app opened.",
+      },
+      candidates: [],
+      confirmedFacts: [],
+    });
+
+    assert.equal(reconciled.screenKind, "unknown");
+    assert.equal(reconciled.rawScreenKind, "settings_app");
+    assert.equal(reconciled.visionReliable, false);
+    assert.match(reconciled.contradictionReason ?? "", /without confirmed/);
+  });
+
+  it("reconciles quick-settings candidates over a Settings-app VLM claim", () => {
+    const reconciled = reconcileScreenStateHypothesis({
+      state: {
+        screenKind: "settings_app",
+        confidence: 0.9,
+        visibleText: ["Internet", "Bluetooth", "Battery Saver"],
+        controls: [{ label: "Settings access gear", role: "icon" }],
+        evidence: ["Brightness slider and quick setting tiles are visible."],
+        uncertainty: [],
+        summary: "Settings app opened.",
+      },
+      candidates: [
+        {
+          id: "vision-1",
+          label: "Settings access gear",
+          source: "vision-model",
+          role: "icon",
+          confidence: 0.82,
+          evidence: ["Gear icon in quick settings footer"],
+          bounds: { left: 0.86, top: 0.84, width: 0.08, height: 0.08 },
+        },
+      ],
+      confirmedFacts: [],
+    });
+
+    assert.equal(reconciled.screenKind, "quick_settings");
+    assert.equal(reconciled.settingsAccessVisible, true);
+    assert.equal(reconciled.visionReliable, false);
+  });
+
+  it("ranks and summarizes actionable visual candidates", () => {
+    const candidates = rankObservationCandidates({
+      goal: "Open Android system Settings",
+      candidates: [
+        {
+          id: "tile",
+          label: "Bluetooth",
+          source: "vision-model",
+          role: "tile",
+          confidence: 0.95,
+        },
+        {
+          id: "gear",
+          label: "Settings access gear",
+          source: "vision-model",
+          role: "icon",
+          confidence: 0.82,
+          evidence: ["Gear icon in lower right"],
+          bounds: { left: 0.9, top: 0.86, width: 0.08, height: 0.08 },
+        },
+      ],
+    });
+
+    assert.equal(candidates[0]?.id, "gear");
+    assert.match(
+      summarizeObservationCandidates({
+        candidates,
+        goal: "Open Android system Settings",
+      }),
+      /#1 Settings access gear/,
+    );
+  });
+
   it("does not treat quick settings as confirmed Settings app completion", () => {
     assert.equal(
       isSettingsOpenClaimConfirmed({
@@ -271,6 +373,35 @@ describe("AI harness core", () => {
       }),
       true,
     );
+  });
+
+  it("summarizes visual affordances for planner recovery", () => {
+    const summary = summarizeVisualAffordances({
+      goal: "Open Android system Settings",
+      state: {
+        screenKind: "quick_settings",
+        confidence: 0.72,
+        settingsAccessVisible: true,
+        visibleText: ["Internet", "Bluetooth"],
+        controls: [
+          {
+            label: "Settings access gear",
+            role: "icon",
+            confidence: 0.83,
+            bounds: { left: 0.9, top: 0.86, width: 0.08, height: 0.08 },
+            evidence: ["Gear icon visible in quick settings"],
+          },
+          { label: "Bluetooth", role: "tile", confidence: 0.9 },
+        ],
+        evidence: [],
+        uncertainty: [],
+        summary: "Quick settings panel is open.",
+      },
+    });
+
+    assert.match(summary, /Visual affordances are hypotheses/);
+    assert.match(summary, /Settings access gear/);
+    assert.match(summary, /x=0\.94, y=0\.9/);
   });
 
   it("builds text-only UI XML observations", () => {
@@ -313,6 +444,7 @@ describe("AI harness core", () => {
     assert.ok(planContent.includes("Markdown text only"));
     assert.ok(planContent.includes("Do not label generic Android robot"));
     assert.ok(planContent.includes("android.expandQuickSettings"));
+    assert.ok(planContent.includes("launcher app-drawer route"));
     assert.ok(!planContent.includes("hidden reasoning"));
 
     const executeMessage = buildExecutePlanMessage(
@@ -335,6 +467,7 @@ describe("AI harness core", () => {
     assert.ok(replanContent.includes("Latest observation:"));
     assert.ok(replanContent.includes("Do not retry guessed coordinate taps"));
     assert.ok(replanContent.includes("android.expandNotifications"));
+    assert.ok(replanContent.includes("swipe up from the bottom to show apps"));
 
     const recoveryMessage = buildFinalRecoveryMessage({
       prompt: "Turn on dark mode",
@@ -355,6 +488,7 @@ describe("AI harness core", () => {
         : "";
     assert.ok(noToolRecoveryContent.includes("no tool has been called"));
     assert.ok(noToolRecoveryContent.includes("android.openSystemSettings"));
+    assert.ok(noToolRecoveryContent.includes("go through the app drawer"));
 
     const malformedToolCallRecovery = buildMalformedToolCallRecoveryMessage();
     const malformedToolCallRecoveryContent =
@@ -530,7 +664,7 @@ describe("AI harness core", () => {
     );
   });
 
-  it("applies tool policy for observation, legacy arguments, vision defaults, and shell blocking", () => {
+  it("applies tool policy for observation, compatible arguments, vision defaults, and shell blocking", () => {
     assert.equal(
       shouldObserveAfterTool({
         uses: "android.adbShell",
@@ -569,12 +703,17 @@ describe("AI harness core", () => {
       true,
     );
 
-    const legacy = parseToolCallArguments("vision.locate", {
+    const compatible = parseToolCallArguments("vision.locate", {
       query: "Downloads",
       maxResults: 3,
     });
-    assert.equal(legacy.envelopeValid, false);
-    assert.deepEqual(legacy.input, { query: "Downloads", maxResults: 3 });
+    assert.equal(compatible.envelopeValid, false);
+    assert.equal(compatible.intent, "Locate visible screen target");
+    assert.deepEqual(compatible.input, { query: "Downloads", maxResults: 3 });
+    assert.equal(
+      toolDisplayLabel("android.tapNormalized"),
+      "Tap screen coordinate",
+    );
 
     assert.deepEqual(
       applyRunVisionDefaults(
@@ -696,6 +835,63 @@ describe("AI harness core", () => {
           "android.tapNormalized completed, but the observed screen state did not change.",
         recoveryHint:
           "Treat the action as unconfirmed. Do not repeat the same action; choose a different target, navigation route, typed tool, or ask the user.",
+        basis: "screen-state-signature",
+      },
+    );
+  });
+
+  it("does not call empty failed observations a no-effect outcome", () => {
+    assert.deepEqual(
+      classifyToolOutcome({
+        uses: "android.expandQuickSettings",
+        before: {
+          uiStatus: "failed",
+          uiNodes: 0,
+          detections: 0,
+        },
+        after: {
+          uiStatus: "failed",
+          uiNodes: 0,
+          detections: 0,
+        },
+      }),
+      {
+        changed: null,
+        basis: "no-comparable-screen-state",
+      },
+    );
+  });
+
+  it("treats quick-settings visual controls as a changed outcome", () => {
+    assert.deepEqual(
+      classifyToolOutcome({
+        uses: "android.expandQuickSettings",
+        before: {
+          uiStatus: "failed",
+          uiNodes: 0,
+          detections: 0,
+          screenKind: "home",
+          visibleText: ["Gallery"],
+        },
+        after: {
+          uiStatus: "failed",
+          uiNodes: 0,
+          detections: 0,
+          screenKind: "quick_settings",
+          settingsAccessVisible: true,
+          visibleText: ["Internet", "Bluetooth", "Battery Saver"],
+          controls: [
+            {
+              label: "Settings access gear",
+              role: "icon",
+              confidence: 0.8,
+            },
+          ],
+        },
+      }),
+      {
+        changed: true,
+        basis: "screen-state-signature",
       },
     );
   });

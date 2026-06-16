@@ -92,15 +92,18 @@ export class VisionAutomationCommandsService {
             input.maxDetections,
           );
           const uiStatus = observation.uiXml
-            ? `UI hierarchy ${observation.uiXml.status}, ${observation.uiXml.nodeCount} node(s)`
+            ? `UI hierarchy ${observation.uiXml.status}, ${observation.uiXml.nodeCount} node(s), ${observation.uiXml.detectionCount ?? detections.length} labeled detection(s)`
             : 'UI hierarchy unavailable';
+          const ocrStatus = observation.ocr
+            ? `OCR ${observation.ocr.status}, ${observation.ocr.detections.length} text box(es)`
+            : 'OCR unavailable';
           const visionStatus = observation.summary
             ? 'Vision summary available'
             : observation.visionSummaryError
               ? `Vision summary failed: ${observation.visionSummaryError}`
               : 'Vision summary unavailable';
           return {
-            summary: `Screen captured: ${detections.length} UI hierarchy element(s) detected. ${uiStatus}. ${visionStatus}.`,
+            summary: `Screen captured. ${uiStatus}. ${ocrStatus}. ${visionStatus}.`,
             data: {
               width: observation.image.width,
               height: observation.image.height,
@@ -108,6 +111,7 @@ export class VisionAutomationCommandsService {
               detections,
               summary: observation.summary ?? null,
               uiXml: observation.uiXml ?? null,
+              ocr: observation.ocr ?? null,
             },
           };
         },

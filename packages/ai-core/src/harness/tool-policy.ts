@@ -23,7 +23,16 @@ export interface ScreenObservationPolicySnapshot {
   uiStatus?: string | null;
   uiNodes?: number | null;
   detections?: number | null;
+  ocrText?: string[] | null;
+  ocrStatus?: string | null;
   screenKind?: string | null;
+  settingsAccessVisible?: boolean | null;
+  visibleText?: string[] | null;
+  controls?: Array<{
+    label: string;
+    role?: string | null;
+    confidence?: number | null;
+  }> | null;
   visionConfidence?: number | null;
   visionSummary?: string | null;
 }
@@ -55,6 +64,7 @@ export interface ToolOutcomeClassification {
   category?: ToolFailureCategory;
   summary?: string;
   recoveryHint?: string;
+  basis?: string;
 }
 
 export const classifyAssistantResponseContent = ({
@@ -337,14 +347,14 @@ export const classifyToolOutcome = ({
   after?: ScreenObservationPolicySnapshot | null;
 }): ToolOutcomeClassification => {
   if (!before || !after || !SCREEN_MUTATING_TOOLS.has(uses)) {
-    return { changed: null };
+    return { changed: null, basis: "not-comparable" };
   }
   if (!canCompareScreenState(before, after)) {
-    return { changed: null };
+    return { changed: null, basis: "no-comparable-screen-state" };
   }
   const changed = screenStateSignature(before) !== screenStateSignature(after);
   if (changed) {
-    return { changed: true };
+    return { changed: true, basis: "screen-state-signature" };
   }
   if (
     uses === "android.tap" ||
@@ -363,9 +373,10 @@ export const classifyToolOutcome = ({
       summary: `${uses} completed, but the observed screen state did not change.`,
       recoveryHint:
         "Treat the action as unconfirmed. Do not repeat the same action; choose a different target, navigation route, typed tool, or ask the user.",
+      basis: "screen-state-signature",
     };
   }
-  return { changed: false };
+  return { changed: false, basis: "screen-state-signature" };
 };
 
 export const parseToolCallArguments = (
@@ -374,7 +385,7 @@ export const parseToolCallArguments = (
 ): AutomationToolEnvelopeResult => {
   if (!isObjectRecord(rawArguments)) {
     return {
-      intent: `Legacy tool call shape for ${uses}.`,
+      intent: toolDisplayLabel(uses),
       expectedOutcome: "Model returned a malformed tool argument object.",
       input: {},
       envelopeValid: false,
@@ -403,7 +414,7 @@ export const parseToolCallArguments = (
       intent:
         typeof rawArguments.intent === "string"
           ? sanitizeAiText(rawArguments.intent, 140)
-          : `Legacy tool call for ${uses}.`,
+          : toolDisplayLabel(uses),
       expectedOutcome:
         typeof rawArguments.expectedOutcome === "string"
           ? sanitizeAiText(rawArguments.expectedOutcome, 220)
@@ -423,6 +434,28 @@ export const parseToolCallArguments = (
         : undefined,
     envelopeValid: hasEnvelope && requiresScreenObservationWellFormed,
   };
+};
+
+export const toolDisplayLabel = (uses: string) => {
+  const labels: Record<string, string> = {
+    "android.tap": "Tap screen coordinate",
+    "android.tapNormalized": "Tap screen coordinate",
+    "android.swipe": "Swipe screen",
+    "android.swipeNormalized": "Swipe screen",
+    "android.expandQuickSettings": "Open quick settings",
+    "android.expandNotifications": "Open notifications",
+    "android.collapsePanels": "Close system panels",
+    "android.key": "Press Android key",
+    "android.launchPackage": "Launch Android package",
+    "android.openSystemSettings": "Open Android settings",
+    "android.listPackages": "List Android packages",
+    "android.tapText": "Tap visible text",
+    "android.waitForText": "Wait for visible text",
+    "android.adbShell": "Run bounded Android shell command",
+    "vision.locate": "Locate visible screen target",
+    "vision.observe": "Inspect screen visually",
+  };
+  return labels[uses] ?? `Use ${uses}`;
 };
 
 export const applyRunVisionDefaults = (
@@ -485,24 +518,63 @@ const stableStringify = (value: unknown): string => {
 const canCompareScreenState = (
   before: ScreenObservationPolicySnapshot,
   after: ScreenObservationPolicySnapshot,
-) =>
-  before.uiStatus != null ||
-  after.uiStatus != null ||
-  before.detections != null ||
-  after.detections != null ||
-  before.screenKind != null ||
-  after.screenKind != null ||
-  before.visionSummary != null ||
-  after.visionSummary != null;
+) => {
+  const hasMeaningfulUi = [before, after].some((snapshot) => {
+    if (snapshot.uiStatus === "available") return true;
+    return (snapshot.uiNodes ?? 0) > 0 || (snapshot.detections ?? 0) > 0;
+  });
+  const hasVisualState = [before, after].some(
+    (snapshot) =>
+      snapshot.screenKind != null ||
+      snapshot.visionSummary != null ||
+      snapshot.settingsAccessVisible != null ||
+      (snapshot.visibleText?.length ?? 0) > 0 ||
+      (snapshot.ocrText?.length ?? 0) > 0 ||
+      (snapshot.controls?.length ?? 0) > 0,
+  );
+  return hasMeaningfulUi || hasVisualState;
+};
 
 const screenStateSignature = (snapshot: ScreenObservationPolicySnapshot) =>
   stableStringify({
     uiStatus: snapshot.uiStatus ?? null,
     uiNodes: snapshot.uiNodes ?? null,
     detections: snapshot.detections ?? null,
+    ocrStatus: snapshot.ocrStatus ?? null,
+    ocrText: normalizeStringList(snapshot.ocrText),
     screenKind: snapshot.screenKind ?? null,
+    settingsAccessVisible: snapshot.settingsAccessVisible ?? null,
+    visibleText: normalizeStringList(snapshot.visibleText),
+    controls: normalizeControlList(snapshot.controls),
     visionSummary: normalizeVisionSummary(snapshot.visionSummary),
   });
+
+const normalizeStringList = (values?: string[] | null) =>
+  (values ?? [])
+    .map((value) => value.toLowerCase().replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .sort()
+    .slice(0, 30);
+
+const normalizeControlList = (
+  controls?: ScreenObservationPolicySnapshot["controls"],
+) =>
+  (controls ?? [])
+    .map((control) => ({
+      label: control.label.toLowerCase().replace(/\s+/g, " ").trim(),
+      role: control.role?.toLowerCase().replace(/\s+/g, " ").trim() ?? null,
+      confidence:
+        typeof control.confidence === "number"
+          ? Math.round(control.confidence * 10) / 10
+          : null,
+    }))
+    .filter((control) => control.label.length > 0)
+    .sort((left, right) =>
+      `${left.label}:${left.role}`.localeCompare(
+        `${right.label}:${right.role}`,
+      ),
+    )
+    .slice(0, 30);
 
 const normalizeVisionSummary = (value?: string | null) =>
   value

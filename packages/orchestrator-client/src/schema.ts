@@ -883,6 +883,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/automations/draft-yaml/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AutomationsController_draftYamlStream"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/automations/ai/runs": {
         parameters: {
             query?: never;
@@ -894,6 +910,22 @@ export interface paths {
         put?: never;
         post: operations["AutomationsController_runAdHocAi"];
         delete: operations["AutomationsController_clearAdHocAiRuns"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/automations/ai/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AutomationsController_suggestAdHocAiPrompts"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1569,22 +1601,6 @@ export interface paths {
         get: operations["HealthController_diagnosticsSummary"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/automations/draft-yaml/stream": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AutomationsController_draftYamlStream"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2386,6 +2402,12 @@ export interface components {
             yaml: Record<string, never> | null;
             errors: string[];
         };
+        DraftAutomationYamlClarificationDto: {
+            /** @example Which app package should this workflow launch? */
+            question: string;
+            /** @example Use the uploaded app package. */
+            answer: string;
+        };
         DraftAutomationYamlDto: {
             /** @example Log in to the app and verify the home screen opens. */
             prompt: string;
@@ -2478,6 +2500,44 @@ export interface components {
             error: string | null;
             createdAt: string;
             updatedAt: string;
+        };
+        AiPromptSuggestionContextEventDto: {
+            /** @example ai.plan.proposed */
+            type: string;
+            /** @example Current screen: Home screen. */
+            message: string;
+        };
+        SuggestAdHocAiPromptsDto: {
+            /** @example user_123 */
+            ownerUserId: string;
+            /** @example 98a530d6-a45d-466a-9cb4-c023067c4971 */
+            targetApplicationId: string;
+            /** @example Android 14 */
+            appName: string;
+            /** @enum {string} */
+            profileMode?: "persistent" | "temporary";
+            /** @example default */
+            profileName?: Record<string, never> | null;
+            /** @example Turn on dark mode */
+            currentPrompt?: string;
+            conversation?: components["schemas"]["RunAdHocAiConversationMessageDto"][];
+            recentEvents?: components["schemas"]["AiPromptSuggestionContextEventDto"][];
+            /** @example local-ollama */
+            providerId?: string;
+            /** @example qwen2.5vl:7b */
+            modelId?: string;
+            allowedTools?: string[];
+        };
+        AiPromptSuggestionDto: {
+            /** @example open-settings */
+            id: string;
+            /** @example Open settings */
+            label: string;
+            /** @example Open Android Settings and inspect display options. */
+            prompt: string;
+        };
+        AiPromptSuggestionsDto: {
+            suggestions: components["schemas"]["AiPromptSuggestionDto"][];
         };
         AutomationDto: {
             id: string;
@@ -2852,12 +2912,6 @@ export interface components {
             display: boolean;
             firewall: boolean;
             services: components["schemas"]["OrchestratorDiagnosticsServicesDto"];
-        };
-        DraftAutomationYamlClarificationDto: {
-            /** @example Which app package should this workflow launch? */
-            question: string;
-            /** @example Use the uploaded app package. */
-            answer: string;
         };
     };
     responses: never;
@@ -4358,6 +4412,28 @@ export interface operations {
             };
         };
     };
+    AutomationsController_draftYamlStream: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftAutomationYamlDto"];
+            };
+        };
+        responses: {
+            /** @description Server-sent draft generation events. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AutomationsController_listAdHocAiRuns: {
         parameters: {
             query: {
@@ -4421,6 +4497,29 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AutomationsController_suggestAdHocAiPrompts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SuggestAdHocAiPromptsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiPromptSuggestionsDto"];
+                };
             };
         };
     };
@@ -5595,30 +5694,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrchestratorDiagnosticsDto"];
-                };
-            };
-        };
-    };
-    AutomationsController_draftYamlStream: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DraftAutomationYamlDto"];
-            };
-        };
-        responses: {
-            /** @description Server-sent draft generation events. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "text/event-stream": string;
                 };
             };
         };

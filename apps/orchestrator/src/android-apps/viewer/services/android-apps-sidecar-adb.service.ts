@@ -98,7 +98,32 @@ export class AndroidAppsSidecarAdbService {
   }
 
   async dumpUi(app: AndroidApplication) {
-    return this.request<{ xml: string; dumpedAt: string }>(app, '/ui-dump');
+    return this.request<{
+      status: 'available' | 'failed';
+      xml?: string;
+      error?: string;
+      dumpedAt: string;
+      diagnostics?: {
+        command: string;
+        compressed: boolean;
+        durationMs: number;
+        exitCode: number | null;
+        stdout: string;
+        stderr: string;
+        xmlBytes: number;
+        rawNodeCount: number;
+      };
+      attempts?: Array<{
+        command: string;
+        compressed: boolean;
+        durationMs: number;
+        exitCode: number | null;
+        stdout: string;
+        stderr: string;
+        xmlBytes: number;
+        rawNodeCount: number;
+      }>;
+    }>(app, '/ui-dump');
   }
 
   async tapText(app: AndroidApplication, text: string) {

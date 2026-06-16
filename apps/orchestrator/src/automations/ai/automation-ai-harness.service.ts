@@ -30,6 +30,8 @@ import {
   preflightToolCall,
   repeatedToolAttemptGuard,
   shouldObserveAfterTool,
+  summarizeObservationCandidates,
+  summarizeVisualAffordances,
   toolAttemptKey,
   type ChatMessage,
   type ScreenObservationPolicySnapshot,
@@ -80,6 +82,15 @@ const observationEventData = (
   height: observation.observation.image.height,
   uiStatus: observation.observation.uiXml?.status ?? 'unavailable',
   uiNodes: observation.observation.uiXml?.nodeCount ?? null,
+  uiDetectionCount:
+    observation.observation.uiXml?.detectionCount ??
+    observation.observation.detections.length,
+  uiRawNodeCount: observation.observation.uiXml?.rawNodeCount ?? null,
+  uiDiagnostics: observation.observation.uiXml?.diagnostics ?? null,
+  uiError: observation.observation.uiXml?.error ?? null,
+  ocrStatus: observation.observation.ocr?.status ?? 'unavailable',
+  ocrTextCount: observation.observation.ocr?.detections.length ?? 0,
+  ocrDetections: observation.observation.ocr?.detections.slice(0, 20) ?? [],
   detections: observation.observation.detections.length,
   hasVisionSummary: Boolean(observation.observation.summary),
   screenKind: observation.observation.screenState?.screenKind ?? null,
@@ -89,6 +100,14 @@ const observationEventData = (
   settingsAccessVisible:
     observation.observation.screenState?.settingsAccessVisible ?? null,
   visionConfidence: observation.observation.screenState?.confidence ?? null,
+  visualControls:
+    observation.observation.screenState?.controls.slice(0, 12) ?? [],
+  candidates: observation.observation.candidates?.slice(0, 12) ?? [],
+  markedScreenshotId: observation.observation.markedScreenshotId ?? null,
+  reconciliation: observation.observation.reconciliation ?? null,
+  visualAffordances: summarizeVisualAffordances({
+    state: observation.observation.screenState ?? null,
+  }),
 });
 
 const observationSnapshot = (
@@ -97,7 +116,24 @@ const observationSnapshot = (
   uiStatus: observation.observation.uiXml?.status ?? 'unavailable',
   uiNodes: observation.observation.uiXml?.nodeCount ?? 0,
   detections: observation.observation.detections.length,
+  ocrStatus: observation.observation.ocr?.status ?? 'unavailable',
+  ocrText:
+    observation.observation.ocr?.detections
+      .map((detection) => detection.text ?? detection.label ?? '')
+      .filter(Boolean)
+      .slice(0, 40) ?? null,
   screenKind: observation.observation.screenState?.screenKind ?? null,
+  settingsAccessVisible:
+    observation.observation.screenState?.settingsAccessVisible ?? null,
+  visibleText: observation.observation.screenState?.visibleText ?? null,
+  controls:
+    (observation.observation.candidates?.length ?? 0) > 0
+      ? observation.observation.candidates.map((candidate) => ({
+          label: candidate.label,
+          role: candidate.role,
+          confidence: candidate.confidence,
+        }))
+      : (observation.observation.screenState?.controls ?? null),
   visionConfidence: observation.observation.screenState?.confidence ?? null,
   visionSummary: observation.observation.summary ?? null,
 });
@@ -217,7 +253,6 @@ export class AutomationAiHarnessService {
       input,
       deadline,
       reason: 'initial',
-      sharedMultimodalMode,
       visionContext: {
         goal: input.prompt,
       },
@@ -228,9 +263,10 @@ export class AutomationAiHarnessService {
         ...input,
         initialObservationText: [
           runtimeContext,
-          this.plannerTextWithFacts(
-            latestObservation.plannerText,
+          this.plannerObservationText(
+            latestObservation,
             confirmedFacts,
+            input.prompt,
           ),
         ]
           .filter(Boolean)
@@ -346,9 +382,10 @@ export class AutomationAiHarnessService {
             buildScreenObservationMessage({
               summary:
                 'Separate vision observation captured after shared multimodal fallback.',
-              observation: this.plannerTextWithFacts(
-                latestObservation.plannerText,
+              observation: this.plannerObservationText(
+                latestObservation,
                 confirmedFacts,
+                input.prompt,
               ),
             }),
           );
@@ -590,16 +627,17 @@ export class AutomationAiHarnessService {
             messages,
             deadline,
             reason: `${preflightGuard.summary} ${preflightGuard.recoveryHint}`,
-            observation: this.plannerTextWithFacts(
-              latestObservation.plannerText,
+            observation: this.plannerObservationText(
+              latestObservation,
               confirmedFacts,
+              input.prompt,
             ),
           });
           continue;
         }
         if (!parsedToolCall.envelopeValid) {
           this.logger.debug(
-            `Accepted legacy AI tool-call shape for run=${context.runId ?? 'unknown'} provider=${provider.id} model=${model.id} tool=${uses}`,
+            `Accepted compatible AI tool-call shape for run=${context.runId ?? 'unknown'} provider=${provider.id} model=${model.id} tool=${uses}`,
           );
         }
         await this.emit(
@@ -705,9 +743,10 @@ export class AutomationAiHarnessService {
               messages,
               deadline,
               reason: `${failure.summary} ${failure.recoveryHint}`,
-              observation: this.plannerTextWithFacts(
-                latestObservation.plannerText,
+              observation: this.plannerObservationText(
+                latestObservation,
                 confirmedFacts,
+                input.prompt,
               ),
             });
             messages.push(
@@ -772,7 +811,6 @@ export class AutomationAiHarnessService {
               deadline,
               reason: 'after-tool',
               uses,
-              sharedMultimodalMode,
               visionContext: {
                 goal: input.prompt,
                 lastAction: parsedToolCall.intent || `Use ${uses}`,
@@ -788,9 +826,10 @@ export class AutomationAiHarnessService {
               after: observationSnapshot(observation),
             });
             latestObservation = observation;
-            const observationText = this.plannerTextWithFacts(
-              observation.plannerText,
+            const observationText = this.plannerObservationText(
+              observation,
               confirmedFacts,
+              input.prompt,
             );
             if (
               sharedMultimodalMode &&
@@ -825,6 +864,7 @@ export class AutomationAiHarnessService {
                   uses,
                   failureCategory: outcome.category,
                   recoveryHint: outcome.recoveryHint,
+                  outcomeBasis: outcome.basis ?? null,
                   clientMessageId: input.clientMessageId ?? null,
                 },
               );
@@ -842,9 +882,10 @@ export class AutomationAiHarnessService {
               messages,
               deadline,
               reason: `Fresh observation after ${uses}.`,
-              observation: this.plannerTextWithFacts(
-                observation.plannerText,
+              observation: this.plannerObservationText(
+                observation,
                 confirmedFacts,
+                input.prompt,
               ),
             });
           }
@@ -887,9 +928,10 @@ export class AutomationAiHarnessService {
             messages,
             deadline,
             reason: `${failure.summary} ${failure.recoveryHint}`,
-            observation: this.plannerTextWithFacts(
-              latestObservation.plannerText,
+            observation: this.plannerObservationText(
+              latestObservation,
               confirmedFacts,
+              input.prompt,
             ),
           });
           messages.push(
@@ -963,6 +1005,23 @@ export class AutomationAiHarnessService {
             latestObservation.observation.screenState?.correctionReason ?? null,
           latestVisionConfidence:
             latestObservation.observation.screenState?.confidence ?? null,
+          latestSettingsAccessVisible:
+            latestObservation.observation.screenState?.settingsAccessVisible ??
+            null,
+          latestVisualControls:
+            latestObservation.observation.screenState?.controls.slice(0, 12) ??
+            [],
+          latestCandidates: (
+            latestObservation.observation.candidates ?? []
+          ).slice(0, 12),
+          latestReconciliation:
+            latestObservation.observation.reconciliation ?? null,
+          latestMarkedScreenshotId:
+            latestObservation.observation.markedScreenshotId ?? null,
+          latestVisualAffordances: summarizeVisualAffordances({
+            state: latestObservation.observation.screenState ?? null,
+            goal: input.prompt,
+          }),
         },
         summary,
       },
@@ -975,7 +1034,6 @@ export class AutomationAiHarnessService {
     deadline,
     reason,
     uses,
-    sharedMultimodalMode,
     visionContext,
   }: {
     context: AutomationAiHarnessContext;
@@ -986,14 +1044,13 @@ export class AutomationAiHarnessService {
     deadline: number;
     reason: string;
     uses?: string;
-    sharedMultimodalMode?: boolean;
     visionContext?: Parameters<
       AutomationPerceptionService['observe']
     >[0]['visionContext'];
   }) {
     return this.perception.observe({
       context: { ...context, clientMessageId: input.clientMessageId ?? null },
-      input: sharedMultimodalMode ? {} : input,
+      input,
       deadline,
       reason,
       uses,
@@ -1001,7 +1058,27 @@ export class AutomationAiHarnessService {
     });
   }
 
-  private plannerTextWithFacts(plannerText: string, confirmedFacts: string[]) {
+  private plannerObservationText(
+    observation: Awaited<ReturnType<AutomationPerceptionService['observe']>>,
+    confirmedFacts: string[],
+    goal: string,
+  ) {
+    const visualAffordances = summarizeVisualAffordances({
+      state: observation.observation.screenState ?? null,
+      goal,
+    });
+    const candidateSummary = summarizeObservationCandidates({
+      candidates: observation.observation.candidates ?? [],
+      goal,
+      maxCandidates: 12,
+    });
+    const plannerText = [
+      observation.plannerText,
+      candidateSummary,
+      visualAffordances,
+    ]
+      .filter(Boolean)
+      .join('\n\n');
     const visibleFacts = confirmedFacts.slice(-12);
     if (visibleFacts.length === 0) return plannerText;
     return [

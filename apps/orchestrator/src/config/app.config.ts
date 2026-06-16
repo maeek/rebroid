@@ -6,6 +6,9 @@ import { z } from 'zod';
 const optionalInteger = (minimum: number, maximum: number) =>
   z.coerce.number().int().min(minimum).max(maximum).optional();
 
+const optionalNumber = (minimum: number, maximum: number) =>
+  z.coerce.number().min(minimum).max(maximum).optional();
+
 const environmentSchema = z.object({
   PORT: optionalInteger(1, 65_535),
   DOCKER_STOPPING_STALE_TIMEOUT_SECONDS: optionalInteger(1, 86_400),
@@ -23,6 +26,12 @@ const environmentSchema = z.object({
   MAX_APK_UPLOAD_SIZE_MB: optionalInteger(1, 512),
   DISPLAY_SIDECAR_PORT: optionalInteger(1, 65_535),
   DISPLAY_SIDECAR_PUBLISHED_HOST_PORT: optionalInteger(0, 65_535),
+  OCR_ENABLED: z.enum(['true', 'false']).optional(),
+  OCR_SIDECAR_BASE_URL: z.string().url().optional(),
+  OCR_TIMEOUT_MS: optionalInteger(100, 120_000),
+  OCR_MAX_IMAGE_DIMENSION: optionalInteger(320, 4096),
+  OCR_MIN_CONFIDENCE: optionalNumber(0, 1),
+  OCR_LANGUAGES: z.string().optional(),
   ENABLE_API_DOCS: z.enum(['true', 'false']).optional(),
   FIREWALL_POLICY_BOOTSTRAP: z.enum(['true', 'false']).optional(),
   DISPLAY_WEBRTC_UDP_PORT_RANGE: z
@@ -204,6 +213,14 @@ export default registerAs('app', () => {
       webrtcUdpPortRange:
         process.env.DISPLAY_WEBRTC_UDP_PORT_RANGE ?? '40000-40100',
       webrtcIceHost: process.env.DISPLAY_WEBRTC_ICE_HOST ?? '',
+    },
+    ocr: {
+      enabled: bool(process.env.OCR_ENABLED, true),
+      baseUrl: process.env.OCR_SIDECAR_BASE_URL?.replace(/\/$/, '') || '',
+      timeoutMs: number(process.env.OCR_TIMEOUT_MS, 15_000),
+      maxImageDimension: number(process.env.OCR_MAX_IMAGE_DIMENSION, 1600),
+      minConfidence: number(process.env.OCR_MIN_CONFIDENCE, 0.4),
+      languages: csv(process.env.OCR_LANGUAGES, ['en']),
     },
   };
 });

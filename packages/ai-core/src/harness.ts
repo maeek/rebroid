@@ -41,6 +41,7 @@ export {
   preflightToolCall,
   repeatedToolAttemptGuard,
   shouldObserveAfterTool,
+  toolDisplayLabel,
   toolAttemptKey,
   type AssistantContentDecision,
   type ScreenObservationPolicySnapshot,
@@ -52,9 +53,15 @@ export {
 export {
   correctScreenStateHypothesis,
   isSettingsOpenClaimConfirmed,
+  rankObservationCandidates,
+  reconcileScreenStateHypothesis,
+  summarizeObservationCandidates,
+  summarizeVisualAffordances,
+  type AiObservationCandidate,
   type AiScreenKind,
   type AiScreenStateHypothesis,
   type ScreenStateCorrectionResult,
+  type ScreenStateReconciliationResult,
 } from "./harness/screen-state-policy";
 export {
   type AutomationCommandLike,

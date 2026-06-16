@@ -8,6 +8,7 @@ import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui
 import { Drawer, DrawerContent, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { PrimitiveSlot } from '@/components/ui/primitive-slot'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { Slider } from '@/components/ui/slider'
@@ -26,6 +27,22 @@ describe('Base UI wrapper compatibility', () => {
 
     expect(screen.getByRole('link', { name: 'Apps' }).getAttribute('href')).toBe('/apps')
     expect(screen.getByRole('link', { name: 'Apps' }).getAttribute('data-slot')).toBe('button')
+  })
+
+  it('does not add a synthetic ref when asChild has no refs to compose', () => {
+    let observedRef: React.Ref<HTMLAnchorElement> | undefined
+    const RefProbe = ({ ref: refProp }: { ref?: React.Ref<HTMLAnchorElement> }) => {
+      observedRef = refProp
+      return <a href='/apps'>Apps</a>
+    }
+
+    render(
+      <PrimitiveSlot>
+        <RefProbe />
+      </PrimitiveSlot>
+    )
+
+    expect(observedRef).toBeUndefined()
   })
 
   it('closes Dialog through the local close control', () => {

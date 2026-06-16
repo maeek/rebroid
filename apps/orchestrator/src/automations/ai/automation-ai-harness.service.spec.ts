@@ -509,4 +509,220 @@ describe('AutomationAiHarnessService', () => {
       ),
     ).toBe(true);
   });
+
+  it('keeps structured perception in shared multimodal mode and feeds visual affordances to replanning', async () => {
+    const events: AutomationRunEventInput[] = [];
+    const provider = {
+      id: 'provider',
+      label: 'Provider',
+      kind: 'ollama' as const,
+      baseUrl: 'http://localhost:11434',
+      enabled: true,
+      models: [],
+    };
+    const model = {
+      id: 'dual',
+      label: 'Dual',
+      roles: ['planner' as const, 'vision' as const],
+      settings: {},
+      enabled: true,
+      defaultFor: ['planner' as const, 'vision' as const],
+    };
+    const chat = jest
+      .fn()
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              role: 'assistant',
+              content:
+                'Current screen: Home\nGoal: Open quick settings\nNext moves: expand quick settings',
+            },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              role: 'assistant',
+              content: '',
+              tool_calls: [
+                {
+                  id: 'call_1',
+                  type: 'function',
+                  function: {
+                    name: 'android__expandQuickSettings',
+                    arguments: JSON.stringify({
+                      intent: 'Expand quick settings',
+                      expectedOutcome:
+                        'Quick settings panel and controls are visible.',
+                      input: {},
+                    }),
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              role: 'assistant',
+              content:
+                'Current screen: Quick settings\nGoal: Open quick settings\nNext moves: inspect settings access candidate',
+            },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              role: 'assistant',
+              content: 'Quick panel is open.',
+            },
+          },
+        ],
+      });
+    const observe = jest
+      .fn()
+      .mockResolvedValueOnce({
+        plannerText: 'Screen observation: home.',
+        observation: {
+          image: { width: 1080, height: 2340 },
+          aiImage: { dataUrl: 'data:image/png;base64,initial' },
+          uiXml: { status: 'failed', nodeCount: 0 },
+          detections: [],
+          summary: 'Home screen',
+          screenState: {
+            screenKind: 'home',
+            confidence: 0.7,
+            visibleText: [],
+            controls: [],
+            evidence: [],
+            uncertainty: [],
+            summary: 'Home screen.',
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        plannerText: 'Screen observation: quick settings.',
+        observation: {
+          image: { width: 1080, height: 2340 },
+          aiImage: { dataUrl: 'data:image/png;base64,after' },
+          uiXml: { status: 'failed', nodeCount: 0 },
+          detections: [],
+          summary: 'Quick settings panel with gear access.',
+          screenState: {
+            screenKind: 'quick_settings',
+            confidence: 0.82,
+            visibleText: ['Internet', 'Bluetooth'],
+            controls: [
+              {
+                label: 'Settings access gear',
+                role: 'icon',
+                confidence: 0.8,
+                bounds: { left: 0.88, top: 0.84, width: 0.08, height: 0.08 },
+              },
+            ],
+            evidence: ['Quick settings tiles and settings gear are visible.'],
+            uncertainty: [],
+            summary: 'Quick settings panel.',
+            settingsAccessVisible: true,
+          },
+        },
+      });
+    const service = new AutomationAiHarnessService(
+      {
+        getProvider: jest.fn().mockResolvedValue({ provider, model }),
+      } as never,
+      {
+        listCommands: jest.fn().mockReturnValue([
+          {
+            uses: 'android.expandQuickSettings',
+            label: 'Expand quick settings',
+            description: 'Expand Android quick settings.',
+            inputSchema: {
+              type: 'object',
+              properties: {},
+              additionalProperties: false,
+            },
+          },
+        ]),
+      } as never,
+      {
+        emit: jest.fn(async (event: AutomationRunEventInput) => {
+          events.push(event);
+          return {
+            ...event,
+            id: `event_${events.length}`,
+            sequence: events.length,
+          };
+        }),
+      } as never,
+      { observe } as never,
+      {
+        buildForPlanner: jest.fn().mockResolvedValue('Runtime context'),
+      } as never,
+      { chat } as never,
+    );
+    const toolExecutor = jest.fn().mockResolvedValue({
+      summary: 'Expanded quick settings.',
+      data: {},
+    });
+    const context: AutomationAiHarnessContext = {
+      runId: 'run_1',
+      ownerUserId: 'user_1',
+      stepId: 'step_1',
+      parentStepId: null,
+      path: '$',
+      app: {} as never,
+      adb: {} as never,
+      display: {} as never,
+      networkPolicy: {} as never,
+      toolExecutor,
+    };
+
+    await service.run(
+      {
+        prompt: 'Open quick settings',
+        maxToolCalls: 3,
+        timeoutMs: 30_000,
+        allowedTools: ['android.expandQuickSettings'],
+        requireFinalAnswer: true,
+        providerId: 'provider',
+        modelId: 'dual',
+        visionProviderId: 'provider',
+        visionModelId: 'dual',
+      },
+      context,
+    );
+
+    expect(observe).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({
+          visionProviderId: 'provider',
+          visionModelId: 'dual',
+        }),
+      }),
+    );
+    expect(
+      events.some(
+        (event) =>
+          event.type === 'ai.guardrail.triggered' &&
+          event.data?.failureCategory === 'no_effect',
+      ),
+    ).toBe(false);
+    expect(
+      JSON.stringify(chat.mock.calls).includes(
+        'Visual affordances are hypotheses',
+      ),
+    ).toBe(true);
+    expect(
+      JSON.stringify(chat.mock.calls).includes('data:image/png;base64,after'),
+    ).toBe(true);
+  });
 });

@@ -2,16 +2,26 @@ import type {
   VisionDetection,
   VisionObservation,
 } from '@rebroid/vision-core/observation';
+import type { AiObservationCandidate } from '@rebroid/ai-core/harness';
 import type { OptimizedAiScreenshot } from '../ai/automation-ai-screenshot.utils';
 
 export interface AutomationScreenObservation extends VisionObservation {
   aiImage?: OptimizedAiScreenshot;
   screenState?: AutomationVisionScreenState;
+  candidates: AiObservationCandidate[];
+  markedScreenshotId: string;
+  reconciliation?: {
+    rawScreenKind: AutomationVisionScreenState['screenKind'];
+    rawConfidence: number;
+    visionReliable: boolean;
+    contradictionReason?: string;
+  };
 }
 
 export interface AutomationVisionScreenControl {
   label: string;
   role?: string;
+  evidence?: string[];
   bounds?: {
     left: number;
     top: number;

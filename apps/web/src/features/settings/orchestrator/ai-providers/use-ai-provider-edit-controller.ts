@@ -169,11 +169,6 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
   }, [initialProvider.id, modelDownloads, router])
 
   const loadRemoteModels = useCallback(async () => {
-    if (initialProvider.kind !== 'ollama') {
-      setRemoteModels([])
-      setRemoteModelsError(null)
-      return
-    }
     setIsLoadingRemoteModels(true)
     setRemoteModelsError(null)
     try {

@@ -157,8 +157,8 @@ export const permissionDefinitions = [
   {
     id: 'automations:run',
     category: 'automations',
-    name: 'Run automations',
-    description: 'Run owned automations against owned application containers.'
+    name: 'Run workflows',
+    description: 'Run owned workflows against owned application containers.'
   },
   {
     id: 'automations:run-adb-shell',

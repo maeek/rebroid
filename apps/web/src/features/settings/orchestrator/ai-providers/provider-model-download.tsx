@@ -20,7 +20,7 @@ import type {
   AutomationAiProviderRemoteModel
 } from '@/server/orchestrator/settings/types'
 
-const DOWNLOAD_VALUE = '__download__'
+const MANUAL_VALUE = '__manual__'
 
 export const ProviderModelAddDialog = ({
   open,
@@ -48,41 +48,77 @@ export const ProviderModelAddDialog = ({
   const [selectedValue, setSelectedValue] = useState('')
   const [downloadModelId, setDownloadModelId] = useState('')
   const [downloadLabel, setDownloadLabel] = useState('')
-  const canListRemoteModels = providerKind === 'ollama'
+  const [isLocallySubmitting, setIsLocallySubmitting] = useState(false)
+  const canDownloadModels = providerKind === 'ollama'
   const selectedRemoteModel = useMemo(
     () => remoteModels.find(model => model.id === selectedValue),
     [remoteModels, selectedValue]
   )
-  const isDownloadMode = selectedValue === DOWNLOAD_VALUE || !canListRemoteModels
+  const isManualMode = selectedValue === MANUAL_VALUE
+  const submitting = isSubmitting || isLocallySubmitting
 
   useEffect(() => {
     if (!open) return
     setSelectedValue('')
     setDownloadModelId('')
     setDownloadLabel('')
-    if (canListRemoteModels) void onLoadRemoteModels()
-  }, [canListRemoteModels, onLoadRemoteModels, open])
+    void onLoadRemoteModels()
+  }, [onLoadRemoteModels, open])
 
   const submit = async () => {
-    if (isDownloadMode) {
-      try {
-        await onDownload(downloadModelId, downloadLabel)
-        onOpenChange(false)
-      } catch {
-        // The controller owns the toast. Keep the dialog open so the model ID can be corrected.
+    setIsLocallySubmitting(true)
+    try {
+      if (isManualMode) {
+        if (canDownloadModels) {
+          await onDownload(downloadModelId, downloadLabel)
+          onOpenChange(false)
+          return
+        }
+        if (await onAddExisting(downloadModelId, downloadLabel)) {
+          onOpenChange(false)
+        }
+        return
       }
-      return
-    }
-    if (selectedRemoteModel && (await onAddExisting(selectedRemoteModel.id, selectedRemoteModel.label))) {
-      onOpenChange(false)
+      if (selectedRemoteModel && (await onAddExisting(selectedRemoteModel.id, selectedRemoteModel.label))) {
+        onOpenChange(false)
+      }
+    } catch {
+      // The controller owns the toast. Keep the dialog open so the model ID can be corrected.
+    } finally {
+      setIsLocallySubmitting(false)
     }
   }
+
+  const submitIcon = () => {
+    if (isManualMode && canDownloadModels) {
+      return <IconDownload className={submitting ? 'size-4 animate-pulse' : 'size-4'} />
+    }
+    return <IconPlus className='size-4' />
+  }
+
+  const submitLabel = () => {
+    if (submitting) {
+      return isManualMode && canDownloadModels ? 'Starting' : 'Adding'
+    }
+    if (isManualMode && canDownloadModels) {
+      return 'Add and download'
+    }
+    return 'Add model'
+  }
+
+  const manualDescription = canDownloadModels
+    ? 'Enter an Ollama model name to pull in the background.'
+    : 'Enter a model ID that already exists on this provider.'
+
+  const emptyRemoteModelsMessage = canDownloadModels
+    ? 'No installed models were reported. Download a new model to add it.'
+    : 'No models were reported. Enter a model ID manually if the provider is reachable.'
 
   return (
     <Dialog
       open={open}
       onOpenChange={nextOpen => {
-        if (!nextOpen && isSubmitting) return
+        if (!nextOpen && submitting) return
         onOpenChange(nextOpen)
       }}
     >
@@ -93,72 +129,72 @@ export const ProviderModelAddDialog = ({
             Add model
           </DialogTitle>
           <DialogDescription>
-            Select a model already available on the provider or start a background download.
+            {canDownloadModels
+              ? 'Select a model already available on the provider or start a background download.'
+              : 'Select a model reported by the provider or enter an existing model ID manually.'}
           </DialogDescription>
         </DialogHeader>
         <div className='grid gap-4'>
-          {canListRemoteModels ? (
-            <Field
-              label='Available model'
-              description='Models reported by the configured Ollama server.'
-            >
-              <div className='flex gap-2'>
-                <Select
-                  value={selectedValue}
-                  onValueChange={setSelectedValue}
-                  disabled={isLoadingRemoteModels}
-                >
-                  <SelectTrigger className='w-full'>
-                    <SelectValue placeholder={isLoadingRemoteModels ? 'Loading models' : 'Select model'} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {remoteModels.map(model => (
-                      <SelectItem
-                        key={model.id}
-                        value={model.id}
-                        label={
-                          model.parameterSize
-                            ? `${model.label || model.id} ${model.parameterSize}`
-                            : model.label || model.id
-                        }
-                      >
-                        <span>{model.label || model.id}</span>
-                        {model.parameterSize ? (
-                          <span className='ml-2 text-xs text-foreground-muted'>{model.parameterSize}</span>
-                        ) : null}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value={DOWNLOAD_VALUE}>Download new model</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button
-                  type='button'
-                  variant='secondary'
-                  size='icon'
-                  disabled={isLoadingRemoteModels}
-                  aria-label='Refresh available models'
-                  onClick={() => void onLoadRemoteModels()}
-                >
-                  <IconRefresh className={isLoadingRemoteModels ? 'size-4 animate-spin' : 'size-4'} />
-                </Button>
-              </div>
-              {remoteModelsError ? <p className='text-xs text-destructive'>{remoteModelsError}</p> : null}
-              {!remoteModelsError && !isLoadingRemoteModels && remoteModels.length === 0 ? (
-                <p className='text-xs text-foreground-muted'>
-                  No installed models were reported. Download a new model to add it.
-                </p>
-              ) : null}
-            </Field>
-          ) : null}
-          {isDownloadMode ? (
+          <Field
+            label='Available model'
+            description='Models reported by the configured provider.'
+          >
+            <div className='flex gap-2'>
+              <Select
+                value={selectedValue}
+                onValueChange={setSelectedValue}
+                disabled={isLoadingRemoteModels}
+              >
+                <SelectTrigger className='w-full'>
+                  <SelectValue placeholder={isLoadingRemoteModels ? 'Loading models' : 'Select model'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {remoteModels.map(model => (
+                    <SelectItem
+                      key={model.id}
+                      value={model.id}
+                      label={
+                        model.parameterSize
+                          ? `${model.label || model.id} ${model.parameterSize}`
+                          : model.label || model.id
+                      }
+                    >
+                      <span>{model.label || model.id}</span>
+                      {model.parameterSize ? (
+                        <span className='ml-2 text-xs text-foreground-muted'>{model.parameterSize}</span>
+                      ) : null}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value={MANUAL_VALUE}>
+                    {canDownloadModels ? 'Download new model' : 'Enter model ID manually'}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                type='button'
+                variant='secondary'
+                size='icon'
+                disabled={isLoadingRemoteModels}
+                aria-label='Refresh available models'
+                onClick={() => void onLoadRemoteModels()}
+              >
+                <IconRefresh className={isLoadingRemoteModels ? 'size-4 animate-spin' : 'size-4'} />
+              </Button>
+            </div>
+            {remoteModelsError ? <p className='text-xs text-destructive'>{remoteModelsError}</p> : null}
+            {!remoteModelsError && !isLoadingRemoteModels && remoteModels.length === 0 ? (
+              <p className='text-xs text-foreground-muted'>{emptyRemoteModelsMessage}</p>
+            ) : null}
+          </Field>
+          {isManualMode ? (
             <>
               <Field
                 label='Model ID'
-                description='Use the provider model name, for example qwen3.5:latest.'
+                description={manualDescription}
               >
                 <Input
                   value={downloadModelId}
-                  placeholder='qwen3.5:latest'
+                  placeholder={canDownloadModels ? 'qwen3.5:latest' : 'gemma-4'}
                   onChange={event => setDownloadModelId(event.target.value)}
                 />
               </Field>
@@ -168,12 +204,14 @@ export const ProviderModelAddDialog = ({
               >
                 <Input
                   value={downloadLabel}
-                  placeholder='Qwen 3.5 Latest'
+                  placeholder={canDownloadModels ? 'Qwen 3.5 Latest' : 'Gemma 4'}
                   onChange={event => setDownloadLabel(event.target.value)}
                 />
               </Field>
               <p className='text-sm text-foreground-muted'>
-                The model row is added immediately. Download progress is shown in that row.
+                {canDownloadModels
+                  ? 'The model row is added immediately. Download progress is shown in that row.'
+                  : 'The model row is added without starting a provider-side download.'}
               </p>
             </>
           ) : null}
@@ -183,7 +221,7 @@ export const ProviderModelAddDialog = ({
             <Button
               type='button'
               variant='secondary'
-              disabled={isSubmitting}
+              disabled={submitting}
             >
               Cancel
             </Button>
@@ -191,16 +229,12 @@ export const ProviderModelAddDialog = ({
           <Button
             type='button'
             disabled={
-              isSubmitting || (isDownloadMode ? !downloadModelId.trim() : !selectedRemoteModel || isLoadingRemoteModels)
+              submitting || (isManualMode ? !downloadModelId.trim() : !selectedRemoteModel || isLoadingRemoteModels)
             }
             onClick={() => void submit()}
           >
-            {isDownloadMode ? (
-              <IconDownload className={isSubmitting ? 'size-4 animate-pulse' : 'size-4'} />
-            ) : (
-              <IconPlus className='size-4' />
-            )}
-            {isSubmitting ? 'Starting' : isDownloadMode ? 'Add and download' : 'Add model'}
+            {submitIcon()}
+            {submitLabel()}
           </Button>
         </DialogFooter>
       </DialogContent>

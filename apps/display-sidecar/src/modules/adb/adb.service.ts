@@ -21,6 +21,25 @@ export interface CommandResult {
   exitCode: number;
 }
 
+export interface UiDumpDiagnostics {
+  command: string;
+  compressed: boolean;
+  durationMs: number;
+  exitCode: number | null;
+  stdout: string;
+  stderr: string;
+  xmlBytes: number;
+  rawNodeCount: number;
+}
+
+export interface UiDumpResult {
+  status: "available" | "failed";
+  xml?: string;
+  error?: string;
+  diagnostics?: UiDumpDiagnostics;
+  attempts: UiDumpDiagnostics[];
+}
+
 interface BoundedOutput {
   chunks: Buffer[];
   byteLength: number;
@@ -450,35 +469,40 @@ export class AdbService {
 
   async dumpUi(udid: string) {
     const dumpPath = `/data/local/tmp/rebroid-window-${Date.now()}-${Math.random().toString(36).slice(2)}.xml`;
+    const attempts: UiDumpDiagnostics[] = [];
     try {
-      await this.shell(
-        udid,
-        [
-          "sh",
-          "-lc",
-          `rm -f ${this.shellQuote(dumpPath)} && uiautomator dump ${this.shellQuote(dumpPath)} >/dev/null`,
-        ],
-        10_000,
-      );
-      const result = await this.shell(udid, ["cat", dumpPath], 10_000);
-      const xml = result.stdout.trim();
-      if (!xml.includes("<hierarchy")) {
-        throw new InternalServerErrorException(
-          "UI hierarchy dump did not produce hierarchy XML.",
-        );
+      for (const compressed of [false, true]) {
+        const attempt = await this.runUiDumpAttempt(udid, dumpPath, compressed);
+        attempts.push(attempt.diagnostics);
+        if (attempt.xml) {
+          return {
+            status: "available" as const,
+            xml: attempt.xml,
+            diagnostics: attempt.diagnostics,
+            attempts,
+          };
+        }
       }
-      return xml;
+      return {
+        status: "failed" as const,
+        error: this.summarizeUiDumpFailure(attempts),
+        diagnostics: attempts.at(-1),
+        attempts,
+      };
     } catch (error) {
-      throw new InternalServerErrorException(
-        `UI hierarchy dump failed: ${this.errorMessage(error)}`,
-      );
+      return {
+        status: "failed" as const,
+        error: `UI hierarchy dump failed: ${this.errorMessage(error)}`,
+        attempts,
+      };
     } finally {
       await this.shell(udid, ["rm", "-f", dumpPath], 5_000).catch(() => {});
     }
   }
 
   async tapText(udid: string, text: string) {
-    const xml = await this.dumpUi(udid).catch(() => "");
+    const dump = await this.dumpUi(udid).catch(() => null);
+    const xml = dump?.status === "available" ? (dump.xml ?? "") : "";
     if (!xml) {
       return { found: false, x: null, y: null };
     }
@@ -495,6 +519,70 @@ export class AdbService {
     const y = Math.round((Number(match[2]) + Number(match[4])) / 2);
     await this.tap(udid, x, y);
     return { found: true, x, y };
+  }
+
+  private async runUiDumpAttempt(
+    udid: string,
+    dumpPath: string,
+    compressed: boolean,
+  ): Promise<{ xml?: string; diagnostics: UiDumpDiagnostics }> {
+    const command = `rm -f ${this.shellQuote(dumpPath)} && uiautomator dump ${
+      compressed ? "--compressed " : ""
+    }${this.shellQuote(dumpPath)}`;
+    const started = Date.now();
+    const dump = await this.shellResult(udid, ["sh", "-lc", command], 10_000);
+    let xml = "";
+    let catResult: CommandResult | null = null;
+    if (dump.exitCode === 0) {
+      catResult = await this.shellResult(udid, ["cat", dumpPath], 10_000);
+      if (catResult.exitCode === 0) {
+        xml = catResult.stdout.trim();
+      }
+    }
+    const stderr = [dump.stderr, catResult?.stderr].filter(Boolean).join("\n");
+    const stdout = [
+      dump.stdout,
+      catResult?.stdout && !xml ? catResult.stdout : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+    const diagnostics: UiDumpDiagnostics = {
+      command,
+      compressed,
+      durationMs: Date.now() - started,
+      exitCode:
+        dump.exitCode !== 0 ? dump.exitCode : (catResult?.exitCode ?? 0),
+      stdout: this.boundedExcerpt(stdout),
+      stderr: this.boundedExcerpt(stderr),
+      xmlBytes: Buffer.byteLength(xml),
+      rawNodeCount: this.countUiNodes(xml),
+    };
+    if (!xml.includes("<hierarchy")) {
+      return { diagnostics };
+    }
+    return { xml, diagnostics };
+  }
+
+  private summarizeUiDumpFailure(attempts: UiDumpDiagnostics[]) {
+    const parts = attempts.map((attempt) => {
+      const mode = attempt.compressed ? "compressed" : "normal";
+      const detail =
+        attempt.stderr || attempt.stdout || `exit code ${attempt.exitCode}`;
+      return `${mode}: ${detail}`;
+    });
+    return `UI hierarchy dump failed. ${parts.join("; ")}`;
+  }
+
+  private countUiNodes(xml: string) {
+    return [...xml.matchAll(/<node\b/g)].length;
+  }
+
+  private boundedExcerpt(value: string, maxLength = 1_000) {
+    const normalized = value.replace(/\s+$/g, "");
+    if (normalized.length <= maxLength) {
+      return normalized;
+    }
+    return `${normalized.slice(0, maxLength)}...[truncated ${normalized.length - maxLength} chars]`;
   }
 
   private async rotateDisplay(udid: string) {

@@ -686,9 +686,36 @@ export interface components {
             /** @example 0 */
             exitCode: number;
         };
+        AdbUiDumpDiagnosticsDto: {
+            /** @example uiautomator dump /data/local/tmp/window.xml */
+            command: string;
+            /** @example false */
+            compressed: boolean;
+            /** @example 138 */
+            durationMs: number;
+            /** @example 0 */
+            exitCode: number | null;
+            /** @example UI hierarchy dumped to: /data/local/tmp/window.xml */
+            stdout: string;
+            /** @example  */
+            stderr: string;
+            /** @example 12543 */
+            xmlBytes: number;
+            /** @example 42 */
+            rawNodeCount: number;
+        };
         AdbUiDumpDto: {
+            /**
+             * @example available
+             * @enum {string}
+             */
+            status: "available" | "failed";
             /** @example <?xml version='1.0' encoding='UTF-8' standalone='yes' ?> */
-            xml: string;
+            xml?: string;
+            /** @example UI hierarchy dump failed. */
+            error?: string;
+            diagnostics?: components["schemas"]["AdbUiDumpDiagnosticsDto"];
+            attempts?: components["schemas"]["AdbUiDumpDiagnosticsDto"][];
             /** @example 2026-05-25T20:30:00.000Z */
             dumpedAt: string;
         };

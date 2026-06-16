@@ -9,6 +9,11 @@ export {
 } from "./provider/form-state";
 export { normalizeDefaultModel } from "./provider/default-model";
 export {
+  recommendAiModelForAutomation,
+  type AiModelRecommendation,
+  type AiModelRecommendationLevel,
+} from "./provider/model-recommendation";
+export {
   maskProvider,
   normalizeAiModel,
   normalizeAiModels,

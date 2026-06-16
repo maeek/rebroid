@@ -44,6 +44,11 @@ build_image \
   "${repo_dir}/apps/display-sidecar/Dockerfile"
 
 build_image \
+  "localhost/rebroid/ocr-sidecar:local" \
+  "${repo_dir}" \
+  "${repo_dir}/apps/ocr-sidecar/Dockerfile"
+
+build_image \
   "localhost/rebroid/firewall-agent:local" \
   "${repo_dir}" \
   "${repo_dir}/apps/firewall-agent/Dockerfile"
@@ -52,6 +57,7 @@ build_image \
   localhost/rebroid/orchestrator:local \
   localhost/rebroid/web:local \
   localhost/rebroid/display-sidecar:local \
+  localhost/rebroid/ocr-sidecar:local \
   localhost/rebroid/firewall-agent:local \
   --format '{{.RepoTags}} {{.Os}}/{{.Architecture}}'
 
@@ -72,6 +78,7 @@ done <<'EOF'
 localhost/rebroid/web:local rebroid-web-local.tar
 localhost/rebroid/orchestrator:local rebroid-orchestrator-local.tar
 localhost/rebroid/display-sidecar:local rebroid-display-sidecar-local.tar
+localhost/rebroid/ocr-sidecar:local rebroid-ocr-sidecar-local.tar
 localhost/rebroid/firewall-agent:local rebroid-firewall-agent-local.tar
 EOF
 

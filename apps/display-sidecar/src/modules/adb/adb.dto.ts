@@ -106,11 +106,51 @@ export class AdbShellResultDto {
   exitCode!: number;
 }
 
-export class AdbUiDumpDto {
+export class AdbUiDumpDiagnosticsDto {
+  @ApiProperty({ example: "uiautomator dump /data/local/tmp/window.xml" })
+  command!: string;
+
+  @ApiProperty({ example: false })
+  compressed!: boolean;
+
+  @ApiProperty({ example: 138 })
+  durationMs!: number;
+
+  @ApiProperty({ type: Number, nullable: true, example: 0 })
+  exitCode!: number | null;
+
   @ApiProperty({
+    example: "UI hierarchy dumped to: /data/local/tmp/window.xml",
+  })
+  stdout!: string;
+
+  @ApiProperty({ example: "" })
+  stderr!: string;
+
+  @ApiProperty({ example: 12543 })
+  xmlBytes!: number;
+
+  @ApiProperty({ example: 42 })
+  rawNodeCount!: number;
+}
+
+export class AdbUiDumpDto {
+  @ApiProperty({ enum: ["available", "failed"], example: "available" })
+  status!: "available" | "failed";
+
+  @ApiPropertyOptional({
     example: "<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>",
   })
-  xml!: string;
+  xml?: string;
+
+  @ApiPropertyOptional({ example: "UI hierarchy dump failed." })
+  error?: string;
+
+  @ApiPropertyOptional({ type: AdbUiDumpDiagnosticsDto })
+  diagnostics?: AdbUiDumpDiagnosticsDto;
+
+  @ApiPropertyOptional({ type: AdbUiDumpDiagnosticsDto, isArray: true })
+  attempts?: AdbUiDumpDiagnosticsDto[];
 
   @ApiProperty({ example: "2026-05-25T20:30:00.000Z" })
   dumpedAt!: string;

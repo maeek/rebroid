@@ -96,7 +96,7 @@ describe('android package automation commands', () => {
   it('opens system Settings through typed intent routes', async () => {
     const shell = jest.fn().mockResolvedValueOnce({
       exitCode: 0,
-      stdout: 'Starting: Intent { act=android.settings.SETTINGS }',
+      stdout: 'Events injected: 1',
       stderr: '',
     });
     const openSystemSettings =
@@ -117,6 +117,44 @@ describe('android package automation commands', () => {
       },
     });
     expect(shell).toHaveBeenCalledWith(
+      { id: 'app_1' },
+      'monkey -p com.android.settings -c android.intent.category.LAUNCHER 1',
+      10_000,
+    );
+  });
+
+  it('falls back to Settings intent when package launcher route fails', async () => {
+    const shell = jest
+      .fn()
+      .mockResolvedValueOnce({
+        exitCode: 1,
+        stdout: '',
+        stderr: 'No activities found',
+      })
+      .mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: 'Starting: Intent { act=android.settings.SETTINGS }',
+        stderr: '',
+      });
+    const openSystemSettings =
+      createAndroidDevicePackageTextAutomationCommands().find(
+        (command) => command.uses === 'android.openSystemSettings',
+      );
+
+    await expect(
+      openSystemSettings?.execute({ screen: 'main', timeoutMs: 10_000 }, {
+        app: { id: 'app_1' },
+        adb: { shell },
+      } as never),
+    ).resolves.toMatchObject({
+      summary: 'Opened Android Settings.',
+      data: {
+        opened: true,
+        screen: 'main',
+      },
+    });
+    expect(shell).toHaveBeenNthCalledWith(
+      2,
       { id: 'app_1' },
       'cmd activity start-activity -a android.settings.SETTINGS',
       10_000,

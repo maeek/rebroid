@@ -7,6 +7,7 @@ import {
   normalizeAiProvider,
   normalizeDefaultModel,
   normalizeProviderForm,
+  recommendAiModelForAutomation,
   resolveUpdatedApiKey,
   setDefaultProviderModelAt,
   updateProviderModelAt,
@@ -186,6 +187,33 @@ describe("AI provider core", () => {
         (model) => model.defaultFor,
       ),
       [[], ["planner"]],
+    );
+  });
+
+  it("recommends GUI-oriented vision models for mobile automation", () => {
+    assert.deepEqual(
+      recommendAiModelForAutomation({
+        id: "qwen2.5-vl:7b",
+        label: "Qwen2.5 VL 7B",
+        roles: ["planner", "vision"],
+      }),
+      {
+        level: "good",
+        title: "GUI-oriented",
+        message:
+          "Good fit for mobile/GUI grounding. Prefer this for vision or shared planner+vision when health checks pass.",
+      },
+    );
+  });
+
+  it("warns when general VLMs are used as combined GUI controllers", () => {
+    assert.equal(
+      recommendAiModelForAutomation({
+        id: "gemma4:e4b-mlx",
+        label: "Gemma 4",
+        roles: ["planner", "vision"],
+      }).level,
+      "warning",
     );
   });
 });

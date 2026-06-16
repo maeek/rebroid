@@ -14,6 +14,7 @@ import { conversationBeforeTurn, terminalRunStatuses, type ChatTurn } from './ai
 import { aiAgentPromptPresets } from './ai-agent-prompt-presets'
 import { AiAgentSettingsPopover } from './ai-agent-settings-popover'
 import { useAiAgentChatSession } from './use-ai-agent-chat-session'
+import { recommendAiModelForAutomation } from '@rebroid/ai-core/provider'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type {
   AiPromptSuggestion,
@@ -250,6 +251,10 @@ export const AiAgentToolsSection = ({
           selectedVisionProvider && selectedVisionModel
             ? { provider: selectedVisionProvider, model: selectedVisionModel }
             : null,
+        modelRecommendations: {
+          planner: selectedModel ? recommendAiModelForAutomation(selectedModel) : null,
+          vision: selectedVisionModel ? recommendAiModelForAutomation(selectedVisionModel) : null
+        },
         sharedMultimodalMode: Boolean(
           selectedProvider &&
           selectedModel &&

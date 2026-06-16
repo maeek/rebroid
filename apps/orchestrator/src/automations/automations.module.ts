@@ -40,6 +40,7 @@ import { AutomationsQueryService } from './services/automations-query.service';
 import { AutomationsService } from './services/automations.service';
 import { AutomationTriggerSchedulerService } from './services/automation-trigger-scheduler.service';
 import { AutomationPerceptionService } from './vision/automation-perception.service';
+import { AutomationOcrService } from './vision/automation-ocr.service';
 import { AutomationVisionService } from './vision/automation-vision.service';
 
 @Module({
@@ -66,6 +67,7 @@ import { AutomationVisionService } from './vision/automation-vision.service';
     AutomationAiYamlDraftService,
     AutomationAiHarnessService,
     AutomationVisionService,
+    AutomationOcrService,
     AutomationPerceptionService,
     AutomationRunEventBus,
     AutomationRunEventStreamService,

@@ -34,7 +34,7 @@ export class GenericAutomationCommandsService {
           { app, adb }: AutomationCommandContext,
         ) => {
           const dump = await adb.dumpUi(app);
-          if (!dump.xml.includes(text)) {
+          if (dump.status !== 'available' || !dump.xml?.includes(text)) {
             throw new Error(`Text "${text}" was not found.`);
           }
           return { summary: `Text "${text}" exists.` };
@@ -51,7 +51,7 @@ export class GenericAutomationCommandsService {
           { app, adb }: AutomationCommandContext,
         ) => {
           const dump = await adb.dumpUi(app);
-          if (dump.xml.includes(text)) {
+          if (dump.status === 'available' && dump.xml?.includes(text)) {
             throw new Error(`Text "${text}" was found.`);
           }
           return { summary: `Text "${text}" is missing.` };
