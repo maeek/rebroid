@@ -34,6 +34,7 @@ export interface AutomationVisionScreenControl {
 export interface AutomationVisionScreenState {
   screenKind:
     | 'home'
+    | 'app_drawer'
     | 'quick_settings'
     | 'notification_shade'
     | 'settings_app'

@@ -14,6 +14,17 @@ export interface AutomationOcrResult {
   engine?: string;
   model?: string;
   languages?: string[];
+  preprocessingMode?: string;
+  preprocessingAttempts?: OcrPreprocessingAttempt[];
+  error?: string;
+}
+
+export interface OcrPreprocessingAttempt {
+  mode: string;
+  status: string;
+  textBoxCount?: number;
+  averageConfidence?: number;
+  elapsedMs?: number;
   error?: string;
 }
 
@@ -37,6 +48,8 @@ interface OcrSidecarResponse {
   engine?: string;
   model?: string;
   languages?: string[];
+  preprocessingMode?: string;
+  preprocessingAttempts?: OcrPreprocessingAttempt[];
 }
 
 @Injectable()
@@ -69,6 +82,9 @@ export class AutomationOcrService {
             this.config.get<number>('app.ocr.minConfidence') ?? 0.4,
           maxImageDimension:
             this.config.get<number>('app.ocr.maxImageDimension') ?? 1600,
+          preprocessingModes: this.config.get<string[]>(
+            'app.ocr.preprocessingModes',
+          ) ?? ['raw', 'grayscale', 'contrast', 'threshold'],
         }),
         signal: controller.signal,
       });
@@ -79,10 +95,14 @@ export class AutomationOcrService {
           status: 'failed',
           detections: [],
           error: sanitizeAiText(
-            payload?.detail ??
+            this.errorDetail(payload?.detail) ??
               payload?.message ??
               `OCR sidecar returned ${response.status}.`,
             1000,
+          ),
+          preprocessingAttempts: this.normalizeAttempts(
+            this.errorAttempts(payload?.detail) ??
+              payload?.preprocessingAttempts,
           ),
         };
       }
@@ -102,9 +122,12 @@ export class AutomationOcrService {
     }
   }
 
-  private parsePayload(
-    text: string,
-  ): (OcrSidecarResponse & { detail?: string; message?: string }) | null {
+  private parsePayload(text: string):
+    | (OcrSidecarResponse & {
+        detail?: { message?: string; attempts?: unknown } | string;
+        message?: string;
+      })
+    | null {
     try {
       return text ? (JSON.parse(text) as OcrSidecarResponse) : null;
     } catch {
@@ -140,6 +163,64 @@ export class AutomationOcrService {
       ...(payload?.engine ? { engine: payload.engine } : {}),
       ...(payload?.model ? { model: payload.model } : {}),
       ...(payload?.languages ? { languages: payload.languages } : {}),
+      ...(payload?.preprocessingMode
+        ? { preprocessingMode: payload.preprocessingMode }
+        : {}),
+      ...(payload?.preprocessingAttempts
+        ? {
+            preprocessingAttempts: this.normalizeAttempts(
+              payload.preprocessingAttempts,
+            ),
+          }
+        : {}),
     };
+  }
+
+  private errorDetail(
+    detail: { message?: string; attempts?: unknown } | string | undefined,
+  ) {
+    if (!detail) return undefined;
+    if (typeof detail === 'string') return detail;
+    return detail.message;
+  }
+
+  private errorAttempts(
+    detail: { message?: string; attempts?: unknown } | string | undefined,
+  ) {
+    if (!detail || typeof detail === 'string') return undefined;
+    return detail.attempts;
+  }
+
+  private normalizeAttempts(value: unknown): OcrPreprocessingAttempt[] {
+    if (!Array.isArray(value)) return [];
+    return value
+      .map((attempt) => {
+        if (!attempt || typeof attempt !== 'object' || Array.isArray(attempt)) {
+          return null;
+        }
+        const raw = attempt as Record<string, unknown>;
+        const mode = typeof raw.mode === 'string' ? raw.mode : '';
+        const status = typeof raw.status === 'string' ? raw.status : '';
+        if (!mode || !status) return null;
+        return {
+          mode,
+          status,
+          ...(typeof raw.textBoxCount === 'number'
+            ? { textBoxCount: raw.textBoxCount }
+            : {}),
+          ...(typeof raw.averageConfidence === 'number'
+            ? { averageConfidence: raw.averageConfidence }
+            : {}),
+          ...(typeof raw.elapsedMs === 'number'
+            ? { elapsedMs: raw.elapsedMs }
+            : {}),
+          ...(typeof raw.error === 'string'
+            ? { error: sanitizeAiText(raw.error, 500) }
+            : {}),
+        };
+      })
+      .filter(
+        (attempt): attempt is OcrPreprocessingAttempt => attempt !== null,
+      );
   }
 }

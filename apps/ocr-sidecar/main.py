@@ -9,10 +9,11 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
-from PIL import Image
+from PIL import Image, ImageEnhance, ImageOps
 import numpy as np
 
 MAX_INPUT_BYTES = int(os.getenv("OCR_MAX_INPUT_BYTES", str(24 * 1024 * 1024)))
+SUPPORTED_PREPROCESS_MODES = {"raw", "grayscale", "contrast", "threshold"}
 DEFAULT_LANGUAGES = [
     item.strip()
     for item in os.getenv("OCR_LANGUAGES", "en").split(",")
@@ -20,6 +21,14 @@ DEFAULT_LANGUAGES = [
 ] or ["en"]
 DEFAULT_MIN_CONFIDENCE = float(os.getenv("OCR_MIN_CONFIDENCE", "0.4"))
 DEFAULT_MAX_IMAGE_DIMENSION = int(os.getenv("OCR_MAX_IMAGE_DIMENSION", "1600"))
+DEFAULT_PREPROCESS_MODES = [
+    item.strip()
+    for item in os.getenv(
+        "OCR_PREPROCESS_MODES",
+        "raw,grayscale,contrast,threshold",
+    ).split(",")
+    if item.strip()
+] or ["raw"]
 
 app = FastAPI(title="Rebroid OCR sidecar")
 
@@ -28,6 +37,7 @@ class OcrRequest(BaseModel):
     dataUrl: str | None = None
     imageBase64: str | None = None
     languages: list[str] | None = None
+    preprocessingModes: list[str] | None = None
     minConfidence: float = Field(default=DEFAULT_MIN_CONFIDENCE, ge=0, le=1)
     maxImageDimension: int = Field(
         default=DEFAULT_MAX_IMAGE_DIMENSION,
@@ -68,6 +78,32 @@ def _resize_image(image: Image.Image, max_dimension: int) -> Image.Image:
         (max(1, int(width * scale)), max(1, int(height * scale))),
         Image.Resampling.LANCZOS,
     )
+
+
+def _preprocess_image(image: Image.Image, mode: str) -> Image.Image:
+    if mode == "raw":
+        return image.convert("RGB")
+    grayscale = ImageOps.grayscale(image)
+    if mode == "grayscale":
+        return grayscale.convert("RGB")
+    if mode == "contrast":
+        contrasted = ImageEnhance.Contrast(ImageOps.autocontrast(grayscale)).enhance(1.8)
+        return contrasted.convert("RGB")
+    if mode == "threshold":
+        contrasted = ImageEnhance.Contrast(ImageOps.autocontrast(grayscale)).enhance(1.8)
+        thresholded = contrasted.point(lambda pixel: 255 if pixel >= 150 else 0)
+        return thresholded.convert("RGB")
+    return image.convert("RGB")
+
+
+def _normalize_preprocessing_modes(modes: list[str] | None) -> list[str]:
+    selected = modes or DEFAULT_PREPROCESS_MODES
+    normalized: list[str] = []
+    for mode in selected:
+        value = mode.strip().lower()
+        if value in SUPPORTED_PREPROCESS_MODES and value not in normalized:
+            normalized.append(value)
+    return normalized or ["raw"]
 
 
 @lru_cache(maxsize=4)
@@ -118,34 +154,21 @@ def _bounds_from_box(box: Any, width: int, height: int):
     }
 
 
-@app.get("/health")
-def health():
-    return {
-        "ok": True,
-        "service": "rebroid-ocr-sidecar",
-        "engine": "paddleocr",
-        "languages": DEFAULT_LANGUAGES,
-        "ready": True,
-    }
+def _sanitize_error(error: Exception) -> str:
+    message = str(error).strip() or error.__class__.__name__
+    return message[:500]
 
 
-@app.post("/ocr/screenshot")
-def ocr_screenshot(payload: OcrRequest):
-    started = time.perf_counter()
-    languages = payload.languages or DEFAULT_LANGUAGES
-    language = languages[0] if languages else "en"
-    image = _resize_image(_decode_image(payload), payload.maxImageDimension)
-    width, height = image.size
-
-    try:
-        result = _ocr_engine(language).ocr(np.array(image), cls=True)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail="OCR execution failed.") from exc
-
+def _detections_from_result(
+    raw_result: Any,
+    width: int,
+    height: int,
+    min_confidence: float,
+):
     detections = []
-    for index, (box, text, confidence) in enumerate(_iter_lines(result) or [], start=1):
+    for index, (box, text, confidence) in enumerate(_iter_lines(raw_result) or [], start=1):
         normalized_text = " ".join(text.split())
-        if not normalized_text or confidence < payload.minConfidence:
+        if not normalized_text or confidence < min_confidence:
             continue
         bounds = _bounds_from_box(box, width, height)
         if bounds is None:
@@ -164,13 +187,89 @@ def ocr_screenshot(payload: OcrRequest):
                 "source": "ocr",
             }
         )
+    return detections
+
+
+def _score_detections(detections: list[dict[str, Any]]) -> tuple[int, float]:
+    if not detections:
+        return (0, 0.0)
+    confidence = sum(float(item.get("confidence") or 0) for item in detections)
+    return (len(detections), confidence / len(detections))
+
+
+@app.get("/health")
+def health():
+    return {
+        "ok": True,
+        "service": "rebroid-ocr-sidecar",
+        "engine": "paddleocr",
+        "languages": DEFAULT_LANGUAGES,
+        "preprocessingModes": _normalize_preprocessing_modes(None),
+        "ready": True,
+    }
+
+
+@app.post("/ocr/screenshot")
+def ocr_screenshot(payload: OcrRequest):
+    started = time.perf_counter()
+    languages = payload.languages or DEFAULT_LANGUAGES
+    language = languages[0] if languages else "en"
+    image = _resize_image(_decode_image(payload), payload.maxImageDimension)
+    width, height = image.size
+    attempts = []
+    best = None
+    engine = _ocr_engine(language)
+
+    for mode in _normalize_preprocessing_modes(payload.preprocessingModes):
+        mode_started = time.perf_counter()
+        try:
+            processed = _preprocess_image(image, mode)
+            result = engine.ocr(np.array(processed), cls=True)
+            detections = _detections_from_result(
+                result,
+                width,
+                height,
+                payload.minConfidence,
+            )
+            score = _score_detections(detections)
+            attempt = {
+                "mode": mode,
+                "status": "available",
+                "textBoxCount": len(detections),
+                "averageConfidence": score[1],
+                "elapsedMs": round((time.perf_counter() - mode_started) * 1000),
+            }
+            attempts.append(attempt)
+            candidate = {"mode": mode, "detections": detections, "score": score}
+            if best is None or candidate["score"] > best["score"]:
+                best = candidate
+        except Exception as exc:
+            attempts.append(
+                {
+                    "mode": mode,
+                    "status": "failed",
+                    "error": _sanitize_error(exc),
+                    "elapsedMs": round((time.perf_counter() - mode_started) * 1000),
+                }
+            )
+
+    if best is None:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "OCR execution failed for all preprocessing modes.",
+                "attempts": attempts,
+            },
+        )
 
     return {
         "status": "available",
         "engine": "paddleocr",
         "model": "PP-OCR",
         "languages": languages,
+        "preprocessingMode": best["mode"],
+        "preprocessingAttempts": attempts,
         "elapsedMs": round((time.perf_counter() - started) * 1000),
         "image": {"width": width, "height": height},
-        "detections": detections,
+        "detections": best["detections"],
     }

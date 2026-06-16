@@ -73,6 +73,26 @@ export class AutomationCommandRegistryService implements OnModuleInit {
       .sort((left, right) => left.uses.localeCompare(right.uses));
   }
 
+  listAiCommands() {
+    return [...this.commands.values()]
+      .map(({ uses, label, description, aiTool }) => {
+        const inputSchema = normalizeDefaultedJsonSchemaRequired(
+          toJSONSchema(this.get(uses).schema, {
+            unrepresentable: 'any',
+          }) as Record<string, unknown>,
+        );
+
+        return {
+          uses,
+          label,
+          description,
+          aiTool,
+          inputSchema,
+        };
+      })
+      .sort((left, right) => left.uses.localeCompare(right.uses));
+  }
+
   normalizeInput(uses: string, input: Record<string, unknown>) {
     const command = this.get(uses);
     try {

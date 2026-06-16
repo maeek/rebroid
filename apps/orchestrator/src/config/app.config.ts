@@ -32,6 +32,7 @@ const environmentSchema = z.object({
   OCR_MAX_IMAGE_DIMENSION: optionalInteger(320, 4096),
   OCR_MIN_CONFIDENCE: optionalNumber(0, 1),
   OCR_LANGUAGES: z.string().optional(),
+  OCR_PREPROCESS_MODES: z.string().optional(),
   ENABLE_API_DOCS: z.enum(['true', 'false']).optional(),
   FIREWALL_POLICY_BOOTSTRAP: z.enum(['true', 'false']).optional(),
   DISPLAY_WEBRTC_UDP_PORT_RANGE: z
@@ -221,6 +222,12 @@ export default registerAs('app', () => {
       maxImageDimension: number(process.env.OCR_MAX_IMAGE_DIMENSION, 1600),
       minConfidence: number(process.env.OCR_MIN_CONFIDENCE, 0.4),
       languages: csv(process.env.OCR_LANGUAGES, ['en']),
+      preprocessingModes: csv(process.env.OCR_PREPROCESS_MODES, [
+        'raw',
+        'grayscale',
+        'contrast',
+        'threshold',
+      ]),
     },
   };
 });

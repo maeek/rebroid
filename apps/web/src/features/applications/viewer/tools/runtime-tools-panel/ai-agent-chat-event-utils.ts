@@ -23,7 +23,7 @@ export type EventTimelineItem =
     }
   | ToolTimelineItem
 
-export const compactValue = (value: unknown) => {
+const compactValue = (value: unknown) => {
   if (value === null || value === undefined) return 'null'
   if (typeof value === 'string') return value
   if (typeof value === 'number' || typeof value === 'boolean') return String(value)
@@ -39,7 +39,7 @@ const PRE_FORMATTED_KEYS = new Set(['stdout', 'stderr', 'output', 'command', 'st
 const valueFormatForKey = (key: string): CompactValueRow['format'] =>
   PRE_FORMATTED_KEYS.has(key.toLowerCase()) ? 'pre' : 'inline'
 
-export const compactValueRows = (value: unknown): CompactValueRow[] => {
+const compactValueRows = (value: unknown): CompactValueRow[] => {
   if (value === null || value === undefined) return []
   if (Array.isArray(value)) {
     return value.slice(0, 12).map((item, index) => {
@@ -72,9 +72,9 @@ export const compactValueRows = (value: unknown): CompactValueRow[] => {
   ]
 }
 
-export const compactArgumentRows = compactValueRows
+const compactArgumentRows = compactValueRows
 
-export const isToolEvent = (event: AutomationRunEvent) =>
+const isToolEvent = (event: AutomationRunEvent) =>
   event.type === 'ai.tool.arguments' ||
   event.type === 'ai.tool.started' ||
   event.type === 'ai.tool.completed' ||

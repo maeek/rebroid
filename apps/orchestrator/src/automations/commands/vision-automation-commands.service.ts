@@ -46,6 +46,11 @@ export class VisionAutomationCommandsService {
         label: 'Observe screen',
         description:
           'Captures the current screen and returns normalized detected elements.',
+        aiTool: {
+          label: 'Inspect current screen visually',
+          description:
+            'Captures the screen and returns UI hierarchy, OCR, visual candidates, and a vision hypothesis. Treat visual guesses as uncertain until confirmed by tool facts or a fresh observation.',
+        },
         requiredPermissions: ['automations:run'],
         schema: observeSchema,
         outputs: [
@@ -121,6 +126,11 @@ export class VisionAutomationCommandsService {
         label: 'Locate on screen',
         description:
           'Finds visible UI elements by text, label, role, or description.',
+        aiTool: {
+          label: 'Locate visible screen target',
+          description:
+            'Finds a visible target by text, icon hypothesis, role, or description on the current screenshot. Use it to ground a coordinate for visible controls; it does not confirm app identity or task completion by itself.',
+        },
         requiredPermissions: ['automations:run'],
         schema: locateSchema,
         outputs: [

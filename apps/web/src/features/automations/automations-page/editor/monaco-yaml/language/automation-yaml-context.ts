@@ -1,5 +1,6 @@
-import { isMap, isScalar, isSeq, parseDocument, type ParsedNode } from 'yaml'
+import { isMap, isScalar, parseDocument, type ParsedNode } from 'yaml'
 import { indentation } from './automation-yaml-language-utils'
+import { yamlNodeAtPath, yamlPathAt } from './automation-yaml-ast-utils'
 import type * as Monaco from 'monaco-editor'
 
 export type AutomationYamlCompletionContext =
@@ -126,7 +127,7 @@ const withPropertyContext = (
   const linePrefix = line.slice(0, position.column - 1)
   if (!/^(\s*)([\w-]*)$/.test(linePrefix)) return null
 
-  const path = pathAt(root, offset)
+  const path = yamlPathAt(root, offset)
   const withIndex = path.lastIndexOf('with')
   if (withIndex === -1) return fallbackWithPropertyContext(model, position)
   const uses = nearestUsesFromPath(root, path.slice(0, withIndex))
@@ -142,7 +143,7 @@ const isAutomationStepArrayPosition = (
   root: ParsedNode | null,
   offset: number
 ) => {
-  const path = pathAt(root, offset)
+  const path = yamlPathAt(root, offset)
   if (isStepArrayPath(path)) return true
   return fallbackIsStepArrayItem(model, lineNumber, listIndent)
 }
@@ -154,7 +155,7 @@ const isTagArrayPosition = (
   root: ParsedNode | null,
   offset: number
 ) => {
-  const path = pathAt(root, offset)
+  const path = yamlPathAt(root, offset)
   if (path.includes('metadata') && path.includes('tags')) return true
   return fallbackIsTagArrayItem(model, lineNumber, listIndent)
 }
@@ -167,60 +168,12 @@ const isStepArrayPath = (path: Array<string | number>) => {
   return false
 }
 
-const pathAt = (node: ParsedNode | null, offset: number, path: Array<string | number> = []): Array<string | number> => {
-  if (!node || !containsOffset(node, offset)) return path
-
-  if (isMap(node)) {
-    for (const pair of node.items) {
-      const key = isScalar(pair.key) ? String(pair.key.value) : null
-      if (!key || !pair.value || !containsOffset(pair.value, offset)) continue
-      return pathAt(pair.value, offset, [...path, key])
-    }
-    return path
-  }
-
-  if (isSeq(node)) {
-    for (let index = 0; index < node.items.length; index += 1) {
-      const item = node.items[index]
-      if (!item || !containsOffset(item, offset)) continue
-      return pathAt(item, offset, [...path, index])
-    }
-  }
-
-  return path
-}
-
 const nearestUsesFromPath = (root: ParsedNode | null, stepPath: Array<string | number>) => {
-  const node = nodeAtPath(root, stepPath)
+  const node = yamlNodeAtPath(root, stepPath)
   if (!node || !isMap(node)) return null
 
   const usesPair = node.items.find(pair => isScalar(pair.key) && pair.key.value === 'uses')
   return usesPair?.value && isScalar(usesPair.value) ? String(usesPair.value.value) : null
-}
-
-const nodeAtPath = (node: ParsedNode | null, path: Array<string | number>): ParsedNode | null => {
-  let current = node
-
-  for (const pathItem of path) {
-    if (typeof pathItem === 'string') {
-      if (!current || !isMap(current)) return null
-      const pair = current.items.find(item => isScalar(item.key) && item.key.value === pathItem)
-      current = pair?.value ? pair.value : null
-      continue
-    }
-
-    if (!current || !isSeq(current)) return null
-    current = current.items[pathItem] ? current.items[pathItem] : null
-  }
-
-  return current
-}
-
-const containsOffset = (node: ParsedNode, offset: number) => {
-  const range = node.range
-  if (!range) return false
-  const [start, , end] = range
-  return offset >= start && offset <= end
 }
 
 const propertyIndentForUsesLine = (linePrefix: string) => {

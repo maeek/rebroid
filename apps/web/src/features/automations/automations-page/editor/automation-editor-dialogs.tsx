@@ -11,7 +11,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
-import { selectCatalogModel } from '@/shared/automation/automation-ai-catalog'
+import { selectCatalogModel } from '@rebroid/ai-core/provider'
 import { AiModelPicker } from '@/shared/ui/ai/ai-model-picker'
 import { AiPromptComposer } from '@/shared/ui/ai/ai-prompt-composer'
 import type { AiDraftLogItem, AiDraftStatus } from './use-automation-ai-draft'

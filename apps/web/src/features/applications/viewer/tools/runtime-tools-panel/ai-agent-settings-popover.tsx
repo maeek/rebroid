@@ -1,26 +1,7 @@
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { AiModelChip } from '@/shared/ui/ai/ai-model-chip'
 import { AiModelPicker } from '@/shared/ui/ai/ai-model-picker'
 import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
-
-export const AiAgentModelStatus = ({
-  health,
-  isCheckingHealth,
-  selectedModel
-}: {
-  health: AutomationAiProviderHealth | null
-  isCheckingHealth: boolean
-  selectedModel: AutomationAiModelCatalogProvider['models'][number] | undefined
-}) => (
-  <AiModelChip
-    model={selectedModel}
-    health={health}
-    isCheckingHealth={isCheckingHealth}
-    disabled
-    className='hidden sm:inline-flex'
-  />
-)
 
 export const AiAgentSettingsPopover = ({
   adHocTimeoutMinutes,

@@ -1,4 +1,4 @@
-import { selectCatalogProviderAndModel } from '@/shared/automation/automation-ai-catalog'
+import { selectCatalogProviderAndModel } from '@rebroid/ai-core/provider'
 import type { AutomationAiModelCatalogProvider } from '@/server/orchestrator/settings/types'
 
 export const selectAiDraftProviderAndModel = (

@@ -9,6 +9,27 @@ export {
 } from "./provider/form-state";
 export { normalizeDefaultModel } from "./provider/default-model";
 export {
+  aiModelDisplayName,
+  aiModelRoleLabel,
+  aiModelSubtitle,
+  aiProviderDisplayName,
+  aiProviderKindLabel,
+  catalogByRole,
+  nextCatalogProviderAndModel,
+  selectCatalogModel,
+  selectCatalogProvider,
+  selectCatalogProviderAndModel,
+  selectInitialPlannerVisionCatalog,
+  selectMatchingVisionPair,
+  selectPlannerVisionCatalog,
+  type AiCatalogModel,
+  type AiCatalogSelection,
+  type AiModelCatalogProvider,
+  type AiModelRole,
+  type AiProviderKind,
+  type PlannerVisionCatalogSelection,
+} from "./provider/catalog";
+export {
   recommendAiModelForAutomation,
   type AiModelRecommendation,
   type AiModelRecommendationLevel,
@@ -36,6 +57,7 @@ export {
   type AutomationAiProviderModelRole,
   type AutomationAiProviderModelSettings,
   type AutomationAiProviderRemoteModel,
+  type AutomationAiConversationMessage,
   type AutomationAiRunInput,
   type AutomationAiToolRequest,
   type ProviderFormState,

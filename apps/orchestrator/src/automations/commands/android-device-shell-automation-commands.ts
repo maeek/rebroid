@@ -50,6 +50,11 @@ export const createAndroidDeviceShellAutomationCommands = () =>
       uses: 'android.adbShell',
       label: 'ADB shell',
       description: 'Runs an Android device shell command.',
+      aiTool: {
+        label: 'Run bounded Android shell command',
+        description:
+          'Runs a bounded adb shell command only when no typed tool covers the action. Prefer typed tools for package listing, launching, taps, swipes, text lookup, and settings navigation.',
+      },
       requiredPermissions: ['automations:run-adb-shell'],
       schema: shellSchema,
       outputs: [

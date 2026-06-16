@@ -4,6 +4,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Visible } from '@/components/ui/visible'
 import { DataGridToolbar } from '@/shared/ui/data-grid'
 import { allFilterValue } from '../shared/grid-query-utils'
+import {
+  AutomationLastRunFilter,
+  AutomationLastStatusFilter,
+  AutomationTagFilter,
+  AutomationTargetApplicationFilter
+} from '../shared/automation-grid-filter-controls'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
 import type { AutomationTriggersGridQuery } from '@/server/orchestrator/automations/types'
 
@@ -37,46 +43,16 @@ export const AutomationTriggersToolbar = ({
     selectedCount={selectedCount}
     filters={
       <>
-        <Select
-          value={gridQuery.tag ?? allFilterValue}
-          onValueChange={value => onUpdateGrid({ tag: value === allFilterValue ? undefined : value, page: 1 })}
-        >
-          <SelectTrigger className='w-full'>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={allFilterValue}>All tags</SelectItem>
-            {tags.map(tag => (
-              <SelectItem
-                key={tag}
-                value={tag}
-              >
-                {tag}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={gridQuery.targetApplicationId ?? allFilterValue}
-          onValueChange={value =>
-            onUpdateGrid({ targetApplicationId: value === allFilterValue ? undefined : value, page: 1 })
-          }
-        >
-          <SelectTrigger className='w-full'>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={allFilterValue}>All apps</SelectItem>
-            {applications.map(app => (
-              <SelectItem
-                key={app.id}
-                value={app.id}
-              >
-                {app.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <AutomationTagFilter
+          tags={tags}
+          value={gridQuery.tag}
+          onChange={tag => onUpdateGrid({ tag, page: 1 })}
+        />
+        <AutomationTargetApplicationFilter
+          applications={applications}
+          value={gridQuery.targetApplicationId}
+          onChange={targetApplicationId => onUpdateGrid({ targetApplicationId, page: 1 })}
+        />
         <Select
           value={gridQuery.enabled ?? allFilterValue}
           onValueChange={value =>
@@ -95,46 +71,14 @@ export const AutomationTriggersToolbar = ({
             <SelectItem value='false'>Disabled</SelectItem>
           </SelectContent>
         </Select>
-        <Select
-          value={gridQuery.status ?? allFilterValue}
-          onValueChange={value =>
-            onUpdateGrid({
-              status: value === allFilterValue ? undefined : value,
-              page: 1
-            })
-          }
-        >
-          <SelectTrigger className='w-full'>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={allFilterValue}>All status</SelectItem>
-            <SelectItem value='never_run'>Never run</SelectItem>
-            <SelectItem value='running'>Running</SelectItem>
-            <SelectItem value='success'>Success</SelectItem>
-            <SelectItem value='failed'>Failed</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select
-          value={gridQuery.lastRun ?? allFilterValue}
-          onValueChange={value =>
-            onUpdateGrid({
-              lastRun: value === allFilterValue ? undefined : value,
-              page: 1
-            })
-          }
-        >
-          <SelectTrigger className='w-full'>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={allFilterValue}>Any run</SelectItem>
-            <SelectItem value='never'>Never run</SelectItem>
-            <SelectItem value='7d'>Last 7 days</SelectItem>
-            <SelectItem value='30d'>Last 30 days</SelectItem>
-            <SelectItem value='90d'>Last 90 days</SelectItem>
-          </SelectContent>
-        </Select>
+        <AutomationLastStatusFilter
+          value={gridQuery.status}
+          onChange={status => onUpdateGrid({ status, page: 1 })}
+        />
+        <AutomationLastRunFilter
+          value={gridQuery.lastRun}
+          onChange={lastRun => onUpdateGrid({ lastRun, page: 1 })}
+        />
       </>
     }
   />

@@ -1,4 +1,4 @@
-import { catalogByRole, selectCatalogModel, selectCatalogProvider } from '@/shared/automation/automation-ai-catalog'
+import { catalogByRole, selectCatalogModel, selectCatalogProvider } from '@rebroid/ai-core/provider'
 import type { AutomationCommand } from '@/server/orchestrator/automations/types'
 import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
 

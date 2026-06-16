@@ -484,7 +484,7 @@ export class AutomationVisionService {
         ? 'Visibility warning: no UI hierarchy detections and no vision summary are available. The planner should ask the user for more context, use non-visual Android state-reading tools, or request a configured vision model instead of guessing screen contents.'
         : '';
     const ocrState = observation.ocr
-      ? `OCR: ${observation.ocr.status}, ${observation.ocr.detections.length} text box(es)${observation.ocr.elapsedMs !== undefined ? `, elapsedMs=${observation.ocr.elapsedMs}` : ''}${observation.ocr.error ? `, error=${observation.ocr.error}` : ''}.`
+      ? `OCR: ${observation.ocr.status}, ${observation.ocr.detections.length} text box(es)${observation.ocr.preprocessingMode ? `, preprocessing=${observation.ocr.preprocessingMode}` : ''}${observation.ocr.elapsedMs !== undefined ? `, elapsedMs=${observation.ocr.elapsedMs}` : ''}${observation.ocr.error ? `, error=${observation.ocr.error}` : ''}.`
       : 'OCR: unavailable.';
     const lines = [
       `Screen observation: ${observation.image.width}x${observation.image.height}, captured ${observation.image.capturedAt}.`,
@@ -587,7 +587,8 @@ export class AutomationVisionService {
             'Inspect icons and contextual clues, including gear/settings icons, but report them as candidate controls unless app identity is confirmed.',
             'List icon-only controls when they are visually important. Use cautious labels such as "settings access gear candidate" with confidence and evidence.',
             'A quick-settings shade with brightness slider, Internet/Bluetooth tiles, power button, edit pencil, or status-shade layout is quick_settings, not settings_app. A gear icon there means settings access is visible, not that Settings is open.',
-            'Use screenKind values: home, quick_settings, notification_shade, settings_app, app_screen, unknown.',
+            'An app drawer shows an app grid/list, app search, "All apps", or installed app icons/labels. Classify that as app_drawer, not home.',
+            'Use screenKind values: home, app_drawer, quick_settings, notification_shade, settings_app, app_screen, unknown.',
             'Use normalized 0..1 bounds for controls only when visually clear.',
             model.settings.systemPrompt,
           ]
@@ -612,7 +613,7 @@ export class AutomationVisionService {
                       latestHypothesis: visionContext.latestHypothesis ?? null,
                     })}`
                   : '',
-                'JSON shape: {"screenKind":"home|quick_settings|notification_shade|settings_app|app_screen|unknown","confidence":0.0,"visibleText":["..."],"controls":[{"label":"...","role":"button|icon|text|field|tile|unknown","bounds":{"left":0,"top":0,"width":0,"height":0},"confidence":0.0,"evidence":["..."]}],"evidence":["..."],"uncertainty":["..."],"summary":"one concise factual sentence"}.',
+                'JSON shape: {"screenKind":"home|app_drawer|quick_settings|notification_shade|settings_app|app_screen|unknown","confidence":0.0,"visibleText":["..."],"controls":[{"label":"...","role":"button|icon|text|field|tile|unknown","bounds":{"left":0,"top":0,"width":0,"height":0},"confidence":0.0,"evidence":["..."]}],"evidence":["..."],"uncertainty":["..."],"summary":"one concise factual sentence"}.',
                 'If the screen could be multiple things, choose unknown or low confidence and explain uncertainty.',
               ]
                 .filter(Boolean)
@@ -691,6 +692,7 @@ type VisionLocateModelMatch = {
 
 const screenKinds = new Set([
   'home',
+  'app_drawer',
   'quick_settings',
   'notification_shade',
   'settings_app',

@@ -72,6 +72,8 @@ export class AutomationPerceptionService {
         ocrEngine: observation.ocr?.engine ?? null,
         ocrModel: observation.ocr?.model ?? null,
         ocrLanguages: observation.ocr?.languages ?? [],
+        ocrPreprocessingMode: observation.ocr?.preprocessingMode ?? null,
+        ocrPreprocessingAttempts: observation.ocr?.preprocessingAttempts ?? [],
         ocrError: observation.ocr?.error ?? null,
         ocrDetections: observation.ocr?.detections.slice(0, 30) ?? [],
         hasVisionSummary: Boolean(observation.summary),
@@ -127,6 +129,9 @@ export class AutomationPerceptionService {
           uncertainty: observation.screenState?.uncertainty ?? [],
           ocrStatus: observation.ocr?.status ?? 'unavailable',
           ocrTextCount: observation.ocr?.detections.length ?? 0,
+          ocrPreprocessingMode: observation.ocr?.preprocessingMode ?? null,
+          ocrPreprocessingAttempts:
+            observation.ocr?.preprocessingAttempts ?? [],
           ocrDetections: observation.ocr?.detections.slice(0, 30) ?? [],
         },
       });

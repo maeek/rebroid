@@ -37,7 +37,7 @@ export const findActiveHistoryTurnId = (turns: ChatTurn[]) =>
 export const latestEventSequence = (fallbackSequence: number, events: AutomationRunEvent[]) =>
   events.length === 0 ? fallbackSequence : Math.max(fallbackSequence, ...events.map(event => event.sequence))
 
-export const projectChatTurnStatusFromEvents = (currentStatus: ChatTurnStatus, events: AutomationRunEvent[]) => {
+const projectChatTurnStatusFromEvents = (currentStatus: ChatTurnStatus, events: AutomationRunEvent[]) => {
   const statusEvent = events.map(updateRunStatusFromEvent).find(Boolean)
   const nextStatus =
     statusEvent === 'success'

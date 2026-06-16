@@ -1,4 +1,4 @@
-import { type MouseEvent, type MutableRefObject } from 'react'
+import { type MouseEvent, type RefObject } from 'react'
 import { IconDotsVertical } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -25,7 +25,7 @@ export const selectionColumn = <TData,>({
 }: {
   selection: DataGridSelectionState
   getRowId: (row: TData) => string
-  lastSelectedIndexRef: MutableRefObject<number | null>
+  lastSelectedIndexRef: RefObject<number | null>
 }): ColumnDef<TData> => ({
   id: '__select',
   enableHiding: false,

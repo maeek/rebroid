@@ -14,6 +14,8 @@ import {
   buildToolDefinitions,
   chatCompletionsEndpoint,
   consumeChatCompletionStream,
+  conversationBeforeTurn,
+  currentStreamingText,
   isPublicPlanText,
   applyRunVisionDefaults,
   blockedToolResult,
@@ -22,6 +24,7 @@ import {
   classifyAssistantResponseContent,
   correctScreenStateHypothesis,
   isSettingsOpenClaimConfirmed,
+  lastAssistantText,
   rankObservationCandidates,
   reconcileScreenStateHypothesis,
   summarizeObservationCandidates,
@@ -71,6 +74,52 @@ const model: AutomationAiProviderModel = {
 };
 
 describe("AI harness core", () => {
+  it("builds bounded conversation context from completed turns", () => {
+    const turns = Array.from({ length: 12 }, (_, index) => ({
+      id: `turn-${index}`,
+      prompt: `Prompt ${index}`,
+      events: [{ type: "ai.message.completed", message: `Answer ${index}` }],
+    }));
+
+    assert.deepEqual(conversationBeforeTurn("turn-12", turns), [
+      { role: "user", content: "Prompt 2" },
+      { role: "assistant", content: "Answer 2" },
+      { role: "user", content: "Prompt 3" },
+      { role: "assistant", content: "Answer 3" },
+      { role: "user", content: "Prompt 4" },
+      { role: "assistant", content: "Answer 4" },
+      { role: "user", content: "Prompt 5" },
+      { role: "assistant", content: "Answer 5" },
+      { role: "user", content: "Prompt 6" },
+      { role: "assistant", content: "Answer 6" },
+      { role: "user", content: "Prompt 7" },
+      { role: "assistant", content: "Answer 7" },
+      { role: "user", content: "Prompt 8" },
+      { role: "assistant", content: "Answer 8" },
+      { role: "user", content: "Prompt 9" },
+      { role: "assistant", content: "Answer 9" },
+      { role: "user", content: "Prompt 10" },
+      { role: "assistant", content: "Answer 10" },
+      { role: "user", content: "Prompt 11" },
+      { role: "assistant", content: "Answer 11" },
+    ]);
+  });
+
+  it("reads completed and streaming assistant text from turn events", () => {
+    const turn = {
+      prompt: "Prompt",
+      events: [
+        { type: "ai.message.delta", message: "draft" },
+        { type: "ai.message.completed", message: "Final" },
+        { type: "ai.message.delta", message: "Next " },
+        { type: "ai.message.delta", message: "draft" },
+      ],
+    };
+
+    assert.equal(lastAssistantText(turn), "Final");
+    assert.equal(currentStreamingText(turn), "Next draft");
+  });
+
   it("maps automation command names to OpenAI-compatible tool names", () => {
     assert.equal(toolName("android.tap"), "android__tap");
     assert.equal(
@@ -80,6 +129,15 @@ describe("AI harness core", () => {
     assert.equal(
       mapUsesByToolName([{ uses: "vision.locate" }]).get("vision_locate"),
       "vision.locate",
+    );
+    assert.equal(
+      mapUsesByToolName([
+        {
+          uses: "android.expandQuickSettings",
+          aiTool: { name: "android_openQuickControlsPanel" },
+        },
+      ]).get("android_openQuickControlsPanel"),
+      "android.expandQuickSettings",
     );
   });
 
@@ -104,6 +162,38 @@ describe("AI harness core", () => {
         allowed,
       ).map((tool) => tool.function.name),
       ["android__tap"],
+    );
+  });
+
+  it("uses AI-facing tool names and descriptions without changing uses IDs", () => {
+    const [tool] = buildToolDefinitions(
+      [
+        {
+          uses: "android.expandQuickSettings",
+          label: "Expand quick settings",
+          description: "Opens quick settings.",
+          inputSchema: { type: "object" },
+          aiTool: {
+            name: "android_openQuickControlsPanel",
+            label: "Open quick controls panel",
+            description:
+              "Opens status-shade quick controls, not the Settings app.",
+          },
+        },
+      ],
+      allowedToolMatcher(["android.expandQuickSettings"]),
+    );
+
+    assert.equal(tool.function.name, "android_openQuickControlsPanel");
+    assert.match(tool.function.description, /status-shade quick controls/);
+    assert.equal(
+      mapUsesByToolName([
+        {
+          uses: "android.expandQuickSettings",
+          aiTool: { name: "android_openQuickControlsPanel" },
+        },
+      ]).get(tool.function.name),
+      "android.expandQuickSettings",
     );
   });
 
@@ -321,6 +411,32 @@ describe("AI harness core", () => {
     assert.equal(reconciled.visionReliable, false);
   });
 
+  it("classifies app drawer landmarks separately from home", () => {
+    const reconciled = reconcileScreenStateHypothesis({
+      state: {
+        screenKind: "home",
+        confidence: 0.7,
+        visibleText: ["Search apps", "All apps"],
+        controls: [
+          {
+            label: "Settings",
+            role: "app_icon",
+            confidence: 0.8,
+            evidence: ["App label in launcher grid"],
+          },
+        ],
+        evidence: ["App drawer grid is visible."],
+        uncertainty: [],
+        summary: "Launcher app drawer is open.",
+      },
+      candidates: [],
+      confirmedFacts: [],
+    });
+
+    assert.equal(reconciled.screenKind, "app_drawer");
+    assert.match(reconciled.correctionReason ?? "", /App-drawer/);
+  });
+
   it("ranks and summarizes actionable visual candidates", () => {
     const candidates = rankObservationCandidates({
       goal: "Open Android system Settings",
@@ -443,7 +559,7 @@ describe("AI harness core", () => {
     assert.ok(planContent.includes("public execution plan"));
     assert.ok(planContent.includes("Markdown text only"));
     assert.ok(planContent.includes("Do not label generic Android robot"));
-    assert.ok(planContent.includes("android.expandQuickSettings"));
+    assert.ok(planContent.includes("Use quick controls only"));
     assert.ok(planContent.includes("launcher app-drawer route"));
     assert.ok(!planContent.includes("hidden reasoning"));
 
@@ -767,6 +883,43 @@ describe("AI harness core", () => {
       preflightToolCall({
         uses: "android.tapText",
         observation: { uiStatus: "available", uiNodes: 3 },
+      }),
+      null,
+    );
+  });
+
+  it("blocks quick controls from app drawer for app/settings goals", () => {
+    const guard = preflightToolCall({
+      uses: "android.expandQuickSettings",
+      prompt: "Open Android system Settings",
+      toolCall: {
+        intent: "Open quick settings",
+        expectedOutcome: "Quick settings visible",
+        input: {},
+        envelopeValid: true,
+      },
+      observation: {
+        screenKind: "app_drawer",
+        uiStatus: "available",
+        uiNodes: 4,
+      },
+    });
+
+    assert.equal(guard?.blocked, true);
+    assert.match(guard?.summary ?? "", /app drawer/);
+    assert.match(guard?.recoveryHint ?? "", /app-drawer route/);
+
+    assert.equal(
+      preflightToolCall({
+        uses: "android.expandQuickSettings",
+        prompt: "Open quick settings and turn off Bluetooth",
+        toolCall: {
+          intent: "Open quick controls",
+          expectedOutcome: "Quick controls panel visible",
+          input: {},
+          envelopeValid: true,
+        },
+        observation: { screenKind: "app_drawer" },
       }),
       null,
     );

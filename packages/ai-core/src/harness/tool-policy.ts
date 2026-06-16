@@ -174,11 +174,29 @@ export const shouldObserveAfterTool = ({
 
 export const preflightToolCall = ({
   uses,
+  toolCall,
+  prompt,
   observation,
 }: {
   uses: string;
+  toolCall?: AutomationToolEnvelopeResult | null;
+  prompt?: string | null;
   observation?: ScreenObservationPolicySnapshot | null;
 }): ToolPreflightGuard | null => {
+  if (
+    uses === "android.expandQuickSettings" &&
+    shouldBlockQuickControlsFromAppDrawer({ prompt, toolCall, observation })
+  ) {
+    return {
+      blocked: true,
+      category: "no_match",
+      summary:
+        "Quick controls were blocked because the latest screen appears to be the app drawer, and the goal is to open an app or Android Settings rather than the status shade.",
+      recoveryHint:
+        "Continue the app-drawer route: search or locate the Settings app by label/icon, tap a visible candidate, use vision.locate, or use package/state discovery before leaving the app drawer.",
+    };
+  }
+
   if (uses !== "android.tapText" && uses !== "android.waitForText") {
     return null;
   }
@@ -195,6 +213,54 @@ export const preflightToolCall = ({
     recoveryHint:
       "Use vision/location, normalized coordinates for visible targets, package/state discovery, or ask the user instead of retrying text lookup.",
   };
+};
+
+const shouldBlockQuickControlsFromAppDrawer = ({
+  prompt,
+  toolCall,
+  observation,
+}: {
+  prompt?: string | null;
+  toolCall?: AutomationToolEnvelopeResult | null;
+  observation?: ScreenObservationPolicySnapshot | null;
+}) => {
+  if (observation?.screenKind !== "app_drawer") {
+    return false;
+  }
+
+  const text = [
+    prompt ?? "",
+    toolCall?.intent ?? "",
+    toolCall?.expectedOutcome ?? "",
+    stringifyInputForIntent(toolCall?.input),
+  ]
+    .join("\n")
+    .toLowerCase();
+
+  if (mentionsQuickControls((prompt ?? "").toLowerCase())) {
+    return false;
+  }
+
+  return mentionsAppOrSettingsGoal(text);
+};
+
+const mentionsQuickControls = (text: string) =>
+  /\b(quick settings|quick controls|status shade|notification shade|notifications panel|control center|quick tiles|tiles|wi-?fi tile|bluetooth tile|pull down|shade gear|quick settings gear)\b/.test(
+    text,
+  );
+
+const mentionsAppOrSettingsGoal = (text: string) =>
+  /\b(settings app|android settings|system settings|open settings|launch settings|settings main|installed app|app drawer|launcher search|find app|open app|launch app|package)\b/.test(
+    text,
+  );
+
+const stringifyInputForIntent = (input?: Record<string, unknown>) => {
+  if (!input) return "";
+  try {
+    return JSON.stringify(input).slice(0, 1000);
+  } catch {
+    return "";
+  }
 };
 
 export const blockedToolResult = (
@@ -442,12 +508,12 @@ export const toolDisplayLabel = (uses: string) => {
     "android.tapNormalized": "Tap screen coordinate",
     "android.swipe": "Swipe screen",
     "android.swipeNormalized": "Swipe screen",
-    "android.expandQuickSettings": "Open quick settings",
-    "android.expandNotifications": "Open notifications",
+    "android.expandQuickSettings": "Open quick controls panel",
+    "android.expandNotifications": "Open notification shade",
     "android.collapsePanels": "Close system panels",
     "android.key": "Press Android key",
     "android.launchPackage": "Launch Android package",
-    "android.openSystemSettings": "Open Android settings",
+    "android.openSystemSettings": "Open Android Settings",
     "android.listPackages": "List Android packages",
     "android.tapText": "Tap visible text",
     "android.waitForText": "Wait for visible text",

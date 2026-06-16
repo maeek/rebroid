@@ -90,6 +90,9 @@ const observationEventData = (
   uiError: observation.observation.uiXml?.error ?? null,
   ocrStatus: observation.observation.ocr?.status ?? 'unavailable',
   ocrTextCount: observation.observation.ocr?.detections.length ?? 0,
+  ocrPreprocessingMode: observation.observation.ocr?.preprocessingMode ?? null,
+  ocrPreprocessingAttempts:
+    observation.observation.ocr?.preprocessingAttempts ?? [],
   ocrDetections: observation.observation.ocr?.detections.slice(0, 20) ?? [],
   detections: observation.observation.detections.length,
   hasVisionSummary: Boolean(observation.observation.summary),
@@ -231,7 +234,7 @@ export class AutomationAiHarnessService {
       'planner',
     );
     const deadline = Date.now() + input.timeoutMs;
-    const commands = this.registry.listCommands();
+    const commands = this.registry.listAiCommands();
     const allowed = allowedToolMatcher(input.allowedTools);
     const tools = buildToolDefinitions(commands, allowed);
     const usesByToolName = mapUsesByToolName(commands);
@@ -585,6 +588,8 @@ export class AutomationAiHarnessService {
         }
         const preflightGuard = preflightToolCall({
           uses,
+          toolCall: parsedToolCall,
+          prompt: input.prompt,
           observation: observationSnapshot(latestObservation),
         });
         if (preflightGuard) {

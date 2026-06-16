@@ -1,5 +1,6 @@
 export type AiScreenKind =
   | "home"
+  | "app_drawer"
   | "quick_settings"
   | "notification_shade"
   | "settings_app"
@@ -92,7 +93,15 @@ const homeLandmarks = [
   "camera",
   "contacts",
   "search",
+];
+const appDrawerLandmarks = [
   "app drawer",
+  "all apps",
+  "search apps",
+  "apps list",
+  "launcher grid",
+  "app grid",
+  "installed apps",
 ];
 
 const haystackForScreenState = (state: AiScreenStateHypothesis) =>
@@ -152,6 +161,9 @@ export const reconcileScreenStateHypothesis = ({
   const quickSettingsMatches = quickSettingsLandmarks.filter((landmark) =>
     combinedHaystack.includes(landmark),
   );
+  const appDrawerMatches = appDrawerLandmarks.filter((landmark) =>
+    combinedHaystack.includes(landmark),
+  );
   const homeMatches = homeLandmarks.filter((landmark) =>
     combinedHaystack.includes(landmark),
   );
@@ -191,6 +203,45 @@ export const reconcileScreenStateHypothesis = ({
         .slice(0, 4)
         .join(", ")}.`,
       visionReliable: false,
+    };
+  }
+
+  if (
+    corrected.screenKind === "settings_app" &&
+    appDrawerMatches.length >= 1 &&
+    !settingsConfirmed
+  ) {
+    return {
+      ...corrected,
+      screenKind: "app_drawer",
+      confidence: Math.min(corrected.confidence, 0.55),
+      rawScreenKind,
+      rawConfidence: state.confidence,
+      contradictionReason: `Vision said Settings app, but app-drawer landmarks were detected: ${appDrawerMatches
+        .slice(0, 4)
+        .join(", ")}.`,
+      correctionReason: `App-drawer landmarks detected: ${appDrawerMatches
+        .slice(0, 4)
+        .join(", ")}.`,
+      visionReliable: false,
+    };
+  }
+
+  if (
+    corrected.screenKind !== "app_drawer" &&
+    appDrawerMatches.length >= 2 &&
+    !settingsConfirmed
+  ) {
+    return {
+      ...corrected,
+      screenKind: "app_drawer",
+      confidence: Math.min(Math.max(corrected.confidence, 0.55), 0.8),
+      rawScreenKind,
+      rawConfidence: state.confidence,
+      correctionReason: `App-drawer landmarks detected: ${appDrawerMatches
+        .slice(0, 4)
+        .join(", ")}.`,
+      visionReliable: corrected.screenKind === rawScreenKind,
     };
   }
 

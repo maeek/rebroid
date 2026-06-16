@@ -526,11 +526,16 @@ export class AdbService {
     dumpPath: string,
     compressed: boolean,
   ): Promise<{ xml?: string; diagnostics: UiDumpDiagnostics }> {
-    const command = `rm -f ${this.shellQuote(dumpPath)} && uiautomator dump ${
-      compressed ? "--compressed " : ""
-    }${this.shellQuote(dumpPath)}`;
+    const dumpArgs = [
+      "uiautomator",
+      "dump",
+      ...(compressed ? ["--compressed"] : []),
+      dumpPath,
+    ];
+    const command = dumpArgs.map((arg) => this.shellQuote(arg)).join(" ");
     const started = Date.now();
-    const dump = await this.shellResult(udid, ["sh", "-lc", command], 10_000);
+    await this.shellResult(udid, ["rm", "-f", dumpPath], 5_000);
+    const dump = await this.shellResult(udid, dumpArgs, 10_000);
     let xml = "";
     let catResult: CommandResult | null = null;
     if (dump.exitCode === 0) {

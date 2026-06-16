@@ -92,7 +92,7 @@ describe('AutomationAiHarnessService', () => {
         getProvider: jest.fn().mockResolvedValue({ provider, model }),
       } as never,
       {
-        listCommands: jest.fn().mockReturnValue([
+        listAiCommands: jest.fn().mockReturnValue([
           {
             uses: 'android.listPackages',
             label: 'List packages',
@@ -264,7 +264,7 @@ describe('AutomationAiHarnessService', () => {
         getProvider: jest.fn().mockResolvedValue({ provider, model }),
       } as never,
       {
-        listCommands: jest.fn().mockReturnValue([
+        listAiCommands: jest.fn().mockReturnValue([
           {
             uses: 'android.launchPackage',
             label: 'Launch package',
@@ -428,7 +428,7 @@ describe('AutomationAiHarnessService', () => {
         getProvider: jest.fn().mockResolvedValue({ provider, model }),
       } as never,
       {
-        listCommands: jest.fn().mockReturnValue([
+        listAiCommands: jest.fn().mockReturnValue([
           {
             uses: 'android.tapText',
             label: 'Tap text',
@@ -640,7 +640,7 @@ describe('AutomationAiHarnessService', () => {
         getProvider: jest.fn().mockResolvedValue({ provider, model }),
       } as never,
       {
-        listCommands: jest.fn().mockReturnValue([
+        listAiCommands: jest.fn().mockReturnValue([
           {
             uses: 'android.expandQuickSettings',
             label: 'Expand quick settings',
@@ -724,5 +724,184 @@ describe('AutomationAiHarnessService', () => {
     expect(
       JSON.stringify(chat.mock.calls).includes('data:image/png;base64,after'),
     ).toBe(true);
+  });
+
+  it('blocks quick controls from app drawer when the goal is opening Settings', async () => {
+    const events: AutomationRunEventInput[] = [];
+    const provider = {
+      id: 'provider',
+      label: 'Provider',
+      kind: 'ollama' as const,
+      baseUrl: 'http://localhost:11434',
+      enabled: true,
+      models: [],
+    };
+    const model = {
+      id: 'planner',
+      label: 'Planner',
+      roles: ['planner' as const],
+      settings: {},
+      enabled: true,
+      defaultFor: ['planner'],
+    };
+    const chat = jest
+      .fn()
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              role: 'assistant',
+              content:
+                'Current screen: App drawer\nGoal: Open Android Settings\nNext moves: find Settings app',
+            },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              role: 'assistant',
+              content: '',
+              tool_calls: [
+                {
+                  id: 'call_1',
+                  type: 'function',
+                  function: {
+                    name: 'android_openQuickControlsPanel',
+                    arguments: JSON.stringify({
+                      intent: 'Open quick controls',
+                      expectedOutcome: 'Quick controls are visible',
+                      input: {},
+                    }),
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              role: 'assistant',
+              content:
+                'Current screen: App drawer\nGoal: Open Android Settings\nNext moves: continue app drawer search',
+            },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              role: 'assistant',
+              content: 'I stopped before leaving the app drawer.',
+            },
+          },
+        ],
+      });
+    const service = new AutomationAiHarnessService(
+      {
+        getProvider: jest.fn().mockResolvedValue({ provider, model }),
+      } as never,
+      {
+        listAiCommands: jest.fn().mockReturnValue([
+          {
+            uses: 'android.expandQuickSettings',
+            label: 'Expand quick settings',
+            description: 'Expand Android quick settings.',
+            aiTool: {
+              name: 'android_openQuickControlsPanel',
+              label: 'Open quick controls panel',
+              description: 'Opens status-shade quick controls.',
+            },
+            inputSchema: {
+              type: 'object',
+              properties: {},
+              additionalProperties: false,
+            },
+          },
+        ]),
+      } as never,
+      {
+        emit: jest.fn(async (event: AutomationRunEventInput) => {
+          events.push(event);
+          return {
+            ...event,
+            id: `event_${events.length}`,
+            sequence: events.length,
+          };
+        }),
+      } as never,
+      {
+        observe: jest.fn().mockResolvedValue({
+          plannerText: 'Screen observation: app drawer.',
+          observation: {
+            image: { width: 1080, height: 2340 },
+            uiXml: { status: 'available', nodeCount: 4 },
+            detections: [],
+            summary: 'App drawer with search.',
+            screenState: {
+              screenKind: 'app_drawer',
+              confidence: 0.82,
+              visibleText: ['Search apps', 'Settings'],
+              controls: [{ label: 'Settings', role: 'app_icon' }],
+              evidence: ['App drawer grid visible.'],
+              uncertainty: [],
+              summary: 'App drawer.',
+            },
+          },
+        }),
+      } as never,
+      {
+        buildForPlanner: jest.fn().mockResolvedValue('Runtime context'),
+      } as never,
+      { chat } as never,
+    );
+    const toolExecutor = jest.fn();
+    const context: AutomationAiHarnessContext = {
+      runId: 'run_1',
+      ownerUserId: 'user_1',
+      stepId: 'step_1',
+      parentStepId: null,
+      path: '$',
+      app: {} as never,
+      adb: {} as never,
+      display: {} as never,
+      networkPolicy: {} as never,
+      toolExecutor,
+    };
+
+    await service.run(
+      {
+        prompt: 'Open Android system Settings',
+        maxToolCalls: 1,
+        timeoutMs: 30_000,
+        allowedTools: ['android.expandQuickSettings'],
+        requireFinalAnswer: true,
+        providerId: 'provider',
+        modelId: 'planner',
+      },
+      context,
+    );
+
+    expect(toolExecutor).not.toHaveBeenCalled();
+    expect(
+      events.some(
+        (event) =>
+          event.type === 'ai.guardrail.triggered' &&
+          event.data?.uses === 'android.expandQuickSettings' &&
+          event.data?.failureCategory === 'no_match',
+      ),
+    ).toBe(true);
+    expect(
+      events.some(
+        (event) =>
+          event.type === 'ai.tool.started' &&
+          event.data?.uses === 'android.expandQuickSettings',
+      ),
+    ).toBe(false);
   });
 });

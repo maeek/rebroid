@@ -1,3 +1,8 @@
+import {
+  conversationBeforeTurn,
+  currentStreamingText,
+  type AutomationAiConversationMessage
+} from '@rebroid/ai-core/harness'
 import type { AutomationRun, AutomationRunEvent } from '@/server/orchestrator/automations/types'
 
 export const activeRunStatuses = new Set<AutomationRun['status']>(['queued', 'running'])
@@ -7,7 +12,8 @@ export const DEFAULT_AD_HOC_AI_TIMEOUT_MINUTES = 5
 export const clampAdHocTimeoutMinutes = (value: number) => Math.min(120, Math.max(1, Math.trunc(value || 1)))
 
 export type ChatTurnStatus = 'queued' | 'starting' | 'running' | 'canceling' | 'success' | 'failed' | 'canceled'
-export type ChatConversationMessage = { role: 'user' | 'assistant'; content: string }
+export type ChatConversationMessage = AutomationAiConversationMessage
+export { conversationBeforeTurn, currentStreamingText }
 
 export interface ChatTurn {
   id: string
@@ -26,7 +32,7 @@ export const updateRunStatusFromEvent = (event: AutomationRunEvent): AutomationR
   return null
 }
 
-export const runStatusToTurnStatus = (status: AutomationRun['status']): ChatTurnStatus => {
+const runStatusToTurnStatus = (status: AutomationRun['status']): ChatTurnStatus => {
   if (status === 'queued' || status === 'running') return 'running'
   return status
 }
@@ -42,37 +48,4 @@ export const chatTurnFromRun = (run: AutomationRun, events: AutomationRunEvent[]
     run,
     events
   }
-}
-
-export const lastAssistantText = (turn: ChatTurn) =>
-  [...turn.events]
-    .reverse()
-    .find(event => event.type === 'ai.message.completed')
-    ?.message?.trim() ?? ''
-
-export const currentStreamingText = (turn: ChatTurn) => {
-  const lastCompletedIndex = turn.events.reduce(
-    (latestIndex, event, index) => (event.type === 'ai.message.completed' ? index : latestIndex),
-    -1
-  )
-  return turn.events
-    .slice(lastCompletedIndex + 1)
-    .filter(event => event.type === 'ai.message.delta')
-    .map(event => event.message)
-    .join('')
-    .trim()
-}
-
-export const conversationBeforeTurn = (turnId: string, turns: ChatTurn[]): ChatConversationMessage[] => {
-  const index = turns.findIndex(turn => turn.id === turnId)
-  const priorTurns = index === -1 ? turns : turns.slice(0, index)
-  return priorTurns
-    .flatMap(turn => {
-      const assistant = lastAssistantText(turn)
-      return [
-        { role: 'user' as const, content: turn.prompt },
-        ...(assistant ? [{ role: 'assistant' as const, content: assistant }] : [])
-      ]
-    })
-    .slice(-20)
 }

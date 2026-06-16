@@ -6,6 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     OCR_LANGUAGES=en \
     OCR_MIN_CONFIDENCE=0.4 \
     OCR_MAX_IMAGE_DIMENSION=1600 \
+    OCR_PREPROCESS_MODES=raw,grayscale,contrast,threshold \
     XDG_CACHE_HOME=/app/cache \
     PADDLEOCR_HOME=/app/cache/paddleocr
 

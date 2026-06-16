@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { listAutomationAiModelCatalogAction } from '@/server/orchestrator/settings/actions'
-import { selectCatalogModel } from '@/shared/automation/automation-ai-catalog'
+import { selectCatalogModel } from '@rebroid/ai-core/provider'
 import { selectAiDraftProviderAndModel } from './ai-draft-model-selection-utils'
 import type { AutomationAiModelCatalogProvider } from '@/server/orchestrator/settings/types'
 

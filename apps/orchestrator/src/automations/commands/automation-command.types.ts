@@ -46,6 +46,11 @@ export interface AutomationCommandDefinition<
   uses: string;
   label: string;
   description: string;
+  aiTool?: {
+    name?: string;
+    label?: string;
+    description?: string;
+  };
   requiredPermissions: string[];
   schema: Input;
   outputs?: AutomationCommandOutputMetadata[];

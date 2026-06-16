@@ -1,5 +1,13 @@
 export { parseArguments } from "./harness/arguments";
 export {
+  conversationBeforeTurn,
+  currentStreamingText,
+  lastAssistantText,
+  type AiConversationEvent,
+  type AiConversationTurn,
+  type AutomationAiConversationMessage,
+} from "./harness/conversation";
+export {
   AI_AUTOMATION_MASTER_SYSTEM_PROMPT,
   buildExecutePlanMessage,
   buildFinalRecoveryMessage,

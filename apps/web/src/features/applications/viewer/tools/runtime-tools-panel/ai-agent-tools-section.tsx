@@ -1,75 +1,20 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo } from 'react'
 import { IconDownload, IconPlayerPlay, IconPlayerStop, IconSend, IconTrash } from '@tabler/icons-react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
-import { storePendingAutomationDraft } from '@/features/automations/automations-page/editor/pending-automation-draft'
-import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { AiPromptComposer } from '@/shared/ui/ai/ai-prompt-composer'
-import { ChatTurnView } from './ai-agent-chat-events'
-import { conversationBeforeTurn, terminalRunStatuses, type ChatTurn } from './ai-agent-chat-utils'
 import { aiAgentPromptPresets } from './ai-agent-prompt-presets'
 import { AiAgentSettingsPopover } from './ai-agent-settings-popover'
+import { AiAgentTranscript } from './ai-agent-transcript'
+import { useAiAgentConversationExport } from './use-ai-agent-conversation-export'
 import { useAiAgentChatSession } from './use-ai-agent-chat-session'
-import { recommendAiModelForAutomation } from '@rebroid/ai-core/provider'
+import { useAiAgentPromptSuggestions, type GeneratePromptSuggestions } from './use-ai-agent-prompt-suggestions'
+import { useAiAgentWorkflowDraft, type DraftWorkflowFromRun } from './use-ai-agent-workflow-draft'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type {
-  AiPromptSuggestion,
-  AutomationRun,
-  AutomationYamlDraft,
-  SuggestAdHocAiPromptsInput
-} from '@/server/orchestrator/automations/types'
-
-type DraftWorkflowFromRun = (input: {
-  runId: string
-  providerId?: string
-  modelId?: string
-  visionProviderId?: string
-  visionModelId?: string
-}) => Promise<AutomationYamlDraft>
-
-type GeneratePromptSuggestions = (input: SuggestAdHocAiPromptsInput) => Promise<{ suggestions: AiPromptSuggestion[] }>
-
-const AiAgentTranscriptSkeleton = () => (
-  <div
-    aria-label='Loading AI chat history'
-    className='grid gap-3'
-  >
-    {Array.from({ length: 3 }).map((_, index) => (
-      <div
-        key={index}
-        className='grid gap-2 rounded-lg border border-border/60 bg-surface-band/35 p-3'
-      >
-        <div className='flex items-center gap-2'>
-          <Skeleton className='size-6 rounded-full' />
-          <Skeleton className='h-3 w-28' />
-        </div>
-        <Skeleton className='h-3 w-full' />
-        <Skeleton className='h-3 w-4/5' />
-      </div>
-    ))}
-  </div>
-)
-
-const AiAgentEmptyTranscript = () => (
-  <div className='flex min-h-40 flex-1 items-center justify-center rounded-lg border border-dashed border-border/70 bg-background/20 p-6 text-center'>
-    <div className='grid max-w-sm place-items-center gap-3'>
-      <div className='flex size-10 items-center justify-center rounded-full border border-primary/25 bg-primary/10 text-primary'>
-        <GradientSparklesIcon className='size-5' />
-      </div>
-      <div className='grid gap-1'>
-        <div className='flex items-center justify-center gap-2 text-sm font-medium'>
-          <GradientSparklesIcon className='size-4' />
-          AI agent ready
-        </div>
-        <p className='text-xs text-foreground-muted'>Ready while the display connects.</p>
-      </div>
-    </div>
-  </div>
-)
+import type { AutomationRun } from '@/server/orchestrator/automations/types'
 
 export const AiAgentToolsSection = ({
   app,
@@ -92,10 +37,7 @@ export const AiAgentToolsSection = ({
   openWorkflowDraft?: () => void
   onRunStarted?: (run: AutomationRun) => void
 }) => {
-  const [draftingRunId, setDraftingRunId] = useState<string | null>(null)
   const fallbackSuggestions = useMemo(() => aiAgentPromptPresets(app), [app.id, app.name])
-  const [suggestions, setSuggestions] = useState<AiPromptSuggestion[]>(fallbackSuggestions)
-  const turnsRef = useRef<ChatTurn[]>([])
   const {
     activeTurn,
     adHocTimeoutMinutes,
@@ -134,160 +76,38 @@ export const AiAgentToolsSection = ({
     visionCatalog
   } = useAiAgentChatSession({ app, onRunStarted })
 
-  useEffect(() => {
-    turnsRef.current = turns
-  }, [turns])
-
-  const terminalTurnsKey = useMemo(
-    () =>
-      turns
-        .filter(turn => !turn.run || terminalRunStatuses.has(turn.run.status))
-        .map(turn => `${turn.id}:${turn.status}:${turn.events.at(-1)?.sequence ?? 0}`)
-        .join('|'),
-    [turns]
-  )
-
-  useEffect(() => {
-    if (!contextualSuggestionsEnabled || !generatePromptSuggestions || !selectedProvider || !selectedModel) {
-      setSuggestions(fallbackSuggestions)
-      return
-    }
-    if (activeTurn) return
-
-    let cancelled = false
-    const currentTurns = turnsRef.current
-    const recentEvents = currentTurns
-      .flatMap(turn => turn.events)
-      .filter(event => event.message.trim().length > 0)
-      .slice(-20)
-      .map(event => ({ type: event.type, message: event.message }))
-
-    void generatePromptSuggestions({
-      targetApplicationId: app.id,
-      appName: app.name,
-      profileMode: app.profileMode,
-      profileName: app.profileName,
-      conversation: conversationBeforeTurn('__suggestions__', currentTurns),
-      recentEvents,
-      providerId: selectedProvider.id,
-      modelId: selectedModel.id
-    })
-      .then(result => {
-        if (cancelled || result.suggestions.length === 0) return
-        setSuggestions(result.suggestions)
-      })
-      .catch(() => undefined)
-
-    return () => {
-      cancelled = true
-    }
-  }, [
+  const suggestions = useAiAgentPromptSuggestions({
     activeTurn,
-    app.id,
-    app.name,
-    app.profileMode,
-    app.profileName,
+    app,
     contextualSuggestionsEnabled,
     fallbackSuggestions,
     generatePromptSuggestions,
     selectedModel,
     selectedProvider,
-    terminalTurnsKey
-  ])
+    turns
+  })
+
+  const { draftingRunId, saveTurnAsWorkflow } = useAiAgentWorkflowDraft({
+    draftWorkflowFromRun,
+    openWorkflowDraft,
+    selectedModel,
+    selectedProvider,
+    selectedVisionModel,
+    selectedVisionProvider
+  })
+
+  const exportConversation = useAiAgentConversationExport({
+    adHocTimeoutMs,
+    app,
+    selectedModel,
+    selectedProvider,
+    selectedVisionModel,
+    selectedVisionProvider,
+    turns
+  })
 
   const applyPreset = (presetPrompt: string) => {
     setPrompt(current => (current.trim() ? `${current.trim()}\n\n${presetPrompt}` : presetPrompt))
-  }
-
-  const saveTurnAsWorkflow = async (turn: ChatTurn) => {
-    if (!turn.run || !selectedProvider || !selectedModel || !draftWorkflowFromRun || draftingRunId) return
-    setDraftingRunId(turn.run.id)
-    try {
-      const draft = await draftWorkflowFromRun({
-        runId: turn.run.id,
-        providerId: selectedProvider.id,
-        modelId: selectedModel.id,
-        ...(selectedVisionProvider && selectedVisionModel
-          ? {
-              visionProviderId: selectedVisionProvider.id,
-              visionModelId: selectedVisionModel.id
-            }
-          : {})
-      })
-      storePendingAutomationDraft({ yaml: draft.yaml, sourceRunId: turn.run.id })
-      if (openWorkflowDraft) {
-        openWorkflowDraft()
-      } else {
-        window.location.href = '/automations/create'
-      }
-    } catch (draftError) {
-      toast({
-        title: 'Could not draft workflow',
-        description: draftError instanceof Error ? draftError.message : 'Unknown error',
-        variant: 'destructive'
-      })
-    } finally {
-      setDraftingRunId(null)
-    }
-  }
-
-  const exportConversation = () => {
-    const currentTurns = turnsRef.current
-    if (currentTurns.length === 0) return
-    try {
-      const exportedAt = new Date().toISOString()
-      const payload = {
-        exportedAt,
-        app: {
-          id: app.id,
-          name: app.name,
-          profileMode: app.profileMode,
-          profileName: app.profileName,
-          status: app.status,
-          lifecycleStage: app.lifecycleStage
-        },
-        planner: selectedProvider && selectedModel ? { provider: selectedProvider, model: selectedModel } : null,
-        vision:
-          selectedVisionProvider && selectedVisionModel
-            ? { provider: selectedVisionProvider, model: selectedVisionModel }
-            : null,
-        modelRecommendations: {
-          planner: selectedModel ? recommendAiModelForAutomation(selectedModel) : null,
-          vision: selectedVisionModel ? recommendAiModelForAutomation(selectedVisionModel) : null
-        },
-        sharedMultimodalMode: Boolean(
-          selectedProvider &&
-          selectedModel &&
-          selectedVisionProvider &&
-          selectedVisionModel &&
-          selectedProvider.id === selectedVisionProvider.id &&
-          selectedModel.id === selectedVisionModel.id &&
-          selectedModel.roles.includes('vision')
-        ),
-        timeoutMs: adHocTimeoutMs,
-        turns: currentTurns
-      }
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      const safeAppName =
-        app.name
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-+|-+$/g, '') || app.id
-      link.href = url
-      link.download = `rebroid-ai-conversation-${safeAppName}-${exportedAt.replace(/[:.]/g, '-')}.json`
-      document.body.append(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(url)
-    } catch (exportError) {
-      toast({
-        title: 'Could not export conversation',
-        description: exportError instanceof Error ? exportError.message : 'Unknown error',
-        variant: 'destructive'
-      })
-    }
   }
 
   return (
@@ -302,28 +122,17 @@ export const AiAgentToolsSection = ({
         </div>
       )}
 
-      <div
-        ref={transcriptRef}
-        aria-label='AI agent transcript'
-        className='flex min-h-0 max-h-[min(46dvh,26rem)] flex-1 flex-col gap-4 overflow-y-auto pb-2 pr-1 motion-safe:scroll-smooth md:max-h-none'
-        onScroll={onTranscriptScroll}
-      >
-        {isLoadingHistory ? <AiAgentTranscriptSkeleton /> : null}
-        {!isLoadingHistory && turns.length === 0 ? <AiAgentEmptyTranscript /> : null}
-        {!isLoadingHistory
-          ? turns.map(turn => (
-              <ChatTurnView
-                key={turn.id}
-                turn={turn}
-                canSaveWorkflow={canSaveWorkflow && Boolean(selectedProvider && selectedModel && draftWorkflowFromRun)}
-                isSavingWorkflow={draftingRunId === turn.run?.id}
-                onSaveWorkflow={completedTurn => {
-                  void saveTurnAsWorkflow(completedTurn)
-                }}
-              />
-            ))
-          : null}
-      </div>
+      <AiAgentTranscript
+        canSaveWorkflow={canSaveWorkflow && Boolean(selectedProvider && selectedModel && draftWorkflowFromRun)}
+        draftingRunId={draftingRunId}
+        isLoadingHistory={isLoadingHistory}
+        onSaveWorkflow={completedTurn => {
+          void saveTurnAsWorkflow(completedTurn)
+        }}
+        onTranscriptScroll={onTranscriptScroll}
+        transcriptRef={transcriptRef}
+        turns={turns}
+      />
 
       <div className='grid shrink-0 gap-3'>
         <div className='flex flex-wrap gap-2 justify-end'>
@@ -375,7 +184,7 @@ export const AiAgentToolsSection = ({
               {queuedTurn && !activeTurn ? (
                 <Button
                   type='button'
-                  variant='secondary'
+                  variant='ghost'
                   onClick={() => void runQueuedTurn()}
                 >
                   <IconPlayerPlay className='size-4' />
@@ -385,7 +194,7 @@ export const AiAgentToolsSection = ({
               {turns.length > 0 ? (
                 <Button
                   type='button'
-                  variant='secondary'
+                  variant='ghost'
                   onClick={exportConversation}
                 >
                   <IconDownload className='size-4' />
@@ -395,7 +204,7 @@ export const AiAgentToolsSection = ({
               {turns.length > 0 ? (
                 <Button
                   type='button'
-                  variant='secondary'
+                  variant='ghost'
                   disabled={isClearing}
                   onClick={() => void clearConversation()}
                 >
@@ -406,7 +215,7 @@ export const AiAgentToolsSection = ({
               {showCancelRun ? (
                 <Button
                   type='button'
-                  variant='secondary'
+                  variant='ghost'
                   disabled={isCanceling || activeTurn?.status === 'canceling'}
                   onClick={() => void cancelRun()}
                 >

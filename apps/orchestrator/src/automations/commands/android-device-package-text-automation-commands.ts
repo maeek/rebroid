@@ -17,6 +17,11 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
       label: 'List packages',
       description:
         'Lists installed Android packages, optionally filtered by package-name text.',
+      aiTool: {
+        label: 'List installed Android packages',
+        description:
+          'Reads installed package names for app discovery. Use this to confirm package IDs before launchPackage; it does not inspect visible screen text or app-drawer icons.',
+      },
       requiredPermissions: ['automations:run'],
       schema: listPackagesSchema,
       outputs: [
@@ -102,6 +107,11 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
       label: 'Open Android Settings',
       description:
         'Opens the Android system Settings main screen using typed, internally managed Android intent routes.',
+      aiTool: {
+        label: 'Open Android Settings app',
+        description:
+          'Attempts to open the Android system Settings app/main screen through typed intent/package routes. Use this before visual app-drawer fallback when the goal is system Settings.',
+      },
       requiredPermissions: ['automations:run-adb-shell'],
       schema: openSystemSettingsSchema,
       outputs: [
@@ -159,6 +169,11 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
       label: 'Launch package',
       description:
         'Checks whether an Android package is installed, then attempts to launch its launcher activity.',
+      aiTool: {
+        label: 'Launch confirmed Android package',
+        description:
+          'Launches a known installed package ID. Do not guess package names; use listPackages or confirmed runtime context first.',
+      },
       requiredPermissions: ['automations:run'],
       schema: packageNameSchema,
       outputs: [
@@ -247,6 +262,11 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
       uses: 'android.waitForText',
       label: 'Wait for text',
       description: 'Polls the UI hierarchy until text appears.',
+      aiTool: {
+        label: 'Wait for UI hierarchy text',
+        description:
+          'Waits for exact text in Android UI hierarchy XML. Use only when the latest observation says UI hierarchy is available with nodes; it cannot read OCR-only or vision-only text.',
+      },
       requiredPermissions: ['automations:run'],
       schema: textWaitSchema,
       execute: async (
@@ -268,6 +288,11 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
       uses: 'android.tapText',
       label: 'Tap text',
       description: 'Finds visible UI text and taps its bounds center.',
+      aiTool: {
+        label: 'Tap UI hierarchy text',
+        description:
+          'Taps exact text found in Android UI hierarchy XML. Use only when the latest observation says UI hierarchy is available with nodes; for screenshots/OCR/vision-only targets use locate or coordinates.',
+      },
       requiredPermissions: ['automations:run'],
       schema: textWaitSchema,
       outputs: [

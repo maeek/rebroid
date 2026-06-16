@@ -43,6 +43,12 @@ export const createAndroidDeviceControlAutomationCommands = () =>
       label: 'Expand notifications',
       description:
         'Opens the Android notification shade using the native status bar/viewer control. Prefer this over swipe gestures for notification shade access.',
+      aiTool: {
+        name: 'android_openNotificationShade',
+        label: 'Open notification shade',
+        description:
+          'Opens the Android notification shade/status shade. Use only when the goal involves notifications or the status shade; this does not open the Settings app or app drawer.',
+      },
       requiredPermissions: ['automations:run'],
       schema: emptyInputSchema,
       execute: async (
@@ -58,6 +64,12 @@ export const createAndroidDeviceControlAutomationCommands = () =>
       label: 'Expand quick settings',
       description:
         'Opens the Android quick settings panel using the native status bar/viewer control. Use this for quick settings tiles instead of swipeNormalized.',
+      aiTool: {
+        name: 'android_openQuickControlsPanel',
+        label: 'Open quick controls panel',
+        description:
+          'Opens the Android status-shade quick-controls panel with tiles such as Wi-Fi/Bluetooth and possibly a gear entry point. This is not the Settings app, not the app drawer, and not a search route for installed apps.',
+      },
       requiredPermissions: ['automations:run'],
       schema: emptyInputSchema,
       execute: async (

@@ -1,16 +1,27 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import {
+  aiModelDisplayName,
+  aiModelSubtitle,
+  aiProviderKindLabel,
+  catalogByRole,
   createProviderModelRows,
   MASKED_API_KEY,
+  nextCatalogProviderAndModel,
   normalizeAiModel,
   normalizeAiProvider,
   normalizeDefaultModel,
   normalizeProviderForm,
   recommendAiModelForAutomation,
   resolveUpdatedApiKey,
+  selectCatalogModel,
+  selectCatalogProvider,
+  selectCatalogProviderAndModel,
+  selectInitialPlannerVisionCatalog,
+  selectMatchingVisionPair,
   setDefaultProviderModelAt,
   updateProviderModelAt,
+  type AiModelCatalogProvider,
   type AutomationAiProvider,
 } from "./provider";
 
@@ -40,6 +51,54 @@ const provider: AutomationAiProvider = {
     },
   ],
 };
+
+const catalog = [
+  {
+    id: "planner-only",
+    label: "Planner Only",
+    kind: "openai",
+    models: [
+      {
+        id: "p-default",
+        label: "Planner Default",
+        roles: ["planner"],
+        defaultFor: ["planner"],
+      },
+      {
+        id: "p-extra",
+        label: "Planner Extra",
+        roles: ["planner"],
+        defaultFor: [],
+      },
+    ],
+  },
+  {
+    id: "vision-only",
+    label: "Vision Only",
+    kind: "openai-compatible",
+    models: [
+      {
+        id: "v-default",
+        label: "Vision Default",
+        roles: ["vision"],
+        defaultFor: ["vision"],
+      },
+    ],
+  },
+  {
+    id: "shared",
+    label: "Shared",
+    kind: "ollama",
+    models: [
+      {
+        id: "shared-default",
+        label: "Shared Default",
+        roles: ["planner", "vision"],
+        defaultFor: ["planner", "vision"],
+      },
+    ],
+  },
+] satisfies AiModelCatalogProvider[];
 
 describe("AI provider core", () => {
   it("normalizes provider and model input", () => {
@@ -215,5 +274,73 @@ describe("AI provider core", () => {
       }).level,
       "warning",
     );
+  });
+
+  it("filters catalog by model role", () => {
+    assert.deepEqual(
+      catalogByRole(catalog, "planner").map((item) => item.id),
+      ["planner-only", "shared"],
+    );
+    assert.deepEqual(
+      catalogByRole(catalog, "vision").map((item) => item.id),
+      ["vision-only", "shared"],
+    );
+  });
+
+  it("falls back to first provider and default model when ids are missing", () => {
+    const provider = selectCatalogProvider(catalogByRole(catalog, "planner"), "");
+    const model = selectCatalogModel(provider, "");
+
+    assert.equal(provider?.id, "planner-only");
+    assert.equal(model?.id, "p-default");
+  });
+
+  it("selects provider and model together", () => {
+    const selected = selectCatalogProviderAndModel(
+      catalog,
+      "planner-only",
+      "p-extra",
+    );
+
+    assert.equal(selected.provider?.id, "planner-only");
+    assert.equal(selected.model?.id, "p-extra");
+  });
+
+  it("selects the next provider default model when provider changes", () => {
+    const selected = nextCatalogProviderAndModel(catalog, "vision-only");
+
+    assert.equal(selected.provider?.id, "vision-only");
+    assert.equal(selected.model?.id, "v-default");
+  });
+
+  it("selects shared planner and vision models for initial settings", () => {
+    const selected = selectInitialPlannerVisionCatalog([catalog[2], ...catalog]);
+
+    assert.equal(selected.selectedProvider?.id, "shared");
+    assert.equal(selected.selectedModel?.id, "shared-default");
+    assert.equal(selected.selectedVisionProvider?.id, "shared");
+    assert.equal(selected.selectedVisionModel?.id, "shared-default");
+  });
+
+  it("matches a planner model to the same vision model when available", () => {
+    const plannerProvider = catalog[2];
+    const plannerModel = plannerProvider.models[0];
+    const matched = selectMatchingVisionPair({
+      plannerModel,
+      plannerProvider,
+      visionCatalog: catalogByRole(catalog, "vision"),
+    });
+
+    assert.equal(matched.provider?.id, "shared");
+    assert.equal(matched.model?.id, "shared-default");
+  });
+
+  it("formats provider and model labels for picker surfaces", () => {
+    const provider = catalog[1];
+    const model = provider.models[0];
+
+    assert.equal(aiProviderKindLabel("openai-compatible"), "OpenAI-compatible");
+    assert.equal(aiModelDisplayName(model), "Vision Default");
+    assert.equal(aiModelSubtitle(provider, model), "OpenAI-compatible · Vision Only");
   });
 });

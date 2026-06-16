@@ -3,7 +3,11 @@ import { render, screen } from '@testing-library/react'
 import type { AutomationRunEvent } from '@/server/orchestrator/automations/types'
 import { ChatEventView } from './chat-event-view'
 
-const event = (type: AutomationRunEvent['type'], message: string): AutomationRunEvent => ({
+const event = (
+  type: AutomationRunEvent['type'],
+  message: string,
+  data: Record<string, unknown> = {}
+): AutomationRunEvent => ({
   id: `event-${type}`,
   runId: 'run',
   ownerUserId: 'owner',
@@ -12,7 +16,7 @@ const event = (type: AutomationRunEvent['type'], message: string): AutomationRun
   stepId: null,
   parentStepId: null,
   message,
-  data: {},
+  data,
   createdAt: '2020-01-01T00:00:00.000Z'
 })
 
@@ -28,5 +32,30 @@ describe('ChatEventView', () => {
     render(<ChatEventView event={event('ai.action.decided', 'Next action: open Settings.')} />)
 
     expect(screen.getByText('Next action: open Settings.')).not.toBeNull()
+  })
+
+  it('collapses perception details by default', () => {
+    const { container } = render(
+      <ChatEventView
+        event={event('ai.perception.observed', 'Screen captured: UI hierarchy failed. OCR failed, 0 text box(es).', {
+          uiStatus: 'failed',
+          uiError: 'UI hierarchy dump failed.',
+          ocrStatus: 'failed',
+          ocrTextCount: 0,
+          ocrError: 'OCR execution failed.',
+          screenKind: 'home',
+          width: 1080,
+          height: 2340,
+          visibleText: ['Google', 'Gallery'],
+          visualAffordances: 'Screen hypothesis: home.'
+        })}
+      />
+    )
+
+    const details = container.querySelector('details')
+    expect(details).not.toBeNull()
+    expect(details?.open).toBe(false)
+    expect(screen.getByText('Inspected screen')).not.toBeNull()
+    expect(screen.getByText(/UI failed .* OCR failed .* vision: home/)).not.toBeNull()
   })
 })

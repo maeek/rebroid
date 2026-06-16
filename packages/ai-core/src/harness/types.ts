@@ -3,6 +3,11 @@ export interface AutomationCommandLike {
   label: string;
   description: string;
   inputSchema: unknown;
+  aiTool?: {
+    name?: string;
+    label?: string;
+    description?: string;
+  };
 }
 
 export interface AutomationToolEnvelopeInput {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { IconDeviceFloppy } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
@@ -30,15 +30,9 @@ import { AppManageIconPanel } from './app-manage-icon-panel'
 import { AppManageNetworkPolicySettings } from './app-manage-network-policy-settings'
 import { AppManageRuntimeSettings } from './app-manage-runtime-settings'
 import { AppManageTechnicalDetails } from './app-manage-technical-details'
-import type { AppFormValues } from '@/features/applications/create/create-app-form.types'
+import { buildAppManageUpdateInput, useAppManageDraft } from './use-app-manage-draft'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
-
-const mergeAppPreservingIcon = (nextApp: AppDefinition, currentApp?: AppDefinition) => ({
-  ...nextApp,
-  icon: currentApp?.icon ?? nextApp.icon,
-  ownerDisplayName: currentApp?.ownerDisplayName ?? nextApp.ownerDisplayName
-})
 
 export default function AppManage({
   app,
@@ -53,18 +47,19 @@ export default function AppManage({
   currentOwnerUserId: string
   isAdmin: boolean
 }) {
-  const [currentApp, setCurrentApp] = useState(app)
-  const [appName, setAppName] = useState(app?.name || '')
-  const [inactivityTimeoutSeconds, setInactivityTimeoutSeconds] = useState(app?.inactivityTimeoutSeconds ?? 900)
-  const [memoryLimitMb, setMemoryLimitMb] = useState(app?.memoryLimitMb?.toString() ?? '')
-  const [cpuLimitCpus, setCpuLimitCpus] = useState(app?.cpuLimitCpus?.toString() ?? '')
-  const [containerArgs, setContainerArgs] = useState(app?.containerArgs ?? '')
-  const [icon, setIcon] = useState<string | null>(app?.icon ?? null)
   const [isSaving, setIsSaving] = useState(false)
-  const hasPendingAppChangesRef = useRef(false)
-  const isIconDirtyRef = useRef(false)
-  const previousAppIdRef = useRef(app?.id)
   const router = useRouter()
+  const {
+    currentApp,
+    displayApp,
+    draft,
+    formValues,
+    markSaved,
+    mergeRefreshedApp,
+    setCurrentApp,
+    updateForm,
+    updateIcon
+  } = useAppManageDraft(app)
   const currentAppId = currentApp?.id
   const refreshIntervalMs = getAppRefreshIntervalMs(currentApp)
   const canChangeSessionLimit = hasPermission(permissions, 'applications:change-session-limit')
@@ -79,48 +74,6 @@ export default function AppManage({
     canChangeSessionLimit || canChangeResources || canChangeContainerArgs || canViewBackendDetails
   const resourceLimits = useResourceLimitBounds(canChangeResources)
 
-  useEffect(() => {
-    if (app?.id !== previousAppIdRef.current) {
-      previousAppIdRef.current = app?.id
-      hasPendingAppChangesRef.current = false
-      isIconDirtyRef.current = false
-    }
-
-    setCurrentApp(current => {
-      if (!app) {
-        return app
-      }
-
-      if (app.id !== current?.id) {
-        return app
-      }
-
-      return mergeAppPreservingIcon(app, current)
-    })
-  }, [app])
-
-  useEffect(() => {
-    if (!currentApp) {
-      return
-    }
-
-    if (!hasPendingAppChangesRef.current) {
-      setAppName(currentApp.name)
-      setInactivityTimeoutSeconds(currentApp.inactivityTimeoutSeconds)
-      setMemoryLimitMb(currentApp.memoryLimitMb?.toString() ?? '')
-      setCpuLimitCpus(currentApp.cpuLimitCpus?.toString() ?? '')
-      setContainerArgs(currentApp.containerArgs ?? '')
-    }
-  }, [currentApp])
-
-  useEffect(() => {
-    if (!currentApp) return
-
-    if (!isIconDirtyRef.current) {
-      setIcon(currentApp.icon ?? null)
-    }
-  }, [currentApp])
-
   const { data: refreshedApp } = usePollingQuery(
     ['applications', currentAppId],
     () => getApplicationAction(currentAppId!),
@@ -132,50 +85,27 @@ export default function AppManage({
 
   useEffect(() => {
     if (refreshedApp) {
-      setCurrentApp(current => mergeAppPreservingIcon(mapAndroidApplicationToAppDefinition(refreshedApp), current))
+      mergeRefreshedApp(mapAndroidApplicationToAppDefinition(refreshedApp))
     }
-  }, [refreshedApp])
+  }, [mergeRefreshedApp, refreshedApp])
 
-  if (!currentApp) {
+  if (!currentApp || !displayApp || !formValues) {
     return <AppNotFoundSplash />
-  }
-
-  const displayApp = { ...currentApp, name: appName, icon }
-  const formValues: AppFormValues = {
-    name: appName,
-    containerImage: currentApp.containerImage,
-    inactivityTimeoutSeconds,
-    memoryLimitMb,
-    cpuLimitCpus,
-    customContainerArgs: containerArgs,
-    redroidDisplayProfileId: 'custom',
-    redroidCustomDisplayWidth: '',
-    redroidCustomDisplayHeight: '',
-    redroidCustomDisplayDpi: '',
-    redroidExtraArgs: ''
-  }
-
-  const handleFormChange = (patch: Partial<AppFormValues>) => {
-    hasPendingAppChangesRef.current = true
-    if (patch.name !== undefined) setAppName(patch.name)
-    if (patch.inactivityTimeoutSeconds !== undefined) setInactivityTimeoutSeconds(patch.inactivityTimeoutSeconds)
-    if (patch.memoryLimitMb !== undefined) setMemoryLimitMb(patch.memoryLimitMb)
-    if (patch.cpuLimitCpus !== undefined) setCpuLimitCpus(patch.cpuLimitCpus)
-    if (patch.customContainerArgs !== undefined) setContainerArgs(patch.customContainerArgs)
   }
 
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      const updated = await updateApplicationAction(currentApp.id, {
-        name: appName,
-        inactivityTimeoutSeconds: canChangeSessionLimit ? inactivityTimeoutSeconds : undefined,
-        memoryLimitMb: canChangeResources && memoryLimitMb ? Number(memoryLimitMb) : undefined,
-        cpuLimitCpus: canChangeResources && cpuLimitCpus ? Number(cpuLimitCpus) : undefined,
-        containerArgs: canChangeContainerArgs ? containerArgs.trim() || null : undefined
-      })
-      hasPendingAppChangesRef.current = false
-      setCurrentApp(current => mergeAppPreservingIcon(mapAndroidApplicationToAppDefinition(updated), current))
+      const updated = await updateApplicationAction(
+        currentApp.id,
+        buildAppManageUpdateInput({
+          canChangeContainerArgs,
+          canChangeResources,
+          canChangeSessionLimit,
+          draft
+        })
+      )
+      markSaved(mapAndroidApplicationToAppDefinition(updated))
       toast({ title: 'App saved' })
       router.refresh()
     } catch (error) {
@@ -199,7 +129,7 @@ export default function AppManage({
         <PageBreadcrumbs
           items={[
             { label: 'Apps', href: '/apps' },
-            { label: appName || currentApp.name, href: `/app/${currentApp.id}` },
+            { label: draft.appName || currentApp.name, href: `/app/${currentApp.id}` },
             { label: 'Manage' }
           ]}
         />
@@ -241,20 +171,14 @@ export default function AppManage({
             iconSlot={
               <AppManageIconPanel
                 appId={currentApp.id}
-                appName={appName}
-                icon={icon}
+                appName={draft.appName}
+                icon={draft.icon}
                 initialSettings={initialSettings}
                 compact
-                onIconChange={(nextIcon, isDirty) => {
-                  isIconDirtyRef.current = isDirty
-                  setIcon(nextIcon)
-                }}
+                onIconChange={updateIcon}
               />
             }
-            onAppNameChange={value => {
-              hasPendingAppChangesRef.current = true
-              setAppName(value)
-            }}
+            onAppNameChange={value => updateForm({ name: value })}
           />
           <Visible when={showRuntimeSection}>
             <AppManageRuntimeSettings
@@ -265,7 +189,7 @@ export default function AppManage({
               canChangeResources={canChangeResources}
               canChangeContainerArgs={canChangeContainerArgs}
               canViewBackendDetails={canViewBackendDetails}
-              onChange={handleFormChange}
+              onChange={updateForm}
             />
           </Visible>
           <Visible when={canConfigureEgress}>

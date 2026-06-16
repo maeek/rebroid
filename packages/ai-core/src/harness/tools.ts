@@ -2,6 +2,9 @@ import type { AutomationCommandLike } from "./types";
 
 export const toolName = (uses: string) => uses.replace(/[^a-zA-Z0-9_]/g, "__");
 
+export const aiToolName = (command: Pick<AutomationCommandLike, "uses" | "aiTool">) =>
+  command.aiTool?.name ? toolName(command.aiTool.name) : toolName(command.uses);
+
 export const toolNameAliases = (uses: string) =>
   [
     toolName(uses),
@@ -29,8 +32,10 @@ export const buildToolDefinitions = (
       return {
         type: "function" as const,
         function: {
-          name: toolName(command.uses),
-          description: `${command.label}. ${command.description}`,
+          name: aiToolName(command),
+          description: `${command.aiTool?.label ?? command.label}. ${
+            command.aiTool?.description ?? command.description
+          }`,
           parameters: {
             type: "object" as const,
             properties: {
@@ -73,10 +78,15 @@ export const buildToolDefinitions = (
     });
 
 export const mapUsesByToolName = (
-  commands: Pick<AutomationCommandLike, "uses">[],
+  commands: Pick<AutomationCommandLike, "uses" | "aiTool">[],
 ) =>
   new Map(
-    commands.flatMap((command) =>
-      toolNameAliases(command.uses).map((name) => [name, command.uses]),
-    ),
+    commands.flatMap((command) => {
+      const aliases = [
+        aiToolName(command),
+        ...toolNameAliases(command.uses),
+        ...(command.aiTool?.name ? toolNameAliases(command.aiTool.name) : []),
+      ].filter((name, index, names) => name && names.indexOf(name) === index);
+      return aliases.map((name) => [name, command.uses]);
+    }),
   );

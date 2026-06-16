@@ -57,6 +57,15 @@ export interface VisionObservation {
     engine?: string;
     model?: string;
     languages?: string[];
+    preprocessingMode?: string;
+    preprocessingAttempts?: Array<{
+      mode: string;
+      status: string;
+      textBoxCount?: number;
+      averageConfidence?: number;
+      elapsedMs?: number;
+      error?: string;
+    }>;
     error?: string;
   };
 }
