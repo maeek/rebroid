@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   IconLoader2,
   IconPencil,
   IconRestore,
   IconSettings
 } from '@tabler/icons-react'
+import { usePathname, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
 import { toast } from '@/hooks/use-toast'
@@ -50,10 +51,43 @@ const runtimeSettings = (settings: OrchestratorUiSettings) => ({
   services: settings.services
 })
 
-export const PlatformServicesPage = ({ initialSettings }: { initialSettings: OrchestratorUiSettings }) => {
+const serviceIds = Object.keys(serviceMeta) as ServiceId[]
+
+const isServiceId = (value: string | null | undefined): value is ServiceId =>
+  Boolean(value) && serviceIds.includes(value as ServiceId)
+
+export const PlatformServicesPage = ({
+  initialSettings,
+  requestedServiceId
+}: {
+  initialSettings: OrchestratorUiSettings
+  requestedServiceId?: string | null
+}) => {
+  const pathname = usePathname()
+  const router = useRouter()
   const [settings, setSettings] = useState(initialSettings)
   const [editingService, setEditingService] = useState<ServiceId | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+
+  const setServiceRoute = useCallback(
+    (serviceId: ServiceId | null) => {
+      router.replace(serviceId ? `${pathname}?service=${serviceId}` : pathname, { scroll: false })
+    },
+    [pathname, router]
+  )
+
+  const openServiceEditor = useCallback(
+    (serviceId: ServiceId) => {
+      setEditingService(serviceId)
+      setServiceRoute(serviceId)
+    },
+    [setServiceRoute]
+  )
+
+  const closeServiceEditor = useCallback(() => {
+    setEditingService(null)
+    setServiceRoute(null)
+  }, [setServiceRoute])
 
   const serviceRows = useMemo<ServiceRow[]>(
     () =>
@@ -143,7 +177,7 @@ export const PlatformServicesPage = ({ initialSettings }: { initialSettings: Orc
               type='button'
               variant='ghost'
               size='sm'
-              onClick={() => setEditingService(row.original.id)}
+              onClick={() => openServiceEditor(row.original.id)}
             >
               <IconPencil className='size-4' />
               Edit
@@ -152,12 +186,16 @@ export const PlatformServicesPage = ({ initialSettings }: { initialSettings: Orc
         )
       }
     ],
-    []
+    [openServiceEditor]
   )
 
   useEffect(() => {
     setSettings(initialSettings)
   }, [initialSettings])
+
+  useEffect(() => {
+    setEditingService(isServiceId(requestedServiceId) ? requestedServiceId : null)
+  }, [requestedServiceId])
 
   const updateServices = (services: OptionalServicesUiSettings) => {
     setSettings(current => ({
@@ -255,7 +293,7 @@ export const PlatformServicesPage = ({ initialSettings }: { initialSettings: Orc
         serviceId={editingService}
         services={settings.services}
         onChange={updateServices}
-        onClose={() => setEditingService(null)}
+        onClose={closeServiceEditor}
       />
     </ProtectedStackPageLayout>
   )

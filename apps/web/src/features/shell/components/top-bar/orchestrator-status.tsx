@@ -99,12 +99,12 @@ const serviceRows = (health: OrchestratorHealth | null, fallbackMessage: string)
   },
   {
     name: 'Firewall',
-    href: '/platform/services',
+    href: '/platform/services?service=firewall',
     service: health?.services.firewall ?? checkingService(fallbackMessage)
   },
   {
     name: 'OCR',
-    href: '/platform/services',
+    href: '/platform/services?service=ocr',
     service: health?.services.ocr ?? checkingService(fallbackMessage)
   }
 ]

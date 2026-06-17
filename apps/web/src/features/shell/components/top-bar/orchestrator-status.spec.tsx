@@ -1,5 +1,5 @@
 import { describe, expect, it, jest } from '@jest/globals'
-import { render } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { getOrchestratorHealthSummaryAction } from '@/server/orchestrator/diagnostics/actions'
 import { OrchestratorStatus } from './orchestrator-status'
@@ -26,5 +26,20 @@ describe('OrchestratorStatus', () => {
     })
     await jest.mocked(usePollingQuery).mock.calls[0]?.[1]()
     expect(getOrchestratorHealthSummaryAction).toHaveBeenCalledTimes(1)
+  })
+
+  it('links optional service health rows to their service editors', () => {
+    jest.mocked(usePollingQuery).mockReturnValue({
+      data: undefined,
+      error: null
+    } as never)
+
+    render(<OrchestratorStatus />)
+    fireEvent.click(screen.getByRole('button', { name: /checking/i }))
+
+    expect(screen.getByRole('link', { name: /firewall/i }).getAttribute('href')).toBe(
+      '/platform/services?service=firewall'
+    )
+    expect(screen.getByRole('link', { name: /ocr/i }).getAttribute('href')).toBe('/platform/services?service=ocr')
   })
 })

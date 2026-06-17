@@ -40,6 +40,8 @@ const persistentPrefix = 'persistent:'
 const persistentValueFor = (name: string) => `${persistentPrefix}${encodeURIComponent(name)}`
 const profileNameFromValue = (value: string) => decodeURIComponent(value.slice(persistentPrefix.length))
 
+const profileOptionItemClassName = 'pr-2 [&>span:first-child]:hidden'
+
 export const ApplicationProfileSelect = ({
   mode,
   name,
@@ -125,14 +127,17 @@ export const ApplicationProfileSelect = ({
             <SelectItem
               value={temporaryValue}
               label='Temporary'
+              className={profileOptionItemClassName}
             >
-              <span className='grid size-7 shrink-0 place-items-center rounded-md bg-secondary text-muted-foreground'>
-                <IconSparkles className='size-4' />
-              </span>
-              <span className='min-w-0'>
-                <span className='block truncate font-medium'>Temporary</span>
-                <span className='block truncate text-xs text-muted-foreground'>
-                  No data will be saved after the session ends
+              <span className='flex w-full min-w-0 items-center gap-3'>
+                <span className='grid size-7 shrink-0 place-items-center rounded-md bg-secondary text-muted-foreground'>
+                  <IconSparkles className='size-4' />
+                </span>
+                <span className='min-w-0 flex-1'>
+                  <span className='block truncate font-medium'>Temporary</span>
+                  <span className='block truncate text-xs text-muted-foreground'>
+                    No data will be saved after the session ends
+                  </span>
                 </span>
               </span>
             </SelectItem>
@@ -146,41 +151,43 @@ export const ApplicationProfileSelect = ({
                   key={profile.name}
                   value={persistentValueFor(profile.name)}
                   label={profile.name}
-                  className='pr-2'
+                  className={profileOptionItemClassName}
                 >
-                  <span
-                    className={cn(
-                      'grid size-7 shrink-0 place-items-center rounded-md bg-secondary text-muted-foreground',
-                      isSelected && 'bg-primary/18 text-primary'
-                    )}
-                  >
-                    <IconDatabase className='size-4' />
-                  </span>
-                  <span className='min-w-0 flex-1'>
-                    <span className='block truncate font-medium'>
-                      {profile.name}
-                      <Visible when={isActive}>
-                        <span className='ml-1 font-normal text-primary'>(Running)</span>
-                      </Visible>
-                    </span>
-                    <span className='block truncate text-xs text-muted-foreground'>
-                      {isSelected ? 'Selected persistent profile' : 'Persistent data'}
-                    </span>
-                  </span>
-                  <Visible when={canDelete}>
-                    <button
-                      type='button'
-                      aria-label={`Remove ${profile.name}`}
-                      className='ml-auto grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground transition hover:bg-destructive/12 hover:text-destructive'
-                      onPointerDown={event => {
-                        event.preventDefault()
-                        event.stopPropagation()
-                      }}
-                      onClick={event => requestDelete(event, profile.name)}
+                  <span className='flex w-full min-w-0 items-center gap-3'>
+                    <span
+                      className={cn(
+                        'grid size-7 shrink-0 place-items-center rounded-md bg-secondary text-muted-foreground',
+                        isSelected && 'bg-primary/18 text-primary'
+                      )}
                     >
-                      <IconTrash className='size-4' />
-                    </button>
-                  </Visible>
+                      <IconDatabase className='size-4' />
+                    </span>
+                    <span className='min-w-0 flex-1'>
+                      <span className='block truncate font-medium'>
+                        {profile.name}
+                        <Visible when={isActive}>
+                          <span className='ml-1 font-normal text-primary'>(Running)</span>
+                        </Visible>
+                      </span>
+                      <span className='block truncate text-xs text-muted-foreground'>
+                        {isSelected ? 'Selected persistent profile' : 'Persistent data'}
+                      </span>
+                    </span>
+                    <Visible when={canDelete}>
+                      <button
+                        type='button'
+                        aria-label={`Remove ${profile.name}`}
+                        className='ml-auto grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground transition hover:bg-destructive/12 hover:text-destructive'
+                        onPointerDown={event => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                        }}
+                        onClick={event => requestDelete(event, profile.name)}
+                      >
+                        <IconTrash className='size-4' />
+                      </button>
+                    </Visible>
+                  </span>
                 </SelectItem>
               )
             })}
@@ -188,14 +195,17 @@ export const ApplicationProfileSelect = ({
               <SelectItem
                 value={newProfileValue}
                 label='New profile'
+                className={profileOptionItemClassName}
               >
-                <span className='grid size-7 shrink-0 place-items-center rounded-md bg-secondary text-muted-foreground'>
-                  <IconDatabasePlus className='size-4' />
-                </span>
-                <span className='min-w-0'>
-                  <span className='block truncate font-medium'>New profile</span>
-                  <span className='block truncate text-xs text-muted-foreground'>
-                    Create persistent data on first start
+                <span className='flex w-full min-w-0 items-center gap-3'>
+                  <span className='grid size-7 shrink-0 place-items-center rounded-md bg-secondary text-muted-foreground'>
+                    <IconDatabasePlus className='size-4' />
+                  </span>
+                  <span className='min-w-0 flex-1'>
+                    <span className='block truncate font-medium'>New profile</span>
+                    <span className='block truncate text-xs text-muted-foreground'>
+                      Create persistent data on first start
+                    </span>
                   </span>
                 </span>
               </SelectItem>

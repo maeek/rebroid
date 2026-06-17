@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { IconArrowLeft, IconDatabase, IconLoader2, IconTrash } from '@tabler/icons-react'
-import Link from 'next/link'
+import { IconDatabase, IconLoader2, IconTrash } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -86,20 +85,9 @@ export const AppManageProfiles = ({ app, permissions }: { app?: AppDefinition; p
             { label: 'Profiles' }
           ]}
         />
-        <AppViewerHeading app={currentApp}>
-          <Button
-            asChild
-            variant='secondary'
-          >
-            <Link href={`/app/${currentApp.id}/manage`}>
-              <IconArrowLeft className='size-4' />
-              Manage
-            </Link>
-          </Button>
-        </AppViewerHeading>
+        <AppViewerHeading app={currentApp} />
         <Section
           title='Profiles'
-          surface='band'
           titleClassName='pb-4'
           contentClassName='gap-3'
         >
