@@ -630,6 +630,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/apps/{id}/lifecycle/profiles/{profileName}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a saved persistent runtime profile and its data volume. */
+        delete: operations["AndroidAppsLifecycleController_deleteSavedProfile"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/apps/{id}/lifecycle/start": {
         parameters: {
             query?: never;
@@ -3988,6 +4005,28 @@ export interface operations {
                 "application/json": components["schemas"]["SwitchApplicationProfileDto"];
             };
         };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationCommandResultDto"];
+                };
+            };
+        };
+    };
+    AndroidAppsLifecycleController_deleteSavedProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                profileName: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {

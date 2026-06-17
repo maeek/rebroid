@@ -6,6 +6,12 @@ export const orchestratorAppLifecycleClient = {
     return jsonRequest<ApplicationCommandResult>(`/apps/${id}/lifecycle/profile`, 'POST', input)
   },
 
+  deleteSavedProfile(id: string, profileName: string) {
+    return emptyRequest<ApplicationCommandResult>(`/apps/${id}/lifecycle/profiles/${encodeURIComponent(profileName)}`, {
+      method: 'DELETE'
+    })
+  },
+
   startApplication(id: string, input?: SwitchApplicationProfileInput) {
     return jsonRequest<ApplicationCommandResult>(`/apps/${id}/lifecycle/start`, 'POST', input ?? {})
   },

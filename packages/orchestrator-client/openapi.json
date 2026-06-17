@@ -1592,6 +1592,45 @@
         ]
       }
     },
+    "/api/v1/apps/{id}/lifecycle/profiles/{profileName}": {
+      "delete": {
+        "operationId": "AndroidAppsLifecycleController_deleteSavedProfile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "profileName",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationCommandResultDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Delete a saved persistent runtime profile and its data volume.",
+        "tags": [
+          "app-lifecycle"
+        ]
+      }
+    },
     "/api/v1/apps/{id}/lifecycle/start": {
       "post": {
         "operationId": "AndroidAppsLifecycleController_start",

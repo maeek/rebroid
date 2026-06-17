@@ -1,7 +1,7 @@
 import { Skeleton } from '@/components/ui/skeleton'
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { DataGridSkeleton } from '@/shared/ui/data-grid'
 import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
-import { TableSkeleton } from '@/shared/ui/skeletons/table-skeleton'
 
 export const ScheduledTasksPageSkeleton = () => (
   <ProtectedStackPageLayout mainClassName='gap-2'>
@@ -11,21 +11,42 @@ export const ScheduledTasksPageSkeleton = () => (
       actionCount={1}
     />
     <section className='grid w-full gap-6 px-6 pb-16 max-sm:px-4'>
-      <div className='overflow-hidden rounded-lg border border-border/70 bg-surface-panel/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md'>
-        <div className='border-b border-border/60 px-5 py-4 max-sm:px-4'>
-          <div className='grid gap-2'>
-            <Skeleton className='h-5 w-16' />
-            <Skeleton className='h-4 w-56 max-w-full opacity-70' />
+      <div
+        className='grid gap-3 sm:grid-cols-2 xl:grid-cols-4'
+        data-testid='scheduler-summary-skeleton'
+      >
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div
+            key={index}
+            className='rounded-lg border border-border/60 bg-surface-panel/45 px-4 py-3'
+          >
+            <Skeleton className='h-3 w-20' />
+            <Skeleton className='mt-2 h-8 w-12' />
+          </div>
+        ))}
+      </div>
+      <div
+        className='grid gap-3'
+        data-testid='scheduler-grid-skeleton'
+      >
+        <div className='flex flex-wrap items-center justify-between gap-3 rounded-md border border-border/60 bg-surface-panel/35 px-3 py-2'>
+          <Skeleton className='h-4 w-32' />
+          <div className='flex flex-wrap gap-2'>
+            <Skeleton className='h-9 w-20' />
+            <Skeleton className='h-9 w-24' />
+            <Skeleton className='h-9 w-24' />
           </div>
         </div>
-        <TableSkeleton
+        <DataGridSkeleton
           columns={[
-            { headerWidth: 'w-16', cellWidth: 'w-44', kind: 'stacked' },
-            { headerWidth: 'w-20', cellWidth: 'w-28' },
-            { headerWidth: 'w-16', kind: 'badge' },
-            { headerWidth: 'w-20', cellWidth: 'w-32' },
-            { headerWidth: 'w-16', kind: 'action' }
+            { width: '24rem', headerWidth: 'w-16', cellWidth: 'w-44', kind: 'stacked' },
+            { width: '11rem', headerWidth: 'w-20', cellWidth: 'w-28', kind: 'badge' },
+            { width: '11rem', headerWidth: 'w-16', cellWidth: 'w-32' },
+            { width: '11rem', headerWidth: 'w-20', cellWidth: 'w-32' },
+            { width: '11rem', headerWidth: 'w-20', cellWidth: 'w-32' },
+            { width: '7rem', headerWidth: 'w-16', kind: 'action' }
           ]}
+          minWidth='82rem'
           rows={5}
         />
       </div>

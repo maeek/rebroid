@@ -1,8 +1,8 @@
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
+import { DataGridSkeleton } from '@/shared/ui/data-grid'
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
-import { TableSkeleton } from '@/shared/ui/skeletons/table-skeleton'
 import { DetailRowsSkeleton } from './detail-rows-skeleton'
 import { JsonBlockSkeleton } from './json-block-skeleton'
 
@@ -50,9 +50,11 @@ export const PlatformContainerDetailPageSkeleton = ({ titleWidth }: { titleWidth
           boxed
           contentClassName='gap-3'
         >
-          <TableSkeleton
+          <DataGridSkeleton
             minWidth='32rem'
             rows={3}
+            selectable={false}
+            rowMenu={false}
             columns={[
               { width: 'minmax(12rem,1.5fr)', headerWidth: 'w-20', kind: 'stacked' },
               { width: 'minmax(8rem,1fr)', headerWidth: 'w-16', kind: 'text' },

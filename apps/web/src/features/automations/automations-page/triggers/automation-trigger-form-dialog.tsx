@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Visible } from '@/components/ui/visible'
-import { ApplicationProfilePicker } from '@/shared/ui/application-profile/application-profile-picker'
+import { ApplicationProfileSelect } from '@/shared/ui/application-profile/application-profile-select'
 import { ScheduleEditor } from '@/shared/ui/schedule/schedule-editor'
 import { AutomationTagsInput } from '../shared/automation-tags-input'
 import { appProfileMode, appProfileName, appSavedProfiles } from './automation-trigger-utils'
@@ -121,7 +121,7 @@ export function AutomationTriggerFormDialog({
                 </SelectContent>
               </Select>
             </div>
-            <ApplicationProfilePicker
+            <ApplicationProfileSelect
               mode={form.profileMode}
               name={form.profileName}
               savedProfiles={appSavedProfiles(selectedApplication)}

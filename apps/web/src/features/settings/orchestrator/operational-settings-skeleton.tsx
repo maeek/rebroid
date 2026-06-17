@@ -1,8 +1,8 @@
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { DataGridSkeleton } from '@/shared/ui/data-grid'
 import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
-import { TableSkeleton } from '@/shared/ui/skeletons/table-skeleton'
 import type { ListColumn } from '@/shared/ui/skeletons/list-skeleton-types'
 
 export const OperationalSettingsSkeleton = ({
@@ -31,7 +31,7 @@ export const OperationalSettingsSkeleton = ({
         <Skeleton className='h-9 w-full max-w-md' />
         <Skeleton className='h-9 w-36' />
       </div>
-      <TableSkeleton
+      <DataGridSkeleton
         columns={columns}
         minWidth={minWidth}
         rows={4}

@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { IconDeviceFloppy } from '@tabler/icons-react'
+import { IconDatabase, IconDeviceFloppy } from '@tabler/icons-react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -135,6 +136,15 @@ export default function AppManage({
         />
         <AppViewerHeading app={displayApp}>
           <div className='flex gap-2'>
+            <Button
+              asChild
+              variant='secondary'
+            >
+              <Link href={`/app/${currentApp.id}/manage/profiles`}>
+                <IconDatabase className='size-4' />
+                Profiles
+              </Link>
+            </Button>
             <Visible when={canDelete}>
               <AppViewerDeleteAction
                 app={displayApp}

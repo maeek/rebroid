@@ -62,6 +62,29 @@ export const stopApplicationAction = async (id: string) => {
   return sanitizeAndroidApplicationForUser(app, user)
 }
 
+export const deleteApplicationProfileAction = async (id: string, profileName: string) => {
+  await assertCanAccessApplication(id)
+  const user = await getCurrentUserContext()
+  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:delete')) {
+    throw new Error('You do not have permission to delete application profiles.')
+  }
+  const command = await orchestratorAppLifecycleClient.deleteSavedProfile(id, profileName)
+  recordAuditEvent({
+    actorUserId: user.ownerUserId,
+    actorLabel: user.ownerUserId,
+    category: 'application',
+    action: 'application.profile.delete',
+    resourceType: 'application',
+    resourceId: id,
+    resourceLabel: command.name,
+    details: { profileName }
+  })
+  revalidateApplicationList()
+  revalidateApplicationDetail(id)
+  const app = await orchestratorAppCatalogClient.getApplication(id)
+  return sanitizeAndroidApplicationForUser(app, user)
+}
+
 export const deleteApplicationAction = async (id: string, removeData = true) => {
   await assertCanAccessApplication(id)
   const user = await getCurrentUserContext()

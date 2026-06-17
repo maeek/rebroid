@@ -7,7 +7,6 @@ import { loadRuntimeContainersPageData, type ContainersSearchParams } from './pa
 const ContainersPageFallback = () => (
   <PlatformInventoryPageSkeleton
     titleWidth='w-48 max-sm:w-32'
-    sectionTitleWidth='w-28'
     minWidth='90rem'
     columns={[
       { width: '18rem', headerWidth: 'w-24', kind: 'stacked' },

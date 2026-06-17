@@ -167,6 +167,17 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     return this.state.saveAndDecorate(app);
   }
 
+  /** Deletes a saved persistent profile and its data volume. */
+  async deleteSavedProfile(id: string, profileName: string) {
+    const app = await this.state.get(id);
+    await this.runtimePreparation.deleteSavedPersistentProfile(
+      app,
+      profileName,
+    );
+
+    return this.state.decorateApplication(app);
+  }
+
   /** Starts an app container. */
   async start(id: string, dto: StartAndroidApplicationDto = {}) {
     const app = await this.state.get(id);

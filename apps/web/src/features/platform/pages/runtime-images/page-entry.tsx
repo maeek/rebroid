@@ -7,7 +7,6 @@ import { loadRuntimeImagesPageData, type ImagesSearchParams } from './page-data.
 const ImagesPageFallback = () => (
   <PlatformInventoryPageSkeleton
     titleWidth='w-36 max-sm:w-28'
-    sectionTitleWidth='w-20'
     minWidth='72rem'
     columns={[
       { width: '24rem', headerWidth: 'w-16', kind: 'stacked' },

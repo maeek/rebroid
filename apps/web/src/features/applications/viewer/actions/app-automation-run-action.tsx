@@ -16,15 +16,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Visible } from '@/components/ui/visible'
 import { useApplicationViewerContext } from '@/features/applications/detail/application-viewer-context'
+import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { toast } from '@/hooks/use-toast'
+import { deleteApplicationProfileAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { listRunnableAutomationsAction } from '@/server/orchestrator/automations/automation-management-actions'
 import { runAutomationAction } from '@/server/orchestrator/automations/automation-run-actions'
-import { ApplicationProfilePicker } from '@/shared/ui/application-profile/application-profile-picker'
+import { ApplicationProfileSelect } from '@/shared/ui/application-profile/application-profile-select'
+import { hasPermission } from '@/shared/permissions/permissions'
 import type { ApplicationProfileMode } from '@/server/orchestrator/applications/types'
 import type { Automation, AutomationRun } from '@/server/orchestrator/automations/types'
 
 export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: AutomationRun) => void }) => {
-  const { app } = useApplicationViewerContext()
+  const { app, permissions, setApp } = useApplicationViewerContext()
   const [open, setOpen] = useState(false)
   const [automations, setAutomations] = useState<Automation[]>([])
   const [automationId, setAutomationId] = useState('')
@@ -56,6 +59,32 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
 
   if (!app?.id) {
     return null
+  }
+
+  const canDeleteProfiles = hasPermission(permissions, 'applications:delete')
+
+  const deleteProfile = async (deletedProfileName: string) => {
+    try {
+      const updated = mapAndroidApplicationToAppDefinition(
+        await deleteApplicationProfileAction(app.id, deletedProfileName)
+      )
+      setApp(current => ({
+        ...updated,
+        icon: current?.icon ?? updated.icon,
+        ownerDisplayName: current?.ownerDisplayName ?? updated.ownerDisplayName
+      }))
+      if (profileMode === 'persistent' && profileName.trim() === deletedProfileName.trim()) {
+        setProfileName('default')
+      }
+      toast({ title: 'Profile removed', description: `${deletedProfileName} was deleted with its saved data.` })
+    } catch (error) {
+      toast({
+        title: 'Could not remove profile',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
+      })
+      throw error
+    }
   }
 
   const run = async () => {
@@ -131,12 +160,14 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
                 <p className='text-sm text-foreground-muted'>No workflows are available yet.</p>
               </Visible>
             </div>
-            <ApplicationProfilePicker
+            <ApplicationProfileSelect
               mode={profileMode}
               name={profileName}
               savedProfiles={app.savedProfiles ?? []}
               selectedProfile={{ mode: app.profileMode, name: app.profileName ?? 'default' }}
               disabled={running}
+              canDeleteProfiles={canDeleteProfiles}
+              onDeleteProfile={deleteProfile}
               onModeChange={setProfileMode}
               onNameChange={setProfileName}
             />

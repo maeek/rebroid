@@ -1,4 +1,4 @@
-import { IconFilter, IconRefresh } from '@tabler/icons-react'
+import { IconFilter, IconRestore } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -213,7 +213,7 @@ export const ActivityFilterSheet = () => {
             disabled={!controller.hasLocalFilters}
             onClick={controller.resetFilters}
           >
-            <IconRefresh className='size-4' />
+            <IconRestore className='size-4' />
             Reset
           </Button>
           <Button onClick={controller.applyFilters}>

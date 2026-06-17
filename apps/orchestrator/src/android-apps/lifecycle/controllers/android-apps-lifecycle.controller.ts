@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Param, Post, Put } from '@nestjs/common';
 import { ApiBody, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ApplicationCommandResultDto } from '../../common/dto/application-command-result.dto';
 import { StartAndroidApplicationDto } from '../dto/start-android-application.dto';
@@ -23,6 +23,20 @@ export class AndroidAppsLifecycleController {
   ) {
     return ApplicationCommandResultDto.fromEntity(
       await this.lifecycle.switchProfile(id, dto),
+    );
+  }
+
+  @Delete(':id/lifecycle/profiles/:profileName')
+  @ApiOperation({
+    summary: 'Delete a saved persistent runtime profile and its data volume.',
+  })
+  @ApiOkResponse({ type: ApplicationCommandResultDto })
+  async deleteSavedProfile(
+    @Param('id') id: string,
+    @Param('profileName') profileName: string,
+  ) {
+    return ApplicationCommandResultDto.fromEntity(
+      await this.lifecycle.deleteSavedProfile(id, profileName),
     );
   }
 

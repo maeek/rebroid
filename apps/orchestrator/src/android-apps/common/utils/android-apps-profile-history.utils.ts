@@ -56,3 +56,26 @@ export const rememberSavedProfile = (
       .slice(0, 24),
   );
 };
+
+export const forgetSavedProfile = (
+  raw: string | null | undefined,
+  profile: AndroidApplicationSavedProfile,
+) => {
+  const name = profile.name.trim();
+  const profiles = parseSavedProfiles(raw);
+  let removed = false;
+  const savedProfiles = profiles.filter((item) => {
+    const matches = item.mode === profile.mode && item.name === name;
+    if (matches) {
+      removed = true;
+      return false;
+    }
+
+    return true;
+  });
+
+  return {
+    removed,
+    savedProfilesJson: JSON.stringify(savedProfiles),
+  };
+};

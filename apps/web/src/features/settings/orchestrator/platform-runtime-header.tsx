@@ -1,4 +1,4 @@
-import { IconDeviceFloppy, IconRotateClockwise } from '@tabler/icons-react'
+import { IconDeviceFloppy, IconRestore } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Visible } from '@/components/ui/visible'
 import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
@@ -34,7 +34,7 @@ export const PlatformRuntimeHeader = ({
               disabled={isSaving}
               onClick={onReset}
             >
-              <IconRotateClockwise className='size-4' />
+              <IconRestore className='size-4' />
               Reset
             </Button>
             <Button

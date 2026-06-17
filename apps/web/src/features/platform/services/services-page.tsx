@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   IconLoader2,
   IconPencil,
-  IconRefresh,
+  IconRestore,
   IconSettings
 } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
@@ -224,7 +224,7 @@ export const PlatformServicesPage = ({ initialSettings }: { initialSettings: Orc
             onClick={() => void resetSettings()}
             disabled={isSaving}
           >
-            <IconRefresh className='size-4' />
+            <IconRestore className='size-4' />
             Reset
           </Button>
           <Button

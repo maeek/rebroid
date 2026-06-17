@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { IconDeviceFloppy, IconRotateClockwise } from '@tabler/icons-react'
+import { IconDeviceFloppy, IconRestore } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NumberSliderField } from '@/components/ui/number-slider-field'
@@ -132,7 +132,7 @@ export const GeneralSettingsForm = ({
             disabled={isSaving}
             onClick={() => void resetSettings()}
           >
-            <IconRotateClockwise className='size-4' />
+            <IconRestore className='size-4' />
             Reset
           </Button>
           <Button

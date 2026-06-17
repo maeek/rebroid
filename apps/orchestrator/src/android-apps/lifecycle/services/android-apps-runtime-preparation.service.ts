@@ -1,10 +1,17 @@
-import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DockerContainerLifecycleService } from '../../../docker/containers/services/docker-container-lifecycle.service';
+import { DockerResourceRuntimeService } from '../../../docker/resources/services/docker-resource-runtime.service';
 import { getErrorMessage } from '../../../common/error-message';
 import { NetworkIsolationService } from '../../../network-isolation/network-isolation.service';
 import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
 import { AndroidApplication } from '../../android-application.entity';
+import { ApplicationProfileMode } from '../../application-profile-mode';
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
@@ -12,7 +19,10 @@ import {
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
-import { rememberSavedProfile } from '../../common/utils/android-apps-profile-history.utils';
+import {
+  forgetSavedProfile,
+  rememberSavedProfile,
+} from '../../common/utils/android-apps-profile-history.utils';
 import {
   applyRedroidDefaultContainerArgs,
   isRedroidImageName,
@@ -30,6 +40,7 @@ export class AndroidAppsRuntimePreparationService {
   constructor(
     private readonly config: ConfigService,
     private readonly lifecycle: DockerContainerLifecycleService,
+    private readonly resources: DockerResourceRuntimeService,
     private readonly networkIsolation: NetworkIsolationService,
     private readonly networkPolicy: NetworkPolicyService,
     private readonly logs: AndroidAppsLogService,
@@ -133,6 +144,43 @@ export class AndroidAppsRuntimePreparationService {
     app.profileName = nextProfileName;
     app.savedProfilesJson = nextSavedProfilesJson;
     app.volumeName = nextVolumeName;
+    await this.state.save(app);
+  }
+
+  async deleteSavedPersistentProfile(
+    app: AndroidApplication,
+    profileName: string,
+  ) {
+    const name = profileName.trim();
+    if (!name) {
+      throw new NotFoundException('Saved profile not found.');
+    }
+
+    const activeProfileName = app.profileName || 'default';
+    if (
+      app.profileMode === ApplicationProfileMode.Persistent &&
+      activeProfileName === name
+    ) {
+      throw new ConflictException(
+        'The active persistent profile cannot be deleted. Switch profiles before deleting it.',
+      );
+    }
+
+    const result = forgetSavedProfile(app.savedProfilesJson, {
+      mode: ApplicationProfileMode.Persistent,
+      name,
+    });
+    if (!result.removed) {
+      throw new NotFoundException('Saved profile not found.');
+    }
+
+    const volumeName = this.networkIsolation.namesFor(
+      app.id,
+      app.name,
+      name,
+    ).volumeName;
+    await this.resources.removeVolume(volumeName);
+    app.savedProfilesJson = result.savedProfilesJson;
     await this.state.save(app);
   }
 

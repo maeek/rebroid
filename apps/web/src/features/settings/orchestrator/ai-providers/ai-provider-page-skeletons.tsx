@@ -1,8 +1,8 @@
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { DataGridSkeleton } from '@/shared/ui/data-grid'
 import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
-import { TableSkeleton } from '@/shared/ui/skeletons/table-skeleton'
 
 const ProviderConnectionSkeleton = () => (
   <Section
@@ -35,16 +35,34 @@ export const AiProvidersPageSkeleton = () => (
       hasTitlePrefix
       actionCount={2}
     />
-    <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
-      <TableSkeleton
+    <section className='flex w-full flex-col gap-4 px-6 pb-16 max-sm:px-4'>
+      <div
+        className='flex w-full items-center justify-between gap-4 rounded-md border border-border/60 bg-surface-panel/35 px-4 py-3 max-sm:flex-col max-sm:items-start'
+        data-testid='ai-context-suggestions-skeleton'
+      >
+        <div className='grid min-w-0 gap-2'>
+          <Skeleton className='h-4 w-36' />
+          <Skeleton className='h-3 w-72 max-w-full opacity-70' />
+        </div>
+        <Skeleton className='h-6 w-12 rounded-full' />
+      </div>
+      <div
+        className='grid gap-2'
+        data-testid='ai-providers-heading-skeleton'
+      >
+        <Skeleton className='h-5 w-20' />
+        <Skeleton className='h-4 w-full max-w-2xl opacity-70' />
+      </div>
+      <DataGridSkeleton
         columns={[
-          { headerWidth: 'w-20', cellWidth: 'w-44', kind: 'stacked' },
-          { headerWidth: 'w-12', cellWidth: 'w-20' },
-          { headerWidth: 'w-20', cellWidth: 'w-64' },
-          { headerWidth: 'w-16', cellWidth: 'w-52' },
-          { headerWidth: 'w-14', kind: 'badge' },
-          { headerWidth: 'w-14', kind: 'badge' }
+          { width: '20rem', headerWidth: 'w-20', cellWidth: 'w-44', kind: 'stacked' },
+          { width: '10rem', headerWidth: 'w-12', cellWidth: 'w-20' },
+          { width: '24rem', headerWidth: 'w-20', cellWidth: 'w-64' },
+          { width: '20rem', headerWidth: 'w-16', cellWidth: 'w-52' },
+          { width: '10rem', headerWidth: 'w-14', kind: 'badge' },
+          { width: '10rem', headerWidth: 'w-14', kind: 'badge' }
         ]}
+        minWidth='76rem'
         rows={5}
       />
     </section>
@@ -81,14 +99,15 @@ export const AiProviderEditPageSkeleton = () => (
           </div>
           <Skeleton className='h-9 w-28' />
         </div>
-        <TableSkeleton
+        <DataGridSkeleton
           columns={[
-            { headerWidth: 'w-20', cellWidth: 'w-44' },
-            { headerWidth: 'w-12', cellWidth: 'w-44' },
-            { headerWidth: 'w-12', cellWidth: 'w-32' },
-            { headerWidth: 'w-12', cellWidth: 'w-28' },
-            { headerWidth: 'w-14', kind: 'badge' }
+            { width: '18rem', headerWidth: 'w-20', cellWidth: 'w-44' },
+            { width: '18rem', headerWidth: 'w-12', cellWidth: 'w-44' },
+            { width: '12rem', headerWidth: 'w-12', cellWidth: 'w-32' },
+            { width: '12rem', headerWidth: 'w-12', cellWidth: 'w-28' },
+            { width: '10rem', headerWidth: 'w-14', kind: 'badge' }
           ]}
+          minWidth='70rem'
           rows={4}
         />
       </div>

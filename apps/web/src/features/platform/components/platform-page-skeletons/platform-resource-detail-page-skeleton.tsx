@@ -1,8 +1,8 @@
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
+import { DataGridSkeleton } from '@/shared/ui/data-grid'
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
-import { TableSkeleton } from '@/shared/ui/skeletons/table-skeleton'
 import { DetailRowsSkeleton } from './detail-rows-skeleton'
 import { JsonBlockSkeleton } from './json-block-skeleton'
 
@@ -61,9 +61,11 @@ export const PlatformResourceDetailPageSkeleton = ({
         contentClassName='gap-4'
         titleClassName='pb-4'
       >
-        <TableSkeleton
+        <DataGridSkeleton
           minWidth='48rem'
           rows={4}
+          selectable={false}
+          rowMenu={false}
           columns={Array.from({ length: relatedColumns }).map((_, index) => ({
             width: index === relatedColumns - 1 ? '10rem' : index === 0 ? 'minmax(12rem,2fr)' : 'minmax(10rem,1fr)',
             headerWidth: index === relatedColumns - 1 ? 'w-16' : 'w-20',

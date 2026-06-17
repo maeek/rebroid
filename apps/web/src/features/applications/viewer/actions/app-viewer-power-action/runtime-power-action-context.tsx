@@ -3,13 +3,20 @@
 import { createContext, useContext, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useApplicationViewerContext } from '@/features/applications/detail/application-viewer-context'
-import { usePowerActionProfileState } from '@/features/applications/viewer/actions/app-viewer-power-action/profile/profile-state'
+import {
+  getProfileDefaults,
+  usePowerActionProfileState
+} from '@/features/applications/viewer/actions/app-viewer-power-action/profile/profile-state'
 import { usePowerActionRuntimeHandlers } from '@/features/applications/viewer/actions/app-viewer-power-action/runtime/runtime-actions'
 import {
   getCanRestart,
   usePowerActionViewState
 } from '@/features/applications/viewer/actions/app-viewer-power-action/runtime/runtime-view-state'
+import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { useAppViewerActionRunner } from '@/features/applications/viewer/actions/use-app-viewer-action-runner'
+import { toast } from '@/hooks/use-toast'
+import { deleteApplicationProfileAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
+import { loadSavedApplicationProfiles } from '@/shared/model/application-profile/profile-history'
 import { hasPermission } from '@/shared/permissions/permissions'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type {
@@ -22,6 +29,7 @@ type RuntimePowerActionContextValue = {
   app?: AppDefinition
   appName?: string
   canRunPrimary: boolean
+  canDeleteProfiles: boolean
   dialogDisabled: boolean
   isBusy: boolean
   isRestartingAction: boolean
@@ -41,6 +49,7 @@ type RuntimePowerActionContextValue = {
   onModeChange: (mode: ApplicationProfileMode) => void
   onNameChange: (name: string) => void
   onOpenChange: (open: boolean) => void
+  onProfileDelete: (profileName: string) => Promise<void>
   onPrimaryAction: () => void
   onRestartConfirm: () => void
   onRestartDialogOpenChange: (open: boolean) => void
@@ -52,10 +61,11 @@ type RuntimePowerActionContextValue = {
 const RuntimePowerActionContext = createContext<RuntimePowerActionContextValue | null>(null)
 
 export const RuntimePowerActionProvider = ({ children }: { children: ReactNode }) => {
-  const { app, permissions } = useApplicationViewerContext()
+  const { app, permissions, setApp } = useApplicationViewerContext()
   const canStart = hasPermission(permissions, 'applications:start')
   const canStop = hasPermission(permissions, 'applications:stop')
   const canSwitchProfile = hasPermission(permissions, 'applications:switch-profile')
+  const canDeleteProfiles = hasPermission(permissions, 'applications:delete')
   const { isRunningAction, runAction } = useAppViewerActionRunner()
   const [startDialogOpen, setStartDialogOpen] = useState(false)
   const [stopDialogOpen, setStopDialogOpen] = useState(false)
@@ -84,11 +94,41 @@ export const RuntimePowerActionProvider = ({ children }: { children: ReactNode }
     isRunningAction
   })
 
+  const handleProfileDelete = async (deletedProfileName: string) => {
+    if (!app) {
+      return
+    }
+
+    try {
+      const updated = mapAndroidApplicationToAppDefinition(
+        await deleteApplicationProfileAction(app.id, deletedProfileName)
+      )
+      setApp(current => ({
+        ...updated,
+        icon: current?.icon ?? updated.icon,
+        ownerDisplayName: current?.ownerDisplayName ?? updated.ownerDisplayName
+      }))
+      setSavedProfiles(loadSavedApplicationProfiles(updated.id, getProfileDefaults(updated), updated.savedProfiles))
+      if (profileMode === 'persistent' && profileName.trim() === deletedProfileName.trim()) {
+        setProfileName('default')
+      }
+      toast({ title: 'Profile removed', description: `${deletedProfileName} was deleted with its saved data.` })
+    } catch (error) {
+      toast({
+        title: 'Could not remove profile',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
+      })
+      throw error
+    }
+  }
+
   return (
     <RuntimePowerActionContext.Provider
       value={{
         app,
         appName: app?.name,
+        canDeleteProfiles,
         canRunPrimary: viewState.canRunPrimary,
         dialogDisabled: viewState.dialogDisabled,
         isBusy: viewState.isBusy,
@@ -109,6 +149,7 @@ export const RuntimePowerActionProvider = ({ children }: { children: ReactNode }
         onModeChange: handleProfileModeChange,
         onNameChange: setProfileName,
         onOpenChange: setStartDialogOpen,
+        onProfileDelete: handleProfileDelete,
         onPrimaryAction: runtimeHandlers.handlePrimaryAction,
         onRestartConfirm: () => void runtimeHandlers.handleRestart(),
         onRestartDialogOpenChange: setRestartDialogOpen,

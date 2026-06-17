@@ -7,7 +7,6 @@ import { loadRuntimeNetworksPageData, type NetworksSearchParams } from './page-d
 const NetworksPageFallback = () => (
   <PlatformInventoryPageSkeleton
     titleWidth='w-40 max-sm:w-[7.5rem]'
-    sectionTitleWidth='w-24'
     minWidth='78rem'
     columns={[
       { width: '22rem', headerWidth: 'w-20', kind: 'stacked' },

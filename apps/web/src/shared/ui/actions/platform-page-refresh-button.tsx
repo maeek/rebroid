@@ -1,5 +1,8 @@
+'use client'
+
 import { IconLoader2, IconRefresh } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 export const PlatformPageRefreshButton = ({
   isRefreshing,
@@ -12,13 +15,21 @@ export const PlatformPageRefreshButton = ({
   label?: string
   disabled?: boolean
 }) => (
-  <Button
-    type='button'
-    variant='outline'
-    disabled={disabled || isRefreshing}
-    onClick={onRefresh}
-  >
-    {isRefreshing ? <IconLoader2 className='size-4 animate-spin' /> : <IconRefresh className='size-4' />}
-    {label}
-  </Button>
+  <TooltipProvider delayDuration={200}>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type='button'
+          variant='ghost'
+          size='icon'
+          aria-label={label}
+          disabled={disabled || isRefreshing}
+          onClick={onRefresh}
+        >
+          {isRefreshing ? <IconLoader2 className='size-4 animate-spin' /> : <IconRefresh className='size-4' />}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  </TooltipProvider>
 )

@@ -12,11 +12,12 @@ import {
 } from '@/components/ui/dialog'
 import { Visible } from '@/components/ui/visible'
 import { useRuntimePowerActionContext } from '@/features/applications/viewer/actions/app-viewer-power-action/runtime-power-action-context'
-import { ApplicationProfilePicker } from '@/shared/ui/application-profile/application-profile-picker'
+import { ApplicationProfileSelect } from '@/shared/ui/application-profile/application-profile-select'
 
 export const StartProfileDialog = () => {
   const {
     app,
+    canDeleteProfiles,
     isRunningAction,
     open,
     profileMode,
@@ -25,6 +26,7 @@ export const StartProfileDialog = () => {
     onModeChange,
     onNameChange,
     onOpenChange,
+    onProfileDelete,
     onStart
   } = useRuntimePowerActionContext()
 
@@ -38,11 +40,13 @@ export const StartProfileDialog = () => {
           <DialogTitle>Start app</DialogTitle>
           <DialogDescription>Choose the saved profile for this session before the app starts.</DialogDescription>
         </DialogHeader>
-        <ApplicationProfilePicker
+        <ApplicationProfileSelect
           mode={profileMode}
           name={profileName}
           savedProfiles={savedProfiles}
           disabled={isRunningAction}
+          canDeleteProfiles={canDeleteProfiles}
+          onDeleteProfile={onProfileDelete}
           onModeChange={onModeChange}
           onNameChange={onNameChange}
         />
