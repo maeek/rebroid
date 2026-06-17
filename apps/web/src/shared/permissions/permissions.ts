@@ -181,8 +181,8 @@ export const permissionDefinitions = [
   {
     id: 'automations:manage-ai-providers',
     category: 'automations',
-    name: 'Manage AI providers',
-    description: 'Configure local and remote AI providers used by automation steps.'
+    name: 'Manage AI',
+    description: 'Configure AI providers and model defaults used by automation steps.'
   }
 ] as const
 

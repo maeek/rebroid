@@ -10,11 +10,11 @@ import { recentAppsUpdatedEvent, type RecentApp } from '@/shared/model/recent-ap
 import {
   appSections,
   automationSections,
-  infrastructureSections,
-  operationsSections,
-  orchestratorSections,
+  platformSections,
   preferenceSections,
-  userSections,
+  runtimeSections,
+  securitySections,
+  systemSections,
   variantStyles,
   type NavigationItem,
   type NavigationVariant
@@ -58,11 +58,11 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
     exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`)
 
   const itemIsActive = (href: string) => {
-    if (href === '/users') {
-      return pathname === href || (pathname.startsWith('/users/') && !pathname.startsWith('/users/groups'))
+    if (href === '/security/users') {
+      return pathname === href || (pathname.startsWith('/security/users/') && !pathname.startsWith('/security/groups'))
     }
 
-    return isActivePath(href, href === '/orchestrator')
+    return isActivePath(href, href === '/platform')
   }
 
   const renderSection = (title: string, items: NavigationItem[]) => (
@@ -144,10 +144,10 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
       </ul>
 
       <Visible when={isAdmin}>
-        {renderSection('Users', userSections)}
-        {renderSection('Orchestrator', orchestratorSections)}
-        {renderSection('Infrastructure', infrastructureSections)}
-        {renderSection('Operations', operationsSections)}
+        {renderSection('Security', securitySections)}
+        {renderSection('Platform', platformSections)}
+        {renderSection('Runtime', runtimeSections)}
+        {renderSection('System', systemSections)}
         {renderSection('Preferences', preferenceSections)}
       </Visible>
     </div>

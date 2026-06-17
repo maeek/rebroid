@@ -3,6 +3,7 @@ import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { DockerHealthService } from '../docker/health/services/docker-health.service';
 import { FirewallAgentClientService } from '../network-policy/services/firewall-agent-client.service';
 import { OrchestratorDiagnosticsDto } from './dto/health-response.dto';
+import { OcrSidecarHealthService } from './ocr-sidecar-health.service';
 
 @ApiTags('health')
 @Controller()
@@ -10,6 +11,7 @@ export class HealthController {
   constructor(
     private readonly docker: DockerHealthService,
     private readonly firewallAgent: FirewallAgentClientService,
+    private readonly ocrSidecar: OcrSidecarHealthService,
   ) {}
 
   @Get('health/live')
@@ -36,7 +38,7 @@ export class HealthController {
   }
 
   private async buildDiagnostics(summary: boolean) {
-    const [docker, display, firewall] = await Promise.all([
+    const [docker, display, firewall, ocr] = await Promise.all([
       summary ? this.docker.dockerHealthSummary() : this.docker.dockerHealth(),
       summary
         ? this.docker.displaySidecarSummaryHealth()
@@ -49,6 +51,7 @@ export class HealthController {
             ? error.message
             : 'Firewall agent is unavailable.',
       })),
+      this.ocrSidecar.health(),
     ]);
     const runtime = docker.ok
       ? await (summary
@@ -62,11 +65,12 @@ export class HealthController {
         };
 
     return {
-      ok: docker.ok && runtime.ok && display.ok && firewall.ok,
+      ok: docker.ok && runtime.ok && display.ok && firewall.ok && ocr.ok,
       docker: docker.ok,
       runtime: runtime.ok,
       display: display.ok,
       firewall: Boolean(firewall.ok),
+      ocr: ocr.ok,
       services: {
         orchestrator: {
           ok: true,
@@ -77,6 +81,7 @@ export class HealthController {
         runtime,
         display,
         firewall,
+        ocr,
       },
     };
   }

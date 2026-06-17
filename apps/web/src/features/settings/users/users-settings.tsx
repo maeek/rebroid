@@ -136,7 +136,7 @@ export const UsersSettings = ({
       <section className='shrink-0 px-6 py-4 max-sm:px-4'>
         <PageBreadcrumbs
           className='pt-0'
-          items={[{ label: 'Users', href: '/users' }, { label: 'Users' }]}
+          items={[{ label: 'Users', href: '/security/users' }, { label: 'Users' }]}
         />
         <div className='flex items-center justify-between gap-3 pt-4'>
           <h2 className='text-3xl font-medium max-sm:text-xl'>Users</h2>

@@ -21,12 +21,30 @@ export interface OrchestratorUiSettings {
   defaultViewerSoundEnabled: boolean
   aiContextualSuggestionsEnabled: boolean
   auditRetentionDays: number
+  services: OptionalServicesUiSettings
+}
+
+export interface OptionalServiceUiSettings {
+  enabled: boolean
+  endpoint: string | null
+  timeoutMs: number
+}
+
+export interface OcrServiceUiSettings extends OptionalServiceUiSettings {
+  maxImageDimension: number
+  minConfidence: number
+  languages: string[]
+  preprocessingModes: string[]
+}
+
+export interface OptionalServicesUiSettings {
+  ocr: OcrServiceUiSettings
+  firewall: OptionalServiceUiSettings
 }
 
 export type GeneralUiSettings = Pick<
   OrchestratorUiSettings,
   | 'appListRefreshIntervalSeconds'
-  | 'removeDataOnDelete'
   | 'defaultViewerPreset'
   | 'defaultViewerBitrateMbps'
   | 'defaultViewerMaxFps'
@@ -34,13 +52,20 @@ export type GeneralUiSettings = Pick<
   | 'defaultViewerIFrameInterval'
   | 'defaultViewerKeyboardCaptureEnabled'
   | 'defaultViewerSoundEnabled'
-  | 'aiContextualSuggestionsEnabled'
 >
 
 export type RuntimeUiSettings = Pick<
   OrchestratorUiSettings,
-  'defaultContainerImage' | 'dockerImageRegistry' | 'defaultInactivityTimeoutSeconds' | 'maxApkUploadSizeMb'
+  | 'defaultContainerImage'
+  | 'dockerImageRegistry'
+  | 'defaultInactivityTimeoutSeconds'
+  | 'maxApkUploadSizeMb'
+  | 'services'
 >
+
+export type RuntimeAdminUiSettings = RuntimeUiSettings & Pick<OrchestratorUiSettings, 'removeDataOnDelete'>
+
+export type AiUiSettings = Pick<OrchestratorUiSettings, 'aiContextualSuggestionsEnabled'>
 
 export const defaultOrchestratorUiSettings: OrchestratorUiSettings = {
   orchestratorApiUrl: 'http://localhost:4100',
@@ -59,7 +84,23 @@ export const defaultOrchestratorUiSettings: OrchestratorUiSettings = {
   defaultViewerKeyboardCaptureEnabled: false,
   defaultViewerSoundEnabled: true,
   aiContextualSuggestionsEnabled: true,
-  auditRetentionDays: 30
+  auditRetentionDays: 30,
+  services: {
+    ocr: {
+      enabled: true,
+      endpoint: null,
+      timeoutMs: 15000,
+      maxImageDimension: 1600,
+      minConfidence: 0.4,
+      languages: ['en'],
+      preprocessingModes: ['raw', 'grayscale', 'contrast', 'threshold']
+    },
+    firewall: {
+      enabled: true,
+      endpoint: '/run/rebroid-firewall/agent.sock',
+      timeoutMs: 5000
+    }
+  }
 }
 
 export const defaultWebSettingsResponse: WebSettingsResponse = {
@@ -81,7 +122,45 @@ export const defaultRuntimeSettingsResponse: OrchestratorSettingsResponse = {
   dockerImageRegistry: defaultOrchestratorUiSettings.dockerImageRegistry,
   defaultScrcpyTransport: defaultOrchestratorUiSettings.scrcpyTransport,
   defaultInactivityTimeoutSeconds: defaultOrchestratorUiSettings.defaultInactivityTimeoutSeconds,
-  maxApkUploadSizeMb: defaultOrchestratorUiSettings.maxApkUploadSizeMb
+  maxApkUploadSizeMb: defaultOrchestratorUiSettings.maxApkUploadSizeMb,
+  services: defaultOrchestratorUiSettings.services
+}
+
+const normalizeEndpoint = (value: unknown) => {
+  if (typeof value !== 'string') return null
+  const normalized = value.trim()
+  return normalized.length > 0 ? normalized : null
+}
+
+const normalizeStringList = (value: unknown, fallback: string[]) => {
+  if (!Array.isArray(value)) return fallback
+  const normalized = value
+    .map(item => (typeof item === 'string' ? item.trim() : ''))
+    .filter(item => item.length > 0)
+  return normalized.length > 0 ? Array.from(new Set(normalized)) : fallback
+}
+
+const normalizeServices = (value: Partial<OrchestratorSettingsResponse['services']> | undefined) => {
+  const defaults = defaultOrchestratorUiSettings.services
+  const ocr = value?.ocr
+  const firewall = value?.firewall
+  return {
+    ocr: {
+      enabled: typeof ocr?.enabled === 'boolean' ? ocr.enabled : defaults.ocr.enabled,
+      endpoint: normalizeEndpoint(ocr?.endpoint) ?? defaults.ocr.endpoint,
+      timeoutMs: Number(ocr?.timeoutMs) || defaults.ocr.timeoutMs,
+      maxImageDimension: Number(ocr?.maxImageDimension) || defaults.ocr.maxImageDimension,
+      minConfidence:
+        typeof ocr?.minConfidence === 'number' ? ocr.minConfidence : defaults.ocr.minConfidence,
+      languages: normalizeStringList(ocr?.languages, defaults.ocr.languages),
+      preprocessingModes: normalizeStringList(ocr?.preprocessingModes, defaults.ocr.preprocessingModes)
+    },
+    firewall: {
+      enabled: typeof firewall?.enabled === 'boolean' ? firewall.enabled : defaults.firewall.enabled,
+      endpoint: normalizeEndpoint(firewall?.endpoint) ?? defaults.firewall.endpoint,
+      timeoutMs: Number(firewall?.timeoutMs) || defaults.firewall.timeoutMs
+    }
+  }
 }
 
 export const normalizeOrchestratorUiSettings = (
@@ -139,5 +218,6 @@ export const normalizeOrchestratorUiSettings = (
   scrcpyTransport:
     orchestrator.defaultScrcpyTransport === 'websocket' || orchestrator.defaultScrcpyTransport === 'webrtc'
       ? orchestrator.defaultScrcpyTransport
-      : defaultOrchestratorUiSettings.scrcpyTransport
+      : defaultOrchestratorUiSettings.scrcpyTransport,
+  services: normalizeServices(orchestrator.services)
 })

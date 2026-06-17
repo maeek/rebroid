@@ -9,6 +9,7 @@ import {
   IconChartHistogram,
   IconHistory,
   IconNetwork,
+  IconPlugConnected,
   IconRobot,
   IconServerSpark,
   IconShield,
@@ -31,29 +32,30 @@ export const automationSections: NavigationItem[] = [
   { name: 'Triggers', Icon: IconCalendarTime, href: '/automations/triggers' }
 ]
 
-export const userSections: NavigationItem[] = [
-  { name: 'Users', Icon: IconUsers, href: '/users' },
-  { name: 'Groups', Icon: IconShield, href: '/users/groups' }
+export const securitySections: NavigationItem[] = [
+  { name: 'Users', Icon: IconUsers, href: '/security/users' },
+  { name: 'Groups', Icon: IconShield, href: '/security/groups' },
+  { name: 'Network policies', Icon: IconNetwork, href: '/security/network-policies' },
+  { name: 'Audit log', Icon: IconHistory, href: '/security/audit-log' }
 ]
 
-export const orchestratorSections: NavigationItem[] = [
-  { name: 'Overview', Icon: IconChartHistogram, href: '/orchestrator' },
-  { name: 'Settings', Icon: IconAdjustments, href: '/orchestrator/settings' },
-  { name: 'AI', Icon: GradientSparklesIcon, href: '/orchestrator/ai-providers' }
+export const platformSections: NavigationItem[] = [
+  { name: 'Overview', Icon: IconChartHistogram, href: '/platform' },
+  { name: 'Runtime defaults', Icon: IconAdjustments, href: '/platform/runtime' },
+  { name: 'AI', Icon: GradientSparklesIcon, href: '/platform/ai' },
+  { name: 'Services', Icon: IconPlugConnected, href: '/platform/services' },
+  { name: 'Display sessions', Icon: IconCast, href: '/platform/display-sessions' },
+  { name: 'Scheduler', Icon: IconCalendarTime, href: '/platform/scheduler' }
 ]
 
-export const infrastructureSections: NavigationItem[] = [
-  { name: 'Containers', Icon: IconBox, href: '/infrastructure/containers' },
-  { name: 'Images', Icon: IconBrandDocker, href: '/infrastructure/images' },
-  { name: 'Networks', Icon: IconNetwork, href: '/infrastructure/networks' },
-  { name: 'System', Icon: IconServerSpark, href: '/infrastructure/system' }
+export const runtimeSections: NavigationItem[] = [
+  { name: 'Containers', Icon: IconBox, href: '/runtime/containers' },
+  { name: 'Images', Icon: IconBrandDocker, href: '/runtime/images' },
+  { name: 'Networks', Icon: IconNetwork, href: '/runtime/networks' }
 ]
 
-export const operationsSections: NavigationItem[] = [
-  { name: 'Casting', Icon: IconCast, href: '/operations/casting' },
-  { name: 'Network access', Icon: IconNetwork, href: '/operations/network-access' },
-  { name: 'Scheduled tasks', Icon: IconCalendarTime, href: '/operations/scheduled-tasks' },
-  { name: 'Activity', Icon: IconHistory, href: '/operations/activity' }
+export const systemSections: NavigationItem[] = [
+  { name: 'Resources', Icon: IconServerSpark, href: '/system/resources' }
 ]
 
 export const preferenceSections: NavigationItem[] = [

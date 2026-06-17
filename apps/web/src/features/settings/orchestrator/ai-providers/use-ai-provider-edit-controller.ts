@@ -245,7 +245,7 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
       setProvider(JSON.parse(JSON.stringify(saved)) as AutomationAiProvider)
       toast({ title: 'AI provider updated' })
       if (saved.id !== initialProvider.id) {
-        router.replace(`/orchestrator/ai-providers/${encodeURIComponent(saved.id)}`)
+        router.replace(`/platform/ai/${encodeURIComponent(saved.id)}`)
       } else {
         router.refresh()
       }

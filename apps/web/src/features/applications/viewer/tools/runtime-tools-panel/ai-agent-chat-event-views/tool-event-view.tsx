@@ -8,7 +8,7 @@ type ToolEventRowValue = {
   format?: 'inline' | 'pre'
 }
 
-const ToolEventRow = ({ item }: { item: ToolEventRowValue }) => {
+export const ToolEventRow = ({ item }: { item: ToolEventRowValue }) => {
   const isPre = item.format === 'pre'
   const valueText =
     typeof item.value === 'string'

@@ -43,7 +43,7 @@ export const useActivityEventsController = ({
       pageSize: patch.pageSize ?? result.pageSize,
       sort: patch.sort ?? auditSortToSearchParam(sorting)
     })
-    router.push(`/operations/activity${params.size ? `?${params.toString()}` : ''}`)
+    router.push(`/security/audit-log${params.size ? `?${params.toString()}` : ''}`)
   }
 
   const exportHref = useMemo(() => {
@@ -61,7 +61,7 @@ export const useActivityEventsController = ({
 
   const resetFilters = () => {
     setLocalFilters({})
-    router.push('/operations/activity')
+    router.push('/security/audit-log')
   }
 
   const removeFilter = (key: keyof ActivityFilterValues) => {

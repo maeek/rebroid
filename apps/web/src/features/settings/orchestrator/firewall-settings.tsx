@@ -170,7 +170,7 @@ export const FirewallSettings = ({
       if (targets.length === 0) {
         await reconcileNetworkPoliciesAction()
         await refresh()
-        toast({ title: 'Network access rules reconciled and stale rules pruned' })
+        toast({ title: 'Network policy rules reconciled and stale rules pruned' })
         return
       }
       const updated = await Promise.all(targets.map(application => applyNetworkPolicyAction(application.id)))
@@ -277,7 +277,7 @@ export const FirewallSettings = ({
         message={health.message}
       />
       <Section
-        title='Network access policies'
+        title='Network policies'
         titleClassName='pb-2'
         contentClassName='gap-4'
       >

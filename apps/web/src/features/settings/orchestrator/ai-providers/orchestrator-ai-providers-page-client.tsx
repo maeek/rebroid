@@ -6,6 +6,7 @@ import { IconPlus } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { toast } from '@/hooks/use-toast'
 import {
   checkAutomationAiProviderCandidateHealthAction,
@@ -13,22 +14,28 @@ import {
   deleteAutomationAiProviderAction,
   updateAutomationAiProviderAction
 } from '@/server/orchestrator/settings/actions'
+import { saveAiUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
 import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { ProviderDialog } from './provider-dialog'
 import { ProvidersGrid } from './providers-grid'
 import type { AutomationAiProvider } from '@/server/orchestrator/settings/types'
+import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 export const OrchestratorAiProvidersPageClient = ({
-  initialProviders
+  initialProviders,
+  initialSettings
 }: {
   initialProviders: AutomationAiProvider[]
+  initialSettings: OrchestratorUiSettings
 }) => {
   const router = useRouter()
   const [providers, setProviders] = useState(initialProviders)
+  const [settings, setSettings] = useState(initialSettings)
   const [editingProvider, setEditingProvider] = useState<ProviderFormState | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [isSavingAiSettings, setIsSavingAiSettings] = useState(false)
   const [isRefreshing, startRefreshTransition] = useTransition()
   const [busyId, setBusyId] = useState<string | null>(null)
   const [selectedProviderIds, setSelectedProviderIds] = useState<Set<string>>(() => new Set())
@@ -36,6 +43,10 @@ export const OrchestratorAiProvidersPageClient = ({
   useEffect(() => {
     setProviders(initialProviders)
   }, [initialProviders])
+
+  useEffect(() => {
+    setSettings(initialSettings)
+  }, [initialSettings])
 
   const refresh = () => {
     startRefreshTransition(() => router.refresh())
@@ -46,7 +57,7 @@ export const OrchestratorAiProvidersPageClient = ({
   }
 
   const openEditDialog = (provider: AutomationAiProvider) => {
-    router.push(`/orchestrator/ai-providers/${encodeURIComponent(provider.id)}`)
+    router.push(`/platform/ai/${encodeURIComponent(provider.id)}`)
   }
 
   const saveProvider = async () => {
@@ -80,7 +91,7 @@ export const OrchestratorAiProvidersPageClient = ({
       })
       setEditingProvider(null)
       toast({ title: 'AI provider created' })
-      router.push(`/orchestrator/ai-providers/${encodeURIComponent(saved.id)}`)
+      router.push(`/platform/ai/${encodeURIComponent(saved.id)}`)
     } catch (error) {
       toast({
         title: 'Could not save AI provider',
@@ -103,10 +114,10 @@ export const OrchestratorAiProvidersPageClient = ({
       )
       setProviders(current => current.map(provider => results.find(result => result.id === provider.id) ?? provider))
       setSelectedProviderIds(new Set())
-      toast({ title: enabled ? 'AI providers enabled' : 'AI providers disabled' })
+      toast({ title: enabled ? 'AI enabled' : 'AI disabled' })
     } catch (error) {
       toast({
-        title: 'Could not update AI providers',
+        title: 'Could not update AI',
         description: error instanceof Error ? error.message : 'Unknown error',
         variant: 'destructive'
       })
@@ -124,10 +135,10 @@ export const OrchestratorAiProvidersPageClient = ({
       await Promise.all(selected.map(provider => deleteAutomationAiProviderAction(provider.id)))
       setProviders(current => current.filter(provider => !selectedProviderIds.has(provider.id)))
       setSelectedProviderIds(new Set())
-      toast({ title: 'AI providers deleted' })
+      toast({ title: 'AI deleted' })
     } catch (error) {
       toast({
-        title: 'Could not delete AI providers',
+        title: 'Could not delete AI',
         description: error instanceof Error ? error.message : 'Unknown error',
         variant: 'destructive'
       })
@@ -153,12 +164,33 @@ export const OrchestratorAiProvidersPageClient = ({
     }
   }
 
+  const updateContextualSuggestions = async (aiContextualSuggestionsEnabled: boolean) => {
+    const previousValue = settings.aiContextualSuggestionsEnabled
+    setSettings(current => ({ ...current, aiContextualSuggestionsEnabled }))
+    setIsSavingAiSettings(true)
+    try {
+      const saved = await saveAiUiSettings({
+        aiContextualSuggestionsEnabled
+      })
+      setSettings(saved)
+    } catch (error) {
+      setSettings(current => ({ ...current, aiContextualSuggestionsEnabled: previousValue }))
+      toast({
+        title: 'Could not save AI settings',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsSavingAiSettings(false)
+    }
+  }
+
   return (
     <ProtectedStackPageLayout mainClassName='gap-2'>
       <PlatformPageHeader
-        title='AI providers'
+        title='AI'
         titlePrefix={<GradientSparklesIcon className='size-8 max-sm:size-5' />}
-        description='Configure OpenAI, Ollama, and OpenAI-compatible providers used by AI automation steps.'
+        description='Configure provider connections and AI-assisted automation behavior.'
         actions={
           <div className='flex items-center gap-2'>
             <PlatformPageRefreshButton
@@ -175,7 +207,24 @@ export const OrchestratorAiProvidersPageClient = ({
           </div>
         }
       />
-      <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
+      <section className='flex w-full flex-col gap-4 px-6 pb-16 max-sm:px-4'>
+        <label className='flex w-full items-center justify-between gap-4 rounded-md border border-border/60 bg-surface-panel/35 px-4 py-3 text-sm max-sm:flex-col max-sm:items-start'>
+          <div className='min-w-0'>
+            <div className='font-medium text-foreground'>Context suggestions</div>
+            <div className='mt-1 text-xs text-muted-foreground'>Generate AI prompt chips in app sessions.</div>
+          </div>
+          <Switch
+            checked={settings.aiContextualSuggestionsEnabled}
+            disabled={isSavingAiSettings}
+            onCheckedChange={value => void updateContextualSuggestions(value)}
+          />
+        </label>
+        <div className='min-w-0'>
+          <h2 className='text-base font-semibold text-foreground'>Providers</h2>
+          <p className='mt-1 text-sm text-muted-foreground'>
+            Connections and model defaults available to automation and agent workflows.
+          </p>
+        </div>
         <ProvidersGrid
           providers={providers}
           busyId={busyId}

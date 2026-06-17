@@ -54,6 +54,10 @@ const dotTone = (status: DisplayServiceStatus) => {
     return 'bg-success'
   }
 
+  if (status === 'disabled') {
+    return 'bg-muted-foreground/50'
+  }
+
   if (status === 'unhealthy' || status === 'degraded') {
     return 'bg-warning'
   }
@@ -66,6 +70,10 @@ const badgeTone = (status: DisplayServiceStatus) => {
     return 'border-success/35 bg-success/10 text-success'
   }
 
+  if (status === 'disabled') {
+    return 'border-border/70 bg-secondary/45 text-muted-foreground'
+  }
+
   if (status === 'unhealthy' || status === 'degraded') {
     return 'border-warning/35 bg-warning/10 text-warning'
   }
@@ -76,23 +84,28 @@ const badgeTone = (status: DisplayServiceStatus) => {
 const serviceRows = (health: OrchestratorHealth | null, fallbackMessage: string) => [
   {
     name: 'Orchestrator',
-    href: '/orchestrator',
+    href: '/platform',
     service: health?.services.orchestrator ?? checkingService(fallbackMessage)
   },
   {
     name: 'Docker',
-    href: '/infrastructure/containers',
+    href: '/runtime/containers',
     service: mergeDockerAndRuntimeService(health, fallbackMessage)
   },
   {
     name: 'Casting',
-    href: '/operations/casting',
+    href: '/platform/display-sessions',
     service: health?.services.display ?? checkingService(fallbackMessage)
   },
   {
-    name: 'Network access',
-    href: '/operations/network-access',
+    name: 'Firewall',
+    href: '/platform/services',
     service: health?.services.firewall ?? checkingService(fallbackMessage)
+  },
+  {
+    name: 'OCR',
+    href: '/platform/services',
+    service: health?.services.ocr ?? checkingService(fallbackMessage)
   }
 ]
 
@@ -122,12 +135,14 @@ export const OrchestratorStatus = () => {
       runtime: false,
       display: false,
       firewall: false,
+      ocr: false,
       services: {
         orchestrator: offlineService(errorMessage),
         docker: offlineService('Cannot inspect Docker while orchestrator is offline.'),
         runtime: offlineService('Cannot inspect runtime suitability while orchestrator is offline.'),
         display: offlineService('Cannot inspect casting sidecar while orchestrator is offline.'),
-        firewall: offlineService('Cannot inspect firewall agent while orchestrator is offline.')
+        firewall: offlineService('Cannot inspect firewall agent while orchestrator is offline.'),
+        ocr: offlineService('Cannot inspect OCR sidecar while orchestrator is offline.')
       }
     })
   }, [])

@@ -37,7 +37,7 @@ const sortUsers = (users: PublicUser[], groups: UserGroup[], sorting: SortingSta
 }
 
 const UserIdentity = ({ user }: { user: PublicUser }) => (
-  <Link href={`/users/${user.id}`}>
+  <Link href={`/security/users/${user.id}`}>
     <div className='flex min-w-0 items-center gap-3'>
       <Avatar className='size-9'>
         <AvatarImage src={user.avatarDataUrl ?? ''} />
@@ -62,7 +62,7 @@ const GroupBadges = ({ user, groups }: { user: PublicUser; groups: UserGroup[] }
   <div className='flex flex-wrap gap-1.5'>
     {user.groupIds.map(groupId => (
       <Link
-        href={`/users/groups/${groupId}`}
+        href={`/security/groups/${groupId}`}
         key={groupId}
       >
         <Badge

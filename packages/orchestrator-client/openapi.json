@@ -4791,7 +4791,8 @@
             "enum": [
               "healthy",
               "unhealthy",
-              "offline"
+              "offline",
+              "disabled"
             ]
           },
           "message": {
@@ -4952,6 +4953,99 @@
           "removedFiles"
         ]
       },
+      "OptionalServiceSettingsDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "example": true,
+            "description": "Whether the optional sidecar integration should be used."
+          },
+          "endpoint": {
+            "type": "string",
+            "nullable": true,
+            "example": "http://ocr-sidecar:4300",
+            "description": "Service endpoint. HTTP(S) URL for HTTP sidecars; socket path for local agent integrations."
+          },
+          "timeoutMs": {
+            "type": "number",
+            "example": 15000,
+            "minimum": 100,
+            "maximum": 120000
+          }
+        },
+        "required": [
+          "enabled",
+          "endpoint",
+          "timeoutMs"
+        ]
+      },
+      "OcrServiceSettingsDto": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/OptionalServiceSettingsDto"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "maxImageDimension": {
+                "type": "number",
+                "example": 1600,
+                "minimum": 320,
+                "maximum": 4096
+              },
+              "minConfidence": {
+                "type": "number",
+                "example": 0.4,
+                "minimum": 0,
+                "maximum": 1
+              },
+              "languages": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "example": [
+                  "en"
+                ]
+              },
+              "preprocessingModes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "example": [
+                  "raw",
+                  "grayscale",
+                  "contrast",
+                  "threshold"
+                ]
+              }
+            },
+            "required": [
+              "maxImageDimension",
+              "minConfidence",
+              "languages",
+              "preprocessingModes"
+            ]
+          }
+        ]
+      },
+      "OptionalServicesSettingsDto": {
+        "type": "object",
+        "properties": {
+          "ocr": {
+            "$ref": "#/components/schemas/OcrServiceSettingsDto"
+          },
+          "firewall": {
+            "$ref": "#/components/schemas/OptionalServiceSettingsDto"
+          }
+        },
+        "required": [
+          "ocr",
+          "firewall"
+        ]
+      },
       "OrchestratorSettingsDto": {
         "type": "object",
         "properties": {
@@ -4985,13 +5079,17 @@
             "example": 512,
             "minimum": 1,
             "maximum": 512
+          },
+          "services": {
+            "$ref": "#/components/schemas/OptionalServicesSettingsDto"
           }
         },
         "required": [
           "defaultContainerImage",
           "defaultScrcpyTransport",
           "defaultInactivityTimeoutSeconds",
-          "maxApkUploadSizeMb"
+          "maxApkUploadSizeMb",
+          "services"
         ]
       },
       "UpdateOrchestratorSettingsDto": {
@@ -5027,6 +5125,9 @@
             "example": 512,
             "minimum": 1,
             "maximum": 512
+          },
+          "services": {
+            "$ref": "#/components/schemas/OptionalServicesSettingsDto"
           }
         }
       },
@@ -9023,6 +9124,9 @@
           },
           "firewall": {
             "$ref": "#/components/schemas/ServiceHealthDto"
+          },
+          "ocr": {
+            "$ref": "#/components/schemas/ServiceHealthDto"
           }
         },
         "required": [
@@ -9030,7 +9134,8 @@
           "docker",
           "runtime",
           "display",
-          "firewall"
+          "firewall",
+          "ocr"
         ]
       },
       "OrchestratorDiagnosticsDto": {
@@ -9051,6 +9156,9 @@
           "firewall": {
             "type": "boolean"
           },
+          "ocr": {
+            "type": "boolean"
+          },
           "services": {
             "$ref": "#/components/schemas/OrchestratorDiagnosticsServicesDto"
           }
@@ -9061,6 +9169,7 @@
           "runtime",
           "display",
           "firewall",
+          "ocr",
           "services"
         ]
       }

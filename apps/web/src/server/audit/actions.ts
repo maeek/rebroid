@@ -20,7 +20,7 @@ export const purgeAllAuditEventsAction = async () => {
     outcome: 'success',
     details: { purged }
   })
-  revalidatePath('/operations/activity')
+  revalidatePath('/security/audit-log')
   return { purged }
 }
 
@@ -36,6 +36,6 @@ export const saveAuditRetentionAction = async (auditRetentionDays: number) => {
     outcome: 'success',
     details: { auditRetentionDays: settings.auditRetentionDays }
   })
-  revalidatePath('/operations/activity')
+  revalidatePath('/security/audit-log')
   return settings
 }

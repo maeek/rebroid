@@ -1,5 +1,0 @@
-import { redirect } from 'next/navigation'
-
-export default function ContainersRedirectPage() {
-  redirect('/infrastructure/containers')
-}

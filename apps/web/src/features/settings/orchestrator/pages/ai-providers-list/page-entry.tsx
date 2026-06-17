@@ -6,21 +6,26 @@ import { OrchestratorAiProvidersPageClient } from '../../ai-providers/orchestrat
 import { getAiProvidersListPageData } from './page-data.server'
 
 const AiProvidersListContent = async () => {
-  const { orchestratorError, providers } = await getAiProvidersListPageData()
+  const { initialSettings, orchestratorError, providers } = await getAiProvidersListPageData()
 
   if (orchestratorError) {
     return (
       <PlatformRouteUnavailable
-        title='AI providers'
+        title='AI'
         titlePrefix={<GradientSparklesIcon className='size-8 max-sm:size-5' />}
         description='Configure OpenAI, Ollama, and OpenAI-compatible providers used by AI automation steps.'
         detail={orchestratorError}
-        href='/orchestrator/ai-providers'
+        href='/platform/ai'
       />
     )
   }
 
-  return <OrchestratorAiProvidersPageClient initialProviders={providers} />
+  return (
+    <OrchestratorAiProvidersPageClient
+      initialProviders={providers}
+      initialSettings={initialSettings}
+    />
+  )
 }
 
 export default function AiProvidersListPageEntry() {

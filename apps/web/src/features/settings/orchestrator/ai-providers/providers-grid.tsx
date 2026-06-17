@@ -45,7 +45,7 @@ export const ProvidersGrid = ({
         cell: ({ row }) => (
           <div className='flex min-h-10 min-w-0 flex-col justify-center'>
             <Link
-              href={`/orchestrator/ai-providers/${encodeURIComponent(row.original.id)}`}
+              href={`/platform/ai/${encodeURIComponent(row.original.id)}`}
               className='block truncate font-medium hover:text-primary'
             >
               {row.original.label}
@@ -173,7 +173,7 @@ export const ProvidersGrid = ({
         emptyState={
           <div className='flex items-center justify-center gap-2 text-center text-foreground-muted'>
             <GradientSparklesIcon className='size-4' />
-            No AI providers configured.
+            No AI configured.
           </div>
         }
         rowContextMenu={row => {

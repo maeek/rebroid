@@ -93,7 +93,7 @@ const CastingSessionIdentity = ({
       {ownerId ? (
         <Link
           className='block truncate text-xs text-muted-foreground hover:text-primary'
-          href={`/users/${ownerId}`}
+          href={`/security/users/${ownerId}`}
         >
           {ownerNames.get(ownerId) ?? ownerId}
         </Link>

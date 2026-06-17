@@ -2,6 +2,7 @@ import { AiAssistantBlock, AiAssistantMarkdownText, AiAssistantText, AiUserMessa
 import { buildTimelineItems } from './ai-agent-chat-event-utils'
 import { ChatEventView } from './ai-agent-chat-event-views/chat-event-view'
 import { ChatStatusBadge } from './ai-agent-chat-event-views/chat-status-badge'
+import { PerceptionEventView } from './ai-agent-chat-event-views/perception-event-view'
 import { ToolEventView } from './ai-agent-chat-event-views/tool-event-view'
 import { WorkingIndicator } from './ai-agent-chat-event-views/working-indicator'
 import { ChatTurnSaveWorkflowAction } from './ai-agent-chat-turn-save-action'
@@ -44,6 +45,11 @@ export const ChatTurnView = ({
         {timelineItems.map(item =>
           item.type === 'tool' ? (
             <ToolEventView
+              key={item.key}
+              item={item}
+            />
+          ) : item.type === 'perception' ? (
+            <PerceptionEventView
               key={item.key}
               item={item}
             />

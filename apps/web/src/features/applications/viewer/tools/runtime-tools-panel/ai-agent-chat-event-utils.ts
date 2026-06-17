@@ -16,12 +16,20 @@ export type ToolTimelineItem = {
   error: string | null
 }
 
+export type PerceptionTimelineItem = {
+  type: 'perception'
+  key: string
+  observed: AutomationRunEvent
+  summary?: AutomationRunEvent
+}
+
 export type EventTimelineItem =
   | {
       type: 'event'
       event: AutomationRunEvent
     }
   | ToolTimelineItem
+  | PerceptionTimelineItem
 
 const compactValue = (value: unknown) => {
   if (value === null || value === undefined) return 'null'
@@ -83,9 +91,13 @@ const isToolEvent = (event: AutomationRunEvent) =>
 const eventToolName = (event: AutomationRunEvent) =>
   typeof event.data.uses === 'string' ? event.data.uses : event.message
 
+const isPerceptionObservedEvent = (event: AutomationRunEvent) => event.type === 'ai.perception.observed'
+const isPerceptionSummaryEvent = (event: AutomationRunEvent) => event.type === 'ai.perception.summary'
+
 export const buildTimelineItems = (events: AutomationRunEvent[]): EventTimelineItem[] => {
   const items: EventTimelineItem[] = []
   let pendingTool: ToolTimelineItem | null = null
+  let pendingPerception: PerceptionTimelineItem | null = null
 
   const flushTool = () => {
     if (!pendingTool) return
@@ -93,13 +105,38 @@ export const buildTimelineItems = (events: AutomationRunEvent[]): EventTimelineI
     pendingTool = null
   }
 
+  const flushPerception = () => {
+    if (!pendingPerception) return
+    items.push(pendingPerception)
+    pendingPerception = null
+  }
+
   for (const event of events) {
+    if (isPerceptionObservedEvent(event)) {
+      flushTool()
+      flushPerception()
+      pendingPerception = {
+        type: 'perception',
+        key: event.id,
+        observed: event
+      }
+      continue
+    }
+
+    if (isPerceptionSummaryEvent(event) && pendingPerception) {
+      pendingPerception.summary = event
+      flushPerception()
+      continue
+    }
+
     if (!isToolEvent(event)) {
       flushTool()
+      flushPerception()
       items.push({ type: 'event', event })
       continue
     }
 
+    flushPerception()
     const name = eventToolName(event)
     if (pendingTool && pendingTool.name !== name) {
       flushTool()
@@ -133,5 +170,6 @@ export const buildTimelineItems = (events: AutomationRunEvent[]): EventTimelineI
   }
 
   flushTool()
+  flushPerception()
   return items
 }

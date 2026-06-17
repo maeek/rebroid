@@ -18,14 +18,19 @@ import {
 import type { OrchestratorSettingsResponse } from '@/server/orchestrator/settings/types'
 import type { WebSettings as WebSettingsResponse } from '@/server/web-settings/types'
 import type {
+  AiUiSettings,
   GeneralUiSettings,
   OrchestratorUiSettings,
+  RuntimeAdminUiSettings,
   RuntimeUiSettings
 } from '@/shared/model/settings/orchestrator-ui-settings'
 
 export type {
+  AiUiSettings,
   GeneralUiSettings,
   OrchestratorUiSettings,
+  OptionalServicesUiSettings,
+  RuntimeAdminUiSettings,
   RuntimeUiSettings
 } from '@/shared/model/settings/orchestrator-ui-settings'
 
@@ -100,13 +105,29 @@ export const resetGeneralUiSettings = async (): Promise<OrchestratorUiSettings> 
   return saved
 }
 
-export const saveOrchestratorUiSettings = async (settings: RuntimeUiSettings): Promise<OrchestratorUiSettings> => {
-  const web = await loadWebSettings()
+export const saveAiUiSettings = async (settings: AiUiSettings): Promise<OrchestratorUiSettings> => {
+  const web = await saveWebSettings({
+    aiContextualSuggestionsEnabled: settings.aiContextualSuggestionsEnabled
+  })
+  const orchestrator = await loadRuntimeSettings()
+  const saved = mergeSettings(web, orchestrator)
+  dispatchSettingsUpdated(saved)
+  return saved
+}
+
+export const saveOrchestratorUiSettings = async (
+  settings: RuntimeUiSettings | RuntimeAdminUiSettings
+): Promise<OrchestratorUiSettings> => {
+  const web =
+    'removeDataOnDelete' in settings
+      ? await saveWebSettings({ removeDataOnDelete: settings.removeDataOnDelete })
+      : await loadWebSettings()
   const orchestrator = await saveRuntimeSettings({
     defaultContainerImage: settings.defaultContainerImage,
     dockerImageRegistry: settings.dockerImageRegistry,
     defaultInactivityTimeoutSeconds: settings.defaultInactivityTimeoutSeconds,
-    maxApkUploadSizeMb: settings.maxApkUploadSizeMb
+    maxApkUploadSizeMb: settings.maxApkUploadSizeMb,
+    services: settings.services
   })
   const saved = mergeSettings(web, orchestrator)
   dispatchSettingsUpdated(saved)

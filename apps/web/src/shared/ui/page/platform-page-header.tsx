@@ -8,7 +8,7 @@ export const PlatformPageHeader = ({
   description,
   actions,
   parent,
-  breadcrumbRoot = { label: 'Orchestrator', href: '/orchestrator' }
+  breadcrumbRoot = { label: 'Platform', href: '/platform' }
 }: {
   title: string
   titlePrefix?: ReactNode

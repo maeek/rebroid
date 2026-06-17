@@ -9,6 +9,22 @@ const createSettings = (): StoredOrchestratorSettings => ({
   defaultScrcpyTransport: ScrcpyTransport.WebRTC,
   defaultInactivityTimeoutSeconds: 300,
   maxApkUploadSizeMb: 128,
+  services: {
+    ocr: {
+      enabled: false,
+      endpoint: null,
+      timeoutMs: 15000,
+      maxImageDimension: 1600,
+      minConfidence: 0.4,
+      languages: ['en'],
+      preprocessingModes: ['raw'],
+    },
+    firewall: {
+      enabled: true,
+      endpoint: '/run/rebroid-firewall/agent.sock',
+      timeoutMs: 5000,
+    },
+  },
   aiProviders: [
     {
       id: 'primary',

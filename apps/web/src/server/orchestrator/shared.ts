@@ -19,10 +19,10 @@ export const revalidateApplicationDetail = (id: string) => {
 }
 
 export const revalidateOrchestratorPages = () => {
-  revalidatePath('/orchestrator')
-  revalidatePath('/infrastructure/system')
+  revalidatePath('/platform')
+  revalidatePath('/system/resources')
 }
 
 export const revalidateOrchestratorSettingsPage = () => {
-  revalidatePath('/orchestrator')
+  revalidatePath('/platform')
 }

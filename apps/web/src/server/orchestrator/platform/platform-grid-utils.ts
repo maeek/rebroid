@@ -1,4 +1,4 @@
-import { imageDisplayName } from '@/features/orchestrator/domain/image-display-name'
+import { imageDisplayName } from '@/features/platform/domain/image-display-name'
 import type {
   PlatformContainer,
   PlatformContainersGridPage,

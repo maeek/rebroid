@@ -4,8 +4,8 @@ export class ServiceHealthDto {
   @ApiProperty()
   ok!: boolean;
 
-  @ApiProperty({ enum: ['healthy', 'unhealthy', 'offline'] })
-  status!: 'healthy' | 'unhealthy' | 'offline';
+  @ApiProperty({ enum: ['healthy', 'unhealthy', 'offline', 'disabled'] })
+  status!: 'healthy' | 'unhealthy' | 'offline' | 'disabled';
 
   @ApiProperty()
   message!: string;
@@ -29,6 +29,9 @@ export class OrchestratorDiagnosticsServicesDto {
 
   @ApiProperty({ type: ServiceHealthDto })
   firewall!: ServiceHealthDto;
+
+  @ApiProperty({ type: ServiceHealthDto })
+  ocr!: ServiceHealthDto;
 }
 
 export class OrchestratorDiagnosticsDto {
@@ -46,6 +49,9 @@ export class OrchestratorDiagnosticsDto {
 
   @ApiProperty()
   firewall!: boolean;
+
+  @ApiProperty()
+  ocr!: boolean;
 
   @ApiProperty({ type: OrchestratorDiagnosticsServicesDto })
   services!: OrchestratorDiagnosticsServicesDto;

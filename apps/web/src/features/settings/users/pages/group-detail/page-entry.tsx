@@ -21,7 +21,7 @@ export default async function GroupDetailPageEntry({ params }: GroupDetailPageEn
             tone='danger'
             secondaryAction={{
               label: 'Back to groups',
-              href: '/users/groups'
+              href: '/security/groups'
             }}
           />
         </section>

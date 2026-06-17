@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { request } from 'node:http';
+import { request as httpRequest } from 'node:http';
+import { request as httpsRequest } from 'node:https';
+import { OrchestratorSettingsStore } from '../../settings/orchestrator-settings-store';
 import type { FirewallAgentPolicy } from '@rebroid/firewall-policy-core/policy';
 
 const FIREWALL_AGENT_TIMEOUT_MS = 5_000;
@@ -14,7 +16,10 @@ export interface FirewallAgentResponse {
 
 @Injectable()
 export class FirewallAgentClientService {
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly settingsStore: OrchestratorSettingsStore,
+  ) {}
 
   health() {
     return this.send('GET', '/v1/health', undefined, false);
@@ -45,20 +50,56 @@ export class FirewallAgentClientService {
     body?: unknown,
     authenticated = true,
   ): Promise<FirewallAgentResponse> {
+    return this.settingsStore.getStoredSettings().then((settings) => {
+      const service = settings.services.firewall;
+      if (!service.enabled) {
+        if (!authenticated) {
+          return {
+            ok: true,
+            status: 'disabled',
+            message: 'Firewall agent integration is disabled.',
+          };
+        }
+        throw new Error('Firewall agent integration is disabled.');
+      }
+
+      const endpoint = service.endpoint?.trim();
+      if (!endpoint) {
+        throw new Error('Firewall agent endpoint is not configured.');
+      }
+
+      return this.sendWithEndpoint(
+        endpoint,
+        service.timeoutMs || FIREWALL_AGENT_TIMEOUT_MS,
+        method,
+        path,
+        body,
+        authenticated,
+      );
+    });
+  }
+
+  private sendWithEndpoint(
+    endpoint: string,
+    timeoutMs: number,
+    method: string,
+    path: string,
+    body?: unknown,
+    authenticated = true,
+  ): Promise<FirewallAgentResponse> {
     const payload = body === undefined ? undefined : JSON.stringify(body);
-    const socketPath = this.config.getOrThrow<string>(
-      'app.firewallAgent.socketPath',
-    );
     const sharedSecret = this.config.getOrThrow<string>(
       'app.firewallAgent.sharedSecret',
     );
+    const requestImpl = endpoint.startsWith('https://')
+      ? httpsRequest
+      : httpRequest;
+    const requestOptions = this.requestOptions(endpoint, path, method);
 
     return new Promise((resolve, reject) => {
-      const operation = request(
+      const operation = requestImpl(
         {
-          socketPath,
-          path,
-          method,
+          ...requestOptions,
           headers: {
             accept: 'application/json',
             ...(authenticated
@@ -100,10 +141,10 @@ export class FirewallAgentClientService {
       operation.on('error', (error) => {
         reject(new Error(error.message || 'Firewall agent is unavailable.'));
       });
-      operation.setTimeout(FIREWALL_AGENT_TIMEOUT_MS, () => {
+      operation.setTimeout(timeoutMs, () => {
         operation.destroy(
           new Error(
-            `Firewall agent request timed out after ${FIREWALL_AGENT_TIMEOUT_MS}ms.`,
+            `Firewall agent request timed out after ${timeoutMs}ms.`,
           ),
         );
       });
@@ -112,5 +153,24 @@ export class FirewallAgentClientService {
       }
       operation.end();
     });
+  }
+
+  private requestOptions(endpoint: string, path: string, method: string) {
+    if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+      const url = new URL(path, endpoint);
+      return {
+        protocol: url.protocol,
+        hostname: url.hostname,
+        port: url.port,
+        path: `${url.pathname}${url.search}`,
+        method,
+      };
+    }
+
+    return {
+      socketPath: endpoint,
+      path,
+      method,
+    };
   }
 }

@@ -1666,7 +1666,7 @@ export interface components {
         ServiceHealthDto: {
             ok: boolean;
             /** @enum {string} */
-            status: "healthy" | "unhealthy" | "offline";
+            status: "healthy" | "unhealthy" | "offline" | "disabled";
             message: string;
             details?: {
                 [key: string]: unknown;
@@ -1723,6 +1723,45 @@ export interface components {
             /** @example 2 */
             removedFiles: number;
         };
+        OptionalServiceSettingsDto: {
+            /**
+             * @description Whether the optional sidecar integration should be used.
+             * @example true
+             */
+            enabled: boolean;
+            /**
+             * @description Service endpoint. HTTP(S) URL for HTTP sidecars; socket path for local agent integrations.
+             * @example http://ocr-sidecar:4300
+             */
+            endpoint: string | null;
+            /** @example 15000 */
+            timeoutMs: number;
+        };
+        OcrServiceSettingsDto: components["schemas"]["OptionalServiceSettingsDto"] & {
+            /** @example 1600 */
+            maxImageDimension: number;
+            /** @example 0.4 */
+            minConfidence: number;
+            /**
+             * @example [
+             *       "en"
+             *     ]
+             */
+            languages: string[];
+            /**
+             * @example [
+             *       "raw",
+             *       "grayscale",
+             *       "contrast",
+             *       "threshold"
+             *     ]
+             */
+            preprocessingModes: string[];
+        };
+        OptionalServicesSettingsDto: {
+            ocr: components["schemas"]["OcrServiceSettingsDto"];
+            firewall: components["schemas"]["OptionalServiceSettingsDto"];
+        };
         OrchestratorSettingsDto: {
             /** @example redroid/redroid:14.0.0-latest */
             defaultContainerImage: string;
@@ -1743,6 +1782,7 @@ export interface components {
             defaultInactivityTimeoutSeconds: number;
             /** @example 512 */
             maxApkUploadSizeMb: number;
+            services: components["schemas"]["OptionalServicesSettingsDto"];
         };
         UpdateOrchestratorSettingsDto: {
             /** @example redroid/redroid:14.0.0-latest */
@@ -1764,6 +1804,7 @@ export interface components {
             defaultInactivityTimeoutSeconds?: number;
             /** @example 512 */
             maxApkUploadSizeMb?: number;
+            services?: components["schemas"]["OptionalServicesSettingsDto"];
         };
         AutomationAiProviderModelSettingsDto: {
             systemPrompt?: string | null;
@@ -2904,6 +2945,7 @@ export interface components {
             runtime: components["schemas"]["ServiceHealthDto"];
             display: components["schemas"]["ServiceHealthDto"];
             firewall: components["schemas"]["ServiceHealthDto"];
+            ocr: components["schemas"]["ServiceHealthDto"];
         };
         OrchestratorDiagnosticsDto: {
             ok: boolean;
@@ -2911,6 +2953,7 @@ export interface components {
             runtime: boolean;
             display: boolean;
             firewall: boolean;
+            ocr: boolean;
             services: components["schemas"]["OrchestratorDiagnosticsServicesDto"];
         };
     };

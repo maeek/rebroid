@@ -30,9 +30,9 @@ export const CastingSettingsPageClient = ({
   return (
     <ProtectedStackPageLayout mainClassName='gap-2'>
       <PlatformPageHeader
-        title='Casting'
+        title='Display sessions'
         description='Inspect the casting sidecar and terminate active viewer sessions.'
-        breadcrumbRoot={{ label: 'Operations' }}
+        breadcrumbRoot={{ label: 'Platform' }}
         actions={
           <PlatformPageRefreshButton
             isRefreshing={isRefreshing}

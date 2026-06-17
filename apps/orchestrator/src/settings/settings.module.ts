@@ -15,6 +15,6 @@ import { SettingsService } from './settings.service';
     OrchestratorSettingsStore,
     SettingsService,
   ],
-  exports: [SettingsService],
+  exports: [OrchestratorSettingsStore, SettingsService],
 })
 export class SettingsModule {}

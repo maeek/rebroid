@@ -44,7 +44,7 @@ export const OrchestratorAiProviderEditPageClient = ({
       <PlatformPageHeader
         title={initialProvider.label}
         titlePrefix={<GradientSparklesIcon className='size-8 max-sm:size-5' />}
-        parent={{ label: 'AI providers', href: '/orchestrator/ai-providers' }}
+        parent={{ label: 'AI', href: '/platform/ai' }}
         description='Edit provider connection details and the models exposed to AI automation steps.'
         actions={
           <div className='flex flex-wrap items-center justify-end gap-4'>

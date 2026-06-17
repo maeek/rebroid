@@ -1,11 +1,1 @@
-import { SettingsPageSkeleton } from '@/shared/ui/settings/settings-page-skeleton'
-
-export default function Loading() {
-  return (
-    <SettingsPageSkeleton
-      title='General'
-      sectionTitle='Misc'
-      rows={2}
-    />
-  )
-}
+export { PreferencesGeneralPageSkeleton as default } from '@/features/settings/general/pages/preferences-general/preferences-general-page-skeleton'

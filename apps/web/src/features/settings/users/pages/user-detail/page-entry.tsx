@@ -21,7 +21,7 @@ export default async function UserDetailPageEntry({ params }: UserDetailPageEntr
             tone='danger'
             secondaryAction={{
               label: 'Back to users',
-              href: '/users'
+              href: '/security/users'
             }}
           />
         </section>

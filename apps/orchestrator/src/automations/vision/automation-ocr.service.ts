@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import {
   createDetection,
   type VisionDetection,
 } from '@rebroid/vision-core/observation';
+import { OrchestratorSettingsStore } from '../../settings/orchestrator-settings-store';
 import { sanitizeAiText } from '../ai/automation-ai-observation.utils';
 import type { OptimizedAiScreenshot } from '../ai/automation-ai-screenshot.utils';
 
@@ -54,19 +54,20 @@ interface OcrSidecarResponse {
 
 @Injectable()
 export class AutomationOcrService {
-  constructor(private readonly config: ConfigService) {}
+  constructor(private readonly settingsStore: OrchestratorSettingsStore) {}
 
   async recognize(
     image: OptimizedAiScreenshot,
     abortSignal?: AbortSignal,
   ): Promise<AutomationOcrResult> {
-    const enabled = this.config.get<boolean>('app.ocr.enabled') ?? false;
-    const baseUrl = this.config.get<string>('app.ocr.baseUrl') ?? '';
-    if (!enabled || !baseUrl) {
+    const settings = (await this.settingsStore.getStoredSettings()).services
+      .ocr;
+    const baseUrl = settings.endpoint ?? '';
+    if (!settings.enabled || !baseUrl) {
       return { status: 'disabled', detections: [] };
     }
 
-    const timeoutMs = this.config.get<number>('app.ocr.timeoutMs') ?? 15_000;
+    const timeoutMs = settings.timeoutMs;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     const onAbort = () => controller.abort();
@@ -77,14 +78,10 @@ export class AutomationOcrService {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           dataUrl: image.dataUrl,
-          languages: this.config.get<string[]>('app.ocr.languages') ?? ['en'],
-          minConfidence:
-            this.config.get<number>('app.ocr.minConfidence') ?? 0.4,
-          maxImageDimension:
-            this.config.get<number>('app.ocr.maxImageDimension') ?? 1600,
-          preprocessingModes: this.config.get<string[]>(
-            'app.ocr.preprocessingModes',
-          ) ?? ['raw', 'grayscale', 'contrast', 'threshold'],
+          languages: settings.languages,
+          minConfidence: settings.minConfidence,
+          maxImageDimension: settings.maxImageDimension,
+          preprocessingModes: settings.preprocessingModes,
         }),
         signal: controller.signal,
       });

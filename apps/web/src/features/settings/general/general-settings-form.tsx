@@ -25,7 +25,6 @@ const numberValue = (value: number, fallback: number) => (Number.isFinite(value)
 type SaveGeneralUiSettingsInput = Pick<
   OrchestratorUiSettings,
   | 'appListRefreshIntervalSeconds'
-  | 'removeDataOnDelete'
   | 'defaultViewerPreset'
   | 'defaultViewerBitrateMbps'
   | 'defaultViewerMaxFps'
@@ -33,7 +32,6 @@ type SaveGeneralUiSettingsInput = Pick<
   | 'defaultViewerIFrameInterval'
   | 'defaultViewerKeyboardCaptureEnabled'
   | 'defaultViewerSoundEnabled'
-  | 'aiContextualSuggestionsEnabled'
 >
 
 const persistGeneralUiSettings = saveGeneralUiSettings
@@ -43,15 +41,13 @@ const verticalSettingClassName = 'flex-col items-start w-full'
 
 const toGeneralUiSettings = (settings: OrchestratorUiSettings): SaveGeneralUiSettingsInput => ({
   appListRefreshIntervalSeconds: settings.appListRefreshIntervalSeconds,
-  removeDataOnDelete: settings.removeDataOnDelete,
   defaultViewerPreset: settings.defaultViewerPreset,
   defaultViewerBitrateMbps: settings.defaultViewerBitrateMbps,
   defaultViewerMaxFps: settings.defaultViewerMaxFps,
   defaultViewerMaxSize: settings.defaultViewerMaxSize,
   defaultViewerIFrameInterval: settings.defaultViewerIFrameInterval,
   defaultViewerKeyboardCaptureEnabled: settings.defaultViewerKeyboardCaptureEnabled,
-  defaultViewerSoundEnabled: settings.defaultViewerSoundEnabled,
-  aiContextualSuggestionsEnabled: settings.aiContextualSuggestionsEnabled
+  defaultViewerSoundEnabled: settings.defaultViewerSoundEnabled
 })
 
 export const GeneralSettingsForm = ({
@@ -184,33 +180,6 @@ export const GeneralSettingsForm = ({
                   appListRefreshIntervalSeconds: numberValue(Number(value), settings.appListRefreshIntervalSeconds)
                 })
               }
-            />
-          </Setting>
-          <Setting
-            label='Remove data on delete'
-            description='When enabled, deleting an app also removes its persistent storage volume and stored APK data.'
-            className='w-full py-3'
-          >
-            <Switch
-              checked={settings.removeDataOnDelete}
-              onCheckedChange={checked => updateSettings({ removeDataOnDelete: checked })}
-            />
-          </Setting>
-        </Section>
-        <Section
-          orientation='vertical'
-          title='AI agent'
-          titleClassName='pb-4'
-          contentClassName='gap-6'
-        >
-          <Setting
-            label='Generate contextual suggestions'
-            description='Use the selected AI model to refresh prompt suggestion chips from the current app and conversation context.'
-            className='w-full py-3'
-          >
-            <Switch
-              checked={settings.aiContextualSuggestionsEnabled}
-              onCheckedChange={checked => updateSettings({ aiContextualSuggestionsEnabled: checked })}
             />
           </Setting>
         </Section>

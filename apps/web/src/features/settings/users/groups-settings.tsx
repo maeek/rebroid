@@ -14,7 +14,7 @@ export const GroupsSettings = ({ initialGroups }: { initialGroups: UserGroup[] }
       <section className='shrink-0 px-6 py-4 max-sm:px-4'>
         <PageBreadcrumbs
           className='pt-0'
-          items={[{ label: 'Users', href: '/users' }, { label: 'Groups' }]}
+          items={[{ label: 'Users', href: '/security/users' }, { label: 'Groups' }]}
         />
         <h2 className='pt-4 text-3xl font-medium max-sm:text-xl'>Groups</h2>
       </section>
