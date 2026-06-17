@@ -208,12 +208,13 @@ export const OrchestratorAiProvidersPageClient = ({
         }
       />
       <section className='flex w-full flex-col gap-4 px-6 pb-16 max-sm:px-4'>
-        <label className='flex w-full items-center justify-between gap-4 rounded-md border border-border/60 bg-surface-panel/35 px-4 py-3 text-sm max-sm:flex-col max-sm:items-start'>
-          <div className='min-w-0'>
+        <label className='flex w-full items-start justify-between gap-4 rounded-md border border-border/60 bg-surface-panel/35 px-4 py-3 text-sm'>
+          <div className='min-w-0 flex-1'>
             <div className='font-medium text-foreground'>Context suggestions</div>
             <div className='mt-1 text-xs text-muted-foreground'>Generate AI prompt chips in app sessions.</div>
           </div>
           <Switch
+            className='shrink-0'
             checked={settings.aiContextualSuggestionsEnabled}
             disabled={isSavingAiSettings}
             onCheckedChange={value => void updateContextualSuggestions(value)}

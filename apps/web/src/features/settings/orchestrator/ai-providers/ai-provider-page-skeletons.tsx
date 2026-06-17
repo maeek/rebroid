@@ -38,14 +38,14 @@ export const AiProvidersPageSkeleton = () => (
     />
     <section className='flex w-full flex-col gap-4 px-6 pb-16 max-sm:px-4'>
       <div
-        className='flex w-full items-center justify-between gap-4 rounded-md border border-border/60 bg-surface-panel/35 px-4 py-3 max-sm:flex-col max-sm:items-start'
+        className='flex w-full items-start justify-between gap-4 rounded-md border border-border/60 bg-surface-panel/35 px-4 py-3'
         data-testid='ai-context-suggestions-skeleton'
       >
-        <div className='grid min-w-0 gap-2'>
+        <div className='grid min-w-0 flex-1 gap-2'>
           <Skeleton className='h-4 w-36' />
           <Skeleton className='h-3 w-72 max-w-full opacity-70' />
         </div>
-        <Skeleton className='h-6 w-12 rounded-full' />
+        <Skeleton className='h-6 w-12 shrink-0 rounded-full' />
       </div>
       <div
         className='grid gap-2'
