@@ -1,23 +1,31 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import {
-  IconLoader2,
-  IconPencil,
-  IconRestore,
-  IconSettings
-} from '@tabler/icons-react'
+import { IconLoader2, IconPencil, IconRestore, IconSettings } from '@tabler/icons-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
 import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
-import { resetOrchestratorUiSettings, saveOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
+import {
+  resetOrchestratorUiSettings,
+  saveOrchestratorUiSettings
+} from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { DataGrid } from '@/shared/ui/data-grid'
+import { PageHeader } from '@/shared/ui/page/page-header'
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
-import { ServiceSettingsDialog, serviceDetails, serviceMeta, updateService, type ServiceId } from './service-settings-dialog'
+import {
+  ServiceSettingsDialog,
+  serviceDetails,
+  serviceMeta,
+  updateService,
+  type ServiceId
+} from './service-settings-dialog'
 import type { ColumnDef } from '@tanstack/react-table'
-import type { OptionalServicesUiSettings, OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
+import type {
+  OptionalServicesUiSettings,
+  OrchestratorUiSettings
+} from '@/shared/model/settings/orchestrator-ui-settings'
 import type { ReactNode } from 'react'
 
 type ServiceRow = {
@@ -148,7 +156,9 @@ export const PlatformServicesPage = ({
         header: 'Endpoint',
         meta: { label: 'Endpoint' },
         size: 360,
-        cell: ({ row }) => <span className='truncate text-muted-foreground'>{row.original.endpoint ?? 'Not configured'}</span>
+        cell: ({ row }) => (
+          <span className='truncate text-muted-foreground'>{row.original.endpoint ?? 'Not configured'}</span>
+        )
       },
       {
         accessorKey: 'timeoutMs',
@@ -247,34 +257,32 @@ export const PlatformServicesPage = ({
 
   return (
     <ProtectedStackPageLayout mainClassName='gap-2'>
-      <header className='flex items-center justify-between gap-4 px-6 pb-2 pt-6 max-sm:px-4'>
-        <div className='min-w-0'>
-          <p className='text-xs text-muted-foreground'>Platform</p>
-          <h1 className='text-2xl font-semibold tracking-normal'>Services</h1>
-          <p className='mt-1 max-w-3xl text-sm text-muted-foreground'>
-            Configure optional sidecar services. Disabled services are ignored by automation and health checks.
-          </p>
-        </div>
-        <div className='flex shrink-0 items-center gap-2'>
-          <Button
-            type='button'
-            variant='secondary'
-            onClick={() => void resetSettings()}
-            disabled={isSaving}
-          >
-            <IconRestore className='size-4' />
-            Reset
-          </Button>
-          <Button
-            type='button'
-            onClick={() => void saveSettings()}
-            disabled={isSaving}
-          >
-            {isSaving ? <IconLoader2 className='size-4 animate-spin' /> : <IconSettings className='size-4' />}
-            Save
-          </Button>
-        </div>
-      </header>
+      <PageHeader
+        breadcrumbs={[{ label: 'Platform', href: '/platform' }, { label: 'Services' }]}
+        title='Services'
+        description='Configure optional sidecar services. Disabled services are ignored by automation and health checks.'
+        actions={
+          <>
+            <Button
+              type='button'
+              variant='secondary'
+              onClick={() => void resetSettings()}
+              disabled={isSaving}
+            >
+              <IconRestore className='size-4' />
+              Reset
+            </Button>
+            <Button
+              type='button'
+              onClick={() => void saveSettings()}
+              disabled={isSaving}
+            >
+              {isSaving ? <IconLoader2 className='size-4 animate-spin' /> : <IconSettings className='size-4' />}
+              Save
+            </Button>
+          </>
+        }
+      />
       <section className='px-6 pb-16 max-sm:px-4'>
         <Section contentClassName='gap-4'>
           <DataGrid

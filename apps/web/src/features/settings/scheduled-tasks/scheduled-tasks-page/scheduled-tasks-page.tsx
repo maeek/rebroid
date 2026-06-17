@@ -30,10 +30,7 @@ const ScheduledTasksPageContent = () => {
         description='Monitor scheduled jobs, run maintenance tasks, and review failures.'
         breadcrumbRoot={{ label: 'Platform' }}
         actions={
-          <Button
-            className='max-sm:w-full'
-            onClick={controller.openCreateForm}
-          >
+          <Button onClick={controller.openCreateForm}>
             <IconPlus className='size-4' />
             New task
           </Button>

@@ -28,7 +28,7 @@ export const RuntimeContainersPageClient = ({
         title='Containers'
         description='Docker containers visible to the platform. Managed application containers are shown first.'
         breadcrumbRoot={{ label: 'Runtime' }}
-        actions={
+        titleActions={
           <PlatformPageRefreshButton
             isRefreshing={isRefreshing}
             onRefresh={refresh}

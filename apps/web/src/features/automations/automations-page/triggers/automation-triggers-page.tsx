@@ -12,7 +12,7 @@ import {
   updateAutomationTriggerAction
 } from '@/server/orchestrator/automations/automation-trigger-actions'
 import { DataGridPagination } from '@/shared/ui/data-grid'
-import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
+import { PageHeader } from '@/shared/ui/page/page-header'
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { AutomationDeleteDialog } from '../shared/automation-delete-dialog'
 import { AutomationEmptySplash } from '../shared/automation-empty-splash'
@@ -189,30 +189,20 @@ export function AutomationTriggersPage({
 
   return (
     <ProtectedStackPageLayout mainClassName='gap-2'>
-      <section className='shrink-0 px-6 py-4 max-sm:px-4'>
-        <div className='grid gap-3'>
-          <PageBreadcrumbs
-            className='pt-0'
-            items={[{ label: 'Automations' }, { label: 'Triggers' }]}
-          />
-          <div className='flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-start'>
-            <div className='grid gap-2'>
-              <h2 className='text-3xl font-medium max-sm:text-xl'>Triggers</h2>
-              <p className='max-w-3xl text-sm text-foreground-muted'>
-                Bind automation definitions to app profiles and schedule-based invocation.
-              </p>
-            </div>
-            <Button
-              className='max-sm:w-full'
-              disabled={!canCreate}
-              onClick={openCreate}
-            >
-              <IconPlus className='size-4' />
-              New trigger
-            </Button>
-          </div>
-        </div>
-      </section>
+      <PageHeader
+        breadcrumbs={[{ label: 'Automations' }, { label: 'Triggers' }]}
+        title='Triggers'
+        description='Bind automation definitions to app profiles and schedule-based invocation.'
+        actions={
+          <Button
+            disabled={!canCreate}
+            onClick={openCreate}
+          >
+            <IconPlus className='size-4' />
+            New trigger
+          </Button>
+        }
+      />
 
       {!canCreate ? (
         <AutomationEmptySplash variant='trigger-prerequisites' />
@@ -222,7 +212,7 @@ export function AutomationTriggersPage({
           onAction={openCreate}
         />
       ) : (
-        <section className='grid gap-4 px-6 pb-16 pt-4 max-sm:px-4'>
+        <section className='grid gap-4 px-6 pb-16 pt-2 max-sm:px-4'>
           <AutomationTriggersToolbar
             applications={initialApplications}
             tags={triggersPage.facets.tags}

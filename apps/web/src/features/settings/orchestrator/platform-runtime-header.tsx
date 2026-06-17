@@ -1,7 +1,6 @@
 import { IconDeviceFloppy, IconRestore } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
-import { Visible } from '@/components/ui/visible'
-import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
+import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
 
 export const PlatformRuntimeHeader = ({
   isSaving,
@@ -15,20 +14,12 @@ export const PlatformRuntimeHeader = ({
   showActions?: boolean
 }) => {
   return (
-    <section className='shrink-0 px-6 py-4 max-sm:px-4'>
-      <div className='flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-start'>
-        <div className='flex flex-col gap-2'>
-          <PageBreadcrumbs
-            className='pt-0'
-            items={[{ label: 'Platform', href: '/platform' }, { label: 'Runtime defaults' }]}
-          />
-          <h2 className='pt-4 text-3xl font-medium max-sm:text-xl'>Runtime defaults</h2>
-          <p className='max-w-3xl text-sm text-foreground-muted'>
-            Default runtime settings and maintenance actions for managed Android containers.
-          </p>
-        </div>
-        <Visible when={showActions}>
-          <div className='flex gap-2 max-sm:w-full'>
+    <PlatformPageHeader
+      title='Runtime defaults'
+      description='Default runtime settings and maintenance actions for managed Android containers.'
+      actions={
+        showActions ? (
+          <>
             <Button
               variant='ghost'
               disabled={isSaving}
@@ -44,9 +35,9 @@ export const PlatformRuntimeHeader = ({
               <IconDeviceFloppy className='size-4' />
               Save
             </Button>
-          </div>
-        </Visible>
-      </div>
-    </section>
+          </>
+        ) : null
+      }
+    />
   )
 }

@@ -29,7 +29,7 @@ export const FirewallSettingsPageClient = ({
         title='Network policies'
         description='Apply outbound network restrictions to application containers.'
         breadcrumbRoot={{ label: 'Security' }}
-        actions={
+        titleActions={
           <PlatformPageRefreshButton
             isRefreshing={isRefreshing}
             onRefresh={refresh}

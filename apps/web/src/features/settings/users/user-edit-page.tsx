@@ -14,7 +14,7 @@ import { toast } from '@/hooks/use-toast'
 import { updateUserAction } from '@/server/users/actions/update-user-action'
 import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
 import { PageBackdrop } from '@/shared/ui/page/page-backdrop'
-import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
+import { PageHeader } from '@/shared/ui/page/page-header'
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { UserAvatarInput } from '@/shared/ui/user-avatar/user-avatar-input'
 import { getHslColorFromCharCode, getHslColorFromCharCodeForeground } from '@/utils/hsl-from-text'
@@ -63,30 +63,29 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
         imageSrc={draft.avatarDataUrl}
         opacity={0.08}
       />
-      <section className='shrink-0 px-6 py-4 max-sm:px-4'>
-        <PageBreadcrumbs
-          className='pt-0'
-          items={[{ label: 'Users', href: '/security/users' }, { label: 'Users', href: '/security/users' }, { label: user.username }]}
-        />
-        <div className='flex items-center justify-between gap-3 pt-4 max-sm:flex-col max-sm:items-start'>
-          <div className='flex min-w-0 items-center gap-4'>
-            <Avatar className='size-12'>
-              <AvatarImage src={draft.avatarDataUrl ?? ''} />
-              <AvatarFallback
-                style={{
-                  backgroundColor: getHslColorFromCharCode(draft.name),
-                  color: getHslColorFromCharCodeForeground(draft.name)
-                }}
-              >
-                {draft.name.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className='min-w-0'>
-              <h2 className='truncate text-3xl font-medium max-sm:text-xl'>{draft.name || draft.username}</h2>
-              <p className='text-sm text-foreground-muted'>Account settings, quotas, groups, and permissions.</p>
-            </div>
-          </div>
-          <div className='flex gap-4 items-center'>
+      <PageHeader
+        breadcrumbs={[
+          { label: 'Users', href: '/security/users' },
+          { label: 'Users', href: '/security/users' },
+          { label: user.username }
+        ]}
+        title={draft.name || draft.username}
+        titlePrefix={
+          <Avatar className='size-12 max-sm:size-10'>
+            <AvatarImage src={draft.avatarDataUrl ?? ''} />
+            <AvatarFallback
+              style={{
+                backgroundColor: getHslColorFromCharCode(draft.name),
+                color: getHslColorFromCharCodeForeground(draft.name)
+              }}
+            >
+              {draft.name.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+        }
+        description='Account settings, quotas, groups, and permissions.'
+        actions={
+          <>
             <Label className='flex items-center gap-2 cursor-pointer select-none font-normal'>
               Active Account
               <Switch
@@ -101,9 +100,9 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
               <IconDeviceFloppy className='size-4' />
               Save User
             </Button>
-          </div>
-        </div>
-      </section>
+          </>
+        }
+      />
       <section className='grid w-full gap-6 px-6 pb-16 max-sm:px-4 xl:grid-cols-[minmax(0,1fr)_minmax(28rem,0.85fr)]'>
         <div className='grid content-start gap-6'>
           <Section

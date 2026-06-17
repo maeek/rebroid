@@ -6,7 +6,14 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Drawer, DrawerContent, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { PrimitiveSlot } from '@/components/ui/primitive-slot'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -204,6 +211,23 @@ describe('Base UI wrapper compatibility', () => {
 
     fireEvent.click(screen.getByText('Context action'))
     expect(onContextSelect).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders dropdown labels inside Base UI menu groups', () => {
+    render(
+      <DropdownMenu open>
+        <DropdownMenuTrigger>Open menu</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>Grouped actions</DropdownMenuLabel>
+            <DropdownMenuItem>Action</DropdownMenuItem>
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    )
+
+    expect(screen.getByText('Grouped actions')).toBeTruthy()
+    expect(screen.getByRole('group')).toBeTruthy()
   })
 
   it('renders popover and tooltip triggers through asChild', () => {

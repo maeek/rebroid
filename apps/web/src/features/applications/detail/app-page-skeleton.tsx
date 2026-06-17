@@ -12,11 +12,11 @@ const AppHeadingSkeleton = ({ showStatus = true, actionCount = 2 }: { showStatus
       <Skeleton className='h-8 w-48 max-w-[calc(100vw-12rem)] max-sm:h-7 max-sm:w-32' />
       {showStatus ? <Skeleton className='h-5 w-20 shrink-0 rounded-full' /> : null}
     </div>
-    <div className='flex shrink-0 gap-2 max-sm:w-full'>
+    <div className='flex shrink-0 gap-2'>
       {Array.from({ length: actionCount }).map((_, index) => (
         <Skeleton
           key={index}
-          className={cn('h-10', index === 0 ? 'w-10' : 'w-24 max-sm:flex-1')}
+          className={cn('h-10', index === 0 ? 'w-10' : 'w-24')}
         />
       ))}
     </div>

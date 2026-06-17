@@ -8,7 +8,7 @@ import { MemoryChart } from '@/features/settings/system/memory-chart'
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { useSystemResources } from '@/shared/model/platform/use-system-resources'
-import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
+import { PageHeader } from '@/shared/ui/page/page-header'
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { PlatformResources } from '@/shared/ui/platform/platform-resources'
 import { StatusSplash } from '@/shared/ui/status-splash'
@@ -50,17 +50,10 @@ export function SystemResourcesPage() {
       </Visible>
       <Visible when={!isLoading}>
         <ProtectedStackPageLayout mainClassName='gap-2'>
-          <section className='shrink-0 px-6 py-4 max-sm:px-4'>
-            <div className='flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-start'>
-              <div className='flex flex-col gap-2'>
-                <PageBreadcrumbs
-                  className='pt-0'
-                  items={[{ label: 'System' }, { label: 'Resources' }]}
-                />
-                <h2 className='pt-4 text-3xl font-medium max-sm:text-xl'>Resources</h2>
-              </div>
-            </div>
-          </section>
+          <PageHeader
+            breadcrumbs={[{ label: 'System' }, { label: 'Resources' }]}
+            title='Resources'
+          />
           <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
             <div className='grid gap-6 xl:grid-cols-2'>
               <Section

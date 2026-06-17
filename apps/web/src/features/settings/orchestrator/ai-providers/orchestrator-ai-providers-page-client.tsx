@@ -191,20 +191,20 @@ export const OrchestratorAiProvidersPageClient = ({
         title='AI'
         titlePrefix={<GradientSparklesIcon className='size-8 max-sm:size-5' />}
         description='Configure provider connections and AI-assisted automation behavior.'
+        titleActions={
+          <PlatformPageRefreshButton
+            isRefreshing={isRefreshing}
+            onRefresh={refresh}
+          />
+        }
         actions={
-          <div className='flex items-center gap-2'>
-            <PlatformPageRefreshButton
-              isRefreshing={isRefreshing}
-              onRefresh={refresh}
-            />
-            <Button
-              type='button'
-              onClick={openCreateDialog}
-            >
-              <IconPlus className='size-4' />
-              Add provider
-            </Button>
-          </div>
+          <Button
+            type='button'
+            onClick={openCreateDialog}
+          >
+            <IconPlus className='size-4' />
+            Add provider
+          </Button>
         }
       />
       <section className='flex w-full flex-col gap-4 px-6 pb-16 max-sm:px-4'>

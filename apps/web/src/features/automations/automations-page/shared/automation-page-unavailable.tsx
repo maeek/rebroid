@@ -1,4 +1,4 @@
-import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
+import { PageHeader } from '@/shared/ui/page/page-header'
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { StatusSplash } from '@/shared/ui/status-splash'
 
@@ -12,18 +12,11 @@ export const AutomationPageUnavailable = ({
   href: string
 }) => (
   <ProtectedStackPageLayout mainClassName='gap-2'>
-    <section className='shrink-0 px-6 py-4 max-sm:px-4'>
-      <div className='grid gap-3'>
-        <PageBreadcrumbs
-          className='pt-0'
-          items={[{ label: 'Automations' }, { label: title }]}
-        />
-        <div className='grid gap-2'>
-          <h2 className='text-3xl font-medium max-sm:text-xl'>{title}</h2>
-          <p className='max-w-3xl text-sm text-foreground-muted'>Automation data is temporarily unavailable.</p>
-        </div>
-      </div>
-    </section>
+    <PageHeader
+      breadcrumbs={[{ label: 'Automations' }, { label: title }]}
+      title={title}
+      description='Automation data is temporarily unavailable.'
+    />
     <section className='px-6 pb-16 pt-4 max-sm:px-4'>
       <StatusSplash
         title='Automation service unavailable'

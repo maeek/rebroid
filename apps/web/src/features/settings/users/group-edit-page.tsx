@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/hooks/use-toast'
 import { updateUserGroupAction } from '@/server/users/actions/update-user-group-action'
 import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
-import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
+import { PageHeader } from '@/shared/ui/page/page-header'
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { LabeledField } from './components/labeled-field'
 import { PermissionSwitchTable } from './components/permission-switch-table'
@@ -49,20 +49,15 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
 
   return (
     <ProtectedStackPageLayout mainClassName='gap-2'>
-      <section className='shrink-0 px-6 py-4 max-sm:px-4'>
-        <PageBreadcrumbs
-          className='pt-0'
-          items={[
-            { label: 'Users', href: '/security/users' },
-            { label: 'Groups', href: '/security/groups' },
-            { label: group.name }
-          ]}
-        />
-        <div className='flex items-center justify-between gap-3 pt-4 max-sm:flex-col max-sm:items-start'>
-          <div>
-            <h2 className='text-3xl font-medium max-sm:text-xl'>{draft.name || group.name}</h2>
-            <p className='text-sm text-foreground-muted'>Default permissions and quotas for group members.</p>
-          </div>
+      <PageHeader
+        breadcrumbs={[
+          { label: 'Users', href: '/security/users' },
+          { label: 'Groups', href: '/security/groups' },
+          { label: group.name }
+        ]}
+        title={draft.name || group.name}
+        description='Default permissions and quotas for group members.'
+        actions={
           <Button
             disabled={isSaving}
             onClick={() => void saveGroup()}
@@ -70,8 +65,8 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
             <IconDeviceFloppy className='size-4' />
             Save Group
           </Button>
-        </div>
-      </section>
+        }
+      />
       <section className='grid w-full gap-6 px-6 pb-16 max-sm:px-4 xl:grid-cols-[minmax(0,1fr)_minmax(28rem,0.85fr)]'>
         <div className='grid content-start gap-6'>
           <Section

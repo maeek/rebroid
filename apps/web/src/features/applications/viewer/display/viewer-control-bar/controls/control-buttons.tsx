@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -155,16 +156,18 @@ export const AndroidPanelsMenu = ({
       <TooltipContent>Android panels</TooltipContent>
     </Tooltip>
     <DropdownMenuContent align='center'>
-      <DropdownMenuLabel>Panels</DropdownMenuLabel>
-      <DropdownMenuSeparator />
-      {panelControls.map(({ command, label }) => (
-        <DropdownMenuItem
-          key={command}
-          onClick={() => sendControl(command)}
-        >
-          {label}
-        </DropdownMenuItem>
-      ))}
+      <DropdownMenuGroup>
+        <DropdownMenuLabel>Panels</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {panelControls.map(({ command, label }) => (
+          <DropdownMenuItem
+            key={command}
+            onClick={() => sendControl(command)}
+          >
+            {label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuGroup>
     </DropdownMenuContent>
   </DropdownMenu>
 )

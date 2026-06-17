@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -48,19 +49,21 @@ export const ActivityEventsToolbar = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align='end'>
-                <DropdownMenuLabel>Activity log</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => controller.setRetentionOpen(true)}>
-                  <IconCalendarStats className='mr-2 size-4' />
-                  Retention settings
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className='text-destructive focus:text-destructive'
-                  onClick={() => controller.setPurgeOpen(true)}
-                >
-                  <IconTrash className='mr-2 size-4' />
-                  Purge all logs
-                </DropdownMenuItem>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>Activity log</DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => controller.setRetentionOpen(true)}>
+                    <IconCalendarStats className='mr-2 size-4' />
+                    Retention settings
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className='text-destructive focus:text-destructive'
+                    onClick={() => controller.setPurgeOpen(true)}
+                  >
+                    <IconTrash className='mr-2 size-4' />
+                    Purge all logs
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
           </>

@@ -12,7 +12,7 @@ import { toast } from '@/hooks/use-toast'
 import { updateCurrentAccentColorAction } from '@/server/users/actions/update-current-accent-color-action'
 import { resetGeneralUiSettings, saveGeneralUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { useAccentColorPreference } from '@/shared/model/theme/use-accent-color'
-import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
+import { PageHeader } from '@/shared/ui/page/page-header'
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { AccentColorPicker } from '@/shared/ui/settings/accent-color-picker'
 import { Setting } from '@/shared/ui/settings/setting'
@@ -118,32 +118,29 @@ export const GeneralSettingsForm = ({
 
   return (
     <ProtectedStackPageLayout mainClassName='gap-2'>
-      <section className='py-4 px-6 max-sm:px-4 flex items-center justify-between gap-3 shrink-0'>
-        <div className='flex flex-col gap-2'>
-          <PageBreadcrumbs
-            className='pt-0'
-            items={[{ label: 'Preferences', href: '/preferences/general' }, { label: 'General' }]}
-          />
-          <h2 className='text-3xl max-sm:text-xl font-medium shrink-0 pt-4'>General</h2>
-        </div>
-        <div className='flex gap-2'>
-          <Button
-            variant='ghost'
-            disabled={isSaving}
-            onClick={() => void resetSettings()}
-          >
-            <IconRestore className='size-4' />
-            Reset
-          </Button>
-          <Button
-            disabled={isSaving}
-            onClick={() => void saveSettings()}
-          >
-            <IconDeviceFloppy className='size-4' />
-            Save
-          </Button>
-        </div>
-      </section>
+      <PageHeader
+        breadcrumbs={[{ label: 'Preferences', href: '/preferences/general' }, { label: 'General' }]}
+        title='General'
+        actions={
+          <>
+            <Button
+              variant='ghost'
+              disabled={isSaving}
+              onClick={() => void resetSettings()}
+            >
+              <IconRestore className='size-4' />
+              Reset
+            </Button>
+            <Button
+              disabled={isSaving}
+              onClick={() => void saveSettings()}
+            >
+              <IconDeviceFloppy className='size-4' />
+              Save
+            </Button>
+          </>
+        }
+      />
       <section className='px-6 max-sm:px-4 w-full flex flex-col gap-10 pb-16'>
         <Section
           orientation='vertical'

@@ -67,6 +67,8 @@ const DropdownMenuPortal = DropdownMenuPrimitive.Portal
 
 const DropdownMenuSub = DropdownMenuPrimitive.SubmenuRoot
 
+const DropdownMenuGroup = DropdownMenuPrimitive.Group
+
 const DropdownMenuSubTrigger = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubmenuTrigger>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubmenuTrigger> & WithInset & WithAsChild
@@ -210,6 +212,7 @@ export {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuGroup,
   DropdownMenuPortal,
   DropdownMenuSub,
   DropdownMenuSubContent,

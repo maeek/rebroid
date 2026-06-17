@@ -28,7 +28,7 @@ export const RuntimeImagesPageClient = ({
         title='Images'
         description='Local images available to application containers, custom runtimes, and platform sidecars.'
         breadcrumbRoot={{ label: 'Runtime' }}
-        actions={
+        titleActions={
           <PlatformPageRefreshButton
             isRefreshing={isRefreshing}
             onRefresh={refresh}

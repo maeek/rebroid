@@ -47,9 +47,9 @@ export const AutomationEditorHeader = ({
   onShowTraces: () => void
   onToggleYaml: () => void
 }) => (
-  <div className='flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-stretch'>
-    <h2 className='min-w-0 truncate text-3xl font-medium max-sm:text-xl'>{title}</h2>
-    <div className='flex gap-2 max-sm:w-full'>
+  <div className='flex items-center justify-between gap-3 max-sm:flex-wrap'>
+    <h2 className='min-w-0 flex-1 truncate text-3xl font-medium max-sm:text-xl'>{title}</h2>
+    <div className='flex shrink-0 gap-2'>
       {canDraftFromPrompt ? (
         <Button
           type='button'
@@ -64,7 +64,6 @@ export const AutomationEditorHeader = ({
       ) : null}
       <Button
         disabled={busy || (yamlOpen && !yamlValid)}
-        className='max-sm:flex-1'
         onClick={onSave}
       >
         <IconDeviceFloppy className='size-4' />

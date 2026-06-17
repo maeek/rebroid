@@ -7,7 +7,7 @@ export const PlatformOverviewPageSkeleton = () => (
     <PageHeaderSkeleton
       titleWidth='w-40'
       includeOrchestratorBreadcrumb={false}
-      actionCount={1}
+      titleActionCount={1}
     />
     <section className='flex w-full flex-col gap-6 px-6 pb-4 max-sm:px-4'>
       <div className='grid gap-4'>

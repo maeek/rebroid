@@ -27,7 +27,7 @@ const UsersHeaderSkeleton = ({
           <Skeleton className='h-4 w-96 max-w-full opacity-70' />
         </div>
       </div>
-      <Skeleton className={`h-10 ${actionWidth} max-sm:w-full`} />
+      <Skeleton className={`h-10 ${actionWidth}`} />
     </div>
   </section>
 )

@@ -30,9 +30,9 @@ export const PreferencesGeneralPageSkeleton = () => (
         />
         <Skeleton className='h-9 w-36 pt-4 max-sm:h-7 max-sm:w-28' />
       </div>
-      <div className='flex gap-2 max-sm:w-full'>
-        <Skeleton className='h-10 w-24 max-sm:flex-1' />
-        <Skeleton className='h-10 w-24 max-sm:flex-1' />
+      <div className='flex gap-2'>
+        <Skeleton className='h-10 w-24' />
+        <Skeleton className='h-10 w-24' />
       </div>
     </section>
     <section className='flex w-full flex-col gap-10 px-6 pb-16 max-sm:px-4'>

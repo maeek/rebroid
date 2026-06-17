@@ -40,7 +40,8 @@ const persistentPrefix = 'persistent:'
 const persistentValueFor = (name: string) => `${persistentPrefix}${encodeURIComponent(name)}`
 const profileNameFromValue = (value: string) => decodeURIComponent(value.slice(persistentPrefix.length))
 
-const profileOptionItemClassName = 'pr-2 [&>span:first-child]:hidden'
+const profileOptionItemClassName =
+  'pr-2 [&>span:first-child]:hidden [&>span:last-child]:min-w-0 [&>span:last-child]:flex-1'
 
 export const ApplicationProfileSelect = ({
   mode,

@@ -20,12 +20,12 @@ const AutomationHeaderSkeleton = ({
         className='pt-0'
         itemWidths={breadcrumbWidths}
       />
-      <div className='flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-start'>
+      <div className='flex items-center justify-between gap-3 max-sm:flex-wrap'>
         <div className='grid gap-2'>
           <Skeleton className={`h-9 ${titleWidth} max-sm:h-7`} />
           <Skeleton className='h-4 w-full max-w-3xl opacity-70' />
         </div>
-        <Skeleton className={`h-10 ${actionWidth} max-sm:w-full`} />
+        <Skeleton className={`h-10 ${actionWidth}`} />
       </div>
     </div>
   </section>
@@ -34,7 +34,7 @@ const AutomationHeaderSkeleton = ({
 export const AutomationsListPageSkeleton = () => (
   <ProtectedStackPageLayout mainClassName='gap-2'>
     <AutomationHeaderSkeleton />
-    <section className='px-6 pb-16 pt-4 max-sm:px-4'>
+    <section className='px-6 pb-16 pt-2 max-sm:px-4'>
       <div className='mb-4 flex flex-wrap items-center gap-3'>
         <Skeleton className='h-10 w-full max-w-md' />
         <Skeleton className='h-10 w-28' />
@@ -61,7 +61,7 @@ export const AutomationTriggersPageSkeleton = () => (
       titleWidth='w-32'
       actionWidth='w-32'
     />
-    <section className='px-6 pb-16 pt-4 max-sm:px-4'>
+    <section className='px-6 pb-16 pt-2 max-sm:px-4'>
       <div className='mb-4 flex flex-wrap items-center gap-3'>
         <Skeleton className='h-10 w-full max-w-md' />
         <Skeleton className='h-10 w-28' />

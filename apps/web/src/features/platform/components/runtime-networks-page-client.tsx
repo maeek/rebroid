@@ -28,7 +28,7 @@ export const RuntimeNetworksPageClient = ({
         title='Networks'
         description='Docker networks visible to the platform, including application isolation networks.'
         breadcrumbRoot={{ label: 'Runtime' }}
-        actions={
+        titleActions={
           <PlatformPageRefreshButton
             isRefreshing={isRefreshing}
             onRefresh={refresh}

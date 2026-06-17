@@ -16,7 +16,7 @@ import { Section } from '@/components/ui/section'
 import { toast } from '@/hooks/use-toast'
 import { deleteUserAction } from '@/server/users/actions/delete-user-action'
 import { setUserDisabledAction } from '@/server/users/actions/set-user-disabled-action'
-import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
+import { PageHeader } from '@/shared/ui/page/page-header'
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { CreateUserDialog } from './components/create-user-dialog'
 import { UsersGrid } from './components/users-grid'
@@ -133,19 +133,16 @@ export const UsersSettings = ({
 
   return (
     <ProtectedStackPageLayout mainClassName='gap-2'>
-      <section className='shrink-0 px-6 py-4 max-sm:px-4'>
-        <PageBreadcrumbs
-          className='pt-0'
-          items={[{ label: 'Users', href: '/security/users' }, { label: 'Users' }]}
-        />
-        <div className='flex items-center justify-between gap-3 pt-4'>
-          <h2 className='text-3xl font-medium max-sm:text-xl'>Users</h2>
+      <PageHeader
+        breadcrumbs={[{ label: 'Users', href: '/security/users' }, { label: 'Users' }]}
+        title='Users'
+        actions={
           <CreateUserDialog
             groups={groups}
             onCreated={upsertUser}
           />
-        </div>
-      </section>
+        }
+      />
       <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
         <Section
           title='Existing Users'

@@ -26,7 +26,7 @@ export const PlatformOverviewPageClient = () => {
       <PlatformPageHeader
         title='Overview'
         description='Managed containers, resource usage, Docker API workload, latency, retries, and recent transport failures.'
-        actions={
+        titleActions={
           <PlatformPageRefreshButton
             isRefreshing={pendingRefreshes > 0}
             onRefresh={refresh}

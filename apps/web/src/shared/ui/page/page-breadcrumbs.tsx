@@ -11,7 +11,7 @@ import {
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 
-type PageBreadcrumbItem = {
+export type PageBreadcrumbItem = {
   label: string
   badge?: ReactNode
   href?: string

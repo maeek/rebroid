@@ -33,7 +33,8 @@ export const AiProvidersPageSkeleton = () => (
     <PageHeaderSkeleton
       titleWidth='w-44'
       hasTitlePrefix
-      actionCount={2}
+      titleActionCount={1}
+      actionCount={1}
     />
     <section className='flex w-full flex-col gap-4 px-6 pb-16 max-sm:px-4'>
       <div
