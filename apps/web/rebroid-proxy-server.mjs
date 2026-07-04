@@ -213,15 +213,71 @@ const displayViewerUnavailableHtml = message => `<!doctype html>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Rebroid Display</title>
   <style>
-    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; color: #f8fafc; font: 14px system-ui, sans-serif; }
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      color: #f8fafc;
+      font: 14px system-ui, sans-serif;
+    }
     main { display: grid; width: 100%; height: 100%; place-items: center; background: #000; }
     section { box-sizing: border-box; width: min(260px, calc(100% - 32px)); text-align: center; }
-    .device { position: relative; width: 116px; height: 156px; margin: 0 auto 22px; border: 2px solid rgb(148 163 184 / 38%); border-radius: 28px; background: linear-gradient(160deg, #111827, #020617 72%); box-shadow: 0 24px 70px rgb(0 0 0 / 36%); }
-    .device::before { position: absolute; top: 9px; left: 42px; width: 32px; height: 4px; border-radius: 999px; background: rgb(148 163 184 / 48%); content: ""; }
-    .device::after { position: absolute; right: 22px; bottom: 16px; left: 22px; height: 6px; border-radius: 999px; background: rgb(245 158 11 / 78%); box-shadow: 0 0 18px rgb(245 158 11 / 42%); content: ""; }
-    .screen-art { position: absolute; inset: 34px 18px 36px; display: grid; place-items: center; overflow: hidden; border: 1px solid rgb(148 163 184 / 28%); border-radius: 16px; background: rgb(15 23 42 / 82%); }
-    .display-mark { width: 58px; height: 58px; color: rgb(245 158 11 / 86%); filter: drop-shadow(0 0 14px rgb(245 158 11 / 30%)); }
-    .display-mark rect, .display-mark path { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 4; }
+    .device {
+      position: relative;
+      width: 116px;
+      height: 156px;
+      margin: 0 auto 22px;
+      border: 2px solid rgb(148 163 184 / 38%);
+      border-radius: 28px;
+      background: linear-gradient(160deg, #111827, #020617 72%);
+      box-shadow: 0 24px 70px rgb(0 0 0 / 36%);
+    }
+    .device::before {
+      position: absolute;
+      top: 9px;
+      left: 42px;
+      width: 32px;
+      height: 4px;
+      border-radius: 999px;
+      background: rgb(148 163 184 / 48%);
+      content: "";
+    }
+    .device::after {
+      position: absolute;
+      right: 22px;
+      bottom: 16px;
+      left: 22px;
+      height: 6px;
+      border-radius: 999px;
+      background: rgb(245 158 11 / 78%);
+      box-shadow: 0 0 18px rgb(245 158 11 / 42%);
+      content: "";
+    }
+    .screen-art {
+      position: absolute;
+      inset: 34px 18px 36px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      border: 1px solid rgb(148 163 184 / 28%);
+      border-radius: 16px;
+      background: rgb(15 23 42 / 82%);
+    }
+    .display-mark {
+      width: 58px;
+      height: 58px;
+      color: rgb(245 158 11 / 86%);
+      filter: drop-shadow(0 0 14px rgb(245 158 11 / 30%));
+    }
+    .display-mark rect, .display-mark path {
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 4;
+    }
     h1 { margin: 0 0 8px; font-size: 20px; letter-spacing: 0; }
     p { margin: 8px 0 0; color: #cbd5e1; line-height: 1.45; }
   </style>
@@ -377,8 +433,13 @@ const proxyHttp = (req, res, target) => {
     }
   )
 
-  proxyReq.on('error', error => {
-    writeProxyError(res, 502, 'The display sidecar is not reachable. Reconnecting will continue from the app viewer.', target)
+  proxyReq.on('error', _error => {
+    writeProxyError(
+      res,
+      502,
+      'The display sidecar is not reachable. Reconnecting will continue from the app viewer.',
+      target
+    )
   })
   req.pipe(proxyReq)
 }

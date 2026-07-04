@@ -9,10 +9,7 @@ export class DockerImageRuntimeService {
 
   async imageExists(image: string) {
     try {
-      await this.engine.read(
-        () => this.engine.docker.getImage(image).inspect(),
-        `Inspect image ${image}`,
-      );
+      await this.inspectImage(image);
       return true;
     } catch (error) {
       if (!this.engine.isDockerNotFound(error)) {
@@ -20,6 +17,13 @@ export class DockerImageRuntimeService {
       }
       return false;
     }
+  }
+
+  inspectImage(image: string) {
+    return this.engine.read(
+      () => this.engine.docker.getImage(image).inspect(),
+      `Inspect image ${image}`,
+    );
   }
 
   /**

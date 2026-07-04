@@ -6,6 +6,7 @@ import { AppFormIconSection } from '@/features/applications/create/create-app-ic
 import { toast } from '@/hooks/use-toast'
 import { removeAppIconAction } from '@/server/app-icons/actions/remove-app-icon-action'
 import { setAppIconAction } from '@/server/app-icons/actions/set-app-icon-action'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import { optimizeIconFile } from '@/shared/model/media/icon-metadata'
 import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
 import {
@@ -53,7 +54,7 @@ export const AppManageIconPanel = ({
     setIsUploadingIcon(true)
     try {
       const optimizedIcon = await optimizeIconFile(file)
-      const storedIcon = await setAppIconAction(appId, optimizedIcon)
+      const storedIcon = unwrapActionResult(await setAppIconAction(appId, optimizedIcon))
       notifyRecentAppsUpdated([{ id: appId, name: appName, icon: storedIcon, openedAt: Date.now() }])
       onIconChange(storedIcon, true)
       toast({ title: 'Icon updated' })
@@ -72,7 +73,7 @@ export const AppManageIconPanel = ({
   const handleClearIcon = async () => {
     setIsUploadingIcon(true)
     try {
-      await removeAppIconAction(appId)
+      unwrapActionResult(await removeAppIconAction(appId))
       notifyRecentAppsUpdated([{ id: appId, name: appName, icon: null, openedAt: Date.now() }])
       onIconChange(null, true)
       toast({ title: 'Icon cleared' })

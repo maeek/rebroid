@@ -73,28 +73,34 @@ export const useAppManageDraft = (app?: AppDefinition) => {
       inactivityTimeoutSeconds: hasPendingAppChangesRef.current
         ? current.inactivityTimeoutSeconds
         : currentApp.inactivityTimeoutSeconds,
-      memoryLimitMb: hasPendingAppChangesRef.current ? current.memoryLimitMb : currentApp.memoryLimitMb?.toString() ?? '',
-      cpuLimitCpus: hasPendingAppChangesRef.current ? current.cpuLimitCpus : currentApp.cpuLimitCpus?.toString() ?? '',
-      containerArgs: hasPendingAppChangesRef.current ? current.containerArgs : currentApp.containerArgs ?? '',
-      icon: isIconDirtyRef.current ? current.icon : currentApp.icon ?? null
+      memoryLimitMb: hasPendingAppChangesRef.current
+        ? current.memoryLimitMb
+        : (currentApp.memoryLimitMb?.toString() ?? ''),
+      cpuLimitCpus: hasPendingAppChangesRef.current
+        ? current.cpuLimitCpus
+        : (currentApp.cpuLimitCpus?.toString() ?? ''),
+      containerArgs: hasPendingAppChangesRef.current ? current.containerArgs : (currentApp.containerArgs ?? ''),
+      icon: isIconDirtyRef.current ? current.icon : (currentApp.icon ?? null)
     }))
   }, [currentApp])
 
-  const formValues = (currentApp
-    ? {
-        name: draft.appName,
-        containerImage: currentApp.containerImage,
-        inactivityTimeoutSeconds: draft.inactivityTimeoutSeconds,
-        memoryLimitMb: draft.memoryLimitMb,
-        cpuLimitCpus: draft.cpuLimitCpus,
-        customContainerArgs: draft.containerArgs,
-        redroidDisplayProfileId: 'custom',
-        redroidCustomDisplayWidth: '',
-        redroidCustomDisplayHeight: '',
-        redroidCustomDisplayDpi: '',
-        redroidExtraArgs: ''
-      }
-    : null) satisfies AppFormValues | null
+  const formValues = (
+    currentApp
+      ? {
+          name: draft.appName,
+          containerImage: currentApp.containerImage,
+          inactivityTimeoutSeconds: draft.inactivityTimeoutSeconds,
+          memoryLimitMb: draft.memoryLimitMb,
+          cpuLimitCpus: draft.cpuLimitCpus,
+          customContainerArgs: draft.containerArgs,
+          redroidDisplayProfileId: 'custom',
+          redroidCustomDisplayWidth: '',
+          redroidCustomDisplayHeight: '',
+          redroidCustomDisplayDpi: '',
+          redroidExtraArgs: ''
+        }
+      : null
+  ) satisfies AppFormValues | null
 
   const updateForm = useCallback((patch: Partial<AppFormValues>) => {
     hasPendingAppChangesRef.current = true

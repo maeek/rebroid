@@ -1,7 +1,7 @@
+import type { ReactNode } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageBreadcrumbsSkeleton } from '@/shared/ui/page/page-breadcrumbs-skeleton'
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
-import type { ReactNode } from 'react'
 
 const SectionSkeleton = ({ children, titleWidth }: { children: ReactNode; titleWidth: string }) => (
   <section className='flex w-full flex-col rounded-xl p-0'>

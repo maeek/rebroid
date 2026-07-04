@@ -1,6 +1,7 @@
 'use server'
 
 import { requireAdminUser } from '../shared'
+import { runSafeAction } from '@/server/actions/safe-action'
 import { orchestratorPlatformClient } from './client'
 import { runAuditedPlatformAction } from './platform-audit'
 import { platformContainersGridPage } from './platform-grid-utils'
@@ -34,18 +35,26 @@ export const getPlatformContainerStatsAction = async (id: string) => {
 }
 
 export const stopPlatformContainerAction = async (id: string) =>
-  runAuditedPlatformAction({
-    action: 'docker.container.stop',
-    operation: () => orchestratorPlatformClient.stopPlatformContainer(id),
-    resourceType: 'docker_container',
-    resourceId: id
-  })
+  runSafeAction(
+    () =>
+      runAuditedPlatformAction({
+        action: 'docker.container.stop',
+        operation: () => orchestratorPlatformClient.stopPlatformContainer(id),
+        resourceType: 'docker_container',
+        resourceId: id
+      }),
+    { fallbackMessage: 'Could not stop container.', logLabel: 'stopPlatformContainerAction failed' }
+  )
 
 export const removePlatformContainerAction = async (id: string, force = false) =>
-  runAuditedPlatformAction({
-    action: 'docker.container.remove',
-    details: { force },
-    operation: () => orchestratorPlatformClient.removePlatformContainer(id, force),
-    resourceType: 'docker_container',
-    resourceId: id
-  })
+  runSafeAction(
+    () =>
+      runAuditedPlatformAction({
+        action: 'docker.container.remove',
+        details: { force },
+        operation: () => orchestratorPlatformClient.removePlatformContainer(id, force),
+        resourceType: 'docker_container',
+        resourceId: id
+      }),
+    { fallbackMessage: 'Could not remove container.', logLabel: 'removePlatformContainerAction failed' }
+  )

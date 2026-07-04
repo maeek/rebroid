@@ -20,7 +20,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Visible } from '@/components/ui/visible'
 import { ContainerStateBadge } from '@/features/platform/components/runtime-containers-table-parts'
 import { toast } from '@/hooks/use-toast'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { removePlatformNetworkAction } from '@/server/orchestrator/platform/network-actions'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import { PlatformDetailRow, PlatformJsonBlock, formatPlatformDate } from '@/shared/ui/platform/platform-detail-parts'
 type NetworkDetailModel = {
   id: string
@@ -63,13 +65,13 @@ export const RuntimeNetworkDetail = ({ details }: RuntimeNetworkDetailProps) => 
   const removeNetwork = async () => {
     setIsRemoving(true)
     try {
-      await removePlatformNetwork(network.id)
+      unwrapActionResult(await removePlatformNetwork(network.id))
       toast({ title: 'Network removed' })
       router.push('/runtime/networks')
     } catch (error) {
       toast({
         title: 'Could not remove network',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'destructive'
       })
     } finally {

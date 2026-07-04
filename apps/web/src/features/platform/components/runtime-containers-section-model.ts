@@ -1,4 +1,5 @@
 import { buildPlatformGridHref, summarizePlatformBulkActionResults } from './runtime-grid-query-utils'
+import type { ActionResult } from '@/shared/actions/action-result'
 import type { PlatformContainer, PlatformContainersGridQuery } from '@/server/orchestrator/platform/types'
 
 type ContainersGridHrefInput = {
@@ -32,7 +33,7 @@ export const selectVisibleOrphanedContainerIds = (containers: PlatformContainer[
 }
 
 export const summarizeContainerBulkActionResults = (
-  results: PromiseSettledResult<unknown>[],
+  results: Array<PromiseSettledResult<unknown> | ActionResult<unknown>>,
   type: ContainerBulkActionType
 ) =>
   summarizePlatformBulkActionResults(

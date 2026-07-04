@@ -12,4 +12,5 @@ export interface WebSettings {
   defaultViewerSoundEnabled: boolean
   aiContextualSuggestionsEnabled: boolean
   auditRetentionDays: number
+  passwordMinimumLength: number
 }

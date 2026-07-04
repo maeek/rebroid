@@ -36,7 +36,9 @@ import { AndroidAppLifecycleJobsService } from './android-app-lifecycle-jobs.ser
 import { AndroidAppsRuntimePreparationService } from './android-apps-runtime-preparation.service';
 import { AndroidAppsRemovalService } from './android-apps-removal.service';
 import { AndroidAppsStartLifecycleService } from './android-apps-start-lifecycle.service';
+import { AndroidRuntimeImageResolverService } from './android-runtime-image-resolver.service';
 import { LifecycleBackgroundJobRunner } from './lifecycle-background-job-runner.service';
+import { resolveContainerImage } from '@rebroid/application-core/container-image';
 
 @Injectable()
 export class AndroidAppsLifecycleService implements OnModuleInit {
@@ -59,6 +61,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     private readonly removal: AndroidAppsRemovalService,
     private readonly startLifecycle: AndroidAppsStartLifecycleService,
     private readonly backgroundJobs: LifecycleBackgroundJobRunner,
+    private readonly runtimeImages: AndroidRuntimeImageResolverService,
   ) {}
 
   onModuleInit() {
@@ -77,9 +80,14 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
         ? this.apks.get(dto.uploadedApkId)
         : Promise.resolve(null),
     ]);
+    const containerImage = resolveContainerImage(
+      dto.containerImage ?? settings.defaultContainerImage,
+      settings.dockerImageRegistry,
+    );
+    const runtimeKind = await this.runtimeImages.resolveKind(containerImage);
 
     const app = this.applications.create(
-      this.applicationFactory.initialFields(dto, settings),
+      this.applicationFactory.initialFields(dto, settings, runtimeKind),
     );
 
     await this.state.save(app);
@@ -147,6 +155,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
       app.containerArgs = applyRedroidDefaultContainerArgs(
         app.containerImage,
         dto.containerArgs,
+        app.runtimeKind,
       );
     }
 

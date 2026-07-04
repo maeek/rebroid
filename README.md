@@ -213,6 +213,31 @@ androidboot.redroid_gpu_mode=guest androidboot.use_memfd=true ro.secure=0 ro.deb
 
 On SELinux hosts, pass `CONTAINER_SECURITY_OPTS=label=disable` so the privileged Android runtime can access the host devices it needs.
 
+### Runtime image builder
+
+Runtime > Images includes a builder for local Redroid-style images. The V1
+workflow is a Docker overlay builder, not a full Redroid/AOSP framework build:
+it can add curated files such as microG APKs and privileged permission XML into
+a base image, label the result with Rebroid runtime metadata, and make that
+custom tag selectable in Runtime defaults and app creation.
+
+Built images receive these labels:
+
+```text
+com.rebroid.managed=true
+com.rebroid.runtime.kind=redroid
+com.rebroid.redroid.android_version=<version>
+com.rebroid.redroid.arch=<arch>
+com.rebroid.gms.mode=microg
+com.rebroid.signature_spoofing=<state>
+```
+
+For microG, signature spoofing still has to be present in the Android framework
+of the base image. Rebroid deliberately marks stock Redroid overlay builds as
+`external_required`; Dockerfile layering cannot patch framework signature
+checks. Use a base image that was already patched outside Rebroid, then mark the
+result `present_unverified` or `verified` only after you have validated it.
+
 ### Redroid display streaming support
 
 Live display streaming is currently supported for Redroid 13 and 14. Redroid

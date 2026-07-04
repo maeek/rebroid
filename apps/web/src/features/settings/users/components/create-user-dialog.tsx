@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { IconPlus } from '@tabler/icons-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -16,7 +17,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/hooks/use-toast'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { createUserAction } from '@/server/users/actions/create-user-action'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import { GroupMembershipPicker } from './group-membership-picker'
 import { LabeledField } from './labeled-field'
 import type { PublicUser, UserGroup, UserRole } from '@/server/auth/user'
@@ -40,7 +43,7 @@ export const CreateUserDialog = ({
   const createUser = async () => {
     setIsSaving(true)
     try {
-      const user = await createUserAction({ username, password, role, groupIds })
+      const user = unwrapActionResult(await createUserAction({ username, password, role, groupIds }))
       onCreated(user)
       setUsername('')
       setPassword('')
@@ -51,7 +54,7 @@ export const CreateUserDialog = ({
     } catch (error) {
       toast({
         title: 'Could not create user',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'destructive'
       })
     } finally {
@@ -66,7 +69,7 @@ export const CreateUserDialog = ({
       onOpenChange={setOpen}
     >
       <DialogTrigger asChild>
-        <Button>
+        <Button size='sm'>
           <IconPlus className='size-4' />
           New user
         </Button>
@@ -101,6 +104,10 @@ export const CreateUserDialog = ({
               placeholder='Minimum 1 character'
               onChange={event => setPassword(event.target.value)}
             />
+            <div className='flex flex-wrap items-center gap-2 text-xs text-foreground-muted'>
+              <Badge variant='warning'>Change required</Badge>
+              The user must set a new password on first login.
+            </div>
           </label>
           <div className='grid gap-3 sm:grid-cols-2'>
             <LabeledField

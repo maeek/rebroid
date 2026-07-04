@@ -1,6 +1,6 @@
 import { createRef } from 'react'
 import { describe, expect, it, jest } from '@jest/globals'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { AiAgentToolsSection } from './ai-agent-tools-section'
 import { useAiAgentChatSession } from './use-ai-agent-chat-session'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
@@ -124,11 +124,12 @@ describe('AiAgentToolsSection', () => {
     render(<AiAgentToolsSection app={app} />)
 
     const transcript = screen.getByLabelText('AI agent transcript')
+    const section = screen.getByTestId('ai-agent-tools-section')
 
     expect(transcript.className).toContain('flex-1')
     expect(transcript.className).toContain('overflow-y-auto')
-    expect(transcript.closest('section')?.className).toContain('h-full')
-    expect(transcript.closest('section')?.className).toContain('overflow-hidden')
+    expect(section.className).toContain('h-full')
+    expect(section.className).toContain('overflow-hidden')
   })
 
   it('keeps clear available and delegates clearing to the session', () => {
@@ -184,14 +185,14 @@ describe('AiAgentToolsSection', () => {
       />
     )
 
-    await waitFor(() => expect(screen.getByText('Dynamic chip')).toBeTruthy())
+    expect(await screen.findByText('Dynamic chip')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Dynamic chip' }).className).toContain('border-transparent')
     expect(screen.getByRole('button', { name: 'Dynamic chip' }).className).toContain('font-normal')
     expect(generatePromptSuggestions.mock.calls[0]?.[0]).toMatchObject({ targetApplicationId: app.id })
   })
 
   it('exports visible conversation turns as debug json', async () => {
-    const createObjectURL = jest.fn((object: Blob | MediaSource) => 'blob:debug-export')
+    const createObjectURL = jest.fn((_object: Blob | MediaSource) => 'blob:debug-export')
     const revokeObjectURL = jest.fn()
     const click = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
     Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: createObjectURL })
@@ -270,7 +271,13 @@ describe('AiAgentToolsSection', () => {
 const readBlobText = (blob: Blob) =>
   new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(reader.error)
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result)
+        return
+      }
+      reject(new Error('Expected blob text result.'))
+    }
+    reader.onerror = () => reject(reader.error ?? new Error('Could not read blob.'))
     reader.readAsText(blob)
   })

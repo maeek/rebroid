@@ -1,6 +1,11 @@
+import type { RuntimeImageKind } from '@rebroid/application-core/redroid-runtime'
 import type { OrchestratorApiSchemas } from '@rebroid/orchestrator-client'
 
-export type AndroidApplication = OrchestratorApiSchemas['AndroidApplicationResponseDto']
+export type AndroidApplication = Omit<OrchestratorApiSchemas['AndroidApplicationResponseDto'], 'runtime'> & {
+  runtime: OrchestratorApiSchemas['AndroidApplicationResponseDto']['runtime'] & {
+    kind?: RuntimeImageKind
+  }
+}
 export type ApplicationCommandResult = OrchestratorApiSchemas['ApplicationCommandResultDto']
 export type AndroidApplicationSummary = OrchestratorApiSchemas['AndroidApplicationSummaryResponseDto']
 export type AndroidApplicationStatus = AndroidApplication['status']['currentStatus']

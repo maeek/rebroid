@@ -16,9 +16,8 @@ describe('DataGridSkeleton', () => {
       />
     )
 
-    const skeleton = screen.getByTestId('data-grid-skeleton')
-    expect(skeleton.querySelector('.rounded-xl')).toBeTruthy()
-    expect(skeleton.querySelectorAll('.border-t')).toHaveLength(3)
+    expect(screen.getByTestId('data-grid-skeleton-shell')).toBeTruthy()
+    expect(screen.getAllByTestId('data-grid-skeleton-row')).toHaveLength(3)
   })
 
   it('can render embedded grids without selection or row menus', () => {
@@ -31,6 +30,6 @@ describe('DataGridSkeleton', () => {
       />
     )
 
-    expect(screen.getByTestId('data-grid-skeleton').querySelectorAll('.border-t')).toHaveLength(2)
+    expect(screen.getAllByTestId('data-grid-skeleton-row')).toHaveLength(2)
   })
 })

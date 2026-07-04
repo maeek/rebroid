@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { recommendAiModelForAutomation, type ProviderModelRow } from '@rebroid/ai-core/provider'
 import { IconCheck, IconDownload, IconPencil, IconPlus, IconSettings, IconTrash, IconX } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -17,7 +18,6 @@ import {
   selectedProviderModelIndexes,
   type ProviderModelRole
 } from './provider-models-grid-model'
-import { recommendAiModelForAutomation, type ProviderModelRow } from '@rebroid/ai-core/provider'
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,
@@ -126,7 +126,10 @@ const ProviderModelRecommendation = ({ model }: { model: ProviderModelRow }) => 
   return (
     <div className='flex min-h-10 min-w-0 items-center'>
       <span
-        className={`max-w-full truncate rounded-md border px-2 py-1 text-xs ${recommendationClassName[recommendation.level]}`}
+        className={[
+          'max-w-full truncate rounded-md border px-2 py-1 text-xs',
+          recommendationClassName[recommendation.level]
+        ].join(' ')}
         title={recommendation.message}
       >
         {recommendation.title}

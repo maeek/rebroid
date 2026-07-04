@@ -25,7 +25,7 @@ describe('RuntimeToolTabs', () => {
     fireEvent.keyDown(screen.getByRole('tab', { name: 'Streaming' }), { key: 'ArrowRight' })
 
     expect(onSelectTool).toHaveBeenCalledWith('network-access')
-    expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Network access' }))
+    expect(screen.getByRole('tab', { name: 'Network access' }).matches(':focus')).toBe(true)
   })
 
   it('wraps from the first tab to the last tab', () => {
@@ -41,6 +41,6 @@ describe('RuntimeToolTabs', () => {
     fireEvent.keyDown(screen.getByRole('tab', { name: 'Streaming' }), { key: 'ArrowLeft' })
 
     expect(onSelectTool).toHaveBeenCalledWith('logs')
-    expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Logs' }))
+    expect(screen.getByRole('tab', { name: 'Logs' }).matches(':focus')).toBe(true)
   })
 })

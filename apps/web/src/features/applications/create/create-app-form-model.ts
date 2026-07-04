@@ -1,6 +1,7 @@
 import {
   applyRedroidDisplayContainerArgs,
-  defaultRedroidDisplayProfileId
+  defaultRedroidDisplayProfileId,
+  type RuntimeImageKind
 } from '@rebroid/application-core/redroid-runtime'
 import type { CreateAppFormValues } from './create-app-form.types'
 import type { CreateApplicationActionInput, UploadedApk } from '@/server/orchestrator/applications/types'
@@ -75,6 +76,7 @@ export const buildCreateApplicationInput = ({
   canUseInternet,
   customDisplayConfig,
   isRedroidRuntime,
+  runtimeKind,
   trimmedName,
   uploadedApk,
   values
@@ -87,6 +89,7 @@ export const buildCreateApplicationInput = ({
   canUseInternet: boolean
   customDisplayConfig: ReturnType<typeof getCustomDisplayConfig> | undefined
   isRedroidRuntime: boolean
+  runtimeKind?: RuntimeImageKind
   trimmedName: string
   uploadedApk: UploadedApk | null
   values: CreateAppFormValues
@@ -102,7 +105,8 @@ export const buildCreateApplicationInput = ({
             values.containerImage,
             values.redroidDisplayProfileId,
             values.redroidExtraArgs,
-            customDisplayConfig ?? undefined
+            customDisplayConfig ?? undefined,
+            runtimeKind
           )
         : values.customContainerArgs.trim()) || undefined
     : undefined,

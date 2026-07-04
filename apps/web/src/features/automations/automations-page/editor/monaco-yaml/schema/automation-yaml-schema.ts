@@ -1,5 +1,5 @@
-import type { AutomationCommand } from '@/server/orchestrator/automations/types'
 import { conditionOperators, runContextOutputs, unaryOperators } from '@rebroid/automation-core/metadata'
+import type { AutomationCommand } from '@/server/orchestrator/automations/types'
 
 type JsonSchema = Record<string, unknown>
 
@@ -72,16 +72,16 @@ const conditionExpressionSchema: JsonSchema = {
       type: 'array',
       minItems: 1,
       items: {
-            type: 'object',
-            required: ['conditions'],
-            properties: {
-              conditions: {
-                type: 'array',
-                minItems: 1,
-                items: conditionRuleSchema
-              }
-            },
-            additionalProperties: false
+        type: 'object',
+        required: ['conditions'],
+        properties: {
+          conditions: {
+            type: 'array',
+            minItems: 1,
+            items: conditionRuleSchema
+          }
+        },
+        additionalProperties: false
       }
     }
   },

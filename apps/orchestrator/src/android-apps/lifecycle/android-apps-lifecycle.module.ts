@@ -17,6 +17,7 @@ import { AndroidAppsLifecycleService } from './services/android-apps-lifecycle.s
 import { AndroidAppsRemovalService } from './services/android-apps-removal.service';
 import { AndroidAppsRuntimePreparationService } from './services/android-apps-runtime-preparation.service';
 import { AndroidAppsStartLifecycleService } from './services/android-apps-start-lifecycle.service';
+import { AndroidRuntimeImageResolverService } from './services/android-runtime-image-resolver.service';
 import { LifecycleBackgroundJobRunner } from './services/lifecycle-background-job-runner.service';
 
 @Module({
@@ -41,6 +42,7 @@ import { LifecycleBackgroundJobRunner } from './services/lifecycle-background-jo
     AndroidAppsRemovalService,
     AndroidAppsRuntimePreparationService,
     AndroidAppsStartLifecycleService,
+    AndroidRuntimeImageResolverService,
     LifecycleBackgroundJobRunner,
   ],
   exports: [AndroidAppsLifecycleService],

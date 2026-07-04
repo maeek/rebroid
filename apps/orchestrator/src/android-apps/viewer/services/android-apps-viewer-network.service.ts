@@ -7,7 +7,7 @@ import { NetworkPolicyService } from '../../../network-policy/services/network-p
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
-import { isRedroidImageName } from '@rebroid/application-core/redroid-runtime';
+import { isRedroidRuntime } from '@rebroid/application-core/redroid-runtime';
 
 @Injectable()
 export class AndroidAppsViewerNetworkService {
@@ -214,7 +214,10 @@ export class AndroidAppsViewerNetworkService {
 
   /** Recovered Redroid containers may be running before provisioning enabled TCP ADB. */
   private async ensureRedroidTcpAdb(app: AndroidApplication) {
-    if (!app.containerId || !isRedroidImageName(app.containerImage)) {
+    if (
+      !app.containerId ||
+      !isRedroidRuntime(app.containerImage, app.runtimeKind)
+    ) {
       return;
     }
 

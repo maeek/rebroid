@@ -30,6 +30,7 @@ export type PublicUser = {
   role: UserRole
   groupIds: string[]
   disabled: boolean
+  passwordChangeRequired: boolean
   sessionVersion: number
   avatarDataUrl: string | null
   accentColor: AccentColor
@@ -63,7 +64,7 @@ export type UsersFile = {
   groups: UserGroup[]
 }
 
-export const minimumPasswordLength = 12
+export const defaultPasswordMinimumLength = 12
 
 const maxAvatarBytes = 2 * 1024 * 1024
 
@@ -136,6 +137,7 @@ export const toPublicUser = (file: UsersFile, user: StoredUser): PublicUser => {
     role: user.role,
     groupIds: groups.map(group => group.id),
     disabled: user.disabled,
+    passwordChangeRequired: user.passwordChangeRequired,
     sessionVersion: user.sessionVersion,
     avatarDataUrl: user.avatarDataUrl,
     accentColor: user.accentColor,
@@ -162,6 +164,7 @@ export const normalizeUser = (
     role,
     groupIds,
     disabled: user.disabled ?? false,
+    passwordChangeRequired: user.passwordChangeRequired ?? false,
     sessionVersion: user.sessionVersion ?? 1,
     avatarDataUrl: user.avatarDataUrl ?? null,
     accentColor: isAccentColor(user.accentColor) ? user.accentColor : defaultAccentColor,

@@ -25,7 +25,7 @@ import {
 } from '../../common/utils/android-apps-profile-history.utils';
 import {
   applyRedroidDefaultContainerArgs,
-  isRedroidImageName,
+  isRedroidRuntime,
 } from '@rebroid/application-core/redroid-runtime';
 import { StartAndroidApplicationDto } from '../dto/start-android-application.dto';
 import { SwitchApplicationProfileDto } from '../dto/switch-application-profile.dto';
@@ -210,7 +210,10 @@ export class AndroidAppsRuntimePreparationService {
   }
 
   async prepareContainerForRuntimeHostConfig(app: AndroidApplication) {
-    if (!app.containerId || !isRedroidImageName(app.containerImage)) {
+    if (
+      !app.containerId ||
+      !isRedroidRuntime(app.containerImage, app.runtimeKind)
+    ) {
       return;
     }
 
@@ -297,6 +300,7 @@ export class AndroidAppsRuntimePreparationService {
     const nextContainerArgs = applyRedroidDefaultContainerArgs(
       app.containerImage,
       app.containerArgs,
+      app.runtimeKind,
     );
     if (nextContainerArgs === app.containerArgs) {
       return;

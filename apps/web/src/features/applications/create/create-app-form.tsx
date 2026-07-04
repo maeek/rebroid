@@ -7,13 +7,15 @@ import { useTopLoader } from 'nextjs-toploader'
 import { Button } from '@/components/ui/button'
 import { Visible } from '@/components/ui/visible'
 import { uploadApkWithFeedback } from '@/features/applications/apks/upload-apk-with-feedback'
+import { runtimeKindForImageReference } from '@/features/platform/domain/runtime-image-metadata'
 import { toast } from '@/hooks/use-toast'
 import { setAppIconAction } from '@/server/app-icons/actions/set-app-icon-action'
 import { createApplicationAction } from '@/server/orchestrator/applications/actions/configuration/create-update-actions'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import { optimizeIconFile } from '@/shared/model/media/icon-metadata'
 import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
-import { hasPermission, isRedroidImage, type PermissionMap } from '@/shared/permissions/permissions'
+import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
 import { PageBackdrop } from '@/shared/ui/page/page-backdrop'
 import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
 import { CreateAppDeviceSection } from './create-app-device-section'
@@ -32,19 +34,27 @@ import { AppFormResourcesSection } from './create-app-resources-section'
 import { AppFormSessionSection } from './create-app-session-section'
 import type { CreateAppFormValues } from './create-app-form.types'
 import type { UploadedApk } from '@/server/orchestrator/applications/types'
+import type { PlatformImage } from '@/server/orchestrator/platform/types'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 
 export const CreateAppForm = ({
+  images,
+  initialContainerImage,
   initialSettings,
   permissions
 }: {
+  images: PlatformImage[]
+  initialContainerImage?: string
   initialSettings: OrchestratorUiSettings
   permissions: PermissionMap
 }) => {
   const topLoader = useTopLoader()
   const createFormId = useId()
   const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
-  const [formValues, setFormValues] = useState<CreateAppFormValues>(() => getInitialCreateAppFormValues(settings))
+  const [formValues, setFormValues] = useState<CreateAppFormValues>(() => ({
+    ...getInitialCreateAppFormValues(settings),
+    containerImage: initialContainerImage?.trim() || settings.defaultContainerImage
+  }))
   const [uploadedApk, setUploadedApk] = useState<UploadedApk | null>(null)
   const [isUploadingApk, setIsUploadingApk] = useState(false)
   const [manualIconPreview, setManualIconPreview] = useState<string | null>(null)
@@ -59,7 +69,8 @@ export const CreateAppForm = ({
   const canChangeContainerArgs = hasPermission(permissions, 'applications:change-container-args')
   const canConfigureEgress = hasPermission(permissions, 'applications:configure-egress')
   const canUseInternet = hasPermission(permissions, 'applications:use-internet')
-  const isRedroidRuntime = isRedroidImage(formValues.containerImage)
+  const runtimeKind = runtimeKindForImageReference(images, formValues.containerImage)
+  const isRedroidRuntime = runtimeKind === 'redroid'
   const showDeviceSection = canChangeBaseImage || canChangeContainerArgs
   const showSessionSection = canChangeSessionLimit
   const showResourcesSection = canChangeResources
@@ -70,12 +81,12 @@ export const CreateAppForm = ({
   useEffect(() => {
     setFormValues(current => ({
       ...current,
-      containerImage: settings.defaultContainerImage,
+      containerImage: initialContainerImage?.trim() || settings.defaultContainerImage,
       inactivityTimeoutSeconds: settings.defaultInactivityTimeoutSeconds,
       redroidExtraArgs: '',
       customContainerArgs: ''
     }))
-  }, [settings.defaultInactivityTimeoutSeconds, settings.defaultContainerImage])
+  }, [initialContainerImage, settings.defaultInactivityTimeoutSeconds, settings.defaultContainerImage])
 
   const updateFormValues = (patch: Partial<CreateAppFormValues>) => {
     setFormValues(current => ({ ...current, ...patch }))
@@ -175,6 +186,7 @@ export const CreateAppForm = ({
           canUseInternet,
           customDisplayConfig,
           isRedroidRuntime,
+          runtimeKind,
           trimmedName,
           uploadedApk,
           values: formValues
@@ -185,7 +197,7 @@ export const CreateAppForm = ({
 
       if (iconPreview) {
         try {
-          await setAppIconAction(createdApp.id, iconPreview)
+          unwrapActionResult(await setAppIconAction(createdApp.id, iconPreview))
         } catch (error) {
           toast({
             title: 'App created without icon',
@@ -284,6 +296,7 @@ export const CreateAppForm = ({
         </Visible>
         <Visible when={showDeviceSection}>
           <CreateAppDeviceSection
+            images={images}
             values={formValues}
             onChange={updateFormValues}
             canChangeBaseImage={canChangeBaseImage}

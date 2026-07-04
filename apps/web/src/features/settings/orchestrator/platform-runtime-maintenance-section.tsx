@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
 import { toast } from '@/hooks/use-toast'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import {
   pruneAllDockerResourcesAction,
   pruneContainersAction,
@@ -20,6 +21,7 @@ import {
   pruneVolumesAction
 } from '@/server/orchestrator/docker-maintenance/actions'
 import { cleanupUploadedApksAction } from '@/server/orchestrator/settings/actions'
+import { isActionResult, unwrapActionResult } from '@/shared/actions/action-result'
 import type { DockerPruneResponse } from '@/server/orchestrator/docker-maintenance/types'
 import type { CleanupUploadedApksResponse } from '@/server/orchestrator/settings/types'
 
@@ -83,7 +85,11 @@ const MaintenanceActionCard = ({
   )
 }
 
-export const PlatformRuntimeMaintenanceSection = ({ onMaintenanceComplete }: { onMaintenanceComplete?: () => void }) => {
+export const PlatformRuntimeMaintenanceSection = ({
+  onMaintenanceComplete
+}: {
+  onMaintenanceComplete?: () => void
+}) => {
   const [activeAction, setActiveAction] = useState<string | null>(null)
 
   const runMaintenanceAction = async ({
@@ -101,12 +107,13 @@ export const PlatformRuntimeMaintenanceSection = ({ onMaintenanceComplete }: { o
 
     try {
       const result = await action()
-      toast({ title: successTitle, description: successDescription(result) })
+      const data = isActionResult(result) ? unwrapActionResult(result) : result
+      toast({ title: successTitle, description: successDescription(data) })
       onMaintenanceComplete?.()
     } catch (error) {
       toast({
         title: `Could not ${successTitle.toLowerCase()}`,
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'destructive'
       })
     } finally {

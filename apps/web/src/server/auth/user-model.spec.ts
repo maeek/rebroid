@@ -16,6 +16,7 @@ const storedUser = (overrides: Partial<StoredUser> = {}): StoredUser => ({
   role: 'user',
   groupIds: ['users'],
   disabled: false,
+  passwordChangeRequired: false,
   sessionVersion: 1,
   avatarDataUrl: null,
   accentColor: 'blue',
@@ -57,6 +58,7 @@ describe('user model', () => {
       name: 'name',
       role: 'user',
       groupIds: ['users'],
+      passwordChangeRequired: false,
       sessionVersion: 1,
       accentColor: 'blue'
     })

@@ -8,6 +8,7 @@ import type {
   ApplicationProfileMode,
   ScrcpyTransport
 } from '@/server/orchestrator/applications/types'
+import type { RuntimeImageKind } from '@rebroid/application-core/redroid-runtime'
 
 export interface AppDefinition {
   id: string
@@ -21,6 +22,7 @@ export interface AppDefinition {
   ownerUserId: string | null
   ownerDisplayName?: string | null
   containerImage: string
+  runtimeKind?: RuntimeImageKind
   containerName: string
   containerId: string | null
   networkName: string

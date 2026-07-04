@@ -14,6 +14,7 @@ type AppContainerRuntimeSectionProps = {
   contentClassName?: string
   containerImage: string
   onContainerImageChange?: (value: string) => void
+  containerImageSlot?: ReactNode
   showContainerImage?: boolean
   containerImageMode?: FieldMode
   containerImageLabel?: string
@@ -34,6 +35,7 @@ export const AppContainerRuntimeSection = ({
   contentClassName,
   containerImage,
   onContainerImageChange,
+  containerImageSlot,
   showContainerImage = true,
   containerImageMode = 'editable',
   containerImageLabel = 'Image',
@@ -63,11 +65,13 @@ export const AppContainerRuntimeSection = ({
           variant='vertical'
           className={verticalSettingClassName}
         >
-          <Input
-            value={containerImage}
-            readOnly={!isContainerImageEditable}
-            onChange={event => (isContainerImageEditable ? onContainerImageChange?.(event.target.value) : undefined)}
-          />
+          {containerImageSlot ?? (
+            <Input
+              value={containerImage}
+              readOnly={!isContainerImageEditable}
+              onChange={event => (isContainerImageEditable ? onContainerImageChange?.(event.target.value) : undefined)}
+            />
+          )}
         </Setting>
       </Visible>
 

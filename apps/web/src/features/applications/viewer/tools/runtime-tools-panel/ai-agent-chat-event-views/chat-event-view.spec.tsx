@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals'
 import { render, screen } from '@testing-library/react'
-import type { AutomationRunEvent } from '@/server/orchestrator/automations/types'
 import { ChatEventView } from './chat-event-view'
+import type { AutomationRunEvent } from '@/server/orchestrator/automations/types'
 
 const event = (
   type: AutomationRunEvent['type'],
@@ -35,7 +35,7 @@ describe('ChatEventView', () => {
   })
 
   it('collapses perception details by default', () => {
-    const { container } = render(
+    render(
       <ChatEventView
         event={event('ai.perception.observed', 'Screen captured: UI hierarchy failed. OCR failed, 0 text box(es).', {
           uiStatus: 'failed',
@@ -52,9 +52,7 @@ describe('ChatEventView', () => {
       />
     )
 
-    const details = container.querySelector('details')
-    expect(details).not.toBeNull()
-    expect(details?.open).toBe(false)
+    expect(screen.getByTestId('perception-disclosure').hasAttribute('open')).toBe(false)
     expect(screen.getByText('Inspected screen')).not.toBeNull()
     expect(screen.getByText(/UI failed .* OCR failed .* vision: home/)).not.toBeNull()
   })

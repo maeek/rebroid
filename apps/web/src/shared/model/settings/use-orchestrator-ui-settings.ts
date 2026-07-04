@@ -9,6 +9,7 @@ import {
 import { getWebSettingsAction } from '@/server/web-settings/actions/get-web-settings-action'
 import { resetWebSettingsAction } from '@/server/web-settings/actions/reset-web-settings-action'
 import { saveWebSettingsAction } from '@/server/web-settings/actions/save-web-settings-action'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import {
   defaultOrchestratorUiSettings,
   defaultRuntimeSettingsResponse,
@@ -60,9 +61,9 @@ const loadWebSettings = async (): Promise<WebSettingsResponse> => {
 }
 
 const saveGeneralWebSettings = async (settings: GeneralUiSettings): Promise<WebSettingsResponse> =>
-  await saveWebSettings(settings)
+  unwrapActionResult(await saveWebSettings(settings))
 
-const resetGeneralWebSettings = async (): Promise<WebSettingsResponse> => await resetWebSettings()
+const resetGeneralWebSettings = async (): Promise<WebSettingsResponse> => unwrapActionResult(await resetWebSettings())
 
 const loadRuntimeSettings = async (): Promise<OrchestratorSettingsResponse> => {
   try {
@@ -106,9 +107,11 @@ export const resetGeneralUiSettings = async (): Promise<OrchestratorUiSettings> 
 }
 
 export const saveAiUiSettings = async (settings: AiUiSettings): Promise<OrchestratorUiSettings> => {
-  const web = await saveWebSettings({
-    aiContextualSuggestionsEnabled: settings.aiContextualSuggestionsEnabled
-  })
+  const web = unwrapActionResult(
+    await saveWebSettings({
+      aiContextualSuggestionsEnabled: settings.aiContextualSuggestionsEnabled
+    })
+  )
   const orchestrator = await loadRuntimeSettings()
   const saved = mergeSettings(web, orchestrator)
   dispatchSettingsUpdated(saved)
@@ -120,7 +123,7 @@ export const saveOrchestratorUiSettings = async (
 ): Promise<OrchestratorUiSettings> => {
   const web =
     'removeDataOnDelete' in settings
-      ? await saveWebSettings({ removeDataOnDelete: settings.removeDataOnDelete })
+      ? unwrapActionResult(await saveWebSettings({ removeDataOnDelete: settings.removeDataOnDelete }))
       : await loadWebSettings()
   const orchestrator = await saveRuntimeSettings({
     defaultContainerImage: settings.defaultContainerImage,

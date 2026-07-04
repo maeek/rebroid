@@ -17,8 +17,10 @@ import {
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { toast } from '@/hooks/use-toast'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { createUserGroupAction } from '@/server/users/actions/create-user-group-action'
 import { deleteUserGroupAction } from '@/server/users/actions/delete-user-group-action'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import { DataGrid } from '@/shared/ui/data-grid'
 import type { UserGroup } from '@/server/auth/user'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
@@ -80,14 +82,14 @@ export const GroupsSection = ({
   const createGroup = async () => {
     setIsSaving(true)
     try {
-      const group = await createUserGroupAction({ name: newGroupName })
+      const group = unwrapActionResult(await createUserGroupAction({ name: newGroupName }))
       onGroupUpdated(group)
       setNewGroupName('')
       toast({ title: 'Group created' })
     } catch (error) {
       toast({
         title: 'Could not create group',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'destructive'
       })
     } finally {
@@ -99,21 +101,22 @@ export const GroupsSection = ({
     if (targets.length === 0) return
     setIsSaving(true)
     try {
-      const results = await Promise.allSettled(targets.map(group => deleteUserGroupAction(group.id)))
+      const results = await Promise.all(targets.map(group => deleteUserGroupAction(group.id)))
       const deletedIds = new Set(
         results
-          .map((result, index) => (result.status === 'fulfilled' ? targets[index]?.id : null))
+          .map((result, index) => (result.ok ? targets[index]?.id : null))
           .filter((id): id is string => Boolean(id))
       )
       onGroupsDeleted(deletedIds)
       setSelectedIds(current => new Set(Array.from(current).filter(id => !deletedIds.has(id))))
       setPendingDeleteGroups([])
       const failedCount = results.length - deletedIds.size
+      const firstError = results.find(result => !result.ok)?.error.message
       toast(
         failedCount > 0
           ? {
               title: 'Some groups could not be deleted',
-              description: `${failedCount} delete request${failedCount === 1 ? '' : 's'} failed.`,
+              description: firstError ?? `${failedCount} delete request${failedCount === 1 ? '' : 's'} failed.`,
               variant: 'destructive'
             }
           : { title: 'Selected groups deleted' }

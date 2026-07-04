@@ -39,9 +39,10 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
   const allowedTools = stringArrayValue(input, 'allowedTools')
   const selectableCommands = useMemo(() => selectableAiRunCommands(commands), [commands])
   const loadCatalog = useCallback(
-    () => import('@/server/orchestrator/settings/actions').then(({ listAutomationAiModelCatalogAction }) =>
-      listAutomationAiModelCatalogAction()
-    ),
+    () =>
+      import('@/server/orchestrator/settings/actions').then(({ listAutomationAiModelCatalogAction }) =>
+        listAutomationAiModelCatalogAction()
+      ),
     []
   )
   const checkPlannerHealth = useCallback(
@@ -90,7 +91,7 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
         health={modelSelection.health}
         isCheckingHealth={modelSelection.isCheckingHealth}
         selectedModel={modelSelection.selectedModel}
-        onRecheckHealth={modelSelection.recheckHealth}
+        onRecheckHealth={() => void modelSelection.recheckHealth()}
       />
       <div className='grid gap-2'>
         <Label>Allowed tools</Label>

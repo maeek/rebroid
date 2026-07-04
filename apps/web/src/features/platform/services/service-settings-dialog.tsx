@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { IconShield, IconSparkles } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -17,7 +18,6 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import type { OptionalServicesUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
-import type { ReactNode } from 'react'
 
 export type ServiceId = keyof OptionalServicesUiSettings
 type DialogTab = 'connection' | 'settings'
@@ -181,7 +181,9 @@ const TabButton = ({ active, children, onClick }: { active: boolean; children: R
     aria-selected={active}
     className={cn(
       'flex h-8 flex-1 items-center justify-center rounded-sm px-3 text-sm font-medium transition-colors',
-      active ? 'bg-control text-foreground shadow-sm' : 'text-muted-foreground hover:bg-control/50 hover:text-foreground'
+      active
+        ? 'bg-control text-foreground shadow-sm'
+        : 'text-muted-foreground hover:bg-control/50 hover:text-foreground'
     )}
     onClick={onClick}
   >

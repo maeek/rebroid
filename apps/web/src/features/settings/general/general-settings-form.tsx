@@ -9,7 +9,9 @@ import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { toast } from '@/hooks/use-toast'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { updateCurrentAccentColorAction } from '@/server/users/actions/update-current-accent-color-action'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import { resetGeneralUiSettings, saveGeneralUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { useAccentColorPreference } from '@/shared/model/theme/use-accent-color'
 import { PageHeader } from '@/shared/ui/page/page-header'
@@ -60,7 +62,7 @@ export const GeneralSettingsForm = ({
   const [settings, setSettings] = useState(initialSettings)
   const [isSaving, setIsSaving] = useState(false)
   const saveAccentColor = useCallback(async (nextAccentColor: AccentColor) => {
-    await updateCurrentAccentColorAction(nextAccentColor)
+    unwrapActionResult(await updateCurrentAccentColorAction(nextAccentColor))
   }, [])
   const { accentColor, setAccentColor } = useAccentColorPreference({
     initialAccentColor,
@@ -68,7 +70,7 @@ export const GeneralSettingsForm = ({
     onSaveError: error =>
       toast({
         title: 'Could not save accent color',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'destructive'
       })
   })
@@ -91,7 +93,7 @@ export const GeneralSettingsForm = ({
     } catch (error) {
       toast({
         title: 'Could not save settings',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'destructive'
       })
     } finally {
@@ -108,7 +110,7 @@ export const GeneralSettingsForm = ({
     } catch (error) {
       toast({
         title: 'Could not reset settings',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'destructive'
       })
     } finally {

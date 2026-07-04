@@ -151,39 +151,45 @@ const commands: AutomationCommand[] = [
 
 describe('automation YAML validation markers', () => {
   it('accepts nested android.swipeNormalized point fields', () => {
-    const messages = validate(workflowYaml('android.swipeNormalized', [
-      '        start:',
-      '          x: 0.5',
-      '          y: 0.8',
-      '        end:',
-      '          x: 0.5',
-      '          y: 0.2',
-      '        durationMs: 300'
-    ])).map(marker => marker.message)
+    const messages = validate(
+      workflowYaml('android.swipeNormalized', [
+        '        start:',
+        '          x: 0.5',
+        '          y: 0.8',
+        '        end:',
+        '          x: 0.5',
+        '          y: 0.2',
+        '        durationMs: 300'
+      ])
+    ).map(marker => marker.message)
 
     expect(messages).not.toContain('Unknown property: x')
     expect(messages).not.toContain('Unknown property: y')
   })
 
   it('reports real unknown nested command input fields', () => {
-    const messages = validate(workflowYaml('vision.locate', [
-      '        query: Login',
-      '        region:',
-      '          left: 0',
-      '          top: 0',
-      '          bottom: 1'
-    ])).map(marker => marker.message)
+    const messages = validate(
+      workflowYaml('vision.locate', [
+        '        query: Login',
+        '        region:',
+        '          left: 0',
+        '          top: 0',
+        '          bottom: 1'
+      ])
+    ).map(marker => marker.message)
 
     expect(messages).toContain('Unknown property: bottom')
   })
 
   it('validates enum values inside array item objects', () => {
-    const messages = validate(workflowYaml('ai.run', [
-      '        prompt: Inspect',
-      '        conversation:',
-      '          - role: system',
-      '            content: Hello'
-    ])).map(marker => marker.message)
+    const messages = validate(
+      workflowYaml('ai.run', [
+        '        prompt: Inspect',
+        '        conversation:',
+        '          - role: system',
+        '            content: Hello'
+      ])
+    ).map(marker => marker.message)
 
     expect(messages).toContain('Expected one of: user, assistant')
   })

@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { IconLoader2 } from '@tabler/icons-react'
-import { PlatformRuntimeMaintenanceSection } from '@/features/settings/orchestrator/platform-runtime-maintenance-section'
 import { PlatformRuntimeFieldsSection } from '@/features/settings/orchestrator/platform-runtime-fields-section'
 import { PlatformRuntimeHeader } from '@/features/settings/orchestrator/platform-runtime-header'
+import { PlatformRuntimeMaintenanceSection } from '@/features/settings/orchestrator/platform-runtime-maintenance-section'
 import { toast } from '@/hooks/use-toast'
 import { getOrchestratorHealthAction } from '@/server/orchestrator/diagnostics/actions'
 import {
@@ -13,6 +13,7 @@ import {
 } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { StatusSplash } from '@/shared/ui/status-splash'
+import type { PlatformImage } from '@/server/orchestrator/platform/types'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 type SaveOrchestratorUiSettingsInput = Pick<
@@ -39,7 +40,13 @@ const toRuntimeUiSettings = (settings: OrchestratorUiSettings): SaveOrchestrator
   services: settings.services
 })
 
-export const PlatformRuntimeForm = ({ initialSettings }: { initialSettings: OrchestratorUiSettings }) => {
+export const PlatformRuntimeForm = ({
+  images,
+  initialSettings
+}: {
+  images: PlatformImage[]
+  initialSettings: OrchestratorUiSettings
+}) => {
   const [settings, setSettings] = useState(initialSettings)
   const [isSaving, setIsSaving] = useState(false)
   const [healthState, setHealthState] = useState<HealthState>('checking')
@@ -154,6 +161,7 @@ export const PlatformRuntimeForm = ({ initialSettings }: { initialSettings: Orch
       <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
         <div className='grid w-full gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)]'>
           <PlatformRuntimeFieldsSection
+            images={images}
             settings={settings}
             onSettingsChange={updateSettings}
           />

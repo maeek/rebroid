@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { IconTrash } from '@tabler/icons-react'
+import { IconDeviceFloppy, IconTrash } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { NumberSliderField } from '@/components/ui/number-slider-field'
 import {
   Dialog,
   DialogClose,
@@ -14,22 +15,30 @@ import {
 } from '@/components/ui/dialog'
 import { Section } from '@/components/ui/section'
 import { toast } from '@/hooks/use-toast'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { deleteUserAction } from '@/server/users/actions/delete-user-action'
 import { setUserDisabledAction } from '@/server/users/actions/set-user-disabled-action'
+import { saveWebSettingsAction } from '@/server/web-settings/actions/save-web-settings-action'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { Setting } from '@/shared/ui/settings/setting'
 import { CreateUserDialog } from './components/create-user-dialog'
 import { UsersGrid } from './components/users-grid'
 import type { PublicUser, UserGroup } from '@/server/auth/user'
 
 export const UsersSettings = ({
   initialUsers,
-  initialGroups
+  initialGroups,
+  initialPasswordMinimumLength
 }: {
   initialUsers: PublicUser[]
   initialGroups: UserGroup[]
+  initialPasswordMinimumLength: number
 }) => {
   const [users, setUsers] = useState(initialUsers)
+  const [passwordMinimumLength, setPasswordMinimumLength] = useState(initialPasswordMinimumLength)
+  const [isSavingPasswordPolicy, setIsSavingPasswordPolicy] = useState(false)
   const groups = initialGroups
   const [busyUserId, setBusyUserId] = useState<string | null>(null)
   const [pendingDeleteUser, setPendingDeleteUser] = useState<PublicUser | null>(null)
@@ -48,13 +57,13 @@ export const UsersSettings = ({
   const toggleDisabled = async (user: PublicUser) => {
     setBusyUserId(user.id)
     try {
-      const updated = await setUserDisabledAction(user.id, !user.disabled)
+      const updated = unwrapActionResult(await setUserDisabledAction(user.id, !user.disabled))
       upsertUser(updated)
       toast({ title: updated.disabled ? 'User disabled' : 'User enabled' })
     } catch (error) {
       toast({
         title: 'Could not update user',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'destructive'
       })
     } finally {
@@ -65,14 +74,14 @@ export const UsersSettings = ({
   const deleteUser = async (id: string) => {
     setBusyUserId(id)
     try {
-      await deleteUserAction(id)
+      unwrapActionResult(await deleteUserAction(id))
       setUsers(current => current.filter(user => user.id !== id))
       setPendingDeleteUser(null)
       toast({ title: 'User deleted' })
     } catch (error) {
       toast({
         title: 'Could not delete user',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'destructive'
       })
     } finally {
@@ -84,17 +93,18 @@ export const UsersSettings = ({
     if (targets.length === 0) return
     setBusyUserId('bulk')
     try {
-      const results = await Promise.allSettled(targets.map(user => setUserDisabledAction(user.id, disabled)))
+      const results = await Promise.all(targets.map(user => setUserDisabledAction(user.id, disabled)))
       const updatedUsers = results
-        .map(result => (result.status === 'fulfilled' ? result.value : null))
+        .map(result => (result.ok ? result.data : null))
         .filter((user): user is PublicUser => Boolean(user))
       setUsers(current => current.map(user => updatedUsers.find(updated => updated.id === user.id) ?? user))
       const failedCount = results.length - updatedUsers.length
+      const firstError = results.find(result => !result.ok)?.error.message
       toast(
         failedCount > 0
           ? {
               title: 'Some users could not be updated',
-              description: `${failedCount} update request${failedCount === 1 ? '' : 's'} failed.`,
+              description: firstError ?? `${failedCount} update request${failedCount === 1 ? '' : 's'} failed.`,
               variant: 'destructive'
             }
           : { title: disabled ? 'Selected users disabled' : 'Selected users enabled' }
@@ -108,26 +118,44 @@ export const UsersSettings = ({
     if (targets.length === 0) return
     setBusyUserId('bulk')
     try {
-      const results = await Promise.allSettled(targets.map(user => deleteUserAction(user.id)))
+      const results = await Promise.all(targets.map(user => deleteUserAction(user.id)))
       const deletedIds = new Set(
         results
-          .map((result, index) => (result.status === 'fulfilled' ? targets[index]?.id : null))
+          .map((result, index) => (result.ok ? targets[index]?.id : null))
           .filter((id): id is string => Boolean(id))
       )
       setUsers(current => current.filter(user => !deletedIds.has(user.id)))
       setPendingDeleteUsers([])
       const failedCount = results.length - deletedIds.size
+      const firstError = results.find(result => !result.ok)?.error.message
       toast(
         failedCount > 0
           ? {
               title: 'Some users could not be deleted',
-              description: `${failedCount} delete request${failedCount === 1 ? '' : 's'} failed.`,
+              description: firstError ?? `${failedCount} delete request${failedCount === 1 ? '' : 's'} failed.`,
               variant: 'destructive'
             }
           : { title: 'Selected users deleted' }
       )
     } finally {
       setBusyUserId(null)
+    }
+  }
+
+  const savePasswordPolicy = async () => {
+    setIsSavingPasswordPolicy(true)
+    try {
+      const saved = unwrapActionResult(await saveWebSettingsAction({ passwordMinimumLength }))
+      setPasswordMinimumLength(saved.passwordMinimumLength)
+      toast({ title: 'Password policy saved' })
+    } catch (error) {
+      toast({
+        title: 'Could not save password policy',
+        description: getDisplayErrorMessage(error),
+        variant: 'destructive'
+      })
+    } finally {
+      setIsSavingPasswordPolicy(false)
     }
   }
 
@@ -144,6 +172,40 @@ export const UsersSettings = ({
         }
       />
       <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
+        <Section
+          title='Password policy'
+          titleClassName='pb-2'
+          contentClassName='gap-3'
+        >
+          <Setting
+            label='Minimum password length'
+            description='Applies to new users, admin password resets, and profile password changes.'
+            variant='vertical'
+            className='flex-col items-start w-full'
+          >
+            <div className='flex w-full flex-wrap items-end gap-3'>
+              <div className='min-w-72 flex-1'>
+                <NumberSliderField
+                  value={String(passwordMinimumLength)}
+                  min={1}
+                  max={128}
+                  inputSuffix='characters'
+                  suffix='chars'
+                  rangeLabel='Minimum password length range'
+                  onValueChange={value => setPasswordMinimumLength(Number(value) || initialPasswordMinimumLength)}
+                />
+              </div>
+              <Button
+                type='button'
+                disabled={isSavingPasswordPolicy}
+                onClick={() => void savePasswordPolicy()}
+              >
+                <IconDeviceFloppy className='size-4' />
+                Save Policy
+              </Button>
+            </div>
+          </Setting>
+        </Section>
         <Section
           title='Existing Users'
           titleClassName='pb-2'

@@ -1,4 +1,8 @@
 import { ConflictException } from '@nestjs/common';
+import type {
+  RuntimeImageMetadata,
+  RuntimeImageMetadataSource,
+} from '@rebroid/application-core/redroid-runtime';
 import { ApplicationProfileMode } from '../android-apps/application-profile-mode';
 
 export interface ApplicationContainerSpec {
@@ -84,6 +88,8 @@ export interface PlatformImage {
   labels: Record<string, string>;
   managed: boolean;
   containers: number;
+  runtimeMetadata?: RuntimeImageMetadata | null;
+  runtimeMetadataSource?: RuntimeImageMetadataSource | null;
 }
 
 export interface PlatformImageDetails {

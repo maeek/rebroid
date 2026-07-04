@@ -1,6 +1,6 @@
 import { isMap, isScalar, parseDocument, type ParsedNode } from 'yaml'
-import { indentation } from './automation-yaml-language-utils'
 import { yamlNodeAtPath, yamlPathAt } from './automation-yaml-ast-utils'
+import { indentation } from './automation-yaml-language-utils'
 import type * as Monaco from 'monaco-editor'
 
 export type AutomationYamlCompletionContext =

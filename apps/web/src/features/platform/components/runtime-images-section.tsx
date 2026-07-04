@@ -19,9 +19,12 @@ import { Section } from '@/components/ui/section'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { imageDisplayName } from '@/features/platform/domain/image-display-name'
 import { toast } from '@/hooks/use-toast'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { formatUtcDate } from '@/lib/format'
 import { removePlatformImageAction } from '@/server/orchestrator/platform/image-actions'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import { DataGrid, DataGridPagination, DataGridToolbar } from '@/shared/ui/data-grid'
+import { PlatformResourceScopeFilter } from './platform-resource-scope-filter'
 import {
   platformSortFromSearchParam,
   platformSortToSearchParam,
@@ -29,6 +32,7 @@ import {
   selectedPlatformItemsFromIds,
   summarizePlatformBulkRemoveResults
 } from './runtime-grid-query-utils'
+import { RuntimeImageBadges } from './runtime-image-badges'
 import {
   buildImagesGridHref,
   canRemoveSelectedImages,
@@ -37,7 +41,6 @@ import {
   getImageRemoveDialogLabel,
   getImageSecondaryLabel
 } from './runtime-images-section-model'
-import { PlatformResourceScopeFilter } from './platform-resource-scope-filter'
 import type {
   PlatformImage,
   PlatformImagesGridPage,
@@ -63,6 +66,7 @@ const ImageNameCell = ({ image }: { image: PlatformImage }) => {
         <TooltipContent className='max-w-sm break-all'>{name}</TooltipContent>
       </Tooltip>
       <div className='truncate text-xs text-muted-foreground'>{secondary || image.shortId}</div>
+      <RuntimeImageBadges image={image} />
     </div>
   )
 }
@@ -113,14 +117,14 @@ export const RuntimeImagesSection = ({
     if (!pendingRemove) return
     setBusyId(pendingRemove.id)
     try {
-      await removePlatformImageAction(pendingRemove.id)
+      unwrapActionResult(await removePlatformImageAction(pendingRemove.id))
       toast({ title: 'Image removed' })
       setPendingRemove(null)
       router.refresh()
     } catch (caughtError) {
       toast({
         title: 'Could not remove image',
-        description: caughtError instanceof Error ? caughtError.message : 'Unknown error',
+        description: getDisplayErrorMessage(caughtError),
         variant: 'destructive'
       })
     } finally {
@@ -132,7 +136,7 @@ export const RuntimeImagesSection = ({
     if (selectedImages.length === 0) return
     setBusyId('bulk')
     try {
-      const results = await Promise.allSettled(selectedImages.map(image => removePlatformImageAction(image.id)))
+      const results = await Promise.all(selectedImages.map(image => removePlatformImageAction(image.id)))
       setSelectedIds(new Set())
       router.refresh()
       toast(summarizePlatformBulkRemoveResults(results, 'image'))

@@ -152,7 +152,10 @@ export const resolveDisplayViewerPageState = async ({
   }
 
   if (!(await checkDisplaySidecarTarget())) {
-    return viewerUnavailable('The app is running, but the live display cannot be reached.', 'Viewer transport unavailable')
+    return viewerUnavailable(
+      'The app is running, but the live display cannot be reached.',
+      'Viewer transport unavailable'
+    )
   }
 
   if (!session.displaySession?.viewerPath) {

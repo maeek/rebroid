@@ -1,5 +1,9 @@
-import { emptyRequest } from '../request'
+import { emptyRequest, jsonRequest, streamRequest } from '../request'
 import type {
+  ContainerImageBuildContextFile,
+  ContainerImageBuildJob,
+  ContainerImageBuildRecipe,
+  ContainerImageRecipeInput,
   PlatformContainer,
   PlatformContainerDetails,
   PlatformContainerLog,
@@ -7,7 +11,10 @@ import type {
   PlatformImage,
   PlatformImageDetails,
   PlatformNetwork,
-  PlatformNetworkDetails
+  PlatformNetworkDetails,
+  StartContainerImageBuildInput,
+  UpdateContainerImageRecipeInput,
+  UpdateRuntimeImageMetadataInput
 } from './types'
 
 export const orchestratorPlatformClient = {
@@ -42,6 +49,68 @@ export const orchestratorPlatformClient = {
       `/platform/docker/images/${encodeURIComponent(id)}?${query.toString()}`,
       { method: 'DELETE' }
     )
+  },
+
+  updatePlatformImageRuntimeMetadata(id: string, input: UpdateRuntimeImageMetadataInput) {
+    return jsonRequest<PlatformImageDetails>(
+      `/platform/docker/images/${encodeURIComponent(id)}/runtime-metadata`,
+      'PATCH',
+      input
+    )
+  },
+
+  listImageBuildContextFiles() {
+    return emptyRequest<ContainerImageBuildContextFile[]>('/platform/container-images/build-context')
+  },
+
+  uploadImageBuildContextFile(input: ReadableStream<Uint8Array>, contextPath: string, contentType: string) {
+    const query = new URLSearchParams({ contextPath })
+    return streamRequest<ContainerImageBuildContextFile>(
+      `/platform/container-images/build-context?${query.toString()}`,
+      'POST',
+      input,
+      contentType
+    )
+  },
+
+  removeImageBuildContextFile(id: string) {
+    return emptyRequest<{ id: string; removed: boolean }>(`/platform/container-images/build-context/${id}`, {
+      method: 'DELETE'
+    })
+  },
+
+  listImageBuildRecipes() {
+    return emptyRequest<ContainerImageBuildRecipe[]>('/platform/container-images/recipes')
+  },
+
+  createImageBuildRecipe(input: ContainerImageRecipeInput) {
+    return jsonRequest<ContainerImageBuildRecipe>('/platform/container-images/recipes', 'POST', input)
+  },
+
+  updateImageBuildRecipe(id: string, input: UpdateContainerImageRecipeInput) {
+    return jsonRequest<ContainerImageBuildRecipe>(`/platform/container-images/recipes/${id}`, 'PATCH', input)
+  },
+
+  removeImageBuildRecipe(id: string) {
+    return emptyRequest<{ id: string; removed: boolean }>(`/platform/container-images/recipes/${id}`, {
+      method: 'DELETE'
+    })
+  },
+
+  listImageBuildJobs() {
+    return emptyRequest<ContainerImageBuildJob[]>('/platform/container-images/builds')
+  },
+
+  startImageBuild(input: StartContainerImageBuildInput) {
+    return jsonRequest<ContainerImageBuildJob>('/platform/container-images/builds', 'POST', input)
+  },
+
+  getImageBuildJob(id: string) {
+    return emptyRequest<ContainerImageBuildJob>(`/platform/container-images/builds/${id}`)
+  },
+
+  cancelImageBuild(id: string) {
+    return emptyRequest<ContainerImageBuildJob>(`/platform/container-images/builds/${id}/cancel`, { method: 'POST' })
   },
 
   listPlatformNetworks() {

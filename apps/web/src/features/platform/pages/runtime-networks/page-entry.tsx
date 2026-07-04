@@ -20,14 +20,8 @@ const NetworksPageFallback = () => (
   />
 )
 
-const RuntimeNetworksPageContent = async ({
-  searchParams
-}: {
-  searchParams?: Promise<NetworksSearchParams>
-}) => {
-  const { gridQuery, networksPage, orchestratorError } = await loadRuntimeNetworksPageData(
-    (await searchParams) ?? {}
-  )
+const RuntimeNetworksPageContent = async ({ searchParams }: { searchParams?: Promise<NetworksSearchParams> }) => {
+  const { gridQuery, networksPage, orchestratorError } = await loadRuntimeNetworksPageData((await searchParams) ?? {})
 
   if (orchestratorError) {
     return (

@@ -1,7 +1,7 @@
-import type { AutomationCommand } from '@/server/orchestrator/automations/types'
-import type * as Monaco from 'monaco-editor'
 import { isMap, isScalar, parseDocument, type ParsedNode } from 'yaml'
 import { yamlNodeAtPath, yamlPathAt } from './automation-yaml-ast-utils'
+import type { AutomationCommand } from '@/server/orchestrator/automations/types'
+import type * as Monaco from 'monaco-editor'
 
 export type JsonSchema = Record<string, unknown>
 
@@ -66,7 +66,8 @@ export const schemaContextForCurrentProperty = (
   const withIndex = path.lastIndexOf('with')
   if (withIndex === -1) return null
 
-  const uses = nearestUsesFromPath(document.contents, path.slice(0, withIndex)) ?? workflowContext(model, position)?.uses
+  const uses =
+    nearestUsesFromPath(document.contents, path.slice(0, withIndex)) ?? workflowContext(model, position)?.uses
   const inputSchema = commands.find(command => command.uses === uses)?.inputSchema
   if (!inputSchema) return null
 

@@ -6,6 +6,7 @@ declare module 'next-auth' {
     role?: 'admin' | 'user'
     image?: string | null
     sessionVersion?: number
+    passwordChangeRequired?: boolean
     accentColor?: AccentColor
   }
 
@@ -14,6 +15,7 @@ declare module 'next-auth' {
       id: string
       role?: 'admin' | 'user'
       sessionVersion?: number
+      passwordChangeRequired?: boolean
       accentColor?: AccentColor
     } & DefaultSession['user']
   }
@@ -24,6 +26,7 @@ declare module 'next-auth/jwt' {
     userId: string
     role?: 'admin' | 'user'
     sessionVersion?: number
+    passwordChangeRequired?: boolean
     accentColor?: AccentColor
   }
 }

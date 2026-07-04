@@ -1,5 +1,5 @@
-import { listAutomationAiProvidersAction } from '@/server/orchestrator/settings/actions'
 import { getServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
+import { listAutomationAiProvidersAction } from '@/server/orchestrator/settings/actions'
 import type { AutomationAiProvider } from '@/server/orchestrator/settings/types'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
@@ -11,17 +11,19 @@ export const getAiProvidersListPageData = async (): Promise<{
   orchestratorError: string | null
   providers: AutomationAiProvider[]
 }> => {
-  const initialSettings = await getServerOrchestratorUiSettings()
+  const initialSettingsPromise = getServerOrchestratorUiSettings()
 
   try {
+    const [initialSettings, providers] = await Promise.all([initialSettingsPromise, listAutomationAiProvidersAction()])
+
     return {
       initialSettings,
       orchestratorError: null,
-      providers: await listAutomationAiProvidersAction()
+      providers
     }
   } catch (error) {
     return {
-      initialSettings,
+      initialSettings: await initialSettingsPromise,
       orchestratorError: errorMessage(error),
       providers: []
     }

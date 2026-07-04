@@ -20,7 +20,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Visible } from '@/components/ui/visible'
 import { ContainerStateBadge } from '@/features/platform/components/runtime-containers-table-parts'
 import { toast } from '@/hooks/use-toast'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { removePlatformImageAction } from '@/server/orchestrator/platform/image-actions'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import {
   PlatformDetailRow,
   PlatformJsonBlock,
@@ -38,13 +40,13 @@ export const RuntimeImageDetail = ({ details }: { details: PlatformImageDetails 
   const removeImage = async () => {
     setIsRemoving(true)
     try {
-      await removePlatformImageAction(image.id)
+      unwrapActionResult(await removePlatformImageAction(image.id))
       toast({ title: 'Image removed' })
       router.push('/runtime/images')
     } catch (error) {
       toast({
         title: 'Could not remove image',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'destructive'
       })
     } finally {

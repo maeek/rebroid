@@ -52,12 +52,12 @@ export const useAiAgentConversationExport = ({
         },
         sharedMultimodalMode: Boolean(
           selectedProvider &&
-            selectedModel &&
-            selectedVisionProvider &&
-            selectedVisionModel &&
-            selectedProvider.id === selectedVisionProvider.id &&
-            selectedModel.id === selectedVisionModel.id &&
-            selectedModel.roles.includes('vision')
+          selectedModel &&
+          selectedVisionProvider &&
+          selectedVisionModel &&
+          selectedProvider.id === selectedVisionProvider.id &&
+          selectedModel.id === selectedVisionModel.id &&
+          selectedModel.roles.includes('vision')
         ),
         timeoutMs: adHocTimeoutMs,
         turns

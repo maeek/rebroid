@@ -76,6 +76,29 @@ const GroupBadges = ({ user, groups }: { user: PublicUser; groups: UserGroup[] }
   </div>
 )
 
+const UserStatus = ({
+  user,
+  busy,
+  onToggleDisabled
+}: {
+  user: PublicUser
+  busy: boolean
+  onToggleDisabled: (user: PublicUser) => void
+}) => (
+  <div className='flex flex-wrap items-center gap-2'>
+    <Button
+      type='button'
+      variant='link'
+      disabled={busy}
+      className={user.disabled ? 'h-auto px-0 text-destructive' : 'h-auto px-0 text-primary'}
+      onClick={() => onToggleDisabled(user)}
+    >
+      {user.disabled ? 'Disabled' : 'Active'}
+    </Button>
+    {user.passwordChangeRequired ? <Badge variant='warning'>Password change</Badge> : null}
+  </div>
+)
+
 export const UsersGrid = ({
   users,
   groups,
@@ -140,18 +163,14 @@ export const UsersGrid = ({
         id: 'status',
         accessorFn: user => user.disabled,
         header: 'Status',
-        size: 128,
+        size: 220,
         meta: { label: 'Status' },
         cell: ({ row }) => (
-          <Button
-            type='button'
-            variant='link'
-            disabled={busyUserId === row.original.id}
-            className={row.original.disabled ? 'px-0 text-destructive' : 'px-0 text-primary'}
-            onClick={() => onToggleDisabled(row.original)}
-          >
-            {row.original.disabled ? 'Disabled' : 'Active'}
-          </Button>
+          <UserStatus
+            user={row.original}
+            busy={busyUserId === row.original.id}
+            onToggleDisabled={onToggleDisabled}
+          />
         )
       }
     ],

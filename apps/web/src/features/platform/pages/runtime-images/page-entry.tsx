@@ -20,9 +20,7 @@ const ImagesPageFallback = () => (
 )
 
 const RuntimeImagesPageContent = async ({ searchParams }: { searchParams?: Promise<ImagesSearchParams> }) => {
-  const { gridQuery, imagesPage, orchestratorError } = await loadRuntimeImagesPageData(
-    (await searchParams) ?? {}
-  )
+  const { gridQuery, imagesPage, orchestratorError } = await loadRuntimeImagesPageData((await searchParams) ?? {})
 
   if (orchestratorError) {
     return (

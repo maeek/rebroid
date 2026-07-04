@@ -1,4 +1,34 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import type {
+  RuntimeImageGmsMode,
+  RuntimeImageKind,
+  RuntimeImageMetadataSource,
+  RuntimeImageSignatureSpoofing,
+} from '@rebroid/application-core/redroid-runtime';
+
+export class RuntimeImageMetadataDto {
+  @ApiProperty({ enum: ['redroid', 'generic'] })
+  runtimeKind!: RuntimeImageKind;
+
+  @ApiProperty({ type: String, nullable: true })
+  androidVersion!: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  architecture!: string | null;
+
+  @ApiProperty({ enum: ['none', 'microg'] })
+  gmsMode!: RuntimeImageGmsMode;
+
+  @ApiProperty({
+    enum: [
+      'not_applicable',
+      'external_required',
+      'present_unverified',
+      'verified',
+    ],
+  })
+  signatureSpoofing!: RuntimeImageSignatureSpoofing;
+}
 
 export class DockerPlatformContainerPortDto {
   @ApiProperty()
@@ -128,6 +158,12 @@ export class DockerPlatformImageDto {
 
   @ApiProperty()
   containers!: number;
+
+  @ApiProperty({ type: () => RuntimeImageMetadataDto, nullable: true })
+  runtimeMetadata!: RuntimeImageMetadataDto | null;
+
+  @ApiProperty({ enum: ['stored', 'labels', 'name'], nullable: true })
+  runtimeMetadataSource!: RuntimeImageMetadataSource | null;
 }
 
 export class DockerPlatformNetworkDto {

@@ -74,6 +74,7 @@ export const DataGridSkeleton = ({
     >
       <div
         className='overflow-x-auto overflow-y-hidden rounded-xl border border-border/70 bg-surface-band/35'
+        data-testid='data-grid-skeleton-shell'
         style={{ minWidth: 0 }}
       >
         <div
@@ -112,6 +113,7 @@ export const DataGridSkeleton = ({
             <div
               key={rowIndex}
               className='grid min-h-16 items-center gap-3 border-t border-border/70 px-4 py-3'
+              data-testid='data-grid-skeleton-row'
               style={{ gridTemplateColumns: templateColumns }}
             >
               {selectable ? (

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { IconDeviceFloppy } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -11,7 +12,9 @@ import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { toast } from '@/hooks/use-toast'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { updateUserAction } from '@/server/users/actions/update-user-action'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
 import { PageBackdrop } from '@/shared/ui/page/page-backdrop'
 import { PageHeader } from '@/shared/ui/page/page-header'
@@ -43,13 +46,13 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
   const saveUser = async () => {
     setIsSaving(true)
     try {
-      await updateUserAction(user.id, buildUserUpdateInput(draft))
+      unwrapActionResult(await updateUserAction(user.id, buildUserUpdateInput(draft)))
       toast({ title: 'User saved' })
       router.refresh()
     } catch (error) {
       toast({
         title: 'Could not save user',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'destructive'
       })
     } finally {
@@ -86,6 +89,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
         description='Account settings, quotas, groups, and permissions.'
         actions={
           <>
+            {user.passwordChangeRequired ? <Badge variant='warning'>Password change required</Badge> : null}
             <Label className='flex items-center gap-2 cursor-pointer select-none font-normal'>
               Active Account
               <Switch
@@ -135,12 +139,15 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
                 />
               </LabeledField>
               <LabeledField label='New Password'>
-                <Input
-                  value={draft.password}
-                  type='password'
-                  placeholder='Leave empty to keep current password'
-                  onChange={event => updateDraft({ password: event.target.value })}
-                />
+                <div className='grid gap-2'>
+                  <Input
+                    value={draft.password}
+                    type='password'
+                    placeholder='Leave empty to keep current password'
+                    onChange={event => updateDraft({ password: event.target.value })}
+                  />
+                  <p className='text-xs text-foreground-muted'>Password resets require a change on next login.</p>
+                </div>
               </LabeledField>
               <LabeledField
                 label='Role'

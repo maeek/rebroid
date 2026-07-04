@@ -12,7 +12,7 @@ const openSelect = () => {
 }
 
 describe('ApplicationProfileSelect', () => {
-  it('selects a temporary profile', async () => {
+  it('selects a temporary profile', () => {
     const onModeChange = jest.fn()
     const onNameChange = jest.fn()
     render(
@@ -109,8 +109,9 @@ describe('ApplicationProfileSelect', () => {
   it('does not select a profile when the delete action is clicked', async () => {
     const onNameChange = jest.fn()
     const onDeleteProfile = jest.fn()
-    const deleteProfile = async (profileName: string) => {
+    const deleteProfile = (profileName: string) => {
       onDeleteProfile(profileName)
+      return Promise.resolve()
     }
     render(
       <ApplicationProfileSelect

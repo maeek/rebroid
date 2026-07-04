@@ -3,6 +3,7 @@
 import { createContext, useContext, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useApplicationViewerContext } from '@/features/applications/detail/application-viewer-context'
+import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import {
   getProfileDefaults,
   usePowerActionProfileState
@@ -12,7 +13,6 @@ import {
   getCanRestart,
   usePowerActionViewState
 } from '@/features/applications/viewer/actions/app-viewer-power-action/runtime/runtime-view-state'
-import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { useAppViewerActionRunner } from '@/features/applications/viewer/actions/use-app-viewer-action-runner'
 import { toast } from '@/hooks/use-toast'
 import { deleteApplicationProfileAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'

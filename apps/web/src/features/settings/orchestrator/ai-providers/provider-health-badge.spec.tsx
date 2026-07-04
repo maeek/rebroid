@@ -1,5 +1,5 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, jest } from '@jest/globals'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ProviderHealthBadge } from './provider-health-badge'
 import type { AutomationAiProvider, AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
 
@@ -46,6 +46,20 @@ describe('ProviderHealthBadge', () => {
     jest.mocked(actions.checkAutomationAiProviderHealthAction).mockReset()
   })
 
+  it('does not check provider health automatically by default', () => {
+    const providerId = `provider_${crypto.randomUUID()}`
+
+    render(
+      <ProviderHealthBadge
+        provider={provider(providerId)}
+        modelId='qwen'
+      />
+    )
+
+    expect(screen.getByText('Unknown')).toBeTruthy()
+    expect(actions.checkAutomationAiProviderHealthAction).not.toHaveBeenCalled()
+  })
+
   it('keeps the previous health label while refreshing a known provider/model', async () => {
     const providerId = `provider_${crypto.randomUUID()}`
     jest.mocked(actions.checkAutomationAiProviderHealthAction).mockResolvedValueOnce(okHealth(providerId))
@@ -54,10 +68,11 @@ describe('ProviderHealthBadge', () => {
       <ProviderHealthBadge
         provider={provider(providerId)}
         modelId='qwen'
+        autoCheck
       />
     )
 
-    await waitFor(() => expect(screen.getByText('Online')).toBeTruthy())
+    expect(await screen.findByText('Online')).toBeTruthy()
     unmount()
 
     let resolveRefresh: (health: AutomationAiProviderHealth) => void = () => undefined
@@ -71,17 +86,20 @@ describe('ProviderHealthBadge', () => {
       <ProviderHealthBadge
         provider={{ ...provider(providerId) }}
         modelId='qwen'
+        autoCheck
       />
     )
 
     expect(screen.getByText('Online')).toBeTruthy()
-    expect(screen.queryByText('Checking')).toBeNull()
     const refreshButton = screen.getByRole('button', { name: 'Check AI provider health' })
-    expect(refreshButton).not.toHaveProperty('disabled', true)
-    expect(refreshButton.querySelector('svg')?.getAttribute('class')).not.toContain('animate-spin')
+    fireEvent.click(refreshButton)
+
+    expect(screen.getByText('Online')).toBeTruthy()
+    expect(screen.queryByText('Checking')).toBeNull()
 
     await act(async () => {
       resolveRefresh(okHealth(providerId))
+      await Promise.resolve()
     })
   })
 
@@ -93,10 +111,11 @@ describe('ProviderHealthBadge', () => {
       <ProviderHealthBadge
         provider={provider(providerId)}
         modelId='qwen'
+        autoCheck
       />
     )
 
-    await waitFor(() => expect(screen.getByText('Online')).toBeTruthy())
+    expect(await screen.findByText('Online')).toBeTruthy()
 
     let resolveRefresh: (health: AutomationAiProviderHealth) => void = () => undefined
     jest.mocked(actions.checkAutomationAiProviderHealthAction).mockReturnValueOnce(
@@ -109,10 +128,11 @@ describe('ProviderHealthBadge', () => {
     fireEvent.click(refreshButton)
 
     await waitFor(() => expect(refreshButton).toHaveProperty('disabled', true))
-    expect(refreshButton.querySelector('svg')?.getAttribute('class')).toContain('animate-spin')
+    expect(screen.getByTestId('provider-health-refresh-icon').getAttribute('class')).toContain('animate-spin')
 
     await act(async () => {
       resolveRefresh(okHealth(providerId))
+      await Promise.resolve()
     })
   })
 })

@@ -4,12 +4,13 @@ import { UsersSettings } from '../../users-settings'
 import { getUsersListPageData } from './page-data.server'
 
 const UsersListContent = async () => {
-  const { users, groups } = await getUsersListPageData()
+  const { users, groups, passwordMinimumLength } = await getUsersListPageData()
 
   return (
     <UsersSettings
       initialUsers={users}
       initialGroups={groups}
+      initialPasswordMinimumLength={passwordMinimumLength}
     />
   )
 }

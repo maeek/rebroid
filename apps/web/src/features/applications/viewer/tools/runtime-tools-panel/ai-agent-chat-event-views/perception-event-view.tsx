@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { IconChevronDown } from '@tabler/icons-react'
 import { AiAssistantText, AiToolDetails } from '@/shared/ui/ai/ai-message'
 import { ObservationEventDetails } from './observation-event-details'
@@ -5,7 +6,6 @@ import { observationValues } from './observation-values'
 import { perceptionSummary } from './perception-event-summary'
 import { ToolEventRow } from './tool-event-view'
 import type { PerceptionTimelineItem } from '../ai-agent-chat-event-utils'
-import type { ReactNode } from 'react'
 
 const VisionConfidenceNote = ({ data }: { data: Record<string, unknown> }) => {
   const correction = typeof data.screenKindCorrectionReason === 'string' ? data.screenKindCorrectionReason : ''
@@ -82,7 +82,10 @@ export const PerceptionDisclosure = ({
 }) => {
   const summary = perceptionSummary(data)
   return (
-    <details className='group text-xs text-muted-foreground'>
+    <details
+      className='group text-xs text-muted-foreground'
+      data-testid='perception-disclosure'
+    >
       <summary className='flex cursor-pointer list-none items-center gap-1'>
         <span>Inspected screen</span>
         {summary ? <span>{summary}</span> : null}
@@ -168,7 +171,9 @@ const PerceptionRows = ({ data }: { data: Record<string, unknown> }) => {
     const count = typeof data.ocrTextCount === 'number' ? data.ocrTextCount : 0
     const mode = typeof data.ocrPreprocessingMode === 'string' ? `, mode ${data.ocrPreprocessingMode}` : ''
     const error = typeof data.ocrError === 'string' ? `: ${data.ocrError}` : ''
-    rows.push(textRow('OCR', `${ocrStatus}, ${count} text box(es)${mode}${error}`, error.length > 120 ? 'pre' : 'inline'))
+    rows.push(
+      textRow('OCR', `${ocrStatus}, ${count} text box(es)${mode}${error}`, error.length > 120 ? 'pre' : 'inline')
+    )
   }
 
   if (Array.isArray(data.ocrPreprocessingAttempts) && data.ocrPreprocessingAttempts.length > 0) {

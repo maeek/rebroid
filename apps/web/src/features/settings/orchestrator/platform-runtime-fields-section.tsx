@@ -1,16 +1,20 @@
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Switch } from '@/components/ui/switch'
+import { RuntimeImagePicker } from '@/features/platform/components/runtime-image-picker'
 import { Setting } from '@/shared/ui/settings/setting'
+import type { PlatformImage } from '@/server/orchestrator/platform/types'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 const verticalSettingClassName = 'flex-col items-start w-full'
 const numberValue = (value: number, fallback: number) => (Number.isFinite(value) ? value : fallback)
 
 export const PlatformRuntimeFieldsSection = ({
+  images,
   settings,
   onSettingsChange
 }: {
+  images: PlatformImage[]
   settings: OrchestratorUiSettings
   onSettingsChange: (patch: Partial<OrchestratorUiSettings>) => void
 }) => {
@@ -38,9 +42,10 @@ export const PlatformRuntimeFieldsSection = ({
           className={verticalSettingClassName}
           variant='vertical'
         >
-          <Input
+          <RuntimeImagePicker
+            images={images}
             value={settings.defaultContainerImage}
-            onChange={event => onSettingsChange({ defaultContainerImage: event.target.value })}
+            onChange={defaultContainerImage => onSettingsChange({ defaultContainerImage })}
           />
         </Setting>
         <Setting

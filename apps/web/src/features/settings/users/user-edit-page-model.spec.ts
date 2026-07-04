@@ -15,6 +15,7 @@ const baseUser: PublicUser = {
   role: 'user',
   groupIds: ['operators'],
   disabled: false,
+  passwordChangeRequired: false,
   sessionVersion: 1,
   avatarDataUrl: 'data:image/png;base64,avatar',
   accentColor: 'blue',

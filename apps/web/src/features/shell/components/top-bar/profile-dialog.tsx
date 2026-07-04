@@ -7,9 +7,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/hooks/use-toast'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { changeCurrentPasswordAction } from '@/server/users/actions/change-current-password-action'
 import { updateCurrentAccentColorAction } from '@/server/users/actions/update-current-accent-color-action'
 import { updateCurrentProfileAction } from '@/server/users/actions/update-current-profile-action'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import { useAccentColorPreference } from '@/shared/model/theme/use-accent-color'
 import { AccentColorPicker } from '@/shared/ui/settings/accent-color-picker'
 import { UserAvatarInput } from '@/shared/ui/user-avatar/user-avatar-input'
@@ -37,7 +39,7 @@ export const ProfileDialog = ({
   const [confirmNewPassword, setConfirmNewPassword] = useState('')
   const [isChangingPassword, setIsChangingPassword] = useState(false)
   const saveAccentColor = useCallback(async (nextAccentColor: AccentColor) => {
-    await updateCurrentAccentColorAction(nextAccentColor)
+    unwrapActionResult(await updateCurrentAccentColorAction(nextAccentColor))
   }, [])
   const { accentColor, setAccentColor } = useAccentColorPreference({
     initialAccentColor,
@@ -45,7 +47,7 @@ export const ProfileDialog = ({
     onSaveError: error =>
       toast({
         title: 'Could not save accent color',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'destructive'
       })
   })
@@ -69,14 +71,14 @@ export const ProfileDialog = ({
     setIsSavingAvatar(true)
 
     try {
-      const user = await updateCurrentProfileAction({ avatarDataUrl: nextAvatar })
+      const user = unwrapActionResult(await updateCurrentProfileAction({ avatarDataUrl: nextAvatar }))
       onAvatarSaved(user.avatarDataUrl)
       toast({ title: nextAvatar ? 'Avatar uploaded' : 'Avatar cleared' })
     } catch (error) {
       setDraftAvatar(previousAvatar)
       toast({
         title: 'Could not update avatar',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'destructive'
       })
     } finally {
@@ -92,13 +94,13 @@ export const ProfileDialog = ({
 
     setIsChangingPassword(true)
     try {
-      await changeCurrentPasswordAction({ currentPassword, newPassword })
+      unwrapActionResult(await changeCurrentPasswordAction({ currentPassword, newPassword }))
       toast({ title: 'Password changed', description: 'Log in again with your new password.' })
       await signOut({ callbackUrl: '/login', redirect: true })
     } catch (error) {
       toast({
         title: 'Could not change password',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'destructive'
       })
     } finally {

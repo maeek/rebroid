@@ -6,6 +6,8 @@ import {
   getRedroidDisplayDimensionsFromArgs,
   isRedroidImageName,
   redroidDefaultContainerArgs,
+  resolveRuntimeImageMetadata,
+  runtimeImageLabelKeys,
 } from "./redroid-runtime";
 
 describe("redroid runtime", () => {
@@ -19,6 +21,13 @@ describe("redroid runtime", () => {
   it("applies only redroid defaults for redroid images", () => {
     assert.equal(
       applyRedroidDefaultContainerArgs("redroid/redroid:14.0.0-latest"),
+      redroidDefaultContainerArgs.join(" "),
+    );
+  });
+
+  it("applies redroid defaults for custom images with explicit runtime kind", () => {
+    assert.equal(
+      applyRedroidDefaultContainerArgs("local/microg:14", "", "redroid"),
       redroidDefaultContainerArgs.join(" "),
     );
   });
@@ -52,6 +61,48 @@ describe("redroid runtime", () => {
     );
     assert.ok(value?.includes("androidboot.redroid_width=1080"));
     assert.ok(value?.includes("androidboot.redroid_height=2520"));
+  });
+
+  it("resolves runtime metadata from stored data before labels and names", () => {
+    const resolved = resolveRuntimeImageMetadata({
+      image: "redroid/redroid:14",
+      labels: {
+        [runtimeImageLabelKeys.runtimeKind]: "redroid",
+        [runtimeImageLabelKeys.androidVersion]: "14",
+      },
+      metadata: {
+        runtimeKind: "generic",
+        androidVersion: null,
+        architecture: null,
+        gmsMode: "none",
+        signatureSpoofing: "not_applicable",
+      },
+    });
+
+    assert.equal(resolved.source, "stored");
+    assert.equal(resolved.metadata.runtimeKind, "generic");
+  });
+
+  it("resolves custom redroid metadata from labels", () => {
+    const resolved = resolveRuntimeImageMetadata({
+      image: "local/microg:14",
+      labels: {
+        [runtimeImageLabelKeys.runtimeKind]: "redroid",
+        [runtimeImageLabelKeys.androidVersion]: "14",
+        [runtimeImageLabelKeys.architecture]: "amd64",
+        [runtimeImageLabelKeys.gmsMode]: "microg",
+        [runtimeImageLabelKeys.signatureSpoofing]: "present_unverified",
+      },
+    });
+
+    assert.equal(resolved.source, "labels");
+    assert.deepEqual(resolved.metadata, {
+      runtimeKind: "redroid",
+      androidVersion: "14",
+      architecture: "amd64",
+      gmsMode: "microg",
+      signatureSpoofing: "present_unverified",
+    });
   });
 
   it("parses redroid display dimensions", () => {

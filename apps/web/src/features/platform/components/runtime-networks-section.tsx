@@ -19,8 +19,11 @@ import { Section } from '@/components/ui/section'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Visible } from '@/components/ui/visible'
 import { toast } from '@/hooks/use-toast'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { removePlatformNetworkAction } from '@/server/orchestrator/platform/network-actions'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import { DataGrid, DataGridPagination, DataGridToolbar } from '@/shared/ui/data-grid'
+import { PlatformResourceScopeFilter } from './platform-resource-scope-filter'
 import {
   platformSortFromSearchParam,
   platformSortToSearchParam,
@@ -33,7 +36,6 @@ import {
   networkHasAttachedContainers,
   summarizeNetworkRemoveResults
 } from './runtime-networks-section-model'
-import { PlatformResourceScopeFilter } from './platform-resource-scope-filter'
 import type {
   PlatformNetwork,
   PlatformNetworksGridPage,
@@ -112,14 +114,14 @@ export const RuntimeNetworksSection = ({
 
     setBusyId(pendingRemove.id)
     try {
-      await removePlatformNetworkAction(pendingRemove.id)
+      unwrapActionResult(await removePlatformNetworkAction(pendingRemove.id))
       toast({ title: 'Network removed' })
       setPendingRemove(null)
       router.refresh()
     } catch (caughtError) {
       toast({
         title: 'Could not remove network',
-        description: caughtError instanceof Error ? caughtError.message : 'Unknown error',
+        description: getDisplayErrorMessage(caughtError),
         variant: 'destructive'
       })
     } finally {
@@ -132,7 +134,7 @@ export const RuntimeNetworksSection = ({
 
     setBusyId('bulk')
     try {
-      const results = await Promise.allSettled(selectedNetworks.map(network => removePlatformNetworkAction(network.id)))
+      const results = await Promise.all(selectedNetworks.map(network => removePlatformNetworkAction(network.id)))
       setSelectedIds(new Set())
       router.refresh()
       toast(summarizeNetworkRemoveResults(results))

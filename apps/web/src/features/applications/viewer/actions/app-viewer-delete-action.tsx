@@ -20,6 +20,7 @@ import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { removeAppIconAction } from '@/server/app-icons/actions/remove-app-icon-action'
 import { deleteApplicationAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { forgetRecentAppAction } from '@/server/recent-apps/actions'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
 import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
@@ -46,7 +47,7 @@ export const AppViewerDeleteAction = ({
     setIsDeleting(true)
     try {
       await deleteApplicationAction(app.id, settings.removeDataOnDelete)
-      await removeAppIconAction(app.id)
+      unwrapActionResult(await removeAppIconAction(app.id))
       await forgetRecentAppAction(app.id).then(notifyRecentAppsUpdated)
       setOpen(false)
       router.push('/apps')

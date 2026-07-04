@@ -1,5 +1,5 @@
-import { IconCast, IconClipboard, IconFolder, IconLogs, IconRobot, IconWorld } from '@tabler/icons-react'
 import type { ComponentType } from 'react'
+import { IconCast, IconClipboard, IconFolder, IconLogs, IconRobot, IconWorld } from '@tabler/icons-react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'

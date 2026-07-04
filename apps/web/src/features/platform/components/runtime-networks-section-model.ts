@@ -1,4 +1,5 @@
 import { buildPlatformGridHref, summarizePlatformBulkRemoveResults } from './runtime-grid-query-utils'
+import type { ActionResult } from '@/shared/actions/action-result'
 import type { PlatformNetwork, PlatformNetworksGridQuery } from '@/server/orchestrator/platform/types'
 
 type NetworksGridHrefInput = {
@@ -20,5 +21,5 @@ export const networkHasAttachedContainers = (network: PlatformNetwork) => networ
 export const canRemoveSelectedNetworks = (networks: PlatformNetwork[]) =>
   networks.length > 0 && networks.every(network => !networkHasAttachedContainers(network))
 
-export const summarizeNetworkRemoveResults = (results: PromiseSettledResult<unknown>[]) =>
+export const summarizeNetworkRemoveResults = (results: Array<PromiseSettledResult<unknown> | ActionResult<unknown>>) =>
   summarizePlatformBulkRemoveResults(results, 'network')

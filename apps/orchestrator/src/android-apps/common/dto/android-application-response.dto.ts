@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import type { RuntimeImageKind } from '@rebroid/application-core/redroid-runtime';
 import { parseJsonStringArray } from '../../../common/json-array';
 import { AndroidApplication } from '../../android-application.entity';
 import { ApplicationProfileMode } from '../../application-profile-mode';
@@ -75,6 +76,9 @@ export class AndroidApplicationRuntimeResourcesDto {
 export class AndroidApplicationRuntimeDto {
   @ApiProperty()
   image!: string;
+
+  @ApiProperty({ enum: ['redroid', 'generic'] })
+  kind!: RuntimeImageKind;
 
   @ApiProperty()
   containerName!: string;
@@ -223,6 +227,7 @@ export class AndroidApplicationResponseDto {
       },
       runtime: {
         image: app.containerImage,
+        kind: app.runtimeKind,
         containerName: app.containerName,
         containerId: app.containerId,
         containerArgs: app.containerArgs,

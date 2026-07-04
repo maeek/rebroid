@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import bcrypt from 'bcrypt'
 import { readWebState, writeWebState } from '@/server/storage/database'
+import { getWebSettings } from '@/server/web-settings/store'
 import { defaultAccentColor, isAccentColor } from '@/shared/model/theme/accent-color'
 import {
   defaultUserPermissions,
@@ -12,7 +13,7 @@ import {
 } from '@/shared/permissions/permissions'
 import {
   findGroups,
-  minimumPasswordLength,
+  defaultPasswordMinimumLength,
   normalizeGroups,
   normalizeUser,
   nowIso,
@@ -37,6 +38,14 @@ const verifyPassword = async (password: string, passwordHash: string) => {
   return bcrypt.compare(password, passwordHash)
 }
 
+const getPasswordMinimumLength = async () => {
+  try {
+    return (await getWebSettings()).passwordMinimumLength
+  } catch {
+    return defaultPasswordMinimumLength
+  }
+}
+
 const defaultAdminUser = async (): Promise<StoredUser> => {
   const initialPassword = process.env.INITIAL_ADMIN_PASSWORD
   if (!initialPassword) {
@@ -51,6 +60,7 @@ const defaultAdminUser = async (): Promise<StoredUser> => {
     role: 'admin',
     groupIds: ['admins'],
     disabled: false,
+    passwordChangeRequired: false,
     sessionVersion: 1,
     avatarDataUrl: null,
     accentColor: 'blue',
@@ -140,6 +150,7 @@ const authenticate = async (username: string, password: string) => {
     image: user.avatarDataUrl,
     accentColor: user.accentColor,
     role: user.role,
+    passwordChangeRequired: user.passwordChangeRequired,
     sessionVersion: user.sessionVersion
   }
 }
@@ -163,9 +174,10 @@ const createUser = async ({
   ...input
 }: UserEditorInput & { username: string; password: string }) =>
   mutateUsersFile(async file => {
+    const passwordMinimumLength = await getPasswordMinimumLength()
     const normalizedUsername = username.trim()
-    if (!normalizedUsername || password.length < minimumPasswordLength) {
-      throw new Error(`Username is required and password must be at least ${minimumPasswordLength} characters.`)
+    if (!normalizedUsername || password.length < passwordMinimumLength) {
+      throw new Error(`Username is required and password must be at least ${passwordMinimumLength} characters.`)
     }
     validateAvatarDataUrl(input.avatarDataUrl)
     if (input.accentColor !== undefined && !isAccentColor(input.accentColor)) {
@@ -184,6 +196,7 @@ const createUser = async ({
       role,
       groupIds: groups.map(group => group.id),
       disabled: input.disabled ?? false,
+      passwordChangeRequired: true,
       sessionVersion: 1,
       avatarDataUrl: input.avatarDataUrl ?? null,
       accentColor: input.accentColor ?? defaultAccentColor,
@@ -219,10 +232,12 @@ const updateUser = async (id: string, input: UserEditorInput) =>
       user.username = username
     }
     if (input.password !== undefined && input.password.trim()) {
-      if (input.password.length < minimumPasswordLength) {
-        throw new Error(`Password must be at least ${minimumPasswordLength} characters.`)
+      const passwordMinimumLength = await getPasswordMinimumLength()
+      if (input.password.length < passwordMinimumLength) {
+        throw new Error(`Password must be at least ${passwordMinimumLength} characters.`)
       }
       user.passwordHash = await hashPassword(input.password)
+      user.passwordChangeRequired = true
       user.sessionVersion += 1
     }
     if (input.name !== undefined) user.name = input.name.trim() || user.username
@@ -252,6 +267,7 @@ const resetPassword = async (id: string, password: string) => updateUser(id, { p
 
 const changeOwnPassword = async (id: string, currentPassword: string, newPassword: string) =>
   mutateUsersFile(async file => {
+    const passwordMinimumLength = await getPasswordMinimumLength()
     const user = file.users.find(item => item.id === id)
     if (!user) {
       throw new Error('User not found.')
@@ -259,13 +275,40 @@ const changeOwnPassword = async (id: string, currentPassword: string, newPasswor
     if (!(await verifyPassword(currentPassword, user.passwordHash))) {
       throw new Error('Current password is incorrect.')
     }
-    if (newPassword.length < minimumPasswordLength) {
-      throw new Error(`Password must be at least ${minimumPasswordLength} characters.`)
+    if (newPassword.length < passwordMinimumLength) {
+      throw new Error(`Password must be at least ${passwordMinimumLength} characters.`)
     }
 
     user.passwordHash = await hashPassword(newPassword)
+    user.passwordChangeRequired = false
     user.sessionVersion += 1
     user.updatedAt = nowIso()
+  })
+
+const completeRequiredPasswordChange = async (id: string, currentPassword: string, newPassword: string) =>
+  mutateUsersFile(async file => {
+    const passwordMinimumLength = await getPasswordMinimumLength()
+    const user = file.users.find(item => item.id === id)
+    if (!user) {
+      throw new Error('User not found.')
+    }
+    if (!user.passwordChangeRequired) {
+      throw new Error('Password change is not required for this account.')
+    }
+    if (!(await verifyPassword(currentPassword, user.passwordHash))) {
+      throw new Error('Current password is incorrect.')
+    }
+    if (newPassword.length < passwordMinimumLength) {
+      throw new Error(`Password must be at least ${passwordMinimumLength} characters.`)
+    }
+    if (newPassword === currentPassword) {
+      throw new Error('New password must be different from the current password.')
+    }
+
+    user.passwordHash = await hashPassword(newPassword)
+    user.passwordChangeRequired = false
+    user.updatedAt = nowIso()
+    return toPublicUser(file, user)
   })
 
 const deleteUser = async (id: string) =>
@@ -352,6 +395,7 @@ const createGroup = async (input: {
 export const userService = {
   authenticate,
   changeOwnPassword,
+  completeRequiredPasswordChange,
   createUser,
   createGroup,
   deleteGroup,

@@ -1,8 +1,12 @@
 import { getRedroidDisplayDimensionsFromArgs } from '@rebroid/application-core/redroid-runtime'
 import { IconLoader2 } from '@tabler/icons-react'
 import { Visible } from '@/components/ui/visible'
-import { getBaseUrl, redroidViewerRefreshIntervalMs, type ViewerSearchParams } from '@/features/applications/viewer/display/display-viewer-page-utils'
 import { resolveDisplayViewerPageState } from '@/features/applications/viewer/display/display-viewer-page-state'
+import {
+  getBaseUrl,
+  redroidViewerRefreshIntervalMs,
+  type ViewerSearchParams
+} from '@/features/applications/viewer/display/display-viewer-page-utils'
 import { DisplayViewerProvider } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-context'
 import { DisplayViewerShell } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-shell'
 import { ViewerSplash } from '@/features/applications/viewer/display/display-viewer-splash'

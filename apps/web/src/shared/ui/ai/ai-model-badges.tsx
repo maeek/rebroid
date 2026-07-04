@@ -1,6 +1,6 @@
+import { aiModelRoleLabel, aiProviderKindLabel } from '@rebroid/ai-core/provider'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { aiModelRoleLabel, aiProviderKindLabel } from '@rebroid/ai-core/provider'
 import type { AutomationAiProvider, AutomationAiProviderModel } from '@/server/orchestrator/settings/types'
 
 export const AiProviderKindBadge = ({

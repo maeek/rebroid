@@ -1,3 +1,5 @@
+import { isRedroidImageName } from '@rebroid/application-core/redroid-runtime'
+
 export const permissionCategories = [
   {
     id: 'application-lifecycle',
@@ -265,6 +267,5 @@ export const mergeQuotas = (...quotas: Array<Partial<ResourceQuota> | null | und
 export const hasPermission = (permissions: PermissionMap, permission: PermissionId) => permissions[permission] === true
 
 export const isRedroidImage = (image: string) => {
-  const normalized = image.trim().toLowerCase()
-  return normalized === 'redroid' || normalized.startsWith('redroid/') || normalized.includes('/redroid/')
+  return isRedroidImageName(image)
 }

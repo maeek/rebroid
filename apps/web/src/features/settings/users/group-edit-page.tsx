@@ -9,7 +9,9 @@ import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/hooks/use-toast'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { updateUserGroupAction } from '@/server/users/actions/update-user-group-action'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
@@ -33,13 +35,13 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
   const saveGroup = async () => {
     setIsSaving(true)
     try {
-      await updateUserGroupAction(group.id, buildGroupUpdateInput(draft))
+      unwrapActionResult(await updateUserGroupAction(group.id, buildGroupUpdateInput(draft)))
       toast({ title: 'Group saved' })
       router.refresh()
     } catch (error) {
       toast({
         title: 'Could not save group',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'destructive'
       })
     } finally {

@@ -1,6 +1,6 @@
 import { Skeleton } from '@/components/ui/skeleton'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { DataGridSkeleton } from '@/shared/ui/data-grid'
+import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
 
 export const ScheduledTasksPageSkeleton = () => (

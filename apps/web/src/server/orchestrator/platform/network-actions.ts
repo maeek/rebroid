@@ -1,6 +1,7 @@
 'use server'
 
 import { requireAdminUser } from '../shared'
+import { runSafeAction } from '@/server/actions/safe-action'
 import { orchestratorPlatformClient } from './client'
 import { runAuditedPlatformAction } from './platform-audit'
 import { platformNetworksGridPage } from './platform-grid-utils'
@@ -24,9 +25,13 @@ export const getPlatformNetworkAction = async (id: string) => {
 }
 
 export const removePlatformNetworkAction = async (id: string) =>
-  runAuditedPlatformAction({
-    action: 'docker.network.remove',
-    operation: () => orchestratorPlatformClient.removePlatformNetwork(id),
-    resourceType: 'docker_network',
-    resourceId: id
-  })
+  runSafeAction(
+    () =>
+      runAuditedPlatformAction({
+        action: 'docker.network.remove',
+        operation: () => orchestratorPlatformClient.removePlatformNetwork(id),
+        resourceType: 'docker_network',
+        resourceId: id
+      }),
+    { fallbackMessage: 'Could not remove network.', logLabel: 'removePlatformNetworkAction failed' }
+  )

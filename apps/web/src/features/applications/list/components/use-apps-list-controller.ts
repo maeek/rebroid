@@ -28,6 +28,7 @@ import {
   stopApplicationAction
 } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { forgetRecentAppAction } from '@/server/recent-apps/actions'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
 import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import type { AppsListContextValue, BulkAction, PendingAppAction } from './apps-list-context'
@@ -157,7 +158,7 @@ export const useAppsListController = ({
     try {
       updateApp(optimisticRemovingApp(app), true)
       await deleteApplicationAction(app.id, settings.removeDataOnDelete)
-      await removeAppIconAction(app.id)
+      unwrapActionResult(await removeAppIconAction(app.id))
       await forgetRecentAppAction(app.id).then(notifyRecentAppsUpdated)
       removeApp(app.id)
     } catch (error) {
@@ -250,7 +251,7 @@ export const useAppsListController = ({
     const results = await Promise.allSettled(
       appsToDelete.map(async app => {
         await deleteApplicationAction(app.id, settings.removeDataOnDelete)
-        await removeAppIconAction(app.id)
+        unwrapActionResult(await removeAppIconAction(app.id))
         await forgetRecentAppAction(app.id).then(notifyRecentAppsUpdated)
         return app.id
       })

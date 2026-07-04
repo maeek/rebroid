@@ -1,4 +1,5 @@
 import type { SortingState } from '@tanstack/react-table'
+import { isActionFailure, isActionResult, type ActionResult } from '@/shared/actions/action-result'
 
 type PlatformGridQuery = {
   page?: number
@@ -50,26 +51,39 @@ export const buildPlatformGridHref = <TQuery extends PlatformGridQuery>({
 }
 
 export const summarizePlatformBulkActionResults = (
-  results: PromiseSettledResult<unknown>[],
+  results: Array<PromiseSettledResult<unknown> | ActionResult<unknown>>,
   successTitle: string,
   failureTitle: string,
   requestLabel = 'request'
 ): PlatformBulkRemoveToast => {
-  const failedCount = results.filter(result => result.status === 'rejected').length
+  const failures = results.filter(result => {
+    if (isActionResult(result)) return isActionFailure(result)
+    if (result.status === 'rejected') return true
+    return isActionFailure(result.value)
+  })
+  const failedCount = failures.length
 
   if (failedCount === 0) {
     return { title: successTitle }
   }
 
+  const firstFailure = failures[0]
+  let firstMessage: string | null = null
+  if (isActionFailure(firstFailure)) {
+    firstMessage = firstFailure.error.message
+  } else if (firstFailure && !isActionResult(firstFailure) && firstFailure.status === 'fulfilled') {
+    firstMessage = isActionFailure(firstFailure.value) ? firstFailure.value.error.message : null
+  }
+
   return {
     title: failureTitle,
-    description: `${failedCount} ${requestLabel}${failedCount === 1 ? '' : 's'} failed.`,
+    description: firstMessage ?? `${failedCount} ${requestLabel}${failedCount === 1 ? '' : 's'} failed.`,
     variant: 'destructive'
   }
 }
 
 export const summarizePlatformBulkRemoveResults = (
-  results: PromiseSettledResult<unknown>[],
+  results: Array<PromiseSettledResult<unknown> | ActionResult<unknown>>,
   resourceLabel: string
 ): PlatformBulkRemoveToast =>
   summarizePlatformBulkActionResults(

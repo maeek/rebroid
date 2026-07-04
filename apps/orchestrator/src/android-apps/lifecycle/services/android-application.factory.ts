@@ -13,6 +13,7 @@ import { CreateAndroidApplicationDto } from '../../common/dto/create-android-app
 import { resolveContainerImage } from '@rebroid/application-core/container-image';
 import { rememberSavedProfile } from '../../common/utils/android-apps-profile-history.utils';
 import { applyRedroidDefaultContainerArgs } from '@rebroid/application-core/redroid-runtime';
+import type { RuntimeImageKind } from '@rebroid/application-core/redroid-runtime';
 
 type ApplicationSettings = Awaited<ReturnType<SettingsService['getSettings']>>;
 
@@ -26,6 +27,7 @@ export class AndroidApplicationFactory {
   initialFields(
     dto: CreateAndroidApplicationDto,
     settings: ApplicationSettings,
+    runtimeKind: RuntimeImageKind,
   ): Partial<AndroidApplication> {
     const containerImage = resolveContainerImage(
       dto.containerImage ?? settings.defaultContainerImage,
@@ -39,6 +41,7 @@ export class AndroidApplicationFactory {
       lifecycleStage: AndroidApplicationLifecycleStage.Queued,
       statusMessage: 'Provisioning has been queued.',
       containerImage,
+      runtimeKind,
       containerName: 'pending',
       networkName: 'pending',
       volumeName: 'pending',
@@ -63,6 +66,7 @@ export class AndroidApplicationFactory {
       containerArgs: applyRedroidDefaultContainerArgs(
         containerImage,
         dto.containerArgs,
+        runtimeKind,
       ),
       recreateContainerOnNextStart: false,
       removeDataOnRemoval: false,

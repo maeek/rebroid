@@ -1,4 +1,10 @@
 import type { ReactNode } from 'react'
+import {
+  aiModelDisplayName,
+  aiModelRoleLabel,
+  aiProviderKindLabel,
+  nextCatalogProviderAndModel
+} from '@rebroid/ai-core/provider'
 import { IconChevronDown, IconRefresh } from '@tabler/icons-react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
@@ -6,12 +12,6 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { controlHoverClassName, controlSurfaceClassName, focusRingClassName } from '@/components/ui/surface-classes'
 import { cn } from '@/lib/utils'
-import {
-  aiModelDisplayName,
-  aiModelRoleLabel,
-  aiProviderKindLabel,
-  nextCatalogProviderAndModel
-} from '@rebroid/ai-core/provider'
 import { AiHealthIcon, AiHealthIndicator } from './ai-health-indicator'
 import { AiProviderKindBadge } from './ai-model-badges'
 import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
@@ -253,11 +253,7 @@ export const AiModelPickerTrigger = ({
   </button>
 )
 
-export const AiModelPickerHeader = ({
-  selectedProvider
-}: {
-  selectedProvider?: AutomationAiModelCatalogProvider
-}) => (
+export const AiModelPickerHeader = ({ selectedProvider }: { selectedProvider?: AutomationAiModelCatalogProvider }) => (
   <div className='flex items-start justify-between gap-3'>
     <div className='grid min-w-0 gap-1'>
       <div className='text-sm font-medium'>AI model</div>

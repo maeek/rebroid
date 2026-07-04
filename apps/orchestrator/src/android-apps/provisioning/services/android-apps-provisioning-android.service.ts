@@ -14,7 +14,7 @@ import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
 import { AndroidAppsViewerNetworkService } from '../../viewer/services/android-apps-viewer-network.service';
-import { isRedroidImageName } from '@rebroid/application-core/redroid-runtime';
+import { isRedroidRuntime } from '@rebroid/application-core/redroid-runtime';
 import {
   androidBootDiagnosticSummary,
   androidBootProbeProperties,
@@ -114,7 +114,7 @@ export class AndroidAppsProvisioningAndroidService {
 
   /** Checks if this image needs ADB port setup. */
   shouldPrepareRemoteAccess(app: AndroidApplication) {
-    return isRedroidImageName(app.containerImage);
+    return isRedroidRuntime(app.containerImage, app.runtimeKind);
   }
 
   /** Turns on remote ADB access for redroid. */

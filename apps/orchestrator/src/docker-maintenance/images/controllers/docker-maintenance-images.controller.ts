@@ -1,4 +1,12 @@
-import { Controller, Delete, Get, Param, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Query,
+} from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { DockerPlatformImagesService } from '../../../docker/images/services/docker-platform-images.service';
 import {
@@ -6,6 +14,7 @@ import {
   DockerPlatformImageDto,
   DockerPlatformRemovalResponseDto,
 } from '../../dto/docker-maintenance-response.dto';
+import { UpdateRuntimeImageMetadataDto } from '../../dto/update-runtime-image-metadata.dto';
 
 @ApiTags('platform-docker')
 @Controller('platform/docker/images')
@@ -34,5 +43,15 @@ export class DockerMaintenanceImagesController {
       decodeURIComponent(id),
       force === 'true',
     );
+  }
+
+  @Patch(':id/runtime-metadata')
+  @ApiOperation({ summary: 'Update Rebroid runtime metadata for an image.' })
+  @ApiOkResponse({ type: DockerPlatformImageDetailsDto })
+  updateRuntimeMetadata(
+    @Param('id') id: string,
+    @Body() dto: UpdateRuntimeImageMetadataDto,
+  ) {
+    return this.images.updateRuntimeMetadata(decodeURIComponent(id), dto);
   }
 }

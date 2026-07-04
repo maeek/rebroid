@@ -179,7 +179,7 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
     } finally {
       setIsLoadingRemoteModels(false)
     }
-  }, [initialProvider.id, initialProvider.kind])
+  }, [initialProvider.id])
 
   const downloadModel = async (modelId: string, label?: string) => {
     const normalizedModelId = modelId.trim()

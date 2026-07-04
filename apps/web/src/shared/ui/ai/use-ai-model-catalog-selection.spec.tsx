@@ -1,5 +1,5 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it, jest } from '@jest/globals'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { useAiModelCatalogSelection } from './use-ai-model-catalog-selection'
 import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
 

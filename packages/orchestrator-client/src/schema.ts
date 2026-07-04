@@ -1341,7 +1341,8 @@ export interface paths {
         delete: operations["DockerMaintenanceImagesController_removeImage"];
         options?: never;
         head?: never;
-        patch?: never;
+        /** Update Rebroid runtime metadata for an image. */
+        patch: operations["DockerMaintenanceImagesController_updateRuntimeMetadata"];
         trace?: never;
     };
     "/api/v1/platform/docker/networks": {
@@ -1618,6 +1619,130 @@ export interface paths {
         get: operations["HealthController_diagnosticsSummary"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/container-images/build-context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List uploaded image build context files. */
+        get: operations["ContainerImagesController_listBuildContextFiles"];
+        put?: never;
+        /** Upload one image build context file. */
+        post: operations["ContainerImagesController_uploadBuildContextFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/container-images/build-context/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove one uploaded image build context file. */
+        delete: operations["ContainerImagesController_removeBuildContextFile"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/container-images/recipes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List saved image build recipes. */
+        get: operations["ContainerImagesController_listRecipes"];
+        put?: never;
+        /** Create an image build recipe. */
+        post: operations["ContainerImagesController_createRecipe"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/container-images/recipes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read an image build recipe. */
+        get: operations["ContainerImagesController_getRecipe"];
+        put?: never;
+        post?: never;
+        /** Remove an image build recipe. */
+        delete: operations["ContainerImagesController_removeRecipe"];
+        options?: never;
+        head?: never;
+        /** Update an image build recipe. */
+        patch: operations["ContainerImagesController_updateRecipe"];
+        trace?: never;
+    };
+    "/api/v1/platform/container-images/builds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List recent image build jobs. */
+        get: operations["ContainerImagesController_listBuilds"];
+        put?: never;
+        /** Start an image build job. */
+        post: operations["ContainerImagesController_startBuild"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/container-images/builds/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read an image build job. */
+        get: operations["ContainerImagesController_getBuild"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/container-images/builds/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel an image build job. */
+        post: operations["ContainerImagesController_cancelBuild"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2789,6 +2914,9 @@ export interface components {
             };
             managed: boolean;
             containers: number;
+            runtimeMetadata: components["schemas"]["RuntimeImageMetadataDto"] | null;
+            /** @enum {string|null} */
+            runtimeMetadataSource: "stored" | "labels" | "name" | null;
         };
         DockerPlatformNetworkDto: {
             id: string;
@@ -2972,6 +3100,125 @@ export interface components {
             firewall: boolean;
             ocr: boolean;
             services: components["schemas"]["OrchestratorDiagnosticsServicesDto"];
+        };
+        RuntimeImageMetadataDto: {
+            /** @enum {string} */
+            runtimeKind: "redroid" | "generic";
+            androidVersion: string | null;
+            architecture: string | null;
+            /** @enum {string} */
+            gmsMode: "none" | "microg";
+            /** @enum {string} */
+            signatureSpoofing: "not_applicable" | "external_required" | "present_unverified" | "verified";
+        };
+        UpdateRuntimeImageMetadataDto: {
+            /** @enum {string} */
+            runtimeKind?: "redroid" | "generic";
+            androidVersion?: string | null;
+            architecture?: string | null;
+            /** @enum {string} */
+            gmsMode?: "none" | "microg";
+            /** @enum {string} */
+            signatureSpoofing?: "not_applicable" | "external_required" | "present_unverified" | "verified";
+        };
+        CreateContainerImageRecipeDto: {
+            /** @example Redroid 14 microG overlay */
+            name: string;
+            /** @example local/redroid-microg:14 */
+            targetImage: string;
+            /** @example redroid/redroid:14.0.0-latest */
+            baseImage: string;
+            /** @enum {string} */
+            runtimeKind?: "redroid" | "generic";
+            androidVersion?: string | null;
+            architecture?: string | null;
+            /** @enum {string} */
+            gmsMode?: "none" | "microg";
+            /** @enum {string} */
+            signatureSpoofing?: "not_applicable" | "external_required" | "present_unverified" | "verified";
+            dockerfile: string;
+            contextFileIds?: string[];
+        };
+        UpdateContainerImageRecipeDto: {
+            /** @example Redroid 14 microG overlay */
+            name?: string;
+            /** @example local/redroid-microg:14 */
+            targetImage?: string;
+            /** @example redroid/redroid:14.0.0-latest */
+            baseImage?: string;
+            /** @enum {string} */
+            runtimeKind?: "redroid" | "generic";
+            androidVersion?: string | null;
+            architecture?: string | null;
+            /** @enum {string} */
+            gmsMode?: "none" | "microg";
+            /** @enum {string} */
+            signatureSpoofing?: "not_applicable" | "external_required" | "present_unverified" | "verified";
+            dockerfile?: string;
+            contextFileIds?: string[];
+        };
+        StartContainerImageBuildDto: components["schemas"]["CreateContainerImageRecipeDto"] & {
+            recipeId?: string;
+        };
+        ContainerImageBuildContextFile: {
+            id: string;
+            /** @example microg.apk */
+            originalName: string;
+            /** @example apks/microg.apk */
+            contextPath: string;
+            storedPath: string;
+            sizeBytes: number;
+            sha256: string;
+            createdAt: string;
+        };
+        ContainerImageBuildRecipe: {
+            id: string;
+            /** @example Redroid 14 microG overlay */
+            name: string;
+            /** @example local/redroid-microg:14 */
+            targetImage: string;
+            /** @example redroid/redroid:14.0.0-latest */
+            baseImage: string;
+            /** @enum {string} */
+            runtimeKind: "redroid" | "generic";
+            androidVersion: string | null;
+            architecture: string | null;
+            /** @enum {string} */
+            gmsMode: "none" | "microg";
+            /** @enum {string} */
+            signatureSpoofing: "not_applicable" | "external_required" | "present_unverified" | "verified";
+            dockerfile: string;
+            contextFileIdsJson: string;
+            createdAt: string;
+            updatedAt: string;
+        };
+        ContainerImageBuildJob: {
+            id: string;
+            recipeId: string | null;
+            /** @example local/redroid-microg:14 */
+            targetImage: string;
+            /** @example redroid/redroid:14.0.0-latest */
+            baseImage: string;
+            /** @enum {string} */
+            status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+            /** @enum {string} */
+            runtimeKind: "redroid" | "generic";
+            androidVersion: string | null;
+            architecture: string | null;
+            /** @enum {string} */
+            gmsMode: "none" | "microg";
+            /** @enum {string} */
+            signatureSpoofing: "not_applicable" | "external_required" | "present_unverified" | "verified";
+            dockerfile: string;
+            contextFileIdsJson: string;
+            /** @example Step 1/4 : FROM redroid/redroid:14.0.0-latest */
+            logTail: string;
+            imageId: string | null;
+            error: string | null;
+            startedAt: string | null;
+            finishedAt: string | null;
+            createdAt: string;
+            updatedAt: string;
         };
     };
     responses: never;
@@ -5362,6 +5609,31 @@ export interface operations {
             };
         };
     };
+    DockerMaintenanceImagesController_updateRuntimeMetadata: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRuntimeImageMetadataDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DockerPlatformImageDetailsDto"];
+                };
+            };
+        };
+    };
     DockerMaintenanceNetworksController_listNetworks: {
         parameters: {
             query?: never;
@@ -5776,6 +6048,273 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrchestratorDiagnosticsDto"];
+                };
+            };
+        };
+    };
+    ContainerImagesController_listBuildContextFiles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContainerImageBuildContextFile"][];
+                };
+            };
+        };
+    };
+    ContainerImagesController_uploadBuildContextFile: {
+        parameters: {
+            query: {
+                contextPath: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContainerImageBuildContextFile"];
+                };
+            };
+        };
+    };
+    ContainerImagesController_removeBuildContextFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id: string;
+                        removed: boolean;
+                    };
+                };
+            };
+        };
+    };
+    ContainerImagesController_listRecipes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContainerImageBuildRecipe"][];
+                };
+            };
+        };
+    };
+    ContainerImagesController_createRecipe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateContainerImageRecipeDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContainerImageBuildRecipe"];
+                };
+            };
+        };
+    };
+    ContainerImagesController_getRecipe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContainerImageBuildRecipe"];
+                };
+            };
+        };
+    };
+    ContainerImagesController_removeRecipe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id: string;
+                        removed: boolean;
+                    };
+                };
+            };
+        };
+    };
+    ContainerImagesController_updateRecipe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateContainerImageRecipeDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContainerImageBuildRecipe"];
+                };
+            };
+        };
+    };
+    ContainerImagesController_listBuilds: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContainerImageBuildJob"][];
+                };
+            };
+        };
+    };
+    ContainerImagesController_startBuild: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartContainerImageBuildDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContainerImageBuildJob"];
+                };
+            };
+        };
+    };
+    ContainerImagesController_getBuild: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContainerImageBuildJob"];
+                };
+            };
+        };
+    };
+    ContainerImagesController_cancelBuild: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContainerImageBuildJob"];
                 };
             };
         };

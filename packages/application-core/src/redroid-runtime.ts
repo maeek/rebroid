@@ -118,6 +118,82 @@ export const defaultRedroidDisplayProfileId: RedroidDisplayProfileId =
 
 export const redroidDefaultsLabel = redroidDefaultContainerArgs.join(" ");
 
+export type RuntimeImageKind = "redroid" | "generic";
+
+export type RuntimeImageGmsMode = "none" | "microg";
+
+export type RuntimeImageSignatureSpoofing =
+  | "not_applicable"
+  | "external_required"
+  | "present_unverified"
+  | "verified";
+
+export type RuntimeImageMetadataSource = "stored" | "labels" | "name";
+
+export interface RuntimeImageMetadata {
+  runtimeKind: RuntimeImageKind;
+  androidVersion?: string | null;
+  architecture?: string | null;
+  gmsMode: RuntimeImageGmsMode;
+  signatureSpoofing: RuntimeImageSignatureSpoofing;
+}
+
+export interface RuntimeImageResolution {
+  metadata: RuntimeImageMetadata;
+  source: RuntimeImageMetadataSource;
+}
+
+export const runtimeImageLabelKeys = {
+  managed: "com.rebroid.managed",
+  runtimeKind: "com.rebroid.runtime.kind",
+  androidVersion: "com.rebroid.redroid.android_version",
+  architecture: "com.rebroid.redroid.arch",
+  gmsMode: "com.rebroid.gms.mode",
+  signatureSpoofing: "com.rebroid.signature_spoofing",
+} as const;
+
+export const defaultGenericRuntimeImageMetadata: RuntimeImageMetadata = {
+  runtimeKind: "generic",
+  androidVersion: null,
+  architecture: null,
+  gmsMode: "none",
+  signatureSpoofing: "not_applicable",
+};
+
+export const defaultRedroidRuntimeImageMetadata: RuntimeImageMetadata = {
+  runtimeKind: "redroid",
+  androidVersion: null,
+  architecture: null,
+  gmsMode: "none",
+  signatureSpoofing: "external_required",
+};
+
+const runtimeImageKinds = ["redroid", "generic"] as const;
+const runtimeImageGmsModes = ["none", "microg"] as const;
+const runtimeImageSignatureSpoofingStates = [
+  "not_applicable",
+  "external_required",
+  "present_unverified",
+  "verified",
+] as const;
+
+const enumValue = <Value extends string>(
+  value: string | null | undefined,
+  allowed: readonly Value[],
+) => {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  return allowed.find((item) => item === normalized) ?? null;
+};
+
+const nullableLabelValue = (value: string | null | undefined) => {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+};
+
 export const isRedroidImageName = (image: string) => {
   const normalized = image.trim().toLowerCase();
   return (
@@ -126,6 +202,103 @@ export const isRedroidImageName = (image: string) => {
     normalized.includes("/redroid")
   );
 };
+
+export const runtimeImageMetadataFromLabels = (
+  labels: Record<string, string | undefined> | null | undefined,
+): RuntimeImageMetadata | null => {
+  if (!labels) {
+    return null;
+  }
+
+  const runtimeKind = enumValue(
+    labels[runtimeImageLabelKeys.runtimeKind],
+    runtimeImageKinds,
+  );
+  if (!runtimeKind) {
+    return null;
+  }
+
+  const gmsMode =
+    enumValue(labels[runtimeImageLabelKeys.gmsMode], runtimeImageGmsModes) ??
+    "none";
+  const signatureSpoofing =
+    enumValue(
+      labels[runtimeImageLabelKeys.signatureSpoofing],
+      runtimeImageSignatureSpoofingStates,
+    ) ?? (runtimeKind === "redroid" ? "external_required" : "not_applicable");
+
+  return {
+    runtimeKind,
+    androidVersion: nullableLabelValue(
+      labels[runtimeImageLabelKeys.androidVersion],
+    ),
+    architecture: nullableLabelValue(
+      labels[runtimeImageLabelKeys.architecture],
+    ),
+    gmsMode,
+    signatureSpoofing,
+  };
+};
+
+export const runtimeImageMetadataFromName = (
+  image: string,
+): RuntimeImageMetadata => {
+  if (!isRedroidImageName(image)) {
+    return { ...defaultGenericRuntimeImageMetadata };
+  }
+
+  const versionMatch = image.match(/(?:^|[:/])(\d{2})(?:\.|[-:]|$)/);
+  return {
+    ...defaultRedroidRuntimeImageMetadata,
+    androidVersion: versionMatch?.[1] ?? null,
+  };
+};
+
+export const resolveRuntimeImageMetadata = ({
+  image,
+  labels,
+  metadata,
+}: {
+  image: string;
+  labels?: Record<string, string | undefined> | null;
+  metadata?: RuntimeImageMetadata | null;
+}): RuntimeImageResolution => {
+  if (metadata) {
+    return { metadata, source: "stored" };
+  }
+
+  const labelMetadata = runtimeImageMetadataFromLabels(labels);
+  if (labelMetadata) {
+    return { metadata: labelMetadata, source: "labels" };
+  }
+
+  return { metadata: runtimeImageMetadataFromName(image), source: "name" };
+};
+
+export const resolveRuntimeImageKind = (
+  input:
+    | string
+    | {
+        image: string;
+        labels?: Record<string, string | undefined> | null;
+        metadata?: RuntimeImageMetadata | null;
+      },
+) => {
+  if (typeof input === "string") {
+    return runtimeImageMetadataFromName(input).runtimeKind;
+  }
+
+  return resolveRuntimeImageMetadata(input).metadata.runtimeKind;
+};
+
+export const isRedroidRuntimeKind = (
+  runtimeKind: RuntimeImageKind | null | undefined,
+) => runtimeKind === "redroid";
+
+export const isRedroidRuntime = (
+  image: string,
+  runtimeKind?: RuntimeImageKind | null,
+) => isRedroidRuntimeKind(runtimeKind) || isRedroidImageName(image);
 
 export const redroidDisplayArgsForProfile = (id: string) => {
   const profile = getRedroidDisplayProfile(id);
@@ -172,9 +345,10 @@ const positiveNumberArg = (
 export const applyRedroidDefaultContainerArgs = (
   image: string,
   containerArgs?: string | null,
+  runtimeKind?: RuntimeImageKind | null,
 ) => {
   const trimmedArgs = containerArgs?.trim();
-  if (!isRedroidImageName(image)) {
+  if (!isRedroidRuntime(image, runtimeKind)) {
     return trimmedArgs ?? null;
   }
 
@@ -196,8 +370,9 @@ export const applyRedroidDisplayContainerArgs = (
   displayProfileId: string,
   extraArgs = "",
   displayConfig?: RedroidDisplayConfig,
+  runtimeKind?: RuntimeImageKind | null,
 ) => {
-  if (!isRedroidImageName(image)) {
+  if (!isRedroidRuntime(image, runtimeKind)) {
     return extraArgs.trim() || null;
   }
 
@@ -205,7 +380,11 @@ export const applyRedroidDisplayContainerArgs = (
     ? redroidDisplayArgsForConfig(displayConfig)
     : redroidDisplayArgsForProfile(displayProfileId);
 
-  return applyRedroidDefaultContainerArgs(image, `${displayArgs} ${extraArgs}`);
+  return applyRedroidDefaultContainerArgs(
+    image,
+    `${displayArgs} ${extraArgs}`,
+    runtimeKind,
+  );
 };
 
 export const getRedroidDisplayDimensionsFromArgs = (

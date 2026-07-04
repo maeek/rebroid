@@ -19,11 +19,7 @@ const ContainersPageFallback = () => (
   />
 )
 
-const RuntimeContainersPageContent = async ({
-  searchParams
-}: {
-  searchParams?: Promise<ContainersSearchParams>
-}) => {
+const RuntimeContainersPageContent = async ({ searchParams }: { searchParams?: Promise<ContainersSearchParams> }) => {
   const { containersPage, gridQuery, orchestratorError } = await loadRuntimeContainersPageData(
     (await searchParams) ?? {}
   )
@@ -48,11 +44,7 @@ const RuntimeContainersPageContent = async ({
   )
 }
 
-export function RuntimeContainersPageEntry({
-  searchParams
-}: {
-  searchParams?: Promise<ContainersSearchParams>
-}) {
+export function RuntimeContainersPageEntry({ searchParams }: { searchParams?: Promise<ContainersSearchParams> }) {
   return (
     <Suspense fallback={<ContainersPageFallback />}>
       <RuntimeContainersPageContent searchParams={searchParams} />

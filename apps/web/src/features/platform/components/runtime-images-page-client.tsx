@@ -1,6 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { IconPlus } from '@tabler/icons-react'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
 import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
@@ -29,10 +32,18 @@ export const RuntimeImagesPageClient = ({
         description='Local images available to application containers, custom runtimes, and platform sidecars.'
         breadcrumbRoot={{ label: 'Runtime' }}
         titleActions={
-          <PlatformPageRefreshButton
-            isRefreshing={isRefreshing}
-            onRefresh={refresh}
-          />
+          <div className='flex items-center gap-2'>
+            <Button asChild>
+              <Link href='/runtime/images/build'>
+                <IconPlus className='size-4' />
+                Build image
+              </Link>
+            </Button>
+            <PlatformPageRefreshButton
+              isRefreshing={isRefreshing}
+              onRefresh={refresh}
+            />
+          </div>
         }
       />
       <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>

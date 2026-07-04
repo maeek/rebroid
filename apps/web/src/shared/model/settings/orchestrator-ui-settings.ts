@@ -21,6 +21,7 @@ export interface OrchestratorUiSettings {
   defaultViewerSoundEnabled: boolean
   aiContextualSuggestionsEnabled: boolean
   auditRetentionDays: number
+  passwordMinimumLength: number
   services: OptionalServicesUiSettings
 }
 
@@ -85,6 +86,7 @@ export const defaultOrchestratorUiSettings: OrchestratorUiSettings = {
   defaultViewerSoundEnabled: true,
   aiContextualSuggestionsEnabled: true,
   auditRetentionDays: 30,
+  passwordMinimumLength: 12,
   services: {
     ocr: {
       enabled: true,
@@ -114,7 +116,8 @@ export const defaultWebSettingsResponse: WebSettingsResponse = {
   defaultViewerKeyboardCaptureEnabled: defaultOrchestratorUiSettings.defaultViewerKeyboardCaptureEnabled,
   defaultViewerSoundEnabled: defaultOrchestratorUiSettings.defaultViewerSoundEnabled,
   aiContextualSuggestionsEnabled: defaultOrchestratorUiSettings.aiContextualSuggestionsEnabled,
-  auditRetentionDays: defaultOrchestratorUiSettings.auditRetentionDays
+  auditRetentionDays: defaultOrchestratorUiSettings.auditRetentionDays,
+  passwordMinimumLength: defaultOrchestratorUiSettings.passwordMinimumLength
 }
 
 export const defaultRuntimeSettingsResponse: OrchestratorSettingsResponse = {
@@ -134,9 +137,7 @@ const normalizeEndpoint = (value: unknown) => {
 
 const normalizeStringList = (value: unknown, fallback: string[]) => {
   if (!Array.isArray(value)) return fallback
-  const normalized = value
-    .map(item => (typeof item === 'string' ? item.trim() : ''))
-    .filter(item => item.length > 0)
+  const normalized = value.map(item => (typeof item === 'string' ? item.trim() : '')).filter(item => item.length > 0)
   return normalized.length > 0 ? Array.from(new Set(normalized)) : fallback
 }
 
@@ -150,8 +151,7 @@ const normalizeServices = (value: Partial<OrchestratorSettingsResponse['services
       endpoint: normalizeEndpoint(ocr?.endpoint) ?? defaults.ocr.endpoint,
       timeoutMs: Number(ocr?.timeoutMs) || defaults.ocr.timeoutMs,
       maxImageDimension: Number(ocr?.maxImageDimension) || defaults.ocr.maxImageDimension,
-      minConfidence:
-        typeof ocr?.minConfidence === 'number' ? ocr.minConfidence : defaults.ocr.minConfidence,
+      minConfidence: typeof ocr?.minConfidence === 'number' ? ocr.minConfidence : defaults.ocr.minConfidence,
       languages: normalizeStringList(ocr?.languages, defaults.ocr.languages),
       preprocessingModes: normalizeStringList(ocr?.preprocessingModes, defaults.ocr.preprocessingModes)
     },
@@ -207,6 +207,10 @@ export const normalizeOrchestratorUiSettings = (
     typeof web.auditRetentionDays === 'number'
       ? web.auditRetentionDays
       : defaultOrchestratorUiSettings.auditRetentionDays,
+  passwordMinimumLength:
+    typeof web.passwordMinimumLength === 'number'
+      ? web.passwordMinimumLength
+      : defaultOrchestratorUiSettings.passwordMinimumLength,
   defaultContainerImage:
     orchestrator.defaultContainerImage?.trim() || defaultOrchestratorUiSettings.defaultContainerImage,
   dockerImageRegistry: orchestrator.dockerImageRegistry?.trim() || defaultOrchestratorUiSettings.dockerImageRegistry,

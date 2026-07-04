@@ -80,10 +80,10 @@ export const validateAutomationYamlModel = ({
       markers.push(
         enumMarker(
           monaco,
-            lineNumber,
-            line.indexOf(rawValue, propertyStartOffset + propertyName.length),
-            rawValue,
-            values
+          lineNumber,
+          line.indexOf(rawValue, propertyStartOffset + propertyName.length),
+          rawValue,
+          values
         )
       )
     }

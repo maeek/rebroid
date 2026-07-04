@@ -3,13 +3,13 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Visible } from '@/components/ui/visible'
 import { DataGridToolbar } from '@/shared/ui/data-grid'
-import { allFilterValue } from '../shared/grid-query-utils'
 import {
   AutomationLastRunFilter,
   AutomationLastStatusFilter,
   AutomationTagFilter,
   AutomationTargetApplicationFilter
 } from '../shared/automation-grid-filter-controls'
+import { allFilterValue } from '../shared/grid-query-utils'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
 import type { AutomationTriggersGridQuery } from '@/server/orchestrator/automations/types'
 

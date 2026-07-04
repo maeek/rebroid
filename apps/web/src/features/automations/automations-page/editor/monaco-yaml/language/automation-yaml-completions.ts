@@ -229,7 +229,10 @@ const propertyNameSuggestions = (
       : schema
   const propertyNames =
     context.kind === 'with-property'
-      ? orderedPropertyNames(commands.find(command => command.uses === context.uses)?.editor.inputFieldOrder ?? [], activeSchema)
+      ? orderedPropertyNames(
+          commands.find(command => command.uses === context.uses)?.editor.inputFieldOrder ?? [],
+          activeSchema
+        )
       : Object.keys(propertiesOf(activeSchema))
   const indentPrefix = context.kind === 'with-property' && linePrefix.trim() === '' ? ' '.repeat(context.indent) : ''
 

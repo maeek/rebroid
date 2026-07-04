@@ -9,8 +9,8 @@ import { AiPromptComposer } from '@/shared/ui/ai/ai-prompt-composer'
 import { aiAgentPromptPresets } from './ai-agent-prompt-presets'
 import { AiAgentSettingsPopover } from './ai-agent-settings-popover'
 import { AiAgentTranscript } from './ai-agent-transcript'
-import { useAiAgentConversationExport } from './use-ai-agent-conversation-export'
 import { useAiAgentChatSession } from './use-ai-agent-chat-session'
+import { useAiAgentConversationExport } from './use-ai-agent-conversation-export'
 import { useAiAgentPromptSuggestions, type GeneratePromptSuggestions } from './use-ai-agent-prompt-suggestions'
 import { useAiAgentWorkflowDraft, type DraftWorkflowFromRun } from './use-ai-agent-workflow-draft'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
@@ -37,7 +37,7 @@ export const AiAgentToolsSection = ({
   openWorkflowDraft?: () => void
   onRunStarted?: (run: AutomationRun) => void
 }) => {
-  const fallbackSuggestions = useMemo(() => aiAgentPromptPresets(app), [app.id, app.name])
+  const fallbackSuggestions = useMemo(() => aiAgentPromptPresets(app), [app])
   const {
     activeTurn,
     adHocTimeoutMinutes,
@@ -111,7 +111,10 @@ export const AiAgentToolsSection = ({
   }
 
   return (
-    <section className={cn('flex h-full min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4', className)}>
+    <section
+      className={cn('flex h-full min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4', className)}
+      data-testid='ai-agent-tools-section'
+    >
       {hideHeader ? null : (
         <div className='flex items-center gap-2'>
           <GradientSparklesIcon className='size-4' />

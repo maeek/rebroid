@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import { IconLoader2, IconPencil, IconRestore, IconSettings } from '@tabler/icons-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -14,19 +15,12 @@ import {
 import { DataGrid } from '@/shared/ui/data-grid'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
-import {
-  ServiceSettingsDialog,
-  serviceDetails,
-  serviceMeta,
-  updateService,
-  type ServiceId
-} from './service-settings-dialog'
-import type { ColumnDef } from '@tanstack/react-table'
+import { ServiceSettingsDialog, serviceDetails, serviceMeta, type ServiceId } from './service-settings-dialog'
 import type {
   OptionalServicesUiSettings,
   OrchestratorUiSettings
 } from '@/shared/model/settings/orchestrator-ui-settings'
-import type { ReactNode } from 'react'
+import type { ColumnDef } from '@tanstack/react-table'
 
 type ServiceRow = {
   id: ServiceId
@@ -211,13 +205,6 @@ export const PlatformServicesPage = ({
     setSettings(current => ({
       ...current,
       services
-    }))
-  }
-
-  const patchService = <T extends ServiceId>(id: T, patch: Partial<OptionalServicesUiSettings[T]>) => {
-    setSettings(current => ({
-      ...current,
-      services: updateService(current.services, id, patch)
     }))
   }
 

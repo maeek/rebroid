@@ -28,14 +28,16 @@ const healthCacheKey = (providerId: string, modelId?: string) => `${providerId}:
 
 type HealthCheckActivity = 'auto' | 'manual'
 
-const useProviderHealth = (provider: AutomationAiProvider, selectedModelId?: string) => {
+const useProviderHealth = (provider: AutomationAiProvider, selectedModelId?: string, autoCheck = false) => {
   const cacheKey = healthCacheKey(provider.id, selectedModelId)
   const currentCacheKeyRef = useRef(cacheKey)
   const activeCheckKeyRef = useRef<string | null>(null)
   const [health, setHealth] = useState<AutomationAiProviderHealth | null>(() => healthCache.get(cacheKey) ?? null)
   const [checkingActivity, setCheckingActivity] = useState<HealthCheckActivity | null>(null)
 
-  currentCacheKeyRef.current = cacheKey
+  useEffect(() => {
+    currentCacheKeyRef.current = cacheKey
+  }, [cacheKey])
 
   const setCachedHealth = useCallback(
     (nextHealth: AutomationAiProviderHealth) => {
@@ -77,8 +79,8 @@ const useProviderHealth = (provider: AutomationAiProvider, selectedModelId?: str
 
   useEffect(() => {
     setHealth(healthCache.get(cacheKey) ?? null)
-    void checkHealth('auto')
-  }, [cacheKey, checkHealth])
+    if (autoCheck && !healthCache.has(cacheKey)) void checkHealth('auto')
+  }, [autoCheck, cacheKey, checkHealth])
 
   return {
     checkHealth,
@@ -91,17 +93,19 @@ const useProviderHealth = (provider: AutomationAiProvider, selectedModelId?: str
 export const ProviderHealthBadge = ({
   provider,
   modelId,
-  compact
+  compact,
+  autoCheck = false
 }: {
   provider: AutomationAiProvider
   modelId?: string
   compact?: boolean
+  autoCheck?: boolean
 }) => {
   const selectedModelId =
     modelId ??
     provider.models.find(model => model.enabled && model.defaultFor.length > 0)?.id ??
     provider.models.find(model => model.enabled)?.id
-  const { checkHealth, health, isChecking, isManualChecking } = useProviderHealth(provider, selectedModelId)
+  const { checkHealth, health, isChecking, isManualChecking } = useProviderHealth(provider, selectedModelId, autoCheck)
 
   return (
     <div className={cn('flex min-w-0 items-center gap-2', compact && 'text-xs')}>
@@ -119,18 +123,27 @@ export const ProviderHealthBadge = ({
           aria-label='Check AI provider health'
           onClick={() => void checkHealth('manual')}
         >
-          <IconRefresh className={cn('size-4', isManualChecking && 'animate-spin')} />
+          <IconRefresh
+            className={cn('size-4', isManualChecking && 'animate-spin')}
+            data-testid='provider-health-refresh-icon'
+          />
         </Button>
       )}
     </div>
   )
 }
 
-export const ProviderHealthBanner = ({ provider }: { provider: AutomationAiProvider }) => {
+export const ProviderHealthBanner = ({
+  provider,
+  autoCheck = false
+}: {
+  provider: AutomationAiProvider
+  autoCheck?: boolean
+}) => {
   const selectedModelId =
     provider.models.find(model => model.enabled && model.defaultFor.length > 0)?.id ??
     provider.models.find(model => model.enabled)?.id
-  const { checkHealth, health, isChecking, isManualChecking } = useProviderHealth(provider, selectedModelId)
+  const { checkHealth, health, isChecking, isManualChecking } = useProviderHealth(provider, selectedModelId, autoCheck)
 
   return (
     <div

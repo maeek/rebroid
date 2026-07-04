@@ -1,9 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import {
-  findTerminalRunStatus,
-  latestEventSequence,
-  mergeRunEventsIntoTurns
-} from './ai-agent-chat-session-model'
+import { findTerminalRunStatus, latestEventSequence, mergeRunEventsIntoTurns } from './ai-agent-chat-session-model'
 import { type ChatTurn } from './ai-agent-chat-utils'
 import { useAiAgentHistory } from './use-ai-agent-history'
 import { useAiAgentModelSettings } from './use-ai-agent-model-settings'

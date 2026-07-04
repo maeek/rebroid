@@ -1,5 +1,5 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, jest } from '@jest/globals'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { useAiAgentChatSession } from './use-ai-agent-chat-session'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { AutomationRun, AutomationRunEvent } from '@/server/orchestrator/automations/types'
@@ -144,6 +144,7 @@ describe('useAiAgentChatSession', () => {
 
     await act(async () => {
       resolveHistory([{ run, events: [userEvent] }])
+      await Promise.resolve()
     })
 
     await waitFor(() => expect(result.current.turns).toHaveLength(1))
@@ -170,6 +171,7 @@ describe('useAiAgentChatSession', () => {
 
     await act(async () => {
       resolveHistory([{ run, events: [userEvent] }])
+      await Promise.resolve()
     })
 
     await waitFor(() => expect(result.current.turns).toHaveLength(1))

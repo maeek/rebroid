@@ -72,7 +72,7 @@ export const AutomationLastStatusFilter = ({
 }) => (
   <Select
     value={value ?? allFilterValue}
-    onValueChange={nextValue => onChange(nextValue === allFilterValue ? undefined : (nextValue as AutomationLastStatus))}
+    onValueChange={nextValue => onChange(nextValue === allFilterValue ? undefined : nextValue)}
   >
     <SelectTrigger className='w-full'>
       <SelectValue placeholder='Status' />
@@ -96,9 +96,7 @@ export const AutomationLastRunFilter = ({
 }) => (
   <Select
     value={value ?? allFilterValue}
-    onValueChange={nextValue =>
-      onChange(nextValue === allFilterValue ? undefined : (nextValue as AutomationsGridLastRunFilter))
-    }
+    onValueChange={nextValue => onChange(nextValue === allFilterValue ? undefined : nextValue)}
   >
     <SelectTrigger className='w-full'>
       <SelectValue placeholder='Last run' />

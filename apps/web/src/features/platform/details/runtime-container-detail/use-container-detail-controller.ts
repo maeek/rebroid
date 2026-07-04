@@ -16,6 +16,7 @@ import {
   removePlatformContainerAction,
   stopPlatformContainerAction
 } from '@/server/orchestrator/platform/container-actions'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import type {
   PlatformContainerDetails,
   PlatformContainerLog,
@@ -78,12 +79,12 @@ const useContainerActions = (container: PlatformContainerDetails['container']) =
 
     const actionRunners: Record<ContainerPendingAction, () => Promise<void>> = {
       stop: async () => {
-        await stopPlatformContainerAction(container.id)
+        unwrapActionResult(await stopPlatformContainerAction(container.id))
         toast({ title: 'Container stopped' })
         router.refresh()
       },
       remove: async () => {
-        await removePlatformContainerAction(container.id, forceRemove)
+        unwrapActionResult(await removePlatformContainerAction(container.id, forceRemove))
         toast({ title: forceRemove ? 'Container force-removed' : 'Container removed' })
         router.push('/runtime/containers')
       }

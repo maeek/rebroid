@@ -12,7 +12,8 @@ const defaultWebSettings: WebSettings = {
   defaultViewerKeyboardCaptureEnabled: false,
   defaultViewerSoundEnabled: true,
   aiContextualSuggestionsEnabled: true,
-  auditRetentionDays: 30
+  auditRetentionDays: 30,
+  passwordMinimumLength: 12
 }
 
 const settingsStateKey = 'web-settings'
@@ -68,7 +69,8 @@ const normalize = (value: Partial<WebSettings>): WebSettings => ({
     typeof value.aiContextualSuggestionsEnabled === 'boolean'
       ? value.aiContextualSuggestionsEnabled
       : defaultWebSettings.aiContextualSuggestionsEnabled,
-  auditRetentionDays: numberInRange(value.auditRetentionDays, defaultWebSettings.auditRetentionDays, 1, 3650)
+  auditRetentionDays: numberInRange(value.auditRetentionDays, defaultWebSettings.auditRetentionDays, 1, 3650),
+  passwordMinimumLength: numberInRange(value.passwordMinimumLength, defaultWebSettings.passwordMinimumLength, 1, 128)
 })
 
 export const getWebSettings = () =>

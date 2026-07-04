@@ -4016,6 +4016,45 @@
         "tags": [
           "platform-docker"
         ]
+      },
+      "patch": {
+        "operationId": "DockerMaintenanceImagesController_updateRuntimeMetadata",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRuntimeImageMetadataDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DockerPlatformImageDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Update Rebroid runtime metadata for an image.",
+        "tags": [
+          "platform-docker"
+        ]
       }
     },
     "/api/v1/platform/docker/networks": {
@@ -4536,6 +4575,406 @@
         },
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/platform/container-images/build-context": {
+      "get": {
+        "operationId": "ContainerImagesController_listBuildContextFiles",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ContainerImageBuildContextFile"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List uploaded image build context files.",
+        "tags": [
+          "platform-container-images"
+        ]
+      },
+      "post": {
+        "operationId": "ContainerImagesController_uploadBuildContextFile",
+        "parameters": [
+          {
+            "name": "contextPath",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "example": "apks/microg.apk"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainerImageBuildContextFile"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Upload one image build context file.",
+        "tags": [
+          "platform-container-images"
+        ]
+      }
+    },
+    "/api/v1/platform/container-images/build-context/{id}": {
+      "delete": {
+        "operationId": "ContainerImagesController_removeBuildContextFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "removed": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "removed"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Remove one uploaded image build context file.",
+        "tags": [
+          "platform-container-images"
+        ]
+      }
+    },
+    "/api/v1/platform/container-images/recipes": {
+      "get": {
+        "operationId": "ContainerImagesController_listRecipes",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ContainerImageBuildRecipe"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List saved image build recipes.",
+        "tags": [
+          "platform-container-images"
+        ]
+      },
+      "post": {
+        "operationId": "ContainerImagesController_createRecipe",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateContainerImageRecipeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainerImageBuildRecipe"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create an image build recipe.",
+        "tags": [
+          "platform-container-images"
+        ]
+      }
+    },
+    "/api/v1/platform/container-images/recipes/{id}": {
+      "get": {
+        "operationId": "ContainerImagesController_getRecipe",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainerImageBuildRecipe"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Read an image build recipe.",
+        "tags": [
+          "platform-container-images"
+        ]
+      },
+      "patch": {
+        "operationId": "ContainerImagesController_updateRecipe",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateContainerImageRecipeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainerImageBuildRecipe"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Update an image build recipe.",
+        "tags": [
+          "platform-container-images"
+        ]
+      },
+      "delete": {
+        "operationId": "ContainerImagesController_removeRecipe",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "removed": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "removed"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Remove an image build recipe.",
+        "tags": [
+          "platform-container-images"
+        ]
+      }
+    },
+    "/api/v1/platform/container-images/builds": {
+      "get": {
+        "operationId": "ContainerImagesController_listBuilds",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ContainerImageBuildJob"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List recent image build jobs.",
+        "tags": [
+          "platform-container-images"
+        ]
+      },
+      "post": {
+        "operationId": "ContainerImagesController_startBuild",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartContainerImageBuildDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainerImageBuildJob"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Start an image build job.",
+        "tags": [
+          "platform-container-images"
+        ]
+      }
+    },
+    "/api/v1/platform/container-images/builds/{id}": {
+      "get": {
+        "operationId": "ContainerImagesController_getBuild",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainerImageBuildJob"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Read an image build job.",
+        "tags": [
+          "platform-container-images"
+        ]
+      }
+    },
+    "/api/v1/platform/container-images/builds/{id}/cancel": {
+      "post": {
+        "operationId": "ContainerImagesController_cancelBuild",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainerImageBuildJob"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Cancel an image build job.",
+        "tags": [
+          "platform-container-images"
         ]
       }
     }
@@ -8516,6 +8955,23 @@
           },
           "containers": {
             "type": "number"
+          },
+          "runtimeMetadata": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RuntimeImageMetadataDto"
+              }
+            ],
+            "nullable": true
+          },
+          "runtimeMetadataSource": {
+            "type": "string",
+            "enum": [
+              "stored",
+              "labels",
+              "name"
+            ],
+            "nullable": true
           }
         },
         "required": [
@@ -8529,7 +8985,9 @@
           "createdAt",
           "labels",
           "managed",
-          "containers"
+          "containers",
+          "runtimeMetadata",
+          "runtimeMetadataSource"
         ]
       },
       "DockerPlatformNetworkDto": {
@@ -9210,6 +9668,449 @@
           "firewall",
           "ocr",
           "services"
+        ]
+      },
+      "RuntimeImageMetadataDto": {
+        "type": "object",
+        "properties": {
+          "runtimeKind": {
+            "type": "string",
+            "enum": [
+              "redroid",
+              "generic"
+            ]
+          },
+          "androidVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "architecture": {
+            "type": "string",
+            "nullable": true
+          },
+          "gmsMode": {
+            "type": "string",
+            "enum": [
+              "none",
+              "microg"
+            ]
+          },
+          "signatureSpoofing": {
+            "type": "string",
+            "enum": [
+              "not_applicable",
+              "external_required",
+              "present_unverified",
+              "verified"
+            ]
+          }
+        },
+        "required": [
+          "runtimeKind",
+          "androidVersion",
+          "architecture",
+          "gmsMode",
+          "signatureSpoofing"
+        ]
+      },
+      "UpdateRuntimeImageMetadataDto": {
+        "type": "object",
+        "properties": {
+          "runtimeKind": {
+            "type": "string",
+            "enum": [
+              "redroid",
+              "generic"
+            ]
+          },
+          "androidVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "architecture": {
+            "type": "string",
+            "nullable": true
+          },
+          "gmsMode": {
+            "type": "string",
+            "enum": [
+              "none",
+              "microg"
+            ]
+          },
+          "signatureSpoofing": {
+            "type": "string",
+            "enum": [
+              "not_applicable",
+              "external_required",
+              "present_unverified",
+              "verified"
+            ]
+          }
+        }
+      },
+      "CreateContainerImageRecipeDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Redroid 14 microG overlay"
+          },
+          "targetImage": {
+            "type": "string",
+            "example": "local/redroid-microg:14"
+          },
+          "baseImage": {
+            "type": "string",
+            "example": "redroid/redroid:14.0.0-latest"
+          },
+          "runtimeKind": {
+            "type": "string",
+            "enum": [
+              "redroid",
+              "generic"
+            ]
+          },
+          "androidVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "architecture": {
+            "type": "string",
+            "nullable": true
+          },
+          "gmsMode": {
+            "type": "string",
+            "enum": [
+              "none",
+              "microg"
+            ]
+          },
+          "signatureSpoofing": {
+            "type": "string",
+            "enum": [
+              "not_applicable",
+              "external_required",
+              "present_unverified",
+              "verified"
+            ]
+          },
+          "dockerfile": {
+            "type": "string"
+          },
+          "contextFileIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "targetImage",
+          "baseImage",
+          "dockerfile"
+        ]
+      },
+      "UpdateContainerImageRecipeDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Redroid 14 microG overlay"
+          },
+          "targetImage": {
+            "type": "string",
+            "example": "local/redroid-microg:14"
+          },
+          "baseImage": {
+            "type": "string",
+            "example": "redroid/redroid:14.0.0-latest"
+          },
+          "runtimeKind": {
+            "type": "string",
+            "enum": [
+              "redroid",
+              "generic"
+            ]
+          },
+          "androidVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "architecture": {
+            "type": "string",
+            "nullable": true
+          },
+          "gmsMode": {
+            "type": "string",
+            "enum": [
+              "none",
+              "microg"
+            ]
+          },
+          "signatureSpoofing": {
+            "type": "string",
+            "enum": [
+              "not_applicable",
+              "external_required",
+              "present_unverified",
+              "verified"
+            ]
+          },
+          "dockerfile": {
+            "type": "string"
+          },
+          "contextFileIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "StartContainerImageBuildDto": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CreateContainerImageRecipeDto"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "recipeId": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      },
+      "ContainerImageBuildContextFile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "originalName": {
+            "type": "string",
+            "example": "microg.apk"
+          },
+          "contextPath": {
+            "type": "string",
+            "example": "apks/microg.apk"
+          },
+          "storedPath": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "number"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "originalName",
+          "contextPath",
+          "storedPath",
+          "sizeBytes",
+          "sha256",
+          "createdAt"
+        ]
+      },
+      "ContainerImageBuildRecipe": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "example": "Redroid 14 microG overlay"
+          },
+          "targetImage": {
+            "type": "string",
+            "example": "local/redroid-microg:14"
+          },
+          "baseImage": {
+            "type": "string",
+            "example": "redroid/redroid:14.0.0-latest"
+          },
+          "runtimeKind": {
+            "type": "string",
+            "enum": [
+              "redroid",
+              "generic"
+            ]
+          },
+          "androidVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "architecture": {
+            "type": "string",
+            "nullable": true
+          },
+          "gmsMode": {
+            "type": "string",
+            "enum": [
+              "none",
+              "microg"
+            ]
+          },
+          "signatureSpoofing": {
+            "type": "string",
+            "enum": [
+              "not_applicable",
+              "external_required",
+              "present_unverified",
+              "verified"
+            ]
+          },
+          "dockerfile": {
+            "type": "string"
+          },
+          "contextFileIdsJson": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "targetImage",
+          "baseImage",
+          "runtimeKind",
+          "androidVersion",
+          "architecture",
+          "gmsMode",
+          "signatureSpoofing",
+          "dockerfile",
+          "contextFileIdsJson",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ContainerImageBuildJob": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "recipeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "targetImage": {
+            "type": "string",
+            "example": "local/redroid-microg:14"
+          },
+          "baseImage": {
+            "type": "string",
+            "example": "redroid/redroid:14.0.0-latest"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed",
+              "cancelled"
+            ]
+          },
+          "runtimeKind": {
+            "type": "string",
+            "enum": [
+              "redroid",
+              "generic"
+            ]
+          },
+          "androidVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "architecture": {
+            "type": "string",
+            "nullable": true
+          },
+          "gmsMode": {
+            "type": "string",
+            "enum": [
+              "none",
+              "microg"
+            ]
+          },
+          "signatureSpoofing": {
+            "type": "string",
+            "enum": [
+              "not_applicable",
+              "external_required",
+              "present_unverified",
+              "verified"
+            ]
+          },
+          "dockerfile": {
+            "type": "string"
+          },
+          "contextFileIdsJson": {
+            "type": "string"
+          },
+          "logTail": {
+            "type": "string",
+            "example": "Step 1/4 : FROM redroid/redroid:14.0.0-latest"
+          },
+          "imageId": {
+            "type": "string",
+            "nullable": true
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "finishedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "recipeId",
+          "targetImage",
+          "baseImage",
+          "status",
+          "runtimeKind",
+          "androidVersion",
+          "architecture",
+          "gmsMode",
+          "signatureSpoofing",
+          "dockerfile",
+          "contextFileIdsJson",
+          "logTail",
+          "imageId",
+          "error",
+          "startedAt",
+          "finishedAt",
+          "createdAt",
+          "updatedAt"
         ]
       }
     }

@@ -8,6 +8,7 @@ from functools import lru_cache
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from PIL import Image, ImageEnhance, ImageOps
 import numpy as np
@@ -108,12 +109,31 @@ def _normalize_preprocessing_modes(modes: list[str] | None) -> list[str]:
 
 @lru_cache(maxsize=4)
 def _ocr_engine(language: str):
-    from paddleocr import PaddleOCR
+    PaddleOCR = _paddle_ocr_class()
 
     try:
         return PaddleOCR(use_angle_cls=True, lang=language, show_log=False)
     except TypeError:
         return PaddleOCR(use_angle_cls=True, lang=language)
+
+
+@lru_cache(maxsize=1)
+def _paddle_ocr_class():
+    from paddleocr import PaddleOCR
+
+    return PaddleOCR
+
+
+@lru_cache(maxsize=1)
+def _ocr_runtime_probe():
+    try:
+        _paddle_ocr_class()
+    except Exception as exc:
+        return {
+            "ready": False,
+            "message": f"OCR runtime import failed: {_sanitize_error(exc)}",
+        }
+    return {"ready": True, "message": "OCR runtime is ready."}
 
 
 def _iter_lines(raw_result: Any):
@@ -199,14 +219,21 @@ def _score_detections(detections: list[dict[str, Any]]) -> tuple[int, float]:
 
 @app.get("/health")
 def health():
-    return {
-        "ok": True,
+    runtime = _ocr_runtime_probe()
+    ready = bool(runtime["ready"])
+    payload = {
+        "ok": ready,
+        "status": "healthy" if ready else "unhealthy",
         "service": "rebroid-ocr-sidecar",
         "engine": "paddleocr",
         "languages": DEFAULT_LANGUAGES,
         "preprocessingModes": _normalize_preprocessing_modes(None),
-        "ready": True,
+        "ready": ready,
+        "message": runtime["message"],
     }
+    if ready:
+        return payload
+    return JSONResponse(status_code=503, content=payload)
 
 
 @app.post("/ocr/screenshot")
@@ -218,7 +245,16 @@ def ocr_screenshot(payload: OcrRequest):
     width, height = image.size
     attempts = []
     best = None
-    engine = _ocr_engine(language)
+    try:
+        engine = _ocr_engine(language)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "message": "OCR runtime is not ready.",
+                "error": _sanitize_error(exc),
+            },
+        ) from exc
 
     for mode in _normalize_preprocessing_modes(payload.preprocessingModes):
         mode_started = time.perf_counter()

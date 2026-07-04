@@ -23,11 +23,12 @@ describe('userService.changeOwnPassword', () => {
 
   it('requires the current password without changing the existing login', async () => {
     const user = await userService.createUser({ username: 'user', password: 'original-password' })
+    await userService.completeRequiredPasswordChange(user.id, 'original-password', 'temporary-cleared')
 
     await expect(userService.changeOwnPassword(user.id, 'wrong-password', 'replacement-password')).rejects.toThrow(
       'Current password is incorrect.'
     )
-    await expect(userService.authenticate('user', 'original-password')).resolves.not.toBeNull()
+    await expect(userService.authenticate('user', 'temporary-cleared')).resolves.not.toBeNull()
     await expect(userService.authenticate('user', 'replacement-password')).resolves.toBeNull()
   })
 
@@ -41,12 +42,60 @@ describe('userService.changeOwnPassword', () => {
 
   it('changes the password and invalidates existing sessions', async () => {
     const user = await userService.createUser({ username: 'user', password: 'original-password' })
+    const readyUser = await userService.completeRequiredPasswordChange(user.id, 'original-password', 'temporary-cleared')
 
-    await userService.changeOwnPassword(user.id, 'original-password', 'replacement-password')
+    await userService.changeOwnPassword(user.id, 'temporary-cleared', 'replacement-password')
+
+    await expect(userService.authenticate('user', 'temporary-cleared')).resolves.toBeNull()
+    await expect(userService.authenticate('user', 'replacement-password')).resolves.not.toBeNull()
+    await expect(userService.getUserById(user.id)).resolves.toMatchObject({
+      sessionVersion: readyUser.sessionVersion + 1,
+      passwordChangeRequired: false
+    })
+  })
+
+  it('marks admin-created users for password change and leaves bootstrap admin usable', async () => {
+    const admin = await userService.authenticate('admin', 'initial-admin-password')
+    const user = await userService.createUser({ username: 'user', password: 'original-password' })
+
+    expect(admin).toMatchObject({ passwordChangeRequired: false })
+    expect(user).toMatchObject({ passwordChangeRequired: true })
+    await expect(userService.authenticate('user', 'original-password')).resolves.toMatchObject({
+      passwordChangeRequired: true
+    })
+  })
+
+  it('completes a required password change without invalidating the current session', async () => {
+    const user = await userService.createUser({ username: 'user', password: 'original-password' })
+
+    await userService.completeRequiredPasswordChange(user.id, 'original-password', 'replacement-password')
 
     await expect(userService.authenticate('user', 'original-password')).resolves.toBeNull()
-    await expect(userService.authenticate('user', 'replacement-password')).resolves.not.toBeNull()
-    await expect(userService.getUserById(user.id)).resolves.toMatchObject({ sessionVersion: user.sessionVersion + 1 })
+    await expect(userService.authenticate('user', 'replacement-password')).resolves.toMatchObject({
+      passwordChangeRequired: false,
+      sessionVersion: user.sessionVersion
+    })
+    await expect(userService.getUserById(user.id)).resolves.toMatchObject({
+      passwordChangeRequired: false,
+      sessionVersion: user.sessionVersion
+    })
+  })
+
+  it('requires the forced replacement password to differ from the temporary password', async () => {
+    const user = await userService.createUser({ username: 'user', password: 'original-password' })
+
+    await expect(
+      userService.completeRequiredPasswordChange(user.id, 'original-password', 'original-password')
+    ).rejects.toThrow('New password must be different from the current password.')
+  })
+
+  it('requires an active password-change flag for the forced-change completion flow', async () => {
+    const user = await userService.createUser({ username: 'user', password: 'original-password' })
+    await userService.completeRequiredPasswordChange(user.id, 'original-password', 'replacement-password')
+
+    await expect(
+      userService.completeRequiredPasswordChange(user.id, 'replacement-password', 'another-password')
+    ).rejects.toThrow('Password change is not required for this account.')
   })
 
   it('fails closed when the users state is malformed', async () => {
@@ -78,6 +127,17 @@ describe('userService.changeOwnPassword', () => {
     await expect(userService.getUserById(user.id)).resolves.toMatchObject({ accentColor: 'purple' })
     await expect(userService.authenticate('user', 'original-password')).resolves.toMatchObject({
       accentColor: 'purple'
+    })
+  })
+
+  it('requires password change after an admin reset', async () => {
+    const user = await userService.createUser({ username: 'user', password: 'original-password' })
+    await userService.completeRequiredPasswordChange(user.id, 'original-password', 'replacement-password')
+
+    await userService.resetPassword(user.id, 'reset-password')
+
+    await expect(userService.authenticate('user', 'reset-password')).resolves.toMatchObject({
+      passwordChangeRequired: true
     })
   })
 })

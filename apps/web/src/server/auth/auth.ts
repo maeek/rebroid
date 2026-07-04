@@ -27,6 +27,9 @@ export const authOptions: NextAuthOptions = {
       if (user && 'sessionVersion' in user) {
         token.sessionVersion = user.sessionVersion
       }
+      if (user && 'passwordChangeRequired' in user) {
+        token.passwordChangeRequired = user.passwordChangeRequired
+      }
       if (user?.image !== undefined) {
         token.picture = user.image
       }
@@ -42,6 +45,7 @@ export const authOptions: NextAuthOptions = {
       session.user.name = currentUser?.name ?? session.user.name
       session.user.role = currentUser?.role ?? token.role
       session.user.sessionVersion = token.sessionVersion
+      session.user.passwordChangeRequired = currentUser?.passwordChangeRequired ?? token.passwordChangeRequired
       session.user.image = currentUser?.avatarDataUrl ?? (typeof token.picture === 'string' ? token.picture : null)
       session.user.accentColor =
         currentUser?.accentColor ?? (isAccentColor(token.accentColor) ? token.accentColor : defaultAccentColor)

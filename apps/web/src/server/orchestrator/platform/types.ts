@@ -5,7 +5,9 @@ export type PlatformContainerDetails = OrchestratorApiSchemas['DockerPlatformCon
 export type PlatformContainerLog = OrchestratorApiSchemas['DockerPlatformContainerLogDto']
 export type PlatformContainerStats = OrchestratorApiSchemas['DockerPlatformContainerStatsDto']
 export type PlatformImage = OrchestratorApiSchemas['DockerPlatformImageDto']
-export type PlatformImageDetails = OrchestratorApiSchemas['DockerPlatformImageDetailsDto']
+export type PlatformImageDetails = Omit<OrchestratorApiSchemas['DockerPlatformImageDetailsDto'], 'image'> & {
+  image: PlatformImage
+}
 export type PlatformNetwork = OrchestratorApiSchemas['DockerPlatformNetworkDto']
 export type PlatformNetworkDetails = OrchestratorApiSchemas['DockerPlatformNetworkDetailsDto']
 
@@ -56,3 +58,12 @@ export interface PlatformNetworksGridPage {
   page: number
   pageSize: number
 }
+
+export type ContainerImageBuildStatus = OrchestratorApiSchemas['ContainerImageBuildJob']['status']
+export type ContainerImageBuildContextFile = OrchestratorApiSchemas['ContainerImageBuildContextFile']
+export type ContainerImageBuildRecipe = OrchestratorApiSchemas['ContainerImageBuildRecipe']
+export type ContainerImageBuildJob = OrchestratorApiSchemas['ContainerImageBuildJob']
+export type ContainerImageRecipeInput = OrchestratorApiSchemas['CreateContainerImageRecipeDto']
+export type UpdateContainerImageRecipeInput = OrchestratorApiSchemas['UpdateContainerImageRecipeDto']
+export type StartContainerImageBuildInput = OrchestratorApiSchemas['StartContainerImageBuildDto']
+export type UpdateRuntimeImageMetadataInput = OrchestratorApiSchemas['UpdateRuntimeImageMetadataDto']

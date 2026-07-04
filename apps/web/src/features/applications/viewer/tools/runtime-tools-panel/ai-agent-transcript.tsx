@@ -1,8 +1,8 @@
+import type { RefObject } from 'react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ChatTurnView } from './ai-agent-chat-events'
 import type { ChatTurn } from './ai-agent-chat-utils'
-import type { RefObject } from 'react'
 
 const AiAgentTranscriptSkeleton = () => (
   <div

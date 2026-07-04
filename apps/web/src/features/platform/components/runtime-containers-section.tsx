@@ -19,11 +19,14 @@ import { Section } from '@/components/ui/section'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Visible } from '@/components/ui/visible'
 import { toast } from '@/hooks/use-toast'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import {
   removePlatformContainerAction,
   stopPlatformContainerAction
 } from '@/server/orchestrator/platform/container-actions'
+import { actionOk, unwrapActionResult } from '@/shared/actions/action-result'
 import { DataGrid, DataGridPagination, DataGridToolbar } from '@/shared/ui/data-grid'
+import { PlatformResourceScopeFilter } from './platform-resource-scope-filter'
 import {
   buildContainersGridHref,
   canRunBulkContainerAction,
@@ -39,7 +42,6 @@ import {
   retainVisiblePlatformSelection,
   selectedPlatformItemsFromIds
 } from './runtime-grid-query-utils'
-import { PlatformResourceScopeFilter } from './platform-resource-scope-filter'
 import type {
   PlatformContainer,
   PlatformContainersGridPage,
@@ -92,10 +94,10 @@ export const RuntimeContainersSection = ({
     setBusyId(pendingAction.container.id)
     try {
       if (pendingAction.type === 'stop') {
-        await stopPlatformContainerAction(pendingAction.container.id)
+        unwrapActionResult(await stopPlatformContainerAction(pendingAction.container.id))
         toast({ title: 'Container stopped' })
       } else {
-        await removePlatformContainerAction(pendingAction.container.id)
+        unwrapActionResult(await removePlatformContainerAction(pendingAction.container.id))
         toast({ title: 'Container removed' })
       }
       setPendingAction(null)
@@ -103,7 +105,7 @@ export const RuntimeContainersSection = ({
     } catch (caughtError) {
       toast({
         title: pendingAction.type === 'stop' ? 'Could not stop container' : 'Could not remove container',
-        description: caughtError instanceof Error ? caughtError.message : 'Unknown error',
+        description: getDisplayErrorMessage(caughtError),
         variant: 'destructive'
       })
     } finally {
@@ -116,14 +118,15 @@ export const RuntimeContainersSection = ({
 
     setBusyId('bulk')
     try {
-      const results = await Promise.allSettled(
+      const results = await Promise.all(
         selectedContainers.map(async container => {
           if (type === 'stop' && shouldStopContainerInBulkAction(container)) {
-            await stopPlatformContainerAction(container.id)
+            return stopPlatformContainerAction(container.id)
           }
           if (type === 'remove') {
-            await removePlatformContainerAction(container.id)
+            return removePlatformContainerAction(container.id)
           }
+          return actionOk(undefined)
         })
       )
       setSelectedIds(new Set())

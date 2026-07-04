@@ -102,7 +102,7 @@ describe('AiModelPicker', () => {
   it('renders a read-only chip when one provider and one model are available', () => {
     render(
       <AiModelPicker
-        catalog={[catalog[0]!]}
+        catalog={[catalog[0]]}
         selectedProvider={catalog[0]}
         selectedModel={catalog[0]?.models[0]}
         defaultOpen
@@ -118,9 +118,9 @@ describe('AiModelPicker', () => {
 
   it('hides provider selection when one provider has multiple models', () => {
     const provider = {
-      ...catalog[0]!,
+      ...catalog[0],
       models: [
-        catalog[0]!.models[0]!,
+        catalog[0].models[0],
         {
           id: 'deep',
           label: 'Deep',

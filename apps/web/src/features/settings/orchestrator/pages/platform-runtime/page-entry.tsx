@@ -1,12 +1,17 @@
 import { Suspense } from 'react'
-import { PlatformRuntimePageSkeleton } from '../../platform-runtime-page-skeleton'
 import { PlatformRuntimeForm } from '../../platform-runtime-form'
+import { PlatformRuntimePageSkeleton } from '../../platform-runtime-page-skeleton'
 import { getPlatformRuntimePageData } from './page-data.server'
 
 const PlatformRuntimeContent = async () => {
-  const { initialSettings } = await getPlatformRuntimePageData()
+  const { images, initialSettings } = await getPlatformRuntimePageData()
 
-  return <PlatformRuntimeForm initialSettings={initialSettings} />
+  return (
+    <PlatformRuntimeForm
+      images={images}
+      initialSettings={initialSettings}
+    />
+  )
 }
 
 export default function PlatformRuntimePageEntry() {

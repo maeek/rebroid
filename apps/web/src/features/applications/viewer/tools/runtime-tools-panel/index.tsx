@@ -46,10 +46,7 @@ export const RuntimeToolsPanel = () => {
           id={selectedToolId ? `runtime-tool-panel-${selectedToolId}` : undefined}
           role='tabpanel'
           aria-labelledby={selectedToolId ? `runtime-tool-tab-${selectedToolId}` : undefined}
-          className={cn(
-            'min-h-0 py-4',
-            runtimeToolPanelClassName(selectedToolId)
-          )}
+          className={cn('min-h-0 py-4', runtimeToolPanelClassName(selectedToolId))}
         >
           {selectedToolId ? (
             <RuntimeToolContent

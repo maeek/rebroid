@@ -6,6 +6,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import type { RuntimeImageKind } from '@rebroid/application-core/redroid-runtime';
 import { ApplicationProfileMode } from './application-profile-mode';
 import {
   AndroidApplicationLifecycleStage,
@@ -200,6 +201,10 @@ export class AndroidApplication {
   @ApiProperty({ example: 'redroid/redroid:14.0.0-latest' })
   @Column()
   containerImage!: string;
+
+  @ApiProperty({ enum: ['redroid', 'generic'], example: 'redroid' })
+  @Column({ default: 'generic' })
+  runtimeKind!: RuntimeImageKind;
 
   @ApiProperty({ example: 'rebroid-runtime-signal-android-98a530d6' })
   @Column()

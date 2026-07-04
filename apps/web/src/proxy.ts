@@ -19,6 +19,7 @@ export const proxy = (request: NextRequest) => {
   const policy = contentSecurityPolicy(nonce)
   const headers = new Headers(request.headers)
   headers.set('x-nonce', nonce)
+  headers.set('x-pathname', request.nextUrl.pathname)
   headers.set('Content-Security-Policy', policy)
 
   const response = NextResponse.next({ request: { headers } })

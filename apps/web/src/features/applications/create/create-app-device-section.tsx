@@ -4,9 +4,12 @@ import { Badge } from '@/components/ui/badge'
 import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
 import { AppContainerRuntimeSection } from '@/features/applications/components/app-container-runtime-section'
+import { RuntimeImagePicker } from '@/features/platform/components/runtime-image-picker'
 import type { CreateAppFormValues } from './create-app-form.types'
+import type { PlatformImage } from '@/server/orchestrator/platform/types'
 
 type CreateAppDeviceSectionProps = {
+  images: PlatformImage[]
   values: CreateAppFormValues
   onChange: (patch: Partial<CreateAppFormValues>) => void
   canChangeBaseImage: boolean
@@ -15,6 +18,7 @@ type CreateAppDeviceSectionProps = {
 }
 
 export const CreateAppDeviceSection = ({
+  images,
   values,
   onChange,
   canChangeBaseImage,
@@ -36,6 +40,13 @@ export const CreateAppDeviceSection = ({
       containerImageLabel='Image'
       containerImageDescription='Container image used to boot this managed app runtime. Android images such as redroid are the intended default.'
       onContainerImageChange={value => onChange({ containerImage: value })}
+      containerImageSlot={
+        <RuntimeImagePicker
+          images={images}
+          value={values.containerImage}
+          onChange={value => onChange({ containerImage: value })}
+        />
+      }
       showContainerArgs={canChangeContainerArgs}
       containerArgsValue={isRedroidRuntime ? values.redroidExtraArgs : values.customContainerArgs}
       onContainerArgsChange={value => {
