@@ -156,7 +156,7 @@ export const RuntimeImageBuilderPageClient = ({
     } catch (error) {
       toast({
         title: 'Could not upload context file',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'destructive'
       })
     } finally {
@@ -187,7 +187,7 @@ export const RuntimeImageBuilderPageClient = ({
       if (name !== 'AbortError') {
         toast({
           title: 'Could not connect folder',
-          description: error instanceof Error ? error.message : 'Unknown error',
+          description: getDisplayErrorMessage(error),
           variant: 'destructive'
         })
       }
@@ -245,7 +245,7 @@ export const RuntimeImageBuilderPageClient = ({
     } catch (error) {
       toast({
         title: 'Could not upload detected context',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'destructive'
       })
     }

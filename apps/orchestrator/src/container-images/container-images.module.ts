@@ -7,7 +7,9 @@ import { ContainerImageBuildContextFile } from './entities/container-image-build
 import { ContainerImageBuildJob } from './entities/container-image-build-job.entity';
 import { ContainerImageBuildRecipe } from './entities/container-image-build-recipe.entity';
 import { ContainerImageBuilderService } from './services/container-image-builder.service';
+import { ContainerImageBuildArchiveService } from './services/container-image-build-archive.service';
 import { ContainerImageBuildContextService } from './services/container-image-build-context.service';
+import { ContainerImageBuildJobService } from './services/container-image-build-job.service';
 import { ContainerImageRecipeService } from './services/container-image-recipe.service';
 
 @Module({
@@ -23,7 +25,9 @@ import { ContainerImageRecipeService } from './services/container-image-recipe.s
   controllers: [ContainerImagesController],
   providers: [
     ContainerImageBuilderService,
+    ContainerImageBuildArchiveService,
     ContainerImageBuildContextService,
+    ContainerImageBuildJobService,
     ContainerImageRecipeService,
   ],
 })

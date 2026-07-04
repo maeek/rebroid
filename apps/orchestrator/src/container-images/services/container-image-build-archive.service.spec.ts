@@ -1,18 +1,12 @@
-import { ConfigService } from '@nestjs/config';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import tar from 'tar-stream';
-import { Repository } from 'typeorm';
 import { ContainerImageBuildContextFile } from '../entities/container-image-build-context-file.entity';
-import { ContainerImageBuildContextService } from './container-image-build-context.service';
+import { ContainerImageBuildArchiveService } from './container-image-build-archive.service';
 
-const createService = () =>
-  new ContainerImageBuildContextService(
-    {} as Repository<ContainerImageBuildContextFile>,
-    {} as ConfigService,
-  );
+const createService = () => new ContainerImageBuildArchiveService();
 
 const contextFile = (
   storedPath: string,
@@ -43,7 +37,7 @@ const readTarEntries = async (pack: tar.Pack) =>
     pack.pipe(extract);
   });
 
-describe('ContainerImageBuildContextService', () => {
+describe('ContainerImageBuildArchiveService', () => {
   it('streams Dockerfile and context files into a tar archive', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'rebroid-build-context-'));
     try {

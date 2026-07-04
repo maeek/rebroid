@@ -2,19 +2,16 @@ import {
   ConflictException,
   Injectable,
   Logger,
-  NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import type { Readable } from 'node:stream';
-import { Repository } from 'typeorm';
 import { getErrorMessage } from '../../common/error-message';
 import { DockerEngineService } from '../../docker/docker-engine.service';
 import { DockerImageRuntimeMetadataService } from '../../docker/images/services/docker-image-runtime-metadata.service';
 import { DockerImageRuntimeService } from '../../docker/images/services/docker-image-runtime.service';
 import { StartContainerImageBuildDto } from '../dto/container-image-build.dto';
-import { ContainerImageBuildJob } from '../entities/container-image-build-job.entity';
-import type { ContainerImageBuildStatus } from '../entities/container-image-build-status';
+import { ContainerImageBuildArchiveService } from './container-image-build-archive.service';
 import { ContainerImageBuildContextService } from './container-image-build-context.service';
+import { ContainerImageBuildJobService } from './container-image-build-job.service';
 import {
   dockerfileWithRequiredLabels,
   requiredRuntimeImageLabels,
@@ -35,13 +32,6 @@ type ActiveBuild = {
   stream?: Readable;
 };
 
-const terminalStatuses: ContainerImageBuildStatus[] = [
-  'succeeded',
-  'failed',
-  'cancelled',
-];
-const logTailMaxLength = 60_000;
-
 const cleanNullable = (value: string | null | undefined) => {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
@@ -53,24 +43,20 @@ export class ContainerImageBuilderService {
   private readonly activeBuilds = new Map<string, ActiveBuild>();
 
   constructor(
-    @InjectRepository(ContainerImageBuildJob)
-    private readonly jobs: Repository<ContainerImageBuildJob>,
+    private readonly jobs: ContainerImageBuildJobService,
     private readonly engine: DockerEngineService,
     private readonly images: DockerImageRuntimeService,
     private readonly metadata: DockerImageRuntimeMetadataService,
     private readonly context: ContainerImageBuildContextService,
+    private readonly archive: ContainerImageBuildArchiveService,
   ) {}
 
   listJobs() {
-    return this.jobs.find({ order: { createdAt: 'DESC' }, take: 50 });
+    return this.jobs.listJobs();
   }
 
-  async getJob(id: string) {
-    const job = await this.jobs.findOneBy({ id });
-    if (!job) {
-      throw new NotFoundException('Container image build job not found.');
-    }
-    return job;
+  getJob(id: string) {
+    return this.jobs.getJob(id);
   }
 
   async startBuild(dto: StartContainerImageBuildDto) {
@@ -97,26 +83,18 @@ export class ContainerImageBuilderService {
       requiredRuntimeImageLabels(metadata),
     );
     const contextFileIds = dto.contextFileIds ?? [];
-    const job = await this.jobs.save(
-      this.jobs.create({
-        recipeId: cleanNullable(dto.recipeId),
-        targetImage,
-        baseImage,
-        status: 'queued',
-        runtimeKind: metadata.runtimeKind,
-        androidVersion: metadata.androidVersion,
-        architecture: metadata.architecture,
-        gmsMode: metadata.gmsMode,
-        signatureSpoofing: metadata.signatureSpoofing,
-        dockerfile,
-        contextFileIdsJson: JSON.stringify(contextFileIds),
-        logTail: 'Build queued.',
-        imageId: null,
-        error: null,
-        startedAt: null,
-        finishedAt: null,
-      }),
-    );
+    const job = await this.jobs.createQueuedJob({
+      recipeId: cleanNullable(dto.recipeId),
+      targetImage,
+      baseImage,
+      runtimeKind: metadata.runtimeKind,
+      androidVersion: metadata.androidVersion,
+      architecture: metadata.architecture,
+      gmsMode: metadata.gmsMode,
+      signatureSpoofing: metadata.signatureSpoofing,
+      dockerfile,
+      contextFileIds,
+    });
 
     void this.runBuild(job.id).catch((error) => {
       this.logger.error(
@@ -128,7 +106,7 @@ export class ContainerImageBuilderService {
 
   async cancelBuild(id: string) {
     const job = await this.getJob(id);
-    if (terminalStatuses.includes(job.status)) {
+    if (this.jobs.isTerminal(job.status)) {
       return job;
     }
 
@@ -138,10 +116,7 @@ export class ContainerImageBuilderService {
       active.stream?.destroy(new Error('Container image build cancelled.'));
     }
 
-    job.status = 'cancelled';
-    job.finishedAt = new Date();
-    job.logTail = this.nextLogTail(job.logTail, 'Build cancelled.');
-    return this.jobs.save(job);
+    return this.jobs.markCancelled(job);
   }
 
   private async runBuild(id: string) {
@@ -152,10 +127,7 @@ export class ContainerImageBuilderService {
 
     const active: ActiveBuild = { cancelled: false };
     this.activeBuilds.set(id, active);
-    job.status = 'running';
-    job.startedAt = new Date();
-    job.logTail = this.nextLogTail(job.logTail, 'Build started.');
-    await this.jobs.save(job);
+    await this.jobs.markRunning(job);
 
     try {
       const contextFileIds = JSON.parse(job.contextFileIdsJson) as string[];
@@ -169,7 +141,7 @@ export class ContainerImageBuilderService {
           `Build context files are missing: ${missingContextFileIds.join(', ')}`,
         );
       }
-      const buildContext = await this.context.createTar(
+      const buildContext = await this.archive.createTar(
         job.dockerfile,
         contextFiles,
       );
@@ -202,7 +174,7 @@ export class ContainerImageBuilderService {
               (event: DockerProgressEvent) => {
                 const message = this.progressMessage(event);
                 if (message) {
-                  void this.appendLog(id, message);
+                  void this.jobs.appendLog(id, message);
                 }
               },
             );
@@ -216,14 +188,7 @@ export class ContainerImageBuilderService {
       }
 
       const inspect = await this.images.inspectImage(job.targetImage);
-      current.status = 'succeeded';
-      current.imageId = inspect.Id;
-      current.finishedAt = new Date();
-      current.logTail = this.nextLogTail(
-        current.logTail,
-        `Build succeeded: ${inspect.Id}`,
-      );
-      await this.jobs.save(current);
+      await this.jobs.markSucceeded(current, inspect.Id);
       await this.metadata.upsert({
         imageRef: job.targetImage,
         imageId: inspect.Id,
@@ -236,42 +201,15 @@ export class ContainerImageBuilderService {
     } catch (error) {
       const current = await this.getJob(id);
       if (current.status === 'cancelled' || active.cancelled) {
-        current.status = 'cancelled';
-        current.finishedAt = current.finishedAt ?? new Date();
-        current.logTail = this.nextLogTail(current.logTail, 'Build cancelled.');
-        await this.jobs.save(current);
+        await this.jobs.markCancelled(current);
         return;
       }
 
       const message = getErrorMessage(error);
-      current.status = 'failed';
-      current.error = message;
-      current.finishedAt = new Date();
-      current.logTail = this.nextLogTail(
-        current.logTail,
-        `Build failed: ${message}`,
-      );
-      await this.jobs.save(current);
+      await this.jobs.markFailed(current, message);
     } finally {
       this.activeBuilds.delete(id);
     }
-  }
-
-  private async appendLog(id: string, message: string) {
-    const job = await this.jobs.findOneBy({ id });
-    if (!job || terminalStatuses.includes(job.status)) {
-      return;
-    }
-
-    job.logTail = this.nextLogTail(job.logTail, message);
-    await this.jobs.save(job);
-  }
-
-  private nextLogTail(current: string, message: string) {
-    const next = `${current ? `${current}\n` : ''}${message.trim()}`.trim();
-    return next.length > logTailMaxLength
-      ? next.slice(next.length - logTailMaxLength)
-      : next;
   }
 
   private progressMessage(event: DockerProgressEvent) {

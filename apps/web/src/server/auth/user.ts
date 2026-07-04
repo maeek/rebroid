@@ -1,7 +1,4 @@
 import { randomUUID } from 'node:crypto'
-import bcrypt from 'bcrypt'
-import { readWebState, writeWebState } from '@/server/storage/database'
-import { getWebSettings } from '@/server/web-settings/store'
 import { defaultAccentColor, isAccentColor } from '@/shared/model/theme/accent-color'
 import {
   defaultUserPermissions,
@@ -11,114 +8,13 @@ import {
   type PermissionMap,
   type ResourceQuota
 } from '@/shared/permissions/permissions'
-import {
-  findGroups,
-  defaultPasswordMinimumLength,
-  normalizeGroups,
-  normalizeUser,
-  nowIso,
-  toPublicUser,
-  validateAvatarDataUrl
-} from './user-model'
+import { hashPassword, verifyPassword } from './password-hashing'
+import { assertPasswordMeetsPolicy, getPasswordMinimumLength } from './password-policy'
+import { mutateUsersFile, readUsersFile } from './user-store'
+import { findGroups, nowIso, toPublicUser, validateAvatarDataUrl } from './user-model'
 import type { StoredUser, UserEditorInput, UserGroup, UserRole, UsersFile } from './user-model'
 
 export type { PublicUser, UserEditorInput, UserGroup, UserRole } from './user-model'
-
-const bcryptRounds = 12
-const usersStateKey = 'users'
-let usersMutationQueue = Promise.resolve()
-
-const hashPassword = async (password: string) => bcrypt.hash(password, bcryptRounds)
-
-const verifyPassword = async (password: string, passwordHash: string) => {
-  if (!passwordHash.startsWith('$2')) {
-    return false
-  }
-
-  return bcrypt.compare(password, passwordHash)
-}
-
-const getPasswordMinimumLength = async () => {
-  try {
-    return (await getWebSettings()).passwordMinimumLength
-  } catch {
-    return defaultPasswordMinimumLength
-  }
-}
-
-const defaultAdminUser = async (): Promise<StoredUser> => {
-  const initialPassword = process.env.INITIAL_ADMIN_PASSWORD
-  if (!initialPassword) {
-    throw new Error('INITIAL_ADMIN_PASSWORD is required when creating the first administrator.')
-  }
-
-  const now = nowIso()
-  return {
-    id: 'admin',
-    username: 'admin',
-    name: 'Admin',
-    role: 'admin',
-    groupIds: ['admins'],
-    disabled: false,
-    passwordChangeRequired: false,
-    sessionVersion: 1,
-    avatarDataUrl: null,
-    accentColor: 'blue',
-    permissionOverrides: {},
-    quotas: {},
-    passwordHash: await hashPassword(initialPassword),
-    createdAt: now,
-    updatedAt: now
-  }
-}
-
-const normalizeUsersFile = async (input: Partial<UsersFile>): Promise<UsersFile> => {
-  const normalizedGroups = normalizeGroups(input.groups)
-  const users =
-    input.users && input.users.length > 0 ? input.users.map(user => normalizeUser(user)) : [await defaultAdminUser()]
-
-  return { groups: normalizedGroups, users }
-}
-
-const readUsersFile = async (): Promise<UsersFile> => {
-  const stored = readWebState(usersStateKey)
-  if (stored !== null) {
-    return normalizeUsersFile(parseUsersFile(stored))
-  }
-
-  const initial = await normalizeUsersFile({})
-  await writeUsersFile(initial)
-  return initial
-}
-
-const writeUsersFile = (file: UsersFile) => {
-  return Promise.resolve(writeWebState(usersStateKey, JSON.stringify(file)))
-}
-
-const parseUsersFile = (content: string): Partial<UsersFile> => {
-  const parsed = JSON.parse(content) as Partial<UsersFile>
-  if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.users) || !Array.isArray(parsed.groups)) {
-    throw new Error(
-      'The users store is malformed. Restore it from backup or repair it before starting the web service.'
-    )
-  }
-
-  return parsed
-}
-
-const mutateUsersFile = async <Result>(mutation: (file: UsersFile) => Promise<Result> | Result) => {
-  const pending = usersMutationQueue.then(async () => {
-    const file = await readUsersFile()
-    const result = await mutation(file)
-    await writeUsersFile(file)
-    return result
-  })
-  usersMutationQueue = pending.then(
-    () => undefined,
-    () => undefined
-  )
-  return pending
-}
 
 const listUsers = async () => {
   const file = await readUsersFile()
@@ -232,10 +128,7 @@ const updateUser = async (id: string, input: UserEditorInput) =>
       user.username = username
     }
     if (input.password !== undefined && input.password.trim()) {
-      const passwordMinimumLength = await getPasswordMinimumLength()
-      if (input.password.length < passwordMinimumLength) {
-        throw new Error(`Password must be at least ${passwordMinimumLength} characters.`)
-      }
+      await assertPasswordMeetsPolicy(input.password)
       user.passwordHash = await hashPassword(input.password)
       user.passwordChangeRequired = true
       user.sessionVersion += 1
@@ -267,7 +160,6 @@ const resetPassword = async (id: string, password: string) => updateUser(id, { p
 
 const changeOwnPassword = async (id: string, currentPassword: string, newPassword: string) =>
   mutateUsersFile(async file => {
-    const passwordMinimumLength = await getPasswordMinimumLength()
     const user = file.users.find(item => item.id === id)
     if (!user) {
       throw new Error('User not found.')
@@ -275,9 +167,7 @@ const changeOwnPassword = async (id: string, currentPassword: string, newPasswor
     if (!(await verifyPassword(currentPassword, user.passwordHash))) {
       throw new Error('Current password is incorrect.')
     }
-    if (newPassword.length < passwordMinimumLength) {
-      throw new Error(`Password must be at least ${passwordMinimumLength} characters.`)
-    }
+    await assertPasswordMeetsPolicy(newPassword)
 
     user.passwordHash = await hashPassword(newPassword)
     user.passwordChangeRequired = false
@@ -287,7 +177,6 @@ const changeOwnPassword = async (id: string, currentPassword: string, newPasswor
 
 const completeRequiredPasswordChange = async (id: string, currentPassword: string, newPassword: string) =>
   mutateUsersFile(async file => {
-    const passwordMinimumLength = await getPasswordMinimumLength()
     const user = file.users.find(item => item.id === id)
     if (!user) {
       throw new Error('User not found.')
@@ -298,9 +187,7 @@ const completeRequiredPasswordChange = async (id: string, currentPassword: strin
     if (!(await verifyPassword(currentPassword, user.passwordHash))) {
       throw new Error('Current password is incorrect.')
     }
-    if (newPassword.length < passwordMinimumLength) {
-      throw new Error(`Password must be at least ${passwordMinimumLength} characters.`)
-    }
+    await assertPasswordMeetsPolicy(newPassword)
     if (newPassword === currentPassword) {
       throw new Error('New password must be different from the current password.')
     }
