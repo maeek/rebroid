@@ -16,6 +16,9 @@
     "lint": "turbo run lint",
     "openapi:check": "node scripts/openapi-generate.mjs --check",
     "openapi:generate": "node scripts/openapi-generate.mjs",
+    "openapi:orchestrator:check": "node scripts/openapi-generate.mjs --contract=orchestrator --check",
+    "openapi:orchestrator:generate": "node scripts/openapi-generate.mjs --contract=orchestrator",
+    "reset:orchestrator-state": "node scripts/reset-orchestrator-state.mjs",
     "boundaries": "depcruise --config .dependency-cruiser.cjs apps packages",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck"

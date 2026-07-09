@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ApplicationProfileMode } from '../../android-apps/application-profile-mode';
+import { ApplicationProfileMode } from '../../android-apps/contracts/application-profile-mode';
 import { AutomationAiDefinitionFactory } from '../ai/automation-ai-definition.factory';
 import { AutomationAiSuggestionsService } from '../ai/automation-ai-suggestions.service';
 import { AutomationAiYamlDraftService } from '../ai/automation-ai-yaml-draft.service';

@@ -1,6 +1,9 @@
-import { Controller, Post, Query } from '@nestjs/common';
+import { Inject, Controller, Post, Query } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { DockerPlatformPruneService } from '../../../docker/prune/services/docker-platform-prune.service';
+import {
+  DOCKER_PLATFORM_PRUNE,
+  type DockerPlatformPrunePort,
+} from '../../../docker/contracts/docker-platform-prune.port';
 import {
   DockerPruneAllResponseDto,
   DockerPruneResponseDto,
@@ -10,7 +13,10 @@ import { PruneImagesDto } from '../dto/prune-images.dto';
 @ApiTags('platform-docker')
 @Controller('platform/docker/prune')
 export class DockerMaintenancePruneController {
-  constructor(private readonly prune: DockerPlatformPruneService) {}
+  constructor(
+    @Inject(DOCKER_PLATFORM_PRUNE)
+    private readonly prune: DockerPlatformPrunePort,
+  ) {}
 
   @Post('images')
   @ApiOperation({ summary: 'Prune unused images.' })

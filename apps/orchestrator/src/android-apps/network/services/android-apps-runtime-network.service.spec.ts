@@ -10,18 +10,21 @@ import { AndroidAppsRuntimeNetworkService } from './android-apps-runtime-network
 const createService = (
   apply: jest.Mock,
   stopContainer = jest.fn().mockResolvedValue(undefined),
-) =>
-  ({
-    service: new AndroidAppsRuntimeNetworkService(
-      {} as NetworkIsolationService,
-      { apply } as unknown as NetworkPolicyService,
-      { append: jest.fn().mockResolvedValue(undefined) } as unknown as AndroidAppsLogService,
-      { save: jest.fn().mockResolvedValue(undefined) } as unknown as AndroidAppsStateService,
-      {} as AndroidAppsViewerNetworkService,
-      { stopContainer } as unknown as DockerContainerLifecycleService,
-    ),
-    stopContainer,
-  });
+) => ({
+  service: new AndroidAppsRuntimeNetworkService(
+    {} as NetworkIsolationService,
+    { apply } as unknown as NetworkPolicyService,
+    {
+      append: jest.fn().mockResolvedValue(undefined),
+    } as unknown as AndroidAppsLogService,
+    {
+      save: jest.fn().mockResolvedValue(undefined),
+    } as unknown as AndroidAppsStateService,
+    {} as AndroidAppsViewerNetworkService,
+    { stopContainer } as unknown as DockerContainerLifecycleService,
+  ),
+  stopContainer,
+});
 
 const app = {
   id: 'app-1',

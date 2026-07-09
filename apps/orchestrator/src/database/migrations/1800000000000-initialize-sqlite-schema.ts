@@ -1,4 +1,8 @@
 import { MigrationInterface, QueryRunner, Table } from 'typeorm';
+import {
+  createRuntimeImageSchema,
+  dropRuntimeImageSchema,
+} from '../create-runtime-image-schema';
 
 export class InitializeSqliteSchema1800000000000 implements MigrationInterface {
   name = 'InitializeSqliteSchema1800000000000';
@@ -413,9 +417,13 @@ export class InitializeSqliteSchema1800000000000 implements MigrationInterface {
         ],
       }),
     );
+
+    await createRuntimeImageSchema(queryRunner);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    await dropRuntimeImageSchema(queryRunner);
+
     if (await queryRunner.hasTable('automation_run_events')) {
       await queryRunner.dropTable('automation_run_events');
     }

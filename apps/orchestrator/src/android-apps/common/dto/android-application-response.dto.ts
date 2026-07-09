@@ -2,13 +2,13 @@ import { ApiProperty } from '@nestjs/swagger';
 import type { RuntimeImageKind } from '@rebroid/application-core/redroid-runtime';
 import { parseJsonStringArray } from '../../../common/json-array';
 import { AndroidApplication } from '../../android-application.entity';
-import { ApplicationProfileMode } from '../../application-profile-mode';
+import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
 import { parseSavedProfiles } from '../utils/android-apps-profile-history.utils';
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
   ScrcpyTransport,
-} from '../../android-application-status';
+} from '../../contracts/android-application-status';
 import {
   AndroidApplicationError,
   AndroidApplicationStatusDetail,

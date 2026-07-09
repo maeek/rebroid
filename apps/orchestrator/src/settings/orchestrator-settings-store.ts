@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { ScrcpyTransport } from '../android-apps/android-application-status';
+import { ScrcpyTransport } from '../android-apps/contracts/android-application-status';
 import { numberInRange } from '../common/number-range';
 import {
   defaultAiProviders,
@@ -201,7 +201,12 @@ export class OrchestratorSettingsStore {
       enabled:
         typeof value?.enabled === 'boolean' ? value.enabled : defaults.enabled,
       endpoint,
-      timeoutMs: numberInRange(value?.timeoutMs, defaults.timeoutMs, 100, 120000),
+      timeoutMs: numberInRange(
+        value?.timeoutMs,
+        defaults.timeoutMs,
+        100,
+        120000,
+      ),
     };
   }
 

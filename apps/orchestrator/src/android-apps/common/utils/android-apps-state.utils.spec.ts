@@ -1,4 +1,4 @@
-import { AndroidApplicationStatus } from '../../android-application-status';
+import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import { shouldReconcileContainerState } from './android-apps-state.utils';
 
 describe('android apps state utilities', () => {

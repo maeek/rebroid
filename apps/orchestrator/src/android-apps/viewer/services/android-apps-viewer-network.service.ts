@@ -1,8 +1,17 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { getErrorMessage } from '../../../common/error-message';
-import { DockerContainerExecService } from '../../../docker/containers/services/docker-container-exec.service';
-import { DockerNetworkRuntimeService } from '../../../docker/networks/services/docker-network-runtime.service';
-import { DockerSidecarService } from '../../../docker/sidecar/services/docker-sidecar.service';
+import {
+  DOCKER_CONTAINER_EXEC,
+  type DockerContainerExecPort,
+} from '../../../docker/contracts/docker-container-exec.port';
+import {
+  DOCKER_NETWORK_RUNTIME,
+  type DockerNetworkRuntimePort,
+} from '../../../docker/contracts/docker-network-runtime.port';
+import {
+  DOCKER_SIDECAR,
+  type DockerSidecarPort,
+} from '../../../docker/contracts/docker-sidecar.port';
 import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
@@ -16,9 +25,12 @@ export class AndroidAppsViewerNetworkService {
   private readonly adbTargetPreparations = new Map<string, Promise<unknown>>();
 
   constructor(
-    private readonly networks: DockerNetworkRuntimeService,
-    private readonly sidecar: DockerSidecarService,
-    private readonly exec: DockerContainerExecService,
+    @Inject(DOCKER_NETWORK_RUNTIME)
+    private readonly networks: DockerNetworkRuntimePort,
+    @Inject(DOCKER_SIDECAR)
+    private readonly sidecar: DockerSidecarPort,
+    @Inject(DOCKER_CONTAINER_EXEC)
+    private readonly exec: DockerContainerExecPort,
     private readonly networkPolicy: NetworkPolicyService,
     private readonly logs: AndroidAppsLogService,
     private readonly state: AndroidAppsStateService,

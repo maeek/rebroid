@@ -1,4 +1,5 @@
 import {
+  Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -6,10 +7,22 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { setTimeout as delay } from 'node:timers/promises';
 import { getErrorMessage } from '../../../common/error-message';
-import { DockerContainerExecService } from '../../../docker/containers/services/docker-container-exec.service';
-import { DockerContainerLifecycleService } from '../../../docker/containers/services/docker-container-lifecycle.service';
-import { DockerEngineService } from '../../../docker/docker-engine.service';
-import { DockerSidecarService } from '../../../docker/sidecar/services/docker-sidecar.service';
+import {
+  DOCKER_CONTAINER_EXEC,
+  type DockerContainerExecPort,
+} from '../../../docker/contracts/docker-container-exec.port';
+import {
+  DOCKER_CONTAINER_LIFECYCLE,
+  type DockerContainerLifecyclePort,
+} from '../../../docker/contracts/docker-container-lifecycle.port';
+import {
+  DOCKER_ENGINE,
+  type DockerEnginePort,
+} from '../../../docker/contracts/docker-engine.port';
+import {
+  DOCKER_SIDECAR,
+  type DockerSidecarPort,
+} from '../../../docker/contracts/docker-sidecar.port';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
@@ -29,10 +42,14 @@ export class AndroidAppsProvisioningAndroidService {
   );
 
   constructor(
-    private readonly exec: DockerContainerExecService,
-    private readonly lifecycle: DockerContainerLifecycleService,
-    private readonly engine: DockerEngineService,
-    private readonly sidecar: DockerSidecarService,
+    @Inject(DOCKER_CONTAINER_EXEC)
+    private readonly exec: DockerContainerExecPort,
+    @Inject(DOCKER_CONTAINER_LIFECYCLE)
+    private readonly lifecycle: DockerContainerLifecyclePort,
+    @Inject(DOCKER_ENGINE)
+    private readonly engine: DockerEnginePort,
+    @Inject(DOCKER_SIDECAR)
+    private readonly sidecar: DockerSidecarPort,
     private readonly logs: AndroidAppsLogService,
     private readonly tracker: AndroidAppsProvisioningTrackerService,
     private readonly viewerNetwork: AndroidAppsViewerNetworkService,
@@ -256,7 +273,7 @@ export class AndroidAppsProvisioningAndroidService {
   /** Builds the boot error message for a stopped container. */
   private androidBootExitedMessage(
     runtimeState: Awaited<
-      ReturnType<DockerContainerLifecycleService['getContainerRuntimeState']>
+      ReturnType<DockerContainerLifecyclePort['getContainerRuntimeState']>
     >,
   ) {
     if (!runtimeState.exists) {

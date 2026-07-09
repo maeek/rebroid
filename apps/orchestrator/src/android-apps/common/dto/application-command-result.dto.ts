@@ -4,8 +4,8 @@ import { AndroidApplication } from '../../android-application.entity';
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
-} from '../../android-application-status';
-import { ApplicationProfileMode } from '../../application-profile-mode';
+} from '../../contracts/android-application-status';
+import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
 
 const toIso = (value: Date | string | null | undefined) =>
   value ? new Date(value).toISOString() : null;

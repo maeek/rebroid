@@ -29,6 +29,7 @@ export type ApplicationViewerControlResponse = OrchestratorApiSchemas['Applicati
 export type ScrcpySession = OrchestratorApiSchemas['ScrcpySessionDto']
 export type ApplicationDisplayRecording = OrchestratorApiSchemas['DisplayRecordingDto']
 export type DeleteAndroidApplicationResponse = OrchestratorApiSchemas['DeleteAndroidApplicationResponseDto']
+export type AndroidAppRuntimeReconciliation = OrchestratorApiSchemas['AndroidAppRuntimeReconciliationDto']
 
 export interface ApplicationRuntimeFilesProfileInput {
   profileMode?: ApplicationProfileMode

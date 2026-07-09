@@ -1,4 +1,5 @@
 import {
+  Inject,
   Body,
   Controller,
   Delete,
@@ -8,7 +9,10 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { DockerPlatformImagesService } from '../../../docker/images/services/docker-platform-images.service';
+import {
+  DOCKER_PLATFORM_IMAGES,
+  type DockerPlatformImagesPort,
+} from '../../../docker/contracts/docker-platform-images.port';
 import {
   DockerPlatformImageDetailsDto,
   DockerPlatformImageDto,
@@ -19,7 +23,10 @@ import { UpdateRuntimeImageMetadataDto } from '../../dto/update-runtime-image-me
 @ApiTags('platform-docker')
 @Controller('platform/docker/images')
 export class DockerMaintenanceImagesController {
-  constructor(private readonly images: DockerPlatformImagesService) {}
+  constructor(
+    @Inject(DOCKER_PLATFORM_IMAGES)
+    private readonly images: DockerPlatformImagesPort,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List Docker images visible to the platform.' })

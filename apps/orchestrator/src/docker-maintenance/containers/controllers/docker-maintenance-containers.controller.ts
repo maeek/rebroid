@@ -1,7 +1,18 @@
-import { Controller, Delete, Get, Param, Post, Query } from '@nestjs/common';
+import {
+  Inject,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AndroidApplicationsRepository } from '../../../android-apps/persistence/android-applications.repository';
-import { DockerPlatformContainersService } from '../../../docker/containers/services/docker-platform-containers.service';
+import {
+  DOCKER_PLATFORM_CONTAINERS,
+  type DockerPlatformContainersPort,
+} from '../../../docker/contracts/docker-platform-containers.port';
 import { PlatformContainer } from '../../../docker/docker.types';
 import {
   DockerPlatformContainerDetailsDto,
@@ -16,7 +27,8 @@ import {
 @Controller('platform/docker/containers')
 export class DockerMaintenanceContainersController {
   constructor(
-    private readonly containers: DockerPlatformContainersService,
+    @Inject(DOCKER_PLATFORM_CONTAINERS)
+    private readonly containers: DockerPlatformContainersPort,
     private readonly applications: AndroidApplicationsRepository,
   ) {}
 

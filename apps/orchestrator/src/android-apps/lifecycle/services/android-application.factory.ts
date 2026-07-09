@@ -4,11 +4,11 @@ import { RedroidRuntimeConfigService } from '../../../config/redroid-runtime-con
 import { NetworkIsolationService } from '../../../network-isolation/network-isolation.service';
 import { SettingsService } from '../../../settings/settings.service';
 import { AndroidApplication } from '../../android-application.entity';
-import { ApplicationProfileMode } from '../../application-profile-mode';
+import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
-} from '../../android-application-status';
+} from '../../contracts/android-application-status';
 import { CreateAndroidApplicationDto } from '../../common/dto/create-android-application.dto';
 import { resolveContainerImage } from '@rebroid/application-core/container-image';
 import { rememberSavedProfile } from '../../common/utils/android-apps-profile-history.utils';

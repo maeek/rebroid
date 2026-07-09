@@ -1,4 +1,3 @@
-import type { ContainerImageBuildContextFile } from '@/server/orchestrator/platform/types'
 import { normalizeBuildContextPath } from './dockerfile-context-path'
 import type {
   DockerfileContextReference,
@@ -6,6 +5,7 @@ import type {
   ResolvedContextReference,
   ResolvedContextReferenceStatus
 } from './dockerfile-context-types'
+import type { ContainerImageBuildContextFile } from '@/server/orchestrator/platform/types'
 
 export const resolveDockerfileContextReferences = ({
   contextFiles,

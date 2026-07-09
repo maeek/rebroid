@@ -9,10 +9,7 @@ export const loadAutomationTracesPageData = async (id: string) => {
     notFound()
   }
 
-  const [applications, runs] = await Promise.all([
-    listApplicationsAction({ reconcile: false }),
-    listAutomationRunsAction(id, 50)
-  ])
+  const [applications, runs] = await Promise.all([listApplicationsAction(), listAutomationRunsAction(id, 50)])
 
   return {
     applications,

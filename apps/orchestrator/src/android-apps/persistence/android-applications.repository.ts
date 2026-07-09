@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { AndroidApplication } from '../android-application.entity';
-import { AndroidApplicationStatus } from '../android-application-status';
+import { AndroidApplicationStatus } from '../contracts/android-application-status';
 import { ListAndroidApplicationsDto } from '../common/dto/list-android-applications.dto';
 
 @Injectable()

@@ -10,8 +10,8 @@ import {
 } from '@/shared/permissions/permissions'
 import { hashPassword, verifyPassword } from './password-hashing'
 import { assertPasswordMeetsPolicy, getPasswordMinimumLength } from './password-policy'
-import { mutateUsersFile, readUsersFile } from './user-store'
 import { findGroups, nowIso, toPublicUser, validateAvatarDataUrl } from './user-model'
+import { mutateUsersFile, readUsersFile } from './user-store'
 import type { StoredUser, UserEditorInput, UserGroup, UserRole, UsersFile } from './user-model'
 
 export type { PublicUser, UserEditorInput, UserGroup, UserRole } from './user-model'

@@ -5,9 +5,14 @@ const config: Config = {
   rootDir: '.',
   testRegex: '.*\\.spec\\.ts$',
   transform: {
-    '^.+\\.(t|j)s$': 'ts-jest',
+    '^.+\\.ts$': 'ts-jest',
   },
-  collectCoverageFrom: ['src/**/*.(t|j)s'],
+  collectCoverageFrom: [
+    'src/**/*.ts',
+    '!src/main.ts',
+    '!src/**/*.module.ts',
+    '!src/database/migrations/**/*.ts',
+  ],
   coverageDirectory: './coverage',
   testEnvironment: 'node',
 };

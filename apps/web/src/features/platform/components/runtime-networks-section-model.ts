@@ -1,6 +1,6 @@
 import { buildPlatformGridHref, summarizePlatformBulkRemoveResults } from './runtime-grid-query-utils'
-import type { ActionResult } from '@/shared/actions/action-result'
 import type { PlatformNetwork, PlatformNetworksGridQuery } from '@/server/orchestrator/platform/types'
+import type { ActionResult } from '@/shared/actions/action-result'
 
 type NetworksGridHrefInput = {
   gridQuery: PlatformNetworksGridQuery

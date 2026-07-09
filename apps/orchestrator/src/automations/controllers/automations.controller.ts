@@ -28,6 +28,7 @@ import {
   AutomationRunEventDto,
   AutomationRunEventStreamTokenDto,
   AiPromptSuggestionsDto,
+  ListActiveAutomationRunsQueryDto,
   ListAutomationRunsQueryDto,
   RunAdHocAiAutomationDto,
   RunAutomationDto,
@@ -142,12 +143,9 @@ export class AutomationsController {
     return this.automations.create(dto);
   }
 
-  @Get('runs')
+  @Get('runs/active')
   @ApiOkResponse({ type: AutomationRunDto, isArray: true })
-  listAllRuns(@Query() query: ListAutomationRunsQueryDto) {
-    if (query.status === 'active') {
-      return this.automations.listActiveRuns(query.ownerUserId);
-    }
+  listActiveRuns(@Query() query: ListActiveAutomationRunsQueryDto) {
     return this.automations.listActiveRuns(query.ownerUserId);
   }
 

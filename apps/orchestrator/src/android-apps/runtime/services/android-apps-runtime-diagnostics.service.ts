@@ -1,6 +1,9 @@
-import { Injectable } from '@nestjs/common';
-import { DockerContainerLifecycleService } from '../../../docker/containers/services/docker-container-lifecycle.service';
-import { AndroidApplicationStatus } from '../../android-application-status';
+import { Inject, Injectable } from '@nestjs/common';
+import {
+  DOCKER_CONTAINER_LIFECYCLE,
+  type DockerContainerLifecyclePort,
+} from '../../../docker/contracts/docker-container-lifecycle.port';
+import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
 import { AndroidAppsSidecarAdbService } from '../../viewer/services/android-apps-sidecar-adb.service';
@@ -8,7 +11,8 @@ import { AndroidAppsSidecarAdbService } from '../../viewer/services/android-apps
 @Injectable()
 export class AndroidAppsRuntimeDiagnosticsService {
   constructor(
-    private readonly lifecycle: DockerContainerLifecycleService,
+    @Inject(DOCKER_CONTAINER_LIFECYCLE)
+    private readonly lifecycle: DockerContainerLifecyclePort,
     private readonly logs: AndroidAppsLogService,
     private readonly sidecarAdb: AndroidAppsSidecarAdbService,
     private readonly state: AndroidAppsStateService,

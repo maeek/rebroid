@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
-import { ApplicationProfileMode } from '../../android-apps/application-profile-mode';
+import { ApplicationProfileMode } from '../../android-apps/contracts/application-profile-mode';
 import {
   AutomationTriggersGridPageDto,
   CreateAutomationTriggerDto,

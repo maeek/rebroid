@@ -1,6 +1,9 @@
-import { Controller, Delete, Get, Param } from '@nestjs/common';
+import { Inject, Controller, Delete, Get, Param } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { DockerPlatformNetworksService } from '../../../docker/networks/services/docker-platform-networks.service';
+import {
+  DOCKER_PLATFORM_NETWORKS,
+  type DockerPlatformNetworksPort,
+} from '../../../docker/contracts/docker-platform-networks.port';
 import {
   DockerPlatformNetworkDetailsDto,
   DockerPlatformNetworkDto,
@@ -10,7 +13,10 @@ import {
 @ApiTags('platform-docker')
 @Controller('platform/docker/networks')
 export class DockerMaintenanceNetworksController {
-  constructor(private readonly networks: DockerPlatformNetworksService) {}
+  constructor(
+    @Inject(DOCKER_PLATFORM_NETWORKS)
+    private readonly networks: DockerPlatformNetworksPort,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List Docker networks visible to the platform.' })

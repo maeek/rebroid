@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import type { StoredOrchestratorSettings } from './orchestrator-settings-store';
 import { AiProviderSettingsService } from './ai-provider-settings.service';
-import { ScrcpyTransport } from '../android-apps/android-application-status';
+import { ScrcpyTransport } from '../android-apps/contracts/android-application-status';
 
 const createSettings = (): StoredOrchestratorSettings => ({
   defaultContainerImage: 'redroid/redroid:latest',

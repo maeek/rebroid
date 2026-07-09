@@ -13,8 +13,8 @@ export const actionOk = <T>(data: T): ActionResult<T> => ({ ok: true, data })
 export const actionError = (error: ActionError): ActionResult<never> => ({ ok: false, error })
 
 export class ActionResultError extends Error {
-  constructor(readonly actionError: ActionError) {
-    super(actionError.message)
+  constructor(readonly failure: ActionError) {
+    super(failure.message)
     this.name = 'ActionResultError'
   }
 }

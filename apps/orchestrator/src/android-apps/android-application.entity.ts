@@ -7,12 +7,12 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import type { RuntimeImageKind } from '@rebroid/application-core/redroid-runtime';
-import { ApplicationProfileMode } from './application-profile-mode';
+import { ApplicationProfileMode } from './contracts/application-profile-mode';
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
   ScrcpyTransport,
-} from './android-application-status';
+} from './contracts/android-application-status';
 
 export class AndroidImagePullProgress {
   @ApiProperty({ example: 'Downloading' })

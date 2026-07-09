@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { Inject, ConflictException, Injectable } from '@nestjs/common';
 import { createWriteStream } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -6,9 +6,15 @@ import { join, posix } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { type MultipartUploadRequest } from '../../../common/http-upload';
-import { DockerContainerArchiveService } from '../../../docker/containers/services/docker-container-archive.service';
-import { DockerContainerExecService } from '../../../docker/containers/services/docker-container-exec.service';
-import { AndroidApplicationStatus } from '../../android-application-status';
+import {
+  DOCKER_CONTAINER_ARCHIVE,
+  type DockerContainerArchivePort,
+} from '../../../docker/contracts/docker-container-archive.port';
+import {
+  DOCKER_CONTAINER_EXEC,
+  type DockerContainerExecPort,
+} from '../../../docker/contracts/docker-container-exec.port';
+import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
 import { ApplicationRuntimeFileUploadDto } from '../dto/application-runtime-file.dto';
@@ -18,8 +24,10 @@ import { RuntimeUploadStreamService } from './runtime-upload-stream.service';
 @Injectable()
 export class RuntimeDataFilesService {
   constructor(
-    private readonly archive: DockerContainerArchiveService,
-    private readonly exec: DockerContainerExecService,
+    @Inject(DOCKER_CONTAINER_ARCHIVE)
+    private readonly archive: DockerContainerArchivePort,
+    @Inject(DOCKER_CONTAINER_EXEC)
+    private readonly exec: DockerContainerExecPort,
     private readonly state: AndroidAppsStateService,
     private readonly paths: RuntimeFilePathService,
     private readonly uploads: RuntimeUploadStreamService,

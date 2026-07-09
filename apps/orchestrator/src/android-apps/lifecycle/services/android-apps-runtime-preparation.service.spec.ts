@@ -1,5 +1,5 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
-import { ApplicationProfileMode } from '../../application-profile-mode';
+import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
 import { AndroidAppsRuntimePreparationService } from './android-apps-runtime-preparation.service';
 import type { AndroidApplication } from '../../android-application.entity';
 

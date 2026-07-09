@@ -12,7 +12,6 @@ import {
   buildMalformedToolCallRecoveryMessage,
   buildNoToolActionRecoveryMessage,
   buildPublicPlanRequestMessage,
-  buildReplanMessage,
   buildScreenshotObservationMessage,
   buildScreenObservationMessage,
   buildToolFailureRecoveryMessage,
@@ -24,13 +23,11 @@ import {
   buildToolDefinitions,
   isSettingsOpenClaimConfirmed,
   mapUsesByToolName,
-  normalizePublicAiText,
   parseArguments,
   parseToolCallArguments,
   preflightToolCall,
   repeatedToolAttemptGuard,
   shouldObserveAfterTool,
-  summarizeObservationCandidates,
   summarizeVisualAffordances,
   toolAttemptKey,
   type ChatMessage,
@@ -51,6 +48,7 @@ import type { AutomationAiHarnessContext } from './automation-ai.types';
 import { AutomationPerceptionService } from '../vision/automation-perception.service';
 import { AutomationAiRuntimeContextService } from './automation-ai-runtime-context.service';
 import { AutomationAiChatClientService } from './automation-ai-chat-client.service';
+import { AutomationAiHarnessRuntimeService } from './automation-ai-harness-runtime.service';
 
 const textContent = (content: ChatMessage['content']) =>
   typeof content === 'string'
@@ -221,10 +219,15 @@ export class AutomationAiHarnessService {
   constructor(
     private readonly providers: AutomationAiProviderService,
     private readonly registry: AutomationCommandRegistryService,
-    private readonly events: AutomationRunEventBus,
-    private readonly perception: AutomationPerceptionService,
+    events: AutomationRunEventBus,
+    perception: AutomationPerceptionService,
     private readonly runtimeContext: AutomationAiRuntimeContextService,
     private readonly chatClient: AutomationAiChatClientService,
+    private readonly harnessRuntime: AutomationAiHarnessRuntimeService = new AutomationAiHarnessRuntimeService(
+      events,
+      perception,
+      chatClient,
+    ),
   ) {}
 
   async run(input: AutomationAiRunInput, context: AutomationAiHarnessContext) {
@@ -248,10 +251,10 @@ export class AutomationAiHarnessService {
       model.roles.includes('planner') &&
       model.roles.includes('vision');
 
-    await this.emit(context, 'ai.user.message', input.prompt, {
+    await this.harnessRuntime.emit(context, 'ai.user.message', input.prompt, {
       clientMessageId: input.clientMessageId ?? null,
     });
-    let latestObservation = await this.observeScreen({
+    let latestObservation = await this.harnessRuntime.observeScreen({
       context,
       input,
       deadline,
@@ -266,7 +269,7 @@ export class AutomationAiHarnessService {
         ...input,
         initialObservationText: [
           runtimeContext,
-          this.plannerObservationText(
+          this.harnessRuntime.plannerObservationText(
             latestObservation,
             confirmedFacts,
             input.prompt,
@@ -287,16 +290,21 @@ export class AutomationAiHarnessService {
     let finalText = '';
     let malformedToolCallRecoveries = 0;
 
-    await this.emit(context, 'ai.model.started', `Using ${provider.label}`, {
-      providerId: provider.id,
-      modelId: model.id,
-      visionProviderId: input.visionProviderId ?? null,
-      visionModelId: input.visionModelId ?? null,
-      sharedMultimodalMode,
-      clientMessageId: input.clientMessageId ?? null,
-    });
+    await this.harnessRuntime.emit(
+      context,
+      'ai.model.started',
+      `Using ${provider.label}`,
+      {
+        providerId: provider.id,
+        modelId: model.id,
+        visionProviderId: input.visionProviderId ?? null,
+        visionModelId: input.visionModelId ?? null,
+        sharedMultimodalMode,
+        clientMessageId: input.clientMessageId ?? null,
+      },
+    );
 
-    await this.emit(
+    await this.harnessRuntime.emit(
       context,
       'ai.orientation.completed',
       latestObservation.observation.summary
@@ -311,7 +319,7 @@ export class AutomationAiHarnessService {
     const publicPlanRequest = buildPublicPlanRequestMessage({
       prompt: input.prompt,
     });
-    const publicPlan = await this.requestNoToolText({
+    const publicPlan = await this.harnessRuntime.requestNoToolText({
       provider,
       model,
       messages: [...messages, publicPlanRequest],
@@ -320,7 +328,7 @@ export class AutomationAiHarnessService {
       fallback:
         'Current screen: observed. Goal: complete the requested Android task. Next moves: use the latest observation, navigate or inspect state first, then act. First action: choose the safest available tool. Replan if a tool fails or the screen changes.',
     });
-    await this.emit(context, 'ai.plan.proposed', publicPlan, {
+    await this.harnessRuntime.emit(context, 'ai.plan.proposed', publicPlan, {
       clientMessageId: input.clientMessageId ?? null,
     });
     messages.push(publicPlanRequest, {
@@ -341,7 +349,7 @@ export class AutomationAiHarnessService {
           deadline,
           abortSignal: context.abortSignal,
           onContentDelta: async (delta) => {
-            await this.emit(context, 'ai.message.delta', delta, {
+            await this.harnessRuntime.emit(context, 'ai.message.delta', delta, {
               clientMessageId: input.clientMessageId ?? null,
             });
           },
@@ -358,7 +366,7 @@ export class AutomationAiHarnessService {
             messages.length,
             ...stripImagesFromMessages(messages),
           );
-          await this.emit(
+          await this.harnessRuntime.emit(
             context,
             'ai.guardrail.triggered',
             'Selected planner rejected screenshot messages; falling back to separate vision observations.',
@@ -369,7 +377,7 @@ export class AutomationAiHarnessService {
               clientMessageId: input.clientMessageId ?? null,
             },
           );
-          latestObservation = await this.observeScreen({
+          latestObservation = await this.harnessRuntime.observeScreen({
             context,
             input,
             deadline,
@@ -385,7 +393,7 @@ export class AutomationAiHarnessService {
             buildScreenObservationMessage({
               summary:
                 'Separate vision observation captured after shared multimodal fallback.',
-              observation: this.plannerObservationText(
+              observation: this.harnessRuntime.plannerObservationText(
                 latestObservation,
                 confirmedFacts,
                 input.prompt,
@@ -401,7 +409,7 @@ export class AutomationAiHarnessService {
           throw error;
         }
         malformedToolCallRecoveries += 1;
-        await this.emit(
+        await this.harnessRuntime.emit(
           context,
           'ai.guardrail.triggered',
           'AI provider rejected malformed tool-call JSON; requesting a corrected tool call.',
@@ -433,12 +441,17 @@ export class AutomationAiHarnessService {
       if (contentDecision.action === 'continue-plan') {
         if (calls.length === 0) {
           noToolPlan = contentDecision.normalizedText;
-          await this.emit(context, 'ai.plan.updated', noToolPlan, {
-            reason: 'model-replan',
-            clientMessageId: input.clientMessageId ?? null,
-          });
+          await this.harnessRuntime.emit(
+            context,
+            'ai.plan.updated',
+            noToolPlan,
+            {
+              reason: 'model-replan',
+              clientMessageId: input.clientMessageId ?? null,
+            },
+          );
         } else {
-          await this.emit(
+          await this.harnessRuntime.emit(
             context,
             'ai.plan.updated',
             contentDecision.normalizedText,
@@ -450,7 +463,7 @@ export class AutomationAiHarnessService {
         }
       } else if (contentDecision.action === 'recover-no-tool') {
         recoverNoTool = true;
-        await this.emit(
+        await this.harnessRuntime.emit(
           context,
           'ai.guardrail.triggered',
           'AI claimed progress or blockage before calling any tool; requesting a concrete tool action.',
@@ -458,7 +471,7 @@ export class AutomationAiHarnessService {
             clientMessageId: input.clientMessageId ?? null,
           },
         );
-        await this.emit(
+        await this.harnessRuntime.emit(
           context,
           'ai.plan.updated',
           contentDecision.normalizedText,
@@ -468,7 +481,7 @@ export class AutomationAiHarnessService {
           },
         );
       } else if (contentDecision.action === 'guardrail') {
-        await this.emit(
+        await this.harnessRuntime.emit(
           context,
           'ai.guardrail.triggered',
           'AI repeated planning without choosing a tool.',
@@ -485,14 +498,24 @@ export class AutomationAiHarnessService {
         });
         if (completionGuard) {
           recoverNoTool = true;
-          await this.emit(context, 'ai.guardrail.triggered', completionGuard, {
-            clientMessageId: input.clientMessageId ?? null,
-          });
+          await this.harnessRuntime.emit(
+            context,
+            'ai.guardrail.triggered',
+            completionGuard,
+            {
+              clientMessageId: input.clientMessageId ?? null,
+            },
+          );
         } else {
           finalText = contentDecision.normalizedText;
-          await this.emit(context, 'ai.message.completed', finalText, {
-            clientMessageId: input.clientMessageId ?? null,
-          });
+          await this.harnessRuntime.emit(
+            context,
+            'ai.message.completed',
+            finalText,
+            {
+              clientMessageId: input.clientMessageId ?? null,
+            },
+          );
         }
       }
       messages.push({
@@ -518,7 +541,7 @@ export class AutomationAiHarnessService {
       for (const call of calls) {
         this.assertNotCanceled(context.abortSignal);
         if (toolCalls >= input.maxToolCalls) {
-          await this.emit(
+          await this.harnessRuntime.emit(
             context,
             'ai.guardrail.triggered',
             'AI tool-call limit reached.',
@@ -550,7 +573,7 @@ export class AutomationAiHarnessService {
         });
         if (repeatedGuard) {
           toolCalls += 1;
-          await this.emit(
+          await this.harnessRuntime.emit(
             context,
             'ai.guardrail.triggered',
             repeatedGuard.summary,
@@ -561,12 +584,17 @@ export class AutomationAiHarnessService {
               clientMessageId: input.clientMessageId ?? null,
             },
           );
-          await this.emit(context, 'ai.tool.failed', repeatedGuard.summary, {
-            uses,
-            failureCategory: repeatedGuard.category,
-            recoveryHint: repeatedGuard.recoveryHint,
-            clientMessageId: input.clientMessageId ?? null,
-          });
+          await this.harnessRuntime.emit(
+            context,
+            'ai.tool.failed',
+            repeatedGuard.summary,
+            {
+              uses,
+              failureCategory: repeatedGuard.category,
+              recoveryHint: repeatedGuard.recoveryHint,
+              clientMessageId: input.clientMessageId ?? null,
+            },
+          );
           messages.push({
             role: 'tool',
             tool_call_id: call.id,
@@ -595,7 +623,7 @@ export class AutomationAiHarnessService {
         if (preflightGuard) {
           toolCalls += 1;
           this.recordFailedAttempt(failedAttempts, attemptKey);
-          await this.emit(
+          await this.harnessRuntime.emit(
             context,
             'ai.guardrail.triggered',
             preflightGuard.summary,
@@ -606,12 +634,17 @@ export class AutomationAiHarnessService {
               clientMessageId: input.clientMessageId ?? null,
             },
           );
-          await this.emit(context, 'ai.tool.failed', preflightGuard.summary, {
-            uses,
-            failureCategory: preflightGuard.category,
-            recoveryHint: preflightGuard.recoveryHint,
-            clientMessageId: input.clientMessageId ?? null,
-          });
+          await this.harnessRuntime.emit(
+            context,
+            'ai.tool.failed',
+            preflightGuard.summary,
+            {
+              uses,
+              failureCategory: preflightGuard.category,
+              recoveryHint: preflightGuard.recoveryHint,
+              clientMessageId: input.clientMessageId ?? null,
+            },
+          );
           messages.push({
             role: 'tool',
             tool_call_id: call.id,
@@ -624,7 +657,7 @@ export class AutomationAiHarnessService {
               recoverable: true,
             }),
           });
-          await this.replan({
+          await this.harnessRuntime.replan({
             context,
             input,
             provider,
@@ -632,7 +665,7 @@ export class AutomationAiHarnessService {
             messages,
             deadline,
             reason: `${preflightGuard.summary} ${preflightGuard.recoveryHint}`,
-            observation: this.plannerObservationText(
+            observation: this.harnessRuntime.plannerObservationText(
               latestObservation,
               confirmedFacts,
               input.prompt,
@@ -645,7 +678,7 @@ export class AutomationAiHarnessService {
             `Accepted compatible AI tool-call shape for run=${context.runId ?? 'unknown'} provider=${provider.id} model=${model.id} tool=${uses}`,
           );
         }
-        await this.emit(
+        await this.harnessRuntime.emit(
           context,
           'ai.action.decided',
           parsedToolCall.intent || `Use ${uses}`,
@@ -655,7 +688,7 @@ export class AutomationAiHarnessService {
             clientMessageId: input.clientMessageId ?? null,
           },
         );
-        await this.emit(context, 'ai.tool.arguments', uses, {
+        await this.harnessRuntime.emit(context, 'ai.tool.arguments', uses, {
           uses,
           intent: parsedToolCall.intent,
           expectedOutcome: parsedToolCall.expectedOutcome,
@@ -669,10 +702,15 @@ export class AutomationAiHarnessService {
         const blockedResult = blockedToolResult(uses, parsedToolCall);
         if (blockedResult) {
           this.recordFailedAttempt(failedAttempts, attemptKey);
-          await this.emit(context, 'ai.tool.failed', blockedResult.summary, {
-            uses,
-            clientMessageId: input.clientMessageId ?? null,
-          });
+          await this.harnessRuntime.emit(
+            context,
+            'ai.tool.failed',
+            blockedResult.summary,
+            {
+              uses,
+              clientMessageId: input.clientMessageId ?? null,
+            },
+          );
           messages.push({
             role: 'tool',
             tool_call_id: call.id,
@@ -687,10 +725,15 @@ export class AutomationAiHarnessService {
           );
           continue;
         }
-        await this.emit(context, 'ai.tool.started', `Calling ${uses}`, {
-          uses,
-          clientMessageId: input.clientMessageId ?? null,
-        });
+        await this.harnessRuntime.emit(
+          context,
+          'ai.tool.started',
+          `Calling ${uses}`,
+          {
+            uses,
+            clientMessageId: input.clientMessageId ?? null,
+          },
+        );
         try {
           const beforeObservation = latestObservation;
           const result = await context.toolExecutor({
@@ -718,13 +761,18 @@ export class AutomationAiHarnessService {
               message: summary,
               data: result.data ?? {},
             });
-            await this.emit(context, 'ai.tool.failed', failure.summary, {
-              uses,
-              failureCategory: failure.category,
-              recoveryHint: failure.recoveryHint,
-              output: eventData,
-              clientMessageId: input.clientMessageId ?? null,
-            });
+            await this.harnessRuntime.emit(
+              context,
+              'ai.tool.failed',
+              failure.summary,
+              {
+                uses,
+                failureCategory: failure.category,
+                recoveryHint: failure.recoveryHint,
+                output: eventData,
+                clientMessageId: input.clientMessageId ?? null,
+              },
+            );
             messages.push({
               role: 'tool',
               tool_call_id: call.id,
@@ -740,7 +788,7 @@ export class AutomationAiHarnessService {
                   : { data: modelData }),
               }),
             });
-            await this.replan({
+            await this.harnessRuntime.replan({
               context,
               input,
               provider,
@@ -748,7 +796,7 @@ export class AutomationAiHarnessService {
               messages,
               deadline,
               reason: `${failure.summary} ${failure.recoveryHint}`,
-              observation: this.plannerObservationText(
+              observation: this.harnessRuntime.plannerObservationText(
                 latestObservation,
                 confirmedFacts,
                 input.prompt,
@@ -768,11 +816,16 @@ export class AutomationAiHarnessService {
             parsedToolCall.input,
             result.data ?? {},
           );
-          await this.emit(context, 'ai.tool.completed', summary, {
-            uses,
-            output: eventData,
-            clientMessageId: input.clientMessageId ?? null,
-          });
+          await this.harnessRuntime.emit(
+            context,
+            'ai.tool.completed',
+            summary,
+            {
+              uses,
+              output: eventData,
+              clientMessageId: input.clientMessageId ?? null,
+            },
+          );
           messages.push({
             role: 'tool',
             tool_call_id: call.id,
@@ -793,7 +846,7 @@ export class AutomationAiHarnessService {
               misses >= 2
                 ? `Repeated search for "${parsedToolCall.input.query}" found nothing on the current screen. The target is likely not visible here; choose navigation, state discovery, or stop with a clear blocker.`
                 : `Search for "${parsedToolCall.input.query}" found nothing on the current screen. Update the plan before trying another route.`;
-            await this.replan({
+            await this.harnessRuntime.replan({
               context,
               input,
               provider,
@@ -810,7 +863,7 @@ export class AutomationAiHarnessService {
               toolCall: parsedToolCall,
             })
           ) {
-            const observation = await this.observeScreen({
+            const observation = await this.harnessRuntime.observeScreen({
               context,
               input,
               deadline,
@@ -831,7 +884,7 @@ export class AutomationAiHarnessService {
               after: observationSnapshot(observation),
             });
             latestObservation = observation;
-            const observationText = this.plannerObservationText(
+            const observationText = this.harnessRuntime.plannerObservationText(
               observation,
               confirmedFacts,
               input.prompt,
@@ -861,7 +914,7 @@ export class AutomationAiHarnessService {
             }
             if (outcome.category === 'no_effect') {
               this.recordFailedAttempt(failedAttempts, attemptKey);
-              await this.emit(
+              await this.harnessRuntime.emit(
                 context,
                 'ai.guardrail.triggered',
                 outcome.summary ?? 'The action had no observed effect.',
@@ -879,7 +932,7 @@ export class AutomationAiHarnessService {
                 }),
               );
             }
-            await this.replan({
+            await this.harnessRuntime.replan({
               context,
               input,
               provider,
@@ -887,7 +940,7 @@ export class AutomationAiHarnessService {
               messages,
               deadline,
               reason: `Fresh observation after ${uses}.`,
-              observation: this.plannerObservationText(
+              observation: this.harnessRuntime.plannerObservationText(
                 observation,
                 confirmedFacts,
                 input.prompt,
@@ -907,12 +960,17 @@ export class AutomationAiHarnessService {
             uses,
             message,
           });
-          await this.emit(context, 'ai.tool.failed', failure.summary, {
-            uses,
-            failureCategory: failure.category,
-            recoveryHint: failure.recoveryHint,
-            clientMessageId: input.clientMessageId ?? null,
-          });
+          await this.harnessRuntime.emit(
+            context,
+            'ai.tool.failed',
+            failure.summary,
+            {
+              uses,
+              failureCategory: failure.category,
+              recoveryHint: failure.recoveryHint,
+              clientMessageId: input.clientMessageId ?? null,
+            },
+          );
           messages.push({
             role: 'tool',
             tool_call_id: call.id,
@@ -925,7 +983,7 @@ export class AutomationAiHarnessService {
               recoverable: true,
             }),
           });
-          await this.replan({
+          await this.harnessRuntime.replan({
             context,
             input,
             provider,
@@ -933,7 +991,7 @@ export class AutomationAiHarnessService {
             messages,
             deadline,
             reason: `${failure.summary} ${failure.recoveryHint}`,
-            observation: this.plannerObservationText(
+            observation: this.harnessRuntime.plannerObservationText(
               latestObservation,
               confirmedFacts,
               input.prompt,
@@ -952,7 +1010,7 @@ export class AutomationAiHarnessService {
       throw new RequestTimeoutException('AI automation timed out.');
     }
     if (input.requireFinalAnswer && !finalText) {
-      finalText = await this.requestNoToolText({
+      finalText = await this.harnessRuntime.requestNoToolText({
         provider,
         model,
         messages: [
@@ -964,17 +1022,22 @@ export class AutomationAiHarnessService {
         fallback:
           'I could not complete the task. The current screen and tool results did not provide enough confirmed context to finish safely.',
       });
-      await this.emit(context, 'ai.message.completed', finalText, {
-        clientMessageId: input.clientMessageId ?? null,
-        recovered: true,
-      });
+      await this.harnessRuntime.emit(
+        context,
+        'ai.message.completed',
+        finalText,
+        {
+          clientMessageId: input.clientMessageId ?? null,
+          recovered: true,
+        },
+      );
     }
     const toolResult = finalText || undefined;
     const completed = !!toolResult || !input.requireFinalAnswer;
     const status = completed ? 'completed' : 'blocked';
     const summary = toolResult || 'AI step completed without a final answer.';
 
-    await this.emit(
+    await this.harnessRuntime.emit(
       context,
       'ai.model.completed',
       toolResult || 'AI step completed.',
@@ -1031,67 +1094,6 @@ export class AutomationAiHarnessService {
         summary,
       },
     };
-  }
-
-  private observeScreen({
-    context,
-    input,
-    deadline,
-    reason,
-    uses,
-    visionContext,
-  }: {
-    context: AutomationAiHarnessContext;
-    input: Pick<
-      AutomationAiRunInput,
-      'clientMessageId' | 'visionProviderId' | 'visionModelId'
-    >;
-    deadline: number;
-    reason: string;
-    uses?: string;
-    visionContext?: Parameters<
-      AutomationPerceptionService['observe']
-    >[0]['visionContext'];
-  }) {
-    return this.perception.observe({
-      context: { ...context, clientMessageId: input.clientMessageId ?? null },
-      input,
-      deadline,
-      reason,
-      uses,
-      visionContext,
-    });
-  }
-
-  private plannerObservationText(
-    observation: Awaited<ReturnType<AutomationPerceptionService['observe']>>,
-    confirmedFacts: string[],
-    goal: string,
-  ) {
-    const visualAffordances = summarizeVisualAffordances({
-      state: observation.observation.screenState ?? null,
-      goal,
-    });
-    const candidateSummary = summarizeObservationCandidates({
-      candidates: observation.observation.candidates ?? [],
-      goal,
-      maxCandidates: 12,
-    });
-    const plannerText = [
-      observation.plannerText,
-      candidateSummary,
-      visualAffordances,
-    ]
-      .filter(Boolean)
-      .join('\n\n');
-    const visibleFacts = confirmedFacts.slice(-12);
-    if (visibleFacts.length === 0) return plannerText;
-    return [
-      'Confirmed tool facts:',
-      ...visibleFacts.map((fact) => `- ${fact}`),
-      '',
-      plannerText,
-    ].join('\n');
   }
 
   private resultIndicatesFailure(data: Record<string, unknown>) {
@@ -1152,85 +1154,5 @@ export class AutomationAiHarnessService {
     if (abortSignal?.aborted) {
       throw new BadRequestException('AI automation was canceled.');
     }
-  }
-
-  private async replan({
-    context,
-    input,
-    provider,
-    model,
-    messages,
-    deadline,
-    reason,
-    observation,
-  }: {
-    context: AutomationAiHarnessContext;
-    input: Pick<AutomationAiRunInput, 'clientMessageId'>;
-    provider: Parameters<AutomationAiChatClientService['chat']>[0]['provider'];
-    model: Parameters<AutomationAiChatClientService['chat']>[0]['model'];
-    messages: ChatMessage[];
-    deadline: number;
-    reason: string;
-    observation?: string;
-  }) {
-    const request = buildReplanMessage({ reason, observation });
-    const plan = await this.requestNoToolText({
-      provider,
-      model,
-      messages: [...messages, request],
-      deadline,
-      abortSignal: context.abortSignal,
-      fallback: `Plan update: ${reason}`,
-    });
-    await this.emit(context, 'ai.plan.updated', plan, {
-      reason,
-      clientMessageId: input.clientMessageId ?? null,
-    });
-    messages.push(request, { role: 'assistant', content: plan });
-    messages.push(buildExecutePlanMessage(plan));
-  }
-
-  private async requestNoToolText({
-    provider,
-    model,
-    messages,
-    deadline,
-    abortSignal,
-    fallback,
-  }: {
-    provider: Parameters<AutomationAiChatClientService['chat']>[0]['provider'];
-    model: Parameters<AutomationAiChatClientService['chat']>[0]['model'];
-    messages: ChatMessage[];
-    deadline: number;
-    abortSignal?: AbortSignal;
-    fallback: string;
-  }) {
-    const response = await this.chatClient.chat({
-      provider,
-      model,
-      messages,
-      tools: [],
-      deadline,
-      abortSignal,
-    });
-    const content = textContent(response.choices?.[0]?.message?.content).trim();
-    return normalizePublicAiText(sanitizeAiText(content || fallback, 4_000));
-  }
-
-  private emit(
-    context: AutomationAiHarnessContext,
-    type: Parameters<AutomationRunEventBus['emit']>[0]['type'],
-    message: string,
-    data: Record<string, unknown> = {},
-  ) {
-    return this.events.emit({
-      runId: context.runId,
-      ownerUserId: context.ownerUserId,
-      type,
-      stepId: context.stepId,
-      parentStepId: context.parentStepId ?? null,
-      message,
-      data,
-    });
   }
 }

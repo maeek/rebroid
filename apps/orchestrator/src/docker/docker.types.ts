@@ -3,7 +3,7 @@ import type {
   RuntimeImageMetadata,
   RuntimeImageMetadataSource,
 } from '@rebroid/application-core/redroid-runtime';
-import { ApplicationProfileMode } from '../android-apps/application-profile-mode';
+import { ApplicationProfileMode } from '../android-apps/contracts/application-profile-mode';
 
 export interface ApplicationContainerSpec {
   applicationId: string;

@@ -3,7 +3,7 @@ import { getErrorMessage } from '../../../common/error-message';
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
-} from '../../android-application-status';
+} from '../../contracts/android-application-status';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';

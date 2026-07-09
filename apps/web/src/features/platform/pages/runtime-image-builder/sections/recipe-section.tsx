@@ -6,8 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Visible } from '@/components/ui/visible'
 import { RuntimeImagePicker } from '@/features/platform/components/runtime-image-picker'
 import { Setting } from '@/shared/ui/settings/setting'
-import type { ContainerImageBuildRecipe, PlatformImage } from '@/server/orchestrator/platform/types'
 import type { BuilderValues } from '../model/builder-values'
+import type { ContainerImageBuildRecipe, PlatformImage } from '@/server/orchestrator/platform/types'
 
 const verticalSettingClassName = 'flex-col items-start w-full'
 
@@ -129,9 +129,7 @@ export const RecipeSection = ({
     >
       <Select
         value={values.signatureSpoofing}
-        onValueChange={signatureSpoofing =>
-          onPatchValues({ signatureSpoofing: signatureSpoofing as BuilderValues['signatureSpoofing'] })
-        }
+        onValueChange={signatureSpoofing => onPatchValues({ signatureSpoofing: signatureSpoofing })}
       >
         <SelectTrigger>
           <SelectValue />

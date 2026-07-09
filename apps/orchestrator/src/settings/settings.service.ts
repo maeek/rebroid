@@ -148,7 +148,9 @@ export class SettingsService {
     return this.aiProviders.getProviderModelDownload(providerId, downloadId);
   }
 
-  private assertOptionalServicesValid(settings: OrchestratorSettingsDto['services']) {
+  private assertOptionalServicesValid(
+    settings: OrchestratorSettingsDto['services'],
+  ) {
     if (settings.ocr.enabled && !settings.ocr.endpoint) {
       throw new BadRequestException(
         'OCR sidecar endpoint is required when OCR perception is enabled.',

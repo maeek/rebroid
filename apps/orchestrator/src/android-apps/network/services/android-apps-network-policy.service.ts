@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
+import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
 import { UpdateNetworkPolicyDto } from '../dto/update-network-policy.dto';
 import { AndroidAppsRuntimeNetworkService } from './android-apps-runtime-network.service';
-import { AndroidApplicationStatus } from '../../android-application-status';
+import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
 
 @Injectable()
@@ -11,6 +12,7 @@ export class AndroidAppsNetworkPolicyService {
   constructor(
     private readonly runtimeNetwork: AndroidAppsRuntimeNetworkService,
     private readonly state: AndroidAppsStateService,
+    private readonly queries: AndroidAppsQueryService,
     private readonly networkPolicy: NetworkPolicyService,
   ) {}
 
@@ -39,7 +41,7 @@ export class AndroidAppsNetworkPolicyService {
 
   /** Rebuilds the agent rule set from stored apps, pruning stale rules. */
   async reconcileNetworkPolicies() {
-    const apps = await this.state.list({ reconcile: false });
+    const apps = await this.queries.listStored({});
     await this.networkPolicy.reconcile(apps);
     return { reconciled: apps.length };
   }

@@ -156,7 +156,9 @@ export class ContainerImageBuildContextService {
         createWriteStream(storedPath, { flags: 'wx' }),
       );
       if (isRejected()) {
-        throw new ConflictException('Build context file exceeds the 64 MB limit.');
+        throw new ConflictException(
+          'Build context file exceeds the 64 MB limit.',
+        );
       }
       const sha256 = hash.digest('hex');
       return this.files.save(

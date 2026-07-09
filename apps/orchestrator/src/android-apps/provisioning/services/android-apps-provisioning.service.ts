@@ -1,15 +1,27 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { getErrorMessage } from '../../../common/error-message';
-import { DockerContainerLifecycleService } from '../../../docker/containers/services/docker-container-lifecycle.service';
-import { DockerContainerProvisioningService } from '../../../docker/containers/services/docker-container-provisioning.service';
-import { DockerImageRuntimeService } from '../../../docker/images/services/docker-image-runtime.service';
-import { DockerResourceRuntimeService } from '../../../docker/resources/services/docker-resource-runtime.service';
+import {
+  DOCKER_CONTAINER_LIFECYCLE,
+  type DockerContainerLifecyclePort,
+} from '../../../docker/contracts/docker-container-lifecycle.port';
+import {
+  DOCKER_CONTAINER_PROVISIONING,
+  type DockerContainerProvisioningPort,
+} from '../../../docker/contracts/docker-container-provisioning.port';
+import {
+  DOCKER_IMAGE_RUNTIME,
+  type DockerImageRuntimePort,
+} from '../../../docker/contracts/docker-image-runtime.port';
+import {
+  DOCKER_RESOURCE_RUNTIME,
+  type DockerResourceRuntimePort,
+} from '../../../docker/contracts/docker-resource-runtime.port';
 import { AndroidApplication } from '../../android-application.entity';
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
-} from '../../android-application-status';
+} from '../../contracts/android-application-status';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
@@ -25,10 +37,14 @@ export class AndroidAppsProvisioningService {
 
   constructor(
     private readonly config: ConfigService,
-    private readonly lifecycle: DockerContainerLifecycleService,
-    private readonly provisioningContainers: DockerContainerProvisioningService,
-    private readonly images: DockerImageRuntimeService,
-    private readonly resources: DockerResourceRuntimeService,
+    @Inject(DOCKER_CONTAINER_LIFECYCLE)
+    private readonly lifecycle: DockerContainerLifecyclePort,
+    @Inject(DOCKER_CONTAINER_PROVISIONING)
+    private readonly provisioningContainers: DockerContainerProvisioningPort,
+    @Inject(DOCKER_IMAGE_RUNTIME)
+    private readonly images: DockerImageRuntimePort,
+    @Inject(DOCKER_RESOURCE_RUNTIME)
+    private readonly resources: DockerResourceRuntimePort,
     private readonly logs: AndroidAppsLogService,
     private readonly androidProvisioning: AndroidAppsProvisioningAndroidService,
     private readonly apkProvisioning: AndroidAppsProvisioningApkService,

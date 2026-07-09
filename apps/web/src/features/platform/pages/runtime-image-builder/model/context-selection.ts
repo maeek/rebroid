@@ -1,9 +1,6 @@
-import type { BadgeProps } from '@/components/ui/badge'
-import type {
-  ContainerImageBuildContextFile,
-  ContainerImageBuildStatus
-} from '@/server/orchestrator/platform/types'
 import type { ResolvedContextReference } from '../dockerfile-context'
+import type { BadgeProps } from '@/components/ui/badge'
+import type { ContainerImageBuildContextFile, ContainerImageBuildStatus } from '@/server/orchestrator/platform/types'
 
 type BadgeVariant = BadgeProps['variant']
 

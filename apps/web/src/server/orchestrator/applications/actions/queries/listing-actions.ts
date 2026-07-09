@@ -7,11 +7,21 @@ import { orchestratorAppRuntimeClient } from '../../runtime-client'
 import { sanitizeAndroidApplicationForUser } from '../../safety'
 import type { RunningApplicationNotifications } from '../../types'
 
-export const listApplicationsAction = async ({ reconcile = false }: { reconcile?: boolean } = {}) => {
+export const listApplicationsAction = async () => {
   const user = await getCurrentUserContext()
   const ownerUserId = user.role === 'admin' ? undefined : user.ownerUserId
-  const apps = await orchestratorAppCatalogClient.listApplications(ownerUserId, reconcile)
+  const apps = await orchestratorAppCatalogClient.listApplications(ownerUserId)
   return apps.map(app => sanitizeAndroidApplicationForUser(app, user))
+}
+
+export const reconcileApplicationsRuntimeStateAction = async () => {
+  const user = await getCurrentUserContext()
+  const ownerUserId = user.role === 'admin' ? undefined : user.ownerUserId
+  const results = await orchestratorAppCatalogClient.reconcileApplications(ownerUserId)
+  return results.map(result => ({
+    ...result,
+    application: sanitizeAndroidApplicationForUser(result.application, user)
+  }))
 }
 
 export const listRunningApplicationNotificationsAction = async (): Promise<RunningApplicationNotifications[]> => {

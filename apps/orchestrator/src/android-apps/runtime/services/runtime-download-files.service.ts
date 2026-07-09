@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { Inject, ConflictException, Injectable } from '@nestjs/common';
 import { createWriteStream } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -9,8 +9,14 @@ import {
   type BufferedUploadFile,
   type MultipartUploadRequest,
 } from '../../../common/http-upload';
-import { DockerContainerArchiveService } from '../../../docker/containers/services/docker-container-archive.service';
-import { DockerContainerExecService } from '../../../docker/containers/services/docker-container-exec.service';
+import {
+  DOCKER_CONTAINER_ARCHIVE,
+  type DockerContainerArchivePort,
+} from '../../../docker/contracts/docker-container-archive.port';
+import {
+  DOCKER_CONTAINER_EXEC,
+  type DockerContainerExecPort,
+} from '../../../docker/contracts/docker-container-exec.port';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
@@ -24,8 +30,10 @@ import { RuntimeUploadStreamService } from './runtime-upload-stream.service';
 @Injectable()
 export class RuntimeDownloadFilesService {
   constructor(
-    private readonly archive: DockerContainerArchiveService,
-    private readonly exec: DockerContainerExecService,
+    @Inject(DOCKER_CONTAINER_ARCHIVE)
+    private readonly archive: DockerContainerArchivePort,
+    @Inject(DOCKER_CONTAINER_EXEC)
+    private readonly exec: DockerContainerExecPort,
     private readonly logs: AndroidAppsLogService,
     private readonly state: AndroidAppsStateService,
     private readonly paths: RuntimeFilePathService,

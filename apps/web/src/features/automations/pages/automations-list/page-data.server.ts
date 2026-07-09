@@ -56,7 +56,7 @@ export const loadAutomationsListPageData = async (searchParams: AutomationsSearc
       captureError(error)
       return emptyAutomationsGridPage(gridQuery)
     }),
-    listApplicationsAction({ reconcile: false }).catch(error => {
+    listApplicationsAction().catch(error => {
       captureError(error)
       return [] as AndroidApplication[]
     }),

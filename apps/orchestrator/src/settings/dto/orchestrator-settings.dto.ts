@@ -13,7 +13,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { ScrcpyTransport } from '../../android-apps/android-application-status';
+import { ScrcpyTransport } from '../../android-apps/contracts/android-application-status';
 
 export class OptionalServiceSettingsDto {
   @ApiProperty({

@@ -1,10 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { setTimeout as delay } from 'node:timers/promises';
 import { NetworkIsolationService } from '../../../network-isolation/network-isolation.service';
 import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
 import { AppliedNetworkPolicy } from '../../../network-policy/types/network-policy.types';
 import { getErrorMessage } from '../../../common/error-message';
-import { DockerContainerLifecycleService } from '../../../docker/containers/services/docker-container-lifecycle.service';
+import {
+  DOCKER_CONTAINER_LIFECYCLE,
+  type DockerContainerLifecyclePort,
+} from '../../../docker/contracts/docker-container-lifecycle.port';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
@@ -20,7 +23,8 @@ export class AndroidAppsRuntimeNetworkService {
     private readonly logs: AndroidAppsLogService,
     private readonly state: AndroidAppsStateService,
     private readonly viewerNetwork: AndroidAppsViewerNetworkService,
-    private readonly containers: DockerContainerLifecycleService,
+    @Inject(DOCKER_CONTAINER_LIFECYCLE)
+    private readonly containers: DockerContainerLifecyclePort,
   ) {}
 
   /** Creates the app network boundary. Viewer support attaches lazily when needed. */

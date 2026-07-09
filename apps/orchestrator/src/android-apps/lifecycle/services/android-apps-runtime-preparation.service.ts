@@ -1,21 +1,28 @@
 import {
+  Inject,
   ConflictException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DockerContainerLifecycleService } from '../../../docker/containers/services/docker-container-lifecycle.service';
-import { DockerResourceRuntimeService } from '../../../docker/resources/services/docker-resource-runtime.service';
+import {
+  DOCKER_CONTAINER_LIFECYCLE,
+  type DockerContainerLifecyclePort,
+} from '../../../docker/contracts/docker-container-lifecycle.port';
+import {
+  DOCKER_RESOURCE_RUNTIME,
+  type DockerResourceRuntimePort,
+} from '../../../docker/contracts/docker-resource-runtime.port';
 import { getErrorMessage } from '../../../common/error-message';
 import { NetworkIsolationService } from '../../../network-isolation/network-isolation.service';
 import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
 import { AndroidApplication } from '../../android-application.entity';
-import { ApplicationProfileMode } from '../../application-profile-mode';
+import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
-} from '../../android-application-status';
+} from '../../contracts/android-application-status';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
@@ -39,8 +46,10 @@ export class AndroidAppsRuntimePreparationService {
 
   constructor(
     private readonly config: ConfigService,
-    private readonly lifecycle: DockerContainerLifecycleService,
-    private readonly resources: DockerResourceRuntimeService,
+    @Inject(DOCKER_CONTAINER_LIFECYCLE)
+    private readonly lifecycle: DockerContainerLifecyclePort,
+    @Inject(DOCKER_RESOURCE_RUNTIME)
+    private readonly resources: DockerResourceRuntimePort,
     private readonly networkIsolation: NetworkIsolationService,
     private readonly networkPolicy: NetworkPolicyService,
     private readonly logs: AndroidAppsLogService,

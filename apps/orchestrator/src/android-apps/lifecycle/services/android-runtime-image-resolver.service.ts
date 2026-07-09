@@ -1,7 +1,16 @@
-import { Injectable } from '@nestjs/common';
-import { DockerEngineService } from '../../../docker/docker-engine.service';
-import { DockerImageRuntimeMetadataService } from '../../../docker/images/services/docker-image-runtime-metadata.service';
-import { DockerImageRuntimeService } from '../../../docker/images/services/docker-image-runtime.service';
+import { Inject, Injectable } from '@nestjs/common';
+import {
+  DOCKER_ENGINE,
+  type DockerEnginePort,
+} from '../../../docker/contracts/docker-engine.port';
+import {
+  DOCKER_IMAGE_RUNTIME_METADATA,
+  type DockerImageRuntimeMetadataPort,
+} from '../../../docker/contracts/docker-image-runtime-metadata.port';
+import {
+  DOCKER_IMAGE_RUNTIME,
+  type DockerImageRuntimePort,
+} from '../../../docker/contracts/docker-image-runtime.port';
 import {
   resolveRuntimeImageMetadata,
   type RuntimeImageKind,
@@ -10,9 +19,12 @@ import {
 @Injectable()
 export class AndroidRuntimeImageResolverService {
   constructor(
-    private readonly engine: DockerEngineService,
-    private readonly images: DockerImageRuntimeService,
-    private readonly metadata: DockerImageRuntimeMetadataService,
+    @Inject(DOCKER_ENGINE)
+    private readonly engine: DockerEnginePort,
+    @Inject(DOCKER_IMAGE_RUNTIME)
+    private readonly images: DockerImageRuntimePort,
+    @Inject(DOCKER_IMAGE_RUNTIME_METADATA)
+    private readonly metadata: DockerImageRuntimeMetadataPort,
   ) {}
 
   async resolveKind(image: string): Promise<RuntimeImageKind> {

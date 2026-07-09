@@ -96,7 +96,9 @@ const parseJsonInstructionSources = (
   try {
     const values = JSON.parse(jsonText) as unknown
     if (!Array.isArray(values) || values.length < 2 || values.some(value => typeof value !== 'string')) {
-      return [unsupportedReference(instruction, lineNumber, jsonText, 'JSON form must include sources and destination.')]
+      return [
+        unsupportedReference(instruction, lineNumber, jsonText, 'JSON form must include sources and destination.')
+      ]
     }
 
     return (values as string[])
@@ -117,7 +119,12 @@ const referenceFromSource = (
   const trimmedSource = source.trim()
 
   if (trimmedSource.startsWith('<<')) {
-    return unsupportedReference(instruction, lineNumber, source, 'Here-doc sources are not imported from local context.')
+    return unsupportedReference(
+      instruction,
+      lineNumber,
+      source,
+      'Here-doc sources are not imported from local context.'
+    )
   }
   if (remoteUrlPattern.test(trimmedSource)) {
     return ignoredReference(instruction, lineNumber, source, 'Remote sources are fetched by Docker.')

@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ScrcpyTransport } from '../../android-application-status';
+import { ScrcpyTransport } from '../../contracts/android-application-status';
 
 export class ScrcpyViewerErrorDto {
   @ApiProperty({

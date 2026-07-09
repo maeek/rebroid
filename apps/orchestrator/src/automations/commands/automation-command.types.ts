@@ -1,8 +1,10 @@
 import { z } from 'zod';
-import { AndroidApplication } from '../../android-apps/android-application.entity';
-import { AndroidAppsNetworkPolicyService } from '../../android-apps/network/services/android-apps-network-policy.service';
-import { AndroidAppsDisplaySidecarService } from '../../android-apps/viewer/services/android-apps-display-sidecar.service';
-import { AndroidAppsSidecarAdbService } from '../../android-apps/viewer/services/android-apps-sidecar-adb.service';
+import type {
+  AndroidAutomationAdbPort,
+  AndroidAutomationApplication,
+  AndroidAutomationDisplayPort,
+  AndroidAutomationNetworkPolicyPort,
+} from '../../android-apps/contracts/android-apps-automation.port';
 import type { AutomationAiHarnessService } from '../ai/automation-ai-harness.service';
 import type {
   AutomationCommandEditorMetadata,
@@ -10,10 +12,10 @@ import type {
 } from '@rebroid/automation-core/command-registry';
 
 export interface AutomationCommandContext {
-  app: AndroidApplication;
-  adb: AndroidAppsSidecarAdbService;
-  display: AndroidAppsDisplaySidecarService;
-  networkPolicy: AndroidAppsNetworkPolicyService;
+  app: AndroidAutomationApplication;
+  adb: AndroidAutomationAdbPort;
+  display: AndroidAutomationDisplayPort;
+  networkPolicy: AndroidAutomationNetworkPolicyPort;
   aiHarness?: AutomationAiHarnessService;
   runId?: string;
   ownerUserId?: string;

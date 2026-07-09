@@ -1,7 +1,7 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { posix } from 'node:path';
-import { ApplicationProfileMode } from '../../application-profile-mode';
-import { AndroidApplicationStatus } from '../../android-application-status';
+import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
+import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import { AndroidApplication } from '../../android-application.entity';
 import { ApplicationRuntimeFilesQueryDto } from '../dto/application-runtime-files-query.dto';
 import { sanitizeRuntimeFileName } from '../utils/android-apps-runtime-file.utils';

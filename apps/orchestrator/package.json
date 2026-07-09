@@ -15,6 +15,9 @@
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix",
     "test": "jest",
+    "test:unit": "jest --testPathIgnorePatterns=app.module.spec.ts",
+    "test:integration": "jest app.module.spec.ts --runInBand",
+    "test:coverage": "jest --runInBand --coverage --coverageReporters=text-summary",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

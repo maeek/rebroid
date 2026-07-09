@@ -34,11 +34,11 @@ export class ContainerImageBuildRecipe {
   @Column({ default: 'redroid' })
   runtimeKind!: RuntimeImageKind;
 
-  @ApiPropertyOptional({ example: '14', nullable: true })
+  @ApiPropertyOptional({ type: String, example: '14', nullable: true })
   @Column({ type: 'text', nullable: true })
   androidVersion!: string | null;
 
-  @ApiPropertyOptional({ example: 'amd64', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'amd64', nullable: true })
   @Column({ type: 'text', nullable: true })
   architecture!: string | null;
 

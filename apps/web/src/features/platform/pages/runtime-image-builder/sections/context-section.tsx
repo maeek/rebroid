@@ -7,9 +7,9 @@ import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
 import { Setting } from '@/shared/ui/settings/setting'
-import type { ContainerImageBuildContextFile } from '@/server/orchestrator/platform/types'
-import type { LocalBuildContextFile, ResolvedContextReference } from '../dockerfile-context'
 import { detectedContextStatusVariant, directoryInputProps } from '../model/context-selection'
+import type { LocalBuildContextFile, ResolvedContextReference } from '../dockerfile-context'
+import type { ContainerImageBuildContextFile } from '@/server/orchestrator/platform/types'
 
 const verticalSettingClassName = 'flex-col items-start w-full'
 

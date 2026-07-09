@@ -54,12 +54,15 @@ export class OcrSidecarHealthService {
       const response = await fetch(`${settings.endpoint}/health`, {
         signal: controller.signal,
       });
-      const body = (await response.json().catch(() => ({}))) as OcrHealthPayload;
+      const body = (await response
+        .json()
+        .catch(() => ({}))) as OcrHealthPayload;
       if (!response.ok) {
         return {
           ok: false,
           status: 'unhealthy',
-          message: body.message || `OCR sidecar returned HTTP ${response.status}.`,
+          message:
+            body.message || `OCR sidecar returned HTTP ${response.status}.`,
           details: { ...details, response: this.sanitizePayload(body) },
         };
       }

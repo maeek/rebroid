@@ -1,4 +1,4 @@
-import { AndroidApplicationLifecycleStage } from '../../android-application-status';
+import { AndroidApplicationLifecycleStage } from '../../contracts/android-application-status';
 import { AndroidImagePullProgress } from '../../android-application.entity';
 
 const pullProgressPattern =

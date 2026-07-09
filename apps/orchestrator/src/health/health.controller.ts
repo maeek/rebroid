@@ -1,6 +1,9 @@
-import { Controller, Get } from '@nestjs/common';
+import { Inject, Controller, Get } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { DockerHealthService } from '../docker/health/services/docker-health.service';
+import {
+  DOCKER_HEALTH,
+  type DockerHealthPort,
+} from '../docker/contracts/docker-health.port';
 import { FirewallAgentClientService } from '../network-policy/services/firewall-agent-client.service';
 import { OrchestratorDiagnosticsDto } from './dto/health-response.dto';
 import { OcrSidecarHealthService } from './ocr-sidecar-health.service';
@@ -9,7 +12,8 @@ import { OcrSidecarHealthService } from './ocr-sidecar-health.service';
 @Controller()
 export class HealthController {
   constructor(
-    private readonly docker: DockerHealthService,
+    @Inject(DOCKER_HEALTH)
+    private readonly docker: DockerHealthPort,
     private readonly firewallAgent: FirewallAgentClientService,
     private readonly ocrSidecar: OcrSidecarHealthService,
   ) {}

@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable, Transform } from 'node:stream';
-import { ApplicationProfileMode } from '../../application-profile-mode';
+import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
 import { RuntimeDownloadVolumeService } from './runtime-download-volume.service';
 import { RuntimeFilePathService } from './runtime-file-path.service';
 import { RuntimeUploadStreamService } from './runtime-upload-stream.service';

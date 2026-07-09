@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { Inject, ConflictException, Injectable } from '@nestjs/common';
 import { createWriteStream } from 'node:fs';
 import {
   mkdir,
@@ -11,7 +11,10 @@ import {
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { DockerResourceRuntimeService } from '../../../docker/resources/services/docker-resource-runtime.service';
+import {
+  DOCKER_RESOURCE_RUNTIME,
+  type DockerResourceRuntimePort,
+} from '../../../docker/contracts/docker-resource-runtime.port';
 import { NetworkIsolationService } from '../../../network-isolation/network-isolation.service';
 import { AndroidApplication } from '../../android-application.entity';
 import { ApplicationRuntimeFileUploadDto } from '../dto/application-runtime-file.dto';
@@ -26,7 +29,8 @@ const persistentDownloadRequiredMessage =
 export class RuntimeDownloadVolumeService {
   constructor(
     private readonly networkIsolation: NetworkIsolationService,
-    private readonly resources: DockerResourceRuntimeService,
+    @Inject(DOCKER_RESOURCE_RUNTIME)
+    private readonly resources: DockerResourceRuntimePort,
     private readonly paths: RuntimeFilePathService,
     private readonly uploads: RuntimeUploadStreamService,
   ) {}

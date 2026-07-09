@@ -42,7 +42,11 @@ describe('userService.changeOwnPassword', () => {
 
   it('changes the password and invalidates existing sessions', async () => {
     const user = await userService.createUser({ username: 'user', password: 'original-password' })
-    const readyUser = await userService.completeRequiredPasswordChange(user.id, 'original-password', 'temporary-cleared')
+    const readyUser = await userService.completeRequiredPasswordChange(
+      user.id,
+      'original-password',
+      'temporary-cleared'
+    )
 
     await userService.changeOwnPassword(user.id, 'temporary-cleared', 'replacement-password')
 

@@ -47,11 +47,16 @@ If registry or build traffic is the bottleneck, consider lowering dockerd `max-c
 
 Rebroid is pre-release software. Database layouts are initialized from one baseline migration per application. Schema upgrades intentionally do not repair or migrate existing volumes.
 
-To reset state:
+Stop the orchestrator, inspect the reset as a dry run, then execute it:
 
 ```bash
-docker compose -f deploy/compose.yaml down -v
+pnpm reset:orchestrator-state
+pnpm reset:orchestrator-state -- --execute
 ```
+
+The targeted reset removes the orchestrator SQLite database (including WAL files), orchestrator uploads/build contexts, and Docker containers, networks, volumes, and managed images marked as Rebroid-managed. It handles both local paths and Compose named volumes; named-volume cleanup uses the existing orchestrator image as a short-lived reset helper. It preserves web data, shared secrets, and the orchestrator settings file. Environment overrides for `DATABASE_PATH`, `UPLOADS_DIR`, and `RESET_HELPER_IMAGE` are honored. Do not use `docker compose down -v` for this migration because that also removes unrelated persistent data.
+
+After the reset, start the orchestrator normally. The single initialization migration recreates the complete current schema.
 
 ## Manual Scrcpy Harness
 

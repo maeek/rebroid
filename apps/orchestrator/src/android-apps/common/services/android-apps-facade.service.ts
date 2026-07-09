@@ -13,10 +13,15 @@ import { UpdateAndroidApplicationApkDto } from '../../lifecycle/dto/update-andro
 import { AndroidAppsNetworkPolicyService } from '../../network/services/android-apps-network-policy.service';
 import { UpdateNetworkPolicyDto } from '../../network/dto/update-network-policy.dto';
 import { AndroidAppsRuntimeAccessService } from '../../runtime/services/android-apps-runtime-access.service';
-import type { ApplicationViewerControlCommand } from '../../viewer/dto/application-viewer-control.dto';
+import type { ApplicationViewerControlCommand } from '../../contracts/application-viewer-control';
 import { ScrcpySessionDto } from '../../viewer/dto/scrcpy-session.dto';
 import { AndroidAppsStateService } from './android-apps-state.service';
+import { AndroidAppsQueryService } from './android-apps-query.service';
+import { AndroidAppsRuntimeStateReconciler } from './android-apps-runtime-state-reconciler.service';
 import { AndroidAppsViewerService } from '../../viewer/services/android-apps-viewer.service';
+import { AndroidAppsDisplaySidecarService } from '../../viewer/services/android-apps-display-sidecar.service';
+import { AndroidAppsSidecarAdbService } from '../../viewer/services/android-apps-sidecar-adb.service';
+import type { AndroidAutomationAdapters } from '../../contracts/android-apps-automation.port';
 
 @Injectable()
 export class AndroidAppsFacadeService {
@@ -25,7 +30,11 @@ export class AndroidAppsFacadeService {
     private readonly network: AndroidAppsNetworkPolicyService,
     private readonly runtime: AndroidAppsRuntimeAccessService,
     private readonly state: AndroidAppsStateService,
+    private readonly queries: AndroidAppsQueryService,
+    private readonly reconciler: AndroidAppsRuntimeStateReconciler,
     private readonly viewer: AndroidAppsViewerService,
+    private readonly display: AndroidAppsDisplaySidecarService,
+    private readonly adb: AndroidAppsSidecarAdbService,
   ) {}
 
   /** Creates a new app record and starts setup. */
@@ -43,12 +52,25 @@ export class AndroidAppsFacadeService {
 
   /** Lists apps for the current query. */
   list(query: ListAndroidApplicationsDto): Promise<AndroidApplication[]> {
-    return this.state.list(query);
+    return this.queries.listStored(query);
   }
 
   /** Loads one app. */
   get(id: string): Promise<AndroidApplication> {
-    return this.state.get(id);
+    return this.queries.getStored(id);
+  }
+
+  reconcileRuntimeState(id: string) {
+    return this.reconciler.reconcileResultById(id);
+  }
+
+  /** Provides the narrow Android runtime capabilities used by automations. */
+  automationAdapters(): AndroidAutomationAdapters {
+    return {
+      adb: this.adb,
+      display: this.display,
+      networkPolicy: this.network,
+    };
   }
 
   /** Updates app settings. */

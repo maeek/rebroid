@@ -2,7 +2,7 @@ import {
   AndroidApplication,
   AndroidApplicationError,
 } from '../../android-application.entity';
-import { AndroidApplicationStatus } from '../../android-application-status';
+import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import {
   extractExitCode,
   isStartupCommandFinishedMessage,

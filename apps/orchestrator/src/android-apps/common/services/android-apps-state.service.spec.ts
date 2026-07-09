@@ -3,8 +3,8 @@ import { AndroidApplication } from '../../android-application.entity';
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
-} from '../../android-application-status';
-import { AndroidAppsStateService } from './android-apps-state.service';
+} from '../../contracts/android-application-status';
+import { AndroidAppsRuntimeStateReconciler } from './android-apps-runtime-state-reconciler.service';
 
 const createService = (runtimeState: {
   exists: boolean;
@@ -23,30 +23,36 @@ const createService = (runtimeState: {
   };
   const status = {
     decorateApplication: jest.fn((app: AndroidApplication) => app),
-    containerExitedMessage: jest.fn().mockReturnValue('Managed container exited.'),
+    containerExitedMessage: jest
+      .fn()
+      .mockReturnValue('Managed container exited.'),
   };
-  const service = new AndroidAppsStateService(
-    applications as never,
+  const writer = {
+    save: applications.save,
+    saveAndDecorate: jest.fn(async (app: AndroidApplication) => {
+      await applications.save(app);
+      return app;
+    }),
+  };
+  const service = new AndroidAppsRuntimeStateReconciler(
     {} as never,
     lifecycle as never,
     { remove: jest.fn() } as never,
     { cancel: jest.fn() } as never,
     status as never,
+    {} as never,
+    writer as never,
   );
 
   return { applications, lifecycle, service };
 };
 
-const reconcile = (service: AndroidAppsStateService, app: AndroidApplication) =>
-  (
-    service as unknown as {
-      reconcileContainerState: (
-        target: AndroidApplication,
-      ) => Promise<AndroidApplication>;
-    }
-  ).reconcileContainerState(app);
+const reconcile = (
+  service: AndroidAppsRuntimeStateReconciler,
+  app: AndroidApplication,
+) => service.reconcileOne(app);
 
-describe('AndroidAppsStateService', () => {
+describe('AndroidAppsRuntimeStateReconciler', () => {
   it('does not repeat stopped-container warnings for a recorded terminal error', async () => {
     const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
     const { lifecycle, service } = createService({
@@ -67,7 +73,9 @@ describe('AndroidAppsStateService', () => {
 
     await reconcile(service, app);
 
-    expect(lifecycle.getContainerRuntimeState).toHaveBeenCalledWith('container-1');
+    expect(lifecycle.getContainerRuntimeState).toHaveBeenCalledWith(
+      'container-1',
+    );
     expect(warn).not.toHaveBeenCalled();
   });
 

@@ -139,7 +139,7 @@ export const orchestratorAutomationsClient = {
   },
 
   listActiveRuns(ownerUserId: string) {
-    return emptyRequest<AutomationRun[]>(`/automations/runs?${ownerQuery(ownerUserId)}&status=active`)
+    return emptyRequest<AutomationRun[]>(`/automations/runs/active?${ownerQuery(ownerUserId)}`)
   },
 
   listTriggers(ownerUserId: string) {

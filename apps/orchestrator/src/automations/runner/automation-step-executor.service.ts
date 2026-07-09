@@ -1,8 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { getErrorMessage } from '../../common/error-message';
-import { AndroidAppsNetworkPolicyService } from '../../android-apps/network/services/android-apps-network-policy.service';
-import { AndroidAppsDisplaySidecarService } from '../../android-apps/viewer/services/android-apps-display-sidecar.service';
-import { AndroidAppsSidecarAdbService } from '../../android-apps/viewer/services/android-apps-sidecar-adb.service';
+import { AndroidAppsFacadeService } from '../../android-apps/common/services/android-apps-facade.service';
 import {
   AutomationDefinitionStep,
   AutomationRepeatStep,
@@ -26,9 +24,7 @@ export class AutomationStepExecutorService {
     private readonly aiHarness: AutomationAiHarnessService,
     private readonly recorder: AutomationRunnerRecorderService,
     private readonly conditions: AutomationConditionService,
-    private readonly adb: AndroidAppsSidecarAdbService,
-    private readonly display: AndroidAppsDisplaySidecarService,
-    private readonly networkPolicy: AndroidAppsNetworkPolicyService,
+    private readonly applications: AndroidAppsFacadeService,
   ) {}
 
   async executeSteps(
@@ -113,16 +109,12 @@ export class AutomationStepExecutorService {
         }
         return this.registry.execute(tool.name, tool.arguments, {
           app: state.app,
-          adb: this.adb,
-          display: this.display,
-          networkPolicy: this.networkPolicy,
+          ...this.applications.automationAdapters(),
         });
       };
       const result = await this.registry.execute(step.uses, step.with, {
         app: state.app,
-        adb: this.adb,
-        display: this.display,
-        networkPolicy: this.networkPolicy,
+        ...this.applications.automationAdapters(),
         aiHarness: this.aiHarness,
         runId: state.runId,
         ownerUserId: run.ownerUserId,

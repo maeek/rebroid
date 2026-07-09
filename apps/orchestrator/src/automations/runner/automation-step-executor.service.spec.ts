@@ -21,9 +21,9 @@ const createService = ({
       recordControlCompleted,
     } as never,
     { evaluate, resolveValueRef } as never,
-    {} as never,
-    {} as never,
-    {} as never,
+    {
+      automationAdapters: () => ({ adb: {}, display: {}, networkPolicy: {} }),
+    } as never,
   );
 
   return {

@@ -1,4 +1,5 @@
 import {
+  Inject,
   Body,
   Controller,
   Delete,
@@ -19,7 +20,10 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { FastifyRequest } from 'fastify';
-import { DockerImageRuntimeService } from '../docker/images/services/docker-image-runtime.service';
+import {
+  DOCKER_IMAGE_RUNTIME,
+  type DockerImageRuntimePort,
+} from '../docker/contracts/docker-image-runtime.port';
 import { SettingsService } from '../settings/settings.service';
 import {
   CreateContainerImageRecipeDto,
@@ -41,7 +45,8 @@ import { resolveContainerImage } from '@rebroid/application-core/container-image
 @Controller('platform/container-images')
 export class ContainerImagesController {
   constructor(
-    private readonly images: DockerImageRuntimeService,
+    @Inject(DOCKER_IMAGE_RUNTIME)
+    private readonly images: DockerImageRuntimePort,
     private readonly settings: SettingsService,
     private readonly recipes: ContainerImageRecipeService,
     private readonly buildContext: ContainerImageBuildContextService,

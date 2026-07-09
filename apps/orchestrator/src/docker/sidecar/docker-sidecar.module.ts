@@ -10,6 +10,7 @@ import { DockerSidecarBuildContextService } from './services/docker-sidecar-buil
 import { DockerSidecarImageService } from './services/docker-sidecar-image.service';
 import { DockerSidecarNetworkService } from './services/docker-sidecar-network.service';
 import { DockerSidecarService } from './services/docker-sidecar.service';
+import { DOCKER_SIDECAR } from '../contracts/docker-sidecar.port';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { DockerSidecarService } from './services/docker-sidecar.service';
     DockerSidecarImageService,
     DockerSidecarNetworkService,
     DockerSidecarService,
+    { provide: DOCKER_SIDECAR, useExisting: DockerSidecarService },
   ],
   exports: [
     DockerSidecarAdbService,
@@ -33,6 +35,7 @@ import { DockerSidecarService } from './services/docker-sidecar.service';
     DockerSidecarBuildContextService,
     DockerSidecarNetworkService,
     DockerSidecarService,
+    DOCKER_SIDECAR,
   ],
 })
 export class DockerSidecarModule {}

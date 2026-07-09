@@ -6,6 +6,7 @@ import { DockerConnectionFactory } from './services/docker-connection.factory';
 import { DockerErrorClassifier } from './services/docker-error-classifier.service';
 import { DockerMetricsObserver } from './services/docker-metrics-observer.service';
 import { DockerOperationExecutor } from './services/docker-operation-executor.service';
+import { DOCKER_ENGINE } from '../contracts/docker-engine.port';
 
 @Module({
   imports: [AppConfigModule, MetricsModule],
@@ -15,7 +16,8 @@ import { DockerOperationExecutor } from './services/docker-operation-executor.se
     DockerMetricsObserver,
     DockerOperationExecutor,
     DockerEngineService,
+    { provide: DOCKER_ENGINE, useExisting: DockerEngineService },
   ],
-  exports: [DockerEngineService],
+  exports: [DockerEngineService, DOCKER_ENGINE],
 })
 export class DockerEngineModule {}

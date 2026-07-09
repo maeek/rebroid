@@ -1,6 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { AndroidApplication } from '../../android-application.entity';
-import { AndroidApplicationStatus } from '../../android-application-status';
+import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
 import { AndroidAppsDisplaySidecarService } from './android-apps-display-sidecar.service';

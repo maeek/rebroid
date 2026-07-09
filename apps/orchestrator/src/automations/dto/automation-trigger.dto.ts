@@ -14,7 +14,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { ApplicationProfileMode } from '../../android-apps/application-profile-mode';
+import { ApplicationProfileMode } from '../../android-apps/contracts/application-profile-mode';
 import { AutomationLastStatus } from '../entities/automation.entity';
 import {
   AutomationStartPolicy,

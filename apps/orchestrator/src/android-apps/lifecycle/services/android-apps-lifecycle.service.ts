@@ -1,4 +1,5 @@
 import {
+  Inject,
   ConflictException,
   Injectable,
   Logger,
@@ -6,14 +7,17 @@ import {
 } from '@nestjs/common';
 import { setTimeout as delay } from 'node:timers/promises';
 import { ApkCatalogService } from '../../../apk/services/apk-catalog.service';
-import { DockerContainerLifecycleService } from '../../../docker/containers/services/docker-container-lifecycle.service';
+import {
+  DOCKER_CONTAINER_LIFECYCLE,
+  type DockerContainerLifecyclePort,
+} from '../../../docker/contracts/docker-container-lifecycle.port';
 import { getErrorMessage } from '../../../common/error-message';
 import { SettingsService } from '../../../settings/settings.service';
 import { AndroidApplication } from '../../android-application.entity';
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
-} from '../../android-application-status';
+} from '../../contracts/android-application-status';
 import { CloneAndroidApplicationDto } from '../../common/dto/clone-android-application.dto';
 import { CreateAndroidApplicationDto } from '../../common/dto/create-android-application.dto';
 import { RemoveAndroidApplicationDto } from '../../common/dto/remove-android-application.dto';
@@ -46,7 +50,8 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
 
   constructor(
     private readonly applications: AndroidApplicationsRepository,
-    private readonly lifecycle: DockerContainerLifecycleService,
+    @Inject(DOCKER_CONTAINER_LIFECYCLE)
+    private readonly lifecycle: DockerContainerLifecyclePort,
     private readonly settings: SettingsService,
     private readonly apks: ApkCatalogService,
     private readonly provisioning: AndroidAppsProvisioningService,

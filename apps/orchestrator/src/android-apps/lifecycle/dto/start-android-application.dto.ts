@@ -6,7 +6,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { ApplicationProfileMode } from '../../application-profile-mode';
+import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
 
 export class StartAndroidApplicationDto {
   @ApiPropertyOptional({

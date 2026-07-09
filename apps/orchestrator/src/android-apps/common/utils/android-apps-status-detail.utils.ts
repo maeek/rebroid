@@ -6,7 +6,7 @@ import {
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
-} from '../../android-application-status';
+} from '../../contracts/android-application-status';
 import { errorStatusTitle } from './android-apps-error-status.utils';
 
 export const deriveStatusDetail = (

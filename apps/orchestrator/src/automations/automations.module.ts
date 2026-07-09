@@ -1,12 +1,10 @@
 import { Module } from '@nestjs/common';
-import { AndroidAppsCommonModule } from '../android-apps/common/android-apps-common.module';
-import { AndroidAppsLifecycleModule } from '../android-apps/lifecycle/android-apps-lifecycle.module';
-import { AndroidAppsRuntimeNetworkModule } from '../android-apps/network/android-apps-runtime-network.module';
-import { AndroidAppsViewerModule } from '../android-apps/viewer/android-apps-viewer.module';
+import { AndroidAppsModule } from '../android-apps/android-apps.module';
 import { SettingsModule } from '../settings/settings.module';
 import { AutomationAiDefinitionFactory } from './ai/automation-ai-definition.factory';
 import { AutomationAiChatClientService } from './ai/automation-ai-chat-client.service';
 import { AutomationAiHarnessService } from './ai/automation-ai-harness.service';
+import { AutomationAiHarnessRuntimeService } from './ai/automation-ai-harness-runtime.service';
 import { AutomationAiProviderService } from './ai/automation-ai-provider.service';
 import { AutomationAiRuntimeContextService } from './ai/automation-ai-runtime-context.service';
 import { AutomationAiSuggestionsService } from './ai/automation-ai-suggestions.service';
@@ -44,14 +42,7 @@ import { AutomationOcrService } from './vision/automation-ocr.service';
 import { AutomationVisionService } from './vision/automation-vision.service';
 
 @Module({
-  imports: [
-    AutomationsPersistenceModule,
-    AndroidAppsCommonModule,
-    AndroidAppsLifecycleModule,
-    AndroidAppsViewerModule,
-    AndroidAppsRuntimeNetworkModule,
-    SettingsModule,
-  ],
+  imports: [AutomationsPersistenceModule, AndroidAppsModule, SettingsModule],
   controllers: [AutomationsController],
   providers: [
     AndroidAutomationCommandsService,
@@ -65,6 +56,7 @@ import { AutomationVisionService } from './vision/automation-vision.service';
     AutomationAiRuntimeContextService,
     AutomationAiSuggestionsService,
     AutomationAiYamlDraftService,
+    AutomationAiHarnessRuntimeService,
     AutomationAiHarnessService,
     AutomationVisionService,
     AutomationOcrService,

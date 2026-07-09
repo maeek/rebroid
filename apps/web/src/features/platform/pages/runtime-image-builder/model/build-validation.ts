@@ -1,6 +1,6 @@
-import type { ContainerImageBuildContextFile } from '@/server/orchestrator/platform/types'
 import type { ResolvedContextReference } from '../dockerfile-context'
 import type { BuilderValues } from './builder-values'
+import type { ContainerImageBuildContextFile } from '@/server/orchestrator/platform/types'
 
 export type BuildValidation = {
   errors: string[]

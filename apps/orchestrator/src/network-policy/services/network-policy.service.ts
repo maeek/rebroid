@@ -1,10 +1,19 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { lookup } from 'node:dns/promises';
 import { AndroidApplication } from '../../android-apps/android-application.entity';
-import { DockerNetworkRuntimeService } from '../../docker/networks/services/docker-network-runtime.service';
-import { DockerSidecarService } from '../../docker/sidecar/services/docker-sidecar.service';
-import { DockerEngineService } from '../../docker/docker-engine.service';
+import {
+  DOCKER_NETWORK_RUNTIME,
+  type DockerNetworkRuntimePort,
+} from '../../docker/contracts/docker-network-runtime.port';
+import {
+  DOCKER_SIDECAR,
+  type DockerSidecarPort,
+} from '../../docker/contracts/docker-sidecar.port';
+import {
+  DOCKER_ENGINE,
+  type DockerEnginePort,
+} from '../../docker/contracts/docker-engine.port';
 import {
   AllowedDestinations,
   AppliedNetworkPolicy,
@@ -24,9 +33,12 @@ export class NetworkPolicyService {
 
   constructor(
     private readonly config: ConfigService,
-    private readonly engine: DockerEngineService,
-    private readonly networks: DockerNetworkRuntimeService,
-    private readonly sidecar: DockerSidecarService,
+    @Inject(DOCKER_ENGINE)
+    private readonly engine: DockerEnginePort,
+    @Inject(DOCKER_NETWORK_RUNTIME)
+    private readonly networks: DockerNetworkRuntimePort,
+    @Inject(DOCKER_SIDECAR)
+    private readonly sidecar: DockerSidecarPort,
     private readonly agent: FirewallAgentClientService,
   ) {}
 

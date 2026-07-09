@@ -14,7 +14,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { ApplicationProfileMode } from '../../android-apps/application-profile-mode';
+import { ApplicationProfileMode } from '../../android-apps/contracts/application-profile-mode';
 import {
   AutomationRunStatus,
   AutomationRunTrigger,
@@ -329,11 +329,14 @@ export class ListAutomationRunsQueryDto {
   @Min(1)
   @Max(100)
   limit?: number;
+}
 
-  @ApiPropertyOptional({ enum: ['active'] })
-  @IsOptional()
+export class ListActiveAutomationRunsQueryDto {
+  @ApiProperty({ example: 'user_123' })
   @IsString()
-  status?: 'active';
+  @MinLength(1)
+  @MaxLength(200)
+  ownerUserId!: string;
 }
 
 export class AutomationStepResultDto {

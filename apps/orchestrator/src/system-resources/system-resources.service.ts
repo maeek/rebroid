@@ -1,7 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { statfs } from 'node:fs/promises';
 import { getErrorMessage } from '../common/error-message';
-import { DockerResourceRuntimeService } from '../docker/resources/services/docker-resource-runtime.service';
+import {
+  DOCKER_RESOURCE_RUNTIME,
+  type DockerResourceRuntimePort,
+} from '../docker/contracts/docker-resource-runtime.port';
 
 @Injectable()
 export class SystemResourcesService {
@@ -11,7 +14,10 @@ export class SystemResourcesService {
   > | null = null;
   private dockerRootStatfsWarningShown = false;
 
-  constructor(private readonly docker: DockerResourceRuntimeService) {}
+  constructor(
+    @Inject(DOCKER_RESOURCE_RUNTIME)
+    private readonly docker: DockerResourceRuntimePort,
+  ) {}
 
   /**
    * Aggregates managed container counts and live resource usage.
@@ -99,7 +105,7 @@ export class SystemResourcesService {
    */
   private async getManagedContainerResourceUsage(
     containers: Awaited<
-      ReturnType<DockerResourceRuntimeService['listManagedContainers']>
+      ReturnType<DockerResourceRuntimePort['listManagedContainers']>
     >,
   ) {
     try {

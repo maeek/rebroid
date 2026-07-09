@@ -39,6 +39,9 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 - Application services orchestrate use cases. Push detailed parsing, mapping, validation, and policy decisions into focused helpers or domain services.
 - Repositories/entities own persistence details. Do not leak database-specific assumptions into UI, controllers, or shared packages.
 - In the orchestrator, cross-module imports should use the other module's `facades`, `contracts`, or module file when those surfaces exist. Do not import another module's low-level services, controllers, repositories, entities, or random utilities just to bypass its public surface.
+- Code outside `apps/orchestrator/src/docker` must consume Docker behavior through the tokenized ports in `docker/contracts` and import `DockerModule` for provider wiring. Do not inject concrete Docker implementation services across module boundaries.
+- Normal Android application list/get operations read stored state and must not contact Docker. Use the explicit runtime-state reconciliation services or API endpoints when fresh Docker state is required.
+- Automations consume Android runtime behavior through `AndroidAppsFacadeService` and types under `android-apps/contracts`; do not import Android lifecycle, viewer, network, state, or persistence implementations directly.
 - In `apps/orchestrator/src/docker/sidecar`, keep sidecar orchestration, repair, network, and ADB coordination in `DockerSidecarService`; keep display sidecar image existence/build work in `DockerSidecarImageService`; keep pure parsing helpers in `utils`.
 - In `apps/orchestrator/src/android-apps/lifecycle`, keep request-facing lifecycle operations in `AndroidAppsLifecycleService`; keep the long background container start/image/network/readiness/APK launch sequence in `AndroidAppsStartLifecycleService`.
 - In `apps/orchestrator/src/android-apps/runtime`, keep runtime download use-case routing and running-container media-scan orchestration in `RuntimeDownloadFilesService`; keep persistent volume lookup, listing, reads, and writes in `RuntimeDownloadVolumeService`.
@@ -94,6 +97,7 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 ## Verification Expectations
 
 - Run the smallest meaningful checks for the changed area, then broader checks when touching shared packages, API contracts, or cross-app behavior.
+- For the approved pre-release state reset, use `pnpm reset:orchestrator-state` as a dry run and add `-- --execute` only after stopping the orchestrator. This targeted reset preserves web data, shared secrets, and orchestrator settings.
 - Use `pnpm check` before finishing large or cross-cutting work when time permits.
 - If you cannot run a relevant check, state exactly what was not run and why.
 - Review AGENTS.md file and update it if the change affects any agent's behavior, capabilities, or assumptions.

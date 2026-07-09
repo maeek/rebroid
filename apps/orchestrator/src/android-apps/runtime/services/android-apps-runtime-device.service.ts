@@ -1,5 +1,5 @@
 import { ConflictException, Injectable } from '@nestjs/common';
-import { AndroidApplicationStatus } from '../../android-application-status';
+import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
 import { AndroidAppsDisplaySidecarService } from '../../viewer/services/android-apps-display-sidecar.service';
 import { AndroidAppsSidecarAdbService } from '../../viewer/services/android-apps-sidecar-adb.service';

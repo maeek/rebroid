@@ -1,6 +1,6 @@
 import { ContainerRuntimeState } from '../../../docker/docker.types';
 import { AndroidApplication } from '../../android-application.entity';
-import { AndroidApplicationStatus } from '../../android-application-status';
+import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 
 export const stoppedStatusMessage = (app: AndroidApplication) => {
   if (app.recreateContainerOnNextStart) {

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ApplicationProfileMode } from '../../../android-apps/application-profile-mode';
+import { ApplicationProfileMode } from '../../../android-apps/contracts/application-profile-mode';
 import { DockerEngineService } from '../../docker-engine.service';
 import { ApplicationContainerSpec } from '../../docker.types';
 import { parseCommandLine } from '@rebroid/application-core/command-line';

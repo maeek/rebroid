@@ -1,4 +1,4 @@
-import { ApplicationProfileMode } from '../../application-profile-mode';
+import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
 
 export interface AndroidApplicationSavedProfile {
   mode: ApplicationProfileMode;

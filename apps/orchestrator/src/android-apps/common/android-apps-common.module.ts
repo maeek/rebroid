@@ -5,7 +5,10 @@ import { AndroidAppsPersistenceModule } from '../persistence/android-apps-persis
 import { AndroidAppLifecycleJobsService } from '../lifecycle/services/android-app-lifecycle-jobs.service';
 import { AndroidAppsLogService } from './services/android-apps-log.service';
 import { AndroidAppsProvisioningTrackerService } from './services/android-apps-provisioning-tracker.service';
+import { AndroidAppsQueryService } from './services/android-apps-query.service';
+import { AndroidAppsRuntimeStateReconciler } from './services/android-apps-runtime-state-reconciler.service';
 import { AndroidAppsStateService } from './services/android-apps-state.service';
+import { AndroidAppsStateWriter } from './services/android-apps-state-writer.service';
 import { AndroidAppsStatusService } from './services/android-apps-status.service';
 
 @Module({
@@ -14,14 +17,20 @@ import { AndroidAppsStatusService } from './services/android-apps-status.service
     AndroidAppsLogService,
     AndroidAppLifecycleJobsService,
     AndroidAppsProvisioningTrackerService,
+    AndroidAppsQueryService,
+    AndroidAppsRuntimeStateReconciler,
     AndroidAppsStateService,
+    AndroidAppsStateWriter,
     AndroidAppsStatusService,
   ],
   exports: [
     AndroidAppsLogService,
     AndroidAppLifecycleJobsService,
     AndroidAppsProvisioningTrackerService,
+    AndroidAppsQueryService,
+    AndroidAppsRuntimeStateReconciler,
     AndroidAppsStateService,
+    AndroidAppsStateWriter,
     AndroidAppsStatusService,
   ],
 })

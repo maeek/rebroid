@@ -913,16 +913,6 @@
               "example": "user_123",
               "type": "string"
             }
-          },
-          {
-            "name": "reconcile",
-            "required": false,
-            "in": "query",
-            "description": "Set false for a fast stored-state response without Docker reconciliation.",
-            "schema": {
-              "example": false,
-              "type": "boolean"
-            }
           }
         ],
         "responses": {
@@ -997,16 +987,6 @@
             "schema": {
               "example": "user_123",
               "type": "string"
-            }
-          },
-          {
-            "name": "reconcile",
-            "required": false,
-            "in": "query",
-            "description": "Set false for a fast stored-state response without Docker reconciliation.",
-            "schema": {
-              "example": false,
-              "type": "boolean"
             }
           }
         ],
@@ -2863,62 +2843,6 @@
         ]
       }
     },
-    "/api/v1/automations/runs": {
-      "get": {
-        "operationId": "AutomationsController_listAllRuns",
-        "parameters": [
-          {
-            "name": "ownerUserId",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "example": "user_123",
-              "type": "string"
-            }
-          },
-          {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 1,
-              "maximum": 100,
-              "example": 50,
-              "type": "number"
-            }
-          },
-          {
-            "name": "status",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "active"
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AutomationRunDto"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "automations"
-        ]
-      }
-    },
     "/api/v1/automations/runs/{runId}": {
       "get": {
         "operationId": "AutomationsController_getRun",
@@ -3614,17 +3538,6 @@
               "example": 50,
               "type": "number"
             }
-          },
-          {
-            "name": "status",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "active"
-              ]
-            }
           }
         ],
         "responses": {
@@ -4013,45 +3926,6 @@
           }
         },
         "summary": "Remove a Docker image by encoded id or name.",
-        "tags": [
-          "platform-docker"
-        ]
-      },
-      "patch": {
-        "operationId": "DockerMaintenanceImagesController_updateRuntimeMetadata",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateRuntimeImageMetadataDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DockerPlatformImageDetailsDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Update Rebroid runtime metadata for an image.",
         "tags": [
           "platform-docker"
         ]
@@ -4610,8 +4484,8 @@
             "required": true,
             "in": "query",
             "schema": {
-              "type": "string",
-              "example": "apks/microg.apk"
+              "example": "apks/microg.apk",
+              "type": "string"
             }
           }
         ],
@@ -4667,26 +4541,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string"
-                    },
-                    "removed": {
-                      "type": "boolean"
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "removed"
-                  ]
-                }
-              }
-            }
+            "description": ""
           }
         },
         "summary": "Remove one uploaded image build context file.",
@@ -4833,26 +4688,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string"
-                    },
-                    "removed": {
-                      "type": "boolean"
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "removed"
-                  ]
-                }
-              }
-            }
+            "description": ""
           }
         },
         "summary": "Remove an image build recipe.",
@@ -4975,6 +4811,147 @@
         "summary": "Cancel an image build job.",
         "tags": [
           "platform-container-images"
+        ]
+      }
+    },
+    "/api/v1/apps/runtime-state/reconcile": {
+      "post": {
+        "operationId": "AndroidAppsController_reconcileMany",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReconcileAndroidApplicationsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AndroidAppRuntimeReconciliationDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Refresh stored application state from managed containers.",
+        "tags": [
+          "apps"
+        ]
+      }
+    },
+    "/api/v1/apps/{id}/runtime-state/reconcile": {
+      "post": {
+        "operationId": "AndroidAppsController_reconcileOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AndroidAppRuntimeReconciliationDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Refresh one application state from Docker.",
+        "tags": [
+          "apps"
+        ]
+      }
+    },
+    "/api/v1/automations/runs/active": {
+      "get": {
+        "operationId": "AutomationsController_listActiveRuns",
+        "parameters": [
+          {
+            "name": "ownerUserId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "user_123",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AutomationRunDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "automations"
+        ]
+      }
+    },
+    "/api/v1/platform/docker/images/{id}/runtime-metadata": {
+      "patch": {
+        "operationId": "DockerMaintenanceImagesController_updateRuntimeMetadata",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRuntimeImageMetadataDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DockerPlatformImageDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Update Rebroid runtime metadata for an image.",
+        "tags": [
+          "platform-docker"
         ]
       }
     }
@@ -5454,59 +5431,70 @@
         },
         "required": [
           "enabled",
-          "endpoint",
           "timeoutMs"
         ]
       },
       "OcrServiceSettingsDto": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/OptionalServiceSettingsDto"
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "example": true,
+            "description": "Whether the optional sidecar integration should be used."
           },
-          {
-            "type": "object",
-            "properties": {
-              "maxImageDimension": {
-                "type": "number",
-                "example": 1600,
-                "minimum": 320,
-                "maximum": 4096
-              },
-              "minConfidence": {
-                "type": "number",
-                "example": 0.4,
-                "minimum": 0,
-                "maximum": 1
-              },
-              "languages": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "example": [
-                  "en"
-                ]
-              },
-              "preprocessingModes": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "example": [
-                  "raw",
-                  "grayscale",
-                  "contrast",
-                  "threshold"
-                ]
-              }
-            },
-            "required": [
-              "maxImageDimension",
-              "minConfidence",
-              "languages",
-              "preprocessingModes"
-            ]
+          "endpoint": {
+            "type": "string",
+            "nullable": true,
+            "example": "http://ocr-sidecar:4300",
+            "description": "Service endpoint. HTTP(S) URL for HTTP sidecars; socket path for local agent integrations."
+          },
+          "timeoutMs": {
+            "type": "number",
+            "example": 15000,
+            "minimum": 100,
+            "maximum": 120000
+          },
+          "maxImageDimension": {
+            "type": "number",
+            "example": 1600,
+            "minimum": 320,
+            "maximum": 4096
+          },
+          "minConfidence": {
+            "type": "number",
+            "example": 0.4,
+            "minimum": 0,
+            "maximum": 1
+          },
+          "languages": {
+            "example": [
+              "en"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "preprocessingModes": {
+            "example": [
+              "raw",
+              "grayscale",
+              "contrast",
+              "threshold"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
+        },
+        "required": [
+          "enabled",
+          "timeoutMs",
+          "maxImageDimension",
+          "minConfidence",
+          "languages",
+          "preprocessingModes"
         ]
       },
       "OptionalServicesSettingsDto": {
@@ -6562,6 +6550,13 @@
           "image": {
             "type": "string"
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "redroid",
+              "generic"
+            ]
+          },
           "containerName": {
             "type": "string"
           },
@@ -6592,6 +6587,7 @@
         },
         "required": [
           "image",
+          "kind",
           "containerName",
           "containerId",
           "containerArgs",
@@ -8957,12 +8953,13 @@
             "type": "number"
           },
           "runtimeMetadata": {
+            "nullable": true,
+            "type": "object",
             "allOf": [
               {
                 "$ref": "#/components/schemas/RuntimeImageMetadataDto"
               }
-            ],
-            "nullable": true
+            ]
           },
           "runtimeMetadataSource": {
             "type": "string",
@@ -9725,10 +9722,12 @@
           },
           "androidVersion": {
             "type": "string",
+            "example": "14",
             "nullable": true
           },
           "architecture": {
             "type": "string",
+            "example": "amd64",
             "nullable": true
           },
           "gmsMode": {
@@ -9769,14 +9768,17 @@
             "enum": [
               "redroid",
               "generic"
-            ]
+            ],
+            "default": "redroid"
           },
           "androidVersion": {
             "type": "string",
+            "example": "14",
             "nullable": true
           },
           "architecture": {
             "type": "string",
+            "example": "amd64",
             "nullable": true
           },
           "gmsMode": {
@@ -9784,7 +9786,8 @@
             "enum": [
               "none",
               "microg"
-            ]
+            ],
+            "default": "microg"
           },
           "signatureSpoofing": {
             "type": "string",
@@ -9793,7 +9796,8 @@
               "external_required",
               "present_unverified",
               "verified"
-            ]
+            ],
+            "default": "external_required"
           },
           "dockerfile": {
             "type": "string"
@@ -9836,10 +9840,12 @@
           },
           "androidVersion": {
             "type": "string",
+            "example": "14",
             "nullable": true
           },
           "architecture": {
             "type": "string",
+            "example": "amd64",
             "nullable": true
           },
           "gmsMode": {
@@ -9870,18 +9876,74 @@
         }
       },
       "StartContainerImageBuildDto": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/CreateContainerImageRecipeDto"
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Redroid 14 microG overlay"
           },
-          {
-            "type": "object",
-            "properties": {
-              "recipeId": {
-                "type": "string"
-              }
+          "targetImage": {
+            "type": "string",
+            "example": "local/redroid-microg:14"
+          },
+          "baseImage": {
+            "type": "string",
+            "example": "redroid/redroid:14.0.0-latest"
+          },
+          "runtimeKind": {
+            "type": "string",
+            "enum": [
+              "redroid",
+              "generic"
+            ],
+            "default": "redroid"
+          },
+          "androidVersion": {
+            "type": "string",
+            "example": "14",
+            "nullable": true
+          },
+          "architecture": {
+            "type": "string",
+            "example": "amd64",
+            "nullable": true
+          },
+          "gmsMode": {
+            "type": "string",
+            "enum": [
+              "none",
+              "microg"
+            ],
+            "default": "microg"
+          },
+          "signatureSpoofing": {
+            "type": "string",
+            "enum": [
+              "not_applicable",
+              "external_required",
+              "present_unverified",
+              "verified"
+            ],
+            "default": "external_required"
+          },
+          "dockerfile": {
+            "type": "string"
+          },
+          "contextFileIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
             }
+          },
+          "recipeId": {
+            "type": "string"
           }
+        },
+        "required": [
+          "name",
+          "targetImage",
+          "baseImage",
+          "dockerfile"
         ]
       },
       "ContainerImageBuildContextFile": {
@@ -9908,6 +9970,7 @@
             "type": "string"
           },
           "createdAt": {
+            "format": "date-time",
             "type": "string"
           }
         },
@@ -9948,10 +10011,12 @@
           },
           "androidVersion": {
             "type": "string",
+            "example": "14",
             "nullable": true
           },
           "architecture": {
             "type": "string",
+            "example": "amd64",
             "nullable": true
           },
           "gmsMode": {
@@ -9977,9 +10042,11 @@
             "type": "string"
           },
           "createdAt": {
+            "format": "date-time",
             "type": "string"
           },
           "updatedAt": {
+            "format": "date-time",
             "type": "string"
           }
         },
@@ -9989,8 +10056,6 @@
           "targetImage",
           "baseImage",
           "runtimeKind",
-          "androidVersion",
-          "architecture",
           "gmsMode",
           "signatureSpoofing",
           "dockerfile",
@@ -10006,7 +10071,7 @@
             "type": "string"
           },
           "recipeId": {
-            "type": "string",
+            "type": "object",
             "nullable": true
           },
           "targetImage": {
@@ -10036,10 +10101,12 @@
           },
           "androidVersion": {
             "type": "string",
+            "example": "14",
             "nullable": true
           },
           "architecture": {
             "type": "string",
+            "example": "amd64",
             "nullable": true
           },
           "gmsMode": {
@@ -10077,40 +10144,69 @@
             "nullable": true
           },
           "startedAt": {
+            "format": "date-time",
             "type": "string",
             "nullable": true
           },
           "finishedAt": {
+            "format": "date-time",
             "type": "string",
             "nullable": true
           },
           "createdAt": {
+            "format": "date-time",
             "type": "string"
           },
           "updatedAt": {
+            "format": "date-time",
             "type": "string"
           }
         },
         "required": [
           "id",
-          "recipeId",
           "targetImage",
           "baseImage",
           "status",
           "runtimeKind",
-          "androidVersion",
-          "architecture",
           "gmsMode",
           "signatureSpoofing",
           "dockerfile",
           "contextFileIdsJson",
           "logTail",
-          "imageId",
-          "error",
-          "startedAt",
-          "finishedAt",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "ReconcileAndroidApplicationsDto": {
+        "type": "object",
+        "properties": {
+          "ownerUserId": {
+            "type": "string",
+            "example": "user_123"
+          }
+        }
+      },
+      "AndroidAppRuntimeReconciliationDto": {
+        "type": "object",
+        "properties": {
+          "application": {
+            "$ref": "#/components/schemas/AndroidApplicationResponseDto"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "updated",
+              "unchanged",
+              "unavailable"
+            ]
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "application",
+          "outcome"
         ]
       }
     }

@@ -1,10 +1,10 @@
-import type { ContainerImageBuildContextFile } from '@/server/orchestrator/platform/types'
 import type {
   LocalBuildContextFile,
   ResolvedContextReference,
   UploadProgress,
   UploadResolvedContextResult
 } from './dockerfile-context-types'
+import type { ContainerImageBuildContextFile } from '@/server/orchestrator/platform/types'
 
 const maxSelectedContextFiles = 200
 

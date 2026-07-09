@@ -1,9 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ApplicationProfileMode } from '../android-apps/application-profile-mode';
+import { ApplicationProfileMode } from '../android-apps/contracts/application-profile-mode';
 import { dockerSafeName } from '../common/docker-name';
-import { DockerNetworkRuntimeService } from '../docker/networks/services/docker-network-runtime.service';
-import { DockerResourceRuntimeService } from '../docker/resources/services/docker-resource-runtime.service';
+import {
+  DOCKER_NETWORK_RUNTIME,
+  type DockerNetworkRuntimePort,
+} from '../docker/contracts/docker-network-runtime.port';
+import {
+  DOCKER_RESOURCE_RUNTIME,
+  type DockerResourceRuntimePort,
+} from '../docker/contracts/docker-resource-runtime.port';
 
 export interface IsolatedRuntimeNames {
   containerName: string;
@@ -15,8 +21,10 @@ export interface IsolatedRuntimeNames {
 export class NetworkIsolationService {
   constructor(
     private readonly config: ConfigService,
-    private readonly networks: DockerNetworkRuntimeService,
-    private readonly resources: DockerResourceRuntimeService,
+    @Inject(DOCKER_NETWORK_RUNTIME)
+    private readonly networks: DockerNetworkRuntimePort,
+    @Inject(DOCKER_RESOURCE_RUNTIME)
+    private readonly resources: DockerResourceRuntimePort,
   ) {}
 
   /**

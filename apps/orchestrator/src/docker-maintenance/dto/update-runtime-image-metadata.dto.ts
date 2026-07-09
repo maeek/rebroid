@@ -21,13 +21,13 @@ export class UpdateRuntimeImageMetadataDto {
   @IsIn(runtimeKinds)
   runtimeKind?: RuntimeImageKind;
 
-  @ApiPropertyOptional({ example: '14', nullable: true })
+  @ApiPropertyOptional({ type: String, example: '14', nullable: true })
   @IsOptional()
   @IsString()
   @MaxLength(24)
   androidVersion?: string | null;
 
-  @ApiPropertyOptional({ example: 'amd64', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'amd64', nullable: true })
   @IsOptional()
   @IsString()
   @MaxLength(32)

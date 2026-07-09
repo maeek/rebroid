@@ -12,7 +12,7 @@ export const getAppsListPageData = async () => {
   const ownerNamesPromise = getVisibleOwnerDisplayNames(user)
   let orchestratorError: string | null = null
   const appsPromise = orchestratorAppCatalogClient
-    .listApplications(ownerUserId, false)
+    .listApplications(ownerUserId)
     .then(items => items.map(mapAndroidApplicationToAppDefinition))
     .catch(error => {
       orchestratorError = error instanceof Error ? error.message : 'The orchestrator API is not responding.'

@@ -6,7 +6,7 @@ import type { ReadableStream as NodeReadableStream } from 'node:stream/web';
 import {
   ApplicationViewerControlDto,
   ApplicationViewerControlResponseDto,
-} from '../dto/application-viewer-control.dto';
+} from '../../contracts/application-viewer-control';
 import {
   DisplayRecordingDto,
   DisplaySessionDto,

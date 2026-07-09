@@ -1,7 +1,7 @@
 'use server'
 
-import { recordAuditEvent } from '@/server/audit/events'
 import { runSafeAction } from '@/server/actions/safe-action'
+import { recordAuditEvent } from '@/server/audit/events'
 import { requireAdminUser } from '../shared'
 import { resetWebSettings } from '../store'
 

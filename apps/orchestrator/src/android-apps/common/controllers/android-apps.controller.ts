@@ -17,6 +17,10 @@ import {
 } from '@nestjs/swagger';
 import { ApplicationCommandResultDto } from '../dto/application-command-result.dto';
 import { AndroidApplicationResponseDto } from '../dto/android-application-response.dto';
+import {
+  AndroidAppRuntimeReconciliationDto,
+  ReconcileAndroidApplicationsDto,
+} from '../dto/android-app-runtime-reconciliation.dto';
 import { AndroidApplicationSummaryResponseDto } from '../dto/android-application-summary-response.dto';
 import { CloneAndroidApplicationDto } from '../dto/clone-android-application.dto';
 import { CreateAndroidApplicationDto } from '../dto/create-android-application.dto';
@@ -25,18 +29,16 @@ import { ListAndroidApplicationsDto } from '../dto/list-android-applications.dto
 import { RemoveAndroidApplicationDto } from '../dto/remove-android-application.dto';
 import { UpdateAndroidApplicationDto } from '../dto/update-android-application.dto';
 import { AndroidAppsLifecycleService } from '../../lifecycle/services/android-apps-lifecycle.service';
-import { AndroidAppsStateService } from '../services/android-apps-state.service';
-import {
-  toAndroidApplicationResponse,
-  toAndroidApplicationResponseList,
-} from '../utils/android-apps-controller-response.utils';
+import { AndroidAppsQueryService } from '../services/android-apps-query.service';
+import { AndroidAppsRuntimeStateReconciler } from '../services/android-apps-runtime-state-reconciler.service';
 
 @ApiTags('apps')
 @Controller('apps')
 export class AndroidAppsController {
   constructor(
     private readonly lifecycle: AndroidAppsLifecycleService,
-    private readonly state: AndroidAppsStateService,
+    private readonly queries: AndroidAppsQueryService,
+    private readonly reconciler: AndroidAppsRuntimeStateReconciler,
   ) {}
 
   @Post()
@@ -92,8 +94,10 @@ export class AndroidAppsController {
 
   @Get()
   @ApiOkResponse({ type: AndroidApplicationResponseDto, isArray: true })
-  list(@Query() query: ListAndroidApplicationsDto) {
-    return toAndroidApplicationResponseList(this.state.list(query));
+  async list(@Query() query: ListAndroidApplicationsDto) {
+    return (await this.queries.listStored(query)).map((app) =>
+      AndroidApplicationResponseDto.fromEntity(app),
+    );
   }
 
   @Get('summaries')
@@ -103,15 +107,38 @@ export class AndroidAppsController {
   })
   @ApiOkResponse({ type: AndroidApplicationSummaryResponseDto, isArray: true })
   async listSummaries(@Query() query: ListAndroidApplicationsDto) {
-    return (await this.state.listSummaries(query)).map((app) =>
+    return (await this.queries.listSummaries(query)).map((app) =>
       AndroidApplicationSummaryResponseDto.fromEntity(app),
+    );
+  }
+
+  @Post('runtime-state/reconcile')
+  @ApiOperation({
+    summary: 'Refresh stored application state from managed containers.',
+  })
+  @ApiOkResponse({ type: AndroidAppRuntimeReconciliationDto, isArray: true })
+  async reconcileMany(@Body() dto: ReconcileAndroidApplicationsDto) {
+    const results = await this.reconciler.reconcileManyWithResults(dto);
+    return results.map((result) =>
+      AndroidAppRuntimeReconciliationDto.fromResult(result),
+    );
+  }
+
+  @Post(':id/runtime-state/reconcile')
+  @ApiOperation({ summary: 'Refresh one application state from Docker.' })
+  @ApiOkResponse({ type: AndroidAppRuntimeReconciliationDto })
+  async reconcileOne(@Param('id') id: string) {
+    return AndroidAppRuntimeReconciliationDto.fromResult(
+      await this.reconciler.reconcileResultById(id),
     );
   }
 
   @Get(':id')
   @ApiOkResponse({ type: AndroidApplicationResponseDto })
-  get(@Param('id') id: string) {
-    return toAndroidApplicationResponse(this.state.get(id));
+  async get(@Param('id') id: string) {
+    return AndroidApplicationResponseDto.fromEntity(
+      await this.queries.getStored(id),
+    );
   }
 
   @Patch(':id')

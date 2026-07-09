@@ -9,7 +9,9 @@ describe('password change route enforcement', () => {
   })
 
   it('allows flagged users to stay on the required password-change page', () => {
-    expect(passwordChangeRedirectPath({ passwordChangeRequired: true, pathname: requiredPasswordChangePath })).toBeNull()
+    expect(
+      passwordChangeRedirectPath({ passwordChangeRequired: true, pathname: requiredPasswordChangePath })
+    ).toBeNull()
   })
 
   it('redirects unflagged users away from the required password-change page', () => {

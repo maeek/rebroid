@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
-import { ApplicationProfileMode } from '../../application-profile-mode';
+import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
 
 export class ApplicationRuntimeFilesQueryDto {
   @ApiPropertyOptional({

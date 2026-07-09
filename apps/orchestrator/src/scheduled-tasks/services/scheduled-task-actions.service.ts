@@ -1,7 +1,10 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Inject, BadRequestException, Injectable } from '@nestjs/common';
 import { ApkCatalogService } from '../../apk/services/apk-catalog.service';
 import { AndroidAppsLogService } from '../../android-apps/common/services/android-apps-log.service';
-import { DockerPlatformPruneService } from '../../docker/prune/services/docker-platform-prune.service';
+import {
+  DOCKER_PLATFORM_PRUNE,
+  type DockerPlatformPrunePort,
+} from '../../docker/contracts/docker-platform-prune.port';
 import { ScheduledTaskActionType } from '../entities/scheduled-task.entity';
 import { ScheduledTaskActionDto } from '../dto/scheduled-task.dto';
 
@@ -54,7 +57,8 @@ export class ScheduledTaskActionsService {
   constructor(
     private readonly apks: ApkCatalogService,
     private readonly logs: AndroidAppsLogService,
-    private readonly prune: DockerPlatformPruneService,
+    @Inject(DOCKER_PLATFORM_PRUNE)
+    private readonly prune: DockerPlatformPrunePort,
   ) {}
 
   listActions(): ScheduledTaskActionDto[] {

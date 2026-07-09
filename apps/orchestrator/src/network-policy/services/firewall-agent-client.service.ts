@@ -143,9 +143,7 @@ export class FirewallAgentClientService {
       });
       operation.setTimeout(timeoutMs, () => {
         operation.destroy(
-          new Error(
-            `Firewall agent request timed out after ${timeoutMs}ms.`,
-          ),
+          new Error(`Firewall agent request timed out after ${timeoutMs}ms.`),
         );
       });
       if (payload) {

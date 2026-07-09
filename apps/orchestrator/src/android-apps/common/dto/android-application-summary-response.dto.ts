@@ -3,7 +3,7 @@ import { AndroidApplication } from '../../android-application.entity';
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
-} from '../../android-application-status';
+} from '../../contracts/android-application-status';
 import { AndroidApplicationStatusDetail } from '../../android-application.entity';
 
 export class AndroidApplicationSummaryResponseDto {

@@ -57,7 +57,7 @@ export const loadAutomationTriggersPageData = async (searchParams: AutomationTri
   }
 
   const [applications, automations, triggersPage] = await Promise.all([
-    listApplicationsAction({ reconcile: false }).catch(error => {
+    listApplicationsAction().catch(error => {
       captureError(error)
       return [] as AndroidApplication[]
     }),

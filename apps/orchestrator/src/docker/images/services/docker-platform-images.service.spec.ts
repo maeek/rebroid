@@ -13,7 +13,9 @@ type DockerLikeError = Error & { statusCode?: number; code?: string };
 const dockerError = (message: string, options: Partial<DockerLikeError> = {}) =>
   Object.assign(new Error(message), options);
 
-const createService = (removeImage: (image: string, force: boolean) => Promise<unknown>) => {
+const createService = (
+  removeImage: (image: string, force: boolean) => Promise<unknown>,
+) => {
   const engine = {
     errorMessage: (error: unknown) =>
       error instanceof Error ? error.message : 'Unknown Docker error',
@@ -51,7 +53,9 @@ const createService = (removeImage: (image: string, force: boolean) => Promise<u
 describe('DockerPlatformImagesService', () => {
   it('maps missing image removals to a friendly not-found error', async () => {
     const service = createService(
-      jest.fn().mockRejectedValue(dockerError('No such image', { statusCode: 404 })),
+      jest
+        .fn()
+        .mockRejectedValue(dockerError('No such image', { statusCode: 404 })),
     );
 
     await expect(service.removePlatformImage('missing-image')).rejects.toThrow(
@@ -61,13 +65,14 @@ describe('DockerPlatformImagesService', () => {
 
   it('maps image-in-use removal failures to a friendly conflict error', async () => {
     const service = createService(
-      jest
-        .fn()
-        .mockRejectedValue(
-          dockerError('conflict: unable to delete image, image is being used by running container', {
+      jest.fn().mockRejectedValue(
+        dockerError(
+          'conflict: unable to delete image, image is being used by running container',
+          {
             statusCode: 409,
-          }),
+          },
         ),
+      ),
     );
 
     await expect(service.removePlatformImage('used-image')).rejects.toThrow(
@@ -79,7 +84,11 @@ describe('DockerPlatformImagesService', () => {
 
   it('maps Docker transport failures to a friendly service-unavailable error', async () => {
     const service = createService(
-      jest.fn().mockRejectedValue(dockerError('socket hang up', { code: 'ECONNRESET' })),
+      jest
+        .fn()
+        .mockRejectedValue(
+          dockerError('socket hang up', { code: 'ECONNRESET' }),
+        ),
     );
 
     await expect(service.removePlatformImage('image')).rejects.toThrow(

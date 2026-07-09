@@ -23,13 +23,13 @@ import {
   type LocalBuildContextFile
 } from './dockerfile-context'
 import { DockerfileMonacoEditor } from './dockerfile-monaco-editor'
+import { useActiveBuildPolling } from './hooks/use-active-build-polling'
 import {
   localBuildContextFilesFromFileList,
   readDirectoryWithPicker,
   supportsDirectoryPicker,
   type LocalBuildContextSelection
 } from './local-build-context-files'
-import { useActiveBuildPolling } from './hooks/use-active-build-polling'
 import { buildValidation } from './model/build-validation'
 import {
   contextIdsFromRecipe,

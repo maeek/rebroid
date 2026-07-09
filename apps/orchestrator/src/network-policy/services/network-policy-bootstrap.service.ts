@@ -1,9 +1,17 @@
-import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  OnApplicationBootstrap,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { setTimeout as delay } from 'node:timers/promises';
 import { AndroidApplicationsRepository } from '../../android-apps/persistence/android-applications.repository';
 import { NetworkPolicyService } from './network-policy.service';
-import { DockerContainerLifecycleService } from '../../docker/containers/services/docker-container-lifecycle.service';
+import {
+  DOCKER_CONTAINER_LIFECYCLE,
+  type DockerContainerLifecyclePort,
+} from '../../docker/contracts/docker-container-lifecycle.port';
 
 @Injectable()
 export class NetworkPolicyBootstrapService implements OnApplicationBootstrap {
@@ -13,7 +21,8 @@ export class NetworkPolicyBootstrapService implements OnApplicationBootstrap {
     private readonly config: ConfigService,
     private readonly applications: AndroidApplicationsRepository,
     private readonly policies: NetworkPolicyService,
-    private readonly containers: DockerContainerLifecycleService,
+    @Inject(DOCKER_CONTAINER_LIFECYCLE)
+    private readonly containers: DockerContainerLifecyclePort,
   ) {}
 
   async onApplicationBootstrap() {

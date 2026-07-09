@@ -1,7 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { DockerContainerLifecycleService } from '../../../docker/containers/services/docker-container-lifecycle.service';
-import { DockerNetworkRuntimeService } from '../../../docker/networks/services/docker-network-runtime.service';
-import { DockerResourceRuntimeService } from '../../../docker/resources/services/docker-resource-runtime.service';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  DOCKER_CONTAINER_LIFECYCLE,
+  type DockerContainerLifecyclePort,
+} from '../../../docker/contracts/docker-container-lifecycle.port';
+import {
+  DOCKER_NETWORK_RUNTIME,
+  type DockerNetworkRuntimePort,
+} from '../../../docker/contracts/docker-network-runtime.port';
+import {
+  DOCKER_RESOURCE_RUNTIME,
+  type DockerResourceRuntimePort,
+} from '../../../docker/contracts/docker-resource-runtime.port';
 import { getErrorMessage } from '../../../common/error-message';
 import { NetworkIsolationService } from '../../../network-isolation/network-isolation.service';
 import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
@@ -15,9 +24,12 @@ export class AndroidAppsRemovalService {
   private readonly logger = new Logger(AndroidAppsRemovalService.name);
 
   constructor(
-    private readonly lifecycle: DockerContainerLifecycleService,
-    private readonly networks: DockerNetworkRuntimeService,
-    private readonly resources: DockerResourceRuntimeService,
+    @Inject(DOCKER_CONTAINER_LIFECYCLE)
+    private readonly lifecycle: DockerContainerLifecyclePort,
+    @Inject(DOCKER_NETWORK_RUNTIME)
+    private readonly networks: DockerNetworkRuntimePort,
+    @Inject(DOCKER_RESOURCE_RUNTIME)
+    private readonly resources: DockerResourceRuntimePort,
     private readonly networkIsolation: NetworkIsolationService,
     private readonly networkPolicy: NetworkPolicyService,
     private readonly runtimeNetwork: AndroidAppsRuntimeNetworkService,

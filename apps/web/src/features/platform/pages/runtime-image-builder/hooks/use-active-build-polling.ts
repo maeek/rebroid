@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { getImageBuildJobAction } from '@/server/orchestrator/platform/image-actions'
-import type { ContainerImageBuildJob } from '@/server/orchestrator/platform/types'
 import { terminalBuildStatuses } from '../model/context-selection'
+import type { ContainerImageBuildJob } from '@/server/orchestrator/platform/types'
 
 export const useActiveBuildPolling = (
   activeJob: ContainerImageBuildJob | null,

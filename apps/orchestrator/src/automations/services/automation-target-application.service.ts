@@ -3,11 +3,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { AndroidAppsStateService } from '../../android-apps/common/services/android-apps-state.service';
+import { AndroidAppsFacadeService } from '../../android-apps/common/services/android-apps-facade.service';
 
 @Injectable()
 export class AutomationTargetApplicationService {
-  constructor(private readonly apps: AndroidAppsStateService) {}
+  constructor(private readonly apps: AndroidAppsFacadeService) {}
 
   async assertOwnerAccess(ownerUserId: string, id?: string | null) {
     if (!id) {

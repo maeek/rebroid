@@ -1,319 +1,62 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { getErrorMessage } from '../../../common/error-message';
-import { throwNotFound } from '../../../common/not-found';
-import { DockerContainerLifecycleService } from '../../../docker/containers/services/docker-container-lifecycle.service';
-import { ContainerRuntimeState } from '../../../docker/docker.types';
-import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
+import { Injectable } from '@nestjs/common';
 import { AndroidApplication } from '../../android-application.entity';
-import {
-  AndroidApplicationLifecycleStage,
-  AndroidApplicationStatus,
-} from '../../android-application-status';
 import { ListAndroidApplicationsDto } from '../dto/list-android-applications.dto';
-import { AndroidApplicationsRepository } from '../../persistence/android-applications.repository';
-import { shouldReconcileContainerState } from '../utils/android-apps-state.utils';
-import { latestRuntimeActivity } from '../utils/android-apps-inactivity.utils';
-import { AndroidAppsProvisioningTrackerService } from './android-apps-provisioning-tracker.service';
-import { AndroidAppsStatusService } from './android-apps-status.service';
+import { AndroidAppsQueryService } from './android-apps-query.service';
+import { AndroidAppsRuntimeStateReconciler } from './android-apps-runtime-state-reconciler.service';
+import {
+  AndroidApplicationLifecyclePatch,
+  AndroidAppsStateWriter,
+} from './android-apps-state-writer.service';
 
+/**
+ * Compatibility facade for application services while stored reads and runtime
+ * reconciliation migrate to their explicit collaborators.
+ */
 @Injectable()
 export class AndroidAppsStateService {
-  private readonly logger = new Logger(AndroidAppsStateService.name);
-
   constructor(
-    private readonly applications: AndroidApplicationsRepository,
-    private readonly config: ConfigService,
-    private readonly lifecycle: DockerContainerLifecycleService,
-    private readonly networkPolicy: NetworkPolicyService,
-    private readonly tracker: AndroidAppsProvisioningTrackerService,
-    private readonly status: AndroidAppsStatusService,
+    private readonly queries: AndroidAppsQueryService,
+    private readonly reconciler: AndroidAppsRuntimeStateReconciler,
+    private readonly writer: AndroidAppsStateWriter,
   ) {}
 
-  /** Lists apps and refreshes their runtime state. */
-  async list(query: ListAndroidApplicationsDto) {
-    const apps = await this.applications.findForList(query);
-    return query.reconcile === false
-      ? apps.map((app) => this.status.decorateApplication(app))
-      : Promise.all(apps.map((app) => this.reconcileContainerState(app)));
+  list(query: ListAndroidApplicationsDto) {
+    return this.reconciler.reconcileMany(query);
   }
 
-  /** Lists stored app summaries without waiting for Docker reconciliation. */
-  async listSummaries(query: ListAndroidApplicationsDto) {
-    const apps = await this.applications.findForList(query);
-    return apps.map((app) => this.status.decorateApplication(app));
+  listSummaries(query: ListAndroidApplicationsDto) {
+    return this.queries.listSummaries(query);
   }
 
-  /** Loads one app and refreshes its runtime state. */
-  async get(id: string) {
-    const app = await this.getStored(id);
-    return this.reconcileContainerState(app);
+  get(id: string) {
+    return this.reconciler.reconcileById(id);
   }
 
-  /** Loads one app without changing its state. */
-  async getStored(id: string) {
-    return (
-      (await this.applications.findById(id)) ?? throwNotFound('Application', id)
-    );
+  getStored(id: string) {
+    return this.queries.getStored(id);
   }
 
-  /** Fills the extra display fields on an app. */
   decorateApplication(app: AndroidApplication) {
-    return this.status.decorateApplication(app);
+    return this.queries.decorate(app);
   }
 
-  /** Saves an app as-is. */
-  async save(app: AndroidApplication) {
-    return this.applications.save(app);
+  save(app: AndroidApplication) {
+    return this.writer.save(app);
   }
 
-  /** Saves an app and fills its display fields. */
-  async saveAndDecorate(app: AndroidApplication) {
-    const saved = await this.applications.save(app);
-    return this.status.decorateApplication(saved);
+  saveAndDecorate(app: AndroidApplication) {
+    return this.writer.saveAndDecorate(app);
   }
 
-  /** Updates only the lifecycle fields for an app. */
-  async setLifecycle(
-    applicationId: string,
-    patch: Partial<
-      Pick<
-        AndroidApplication,
-        | 'status'
-        | 'lifecycleStage'
-        | 'statusMessage'
-        | 'lastError'
-        | 'provisioningStartedAt'
-        | 'provisioningCompletedAt'
-      >
-    >,
-  ) {
-    await this.applications.updateLifecycle(applicationId, patch);
+  setLifecycle(applicationId: string, patch: AndroidApplicationLifecyclePatch) {
+    return this.writer.setLifecycle(applicationId, patch);
   }
 
-  /** Clears a missing container reference from the app record. */
-  async clearMissingContainerReference(app: AndroidApplication) {
-    if (!app.containerId) {
-      return app;
-    }
-
-    const runtimeState = await this.lifecycle.getContainerRuntimeState(
-      app.containerId,
-    );
-    if (runtimeState.exists) {
-      return app;
-    }
-
-    await this.networkPolicy.remove(app);
-    app.containerId = null;
-    app.status = AndroidApplicationStatus.Stopped;
-    app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
-    app.statusMessage =
-      'Managed container was removed. A new container will be created on start.';
-    app.lastStoppedAt = new Date();
-    await this.applications.save(app);
-    return app;
+  clearMissingContainerReference(app: AndroidApplication) {
+    return this.reconciler.clearMissingContainerReference(app);
   }
 
-  /** Finds running apps that have been idle too long. */
-  async findInactiveRunningApplications(now = new Date()) {
-    const running = await this.applications.findByStatus(
-      AndroidApplicationStatus.Running,
-    );
-
-    return running.filter((app) => {
-      if (app.inactivityTimeoutSeconds < 0) {
-        return false;
-      }
-
-      const lastActivity = latestRuntimeActivity(
-        app.lastScrcpyActivityAt,
-        app.lastStartedAt,
-      );
-      if (!lastActivity) {
-        return false;
-      }
-
-      const inactiveSeconds = (now.getTime() - lastActivity.getTime()) / 1000;
-      return inactiveSeconds >= app.inactivityTimeoutSeconds;
-    });
-  }
-
-  /** Syncs saved app state with the current container state. */
-  private async reconcileContainerState(app: AndroidApplication) {
-    if (!shouldReconcileContainerState(app)) {
-      return this.status.decorateApplication(app);
-    }
-
-    const containerId = app.containerId;
-    if (!containerId) {
-      return this.status.decorateApplication(app);
-    }
-
-    let runtimeState: ContainerRuntimeState;
-    try {
-      runtimeState = await this.lifecycle.getContainerRuntimeState(containerId);
-    } catch (error) {
-      this.logger.warn(
-        `Could not inspect container state for ${app.id}: ${getErrorMessage(error)}`,
-      );
-      return this.status.decorateApplication(app);
-    }
-
-    if (
-      app.lifecycleStage === AndroidApplicationLifecycleStage.Stopping &&
-      this.isStoppingStateStale(app)
-    ) {
-      return this.recoverStaleStoppingState(app, runtimeState);
-    }
-
-    if (runtimeState.exists && runtimeState.running) {
-      if (
-        app.status === AndroidApplicationStatus.Stopped ||
-        app.status === AndroidApplicationStatus.Error
-      ) {
-        app.status = AndroidApplicationStatus.Running;
-        app.lifecycleStage = AndroidApplicationLifecycleStage.Ready;
-        app.statusMessage =
-          'Runtime container is running. State recovered from Docker.';
-        app.lastError = null;
-        app.lastStartedAt = app.lastStartedAt ?? new Date();
-        return this.saveAndDecorate(app);
-      }
-
-      return this.status.decorateApplication(app);
-    }
-
-    if (
-      app.status === AndroidApplicationStatus.Provisioning &&
-      this.isContainerStartOwnedByProvisioning(app)
-    ) {
-      return this.status.decorateApplication(app);
-    }
-
-    const message = runtimeState.exists
-      ? this.status.containerExitedMessage(app, runtimeState)
-      : 'Managed container no longer exists.';
-    if (
-      app.status === AndroidApplicationStatus.Provisioning ||
-      app.status === AndroidApplicationStatus.Running
-    ) {
-      this.logger.warn(
-        `Managed container stopped for ${app.id}: ${JSON.stringify(runtimeState)}`,
-      );
-    }
-
-    if (app.status === AndroidApplicationStatus.Provisioning) {
-      if (runtimeState.exists && runtimeState.exitCode === 0) {
-        app.status = AndroidApplicationStatus.Stopped;
-        app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
-        app.statusMessage = message;
-        app.lastError = null;
-        app.lastStoppedAt = runtimeState.finishedAt
-          ? new Date(runtimeState.finishedAt)
-          : new Date();
-        this.tracker.cancel(app.id);
-        return this.saveAndDecorate(app);
-      }
-
-      if (!runtimeState.exists) {
-        await this.networkPolicy.remove(app);
-        app.containerId = null;
-      }
-      app.status = AndroidApplicationStatus.Error;
-      app.lifecycleStage = AndroidApplicationLifecycleStage.Error;
-      app.statusMessage = message;
-      app.lastError = message;
-      app.lastStoppedAt = new Date();
-      this.tracker.cancel(app.id);
-      return this.saveAndDecorate(app);
-    }
-
-    if (app.status === AndroidApplicationStatus.Running) {
-      if (runtimeState.exists && runtimeState.exitCode === 0) {
-        app.status = AndroidApplicationStatus.Stopped;
-        app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
-        app.statusMessage = this.status.stoppedStatusMessage(app);
-        app.lastError = null;
-        app.lastStoppedAt = runtimeState.finishedAt
-          ? new Date(runtimeState.finishedAt)
-          : new Date();
-        return this.saveAndDecorate(app);
-      }
-
-      if (!runtimeState.exists) {
-        await this.networkPolicy.remove(app);
-        app.containerId = null;
-      }
-      app.status = AndroidApplicationStatus.Error;
-      app.lifecycleStage = AndroidApplicationLifecycleStage.Error;
-      app.statusMessage = message;
-      app.lastError = message;
-      app.lastStoppedAt = new Date();
-      return this.saveAndDecorate(app);
-    }
-
-    return this.status.decorateApplication(app);
-  }
-
-  /**
-   * Stops can be interrupted after Docker accepted the request but before cleanup
-   * completed. Once the stopping marker is stale, trust Docker as the source of truth.
-   */
-  private async recoverStaleStoppingState(
-    app: AndroidApplication,
-    runtimeState: ContainerRuntimeState,
-  ) {
-    this.logger.warn(
-      `Recovering stale stopping state for ${app.id} from Docker runtime state.`,
-    );
-
-    if (runtimeState.exists && runtimeState.running) {
-      app.status = AndroidApplicationStatus.Running;
-      app.lifecycleStage = AndroidApplicationLifecycleStage.Ready;
-      app.statusMessage =
-        'Stop did not complete. Runtime container is still running.';
-      app.lastError = null;
-      return this.saveAndDecorate(app);
-    }
-
-    if (!runtimeState.exists) {
-      void this.networkPolicy.remove(app);
-      app.containerId = null;
-    }
-
-    app.status = AndroidApplicationStatus.Stopped;
-    app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
-    app.statusMessage = this.status.stoppedStatusMessage(app);
-    app.lastError = null;
-    app.lastStoppedAt = runtimeState.finishedAt
-      ? new Date(runtimeState.finishedAt)
-      : new Date();
-    return this.saveAndDecorate(app);
-  }
-
-  private isStoppingStateStale(app: AndroidApplication) {
-    const timeoutMs =
-      this.config.getOrThrow<number>('app.docker.stoppingStaleTimeoutSeconds') *
-      1000;
-    return Date.now() - app.updatedAt.getTime() >= timeoutMs;
-  }
-
-  /**
-   * While the background start/provisioning flow is still preparing or starting
-   * the container, the saved Docker state may still reflect a previous stop.
-   * Let the active flow own failures until Android readiness begins.
-   */
-  private isContainerStartOwnedByProvisioning(app: AndroidApplication) {
-    return [
-      AndroidApplicationLifecycleStage.Queued,
-      AndroidApplicationLifecycleStage.ImageChecking,
-      AndroidApplicationLifecycleStage.ImagePulling,
-      AndroidApplicationLifecycleStage.VolumeCreating,
-      AndroidApplicationLifecycleStage.NetworkCreating,
-      AndroidApplicationLifecycleStage.OrchestratorNetworkConnecting,
-      AndroidApplicationLifecycleStage.ContainerCreating,
-      AndroidApplicationLifecycleStage.ContainerStarting,
-    ].includes(app.lifecycleStage);
+  findInactiveRunningApplications(now = new Date()) {
+    return this.queries.findInactiveRunningApplications(now);
   }
 }

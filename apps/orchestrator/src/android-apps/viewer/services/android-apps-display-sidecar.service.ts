@@ -2,7 +2,7 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { getErrorMessage } from '../../../common/error-message';
 import { AndroidApplication } from '../../android-application.entity';
-import type { ApplicationViewerControlCommand } from '../dto/application-viewer-control.dto';
+import type { ApplicationViewerControlCommand } from '../../contracts/application-viewer-control';
 import type { DisplaySessionDto } from '../dto/scrcpy-session.dto';
 import { AndroidAppsViewerNetworkService } from './android-apps-viewer-network.service';
 

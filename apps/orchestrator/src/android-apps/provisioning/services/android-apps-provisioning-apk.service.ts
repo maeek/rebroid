@@ -1,14 +1,24 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { ApkIconExtractorService } from '../../../apk/services/apk-icon-extractor.service';
 import { getErrorMessage } from '../../../common/error-message';
-import { DockerContainerArchiveService } from '../../../docker/containers/services/docker-container-archive.service';
-import { DockerContainerExecService } from '../../../docker/containers/services/docker-container-exec.service';
+import {
+  DOCKER_CONTAINER_ARCHIVE,
+  type DockerContainerArchivePort,
+} from '../../../docker/contracts/docker-container-archive.port';
+import {
+  DOCKER_CONTAINER_EXEC,
+  type DockerContainerExecPort,
+} from '../../../docker/contracts/docker-container-exec.port';
 import { ContainerCommandFailedException } from '../../../docker/docker.types';
 import { AndroidApplication } from '../../android-application.entity';
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
-} from '../../android-application-status';
+} from '../../contracts/android-application-status';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
 import {
@@ -21,8 +31,10 @@ import {
 @Injectable()
 export class AndroidAppsProvisioningApkService {
   constructor(
-    private readonly archive: DockerContainerArchiveService,
-    private readonly exec: DockerContainerExecService,
+    @Inject(DOCKER_CONTAINER_ARCHIVE)
+    private readonly archive: DockerContainerArchivePort,
+    @Inject(DOCKER_CONTAINER_EXEC)
+    private readonly exec: DockerContainerExecPort,
     private readonly logs: AndroidAppsLogService,
     private readonly state: AndroidAppsStateService,
     private readonly apkMetadata: ApkIconExtractorService,

@@ -6,6 +6,7 @@ import type {
   CloneApplicationInput,
   CreateAndroidApplicationInput,
   DeleteAndroidApplicationResponse,
+  AndroidAppRuntimeReconciliation,
   UpdateAndroidApplicationInput
 } from './types'
 
@@ -14,12 +15,25 @@ export const orchestratorAppCatalogClient = {
     return jsonRequest<ApplicationCommandResult>('/apps', 'POST', input)
   },
 
-  listApplications(ownerUserId?: string, reconcile = true) {
+  listApplications(ownerUserId?: string) {
     const query = new URLSearchParams()
     if (ownerUserId) query.set('ownerUserId', ownerUserId)
-    if (!reconcile) query.set('reconcile', 'false')
     const suffix = query.size > 0 ? `?${query.toString()}` : ''
     return emptyRequest<AndroidApplication[]>(`/apps${suffix}`)
+  },
+
+  reconcileApplications(ownerUserId?: string) {
+    return jsonRequest<AndroidAppRuntimeReconciliation[]>('/apps/runtime-state/reconcile', 'POST', {
+      ...(ownerUserId ? { ownerUserId } : {})
+    })
+  },
+
+  reconcileApplication(id: string) {
+    return jsonRequest<AndroidAppRuntimeReconciliation>(
+      `/apps/${encodeURIComponent(id)}/runtime-state/reconcile`,
+      'POST',
+      {}
+    )
   },
 
   listApplicationSummaries(ownerUserId?: string) {

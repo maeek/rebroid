@@ -996,22 +996,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/automations/runs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AutomationsController_listAllRuns"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/automations/runs/{runId}": {
         parameters: {
             query?: never;
@@ -1341,8 +1325,7 @@ export interface paths {
         delete: operations["DockerMaintenanceImagesController_removeImage"];
         options?: never;
         head?: never;
-        /** Update Rebroid runtime metadata for an image. */
-        patch: operations["DockerMaintenanceImagesController_updateRuntimeMetadata"];
+        patch?: never;
         trace?: never;
     };
     "/api/v1/platform/docker/networks": {
@@ -1749,6 +1732,73 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/apps/runtime-state/reconcile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh stored application state from managed containers. */
+        post: operations["AndroidAppsController_reconcileMany"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/apps/{id}/runtime-state/reconcile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh one application state from Docker. */
+        post: operations["AndroidAppsController_reconcileOne"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/automations/runs/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AutomationsController_listActiveRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/docker/images/{id}/runtime-metadata": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Rebroid runtime metadata for an image. */
+        patch: operations["DockerMaintenanceImagesController_updateRuntimeMetadata"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1875,11 +1925,23 @@ export interface components {
              * @description Service endpoint. HTTP(S) URL for HTTP sidecars; socket path for local agent integrations.
              * @example http://ocr-sidecar:4300
              */
-            endpoint: string | null;
+            endpoint?: string | null;
             /** @example 15000 */
             timeoutMs: number;
         };
-        OcrServiceSettingsDto: components["schemas"]["OptionalServiceSettingsDto"] & {
+        OcrServiceSettingsDto: {
+            /**
+             * @description Whether the optional sidecar integration should be used.
+             * @example true
+             */
+            enabled: boolean;
+            /**
+             * @description Service endpoint. HTTP(S) URL for HTTP sidecars; socket path for local agent integrations.
+             * @example http://ocr-sidecar:4300
+             */
+            endpoint?: string | null;
+            /** @example 15000 */
+            timeoutMs: number;
             /** @example 1600 */
             maxImageDimension: number;
             /** @example 0.4 */
@@ -2209,6 +2271,8 @@ export interface components {
         };
         AndroidApplicationRuntimeDto: {
             image: string;
+            /** @enum {string} */
+            kind: "redroid" | "generic";
             containerName: string;
             containerId: string | null;
             containerArgs: string | null;
@@ -3114,7 +3178,9 @@ export interface components {
         UpdateRuntimeImageMetadataDto: {
             /** @enum {string} */
             runtimeKind?: "redroid" | "generic";
+            /** @example 14 */
             androidVersion?: string | null;
+            /** @example amd64 */
             architecture?: string | null;
             /** @enum {string} */
             gmsMode?: "none" | "microg";
@@ -3128,14 +3194,25 @@ export interface components {
             targetImage: string;
             /** @example redroid/redroid:14.0.0-latest */
             baseImage: string;
-            /** @enum {string} */
-            runtimeKind?: "redroid" | "generic";
+            /**
+             * @default redroid
+             * @enum {string}
+             */
+            runtimeKind: "redroid" | "generic";
+            /** @example 14 */
             androidVersion?: string | null;
+            /** @example amd64 */
             architecture?: string | null;
-            /** @enum {string} */
-            gmsMode?: "none" | "microg";
-            /** @enum {string} */
-            signatureSpoofing?: "not_applicable" | "external_required" | "present_unverified" | "verified";
+            /**
+             * @default microg
+             * @enum {string}
+             */
+            gmsMode: "none" | "microg";
+            /**
+             * @default external_required
+             * @enum {string}
+             */
+            signatureSpoofing: "not_applicable" | "external_required" | "present_unverified" | "verified";
             dockerfile: string;
             contextFileIds?: string[];
         };
@@ -3148,7 +3225,9 @@ export interface components {
             baseImage?: string;
             /** @enum {string} */
             runtimeKind?: "redroid" | "generic";
+            /** @example 14 */
             androidVersion?: string | null;
+            /** @example amd64 */
             architecture?: string | null;
             /** @enum {string} */
             gmsMode?: "none" | "microg";
@@ -3157,7 +3236,34 @@ export interface components {
             dockerfile?: string;
             contextFileIds?: string[];
         };
-        StartContainerImageBuildDto: components["schemas"]["CreateContainerImageRecipeDto"] & {
+        StartContainerImageBuildDto: {
+            /** @example Redroid 14 microG overlay */
+            name: string;
+            /** @example local/redroid-microg:14 */
+            targetImage: string;
+            /** @example redroid/redroid:14.0.0-latest */
+            baseImage: string;
+            /**
+             * @default redroid
+             * @enum {string}
+             */
+            runtimeKind: "redroid" | "generic";
+            /** @example 14 */
+            androidVersion?: string | null;
+            /** @example amd64 */
+            architecture?: string | null;
+            /**
+             * @default microg
+             * @enum {string}
+             */
+            gmsMode: "none" | "microg";
+            /**
+             * @default external_required
+             * @enum {string}
+             */
+            signatureSpoofing: "not_applicable" | "external_required" | "present_unverified" | "verified";
+            dockerfile: string;
+            contextFileIds?: string[];
             recipeId?: string;
         };
         ContainerImageBuildContextFile: {
@@ -3169,6 +3275,7 @@ export interface components {
             storedPath: string;
             sizeBytes: number;
             sha256: string;
+            /** Format: date-time */
             createdAt: string;
         };
         ContainerImageBuildRecipe: {
@@ -3181,20 +3288,24 @@ export interface components {
             baseImage: string;
             /** @enum {string} */
             runtimeKind: "redroid" | "generic";
-            androidVersion: string | null;
-            architecture: string | null;
+            /** @example 14 */
+            androidVersion?: string | null;
+            /** @example amd64 */
+            architecture?: string | null;
             /** @enum {string} */
             gmsMode: "none" | "microg";
             /** @enum {string} */
             signatureSpoofing: "not_applicable" | "external_required" | "present_unverified" | "verified";
             dockerfile: string;
             contextFileIdsJson: string;
+            /** Format: date-time */
             createdAt: string;
+            /** Format: date-time */
             updatedAt: string;
         };
         ContainerImageBuildJob: {
             id: string;
-            recipeId: string | null;
+            recipeId?: Record<string, never> | null;
             /** @example local/redroid-microg:14 */
             targetImage: string;
             /** @example redroid/redroid:14.0.0-latest */
@@ -3203,8 +3314,10 @@ export interface components {
             status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
             /** @enum {string} */
             runtimeKind: "redroid" | "generic";
-            androidVersion: string | null;
-            architecture: string | null;
+            /** @example 14 */
+            androidVersion?: string | null;
+            /** @example amd64 */
+            architecture?: string | null;
             /** @enum {string} */
             gmsMode: "none" | "microg";
             /** @enum {string} */
@@ -3213,12 +3326,26 @@ export interface components {
             contextFileIdsJson: string;
             /** @example Step 1/4 : FROM redroid/redroid:14.0.0-latest */
             logTail: string;
-            imageId: string | null;
-            error: string | null;
-            startedAt: string | null;
-            finishedAt: string | null;
+            imageId?: string | null;
+            error?: string | null;
+            /** Format: date-time */
+            startedAt?: string | null;
+            /** Format: date-time */
+            finishedAt?: string | null;
+            /** Format: date-time */
             createdAt: string;
+            /** Format: date-time */
             updatedAt: string;
+        };
+        ReconcileAndroidApplicationsDto: {
+            /** @example user_123 */
+            ownerUserId?: string;
+        };
+        AndroidAppRuntimeReconciliationDto: {
+            application: components["schemas"]["AndroidApplicationResponseDto"];
+            /** @enum {string} */
+            outcome: "updated" | "unchanged" | "unavailable";
+            message?: string;
         };
     };
     responses: never;
@@ -3814,8 +3941,6 @@ export interface operations {
         parameters: {
             query?: {
                 ownerUserId?: string;
-                /** @description Set false for a fast stored-state response without Docker reconciliation. */
-                reconcile?: boolean;
             };
             header?: never;
             path?: never;
@@ -3902,8 +4027,6 @@ export interface operations {
         parameters: {
             query?: {
                 ownerUserId?: string;
-                /** @description Set false for a fast stored-state response without Docker reconciliation. */
-                reconcile?: boolean;
             };
             header?: never;
             path?: never;
@@ -4946,29 +5069,6 @@ export interface operations {
             };
         };
     };
-    AutomationsController_listAllRuns: {
-        parameters: {
-            query: {
-                ownerUserId: string;
-                limit?: number;
-                status?: "active";
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AutomationRunDto"][];
-                };
-            };
-        };
-    };
     AutomationsController_getRun: {
         parameters: {
             query: {
@@ -5310,7 +5410,6 @@ export interface operations {
             query: {
                 ownerUserId: string;
                 limit?: number;
-                status?: "active";
             };
             header?: never;
             path: {
@@ -5605,31 +5704,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DockerPlatformRemovalResponseDto"];
-                };
-            };
-        };
-    };
-    DockerMaintenanceImagesController_updateRuntimeMetadata: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateRuntimeImageMetadataDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerPlatformImageDetailsDto"];
                 };
             };
         };
@@ -6114,12 +6188,7 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": {
-                        id: string;
-                        removed: boolean;
-                    };
-                };
+                content?: never;
             };
         };
     };
@@ -6201,12 +6270,7 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": {
-                        id: string;
-                        removed: boolean;
-                    };
-                };
+                content?: never;
             };
         };
     };
@@ -6315,6 +6379,96 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ContainerImageBuildJob"];
+                };
+            };
+        };
+    };
+    AndroidAppsController_reconcileMany: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReconcileAndroidApplicationsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AndroidAppRuntimeReconciliationDto"][];
+                };
+            };
+        };
+    };
+    AndroidAppsController_reconcileOne: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AndroidAppRuntimeReconciliationDto"];
+                };
+            };
+        };
+    };
+    AutomationsController_listActiveRuns: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationRunDto"][];
+                };
+            };
+        };
+    };
+    DockerMaintenanceImagesController_updateRuntimeMetadata: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRuntimeImageMetadataDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DockerPlatformImageDetailsDto"];
                 };
             };
         };

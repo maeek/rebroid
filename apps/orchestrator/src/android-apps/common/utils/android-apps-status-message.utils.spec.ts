@@ -1,5 +1,5 @@
 import { AndroidApplication } from '../../android-application.entity';
-import { AndroidApplicationStatus } from '../../android-application-status';
+import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import {
   deriveApplicationError,
   errorStatusTitle,

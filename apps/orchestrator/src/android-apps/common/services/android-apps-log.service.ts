@@ -13,7 +13,7 @@ import { getErrorMessage } from '../../../common/error-message';
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
-} from '../../android-application-status';
+} from '../../contracts/android-application-status';
 
 type RuntimeLogPatch = Partial<{
   status: AndroidApplicationStatus;

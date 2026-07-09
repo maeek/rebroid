@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { applicationViewerControlCommands } from '../../android-apps/viewer/dto/application-viewer-control.dto';
+import { applicationViewerControlCommands } from '../../android-apps/contracts/application-viewer-control';
 
 export const timeoutSchema = z
   .number()

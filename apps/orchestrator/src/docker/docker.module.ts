@@ -7,6 +7,7 @@ import { DockerNetworksModule } from './networks/docker-networks.module';
 import { DockerPruneModule } from './prune/docker-prune.module';
 import { DockerResourcesModule } from './resources/docker-resources.module';
 import { DockerSidecarModule } from './sidecar/docker-sidecar.module';
+import { DOCKER_HEALTH } from './contracts/docker-health.port';
 
 @Module({
   imports: [
@@ -18,7 +19,10 @@ import { DockerSidecarModule } from './sidecar/docker-sidecar.module';
     DockerPruneModule,
     DockerSidecarModule,
   ],
-  providers: [DockerHealthService],
+  providers: [
+    DockerHealthService,
+    { provide: DOCKER_HEALTH, useExisting: DockerHealthService },
+  ],
   exports: [
     DockerEngineModule,
     DockerContainersModule,
@@ -28,6 +32,7 @@ import { DockerSidecarModule } from './sidecar/docker-sidecar.module';
     DockerPruneModule,
     DockerSidecarModule,
     DockerHealthService,
+    DOCKER_HEALTH,
   ],
 })
 export class DockerModule {}

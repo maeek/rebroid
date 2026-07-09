@@ -1,8 +1,7 @@
 import { ConflictException, Injectable } from '@nestjs/common';
-import { AndroidApplicationStatus } from '../../android-apps/android-application-status';
-import { ApplicationProfileMode } from '../../android-apps/application-profile-mode';
-import { AndroidAppsStateService } from '../../android-apps/common/services/android-apps-state.service';
-import { AndroidAppsLifecycleService } from '../../android-apps/lifecycle/services/android-apps-lifecycle.service';
+import { AndroidApplicationStatus } from '../../android-apps/contracts/android-application-status';
+import { ApplicationProfileMode } from '../../android-apps/contracts/application-profile-mode';
+import { AndroidAppsFacadeService } from '../../android-apps/common/services/android-apps-facade.service';
 import {
   AutomationRunStartPolicy,
   AutomationRunTargetOptions,
@@ -10,10 +9,7 @@ import {
 
 @Injectable()
 export class AutomationRunnerTargetService {
-  constructor(
-    private readonly apps: AndroidAppsStateService,
-    private readonly lifecycle: AndroidAppsLifecycleService,
-  ) {}
+  constructor(private readonly apps: AndroidAppsFacadeService) {}
 
   async prepareTarget(
     targetApplicationId: string,
@@ -48,7 +44,7 @@ export class AutomationRunnerTargetService {
       );
     }
 
-    await this.lifecycle.start(targetApplicationId, {
+    await this.apps.start(targetApplicationId, {
       profileMode: requestedProfileMode as ApplicationProfileMode,
       profileName: requestedProfileName,
     });

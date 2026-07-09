@@ -1,5 +1,5 @@
-import type { SortingState } from '@tanstack/react-table'
 import { isActionFailure, isActionResult, type ActionResult } from '@/shared/actions/action-result'
+import type { SortingState } from '@tanstack/react-table'
 
 type PlatformGridQuery = {
   page?: number

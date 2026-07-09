@@ -1,9 +1,9 @@
-import { AndroidAppsStateService } from '../../android-apps/common/services/android-apps-state.service';
+import type { AndroidAutomationApplication } from '../../android-apps/contracts/android-apps-automation.port';
 import { AutomationRunTrigger } from '../entities/automation-run.entity';
 import { AutomationStepResult } from './automation-runner.types';
 
 export interface AutomationExecutionState {
-  app: Awaited<ReturnType<AndroidAppsStateService['get']>>;
+  app: AndroidAutomationApplication;
   runId: string;
   trigger: AutomationRunTrigger;
   targetProfileMode: string | null;

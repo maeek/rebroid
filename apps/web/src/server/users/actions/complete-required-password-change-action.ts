@@ -1,7 +1,7 @@
 'use server'
 
-import { getCurrentUser } from '@/server/auth/authorization'
 import { runSafeAction } from '@/server/actions/safe-action'
+import { getCurrentUser } from '@/server/auth/authorization'
 import { userService } from '@/server/auth/user'
 
 export const completeRequiredPasswordChangeAction = async (input: { currentPassword: string; newPassword: string }) =>

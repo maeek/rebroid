@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { AndroidAppsStateService } from '../../android-apps/common/services/android-apps-state.service';
+import { AndroidAppsFacadeService } from '../../android-apps/common/services/android-apps-facade.service';
 import { Automation } from '../entities/automation.entity';
 import {
   AutomationRunStatus,
@@ -38,7 +38,7 @@ export class AutomationRunnerService {
 
   constructor(
     private readonly runs: AutomationRunsRepository,
-    private readonly apps: AndroidAppsStateService,
+    private readonly apps: AndroidAppsFacadeService,
     private readonly events: AutomationRunEventBus,
     private readonly targets: AutomationRunnerTargetService,
     private readonly ephemeralAutomations: EphemeralAutomationRegistryService,

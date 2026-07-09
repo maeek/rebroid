@@ -7,8 +7,9 @@ export const resolveHostTimezone = () => {
   }
 
   try {
-    const resolvedTimezone =
-      Intl.DateTimeFormat().resolvedOptions().timeZone?.trim();
+    const resolvedTimezone = Intl.DateTimeFormat()
+      .resolvedOptions()
+      .timeZone?.trim();
     return resolvedTimezone || DEFAULT_TIMEZONE;
   } catch {
     return DEFAULT_TIMEZONE;
