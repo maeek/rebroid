@@ -20,7 +20,7 @@ import {
   AndroidApplicationStatus,
 } from '../../contracts/android-application-status';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
-import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
+import { AndroidAppsStateWriter } from '../../common/services/android-apps-state-writer.service';
 import {
   buildLaunchPackageCommand,
   buildPmInstallCommand,
@@ -36,7 +36,7 @@ export class AndroidAppsProvisioningApkService {
     @Inject(DOCKER_CONTAINER_EXEC)
     private readonly exec: DockerContainerExecPort,
     private readonly logs: AndroidAppsLogService,
-    private readonly state: AndroidAppsStateService,
+    private readonly writer: AndroidAppsStateWriter,
     private readonly apkMetadata: ApkIconExtractorService,
   ) {}
 
@@ -58,7 +58,7 @@ export class AndroidAppsProvisioningApkService {
       lifecycleStage: AndroidApplicationLifecycleStage.ApkInstalling,
       statusMessage,
     });
-    await this.state.setLifecycle(app.id, {
+    await this.writer.setLifecycle(app.id, {
       status: AndroidApplicationStatus.Running,
       lifecycleStage: AndroidApplicationLifecycleStage.ApkInstalling,
       statusMessage,
@@ -119,7 +119,7 @@ export class AndroidAppsProvisioningApkService {
     }
 
     app.apkPackageName = packageName;
-    await this.state.save(app);
+    await this.writer.save(app);
 
     await this.logs.append(app.id, 'APK install command completed', {
       target: targetPath,
@@ -155,7 +155,7 @@ export class AndroidAppsProvisioningApkService {
     }
 
     app.apkPackageName = packageName;
-    await this.state.save(app);
+    await this.writer.save(app);
     await this.logs.append(app.id, 'Launching installed APK', {
       packageName,
     });

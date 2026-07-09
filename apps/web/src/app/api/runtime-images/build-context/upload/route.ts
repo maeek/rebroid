@@ -3,6 +3,7 @@ import { recordAuditEvent } from '@/server/audit/events'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { orchestratorPlatformClient } from '@/server/orchestrator/platform/client'
 import { OrchestratorRequestError } from '@/server/orchestrator/request'
+import { prepareStreamingMultipartUpload } from '@/server/upload-proxy/streaming-upload'
 
 export const runtime = 'nodejs'
 
@@ -50,20 +51,19 @@ export const POST = async (request: NextRequest) => {
       return NextResponse.json({ message: 'Build context path is required.' }, { status: 400 })
     }
 
-    const contentLength = Number(request.headers.get('content-length'))
-    if (Number.isFinite(contentLength) && contentLength > maxUploadBytes + maxMultipartOverheadBytes) {
-      return NextResponse.json({ message: 'Build context upload exceeds the 65 MB limit.' }, { status: 413 })
-    }
-
-    const contentType = request.headers.get('content-type') ?? ''
-    if (!contentType.startsWith('multipart/form-data') || !request.body) {
-      return NextResponse.json({ message: 'Multipart build context file is required.' }, { status: 400 })
-    }
+    const upload = prepareStreamingMultipartUpload(request, {
+      maxBytes: maxUploadBytes,
+      multipartOverheadBytes: maxMultipartOverheadBytes,
+      missingMessage: 'Multipart build context file is required.',
+      tooLargeMessage: 'Build context upload exceeds the 65 MB limit.'
+    })
+    if (!upload.ok) return upload.response
 
     const uploaded = await orchestratorPlatformClient.uploadImageBuildContextFile(
-      request.body,
+      upload.body,
       contextPath,
-      contentType
+      upload.contentType,
+      request.signal
     )
     recordAuditEvent({
       actorUserId: user.ownerUserId,

@@ -11,11 +11,12 @@ import {
 import { DockerErrorClassifier } from './engine/services/docker-error-classifier.service';
 import { DockerMetricsObserver } from './engine/services/docker-metrics-observer.service';
 import { DockerOperationExecutor } from './engine/services/docker-operation-executor.service';
+import type { DockerEnginePort } from './contracts/docker-engine.port';
 
 export { dockerConnectionOptions };
 
 @Injectable()
-export class DockerEngineService {
+export class DockerEngineService implements DockerEnginePort {
   readonly docker: Dockerode;
   readonly streamDocker: Dockerode;
   readonly resourcePrefix: string;

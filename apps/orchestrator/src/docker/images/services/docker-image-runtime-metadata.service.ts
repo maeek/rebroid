@@ -3,29 +3,15 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import {
   resolveRuntimeImageMetadata,
-  type RuntimeImageGmsMode,
-  type RuntimeImageKind,
   type RuntimeImageMetadata,
-  type RuntimeImageMetadataSource,
-  type RuntimeImageSignatureSpoofing,
 } from '@rebroid/application-core/redroid-runtime';
 import { PlatformImage } from '../../docker.types';
 import { ContainerImageRuntimeMetadata } from '../entities/container-image-runtime-metadata.entity';
-
-export interface UpsertRuntimeImageMetadataInput {
-  imageRef: string;
-  imageId?: string | null;
-  runtimeKind: RuntimeImageKind;
-  androidVersion?: string | null;
-  architecture?: string | null;
-  gmsMode: RuntimeImageGmsMode;
-  signatureSpoofing: RuntimeImageSignatureSpoofing;
-}
-
-export interface ResolvedRuntimeImageMetadata {
-  metadata: RuntimeImageMetadata;
-  source: RuntimeImageMetadataSource;
-}
+import type {
+  DockerImageRuntimeMetadataPort,
+  ResolvedRuntimeImageMetadata,
+  UpsertRuntimeImageMetadataInput,
+} from '../../contracts/docker-image-runtime-metadata.port';
 
 const cleanNullable = (value: string | null | undefined) => {
   const trimmed = value?.trim();
@@ -33,7 +19,7 @@ const cleanNullable = (value: string | null | undefined) => {
 };
 
 @Injectable()
-export class DockerImageRuntimeMetadataService {
+export class DockerImageRuntimeMetadataService implements DockerImageRuntimeMetadataPort {
   constructor(
     @InjectRepository(ContainerImageRuntimeMetadata)
     private readonly metadata: Repository<ContainerImageRuntimeMetadata>,
@@ -62,9 +48,7 @@ export class DockerImageRuntimeMetadataService {
       return null;
     }
 
-    const records = await this.metadata.find({
-      where: [{ imageRef: In(normalized) }, { imageId: In(normalized) }],
-    });
+    const records = await this.findRecordsByReferences(normalized);
     return this.preferredRecord(records, normalized);
   }
 
@@ -88,7 +72,32 @@ export class DockerImageRuntimeMetadataService {
   }
 
   async enrichPlatformImages(images: PlatformImage[]) {
-    return Promise.all(images.map((image) => this.enrichPlatformImage(image)));
+    const references = images.flatMap((image) =>
+      this.referencesForImage(image),
+    );
+    const records = await this.findRecordsByReferences(references);
+    const recordsByReference = new Map<string, ContainerImageRuntimeMetadata>();
+    for (const record of records) {
+      recordsByReference.set(record.imageRef, record);
+      if (record.imageId) recordsByReference.set(record.imageId, record);
+    }
+    return images.map((image) => {
+      const imageReferences = this.referencesForImage(image);
+      const stored =
+        imageReferences
+          .map((reference) => recordsByReference.get(reference))
+          .find(Boolean) ?? null;
+      const resolved = resolveRuntimeImageMetadata({
+        image: image.repoTags[0] ?? image.id,
+        labels: image.labels,
+        metadata: stored ? this.toRuntimeMetadata(stored) : null,
+      });
+      return {
+        ...image,
+        runtimeMetadata: resolved.metadata,
+        runtimeMetadataSource: resolved.source,
+      };
+    });
   }
 
   async enrichPlatformImage(image: PlatformImage): Promise<PlatformImage> {
@@ -120,6 +129,18 @@ export class DockerImageRuntimeMetadataService {
 
   private referencesForImage(image: PlatformImage) {
     return [image.id, image.shortId, ...image.repoTags, ...image.repoDigests];
+  }
+
+  private findRecordsByReferences(references: string[]) {
+    const normalized = [
+      ...new Set(references.map((ref) => ref.trim()).filter(Boolean)),
+    ];
+    if (!normalized.length) {
+      return Promise.resolve([]);
+    }
+    return this.metadata.find({
+      where: [{ imageRef: In(normalized) }, { imageId: In(normalized) }],
+    });
   }
 
   private preferredRecord(

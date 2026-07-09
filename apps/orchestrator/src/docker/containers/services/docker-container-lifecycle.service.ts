@@ -2,9 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DockerEngineService } from '../../docker-engine.service';
 import { ContainerRuntimeState } from '../../docker.types';
+import type { DockerContainerLifecyclePort } from '../../contracts/docker-container-lifecycle.port';
 
 @Injectable()
-export class DockerContainerLifecycleService {
+export class DockerContainerLifecycleService implements DockerContainerLifecyclePort {
   constructor(private readonly engine: DockerEngineService) {}
 
   async inspectContainer(containerId: string) {

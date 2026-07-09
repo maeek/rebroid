@@ -15,7 +15,7 @@ import {
 import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
-import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
+import { AndroidAppsStateWriter } from '../../common/services/android-apps-state-writer.service';
 import { isRedroidRuntime } from '@rebroid/application-core/redroid-runtime';
 
 @Injectable()
@@ -33,7 +33,7 @@ export class AndroidAppsViewerNetworkService {
     private readonly exec: DockerContainerExecPort,
     private readonly networkPolicy: NetworkPolicyService,
     private readonly logs: AndroidAppsLogService,
-    private readonly state: AndroidAppsStateService,
+    private readonly writer: AndroidAppsStateWriter,
   ) {}
 
   /** Makes sure the viewer sidecar is on the app network. */
@@ -218,7 +218,7 @@ export class AndroidAppsViewerNetworkService {
     app.networkPolicyStatus = result.status;
     app.networkPolicyMessage = result.message;
     app.networkPolicyAppliedAt = new Date();
-    await this.state.save(app);
+    await this.writer.save(app);
     if (app.networkPolicyEnabled && result.status !== 'applied') {
       throw new Error(`Outbound policy enforcement failed: ${result.message}`);
     }

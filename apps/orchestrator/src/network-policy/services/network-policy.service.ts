@@ -26,6 +26,7 @@ import {
   uniqueStrings,
 } from '../utils/network-policy.utils';
 import { FirewallAgentClientService } from './firewall-agent-client.service';
+import { mapWithConcurrency } from '../../common/map-with-concurrency';
 
 @Injectable()
 export class NetworkPolicyService {
@@ -85,15 +86,15 @@ export class NetworkPolicyService {
 
   async reconcile(apps: AndroidApplication[]) {
     const policies = (
-      await Promise.all(
-        apps
-          .filter((app) => app.containerId && app.networkPolicyEnabled)
-          .map(async (app) => {
-            const policy = await this.resolvePolicy(app);
-            return policy
-              ? { applicationId: app.id, ...policy.agentPolicy }
-              : null;
-          }),
+      await mapWithConcurrency(
+        apps.filter((app) => app.containerId && app.networkPolicyEnabled),
+        4,
+        async (app) => {
+          const policy = await this.resolvePolicy(app);
+          return policy
+            ? { applicationId: app.id, ...policy.agentPolicy }
+            : null;
+        },
       )
     ).filter((policy): policy is NonNullable<typeof policy> => Boolean(policy));
     await this.agent.reconcile(policies);

@@ -1,37 +1,74 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In, MoreThan, Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, In, MoreThan, Repository } from 'typeorm';
 import { AutomationRunEvent } from '../entities/automation-run-event.entity';
 import type {
   AutomationRunEventInput,
   AutomationRunEventRecord,
 } from '../events/automation-run-events.types';
+import { MetricsService } from '../../metrics/metrics.service';
 
 @Injectable()
 export class AutomationRunEventsRepository {
+  private appendTail: Promise<void> = Promise.resolve();
+
   constructor(
     @InjectRepository(AutomationRunEvent)
     private readonly events: Repository<AutomationRunEvent>,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
+    private readonly metrics: MetricsService,
   ) {}
 
   async append(input: AutomationRunEventInput) {
-    const latest = await this.events.findOne({
-      where: { runId: input.runId },
-      order: { sequence: 'DESC' },
-    });
-    const event = await this.events.save(
-      this.events.create({
-        runId: input.runId,
-        ownerUserId: input.ownerUserId,
-        sequence: (latest?.sequence ?? 0) + 1,
-        type: input.type,
-        stepId: input.stepId ?? null,
-        parentStepId: input.parentStepId ?? null,
-        message: input.message ?? '',
-        dataJson: JSON.stringify(input.data ?? {}),
-      }),
+    const finishMetrics = this.metrics.beginAutomationEventPersistence();
+    const append = this.appendTail.then(
+      () => this.appendInTransaction(input),
+      () => this.appendInTransaction(input),
     );
-    return toRecord(event);
+    this.appendTail = append.then(
+      () => undefined,
+      () => undefined,
+    );
+    try {
+      const event = await append;
+      finishMetrics('success');
+      return toRecord(event);
+    } catch (error) {
+      finishMetrics('error');
+      throw error;
+    }
+  }
+
+  private appendInTransaction(input: AutomationRunEventInput) {
+    return this.dataSource.transaction(async (manager) => {
+      const rows = (await manager.query(
+        `UPDATE automation_runs
+         SET lastEventSequence = lastEventSequence + 1
+         WHERE id = ?
+         RETURNING lastEventSequence`,
+        [input.runId],
+      )) as Array<{ lastEventSequence: number }>;
+      const sequence = rows[0]?.lastEventSequence;
+      if (!Number.isInteger(sequence)) {
+        throw new Error(
+          `Cannot append an event for missing automation run "${input.runId}".`,
+        );
+      }
+
+      return manager.getRepository(AutomationRunEvent).save(
+        manager.getRepository(AutomationRunEvent).create({
+          runId: input.runId,
+          ownerUserId: input.ownerUserId,
+          sequence,
+          type: input.type,
+          stepId: input.stepId ?? null,
+          parentStepId: input.parentStepId ?? null,
+          message: input.message ?? '',
+          dataJson: JSON.stringify(input.data ?? {}),
+        }),
+      );
+    });
   }
 
   async listForRun(ownerUserId: string, runId: string, after = 0) {

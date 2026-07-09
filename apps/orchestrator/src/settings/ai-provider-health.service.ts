@@ -16,12 +16,23 @@ import type {
   AutomationAiProviderHealthDto,
   AutomationAiProviderRemoteModelDto,
 } from './dto/automation-ai-provider.dto';
+import {
+  createProviderRequestScope,
+  isProviderAbortError,
+  providerRequestHeaders,
+  readBoundedProviderText,
+} from '@rebroid/ai-core/provider-http';
+import { MetricsService } from '../metrics/metrics.service';
 
 const PROVIDER_MODEL_LIST_TIMEOUT_MS = 15_000;
 const MODEL_ROLE_PROBE_TIMEOUT_MS = 60_000;
 
 @Injectable()
 export class AiProviderHealthService {
+  constructor(
+    private readonly metrics: MetricsService = new MetricsService(),
+  ) {}
+
   async checkProviderHealth(
     provider: AutomationAiProvider,
     modelId?: string,
@@ -55,12 +66,16 @@ export class AiProviderHealthService {
     }
 
     try {
-      const response = await fetch(providerModelsUrl(provider), {
-        headers: provider.apiKey
-          ? { Authorization: `Bearer ${provider.apiKey}` }
-          : undefined,
-        signal: AbortSignal.timeout(PROVIDER_MODEL_LIST_TIMEOUT_MS),
-      });
+      const response = await this.requestProvider(
+        provider,
+        providerModelsUrl(provider),
+        {
+          headers: providerRequestHeaders(provider),
+        },
+        PROVIDER_MODEL_LIST_TIMEOUT_MS,
+        'models',
+        role ?? 'provider',
+      );
       if (!response.ok) {
         return this.healthResult(
           provider.id,
@@ -134,27 +149,28 @@ export class AiProviderHealthService {
               },
             ]
           : undefined;
-      const response = await fetch(chatCompletionsEndpoint(provider), {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          ...(provider.apiKey
-            ? { Authorization: `Bearer ${provider.apiKey}` }
-            : {}),
+      const response = await this.requestProvider(
+        provider,
+        chatCompletionsEndpoint(provider),
+        {
+          method: 'POST',
+          headers: providerRequestHeaders(provider, { json: true }),
+          body: JSON.stringify(
+            buildChatRequestBody({
+              provider,
+              model,
+              messages,
+              stream: false,
+              tools,
+            }),
+          ),
         },
-        signal: AbortSignal.timeout(MODEL_ROLE_PROBE_TIMEOUT_MS),
-        body: JSON.stringify(
-          buildChatRequestBody({
-            provider,
-            model,
-            messages,
-            stream: false,
-            tools,
-          }),
-        ),
-      });
+        MODEL_ROLE_PROBE_TIMEOUT_MS,
+        'health',
+        role,
+      );
       if (!response.ok) {
-        const detail = await response.text().catch(() => '');
+        const detail = await readBoundedProviderText(response, 500);
         return this.healthResult(
           provider.id,
           model.id,
@@ -200,12 +216,16 @@ export class AiProviderHealthService {
 
   async checkProviderConnection(provider: AutomationAiProvider) {
     try {
-      const response = await fetch(providerModelsUrl(provider), {
-        headers: provider.apiKey
-          ? { Authorization: `Bearer ${provider.apiKey}` }
-          : undefined,
-        signal: AbortSignal.timeout(PROVIDER_MODEL_LIST_TIMEOUT_MS),
-      });
+      const response = await this.requestProvider(
+        provider,
+        providerModelsUrl(provider),
+        {
+          headers: providerRequestHeaders(provider),
+        },
+        PROVIDER_MODEL_LIST_TIMEOUT_MS,
+        'health',
+        'provider',
+      );
       if (!response.ok) {
         return this.healthResult(
           provider.id,
@@ -233,12 +253,14 @@ export class AiProviderHealthService {
   async listRemoteModels(
     provider: AutomationAiProvider,
   ): Promise<AutomationAiProviderRemoteModelDto[]> {
-    const response = await fetch(providerRemoteModelsUrl(provider), {
-      headers: provider.apiKey
-        ? { Authorization: `Bearer ${provider.apiKey}` }
-        : undefined,
-      signal: AbortSignal.timeout(PROVIDER_MODEL_LIST_TIMEOUT_MS),
-    });
+    const response = await this.requestProvider(
+      provider,
+      providerRemoteModelsUrl(provider),
+      { headers: providerRequestHeaders(provider) },
+      PROVIDER_MODEL_LIST_TIMEOUT_MS,
+      'models',
+      'provider',
+    );
     if (!response.ok) {
       throw new Error(`Provider returned HTTP ${response.status}.`);
     }
@@ -252,6 +274,32 @@ export class AiProviderHealthService {
     }
 
     return this.errorMessage(error);
+  }
+
+  private async requestProvider(
+    provider: AutomationAiProvider,
+    url: string,
+    init: RequestInit,
+    timeoutMs: number,
+    operation: 'health' | 'models',
+    role: 'provider' | AutomationAiProviderModelRole,
+  ) {
+    const finishMetrics = this.metrics.beginAiProviderRequest(operation, role);
+    const scope = createProviderRequestScope({ timeoutMs });
+    try {
+      const response = await fetch(url, { ...init, signal: scope.signal });
+      finishMetrics(response.ok ? 'success' : 'error');
+      return response;
+    } catch (error) {
+      finishMetrics(
+        scope.wasTimedOut() || isProviderAbortError(error)
+          ? 'timeout'
+          : 'error',
+      );
+      throw error;
+    } finally {
+      scope.cleanup();
+    }
   }
 
   private isTimeoutError(error: unknown) {

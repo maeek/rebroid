@@ -5,8 +5,10 @@ import { AiProviderSettingsService } from './ai-provider-settings.service';
 import { OrchestratorSettingsStore } from './orchestrator-settings-store';
 import { SettingsController } from './settings.controller';
 import { SettingsService } from './settings.service';
+import { MetricsModule } from '../metrics/metrics.module';
 
 @Module({
+  imports: [MetricsModule],
   controllers: [SettingsController],
   providers: [
     AiProviderHealthService,

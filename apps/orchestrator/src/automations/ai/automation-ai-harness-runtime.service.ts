@@ -13,16 +13,7 @@ import { AutomationPerceptionService } from '../vision/automation-perception.ser
 import { AutomationAiChatClientService } from './automation-ai-chat-client.service';
 import { sanitizeAiText } from './automation-ai-observation.utils';
 import type { AutomationAiHarnessContext } from './automation-ai.types';
-
-const textContent = (content: ChatMessage['content']) =>
-  typeof content === 'string'
-    ? content
-    : Array.isArray(content)
-      ? content
-          .filter((part) => part.type === 'text')
-          .map((part) => part.text)
-          .join('\n')
-      : '';
+import { textContent } from './automation-ai-message.utils';
 
 @Injectable()
 export class AutomationAiHarnessRuntimeService {

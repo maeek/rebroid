@@ -2,9 +2,9 @@ import { emptyRequest, streamRequest } from '../request'
 import type { UploadedApk } from './types'
 
 export const orchestratorApkUploadsClient = {
-  uploadApk(input: ReadableStream<Uint8Array>, ownerUserId: string, contentType: string) {
+  uploadApk(input: ReadableStream<Uint8Array>, ownerUserId: string, contentType: string, signal?: AbortSignal) {
     const query = new URLSearchParams({ ownerUserId })
-    return streamRequest<UploadedApk>(`/apk-uploads?${query.toString()}`, 'POST', input, contentType)
+    return streamRequest<UploadedApk>(`/apk-uploads?${query.toString()}`, 'POST', input, contentType, { signal })
   },
 
   listUploadedApks(ownerUserId?: string) {

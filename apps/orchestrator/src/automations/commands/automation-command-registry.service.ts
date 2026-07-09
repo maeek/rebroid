@@ -13,7 +13,6 @@ import { AndroidAutomationCommandsService } from './android-automation-commands.
 import { AiAutomationCommandsService } from './ai-automation-commands.service';
 import { ContainerNetworkAutomationCommandsService } from './container-network-automation-commands.service';
 import { GenericAutomationCommandsService } from './generic-automation-commands.service';
-import { VisionAutomationCommandsService } from './vision-automation-commands.service';
 
 @Injectable()
 export class AutomationCommandRegistryService implements OnModuleInit {
@@ -23,18 +22,20 @@ export class AutomationCommandRegistryService implements OnModuleInit {
     private readonly androidCommands: AndroidAutomationCommandsService,
     private readonly networkCommands: ContainerNetworkAutomationCommandsService,
     private readonly genericCommands: GenericAutomationCommandsService,
-    private readonly visionCommands: VisionAutomationCommandsService,
     private readonly aiCommands: AiAutomationCommandsService,
   ) {}
 
   onModuleInit() {
-    for (const command of [
+    this.register([
       ...this.androidCommands.list(),
       ...this.networkCommands.list(),
       ...this.genericCommands.list(),
-      ...this.visionCommands.list(),
       ...this.aiCommands.list(),
-    ]) {
+    ]);
+  }
+
+  register(commands: AutomationCommandDefinition[]) {
+    for (const command of commands) {
       if (this.commands.has(command.uses)) {
         throw new Error(`Duplicate automation command "${command.uses}".`);
       }

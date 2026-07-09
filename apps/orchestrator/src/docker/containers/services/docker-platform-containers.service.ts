@@ -13,9 +13,10 @@ import { platformImageFromSummary } from '../../images/utils/platform-image.util
 import { platformNetworkFromSummary } from '../../networks/utils/platform-network.utils';
 import { DockerContainerLifecycleService } from './docker-container-lifecycle.service';
 import { DockerResourceRuntimeService } from '../../resources/services/docker-resource-runtime.service';
+import type { DockerPlatformContainersPort } from '../../contracts/docker-platform-containers.port';
 
 @Injectable()
-export class DockerPlatformContainersService {
+export class DockerPlatformContainersService implements DockerPlatformContainersPort {
   constructor(
     private readonly engine: DockerEngineService,
     private readonly lifecycle: DockerContainerLifecycleService,

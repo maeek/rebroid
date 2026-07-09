@@ -1,26 +1,23 @@
 import {
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
+  OnApplicationBootstrap,
 } from '@nestjs/common';
-import { AndroidAppsFacadeService } from '../../android-apps/common/services/android-apps-facade.service';
 import { Automation } from '../entities/automation.entity';
 import {
   AutomationRunStatus,
   AutomationRunTrigger,
 } from '../entities/automation-run.entity';
-import { AutomationRunsRepository } from '../persistence/automation-runs.repository';
-import { AutomationDefinition } from '@rebroid/automation-core/definition';
-import { AutomationStepResult } from './automation-runner.types';
 import { AutomationRunEventBus } from '../events/automation-run-event-bus.service';
-import { AutomationRunnerTargetService } from './automation-runner-target.service';
+import { AutomationRunsRepository } from '../persistence/automation-runs.repository';
+import { AutomationRunExecutionService } from './automation-run-execution.service';
 import { AutomationRunTargetOptions } from './automation-runner-options';
-import { RunnableAutomation } from './automation-runnable';
-import { AutomationRunFinalizerService } from './automation-run-finalizer.service';
-import { AutomationRunnableResolverService } from './automation-runnable-resolver.service';
 import { EphemeralAutomationRegistryService } from './ephemeral-automation-registry.service';
-import { AutomationExecutionState } from './automation-runner-execution.types';
-import { AutomationStepExecutorService } from './automation-step-executor.service';
+import { RunnableAutomation } from './automation-runnable';
+import { AutomationDefinition } from '@rebroid/automation-core/definition';
+import { MetricsService } from '../../metrics/metrics.service';
 
 const terminalStatuses = new Set<AutomationRunStatus>([
   AutomationRunStatus.Success,
@@ -29,8 +26,8 @@ const terminalStatuses = new Set<AutomationRunStatus>([
 ]);
 
 @Injectable()
-export class AutomationRunnerService {
-  private readonly canceledRunIds = new Set<string>();
+export class AutomationRunnerService implements OnApplicationBootstrap {
+  private readonly logger = new Logger(AutomationRunnerService.name);
   private readonly activeRunAbortControllers = new Map<
     string,
     AbortController
@@ -38,16 +35,34 @@ export class AutomationRunnerService {
 
   constructor(
     private readonly runs: AutomationRunsRepository,
-    private readonly apps: AndroidAppsFacadeService,
     private readonly events: AutomationRunEventBus,
-    private readonly targets: AutomationRunnerTargetService,
     private readonly ephemeralAutomations: EphemeralAutomationRegistryService,
-    private readonly runnableResolver: AutomationRunnableResolverService,
-    private readonly runFinalizer: AutomationRunFinalizerService,
-    private readonly stepExecutor: AutomationStepExecutorService,
+    private readonly execution: AutomationRunExecutionService,
+    private readonly metrics: MetricsService,
   ) {}
 
-  async enqueue(
+  async onApplicationBootstrap() {
+    for (const run of await this.runs.listAllActive()) {
+      const failed = await this.runs.transition(
+        run.id,
+        [AutomationRunStatus.Queued, AutomationRunStatus.Running],
+        {
+          status: AutomationRunStatus.Failed,
+          completedAt: new Date(),
+          error: 'Automation stopped because the orchestrator restarted.',
+        },
+      );
+      if (!failed) continue;
+      await this.events.emit({
+        runId: failed.id,
+        ownerUserId: failed.ownerUserId,
+        type: 'run.failed',
+        message: failed.error ?? 'Automation stopped after restart.',
+      });
+    }
+  }
+
+  enqueue(
     automation: Automation,
     trigger: AutomationRunTrigger,
     options: AutomationRunTargetOptions = {},
@@ -65,7 +80,7 @@ export class AutomationRunnerService {
     );
   }
 
-  async enqueueEphemeral(
+  enqueueEphemeral(
     ownerUserId: string,
     definition: AutomationDefinition,
     trigger: AutomationRunTrigger,
@@ -81,50 +96,72 @@ export class AutomationRunnerService {
   private async enqueueRunnable(
     runnable: RunnableAutomation,
     trigger: AutomationRunTrigger,
-    options: AutomationRunTargetOptions = {},
+    options: AutomationRunTargetOptions,
   ) {
-    const automation = runnable.entity;
-    const resolvedTarget = options.targetApplicationId;
-    if (!resolvedTarget) {
+    const targetApplicationId = options.targetApplicationId;
+    if (!targetApplicationId) {
       throw new ConflictException(
         'A target application is required to run an automation.',
       );
     }
 
-    const active = await this.runs.findActiveByTarget(resolvedTarget);
-    if (active) {
-      throw new ConflictException(
-        `Automation run "${active.id}" is already active for target application "${resolvedTarget}".`,
+    let run;
+    try {
+      run = await this.runs.save(
+        this.runs.create({
+          automationId: runnable.entity.id,
+          automationTriggerId: options.automationTriggerId ?? null,
+          ownerUserId: runnable.entity.ownerUserId,
+          targetApplicationId,
+          targetProfileMode: options.targetProfileMode ?? null,
+          targetProfileName: options.targetProfileName ?? null,
+          trigger,
+          status: AutomationRunStatus.Queued,
+          startedAt: null,
+          completedAt: null,
+          stepResultsJson: '[]',
+          error: null,
+          lastEventSequence: 0,
+        }),
       );
+    } catch (error) {
+      if (runnable.ephemeral) {
+        this.ephemeralAutomations.delete(runnable.entity.id);
+      }
+      if (this.isUniqueConstraint(error)) {
+        throw new ConflictException(
+          `An automation run is already active for target application "${targetApplicationId}".`,
+        );
+      }
+      throw error;
     }
 
-    const target = await this.targets.prepareTarget(resolvedTarget, options);
-
-    const run = await this.runs.save(
-      this.runs.create({
-        automationId: automation.id,
-        automationTriggerId: options.automationTriggerId ?? null,
-        ownerUserId: automation.ownerUserId,
-        targetApplicationId: resolvedTarget,
-        targetProfileMode: target.profileMode,
-        targetProfileName: target.profileName,
+    try {
+      await this.events.emit({
+        runId: run.id,
+        ownerUserId: run.ownerUserId,
+        type: 'run.queued',
+        message: 'Automation queued.',
+        data: { automationId: runnable.entity.id, trigger },
+      });
+    } catch (error) {
+      await this.runs.transition(run.id, [AutomationRunStatus.Queued], {
+        status: AutomationRunStatus.Failed,
+        completedAt: new Date(),
+        error: error instanceof Error ? error.message : String(error),
+      });
+      this.metrics.automationRunFinished(
         trigger,
-        status: AutomationRunStatus.Queued,
-        startedAt: null,
-        completedAt: null,
-        stepResultsJson: '[]',
-        error: null,
-      }),
-    );
+        AutomationRunStatus.Failed,
+        null,
+      );
+      if (runnable.ephemeral) {
+        this.ephemeralAutomations.delete(runnable.entity.id);
+      }
+      throw error;
+    }
 
-    await this.events.emit({
-      runId: run.id,
-      ownerUserId: run.ownerUserId,
-      type: 'run.queued',
-      message: 'Automation queued.',
-      data: { automationId: automation.id, trigger },
-    });
-    void this.execute(run.id, automation.id);
+    this.dispatch(run.id, runnable.entity.id, options);
     return run;
   }
 
@@ -133,109 +170,64 @@ export class AutomationRunnerService {
     if (!run) {
       throw new NotFoundException(`Automation run "${runId}" was not found.`);
     }
-    if (terminalStatuses.has(run.status)) {
-      return run;
-    }
-    this.canceledRunIds.add(run.id);
+    if (terminalStatuses.has(run.status)) return run;
+
     this.activeRunAbortControllers.get(run.id)?.abort();
-    run.status = AutomationRunStatus.Canceled;
-    run.completedAt = new Date();
-    run.error = 'Canceled by user.';
-    await this.runs.save(run);
+    const canceled = await this.runs.transition(
+      run.id,
+      [AutomationRunStatus.Queued, AutomationRunStatus.Running],
+      {
+        status: AutomationRunStatus.Canceled,
+        completedAt: new Date(),
+        error: 'Canceled by user.',
+      },
+    );
+    if (!canceled) {
+      return (await this.runs.findByOwnerAndId(ownerUserId, runId)) ?? run;
+    }
+    this.metrics.automationRunFinished(
+      canceled.trigger,
+      canceled.status,
+      canceled.startedAt,
+    );
     await this.events.emit({
-      runId: run.id,
-      ownerUserId: run.ownerUserId,
+      runId: canceled.id,
+      ownerUserId: canceled.ownerUserId,
       type: 'run.canceled',
       message: 'Automation canceled.',
     });
-    return run;
+    return canceled;
   }
 
-  async execute(runId: string, automationId: string) {
-    const runnable = await this.runnableResolver.resolve(automationId);
-    if (!runnable) {
-      return;
-    }
-    const automation = runnable.entity;
-    const run = await this.runs.findByOwnerAndId(automation.ownerUserId, runId);
-    if (!run || terminalStatuses.has(run.status)) {
-      return;
-    }
-
-    const app = await this.apps.get(run.targetApplicationId);
-    const definition = runnable.definition;
+  private dispatch(
+    runId: string,
+    automationId: string,
+    targetOptions: AutomationRunTargetOptions,
+  ) {
     const abortController = new AbortController();
-    this.activeRunAbortControllers.set(run.id, abortController);
-    const results: AutomationStepResult[] = [];
-    run.status = AutomationRunStatus.Running;
-    run.startedAt = new Date();
-    run.stepResultsJson = JSON.stringify(results);
-    await this.runs.save(run);
-    await this.events.emit({
-      runId: run.id,
-      ownerUserId: run.ownerUserId,
-      type: 'run.started',
-      message: 'Automation started.',
-      data: { automationId: automation.id },
-    });
-
-    const state: AutomationExecutionState = {
-      app,
-      runId: run.id,
-      trigger: run.trigger,
-      targetProfileMode: run.targetProfileMode,
-      targetProfileName: run.targetProfileName,
-      results,
-      outputsByStepId: new Map(),
-    };
-    const execution = await this.stepExecutor.executeSteps(
-      definition.spec.steps,
-      state,
-      run,
-      {
-        path: 'steps',
+    this.activeRunAbortControllers.set(runId, abortController);
+    void this.execution
+      .execute({
+        runId,
+        automationId,
+        targetOptions,
         abortSignal: abortController.signal,
-        isRunCanceled: (id) => this.canceledRunIds.has(id),
-      },
-    );
-    this.activeRunAbortControllers.delete(run.id);
-    const canceled = this.canceledRunIds.has(run.id);
-    const failed = execution.failed;
+      })
+      .catch((error: unknown) => {
+        this.logger.error(
+          `Automation execution dispatch failed for ${runId}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      })
+      .finally(() => this.activeRunAbortControllers.delete(runId));
+  }
 
-    run.completedAt = new Date();
-    run.status = canceled
-      ? AutomationRunStatus.Canceled
-      : failed
-        ? AutomationRunStatus.Failed
-        : AutomationRunStatus.Success;
-    await this.runs.save(run);
-    this.canceledRunIds.delete(run.id);
-    await this.events.emit({
-      runId: run.id,
-      ownerUserId: run.ownerUserId,
-      type:
-        run.status === AutomationRunStatus.Canceled
-          ? 'run.canceled'
-          : failed
-            ? 'run.failed'
-            : 'run.completed',
-      message:
-        run.status === AutomationRunStatus.Canceled
-          ? 'Automation canceled.'
-          : failed
-            ? (run.error ?? 'Automation failed.')
-            : 'Automation completed.',
-    });
-
-    if (runnable.ephemeral) {
-      this.ephemeralAutomations.delete(automation.id);
-      return;
-    }
-
-    await this.runFinalizer.updatePersistedAutomationAfterRun(
-      automation,
-      run,
-      failed,
+  private isUniqueConstraint(error: unknown) {
+    if (!error || typeof error !== 'object') return false;
+    const candidate = error as { code?: unknown; message?: unknown };
+    return (
+      candidate.code === 'SQLITE_CONSTRAINT_UNIQUE' ||
+      (typeof candidate.message === 'string' &&
+        candidate.message.includes('automation_runs_active_target_unique'))
     );
   }
 }

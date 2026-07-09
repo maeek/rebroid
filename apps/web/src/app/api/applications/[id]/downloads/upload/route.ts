@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { orchestratorAppCatalogClient } from '@/server/orchestrator/applications/catalog-client'
-import { getOrchestratorApiUrl } from '@/server/orchestrator/config'
+import { orchestratorAppRuntimeClient } from '@/server/orchestrator/applications/runtime-client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
+import { OrchestratorRequestError } from '@/server/orchestrator/request'
+import { prepareStreamingMultipartUpload } from '@/server/upload-proxy/streaming-upload'
 import { hasPermission } from '@/shared/permissions/permissions'
 
 type RouteContext = {
@@ -11,17 +13,9 @@ type RouteContext = {
 }
 
 const errorMessage = (error: unknown) => (error instanceof Error ? error.message : 'File upload failed.')
-const secretHeaderName = 'x-orchestrator-secret'
-const orchestratorSharedSecret = process.env.ORCHESTRATOR_SHARED_SECRET?.trim()
+const maxRuntimeUploadBytes = 512 * 1024 * 1024
 
 export const runtime = 'nodejs'
-
-const upstreamErrorMessage = async (response: Response) => {
-  const error = (await response.json().catch(() => null)) as { message?: unknown } | null
-  const message = error?.message
-  if (Array.isArray(message)) return message.join(', ')
-  return typeof message === 'string' ? message : response.statusText || 'File upload failed.'
-}
 
 export const POST = async (request: NextRequest, context: RouteContext) => {
   const { id } = await context.params
@@ -44,33 +38,24 @@ export const POST = async (request: NextRequest, context: RouteContext) => {
       )
     }
 
-    if (!request.body) {
-      return NextResponse.json({ message: 'File is required.' }, { status: 400 })
-    }
-
-    const query = new URLSearchParams({ path: request.nextUrl.searchParams.get('path') || '/data' })
-    const upstreamUrl = getOrchestratorApiUrl(`/apps/${encodeURIComponent(id)}/runtime/data-files?${query.toString()}`)
-    const headers = new Headers()
-    const contentType = request.headers.get('content-type')
-    const contentLength = request.headers.get('content-length')
-    if (contentType) headers.set('content-type', contentType)
-    if (contentLength) headers.set('content-length', contentLength)
-    headers.set('accept', 'application/json')
-    if (orchestratorSharedSecret) headers.set(secretHeaderName, orchestratorSharedSecret)
-
-    const response = await fetch(upstreamUrl, {
-      method: 'POST',
-      headers,
-      body: request.body,
-      duplex: 'half'
-    } as RequestInit & { duplex: 'half' })
-
-    if (!response.ok) {
-      return NextResponse.json({ message: await upstreamErrorMessage(response) }, { status: response.status })
-    }
-
-    return NextResponse.json(await response.json())
+    const upload = prepareStreamingMultipartUpload(request, {
+      maxBytes: maxRuntimeUploadBytes,
+      missingMessage: 'File is required.',
+      tooLargeMessage: 'File upload exceeds the 512 MB limit.'
+    })
+    if (!upload.ok) return upload.response
+    const uploaded = await orchestratorAppRuntimeClient.uploadDataFileStream(
+      id,
+      upload.body,
+      request.nextUrl.searchParams.get('path') || '/data',
+      upload.contentType,
+      request.signal
+    )
+    return NextResponse.json(uploaded)
   } catch (error) {
-    return NextResponse.json({ message: errorMessage(error) }, { status: 500 })
+    return NextResponse.json(
+      { message: errorMessage(error) },
+      { status: error instanceof OrchestratorRequestError ? error.status : 500 }
+    )
   }
 }

@@ -3,7 +3,7 @@ import { NetworkPolicyService } from '../../../network-policy/services/network-p
 import { DockerContainerLifecycleService } from '../../../docker/containers/services/docker-container-lifecycle.service';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
-import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
+import { AndroidAppsStateWriter } from '../../common/services/android-apps-state-writer.service';
 import { AndroidAppsViewerNetworkService } from '../../viewer/services/android-apps-viewer-network.service';
 import { AndroidAppsRuntimeNetworkService } from './android-apps-runtime-network.service';
 
@@ -19,7 +19,7 @@ const createService = (
     } as unknown as AndroidAppsLogService,
     {
       save: jest.fn().mockResolvedValue(undefined),
-    } as unknown as AndroidAppsStateService,
+    } as unknown as AndroidAppsStateWriter,
     {} as AndroidAppsViewerNetworkService,
     { stopContainer } as unknown as DockerContainerLifecycleService,
   ),

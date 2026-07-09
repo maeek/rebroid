@@ -3,6 +3,7 @@ import { type ChatMessage } from '@rebroid/ai-core/harness';
 import { AutomationAiProviderService } from './automation-ai-provider.service';
 import { AutomationAiChatClientService } from './automation-ai-chat-client.service';
 import { sanitizeAiText } from './automation-ai-observation.utils';
+import { textContent } from './automation-ai-message.utils';
 import type {
   AiPromptSuggestionDto,
   SuggestAdHocAiPromptsDto,
@@ -136,16 +137,6 @@ const fallbackSuggestions = (
       'Use the latest observation to choose one confirmed navigation action, execute it, observe again, and stop if the expected screen is not reached.',
   },
 ];
-
-const textContent = (content: ChatMessage['content']) =>
-  typeof content === 'string'
-    ? content
-    : Array.isArray(content)
-      ? content
-          .filter((part) => part.type === 'text')
-          .map((part) => part.text)
-          .join('\n')
-      : '';
 
 const sanitizeSuggestionText = (value: unknown, maxLength: number) =>
   typeof value === 'string' ? sanitizeAiText(value, maxLength).trim() : '';

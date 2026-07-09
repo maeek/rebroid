@@ -16,6 +16,7 @@ import { AutomationDefinitionService } from '../definition/automation-definition
 import { AutomationAiChatClientService } from './automation-ai-chat-client.service';
 import { sanitizeAiText } from './automation-ai-observation.utils';
 import { AutomationAiProviderService } from './automation-ai-provider.service';
+import { textContent } from './automation-ai-message.utils';
 
 const DRAFT_TIMEOUT_MS = 120_000;
 const MAX_DRAFT_ATTEMPTS = 3;
@@ -532,13 +533,3 @@ const requestClarificationTool = () => ({
     },
   },
 });
-
-const textContent = (content: ChatMessage['content']) =>
-  typeof content === 'string'
-    ? content
-    : Array.isArray(content)
-      ? content
-          .filter((part) => part.type === 'text')
-          .map((part) => part.text)
-          .join('\n')
-      : '';

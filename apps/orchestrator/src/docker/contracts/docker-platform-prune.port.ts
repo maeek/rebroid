@@ -1,8 +1,9 @@
-import type { DockerPlatformPruneService } from '../prune/services/docker-platform-prune.service';
-
 export const DOCKER_PLATFORM_PRUNE = Symbol('DOCKER_PLATFORM_PRUNE');
 
-export type DockerPlatformPrunePort = Pick<
-  DockerPlatformPruneService,
-  keyof DockerPlatformPruneService
->;
+export interface DockerPlatformPrunePort {
+  isBusy(): boolean;
+  pruneImages(danglingOnly?: boolean): Promise<unknown>;
+  pruneContainers(): Promise<unknown>;
+  pruneNetworks(): Promise<unknown>;
+  pruneVolumes(): Promise<unknown>;
+}

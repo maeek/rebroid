@@ -19,7 +19,7 @@ import {
 } from '../../../docker/contracts/docker-container-exec.port';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
-import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
+import { AndroidAppsRuntimeStateReconciler } from '../../common/services/android-apps-runtime-state-reconciler.service';
 import { ApplicationRuntimeFileUploadDto } from '../dto/application-runtime-file.dto';
 import { ApplicationRuntimeFilesQueryDto } from '../dto/application-runtime-files-query.dto';
 import { parseDownloadFiles } from '../utils/android-apps-runtime-file.utils';
@@ -35,7 +35,7 @@ export class RuntimeDownloadFilesService {
     @Inject(DOCKER_CONTAINER_EXEC)
     private readonly exec: DockerContainerExecPort,
     private readonly logs: AndroidAppsLogService,
-    private readonly state: AndroidAppsStateService,
+    private readonly reconciler: AndroidAppsRuntimeStateReconciler,
     private readonly paths: RuntimeFilePathService,
     private readonly volumes: RuntimeDownloadVolumeService,
     private readonly uploads: RuntimeUploadStreamService,
@@ -45,7 +45,7 @@ export class RuntimeDownloadFilesService {
     id: string,
     query: ApplicationRuntimeFilesQueryDto = {},
   ) {
-    const app = await this.state.get(id);
+    const app = await this.reconciler.reconcileById(id);
     if (this.paths.shouldUseRunningContainer(app, query)) {
       return this.listRunningDownloadFiles(app);
     }
@@ -58,7 +58,7 @@ export class RuntimeDownloadFilesService {
     request: MultipartUploadRequest,
     query: ApplicationRuntimeFilesQueryDto = {},
   ) {
-    const app = await this.state.get(id);
+    const app = await this.reconciler.reconcileById(id);
     return this.uploads.consumeFileUpload(request, (stream, originalName) =>
       this.storeDownloadFileStream(app, stream, originalName, query),
     );
@@ -101,7 +101,7 @@ export class RuntimeDownloadFilesService {
     fileName: string,
     query: ApplicationRuntimeFilesQueryDto = {},
   ) {
-    const app = await this.state.get(id);
+    const app = await this.reconciler.reconcileById(id);
     const safeFileName = this.paths.sanitizeFileName(fileName);
     if (!this.paths.shouldUseRunningContainer(app, query)) {
       const content = await this.volumes.readFile(app, safeFileName, query);

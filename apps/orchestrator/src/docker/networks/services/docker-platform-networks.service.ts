@@ -6,9 +6,10 @@ import {
   platformNetworkFromInspect,
   platformNetworkFromSummary,
 } from '../utils/platform-network.utils';
+import type { DockerPlatformNetworksPort } from '../../contracts/docker-platform-networks.port';
 
 @Injectable()
-export class DockerPlatformNetworksService {
+export class DockerPlatformNetworksService implements DockerPlatformNetworksPort {
   constructor(private readonly engine: DockerEngineService) {}
 
   async listPlatformNetworks(): Promise<PlatformNetwork[]> {

@@ -18,10 +18,21 @@ import {
   providerErrorDetailFromText,
   sanitizeAiText,
 } from './automation-ai-observation.utils';
+import { MetricsService } from '../../metrics/metrics.service';
+import {
+  createProviderRequestScope,
+  isProviderAbortError,
+  providerRequestHeaders,
+  readBoundedProviderText,
+} from '@rebroid/ai-core/provider-http';
 
 @Injectable()
 export class AutomationAiChatClientService {
   private readonly logger = new Logger(AutomationAiChatClientService.name);
+
+  constructor(
+    private readonly metrics: MetricsService = new MetricsService(),
+  ) {}
 
   async chat({
     provider,
@@ -40,25 +51,18 @@ export class AutomationAiChatClientService {
     abortSignal?: AbortSignal;
     onContentDelta?: (delta: string) => Promise<void>;
   }) {
-    const controller = new AbortController();
-    const timeout = setTimeout(
-      () => controller.abort(),
-      Math.max(1, deadline - Date.now()),
+    const finishMetrics = this.metrics.beginAiProviderRequest(
+      'chat',
+      'planner',
     );
-    const onAbort = () => controller.abort();
-    abortSignal?.addEventListener('abort', onAbort, { once: true });
+    const requestScope = createProviderRequestScope({ deadline, abortSignal });
     try {
       let response: Response;
       try {
         response = await fetch(chatCompletionsEndpoint(provider), {
           method: 'POST',
-          signal: controller.signal,
-          headers: {
-            'content-type': 'application/json',
-            ...(provider.apiKey
-              ? { authorization: `Bearer ${provider.apiKey}` }
-              : {}),
-          },
+          signal: requestScope.signal,
+          headers: providerRequestHeaders(provider, { json: true }),
           body: JSON.stringify(
             buildChatRequestBody({
               provider,
@@ -70,10 +74,10 @@ export class AutomationAiChatClientService {
           ),
         });
       } catch (error) {
-        if (abortSignal?.aborted) {
+        if (requestScope.wasCanceled()) {
           throw new BadRequestException('AI automation was canceled.');
         }
-        if (Date.now() >= deadline || this.isAbortError(error)) {
+        if (requestScope.wasTimedOut() || isProviderAbortError(error)) {
           throw new RequestTimeoutException(
             'AI automation timed out waiting for the provider response.',
           );
@@ -95,15 +99,20 @@ export class AutomationAiChatClientService {
         );
       }
       const result = await this.consumeStream(response.body, onContentDelta);
+      finishMetrics('success');
       return { choices: [{ message: result.message }] };
+    } catch (error) {
+      finishMetrics(
+        error instanceof RequestTimeoutException ? 'timeout' : 'error',
+      );
+      throw error;
     } finally {
-      abortSignal?.removeEventListener('abort', onAbort);
-      clearTimeout(timeout);
+      requestScope.cleanup();
     }
   }
 
   private async readProviderError(response: Response) {
-    const text = await response.text().catch(() => '');
+    const text = await readBoundedProviderText(response);
     return providerErrorDetailFromText(text);
   }
 
@@ -134,9 +143,5 @@ export class AutomationAiChatClientService {
     });
     await flush(true);
     return result;
-  }
-
-  private isAbortError(error: unknown) {
-    return error instanceof Error && error.name === 'AbortError';
   }
 }

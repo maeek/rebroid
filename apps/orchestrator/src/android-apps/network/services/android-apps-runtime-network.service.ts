@@ -10,7 +10,7 @@ import {
 } from '../../../docker/contracts/docker-container-lifecycle.port';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
-import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
+import { AndroidAppsStateWriter } from '../../common/services/android-apps-state-writer.service';
 import { AndroidAppsViewerNetworkService } from '../../viewer/services/android-apps-viewer-network.service';
 
 @Injectable()
@@ -21,7 +21,7 @@ export class AndroidAppsRuntimeNetworkService {
     private readonly networkIsolation: NetworkIsolationService,
     private readonly networkPolicy: NetworkPolicyService,
     private readonly logs: AndroidAppsLogService,
-    private readonly state: AndroidAppsStateService,
+    private readonly writer: AndroidAppsStateWriter,
     private readonly viewerNetwork: AndroidAppsViewerNetworkService,
     @Inject(DOCKER_CONTAINER_LIFECYCLE)
     private readonly containers: DockerContainerLifecyclePort,
@@ -69,7 +69,7 @@ export class AndroidAppsRuntimeNetworkService {
     if (options.recordLastStartedAt) {
       app.lastStartedAt = new Date();
     }
-    await this.state.save(app);
+    await this.writer.save(app);
 
     if (
       options.failClosed &&

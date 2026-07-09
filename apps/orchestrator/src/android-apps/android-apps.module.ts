@@ -9,9 +9,14 @@ import { AndroidAppsRuntimeNetworkModule } from './network/android-apps-runtime-
 import { AndroidAppsProvisioningModule } from './provisioning/android-apps-provisioning.module';
 import { AndroidAppsRuntimeModule } from './runtime/android-apps-runtime.module';
 import { AndroidAppsViewerModule } from './viewer/android-apps-viewer.module';
+import { ANDROID_APPS_AUTOMATION } from './contracts/android-apps-automation.port';
 
 const androidAppsServiceProvider = {
   provide: AndroidAppsService,
+  useExisting: AndroidAppsFacadeService,
+};
+const androidAppsAutomationProvider = {
+  provide: ANDROID_APPS_AUTOMATION,
   useExisting: AndroidAppsFacadeService,
 };
 @Module({
@@ -27,8 +32,13 @@ const androidAppsServiceProvider = {
   providers: [
     AndroidAppsFacadeService,
     androidAppsServiceProvider,
+    androidAppsAutomationProvider,
     InactivityService,
   ],
-  exports: [AndroidAppsService, AndroidAppsFacadeService],
+  exports: [
+    AndroidAppsService,
+    AndroidAppsFacadeService,
+    ANDROID_APPS_AUTOMATION,
+  ],
 })
 export class AndroidAppsModule {}

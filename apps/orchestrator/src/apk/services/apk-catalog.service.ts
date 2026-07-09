@@ -3,14 +3,12 @@ import {
   Injectable,
   PayloadTooLargeException,
 } from '@nestjs/common';
-import Busboy from 'busboy';
 import { AndroidApplicationsRepository } from '../../android-apps/persistence/android-applications.repository';
 import {
   type MultipartUploadRequest,
-  isMultipartUpload,
+  consumeSingleFileUpload,
 } from '../../common/http-upload';
 import { SettingsService } from '../../settings/settings.service';
-import { UploadedApk } from '../entities/uploaded-apk.entity';
 import { UploadedApksRepository } from '../persistence/uploaded-apks.repository';
 import { ApkIconExtractorService } from './apk-icon-extractor.service';
 import { ApkStorageService } from './apk-storage.service';
@@ -26,75 +24,34 @@ export class ApkCatalogService {
   ) {}
 
   async upload(request: MultipartUploadRequest, ownerUserId?: string | null) {
-    if (!isMultipartUpload(request.headers)) {
-      throw new ConflictException('A multipart APK upload is required.');
-    }
-
     const maxBytes = await this.settings.getMaxApkUploadBytes();
-    const parser = Busboy({
-      headers: request.headers,
-      limits: { files: 1, fileSize: maxBytes },
-    });
-
-    return new Promise<UploadedApk>((resolve, reject) => {
-      let upload: Promise<UploadedApk> | null = null;
-      let settled = false;
-      const finish = (callback: () => void) => {
-        if (!settled) {
-          settled = true;
-          callback();
-        }
-      };
-      const fail = (error: unknown) => finish(() => reject(error));
-
-      parser.on('file', (fieldName, stream, info) => {
-        if (fieldName !== 'apk' || upload) {
-          stream.resume();
-          return;
-        }
-        let exceededLimit = false;
-        stream.on('limit', () => {
-          exceededLimit = true;
-          fail(
-            new PayloadTooLargeException(
+    return consumeSingleFileUpload({
+      request,
+      fieldName: 'apk',
+      maxBytes,
+      missingError: () => new ConflictException('An APK file is required.'),
+      limitError: () =>
+        new PayloadTooLargeException(
+          `APK exceeds configured upload limit of ${maxBytes / 1024 / 1024} MB.`,
+        ),
+      canceledError: () => new ConflictException('APK upload was cancelled.'),
+      consume: (stream, originalName, limitExceeded) =>
+        this.storage.persistApkStream(stream, maxBytes).then(async (stored) => {
+          if (limitExceeded()) {
+            await this.storage.removeSharedFileIfUnreferenced(stored);
+            throw new PayloadTooLargeException(
               `APK exceeds configured upload limit of ${maxBytes / 1024 / 1024} MB.`,
-            ),
-          );
-        });
-        upload = this.storage
-          .persistApkStream(stream, maxBytes)
-          .then(async (stored) => {
-            if (exceededLimit) {
-              await this.storage.removeSharedFileIfUnreferenced(stored);
-              throw new PayloadTooLargeException(
-                `APK exceeds configured upload limit of ${maxBytes / 1024 / 1024} MB.`,
-              );
-            }
-
-            return this.saveUploadedApk(
-              stored,
-              info.filename || `${stored.sha256}.apk`,
-              ownerUserId,
-            ).catch(async (error) => {
-              await this.storage.removeSharedFileIfUnreferenced(stored);
-              throw error;
-            });
+            );
+          }
+          return this.saveUploadedApk(
+            stored,
+            originalName || `${stored.sha256}.apk`,
+            ownerUserId,
+          ).catch(async (error) => {
+            await this.storage.removeSharedFileIfUnreferenced(stored);
+            throw error;
           });
-        upload.catch(fail);
-      });
-      parser.on('error', fail);
-      request.on('aborted', () =>
-        fail(new ConflictException('APK upload was cancelled.')),
-      );
-      request.on('error', fail);
-      parser.on('finish', () => {
-        if (!upload) {
-          fail(new ConflictException('An APK file is required.'));
-          return;
-        }
-        upload.then((result) => finish(() => resolve(result)), fail);
-      });
-      request.pipe(parser);
+        }),
     });
   }
 

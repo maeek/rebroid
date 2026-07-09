@@ -1,9 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DockerEngineService } from '../../docker-engine.service';
+import type { DockerNetworkRuntimePort } from '../../contracts/docker-network-runtime.port';
 
 @Injectable()
-export class DockerNetworkRuntimeService {
+export class DockerNetworkRuntimeService implements DockerNetworkRuntimePort {
   private readonly logger = new Logger(DockerNetworkRuntimeService.name);
 
   constructor(private readonly engine: DockerEngineService) {}

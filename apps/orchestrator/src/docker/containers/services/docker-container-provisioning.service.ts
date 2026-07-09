@@ -6,6 +6,7 @@ import { parseCommandLine } from '@rebroid/application-core/command-line';
 import { DockerImageRuntimeService } from '../../images/services/docker-image-runtime.service';
 import { DockerContainerLifecycleService } from './docker-container-lifecycle.service';
 import { withHostTimezoneEnv } from '../../utils/docker-container-env.utils';
+import type { DockerContainerProvisioningPort } from '../../contracts/docker-container-provisioning.port';
 
 const deviceMappingFromString = (value: string) => {
   const [hostPath, containerPath = hostPath, permissions = 'rwm'] = value
@@ -26,7 +27,7 @@ const deviceMappingFromString = (value: string) => {
 type DeviceMapping = NonNullable<ReturnType<typeof deviceMappingFromString>>;
 
 @Injectable()
-export class DockerContainerProvisioningService {
+export class DockerContainerProvisioningService implements DockerContainerProvisioningPort {
   constructor(
     private readonly engine: DockerEngineService,
     private readonly images: DockerImageRuntimeService,

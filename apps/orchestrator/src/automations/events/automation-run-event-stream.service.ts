@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import websocket from '@fastify/websocket';
@@ -15,6 +16,9 @@ interface SubscribeToken {
   expiresAt: number;
 }
 
+const subscribeTokenTtlMs = 60_000;
+const maxSubscribeTokens = 10_000;
+
 @Injectable()
 export class AutomationRunEventStreamService {
   private readonly tokens = new Map<string, SubscribeToken>();
@@ -22,13 +26,20 @@ export class AutomationRunEventStreamService {
   constructor(private readonly events: AutomationRunEventBus) {}
 
   createSubscribeToken(ownerUserId: string, runId: string) {
+    this.purgeExpiredTokens();
+    if (this.tokens.size >= maxSubscribeTokens) {
+      throw new ServiceUnavailableException(
+        'Automation event stream token capacity is temporarily exhausted.',
+      );
+    }
     const token = randomUUID();
+    const expiresAt = Date.now() + subscribeTokenTtlMs;
     this.tokens.set(token, {
       ownerUserId,
       runId,
-      expiresAt: Date.now() + 60_000,
+      expiresAt,
     });
-    return { token, expiresAt: new Date(Date.now() + 60_000).toISOString() };
+    return { token, expiresAt: new Date(expiresAt).toISOString() };
   }
 
   async register(fastify: FastifyInstance) {
@@ -39,7 +50,10 @@ export class AutomationRunEventStreamService {
       async (socket: WebSocket, request: FastifyRequest) => {
         const url = new URL(request.url, 'http://localhost');
         const token = url.searchParams.get('token') ?? '';
-        const after = Number(url.searchParams.get('after') ?? '0');
+        const requestedAfter = Number(url.searchParams.get('after') ?? '0');
+        const after = Number.isFinite(requestedAfter)
+          ? Math.max(0, Math.trunc(requestedAfter))
+          : 0;
         const subscription = this.consumeToken(token);
         const send = (payload: unknown) => {
           if (socket.readyState === 1) {
@@ -47,35 +61,45 @@ export class AutomationRunEventStreamService {
           }
         };
 
-        for (const event of await this.events.list(
-          subscription.ownerUserId,
-          subscription.runId,
-          after,
-        )) {
-          send({ type: 'event', event });
-        }
-
-        const unsubscribe = this.events.subscribe(
-          subscription.runId,
-          (event) => {
-            if (event.ownerUserId === subscription.ownerUserId) {
+        let unsubscribe: (() => void) | null = null;
+        let heartbeat: NodeJS.Timeout | null = null;
+        let cleanedUp = false;
+        const cleanup = () => {
+          if (cleanedUp) return;
+          cleanedUp = true;
+          if (heartbeat) clearInterval(heartbeat);
+          unsubscribe?.();
+        };
+        socket.once('close', cleanup);
+        socket.once('error', cleanup);
+        try {
+          unsubscribe = await this.events.subscribeWithReplay(
+            subscription.ownerUserId,
+            subscription.runId,
+            after,
+            (event) => {
               send({ type: 'event', event });
-            }
-          },
-        );
-        const heartbeat = setInterval(
-          () => send({ type: 'heartbeat', at: new Date().toISOString() }),
-          15_000,
-        );
-        socket.on('close', () => {
-          clearInterval(heartbeat);
-          unsubscribe();
-        });
+            },
+          );
+          if (cleanedUp) {
+            unsubscribe();
+            return;
+          }
+          heartbeat = setInterval(
+            () => send({ type: 'heartbeat', at: new Date().toISOString() }),
+            15_000,
+          );
+        } catch (error) {
+          cleanup();
+          socket.close(1011, 'Automation event stream setup failed.');
+          throw error;
+        }
       },
     );
   }
 
   private consumeToken(token: string) {
+    this.purgeExpiredTokens();
     const subscription = this.tokens.get(token);
     this.tokens.delete(token);
     if (!subscription || subscription.expiresAt < Date.now()) {
@@ -89,5 +113,13 @@ export class AutomationRunEventStreamService {
       );
     }
     return subscription;
+  }
+
+  private purgeExpiredTokens(now = Date.now()) {
+    for (const [token, subscription] of this.tokens) {
+      if (subscription.expiresAt < now) {
+        this.tokens.delete(token);
+      }
+    }
   }
 }

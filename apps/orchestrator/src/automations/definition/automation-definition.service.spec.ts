@@ -3,7 +3,6 @@ import { AiAutomationCommandsService } from '../commands/ai-automation-commands.
 import { AutomationCommandRegistryService } from '../commands/automation-command-registry.service';
 import { ContainerNetworkAutomationCommandsService } from '../commands/container-network-automation-commands.service';
 import { GenericAutomationCommandsService } from '../commands/generic-automation-commands.service';
-import { VisionAutomationCommandsService } from '../commands/vision-automation-commands.service';
 import { AutomationConditionService } from '../condition/automation-condition.service';
 import { AutomationDefinitionNormalizerService } from './automation-definition-normalizer.service';
 import { AutomationDefinitionService } from './automation-definition.service';
@@ -13,7 +12,6 @@ const createService = () => {
     new AndroidAutomationCommandsService(),
     new ContainerNetworkAutomationCommandsService(),
     new GenericAutomationCommandsService(),
-    { list: () => [] } as unknown as VisionAutomationCommandsService,
     new AiAutomationCommandsService(),
   );
   registry.onModuleInit();

@@ -21,6 +21,7 @@ import { ApplicationRuntimeFileUploadDto } from '../dto/application-runtime-file
 import { ApplicationRuntimeFilesQueryDto } from '../dto/application-runtime-files-query.dto';
 import { RuntimeFilePathService } from './runtime-file-path.service';
 import { RuntimeUploadStreamService } from './runtime-upload-stream.service';
+import { mapWithConcurrency } from '../../../common/map-with-concurrency';
 
 const persistentDownloadRequiredMessage =
   'Temporary profiles can only transfer files while the app is running.';
@@ -51,25 +52,23 @@ export class RuntimeDownloadVolumeService {
       return [];
     }
 
-    const files = await Promise.all(
-      entries.map(async (name) => {
-        const safeName = this.paths.sanitizeFileName(name);
-        const path = join(directory, safeName);
-        const fileStat = await stat(path).catch(() => null);
-        if (!fileStat?.isFile()) {
-          return null;
-        }
+    const files = await mapWithConcurrency(entries, 16, async (name) => {
+      const safeName = this.paths.sanitizeFileName(name);
+      const path = join(directory, safeName);
+      const fileStat = await stat(path).catch(() => null);
+      if (!fileStat?.isFile()) {
+        return null;
+      }
 
-        return {
-          name: safeName,
-          path: `${this.paths.downloadDirectory}/${safeName}`,
-          type: 'file' as const,
-          sizeBytes: fileStat.size,
-          itemCount: null,
-          modifiedAt: fileStat.mtime.toISOString(),
-        };
-      }),
-    );
+      return {
+        name: safeName,
+        path: `${this.paths.downloadDirectory}/${safeName}`,
+        type: 'file' as const,
+        sizeBytes: fileStat.size,
+        itemCount: null,
+        modifiedAt: fileStat.mtime.toISOString(),
+      };
+    });
 
     return files
       .filter((file): file is NonNullable<typeof file> => Boolean(file))

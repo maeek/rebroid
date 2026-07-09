@@ -2,7 +2,8 @@ import { ConfigService } from '@nestjs/config';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
-import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
+import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
+import { AndroidAppsStateWriter } from '../../common/services/android-apps-state-writer.service';
 import { AndroidAppsDisplaySidecarService } from './android-apps-display-sidecar.service';
 import { AndroidAppsViewerNetworkService } from './android-apps-viewer-network.service';
 import { AndroidAppsViewerService } from './android-apps-viewer.service';
@@ -78,8 +79,10 @@ describe('AndroidAppsViewerService', () => {
       logs(),
       {
         getStored: jest.fn().mockResolvedValue(app),
+      } as unknown as AndroidAppsQueryService,
+      {
         save: jest.fn().mockResolvedValue(app),
-      } as unknown as AndroidAppsStateService,
+      } as unknown as AndroidAppsStateWriter,
       {
         ensureNetworkPrepared,
         resolveScrcpyAdbHost: jest.fn().mockResolvedValue('172.20.0.3'),
@@ -132,8 +135,10 @@ describe('AndroidAppsViewerService', () => {
       logs(),
       {
         getStored: jest.fn().mockResolvedValue(app),
+      } as unknown as AndroidAppsQueryService,
+      {
         save: jest.fn().mockResolvedValue(app),
-      } as unknown as AndroidAppsStateService,
+      } as unknown as AndroidAppsStateWriter,
       {
         ensureNetworkPrepared,
         resolveScrcpyAdbHost: jest.fn().mockResolvedValue('172.20.0.3'),
@@ -189,8 +194,10 @@ describe('AndroidAppsViewerService', () => {
       logs(),
       {
         getStored: jest.fn().mockResolvedValue(app),
+      } as unknown as AndroidAppsQueryService,
+      {
         save: jest.fn().mockResolvedValue(app),
-      } as unknown as AndroidAppsStateService,
+      } as unknown as AndroidAppsStateWriter,
       {
         ensureNetworkPrepared,
         resolveScrcpyAdbHost: jest.fn().mockResolvedValue('172.20.0.3'),
@@ -241,8 +248,10 @@ describe('AndroidAppsViewerService', () => {
       logs(),
       {
         getStored: jest.fn().mockResolvedValue(app),
+      } as unknown as AndroidAppsQueryService,
+      {
         save: jest.fn().mockResolvedValue(app),
-      } as unknown as AndroidAppsStateService,
+      } as unknown as AndroidAppsStateWriter,
       {
         ensureNetworkPrepared,
         resolveScrcpyAdbHost: jest.fn().mockResolvedValue('172.20.0.3'),
@@ -299,8 +308,10 @@ describe('AndroidAppsViewerService', () => {
           .fn()
           .mockResolvedValueOnce(firstApp)
           .mockResolvedValueOnce(secondApp),
+      } as unknown as AndroidAppsQueryService,
+      {
         save: jest.fn().mockResolvedValue(firstApp),
-      } as unknown as AndroidAppsStateService,
+      } as unknown as AndroidAppsStateWriter,
       {
         ensureNetworkPrepared,
         resolveScrcpyAdbHost: jest.fn().mockResolvedValue('172.20.0.3'),

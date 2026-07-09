@@ -1,13 +1,20 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { AndroidAppsFacadeService } from '../../android-apps/common/services/android-apps-facade.service';
+import {
+  ANDROID_APPS_AUTOMATION,
+  type AndroidAppsAutomationPort,
+} from '../../android-apps/contracts/android-apps-automation.port';
 
 @Injectable()
 export class AutomationTargetApplicationService {
-  constructor(private readonly apps: AndroidAppsFacadeService) {}
+  constructor(
+    @Inject(ANDROID_APPS_AUTOMATION)
+    private readonly apps: AndroidAppsAutomationPort,
+  ) {}
 
   async assertOwnerAccess(ownerUserId: string, id?: string | null) {
     if (!id) {

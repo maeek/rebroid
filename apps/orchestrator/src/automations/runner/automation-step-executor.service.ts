@@ -1,6 +1,9 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import { getErrorMessage } from '../../common/error-message';
-import { AndroidAppsFacadeService } from '../../android-apps/common/services/android-apps-facade.service';
+import {
+  ANDROID_APPS_AUTOMATION,
+  type AndroidAppsAutomationPort,
+} from '../../android-apps/contracts/android-apps-automation.port';
 import {
   AutomationDefinitionStep,
   AutomationRepeatStep,
@@ -24,7 +27,8 @@ export class AutomationStepExecutorService {
     private readonly aiHarness: AutomationAiHarnessService,
     private readonly recorder: AutomationRunnerRecorderService,
     private readonly conditions: AutomationConditionService,
-    private readonly applications: AndroidAppsFacadeService,
+    @Inject(ANDROID_APPS_AUTOMATION)
+    private readonly applications: AndroidAppsAutomationPort,
   ) {}
 
   async executeSteps(

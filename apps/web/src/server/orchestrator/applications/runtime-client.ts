@@ -1,4 +1,4 @@
-import { emptyRequest, formRequest, jsonRequest } from '../request'
+import { emptyRequest, formRequest, jsonRequest, streamRequest } from '../request'
 import type {
   AndroidNotification,
   ApplicationClipboard,
@@ -44,6 +44,23 @@ export const orchestratorAppRuntimeClient = {
     if (profile.profileName) query.set('profileName', profile.profileName)
     const suffix = query.size > 0 ? `?${query.toString()}` : ''
     return formRequest<ApplicationRuntimeFileUpload>(`/apps/${id}/runtime/download-files${suffix}`, 'POST', input)
+  },
+
+  uploadDataFileStream(
+    id: string,
+    input: ReadableStream<Uint8Array>,
+    path: string,
+    contentType: string,
+    signal?: AbortSignal
+  ) {
+    const query = new URLSearchParams({ path })
+    return streamRequest<ApplicationRuntimeFileUpload>(
+      `/apps/${encodeURIComponent(id)}/runtime/data-files?${query.toString()}`,
+      'POST',
+      input,
+      contentType,
+      { signal }
+    )
   },
 
   downloadFile(id: string, fileName: string, input: ApplicationRuntimeFilesProfileInput = {}) {

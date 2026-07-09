@@ -12,39 +12,11 @@ import {
   MaxLength,
   Min,
   MinLength,
-  ValidateBy,
-  ValidationOptions,
 } from 'class-validator';
-import { normalizeIpv4Cidr } from '../../../network-policy/utils/network-policy.utils';
-
-const toStringArray = (value: unknown) => {
-  if (Array.isArray(value)) {
-    return value;
-  }
-
-  if (typeof value === 'string') {
-    return value
-      .split(',')
-      .map((item) => item.trim())
-      .filter(Boolean);
-  }
-
-  return value;
-};
-
-const IsIpv4Cidr = (validationOptions?: ValidationOptions) =>
-  ValidateBy(
-    {
-      name: 'isIpv4Cidr',
-      validator: {
-        validate: (value: unknown) =>
-          typeof value === 'string' && Boolean(normalizeIpv4Cidr(value)),
-        defaultMessage: () =>
-          'Each allowlist entry must be an IPv4 address or CIDR.',
-      },
-    },
-    validationOptions,
-  );
+import {
+  IsIpv4Cidr,
+  toStringArray,
+} from '../../../network-policy/network-policy-validation';
 
 export class CreateAndroidApplicationDto {
   @ApiProperty({ example: 'Signal Android' })

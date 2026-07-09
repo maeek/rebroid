@@ -58,6 +58,8 @@ The targeted reset removes the orchestrator SQLite database (including WAL files
 
 After the reset, start the orchestrator normally. The single initialization migration recreates the complete current schema.
 
+The current baseline includes workload indexes, the unique active-automation-target reservation, and transactional event sequence counters. Existing state created from an older baseline must be reset with the operation above; the application does not apply an in-place schema upgrade.
+
 ## Manual Scrcpy Harness
 
 Scrcpy integration work requires a Linux Docker-compatible host with Redroid support, binder devices, and the display-sidecar image. Start the appliance, create an Android application, and manually verify launch, video, input, disconnect, retry, and shutdown before and after any scrcpy change. Record the host configuration and test result in the change description.

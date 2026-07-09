@@ -11,45 +11,11 @@ import {
 import { hashPassword, verifyPassword } from './password-hashing'
 import { assertPasswordMeetsPolicy, getPasswordMinimumLength } from './password-policy'
 import { findGroups, nowIso, toPublicUser, validateAvatarDataUrl } from './user-model'
-import { mutateUsersFile, readUsersFile } from './user-store'
+import { authenticate, getUserById, listGroups, listUsers } from './user-queries'
+import { mutateUsersFile } from './user-store'
 import type { StoredUser, UserEditorInput, UserGroup, UserRole, UsersFile } from './user-model'
 
 export type { PublicUser, UserEditorInput, UserGroup, UserRole } from './user-model'
-
-const listUsers = async () => {
-  const file = await readUsersFile()
-  return file.users.map(user => toPublicUser(file, user))
-}
-
-const listGroups = async () => {
-  const file = await readUsersFile()
-  return file.groups
-}
-
-const getUserById = async (id: string) => {
-  const file = await readUsersFile()
-  const user = file.users.find(item => item.id === id)
-  return user ? toPublicUser(file, user) : null
-}
-
-const authenticate = async (username: string, password: string) => {
-  const file = await readUsersFile()
-  const user = file.users.find(item => item.username === username)
-  if (!user || user.disabled || !(await verifyPassword(password, user.passwordHash))) {
-    return null
-  }
-
-  return {
-    id: user.id,
-    name: user.name,
-    email: null,
-    image: user.avatarDataUrl,
-    accentColor: user.accentColor,
-    role: user.role,
-    passwordChangeRequired: user.passwordChangeRequired,
-    sessionVersion: user.sessionVersion
-  }
-}
 
 const assertCanRemoveOrDisableUser = (file: UsersFile, user: StoredUser) => {
   if (user.role !== 'admin') {

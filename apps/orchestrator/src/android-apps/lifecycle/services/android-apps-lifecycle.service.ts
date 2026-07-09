@@ -24,7 +24,9 @@ import { RemoveAndroidApplicationDto } from '../../common/dto/remove-android-app
 import { UpdateAndroidApplicationDto } from '../../common/dto/update-android-application.dto';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
-import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
+import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
+import { AndroidAppsRuntimeStateReconciler } from '../../common/services/android-apps-runtime-state-reconciler.service';
+import { AndroidAppsStateWriter } from '../../common/services/android-apps-state-writer.service';
 import { stoppedStatusMessage } from '../../common/utils/android-apps-status-message.utils';
 import { AndroidAppsProvisioningApkService } from '../../provisioning/services/android-apps-provisioning-apk.service';
 import { AndroidAppsProvisioningService } from '../../provisioning/services/android-apps-provisioning.service';
@@ -58,7 +60,9 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     private readonly apkProvisioning: AndroidAppsProvisioningApkService,
     private readonly tracker: AndroidAppsProvisioningTrackerService,
     private readonly logs: AndroidAppsLogService,
-    private readonly state: AndroidAppsStateService,
+    private readonly queries: AndroidAppsQueryService,
+    private readonly reconciler: AndroidAppsRuntimeStateReconciler,
+    private readonly writer: AndroidAppsStateWriter,
     private readonly jobs: AndroidAppLifecycleJobsService,
     private readonly apkInstallLifecycle: AndroidAppsApkInstallLifecycleService,
     private readonly runtimePreparation: AndroidAppsRuntimePreparationService,
@@ -95,7 +99,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
       this.applicationFactory.initialFields(dto, settings, runtimeKind),
     );
 
-    await this.state.save(app);
+    await this.writer.save(app);
 
     this.applicationFactory.assignGeneratedNames(app);
 
@@ -103,7 +107,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
       this.applicationFactory.applyUploadedApk(app, uploadedApk);
     }
 
-    await this.state.save(app);
+    await this.writer.save(app);
     await this.logs.append(app.id, 'Application record created', {
       name: app.name,
       ownerUserId: app.ownerUserId,
@@ -115,12 +119,12 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     await this.jobs.enqueue(app.id, AndroidAppLifecycleJobKind.Provision);
     this.scheduleProvisioning(app.id);
 
-    return this.state.decorateApplication(app);
+    return this.queries.decorate(app);
   }
 
   /** Makes a new app from an existing one. */
   async clone(id: string, dto: CloneAndroidApplicationDto) {
-    const source = await this.state.get(id);
+    const source = await this.reconciler.reconcileById(id);
     const ownerUserId = dto.ownerUserId?.trim() || null;
     const uploadedApk = source.uploadedApkId
       ? await this.apks.cloneForOwner(source.uploadedApkId, ownerUserId)
@@ -140,7 +144,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
 
   /** Updates the editable app settings. */
   async update(id: string, dto: UpdateAndroidApplicationDto) {
-    const app = await this.state.get(id);
+    const app = await this.reconciler.reconcileById(id);
     const shouldRecreateContainer =
       this.runtimePreparation.shouldRecreateContainerOnUpdate(app, dto);
 
@@ -168,40 +172,40 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
       await this.runtimePreparation.markContainerForRecreation(app);
     }
 
-    return this.state.saveAndDecorate(app);
+    return this.writer.saveAndDecorate(app);
   }
 
   /** Switches the app to another profile. */
   async switchProfile(id: string, dto: SwitchApplicationProfileDto) {
-    const app = await this.state.get(id);
+    const app = await this.reconciler.reconcileById(id);
     this.assertRunnable(app);
 
     await this.runtimePreparation.switchProfile(app, dto);
 
-    return this.state.saveAndDecorate(app);
+    return this.writer.saveAndDecorate(app);
   }
 
   /** Deletes a saved persistent profile and its data volume. */
   async deleteSavedProfile(id: string, profileName: string) {
-    const app = await this.state.get(id);
+    const app = await this.reconciler.reconcileById(id);
     await this.runtimePreparation.deleteSavedPersistentProfile(
       app,
       profileName,
     );
 
-    return this.state.decorateApplication(app);
+    return this.queries.decorate(app);
   }
 
   /** Starts an app container. */
   async start(id: string, dto: StartAndroidApplicationDto = {}) {
-    const app = await this.state.get(id);
+    const app = await this.reconciler.reconcileById(id);
     this.assertRunnable(app);
 
     if (app.status === AndroidApplicationStatus.Provisioning) {
       if (
         !(await this.runtimePreparation.recoverStaleProvisioningForStart(app))
       ) {
-        return this.state.decorateApplication(app);
+        return this.queries.decorate(app);
       }
     }
 
@@ -210,7 +214,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
         await this.apkProvisioning.launchInstalledApk(app);
       }
 
-      return this.state.decorateApplication(app);
+      return this.queries.decorate(app);
     }
 
     if (app.status === AndroidApplicationStatus.Removing) {
@@ -224,7 +228,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     }
 
     await this.runtimePreparation.prepareRuntimeDefaults(app);
-    await this.state.clearMissingContainerReference(app);
+    await this.reconciler.clearMissingContainerReference(app);
     await this.runtimePreparation.prepareFailedContainerForRestart(app);
     await this.runtimePreparation.prepareContainerForRuntimeHostConfig(app);
     await this.runtimePreparation.prepareContainerForRecreationOnStart(app);
@@ -236,7 +240,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     app.lastError = null;
     app.provisioningStartedAt = new Date();
     app.provisioningCompletedAt = null;
-    await this.state.save(app);
+    await this.writer.save(app);
     await this.logs.append(app.id, 'Start requested', {
       profileMode: app.profileMode,
       profileName: app.profileName,
@@ -247,7 +251,7 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     await this.jobs.enqueue(app.id, AndroidAppLifecycleJobKind.Start);
     this.scheduleStart(app.id);
 
-    return this.state.decorateApplication(app);
+    return this.queries.decorate(app);
   }
 
   /** Stops an app container. */
@@ -255,14 +259,14 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
     id: string,
     options: { reason?: string; details?: Record<string, unknown> } = {},
   ) {
-    const app = await this.state.get(id);
+    const app = await this.reconciler.reconcileById(id);
     this.tracker.cancel(id);
     await this.jobs.removeForApplication(id);
 
     app.status = AndroidApplicationStatus.Stopped;
     app.lifecycleStage = AndroidApplicationLifecycleStage.Stopping;
     app.statusMessage = 'Stopping application container.';
-    await this.state.save(app);
+    await this.writer.save(app);
     await this.logs.append(app.id, 'Stop requested', {
       containerId: app.containerId,
       reason: options.reason ?? 'user_request',
@@ -296,39 +300,39 @@ export class AndroidAppsLifecycleService implements OnModuleInit {
       containerId: app.containerId,
       recreateContainerOnNextStart: app.recreateContainerOnNextStart,
     });
-    return this.state.saveAndDecorate(app);
+    return this.writer.saveAndDecorate(app);
   }
 
   /** Replaces the APK and installs it if the app is running. */
   async updateApk(id: string, dto: UpdateAndroidApplicationApkDto) {
-    const app = await this.state.get(id);
+    const app = await this.reconciler.reconcileById(id);
     this.assertRunnable(app);
 
     const uploadedApk = await this.apks.get(dto.uploadedApkId);
     this.applicationFactory.applyUploadedApk(app, uploadedApk);
-    await this.state.save(app);
+    await this.writer.save(app);
 
     if (app.status === AndroidApplicationStatus.Running) {
       await this.apkInstallLifecycle.begin(
         app,
         'Installing updated APK. Viewer is available while installation finishes.',
       );
-      return this.state.get(id);
+      return this.reconciler.reconcileById(id);
     }
 
-    return this.state.saveAndDecorate(app);
+    return this.writer.saveAndDecorate(app);
   }
 
   /** Removes the app and its Docker resources. */
   async remove(id: string, query: RemoveAndroidApplicationDto) {
-    const app = await this.state.get(id);
+    const app = await this.reconciler.reconcileById(id);
     this.tracker.cancel(id);
     await this.jobs.removeForApplication(id);
     app.status = AndroidApplicationStatus.Removing;
     app.lifecycleStage = AndroidApplicationLifecycleStage.Removing;
     app.statusMessage = 'Removing application container and network resources.';
     app.removeDataOnRemoval = query.removeData ?? true;
-    await this.state.save(app);
+    await this.writer.save(app);
     await this.logs.append(app.id, 'Remove requested', {
       removeData: query.removeData ?? true,
       containerId: app.containerId,

@@ -8,9 +8,10 @@ import {
   readFirstString,
   readStringArray,
 } from '../utils/docker-health.utils';
+import type { DockerHealthPort } from '../../contracts/docker-health.port';
 
 @Injectable()
-export class DockerHealthService {
+export class DockerHealthService implements DockerHealthPort {
   private dockerHealthSummaryRequest: Promise<ServiceHealth> | null = null;
   private dockerHealthSummaryCache: {
     value: ServiceHealth;

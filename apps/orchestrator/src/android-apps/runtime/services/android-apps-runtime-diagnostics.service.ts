@@ -5,7 +5,7 @@ import {
 } from '../../../docker/contracts/docker-container-lifecycle.port';
 import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
-import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
+import { AndroidAppsRuntimeStateReconciler } from '../../common/services/android-apps-runtime-state-reconciler.service';
 import { AndroidAppsSidecarAdbService } from '../../viewer/services/android-apps-sidecar-adb.service';
 
 @Injectable()
@@ -15,11 +15,11 @@ export class AndroidAppsRuntimeDiagnosticsService {
     private readonly lifecycle: DockerContainerLifecyclePort,
     private readonly logs: AndroidAppsLogService,
     private readonly sidecarAdb: AndroidAppsSidecarAdbService,
-    private readonly state: AndroidAppsStateService,
+    private readonly reconciler: AndroidAppsRuntimeStateReconciler,
   ) {}
 
   async notifications(id: string) {
-    const app = await this.state.get(id);
+    const app = await this.reconciler.reconcileById(id);
     if (!app.containerId || app.status !== AndroidApplicationStatus.Running) {
       return [];
     }
@@ -28,7 +28,7 @@ export class AndroidAppsRuntimeDiagnosticsService {
   }
 
   async containerLogs(id: string, tail = 300) {
-    const app = await this.state.get(id);
+    const app = await this.reconciler.reconcileById(id);
     if (!app.containerId) {
       return {
         source: 'container' as const,
@@ -59,7 +59,7 @@ export class AndroidAppsRuntimeDiagnosticsService {
   }
 
   async eventLogs(id: string, tail = 300) {
-    await this.state.get(id);
+    await this.reconciler.reconcileById(id);
     return {
       source: 'orchestrator' as const,
       collectedAt: new Date().toISOString(),
@@ -68,7 +68,7 @@ export class AndroidAppsRuntimeDiagnosticsService {
   }
 
   async adbLogs(id: string, tail = 300) {
-    const app = await this.state.get(id);
+    const app = await this.reconciler.reconcileById(id);
     if (!app.containerId || app.status !== AndroidApplicationStatus.Running) {
       return {
         source: 'adb' as const,

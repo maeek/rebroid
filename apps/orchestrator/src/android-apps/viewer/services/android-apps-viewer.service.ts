@@ -4,7 +4,8 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { getErrorMessage } from '../../../common/error-message';
 import { ViewerTargetStatus } from '../../../docker/docker.types';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
-import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
+import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
+import { AndroidAppsStateWriter } from '../../common/services/android-apps-state-writer.service';
 import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import type { ApplicationViewerControlCommand } from '../../contracts/application-viewer-control';
 import { ScrcpySessionDto } from '../dto/scrcpy-session.dto';
@@ -36,7 +37,8 @@ export class AndroidAppsViewerService {
     private readonly config: ConfigService,
     private readonly displaySidecar: AndroidAppsDisplaySidecarService,
     private readonly logs: AndroidAppsLogService,
-    private readonly state: AndroidAppsStateService,
+    private readonly queries: AndroidAppsQueryService,
+    private readonly writer: AndroidAppsStateWriter,
     private readonly viewerNetwork: AndroidAppsViewerNetworkService,
   ) {}
 
@@ -78,7 +80,7 @@ export class AndroidAppsViewerService {
       this.invalidatePreparedViewerTarget(app, 'display-session-unavailable');
     }
     app.lastScrcpyActivityAt = new Date();
-    await this.state.save(app);
+    await this.writer.save(app);
 
     return {
       applicationId: app.id,
@@ -256,7 +258,7 @@ export class AndroidAppsViewerService {
   async recordViewerActivity(id: string) {
     const app = await this.getRunningRuntimeApp(id);
     app.lastScrcpyActivityAt = new Date();
-    await this.state.save(app);
+    await this.writer.save(app);
 
     return {
       id: app.id,
@@ -333,7 +335,7 @@ export class AndroidAppsViewerService {
   private async getRunningRuntimeApp(id: string) {
     // Viewer bootstrap already probes the runtime and sidecar. Avoid adding a
     // Docker reconciliation read to every iframe refresh and activity ping.
-    const app = await this.state.getStored(id);
+    const app = await this.queries.getStored(id);
     if (!app.containerId || app.status !== AndroidApplicationStatus.Running) {
       throw new ConflictException(
         'Application must be running before using viewer runtime tools.',

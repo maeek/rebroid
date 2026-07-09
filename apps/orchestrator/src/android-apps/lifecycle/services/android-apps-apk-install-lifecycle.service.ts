@@ -7,7 +7,8 @@ import {
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
-import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
+import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
+import { AndroidAppsStateWriter } from '../../common/services/android-apps-state-writer.service';
 import { AndroidAppsProvisioningApkService } from '../../provisioning/services/android-apps-provisioning-apk.service';
 import { AndroidAppLifecycleJobKind } from '../entities/android-app-lifecycle-job.entity';
 import { AndroidAppLifecycleJobsService } from './android-app-lifecycle-jobs.service';
@@ -23,7 +24,8 @@ export class AndroidAppsApkInstallLifecycleService {
     private readonly jobs: AndroidAppLifecycleJobsService,
     private readonly tracker: AndroidAppsProvisioningTrackerService,
     private readonly logs: AndroidAppsLogService,
-    private readonly state: AndroidAppsStateService,
+    private readonly queries: AndroidAppsQueryService,
+    private readonly writer: AndroidAppsStateWriter,
     private readonly apkProvisioning: AndroidAppsProvisioningApkService,
     private readonly backgroundJobs: LifecycleBackgroundJobRunner,
   ) {}
@@ -39,7 +41,7 @@ export class AndroidAppsApkInstallLifecycleService {
       lifecycleStage: AndroidApplicationLifecycleStage.ApkInstalling,
       statusMessage,
     });
-    await this.state.setLifecycle(app.id, {
+    await this.writer.setLifecycle(app.id, {
       status: AndroidApplicationStatus.Running,
       lifecycleStage: AndroidApplicationLifecycleStage.ApkInstalling,
       statusMessage,
@@ -81,7 +83,7 @@ export class AndroidAppsApkInstallLifecycleService {
         applicationId,
         AndroidAppLifecycleJobKind.InstallApk,
       );
-      const app = await this.state.getStored(applicationId);
+      const app = await this.queries.getStored(applicationId);
       this.tracker.ensureActive(applicationId);
       await this.apkProvisioning.installApk(app, statusMessage);
       await this.logs.append(app.id, 'Background APK install finished', {
@@ -97,7 +99,7 @@ export class AndroidAppsApkInstallLifecycleService {
       await this.logs.append(app.id, 'Application marked running', {
         containerId: app.containerId,
       });
-      await this.state.save(app);
+      await this.writer.save(app);
       await this.jobs.complete(
         applicationId,
         AndroidAppLifecycleJobKind.InstallApk,
@@ -123,7 +125,7 @@ export class AndroidAppsApkInstallLifecycleService {
       this.logger.error(
         `Background APK install failed for ${applicationId}: ${message}`,
       );
-      await this.state.setLifecycle(applicationId, {
+      await this.writer.setLifecycle(applicationId, {
         status: AndroidApplicationStatus.Running,
         lifecycleStage: AndroidApplicationLifecycleStage.Error,
         statusMessage: `APK install failed: ${message}`,

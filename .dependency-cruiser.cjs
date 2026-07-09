@@ -47,7 +47,7 @@ module.exports = {
       severity: "error",
       from: { path: "^apps/orchestrator/src/automations/" },
       to: {
-        path: "^apps/orchestrator/src/android-apps/(?!contracts/|android-apps\\.module\\.ts$|common/services/android-apps-facade\\.service\\.ts$)",
+        path: "^apps/orchestrator/src/android-apps/(?!contracts/|android-apps\\.module\\.ts$)",
       },
     },
     {

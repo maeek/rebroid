@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { DockerEngineService } from '../../docker-engine.service';
+import type { DockerPlatformPrunePort } from '../../contracts/docker-platform-prune.port';
 
 @Injectable()
-export class DockerPlatformPruneService {
+export class DockerPlatformPruneService implements DockerPlatformPrunePort {
   constructor(private readonly engine: DockerEngineService) {}
 
   isBusy() {

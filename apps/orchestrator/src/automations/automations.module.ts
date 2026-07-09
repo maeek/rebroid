@@ -1,88 +1,38 @@
 import { Module } from '@nestjs/common';
 import { AndroidAppsModule } from '../android-apps/android-apps.module';
-import { SettingsModule } from '../settings/settings.module';
-import { AutomationAiDefinitionFactory } from './ai/automation-ai-definition.factory';
-import { AutomationAiChatClientService } from './ai/automation-ai-chat-client.service';
-import { AutomationAiHarnessService } from './ai/automation-ai-harness.service';
-import { AutomationAiHarnessRuntimeService } from './ai/automation-ai-harness-runtime.service';
-import { AutomationAiProviderService } from './ai/automation-ai-provider.service';
-import { AutomationAiRuntimeContextService } from './ai/automation-ai-runtime-context.service';
-import { AutomationAiSuggestionsService } from './ai/automation-ai-suggestions.service';
-import { AutomationAiYamlDraftService } from './ai/automation-ai-yaml-draft.service';
-import { AndroidAutomationCommandsService } from './commands/android-automation-commands.service';
-import { AiAutomationCommandsService } from './commands/ai-automation-commands.service';
-import { AutomationCommandRegistryService } from './commands/automation-command-registry.service';
-import { ContainerNetworkAutomationCommandsService } from './commands/container-network-automation-commands.service';
-import { GenericAutomationCommandsService } from './commands/generic-automation-commands.service';
-import { VisionAutomationCommandsService } from './commands/vision-automation-commands.service';
-import { AutomationConditionService } from './condition/automation-condition.service';
+import { AutomationAiModule } from './ai/automation-ai.module';
+import { AutomationCommandsModule } from './commands/automation-commands.module';
 import { AutomationsController } from './controllers/automations.controller';
-import { AutomationDefinitionNormalizerService } from './definition/automation-definition-normalizer.service';
-import { AutomationDefinitionService } from './definition/automation-definition.service';
-import { AutomationRunEventBus } from './events/automation-run-event-bus.service';
-import { AutomationRunEventStreamService } from './events/automation-run-event-stream.service';
+import { AutomationDefinitionModule } from './definition/automation-definition.module';
+import { AutomationEventsModule } from './events/automation-events.module';
 import { AutomationsPersistenceModule } from './persistence/automations-persistence.module';
-import { AutomationRunFinalizerService } from './runner/automation-run-finalizer.service';
-import { AutomationRunnableResolverService } from './runner/automation-runnable-resolver.service';
-import { AutomationRunnerRecorderService } from './runner/automation-runner-recorder.service';
-import { AutomationRunnerTargetService } from './runner/automation-runner-target.service';
-import { AutomationRunnerService } from './runner/automation-runner.service';
-import { AutomationStepExecutorService } from './runner/automation-step-executor.service';
-import { EphemeralAutomationRegistryService } from './runner/ephemeral-automation-registry.service';
-import { AutomationCronRegistryService } from './scheduler/automation-cron-registry.service';
-import { AutomationScheduleService } from './scheduler/automation-schedule.service';
+import { AutomationExecutionModule } from './runner/automation-execution.module';
+import { AutomationSchedulingModule } from './scheduler/automation-scheduling.module';
 import { AutomationTargetApplicationService } from './services/automation-target-application.service';
 import { AutomationTriggersService } from './services/automation-triggers.service';
 import { AutomationsDtoMapper } from './services/automations-dto-mapper.service';
 import { AutomationsQueryService } from './services/automations-query.service';
 import { AutomationsService } from './services/automations.service';
-import { AutomationTriggerSchedulerService } from './services/automation-trigger-scheduler.service';
-import { AutomationPerceptionService } from './vision/automation-perception.service';
-import { AutomationOcrService } from './vision/automation-ocr.service';
-import { AutomationVisionService } from './vision/automation-vision.service';
 
 @Module({
-  imports: [AutomationsPersistenceModule, AndroidAppsModule, SettingsModule],
+  imports: [
+    AndroidAppsModule,
+    AutomationsPersistenceModule,
+    AutomationCommandsModule,
+    AutomationEventsModule,
+    AutomationAiModule,
+    AutomationDefinitionModule,
+    AutomationExecutionModule,
+    AutomationSchedulingModule,
+  ],
   controllers: [AutomationsController],
   providers: [
-    AndroidAutomationCommandsService,
-    AiAutomationCommandsService,
-    VisionAutomationCommandsService,
-    ContainerNetworkAutomationCommandsService,
-    GenericAutomationCommandsService,
-    AutomationAiDefinitionFactory,
-    AutomationAiChatClientService,
-    AutomationAiProviderService,
-    AutomationAiRuntimeContextService,
-    AutomationAiSuggestionsService,
-    AutomationAiYamlDraftService,
-    AutomationAiHarnessRuntimeService,
-    AutomationAiHarnessService,
-    AutomationVisionService,
-    AutomationOcrService,
-    AutomationPerceptionService,
-    AutomationRunEventBus,
-    AutomationRunEventStreamService,
-    AutomationCommandRegistryService,
-    AutomationConditionService,
-    AutomationDefinitionNormalizerService,
-    AutomationDefinitionService,
-    AutomationRunFinalizerService,
-    AutomationRunnableResolverService,
-    AutomationRunnerRecorderService,
-    AutomationRunnerTargetService,
-    AutomationStepExecutorService,
-    EphemeralAutomationRegistryService,
-    AutomationRunnerService,
-    AutomationCronRegistryService,
-    AutomationScheduleService,
     AutomationTargetApplicationService,
     AutomationTriggersService,
     AutomationsDtoMapper,
     AutomationsQueryService,
-    AutomationTriggerSchedulerService,
     AutomationsService,
   ],
-  exports: [AutomationRunEventStreamService],
+  exports: [AutomationEventsModule],
 })
 export class AutomationsModule {}

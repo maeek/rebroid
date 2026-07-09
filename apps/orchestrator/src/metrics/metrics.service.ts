@@ -40,6 +40,12 @@ export class MetricsService {
   private readonly dockerSlowOperations: Counter;
   private readonly dockerInFlight: Gauge;
   private readonly dockerQueued: Gauge;
+  private readonly automationRuns: Counter;
+  private readonly automationRunDurations: Histogram;
+  private readonly automationActiveRuns: Gauge;
+  private readonly aiProviderRequests: Counter;
+  private readonly aiProviderDurations: Histogram;
+  private readonly automationEventDurations: Histogram;
   private readonly aggregates = new Map<string, DockerOperationAggregate>();
   private readonly inFlight = { read: 0, mutation: 0, long: 0 };
   private readonly queued = { read: 0, mutation: 0, long: 0 };
@@ -91,6 +97,84 @@ export class MetricsService {
       labelNames: ['class'],
       registers: [this.registry],
     });
+    this.automationRuns = new Counter({
+      name: 'rebroid_automation_runs_total',
+      help: 'Completed automation runs by trigger and outcome.',
+      labelNames: ['trigger', 'outcome'],
+      registers: [this.registry],
+    });
+    this.automationRunDurations = new Histogram({
+      name: 'rebroid_automation_run_duration_seconds',
+      help: 'Automation run duration from execution start to terminal state.',
+      labelNames: ['trigger', 'outcome'],
+      registers: [this.registry],
+    });
+    this.automationActiveRuns = new Gauge({
+      name: 'rebroid_automation_active_runs',
+      help: 'Automation runs currently executing in this process.',
+      registers: [this.registry],
+    });
+    this.aiProviderRequests = new Counter({
+      name: 'rebroid_ai_provider_requests_total',
+      help: 'AI provider requests by bounded operation, role, and outcome.',
+      labelNames: ['operation', 'role', 'outcome'],
+      registers: [this.registry],
+    });
+    this.aiProviderDurations = new Histogram({
+      name: 'rebroid_ai_provider_request_duration_seconds',
+      help: 'AI provider request duration.',
+      labelNames: ['operation', 'role', 'outcome'],
+      registers: [this.registry],
+    });
+    this.automationEventDurations = new Histogram({
+      name: 'rebroid_automation_event_persistence_duration_seconds',
+      help: 'Automation event persistence duration.',
+      labelNames: ['outcome'],
+      registers: [this.registry],
+    });
+  }
+
+  automationRunStarted() {
+    this.automationActiveRuns.inc();
+  }
+
+  automationRunFinished(
+    trigger: string,
+    outcome: string,
+    startedAt: Date | null,
+  ) {
+    if (startedAt) {
+      this.automationActiveRuns.dec();
+    }
+    this.automationRuns.inc({ trigger, outcome });
+    if (startedAt) {
+      this.automationRunDurations.observe(
+        { trigger, outcome },
+        Math.max(0, Date.now() - startedAt.getTime()) / 1000,
+      );
+    }
+  }
+
+  beginAiProviderRequest(
+    operation: 'chat' | 'health' | 'models',
+    role: 'provider' | 'planner' | 'vision',
+  ) {
+    const startedAt = Date.now();
+    return (outcome: 'success' | 'error' | 'timeout') => {
+      const labels = { operation, role, outcome };
+      this.aiProviderRequests.inc(labels);
+      this.aiProviderDurations.observe(labels, (Date.now() - startedAt) / 1000);
+    };
+  }
+
+  beginAutomationEventPersistence() {
+    const startedAt = Date.now();
+    return (outcome: 'success' | 'error') => {
+      this.automationEventDurations.observe(
+        { outcome },
+        (Date.now() - startedAt) / 1000,
+      );
+    };
   }
 
   configureDocker(transport: string, limits: MetricsService['limits']) {

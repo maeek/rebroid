@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ApplicationProfileMode } from '../../android-apps/contracts/application-profile-mode';
 import {
   AutomationTriggersGridPageDto,
@@ -32,6 +37,8 @@ const stringifyTags = (value: unknown) =>
 
 @Injectable()
 export class AutomationTriggersService implements OnModuleInit {
+  private readonly logger = new Logger(AutomationTriggersService.name);
+
   constructor(
     private readonly automations: AutomationsRepository,
     private readonly triggers: AutomationTriggersRepository,
@@ -257,7 +264,11 @@ export class AutomationTriggersService implements OnModuleInit {
 
   private registerTrigger(trigger: AutomationTrigger) {
     this.triggerScheduler.register(trigger, () => {
-      void this.runScheduledTrigger(trigger.id);
+      void this.runScheduledTrigger(trigger.id).catch((error: unknown) => {
+        this.logger.error(
+          `Scheduled automation trigger ${trigger.id} failed unexpectedly: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      });
     });
   }
 

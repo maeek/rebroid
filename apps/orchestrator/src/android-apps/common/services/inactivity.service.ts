@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { AndroidAppsService } from '../android-apps.service';
+import { mapSettledWithConcurrency } from '../../../common/map-with-concurrency';
 
 @Injectable()
 export class InactivityService {
@@ -20,21 +21,18 @@ export class InactivityService {
     const inactiveApplications =
       await this.androidApps.findInactiveRunningApplications();
 
-    await Promise.allSettled(
-      inactiveApplications.map(async (app) => {
-        this.logger.log(
-          `Stopping inactive application container ${app.containerName} for application ${app.id}.`,
-        );
-        await this.androidApps.stop(app.id, {
-          reason: 'inactivity_timeout',
-          details: {
-            inactivityTimeoutSeconds: app.inactivityTimeoutSeconds,
-            lastScrcpyActivityAt:
-              app.lastScrcpyActivityAt?.toISOString() ?? null,
-            lastStartedAt: app.lastStartedAt?.toISOString() ?? null,
-          },
-        });
-      }),
-    );
+    await mapSettledWithConcurrency(inactiveApplications, 4, async (app) => {
+      this.logger.log(
+        `Stopping inactive application container ${app.containerName} for application ${app.id}.`,
+      );
+      await this.androidApps.stop(app.id, {
+        reason: 'inactivity_timeout',
+        details: {
+          inactivityTimeoutSeconds: app.inactivityTimeoutSeconds,
+          lastScrcpyActivityAt: app.lastScrcpyActivityAt?.toISOString() ?? null,
+          lastStartedAt: app.lastStartedAt?.toISOString() ?? null,
+        },
+      });
+    });
   }
 }

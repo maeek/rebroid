@@ -24,7 +24,8 @@ import {
 } from '../../contracts/android-application-status';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
-import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
+import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
+import { AndroidAppsStateWriter } from '../../common/services/android-apps-state-writer.service';
 import { AndroidAppsRuntimeNetworkService } from '../../network/services/android-apps-runtime-network.service';
 import { AndroidAppsProvisioningAndroidService } from './android-apps-provisioning-android.service';
 import { AndroidAppsProvisioningApkService } from './android-apps-provisioning-apk.service';
@@ -49,7 +50,8 @@ export class AndroidAppsProvisioningService {
     private readonly androidProvisioning: AndroidAppsProvisioningAndroidService,
     private readonly apkProvisioning: AndroidAppsProvisioningApkService,
     private readonly network: AndroidAppsRuntimeNetworkService,
-    private readonly state: AndroidAppsStateService,
+    private readonly queries: AndroidAppsQueryService,
+    private readonly writer: AndroidAppsStateWriter,
     private readonly tracker: AndroidAppsProvisioningTrackerService,
     private readonly jobs: AndroidAppLifecycleJobsService,
   ) {}
@@ -140,7 +142,7 @@ export class AndroidAppsProvisioningService {
       lastError: null,
     });
 
-    const app = await this.state.getStored(applicationId);
+    const app = await this.queries.getStored(applicationId);
     await this.logs.append(applicationId, 'Provisioning started', {
       image: app.containerImage,
       containerName: app.containerName,
@@ -174,7 +176,7 @@ export class AndroidAppsProvisioningService {
     });
 
     await this.images.pullImage(app.containerImage, (message) => {
-      void this.state.setLifecycle(app.id, {
+      void this.writer.setLifecycle(app.id, {
         statusMessage: message || `Pulling ${app.containerImage}.`,
       });
       void this.logs
@@ -245,7 +247,7 @@ export class AndroidAppsProvisioningService {
 
     this.tracker.ensureActive(app.id);
     app.containerId = container.id;
-    await this.state.save(app);
+    await this.writer.save(app);
     await this.logs.append(app.id, 'Container created', {
       containerId: container.id,
       containerName: app.containerName,
@@ -321,7 +323,7 @@ export class AndroidAppsProvisioningService {
       lifecycleStage: AndroidApplicationLifecycleStage.ApkInstalling,
       statusMessage,
     });
-    await this.state.setLifecycle(app.id, {
+    await this.writer.setLifecycle(app.id, {
       status: AndroidApplicationStatus.Running,
       lifecycleStage: AndroidApplicationLifecycleStage.ApkInstalling,
       statusMessage,
@@ -337,7 +339,7 @@ export class AndroidAppsProvisioningService {
     statusMessage: string,
   ) {
     try {
-      const app = await this.state.getStored(applicationId);
+      const app = await this.queries.getStored(applicationId);
       this.tracker.ensureActive(applicationId);
       await this.apkProvisioning.installApk(app, statusMessage);
       await this.logs.append(
@@ -365,7 +367,7 @@ export class AndroidAppsProvisioningService {
       this.logger.error(
         `Initial APK install failed for ${applicationId}: ${message}`,
       );
-      await this.state.setLifecycle(applicationId, {
+      await this.writer.setLifecycle(applicationId, {
         status: AndroidApplicationStatus.Running,
         lifecycleStage: AndroidApplicationLifecycleStage.Error,
         statusMessage: `APK install failed: ${message}`,
@@ -396,11 +398,11 @@ export class AndroidAppsProvisioningService {
   /** Writes and saves a lifecycle update. */
   private async setLifecycle(
     applicationId: string,
-    patch: Parameters<AndroidAppsStateService['setLifecycle']>[1],
+    patch: Parameters<AndroidAppsStateWriter['setLifecycle']>[1],
   ) {
     await Promise.all([
       this.logs.appendLifecycle(applicationId, patch),
-      this.state.setLifecycle(applicationId, patch),
+      this.writer.setLifecycle(applicationId, patch),
     ]);
   }
 }

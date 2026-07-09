@@ -3,11 +3,13 @@
   "ignorePatterns": [
     "apps/web/public/sw.js",
     "apps/web/rebroid-proxy-server.mjs",
-    "apps/web/src/setup-tests.tsx"
+    "apps/web/src/setup-tests.tsx",
+    "apps/ocr-sidecar"
   ],
   "ignoreDependencies": [
     "babel-plugin-react-compiler",
     "jest-css-modules",
-    "whatwg-fetch"
+    "whatwg-fetch",
+    "better-sqlite3"
   ]
 }

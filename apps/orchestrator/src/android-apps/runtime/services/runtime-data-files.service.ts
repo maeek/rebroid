@@ -16,7 +16,7 @@ import {
 } from '../../../docker/contracts/docker-container-exec.port';
 import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import { AndroidApplication } from '../../android-application.entity';
-import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
+import { AndroidAppsRuntimeStateReconciler } from '../../common/services/android-apps-runtime-state-reconciler.service';
 import { ApplicationRuntimeFileUploadDto } from '../dto/application-runtime-file.dto';
 import { RuntimeFilePathService } from './runtime-file-path.service';
 import { RuntimeUploadStreamService } from './runtime-upload-stream.service';
@@ -28,7 +28,7 @@ export class RuntimeDataFilesService {
     private readonly archive: DockerContainerArchivePort,
     @Inject(DOCKER_CONTAINER_EXEC)
     private readonly exec: DockerContainerExecPort,
-    private readonly state: AndroidAppsStateService,
+    private readonly reconciler: AndroidAppsRuntimeStateReconciler,
     private readonly paths: RuntimeFilePathService,
     private readonly uploads: RuntimeUploadStreamService,
   ) {}
@@ -173,7 +173,7 @@ export class RuntimeDataFilesService {
   }
 
   private async getRunningRuntimeApp(id: string) {
-    const app = await this.state.get(id);
+    const app = await this.reconciler.reconcileById(id);
     if (!app.containerId || app.status !== AndroidApplicationStatus.Running) {
       throw new ConflictException(
         'Application must be running before using viewer runtime tools.',

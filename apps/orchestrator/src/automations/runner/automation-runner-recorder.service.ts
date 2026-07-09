@@ -162,6 +162,6 @@ export class AutomationRunnerRecorderService {
 
   async saveRunResults(run: AutomationRun, results: AutomationStepResult[]) {
     run.stepResultsJson = JSON.stringify(results);
-    await this.runs.save(run);
+    await this.runs.updateProgress(run.id, run.stepResultsJson, run.error);
   }
 }

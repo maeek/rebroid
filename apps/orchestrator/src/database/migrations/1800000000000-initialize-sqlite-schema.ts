@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner, Table } from 'typeorm';
+import { MigrationInterface, QueryRunner, Table, TableIndex } from 'typeorm';
 import {
   createRuntimeImageSchema,
   dropRuntimeImageSchema,
@@ -325,6 +325,12 @@ export class InitializeSqliteSchema1800000000000 implements MigrationInterface {
           },
           { name: 'error', type: 'text', isNullable: true },
           {
+            name: 'lastEventSequence',
+            type: 'integer',
+            isNullable: false,
+            default: '0',
+          },
+          {
             name: 'createdAt',
             type: 'datetime',
             isNullable: false,
@@ -418,7 +424,127 @@ export class InitializeSqliteSchema1800000000000 implements MigrationInterface {
       }),
     );
 
+    await this.createIndexes(queryRunner);
+
     await createRuntimeImageSchema(queryRunner);
+
+    await queryRunner.createIndex(
+      'container_image_runtime_metadata',
+      new TableIndex({
+        name: 'container_image_runtime_metadata_image_id_idx',
+        columnNames: ['imageId'],
+      }),
+    );
+  }
+
+  private async createIndexes(queryRunner: QueryRunner) {
+    const indexes: Array<[string, TableIndex]> = [
+      [
+        'android_applications',
+        new TableIndex({
+          name: 'android_applications_owner_created_idx',
+          columnNames: ['ownerUserId', 'createdAt'],
+        }),
+      ],
+      [
+        'android_applications',
+        new TableIndex({
+          name: 'android_applications_status_network_policy_idx',
+          columnNames: ['status', 'networkPolicyEnabled'],
+        }),
+      ],
+      [
+        'android_applications',
+        new TableIndex({
+          name: 'android_applications_uploaded_apk_idx',
+          columnNames: ['uploadedApkId'],
+        }),
+      ],
+      [
+        'uploaded_apks',
+        new TableIndex({
+          name: 'uploaded_apks_owner_created_idx',
+          columnNames: ['ownerUserId', 'createdAt'],
+        }),
+      ],
+      [
+        'uploaded_apks',
+        new TableIndex({
+          name: 'uploaded_apks_sha_owner_idx',
+          columnNames: ['sha256', 'ownerUserId'],
+        }),
+      ],
+      [
+        'automations',
+        new TableIndex({
+          name: 'automations_owner_updated_idx',
+          columnNames: ['ownerUserId', 'updatedAt'],
+        }),
+      ],
+      [
+        'automation_runs',
+        new TableIndex({
+          name: 'automation_runs_owner_automation_created_idx',
+          columnNames: ['ownerUserId', 'automationId', 'createdAt'],
+        }),
+      ],
+      [
+        'automation_runs',
+        new TableIndex({
+          name: 'automation_runs_owner_status_created_idx',
+          columnNames: ['ownerUserId', 'status', 'createdAt'],
+        }),
+      ],
+      [
+        'automation_runs',
+        new TableIndex({
+          name: 'automation_runs_target_status_created_idx',
+          columnNames: ['targetApplicationId', 'status', 'createdAt'],
+        }),
+      ],
+      [
+        'automation_runs',
+        new TableIndex({
+          name: 'automation_runs_active_target_unique',
+          columnNames: ['targetApplicationId'],
+          isUnique: true,
+          where: `status IN ('queued', 'running')`,
+        }),
+      ],
+      [
+        'automation_run_events',
+        new TableIndex({
+          name: 'automation_run_events_run_sequence_unique',
+          columnNames: ['runId', 'sequence'],
+          isUnique: true,
+        }),
+      ],
+      [
+        'automation_triggers',
+        new TableIndex({
+          name: 'automation_triggers_owner_updated_idx',
+          columnNames: ['ownerUserId', 'updatedAt'],
+        }),
+      ],
+      [
+        'automation_triggers',
+        new TableIndex({
+          name: 'automation_triggers_owner_automation_idx',
+          columnNames: ['ownerUserId', 'automationId'],
+        }),
+      ],
+      [
+        'automation_triggers',
+        new TableIndex({
+          name: 'automation_triggers_enabled_type_idx',
+          columnNames: ['enabled', 'triggerType'],
+        }),
+      ],
+    ];
+
+    for (const [table, index] of indexes) {
+      await queryRunner.createIndex(table, index);
+    }
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

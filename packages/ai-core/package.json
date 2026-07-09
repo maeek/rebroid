@@ -16,6 +16,10 @@
     "./observation": {
       "types": "./dist/observation.d.ts",
       "default": "./dist/observation.js"
+    },
+    "./provider-http": {
+      "types": "./dist/provider-http.d.ts",
+      "default": "./dist/provider-http.js"
     }
   },
   "scripts": {

@@ -15,9 +15,10 @@ import { DockerSidecarImageService } from './docker-sidecar-image.service';
 import { DockerSidecarNetworkService } from './docker-sidecar-network.service';
 import { webrtcUdpPortBinding } from '../utils/docker-sidecar.utils';
 import { withHostTimezoneEnv } from '../../utils/docker-container-env.utils';
+import type { DockerSidecarPort } from '../../contracts/docker-sidecar.port';
 
 @Injectable()
-export class DockerSidecarService implements OnModuleInit {
+export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
   private readonly logger = new Logger(DockerSidecarService.name);
   private readonly displaySidecarContainerId?: string;
   private readonly displaySidecarContainerName: string;

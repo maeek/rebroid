@@ -124,7 +124,10 @@ const skipScalingList = (reader: BitReader, size: number) => {
   }
 };
 
-const parseSpsDimensions = (sps: Buffer) => {
+export const parseSpsDimensions = (sps: Buffer) => {
+  if (sps.length < 4) {
+    return null;
+  }
   try {
     const reader = new BitReader(
       removeEmulationPreventionBytes(sps.subarray(1)),
@@ -361,6 +364,9 @@ export class H264Mp4Recorder {
     const sps = this.sps!;
     const pps = this.pps!;
     const dimensions = parseSpsDimensions(sps);
+    if (!dimensions) {
+      throw new Error("Cannot build an H264 track from an invalid SPS");
+    }
     return {
       sps,
       pps,

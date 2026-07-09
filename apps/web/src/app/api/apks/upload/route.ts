@@ -3,6 +3,7 @@ import { recordAuditEvent } from '@/server/audit/events'
 import { orchestratorApkUploadsClient } from '@/server/orchestrator/applications/apk-client'
 import { OrchestratorRequestError } from '@/server/orchestrator/request'
 import { consumeRateLimit } from '@/server/rate-limit/in-memory'
+import { prepareStreamingMultipartUpload } from '@/server/upload-proxy/streaming-upload'
 import { getApkRouteUser } from '../apk-route-auth'
 
 export const runtime = 'nodejs'
@@ -19,16 +20,20 @@ export const POST = async (request: NextRequest) => {
   }
 
   try {
-    const contentLength = Number(request.headers.get('content-length'))
-    if (Number.isFinite(contentLength) && contentLength > maxApkUploadBytes + maxMultipartOverheadBytes) {
-      return NextResponse.json({ message: 'APK upload exceeds the 512 MB limit.' }, { status: 413 })
-    }
-    const contentType = request.headers.get('content-type') ?? ''
-    if (!contentType.startsWith('multipart/form-data') || !request.body) {
-      return NextResponse.json({ message: 'Multipart APK file is required' }, { status: 400 })
-    }
+    const upload = prepareStreamingMultipartUpload(request, {
+      maxBytes: maxApkUploadBytes,
+      multipartOverheadBytes: maxMultipartOverheadBytes,
+      missingMessage: 'Multipart APK file is required',
+      tooLargeMessage: 'APK upload exceeds the 512 MB limit.'
+    })
+    if (!upload.ok) return upload.response
 
-    const uploaded = await orchestratorApkUploadsClient.uploadApk(request.body, user.ownerUserId, contentType)
+    const uploaded = await orchestratorApkUploadsClient.uploadApk(
+      upload.body,
+      user.ownerUserId,
+      upload.contentType,
+      request.signal
+    )
     recordAuditEvent({
       actorUserId: user.ownerUserId,
       actorLabel: user.ownerUserId,

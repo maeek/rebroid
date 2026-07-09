@@ -63,13 +63,19 @@ export const orchestratorPlatformClient = {
     return emptyRequest<ContainerImageBuildContextFile[]>('/platform/container-images/build-context')
   },
 
-  uploadImageBuildContextFile(input: ReadableStream<Uint8Array>, contextPath: string, contentType: string) {
+  uploadImageBuildContextFile(
+    input: ReadableStream<Uint8Array>,
+    contextPath: string,
+    contentType: string,
+    signal?: AbortSignal
+  ) {
     const query = new URLSearchParams({ contextPath })
     return streamRequest<ContainerImageBuildContextFile>(
       `/platform/container-images/build-context?${query.toString()}`,
       'POST',
       input,
-      contentType
+      contentType,
+      { signal }
     )
   },
 

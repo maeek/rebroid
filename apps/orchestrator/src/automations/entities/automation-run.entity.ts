@@ -62,6 +62,9 @@ export class AutomationRun {
   @Column({ type: 'text', nullable: true })
   error!: string | null;
 
+  @Column({ type: 'integer', nullable: false, default: 0 })
+  lastEventSequence!: number;
+
   @CreateDateColumn()
   createdAt!: Date;
 

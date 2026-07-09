@@ -2,9 +2,10 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import type { Readable } from 'node:stream';
 import { DockerEngineService } from '../../docker-engine.service';
 import { managedImageTag } from '../../docker.utils';
+import type { DockerImageRuntimePort } from '../../contracts/docker-image-runtime.port';
 
 @Injectable()
-export class DockerImageRuntimeService {
+export class DockerImageRuntimeService implements DockerImageRuntimePort {
   constructor(private readonly engine: DockerEngineService) {}
 
   async imageExists(image: string) {

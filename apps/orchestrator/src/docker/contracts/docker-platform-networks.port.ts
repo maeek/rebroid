@@ -1,8 +1,11 @@
-import type { DockerPlatformNetworksService } from '../networks/services/docker-platform-networks.service';
+import type { PlatformNetwork, PlatformNetworkDetails } from '../docker.types';
 
 export const DOCKER_PLATFORM_NETWORKS = Symbol('DOCKER_PLATFORM_NETWORKS');
 
-export type DockerPlatformNetworksPort = Pick<
-  DockerPlatformNetworksService,
-  keyof DockerPlatformNetworksService
->;
+export interface DockerPlatformNetworksPort {
+  listPlatformNetworks(): Promise<PlatformNetwork[]>;
+  removePlatformNetwork(
+    networkId: string,
+  ): Promise<{ id: string; removed: boolean }>;
+  getPlatformNetworkDetails(networkId: string): Promise<PlatformNetworkDetails>;
+}

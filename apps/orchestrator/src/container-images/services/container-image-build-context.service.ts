@@ -1,7 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import Busboy from 'busboy';
 import { createHash, randomUUID } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
 import { mkdir, unlink } from 'node:fs/promises';
@@ -11,7 +10,7 @@ import { pipeline } from 'node:stream/promises';
 import { In, Repository } from 'typeorm';
 import {
   type MultipartUploadRequest,
-  assertMultipartUpload,
+  consumeSingleFileUpload,
 } from '../../common/http-upload';
 import { ContainerImageBuildContextFile } from '../entities/container-image-build-context-file.entity';
 import { sanitizeBuildContextPath } from '../utils/container-image-build-paths';
@@ -50,75 +49,26 @@ export class ContainerImageBuildContextService {
   }
 
   consumeUpload(request: MultipartUploadRequest, contextPath: string) {
-    assertMultipartUpload(request);
     const sanitizedPath = sanitizeBuildContextPath(contextPath);
-    const parser = Busboy({
-      headers: request.headers,
-      limits: {
-        files: 1,
-        fileSize: this.maxUploadBytes,
-      },
-    });
-
-    return new Promise<ContainerImageBuildContextFile>((resolve, reject) => {
-      let upload: Promise<ContainerImageBuildContextFile> | null = null;
-      let settled = false;
-
-      const finish = (callback: () => void) => {
-        if (settled) {
-          return;
-        }
-
-        settled = true;
-        callback();
-      };
-
-      const fail = (error: unknown) => {
-        finish(() => {
-          reject(error);
-        });
-      };
-
-      parser.on('file', (fieldName, stream, info) => {
-        let fileLimitExceeded = false;
-        if (fieldName !== 'file' || upload) {
-          stream.resume();
-          return;
-        }
-
-        stream.on('limit', () => {
-          fileLimitExceeded = true;
-          fail(
-            new ConflictException(
-              `Build context file exceeds the ${this.maxUploadBytes / 1024 / 1024} MB limit.`,
-            ),
-          );
-        });
-
-        upload = this.persistUpload(
+    return consumeSingleFileUpload({
+      request,
+      fieldName: 'file',
+      maxBytes: this.maxUploadBytes,
+      missingError: () =>
+        new ConflictException('A build context file is required.'),
+      limitError: () =>
+        new ConflictException(
+          `Build context file exceeds the ${this.maxUploadBytes / 1024 / 1024} MB limit.`,
+        ),
+      canceledError: () =>
+        new ConflictException('Build context upload was cancelled.'),
+      consume: (stream, originalName, limitExceeded) =>
+        this.persistUpload(
           stream,
-          info.filename || 'context-file',
+          originalName || 'context-file',
           sanitizedPath,
-          () => fileLimitExceeded,
-        );
-        upload.catch(fail);
-      });
-
-      parser.on('error', fail);
-      request.on('aborted', () => {
-        fail(new ConflictException('Build context upload was cancelled.'));
-      });
-      request.on('error', fail);
-      parser.on('finish', () => {
-        if (!upload) {
-          fail(new ConflictException('A build context file is required.'));
-          return;
-        }
-
-        upload.then((result) => finish(() => resolve(result)), fail);
-      });
-
-      request.pipe(parser);
+          limitExceeded,
+        ),
     });
   }
 

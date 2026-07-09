@@ -24,7 +24,8 @@ import {
 } from '../../contracts/android-application-status';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
-import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
+import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
+import { AndroidAppsStateWriter } from '../../common/services/android-apps-state-writer.service';
 import { AndroidAppsRuntimeNetworkService } from '../../network/services/android-apps-runtime-network.service';
 import { AndroidAppsProvisioningApkService } from '../../provisioning/services/android-apps-provisioning-apk.service';
 import { AndroidAppsProvisioningService } from '../../provisioning/services/android-apps-provisioning.service';
@@ -51,7 +52,8 @@ export class AndroidAppsStartLifecycleService {
     private readonly tracker: AndroidAppsProvisioningTrackerService,
     private readonly logs: AndroidAppsLogService,
     private readonly runtimeNetwork: AndroidAppsRuntimeNetworkService,
-    private readonly state: AndroidAppsStateService,
+    private readonly queries: AndroidAppsQueryService,
+    private readonly writer: AndroidAppsStateWriter,
     private readonly jobs: AndroidAppLifecycleJobsService,
     private readonly apkInstallLifecycle: AndroidAppsApkInstallLifecycleService,
   ) {}
@@ -59,7 +61,7 @@ export class AndroidAppsStartLifecycleService {
   async startInBackground(id: string) {
     try {
       await this.jobs.markRunning(id, AndroidAppLifecycleJobKind.Start);
-      const app = await this.state.getStored(id);
+      const app = await this.queries.getStored(id);
       this.tracker.ensureActive(app.id);
 
       void this.resources
@@ -73,7 +75,7 @@ export class AndroidAppsStartLifecycleService {
           );
         });
 
-      await this.state.setLifecycle(app.id, {
+      await this.writer.setLifecycle(app.id, {
         lifecycleStage: AndroidApplicationLifecycleStage.ImageChecking,
         statusMessage:
           'Checking whether the container image is available locally.',
@@ -92,7 +94,7 @@ export class AndroidAppsStartLifecycleService {
       const message = getErrorMessage(error);
       await this.jobs.markFailed(id, AndroidAppLifecycleJobKind.Start, message);
       this.logger.error(`Start failed for ${id}: ${message}`);
-      await this.state.setLifecycle(id, {
+      await this.writer.setLifecycle(id, {
         status: AndroidApplicationStatus.Error,
         lifecycleStage: AndroidApplicationLifecycleStage.Error,
         statusMessage: message,
@@ -112,12 +114,12 @@ export class AndroidAppsStartLifecycleService {
 
     if (!(await this.images.imageExists(app.containerImage))) {
       this.tracker.ensureActive(app.id);
-      await this.state.setLifecycle(app.id, {
+      await this.writer.setLifecycle(app.id, {
         lifecycleStage: AndroidApplicationLifecycleStage.ImagePulling,
         statusMessage: `Docker image "${app.containerImage}" is not available locally. Pulling it now.`,
       });
       await this.images.pullImage(app.containerImage, (message) => {
-        void this.state.setLifecycle(app.id, {
+        void this.writer.setLifecycle(app.id, {
           statusMessage: message || `Pulling ${app.containerImage}.`,
         });
         void this.logs
@@ -135,7 +137,7 @@ export class AndroidAppsStartLifecycleService {
     this.tracker.ensureActive(app.id);
 
     if (!app.containerId) {
-      await this.state.setLifecycle(app.id, {
+      await this.writer.setLifecycle(app.id, {
         lifecycleStage: AndroidApplicationLifecycleStage.ContainerCreating,
         statusMessage: `Creating application container ${app.containerName}.`,
       });
@@ -162,14 +164,14 @@ export class AndroidAppsStartLifecycleService {
         });
       app.containerId = container.id;
       app.recreateContainerOnNextStart = false;
-      await this.state.save(app);
+      await this.writer.save(app);
       await this.logs.append(app.id, 'Container created for start', {
         containerId: container.id,
         containerName: app.containerName,
         image: app.containerImage,
       });
     } else {
-      await this.state.setLifecycle(app.id, {
+      await this.writer.setLifecycle(app.id, {
         lifecycleStage: AndroidApplicationLifecycleStage.ContainerStarting,
         statusMessage: 'Starting application container.',
       });
@@ -177,7 +179,7 @@ export class AndroidAppsStartLifecycleService {
     }
     this.tracker.ensureActive(app.id);
 
-    await this.state.setLifecycle(app.id, {
+    await this.writer.setLifecycle(app.id, {
       lifecycleStage: AndroidApplicationLifecycleStage.ContainerStarting,
       statusMessage: 'Starting application container.',
     });
@@ -225,6 +227,6 @@ export class AndroidAppsStartLifecycleService {
     await this.logs.append(app.id, 'Application marked running', {
       containerId: app.containerId,
     });
-    await this.state.save(app);
+    await this.writer.save(app);
   }
 }

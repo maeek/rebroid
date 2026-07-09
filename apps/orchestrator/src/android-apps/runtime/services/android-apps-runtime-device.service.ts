@@ -1,6 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { AndroidApplicationStatus } from '../../contracts/android-application-status';
-import { AndroidAppsStateService } from '../../common/services/android-apps-state.service';
+import { AndroidAppsRuntimeStateReconciler } from '../../common/services/android-apps-runtime-state-reconciler.service';
 import { AndroidAppsDisplaySidecarService } from '../../viewer/services/android-apps-display-sidecar.service';
 import { AndroidAppsSidecarAdbService } from '../../viewer/services/android-apps-sidecar-adb.service';
 
@@ -9,7 +9,7 @@ export class AndroidAppsRuntimeDeviceService {
   constructor(
     private readonly displaySidecar: AndroidAppsDisplaySidecarService,
     private readonly sidecarAdb: AndroidAppsSidecarAdbService,
-    private readonly state: AndroidAppsStateService,
+    private readonly reconciler: AndroidAppsRuntimeStateReconciler,
   ) {}
 
   async getClipboard(id: string) {
@@ -46,7 +46,7 @@ export class AndroidAppsRuntimeDeviceService {
   }
 
   private async getRunningRuntimeApp(id: string) {
-    const app = await this.state.get(id);
+    const app = await this.reconciler.reconcileById(id);
     if (!app.containerId || app.status !== AndroidApplicationStatus.Running) {
       throw new ConflictException(
         'Application must be running before using viewer runtime tools.',

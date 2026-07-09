@@ -16,6 +16,12 @@ import { InitializeSqliteSchema1800000000000 } from './migrations/1800000000000-
         return {
           type: 'better-sqlite3',
           database,
+          prepareDatabase: (connection) => {
+            connection.pragma('journal_mode = WAL');
+            connection.pragma('synchronous = NORMAL');
+            connection.pragma('foreign_keys = ON');
+            connection.pragma('busy_timeout = 5000');
+          },
           autoLoadEntities: true,
           migrations: [InitializeSqliteSchema1800000000000],
           migrationsRun: true,

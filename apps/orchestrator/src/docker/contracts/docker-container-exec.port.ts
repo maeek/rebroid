@@ -1,8 +1,16 @@
-import type { DockerContainerExecService } from '../containers/services/docker-container-exec.service';
+import type { ContainerCommandResult } from '../docker.types';
 
 export const DOCKER_CONTAINER_EXEC = Symbol('DOCKER_CONTAINER_EXEC');
 
-export type DockerContainerExecPort = Pick<
-  DockerContainerExecService,
-  keyof DockerContainerExecService
->;
+export interface DockerContainerExecPort {
+  execInContainer(
+    containerId: string,
+    command: string[],
+    options?: { timeoutMs?: number },
+  ): Promise<void>;
+  execInContainerWithOutput(
+    containerId: string,
+    command: string[],
+    options?: { timeoutMs?: number },
+  ): Promise<ContainerCommandResult>;
+}

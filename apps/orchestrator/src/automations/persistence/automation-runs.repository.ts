@@ -21,6 +21,42 @@ export class AutomationRunsRepository {
     return this.runs.save(run);
   }
 
+  findById(id: string) {
+    return this.runs.findOneBy({ id });
+  }
+
+  async transition(
+    id: string,
+    expectedStatuses: AutomationRunStatus[],
+    patch: Partial<AutomationRun>,
+  ) {
+    const result = await this.runs.update(
+      { id, status: In(expectedStatuses) },
+      patch,
+    );
+    if (!result.affected) {
+      return null;
+    }
+    return this.runs.findOneBy({ id });
+  }
+
+  listAllActive() {
+    return this.runs.find({
+      where: [
+        { status: AutomationRunStatus.Queued },
+        { status: AutomationRunStatus.Running },
+      ],
+      order: { createdAt: 'ASC' },
+    });
+  }
+
+  updateProgress(id: string, stepResultsJson: string, error: string | null) {
+    return this.runs.update(
+      { id, status: AutomationRunStatus.Running },
+      { stepResultsJson, error },
+    );
+  }
+
   listForAutomation(ownerUserId: string, automationId: string, limit = 50) {
     return this.runs.find({
       where: { ownerUserId, automationId },

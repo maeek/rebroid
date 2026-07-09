@@ -15,21 +15,12 @@ import {
 import { DockerImageRuntimeService } from './docker-image-runtime.service';
 import { DockerImageRuntimeMetadataService } from './docker-image-runtime-metadata.service';
 import type {
-  RuntimeImageGmsMode,
-  RuntimeImageKind,
-  RuntimeImageSignatureSpoofing,
-} from '@rebroid/application-core/redroid-runtime';
-
-export interface UpdatePlatformImageRuntimeMetadataInput {
-  runtimeKind?: RuntimeImageKind;
-  androidVersion?: string | null;
-  architecture?: string | null;
-  gmsMode?: RuntimeImageGmsMode;
-  signatureSpoofing?: RuntimeImageSignatureSpoofing;
-}
+  DockerPlatformImagesPort,
+  UpdatePlatformImageRuntimeMetadataInput,
+} from '../../contracts/docker-platform-images.port';
 
 @Injectable()
-export class DockerPlatformImagesService {
+export class DockerPlatformImagesService implements DockerPlatformImagesPort {
   constructor(
     private readonly engine: DockerEngineService,
     private readonly images: DockerImageRuntimeService,
@@ -37,6 +28,10 @@ export class DockerPlatformImagesService {
   ) {}
 
   async listPlatformImages(): Promise<PlatformImage[]> {
+    return (await this.loadInventory()).images;
+  }
+
+  private async loadInventory() {
     const [images, containers] = await Promise.all([
       this.engine.read(
         () => this.engine.docker.listImages({ all: true }),
@@ -54,30 +49,29 @@ export class DockerPlatformImagesService {
         )
         .map((container) => container.ImageID),
     );
-    return this.metadata.enrichPlatformImages(
-      images.map((image) =>
-        platformImageFromSummary(image, managedImageIds.has(image.Id)),
+    return {
+      images: await this.metadata.enrichPlatformImages(
+        images.map((image) =>
+          platformImageFromSummary(image, managedImageIds.has(image.Id)),
+        ),
       ),
-    );
+      containers: containers.map((item) => platformContainerFromInfo(item)),
+    };
   }
 
   async getPlatformImageDetails(
     imageId: string,
   ): Promise<PlatformImageDetails> {
     const image = this.engine.docker.getImage(imageId);
-    const inspect = await this.engine.read(
-      () => image.inspect(),
-      `Inspect platform image ${imageId}`,
-    );
-    const [images, containers] = await Promise.all([
-      this.listPlatformImages(),
-      this.engine
-        .read(
-          () => this.engine.docker.listContainers({ all: true }),
-          'List containers for platform image details',
-        )
-        .then((items) => items.map((item) => platformContainerFromInfo(item))),
+    const [inspect, inventory] = await Promise.all([
+      this.engine.read(
+        () => image.inspect(),
+        `Inspect platform image ${imageId}`,
+      ),
+      this.loadInventory(),
     ]);
+    const images = inventory.images;
+    const containers = inventory.containers;
     const listItem =
       images.find(
         (item) =>

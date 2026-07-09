@@ -10,9 +10,10 @@ import {
   calculateContainerMemoryUsageBytes,
   calculateContainerNetworkUsageBytes,
 } from '../../utils/docker-runtime.utils';
+import type { DockerResourceRuntimePort } from '../../contracts/docker-resource-runtime.port';
 
 @Injectable()
-export class DockerResourceRuntimeService {
+export class DockerResourceRuntimeService implements DockerResourceRuntimePort {
   constructor(private readonly engine: DockerEngineService) {}
 
   get hasPendingDockerWork() {

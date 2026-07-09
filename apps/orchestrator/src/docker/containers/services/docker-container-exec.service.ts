@@ -6,9 +6,10 @@ import {
   ContainerCommandResult,
 } from '../../docker.types';
 import { formatContainerCommandFailureMessage } from '../../utils/docker-engine.utils';
+import type { DockerContainerExecPort } from '../../contracts/docker-container-exec.port';
 
 @Injectable()
-export class DockerContainerExecService {
+export class DockerContainerExecService implements DockerContainerExecPort {
   constructor(private readonly engine: DockerEngineService) {}
 
   async execInContainer(

@@ -1,7 +1,10 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import { AndroidApplicationStatus } from '../../android-apps/contracts/android-application-status';
 import { ApplicationProfileMode } from '../../android-apps/contracts/application-profile-mode';
-import { AndroidAppsFacadeService } from '../../android-apps/common/services/android-apps-facade.service';
+import {
+  ANDROID_APPS_AUTOMATION,
+  type AndroidAppsAutomationPort,
+} from '../../android-apps/contracts/android-apps-automation.port';
 import {
   AutomationRunStartPolicy,
   AutomationRunTargetOptions,
@@ -9,7 +12,10 @@ import {
 
 @Injectable()
 export class AutomationRunnerTargetService {
-  constructor(private readonly apps: AndroidAppsFacadeService) {}
+  constructor(
+    @Inject(ANDROID_APPS_AUTOMATION)
+    private readonly apps: AndroidAppsAutomationPort,
+  ) {}
 
   async prepareTarget(
     targetApplicationId: string,

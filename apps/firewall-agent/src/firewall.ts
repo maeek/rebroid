@@ -20,25 +20,37 @@ export interface FirewallAdapter {
   reconcile(policies: Map<string, FirewallPolicy>): void;
 }
 
-const run = (
-  binary: string,
-  args: string[],
-  options: { ignoreFailure?: boolean; input?: string } = {},
-) => {
-  try {
-    return {
-      ok: true,
-      output: execFileSync(binary, args, {
-        encoding: "utf8",
-        input: options.input,
-        stdio: ["pipe", "pipe", "pipe"],
-      }),
-    };
-  } catch (error) {
-    if (options.ignoreFailure) return { ok: false, output: "" };
-    throw error;
+export interface FirewallCommandRunner {
+  run(
+    binary: string,
+    args: string[],
+    options?: { ignoreFailure?: boolean; input?: string },
+  ): { ok: boolean; output: string };
+}
+
+export class ExecFileFirewallCommandRunner implements FirewallCommandRunner {
+  run(
+    binary: string,
+    args: string[],
+    options: { ignoreFailure?: boolean; input?: string } = {},
+  ) {
+    try {
+      return {
+        ok: true,
+        output: execFileSync(binary, args, {
+          encoding: "utf8",
+          input: options.input,
+          stdio: ["pipe", "pipe", "pipe"],
+        }),
+      };
+    } catch (error) {
+      if (options.ignoreFailure) return { ok: false, output: "" };
+      throw error;
+    }
   }
-};
+}
+
+const defaultCommandRunner = new ExecFileFirewallCommandRunner();
 
 export const chainName = firewallChainName;
 export { validatePolicies, validatePolicy, type FirewallPolicy };
@@ -46,19 +58,22 @@ export { validatePolicies, validatePolicy, type FirewallPolicy };
 export class IptablesAdapter implements FirewallAdapter {
   readonly name: string;
 
-  constructor(private readonly anchor: "DOCKER-USER" | "FORWARD") {
+  constructor(
+    private readonly anchor: "DOCKER-USER" | "FORWARD",
+    private readonly runner: FirewallCommandRunner = defaultCommandRunner,
+  ) {
     this.name =
       anchor === "DOCKER-USER" ? "docker-iptables" : "podman-iptables";
   }
 
   initialize() {
-    run("iptables", ["-N", ROOT_CHAIN], { ignoreFailure: true });
+    this.runner.run("iptables", ["-N", ROOT_CHAIN], { ignoreFailure: true });
     if (
-      !run("iptables", ["-C", this.anchor, "-j", ROOT_CHAIN], {
+      !this.runner.run("iptables", ["-C", this.anchor, "-j", ROOT_CHAIN], {
         ignoreFailure: true,
       }).ok
     ) {
-      run("iptables", ["-I", this.anchor, "1", "-j", ROOT_CHAIN]);
+      this.runner.run("iptables", ["-I", this.anchor, "1", "-j", ROOT_CHAIN]);
     }
   }
 
@@ -67,12 +82,19 @@ export class IptablesAdapter implements FirewallAdapter {
     const chain = chainName(policy.applicationId);
     const nextChain = `${chain}${NEXT_SUFFIX}`;
     this.removeChain(nextChain);
-    run("iptables", ["-N", nextChain]);
+    this.runner.run("iptables", ["-N", nextChain]);
     for (const cidr of policy.allowCidrs) {
-      run("iptables", ["-A", nextChain, "-d", cidr, "-j", "ACCEPT"]);
+      this.runner.run("iptables", [
+        "-A",
+        nextChain,
+        "-d",
+        cidr,
+        "-j",
+        "ACCEPT",
+      ]);
     }
-    run("iptables", ["-A", nextChain, "-j", "REJECT"]);
-    run("iptables", [
+    this.runner.run("iptables", ["-A", nextChain, "-j", "REJECT"]);
+    this.runner.run("iptables", [
       "-A",
       ROOT_CHAIN,
       "-s",
@@ -82,7 +104,7 @@ export class IptablesAdapter implements FirewallAdapter {
     ]);
     this.removeJump(chain);
     this.removeChain(chain);
-    run("iptables", ["-E", nextChain, chain]);
+    this.runner.run("iptables", ["-E", nextChain, chain]);
   }
 
   remove(applicationId: string) {
@@ -98,14 +120,14 @@ export class IptablesAdapter implements FirewallAdapter {
     const nextRoot = `${ROOT_CHAIN}${NEXT_SUFFIX}`;
     this.removeAnchorJump(nextRoot);
     this.removeChain(nextRoot);
-    run("iptables", ["-N", nextRoot]);
+    this.runner.run("iptables", ["-N", nextRoot]);
     const replacements: Array<{ chain: string; nextChain: string }> = [];
     for (const policy of policies.values()) {
       if (!policy.enabled) continue;
       const chain = chainName(policy.applicationId);
       const nextChain = this.createNextPolicyChain(chain, policy.allowCidrs);
       replacements.push({ chain, nextChain });
-      run("iptables", [
+      this.runner.run("iptables", [
         "-A",
         nextRoot,
         "-s",
@@ -114,13 +136,13 @@ export class IptablesAdapter implements FirewallAdapter {
         nextChain,
       ]);
     }
-    run("iptables", ["-I", this.anchor, "1", "-j", nextRoot]);
+    this.runner.run("iptables", ["-I", this.anchor, "1", "-j", nextRoot]);
     this.removeAnchorJump(ROOT_CHAIN);
     this.removeChain(ROOT_CHAIN);
-    run("iptables", ["-E", nextRoot, ROOT_CHAIN]);
+    this.runner.run("iptables", ["-E", nextRoot, ROOT_CHAIN]);
     for (const { chain, nextChain } of replacements) {
       this.removeChain(chain);
-      run("iptables", ["-E", nextChain, chain]);
+      this.runner.run("iptables", ["-E", nextChain, chain]);
     }
     this.removeStaleOwnedChains(
       new Set(replacements.map(({ chain }) => chain)),
@@ -130,33 +152,41 @@ export class IptablesAdapter implements FirewallAdapter {
   private createNextPolicyChain(chain: string, cidrs: string[]) {
     const nextChain = `${chain}${NEXT_SUFFIX}`;
     this.removeChain(nextChain);
-    run("iptables", ["-N", nextChain]);
+    this.runner.run("iptables", ["-N", nextChain]);
     for (const cidr of cidrs) {
-      run("iptables", ["-A", nextChain, "-d", cidr, "-j", "ACCEPT"]);
+      this.runner.run("iptables", [
+        "-A",
+        nextChain,
+        "-d",
+        cidr,
+        "-j",
+        "ACCEPT",
+      ]);
     }
-    run("iptables", ["-A", nextChain, "-j", "REJECT"]);
+    this.runner.run("iptables", ["-A", nextChain, "-j", "REJECT"]);
     return nextChain;
   }
 
   private removeAnchorJump(chain: string) {
     while (
-      run("iptables", ["-C", this.anchor, "-j", chain], {
+      this.runner.run("iptables", ["-C", this.anchor, "-j", chain], {
         ignoreFailure: true,
       }).ok
     ) {
-      run("iptables", ["-D", this.anchor, "-j", chain], {
+      this.runner.run("iptables", ["-D", this.anchor, "-j", chain], {
         ignoreFailure: true,
       });
     }
   }
 
   private removeChain(chain: string) {
-    run("iptables", ["-F", chain], { ignoreFailure: true });
-    run("iptables", ["-X", chain], { ignoreFailure: true });
+    this.runner.run("iptables", ["-F", chain], { ignoreFailure: true });
+    this.runner.run("iptables", ["-X", chain], { ignoreFailure: true });
   }
 
   private removeStaleOwnedChains(activeChains: Set<string>) {
-    const chains = run("iptables", ["-S"], { ignoreFailure: true })
+    const chains = this.runner
+      .run("iptables", ["-S"], { ignoreFailure: true })
       .output.split("\n")
       .filter(
         (rule) =>
@@ -172,19 +202,27 @@ export class IptablesAdapter implements FirewallAdapter {
   }
 
   private removeJump(chain: string) {
-    const rules = run("iptables", ["-S", ROOT_CHAIN], {
-      ignoreFailure: true,
-    }).output.split("\n");
+    const rules = this.runner
+      .run("iptables", ["-S", ROOT_CHAIN], {
+        ignoreFailure: true,
+      })
+      .output.split("\n");
     for (const rule of rules) {
       if (!rule.endsWith(`-j ${chain}`)) continue;
       const args = rule.replace(`-A ${ROOT_CHAIN} `, "").trim().split(/\s+/);
-      run("iptables", ["-D", ROOT_CHAIN, ...args], { ignoreFailure: true });
+      this.runner.run("iptables", ["-D", ROOT_CHAIN, ...args], {
+        ignoreFailure: true,
+      });
     }
   }
 }
 
 export class NftablesAdapter implements FirewallAdapter {
   readonly name = "nftables";
+
+  constructor(
+    private readonly runner: FirewallCommandRunner = defaultCommandRunner,
+  ) {}
 
   initialize() {}
 
@@ -212,27 +250,35 @@ export class NftablesAdapter implements FirewallAdapter {
       lines.push(`  ip saddr ${policy.containerIp} reject`);
     }
     lines.push(" }", "}");
-    const exists = run("nft", ["list", "table", "inet", NFT_TABLE], {
-      ignoreFailure: true,
-    }).ok;
-    run("nft", ["-f", "-"], {
+    const exists = this.runner.run(
+      "nft",
+      ["list", "table", "inet", NFT_TABLE],
+      {
+        ignoreFailure: true,
+      },
+    ).ok;
+    this.runner.run("nft", ["-f", "-"], {
       input: `${exists ? `delete table inet ${NFT_TABLE}\n` : ""}${lines.join("\n")}\n`,
     });
   }
 }
 
-export const detectAdapter = (requested = "auto"): FirewallAdapter => {
+export const detectAdapter = (
+  requested = "auto",
+  runner: FirewallCommandRunner = defaultCommandRunner,
+): FirewallAdapter => {
   if (requested === "docker-iptables")
-    return new IptablesAdapter("DOCKER-USER");
-  if (requested === "podman-iptables") return new IptablesAdapter("FORWARD");
-  if (requested === "nftables") return new NftablesAdapter();
+    return new IptablesAdapter("DOCKER-USER", runner);
+  if (requested === "podman-iptables")
+    return new IptablesAdapter("FORWARD", runner);
+  if (requested === "nftables") return new NftablesAdapter(runner);
   if (requested !== "auto")
     throw new Error(`Unsupported firewall adapter: ${requested}`);
-  if (run("iptables", ["-S", "DOCKER-USER"], { ignoreFailure: true }).ok)
-    return new IptablesAdapter("DOCKER-USER");
-  if (run("nft", ["list", "tables"], { ignoreFailure: true }).ok)
-    return new NftablesAdapter();
-  if (run("iptables", ["-S", "FORWARD"], { ignoreFailure: true }).ok)
-    return new IptablesAdapter("FORWARD");
+  if (runner.run("iptables", ["-S", "DOCKER-USER"], { ignoreFailure: true }).ok)
+    return new IptablesAdapter("DOCKER-USER", runner);
+  if (runner.run("nft", ["list", "tables"], { ignoreFailure: true }).ok)
+    return new NftablesAdapter(runner);
+  if (runner.run("iptables", ["-S", "FORWARD"], { ignoreFailure: true }).ok)
+    return new IptablesAdapter("FORWARD", runner);
   throw new Error("No supported host firewall backend was detected.");
 };

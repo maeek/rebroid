@@ -6,9 +6,10 @@ import type { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import tar from 'tar-stream';
 import { DockerEngineService } from '../../docker-engine.service';
+import type { DockerContainerArchivePort } from '../../contracts/docker-container-archive.port';
 
 @Injectable()
-export class DockerContainerArchiveService {
+export class DockerContainerArchiveService implements DockerContainerArchivePort {
   constructor(private readonly engine: DockerEngineService) {}
 
   async copyFileToContainer(
