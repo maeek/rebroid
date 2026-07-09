@@ -1,5 +1,5 @@
 import { formatDateLocale } from '@/lib/format'
-import { formatBytes } from './runtime-tools-panel.utils'
+import { formatBytes } from '../runtime-tools-panel.utils'
 import type { ApplicationRuntimeFile } from '@/server/orchestrator/applications/types'
 
 export type BrowserView = 'list' | 'tiles'

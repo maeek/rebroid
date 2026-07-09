@@ -12,7 +12,7 @@ import {
   viewerStreamingPresets
 } from '@/features/applications/viewer/settings/viewer-settings'
 import { ViewerStreamingSliderFields } from '@/shared/ui/settings/viewer-streaming-slider-fields'
-import { ToolSection } from './tool-section'
+import { ToolSection } from '../tool-section'
 import type { DisplayViewerStreamMetrics } from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { ViewerSettings, ViewerStreamingPreset } from '@/features/applications/viewer/settings/viewer-settings'
 

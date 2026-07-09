@@ -11,8 +11,8 @@ import {
   setApplicationClipboardAction
 } from '@/server/orchestrator/applications/actions/runtime/clipboard-actions'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
-import { runtimeActionErrorToast } from './runtime-tools-panel.utils'
-import { ToolSection } from './tool-section'
+import { runtimeActionErrorToast } from '../runtime-tools-panel.utils'
+import { ToolSection } from '../tool-section'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
 export const ClipboardToolsSection = ({

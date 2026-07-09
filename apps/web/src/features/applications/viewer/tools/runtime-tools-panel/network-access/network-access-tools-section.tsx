@@ -9,7 +9,7 @@ import { NetworkAccessInput } from '@/features/applications/viewer/app-info/netw
 import { toast } from '@/hooks/use-toast'
 import { updateNetworkPolicyAction } from '@/server/orchestrator/applications/actions/configuration/network-policy-actions'
 import { hasPermission } from '@/shared/permissions/permissions'
-import { ToolSection } from './tool-section'
+import { ToolSection } from '../tool-section'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { PermissionMap } from '@/shared/permissions/permissions'
 

@@ -1,10 +1,5 @@
 import { AiAssistantBlock, AiAssistantMarkdownText, AiAssistantText, AiUserMessage } from '@/shared/ui/ai/ai-message'
 import { buildTimelineItems } from './ai-agent-chat-event-utils'
-import { ChatEventView } from './ai-agent-chat-event-views/chat-event-view'
-import { ChatStatusBadge } from './ai-agent-chat-event-views/chat-status-badge'
-import { PerceptionEventView } from './ai-agent-chat-event-views/perception-event-view'
-import { ToolEventView } from './ai-agent-chat-event-views/tool-event-view'
-import { WorkingIndicator } from './ai-agent-chat-event-views/working-indicator'
 import {
   chatTurnHasFinalResponse,
   chatTurnIsWorking,
@@ -13,6 +8,11 @@ import {
   visibleChatTurnEvents
 } from './ai-agent-chat-turn-model'
 import { ChatTurnSaveWorkflowAction } from './ai-agent-chat-turn-save-action'
+import { ChatEventView } from './chat-event-views/chat-event-view'
+import { ChatStatusBadge } from './chat-event-views/chat-status-badge'
+import { PerceptionEventView } from './chat-event-views/perception-event-view'
+import { ToolEventView } from './chat-event-views/tool-event-view'
+import { WorkingIndicator } from './chat-event-views/working-indicator'
 import type { ChatTurn } from './ai-agent-chat-utils'
 
 export const ChatTurnView = ({

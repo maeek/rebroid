@@ -1,11 +1,11 @@
 'use client'
 
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
+import { ToolSection } from '../tool-section'
 import { RuntimeFileDropzone } from './runtime-file-dropzone'
 import { RuntimeFileList } from './runtime-file-list'
 import { RuntimeFileTiles } from './runtime-file-tiles'
 import { RuntimeFileToolbar } from './runtime-file-toolbar'
-import { ToolSection } from './tool-section'
 import { useRuntimeFileBrowser } from './use-runtime-file-browser'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
