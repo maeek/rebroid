@@ -18,6 +18,22 @@ import {
 
 @Injectable()
 export class ApkManifestReaderService {
+  readStrings(manifest: Buffer) {
+    let offset = readChunkHeaderSize(manifest, 0);
+    while (offset + 8 <= manifest.length) {
+      const type = manifest.readUInt16LE(offset);
+      const size = manifest.readUInt32LE(offset + 4);
+      if (size < 8 || offset + size > manifest.length) {
+        break;
+      }
+      if (type === resStringPoolType) {
+        return readBinaryXmlStringPool(manifest, offset).strings;
+      }
+      offset += size;
+    }
+    return [];
+  }
+
   readIconReferences(manifest: Buffer) {
     const result: {
       iconResourceId?: number;

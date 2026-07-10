@@ -28,6 +28,7 @@ import {
   isCreateAppSubmitDisabled
 } from './create-app-form-model'
 import { AppFormGeneralSection } from './create-app-general-section'
+import { CreateAppGooglePlayGuidance } from './create-app-google-play-guidance'
 import { AppFormIconSection } from './create-app-icon-section'
 import { CreateAppNetworkAccessSection } from './create-app-network-access-section'
 import { AppFormResourcesSection } from './create-app-resources-section'
@@ -41,21 +42,29 @@ export const CreateAppForm = ({
   images,
   initialContainerImage,
   initialSettings,
-  permissions
+  permissions,
+  initialUploadedApk,
+  canBuildImages
 }: {
   images: PlatformImage[]
   initialContainerImage?: string
   initialSettings: OrchestratorUiSettings
   permissions: PermissionMap
+  initialUploadedApk?: UploadedApk | null
+  canBuildImages: boolean
 }) => {
   const topLoader = useTopLoader()
   const createFormId = useId()
   const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
-  const [formValues, setFormValues] = useState<CreateAppFormValues>(() => ({
-    ...getInitialCreateAppFormValues(settings),
-    containerImage: initialContainerImage?.trim() || settings.defaultContainerImage
-  }))
-  const [uploadedApk, setUploadedApk] = useState<UploadedApk | null>(null)
+  const [formValues, setFormValues] = useState<CreateAppFormValues>(() => {
+    const initial = getInitialCreateAppFormValues(settings)
+    return {
+      ...initial,
+      name: initialUploadedApk ? appNameFromApk(initialUploadedApk.originalName, initialUploadedApk) : initial.name,
+      containerImage: initialContainerImage?.trim() || settings.defaultContainerImage
+    }
+  })
+  const [uploadedApk, setUploadedApk] = useState<UploadedApk | null>(initialUploadedApk ?? null)
   const [isUploadingApk, setIsUploadingApk] = useState(false)
   const [manualIconPreview, setManualIconPreview] = useState<string | null>(null)
   const [autoExtractIcon, setAutoExtractIcon] = useState(true)
@@ -74,6 +83,8 @@ export const CreateAppForm = ({
   const showDeviceSection = canChangeBaseImage || canChangeContainerArgs
   const showSessionSection = canChangeSessionLimit
   const showResourcesSection = canChangeResources
+  const showRuntimeSection = showDeviceSection || Boolean(uploadedApk)
+  const showAdvancedSection = showSessionSection || showResourcesSection
   const resourceLimits = useResourceLimitBounds(showResourcesSection)
   const customDisplayConfig =
     formValues.redroidDisplayProfileId === 'custom' ? getCustomDisplayConfig(formValues) : undefined
@@ -242,11 +253,14 @@ export const CreateAppForm = ({
       </Visible>
       <form
         id={createFormId}
-        className='flex w-full flex-col gap-10 pt-2 pb-24'
+        className='flex w-full flex-col pt-2 pb-24'
         onSubmit={event => void handleSubmit(event)}
       >
-        <div className='flex items-center justify-between gap-4 flex-wrap'>
-          <h2 className='font-bold my-4'>General</h2>
+        <div className='flex flex-wrap items-center justify-between gap-4 border-b border-border/60 pb-6'>
+          <div>
+            <h2 className='font-semibold'>General</h2>
+            <p className='mt-1 text-sm text-muted-foreground'>Choose the app identity, APK, and runtime.</p>
+          </div>
           <Button
             form={createFormId}
             type='submit'
@@ -258,64 +272,98 @@ export const CreateAppForm = ({
             {isCreating ? 'Creating...' : 'Create'}
           </Button>
         </div>
-        <AppFormGeneralSection
-          values={formValues}
-          onChange={updateFormValues}
-          uploadedApk={uploadedApk}
-          isUploadingApk={isUploadingApk}
-          onApkSelect={file => void handleApkSelect(file)}
-          iconSlot={
-            <AppFormIconSection
-              appName={trimmedName}
-              iconPreview={iconPreview}
-              autoExtractIcon={autoExtractIcon}
-              hasExtractedIcon={Boolean(extractedIcon)}
-              boxed={false}
-              showDescription={false}
-              onIconChange={event => void handleIconChange(event)}
-              onClearIcon={handleClearIcon}
-              onAutoExtractIconChange={setAutoExtractIcon}
-            />
-          }
-        />
+
+        <div className='py-8'>
+          <AppFormGeneralSection
+            values={formValues}
+            onChange={updateFormValues}
+            uploadedApk={uploadedApk}
+            isUploadingApk={isUploadingApk}
+            onApkSelect={file => void handleApkSelect(file)}
+            iconSlot={
+              <AppFormIconSection
+                appName={trimmedName}
+                iconPreview={iconPreview}
+                autoExtractIcon={autoExtractIcon}
+                hasExtractedIcon={Boolean(extractedIcon)}
+                boxed={false}
+                showDescription={false}
+                onIconChange={event => void handleIconChange(event)}
+                onClearIcon={handleClearIcon}
+                onAutoExtractIconChange={setAutoExtractIcon}
+              />
+            }
+          />
+        </div>
+
+        <Visible when={showRuntimeSection}>
+          <div className='border-t border-border/60 py-8'>
+            <Visible when={showDeviceSection}>
+              <CreateAppDeviceSection
+                images={images}
+                values={formValues}
+                onChange={updateFormValues}
+                canChangeBaseImage={canChangeBaseImage}
+                canChangeContainerArgs={canChangeContainerArgs}
+                isRedroidRuntime={isRedroidRuntime}
+              />
+            </Visible>
+            {uploadedApk ? (
+              <div className={showDeviceSection ? 'mt-6' : undefined}>
+                <CreateAppGooglePlayGuidance
+                  uploadedApk={uploadedApk}
+                  images={images}
+                  selectedImage={formValues.containerImage}
+                  canChangeImage={canChangeBaseImage}
+                  canBuildImages={canBuildImages}
+                  onUseImage={image => updateFormValues({ containerImage: image })}
+                />
+              </div>
+            ) : null}
+          </div>
+        </Visible>
+
         <Visible when={isRedroidRuntime && canChangeContainerArgs}>
-          <CreateAppDisplaySection
-            values={formValues}
-            onChange={updateFormValues}
-          />
+          <div className='border-t border-border/60 py-8'>
+            <CreateAppDisplaySection
+              values={formValues}
+              onChange={updateFormValues}
+            />
+          </div>
         </Visible>
+
         <Visible when={canConfigureEgress}>
-          <CreateAppNetworkAccessSection
-            values={formValues}
-            canUseInternet={canUseInternet}
-            onChange={updateFormValues}
-          />
+          <div className='border-t border-border/60 py-8'>
+            <CreateAppNetworkAccessSection
+              values={formValues}
+              canUseInternet={canUseInternet}
+              onChange={updateFormValues}
+            />
+          </div>
         </Visible>
-        <Visible when={showDeviceSection || showSessionSection || showResourcesSection}>
-          <h2 className='font-bold my-4'>Advanced</h2>
-        </Visible>
-        <Visible when={showDeviceSection}>
-          <CreateAppDeviceSection
-            images={images}
-            values={formValues}
-            onChange={updateFormValues}
-            canChangeBaseImage={canChangeBaseImage}
-            canChangeContainerArgs={canChangeContainerArgs}
-            isRedroidRuntime={isRedroidRuntime}
-          />
-        </Visible>
-        <Visible when={showSessionSection}>
-          <AppFormSessionSection
-            values={formValues}
-            onChange={updateFormValues}
-          />
-        </Visible>
-        <Visible when={showResourcesSection}>
-          <AppFormResourcesSection
-            values={formValues}
-            resourceLimits={resourceLimits}
-            onChange={updateFormValues}
-          />
+
+        <Visible when={showAdvancedSection}>
+          <div className='border-t border-border/60 py-8'>
+            <div className='mb-8'>
+              <h2 className='font-semibold'>Advanced</h2>
+              <p className='mt-1 text-sm text-muted-foreground'>Optional lifecycle and resource limits.</p>
+            </div>
+            <Visible when={showSessionSection}>
+              <AppFormSessionSection
+                values={formValues}
+                onChange={updateFormValues}
+              />
+            </Visible>
+            <Visible when={showResourcesSection}>
+              <div className={showSessionSection ? 'mt-8 border-t border-border/60 pt-8' : undefined}>
+                <AppFormResourcesSection
+                  values={formValues}
+                  resourceLimits={resourceLimits}
+                  onChange={updateFormValues}
+                />
+              </div>
+            </Visible>
+          </div>
         </Visible>
       </form>
     </>

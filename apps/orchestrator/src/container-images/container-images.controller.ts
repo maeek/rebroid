@@ -39,6 +39,12 @@ import { ContainerImageBuildRecipe } from './entities/container-image-build-reci
 import { ContainerImageBuilderService } from './services/container-image-builder.service';
 import { ContainerImageBuildContextService } from './services/container-image-build-context.service';
 import { ContainerImageRecipeService } from './services/container-image-recipe.service';
+import {
+  GappsBuildPresetsResponseDto,
+  StartGappsBuildDto,
+} from './dto/gapps-build.dto';
+import { ContainerImageGappsBuilderService } from './services/container-image-gapps-builder.service';
+import { ContainerImageGappsPresetService } from './services/container-image-gapps-preset.service';
 import { resolveContainerImage } from '@rebroid/application-core/container-image';
 
 @ApiTags('platform-container-images')
@@ -51,6 +57,8 @@ export class ContainerImagesController {
     private readonly recipes: ContainerImageRecipeService,
     private readonly buildContext: ContainerImageBuildContextService,
     private readonly builder: ContainerImageBuilderService,
+    private readonly gappsBuilder: ContainerImageGappsBuilderService,
+    private readonly gappsPresets: ContainerImageGappsPresetService,
   ) {}
 
   @Get()
@@ -160,6 +168,27 @@ export class ContainerImagesController {
     return this.builder.listJobs();
   }
 
+  @Get('gapps-presets')
+  @ApiOperation({ summary: 'List managed ReDroid Google Play build presets.' })
+  @ApiOkResponse({ type: GappsBuildPresetsResponseDto })
+  listGappsPresets() {
+    return this.gappsPresets.list();
+  }
+
+  @Post('gapps-builds')
+  @ApiOperation({ summary: 'Queue a lightweight ReDroid GApps patch build.' })
+  @ApiCreatedResponse({ type: ContainerImageBuildJob })
+  startGappsBuild(@Body() dto: StartGappsBuildDto) {
+    return this.gappsBuilder.startBuild(dto);
+  }
+
+  @Delete('gapps-cache/:androidVersion')
+  @ApiOperation({ summary: 'Clear the managed GApps package cache.' })
+  @ApiParam({ name: 'androidVersion', enum: ['13', '14'] })
+  clearGappsCache(@Param('androidVersion') androidVersion: string) {
+    return this.gappsBuilder.clearCache(androidVersion);
+  }
+
   @Post('builds')
   @ApiOperation({ summary: 'Start an image build job.' })
   @ApiCreatedResponse({ type: ContainerImageBuildJob })
@@ -178,7 +207,13 @@ export class ContainerImagesController {
   @ApiOperation({ summary: 'Cancel an image build job.' })
   @ApiOkResponse({ type: ContainerImageBuildJob })
   cancelBuild(@Param('id') id: string) {
-    return this.builder.cancelBuild(id);
+    return this.builder
+      .getJob(id)
+      .then((job) =>
+        job.buildKind === 'redroid_gapps_patch'
+          ? this.gappsBuilder.cancelBuild(id)
+          : this.builder.cancelBuild(id),
+      );
   }
 
   @Delete(':image')

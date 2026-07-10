@@ -25,6 +25,7 @@ const modelSettings = jest.requireMock<typeof import('./use-ai-agent-model-setti
 
 const app = {
   id: 'app_1',
+  running: true,
   profileMode: 'temporary',
   profileName: null
 } as AppDefinition
@@ -195,6 +196,21 @@ describe('useAiAgentChatSession', () => {
         rawShellPolicy: 'allowlisted'
       })
     )
+  })
+
+  it('keeps stopped-device prompt drafts from starting a run', async () => {
+    const { result } = renderHook(() => useAiAgentChatSession({ app: { ...app, running: false } }))
+    await waitFor(() => expect(result.current.turns).toHaveLength(1))
+
+    await act(async () => {
+      result.current.setPrompt('Open settings')
+    })
+
+    expect(result.current.canSubmit).toBe(false)
+    await act(async () => {
+      await result.current.submitPrompt('Open settings')
+    })
+    expect(actions.runAdHocAiAutomationAction).not.toHaveBeenCalled()
   })
 })
 

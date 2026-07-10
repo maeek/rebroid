@@ -2,8 +2,12 @@ import { CreateAppForm } from '@/features/applications/create/create-app-form'
 import { ProtectedSplitPageContent, ProtectedSplitPageLayout } from '@/shared/ui/page/protected-page-shell'
 import { getCreateAppPageData } from './page-data.server'
 
-export const CreateAppPageEntry = async ({ initialImage }: { initialImage?: string } = {}) => {
-  const { images, initialSettings, permissions } = await getCreateAppPageData()
+export const CreateAppPageEntry = async ({
+  initialImage,
+  uploadedApkId
+}: { initialImage?: string; uploadedApkId?: string } = {}) => {
+  const { images, initialSettings, permissions, canBuildImages, initialUploadedApk } =
+    await getCreateAppPageData(uploadedApkId)
 
   return (
     <ProtectedSplitPageLayout>
@@ -13,6 +17,8 @@ export const CreateAppPageEntry = async ({ initialImage }: { initialImage?: stri
           initialContainerImage={initialImage}
           initialSettings={initialSettings}
           permissions={permissions}
+          canBuildImages={canBuildImages}
+          initialUploadedApk={initialUploadedApk}
         />
       </ProtectedSplitPageContent>
     </ProtectedSplitPageLayout>

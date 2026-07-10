@@ -60,6 +60,46 @@ After the reset, start the orchestrator normally. The single initialization migr
 
 The current baseline includes workload indexes, the unique active-automation-target reservation, and transactional event sequence counters. Existing state created from an older baseline must be reset with the operation above; the application does not apply an in-place schema upgrade.
 
+## Google Play Image Patching
+
+The managed patcher supports Android 14 (`upsilon`) and Android 13 (`tau`) on
+Linux amd64 with rootful Docker. It requires 10 GB free storage and 3 GB Docker
+memory; 4 GB RAM and 2 CPUs are recommended. CPU count is informational and
+never blocks a build.
+
+Each job pins the pulled ReDroid digest and the resolved MindTheGapps commit.
+The package SHA-256 is calculated locally and stored with the job. The worker
+runs non-root without the Docker socket, host paths, or application secrets.
+Generated packages are limited to 2 GB; extraction is limited to 4 GB and
+50,000 entries. Traversal paths, device entries, escaping symlinks, and
+setuid/setgid modes are rejected.
+
+Canceling a job removes its worker and temporary extraction data while keeping
+the last verified cache. Queued jobs run one at a time. A running job found
+after an orchestrator restart is marked failed; a retry can reuse the verified
+package cache. Use **Advanced cache options** on the builder page to remove the
+Android 13 or 14 cache.
+
+CI can exercise the worker without cloning upstream by running
+`pnpm test:gapps-patcher`; set `CONTAINER_ENGINE=podman` when Docker is not the
+local CLI. The test creates a temporary MindTheGapps-shaped Git repository and
+verifies that the worker produces an x86_64 package.
+
+The deployment image transfer scripts include the isolated
+`rebroid/gapps-patcher:latest` worker. Run `deploy/save-docker-images.sh` to
+build and export the complete application image set, then run
+`deploy/load-docker-images.sh` on the target host. Both scripts prefer Docker,
+fall back to Podman, accept an optional archive directory as their first
+argument, and support an explicit engine path through `CONTAINER_ENGINE_BIN`.
+The Compose deployment explicitly passes the same worker tag to the
+orchestrator. The worker is not a Compose service: the orchestrator creates a
+short-lived, isolated job container only while a GApps package is being built.
+
+Before release, manually complete one build for each Android version and record
+host disk usage, peak Docker memory, duration, payload validation, final image
+ID, and labels. Static success does not prove Google login, Play Protect
+certification, or Play Integrity behavior.
+
 ## Manual Scrcpy Harness
 
 Scrcpy integration work requires a Linux Docker-compatible host with Redroid support, binder devices, and the display-sidecar image. Start the appliance, create an Android application, and manually verify launch, video, input, disconnect, retry, and shutdown before and after any scrcpy change. Record the host configuration and test result in the change description.

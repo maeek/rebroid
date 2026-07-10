@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals'
 import { defaultViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
-import { getRuntimeTools } from './runtime-tool-definitions'
+import { getRuntimeTools, runtimeToolPanelClassName } from './runtime-tool-definitions'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { PermissionMap } from '@/shared/permissions/permissions'
 
@@ -57,6 +57,15 @@ const allPermissions: PermissionMap = {
 }
 
 describe('getRuntimeTools', () => {
+  it('keeps the mobile cap but lets desktop chat reach the viewport bottom', () => {
+    const className = runtimeToolPanelClassName('ai-agent')
+
+    expect(className).toContain('max-h-[36rem]')
+    expect(className).toContain('md:max-h-none')
+    expect(className).toContain('lg:h-[calc(100dvh-16rem)]')
+    expect(className).not.toContain('lg:max-h-[52rem]')
+  })
+
   it('shows every running-runtime tool when permissions allow it', () => {
     const tools = getRuntimeTools({
       app,
@@ -77,7 +86,7 @@ describe('getRuntimeTools', () => {
     expect(tools.find(tool => tool.id === 'workflows')?.description).toBe('Run run_1234')
   })
 
-  it('keeps streaming available and hides runtime-only tools when stopped', () => {
+  it('keeps the AI workspace visible while hiding device-only tools when stopped', () => {
     const tools = getRuntimeTools({
       app: { ...app, running: false, status: 'stopped' },
       latestAutomationRun: null,
@@ -85,6 +94,7 @@ describe('getRuntimeTools', () => {
       viewerSettings: defaultViewerSettings
     })
 
-    expect(tools.map(tool => tool.id)).toEqual(['workflows', 'streaming', 'network-access'])
+    expect(tools.map(tool => tool.id)).toEqual(['ai-agent', 'workflows', 'streaming', 'network-access'])
+    expect(tools.find(tool => tool.id === 'ai-agent')?.description).toContain('remain available')
   })
 })

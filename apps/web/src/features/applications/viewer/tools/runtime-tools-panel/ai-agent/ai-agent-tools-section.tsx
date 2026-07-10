@@ -112,6 +112,7 @@ export const AiAgentToolsSection = ({
   }
 
   const approveEscalation = (program: string) => {
+    if (!app.running) return
     void submitPrompt(
       [
         `Continue the previous task. I approve one read-only ${program} diagnostic if it is still required.`,
@@ -182,7 +183,26 @@ export const AiAgentToolsSection = ({
         turns={turns}
       />
 
-      <div className='relative grid shrink-0 gap-2 border-t border-border/50 bg-background/88 px-4 pt-3 pb-4 backdrop-blur-xl before:pointer-events-none before:absolute before:inset-x-0 before:-top-6 before:h-6 before:bg-linear-to-t before:from-background/75 before:to-transparent'>
+      <div
+        className='grid shrink-0 gap-2 border-t border-border/50 bg-transparent px-4 pt-3 pb-4'
+        data-testid='ai-agent-composer-dock'
+      >
+        {!app.running ? (
+          <div
+            role='status'
+            className='flex items-start gap-2.5 rounded-xl border border-warning/30 bg-warning/8 px-3 py-2.5 text-xs text-foreground-muted'
+          >
+            <span className='mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-lg bg-warning/12 text-warning'>
+              <IconPlayerPlay className='size-3.5' />
+            </span>
+            <div className='grid gap-0.5'>
+              <span className='font-medium text-foreground'>Device actions are paused</span>
+              <span>
+                Review history, configure the model, or draft the next request. Start {app.name} when ready to send.
+              </span>
+            </div>
+          </div>
+        ) : null}
         <div className='scrollbar-none flex gap-1.5 overflow-x-auto pb-0.5'>
           {suggestions.map(preset => (
             <Button
@@ -202,11 +222,19 @@ export const AiAgentToolsSection = ({
         <AiPromptComposer
           value={prompt}
           rows={3}
-          placeholder='Describe what you want to accomplish…'
+          placeholder={
+            app.running ? 'Describe what you want to accomplish…' : 'Draft a request — start the device to send'
+          }
           metadata={
             <span>
-              <span className='hidden sm:inline'>Enter to send · Shift+Enter for a new line · </span>
-              {adHocTimeoutMs / 60000} min limit
+              {app.running ? (
+                <>
+                  <span className='hidden sm:inline'>Enter to send · Shift+Enter for a new line · </span>
+                  {adHocTimeoutMs / 60000} min limit
+                </>
+              ) : (
+                'Read-only while the device is stopped'
+              )}
             </span>
           }
           errors={[selectionMessage, error]}
@@ -235,10 +263,38 @@ export const AiAgentToolsSection = ({
           }
           actions={
             <>
+              {hideHeader && turns.length > 0 ? (
+                <Button
+                  type='button'
+                  size='icon'
+                  variant='ghost'
+                  className='size-8 text-foreground-muted'
+                  aria-label='Export conversation'
+                  title='Export conversation'
+                  onClick={exportConversation}
+                >
+                  <IconDownload className='size-4' />
+                </Button>
+              ) : null}
+              {hideHeader && turns.length > 0 ? (
+                <Button
+                  type='button'
+                  size='icon'
+                  variant='ghost'
+                  className='size-8 text-foreground-muted hover:text-destructive'
+                  aria-label={isClearing ? 'Clearing conversation' : 'Clear conversation'}
+                  title='Clear conversation'
+                  disabled={isClearing}
+                  onClick={() => void clearConversation()}
+                >
+                  <IconTrash className='size-4' />
+                </Button>
+              ) : null}
               {queuedTurn && !activeTurn ? (
                 <Button
                   type='button'
                   variant='ghost'
+                  disabled={!app.running}
                   onClick={() => void runQueuedTurn()}
                 >
                   <IconPlayerPlay className='size-4' />
@@ -260,7 +316,7 @@ export const AiAgentToolsSection = ({
                 type='button'
                 size='icon'
                 className='size-8 rounded-xl shadow-[0_8px_20px_-12px_hsl(var(--primary)/0.9)]'
-                disabled={!canSubmit}
+                disabled={!app.running || !canSubmit}
                 aria-label={activeTurn ? 'Queue message' : 'Send message'}
                 onClick={() => void submit()}
               >

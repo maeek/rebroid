@@ -35,6 +35,8 @@ const environmentSchema = z.object({
   OCR_PREPROCESS_MODES: z.string().optional(),
   ENABLE_API_DOCS: z.enum(['true', 'false']).optional(),
   FIREWALL_POLICY_BOOTSTRAP: z.enum(['true', 'false']).optional(),
+  GAPPS_PATCHER_IMAGE: z.string().min(1).optional(),
+  GAPPS_PATCHER_BUILD_CONTEXT: z.string().min(1).optional(),
   DISPLAY_WEBRTC_UDP_PORT_RANGE: z
     .string()
     .regex(
@@ -97,6 +99,9 @@ export default registerAs('app', () => {
   const defaultDisplaySidecarBuildContext = existsSync('/app/display-sidecar')
     ? '/app/display-sidecar'
     : '../display-sidecar';
+  const defaultGappsPatcherBuildContext = existsSync('/app/gapps-patcher')
+    ? '/app/gapps-patcher'
+    : '../gapps-patcher';
   const displaySidecarContainerName =
     process.env.DISPLAY_SIDECAR_CONTAINER_NAME ??
     `${resourcePrefix}-display-sidecar`;
@@ -214,6 +219,13 @@ export default registerAs('app', () => {
       webrtcUdpPortRange:
         process.env.DISPLAY_WEBRTC_UDP_PORT_RANGE ?? '40000-40100',
       webrtcIceHost: process.env.DISPLAY_WEBRTC_ICE_HOST ?? '',
+    },
+    gappsPatcher: {
+      image: process.env.GAPPS_PATCHER_IMAGE ?? 'rebroid/gapps-patcher:latest',
+      buildContext: resolve(
+        process.env.GAPPS_PATCHER_BUILD_CONTEXT ??
+          defaultGappsPatcherBuildContext,
+      ),
     },
     ocr: {
       enabled: bool(process.env.OCR_ENABLED, true),

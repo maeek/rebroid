@@ -19,7 +19,7 @@ export const runtimeInlineSectionClassName = 'rounded-none border-0 bg-transpare
 
 export const runtimeToolPanelClassName = (toolId: RuntimeToolId | null) =>
   toolId === 'ai-agent'
-    ? 'flex h-[min(70dvh,36rem)] max-h-[36rem] flex-1 flex-col overflow-hidden md:h-[calc(100dvh-18rem)] md:max-h-[48rem] lg:h-[calc(100dvh-16rem)] lg:max-h-[52rem]'
+    ? 'flex h-[min(70dvh,36rem)] max-h-[36rem] flex-1 flex-col overflow-hidden md:h-[calc(100dvh-18rem)] md:max-h-none lg:h-[calc(100dvh-16rem)]'
     : 'overflow-auto'
 
 export const getRuntimeTools = ({
@@ -34,11 +34,13 @@ export const getRuntimeTools = ({
   viewerSettings: ViewerSettings
 }): RuntimeToolDefinition[] => {
   const tools: Array<RuntimeToolDefinition | null> = [
-    hasPermission(permissions, 'automations:run') && hasPermission(permissions, 'automations:run-ai') && app.running
+    hasPermission(permissions, 'automations:run') && hasPermission(permissions, 'automations:run-ai')
       ? {
           id: 'ai-agent' as const,
           title: 'AI agent',
-          description: 'Run ad-hoc workflows with AI assistance',
+          description: app.running
+            ? 'Run ad-hoc workflows with AI assistance'
+            : 'History and settings remain available while stopped',
           Icon: GradientSparklesIcon
         }
       : null,

@@ -17,6 +17,7 @@ type AppIdentitySectionProps = {
   nameRequired?: boolean
   nameLabel?: string
   nameMinLength?: number
+  surface?: 'plain' | 'band' | 'panel'
 }
 
 export const AppIdentitySection = ({
@@ -30,7 +31,8 @@ export const AppIdentitySection = ({
   apkDescription = 'Optional Android package. It uploads first so metadata and icons can be extracted before the app is created.',
   nameRequired = true,
   nameLabel = 'Name',
-  nameMinLength = 2
+  nameMinLength = 2,
+  surface = 'band'
 }: AppIdentitySectionProps) => {
   const handleNameChange = (event: ChangeEvent<HTMLInputElement>) => {
     onNameChange(event.target.value)
@@ -44,7 +46,7 @@ export const AppIdentitySection = ({
   return (
     <Section
       title='Application'
-      surface='band'
+      surface={surface}
       titleClassName='pb-4'
       contentClassName='gap-5'
     >

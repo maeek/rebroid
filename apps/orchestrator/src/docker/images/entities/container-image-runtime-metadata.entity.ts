@@ -38,7 +38,7 @@ export class ContainerImageRuntimeMetadata {
   @Column({ type: 'text', nullable: true })
   architecture!: string | null;
 
-  @ApiProperty({ enum: ['none', 'microg'] })
+  @ApiProperty({ enum: ['none', 'microg', 'gapps'] })
   @Column({ default: 'none' })
   gmsMode!: RuntimeImageGmsMode;
 

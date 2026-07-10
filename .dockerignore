@@ -5,3 +5,4 @@
 **/.next
 **/.git
 **/npm-debug.log
+apps/gapps-patcher/fixtures

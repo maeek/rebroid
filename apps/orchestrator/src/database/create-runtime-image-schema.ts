@@ -166,6 +166,18 @@ export const createRuntimeImageSchema = async (queryRunner: QueryRunner) => {
             default: "'queued'",
           },
           {
+            name: 'buildKind',
+            type: 'varchar',
+            isNullable: false,
+            default: "'dockerfile_overlay'",
+          },
+          {
+            name: 'phase',
+            type: 'varchar',
+            isNullable: false,
+            default: "'queued'",
+          },
+          {
             name: 'runtimeKind',
             type: 'varchar',
             isNullable: false,
@@ -184,6 +196,21 @@ export const createRuntimeImageSchema = async (queryRunner: QueryRunner) => {
             type: 'varchar',
             isNullable: false,
             default: "'external_required'",
+          },
+          { name: 'resolvedBaseDigest', type: 'text', isNullable: true },
+          { name: 'mindTheGappsRevision', type: 'text', isNullable: true },
+          { name: 'packageSha256', type: 'text', isNullable: true },
+          {
+            name: 'cacheState',
+            type: 'varchar',
+            isNullable: false,
+            default: "'not_applicable'",
+          },
+          {
+            name: 'validationResults',
+            type: 'text',
+            isNullable: false,
+            default: "'{}'",
           },
           { name: 'dockerfile', type: 'text', isNullable: false },
           {

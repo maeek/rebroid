@@ -1,0 +1,3 @@
+<permissions>
+  <privapp-permissions package="com.google.android.gms" />
+</permissions>

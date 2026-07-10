@@ -21,7 +21,7 @@ import { CleanupUploadedApksDto } from '../dto/cleanup-uploaded-apks.dto';
 import { ListUploadedApksDto } from '../dto/list-uploaded-apks.dto';
 import { LookupUploadedApkDto } from '../dto/lookup-uploaded-apk.dto';
 import { UploadApkDto } from '../dto/upload-apk.dto';
-import { UploadedApk } from '../entities/uploaded-apk.entity';
+import { UploadedApkResponseDto } from '../dto/uploaded-apk-response.dto';
 import { ApkCatalogService } from '../services/apk-catalog.service';
 
 @ApiTags('apk-uploads')
@@ -31,7 +31,7 @@ export class ApkController {
 
   @Post()
   @ApiConsumes('multipart/form-data')
-  @ApiCreatedResponse({ type: UploadedApk })
+  @ApiCreatedResponse({ type: UploadedApkResponseDto })
   @ApiBody({
     schema: {
       type: 'object',
@@ -41,26 +41,31 @@ export class ApkController {
       },
     },
   })
-  upload(@Req() request: FastifyRequest, @Query() dto: UploadApkDto) {
-    return this.apk.upload(request.raw, dto.ownerUserId);
+  async upload(@Req() request: FastifyRequest, @Query() dto: UploadApkDto) {
+    return UploadedApkResponseDto.fromEntity(
+      await this.apk.upload(request.raw, dto.ownerUserId),
+    );
   }
 
   @Get()
-  @ApiOkResponse({ type: UploadedApk, isArray: true })
-  list(@Query() query: ListUploadedApksDto) {
-    return this.apk.list(query.ownerUserId);
+  @ApiOkResponse({ type: UploadedApkResponseDto, isArray: true })
+  async list(@Query() query: ListUploadedApksDto) {
+    return (await this.apk.list(query.ownerUserId)).map((upload) =>
+      UploadedApkResponseDto.fromEntity(upload),
+    );
   }
 
   @Get('lookup')
-  @ApiOkResponse({ type: UploadedApk })
-  lookup(@Query() query: LookupUploadedApkDto) {
-    return this.apk.findBySha256(query.sha256, query.ownerUserId);
+  @ApiOkResponse({ type: UploadedApkResponseDto })
+  async lookup(@Query() query: LookupUploadedApkDto) {
+    const upload = await this.apk.findBySha256(query.sha256, query.ownerUserId);
+    return upload ? UploadedApkResponseDto.fromEntity(upload) : null;
   }
 
   @Delete(':id')
-  @ApiOkResponse({ type: UploadedApk })
-  remove(@Param('id') id: string) {
-    return this.apk.remove(id);
+  @ApiOkResponse({ type: UploadedApkResponseDto })
+  async remove(@Param('id') id: string) {
+    return UploadedApkResponseDto.fromEntity(await this.apk.remove(id));
   }
 
   @Post('cleanup')

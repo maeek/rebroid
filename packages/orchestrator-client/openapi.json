@@ -689,7 +689,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UploadedApk"
+                  "$ref": "#/components/schemas/UploadedApkResponseDto"
                 }
               }
             }
@@ -720,7 +720,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/UploadedApk"
+                    "$ref": "#/components/schemas/UploadedApkResponseDto"
                   }
                 }
               }
@@ -762,7 +762,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UploadedApk"
+                  "$ref": "#/components/schemas/UploadedApkResponseDto"
                 }
               }
             }
@@ -792,7 +792,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UploadedApk"
+                  "$ref": "#/components/schemas/UploadedApkResponseDto"
                 }
               }
             }
@@ -4010,6 +4010,88 @@
         ]
       }
     },
+    "/api/v1/platform/container-images/gapps-presets": {
+      "get": {
+        "operationId": "ContainerImagesController_listGappsPresets",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GappsBuildPresetsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "List managed ReDroid Google Play build presets.",
+        "tags": [
+          "platform-container-images"
+        ]
+      }
+    },
+    "/api/v1/platform/container-images/gapps-builds": {
+      "post": {
+        "operationId": "ContainerImagesController_startGappsBuild",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartGappsBuildDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainerImageBuildJob"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Queue a lightweight ReDroid GApps patch build.",
+        "tags": [
+          "platform-container-images"
+        ]
+      }
+    },
+    "/api/v1/platform/container-images/gapps-cache/{androidVersion}": {
+      "delete": {
+        "operationId": "ContainerImagesController_clearGappsCache",
+        "parameters": [
+          {
+            "name": "androidVersion",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "13",
+                "14"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Clear the managed GApps package cache.",
+        "tags": [
+          "platform-container-images"
+        ]
+      }
+    },
     "/api/v1/platform/container-images/builds/{id}": {
       "get": {
         "operationId": "ContainerImagesController_getBuild",
@@ -6184,58 +6266,91 @@
           "models"
         ]
       },
-      "UploadedApk": {
+      "GooglePlayServicesAnalysisDto": {
+        "type": "object",
+        "properties": {
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "required",
+              "likely",
+              "not_detected",
+              "unknown"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "manifest_gms_version",
+                "manifest_google_shared_library",
+                "manifest_fcm_receiver",
+                "manifest_google_service_binding",
+                "dex_google_play_services",
+                "dex_play_core",
+                "dex_play_integrity",
+                "dex_firebase_messaging",
+                "analysis_failed",
+                "dex_scan_limit_exceeded"
+              ]
+            }
+          },
+          "analysisVersion": {
+            "type": "number",
+            "example": 1
+          }
+        },
+        "required": [
+          "verdict",
+          "evidence",
+          "analysisVersion"
+        ]
+      },
+      "UploadedApkResponseDto": {
         "type": "object",
         "properties": {
           "id": {
-            "type": "string",
-            "example": "98a530d6-a45d-466a-9cb4-c023067c4971"
+            "type": "string"
           },
           "ownerUserId": {
             "type": "string",
-            "example": "admin",
             "nullable": true
           },
           "originalName": {
-            "type": "string",
-            "example": "Signal.apk"
+            "type": "string"
           },
           "sha256": {
-            "type": "string",
-            "example": "9d1e7fdf5f9f4d0e9f3e3a7a66a9ac884e7b68be3e0dd41d7dfc9f4e5ddbdc91"
+            "type": "string"
           },
           "sizeBytes": {
-            "type": "number",
-            "example": 74311257
+            "type": "number"
           },
           "filePath": {
-            "type": "string",
-            "example": "/app/uploads/apks/9d1e7fdf.apk"
+            "type": "string"
           },
           "extractedIconDataUrl": {
             "type": "string",
-            "example": "data:image/png;base64,iVBORw0KGgo...",
             "nullable": true
           },
           "displayName": {
             "type": "string",
-            "example": "Signal",
             "nullable": true
           },
           "packageName": {
             "type": "string",
-            "example": "org.thoughtcrime.securesms",
             "nullable": true
+          },
+          "googlePlayServices": {
+            "$ref": "#/components/schemas/GooglePlayServicesAnalysisDto"
           },
           "createdAt": {
             "format": "date-time",
-            "type": "string",
-            "example": "2026-05-16T20:39:29.000Z"
+            "type": "string"
           },
           "updatedAt": {
             "format": "date-time",
-            "type": "string",
-            "example": "2026-05-16T20:39:31.000Z"
+            "type": "string"
           }
         },
         "required": [
@@ -6248,6 +6363,7 @@
           "extractedIconDataUrl",
           "displayName",
           "packageName",
+          "googlePlayServices",
           "createdAt",
           "updatedAt"
         ]
@@ -9087,7 +9203,8 @@
             "type": "string",
             "enum": [
               "none",
-              "microg"
+              "microg",
+              "gapps"
             ]
           },
           "signatureSpoofing": {
@@ -9165,7 +9282,8 @@
             "type": "string",
             "enum": [
               "none",
-              "microg"
+              "microg",
+              "gapps"
             ],
             "default": "microg"
           },
@@ -9232,7 +9350,8 @@
             "type": "string",
             "enum": [
               "none",
-              "microg"
+              "microg",
+              "gapps"
             ]
           },
           "signatureSpoofing": {
@@ -9283,6 +9402,26 @@
               "cancelled"
             ]
           },
+          "buildKind": {
+            "type": "string",
+            "enum": [
+              "dockerfile_overlay",
+              "redroid_gapps_patch"
+            ]
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "pulling_base",
+              "resolving_sources",
+              "building_gapps",
+              "validating_payload",
+              "building_image",
+              "validating_image",
+              "complete"
+            ]
+          },
           "runtimeKind": {
             "type": "string",
             "enum": [
@@ -9304,7 +9443,8 @@
             "type": "string",
             "enum": [
               "none",
-              "microg"
+              "microg",
+              "gapps"
             ]
           },
           "signatureSpoofing": {
@@ -9315,6 +9455,31 @@
               "present_unverified",
               "verified"
             ]
+          },
+          "resolvedBaseDigest": {
+            "type": "string",
+            "nullable": true
+          },
+          "mindTheGappsRevision": {
+            "type": "string",
+            "nullable": true
+          },
+          "packageSha256": {
+            "type": "string",
+            "nullable": true
+          },
+          "cacheState": {
+            "type": "string",
+            "enum": [
+              "not_applicable",
+              "hit",
+              "miss",
+              "built"
+            ]
+          },
+          "validationResults": {
+            "type": "object",
+            "additionalProperties": true
           },
           "dockerfile": {
             "type": "string"
@@ -9358,14 +9523,132 @@
           "targetImage",
           "baseImage",
           "status",
+          "buildKind",
+          "phase",
           "runtimeKind",
           "gmsMode",
           "signatureSpoofing",
+          "cacheState",
+          "validationResults",
           "dockerfile",
           "contextFileIdsJson",
           "logTail",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "GappsBuildPresetDto": {
+        "type": "object",
+        "properties": {
+          "androidVersion": {
+            "type": "string",
+            "enum": [
+              "14",
+              "13"
+            ]
+          },
+          "baseImage": {
+            "type": "string"
+          },
+          "sourceBranch": {
+            "type": "string"
+          },
+          "sourceRepository": {
+            "type": "string"
+          },
+          "sourceLink": {
+            "type": "string"
+          },
+          "defaultTargetImage": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "androidVersion",
+          "baseImage",
+          "sourceBranch",
+          "sourceRepository",
+          "sourceLink",
+          "defaultTargetImage"
+        ]
+      },
+      "GappsBuildResourceStatusDto": {
+        "type": "object",
+        "properties": {
+          "canBuild": {
+            "type": "boolean"
+          },
+          "diskAvailableBytes": {
+            "type": "number"
+          },
+          "memoryAvailableBytes": {
+            "type": "number"
+          },
+          "cpuCount": {
+            "type": "number"
+          },
+          "diskRequirementMet": {
+            "type": "boolean"
+          },
+          "memoryRequirementMet": {
+            "type": "boolean"
+          },
+          "cpuRecommendationMet": {
+            "type": "boolean"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "canBuild",
+          "diskAvailableBytes",
+          "memoryAvailableBytes",
+          "cpuCount",
+          "diskRequirementMet",
+          "memoryRequirementMet",
+          "cpuRecommendationMet",
+          "messages"
+        ]
+      },
+      "GappsBuildPresetsResponseDto": {
+        "type": "object",
+        "properties": {
+          "presets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GappsBuildPresetDto"
+            }
+          },
+          "resources": {
+            "$ref": "#/components/schemas/GappsBuildResourceStatusDto"
+          }
+        },
+        "required": [
+          "presets",
+          "resources"
+        ]
+      },
+      "StartGappsBuildDto": {
+        "type": "object",
+        "properties": {
+          "androidVersion": {
+            "type": "string",
+            "enum": [
+              "14",
+              "13"
+            ]
+          },
+          "targetImage": {
+            "type": "string",
+            "example": "local/redroid-gapps:14"
+          }
+        },
+        "required": [
+          "androidVersion"
         ]
       },
       "StartContainerImageBuildDto": {
@@ -9405,7 +9688,8 @@
             "type": "string",
             "enum": [
               "none",
-              "microg"
+              "microg",
+              "gapps"
             ],
             "default": "microg"
           },
@@ -9571,7 +9855,8 @@
             "type": "string",
             "enum": [
               "none",
-              "microg"
+              "microg",
+              "gapps"
             ]
           },
           "signatureSpoofing": {
@@ -9912,7 +10197,8 @@
             "type": "string",
             "enum": [
               "none",
-              "microg"
+              "microg",
+              "gapps"
             ]
           },
           "signatureSpoofing": {

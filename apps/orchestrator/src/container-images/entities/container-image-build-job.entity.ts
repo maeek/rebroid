@@ -15,6 +15,14 @@ import {
   containerImageBuildStatuses,
   type ContainerImageBuildStatus,
 } from './container-image-build-status';
+import {
+  containerImageBuildCacheStates,
+  containerImageBuildKinds,
+  containerImageGappsBuildPhases,
+  type ContainerImageBuildCacheState,
+  type ContainerImageBuildKind,
+  type ContainerImageGappsBuildPhase,
+} from './container-image-gapps-build';
 
 @Entity({ name: 'container_image_build_jobs' })
 export class ContainerImageBuildJob {
@@ -38,6 +46,14 @@ export class ContainerImageBuildJob {
   @Column({ default: 'queued' })
   status!: ContainerImageBuildStatus;
 
+  @ApiProperty({ enum: containerImageBuildKinds })
+  @Column({ default: 'dockerfile_overlay' })
+  buildKind!: ContainerImageBuildKind;
+
+  @ApiProperty({ enum: containerImageGappsBuildPhases })
+  @Column({ default: 'queued' })
+  phase!: ContainerImageGappsBuildPhase;
+
   @ApiProperty({ enum: ['redroid', 'generic'] })
   @Column({ default: 'redroid' })
   runtimeKind!: RuntimeImageKind;
@@ -50,7 +66,7 @@ export class ContainerImageBuildJob {
   @Column({ type: 'text', nullable: true })
   architecture!: string | null;
 
-  @ApiProperty({ enum: ['none', 'microg'] })
+  @ApiProperty({ enum: ['none', 'microg', 'gapps'] })
   @Column({ default: 'microg' })
   gmsMode!: RuntimeImageGmsMode;
 
@@ -64,6 +80,26 @@ export class ContainerImageBuildJob {
   })
   @Column({ default: 'external_required' })
   signatureSpoofing!: RuntimeImageSignatureSpoofing;
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @Column({ type: 'text', nullable: true })
+  resolvedBaseDigest!: string | null;
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @Column({ type: 'text', nullable: true })
+  mindTheGappsRevision!: string | null;
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @Column({ type: 'text', nullable: true })
+  packageSha256!: string | null;
+
+  @ApiProperty({ enum: containerImageBuildCacheStates })
+  @Column({ default: 'not_applicable' })
+  cacheState!: ContainerImageBuildCacheState;
+
+  @ApiProperty({ type: 'object', additionalProperties: true })
+  @Column({ type: 'simple-json', default: "'{}'" })
+  validationResults!: Record<string, unknown>;
 
   @ApiProperty()
   @Column({ type: 'text' })

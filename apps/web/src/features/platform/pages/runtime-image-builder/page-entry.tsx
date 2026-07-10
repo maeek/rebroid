@@ -1,8 +1,13 @@
-import { RuntimeImageBuilderPageClient } from './page-client'
-import { loadRuntimeImageBuilderPageData } from './page-data.server'
+import { RuntimeGappsImageBuilderPageClient } from './gapps-page-client'
+import { loadRuntimeGappsBuilderPageData } from './gapps-page-data.server'
 
-export const RuntimeImageBuilderPageEntry = async () => {
-  const data = await loadRuntimeImageBuilderPageData()
+export const RuntimeImageBuilderPageEntry = async ({ uploadedApkId }: { uploadedApkId?: string } = {}) => {
+  const data = await loadRuntimeGappsBuilderPageData()
 
-  return <RuntimeImageBuilderPageClient {...data} />
+  return (
+    <RuntimeGappsImageBuilderPageClient
+      {...data}
+      uploadedApkId={uploadedApkId}
+    />
+  )
 }

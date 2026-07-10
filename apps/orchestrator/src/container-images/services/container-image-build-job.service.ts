@@ -1,8 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { ContainerImageBuildJob } from '../entities/container-image-build-job.entity';
 import type { ContainerImageBuildStatus } from '../entities/container-image-build-status';
+import type {
+  ContainerImageBuildCacheState,
+  ContainerImageBuildKind,
+  ContainerImageGappsBuildPhase,
+} from '../entities/container-image-gapps-build';
 
 type QueuedImageBuildJobInput = Pick<
   ContainerImageBuildJob,
@@ -17,6 +22,8 @@ type QueuedImageBuildJobInput = Pick<
 > & {
   contextFileIds: string[];
   recipeId: string | null;
+  buildKind?: ContainerImageBuildKind;
+  phase?: ContainerImageGappsBuildPhase;
 };
 
 const terminalStatuses: ContainerImageBuildStatus[] = [
@@ -35,6 +42,24 @@ export class ContainerImageBuildJobService {
 
   listJobs() {
     return this.jobs.find({ order: { createdAt: 'DESC' }, take: 50 });
+  }
+
+  findNextQueuedGappsJob() {
+    return this.jobs.findOne({
+      where: { status: 'queued', buildKind: 'redroid_gapps_patch' },
+      order: { createdAt: 'ASC' },
+    });
+  }
+
+  async failInterruptedGappsJobs() {
+    const jobs = await this.jobs.find({
+      where: { status: 'running', buildKind: 'redroid_gapps_patch' },
+    });
+    await Promise.all(
+      jobs.map((job) =>
+        this.markFailed(job, 'Build interrupted by orchestrator restart.'),
+      ),
+    );
   }
 
   async getJob(id: string) {
@@ -56,11 +81,18 @@ export class ContainerImageBuildJobService {
         targetImage: input.targetImage,
         baseImage: input.baseImage,
         status: 'queued',
+        buildKind: input.buildKind ?? 'dockerfile_overlay',
+        phase: input.phase ?? 'queued',
         runtimeKind: input.runtimeKind,
         androidVersion: input.androidVersion,
         architecture: input.architecture,
         gmsMode: input.gmsMode,
         signatureSpoofing: input.signatureSpoofing,
+        resolvedBaseDigest: null,
+        mindTheGappsRevision: null,
+        packageSha256: null,
+        cacheState: 'not_applicable',
+        validationResults: {},
         dockerfile: input.dockerfile,
         contextFileIdsJson: JSON.stringify(input.contextFileIds),
         logTail: 'Build queued.',
@@ -72,34 +104,89 @@ export class ContainerImageBuildJobService {
     );
   }
 
-  markRunning(job: ContainerImageBuildJob) {
-    job.status = 'running';
-    job.startedAt = new Date();
-    job.logTail = this.nextLogTail(job.logTail, 'Build started.');
-    return this.jobs.save(job);
+  async markRunning(job: ContainerImageBuildJob) {
+    await this.jobs.update(
+      { id: job.id, status: 'queued' },
+      {
+        status: 'running',
+        startedAt: new Date(),
+        logTail: this.nextLogTail(job.logTail, 'Build started.'),
+      },
+    );
+    return this.getJob(job.id);
   }
 
-  markCancelled(job: ContainerImageBuildJob) {
-    job.status = 'cancelled';
-    job.finishedAt = job.finishedAt ?? new Date();
-    job.logTail = this.nextLogTail(job.logTail, 'Build cancelled.');
-    return this.jobs.save(job);
+  updateGappsDetails(
+    job: ContainerImageBuildJob,
+    values: {
+      phase?: ContainerImageGappsBuildPhase;
+      resolvedBaseDigest?: string;
+      sourceRevision?: string;
+      packageSha256?: string;
+      cacheState?: ContainerImageBuildCacheState;
+      validationResults?: Record<string, unknown>;
+      dockerfile?: string;
+    },
+  ) {
+    const patch: Partial<ContainerImageBuildJob> = {};
+    if (values.phase) patch.phase = values.phase;
+    if (values.resolvedBaseDigest) {
+      patch.resolvedBaseDigest = values.resolvedBaseDigest;
+    }
+    if (values.sourceRevision) {
+      patch.mindTheGappsRevision = values.sourceRevision;
+    }
+    if (values.packageSha256) patch.packageSha256 = values.packageSha256;
+    if (values.cacheState) patch.cacheState = values.cacheState;
+    if (values.validationResults) {
+      patch.validationResults = values.validationResults;
+    }
+    if (values.dockerfile) patch.dockerfile = values.dockerfile;
+    return this.jobs
+      .update(
+        { id: job.id, status: In(['queued', 'running']) },
+        patch as Parameters<Repository<ContainerImageBuildJob>['update']>[1],
+      )
+      .then(() => this.getJob(job.id));
   }
 
-  markSucceeded(job: ContainerImageBuildJob, imageId: string) {
-    job.status = 'succeeded';
-    job.imageId = imageId;
-    job.finishedAt = new Date();
-    job.logTail = this.nextLogTail(job.logTail, `Build succeeded: ${imageId}`);
-    return this.jobs.save(job);
+  async markCancelled(job: ContainerImageBuildJob) {
+    await this.jobs.update(
+      { id: job.id, status: In(['queued', 'running']) },
+      {
+        status: 'cancelled',
+        finishedAt: job.finishedAt ?? new Date(),
+        logTail: this.nextLogTail(job.logTail, 'Build cancelled.'),
+      },
+    );
+    return this.getJob(job.id);
   }
 
-  markFailed(job: ContainerImageBuildJob, message: string) {
-    job.status = 'failed';
-    job.error = message;
-    job.finishedAt = new Date();
-    job.logTail = this.nextLogTail(job.logTail, `Build failed: ${message}`);
-    return this.jobs.save(job);
+  async markSucceeded(job: ContainerImageBuildJob, imageId: string) {
+    await this.jobs.update(
+      { id: job.id, status: 'running' },
+      {
+        status: 'succeeded',
+        imageId,
+        finishedAt: new Date(),
+        phase: 'complete',
+        logTail: this.nextLogTail(job.logTail, `Build succeeded: ${imageId}`),
+      },
+    );
+    return this.getJob(job.id);
+  }
+
+  async markFailed(job: ContainerImageBuildJob, message: string) {
+    await this.jobs.update(
+      { id: job.id, status: In(['queued', 'running']) },
+      {
+        status: 'failed',
+        error: message,
+        finishedAt: new Date(),
+        logTail: this.nextLogTail(job.logTail, `Build failed: ${message}`),
+      },
+    );
+    return this.getJob(job.id);
   }
 
   async appendLog(id: string, message: string) {
@@ -108,8 +195,10 @@ export class ContainerImageBuildJobService {
       return;
     }
 
-    job.logTail = this.nextLogTail(job.logTail, message);
-    await this.jobs.save(job);
+    await this.jobs.update(
+      { id, status: In(['queued', 'running']) },
+      { logTail: this.nextLogTail(job.logTail, message) },
+    );
   }
 
   private nextLogTail(current: string, message: string) {

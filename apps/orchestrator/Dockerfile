@@ -34,6 +34,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder /out ./
 COPY --from=builder /workspace/apps/orchestrator/dist ./dist
+COPY apps/gapps-patcher /app/gapps-patcher
 COPY --chmod=755 apps/orchestrator/docker-entrypoint.sh /usr/local/bin/rebroid-orchestrator-entrypoint
 RUN mkdir -p /app/data /app/uploads /app/secrets /run/rebroid-firewall && chown -R node:node /app /run/rebroid-firewall
 USER node

@@ -11,6 +11,7 @@ import {
 import { SettingsService } from '../../settings/settings.service';
 import { UploadedApksRepository } from '../persistence/uploaded-apks.repository';
 import { ApkIconExtractorService } from './apk-icon-extractor.service';
+import { ApkGooglePlayServicesAnalyzerService } from './apk-google-play-services-analyzer.service';
 import { ApkStorageService } from './apk-storage.service';
 
 @Injectable()
@@ -21,6 +22,7 @@ export class ApkCatalogService {
     private readonly settings: SettingsService,
     private readonly storage: ApkStorageService,
     private readonly iconExtractor: ApkIconExtractorService,
+    private readonly googlePlayServicesAnalyzer: ApkGooglePlayServicesAnalyzerService,
   ) {}
 
   async upload(request: MultipartUploadRequest, ownerUserId?: string | null) {
@@ -66,7 +68,10 @@ export class ApkCatalogService {
   ) {
     const { filePath, sha256, sizeBytes } = stored;
     const owner = ownerUserId?.trim() || null;
-    const metadata = await this.iconExtractor.extractMetadataFromFile(filePath);
+    const [metadata, googlePlayServices] = await Promise.all([
+      this.iconExtractor.extractMetadataFromFile(filePath),
+      this.googlePlayServicesAnalyzer.analyze(filePath),
+    ]);
     const existing = await this.uploadedApks.findBySha256ForOwner(
       sha256,
       owner,
@@ -77,12 +82,24 @@ export class ApkCatalogService {
           metadata.extractedIconDataUrl !== existing.extractedIconDataUrl) ||
         (metadata.displayName &&
           metadata.displayName !== existing.displayName) ||
-        (metadata.packageName && metadata.packageName !== existing.packageName)
+        (metadata.packageName &&
+          metadata.packageName !== existing.packageName) ||
+        googlePlayServices.verdict !== existing.googlePlayServicesVerdict ||
+        googlePlayServices.analysisVersion !==
+          existing.googlePlayServicesAnalysisVersion ||
+        JSON.stringify(googlePlayServices.evidence) !==
+          existing.googlePlayServicesEvidenceJson
       ) {
         existing.extractedIconDataUrl =
           metadata.extractedIconDataUrl ?? existing.extractedIconDataUrl;
         existing.displayName = metadata.displayName ?? existing.displayName;
         existing.packageName = metadata.packageName ?? existing.packageName;
+        existing.googlePlayServicesVerdict = googlePlayServices.verdict;
+        existing.googlePlayServicesEvidenceJson = JSON.stringify(
+          googlePlayServices.evidence,
+        );
+        existing.googlePlayServicesAnalysisVersion =
+          googlePlayServices.analysisVersion;
         await this.uploadedApks.save(existing);
       }
       return existing;
@@ -95,6 +112,11 @@ export class ApkCatalogService {
       sizeBytes,
       filePath,
       ...metadata,
+      googlePlayServicesVerdict: googlePlayServices.verdict,
+      googlePlayServicesEvidenceJson: JSON.stringify(
+        googlePlayServices.evidence,
+      ),
+      googlePlayServicesAnalysisVersion: googlePlayServices.analysisVersion,
     });
 
     return this.uploadedApks.save(uploaded);
@@ -146,6 +168,10 @@ export class ApkCatalogService {
       extractedIconDataUrl: source.extractedIconDataUrl,
       displayName: source.displayName,
       packageName: source.packageName,
+      googlePlayServicesVerdict: source.googlePlayServicesVerdict,
+      googlePlayServicesEvidenceJson: source.googlePlayServicesEvidenceJson,
+      googlePlayServicesAnalysisVersion:
+        source.googlePlayServicesAnalysisVersion,
     });
 
     return this.uploadedApks.save(upload);

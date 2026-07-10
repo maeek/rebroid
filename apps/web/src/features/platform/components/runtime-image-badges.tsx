@@ -26,6 +26,7 @@ export const RuntimeImageBadges = ({ image }: { image: PlatformImage }) => {
       {metadata.androidVersion ? <Badge variant='secondary'>Android {metadata.androidVersion}</Badge> : null}
       {metadata.architecture ? <Badge variant='secondary'>{metadata.architecture}</Badge> : null}
       {metadata.gmsMode === 'microg' ? <Badge variant='status'>microG</Badge> : null}
+      {metadata.gmsMode === 'gapps' ? <Badge variant='status'>Google Play</Badge> : null}
       <Badge variant={spoofingVariant[metadata.signatureSpoofing]}>{spoofingLabel[metadata.signatureSpoofing]}</Badge>
     </div>
   )

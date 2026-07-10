@@ -129,7 +129,7 @@ export const useAiAgentRunActions = ({
     options: { rawShellPolicy?: ChatTurn['rawShellPolicy']; clearComposer?: boolean } = {}
   ) => {
     const text = promptText.trim()
-    if (!text || !modelIsValid) return
+    if (!app.running || !text || !modelIsValid) return
     const nextTurn = createPromptTurn({
       id: crypto.randomUUID(),
       prompt: text,
@@ -148,7 +148,7 @@ export const useAiAgentRunActions = ({
   }
 
   const runQueuedTurn = async () => {
-    if (!queuedTurn || activeTurn) return
+    if (!app.running || !queuedTurn || activeTurn) return
     await startTurn(queuedTurn, conversationBeforeTurn(queuedTurn.id, turns))
   }
 
@@ -205,7 +205,7 @@ export const useAiAgentRunActions = ({
   }
 
   return {
-    canSubmit: Boolean(prompt.trim()) && modelIsValid,
+    canSubmit: app.running && Boolean(prompt.trim()) && modelIsValid,
     cancelRun,
     clearConversation,
     isCanceling,

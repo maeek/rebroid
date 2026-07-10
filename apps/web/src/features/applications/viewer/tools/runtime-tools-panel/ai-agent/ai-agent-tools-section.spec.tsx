@@ -119,6 +119,28 @@ describe('AiAgentToolsSection', () => {
     expect(screen.queryByLabelText('Loading AI chat history')).toBeNull()
   })
 
+  it('keeps history and settings visible but pauses device actions while stopped', () => {
+    jest.mocked(useAiAgentChatSession).mockReturnValue(
+      chatSession({
+        canSubmit: true,
+        prompt: 'Open settings'
+      })
+    )
+
+    render(
+      <AiAgentToolsSection
+        app={{ ...app, running: false, status: 'stopped' }}
+        hideHeader
+      />
+    )
+
+    expect(screen.getByText('Device actions are paused')).toBeTruthy()
+    expect(screen.getByText(/Review history, configure the model, or draft the next request/)).toBeTruthy()
+    expect(screen.getByRole('textbox').hasAttribute('disabled')).toBe(false)
+    expect(screen.getByRole('button', { name: 'Send message' }).hasAttribute('disabled')).toBe(true)
+    expect(screen.getByText('No model')).toBeTruthy()
+  })
+
   it('uses the transcript as the desktop scroll area', () => {
     jest.mocked(useAiAgentChatSession).mockReturnValue(chatSession())
 
@@ -131,6 +153,18 @@ describe('AiAgentToolsSection', () => {
     expect(transcript.className).toContain('overflow-y-auto')
     expect(section.className).toContain('h-full')
     expect(section.className).toContain('overflow-hidden')
+  })
+
+  it('keeps the inline composer dock transparent', () => {
+    jest.mocked(useAiAgentChatSession).mockReturnValue(chatSession())
+
+    render(<AiAgentToolsSection app={app} />)
+
+    const composerDock = screen.getByTestId('ai-agent-composer-dock')
+
+    expect(composerDock.className).toContain('bg-transparent')
+    expect(composerDock.className).not.toContain('bg-background')
+    expect(composerDock.className).not.toContain('backdrop-blur')
   })
 
   it('keeps clear available and delegates clearing to the session', () => {
@@ -221,7 +255,12 @@ describe('AiAgentToolsSection', () => {
       })
     )
 
-    render(<AiAgentToolsSection app={app} />)
+    render(
+      <AiAgentToolsSection
+        app={app}
+        hideHeader
+      />
+    )
 
     fireEvent.click(screen.getByRole('button', { name: /export/i }))
 

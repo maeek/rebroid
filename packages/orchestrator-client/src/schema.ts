@@ -1330,6 +1330,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/container-images/gapps-presets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List managed ReDroid Google Play build presets. */
+        get: operations["ContainerImagesController_listGappsPresets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/container-images/gapps-builds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Queue a lightweight ReDroid GApps patch build. */
+        post: operations["ContainerImagesController_startGappsBuild"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/container-images/gapps-cache/{androidVersion}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Clear the managed GApps package cache. */
+        delete: operations["ContainerImagesController_clearGappsCache"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/container-images/builds/{id}": {
         parameters: {
             query?: never;
@@ -2194,34 +2245,27 @@ export interface components {
             serverFlavor?: "auto" | "openai" | "llama-cpp" | "lemonade" | "ollama";
             models: components["schemas"]["AutomationAiProviderModelDto"][];
         };
-        UploadedApk: {
-            /** @example 98a530d6-a45d-466a-9cb4-c023067c4971 */
+        GooglePlayServicesAnalysisDto: {
+            /** @enum {string} */
+            verdict: "required" | "likely" | "not_detected" | "unknown";
+            evidence: ("manifest_gms_version" | "manifest_google_shared_library" | "manifest_fcm_receiver" | "manifest_google_service_binding" | "dex_google_play_services" | "dex_play_core" | "dex_play_integrity" | "dex_firebase_messaging" | "analysis_failed" | "dex_scan_limit_exceeded")[];
+            /** @example 1 */
+            analysisVersion: number;
+        };
+        UploadedApkResponseDto: {
             id: string;
-            /** @example admin */
             ownerUserId: string | null;
-            /** @example Signal.apk */
             originalName: string;
-            /** @example 9d1e7fdf5f9f4d0e9f3e3a7a66a9ac884e7b68be3e0dd41d7dfc9f4e5ddbdc91 */
             sha256: string;
-            /** @example 74311257 */
             sizeBytes: number;
-            /** @example /app/uploads/apks/9d1e7fdf.apk */
             filePath: string;
-            /** @example data:image/png;base64,iVBORw0KGgo... */
             extractedIconDataUrl: string | null;
-            /** @example Signal */
             displayName: string | null;
-            /** @example org.thoughtcrime.securesms */
             packageName: string | null;
-            /**
-             * Format: date-time
-             * @example 2026-05-16T20:39:29.000Z
-             */
+            googlePlayServices: components["schemas"]["GooglePlayServicesAnalysisDto"];
+            /** Format: date-time */
             createdAt: string;
-            /**
-             * Format: date-time
-             * @example 2026-05-16T20:39:31.000Z
-             */
+            /** Format: date-time */
             updatedAt: string;
         };
         CleanupUploadedApksDto: {
@@ -3048,7 +3092,7 @@ export interface components {
             /** @example amd64 */
             architecture?: string | null;
             /** @enum {string} */
-            gmsMode: "none" | "microg";
+            gmsMode: "none" | "microg" | "gapps";
             /** @enum {string} */
             signatureSpoofing: "not_applicable" | "external_required" | "present_unverified" | "verified";
             dockerfile: string;
@@ -3078,7 +3122,7 @@ export interface components {
              * @default microg
              * @enum {string}
              */
-            gmsMode: "none" | "microg";
+            gmsMode: "none" | "microg" | "gapps";
             /**
              * @default external_required
              * @enum {string}
@@ -3101,7 +3145,7 @@ export interface components {
             /** @example amd64 */
             architecture?: string | null;
             /** @enum {string} */
-            gmsMode?: "none" | "microg";
+            gmsMode?: "none" | "microg" | "gapps";
             /** @enum {string} */
             signatureSpoofing?: "not_applicable" | "external_required" | "present_unverified" | "verified";
             dockerfile?: string;
@@ -3117,15 +3161,27 @@ export interface components {
             /** @enum {string} */
             status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
             /** @enum {string} */
+            buildKind: "dockerfile_overlay" | "redroid_gapps_patch";
+            /** @enum {string} */
+            phase: "queued" | "pulling_base" | "resolving_sources" | "building_gapps" | "validating_payload" | "building_image" | "validating_image" | "complete";
+            /** @enum {string} */
             runtimeKind: "redroid" | "generic";
             /** @example 14 */
             androidVersion?: string | null;
             /** @example amd64 */
             architecture?: string | null;
             /** @enum {string} */
-            gmsMode: "none" | "microg";
+            gmsMode: "none" | "microg" | "gapps";
             /** @enum {string} */
             signatureSpoofing: "not_applicable" | "external_required" | "present_unverified" | "verified";
+            resolvedBaseDigest?: string | null;
+            mindTheGappsRevision?: string | null;
+            packageSha256?: string | null;
+            /** @enum {string} */
+            cacheState: "not_applicable" | "hit" | "miss" | "built";
+            validationResults: {
+                [key: string]: unknown;
+            };
             dockerfile: string;
             contextFileIdsJson: string;
             /** @example Step 1/4 : FROM redroid/redroid:14.0.0-latest */
@@ -3140,6 +3196,35 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        GappsBuildPresetDto: {
+            /** @enum {string} */
+            androidVersion: "14" | "13";
+            baseImage: string;
+            sourceBranch: string;
+            sourceRepository: string;
+            sourceLink: string;
+            defaultTargetImage: string;
+        };
+        GappsBuildResourceStatusDto: {
+            canBuild: boolean;
+            diskAvailableBytes: number;
+            memoryAvailableBytes: number;
+            cpuCount: number;
+            diskRequirementMet: boolean;
+            memoryRequirementMet: boolean;
+            cpuRecommendationMet: boolean;
+            messages: string[];
+        };
+        GappsBuildPresetsResponseDto: {
+            presets: components["schemas"]["GappsBuildPresetDto"][];
+            resources: components["schemas"]["GappsBuildResourceStatusDto"];
+        };
+        StartGappsBuildDto: {
+            /** @enum {string} */
+            androidVersion: "14" | "13";
+            /** @example local/redroid-gapps:14 */
+            targetImage?: string;
         };
         StartContainerImageBuildDto: {
             /** @example Redroid 14 microG overlay */
@@ -3161,7 +3246,7 @@ export interface components {
              * @default microg
              * @enum {string}
              */
-            gmsMode: "none" | "microg";
+            gmsMode: "none" | "microg" | "gapps";
             /**
              * @default external_required
              * @enum {string}
@@ -3203,7 +3288,7 @@ export interface components {
             androidVersion: string | null;
             architecture: string | null;
             /** @enum {string} */
-            gmsMode: "none" | "microg";
+            gmsMode: "none" | "microg" | "gapps";
             /** @enum {string} */
             signatureSpoofing: "not_applicable" | "external_required" | "present_unverified" | "verified";
         };
@@ -3288,7 +3373,7 @@ export interface components {
             /** @example amd64 */
             architecture?: string | null;
             /** @enum {string} */
-            gmsMode?: "none" | "microg";
+            gmsMode?: "none" | "microg" | "gapps";
             /** @enum {string} */
             signatureSpoofing?: "not_applicable" | "external_required" | "present_unverified" | "verified";
         };
@@ -3911,7 +3996,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UploadedApk"][];
+                    "application/json": components["schemas"]["UploadedApkResponseDto"][];
                 };
             };
         };
@@ -3939,7 +4024,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UploadedApk"];
+                    "application/json": components["schemas"]["UploadedApkResponseDto"];
                 };
             };
         };
@@ -3961,7 +4046,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UploadedApk"];
+                    "application/json": components["schemas"]["UploadedApkResponseDto"];
                 };
             };
         };
@@ -3982,7 +4067,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UploadedApk"];
+                    "application/json": components["schemas"]["UploadedApkResponseDto"];
                 };
             };
         };
@@ -5845,6 +5930,67 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ContainerImageBuildJob"];
                 };
+            };
+        };
+    };
+    ContainerImagesController_listGappsPresets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GappsBuildPresetsResponseDto"];
+                };
+            };
+        };
+    };
+    ContainerImagesController_startGappsBuild: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartGappsBuildDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContainerImageBuildJob"];
+                };
+            };
+        };
+    };
+    ContainerImagesController_clearGappsCache: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                androidVersion: "13" | "14";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

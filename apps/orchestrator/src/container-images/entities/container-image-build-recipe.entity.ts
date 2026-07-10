@@ -42,7 +42,7 @@ export class ContainerImageBuildRecipe {
   @Column({ type: 'text', nullable: true })
   architecture!: string | null;
 
-  @ApiProperty({ enum: ['none', 'microg'] })
+  @ApiProperty({ enum: ['none', 'microg', 'gapps'] })
   @Column({ default: 'microg' })
   gmsMode!: RuntimeImageGmsMode;
 

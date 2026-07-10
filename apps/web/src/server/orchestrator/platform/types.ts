@@ -67,3 +67,10 @@ export type ContainerImageRecipeInput = OrchestratorApiSchemas['CreateContainerI
 export type UpdateContainerImageRecipeInput = OrchestratorApiSchemas['UpdateContainerImageRecipeDto']
 export type StartContainerImageBuildInput = OrchestratorApiSchemas['StartContainerImageBuildDto']
 export type UpdateRuntimeImageMetadataInput = OrchestratorApiSchemas['UpdateRuntimeImageMetadataDto']
+
+export type GappsBuildPhase = ContainerImageBuildJob['phase']
+export type GappsBuildPreset = OrchestratorApiSchemas['GappsBuildPresetDto']
+export type GappsBuildResourceStatus = OrchestratorApiSchemas['GappsBuildResourceStatusDto']
+export type GappsBuildPresetsResponse = OrchestratorApiSchemas['GappsBuildPresetsResponseDto']
+export type StartGappsBuildInput = OrchestratorApiSchemas['StartGappsBuildDto']
+export type SupportedGappsAndroidVersion = StartGappsBuildInput['androidVersion']

@@ -159,6 +159,24 @@ export class InitializeSqliteSchema1800000000000 implements MigrationInterface {
           { name: 'displayName', type: 'text', isNullable: true },
           { name: 'packageName', type: 'text', isNullable: true },
           {
+            name: 'googlePlayServicesVerdict',
+            type: 'text',
+            isNullable: false,
+            default: "'unknown'",
+          },
+          {
+            name: 'googlePlayServicesEvidenceJson',
+            type: 'text',
+            isNullable: false,
+            default: "'[]'",
+          },
+          {
+            name: 'googlePlayServicesAnalysisVersion',
+            type: 'integer',
+            isNullable: false,
+            default: '1',
+          },
+          {
             name: 'createdAt',
             type: 'datetime',
             isNullable: false,

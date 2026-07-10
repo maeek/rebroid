@@ -1,6 +1,7 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { createReadStream } from 'node:fs';
-import { stat } from 'node:fs/promises';
+import { lstat, readdir, readlink, stat } from 'node:fs/promises';
+import { join } from 'node:path';
 import tar from 'tar-stream';
 import { getErrorMessage } from '../../common/error-message';
 import { ContainerImageBuildContextFile } from '../entities/container-image-build-context-file.entity';
@@ -16,6 +17,27 @@ export class ContainerImageBuildArchiveService {
     const pack = tar.pack();
 
     void this.writeTarEntries(pack, dockerfile, files);
+    return pack;
+  }
+
+  createDirectoryTar(
+    dockerfile: string,
+    rootDirectory: string,
+    extraFiles: Record<string, Buffer> = {},
+  ) {
+    const pack = tar.pack();
+    void this.writeDirectoryEntries(
+      pack,
+      dockerfile,
+      rootDirectory,
+      extraFiles,
+    );
+    return pack;
+  }
+
+  createFilesystemTar(rootDirectory: string) {
+    const pack = tar.pack();
+    void this.writeFilesystemEntries(pack, rootDirectory);
     return pack;
   }
 
@@ -90,6 +112,109 @@ export class ContainerImageBuildArchiveService {
       const entry = pack.entry(
         { name, mode: 0o644, size, type: 'file' },
         (error) => (error ? reject(error) : resolve()),
+      );
+      const source = createReadStream(filePath);
+      source.on('error', (error) => {
+        entry.destroy(error);
+        reject(error);
+      });
+      entry.on('error', reject);
+      source.pipe(entry);
+    });
+  }
+
+  private async writeDirectoryEntries(
+    pack: tar.Pack,
+    dockerfile: string,
+    rootDirectory: string,
+    extraFiles: Record<string, Buffer>,
+  ) {
+    try {
+      await this.addBuffer(pack, 'Dockerfile', Buffer.from(dockerfile));
+      for (const [name, content] of Object.entries(extraFiles)) {
+        await this.addBuffer(pack, sanitizeBuildContextPath(name), content);
+      }
+      await this.addDirectoryTree(pack, rootDirectory);
+      pack.finalize();
+    } catch (error) {
+      pack.destroy(new Error(getErrorMessage(error)));
+    }
+  }
+
+  private async writeFilesystemEntries(pack: tar.Pack, rootDirectory: string) {
+    try {
+      await this.addDirectoryTree(pack, rootDirectory);
+      pack.finalize();
+    } catch (error) {
+      pack.destroy(new Error(getErrorMessage(error)));
+    }
+  }
+
+  private async addDirectoryTree(
+    pack: tar.Pack,
+    rootDirectory: string,
+    relativeDirectory = '',
+  ) {
+    const entries = await readdir(join(rootDirectory, relativeDirectory), {
+      withFileTypes: true,
+    });
+    entries.sort((left, right) => left.name.localeCompare(right.name));
+    for (const entry of entries) {
+      const relativePath = relativeDirectory
+        ? `${relativeDirectory}/${entry.name}`
+        : entry.name;
+      const absolutePath = join(rootDirectory, relativePath);
+      const fileStat = await lstat(absolutePath);
+      const mode = fileStat.mode & 0o1777;
+      if (fileStat.isDirectory()) {
+        await this.addHeader(pack, {
+          name: `${relativePath}/`,
+          mode,
+          type: 'directory',
+        });
+        await this.addDirectoryTree(pack, rootDirectory, relativePath);
+        continue;
+      }
+      if (fileStat.isSymbolicLink()) {
+        await this.addHeader(pack, {
+          name: relativePath,
+          mode,
+          type: 'symlink',
+          linkname: await readlink(absolutePath),
+        });
+        continue;
+      }
+      if (!fileStat.isFile()) {
+        throw new ConflictException(
+          `Build context contains an unsupported entry: ${relativePath}`,
+        );
+      }
+      await this.addFileWithMode(
+        pack,
+        relativePath,
+        absolutePath,
+        fileStat.size,
+        mode,
+      );
+    }
+  }
+
+  private addHeader(pack: tar.Pack, header: tar.Headers) {
+    return new Promise<void>((resolve, reject) => {
+      pack.entry(header, (error) => (error ? reject(error) : resolve()));
+    });
+  }
+
+  private async addFileWithMode(
+    pack: tar.Pack,
+    name: string,
+    filePath: string,
+    size: number,
+    mode: number,
+  ) {
+    await new Promise<void>((resolve, reject) => {
+      const entry = pack.entry({ name, mode, size, type: 'file' }, (error) =>
+        error ? reject(error) : resolve(),
       );
       const source = createReadStream(filePath);
       source.on('error', (error) => {

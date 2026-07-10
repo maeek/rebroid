@@ -81,15 +81,15 @@ export const BlurredImageBackdrop = ({
             key={index}
             className={cn(
               'absolute inset-0 transition-opacity duration-200 ease-out will-change-opacity',
-              hasImage && 'bg-primary/80 blur-3xl',
+              hasImage && 'scale-110 bg-primary/80 blur-3xl',
               className
             )}
             style={{
               background: hasImage ? undefined : layer.fallbackBackground,
               backgroundImage: hasImage ? `url("${layer.imageSrc}")` : undefined,
-              backgroundSize: hasImage ? '1000% 1000%' : undefined,
+              backgroundSize: hasImage ? 'cover' : undefined,
               backgroundRepeat: hasImage ? 'no-repeat' : undefined,
-              backgroundPosition: hasImage ? 'top left' : undefined,
+              backgroundPosition: hasImage ? 'center' : undefined,
               opacity: index === activeIndex ? (hasImage ? layer.opacity : 1) : 0
             }}
           />

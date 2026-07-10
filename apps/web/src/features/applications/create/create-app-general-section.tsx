@@ -34,6 +34,7 @@ export const AppFormGeneralSection = ({
       isUploadingApk={isUploadingApk}
       onApkSelect={file => onApkSelect(file)}
       iconSlot={iconSlot}
+      surface='plain'
     />
   )
 }

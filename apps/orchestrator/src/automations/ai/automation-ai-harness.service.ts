@@ -314,6 +314,7 @@ export class AutomationAiHarnessService {
       try {
         return parseDeviceAgentDecision({
           content: textContent(message.content),
+          defaultSnapshotId: state.observation.snapshotId,
           toolCalls: message.tool_calls,
         });
       } catch (error) {

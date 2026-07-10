@@ -7,5 +7,11 @@ export default async function CreateAppPage({
 }) {
   const params = (await searchParams) ?? {}
   const image = Array.isArray(params.image) ? params.image[0] : params.image
-  return <CreateAppPageEntry initialImage={image} />
+  const apk = Array.isArray(params.apk) ? params.apk[0] : params.apk
+  return (
+    <CreateAppPageEntry
+      initialImage={image}
+      uploadedApkId={apk}
+    />
+  )
 }

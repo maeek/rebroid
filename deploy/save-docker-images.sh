@@ -2,24 +2,54 @@
 
 set -euo pipefail
 
-export DOCKER_HOST=unix:///var/folders/dq/lzsfy1_14ql4hh76s153f_lc0000gn/T/podman/machine-api.sock
-
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repo_dir="$(cd -- "${script_dir}/.." && pwd)"
 output_dir="${1:-${script_dir}/docker-images}"
-podman_bin="${PODMAN_BIN:-/opt/podman/bin/podman}"
 platform="${PLATFORM:-linux/amd64}"
+
+resolve_container_engine() {
+  if [[ -n "${CONTAINER_ENGINE_BIN:-}" ]]; then
+    printf '%s\n' "${CONTAINER_ENGINE_BIN}"
+    return
+  fi
+
+  if [[ -n "${PODMAN_BIN:-}" ]]; then
+    printf '%s\n' "${PODMAN_BIN}"
+    return
+  fi
+
+  if command -v docker >/dev/null 2>&1; then
+    command -v docker
+    return
+  fi
+
+  if command -v podman >/dev/null 2>&1; then
+    command -v podman
+    return
+  fi
+
+  echo "Docker or Podman is required." >&2
+  exit 1
+}
+
+container_engine="$(resolve_container_engine)"
+container_engine_name="$(basename -- "${container_engine}")"
 
 build_image() {
   local image_name="$1"
   local context_dir="$2"
   local dockerfile_path="$3"
   shift 3
+  local -a format_args=()
+
+  if [[ "${container_engine_name}" == "podman" ]]; then
+    format_args=(--format docker)
+  fi
 
   echo "Building ${image_name} for ${platform}"
-  "${podman_bin}" build \
+  "${container_engine}" build \
     --platform "${platform}" \
-    --format docker \
+    "${format_args[@]}" \
     -t "${image_name}" \
     -f "${dockerfile_path}" \
     "$@" \
@@ -53,12 +83,18 @@ build_image \
   "${repo_dir}" \
   "${repo_dir}/apps/firewall-agent/Dockerfile"
 
-"${podman_bin}" image inspect \
+build_image \
+  "rebroid/gapps-patcher:latest" \
+  "${repo_dir}/apps/gapps-patcher" \
+  "${repo_dir}/apps/gapps-patcher/Dockerfile"
+
+"${container_engine}" image inspect \
   localhost/rebroid/orchestrator:local \
   localhost/rebroid/web:local \
   localhost/rebroid/display-sidecar:local \
   localhost/rebroid/ocr-sidecar:local \
   localhost/rebroid/firewall-agent:local \
+  rebroid/gapps-patcher:latest \
   --format '{{.RepoTags}} {{.Os}}/{{.Architecture}}'
 
 mkdir -p "${output_dir}"
@@ -66,20 +102,21 @@ mkdir -p "${output_dir}"
 while read -r image_name archive_name; do
   [[ -n "${image_name}" ]] || continue
 
-  if ! "${podman_bin}" image exists "${image_name}"; then
+  if ! "${container_engine}" image inspect "${image_name}" >/dev/null 2>&1; then
     echo "Missing image: ${image_name}" >&2
     exit 1
   fi
 
   archive_path="${output_dir}/${archive_name}"
   echo "Saving ${image_name} -> ${archive_path}"
-  "${podman_bin}" image save --output "${archive_path}" "${image_name}"
+  "${container_engine}" image save --output "${archive_path}" "${image_name}"
 done <<'EOF'
 localhost/rebroid/web:local rebroid-web-local.tar
 localhost/rebroid/orchestrator:local rebroid-orchestrator-local.tar
 localhost/rebroid/display-sidecar:local rebroid-display-sidecar-local.tar
 localhost/rebroid/ocr-sidecar:local rebroid-ocr-sidecar-local.tar
 localhost/rebroid/firewall-agent:local rebroid-firewall-agent-local.tar
+rebroid/gapps-patcher:latest rebroid-gapps-patcher-latest.tar
 EOF
 
 echo "Saved Rebroid images to ${output_dir}"

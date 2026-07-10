@@ -105,6 +105,22 @@ describe("redroid runtime", () => {
     });
   });
 
+  it("resolves Google Play images without signature spoofing", () => {
+    const resolved = resolveRuntimeImageMetadata({
+      image: "local/redroid-gapps:14",
+      labels: {
+        [runtimeImageLabelKeys.runtimeKind]: "redroid",
+        [runtimeImageLabelKeys.androidVersion]: "14",
+        [runtimeImageLabelKeys.architecture]: "amd64",
+        [runtimeImageLabelKeys.gmsMode]: "gapps",
+        [runtimeImageLabelKeys.signatureSpoofing]: "not_applicable",
+      },
+    });
+
+    assert.equal(resolved.metadata.gmsMode, "gapps");
+    assert.equal(resolved.metadata.signatureSpoofing, "not_applicable");
+  });
+
   it("parses redroid display dimensions", () => {
     assert.deepEqual(
       getRedroidDisplayDimensionsFromArgs(

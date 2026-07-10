@@ -229,9 +229,11 @@ export const buildDeviceDecisionTool = () => ({
 
 export const parseDeviceAgentDecision = ({
   content,
+  defaultSnapshotId,
   toolCalls,
 }: {
   content: string;
+  defaultSnapshotId?: string;
   toolCalls?: ChatToolCall[];
 }): DeviceAgentDecision => {
   const decisionCall = toolCalls?.find(
@@ -239,23 +241,324 @@ export const parseDeviceAgentDecision = ({
   );
   const raw = decisionCall?.function.arguments || extractJsonObject(content);
   if (!raw) throw new Error("Provider returned no device decision JSON.");
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
+  const parsed = parseJsonLike(raw);
+  if (parsed === null) {
     throw new Error("Provider returned malformed device decision JSON.");
   }
-  if (!isDeviceAgentDecision(parsed)) {
-    throw new Error("Provider returned an invalid device decision shape.");
+  const normalized = normalizeDeviceDecision(parsed, defaultSnapshotId);
+  if (!isDeviceAgentDecision(normalized)) {
+    throw new Error(invalidDecisionMessage(normalized));
   }
-  return parsed;
+  return normalized;
 };
 
 const extractJsonObject = (value: string) => {
   const trimmed = value.trim();
   if (trimmed.startsWith("{") && trimmed.endsWith("}")) return trimmed;
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1]?.trim();
-  return fenced?.startsWith("{") && fenced.endsWith("}") ? fenced : "";
+  if (fenced?.startsWith("{") && fenced.endsWith("}")) return fenced;
+  return firstBalancedObject(trimmed);
+};
+
+const parseJsonLike = (value: unknown, depth = 0): unknown | null => {
+  if (depth > 3) return null;
+  if (typeof value !== "string") return value;
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return typeof parsed === "string"
+      ? parseJsonLike(parsed, depth + 1)
+      : parsed;
+  } catch {
+    return null;
+  }
+};
+
+const normalizeDeviceDecision = (
+  value: unknown,
+  defaultSnapshotId?: string,
+): unknown => {
+  const unwrapped = unwrapDecision(value);
+  const decision = objectValue(unwrapped);
+  if (!decision) return unwrapped;
+  const inferredKind = decisionKind(decision);
+  if (inferredKind === "act") {
+    const actionSource = objectValue(decision.action) ?? decision;
+    const action = normalizeAction(actionSource);
+    const actionType = objectValue(action)?.type;
+    const intent = firstText(decision.intent, decision.reason);
+    return {
+      kind: "act",
+      snapshotId:
+        firstText(decision.snapshotId, decision.snapshot_id) ??
+        defaultSnapshotId ??
+        "",
+      intent:
+        intent ??
+        (typeof actionType === "string"
+          ? `Perform ${actionType.replaceAll("_", " ")}`
+          : "Perform the next grounded action"),
+      expectedOutcome:
+        firstText(decision.expectedOutcome, decision.expected_outcome) ??
+        intent ??
+        "The requested device state changes visibly",
+      action,
+    };
+  }
+  if (inferredKind === "needs_plan") {
+    return {
+      kind: "needs_plan",
+      reason:
+        firstText(decision.reason, decision.message) ??
+        "A higher-level plan is needed.",
+    };
+  }
+  if (inferredKind === "ask_user") {
+    const question = firstText(decision.question, decision.message) ?? "";
+    return {
+      kind: "ask_user",
+      question,
+      reason: firstText(decision.reason) ?? question,
+    };
+  }
+  if (inferredKind === "request_escalation") {
+    return {
+      kind: "request_escalation",
+      reason:
+        firstText(decision.reason, decision.message) ??
+        "A read-only diagnostic is required.",
+      program: firstText(decision.program) ?? "",
+      args: stringArray(decision.args),
+    };
+  }
+  if (inferredKind === "finish") {
+    const status = decision.status;
+    return {
+      kind: "finish",
+      status,
+      finalText:
+        firstText(decision.finalText, decision.final_text, decision.message) ??
+        "",
+      evidenceIds: stringArray(decision.evidenceIds ?? decision.evidence_ids),
+      completedSubgoalIds: stringArray(
+        decision.completedSubgoalIds ?? decision.completed_subgoal_ids,
+      ),
+      ...(firstText(decision.reason)
+        ? { reason: firstText(decision.reason) }
+        : {}),
+    };
+  }
+  return decision;
+};
+
+const unwrapDecision = (value: unknown, depth = 0): unknown => {
+  if (depth > 4) return value;
+  const parsed = parseJsonLike(value);
+  if (parsed === null) return value;
+  if (Array.isArray(parsed) && parsed.length === 1) {
+    return unwrapDecision(parsed[0], depth + 1);
+  }
+  const wrapper = objectValue(parsed);
+  if (!wrapper) return parsed;
+  const functionRecord = objectValue(wrapper.function);
+  if (
+    functionRecord?.arguments !== undefined &&
+    functionRecord.name === DEVICE_DECISION_TOOL_NAME
+  ) {
+    return unwrapDecision(functionRecord.arguments, depth + 1);
+  }
+  if (
+    wrapper.arguments !== undefined &&
+    (wrapper.name === DEVICE_DECISION_TOOL_NAME || wrapper.name === undefined)
+  ) {
+    return unwrapDecision(wrapper.arguments, depth + 1);
+  }
+  for (const key of ["decision", "deviceDecision", "device_decision"]) {
+    const nested = wrapper[key];
+    if (
+      objectValue(nested) ||
+      Array.isArray(nested) ||
+      (typeof nested === "string" && nested.trim().startsWith("{"))
+    ) {
+      return unwrapDecision(nested, depth + 1);
+    }
+  }
+  return wrapper;
+};
+
+const decisionKind = (decision: Record<string, unknown>) => {
+  const rawKind = firstText(decision.kind, decision.decision);
+  if (rawKind === "action") return "act";
+  if (rawKind === "plan") return "needs_plan";
+  if (rawKind === "done") return "finish";
+  if (
+    rawKind === "act" ||
+    rawKind === "needs_plan" ||
+    rawKind === "ask_user" ||
+    rawKind === "request_escalation" ||
+    rawKind === "finish"
+  ) {
+    return rawKind;
+  }
+  if (
+    objectValue(decision.action) ||
+    normalizedActionType(decision.action) ||
+    normalizedActionType(decision.type)
+  ) {
+    return "act";
+  }
+  if (decision.status === "completed" || decision.status === "blocked") {
+    return "finish";
+  }
+  if (nonEmptyString(decision.question)) return "ask_user";
+  if (nonEmptyString(decision.program)) return "request_escalation";
+  return null;
+};
+
+const normalizeAction = (value: Record<string, unknown>): unknown => {
+  const parameters =
+    objectValue(value.parameters) ?? objectValue(value.params) ?? {};
+  const source = { ...value, ...parameters };
+  const type = normalizedActionType(
+    source.type ?? source.action ?? source.name,
+  );
+  if (!type) return source;
+  if (type === "tap") {
+    const directPoint =
+      normalizedNumber(source.x) && normalizedNumber(source.y)
+        ? { x: source.x, y: source.y }
+        : null;
+    const point =
+      objectValue(source.point) ??
+      objectValue(source.coordinates) ??
+      directPoint;
+    return {
+      type,
+      ...(firstText(
+        source.candidateId,
+        source.candidate_id,
+        source.targetId,
+        source.target_id,
+      )
+        ? {
+            candidateId: firstText(
+              source.candidateId,
+              source.candidate_id,
+              source.targetId,
+              source.target_id,
+            ),
+          }
+        : {}),
+      ...(point ? { point } : {}),
+    };
+  }
+  if (type === "swipe") {
+    return {
+      type,
+      start: source.start,
+      end: source.end,
+      ...(positiveNumber(source.durationMs ?? source.duration_ms)
+        ? { durationMs: source.durationMs ?? source.duration_ms }
+        : {}),
+    };
+  }
+  if (type === "input_text") {
+    return { type, text: firstText(source.text, source.value) ?? "" };
+  }
+  if (type === "key") {
+    return { type, key: firstText(source.key, source.value) ?? "" };
+  }
+  if (type === "launch_app") {
+    return {
+      type,
+      packageName:
+        firstText(source.packageName, source.package_name, source.package) ??
+        "",
+    };
+  }
+  if (type === "open_system_surface") {
+    return { type, surface: source.surface };
+  }
+  if (type === "wait") {
+    return { type, durationMs: source.durationMs ?? source.duration_ms };
+  }
+  return {
+    type,
+    uses: firstText(source.uses, source.tool) ?? "",
+    input: objectValue(source.input) ?? {},
+  };
+};
+
+const normalizedActionType = (value: unknown) => {
+  if (typeof value !== "string") return null;
+  const aliases: Record<string, DeviceAgentAction["type"]> = {
+    click: "tap",
+    inputText: "input_text",
+    launch: "launch_app",
+    launchPackage: "launch_app",
+    open_app: "launch_app",
+    openSystemSurface: "open_system_surface",
+    invokeCapability: "invoke_capability",
+  };
+  const normalized = aliases[value.trim()] ?? value.trim();
+  return isActionType(normalized) ? normalized : null;
+};
+
+const isActionType = (value: unknown): value is DeviceAgentAction["type"] =>
+  typeof value === "string" &&
+  [
+    "tap",
+    "swipe",
+    "input_text",
+    "key",
+    "launch_app",
+    "open_system_surface",
+    "wait",
+    "invoke_capability",
+  ].includes(value);
+
+const invalidDecisionMessage = (value: unknown) => {
+  const decision = objectValue(value);
+  if (!decision) return "Provider returned an invalid device decision shape.";
+  if (decision.kind === "act" && !isDeviceAction(decision.action)) {
+    return "Provider returned an ungrounded action. A tap must include action.candidateId from the current observation or action.point with normalized x/y coordinates.";
+  }
+  if (decision.kind === "act" && !nonEmptyString(decision.snapshotId)) {
+    return "Provider omitted the current snapshot ID from its action.";
+  }
+  if (decision.kind === "finish") {
+    return "Provider returned an incomplete completion decision.";
+  }
+  return "Provider returned an invalid device decision. Use one of: act, needs_plan, ask_user, request_escalation, or finish.";
+};
+
+const firstBalancedObject = (value: string) => {
+  let start = -1;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === '"') inString = false;
+      continue;
+    }
+    if (character === '"') {
+      inString = true;
+      continue;
+    }
+    if (character === "{") {
+      if (depth === 0) start = index;
+      depth += 1;
+      continue;
+    }
+    if (character === "}" && depth > 0) {
+      depth -= 1;
+      if (depth === 0 && start >= 0) return value.slice(start, index + 1);
+    }
+  }
+  return "";
 };
 
 const isDeviceAgentDecision = (
@@ -333,6 +636,14 @@ const objectValue = (value: unknown) =>
     : null;
 const nonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.trim().length > 0;
+const firstText = (...values: unknown[]) => {
+  const value = values.find(nonEmptyString);
+  return typeof value === "string" ? value.trim() : null;
+};
+const stringArray = (value: unknown) =>
+  Array.isArray(value)
+    ? value.filter((item): item is string => nonEmptyString(item))
+    : [];
 const positiveNumber = (value: unknown) =>
   typeof value === "number" && Number.isFinite(value) && value > 0;
 const normalizedNumber = (value: unknown) =>

@@ -16,6 +16,7 @@
     "lint": "turbo run lint",
     "openapi:check": "node scripts/openapi-generate.mjs --check",
     "openapi:generate": "node scripts/openapi-generate.mjs",
+    "test:gapps-patcher": "./scripts/test-gapps-patcher.sh",
     "openapi:orchestrator:check": "node scripts/openapi-generate.mjs --contract=orchestrator --check",
     "openapi:orchestrator:generate": "node scripts/openapi-generate.mjs --contract=orchestrator",
     "reset:orchestrator-state": "node scripts/reset-orchestrator-state.mjs",

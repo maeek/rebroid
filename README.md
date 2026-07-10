@@ -215,11 +215,21 @@ On SELinux hosts, pass `CONTAINER_SECURITY_OPTS=label=disable` so the privileged
 
 ### Runtime image builder
 
-Runtime > Images includes a builder for local Redroid-style images. The V1
-workflow is a Docker overlay builder, not a full Redroid/AOSP framework build:
-it can add curated files such as microG APKs and privileged permission XML into
-a base image, label the result with Rebroid runtime metadata, and make that
-custom tag selectable in Runtime defaults and app creation.
+Runtime > Images includes a one-click Google Play image builder. It does not
+compile AOSP. For Android 14 or 13 it pulls the official prebuilt ReDroid image,
+pins the current MindTheGapps `upsilon` or `tau` commit, builds the standalone
+x86_64 GApps package in an isolated non-root worker, validates the package, and
+copies its `system/` overlay into a local image.
+
+MindTheGapps contains proprietary Google components. Rebroid builds the
+selected upstream revision locally and does not redistribute patched images.
+
+The patch workflow requires 10 GB of free storage and 3 GB of Docker memory;
+4 GB RAM and 2 CPUs are recommended. Only one GApps patch job runs at a time.
+Successful packages are cached by source revision, with only the newest cache
+retained for each supported Android version. The previous Dockerfile/context
+workflow remains available from the Google Play builder's **Custom builder**
+link.
 
 Built images receive these labels:
 
@@ -228,15 +238,20 @@ com.rebroid.managed=true
 com.rebroid.runtime.kind=redroid
 com.rebroid.redroid.android_version=<version>
 com.rebroid.redroid.arch=<arch>
-com.rebroid.gms.mode=microg
-com.rebroid.signature_spoofing=<state>
+com.rebroid.gms.mode=gapps
+com.rebroid.signature_spoofing=not_applicable
 ```
 
-For microG, signature spoofing still has to be present in the Android framework
-of the base image. Rebroid deliberately marks stock Redroid overlay builds as
-`external_required`; Dockerfile layering cannot patch framework signature
-checks. Use a base image that was already patched outside Rebroid, then mark the
-result `present_unverified` or `verified` only after you have validated it.
+Google-signed GApps do not use microG signature spoofing. Static validation
+confirms that Google Play Services, the Play Store, and a Google privileged
+permission file are present; it does not certify Play Protect, account login,
+or universal Play Integrity compatibility.
+
+APK uploads are analyzed for manifest declarations and bounded DEX references
+to Google Play Services, Play Core, Play Integrity, and Firebase Messaging.
+The create-app form reports `required`, `likely`, `not detected`, or `unknown`
+and can recommend an existing same-version Google Play image. This analysis is
+advisory and never rejects an otherwise valid APK upload.
 
 ### Redroid display streaming support
 

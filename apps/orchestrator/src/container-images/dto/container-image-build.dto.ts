@@ -15,7 +15,7 @@ import type {
 } from '@rebroid/application-core/redroid-runtime';
 
 const runtimeKinds = ['redroid', 'generic'] as const;
-const gmsModes = ['none', 'microg'] as const;
+const gmsModes = ['none', 'microg', 'gapps'] as const;
 const signatureSpoofingStates = [
   'not_applicable',
   'external_required',

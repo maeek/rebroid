@@ -135,7 +135,12 @@ export class ContainerImageBuilderService {
 
     const active: ActiveBuild = { cancelled: false };
     this.activeBuilds.set(id, active);
-    await this.jobs.markRunning(job);
+    const runningJob = await this.jobs.markRunning(job);
+    if (runningJob.status !== 'running') {
+      this.activeBuilds.delete(id);
+      return;
+    }
+    await this.jobs.updateGappsDetails(job, { phase: 'building_image' });
 
     try {
       const contextFileIds = JSON.parse(job.contextFileIdsJson) as string[];
@@ -196,7 +201,6 @@ export class ContainerImageBuilderService {
       }
 
       const inspect = await this.images.inspectImage(job.targetImage);
-      await this.jobs.markSucceeded(current, inspect.Id);
       await this.metadata.upsert({
         imageRef: job.targetImage,
         imageId: inspect.Id,
@@ -206,6 +210,7 @@ export class ContainerImageBuilderService {
         gmsMode: job.gmsMode,
         signatureSpoofing: job.signatureSpoofing,
       });
+      await this.jobs.markSucceeded(current, inspect.Id);
     } catch (error) {
       const current = await this.getJob(id);
       if (current.status === 'cancelled' || active.cancelled) {

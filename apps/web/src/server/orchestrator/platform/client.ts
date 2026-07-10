@@ -13,6 +13,8 @@ import type {
   PlatformNetwork,
   PlatformNetworkDetails,
   StartContainerImageBuildInput,
+  GappsBuildPresetsResponse,
+  StartGappsBuildInput,
   UpdateContainerImageRecipeInput,
   UpdateRuntimeImageMetadataInput
 } from './types'
@@ -117,6 +119,21 @@ export const orchestratorPlatformClient = {
 
   cancelImageBuild(id: string) {
     return emptyRequest<ContainerImageBuildJob>(`/platform/container-images/builds/${id}/cancel`, { method: 'POST' })
+  },
+
+  listGappsBuildPresets() {
+    return emptyRequest<GappsBuildPresetsResponse>('/platform/container-images/gapps-presets')
+  },
+
+  startGappsBuild(input: StartGappsBuildInput) {
+    return jsonRequest<ContainerImageBuildJob>('/platform/container-images/gapps-builds', 'POST', input)
+  },
+
+  clearGappsCache(androidVersion: string) {
+    return emptyRequest<{ androidVersion: string; cleared: boolean }>(
+      `/platform/container-images/gapps-cache/${encodeURIComponent(androidVersion)}`,
+      { method: 'DELETE' }
+    )
   },
 
   listPlatformNetworks() {

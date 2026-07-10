@@ -6,6 +6,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import type { GooglePlayServicesVerdict } from '../types/google-play-services-analysis';
 
 @Entity({ name: 'uploaded_apks' })
 export class UploadedApk {
@@ -54,6 +55,15 @@ export class UploadedApk {
   })
   @Column({ type: 'text', nullable: true })
   packageName!: string | null;
+
+  @Column({ type: 'text', default: 'unknown' })
+  googlePlayServicesVerdict!: GooglePlayServicesVerdict;
+
+  @Column({ type: 'text', default: "'[]'" })
+  googlePlayServicesEvidenceJson!: string;
+
+  @Column({ type: 'integer', default: 1 })
+  googlePlayServicesAnalysisVersion!: number;
 
   @ApiProperty({ example: '2026-05-16T20:39:29.000Z' })
   @CreateDateColumn()

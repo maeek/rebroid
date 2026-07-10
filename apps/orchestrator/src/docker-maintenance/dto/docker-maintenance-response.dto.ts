@@ -16,7 +16,7 @@ export class RuntimeImageMetadataDto {
   @ApiProperty({ type: String, nullable: true })
   architecture!: string | null;
 
-  @ApiProperty({ enum: ['none', 'microg'] })
+  @ApiProperty({ enum: ['none', 'microg', 'gapps'] })
   gmsMode!: RuntimeImageGmsMode;
 
   @ApiProperty({

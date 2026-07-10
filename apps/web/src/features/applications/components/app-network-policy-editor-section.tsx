@@ -26,6 +26,7 @@ type AppNetworkPolicyEditorSectionProps = {
   restrictedLabel?: string
   titleClassName?: string
   contentClassName?: string
+  surface?: 'plain' | 'band' | 'panel'
 }
 
 export const AppNetworkPolicyEditorSection = ({
@@ -47,12 +48,13 @@ export const AppNetworkPolicyEditorSection = ({
   unrestrictedLabel = 'Disabled',
   restrictedLabel = 'Only API plus allowlist',
   titleClassName = 'pb-4',
-  contentClassName = 'gap-5'
+  contentClassName = 'gap-5',
+  surface = 'band'
 }: AppNetworkPolicyEditorSectionProps) => {
   return (
     <Section
       title={title}
-      surface='band'
+      surface={surface}
       titleClassName={titleClassName}
       contentClassName={contentClassName}
     >

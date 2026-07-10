@@ -120,7 +120,7 @@ export const redroidDefaultsLabel = redroidDefaultContainerArgs.join(" ");
 
 export type RuntimeImageKind = "redroid" | "generic";
 
-export type RuntimeImageGmsMode = "none" | "microg";
+export type RuntimeImageGmsMode = "none" | "microg" | "gapps";
 
 export type RuntimeImageSignatureSpoofing =
   | "not_applicable"
@@ -169,7 +169,7 @@ export const defaultRedroidRuntimeImageMetadata: RuntimeImageMetadata = {
 };
 
 const runtimeImageKinds = ["redroid", "generic"] as const;
-const runtimeImageGmsModes = ["none", "microg"] as const;
+const runtimeImageGmsModes = ["none", "microg", "gapps"] as const;
 const runtimeImageSignatureSpoofingStates = [
   "not_applicable",
   "external_required",

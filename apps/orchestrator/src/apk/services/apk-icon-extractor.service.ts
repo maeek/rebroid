@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { getErrorMessage } from '../../common/error-message';
+import type { ApkPackageInspectionPort } from '../contracts/apk-package-inspection.port';
 import { maxIconBytes, ZipEntry } from '../types/apk.types';
 import { imageDimensions, imageMimeType } from '../utils/apk-image.utils';
 import { ApkArchiveService } from './apk-archive.service';
@@ -9,7 +10,7 @@ import { ApkResourceReaderService } from './apk-resource-reader.service';
 import { ApkZipReaderService } from './apk-zip-reader.service';
 
 @Injectable()
-export class ApkIconExtractorService {
+export class ApkIconExtractorService implements ApkPackageInspectionPort {
   private readonly logger = new Logger(ApkIconExtractorService.name);
   private readonly maxMetadataEntryBytes = 64 * 1024 * 1024;
 

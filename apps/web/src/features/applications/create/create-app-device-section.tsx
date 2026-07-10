@@ -1,10 +1,12 @@
-import { redroidDefaultsLabel, redroidDisplayArgsForProfile } from '@rebroid/application-core/redroid-runtime'
-import { Fragment } from 'react/jsx-runtime'
-import { Badge } from '@/components/ui/badge'
+import { applyRedroidDisplayContainerArgs } from '@rebroid/application-core/redroid-runtime'
+import { IconChevronRight } from '@tabler/icons-react'
 import { Section } from '@/components/ui/section'
+import { Textarea } from '@/components/ui/textarea'
 import { Visible } from '@/components/ui/visible'
-import { AppContainerRuntimeSection } from '@/features/applications/components/app-container-runtime-section'
+import { verticalSettingClassName } from '@/features/applications/components/app-form-utils'
 import { RuntimeImagePicker } from '@/features/platform/components/runtime-image-picker'
+import { Setting } from '@/shared/ui/settings/setting'
+import { getCustomDisplayConfig } from './create-app-form-model'
 import type { CreateAppFormValues } from './create-app-form.types'
 import type { PlatformImage } from '@/server/orchestrator/platform/types'
 
@@ -25,74 +27,79 @@ export const CreateAppDeviceSection = ({
   canChangeContainerArgs,
   isRedroidRuntime
 }: CreateAppDeviceSectionProps) => {
-  const redroidDefaultArgs = `${redroidDefaultsLabel} ${redroidDisplayArgsForProfile(values.redroidDisplayProfileId)}`
+  const customDisplayConfig =
+    values.redroidDisplayProfileId === 'custom' ? (getCustomDisplayConfig(values) ?? undefined) : undefined
+  const redroidDefaultArgs =
+    applyRedroidDisplayContainerArgs(
+      values.containerImage,
+      values.redroidDisplayProfileId,
+      '',
+      customDisplayConfig,
+      'redroid'
+    ) ?? ''
 
   return (
-    <AppContainerRuntimeSection
-      title={
-        <div className='flex items-center gap-2'>
-          Device{' '}
-          <Badge variant={isRedroidRuntime ? 'default' : 'secondary'}>{isRedroidRuntime ? 'Redroid' : 'Custom'}</Badge>
-        </div>
-      }
-      showContainerImage={canChangeBaseImage}
-      containerImage={values.containerImage}
-      containerImageLabel='Image'
-      containerImageDescription='Container image used to boot this managed app runtime. Android images such as redroid are the intended default.'
-      onContainerImageChange={value => onChange({ containerImage: value })}
-      containerImageSlot={
-        <RuntimeImagePicker
-          images={images}
-          value={values.containerImage}
-          onChange={value => onChange({ containerImage: value })}
-        />
-      }
-      showContainerArgs={canChangeContainerArgs}
-      containerArgsValue={isRedroidRuntime ? values.redroidExtraArgs : values.customContainerArgs}
-      onContainerArgsChange={value => {
-        if (isRedroidRuntime) {
-          onChange({ redroidExtraArgs: value })
-        } else {
-          onChange({ customContainerArgs: value })
-        }
-      }}
-      containerArgsLabel={isRedroidRuntime ? 'Additional Redroid arguments' : 'Container arguments'}
-      containerArgsDescription={
-        isRedroidRuntime
-          ? 'Optional additional androidboot or property overrides, for example display size, DPI, FPS, or proxy settings.'
-          : 'Optional Docker Cmd override. Use a long-running command for images that would otherwise exit immediately, for example sleep infinity.'
-      }
-      containerArgsPlaceholder={
-        isRedroidRuntime
-          ? 'androidboot.redroid_width=1080 androidboot.redroid_height=1920 androidboot.redroid_dpi=480'
-          : 'sleep infinity'
-      }
+    <Section
+      title={canChangeBaseImage ? 'Runtime image' : 'Runtime options'}
+      titleClassName='mb-4'
+      contentClassName='gap-6'
     >
-      <Visible when={isRedroidRuntime && canChangeContainerArgs}>
-        <Section
-          title='Redroid base arguments'
-          titleClassName='pb-0'
-          contentClassName='gap-2'
+      <Visible when={canChangeBaseImage}>
+        <Setting
+          label='Image'
+          description='Container image used to boot the managed Android runtime.'
+          variant='vertical'
+          className={verticalSettingClassName}
         >
-          <div className='font-bold text-sm text-foreground'>Redroid base arguments</div>
-          <div className='rounded-md border border-border/80 bg-surface-panel/38 p-3 text-xs text-muted-foreground'>
-            <div className='grid gap-2'>
-              <p>
-                Applied automatically for Redroid images. The managed ADB endpoint uses TCP port 5555. Extra arguments
-                below can override these by using the same key.
-              </p>
-              <div className='font-mono leading-6'>
-                {redroidDefaultArgs.split(' ').map((word, index) => (
-                  <Fragment key={`${word}-${index}`}>
-                    <span>{word}</span>
-                    <br />
-                  </Fragment>
-                ))}
-              </div>
-            </div>
-          </div>
-        </Section>
+          <RuntimeImagePicker
+            images={images}
+            value={values.containerImage}
+            onChange={value => onChange({ containerImage: value })}
+          />
+        </Setting>
       </Visible>
-    </AppContainerRuntimeSection>
+
+      <Visible when={canChangeContainerArgs}>
+        <details className='group border-t border-border/60 pt-4'>
+          <summary className='flex cursor-pointer list-none items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground'>
+            <IconChevronRight className='size-4 transition-transform group-open:rotate-90' />
+            Runtime arguments
+          </summary>
+          <div className='grid gap-5 pt-5'>
+            <Visible when={isRedroidRuntime}>
+              <div className='grid gap-2 text-xs text-muted-foreground'>
+                <p>Effective ReDroid defaults, including the selected display profile:</p>
+                <pre className='max-h-44 overflow-auto rounded-md bg-surface-panel/40 px-3 py-2 font-mono leading-5 whitespace-pre-wrap'>
+                  {redroidDefaultArgs.split(' ').join('\n')}
+                </pre>
+                <p>The managed ADB endpoint uses TCP port 5555. Additional values override matching keys.</p>
+              </div>
+            </Visible>
+            <Setting
+              label={isRedroidRuntime ? 'Additional ReDroid arguments' : 'Container arguments'}
+              description={
+                isRedroidRuntime
+                  ? 'Optional androidboot or property overrides, such as FPS or proxy settings.'
+                  : 'Optional Docker Cmd override for images that would otherwise exit.'
+              }
+              variant='vertical'
+              className={verticalSettingClassName}
+            >
+              <Textarea
+                value={isRedroidRuntime ? values.redroidExtraArgs : values.customContainerArgs}
+                placeholder={isRedroidRuntime ? 'androidboot.redroid_fps=30' : 'sleep infinity'}
+                onChange={event => {
+                  if (isRedroidRuntime) {
+                    onChange({ redroidExtraArgs: event.target.value })
+                  } else {
+                    onChange({ customContainerArgs: event.target.value })
+                  }
+                }}
+              />
+            </Setting>
+          </div>
+        </details>
+      </Visible>
+    </Section>
   )
 }
