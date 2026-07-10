@@ -177,6 +177,25 @@ describe('useAiAgentChatSession', () => {
     await waitFor(() => expect(result.current.turns).toHaveLength(1))
     expect(transcript.scrollTo).toHaveBeenCalledWith({ top: 1000, behavior: 'smooth' })
   })
+
+  it('starts an explicitly approved follow-up with one-run shell escalation', async () => {
+    jest.mocked(actions.runAdHocAiAutomationAction).mockResolvedValue(run)
+    const { result } = renderHook(() => useAiAgentChatSession({ app }))
+    await waitFor(() => expect(result.current.turns).toHaveLength(1))
+
+    await act(async () => {
+      await result.current.submitPrompt('Continue with the approved diagnostic.', {
+        rawShellPolicy: 'allowlisted'
+      })
+    })
+
+    expect(actions.runAdHocAiAutomationAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: 'Continue with the approved diagnostic.',
+        rawShellPolicy: 'allowlisted'
+      })
+    )
+  })
 })
 
 const createTranscriptElement = ({

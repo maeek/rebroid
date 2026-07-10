@@ -30,6 +30,8 @@ const createSettings = (): StoredOrchestratorSettings => ({
       id: 'primary',
       label: 'Primary',
       kind: 'openai-compatible',
+      protocol: 'openai-chat-completions',
+      serverFlavor: 'auto',
       baseUrl: 'https://example.test/v1',
       apiKey: 'secret',
       enabled: true,

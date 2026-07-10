@@ -90,6 +90,7 @@ const chatSession = (
   setVisionProviderId: jest.fn(),
   showCancelRun: undefined,
   submit: () => Promise.resolve(undefined),
+  submitPrompt: () => Promise.resolve(undefined),
   timeoutMinutesInput: '5',
   transcriptRef: createRef<HTMLDivElement>(),
   turns: [],
@@ -104,7 +105,7 @@ describe('AiAgentToolsSection', () => {
     render(<AiAgentToolsSection app={app} />)
 
     expect(screen.getByLabelText('Loading AI chat history')).toBeTruthy()
-    expect(screen.getByPlaceholderText('Ask the AI to perform a task, call a tool, or take an action...')).toBeTruthy()
+    expect(screen.getByPlaceholderText('Describe what you want to accomplish…')).toBeTruthy()
     expect(screen.getByText('No model')).toBeTruthy()
   })
 
@@ -113,7 +114,7 @@ describe('AiAgentToolsSection', () => {
 
     render(<AiAgentToolsSection app={app} />)
 
-    expect(screen.getByText('AI agent ready')).toBeTruthy()
+    expect(screen.getByText('What should I do on this device?')).toBeTruthy()
     expect(screen.getByText('No model')).toBeTruthy()
     expect(screen.queryByLabelText('Loading AI chat history')).toBeNull()
   })
@@ -186,7 +187,7 @@ describe('AiAgentToolsSection', () => {
     )
 
     expect(await screen.findByText('Dynamic chip')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Dynamic chip' }).className).toContain('border-transparent')
+    expect(screen.getByRole('button', { name: 'Dynamic chip' }).className).toContain('border-border/45')
     expect(screen.getByRole('button', { name: 'Dynamic chip' }).className).toContain('font-normal')
     expect(generatePromptSuggestions.mock.calls[0]?.[0]).toMatchObject({ targetApplicationId: app.id })
   })

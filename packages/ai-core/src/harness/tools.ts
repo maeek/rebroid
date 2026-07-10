@@ -2,7 +2,9 @@ import type { AutomationCommandLike } from "./types";
 
 export const toolName = (uses: string) => uses.replace(/[^a-zA-Z0-9_]/g, "__");
 
-export const aiToolName = (command: Pick<AutomationCommandLike, "uses" | "aiTool">) =>
+export const aiToolName = (
+  command: Pick<AutomationCommandLike, "uses" | "aiTool">,
+) =>
   command.aiTool?.name ? toolName(command.aiTool.name) : toolName(command.uses);
 
 export const toolNameAliases = (uses: string) =>
@@ -14,7 +16,7 @@ export const toolNameAliases = (uses: string) =>
 
 export const allowedToolMatcher = (allowedTools?: string[]) => {
   const allowed = new Set((allowedTools ?? []).filter(Boolean));
-  return (uses: string) => allowed.size === 0 || allowed.has(uses);
+  return (uses: string) => allowed.has(uses);
 };
 
 export const buildToolDefinitions = (

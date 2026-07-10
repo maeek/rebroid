@@ -49,14 +49,14 @@ export const catalogByRole = <TProvider extends AiModelCatalogProvider>(
       (provider) =>
         ({
           ...provider,
-          models: provider.models.filter((model) => model.roles?.includes(role)),
+          models: provider.models.filter((model) =>
+            model.roles?.includes(role),
+          ),
         }) as TProvider,
     )
     .filter((provider) => provider.models.length > 0);
 
-export const selectCatalogProvider = <
-  TProvider extends AiModelCatalogProvider,
->(
+export const selectCatalogProvider = <TProvider extends AiModelCatalogProvider>(
   catalog: TProvider[],
   providerId: string,
 ): TProvider | undefined =>
@@ -118,7 +118,11 @@ export const selectPlannerVisionCatalog = <
   const plannerCatalog = catalogByRole(catalog, "planner");
   const visionCatalog = catalogByRole(catalog, "vision");
   const selectedProvider = selectCatalogProvider(plannerCatalog, providerId);
-  const selectedModel = selectCatalogModel(selectedProvider, modelId, "planner");
+  const selectedModel = selectCatalogModel(
+    selectedProvider,
+    modelId,
+    "planner",
+  );
   const selectedVisionProvider = selectCatalogProvider(
     visionCatalog,
     visionProviderId,
@@ -163,7 +167,9 @@ export const selectMatchingVisionPair = <
       (!requireVisionDefault || item.defaultFor?.includes("vision")),
   );
 
-  return model ? { provider, model } : { provider: undefined, model: undefined };
+  return model
+    ? { provider, model }
+    : { provider: undefined, model: undefined };
 };
 
 export const selectInitialPlannerVisionCatalog = <

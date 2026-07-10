@@ -157,7 +157,7 @@ export class MetricsService {
 
   beginAiProviderRequest(
     operation: 'chat' | 'health' | 'models',
-    role: 'provider' | 'planner' | 'vision',
+    role: 'provider' | 'controller' | 'planner' | 'vision',
   ) {
     const startedAt = Date.now();
     return (outcome: 'success' | 'error' | 'timeout') => {

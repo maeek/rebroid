@@ -10,6 +10,7 @@ import {
   type AiObservationCandidate,
 } from '@rebroid/ai-core/harness';
 import { prepareUiXml } from '../ai/automation-ai-observation.utils';
+import { createMarkedAiScreenshot } from '../ai/automation-ai-screenshot.utils';
 import type {
   AutomationScreenObservation,
   AutomationVisionContext,
@@ -25,11 +26,11 @@ export interface AutomationVisionDescription {
 
 @Injectable()
 export class AutomationVisionFusionService {
-  fuse(
+  async fuse(
     capture: AutomationVisionCapture,
     described: AutomationVisionDescription,
     visionContext?: AutomationVisionContext,
-  ): AutomationScreenObservation {
+  ): Promise<AutomationScreenObservation> {
     const { aiImage, ocr, screenshot, ui } = capture;
     const image = {
       width: aiImage.width ?? 1,
@@ -67,10 +68,12 @@ export class AutomationVisionFusionService {
           truncated: false,
         };
     const candidates = rankObservationCandidates({
-      candidates: buildObservationCandidates(
-        detections,
-        described.screenState?.controls ?? [],
-        ocr.detections,
+      candidates: deduplicateCandidates(
+        buildObservationCandidates(
+          detections,
+          described.screenState?.controls ?? [],
+          ocr.detections,
+        ),
       ),
       goal: visionContext?.goal,
       maxCandidates: 30,
@@ -87,10 +90,14 @@ export class AutomationVisionFusionService {
       reconciliation,
     );
     const summary = screenState?.summary ?? described.summary;
+    const snapshotId = `screen-${image.capturedAt}`;
+    const markedImage = await createMarkedAiScreenshot(aiImage, candidates);
 
     return {
+      snapshotId,
       image,
       aiImage,
+      markedImage,
       detections: sortDetections(detections).slice(0, 80),
       ...(summary ? { summary } : {}),
       ...(screenState ? { screenState } : {}),
@@ -182,4 +189,50 @@ const reconcileDescription = (
         }
       : {}),
   };
+};
+
+const deduplicateCandidates = (
+  candidates: AiObservationCandidate[],
+): AiObservationCandidate[] => {
+  const accepted: AiObservationCandidate[] = [];
+  for (const candidate of candidates.sort(
+    (left, right) => right.confidence - left.confidence,
+  )) {
+    const duplicate = accepted.find(
+      (current) =>
+        normalizedLabel(current.label) === normalizedLabel(candidate.label) &&
+        boundsOverlap(current.bounds, candidate.bounds) >= 0.7,
+    );
+    if (!duplicate) {
+      accepted.push(candidate);
+      continue;
+    }
+    duplicate.evidence = Array.from(
+      new Set([
+        ...(duplicate.evidence ?? []),
+        ...(candidate.evidence ?? []),
+        `also-detected-by=${candidate.source}`,
+      ]),
+    ).slice(0, 8);
+  }
+  return accepted;
+};
+
+const normalizedLabel = (value: string) =>
+  value.trim().toLowerCase().replace(/\s+/g, ' ');
+
+const boundsOverlap = (
+  left: AiObservationCandidate['bounds'],
+  right: AiObservationCandidate['bounds'],
+) => {
+  if (!left || !right) return 0;
+  const x1 = Math.max(left.left, right.left);
+  const y1 = Math.max(left.top, right.top);
+  const x2 = Math.min(left.left + left.width, right.left + right.width);
+  const y2 = Math.min(left.top + left.height, right.top + right.height);
+  const intersection = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
+  if (intersection === 0) return 0;
+  const union =
+    left.width * left.height + right.width * right.height - intersection;
+  return union > 0 ? intersection / union : 0;
 };

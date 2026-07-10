@@ -48,7 +48,7 @@ export const orchestratorSettingsClient = {
     return emptyRequest<void>(`/settings/ai-providers/${encodeURIComponent(providerId)}`, { method: 'DELETE' })
   },
 
-  checkAiProviderHealth(providerId: string, modelId?: string, role?: 'planner' | 'vision') {
+  checkAiProviderHealth(providerId: string, modelId?: string, role?: 'controller' | 'planner' | 'vision') {
     const params = new URLSearchParams()
     if (modelId) params.set('modelId', modelId)
     if (role) params.set('role', role)

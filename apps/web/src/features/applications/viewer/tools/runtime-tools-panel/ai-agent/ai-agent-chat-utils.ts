@@ -22,6 +22,7 @@ export interface ChatTurn {
   run: AutomationRun | null
   events: AutomationRunEvent[]
   error?: string | null
+  rawShellPolicy?: 'deny' | 'allowlisted'
 }
 
 export const updateRunStatusFromEvent = (event: AutomationRunEvent): AutomationRun['status'] | null => {

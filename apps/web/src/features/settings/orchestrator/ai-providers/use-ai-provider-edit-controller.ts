@@ -24,6 +24,8 @@ import type {
   AutomationAiProviderRemoteModel
 } from '@/server/orchestrator/settings/types'
 
+const controllerPlannerRoles = (): AutomationAiProviderModelRole[] => ['controller', 'planner']
+
 export const useAiProviderEditController = (initialProvider: AutomationAiProvider) => {
   const router = useRouter()
   const [provider, setProvider] = useState<ProviderFormState>(
@@ -105,7 +107,7 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
         ...emptyModel(),
         id: normalizedModelId,
         label: nextLabel,
-        defaultFor: provider.models.length === 0 ? (['planner'] as AutomationAiProviderModelRole[]) : []
+        defaultFor: provider.models.length === 0 ? controllerPlannerRoles() : []
       }
 
       try {
@@ -210,7 +212,7 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
               ...emptyModel(),
               id: normalizedModelId,
               label: nextLabel,
-              defaultFor: current.models.length === 0 ? (['planner'] as AutomationAiProviderModelRole[]) : []
+              defaultFor: current.models.length === 0 ? controllerPlannerRoles() : []
             }
           ]
         }

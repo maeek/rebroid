@@ -65,3 +65,11 @@ The current baseline includes workload indexes, the unique active-automation-tar
 Scrcpy integration work requires a Linux Docker-compatible host with Redroid support, binder devices, and the display-sidecar image. Start the appliance, create an Android application, and manually verify launch, video, input, disconnect, retry, and shutdown before and after any scrcpy change. Record the host configuration and test result in the change description.
 
 For Redroid display changes, verify both WebRTC and WebSocket streams on supported Redroid 13 and 14 images. Confirm the sidecar reports scrcpy server 4.0 or newer, collect the compatibility mode shown by the viewer, and capture sidecar log lines for any fallback. Verify the horizontal viewer workspace, one virtual display, virtual display release, minimal popout viewer, and video-only MP4 recording download. Redroid 15 and 16 are intentionally unsupported until their scrcpy video startup issues are resolved upstream; verify they fail with a clear unsupported-version message rather than a reconnect loop.
+## Local AI Provider Compatibility
+
+- Configure llama.cpp and Lemonade with the `openai-chat-completions` protocol. Use server flavor `auto` unless an explicit override is needed; auto-detection checks Lemonade before Ollama compatibility endpoints.
+- Model IDs are exact transport IDs. Do not append Ollama-style `:latest` tags to IDs returned by `/v1/models`.
+- Controller models need structured output or tool calling. The user-invoked provider diagnostic requires a real structured controller response and validates vision against a supplied image instead of treating HTTP 200 as success.
+- Automated tests use recorded SSE/NDJSON and perception fixtures only. They must not call live language or vision models.
+- OCR is adapter-backed and receives the original lossless screenshot. PaddleOCR remains the default adapter; preprocessing selection favors confidence, unique text, and useful coverage instead of raw box count.
+- Raw ADB remains disabled by default in device chat. An approval card starts one allowlisted follow-up only after the server verifies `automations:run-adb-shell`; rejecting it keeps the request blocked, and approval is never persisted to later runs.

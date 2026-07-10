@@ -3,10 +3,23 @@ export type AutomationAiProviderKind =
   | "openai-compatible"
   | "ollama";
 
+export type AutomationAiProviderProtocol =
+  | "openai-chat-completions"
+  | "ollama-native-chat";
+
+export type AutomationAiProviderServerFlavor =
+  | "auto"
+  | "openai"
+  | "llama-cpp"
+  | "lemonade"
+  | "ollama";
+
 export interface AutomationAiProvider {
   id: string;
   label: string;
   kind: AutomationAiProviderKind;
+  protocol: AutomationAiProviderProtocol;
+  serverFlavor: AutomationAiProviderServerFlavor;
   baseUrl: string;
   apiKey?: string | null;
   models: AutomationAiProviderModel[];
@@ -20,9 +33,23 @@ export interface AutomationAiProviderModel {
   settings: AutomationAiProviderModelSettings;
   enabled: boolean;
   defaultFor: AutomationAiProviderModelRole[];
+  capabilities?: AutomationAiProviderModelCapabilities;
 }
 
-export type AutomationAiProviderModelRole = "planner" | "vision";
+export type AutomationAiProviderModelRole = "controller" | "planner" | "vision";
+
+export interface AutomationAiProviderModelCapabilities {
+  streaming?: boolean;
+  structuredOutput?: boolean;
+  tools?: boolean;
+  vision?: boolean;
+  reasoning?: boolean;
+}
+
+export type AutomationAiThinkingMode =
+  | "disabled"
+  | "bounded"
+  | "provider-default";
 
 export interface AutomationAiProviderModelSettings {
   systemPrompt?: string | null;
@@ -33,6 +60,8 @@ export interface AutomationAiProviderModelSettings {
   repeatPenalty?: number | null;
   seed?: number | null;
   keepAlive?: string | null;
+  thinkingMode?: AutomationAiThinkingMode | null;
+  reasoningBudgetTokens?: number | null;
 }
 
 export interface AutomationAiProviderRemoteModel {
@@ -41,7 +70,11 @@ export interface AutomationAiProviderRemoteModel {
   family?: string;
   parameterSize?: string;
   quantizationLevel?: string;
+  capabilities?: AutomationAiProviderModelCapabilities;
 }
+
+export type AutomationAiAgentMode = "adaptive" | "controller" | "planned";
+export type AutomationAiRawShellPolicy = "deny" | "allowlisted";
 
 export interface AutomationAiRunInput {
   prompt: string;
@@ -53,8 +86,12 @@ export interface AutomationAiRunInput {
   clientMessageId?: string;
   initialScreenshotDataUrl?: string;
   maxToolCalls: number;
+  maxActions?: number;
   timeoutMs: number;
   allowedTools?: string[];
+  capabilities?: string[];
+  agentMode?: AutomationAiAgentMode;
+  rawShellPolicy?: AutomationAiRawShellPolicy;
   requireFinalAnswer: boolean;
 }
 

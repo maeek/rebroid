@@ -66,6 +66,25 @@ describe('AiPromptComposer', () => {
     fireEvent.keyDown(screen.getByPlaceholderText('Ask AI'), { key: 'Enter', metaKey: true })
     expect(onSubmit).toHaveBeenCalledTimes(1)
   })
+
+  it('supports chat-style enter submission while preserving shift-enter', () => {
+    const onSubmit = jest.fn()
+    render(
+      <AiPromptComposer
+        value='hello'
+        placeholder='Chat prompt'
+        onChange={jest.fn()}
+        onSubmit={onSubmit}
+        submitOnEnter
+      />
+    )
+
+    const composer = screen.getByPlaceholderText('Chat prompt')
+    fireEvent.keyDown(composer, { key: 'Enter', shiftKey: true })
+    expect(onSubmit).not.toHaveBeenCalled()
+    fireEvent.keyDown(composer, { key: 'Enter' })
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('AiModelPicker', () => {

@@ -1,5 +1,5 @@
-import { describe, expect, it } from '@jest/globals'
-import { render, screen } from '@testing-library/react'
+import { describe, expect, it, jest } from '@jest/globals'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { ChatEventView } from './chat-event-view'
 import type { AutomationRunEvent } from '@/server/orchestrator/automations/types'
 
@@ -21,11 +21,35 @@ const event = (
 })
 
 describe('ChatEventView', () => {
-  it('renders public plan events as safe markdown', () => {
-    render(<ChatEventView event={event('ai.plan.proposed', '**Plan**\n\n- Open Settings')} />)
+  it('renders a safe reasoning summary from generation metadata', () => {
+    render(
+      <ChatEventView
+        event={event('ai.model.completed', 'Controller turn completed.', {
+          reasoningPresent: true,
+          usage: { completionTokens: 20 }
+        })}
+      />
+    )
 
-    expect(screen.getByText('Plan').tagName.toLowerCase()).toBe('strong')
-    expect(screen.getByText('Open Settings').tagName.toLowerCase()).toBe('li')
+    expect(screen.getByText('Reasoned about the next step')).not.toBeNull()
+    expect(screen.getByText(/20 output tokens/)).not.toBeNull()
+  })
+
+  it('offers one-run approval for allowlisted escalation requests', () => {
+    const onApproveEscalation = jest.fn()
+    render(
+      <ChatEventView
+        event={event('ai.guardrail.triggered', 'Raw ADB shell is disabled for this run.', {
+          program: 'getprop'
+        })}
+        onApproveEscalation={onApproveEscalation}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Allow once' }))
+
+    expect(onApproveEscalation).toHaveBeenCalledWith('getprop')
+    expect(screen.getByText('Approval queued as a follow-up.')).not.toBeNull()
   })
 
   it('renders orientation and action decisions as compact status text', () => {

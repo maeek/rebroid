@@ -6,8 +6,11 @@ import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { cn } from '@/lib/utils'
 
 export const AiUserMessage = ({ children }: { children: ReactNode }) => (
-  <div className='ml-auto max-w-[85%] rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground shadow-sm'>
-    {children}
+  <div className='ml-auto grid max-w-[88%] justify-items-end gap-1.5'>
+    <span className='px-1 text-[10px] font-medium uppercase tracking-[0.12em] text-foreground-muted'>You</span>
+    <div className='wrap-anywhere whitespace-pre-wrap rounded-2xl rounded-br-md bg-primary px-3.5 py-2.5 text-sm leading-6 text-primary-foreground shadow-[0_8px_24px_-16px_hsl(var(--primary)/0.9)]'>
+      {children}
+    </div>
   </div>
 )
 
@@ -22,15 +25,17 @@ export const AiAssistantBlock = ({
   children: ReactNode
   className?: string
 }) => (
-  <div className={cn('grid gap-2 p-3', className)}>
-    <div className='flex min-w-0 flex-wrap items-center justify-between gap-2'>
-      <div className='flex min-w-0 items-center gap-2'>
-        <GradientSparklesIcon className='size-4 shrink-0' />
-        <span className='truncate text-sm font-medium'>{title}</span>
+  <div className={cn('flex min-w-0 items-start gap-3', className)}>
+    <span className='mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/8 text-primary shadow-[0_8px_24px_-18px_hsl(var(--primary)/0.8)]'>
+      <GradientSparklesIcon className='size-4' />
+    </span>
+    <div className='grid min-w-0 flex-1 gap-2.5'>
+      <div className='flex min-w-0 flex-wrap items-center justify-between gap-2'>
+        <span className='truncate text-sm font-semibold'>{title}</span>
+        {meta ? <div className='shrink-0'>{meta}</div> : null}
       </div>
-      {meta ? <div className='shrink-0'>{meta}</div> : null}
+      {children}
     </div>
-    {children}
   </div>
 )
 
@@ -90,7 +95,7 @@ export const AiAssistantMarkdownText = ({
 export const AiToolDetails = ({ children, className }: { children: ReactNode; className?: string }) => (
   <dl
     className={cn(
-      'grid max-w-full gap-1 rounded-md bg-background/20 p-2 text-[11px] text-muted-foreground/80',
+      'grid max-w-full gap-1.5 rounded-lg border border-border/45 bg-background/24 p-2.5 text-[11px] text-muted-foreground/90',
       className
     )}
   >

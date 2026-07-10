@@ -41,11 +41,26 @@ export const assertDefinitionPermissions = async (user: CurrentAutomationUser, d
     }
   }
   const nestedAiTools = (step: Extract<AutomationDefinitionStep, { uses: string }>) => {
-    const allowedTools = step.with.allowedTools
+    const allowedTools = step.with.capabilities ?? step.with.allowedTools
     if (Array.isArray(allowedTools)) {
       return allowedTools.filter((uses): uses is string => typeof uses === 'string' && uses !== 'ai.run')
     }
-    return commands.filter(command => command.uses !== 'ai.run').map(command => command.uses)
+    const safeDefaults = new Set([
+      'android.wait',
+      'android.viewerCommand',
+      'android.expandNotifications',
+      'android.expandQuickSettings',
+      'android.openSystemSettings',
+      'android.launchPackage',
+      'android.listPackages',
+      'android.getSetting',
+      'android.tapNormalized',
+      'android.swipeNormalized',
+      'android.inputText',
+      'android.key',
+      'android.getClipboard'
+    ])
+    return commands.filter(command => safeDefaults.has(command.uses)).map(command => command.uses)
   }
   const assertStep = (step: AutomationDefinitionStep) => {
     if (!('uses' in step)) {

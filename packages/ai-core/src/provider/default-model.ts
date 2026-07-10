@@ -26,4 +26,4 @@ export const normalizeDefaultModel = (models: AutomationAiProviderModel[]) => {
   }));
 };
 
-export const modelRoles = ["planner", "vision"] as const;
+export const modelRoles = ["controller", "planner", "vision"] as const;

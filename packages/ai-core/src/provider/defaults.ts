@@ -7,6 +7,8 @@ export const defaultAiProviders = (): AutomationAiProvider[] => [
     id: "local-ollama",
     label: "Local Ollama",
     kind: "ollama",
+    protocol: "openai-chat-completions",
+    serverFlavor: "auto",
     baseUrl: "http://localhost:11434",
     apiKey: null,
     models: [],

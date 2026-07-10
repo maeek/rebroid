@@ -1,6 +1,6 @@
 import type { ProviderModelRow } from '@rebroid/ai-core/provider'
 
-export type ProviderModelRole = 'planner' | 'vision'
+export type ProviderModelRole = 'controller' | 'planner' | 'vision'
 
 export const selectedProviderModelIndexes = (rows: ProviderModelRow[], selectedIds: Set<string>) =>
   rows.filter(model => selectedIds.has(model.rowId)).map(model => model.index)

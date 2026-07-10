@@ -99,8 +99,8 @@ export const ProviderDialog = ({
                 />
               </Field>
               <Field
-                label='Kind'
-                description='Select the API protocol used by this provider.'
+                label='Provider family'
+                description='Used for defaults, downloads, and display.'
               >
                 <Select
                   value={provider.kind}
@@ -113,6 +113,43 @@ export const ProviderDialog = ({
                     <SelectItem value='ollama'>Ollama</SelectItem>
                     <SelectItem value='openai'>OpenAI</SelectItem>
                     <SelectItem value='openai-compatible'>OpenAI-compatible</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field
+                label='Transport protocol'
+                description='Use OpenAI chat completions for llama.cpp, Lemonade, and compatible servers.'
+              >
+                <Select
+                  value={provider.protocol ?? 'openai-chat-completions'}
+                  onValueChange={protocol => update({ protocol })}
+                >
+                  <SelectTrigger className='w-full'>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='openai-chat-completions'>OpenAI chat completions</SelectItem>
+                    <SelectItem value='ollama-native-chat'>Ollama native chat</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field
+                label='Server flavor'
+                description='Auto-detection checks Lemonade before Ollama compatibility endpoints.'
+              >
+                <Select
+                  value={provider.serverFlavor ?? 'auto'}
+                  onValueChange={serverFlavor => update({ serverFlavor })}
+                >
+                  <SelectTrigger className='w-full'>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='auto'>Auto-detect</SelectItem>
+                    <SelectItem value='lemonade'>Lemonade</SelectItem>
+                    <SelectItem value='llama-cpp'>llama.cpp</SelectItem>
+                    <SelectItem value='ollama'>Ollama</SelectItem>
+                    <SelectItem value='openai'>OpenAI</SelectItem>
                   </SelectContent>
                 </Select>
               </Field>

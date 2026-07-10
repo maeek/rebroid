@@ -12,7 +12,7 @@ const AiAgentTranscriptSkeleton = () => (
     {Array.from({ length: 3 }).map((_, index) => (
       <div
         key={index}
-        className='grid gap-2 rounded-lg border border-border/60 bg-surface-band/35 p-3'
+        className='grid gap-2 rounded-xl border border-border/50 bg-surface-band/25 p-4'
       >
         <div className='flex items-center gap-2'>
           <Skeleton className='size-6 rounded-full' />
@@ -26,17 +26,17 @@ const AiAgentTranscriptSkeleton = () => (
 )
 
 const AiAgentEmptyTranscript = () => (
-  <div className='flex min-h-40 flex-1 items-center justify-center rounded-lg border border-dashed border-border/70 bg-background/20 p-6 text-center'>
-    <div className='grid max-w-sm place-items-center gap-3'>
-      <div className='flex size-10 items-center justify-center rounded-full border border-primary/25 bg-primary/10 text-primary'>
-        <GradientSparklesIcon className='size-5' />
+  <div className='flex min-h-56 flex-1 items-center justify-center p-6 text-center'>
+    <div className='grid max-w-sm place-items-center gap-4 motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-300'>
+      <div className='relative flex size-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/8 text-primary shadow-[0_16px_40px_-24px_hsl(var(--primary)/0.85)]'>
+        <span className='absolute inset-0 rounded-2xl bg-primary/8 motion-safe:animate-ping motion-safe:[animation-duration:2.8s]' />
+        <GradientSparklesIcon className='relative size-5' />
       </div>
       <div className='grid gap-1'>
-        <div className='flex items-center justify-center gap-2 text-sm font-medium'>
-          <GradientSparklesIcon className='size-4' />
-          AI agent ready
-        </div>
-        <p className='text-xs text-foreground-muted'>Ready while the display connects.</p>
+        <div className='text-sm font-semibold'>What should I do on this device?</div>
+        <p className='text-xs leading-5 text-foreground-muted'>
+          Describe an outcome. The agent will inspect the screen, make a plan when needed, and verify each action.
+        </p>
       </div>
     </div>
   </div>
@@ -46,6 +46,7 @@ export const AiAgentTranscript = ({
   canSaveWorkflow,
   draftingRunId,
   isLoadingHistory,
+  onApproveEscalation,
   onSaveWorkflow,
   onTranscriptScroll,
   transcriptRef,
@@ -54,6 +55,7 @@ export const AiAgentTranscript = ({
   canSaveWorkflow: boolean
   draftingRunId: string | null
   isLoadingHistory: boolean
+  onApproveEscalation: (program: string) => void
   onSaveWorkflow: (turn: ChatTurn) => void
   onTranscriptScroll: () => void
   transcriptRef: RefObject<HTMLDivElement | null>
@@ -62,7 +64,7 @@ export const AiAgentTranscript = ({
   <div
     ref={transcriptRef}
     aria-label='AI agent transcript'
-    className='flex min-h-0 max-h-[min(46dvh,26rem)] flex-1 flex-col gap-4 overflow-y-auto pb-2 pr-1 motion-safe:scroll-smooth md:max-h-none'
+    className='scrollbar-thin flex min-h-0 max-h-[min(46dvh,26rem)] flex-1 flex-col gap-6 overflow-y-auto px-4 py-5 motion-safe:scroll-smooth md:max-h-none'
     onScroll={onTranscriptScroll}
   >
     {isLoadingHistory ? <AiAgentTranscriptSkeleton /> : null}
@@ -74,6 +76,7 @@ export const AiAgentTranscript = ({
             turn={turn}
             canSaveWorkflow={canSaveWorkflow}
             isSavingWorkflow={draftingRunId === turn.run?.id}
+            onApproveEscalation={onApproveEscalation}
             onSaveWorkflow={onSaveWorkflow}
           />
         ))

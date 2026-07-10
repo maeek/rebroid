@@ -69,8 +69,8 @@ export const ProviderConnectionSection = ({
         />
       </Field>
       <Field
-        label='Kind'
-        description='Select the API protocol used by this provider.'
+        label='Provider family'
+        description='Used for defaults, downloads, and display. Transport is configured separately.'
       >
         <Select
           value={provider.kind}
@@ -83,6 +83,43 @@ export const ProviderConnectionSection = ({
             <SelectItem value='ollama'>Ollama</SelectItem>
             <SelectItem value='openai'>OpenAI</SelectItem>
             <SelectItem value='openai-compatible'>OpenAI-compatible</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
+      <Field
+        label='Transport protocol'
+        description='Use OpenAI chat completions for llama.cpp, Lemonade, OpenAI, and OpenAI-compatible servers.'
+      >
+        <Select
+          value={provider.protocol ?? 'openai-chat-completions'}
+          onValueChange={protocol => onChange({ protocol })}
+        >
+          <SelectTrigger className='w-full'>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value='openai-chat-completions'>OpenAI chat completions</SelectItem>
+            <SelectItem value='ollama-native-chat'>Ollama native chat</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
+      <Field
+        label='Server flavor'
+        description='Auto-detection distinguishes Lemonade from its Ollama compatibility endpoints.'
+      >
+        <Select
+          value={provider.serverFlavor ?? 'auto'}
+          onValueChange={serverFlavor => onChange({ serverFlavor })}
+        >
+          <SelectTrigger className='w-full'>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value='auto'>Auto-detect</SelectItem>
+            <SelectItem value='lemonade'>Lemonade</SelectItem>
+            <SelectItem value='llama-cpp'>llama.cpp</SelectItem>
+            <SelectItem value='ollama'>Ollama</SelectItem>
+            <SelectItem value='openai'>OpenAI</SelectItem>
           </SelectContent>
         </Select>
       </Field>

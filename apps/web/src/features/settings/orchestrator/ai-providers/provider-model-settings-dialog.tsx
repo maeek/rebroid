@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import type { AutomationAiProviderModel } from '@/server/orchestrator/settings/types'
 import type { ProviderModelRow } from '@rebroid/ai-core/provider'
@@ -59,6 +60,37 @@ export const ProviderModelSettingsDialog = ({
               />
             </Field>
             <div className='grid gap-4 sm:grid-cols-2'>
+              <Field
+                label='Thinking mode'
+                description='Bound or disable hidden reasoning for latency-sensitive controller turns.'
+              >
+                <Select
+                  value={settings.thinkingMode ?? 'provider-default'}
+                  onValueChange={thinkingMode =>
+                    updateSettings({
+                      thinkingMode
+                    })
+                  }
+                >
+                  <SelectTrigger className='w-full'>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='disabled'>Disabled</SelectItem>
+                    <SelectItem value='bounded'>Bounded</SelectItem>
+                    <SelectItem value='provider-default'>Provider default</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <NumberField
+                label='Reasoning budget'
+                description='Maximum hidden reasoning tokens when bounded mode is selected.'
+                value={settings.reasoningBudgetTokens}
+                min={0}
+                max={32768}
+                step={64}
+                onChange={reasoningBudgetTokens => updateSettings({ reasoningBudgetTokens })}
+              />
               <NumberField
                 label='Temperature'
                 description='Sampling randomness from 0 to 2.'

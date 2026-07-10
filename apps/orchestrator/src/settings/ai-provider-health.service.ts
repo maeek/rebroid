@@ -88,11 +88,7 @@ export class AiProviderHealthService {
         data?: Array<{ id?: unknown }>;
       } | null;
       const remoteModelIds = new Set(
-        Array.isArray(body?.data)
-          ? body.data
-              .map((item) => (typeof item.id === 'string' ? item.id : ''))
-              .filter(Boolean)
-          : [],
+        parseProviderRemoteModels(provider, body).map((item) => item.id),
       );
       if (model && remoteModelIds.size > 0 && !remoteModelIds.has(model.id)) {
         return this.healthResult(
@@ -106,6 +102,7 @@ export class AiProviderHealthService {
         const roleHealth = await this.exerciseModelRole(provider, model, role);
         if (roleHealth) return roleHealth;
       }
+      const serverFlavor = await this.detectServerFlavor(provider);
       return this.healthResult(
         provider.id,
         model?.id,
@@ -113,6 +110,7 @@ export class AiProviderHealthService {
         model
           ? `Provider is reachable and model "${model.id}" is available.`
           : 'Provider is reachable.',
+        { serverFlavor },
       );
     } catch (error) {
       return this.healthResult(
@@ -132,7 +130,7 @@ export class AiProviderHealthService {
     try {
       const messages = this.roleProbeMessages(role);
       const tools =
-        role === 'planner'
+        role === 'controller'
           ? [
               {
                 type: 'function',
@@ -175,12 +173,22 @@ export class AiProviderHealthService {
           provider.id,
           model.id,
           'error',
-          `${role === 'planner' ? 'Planner' : 'Vision'} role check failed: HTTP ${response.status}${detail ? ` - ${detail.slice(0, 500)}` : ''}`,
+          `${this.roleLabel(role)} role check failed: HTTP ${response.status}${detail ? ` - ${detail.slice(0, 500)}` : ''}`,
+        );
+      }
+      const body = (await response.json().catch(() => null)) as unknown;
+      const incompatibility = this.roleProbeIncompatibility(role, body);
+      if (incompatibility) {
+        return this.healthResult(
+          provider.id,
+          model.id,
+          'error',
+          incompatibility,
         );
       }
       return null;
     } catch (error) {
-      const roleLabel = role === 'planner' ? 'Planner' : 'Vision';
+      const roleLabel = this.roleLabel(role);
       return this.healthResult(
         provider.id,
         model.id,
@@ -200,7 +208,10 @@ export class AiProviderHealthService {
         {
           role: 'user',
           content: [
-            { type: 'text', text: 'Reply with ok if you can read this image.' },
+            {
+              type: 'text',
+              text: 'Reply with the single word white if the attached pixel is white.',
+            },
             {
               type: 'image_url',
               image_url: {
@@ -208,6 +219,14 @@ export class AiProviderHealthService {
               },
             },
           ],
+        },
+      ];
+    }
+    if (role === 'controller') {
+      return [
+        {
+          role: 'user',
+          content: 'Call health_check_noop now. Do not answer with prose.',
         },
       ];
     }
@@ -276,6 +295,103 @@ export class AiProviderHealthService {
     return this.errorMessage(error);
   }
 
+  private roleProbeIncompatibility(
+    role: AutomationAiProviderModelRole,
+    body: unknown,
+  ) {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return `${this.roleLabel(role)} role check returned an invalid JSON body.`;
+    }
+    const root = body as Record<string, unknown>;
+    const choice = Array.isArray(root.choices) ? root.choices[0] : null;
+    const choiceRecord = this.record(choice);
+    const message =
+      this.record(choiceRecord?.message) ?? this.record(root.message);
+    if (!message) {
+      return `${this.roleLabel(role)} role check returned no assistant message.`;
+    }
+    if (role === 'controller') {
+      const calls = Array.isArray(message.tool_calls) ? message.tool_calls : [];
+      const hasExpectedCall = calls.some((call) => {
+        const callRecord = this.record(call);
+        const functionRecord = this.record(callRecord?.function);
+        return functionRecord?.name === 'health_check_noop';
+      });
+      return hasExpectedCall
+        ? null
+        : 'Controller role check did not produce the required structured tool call.';
+    }
+    const content =
+      typeof message.content === 'string' ? message.content.trim() : '';
+    if (!content) {
+      const reasoning =
+        typeof message.reasoning_content === 'string'
+          ? message.reasoning_content.trim()
+          : typeof message.thinking === 'string'
+            ? message.thinking.trim()
+            : '';
+      return reasoning
+        ? `${this.roleLabel(role)} role check returned reasoning but no public content.`
+        : `${this.roleLabel(role)} role check returned empty content.`;
+    }
+    if (role === 'vision' && !/white/i.test(content)) {
+      return 'Vision role check did not identify the supplied white image.';
+    }
+    return null;
+  }
+
+  private async detectServerFlavor(provider: AutomationAiProvider) {
+    if (provider.serverFlavor && provider.serverFlavor !== 'auto') {
+      return provider.serverFlavor;
+    }
+    const root = provider.baseUrl.replace(/\/+$/, '').replace(/\/v1$/i, '');
+    const headers = providerRequestHeaders(provider);
+    const lemonade = await this.tryProbe(`${root}/api/v1/health`, headers);
+    if (lemonade && /lemonade/i.test(JSON.stringify(lemonade))) {
+      return 'lemonade';
+    }
+    const llama = await this.tryProbe(`${root}/props`, headers);
+    if (
+      llama &&
+      (Object.prototype.hasOwnProperty.call(llama, 'chat_template') ||
+        Object.prototype.hasOwnProperty.call(
+          llama,
+          'default_generation_settings',
+        ))
+    ) {
+      return 'llama-cpp';
+    }
+    const ollama = await this.tryProbe(`${root}/api/version`, headers);
+    if (ollama && typeof ollama.version === 'string') return 'ollama';
+    return provider.kind === 'openai' ? 'openai' : 'auto';
+  }
+
+  private async tryProbe(url: string, headers: HeadersInit) {
+    const scope = createProviderRequestScope({ timeoutMs: 2_000 });
+    try {
+      const response = await fetch(url, { headers, signal: scope.signal });
+      if (!response.ok) return null;
+      const body = (await response.json().catch(() => null)) as unknown;
+      return this.record(body);
+    } catch {
+      return null;
+    } finally {
+      scope.cleanup();
+    }
+  }
+
+  private roleLabel(role: AutomationAiProviderModelRole) {
+    if (role === 'controller') return 'Controller';
+    if (role === 'planner') return 'Planner';
+    return 'Vision';
+  }
+
+  private record(value: unknown) {
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : null;
+  }
+
   private async requestProvider(
     provider: AutomationAiProvider,
     url: string,
@@ -342,6 +458,7 @@ export class AiProviderHealthService {
     modelId: string | undefined,
     status: AutomationAiProviderHealthDto['status'],
     message: string,
+    diagnostics?: { serverFlavor?: string },
   ): AutomationAiProviderHealthDto {
     return {
       providerId,
@@ -349,6 +466,9 @@ export class AiProviderHealthService {
       status,
       message,
       checkedAt: new Date().toISOString(),
+      ...(diagnostics?.serverFlavor
+        ? { serverFlavor: diagnostics.serverFlavor }
+        : {}),
     };
   }
 }

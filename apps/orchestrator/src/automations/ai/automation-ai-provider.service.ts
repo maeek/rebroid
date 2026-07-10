@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SettingsService } from '../../settings/settings.service';
+import type { AutomationAiProviderModelRole } from '@rebroid/ai-core/provider';
 
 @Injectable()
 export class AutomationAiProviderService {
@@ -12,7 +13,7 @@ export class AutomationAiProviderService {
   async getProvider(
     providerId?: string,
     modelId?: string,
-    role: 'planner' | 'vision' = 'planner',
+    role: AutomationAiProviderModelRole = 'controller',
   ) {
     return this.settings.getAiProviderForExecution(providerId, modelId, role);
   }

@@ -130,7 +130,11 @@ export interface RunAdHocAiAutomationInput extends RunAutomationInput {
   visionModelId?: string
   clientMessageId?: string
   allowedTools?: string[]
+  capabilities?: string[]
+  agentMode?: 'adaptive' | 'controller' | 'planned'
+  rawShellPolicy?: 'deny' | 'allowlisted'
   maxToolCalls?: number
+  maxActions?: number
   timeoutMs?: number
 }
 

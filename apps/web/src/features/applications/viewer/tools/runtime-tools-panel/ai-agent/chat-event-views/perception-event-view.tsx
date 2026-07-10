@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { IconChevronDown } from '@tabler/icons-react'
+import { IconChevronDown, IconEye } from '@tabler/icons-react'
 import { AiAssistantText, AiToolDetails } from '@/shared/ui/ai/ai-message'
 import { ObservationEventDetails } from './observation-event-details'
 import { observationValues } from './observation-values'
@@ -83,25 +83,32 @@ export const PerceptionDisclosure = ({
   const summary = perceptionSummary(data)
   return (
     <details
-      className='group text-xs text-muted-foreground'
+      className='group overflow-hidden rounded-xl border border-border/55 bg-surface-band/24 text-xs text-muted-foreground'
       data-testid='perception-disclosure'
     >
-      <summary className='flex cursor-pointer list-none items-center gap-1'>
-        <span>Inspected screen</span>
-        {summary ? <span>{summary}</span> : null}
-        <IconChevronDown className='size-3 transition-transform group-open:rotate-180' />
+      <summary className='flex cursor-pointer list-none items-center gap-2.5 px-3 py-2.5 transition-colors hover:bg-foreground/3'>
+        <span className='flex size-7 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/8 text-primary'>
+          <IconEye className='size-4' />
+        </span>
+        <span className='grid min-w-0 flex-1 text-left'>
+          <span className='font-medium text-foreground'>Inspected screen</span>
+          {summary ? <span className='truncate text-[10px]'>{summary}</span> : null}
+        </span>
+        <IconChevronDown className='size-3.5 transition-transform duration-150 group-open:rotate-180' />
       </summary>
-      <AiToolDetails className='mt-1'>
-        <ObservationEventDetails
-          label={label}
-          values={includeObservationValues ? observationValues(data, { dimensions: true }) : []}
-        />
-        <UiXmlNote data={data} />
-        <OcrNote data={data} />
-        <VisionConfidenceNote data={data} />
-        <VisibleTextNote data={data} />
-        <VisualAffordanceNote data={data} />
-      </AiToolDetails>
+      <div className='px-3 pb-3'>
+        <AiToolDetails>
+          <ObservationEventDetails
+            label={label}
+            values={includeObservationValues ? observationValues(data, { dimensions: true }) : []}
+          />
+          <UiXmlNote data={data} />
+          <OcrNote data={data} />
+          <VisionConfidenceNote data={data} />
+          <VisibleTextNote data={data} />
+          <VisualAffordanceNote data={data} />
+        </AiToolDetails>
+      </div>
     </details>
   )
 }
@@ -113,29 +120,36 @@ export const PerceptionEventView = ({ item }: { item: PerceptionTimelineItem }) 
   }
   const summary = perceptionSummary(data)
   return (
-    <div className='grid gap-1 text-xs text-muted-foreground'>
-      <details className='group'>
-        <summary className='flex cursor-pointer list-none items-center gap-1'>
-          <span>Inspected screen</span>
-          {summary ? <span>{summary}</span> : null}
-          <IconChevronDown className='size-3 transition-transform group-open:rotate-180' />
+    <div className='text-xs text-muted-foreground'>
+      <details className='group overflow-hidden rounded-xl border border-border/55 bg-surface-band/24'>
+        <summary className='flex cursor-pointer list-none items-center gap-2.5 px-3 py-2.5 transition-colors hover:bg-foreground/3'>
+          <span className='flex size-7 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/8 text-primary'>
+            <IconEye className='size-4' />
+          </span>
+          <span className='grid min-w-0 flex-1 text-left'>
+            <span className='font-medium text-foreground'>Inspected screen</span>
+            {summary ? <span className='truncate text-[10px]'>{summary}</span> : null}
+          </span>
+          <IconChevronDown className='size-3.5 transition-transform duration-150 group-open:rotate-180' />
         </summary>
-        <AiToolDetails className='mt-1'>
-          <ToolEventRow
-            item={{
-              key: 'event',
-              value: item.summary?.message || item.observed.message,
-              format: 'inline'
-            }}
-          />
-          {observationValues(item.observed.data, { dimensions: true }).map(value => (
+        <div className='px-3 pb-3'>
+          <AiToolDetails>
             <ToolEventRow
-              key={value}
-              item={{ key: 'capture', value, format: 'inline' }}
+              item={{
+                key: 'event',
+                value: item.summary?.message || item.observed.message,
+                format: 'inline'
+              }}
             />
-          ))}
-          <PerceptionRows data={data} />
-        </AiToolDetails>
+            {observationValues(item.observed.data, { dimensions: true }).map(value => (
+              <ToolEventRow
+                key={value}
+                item={{ key: 'capture', value, format: 'inline' }}
+              />
+            ))}
+            <PerceptionRows data={data} />
+          </AiToolDetails>
+        </div>
       </details>
     </div>
   )

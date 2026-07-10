@@ -86,6 +86,7 @@ export const useAiAgentRunActions = ({
           clientMessageId: turn.id,
           maxToolCalls: 20,
           timeoutMs: adHocTimeoutMs,
+          rawShellPolicy: turn.rawShellPolicy ?? 'deny',
           startPolicy: 'require-running'
         })
         setTurns(current =>
@@ -123,15 +124,27 @@ export const useAiAgentRunActions = ({
     ]
   )
 
-  const submit = async () => {
-    const text = prompt.trim()
+  const submitPrompt = async (
+    promptText: string,
+    options: { rawShellPolicy?: ChatTurn['rawShellPolicy']; clearComposer?: boolean } = {}
+  ) => {
+    const text = promptText.trim()
     if (!text || !modelIsValid) return
-    const nextTurn = createPromptTurn({ id: crypto.randomUUID(), prompt: text, hasActiveTurn: Boolean(activeTurn) })
+    const nextTurn = createPromptTurn({
+      id: crypto.randomUUID(),
+      prompt: text,
+      hasActiveTurn: Boolean(activeTurn),
+      rawShellPolicy: options.rawShellPolicy
+    })
     setTurns(current => [...current, nextTurn])
-    setPrompt('')
+    if (options.clearComposer) setPrompt('')
     if (!activeTurn) {
       await startTurn(nextTurn, conversationBeforeTurn(nextTurn.id, turns))
     }
+  }
+
+  const submit = async () => {
+    await submitPrompt(prompt, { clearComposer: true })
   }
 
   const runQueuedTurn = async () => {
@@ -199,6 +212,7 @@ export const useAiAgentRunActions = ({
     isClearing,
     runQueuedTurn,
     showCancelRun,
-    submit
+    submit,
+    submitPrompt
   }
 }

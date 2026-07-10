@@ -37,6 +37,7 @@ export {
 export {
   maskProvider,
   normalizeAiModel,
+  normalizeAiModelCapabilities,
   normalizeAiModels,
   normalizeAiModelSettings,
   normalizeAiModelRoles,
@@ -51,12 +52,18 @@ export {
 } from "./provider/remote-models";
 export {
   AiProviderConfigurationError,
+  type AutomationAiAgentMode,
   type AutomationAiProvider,
   type AutomationAiProviderKind,
   type AutomationAiProviderModel,
+  type AutomationAiProviderModelCapabilities,
   type AutomationAiProviderModelRole,
   type AutomationAiProviderModelSettings,
+  type AutomationAiProviderProtocol,
   type AutomationAiProviderRemoteModel,
+  type AutomationAiProviderServerFlavor,
+  type AutomationAiRawShellPolicy,
+  type AutomationAiThinkingMode,
   type AutomationAiConversationMessage,
   type AutomationAiRunInput,
   type AutomationAiToolRequest,

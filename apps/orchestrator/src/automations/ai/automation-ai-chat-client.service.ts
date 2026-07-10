@@ -8,6 +8,8 @@ import {
   buildChatRequestBody,
   chatCompletionsEndpoint,
   consumeChatCompletionStream,
+  providerProtocol,
+  type ChatResponseFormat,
   type ChatMessage,
 } from '@rebroid/ai-core/harness';
 import type {
@@ -42,6 +44,7 @@ export class AutomationAiChatClientService {
     deadline,
     abortSignal,
     onContentDelta,
+    responseFormat,
   }: {
     provider: AutomationAiProvider;
     model: AutomationAiProviderModel;
@@ -50,10 +53,11 @@ export class AutomationAiChatClientService {
     deadline: number;
     abortSignal?: AbortSignal;
     onContentDelta?: (delta: string) => Promise<void>;
-  }) {
+    responseFormat?: ChatResponseFormat;
+  }): Promise<AutomationAiChatResponse> {
     const finishMetrics = this.metrics.beginAiProviderRequest(
       'chat',
-      'planner',
+      'controller',
     );
     const requestScope = createProviderRequestScope({ deadline, abortSignal });
     try {
@@ -68,6 +72,7 @@ export class AutomationAiChatClientService {
               provider,
               model,
               messages,
+              responseFormat,
               tools,
               stream: true,
             }),
@@ -98,9 +103,24 @@ export class AutomationAiChatClientService {
           'AI provider did not return a streaming response body.',
         );
       }
-      const result = await this.consumeStream(response.body, onContentDelta);
+      const result = await this.consumeStream(
+        response.body,
+        providerProtocol(provider) === 'ollama-native-chat'
+          ? 'ollama-ndjson'
+          : 'openai-sse',
+        onContentDelta,
+      );
       finishMetrics('success');
-      return { choices: [{ message: result.message }] };
+      return {
+        choices: [{ message: result.message }],
+        generation: {
+          reasoningPresent: result.reasoningPresent,
+          finishReason: result.finishReason ?? null,
+          usage: result.usage ?? null,
+          timings: result.timings ?? null,
+          protocol: providerProtocol(provider),
+        },
+      };
     } catch (error) {
       finishMetrics(
         error instanceof RequestTimeoutException ? 'timeout' : 'error',
@@ -118,6 +138,7 @@ export class AutomationAiChatClientService {
 
   private async consumeStream(
     body: ReadableStream<Uint8Array>,
+    format: 'openai-sse' | 'ollama-ndjson',
     onContentDelta?: (delta: string) => Promise<void>,
   ) {
     let pendingDelta = '';
@@ -135,6 +156,7 @@ export class AutomationAiChatClientService {
 
     const result = await consumeChatCompletionStream({
       body,
+      format,
       onUpdate: async ({ contentDelta }) => {
         if (!contentDelta) return;
         pendingDelta += contentDelta;
@@ -144,4 +166,23 @@ export class AutomationAiChatClientService {
     await flush(true);
     return result;
   }
+}
+
+export interface AutomationAiChatResponse {
+  choices: Array<{ message: ChatMessage }>;
+  generation?: {
+    reasoningPresent: boolean;
+    finishReason: string | null;
+    usage: {
+      promptTokens?: number;
+      completionTokens?: number;
+      totalTokens?: number;
+    } | null;
+    timings: {
+      promptMs?: number;
+      predictedMs?: number;
+      cacheTokens?: number;
+    } | null;
+    protocol: 'openai-chat-completions' | 'ollama-native-chat';
+  };
 }

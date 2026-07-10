@@ -2,33 +2,25 @@ import type {
   AutomationAiProvider,
   AutomationAiProviderRemoteModel,
 } from "./types";
+import { providerModelsEndpoint } from "../harness/request-body";
 
-export const providerModelsUrl = (provider: AutomationAiProvider) => {
-  const baseUrl = provider.baseUrl.replace(/\/+$/, "");
-  if (provider.kind === "ollama") {
-    return `${baseUrl}/v1/models`;
-  }
-  return `${baseUrl}/models`;
-};
+export const providerModelsUrl = (provider: AutomationAiProvider) =>
+  providerModelsEndpoint(provider);
 
-export const providerRemoteModelsUrl = (provider: AutomationAiProvider) => {
-  const baseUrl = provider.baseUrl.replace(/\/+$/, "");
-  if (provider.kind === "ollama") {
-    return `${baseUrl}/api/tags`;
-  }
-  return providerModelsUrl(provider);
-};
+export const providerRemoteModelsUrl = (provider: AutomationAiProvider) =>
+  providerModelsEndpoint(provider);
 
 export const parseProviderRemoteModels = (
-  provider: Pick<AutomationAiProvider, "kind">,
+  _provider: Pick<AutomationAiProvider, "kind">,
   body: unknown,
 ): AutomationAiProviderRemoteModel[] => {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return [];
   }
-  return provider.kind === "ollama"
-    ? parseOllamaRemoteModels(body as Record<string, unknown>)
-    : parseOpenAiRemoteModels(body as Record<string, unknown>);
+  const record = body as Record<string, unknown>;
+  return Array.isArray(record.data)
+    ? parseOpenAiRemoteModels(record)
+    : parseOllamaRemoteModels(record);
 };
 
 const parseOllamaRemoteModels = (
@@ -84,9 +76,12 @@ const parseOpenAiRemoteModels = (
       if (!id) return null;
       return {
         id,
-        label: id,
+        label: textValue(model.name) || id,
         ...(textValue(model.owned_by)
           ? { family: textValue(model.owned_by) }
+          : {}),
+        ...(parseCapabilityLabels(model)
+          ? { capabilities: parseCapabilityLabels(model) }
           : {}),
       };
     })
@@ -97,3 +92,22 @@ const parseOpenAiRemoteModels = (
 
 const textValue = (value: unknown) =>
   typeof value === "string" ? value.trim() : "";
+
+const parseCapabilityLabels = (model: Record<string, unknown>) => {
+  const raw = Array.isArray(model.labels)
+    ? model.labels
+    : Array.isArray(model.capabilities)
+      ? model.capabilities
+      : [];
+  const labels = new Set(
+    raw.filter((value): value is string => typeof value === "string"),
+  );
+  const capabilities = {
+    ...(labels.has("tool-calling") || labels.has("tools")
+      ? { tools: true }
+      : {}),
+    ...(labels.has("vision") ? { vision: true } : {}),
+    ...(labels.has("reasoning") ? { reasoning: true } : {}),
+  };
+  return Object.keys(capabilities).length > 0 ? capabilities : null;
+};

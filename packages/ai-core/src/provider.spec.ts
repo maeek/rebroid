@@ -12,6 +12,8 @@ import {
   normalizeAiProvider,
   normalizeDefaultModel,
   normalizeProviderForm,
+  parseProviderRemoteModels,
+  providerRemoteModelsUrl,
   recommendAiModelForAutomation,
   resolveUpdatedApiKey,
   selectCatalogModel,
@@ -29,6 +31,8 @@ const provider: AutomationAiProvider = {
   id: " local ",
   label: " ",
   kind: "ollama",
+  protocol: "openai-chat-completions",
+  serverFlavor: "auto",
   baseUrl: "http://localhost:11434///",
   apiKey: " secret ",
   enabled: true,
@@ -124,6 +128,8 @@ describe("AI provider core", () => {
         id: "openai",
         label: "OpenAI",
         kind: "openai",
+        protocol: "openai-chat-completions",
+        serverFlavor: "openai",
         baseUrl: "https://api.openai.com///",
         models: [{ id: "gpt-4o", label: "", default: true }],
       }),
@@ -131,6 +137,8 @@ describe("AI provider core", () => {
         id: "openai",
         label: "OpenAI",
         kind: "openai",
+        protocol: "openai-chat-completions",
+        serverFlavor: "openai",
         baseUrl: "https://api.openai.com/v1",
         apiKey: null,
         enabled: true,
@@ -138,7 +146,7 @@ describe("AI provider core", () => {
           {
             id: "gpt-4o",
             label: "gpt-4o",
-            roles: ["planner"],
+            roles: ["controller", "planner"],
             settings: {
               systemPrompt: null,
               temperature: null,
@@ -148,9 +156,11 @@ describe("AI provider core", () => {
               repeatPenalty: null,
               seed: null,
               keepAlive: null,
+              thinkingMode: null,
+              reasoningBudgetTokens: null,
             },
             enabled: true,
-            defaultFor: ["planner"],
+            defaultFor: ["controller", "planner"],
           },
         ],
       },
@@ -177,7 +187,7 @@ describe("AI provider core", () => {
     ];
     assert.deepEqual(
       normalizeDefaultModel(models).map((model) => model.defaultFor),
-      [[], ["planner", "vision"], []],
+      [[], ["controller", "planner", "vision"], []],
     );
   });
 
@@ -191,7 +201,7 @@ describe("AI provider core", () => {
       {
         id: "gpt-4o",
         label: "gpt-4o",
-        roles: ["planner", "vision"],
+        roles: ["controller", "planner", "vision"],
         settings: {
           systemPrompt: null,
           temperature: null,
@@ -201,6 +211,8 @@ describe("AI provider core", () => {
           repeatPenalty: null,
           seed: null,
           keepAlive: null,
+          thinkingMode: null,
+          reasoningBudgetTokens: null,
         },
         enabled: true,
         defaultFor: [],
@@ -213,6 +225,31 @@ describe("AI provider core", () => {
     assert.equal(resolveUpdatedApiKey("stored", MASKED_API_KEY), "stored");
     assert.equal(resolveUpdatedApiKey("stored", " next "), "next");
     assert.equal(resolveUpdatedApiKey("stored", ""), null);
+  });
+
+  it("uses OpenAI model discovery for legacy Ollama-compatible providers", () => {
+    const normalized = normalizeAiProvider({ ...provider, models: [] });
+    assert.equal(
+      providerRemoteModelsUrl(normalized),
+      "http://localhost:11434/v1/models",
+    );
+    assert.deepEqual(
+      parseProviderRemoteModels(normalized, {
+        data: [
+          {
+            id: "Gemma-4-E4B-it-GGUF",
+            labels: ["tool-calling", "vision", "llamacpp"],
+          },
+        ],
+      }),
+      [
+        {
+          id: "Gemma-4-E4B-it-GGUF",
+          label: "Gemma-4-E4B-it-GGUF",
+          capabilities: { tools: true, vision: true },
+        },
+      ],
+    );
   });
 
   it("creates and updates stable editable model rows", () => {
@@ -288,7 +325,10 @@ describe("AI provider core", () => {
   });
 
   it("falls back to first provider and default model when ids are missing", () => {
-    const provider = selectCatalogProvider(catalogByRole(catalog, "planner"), "");
+    const provider = selectCatalogProvider(
+      catalogByRole(catalog, "planner"),
+      "",
+    );
     const model = selectCatalogModel(provider, "");
 
     assert.equal(provider?.id, "planner-only");
@@ -314,7 +354,10 @@ describe("AI provider core", () => {
   });
 
   it("selects shared planner and vision models for initial settings", () => {
-    const selected = selectInitialPlannerVisionCatalog([catalog[2], ...catalog]);
+    const selected = selectInitialPlannerVisionCatalog([
+      catalog[2],
+      ...catalog,
+    ]);
 
     assert.equal(selected.selectedProvider?.id, "shared");
     assert.equal(selected.selectedModel?.id, "shared-default");
@@ -341,6 +384,9 @@ describe("AI provider core", () => {
 
     assert.equal(aiProviderKindLabel("openai-compatible"), "OpenAI-compatible");
     assert.equal(aiModelDisplayName(model), "Vision Default");
-    assert.equal(aiModelSubtitle(provider, model), "OpenAI-compatible · Vision Only");
+    assert.equal(
+      aiModelSubtitle(provider, model),
+      "OpenAI-compatible · Vision Only",
+    );
   });
 });

@@ -110,7 +110,7 @@ export const deleteAutomationAiProviderAction = async (providerId: string) => {
 export const checkAutomationAiProviderHealthAction = async (
   providerId: string,
   modelId?: string,
-  role?: 'planner' | 'vision'
+  role?: 'controller' | 'planner' | 'vision'
 ) => orchestratorSettingsClient.checkAiProviderHealth(providerId, modelId, role)
 
 export const listAutomationAiProviderRemoteModelsAction = async (providerId: string) => {

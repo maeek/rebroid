@@ -70,27 +70,36 @@ export const useAiAgentChatSession = ({
 
   const activeRun = activeTurn?.run ?? null
   useAiAgentRunStream({ activeRun, appendRunEvents, conversationVersionRef, runSequencesRef })
-  const { canSubmit, cancelRun, clearConversation, isCanceling, isClearing, runQueuedTurn, showCancelRun, submit } =
-    useAiAgentRunActions({
-      activeTurn,
-      adHocTimeoutMs,
-      app,
-      conversationVersionRef,
-      modelIsValid,
-      onRunStarted,
-      prompt,
-      queuedTurn,
-      runSequencesRef,
-      selectedModel,
-      selectedProvider,
-      selectedVisionModel,
-      selectedVisionProvider,
-      setActiveTurnId,
-      setError,
-      setPrompt,
-      setTurns,
-      turns
-    })
+  const {
+    canSubmit,
+    cancelRun,
+    clearConversation,
+    isCanceling,
+    isClearing,
+    runQueuedTurn,
+    showCancelRun,
+    submit,
+    submitPrompt
+  } = useAiAgentRunActions({
+    activeTurn,
+    adHocTimeoutMs,
+    app,
+    conversationVersionRef,
+    modelIsValid,
+    onRunStarted,
+    prompt,
+    queuedTurn,
+    runSequencesRef,
+    selectedModel,
+    selectedProvider,
+    selectedVisionModel,
+    selectedVisionProvider,
+    setActiveTurnId,
+    setError,
+    setPrompt,
+    setTurns,
+    turns
+  })
 
   return {
     activeTurn,
@@ -124,6 +133,7 @@ export const useAiAgentChatSession = ({
     setTimeoutMinutesInput,
     showCancelRun,
     submit,
+    submitPrompt,
     timeoutMinutesInput,
     onTranscriptScroll,
     transcriptRef,

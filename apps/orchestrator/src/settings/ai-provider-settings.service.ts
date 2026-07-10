@@ -47,6 +47,8 @@ export class AiProviderSettingsService {
         id: provider.id,
         label: provider.label,
         kind: provider.kind,
+        protocol: provider.protocol,
+        serverFlavor: provider.serverFlavor,
         models: provider.models.filter((model) => model.enabled),
       }))
       .filter((provider) => provider.models.length > 0);
@@ -55,7 +57,7 @@ export class AiProviderSettingsService {
   async getProviderForExecution(
     providerId?: string,
     modelId?: string,
-    role: 'planner' | 'vision' = 'planner',
+    role: AutomationAiProviderModelRole = 'controller',
   ) {
     const settings = await this.getStoredSettings();
     const providers = settings.aiProviders.filter(
@@ -89,7 +91,12 @@ export class AiProviderSettingsService {
     modelId?: string,
     role?: AutomationAiProviderModelRole,
   ): Promise<AutomationAiProviderHealthDto> {
-    if (role && role !== 'planner' && role !== 'vision') {
+    if (
+      role &&
+      role !== 'controller' &&
+      role !== 'planner' &&
+      role !== 'vision'
+    ) {
       throw new BadRequestException(`Unsupported AI model role "${role}".`);
     }
     const settings = await this.getStoredSettings();

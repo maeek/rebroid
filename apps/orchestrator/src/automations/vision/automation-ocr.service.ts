@@ -5,28 +5,12 @@ import {
 } from '@rebroid/vision-core/observation';
 import { OrchestratorSettingsStore } from '../../settings/orchestrator-settings-store';
 import { sanitizeAiText } from '../ai/automation-ai-observation.utils';
-import type { OptimizedAiScreenshot } from '../ai/automation-ai-screenshot.utils';
-
-export interface AutomationOcrResult {
-  status: 'available' | 'disabled' | 'failed';
-  detections: VisionDetection[];
-  elapsedMs?: number;
-  engine?: string;
-  model?: string;
-  languages?: string[];
-  preprocessingMode?: string;
-  preprocessingAttempts?: OcrPreprocessingAttempt[];
-  error?: string;
-}
-
-export interface OcrPreprocessingAttempt {
-  mode: string;
-  status: string;
-  textBoxCount?: number;
-  averageConfidence?: number;
-  elapsedMs?: number;
-  error?: string;
-}
+import type { AiScreenshot } from '../ai/automation-ai-screenshot.utils';
+import type {
+  AutomationOcrPort,
+  AutomationOcrResult,
+  OcrPreprocessingAttempt,
+} from './automation-ocr.port';
 
 interface OcrSidecarDetection {
   id?: string;
@@ -53,11 +37,11 @@ interface OcrSidecarResponse {
 }
 
 @Injectable()
-export class AutomationOcrService {
+export class AutomationOcrService implements AutomationOcrPort {
   constructor(private readonly settingsStore: OrchestratorSettingsStore) {}
 
   async recognize(
-    image: OptimizedAiScreenshot,
+    image: AiScreenshot,
     abortSignal?: AbortSignal,
   ): Promise<AutomationOcrResult> {
     const settings = (await this.settingsStore.getStoredSettings()).services
@@ -207,6 +191,9 @@ export class AutomationOcrService {
             : {}),
           ...(typeof raw.averageConfidence === 'number'
             ? { averageConfidence: raw.averageConfidence }
+            : {}),
+          ...(typeof raw.qualityScore === 'number'
+            ? { qualityScore: raw.qualityScore }
             : {}),
           ...(typeof raw.elapsedMs === 'number'
             ? { elapsedMs: raw.elapsedMs }

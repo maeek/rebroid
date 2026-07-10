@@ -14,6 +14,7 @@ import {
   buildToolDefinitions,
   chatCompletionsEndpoint,
   consumeChatCompletionStream,
+  DEVICE_DECISION_TOOL_NAME,
   conversationBeforeTurn,
   currentStreamingText,
   isPublicPlanText,
@@ -32,6 +33,7 @@ import {
   mapUsesByToolName,
   normalizePublicAiText,
   parseArguments,
+  parseDeviceAgentDecision,
   parseToolCallArguments,
   preflightToolCall,
   repeatedToolAttemptGuard,
@@ -49,6 +51,8 @@ const provider: AutomationAiProvider = {
   id: "local",
   label: "Local",
   kind: "ollama",
+  protocol: "openai-chat-completions",
+  serverFlavor: "auto",
   baseUrl: "http://localhost:11434/",
   apiKey: null,
   enabled: true,
@@ -162,6 +166,14 @@ describe("AI harness core", () => {
         allowed,
       ).map((tool) => tool.function.name),
       ["android__tap"],
+    );
+  });
+
+  it("does not interpret a missing allowlist as every tool", () => {
+    assert.equal(allowedToolMatcher(undefined)("android.adbShell"), false);
+    assert.deepEqual(
+      buildToolDefinitions([], allowedToolMatcher(undefined)),
+      [],
     );
   });
 
@@ -330,8 +342,33 @@ describe("AI harness core", () => {
         stream: false,
         temperature: 0.5,
         top_p: 0.9,
-        options: { num_ctx: 4096, top_k: 20 },
-        keep_alive: "5m",
+      },
+    );
+    const structuredBody = buildChatRequestBody({
+      provider,
+      model,
+      messages: [],
+      responseFormat: {
+        type: "json_schema",
+        schema: { type: "object" },
+        json_schema: {
+          name: "decision",
+          strict: true,
+          schema: { type: "object" },
+        },
+      },
+    });
+    assert.deepEqual(
+      "response_format" in structuredBody
+        ? structuredBody.response_format
+        : null,
+      {
+        type: "json_schema",
+        json_schema: {
+          name: "decision",
+          strict: true,
+          schema: { type: "object" },
+        },
       },
     );
   });
@@ -1090,6 +1127,69 @@ describe("AI harness core", () => {
         },
       },
     ]);
+  });
+
+  it("separates llama.cpp reasoning deltas from the public tool decision", async () => {
+    const result = await consumeChatCompletionStream({
+      body: streamFromText([
+        'data: {"choices":[{"delta":{"reasoning_content":"Need one grounded action."}}]}\n\n',
+        `data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"decision","type":"function","function":{"name":"${DEVICE_DECISION_TOOL_NAME}","arguments":"{\\"kind\\":\\"finish\\",\\"status\\":\\"blocked\\",\\"finalText\\":\\"No target.\\",\\"evidenceIds\\":[],\\"completedSubgoalIds\\":[]}"}}]}}]}\n\n`,
+        'data: {"choices":[{"delta":{},"finish_reason":"tool_calls"}],"usage":{"prompt_tokens":100,"completion_tokens":20,"total_tokens":120},"timings":{"prompt_ms":10,"predicted_ms":20,"cache_n":80}}\n\n',
+        "data: [DONE]\n\n",
+      ]),
+    });
+
+    assert.equal(result.reasoningPresent, true);
+    assert.equal(result.content, "");
+    assert.equal(result.finishReason, "tool_calls");
+    assert.equal(result.usage?.totalTokens, 120);
+    assert.equal(result.timings?.cacheTokens, 80);
+    assert.equal(result.toolCalls[0]?.function.name, DEVICE_DECISION_TOOL_NAME);
+  });
+
+  it("normalizes Ollama native NDJSON thinking and tool calls", async () => {
+    const result = await consumeChatCompletionStream({
+      format: "ollama-ndjson",
+      body: streamFromText([
+        '{"message":{"role":"assistant","thinking":"Inspect snapshot"},"done":false}\n',
+        `{"message":{"role":"assistant","content":"","tool_calls":[{"function":{"name":"${DEVICE_DECISION_TOOL_NAME}","arguments":{"kind":"finish","status":"blocked","finalText":"Blocked.","evidenceIds":[],"completedSubgoalIds":[]}}}]},"done":true,"done_reason":"stop","prompt_eval_count":40,"eval_count":10}\n`,
+      ]),
+    });
+
+    assert.equal(result.reasoningPresent, true);
+    assert.equal(result.usage?.totalTokens, 50);
+    assert.equal(result.toolCalls[0]?.id, "ollama_call_0");
+  });
+
+  it("parses the single structured device decision tool", () => {
+    assert.deepEqual(
+      parseDeviceAgentDecision({
+        content: "",
+        toolCalls: [
+          {
+            id: "decision",
+            type: "function",
+            function: {
+              name: DEVICE_DECISION_TOOL_NAME,
+              arguments: JSON.stringify({
+                kind: "act",
+                snapshotId: "screen-1",
+                intent: "Open Settings",
+                expectedOutcome: "Settings screen appears",
+                action: { type: "tap", candidateId: "ocr-1" },
+              }),
+            },
+          },
+        ],
+      }),
+      {
+        kind: "act",
+        snapshotId: "screen-1",
+        intent: "Open Settings",
+        expectedOutcome: "Settings screen appears",
+        action: { type: "tap", candidateId: "ocr-1" },
+      },
+    );
   });
 });
 

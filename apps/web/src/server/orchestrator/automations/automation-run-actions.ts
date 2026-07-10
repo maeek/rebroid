@@ -40,14 +40,22 @@ export const runAdHocAiAutomationAction = async (input: RunAdHocAiAutomationInpu
   assertAutomationPermission(user, 'automations:run-ai')
   await assertTargetApplication(input.targetApplicationId)
   assertRunProfilePermission(user, input)
+  const permittedTools = await listPermittedAiTools(user)
+  const rawShellRequested = input.rawShellPolicy === 'allowlisted'
+  if (rawShellRequested && !permittedTools.includes('android.adbShell')) {
+    assertAutomationPermission(user, 'automations:run-adb-shell')
+  }
+  const capabilities = permittedTools.filter(uses => uses !== 'android.adbShell')
   const run = await orchestratorAutomationsClient.runAdHocAi(user.ownerUserId, {
     ...input,
-    allowedTools: await listPermittedAiTools(user)
+    capabilities,
+    rawShellPolicy: rawShellRequested ? 'allowlisted' : 'deny'
   })
   revalidatePath('/automations')
   await recordAutomationAudit('automation.ai.run', run.automationId, 'Ad-hoc AI automation', {
     runId: run.id,
-    targetApplicationId: run.targetApplicationId
+    targetApplicationId: run.targetApplicationId,
+    rawShellPolicy: rawShellRequested ? 'allowlisted' : 'deny'
   })
   return run
 }

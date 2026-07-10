@@ -70,6 +70,7 @@ export const AiAgentToolsSection = ({
     setTimeoutMinutesInput,
     showCancelRun,
     submit,
+    submitPrompt,
     timeoutMinutesInput,
     transcriptRef,
     turns,
@@ -110,17 +111,60 @@ export const AiAgentToolsSection = ({
     setPrompt(current => (current.trim() ? `${current.trim()}\n\n${presetPrompt}` : presetPrompt))
   }
 
+  const approveEscalation = (program: string) => {
+    void submitPrompt(
+      [
+        `Continue the previous task. I approve one read-only ${program} diagnostic if it is still required.`,
+        'Use typed capabilities whenever possible and verify the result.'
+      ].join(' '),
+      { rawShellPolicy: 'allowlisted' }
+    )
+  }
+
   return (
     <section
-      className={cn('flex h-full min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4', className)}
+      className={cn('flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background', className)}
       data-testid='ai-agent-tools-section'
     >
       {hideHeader ? null : (
-        <div className='flex items-center gap-2'>
-          <GradientSparklesIcon className='size-4' />
-          <div>
-            <h3 className='text-sm font-semibold'>AI agent</h3>
-            <p className='text-xs text-foreground-muted'>Run a session-only Android automation chat.</p>
+        <div className='flex min-h-12 items-center justify-between gap-3 border-b border-border/55 px-4 py-2'>
+          <div className='flex min-w-0 items-center gap-2.5'>
+            <span className='flex size-8 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/8 text-primary'>
+              <GradientSparklesIcon className='size-4' />
+            </span>
+            <div className='min-w-0'>
+              <h3 className='truncate text-sm font-semibold'>Device agent</h3>
+              <p className='truncate text-[11px] text-foreground-muted'>Grounded actions · verified results</p>
+            </div>
+          </div>
+          <div className='flex items-center gap-1'>
+            {turns.length > 0 ? (
+              <Button
+                type='button'
+                size='icon'
+                variant='ghost'
+                className='size-8 text-foreground-muted'
+                aria-label='Export conversation'
+                title='Export conversation'
+                onClick={exportConversation}
+              >
+                <IconDownload className='size-4' />
+              </Button>
+            ) : null}
+            {turns.length > 0 ? (
+              <Button
+                type='button'
+                size='icon'
+                variant='ghost'
+                className='size-8 text-foreground-muted hover:text-destructive'
+                aria-label={isClearing ? 'Clearing conversation' : 'Clear conversation'}
+                title='Clear conversation'
+                disabled={isClearing}
+                onClick={() => void clearConversation()}
+              >
+                <IconTrash className='size-4' />
+              </Button>
+            ) : null}
           </div>
         </div>
       )}
@@ -129,6 +173,7 @@ export const AiAgentToolsSection = ({
         canSaveWorkflow={canSaveWorkflow && Boolean(selectedProvider && selectedModel && draftWorkflowFromRun)}
         draftingRunId={draftingRunId}
         isLoadingHistory={isLoadingHistory}
+        onApproveEscalation={approveEscalation}
         onSaveWorkflow={completedTurn => {
           void saveTurnAsWorkflow(completedTurn)
         }}
@@ -137,15 +182,15 @@ export const AiAgentToolsSection = ({
         turns={turns}
       />
 
-      <div className='grid shrink-0 gap-3'>
-        <div className='flex flex-wrap gap-2 justify-end'>
+      <div className='relative grid shrink-0 gap-2 border-t border-border/50 bg-background/88 px-4 pt-3 pb-4 backdrop-blur-xl before:pointer-events-none before:absolute before:inset-x-0 before:-top-6 before:h-6 before:bg-linear-to-t before:from-background/75 before:to-transparent'>
+        <div className='scrollbar-none flex gap-1.5 overflow-x-auto pb-0.5'>
           {suggestions.map(preset => (
             <Button
               key={preset.id}
               type='button'
               size='sm'
               variant='ghost'
-              className='max-w-[18rem] justify-start overflow-hidden text-ellipsis rounded-full px-3 font-normal text-foreground-muted hover:text-foreground'
+              className='max-w-[18rem] shrink-0 justify-start overflow-hidden text-ellipsis rounded-full border border-border/45 bg-surface-band/18 px-3 font-normal text-foreground-muted shadow-none hover:border-border hover:bg-surface-band/55 hover:text-foreground'
               title={preset.label}
               onClick={() => applyPreset(preset.prompt)}
             >
@@ -156,12 +201,18 @@ export const AiAgentToolsSection = ({
 
         <AiPromptComposer
           value={prompt}
-          rows={4}
-          placeholder='Ask the AI to perform a task, call a tool, or take an action...'
-          metadata={`Run timeout: ${adHocTimeoutMs / 60000} minutes.`}
+          rows={3}
+          placeholder='Describe what you want to accomplish…'
+          metadata={
+            <span>
+              <span className='hidden sm:inline'>Enter to send · Shift+Enter for a new line · </span>
+              {adHocTimeoutMs / 60000} min limit
+            </span>
+          }
           errors={[selectionMessage, error]}
           onChange={setPrompt}
           onSubmit={() => void submit()}
+          submitOnEnter
           modelControl={
             <AiAgentSettingsPopover
               adHocTimeoutMinutes={adHocTimeoutMinutes}
@@ -194,27 +245,6 @@ export const AiAgentToolsSection = ({
                   Run next
                 </Button>
               ) : null}
-              {turns.length > 0 ? (
-                <Button
-                  type='button'
-                  variant='ghost'
-                  onClick={exportConversation}
-                >
-                  <IconDownload className='size-4' />
-                  Export
-                </Button>
-              ) : null}
-              {turns.length > 0 ? (
-                <Button
-                  type='button'
-                  variant='ghost'
-                  disabled={isClearing}
-                  onClick={() => void clearConversation()}
-                >
-                  <IconTrash className='size-4' />
-                  {isClearing ? 'Clearing' : 'Clear'}
-                </Button>
-              ) : null}
               {showCancelRun ? (
                 <Button
                   type='button'
@@ -229,6 +259,7 @@ export const AiAgentToolsSection = ({
               <Button
                 type='button'
                 size='icon'
+                className='size-8 rounded-xl shadow-[0_8px_20px_-12px_hsl(var(--primary)/0.9)]'
                 disabled={!canSubmit}
                 aria-label={activeTurn ? 'Queue message' : 'Send message'}
                 onClick={() => void submit()}

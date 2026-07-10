@@ -1,907 +1,337 @@
+import { DEVICE_DECISION_TOOL_NAME } from '@rebroid/ai-core/harness';
 import { AutomationAiHarnessService } from './automation-ai-harness.service';
 import type { AutomationAiHarnessContext } from './automation-ai.types';
 import type { AutomationRunEventInput } from '../events/automation-run-events.types';
-import { BadRequestException } from '@nestjs/common';
+
+const provider = {
+  id: 'provider',
+  label: 'Provider',
+  kind: 'openai-compatible' as const,
+  protocol: 'openai-chat-completions' as const,
+  baseUrl: 'http://localhost:8080/v1',
+  enabled: true,
+  models: [],
+};
+
+const model = {
+  id: 'controller',
+  label: 'Controller',
+  roles: ['controller' as const, 'planner' as const],
+  settings: { thinkingMode: 'bounded' as const },
+  enabled: true,
+  defaultFor: ['controller' as const, 'planner' as const],
+};
+
+const decisionResponse = (decision: Record<string, unknown>) => ({
+  choices: [
+    {
+      message: {
+        role: 'assistant' as const,
+        content: null,
+        tool_calls: [
+          {
+            id: 'decision',
+            type: 'function' as const,
+            function: {
+              name: DEVICE_DECISION_TOOL_NAME,
+              arguments: JSON.stringify(decision),
+            },
+          },
+        ],
+      },
+    },
+  ],
+  generation: {
+    reasoningPresent: true,
+    finishReason: 'tool_calls',
+    usage: { promptTokens: 100, completionTokens: 20, totalTokens: 120 },
+    timings: null,
+    protocol: 'openai-chat-completions' as const,
+  },
+});
+
+const planResponse = (subgoals: Array<Record<string, unknown>>) => ({
+  choices: [
+    {
+      message: {
+        role: 'assistant' as const,
+        content: null,
+        tool_calls: [
+          {
+            id: 'plan',
+            type: 'function' as const,
+            function: {
+              name: 'submit_device_plan',
+              arguments: JSON.stringify({ subgoals }),
+            },
+          },
+        ],
+      },
+    },
+  ],
+});
+
+const observation = (snapshotId: string, image = snapshotId) => ({
+  plannerText: [
+    `snapshotId=${snapshotId}`,
+    'screen=1080x2340',
+    'Candidates (use IDs for taps):',
+    '- candidate-1 | Settings | source=ocr | confidence=0.9 | bounds=0.1,0.2,0.2,0.1',
+  ].join('\n'),
+  observation: {
+    snapshotId,
+    image: {
+      width: 1080,
+      height: 2340,
+      capturedAt: snapshotId,
+      mimeType: 'image/png',
+      source: 'screenshot' as const,
+    },
+    aiImage: {
+      dataUrl: `data:image/jpeg;base64,${image}`,
+      mimeType: 'image/jpeg',
+      capturedAt: snapshotId,
+      optimized: true,
+      originalBytes: 1,
+      bytes: 1,
+      width: 1080,
+      height: 2340,
+      renderedWidth: 332,
+      renderedHeight: 720,
+    },
+    detections: [],
+    candidates: [
+      {
+        id: 'candidate-1',
+        label: 'Settings',
+        source: 'ocr' as const,
+        confidence: 0.9,
+        bounds: { left: 0.1, top: 0.2, width: 0.2, height: 0.1 },
+      },
+    ],
+    markedScreenshotId: `som-${snapshotId}`,
+  },
+});
+
+const createHarness = ({
+  chatResponses,
+  observations = [observation('screen-1')],
+}: {
+  chatResponses: Array<
+    ReturnType<typeof decisionResponse> | ReturnType<typeof planResponse>
+  >;
+  observations?: Array<ReturnType<typeof observation>>;
+}) => {
+  const events: AutomationRunEventInput[] = [];
+  const chat = jest.fn();
+  for (const response of chatResponses) chat.mockResolvedValueOnce(response);
+  const perception = jest.fn();
+  for (const value of observations) perception.mockResolvedValueOnce(value);
+  const service = new AutomationAiHarnessService(
+    { getProvider: jest.fn().mockResolvedValue({ provider, model }) } as never,
+    {
+      listCommands: jest.fn().mockReturnValue([
+        {
+          uses: 'android.listPackages',
+          label: 'List packages',
+          description: 'List installed packages.',
+          requiredPermissions: ['automations:run'],
+          inputSchema: { type: 'object', properties: {} },
+        },
+      ]),
+    } as never,
+    {
+      emit: jest.fn(async (event: AutomationRunEventInput) => {
+        events.push(event);
+        return {
+          ...event,
+          id: `event-${events.length}`,
+          sequence: events.length,
+        };
+      }),
+    } as never,
+    { observe: perception } as never,
+    { chat } as never,
+  );
+  return { service, events, chat, perception };
+};
+
+const context = (toolExecutor = jest.fn()): AutomationAiHarnessContext => ({
+  runId: 'run-1',
+  ownerUserId: 'owner-1',
+  stepId: 'ai-run',
+  path: '$',
+  app: {
+    id: 'app-1',
+    containerId: 'container-1',
+    containerName: 'rebroid-app-1',
+    networkName: 'rebroid-network-1',
+    adbPort: 5555,
+  } as never,
+  adb: {} as never,
+  display: {} as never,
+  networkPolicy: {} as never,
+  toolExecutor,
+});
+
+const input = {
+  prompt: 'Open Settings.',
+  agentMode: 'controller' as const,
+  maxToolCalls: 4,
+  timeoutMs: 30_000,
+  rawShellPolicy: 'deny' as const,
+  requireFinalAnswer: true,
+};
 
 describe('AutomationAiHarnessService', () => {
-  it('continues when the model returns a plan-shaped no-tool response', async () => {
-    const events: AutomationRunEventInput[] = [];
-    const provider = {
-      id: 'provider',
-      label: 'Provider',
-      kind: 'ollama' as const,
-      baseUrl: 'http://localhost:11434',
-      enabled: true,
-      models: [],
-    };
-    const model = {
-      id: 'planner',
-      label: 'Planner',
-      roles: ['planner' as const],
-      settings: {},
-      enabled: true,
-      defaultFor: ['planner'],
-    };
-    const chat = jest
-      .fn()
-      .mockResolvedValueOnce({
-        choices: [
+  it('uses a single planner tool when structured output is not declared', async () => {
+    const { service, chat } = createHarness({
+      chatResponses: [
+        planResponse([
           {
-            message: {
-              role: 'assistant',
-              content: [
-                'Current screen: Home',
-                'Goal: Inspect packages',
-                'Next moves: Use typed package discovery',
-              ].join('\n'),
-            },
-          },
-        ],
-      })
-      .mockResolvedValueOnce({
-        choices: [
-          {
-            message: {
-              role: 'assistant',
-              content: [
-                'Current screen: Home',
-                'Goal: Inspect packages',
-                'Attempted: Opened Settings app.',
-                'Remaining: No further tool actions possible.',
-              ].join('\n'),
-            },
-          },
-        ],
-      })
-      .mockResolvedValueOnce({
-        choices: [
-          {
-            message: {
-              role: 'assistant',
-              content: '',
-              tool_calls: [
-                {
-                  id: 'call_1',
-                  type: 'function',
-                  function: {
-                    name: 'android__listPackages',
-                    arguments: JSON.stringify({
-                      intent: 'List packages',
-                      expectedOutcome: 'Installed packages are returned',
-                      input: {},
-                    }),
-                  },
-                },
-              ],
-            },
-          },
-        ],
-      })
-      .mockResolvedValueOnce({
-        choices: [
-          {
-            message: {
-              role: 'assistant',
-              content: 'Package list was inspected.',
-            },
-          },
-        ],
-      });
-    const service = new AutomationAiHarnessService(
-      {
-        getProvider: jest.fn().mockResolvedValue({ provider, model }),
-      } as never,
-      {
-        listAiCommands: jest.fn().mockReturnValue([
-          {
-            uses: 'android.listPackages',
-            label: 'List packages',
-            description: 'List installed Android packages.',
-            inputSchema: {
-              type: 'object',
-              properties: {},
-              additionalProperties: false,
-            },
+            id: 'open-settings',
+            goal: 'Open Settings',
+            successEvidence: 'A fresh snapshot shows Settings.',
           },
         ]),
-      } as never,
-      {
-        emit: jest.fn(async (event: AutomationRunEventInput) => {
-          events.push(event);
-          return {
-            ...event,
-            id: `event_${events.length}`,
-            sequence: events.length,
-          };
+        decisionResponse({
+          kind: 'finish',
+          status: 'completed',
+          finalText: 'Settings is already open.',
+          evidenceIds: ['snapshot:screen-1'],
+          completedSubgoalIds: ['open-settings'],
         }),
-      } as never,
-      {
-        observe: jest.fn().mockResolvedValue({
-          plannerText: 'Screen captured: 0 UI hierarchy element(s) detected.',
-          observation: {
-            image: { width: 1080, height: 2340 },
-            uiXml: { status: 'empty', nodeCount: 0 },
-            detections: [],
-            summary: 'Home screen',
-          },
-        }),
-      } as never,
-      {
-        buildForPlanner: jest.fn().mockResolvedValue('Runtime context'),
-      } as never,
-      { chat } as never,
-    );
-    const toolExecutor = jest.fn().mockResolvedValue({
-      summary: 'Packages listed.',
-      data: { packages: ['com.android.settings'] },
+      ],
     });
-    const context: AutomationAiHarnessContext = {
-      runId: 'run_1',
-      ownerUserId: 'user_1',
-      stepId: 'step_1',
-      parentStepId: null,
-      path: '$',
-      app: {} as never,
-      adb: {} as never,
-      display: {} as never,
-      networkPolicy: {} as never,
-      toolExecutor,
-    };
 
-    await service.run(
-      {
-        prompt: 'Inspect packages',
-        maxToolCalls: 3,
-        timeoutMs: 30_000,
-        allowedTools: ['android.listPackages'],
-        requireFinalAnswer: true,
-      },
-      context,
+    const result = await service.run(
+      { ...input, agentMode: 'planned' },
+      context(),
     );
 
-    const toolCompletedIndex = events.findIndex(
-      (event) => event.type === 'ai.tool.completed',
-    );
-    const finalIndex = events.findIndex(
-      (event) => event.type === 'ai.message.completed',
-    );
-
-    expect(toolExecutor).toHaveBeenCalledTimes(1);
-    expect(chat).toHaveBeenCalledTimes(4);
-    expect(events.some((event) => event.type === 'ai.plan.updated')).toBe(true);
-    expect(
-      events.some(
-        (event) =>
-          event.type === 'ai.guardrail.triggered' &&
-          (event.message ?? '').includes('before calling any tool'),
-      ),
-    ).toBe(true);
-    expect(toolCompletedIndex).toBeGreaterThan(-1);
-    expect(finalIndex).toBeGreaterThan(toolCompletedIndex);
+    expect(chat.mock.calls[0]?.[0]).toMatchObject({
+      tools: [
+        {
+          function: { name: 'submit_device_plan' },
+        },
+      ],
+    });
+    expect(chat.mock.calls[0]?.[0]).not.toHaveProperty('responseFormat');
+    expect(result.data.status).toBe('completed');
   });
 
-  it('recovers when the provider rejects malformed tool-call JSON', async () => {
-    const events: AutomationRunEventInput[] = [];
-    const provider = {
-      id: 'provider',
-      label: 'Provider',
-      kind: 'ollama' as const,
-      baseUrl: 'http://localhost:11434',
-      enabled: true,
-      models: [],
-    };
-    const model = {
-      id: 'planner',
-      label: 'Planner',
-      roles: ['planner' as const],
-      settings: {},
-      enabled: true,
-      defaultFor: ['planner'],
-    };
-    const chat = jest
-      .fn()
-      .mockResolvedValueOnce({
-        choices: [
-          {
-            message: {
-              role: 'assistant',
-              content: 'Current screen: Home\nGoal: Open Settings',
-            },
-          },
-        ],
-      })
-      .mockRejectedValueOnce(
-        new BadRequestException(
-          'AI provider request failed: 500 Internal Server Error - error parsing tool call: raw="", err=unexpected end of JSON input',
-        ),
-      )
-      .mockResolvedValueOnce({
-        choices: [
-          {
-            message: {
-              role: 'assistant',
-              content: '',
-              tool_calls: [
-                {
-                  id: 'call_1',
-                  type: 'function',
-                  function: {
-                    name: 'android__launchPackage',
-                    arguments: JSON.stringify({
-                      intent: 'Open Android Settings',
-                      expectedOutcome: 'Settings screen opens',
-                      input: { packageName: 'com.android.settings' },
-                    }),
-                  },
-                },
-              ],
-            },
-          },
-        ],
-      })
-      .mockResolvedValueOnce({
-        choices: [
-          {
-            message: {
-              role: 'assistant',
-              content: 'Current screen: Settings\nGoal: Open Settings',
-            },
-          },
-        ],
-      })
-      .mockResolvedValueOnce({
-        choices: [
-          {
-            message: {
-              role: 'assistant',
-              content: 'Settings was opened.',
-            },
-          },
-        ],
-      });
-    const service = new AutomationAiHarnessService(
-      {
-        getProvider: jest.fn().mockResolvedValue({ provider, model }),
-      } as never,
-      {
-        listAiCommands: jest.fn().mockReturnValue([
-          {
-            uses: 'android.launchPackage',
-            label: 'Launch package',
-            description: 'Launch package.',
-            inputSchema: {
-              type: 'object',
-              properties: { packageName: { type: 'string' } },
-              required: ['packageName'],
-              additionalProperties: false,
-            },
-          },
-        ]),
-      } as never,
-      {
-        emit: jest.fn(async (event: AutomationRunEventInput) => {
-          events.push(event);
-          return {
-            ...event,
-            id: `event_${events.length}`,
-            sequence: events.length,
-          };
+  it('executes one snapshot-grounded action and verifies completion evidence', async () => {
+    const { service, events, chat } = createHarness({
+      observations: [
+        observation('screen-1', 'before'),
+        observation('screen-2', 'after'),
+      ],
+      chatResponses: [
+        decisionResponse({
+          kind: 'act',
+          snapshotId: 'screen-1',
+          intent: 'Open Settings',
+          expectedOutcome: 'Settings screen is visible',
+          action: { type: 'tap', candidateId: 'candidate-1' },
         }),
-      } as never,
-      {
-        observe: jest.fn().mockResolvedValue({
-          plannerText: 'Screen captured: 0 UI hierarchy element(s) detected.',
-          observation: {
-            image: { width: 1080, height: 2340 },
-            uiXml: { status: 'empty', nodeCount: 0 },
-            detections: [],
-            summary: 'Home screen',
-          },
+        decisionResponse({
+          kind: 'finish',
+          status: 'completed',
+          finalText: 'Settings is open.',
+          evidenceIds: ['action:1'],
+          completedSubgoalIds: [],
         }),
-      } as never,
-      {
-        buildForPlanner: jest.fn().mockResolvedValue('Runtime context'),
-      } as never,
-      { chat } as never,
-    );
-    const toolExecutor = jest.fn().mockResolvedValue({
-      summary: 'Settings launched.',
-      data: { launched: true },
+      ],
     });
-    const context: AutomationAiHarnessContext = {
-      runId: 'run_1',
-      ownerUserId: 'user_1',
-      stepId: 'step_1',
-      parentStepId: null,
-      path: '$',
-      app: {} as never,
-      adb: {} as never,
-      display: {} as never,
-      networkPolicy: {} as never,
-      toolExecutor,
-    };
+    const toolExecutor = jest.fn().mockResolvedValue({
+      summary: 'Tapped Settings.',
+      data: { x: 216, y: 585 },
+    });
 
-    await service.run(
-      {
-        prompt: 'Open Settings',
-        maxToolCalls: 3,
-        timeoutMs: 30_000,
-        allowedTools: ['android.launchPackage'],
-        requireFinalAnswer: true,
-      },
-      context,
-    );
+    const result = await service.run(input, context(toolExecutor));
 
     expect(toolExecutor).toHaveBeenCalledWith(
       expect.objectContaining({
-        name: 'android.launchPackage',
-        arguments: { packageName: 'com.android.settings' },
+        name: 'android.tapNormalized',
+        arguments: { x: 0.2, y: 0.25 },
       }),
     );
-    expect(
-      events.some(
-        (event) =>
-          event.type === 'ai.guardrail.triggered' &&
-          (event.message ?? '').includes('malformed tool-call JSON'),
-      ),
-    ).toBe(true);
-  });
-
-  it('blocks tapText when the latest UI hierarchy is empty', async () => {
-    const events: AutomationRunEventInput[] = [];
-    const provider = {
-      id: 'provider',
-      label: 'Provider',
-      kind: 'ollama' as const,
-      baseUrl: 'http://localhost:11434',
-      enabled: true,
-      models: [],
-    };
-    const model = {
-      id: 'planner',
-      label: 'Planner',
-      roles: ['planner' as const],
-      settings: {},
-      enabled: true,
-      defaultFor: ['planner'],
-    };
-    const chat = jest
-      .fn()
-      .mockResolvedValueOnce({
-        choices: [
-          {
-            message: {
-              role: 'assistant',
-              content: 'Current screen: Home\nGoal: Tap Display',
-            },
-          },
-        ],
-      })
-      .mockResolvedValueOnce({
-        choices: [
-          {
-            message: {
-              role: 'assistant',
-              content: '',
-              tool_calls: [
-                {
-                  id: 'call_1',
-                  type: 'function',
-                  function: {
-                    name: 'android__tapText',
-                    arguments: JSON.stringify({
-                      intent: 'Tap Display',
-                      expectedOutcome: 'Display text opens',
-                      input: { text: 'Display' },
-                    }),
-                  },
-                },
-              ],
-            },
-          },
-        ],
-      })
-      .mockResolvedValueOnce({
-        choices: [
-          {
-            message: {
-              role: 'assistant',
-              content:
-                'Current screen: Home\nGoal: Tap Display\nNext moves: Use another route',
-            },
-          },
-        ],
-      })
-      .mockResolvedValueOnce({
-        choices: [
-          {
-            message: {
-              role: 'assistant',
-              content:
-                'The UI hierarchy is unavailable, so text tapping was not attempted.',
-            },
-          },
-        ],
-      });
-    const service = new AutomationAiHarnessService(
-      {
-        getProvider: jest.fn().mockResolvedValue({ provider, model }),
-      } as never,
-      {
-        listAiCommands: jest.fn().mockReturnValue([
-          {
-            uses: 'android.tapText',
-            label: 'Tap text',
-            description: 'Tap visible text.',
-            inputSchema: {
-              type: 'object',
-              properties: { text: { type: 'string' } },
-              required: ['text'],
-              additionalProperties: false,
-            },
-          },
-        ]),
-      } as never,
-      {
-        emit: jest.fn(async (event: AutomationRunEventInput) => {
-          events.push(event);
-          return {
-            ...event,
-            id: `event_${events.length}`,
-            sequence: events.length,
-          };
-        }),
-      } as never,
-      {
-        observe: jest.fn().mockResolvedValue({
-          plannerText:
-            'UI hierarchy: empty, 0 node(s). Vision hypothesis: unavailable.',
-          observation: {
-            image: { width: 1080, height: 2340 },
-            uiXml: { status: 'empty', nodeCount: 0 },
-            detections: [],
-          },
-        }),
-      } as never,
-      {
-        buildForPlanner: jest.fn().mockResolvedValue('Runtime context'),
-      } as never,
-      { chat } as never,
-    );
-    const toolExecutor = jest.fn();
-    const context: AutomationAiHarnessContext = {
-      runId: 'run_1',
-      ownerUserId: 'user_1',
-      stepId: 'step_1',
-      parentStepId: null,
-      path: '$',
-      app: {} as never,
-      adb: {} as never,
-      display: {} as never,
-      networkPolicy: {} as never,
-      toolExecutor,
-    };
-
-    await service.run(
-      {
-        prompt: 'Tap Display',
-        maxToolCalls: 3,
-        timeoutMs: 30_000,
-        allowedTools: ['android.tapText'],
-        requireFinalAnswer: true,
-      },
-      context,
-    );
-
-    expect(toolExecutor).not.toHaveBeenCalled();
-    expect(
-      events.some(
-        (event) =>
-          event.type === 'ai.guardrail.triggered' &&
-          (event.message ?? '').includes('UI text lookup is unavailable'),
-      ),
-    ).toBe(true);
-    expect(
-      events.some(
-        (event) =>
-          event.type === 'ai.tool.failed' &&
-          event.data?.failureCategory === 'no_match',
-      ),
-    ).toBe(true);
-  });
-
-  it('keeps structured perception in shared multimodal mode and feeds visual affordances to replanning', async () => {
-    const events: AutomationRunEventInput[] = [];
-    const provider = {
-      id: 'provider',
-      label: 'Provider',
-      kind: 'ollama' as const,
-      baseUrl: 'http://localhost:11434',
-      enabled: true,
-      models: [],
-    };
-    const model = {
-      id: 'dual',
-      label: 'Dual',
-      roles: ['planner' as const, 'vision' as const],
-      settings: {},
-      enabled: true,
-      defaultFor: ['planner' as const, 'vision' as const],
-    };
-    const chat = jest
-      .fn()
-      .mockResolvedValueOnce({
-        choices: [
-          {
-            message: {
-              role: 'assistant',
-              content:
-                'Current screen: Home\nGoal: Open quick settings\nNext moves: expand quick settings',
-            },
-          },
-        ],
-      })
-      .mockResolvedValueOnce({
-        choices: [
-          {
-            message: {
-              role: 'assistant',
-              content: '',
-              tool_calls: [
-                {
-                  id: 'call_1',
-                  type: 'function',
-                  function: {
-                    name: 'android__expandQuickSettings',
-                    arguments: JSON.stringify({
-                      intent: 'Expand quick settings',
-                      expectedOutcome:
-                        'Quick settings panel and controls are visible.',
-                      input: {},
-                    }),
-                  },
-                },
-              ],
-            },
-          },
-        ],
-      })
-      .mockResolvedValueOnce({
-        choices: [
-          {
-            message: {
-              role: 'assistant',
-              content:
-                'Current screen: Quick settings\nGoal: Open quick settings\nNext moves: inspect settings access candidate',
-            },
-          },
-        ],
-      })
-      .mockResolvedValueOnce({
-        choices: [
-          {
-            message: {
-              role: 'assistant',
-              content: 'Quick panel is open.',
-            },
-          },
-        ],
-      });
-    const observe = jest
-      .fn()
-      .mockResolvedValueOnce({
-        plannerText: 'Screen observation: home.',
-        observation: {
-          image: { width: 1080, height: 2340 },
-          aiImage: { dataUrl: 'data:image/png;base64,initial' },
-          uiXml: { status: 'failed', nodeCount: 0 },
-          detections: [],
-          summary: 'Home screen',
-          screenState: {
-            screenKind: 'home',
-            confidence: 0.7,
-            visibleText: [],
-            controls: [],
-            evidence: [],
-            uncertainty: [],
-            summary: 'Home screen.',
-          },
-        },
-      })
-      .mockResolvedValueOnce({
-        plannerText: 'Screen observation: quick settings.',
-        observation: {
-          image: { width: 1080, height: 2340 },
-          aiImage: { dataUrl: 'data:image/png;base64,after' },
-          uiXml: { status: 'failed', nodeCount: 0 },
-          detections: [],
-          summary: 'Quick settings panel with gear access.',
-          screenState: {
-            screenKind: 'quick_settings',
-            confidence: 0.82,
-            visibleText: ['Internet', 'Bluetooth'],
-            controls: [
-              {
-                label: 'Settings access gear',
-                role: 'icon',
-                confidence: 0.8,
-                bounds: { left: 0.88, top: 0.84, width: 0.08, height: 0.08 },
-              },
-            ],
-            evidence: ['Quick settings tiles and settings gear are visible.'],
-            uncertainty: [],
-            summary: 'Quick settings panel.',
-            settingsAccessVisible: true,
-          },
-        },
-      });
-    const service = new AutomationAiHarnessService(
-      {
-        getProvider: jest.fn().mockResolvedValue({ provider, model }),
-      } as never,
-      {
-        listAiCommands: jest.fn().mockReturnValue([
-          {
-            uses: 'android.expandQuickSettings',
-            label: 'Expand quick settings',
-            description: 'Expand Android quick settings.',
-            inputSchema: {
-              type: 'object',
-              properties: {},
-              additionalProperties: false,
-            },
-          },
-        ]),
-      } as never,
-      {
-        emit: jest.fn(async (event: AutomationRunEventInput) => {
-          events.push(event);
-          return {
-            ...event,
-            id: `event_${events.length}`,
-            sequence: events.length,
-          };
-        }),
-      } as never,
-      { observe } as never,
-      {
-        buildForPlanner: jest.fn().mockResolvedValue('Runtime context'),
-      } as never,
-      { chat } as never,
-    );
-    const toolExecutor = jest.fn().mockResolvedValue({
-      summary: 'Expanded quick settings.',
-      data: {},
+    expect(result.data).toMatchObject({
+      status: 'completed',
+      completed: true,
+      toolCalls: 1,
     });
-    const context: AutomationAiHarnessContext = {
-      runId: 'run_1',
-      ownerUserId: 'user_1',
-      stepId: 'step_1',
-      parentStepId: null,
-      path: '$',
-      app: {} as never,
-      adb: {} as never,
-      display: {} as never,
-      networkPolicy: {} as never,
-      toolExecutor,
-    };
-
-    await service.run(
-      {
-        prompt: 'Open quick settings',
-        maxToolCalls: 3,
-        timeoutMs: 30_000,
-        allowedTools: ['android.expandQuickSettings'],
-        requireFinalAnswer: true,
-        providerId: 'provider',
-        modelId: 'dual',
-        visionProviderId: 'provider',
-        visionModelId: 'dual',
-      },
-      context,
+    expect(events.some((event) => event.type === 'ai.tool.completed')).toBe(
+      true,
     );
+    expect(chat).toHaveBeenCalledTimes(2);
+  });
 
-    expect(observe).toHaveBeenCalledWith(
-      expect.objectContaining({
-        input: expect.objectContaining({
-          visionProviderId: 'provider',
-          visionModelId: 'dual',
+  it('rejects an action bound to a stale snapshot before tool execution', async () => {
+    const { service, events } = createHarness({
+      chatResponses: [
+        decisionResponse({
+          kind: 'act',
+          snapshotId: 'screen-old',
+          intent: 'Tap target',
+          expectedOutcome: 'Target opens',
+          action: { type: 'tap', candidateId: 'candidate-1' },
         }),
-      }),
-    );
+        decisionResponse({
+          kind: 'finish',
+          status: 'blocked',
+          finalText: 'The snapshot was stale.',
+          reason: 'A fresh grounded action is required.',
+          evidenceIds: ['snapshot:screen-1'],
+          completedSubgoalIds: [],
+        }),
+      ],
+    });
+    const toolExecutor = jest.fn();
+
+    const result = await service.run(input, context(toolExecutor));
+
+    expect(toolExecutor).not.toHaveBeenCalled();
+    expect(result.data.status).toBe('blocked');
     expect(
       events.some(
         (event) =>
           event.type === 'ai.guardrail.triggered' &&
-          event.data?.failureCategory === 'no_effect',
+          event.message?.includes('Stale snapshot'),
       ),
-    ).toBe(false);
-    expect(
-      JSON.stringify(chat.mock.calls).includes(
-        'Visual affordances are hypotheses',
-      ),
-    ).toBe(true);
-    expect(
-      JSON.stringify(chat.mock.calls).includes('data:image/png;base64,after'),
     ).toBe(true);
   });
 
-  it('blocks quick controls from app drawer when the goal is opening Settings', async () => {
-    const events: AutomationRunEventInput[] = [];
-    const provider = {
-      id: 'provider',
-      label: 'Provider',
-      kind: 'ollama' as const,
-      baseUrl: 'http://localhost:11434',
-      enabled: true,
-      models: [],
-    };
-    const model = {
-      id: 'planner',
-      label: 'Planner',
-      roles: ['planner' as const],
-      settings: {},
-      enabled: true,
-      defaultFor: ['planner'],
-    };
-    const chat = jest
-      .fn()
-      .mockResolvedValueOnce({
-        choices: [
-          {
-            message: {
-              role: 'assistant',
-              content:
-                'Current screen: App drawer\nGoal: Open Android Settings\nNext moves: find Settings app',
-            },
-          },
-        ],
-      })
-      .mockResolvedValueOnce({
-        choices: [
-          {
-            message: {
-              role: 'assistant',
-              content: '',
-              tool_calls: [
-                {
-                  id: 'call_1',
-                  type: 'function',
-                  function: {
-                    name: 'android_openQuickControlsPanel',
-                    arguments: JSON.stringify({
-                      intent: 'Open quick controls',
-                      expectedOutcome: 'Quick controls are visible',
-                      input: {},
-                    }),
-                  },
-                },
-              ],
-            },
-          },
-        ],
-      })
-      .mockResolvedValueOnce({
-        choices: [
-          {
-            message: {
-              role: 'assistant',
-              content:
-                'Current screen: App drawer\nGoal: Open Android Settings\nNext moves: continue app drawer search',
-            },
-          },
-        ],
-      })
-      .mockResolvedValueOnce({
-        choices: [
-          {
-            message: {
-              role: 'assistant',
-              content: 'I stopped before leaving the app drawer.',
-            },
-          },
-        ],
-      });
-    const service = new AutomationAiHarnessService(
-      {
-        getProvider: jest.fn().mockResolvedValue({ provider, model }),
-      } as never,
-      {
-        listAiCommands: jest.fn().mockReturnValue([
-          {
-            uses: 'android.expandQuickSettings',
-            label: 'Expand quick settings',
-            description: 'Expand Android quick settings.',
-            aiTool: {
-              name: 'android_openQuickControlsPanel',
-              label: 'Open quick controls panel',
-              description: 'Opens status-shade quick controls.',
-            },
-            inputSchema: {
-              type: 'object',
-              properties: {},
-              additionalProperties: false,
-            },
-          },
-        ]),
-      } as never,
-      {
-        emit: jest.fn(async (event: AutomationRunEventInput) => {
-          events.push(event);
-          return {
-            ...event,
-            id: `event_${events.length}`,
-            sequence: events.length,
-          };
+  it('keeps raw ADB shell hidden when escalation is not enabled', async () => {
+    const { service, events } = createHarness({
+      chatResponses: [
+        decisionResponse({
+          kind: 'request_escalation',
+          reason: 'Inspect a system property',
+          program: 'getprop',
+          args: ['ro.build.version.release'],
         }),
-      } as never,
-      {
-        observe: jest.fn().mockResolvedValue({
-          plannerText: 'Screen observation: app drawer.',
-          observation: {
-            image: { width: 1080, height: 2340 },
-            uiXml: { status: 'available', nodeCount: 4 },
-            detections: [],
-            summary: 'App drawer with search.',
-            screenState: {
-              screenKind: 'app_drawer',
-              confidence: 0.82,
-              visibleText: ['Search apps', 'Settings'],
-              controls: [{ label: 'Settings', role: 'app_icon' }],
-              evidence: ['App drawer grid visible.'],
-              uncertainty: [],
-              summary: 'App drawer.',
-            },
-          },
+        decisionResponse({
+          kind: 'finish',
+          status: 'blocked',
+          finalText: 'Shell access is disabled.',
+          reason: 'The required typed capability is unavailable.',
+          evidenceIds: ['snapshot:screen-1'],
+          completedSubgoalIds: [],
         }),
-      } as never,
-      {
-        buildForPlanner: jest.fn().mockResolvedValue('Runtime context'),
-      } as never,
-      { chat } as never,
-    );
+      ],
+    });
     const toolExecutor = jest.fn();
-    const context: AutomationAiHarnessContext = {
-      runId: 'run_1',
-      ownerUserId: 'user_1',
-      stepId: 'step_1',
-      parentStepId: null,
-      path: '$',
-      app: {} as never,
-      adb: {} as never,
-      display: {} as never,
-      networkPolicy: {} as never,
-      toolExecutor,
-    };
 
-    await service.run(
-      {
-        prompt: 'Open Android system Settings',
-        maxToolCalls: 1,
-        timeoutMs: 30_000,
-        allowedTools: ['android.expandQuickSettings'],
-        requireFinalAnswer: true,
-        providerId: 'provider',
-        modelId: 'planner',
-      },
-      context,
-    );
+    await service.run(input, context(toolExecutor));
 
     expect(toolExecutor).not.toHaveBeenCalled();
     expect(
       events.some(
         (event) =>
           event.type === 'ai.guardrail.triggered' &&
-          event.data?.uses === 'android.expandQuickSettings' &&
-          event.data?.failureCategory === 'no_match',
+          event.message?.includes('disabled'),
       ),
     ).toBe(true);
-    expect(
-      events.some(
-        (event) =>
-          event.type === 'ai.tool.started' &&
-          event.data?.uses === 'android.expandQuickSettings',
-      ),
-    ).toBe(false);
   });
 });

@@ -119,12 +119,39 @@ export class RunAdHocAiAutomationDto {
   @MaxLength(120, { each: true })
   allowedTools?: string[];
 
+  @ApiPropertyOptional({ type: String, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(120, { each: true })
+  capabilities?: string[];
+
+  @ApiPropertyOptional({
+    enum: ['adaptive', 'controller', 'planned'],
+    default: 'adaptive',
+  })
+  @IsOptional()
+  @IsIn(['adaptive', 'controller', 'planned'])
+  agentMode?: 'adaptive' | 'controller' | 'planned';
+
+  @ApiPropertyOptional({ enum: ['deny', 'allowlisted'], default: 'deny' })
+  @IsOptional()
+  @IsIn(['deny', 'allowlisted'])
+  rawShellPolicy?: 'deny' | 'allowlisted';
+
   @ApiPropertyOptional({ default: 20 })
   @IsOptional()
   @IsInt()
   @Min(1)
   @Max(100)
   maxToolCalls?: number;
+
+  @ApiPropertyOptional({ default: 20 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  maxActions?: number;
 
   @ApiPropertyOptional({ default: 120000 })
   @IsOptional()

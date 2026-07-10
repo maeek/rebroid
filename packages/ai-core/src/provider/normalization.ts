@@ -10,8 +10,29 @@ import {
   AiProviderConfigurationError,
   type AutomationAiProvider,
   type AutomationAiProviderModel,
+  type AutomationAiProviderModelCapabilities,
   type AutomationAiProviderModelRole,
+  type AutomationAiProviderProtocol,
+  type AutomationAiProviderServerFlavor,
+  type AutomationAiThinkingMode,
 } from "./types";
+
+const providerProtocols = [
+  "openai-chat-completions",
+  "ollama-native-chat",
+] as const satisfies readonly AutomationAiProviderProtocol[];
+const providerServerFlavors = [
+  "auto",
+  "openai",
+  "llama-cpp",
+  "lemonade",
+  "ollama",
+] as const satisfies readonly AutomationAiProviderServerFlavor[];
+const thinkingModes = [
+  "disabled",
+  "bounded",
+  "provider-default",
+] as const satisfies readonly AutomationAiThinkingMode[];
 
 export const normalizeAiProviders = (value: unknown) => {
   if (!Array.isArray(value)) {
@@ -50,6 +71,16 @@ export const normalizeAiProvider = (
   const id = text(provider.id) || fallback?.id || "";
   const label = text(provider.label) || fallback?.label || id;
   const kind = text(provider.kind) || fallback?.kind || "";
+  const protocol = normalizedEnum(
+    provider.protocol,
+    providerProtocols,
+    fallback?.protocol ?? "openai-chat-completions",
+  );
+  const serverFlavor = normalizedEnum(
+    provider.serverFlavor,
+    providerServerFlavors,
+    fallback?.serverFlavor ?? (kind === "openai" ? "openai" : "auto"),
+  );
   const baseUrl = text(provider.baseUrl || fallback?.baseUrl).replace(
     /\/+$/,
     "",
@@ -69,6 +100,8 @@ export const normalizeAiProvider = (
     id,
     label,
     kind: kind as AutomationAiProvider["kind"],
+    protocol,
+    serverFlavor,
     baseUrl:
       kind === "openai" && baseUrl === "https://api.openai.com"
         ? "https://api.openai.com/v1"
@@ -113,6 +146,7 @@ export const normalizeAiModel = (
     );
   }
   const roles = normalizeAiModelRoles(model.roles);
+  const capabilities = normalizeAiModelCapabilities(model.capabilities);
   return {
     id,
     label,
@@ -120,6 +154,7 @@ export const normalizeAiModel = (
     settings: normalizeAiModelSettings(model.settings),
     enabled: model.enabled !== false,
     defaultFor: normalizeAiModelDefaultFor(model.defaultFor, roles, model),
+    ...(Object.keys(capabilities).length > 0 ? { capabilities } : {}),
   };
 };
 
@@ -150,11 +185,26 @@ export const normalizeAiModelDefaultFor = (
 export const normalizeAiModelRoles = (
   rawRoles: unknown,
 ): AutomationAiProviderModelRole[] => {
-  if (!Array.isArray(rawRoles)) return ["planner"];
+  if (!Array.isArray(rawRoles)) return ["controller", "planner"];
   const roles = rawRoles.filter((role): role is AutomationAiProviderModelRole =>
     modelRoles.includes(role as AutomationAiProviderModelRole),
   );
+  if (roles.includes("planner") && !roles.includes("controller")) {
+    roles.unshift("controller");
+  }
   return Array.from(new Set(roles));
+};
+
+export const normalizeAiModelCapabilities = (
+  value: unknown,
+): AutomationAiProviderModelCapabilities => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const capabilities = value as Record<string, unknown>;
+  return Object.fromEntries(
+    ["streaming", "structuredOutput", "tools", "vision", "reasoning"]
+      .filter((key) => typeof capabilities[key] === "boolean")
+      .map((key) => [key, capabilities[key]]),
+  ) as AutomationAiProviderModelCapabilities;
 };
 
 export const normalizeAiModelSettings = (rawSettings: unknown) => {
@@ -173,7 +223,30 @@ export const normalizeAiModelSettings = (rawSettings: unknown) => {
     repeatPenalty: nullableNumber(settings.repeatPenalty, 0, 4),
     seed: nullableInteger(settings.seed, -2147483648, 2147483647),
     keepAlive: nullableText(settings.keepAlive),
+    thinkingMode: normalizedNullableEnum(settings.thinkingMode, thinkingModes),
+    reasoningBudgetTokens: nullableInteger(
+      settings.reasoningBudgetTokens,
+      0,
+      32768,
+    ),
   };
+};
+
+const normalizedEnum = <T extends string>(
+  value: unknown,
+  allowed: readonly T[],
+  fallback: T,
+) => {
+  const normalized = text(value);
+  return allowed.includes(normalized as T) ? (normalized as T) : fallback;
+};
+
+const normalizedNullableEnum = <T extends string>(
+  value: unknown,
+  allowed: readonly T[],
+): T | null => {
+  const normalized = text(value);
+  return allowed.includes(normalized as T) ? (normalized as T) : null;
 };
 
 export const resolveUpdatedApiKey = (

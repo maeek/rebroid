@@ -21,8 +21,12 @@ const aiRunSchema = z.object({
   clientMessageId: z.string().trim().min(1).max(120).optional(),
   initialScreenshotDataUrl: z.string().trim().min(1).optional(),
   maxToolCalls: z.number().int().min(1).max(100).default(20),
+  maxActions: z.number().int().min(1).max(100).optional(),
   timeoutMs: z.number().int().min(1_000).max(900_000).default(120_000),
   allowedTools: z.array(z.string().trim().min(1).max(120)).max(100).optional(),
+  capabilities: z.array(z.string().trim().min(1).max(120)).max(100).optional(),
+  agentMode: z.enum(['adaptive', 'controller', 'planned']).default('adaptive'),
+  rawShellPolicy: z.enum(['deny', 'allowlisted']).default('deny'),
   requireFinalAnswer: z.boolean().default(true),
 });
 
@@ -83,6 +87,8 @@ export class AiAutomationCommandsService {
           inputDefaults: {
             prompt: 'Inspect the screen and complete the requested task.',
             maxToolCalls: 20,
+            agentMode: 'adaptive',
+            rawShellPolicy: 'deny',
             timeoutMs: 120000,
             requireFinalAnswer: true,
           },
@@ -93,6 +99,9 @@ export class AiAutomationCommandsService {
             'visionProviderId',
             'visionModelId',
             'allowedTools',
+            'capabilities',
+            'agentMode',
+            'rawShellPolicy',
             'maxToolCalls',
             'timeoutMs',
             'requireFinalAnswer',

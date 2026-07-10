@@ -10,6 +10,8 @@ export const emptyProvider = (): ProviderFormState => ({
   id: "",
   label: "",
   kind: "ollama",
+  protocol: "openai-chat-completions",
+  serverFlavor: "auto",
   baseUrl: "http://localhost:11434",
   apiKey: null,
   enabled: false,
@@ -19,7 +21,7 @@ export const emptyProvider = (): ProviderFormState => ({
 export const emptyModel = (): AutomationAiProviderModel => ({
   id: "",
   label: "",
-  roles: ["planner" as const],
+  roles: ["controller" as const, "planner" as const],
   settings: {},
   enabled: true,
   defaultFor: [],
@@ -40,7 +42,7 @@ export const normalizeProviderForm = (
       label: model.label.trim() || model.id.trim(),
       roles: Array.isArray(model.roles)
         ? (model.roles as AutomationAiProviderModelRole[])
-        : (["planner"] as AutomationAiProviderModelRole[]),
+        : (["controller", "planner"] as AutomationAiProviderModelRole[]),
       defaultFor: Array.isArray(model.defaultFor)
         ? (model.defaultFor as AutomationAiProviderModelRole[]).filter((role) =>
             (model.roles ?? []).includes(role),

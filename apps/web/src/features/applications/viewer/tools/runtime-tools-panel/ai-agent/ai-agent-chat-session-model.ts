@@ -74,15 +74,18 @@ export const findTerminalRunStatus = (events: AutomationRunEvent[]) =>
 export const createPromptTurn = ({
   id,
   prompt,
-  hasActiveTurn
+  hasActiveTurn,
+  rawShellPolicy = 'deny'
 }: {
   id: string
   prompt: string
   hasActiveTurn: boolean
+  rawShellPolicy?: ChatTurn['rawShellPolicy']
 }): ChatTurn => ({
   id,
   prompt,
   status: hasActiveTurn ? 'queued' : 'starting',
   run: null,
-  events: []
+  events: [],
+  rawShellPolicy
 })

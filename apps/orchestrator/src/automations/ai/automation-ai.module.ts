@@ -4,10 +4,8 @@ import { AutomationCommandsModule } from '../commands/automation-commands.module
 import { VisionAutomationCommandsService } from '../commands/vision-automation-commands.service';
 import { AutomationEventsModule } from '../events/automation-events.module';
 import { AutomationAiChatClientService } from './automation-ai-chat-client.service';
-import { AutomationAiHarnessRuntimeService } from './automation-ai-harness-runtime.service';
 import { AutomationAiHarnessService } from './automation-ai-harness.service';
 import { AutomationAiProviderService } from './automation-ai-provider.service';
-import { AutomationAiRuntimeContextService } from './automation-ai-runtime-context.service';
 import { AutomationAiSuggestionsService } from './automation-ai-suggestions.service';
 import { AutomationVisionCommandRegistrationService } from './automation-vision-command-registration.service';
 import { AutomationOcrService } from '../vision/automation-ocr.service';
@@ -17,6 +15,7 @@ import { AutomationVisionCaptureService } from '../vision/automation-vision-capt
 import { AutomationVisionFusionService } from '../vision/automation-vision-fusion.service';
 import { AutomationVisionModelService } from '../vision/automation-vision-model.service';
 import { MetricsModule } from '../../metrics/metrics.module';
+import { AUTOMATION_OCR } from '../vision/automation-ocr.port';
 
 @Module({
   imports: [
@@ -27,12 +26,11 @@ import { MetricsModule } from '../../metrics/metrics.module';
   ],
   providers: [
     AutomationAiChatClientService,
-    AutomationAiHarnessRuntimeService,
     AutomationAiHarnessService,
     AutomationAiProviderService,
-    AutomationAiRuntimeContextService,
     AutomationAiSuggestionsService,
     AutomationOcrService,
+    { provide: AUTOMATION_OCR, useExisting: AutomationOcrService },
     AutomationPerceptionService,
     AutomationVisionCaptureService,
     AutomationVisionFusionService,

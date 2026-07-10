@@ -88,7 +88,7 @@ export class SettingsService {
   getAiProviderForExecution(
     providerId?: string,
     modelId?: string,
-    role: 'planner' | 'vision' = 'planner',
+    role: AutomationAiProviderModelRole = 'controller',
   ) {
     return this.aiProviders.getProviderForExecution(providerId, modelId, role);
   }

@@ -210,11 +210,46 @@ def _detections_from_result(
     return detections
 
 
-def _score_detections(detections: list[dict[str, Any]]) -> tuple[int, float]:
+def _score_detections(detections: list[dict[str, Any]]) -> tuple[float, float, int]:
     if not detections:
-        return (0, 0.0)
+        return (0.0, 0.0, 0)
     confidence = sum(float(item.get("confidence") or 0) for item in detections)
-    return (len(detections), confidence / len(detections))
+    average_confidence = confidence / len(detections)
+    unique_text = {
+        " ".join(str(item.get("text") or "").lower().split())
+        for item in detections
+        if str(item.get("text") or "").strip()
+    }
+    unique_ratio = len(unique_text) / len(detections)
+    coverage = min(
+        1.0,
+        sum(
+            float((item.get("bounds") or {}).get("width") or 0)
+            * float((item.get("bounds") or {}).get("height") or 0)
+            for item in detections
+        )
+        * 8,
+    )
+    quality = average_confidence * 0.6 + unique_ratio * 0.25 + coverage * 0.15
+    return (quality, average_confidence, len(unique_text))
+
+
+def _deduplicate_detections(detections: list[dict[str, Any]]):
+    best_by_text: dict[str, dict[str, Any]] = {}
+    for detection in detections:
+        key = " ".join(str(detection.get("text") or "").lower().split())
+        bounds = detection.get("bounds") or {}
+        position = (
+            round(float(bounds.get("left") or 0), 2),
+            round(float(bounds.get("top") or 0), 2),
+        )
+        compound_key = f"{key}:{position[0]}:{position[1]}"
+        current = best_by_text.get(compound_key)
+        if current is None or float(detection.get("confidence") or 0) > float(
+            current.get("confidence") or 0
+        ):
+            best_by_text[compound_key] = detection
+    return list(best_by_text.values())
 
 
 @app.get("/health")
@@ -267,12 +302,14 @@ def ocr_screenshot(payload: OcrRequest):
                 height,
                 payload.minConfidence,
             )
+            detections = _deduplicate_detections(detections)
             score = _score_detections(detections)
             attempt = {
                 "mode": mode,
                 "status": "available",
                 "textBoxCount": len(detections),
                 "averageConfidence": score[1],
+                "qualityScore": score[0],
                 "elapsedMs": round((time.perf_counter() - mode_started) * 1000),
             }
             attempts.append(attempt)

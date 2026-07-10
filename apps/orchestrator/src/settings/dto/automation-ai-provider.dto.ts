@@ -5,6 +5,7 @@ import {
   IsBoolean,
   IsIn,
   IsNumber,
+  IsObject,
   IsOptional,
   IsString,
   MaxLength,
@@ -54,6 +55,46 @@ export class AutomationAiProviderModelSettingsDto {
   @IsString()
   @MaxLength(80)
   keepAlive?: string | null;
+
+  @ApiPropertyOptional({
+    enum: ['disabled', 'bounded', 'provider-default'],
+    nullable: true,
+  })
+  @IsOptional()
+  @IsIn(['disabled', 'bounded', 'provider-default'])
+  thinkingMode?: 'disabled' | 'bounded' | 'provider-default' | null;
+
+  @ApiPropertyOptional({ type: Number, nullable: true })
+  @IsOptional()
+  @IsNumber()
+  reasoningBudgetTokens?: number | null;
+}
+
+export class AutomationAiProviderModelCapabilitiesDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  streaming?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  structuredOutput?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  tools?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  vision?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  reasoning?: boolean;
 }
 
 export class AutomationAiProviderModelDto {
@@ -70,33 +111,40 @@ export class AutomationAiProviderModelDto {
   label!: string;
 
   @ApiPropertyOptional({
-    enum: ['planner', 'vision'],
+    enum: ['controller', 'planner', 'vision'],
     isArray: true,
     default: ['planner'],
   })
   @IsOptional()
   @IsArray()
-  @IsIn(['planner', 'vision'], { each: true })
-  roles!: Array<'planner' | 'vision'>;
+  @IsIn(['controller', 'planner', 'vision'], { each: true })
+  roles!: Array<'controller' | 'planner' | 'vision'>;
 
   @ApiProperty({ type: AutomationAiProviderModelSettingsDto })
   @ValidateNested()
   @Type(() => AutomationAiProviderModelSettingsDto)
   settings!: AutomationAiProviderModelSettingsDto;
 
+  @ApiPropertyOptional({ type: AutomationAiProviderModelCapabilitiesDto })
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => AutomationAiProviderModelCapabilitiesDto)
+  capabilities?: AutomationAiProviderModelCapabilitiesDto;
+
   @ApiProperty({ default: true })
   @IsBoolean()
   enabled!: boolean;
 
   @ApiPropertyOptional({
-    enum: ['planner', 'vision'],
+    enum: ['controller', 'planner', 'vision'],
     isArray: true,
     default: [],
   })
   @IsOptional()
   @IsArray()
-  @IsIn(['planner', 'vision'], { each: true })
-  defaultFor!: Array<'planner' | 'vision'>;
+  @IsIn(['controller', 'planner', 'vision'], { each: true })
+  defaultFor!: Array<'controller' | 'planner' | 'vision'>;
 }
 
 export class AutomationAiProviderDto {
@@ -115,6 +163,22 @@ export class AutomationAiProviderDto {
   @ApiProperty({ enum: ['openai', 'openai-compatible', 'ollama'] })
   @IsIn(['openai', 'openai-compatible', 'ollama'])
   kind!: 'openai' | 'openai-compatible' | 'ollama';
+
+  @ApiPropertyOptional({
+    enum: ['openai-chat-completions', 'ollama-native-chat'],
+    default: 'openai-chat-completions',
+  })
+  @IsOptional()
+  @IsIn(['openai-chat-completions', 'ollama-native-chat'])
+  protocol?: 'openai-chat-completions' | 'ollama-native-chat';
+
+  @ApiPropertyOptional({
+    enum: ['auto', 'openai', 'llama-cpp', 'lemonade', 'ollama'],
+    default: 'auto',
+  })
+  @IsOptional()
+  @IsIn(['auto', 'openai', 'llama-cpp', 'lemonade', 'ollama'])
+  serverFlavor?: 'auto' | 'openai' | 'llama-cpp' | 'lemonade' | 'ollama';
 
   @ApiProperty({ example: 'http://localhost:11434' })
   @IsString()
@@ -225,6 +289,9 @@ export class AutomationAiProviderRemoteModelDto {
 
   @ApiPropertyOptional()
   quantizationLevel?: string;
+
+  @ApiPropertyOptional({ type: AutomationAiProviderModelCapabilitiesDto })
+  capabilities?: AutomationAiProviderModelCapabilitiesDto;
 }
 
 export class AutomationAiModelCatalogProviderDto {
@@ -236,6 +303,16 @@ export class AutomationAiModelCatalogProviderDto {
 
   @ApiProperty({ enum: ['openai', 'openai-compatible', 'ollama'] })
   kind!: 'openai' | 'openai-compatible' | 'ollama';
+
+  @ApiPropertyOptional({
+    enum: ['openai-chat-completions', 'ollama-native-chat'],
+  })
+  protocol?: 'openai-chat-completions' | 'ollama-native-chat';
+
+  @ApiPropertyOptional({
+    enum: ['auto', 'openai', 'llama-cpp', 'lemonade', 'ollama'],
+  })
+  serverFlavor?: 'auto' | 'openai' | 'llama-cpp' | 'lemonade' | 'ollama';
 
   @ApiProperty({ type: AutomationAiProviderModelDto, isArray: true })
   models!: AutomationAiProviderModelDto[];
@@ -256,4 +333,9 @@ export class AutomationAiProviderHealthDto {
 
   @ApiProperty()
   checkedAt!: string;
+
+  @ApiPropertyOptional({
+    enum: ['auto', 'openai', 'llama-cpp', 'lemonade', 'ollama'],
+  })
+  serverFlavor?: string;
 }

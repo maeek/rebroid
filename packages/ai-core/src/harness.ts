@@ -1,5 +1,19 @@
 export { parseArguments } from "./harness/arguments";
 export {
+  buildDeviceDecisionTool,
+  deviceDecisionJsonSchema,
+  DEVICE_DECISION_TOOL_NAME,
+  parseDeviceAgentDecision,
+  type DeviceAgentAction,
+  type DeviceAgentDecision,
+} from "./harness/device-decision";
+export {
+  buildDeviceControllerMessages,
+  buildDevicePlannerMessages,
+  DEVICE_CONTROLLER_SYSTEM_PROMPT,
+  DEVICE_PLANNER_SYSTEM_PROMPT,
+} from "./harness/device-messages";
+export {
   conversationBeforeTurn,
   currentStreamingText,
   lastAssistantText,
@@ -25,12 +39,20 @@ export {
   buildChatRequestBody,
   chatCompletionsEndpoint,
   ollamaOptions,
+  providerModelsEndpoint,
+  providerOpenAiRoot,
+  providerProtocol,
+  providerServerFlavor,
+  type ChatResponseFormat,
 } from "./harness/request-body";
 export { isPublicPlanText, normalizePublicAiText } from "./harness/public-text";
 export {
   consumeChatCompletionStream,
   type ChatCompletionStreamResult,
   type ChatCompletionStreamUpdate,
+  type ChatCompletionTimings,
+  type ChatCompletionUsage,
+  type ChatStreamFormat,
   type ChatToolCallDelta,
 } from "./harness/streaming";
 export {

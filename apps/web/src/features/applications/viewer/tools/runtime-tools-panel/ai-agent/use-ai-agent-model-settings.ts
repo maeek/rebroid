@@ -34,7 +34,7 @@ export const useAiAgentModelSettings = () => {
   const loadCatalog = useCallback(() => listAutomationAiModelCatalogAction(), [])
   const checkPlannerHealth = useCallback(
     (nextProviderId: string, nextModelId: string) =>
-      checkAutomationAiProviderHealthAction(nextProviderId, nextModelId, 'planner'),
+      checkAutomationAiProviderHealthAction(nextProviderId, nextModelId, 'controller'),
     []
   )
 

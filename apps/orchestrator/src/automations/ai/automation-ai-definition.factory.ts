@@ -12,6 +12,10 @@ export type AutomationAiDefinitionInput = {
   visionModelId?: string;
   clientMessageId?: string;
   allowedTools?: string[];
+  capabilities?: string[];
+  agentMode?: 'adaptive' | 'controller' | 'planned';
+  rawShellPolicy?: 'deny' | 'allowlisted';
+  maxActions?: number;
   maxToolCalls?: number;
   timeoutMs?: number;
 };
@@ -29,6 +33,10 @@ export class AutomationAiDefinitionFactory {
     visionModelId,
     conversation,
     allowedTools,
+    capabilities,
+    agentMode = 'adaptive',
+    rawShellPolicy = 'deny',
+    maxActions,
     maxToolCalls = 20,
     timeoutMs = 120_000,
     clientMessageId,
@@ -55,6 +63,10 @@ export class AutomationAiDefinitionFactory {
               ...(visionModelId ? { visionModelId } : {}),
               ...(clientMessageId ? { clientMessageId } : {}),
               ...(allowedTools ? { allowedTools } : {}),
+              ...(capabilities ? { capabilities } : {}),
+              agentMode,
+              rawShellPolicy,
+              ...(maxActions ? { maxActions } : {}),
               maxToolCalls,
               timeoutMs,
               requireFinalAnswer: true,

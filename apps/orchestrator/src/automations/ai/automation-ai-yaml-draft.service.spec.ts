@@ -21,6 +21,8 @@ const provider: AutomationAiProvider = {
   id: 'local',
   label: 'Local',
   kind: 'ollama',
+  protocol: 'openai-chat-completions',
+  serverFlavor: 'auto',
   baseUrl: 'http://localhost:11434',
   apiKey: null,
   enabled: true,

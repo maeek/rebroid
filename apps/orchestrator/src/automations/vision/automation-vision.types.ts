@@ -6,7 +6,9 @@ import type { AiObservationCandidate } from '@rebroid/ai-core/harness';
 import type { OptimizedAiScreenshot } from '../ai/automation-ai-screenshot.utils';
 
 export interface AutomationScreenObservation extends VisionObservation {
+  snapshotId: string;
   aiImage?: OptimizedAiScreenshot;
+  markedImage?: OptimizedAiScreenshot;
   screenState?: AutomationVisionScreenState;
   candidates: AiObservationCandidate[];
   markedScreenshotId: string;

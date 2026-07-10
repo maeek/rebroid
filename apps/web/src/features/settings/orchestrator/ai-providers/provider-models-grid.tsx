@@ -223,10 +223,17 @@ export const ProviderModelsGrid = ({
       {
         id: 'roles',
         header: 'Roles',
-        size: 240,
+        size: 340,
         meta: { label: 'Roles' },
         cell: ({ row }) => (
           <div className='flex min-h-10 items-center gap-4'>
+            <label className='flex items-center gap-2 text-sm'>
+              <Checkbox
+                checked={(row.original.roles ?? []).includes('controller')}
+                onCheckedChange={value => toggleRole(row.original, 'controller', value === true)}
+              />
+              Controller
+            </label>
             <label className='flex items-center gap-2 text-sm'>
               <Checkbox
                 checked={(row.original.roles ?? []).includes('planner')}
@@ -382,6 +389,16 @@ export const ProviderModelsGrid = ({
                 Pull model
               </ContextMenuItem>
             ) : null}
+            <ContextMenuItem
+              disabled={
+                !row.original.enabled ||
+                !row.original.roles.includes('controller') ||
+                row.original.defaultFor.includes('controller')
+              }
+              onSelect={() => onSetDefaultModel(row.original.index, 'controller')}
+            >
+              Set as controller default
+            </ContextMenuItem>
             <ContextMenuItem
               disabled={
                 !row.original.enabled ||

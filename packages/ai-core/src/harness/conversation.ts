@@ -48,7 +48,9 @@ export const conversationBeforeTurn = (
       const assistant = lastAssistantText(turn);
       return [
         { role: "user" as const, content: turn.prompt },
-        ...(assistant ? [{ role: "assistant" as const, content: assistant }] : []),
+        ...(assistant
+          ? [{ role: "assistant" as const, content: assistant }]
+          : []),
       ];
     })
     .slice(-limit);

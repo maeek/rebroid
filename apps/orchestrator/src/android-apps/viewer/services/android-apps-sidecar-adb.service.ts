@@ -203,7 +203,8 @@ export class AndroidAppsSidecarAdbService {
     path: string,
     init: RequestInit = {},
   ): Promise<T> {
-    const udid = await this.prepareUdid(app);
+    const cacheKey = this.targetCacheKey(app);
+    const udid = await this.prepareUdid(app, cacheKey);
     const baseUrl = this.config
       .getOrThrow<string>('app.displaySidecar.internalBaseUrl')
       .replace(/\/$/, '');
@@ -227,7 +228,7 @@ export class AndroidAppsSidecarAdbService {
         signal: AbortSignal.timeout(20_000),
       },
     ).catch((error) => {
-      this.preparedTargets.delete(app.id);
+      this.preparedTargets.delete(cacheKey);
       throw new ConflictException(
         `Display sidecar ADB API is not reachable: ${getErrorMessage(error)}`,
       );
@@ -241,7 +242,7 @@ export class AndroidAppsSidecarAdbService {
       payload = { message: text } as T & { message?: string };
     }
     if (!response.ok) {
-      this.preparedTargets.delete(app.id);
+      this.preparedTargets.delete(cacheKey);
       throw new ConflictException(
         payload?.message ??
           `Display sidecar ADB API returned ${response.status}.`,
@@ -251,8 +252,8 @@ export class AndroidAppsSidecarAdbService {
     return payload as T;
   }
 
-  private async prepareUdid(app: AndroidApplication) {
-    const cached = this.preparedTargets.get(app.id);
+  private async prepareUdid(app: AndroidApplication, cacheKey: string) {
+    const cached = this.preparedTargets.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
       return cached.udid;
     }
@@ -268,10 +269,25 @@ export class AndroidAppsSidecarAdbService {
     }
 
     const udid = `${adbHost}:${app.adbPort}`;
-    this.preparedTargets.set(app.id, {
+    for (const key of this.preparedTargets.keys()) {
+      if (key.startsWith(`${app.id}:`) && key !== cacheKey) {
+        this.preparedTargets.delete(key);
+      }
+    }
+    this.preparedTargets.set(cacheKey, {
       udid,
       expiresAt: Date.now() + 60_000,
     });
     return udid;
+  }
+
+  private targetCacheKey(app: AndroidApplication) {
+    return [
+      app.id,
+      app.containerId ?? 'no-container',
+      app.containerName,
+      app.networkName,
+      app.adbPort,
+    ].join(':');
   }
 }

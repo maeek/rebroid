@@ -133,5 +133,8 @@ describe('ai agent chat session model', () => {
       id: 'turn',
       status: 'queued'
     })
+    expect(
+      createPromptTurn({ id: 'turn', prompt: 'Go', hasActiveTurn: false, rawShellPolicy: 'allowlisted' })
+    ).toMatchObject({ rawShellPolicy: 'allowlisted' })
   })
 })

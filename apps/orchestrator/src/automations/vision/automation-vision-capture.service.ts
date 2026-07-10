@@ -1,10 +1,11 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import type { AutomationCommandContext } from '../commands/automation-command.types';
 import { optimizeAiScreenshot } from '../ai/automation-ai-screenshot.utils';
 import {
-  AutomationOcrService,
+  AUTOMATION_OCR,
   type AutomationOcrResult,
-} from './automation-ocr.service';
+  type AutomationOcrPort,
+} from './automation-ocr.port';
 
 export interface AutomationVisionCapture {
   screenshot: {
@@ -26,7 +27,9 @@ export interface AutomationVisionCapture {
 
 @Injectable()
 export class AutomationVisionCaptureService {
-  constructor(private readonly ocr: AutomationOcrService) {}
+  constructor(
+    @Inject(AUTOMATION_OCR) private readonly ocr: AutomationOcrPort,
+  ) {}
 
   async capture(
     context: Pick<AutomationCommandContext, 'adb' | 'app' | 'abortSignal'>,
@@ -48,7 +51,7 @@ export class AutomationVisionCaptureService {
       }));
     const [ui, ocr] = await Promise.all([
       uiPromise,
-      this.ocr.recognize(aiImage, context.abortSignal),
+      this.ocr.recognize(screenshot, context.abortSignal),
     ]);
 
     return { screenshot, aiImage, ui, ocr };

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  createDetection,
   matchesDetectionQuery,
   sortDetections,
 } from '@rebroid/vision-core/observation';
@@ -49,7 +50,7 @@ export class AutomationVisionService {
           ...visionModel,
         })
       : {};
-    return this.fusionService.fuse(capture, described, visionContext);
+    return await this.fusionService.fuse(capture, described, visionContext);
   }
 
   async locate(
@@ -59,8 +60,26 @@ export class AutomationVisionService {
     deadline?: number,
   ): Promise<AutomationVisionLocateOutput> {
     const observation = await this.observe(context, undefined, deadline);
+    const fusedDetections = observation.candidates.flatMap((candidate) => {
+      if (!candidate.bounds) return [];
+      return [
+        createDetection({
+          id: candidate.id,
+          label: candidate.label,
+          confidence: candidate.confidence,
+          bounds: candidate.bounds,
+          source:
+            candidate.source === 'vision-model'
+              ? 'vision-model'
+              : candidate.source === 'ocr'
+                ? 'ocr'
+                : 'ui-xml',
+          ...(candidate.role ? { role: candidate.role } : {}),
+        }),
+      ];
+    });
     const matches = sortDetections(
-      observation.detections.filter((detection) => {
+      fusedDetections.filter((detection) => {
         if (detection.confidence < input.threshold) return false;
         if (!matchesDetectionQuery(detection, input.query)) return false;
         return input.region
@@ -85,7 +104,7 @@ export class AutomationVisionService {
       ...(matches.length === 0
         ? {
             reason:
-              'No matching UI hierarchy elements were found on the current screen.',
+              'No matching fused UI, OCR, or visual candidates were found on the current screen.',
           }
         : {}),
     };

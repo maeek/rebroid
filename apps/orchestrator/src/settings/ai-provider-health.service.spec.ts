@@ -7,6 +7,8 @@ const provider = (
   id: 'local',
   label: 'Local',
   kind: 'openai-compatible',
+  protocol: 'openai-chat-completions',
+  serverFlavor: 'auto',
   baseUrl: 'https://example.test/v1',
   apiKey: null,
   enabled: false,
@@ -63,5 +65,58 @@ describe('AiProviderHealthService', () => {
     expect(result.message).toBe(
       'Provider is reachable and model "planner" is available.',
     );
+  });
+
+  it('requires the controller probe to produce the requested tool call', async () => {
+    const configured = provider({
+      enabled: true,
+      serverFlavor: 'openai',
+      models: [
+        {
+          id: 'controller',
+          label: 'Controller',
+          roles: ['controller'],
+          settings: {},
+          enabled: true,
+          defaultFor: ['controller'],
+        },
+      ],
+    });
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: [{ id: 'controller' }] }), {
+          status: 200,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  role: 'assistant',
+                  content: null,
+                  tool_calls: [
+                    {
+                      type: 'function',
+                      function: { name: 'health_check_noop', arguments: '{}' },
+                    },
+                  ],
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+      );
+
+    const result = await new AiProviderHealthService().checkProviderHealth(
+      configured,
+      'controller',
+      'controller',
+    );
+
+    expect(result.status).toBe('ok');
   });
 });

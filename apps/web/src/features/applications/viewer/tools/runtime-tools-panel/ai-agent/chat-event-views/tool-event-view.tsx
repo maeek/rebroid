@@ -1,4 +1,5 @@
-import { IconChevronDown } from '@tabler/icons-react'
+import { IconAlertTriangle, IconCheck, IconChevronDown, IconLoader2, IconTool } from '@tabler/icons-react'
+import { cn } from '@/lib/utils'
 import { AiToolDetails } from '@/shared/ui/ai/ai-message'
 import type { ToolTimelineItem } from '../ai-agent-chat-event-utils'
 
@@ -36,42 +37,83 @@ export const ToolEventRow = ({ item }: { item: ToolEventRowValue }) => {
 }
 
 export const ToolEventView = ({ item }: { item: ToolTimelineItem }) => {
-  const label = item.status === 'failed' ? 'Tool failed' : item.status === 'used' ? 'Used tool' : 'Using tool'
+  const label = item.status === 'failed' ? 'Tool failed' : item.status === 'used' ? 'Tool completed' : 'Using tool'
   const hasArguments = item.arguments.length > 0
   const hasOutput = item.output.length > 0
 
   return (
-    <div className='grid gap-1 text-xs text-muted-foreground'>
+    <div
+      className={cn(
+        'overflow-hidden rounded-xl border bg-surface-band/24 transition-[border-color,background-color] duration-150',
+        item.status === 'failed' ? 'border-destructive/30 bg-destructive/5' : 'border-border/55'
+      )}
+    >
       <details className='group'>
-        <summary className='flex cursor-pointer list-none items-center gap-1'>
-          <span>{label}</span>
-          <span>({item.name})</span>
+        <summary className='flex cursor-pointer list-none items-center gap-2.5 px-3 py-2.5 text-xs text-foreground-muted transition-colors hover:bg-foreground/3'>
+          <span
+            className={cn(
+              'flex size-7 shrink-0 items-center justify-center rounded-lg border',
+              item.status === 'failed'
+                ? 'border-destructive/25 bg-destructive/8 text-destructive'
+                : item.status === 'used'
+                  ? 'border-success/25 bg-success/10 text-success'
+                  : 'border-primary/20 bg-primary/8 text-primary'
+            )}
+          >
+            {item.status === 'failed' ? (
+              <IconAlertTriangle className='size-4' />
+            ) : item.status === 'used' ? (
+              <IconCheck className='size-4' />
+            ) : (
+              <IconLoader2 className='size-4 motion-safe:animate-spin' />
+            )}
+          </span>
+          <span className='grid min-w-0 flex-1 text-left'>
+            <span className='font-medium text-foreground'>{label}</span>
+            <span className='truncate font-mono text-[10px]'>{item.name}</span>
+          </span>
           {hasArguments || hasOutput ? (
-            <IconChevronDown className='size-3 transition-transform group-open:rotate-180' />
-          ) : null}
+            <IconChevronDown className='size-3.5 transition-transform duration-150 group-open:rotate-180' />
+          ) : (
+            <IconTool className='size-3.5 opacity-50' />
+          )}
         </summary>
-        {hasArguments ? (
-          <AiToolDetails className='mt-1'>
-            {item.arguments.map(argument => (
-              <ToolEventRow
-                key={argument.key}
-                item={argument}
-              />
-            ))}
-          </AiToolDetails>
-        ) : null}
-        {hasOutput ? (
-          <AiToolDetails className='mt-1'>
-            {item.output.map(output => (
-              <ToolEventRow
-                key={output.key}
-                item={output}
-              />
-            ))}
-          </AiToolDetails>
-        ) : null}
+        <div className='grid gap-2 px-3 pb-3'>
+          {hasArguments ? (
+            <div className='grid gap-1'>
+              <span className='text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground-muted'>Input</span>
+              <AiToolDetails>
+                {item.arguments.map(argument => (
+                  <ToolEventRow
+                    key={argument.key}
+                    item={argument}
+                  />
+                ))}
+              </AiToolDetails>
+            </div>
+          ) : null}
+          {hasOutput ? (
+            <div className='grid gap-1'>
+              <span className='text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground-muted'>
+                Result
+              </span>
+              <AiToolDetails>
+                {item.output.map(output => (
+                  <ToolEventRow
+                    key={output.key}
+                    item={output}
+                  />
+                ))}
+              </AiToolDetails>
+            </div>
+          ) : null}
+        </div>
       </details>
-      {item.error ? <div className='wrap-anywhere text-destructive/85'>{item.error}</div> : null}
+      {item.error ? (
+        <div className='wrap-anywhere border-t border-destructive/15 px-3 py-2 text-xs text-destructive/90'>
+          {item.error}
+        </div>
+      ) : null}
     </div>
   )
 }
