@@ -93,4 +93,20 @@ describe('application safety redaction', () => {
       ).output
     ).toBe('ADB target [redacted address]:5555')
   })
+
+  it('removes internal URLs, paths, and long runtime identifiers from logs', () => {
+    const output = sanitizeApplicationLogForUser(
+      {
+        source: 'orchestrator',
+        collectedAt: '2026-01-01T00:00:00.000Z',
+        output:
+          'failed at http://orchestrator:4100/api using /var/lib/rebroid/data and sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+      },
+      userContext
+    ).output
+
+    expect(output).not.toContain('orchestrator:4100')
+    expect(output).not.toContain('/var/lib/rebroid')
+    expect(output).not.toContain('aaaaaaaaaaaaaaaa')
+  })
 })

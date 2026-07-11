@@ -1,5 +1,7 @@
 'use server'
 
+import { PublicActionError } from '@/server/errors/public-action-error'
+
 import { allowsBroadInternetAccess } from '@rebroid/firewall-policy-core/policy'
 import { recordAuditEvent } from '@/server/audit/events'
 import { hasPermission } from '@/shared/permissions/permissions'
@@ -15,14 +17,20 @@ export const updateNetworkPolicyAction = async (id: string, input: UpdateNetwork
   await assertCanAccessApplication(id)
   const user = await getCurrentUserContext()
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:configure-egress')) {
-    throw new Error('You do not have permission to configure network access.')
+    throw new PublicActionError('You do not have permission to configure network access.', {
+      code: 'forbidden',
+      status: 403
+    })
   }
   if (
     user.role !== 'admin' &&
     (input.networkPolicyEnabled === false || allowsBroadInternetAccess(input.networkPolicyAllowCidrs ?? [])) &&
     !hasPermission(user.permissions, 'applications:use-internet')
   ) {
-    throw new Error('You do not have permission to allow broad internet access.')
+    throw new PublicActionError('You do not have permission to allow broad internet access.', {
+      code: 'forbidden',
+      status: 403
+    })
   }
   const command = await orchestratorAppNetworkPolicyClient.updateNetworkPolicy(id, input)
   recordAuditEvent({
@@ -48,7 +56,10 @@ export const applyNetworkPolicyAction = async (id: string) => {
   await assertCanAccessApplication(id)
   const user = await getCurrentUserContext()
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:configure-egress')) {
-    throw new Error('You do not have permission to apply network policy.')
+    throw new PublicActionError('You do not have permission to apply network policy.', {
+      code: 'forbidden',
+      status: 403
+    })
   }
   const command = await orchestratorAppNetworkPolicyClient.applyNetworkPolicy(id)
   recordAuditEvent({
@@ -68,7 +79,10 @@ export const applyNetworkPolicyAction = async (id: string) => {
 export const reconcileNetworkPoliciesAction = async () => {
   const user = await getCurrentUserContext()
   if (user.role !== 'admin') {
-    throw new Error('You do not have permission to reconcile all network policies.')
+    throw new PublicActionError('You do not have permission to reconcile all network policies.', {
+      code: 'forbidden',
+      status: 403
+    })
   }
   const result = await orchestratorAppNetworkPolicyClient.reconcileNetworkPolicies()
   recordAuditEvent({

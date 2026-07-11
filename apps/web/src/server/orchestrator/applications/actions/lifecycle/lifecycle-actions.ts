@@ -1,5 +1,7 @@
 'use server'
 
+import { PublicActionError } from '@/server/errors/public-action-error'
+
 import { recordAuditEvent } from '@/server/audit/events'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { getCurrentUserContext } from '../../../current-user'
@@ -18,10 +20,10 @@ import type { SwitchApplicationProfileInput } from '../../types'
 export const startApplicationAction = async (id: string, input?: SwitchApplicationProfileInput) => {
   const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:start')) {
-    throw new Error('You do not have permission to start applications.')
+    throw new PublicActionError('You do not have permission to start applications.', { code: 'forbidden', status: 403 })
   }
   if (input && user.role !== 'admin' && !hasPermission(user.permissions, 'applications:switch-profile')) {
-    throw new Error('You do not have permission to switch profiles.')
+    throw new PublicActionError('You do not have permission to switch profiles.', { code: 'forbidden', status: 403 })
   }
   await assertCanOpenApplicationSlot(user, id)
   const command = await orchestratorAppLifecycleClient.startApplication(id, input)
@@ -44,7 +46,7 @@ export const startApplicationAction = async (id: string, input?: SwitchApplicati
 export const stopApplicationAction = async (id: string) => {
   const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:stop')) {
-    throw new Error('You do not have permission to stop applications.')
+    throw new PublicActionError('You do not have permission to stop applications.', { code: 'forbidden', status: 403 })
   }
   const command = await orchestratorAppLifecycleClient.stopApplication(id)
   recordAuditEvent({
@@ -66,7 +68,10 @@ export const deleteApplicationProfileAction = async (id: string, profileName: st
   await assertCanAccessApplication(id)
   const user = await getCurrentUserContext()
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:delete')) {
-    throw new Error('You do not have permission to delete application profiles.')
+    throw new PublicActionError('You do not have permission to delete application profiles.', {
+      code: 'forbidden',
+      status: 403
+    })
   }
   const command = await orchestratorAppLifecycleClient.deleteSavedProfile(id, profileName)
   recordAuditEvent({
@@ -89,7 +94,10 @@ export const deleteApplicationAction = async (id: string, removeData = true) => 
   await assertCanAccessApplication(id)
   const user = await getCurrentUserContext()
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:delete')) {
-    throw new Error('You do not have permission to delete applications.')
+    throw new PublicActionError('You do not have permission to delete applications.', {
+      code: 'forbidden',
+      status: 403
+    })
   }
   const result = await orchestratorAppCatalogClient.deleteApplication(id, removeData)
   recordAuditEvent({

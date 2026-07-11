@@ -86,6 +86,18 @@ export const selectionColumn = <TData,>({
   }
 })
 
+export const loadingSelectionColumn = <TData,>(): ColumnDef<TData> => ({
+  id: '__select',
+  enableHiding: false,
+  enableSorting: false,
+  size: 48,
+  minSize: 48,
+  maxSize: 48,
+  enableResizing: false,
+  header: () => null,
+  cell: () => null
+})
+
 export const spacerColumn = <TData,>(): ColumnDef<TData> => ({
   id: '__spacer',
   enableHiding: false,

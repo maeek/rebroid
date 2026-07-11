@@ -63,7 +63,7 @@ export const ScheduledTasksTable = () => {
         accessorFn: task => task.name,
         header: 'Task',
         size: 384,
-        meta: { label: 'Task' },
+        meta: { label: 'Task', skeleton: { kind: 'stacked' } },
         cell: ({ row }) => (
           <div className='grid gap-1'>
             <div className='flex flex-wrap items-center gap-2'>
@@ -82,7 +82,7 @@ export const ScheduledTasksTable = () => {
         accessorFn: task => `${task.enabled ? 'enabled' : 'paused'}:${task.lastStatus}`,
         header: 'State',
         size: 176,
-        meta: { label: 'State' },
+        meta: { label: 'State', skeleton: { kind: 'badge', width: 'w-28' } },
         cell: ({ row }) => (
           <div className='flex flex-wrap gap-2'>
             <Badge variant={row.original.enabled ? 'success' : 'neutral'}>
@@ -97,7 +97,7 @@ export const ScheduledTasksTable = () => {
         accessorFn: task => task.cronExpression,
         header: 'Schedule',
         size: 176,
-        meta: { label: 'Schedule' },
+        meta: { label: 'Schedule', skeleton: { kind: 'text', width: 'w-32' } },
         cell: ({ row }) => (
           <span className='text-sm text-foreground-muted'>{scheduleLabel(row.original.cronExpression)}</span>
         )
@@ -107,7 +107,7 @@ export const ScheduledTasksTable = () => {
         accessorFn: task => task.nextRunAt ?? '',
         header: 'Next run',
         size: 176,
-        meta: { label: 'Next run' },
+        meta: { label: 'Next run', skeleton: { kind: 'text', width: 'w-32' } },
         cell: ({ row }) => <span className='text-sm text-foreground-muted'>{dateLabel(row.original.nextRunAt)}</span>
       },
       {
@@ -115,7 +115,7 @@ export const ScheduledTasksTable = () => {
         accessorFn: task => task.lastRunAt ?? '',
         header: 'Last run',
         size: 176,
-        meta: { label: 'Last run' },
+        meta: { label: 'Last run', skeleton: { kind: 'text', width: 'w-32' } },
         cell: ({ row }) => <span className='text-sm text-foreground-muted'>{dateLabel(row.original.lastRunAt)}</span>
       },
       {
@@ -123,7 +123,7 @@ export const ScheduledTasksTable = () => {
         accessorFn: task => task.enabled,
         header: 'Enabled',
         size: 112,
-        meta: { label: 'Enabled' },
+        meta: { label: 'Enabled', skeleton: { kind: 'text', width: 'w-12' } },
         cell: ({ row }) => (
           <div className='flex justify-center'>
             <Switch

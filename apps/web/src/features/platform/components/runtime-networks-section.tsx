@@ -68,16 +68,71 @@ const NetworkNameCell = ({ network, className }: { network: PlatformNetwork; cla
   </div>
 )
 
+export const createNetworkColumns = (): ColumnDef<PlatformNetwork>[] => [
+  {
+    id: 'name',
+    accessorFn: network => network.name,
+    header: 'Network',
+    size: 352,
+    meta: { label: 'Network', skeleton: { kind: 'stacked' } },
+    cell: ({ row }) => <NetworkNameCell network={row.original} />
+  },
+  {
+    id: 'driver',
+    accessorFn: network => network.driver,
+    header: 'Driver',
+    size: 128,
+    meta: { label: 'Driver', skeleton: { kind: 'text', width: 'w-20' } },
+    cell: ({ row }) => <span className='text-sm text-foreground-muted'>{row.original.driver}</span>
+  },
+  {
+    id: 'scope',
+    accessorFn: network => network.scope,
+    header: 'Scope',
+    size: 112,
+    meta: { label: 'Scope', skeleton: { kind: 'text', width: 'w-14' } },
+    cell: ({ row }) => <span className='text-sm text-foreground-muted'>{row.original.scope}</span>
+  },
+  {
+    id: 'subnets',
+    header: 'Subnet',
+    size: 320,
+    enableSorting: false,
+    meta: { label: 'Subnet', skeleton: { kind: 'text', width: 'w-[76%]' } },
+    cell: ({ row }) => (
+      <div className='truncate text-sm text-foreground-muted'>
+        {row.original.subnets.length > 0 ? row.original.subnets.join(', ') : 'none'}
+      </div>
+    )
+  },
+  {
+    id: 'gateways',
+    header: 'Gateway',
+    size: 192,
+    enableSorting: false,
+    meta: { label: 'Gateway', skeleton: { kind: 'text', width: 'w-[72%]' } },
+    cell: ({ row }) => (
+      <div className='truncate text-sm text-foreground-muted'>
+        {row.original.gateways.length > 0 ? row.original.gateways.join(', ') : 'none'}
+      </div>
+    )
+  },
+  {
+    id: 'containers',
+    accessorFn: network => network.containers.length,
+    header: 'Containers',
+    size: 128,
+    meta: { label: 'Containers', skeleton: { kind: 'text', width: 'w-12' } },
+    cell: ({ row }) => <span className='text-sm text-foreground-muted'>{row.original.containers.length}</span>
+  }
+]
+
 export const RuntimeNetworksSection = ({
   networksPage,
-  gridQuery,
-  refreshKey = 0,
-  onRefreshComplete
+  gridQuery
 }: {
   networksPage: PlatformNetworksGridPage
   gridQuery: PlatformNetworksGridQuery
-  refreshKey?: number
-  onRefreshComplete?: () => void
 }) => {
   const router = useRouter()
   const [search, setSearch] = useState(gridQuery.q ?? '')
@@ -93,13 +148,6 @@ export const RuntimeNetworksSection = ({
   useEffect(() => {
     setSelectedIds(current => retainVisiblePlatformSelection(networksPage.items, current))
   }, [networksPage.items])
-
-  useEffect(() => {
-    if (refreshKey > 0) {
-      router.refresh()
-      onRefreshComplete?.()
-    }
-  }, [onRefreshComplete, refreshKey, router])
 
   const selectedNetworks = selectedPlatformItemsFromIds(networksPage.items, selectedIds)
 
@@ -141,67 +189,7 @@ export const RuntimeNetworksSection = ({
     }
   }
 
-  const columns = useMemo<ColumnDef<PlatformNetwork>[]>(
-    () => [
-      {
-        id: 'name',
-        accessorFn: network => network.name,
-        header: 'Network',
-        size: 352,
-        meta: { label: 'Network' },
-        cell: ({ row }) => <NetworkNameCell network={row.original} />
-      },
-      {
-        id: 'driver',
-        accessorFn: network => network.driver,
-        header: 'Driver',
-        size: 128,
-        meta: { label: 'Driver' },
-        cell: ({ row }) => <span className='text-sm text-foreground-muted'>{row.original.driver}</span>
-      },
-      {
-        id: 'scope',
-        accessorFn: network => network.scope,
-        header: 'Scope',
-        size: 112,
-        meta: { label: 'Scope' },
-        cell: ({ row }) => <span className='text-sm text-foreground-muted'>{row.original.scope}</span>
-      },
-      {
-        id: 'subnets',
-        header: 'Subnet',
-        size: 320,
-        enableSorting: false,
-        meta: { label: 'Subnet' },
-        cell: ({ row }) => (
-          <div className='truncate text-sm text-foreground-muted'>
-            {row.original.subnets.length > 0 ? row.original.subnets.join(', ') : 'none'}
-          </div>
-        )
-      },
-      {
-        id: 'gateways',
-        header: 'Gateway',
-        size: 192,
-        enableSorting: false,
-        meta: { label: 'Gateway' },
-        cell: ({ row }) => (
-          <div className='truncate text-sm text-foreground-muted'>
-            {row.original.gateways.length > 0 ? row.original.gateways.join(', ') : 'none'}
-          </div>
-        )
-      },
-      {
-        id: 'containers',
-        accessorFn: network => network.containers.length,
-        header: 'Containers',
-        size: 128,
-        meta: { label: 'Containers' },
-        cell: ({ row }) => <span className='text-sm text-foreground-muted'>{row.original.containers.length}</span>
-      }
-    ],
-    []
-  )
+  const columns = useMemo(() => createNetworkColumns(), [])
 
   return (
     <>
@@ -251,7 +239,6 @@ export const RuntimeNetworksSection = ({
               selectedIds,
               onSelectedIdsChange: setSelectedIds
             }}
-            minWidth='82rem'
             emptyState={
               <div className='text-center text-foreground-muted'>
                 {gridQuery.q ? 'No networks match this search.' : 'No networks are visible to Docker.'}

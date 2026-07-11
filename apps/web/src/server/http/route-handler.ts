@@ -15,7 +15,8 @@ export const runRouteHandler = async <T>(operation: () => Promise<T> | T) => {
     logger.error('route_handler.failed', {
       requestId,
       errorName: error instanceof Error ? error.name : 'UnknownError',
-      errorMessage: error instanceof Error ? error.message : 'Unknown error'
+      errorCode: publicError.code,
+      errorStatus: publicError.status
     })
     return Response.json(actionError(publicError, requestId), {
       status: publicError.status ?? 500,

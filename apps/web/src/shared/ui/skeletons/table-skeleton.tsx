@@ -1,4 +1,4 @@
-import { Skeleton } from '@/components/ui/skeleton'
+import { DataGridSkeleton } from '@/shared/ui/data-grid/data-grid-skeleton'
 import type { ListColumn } from './list-skeleton-types'
 
 export const TableSkeleton = ({
@@ -10,80 +10,11 @@ export const TableSkeleton = ({
   minWidth?: string
   rows?: number
 }) => (
-  <div className='grid gap-3'>
-    <div className='overflow-x-auto overflow-y-hidden rounded-panel border border-surface-border/70 bg-surface-band/35'>
-      <div
-        className='min-w-full'
-        style={{ minWidth }}
-      >
-        <div
-          className='grid items-center gap-3 bg-surface-band/55 px-4 py-3'
-          style={{ gridTemplateColumns: columns.map(column => column.width ?? 'minmax(8rem,1fr)').join(' ') }}
-        >
-          {columns.map((column, index) => (
-            <div
-              key={index}
-              className={column.kind === 'actions' || column.kind === 'action' ? 'flex justify-end' : ''}
-            >
-              <Skeleton className={`h-3 ${column.headerWidth}`} />
-            </div>
-          ))}
-        </div>
-
-        {Array.from({ length: rows }).map((_, rowIndex) => (
-          <div
-            key={rowIndex}
-            className='grid min-h-16 items-center gap-3 border-t border-surface-border/70 px-4 py-3'
-            style={{ gridTemplateColumns: columns.map(column => column.width ?? 'minmax(8rem,1fr)').join(' ') }}
-          >
-            {columns.map((column, columnIndex) => {
-              if (column.kind === 'stacked') {
-                return (
-                  <div
-                    key={columnIndex}
-                    className='flex min-w-0 flex-col gap-2'
-                  >
-                    <Skeleton className='h-4 w-[78%]' />
-                    <Skeleton className='h-3 w-[42%] opacity-70' />
-                  </div>
-                )
-              }
-
-              if (column.kind === 'badge') {
-                return (
-                  <div
-                    key={columnIndex}
-                    className='flex items-center gap-2'
-                  >
-                    <Skeleton className='h-5 w-16 rounded-full' />
-                  </div>
-                )
-              }
-
-              if (column.kind === 'actions' || column.kind === 'action') {
-                return (
-                  <div
-                    key={columnIndex}
-                    className='flex min-h-10 items-center justify-end gap-2'
-                  >
-                    <Skeleton className='size-9' />
-                    <Skeleton className='h-9 w-20' />
-                  </div>
-                )
-              }
-
-              return (
-                <div
-                  key={columnIndex}
-                  className='min-w-0'
-                >
-                  <Skeleton className={`h-4 ${column.cellWidth ?? 'w-[70%]'}`} />
-                </div>
-              )
-            })}
-          </div>
-        ))}
-      </div>
-    </div>
-  </div>
+  <DataGridSkeleton
+    columns={columns}
+    minWidth={minWidth}
+    rows={rows}
+    selectable={false}
+    rowMenu={false}
+  />
 )

@@ -1,10 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useTransition, type ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
-import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
 import { StandardPage } from '@/shared/ui/page/page-layout'
+import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
 import { RuntimeContainersSection } from './runtime-containers-section'
+import { createContainerColumns } from './runtime-containers-table-parts'
+import { RuntimeInventoryLoadingSection } from './runtime-inventory-loading-section'
 import type { PlatformContainersGridPage, PlatformContainersGridQuery } from '@/server/orchestrator/platform/types'
 
 export const RuntimeContainersPageClient = ({
@@ -14,35 +17,64 @@ export const RuntimeContainersPageClient = ({
   containersPage: PlatformContainersGridPage
   gridQuery: PlatformContainersGridQuery
 }) => {
-  const [refreshKey, setRefreshKey] = useState(0)
-  const [isRefreshing, setIsRefreshing] = useState(false)
+  const router = useRouter()
+  const [isRefreshing, startRefresh] = useTransition()
 
-  const refresh = () => {
-    setIsRefreshing(true)
-    setRefreshKey(current => current + 1)
-  }
+  const refresh = () => startRefresh(() => router.refresh())
 
   return (
-    <StandardPage className='gap-2'>
-      <PlatformPageHeader
-        title='Containers'
-        description='Docker containers visible to the platform. Managed application containers are shown first.'
-        breadcrumbRoot={{ label: 'Runtime' }}
-        actions={
-          <PlatformPageRefreshButton
-            isRefreshing={isRefreshing}
-            onRefresh={refresh}
-          />
-        }
+    <RuntimeContainersPageFrame
+      isRefreshing={isRefreshing}
+      onRefresh={refresh}
+    >
+      <RuntimeContainersSection
+        containersPage={containersPage}
+        gridQuery={gridQuery}
       />
-      <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
-        <RuntimeContainersSection
-          containersPage={containersPage}
-          gridQuery={gridQuery}
-          refreshKey={refreshKey}
-          onRefreshComplete={() => setIsRefreshing(false)}
+    </RuntimeContainersPageFrame>
+  )
+}
+
+const RuntimeContainersPageFrame = ({
+  children,
+  isRefreshing = false,
+  loading = false,
+  onRefresh
+}: {
+  children: ReactNode
+  isRefreshing?: boolean
+  loading?: boolean
+  onRefresh: () => void
+}) => (
+  <StandardPage className='gap-2'>
+    <PlatformPageHeader
+      title='Containers'
+      description='Docker containers visible to the platform. Managed application containers are shown first.'
+      breadcrumbRoot={{ label: 'Runtime' }}
+      actions={
+        <PlatformPageRefreshButton
+          disabled={loading}
+          isRefreshing={isRefreshing}
+          onRefresh={onRefresh}
         />
-      </section>
-    </StandardPage>
+      }
+    />
+    <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>{children}</section>
+  </StandardPage>
+)
+
+export const RuntimeContainersPageLoading = () => {
+  const columns = useMemo(() => createContainerColumns(), [])
+  return (
+    <RuntimeContainersPageFrame
+      loading
+      onRefresh={() => undefined}
+    >
+      <RuntimeInventoryLoadingSection
+        actionLabels={['Stop selected', 'Remove selected']}
+        columns={columns}
+        searchPlaceholder='Search containers'
+      />
+    </RuntimeContainersPageFrame>
   )
 }

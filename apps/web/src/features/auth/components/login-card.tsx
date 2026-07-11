@@ -14,6 +14,7 @@ import { Visible } from '@/components/ui/visible'
 export default function LoginCard() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [mfaCode, setMfaCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const router = useRouter()
@@ -30,6 +31,7 @@ export default function LoginCard() {
       const result = await signIn('credentials', {
         username,
         password,
+        mfaCode,
         redirect: false
       })
 
@@ -53,6 +55,23 @@ export default function LoginCard() {
         <CardHeader className='max-sm:px-0 flex-row gap-4 items-start'>
           <div className='flex size-14 items-center justify-center rounded-panel border border-primary/30 bg-primary/15 text-primary'>
             <IconLockAccess className='size-10' />
+          </div>
+          <div className='flex w-full flex-col gap-4 pb-4'>
+            <Label
+              className='text-md'
+              htmlFor='mfa-code'
+            >
+              Authentication code <span className='text-xs font-medium text-foreground-muted'>(if enabled)</span>
+            </Label>
+            <Input
+              id='mfa-code'
+              inputMode='numeric'
+              autoComplete='one-time-code'
+              placeholder='123456 or recovery code'
+              value={mfaCode}
+              onChange={event => setMfaCode(event.target.value)}
+              onKeyDown={event => event.key === 'Enter' && void handleSubmit()}
+            />
           </div>
           <div>
             <CardTitle className='text-2xl'>Login</CardTitle>

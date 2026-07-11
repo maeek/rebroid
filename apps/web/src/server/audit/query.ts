@@ -74,6 +74,9 @@ const csvCell = (value: unknown) => {
   } else {
     text = ''
   }
+  if (/^[=+\-@\t\r]/.test(text)) {
+    text = `'${text}`
+  }
   return `"${text.replaceAll('"', '""')}"`
 }
 

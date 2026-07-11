@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import 'server-only'
+import { PublicActionError } from '@/server/errors/public-action-error'
 import { defaultAccentColor, isAccentColor } from '@/shared/model/theme/accent-color'
 import { hashPassword } from './password-hashing'
 import { assertPasswordMeetsPolicy, getPasswordMinimumLength } from './password-policy'
-import { assertCanRemoveOrDisableUser } from './user-admin-guard'
+import { assertCanRemoveOrDisableUser, assertCanUpdateUser } from './user-admin-guard'
 import { findGroups, nowIso, toPublicUser, validateAvatarDataUrl } from './user-model'
 import { mutateUsersFile } from './user-store'
 import type { StoredUser, UserEditorInput } from './user-model'
@@ -18,15 +19,23 @@ const createUser = async ({
   mutateUsersFile(async file => {
     const passwordMinimumLength = await getPasswordMinimumLength()
     const normalizedUsername = username.trim()
-    if (!normalizedUsername || password.length < passwordMinimumLength) {
-      throw new Error(`Username is required and password must be at least ${passwordMinimumLength} characters.`)
+    if (!normalizedUsername) {
+      throw new PublicActionError(
+        `Username is required and password must be at least ${passwordMinimumLength} characters.`,
+        { code: 'validation', status: 422 }
+      )
     }
+    await assertPasswordMeetsPolicy(password)
     validateAvatarDataUrl(input.avatarDataUrl)
     if (input.accentColor !== undefined && !isAccentColor(input.accentColor)) {
-      throw new Error('Unsupported accent color.')
+      throw new PublicActionError('Unsupported accent color.', { code: 'validation', status: 422 })
     }
-    if (file.users.some(user => user.username === normalizedUsername)) {
-      throw new Error('Username already exists.')
+    if (
+      file.users.some(
+        user => user.username.toLocaleLowerCase('en-US') === normalizedUsername.toLocaleLowerCase('en-US')
+      )
+    ) {
+      throw new PublicActionError('Username already exists.', { code: 'conflict', status: 409 })
     }
 
     const groups = findGroups(file, groupIds, role)
@@ -45,6 +54,8 @@ const createUser = async ({
       permissionOverrides: input.permissionOverrides ?? {},
       quotas: input.quotas ?? {},
       passwordHash: await hashPassword(password),
+      mfaSecretEncrypted: null,
+      mfaRecoveryCodeHashes: [],
       createdAt: now,
       updatedAt: now
     }
@@ -55,14 +66,18 @@ const createUser = async ({
 const updateUser = async (id: string, input: UserEditorInput) =>
   mutateUsersFile(async file => {
     const user = file.users.find(item => item.id === id)
-    if (!user) throw new Error('User not found.')
-    if (input.disabled && !user.disabled) assertCanRemoveOrDisableUser(file, user)
+    if (!user) throw new PublicActionError('User not found.', { code: 'not_found', status: 404 })
+    assertCanUpdateUser(file, user, input)
 
     if (input.username !== undefined) {
       const username = input.username.trim()
-      if (!username) throw new Error('Username is required.')
-      if (file.users.some(item => item.id !== id && item.username === username)) {
-        throw new Error('Username already exists.')
+      if (!username) throw new PublicActionError('Username is required.', { code: 'validation', status: 422 })
+      if (
+        file.users.some(
+          item => item.id !== id && item.username.toLocaleLowerCase('en-US') === username.toLocaleLowerCase('en-US')
+        )
+      ) {
+        throw new PublicActionError('Username already exists.', { code: 'conflict', status: 409 })
       }
       user.username = username
     }
@@ -84,7 +99,7 @@ const updateUser = async (id: string, input: UserEditorInput) =>
       user.avatarDataUrl = input.avatarDataUrl
     }
     if (input.accentColor !== undefined && !isAccentColor(input.accentColor)) {
-      throw new Error('Unsupported accent color.')
+      throw new PublicActionError('Unsupported accent color.', { code: 'validation', status: 422 })
     }
     if (input.accentColor !== undefined) user.accentColor = input.accentColor
     if (input.permissionOverrides !== undefined) user.permissionOverrides = input.permissionOverrides
@@ -97,7 +112,7 @@ const updateUser = async (id: string, input: UserEditorInput) =>
 const deleteUser = async (id: string) =>
   mutateUsersFile(file => {
     const user = file.users.find(item => item.id === id)
-    if (!user) throw new Error('User not found.')
+    if (!user) throw new PublicActionError('User not found.', { code: 'not_found', status: 404 })
     assertCanRemoveOrDisableUser(file, user)
     file.users = file.users.filter(item => item.id !== id)
     return toPublicUser(file, user)

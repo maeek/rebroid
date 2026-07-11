@@ -12,8 +12,8 @@ import {
   type SortingState,
   type VisibilityState
 } from '@tanstack/react-table'
-import { rowMenuColumn, selectionColumn, spacerColumn } from './data-grid-columns'
-import type { DataGridSelectionState } from './data-grid'
+import { loadingSelectionColumn, rowMenuColumn, selectionColumn, spacerColumn } from './data-grid-columns'
+import type { DataGridLoadingState, DataGridSelectionState } from './data-grid'
 
 type UseDataGridTableInput<TData> = {
   columns: ColumnDef<TData>[]
@@ -28,6 +28,7 @@ type UseDataGridTableInput<TData> = {
   onColumnVisibilityChange?: OnChangeFn<VisibilityState>
   selection?: DataGridSelectionState
   rowContextMenu?: (row: Row<TData>) => ReactNode
+  loadingState?: DataGridLoadingState
 }
 
 export const useDataGridTable = <TData>({
@@ -42,7 +43,8 @@ export const useDataGridTable = <TData>({
   columnVisibility,
   onColumnVisibilityChange,
   selection,
-  rowContextMenu
+  rowContextMenu,
+  loadingState
 }: UseDataGridTableInput<TData>) => {
   const lastSelectedIndexRef = useRef<number | null>(null)
   const tableContainerRef = useRef<HTMLDivElement | null>(null)
@@ -54,20 +56,22 @@ export const useDataGridTable = <TData>({
   const resolvedColumnVisibility = onColumnVisibilityChange ? (columnVisibility ?? {}) : internalColumnVisibility
   const resolvedColumns = useMemo(
     () => [
-      ...(selection
+      ...(selection || loadingState?.selectable
         ? [
-            selectionColumn({
-              selection,
-              getRowId,
-              lastSelectedIndexRef
-            })
+            selection
+              ? selectionColumn({
+                  selection,
+                  getRowId,
+                  lastSelectedIndexRef
+                })
+              : loadingSelectionColumn<TData>()
           ]
         : []),
       ...columns,
       spacerColumn<TData>(),
-      ...(rowContextMenu ? [rowMenuColumn<TData>()] : [])
+      ...(rowContextMenu || loadingState?.rowMenu ? [rowMenuColumn<TData>()] : [])
     ],
-    [columns, getRowId, rowContextMenu, selection]
+    [columns, getRowId, loadingState?.rowMenu, loadingState?.selectable, rowContextMenu, selection]
   )
 
   useEffect(() => {
@@ -76,6 +80,8 @@ export const useDataGridTable = <TData>({
 
     const updateContainerWidth = () => setContainerWidth(node.clientWidth)
     updateContainerWidth()
+
+    if (typeof ResizeObserver === 'undefined') return
 
     const resizeObserver = new ResizeObserver(updateContainerWidth)
     resizeObserver.observe(node)

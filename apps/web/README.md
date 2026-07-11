@@ -10,24 +10,27 @@ The Docker image is designed to run without a `.env` file:
 - `DISPLAY_SIDECAR_INTERNAL_BASE_URL` defaults to `http://rebroid-display-sidecar:8000` for server-side health and session checks.
 - Browser viewer traffic is same-origin through the web container. The display sidecar is addressed only by `DISPLAY_SIDECAR_INTERNAL_BASE_URL`.
 - `NEXTAUTH_SECRET` is generated into `/app/data` when missing.
+- `MFA_ENCRYPTION_KEY` is generated into `/app/data` when missing.
 - `ORCHESTRATOR_SHARED_SECRET` is read from `/app/secrets/rebroid-shared-secret`, shared with the orchestrator container.
 - `NEXTAUTH_URL` is not required for the compose setup.
 
-The first admin user is created automatically. If `INITIAL_ADMIN_PASSWORD` is not provided, the entrypoint generates one and prints it in the container logs before creating `/app/data/users.json`.
+The first admin user is created automatically and must change its password on first login. If `INITIAL_ADMIN_PASSWORD` is not provided, the entrypoint writes a generated password to `/app/data/initial-admin-password` with mode `0600`; it is never printed to logs.
 
 ## Development
 
 ```bash
-npm install
-npm run dev
+corepack pnpm install
+corepack pnpm --filter rebroid-web dev
 ```
 
-For local development, set only the values you actually need to override. A typical local web-to-local-orchestrator setup is:
+Copy `.env.example` to `.env.local` and set random values for every secret. The development server binds only to `127.0.0.1` unless `DEV_HOST` is explicitly changed.
 
 ```bash
 ORCHESTRATOR_API_URL=http://localhost:4100
-ORCHESTRATOR_SHARED_SECRET=change-me
-NEXTAUTH_SECRET=dev-secret
+ORCHESTRATOR_SHARED_SECRET=<random-secret>
+NEXTAUTH_SECRET=<random-secret>
+MFA_ENCRYPTION_KEY=<random-secret>
+INITIAL_ADMIN_PASSWORD=<temporary-random-password>
 ```
 
 ## Upload Limits

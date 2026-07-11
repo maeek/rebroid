@@ -39,6 +39,8 @@ interface UserRow {
   permission_overrides_json: string
   quotas_json: string
   password_hash: string
+  mfa_secret_encrypted: string | null
+  mfa_recovery_codes_json: string
   created_at: string
   updated_at: string
 }
@@ -86,6 +88,8 @@ export const readUsersFileFromDatabase = (): UsersFile | null => {
     permissionOverrides: parsePermissions(row.permission_overrides_json),
     quotas: parseQuotas(row.quotas_json),
     passwordHash: row.password_hash,
+    mfaSecretEncrypted: row.mfa_secret_encrypted,
+    mfaRecoveryCodeHashes: z.array(z.string()).parse(JSON.parse(row.mfa_recovery_codes_json)),
     createdAt: row.created_at,
     updatedAt: row.updated_at
   }))
@@ -104,7 +108,7 @@ export const replaceUsersFile = (file: UsersFile) => {
       'INSERT INTO groups (id, name, description, role, permissions_json, quotas_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     )
     const insertUser = client.prepare(
-      'INSERT INTO users (id, username, name, role, disabled, password_change_required, session_version, avatar_data_url, accent_color, permission_overrides_json, quotas_json, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO users (id, username, name, role, disabled, password_change_required, session_version, avatar_data_url, accent_color, permission_overrides_json, quotas_json, password_hash, mfa_secret_encrypted, mfa_recovery_codes_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     )
     const insertMembership = client.prepare('INSERT INTO group_memberships (user_id, group_id) VALUES (?, ?)')
 
@@ -134,6 +138,8 @@ export const replaceUsersFile = (file: UsersFile) => {
         JSON.stringify(user.permissionOverrides),
         JSON.stringify(user.quotas),
         user.passwordHash,
+        user.mfaSecretEncrypted,
+        JSON.stringify(user.mfaRecoveryCodeHashes),
         user.createdAt,
         user.updatedAt
       )

@@ -14,8 +14,8 @@ export const PageHeader = ({
   actions?: ReactNode
   breadcrumbs: PageBreadcrumbItem[]
   className?: string
-  description?: string
-  title: string
+  description?: ReactNode
+  title: ReactNode
   titlePrefix?: ReactNode
 }) => (
   <section className={cn('shrink-0 px-6 py-4 max-sm:px-4', className)}>

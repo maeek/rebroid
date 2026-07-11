@@ -8,6 +8,7 @@ declare module 'next-auth' {
     sessionVersion?: number
     passwordChangeRequired?: boolean
     accentColor?: AccentColor
+    authEpoch?: string
   }
 
   interface Session extends DefaultSession {
@@ -17,6 +18,7 @@ declare module 'next-auth' {
       sessionVersion?: number
       passwordChangeRequired?: boolean
       accentColor?: AccentColor
+      authEpoch?: string
     } & DefaultSession['user']
   }
 }
@@ -28,5 +30,6 @@ declare module 'next-auth/jwt' {
     sessionVersion?: number
     passwordChangeRequired?: boolean
     accentColor?: AccentColor
+    authEpoch?: string
   }
 }

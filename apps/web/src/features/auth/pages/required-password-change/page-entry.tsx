@@ -1,11 +1,11 @@
 import { redirect } from 'next/navigation'
 import { AuthBackdrop } from '@/features/auth/components/auth-backdrop'
-import { getCurrentUser } from '@/server/auth/authorization'
+import { getAuthenticatedUser } from '@/server/auth/authorization'
 import { getWebSettings } from '@/server/web-settings/store'
 import { RequiredPasswordChangePageClient } from './page-client'
 
 export const RequiredPasswordChangePageEntry = async () => {
-  const [user, settings] = await Promise.all([getCurrentUser(), getWebSettings()])
+  const [user, settings] = await Promise.all([getAuthenticatedUser(), getWebSettings()])
 
   if (!user.passwordChangeRequired) {
     redirect('/apps')
@@ -16,6 +16,7 @@ export const RequiredPasswordChangePageEntry = async () => {
       <AuthBackdrop />
       <RequiredPasswordChangePageClient
         displayName={user.name || user.username}
+        username={user.username}
         passwordMinimumLength={settings.passwordMinimumLength}
       />
     </main>

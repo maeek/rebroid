@@ -18,7 +18,27 @@ declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData extends RowData, TValue> {
     label?: string
+    skeleton?: DataGridCellSkeleton
   }
+}
+
+export type DataGridCellSkeleton =
+  | { kind: 'text'; width?: string }
+  | {
+      kind: 'stacked'
+      gap?: string
+      primaryHeight?: string
+      primaryWidth?: string
+      secondaryHeight?: string
+      secondaryWidth?: string
+    }
+  | { kind: 'badge'; width?: string }
+  | { kind: 'custom'; render: () => ReactNode }
+
+export type DataGridLoadingState = {
+  rowCount?: number
+  rowMenu?: boolean
+  selectable?: boolean
 }
 
 export type DataGridSelectionState = {
@@ -44,6 +64,7 @@ export type DataGridProps<TData> = {
   minWidth?: string
   rowContextMenu?: (row: Row<TData>) => ReactNode
   className?: string
+  loading?: boolean | DataGridLoadingState
 }
 
 export function DataGrid<TData>({
@@ -61,8 +82,10 @@ export function DataGrid<TData>({
   emptyState,
   minWidth,
   rowContextMenu,
-  className
+  className,
+  loading = false
 }: DataGridProps<TData>) {
+  const loadingState = loading === true ? {} : loading || undefined
   const {
     getColumnPixelWidth,
     lastVisibleColumnId,
@@ -83,33 +106,32 @@ export function DataGrid<TData>({
     columnVisibility,
     onColumnVisibilityChange,
     selection,
-    rowContextMenu
+    rowContextMenu,
+    loadingState
   })
-  const columnVisibilityMenu = showColumnVisibilityControl ? <DataGridColumnVisibilityMenu table={table} /> : null
+  const columnVisibilityMenu =
+    showColumnVisibilityControl && !loading ? <DataGridColumnVisibilityMenu table={table} /> : null
 
   return (
-    <div className={cn('grid gap-3', className)}>
-      <div
-        ref={tableContainerRef}
-        className='overflow-x-auto overflow-y-hidden rounded-panel border border-surface-border/70 bg-surface-band/35'
-        style={{ minWidth: 0 }}
-      >
-        <div style={{ minWidth }}>
-          <DataGridTable
-            table={table}
-            renderedTableWidth={renderedTableWidth}
-            minWidth={minWidth}
-            getColumnPixelWidth={getColumnPixelWidth}
-            lastVisibleColumnId={lastVisibleColumnId}
-            columnVisibilityMenu={columnVisibilityMenu}
-            selection={selection}
-            getRowId={getRowId}
-            emptyState={emptyState}
-            rowContextMenu={rowContextMenu}
-            onContextMenuRow={selectRowForContextMenu}
-          />
-        </div>
-      </div>
+    <div
+      aria-busy={Boolean(loading)}
+      className={cn('grid min-w-0 gap-3', className)}
+    >
+      <DataGridTable
+        table={table}
+        tableContainerRef={tableContainerRef}
+        renderedTableWidth={renderedTableWidth}
+        minWidth={minWidth}
+        getColumnPixelWidth={getColumnPixelWidth}
+        lastVisibleColumnId={lastVisibleColumnId}
+        columnVisibilityMenu={columnVisibilityMenu}
+        selection={selection}
+        getRowId={getRowId}
+        emptyState={emptyState}
+        rowContextMenu={rowContextMenu}
+        onContextMenuRow={selectRowForContextMenu}
+        loading={loadingState}
+      />
     </div>
   )
 }

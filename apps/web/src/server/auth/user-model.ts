@@ -1,3 +1,4 @@
+import { PublicActionError } from '@/server/errors/public-action-error'
 import { defaultAccentColor, isAccentColor, type AccentColor } from '@/shared/model/theme/accent-color'
 import {
   defaultUserPermissions,
@@ -31,6 +32,7 @@ export type PublicUser = {
   groupIds: string[]
   disabled: boolean
   passwordChangeRequired: boolean
+  mfaEnabled: boolean
   sessionVersion: number
   avatarDataUrl: string | null
   accentColor: AccentColor
@@ -55,8 +57,10 @@ export type UserEditorInput = {
   quotas?: Partial<ResourceQuota>
 }
 
-export type StoredUser = Omit<PublicUser, 'effectivePermissions' | 'effectiveQuotas'> & {
+export type StoredUser = Omit<PublicUser, 'effectivePermissions' | 'effectiveQuotas' | 'mfaEnabled'> & {
   passwordHash: string
+  mfaSecretEncrypted: string | null
+  mfaRecoveryCodeHashes: string[]
 }
 
 export type UsersFile = {
@@ -64,7 +68,7 @@ export type UsersFile = {
   groups: UserGroup[]
 }
 
-export const defaultPasswordMinimumLength = 12
+export const defaultPasswordMinimumLength = 15
 
 const maxAvatarBytes = 2 * 1024 * 1024
 
@@ -76,7 +80,10 @@ export const validateAvatarDataUrl = (avatarDataUrl: string | null | undefined) 
   }
   const match = avatarDataUrl.match(/^data:(image\/(?:png|jpeg|webp));base64,([\s\S]+)$/)
   if (!match || Buffer.from(match[2], 'base64').length > maxAvatarBytes) {
-    throw new Error('Avatar must be a PNG, JPEG, or WebP image no larger than 2 MB.')
+    throw new PublicActionError('Avatar must be a PNG, JPEG, or WebP image no larger than 2 MB.', {
+      code: 'validation',
+      status: 422
+    })
   }
 }
 
@@ -138,6 +145,7 @@ export const toPublicUser = (file: UsersFile, user: StoredUser): PublicUser => {
     groupIds: groups.map(group => group.id),
     disabled: user.disabled,
     passwordChangeRequired: user.passwordChangeRequired,
+    mfaEnabled: Boolean(user.mfaSecretEncrypted),
     sessionVersion: user.sessionVersion,
     avatarDataUrl: user.avatarDataUrl,
     accentColor: user.accentColor,
@@ -171,6 +179,8 @@ export const normalizeUser = (
     permissionOverrides: user.permissionOverrides ?? {},
     quotas: user.quotas ?? {},
     passwordHash: user.passwordHash,
+    mfaSecretEncrypted: user.mfaSecretEncrypted ?? null,
+    mfaRecoveryCodeHashes: user.mfaRecoveryCodeHashes ?? [],
     createdAt: user.createdAt ?? now,
     updatedAt: user.updatedAt ?? now
   }

@@ -93,7 +93,7 @@ export function AutomationTracesSection({
         accessorFn: run => run.startedAt ?? run.createdAt,
         header: 'Started',
         size: 176,
-        meta: { label: 'Started' },
+        meta: { label: 'Started', skeleton: { kind: 'text', width: 'w-32' } },
         cell: ({ row }) => (
           <span className='text-sm text-foreground-muted'>
             {dateLabel(row.original.startedAt ?? row.original.createdAt)}
@@ -105,7 +105,7 @@ export function AutomationTracesSection({
         accessorFn: triggerLabel,
         header: 'Source',
         size: 144,
-        meta: { label: 'Source' },
+        meta: { label: 'Source', skeleton: { kind: 'text', width: 'w-24' } },
         cell: ({ row }) => <span className='text-sm text-foreground-muted'>{triggerLabel(row.original)}</span>
       },
       {
@@ -113,7 +113,7 @@ export function AutomationTracesSection({
         accessorFn: run => applicationById.get(run.targetApplicationId)?.name ?? run.targetApplicationId,
         header: 'Target',
         size: 320,
-        meta: { label: 'Target' },
+        meta: { label: 'Target', skeleton: { kind: 'stacked', secondaryHeight: 'h-5' } },
         cell: ({ row }) => {
           const application = applicationById.get(row.original.targetApplicationId)
           return (
@@ -131,7 +131,7 @@ export function AutomationTracesSection({
         accessorFn: run => run.stepResults.length,
         header: 'Steps',
         size: 160,
-        meta: { label: 'Steps' },
+        meta: { label: 'Steps', skeleton: { kind: 'text', width: 'w-24' } },
         cell: ({ row }) => <span className='text-sm text-foreground-muted'>{stepProgressLabel(row.original)}</span>
       },
       {
@@ -139,7 +139,7 @@ export function AutomationTracesSection({
         accessorFn: run => durationMs(run) ?? -1,
         header: 'Duration',
         size: 112,
-        meta: { label: 'Duration' },
+        meta: { label: 'Duration', skeleton: { kind: 'text', width: 'w-20' } },
         cell: ({ row }) => <span className='text-sm text-foreground-muted'>{durationLabel(row.original)}</span>
       },
       {
@@ -147,7 +147,7 @@ export function AutomationTracesSection({
         accessorFn: run => run.status,
         header: 'Status',
         size: 144,
-        meta: { label: 'Status' },
+        meta: { label: 'Status', skeleton: { kind: 'badge' } },
         cell: ({ row }) => (
           <div className='grid gap-1'>
             <Badge

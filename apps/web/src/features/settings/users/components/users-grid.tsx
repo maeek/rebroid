@@ -135,7 +135,7 @@ export const UsersGrid = ({
         accessorFn: user => user.name,
         header: 'User',
         size: 320,
-        meta: { label: 'User' },
+        meta: { label: 'User', skeleton: { kind: 'stacked' } },
         cell: ({ row }) => <UserIdentity user={row.original} />
       },
       {
@@ -143,7 +143,7 @@ export const UsersGrid = ({
         accessorFn: user => user.role,
         header: 'Role',
         size: 144,
-        meta: { label: 'Role' },
+        meta: { label: 'Role', skeleton: { kind: 'text', width: 'w-24' } },
         cell: ({ row }) => <span className='capitalize text-sm text-foreground-muted'>{row.original.role}</span>
       },
       {
@@ -151,7 +151,7 @@ export const UsersGrid = ({
         accessorFn: user => user.groupIds.map(groupId => groupLabel(groups, groupId)).join(', '),
         header: 'Group',
         size: 288,
-        meta: { label: 'Group' },
+        meta: { label: 'Group', skeleton: { kind: 'text', width: 'w-36' } },
         cell: ({ row }) => (
           <GroupBadges
             user={row.original}
@@ -164,7 +164,7 @@ export const UsersGrid = ({
         accessorFn: user => user.disabled,
         header: 'Status',
         size: 220,
-        meta: { label: 'Status' },
+        meta: { label: 'Status', skeleton: { kind: 'badge' } },
         cell: ({ row }) => (
           <UserStatus
             user={row.original}

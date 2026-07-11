@@ -3,10 +3,17 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import Database from 'better-sqlite3'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { auditSortFromSearchParams, auditSortToSearchParam } from '@/server/audit/query'
+import { auditEventsToCsv, auditSortFromSearchParams, auditSortToSearchParam } from '@/server/audit/query'
 import { userService } from '@/server/auth/user'
 import { getWebSettings, saveWebSettings } from '@/server/web-settings/store'
-import { appendAuditEvent, listAuditEvents, pruneAuditEventsOlderThan, purgeAuditEvents } from './audit-repository'
+import {
+  appendAuditEvent,
+  exportAuditEvents,
+  listAuditEvents,
+  pruneAuditEventsOlderThan,
+  purgeAuditEvents
+} from './audit-repository'
+import { consumePersistentRateLimit, getAuthEpoch } from './auth-security-repository'
 import { createAutomationDraft, consumeAutomationDraft } from './automation-drafts-repository'
 import { getDatabase, resetDatabaseForTests } from './database'
 import {
@@ -37,9 +44,12 @@ describe('fresh web database', () => {
       .all() as Array<{ name: string }>
     expect(tables.map(table => table.name)).toEqual([
       'audit_events',
+      'auth_state',
       'automation_drafts',
       'group_memberships',
       'groups',
+      'login_rate_limits',
+      'mfa_setup_tokens',
       'recent_applications',
       'users',
       'web_settings'
@@ -49,7 +59,7 @@ describe('fresh web database', () => {
   it('refuses an incompatible schema instead of upgrading it', () => {
     const path = process.env.WEB_DATABASE_PATH as string
     const legacy = new Database(path)
-    legacy.exec('CREATE TABLE legacy_state (value TEXT); PRAGMA user_version = 2;')
+    legacy.exec('CREATE TABLE legacy_state (value TEXT); PRAGMA user_version = 1;')
     legacy.close()
 
     expect(() => getDatabase()).toThrow('pnpm reset:all-state -- --execute')
@@ -90,6 +100,18 @@ describe('fresh web database', () => {
     ).toEqual(['Alpha', 'Zulu'])
     expect(pruneAuditEventsOlderThan(30)).toBe(0)
     expect(purgeAuditEvents()).toBe(2)
+  })
+
+  it('protects audit CSV exports from spreadsheet formulas', () => {
+    appendAuditEvent({ actorLabel: '=HYPERLINK("https://example.invalid")', category: 'auth', action: 'login' })
+    expect(auditEventsToCsv(exportAuditEvents())).toContain("'=HYPERLINK")
+  })
+
+  it('persists authentication epochs and login rate limits', () => {
+    expect(getAuthEpoch()).toBe(getAuthEpoch())
+    expect(consumePersistentRateLimit('account', 2, 60_000)).toBe(true)
+    expect(consumePersistentRateLimit('account', 2, 60_000)).toBe(true)
+    expect(consumePersistentRateLimit('account', 2, 60_000)).toBe(false)
   })
 
   it('parses and serializes allowlisted audit sorting', () => {

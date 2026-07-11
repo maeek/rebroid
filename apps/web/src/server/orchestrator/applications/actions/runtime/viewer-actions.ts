@@ -1,5 +1,7 @@
 'use server'
 
+import { PublicActionError } from '@/server/errors/public-action-error'
+
 import { recordAuditEvent } from '@/server/audit/events'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { sanitizeScrcpySessionForUser } from '../../safety'
@@ -29,7 +31,10 @@ export const recordViewerActivityAction = async (id: string) => {
 export const sendApplicationViewerControlAction = async (id: string, command: ApplicationViewerControlCommand) => {
   const { app, user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:control-viewer')) {
-    throw new Error('You do not have permission to control this viewer.')
+    throw new PublicActionError('You do not have permission to control this viewer.', {
+      code: 'forbidden',
+      status: 403
+    })
   }
   const result = await orchestratorAppViewerClient.sendViewerControl(id, command)
   recordAuditEvent({
@@ -48,7 +53,10 @@ export const sendApplicationViewerControlAction = async (id: string, command: Ap
 export const createApplicationVirtualDisplayAction = async (id: string) => {
   const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:control-viewer')) {
-    throw new Error('You do not have permission to add displays for this viewer.')
+    throw new PublicActionError('You do not have permission to add displays for this viewer.', {
+      code: 'forbidden',
+      status: 403
+    })
   }
 
   return orchestratorAppViewerClient.createVirtualDisplay(id)
@@ -57,7 +65,10 @@ export const createApplicationVirtualDisplayAction = async (id: string) => {
 export const releaseApplicationVirtualDisplayAction = async (id: string, surfaceId: string) => {
   const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:control-viewer')) {
-    throw new Error('You do not have permission to close displays for this viewer.')
+    throw new PublicActionError('You do not have permission to close displays for this viewer.', {
+      code: 'forbidden',
+      status: 403
+    })
   }
 
   return orchestratorAppViewerClient.releaseVirtualDisplay(id, surfaceId)
@@ -66,7 +77,7 @@ export const releaseApplicationVirtualDisplayAction = async (id: string, surface
 export const startApplicationDisplayRecordingAction = async (id: string, surfaceId: string) => {
   const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:capture-screenshot')) {
-    throw new Error('You do not have permission to record this viewer.')
+    throw new PublicActionError('You do not have permission to record this viewer.', { code: 'forbidden', status: 403 })
   }
 
   return orchestratorAppViewerClient.startRecording(id, surfaceId)
@@ -75,7 +86,7 @@ export const startApplicationDisplayRecordingAction = async (id: string, surface
 export const stopApplicationDisplayRecordingAction = async (id: string, surfaceId: string) => {
   const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:capture-screenshot')) {
-    throw new Error('You do not have permission to record this viewer.')
+    throw new PublicActionError('You do not have permission to record this viewer.', { code: 'forbidden', status: 403 })
   }
 
   return orchestratorAppViewerClient.stopRecording(id, surfaceId)

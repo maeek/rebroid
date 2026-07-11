@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { IconDeviceFloppy } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { FormField } from '@/components/ui/form-field'
 import { NumberSliderField } from '@/components/ui/number-slider-field'
 import { Section } from '@/components/ui/section'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { saveWebSettingsAction } from '@/server/web-settings/actions/save-web-settings-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
-import { FormField } from '@/components/ui/form-field'
 
 type PasswordPolicySectionProps = {
   initialPasswordMinimumLength: number
@@ -51,7 +51,7 @@ export const PasswordPolicySection = ({ initialPasswordMinimumLength }: Password
           <div className='min-w-72 flex-1'>
             <NumberSliderField
               value={String(passwordMinimumLength)}
-              min={1}
+              min={15}
               max={128}
               inputSuffix='characters'
               suffix='chars'

@@ -28,8 +28,20 @@ const combinedSettings = async (): Promise<OrchestratorUiSettings> => {
 }
 
 export const readUiSettings = async () => {
-  await getCurrentUser()
-  return combinedSettings()
+  const [user, settings] = await Promise.all([getCurrentUser(), combinedSettings()])
+  if (user.role === 'admin') return settings
+
+  return {
+    ...settings,
+    orchestratorApiUrl: '',
+    dockerImageRegistry: null,
+    auditRetentionDays: defaultWebSettingsResponse.auditRetentionDays,
+    passwordMinimumLength: defaultWebSettingsResponse.passwordMinimumLength,
+    services: {
+      ocr: { ...settings.services.ocr, endpoint: null },
+      firewall: { ...settings.services.firewall, endpoint: null }
+    }
+  }
 }
 
 const recordUpdate = (admin: Awaited<ReturnType<typeof requireAdmin>>, scope: string) =>

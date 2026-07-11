@@ -1,6 +1,7 @@
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import 'server-only'
+import { PublicActionError } from '@/server/errors/public-action-error'
 
 const safeId = (appId: string) => appId.replace(/[^a-zA-Z0-9_-]/g, '')
 const configuredRootPath = () => process.env.WEB_APP_ICONS_PATH?.trim()
@@ -79,10 +80,13 @@ export const setStoredAppIcon = async (appId: string, icon: string) => {
   const parsed = parseIconDataUrl(icon)
 
   if (!parsed) {
-    throw new Error('App icons must be PNG, JPEG, or WebP image data.')
+    throw new PublicActionError('App icons must be PNG, JPEG, or WebP image data.', {
+      code: 'validation',
+      status: 422
+    })
   }
   if (parsed.buffer.length > maxIconBytes) {
-    throw new Error('App icons must not exceed 2 MB.')
+    throw new PublicActionError('App icons must not exceed 2 MB.', { code: 'validation', status: 422 })
   }
 
   const fileName = `${safeId(appId)}.${parsed.extension}`

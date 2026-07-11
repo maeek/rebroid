@@ -1,16 +1,35 @@
 /* eslint-disable @typescript-eslint/require-await */
+import { createHash } from 'node:crypto'
 import { getServerSession, type NextAuthOptions } from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import { z } from 'zod'
 import { recordAuditEvent } from '@/server/audit/events'
-import { consumeRateLimit } from '@/server/rate-limit/in-memory'
+import {
+  clearPersistentRateLimits,
+  consumePersistentRateLimit,
+  getAuthEpoch
+} from '@/server/persistence/auth-security-repository'
 import { defaultAccentColor, isAccentColor } from '@/shared/model/theme/accent-color'
 import { userService } from './user'
 
 const credentialsSchema = z.object({
   username: z.string().trim().min(1).max(128),
-  password: z.string().min(1).max(1024)
+  password: z
+    .string()
+    .min(1)
+    .max(128)
+    .refine(value => Buffer.byteLength(value, 'utf8') <= 512),
+  mfaCode: z.string().trim().max(32).optional()
 })
+
+const rateLimitKey = (kind: 'account' | 'source', value: string) =>
+  createHash('sha256').update(`${kind}:${value.trim().toLowerCase()}`).digest('hex')
+
+const requestSource = (request: { headers?: Record<string, string | string[] | undefined> }) => {
+  const forwarded = request.headers?.['x-forwarded-for']
+  const value = Array.isArray(forwarded) ? forwarded[0] : forwarded
+  return value?.split(',')[0]?.trim() || 'unknown'
+}
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -26,6 +45,7 @@ export const authOptions: NextAuthOptions = {
       }
       if (user && 'sessionVersion' in user) {
         token.sessionVersion = user.sessionVersion
+        token.authEpoch = getAuthEpoch()
       }
       if (user && 'passwordChangeRequired' in user) {
         token.passwordChangeRequired = user.passwordChangeRequired
@@ -45,6 +65,7 @@ export const authOptions: NextAuthOptions = {
       session.user.name = currentUser?.name ?? session.user.name
       session.user.role = currentUser?.role ?? token.role
       session.user.sessionVersion = token.sessionVersion
+      session.user.authEpoch = token.authEpoch
       session.user.passwordChangeRequired = currentUser?.passwordChangeRequired ?? token.passwordChangeRequired
       session.user.image = currentUser?.avatarDataUrl ?? (typeof token.picture === 'string' ? token.picture : null)
       session.user.accentColor =
@@ -60,15 +81,20 @@ export const authOptions: NextAuthOptions = {
       name: 'Credentials',
       credentials: {
         username: { label: 'Username', type: 'text', placeholder: 'username' },
-        password: { label: 'Password', type: 'password' }
+        password: { label: 'Password', type: 'password' },
+        mfaCode: { label: 'Authentication code', type: 'text', placeholder: '123456' }
       },
-      async authorize(credentials, _req) {
+      async authorize(credentials, req) {
         const parsed = credentialsSchema.safeParse(credentials)
         if (!parsed.success) {
           return null
         }
-        const { username, password } = parsed.data
-        if (!consumeRateLimit(`login:${username.toLowerCase()}`, 10, 15 * 60 * 1000)) {
+        const { username, password, mfaCode } = parsed.data
+        const accountKey = rateLimitKey('account', username)
+        const sourceKey = rateLimitKey('source', requestSource(req))
+        const accountAllowed = consumePersistentRateLimit(accountKey, 10, 15 * 60 * 1000)
+        const sourceAllowed = consumePersistentRateLimit(sourceKey, 50, 15 * 60 * 1000)
+        if (!accountAllowed || !sourceAllowed) {
           recordAuditEvent({
             actorLabel: username,
             category: 'auth',
@@ -79,7 +105,8 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        const user = await userService.authenticate(username, password)
+        const user = await userService.authenticate(username, password, mfaCode)
+        if (user) clearPersistentRateLimits([accountKey, sourceKey])
         recordAuditEvent({
           actorUserId: user?.id,
           actorLabel: user?.name || username,

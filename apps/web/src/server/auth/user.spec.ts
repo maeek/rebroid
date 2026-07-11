@@ -36,7 +36,13 @@ describe('userService.changeOwnPassword', () => {
     const user = await userService.createUser({ username: 'user', password: 'original-password' })
 
     await expect(userService.changeOwnPassword(user.id, 'original-password', 'too-short')).rejects.toThrow(
-      'Password must be at least 12 characters.'
+      'Password must be at least 15 characters.'
+    )
+  })
+
+  it('rejects passwords longer than the policy maximum', async () => {
+    await expect(userService.createUser({ username: 'user', password: 'a'.repeat(129) })).rejects.toThrow(
+      'Password must not exceed 128 characters.'
     )
   })
 
@@ -58,18 +64,18 @@ describe('userService.changeOwnPassword', () => {
     })
   })
 
-  it('marks admin-created users for password change and leaves bootstrap admin usable', async () => {
+  it('marks admin-created users and the bootstrap admin for password change', async () => {
     const admin = await userService.authenticate('admin', 'initial-admin-password')
     const user = await userService.createUser({ username: 'user', password: 'original-password' })
 
-    expect(admin).toMatchObject({ passwordChangeRequired: false })
+    expect(admin).toMatchObject({ passwordChangeRequired: true })
     expect(user).toMatchObject({ passwordChangeRequired: true })
     await expect(userService.authenticate('user', 'original-password')).resolves.toMatchObject({
       passwordChangeRequired: true
     })
   })
 
-  it('completes a required password change without invalidating the current session', async () => {
+  it('completes a required password change and invalidates provisional sessions', async () => {
     const user = await userService.createUser({ username: 'user', password: 'original-password' })
 
     await userService.completeRequiredPasswordChange(user.id, 'original-password', 'replacement-password')
@@ -77,11 +83,11 @@ describe('userService.changeOwnPassword', () => {
     await expect(userService.authenticate('user', 'original-password')).resolves.toBeNull()
     await expect(userService.authenticate('user', 'replacement-password')).resolves.toMatchObject({
       passwordChangeRequired: false,
-      sessionVersion: user.sessionVersion
+      sessionVersion: user.sessionVersion + 1
     })
     await expect(userService.getUserById(user.id)).resolves.toMatchObject({
       passwordChangeRequired: false,
-      sessionVersion: user.sessionVersion
+      sessionVersion: user.sessionVersion + 1
     })
   })
 
@@ -131,10 +137,16 @@ describe('userService.changeOwnPassword', () => {
     const user = await userService.createUser({ username: 'user', password: 'original-password' })
     await userService.completeRequiredPasswordChange(user.id, 'original-password', 'replacement-password')
 
-    await userService.resetPassword(user.id, 'reset-password')
+    await userService.resetPassword(user.id, 'reset-password-1')
 
-    await expect(userService.authenticate('user', 'reset-password')).resolves.toMatchObject({
+    await expect(userService.authenticate('user', 'reset-password-1')).resolves.toMatchObject({
       passwordChangeRequired: true
     })
+  })
+
+  it('does not allow the last active administrator to be demoted', async () => {
+    await expect(userService.updateUser('admin', { role: 'user' })).rejects.toThrow(
+      'Cannot remove or disable the last active admin.'
+    )
   })
 })

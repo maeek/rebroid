@@ -1,5 +1,9 @@
+'use client'
+
 import { Skeleton } from '@/components/ui/skeleton'
+import { DataGrid } from './data-grid'
 import type { ListColumn } from '@/shared/ui/skeletons/list-skeleton-types'
+import type { ColumnDef } from '@tanstack/react-table'
 
 export type DataGridSkeletonProps = {
   columns: ListColumn[]
@@ -9,127 +13,65 @@ export type DataGridSkeletonProps = {
   rowMenu?: boolean
 }
 
-const renderCell = (column: ListColumn, index: number) => {
-  if (column.kind === 'stacked') {
-    return (
-      <div
-        key={index}
-        className='grid min-w-0 overflow-hidden gap-2'
-      >
-        <Skeleton className='h-4 w-[78%] max-w-full' />
-        <Skeleton className='h-3 w-[42%] max-w-full opacity-70' />
-      </div>
-    )
-  }
+type LoadingRow = { id: string }
 
-  if (column.kind === 'badge') {
-    return (
-      <div
-        key={index}
-        className='flex min-w-0 items-center gap-2 overflow-hidden'
-      >
-        <Skeleton className='h-5 w-16 max-w-full rounded-full' />
-      </div>
-    )
-  }
+const columnSize = (width: string | undefined) => {
+  if (!width) return 160
+  const remMatch = width.match(/([\d.]+)rem/)
+  if (remMatch?.[1]) return Number(remMatch[1]) * 16
+  const pixelMatch = width.match(/([\d.]+)px/)
+  if (pixelMatch?.[1]) return Number(pixelMatch[1])
+  return 160
+}
 
+const skeletonDescriptor = (column: ListColumn) => {
+  if (column.kind === 'stacked') return { kind: 'stacked' as const }
+  if (column.kind === 'badge') return { kind: 'badge' as const, width: column.cellWidth }
   if (column.kind === 'actions' || column.kind === 'action') {
-    return (
-      <div
-        key={index}
-        className='flex min-h-10 min-w-0 items-center justify-end gap-2 overflow-hidden'
-      >
-        <Skeleton className='h-9 w-20 max-w-full' />
-      </div>
-    )
+    return {
+      kind: 'custom' as const,
+      render: () => (
+        <div className='flex min-h-10 items-center justify-end gap-2'>
+          <Skeleton className='size-9' />
+          <Skeleton className='h-9 w-20' />
+        </div>
+      )
+    }
   }
-
-  return (
-    <div
-      key={index}
-      className='min-w-0 overflow-hidden'
-    >
-      <Skeleton className={`h-4 max-w-full ${column.cellWidth ?? 'w-[70%]'}`} />
-    </div>
-  )
+  return { kind: 'text' as const, width: column.cellWidth }
 }
 
 export const DataGridSkeleton = ({
   columns,
-  minWidth = '64rem',
+  minWidth,
   rows = 6,
   selectable = true,
   rowMenu = true
 }: DataGridSkeletonProps) => {
-  const templateColumns = [
-    ...(selectable ? ['3rem'] : []),
-    ...columns.map(column => column.width ?? 'minmax(8rem,1fr)'),
-    ...(rowMenu ? ['3rem'] : [])
-  ].join(' ')
+  const columnDefinitions: ColumnDef<LoadingRow>[] = columns.map((column, index) => ({
+    id: `loading-${index}`,
+    header: () => <Skeleton className={`h-3 max-w-full ${column.headerWidth}`} />,
+    size: columnSize(column.width),
+    enableSorting: false,
+    meta: {
+      label: `Loading column ${index + 1}`,
+      skeleton: skeletonDescriptor(column)
+    }
+  }))
 
   return (
-    <div
-      className='grid gap-3'
-      data-testid='data-grid-skeleton'
-    >
-      <div
-        className='overflow-x-auto overflow-y-hidden rounded-panel border border-surface-border/70 bg-surface-band/35'
-        data-testid='data-grid-skeleton-shell'
-        style={{ minWidth: 0 }}
-      >
-        <div
-          className='w-max min-w-full'
-          style={{ minWidth }}
-        >
-          <div
-            className='grid items-center gap-3 bg-surface-band/55 px-4 py-3'
-            style={{ gridTemplateColumns: templateColumns }}
-          >
-            {selectable ? (
-              <div className='flex w-12 justify-center'>
-                <Skeleton className='size-4 rounded-control' />
-              </div>
-            ) : null}
-            {columns.map((column, index) => (
-              <div
-                key={index}
-                className={
-                  column.kind === 'actions' || column.kind === 'action'
-                    ? 'flex min-w-0 justify-end overflow-hidden'
-                    : 'min-w-0 overflow-hidden'
-                }
-              >
-                <Skeleton className={`h-3 max-w-full ${column.headerWidth}`} />
-              </div>
-            ))}
-            {rowMenu ? (
-              <div className='flex justify-end'>
-                <Skeleton className='size-8 rounded-control' />
-              </div>
-            ) : null}
-          </div>
-
-          {Array.from({ length: rows }).map((_, rowIndex) => (
-            <div
-              key={rowIndex}
-              className='grid min-h-16 items-center gap-3 border-t border-surface-border/70 px-4 py-3'
-              data-testid='data-grid-skeleton-row'
-              style={{ gridTemplateColumns: templateColumns }}
-            >
-              {selectable ? (
-                <div className='flex w-12 justify-center'>
-                  <Skeleton className='size-4 rounded-control' />
-                </div>
-              ) : null}
-              {columns.map(renderCell)}
-              {rowMenu ? (
-                <div className='flex min-h-10 items-center justify-end'>
-                  <Skeleton className='size-9 rounded-control' />
-                </div>
-              ) : null}
-            </div>
-          ))}
-        </div>
+    <div data-testid='data-grid-skeleton'>
+      <div data-testid='data-grid-skeleton-shell'>
+        <DataGrid
+          columns={columnDefinitions}
+          data={[]}
+          totalItems={0}
+          pageIndex={0}
+          pageSize={rows}
+          getRowId={row => row.id}
+          minWidth={minWidth}
+          loading={{ rowCount: rows, selectable, rowMenu }}
+        />
       </div>
     </div>
   )

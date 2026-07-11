@@ -71,7 +71,7 @@ export function AutomationTriggersTable({
         accessorFn: trigger => trigger.name,
         header: 'Trigger',
         size: 352,
-        meta: { label: 'Trigger' },
+        meta: { label: 'Trigger', skeleton: { kind: 'stacked' } },
         cell: ({ row }) => {
           const trigger = row.original
           const automation = automationById.get(trigger.automationId)
@@ -93,7 +93,7 @@ export function AutomationTriggersTable({
         header: 'Tags',
         size: 176,
         enableSorting: false,
-        meta: { label: 'Tags' },
+        meta: { label: 'Tags', skeleton: { kind: 'badge' } },
         cell: ({ row }) => <TriggerTags tags={row.original.tags} />
       },
       {
@@ -101,7 +101,7 @@ export function AutomationTriggersTable({
         header: 'Target',
         size: 288,
         enableSorting: false,
-        meta: { label: 'Target' },
+        meta: { label: 'Target', skeleton: { kind: 'stacked', secondaryHeight: 'h-5' } },
         cell: ({ row }) => {
           const trigger = row.original
           const application = applicationById.get(trigger.targetApplicationId)
@@ -120,7 +120,7 @@ export function AutomationTriggersTable({
         header: 'Schedule',
         size: 176,
         enableSorting: false,
-        meta: { label: 'Schedule' },
+        meta: { label: 'Schedule', skeleton: { kind: 'text', width: 'w-32' } },
         cell: ({ row }) => (
           <span className='text-sm text-foreground-muted'>{scheduleLabel(getScheduleCron(row.original))}</span>
         )
@@ -130,7 +130,7 @@ export function AutomationTriggersTable({
         accessorFn: trigger => trigger.nextRunAt ?? '',
         header: 'Next run',
         size: 176,
-        meta: { label: 'Next run' },
+        meta: { label: 'Next run', skeleton: { kind: 'text', width: 'w-32' } },
         cell: ({ row }) => <span className='text-sm text-foreground-muted'>{dateLabel(row.original.nextRunAt)}</span>
       },
       {
@@ -138,7 +138,7 @@ export function AutomationTriggersTable({
         accessorFn: trigger => trigger.lastRunAt ?? '',
         header: 'Last trace',
         size: 176,
-        meta: { label: 'Last trace' },
+        meta: { label: 'Last trace', skeleton: { kind: 'text', width: 'w-32' } },
         cell: ({ row }) => <span className='text-sm text-foreground-muted'>{dateLabel(row.original.lastRunAt)}</span>
       },
       {
@@ -146,7 +146,7 @@ export function AutomationTriggersTable({
         accessorFn: trigger => String(trigger.enabled),
         header: 'Enabled',
         size: 128,
-        meta: { label: 'Enabled' },
+        meta: { label: 'Enabled', skeleton: { kind: 'text', width: 'w-12' } },
         cell: ({ row }) => {
           const busy = busyId === row.original.id
           return (

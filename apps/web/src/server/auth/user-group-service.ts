@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import 'server-only'
+import { PublicActionError } from '@/server/errors/public-action-error'
 import { defaultUserPermissions, fullPermissions, mergeQuotas, unlimitedQuota } from '@/shared/permissions/permissions'
 import { nowIso } from './user-model'
 import { mutateUsersFile } from './user-store'
@@ -14,7 +15,7 @@ const updateGroup = async (
 ) =>
   mutateUsersFile(file => {
     const group = file.groups.find(item => item.id === id)
-    if (!group) throw new Error('Group not found.')
+    if (!group) throw new PublicActionError('Group not found.', { code: 'not_found', status: 404 })
     if (input.name !== undefined) group.name = input.name.trim() || group.name
     if (input.description !== undefined) group.description = input.description.trim()
     if (input.role !== undefined) group.role = input.role
@@ -28,8 +29,10 @@ const updateGroup = async (
 const deleteGroup = async (id: string) =>
   mutateUsersFile(file => {
     const group = file.groups.find(item => item.id === id)
-    if (!group) throw new Error('Group not found.')
-    if (file.groups.length < 2) throw new Error('Cannot remove the last user group.')
+    if (!group) throw new PublicActionError('Group not found.', { code: 'not_found', status: 404 })
+    if (file.groups.length < 2) {
+      throw new PublicActionError('Cannot remove the last user group.', { code: 'conflict', status: 409 })
+    }
     file.groups = file.groups.filter(item => item.id !== id)
     for (const user of file.users) {
       user.groupIds = user.groupIds.filter(groupId => groupId !== id)
@@ -47,7 +50,7 @@ const createGroup = async (input: {
 }) =>
   mutateUsersFile(file => {
     const name = input.name.trim()
-    if (!name) throw new Error('Group name is required.')
+    if (!name) throw new PublicActionError('Group name is required.', { code: 'validation', status: 422 })
     const role = input.role ?? 'user'
     const now = nowIso()
     const group: UserGroup = {

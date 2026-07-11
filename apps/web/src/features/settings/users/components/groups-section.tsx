@@ -61,7 +61,7 @@ export const GroupsSection = ({
       accessorFn: group => group.name,
       header: 'Group',
       size: 480,
-      meta: { label: 'Group' },
+      meta: { label: 'Group', skeleton: { kind: 'stacked' } },
       cell: ({ row }) => (
         <Link href={`/security/groups/${row.original.id}`}>
           <div className='font-medium hover:underline hover:text-primary'>{row.original.name}</div>
@@ -74,7 +74,7 @@ export const GroupsSection = ({
       accessorFn: group => group.role,
       header: 'Role',
       size: 128,
-      meta: { label: 'Role' },
+      meta: { label: 'Role', skeleton: { kind: 'text', width: 'w-20' } },
       cell: ({ row }) => <span className='capitalize text-sm text-foreground-muted'>{row.original.role}</span>
     }
   ]

@@ -12,7 +12,7 @@ import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 
 export type PageBreadcrumbItem = {
-  label: string
+  label: ReactNode
   badge?: ReactNode
   href?: string
 }
@@ -29,7 +29,7 @@ export const PageBreadcrumbs = ({ items, className }: { items: PageBreadcrumbIte
           const isLast = index === items.length - 1
 
           return (
-            <Fragment key={`${item.label}-${index}`}>
+            <Fragment key={index}>
               <BreadcrumbItem>
                 <Visible when={isLast}>
                   <BreadcrumbPage>

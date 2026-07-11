@@ -155,6 +155,10 @@ export const orchestratorAutomationsClient = {
     return emptyRequest<AutomationTriggersGridPage>(`/automations/triggers/grid?${query.toString()}`)
   },
 
+  getTrigger(ownerUserId: string, id: string) {
+    return emptyRequest<AutomationTrigger>(`/automations/triggers/${encodeURIComponent(id)}?${ownerQuery(ownerUserId)}`)
+  },
+
   createTrigger(ownerUserId: string, input: SaveAutomationTriggerInput) {
     return jsonRequest<AutomationTrigger>('/automations/triggers', 'POST', { ownerUserId, ...input })
   },

@@ -1,5 +1,6 @@
 import { readUsersFileFromDatabase, replaceUsersFile } from '@/server/persistence/users-repository'
 import { hashPassword } from './password-hashing'
+import { assertPasswordMeetsPolicy } from './password-policy'
 import { normalizeGroups, normalizeUser, nowIso } from './user-model'
 import type { StoredUser, UsersFile } from './user-model'
 
@@ -10,6 +11,7 @@ const defaultAdminUser = async (): Promise<StoredUser> => {
   if (!initialPassword) {
     throw new Error('INITIAL_ADMIN_PASSWORD is required when creating the first administrator.')
   }
+  await assertPasswordMeetsPolicy(initialPassword)
 
   const now = nowIso()
   return {
@@ -19,13 +21,15 @@ const defaultAdminUser = async (): Promise<StoredUser> => {
     role: 'admin',
     groupIds: ['admins'],
     disabled: false,
-    passwordChangeRequired: false,
+    passwordChangeRequired: true,
     sessionVersion: 1,
     avatarDataUrl: null,
     accentColor: 'blue',
     permissionOverrides: {},
     quotas: {},
     passwordHash: await hashPassword(initialPassword),
+    mfaSecretEncrypted: null,
+    mfaRecoveryCodeHashes: [],
     createdAt: now,
     updatedAt: now
   }

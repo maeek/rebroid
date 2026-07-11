@@ -17,6 +17,7 @@ export default defineConfig({
   webServer: {
     command: 'pnpm start',
     env: {
+      ENABLE_SKELETON_CONTRACT_ROUTE: '1',
       NEXTAUTH_SECRET: 'rebroid-playwright-only-secret'
     },
     url: 'http://127.0.0.1:3001/login',

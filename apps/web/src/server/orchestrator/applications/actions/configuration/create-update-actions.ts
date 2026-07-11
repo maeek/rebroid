@@ -1,5 +1,7 @@
 'use server'
 
+import { PublicActionError } from '@/server/errors/public-action-error'
+
 import { applyRedroidDefaultContainerArgs } from '@rebroid/application-core/redroid-runtime'
 import { allowsBroadInternetAccess } from '@rebroid/firewall-policy-core/policy'
 import { recordAuditEvent } from '@/server/audit/events'
@@ -21,7 +23,10 @@ const assertCanChangeResources = (
     user.role !== 'admin' &&
     !hasPermission(user.permissions, 'applications:change-resources')
   ) {
-    throw new Error('You do not have permission to change resource limits.')
+    throw new PublicActionError('You do not have permission to change resource limits.', {
+      code: 'forbidden',
+      status: 403
+    })
   }
 }
 
@@ -34,7 +39,10 @@ const assertCanChangeSessionLimit = (
     user.role !== 'admin' &&
     !hasPermission(user.permissions, 'applications:change-session-limit')
   ) {
-    throw new Error('You do not have permission to change session limits.')
+    throw new PublicActionError('You do not have permission to change session limits.', {
+      code: 'forbidden',
+      status: 403
+    })
   }
 }
 
@@ -47,7 +55,10 @@ const assertCanChangeContainerArgs = (
     user.role !== 'admin' &&
     !hasPermission(user.permissions, 'applications:change-container-args')
   ) {
-    throw new Error('You do not have permission to change container arguments.')
+    throw new PublicActionError('You do not have permission to change container arguments.', {
+      code: 'forbidden',
+      status: 403
+    })
   }
 }
 
@@ -60,21 +71,24 @@ const assertCanUseContainerImage = (
     user.role !== 'admin' &&
     !hasPermission(user.permissions, 'applications:change-base-image')
   ) {
-    throw new Error('You do not have permission to change the base image.')
+    throw new PublicActionError('You do not have permission to change the base image.', {
+      code: 'forbidden',
+      status: 403
+    })
   }
   if (
     input.containerImage &&
     isRedroidImage(input.containerImage) &&
     !hasPermission(user.permissions, 'applications:use-redroid-images')
   ) {
-    throw new Error('You do not have permission to use Redroid images.')
+    throw new PublicActionError('You do not have permission to use Redroid images.', { code: 'forbidden', status: 403 })
   }
   if (
     input.containerImage &&
     !isRedroidImage(input.containerImage) &&
     !hasPermission(user.permissions, 'applications:use-custom-images')
   ) {
-    throw new Error('You do not have permission to use custom images.')
+    throw new PublicActionError('You do not have permission to use custom images.', { code: 'forbidden', status: 403 })
   }
 }
 
@@ -87,7 +101,10 @@ const assertCanConfigureCreateNetworkPolicy = (
   }
 
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:configure-egress')) {
-    throw new Error('You do not have permission to configure network access.')
+    throw new PublicActionError('You do not have permission to configure network access.', {
+      code: 'forbidden',
+      status: 403
+    })
   }
 
   if (
@@ -95,7 +112,10 @@ const assertCanConfigureCreateNetworkPolicy = (
     (input.networkPolicyEnabled === false || allowsBroadInternetAccess(input.networkPolicyAllowCidrs ?? [])) &&
     !hasPermission(user.permissions, 'applications:use-internet')
   ) {
-    throw new Error('You do not have permission to allow broad internet access.')
+    throw new PublicActionError('You do not have permission to allow broad internet access.', {
+      code: 'forbidden',
+      status: 403
+    })
   }
 }
 
@@ -126,7 +146,10 @@ export const updateApplicationAction = async (id: string, input: UpdateAndroidAp
 export const createApplicationAction = async (input: CreateApplicationActionInput) => {
   const user = await getCurrentUserContext()
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:create')) {
-    throw new Error('You do not have permission to create applications.')
+    throw new PublicActionError('You do not have permission to create applications.', {
+      code: 'forbidden',
+      status: 403
+    })
   }
   assertCanUseContainerImage(user, input)
   assertCanChangeResources(user, input)
@@ -163,7 +186,7 @@ export const updateApkAction = async (id: string, uploadedApkId: string) => {
   await assertCanAccessApplication(id)
   const user = await getCurrentUserContext()
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:update-apk')) {
-    throw new Error('You do not have permission to update APKs.')
+    throw new PublicActionError('You do not have permission to update APKs.', { code: 'forbidden', status: 403 })
   }
   const command = await orchestratorAppLifecycleClient.updateApk(id, uploadedApkId)
   recordAuditEvent({

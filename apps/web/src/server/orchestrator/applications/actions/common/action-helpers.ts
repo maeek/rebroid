@@ -1,3 +1,4 @@
+import { PublicActionError } from '@/server/errors/public-action-error'
 import { getCurrentUserContext } from '../../../current-user'
 import { orchestratorAppCatalogClient } from '../../catalog-client'
 import { sanitizeAndroidApplicationForUser } from '../../safety'
@@ -8,7 +9,7 @@ const getAccessibleApplication = async (id: string) => {
   const user = await getCurrentUserContext()
   const app = await orchestratorAppCatalogClient.getApplication(id)
   if (user.role !== 'admin' && app.ownerUserId !== user.ownerUserId) {
-    throw new Error('Application not found.')
+    throw new PublicActionError('Application not found.', { code: 'not_found', status: 404 })
   }
   return { app, user }
 }
@@ -26,7 +27,7 @@ export const assertCanUseOwnedApplicationRuntime = async (id: string, message: s
   const user = await getCurrentUserContext()
   const app = await orchestratorAppCatalogClient.getApplication(id)
   if (app.ownerUserId !== user.ownerUserId) {
-    throw new Error(message)
+    throw new PublicActionError(message, { code: 'forbidden', status: 403 })
   }
   return { app, user }
 }
@@ -41,8 +42,9 @@ export const assertCanOpenApplicationSlot = async (user: CurrentUserContext, can
   const candidateIsAlreadyOpen = candidateId ? openApps.some(app => app.id === candidateId) : false
 
   if (!candidateIsAlreadyOpen && openApps.length >= user.quotas.maxOpenApps) {
-    throw new Error(
-      `Open app limit reached (${openApps.length}/${user.quotas.maxOpenApps}). Stop an app before starting another.`
+    throw new PublicActionError(
+      `Open app limit reached (${openApps.length}/${user.quotas.maxOpenApps}). Stop an app before starting another.`,
+      { code: 'conflict', status: 409 }
     )
   }
 }

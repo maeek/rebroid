@@ -1,12 +1,18 @@
 import { after } from 'next/server'
 import { logger } from '@/server/observability/logger'
 import { appendAuditEvent, maybePruneAuditEvents, type AuditEventInput } from '@/server/persistence/audit-repository'
+import { getWebSettings } from '@/server/web-settings/store'
 
 export type RecordAuditEventInput = AuditEventInput & {
   retentionDays?: number
 }
 
-const sensitiveKeys = new Set(['password', 'token', 'secret', 'authorization', 'cookie', 'set-cookie'])
+const sensitiveKeyFragments = ['password', 'token', 'secret', 'authorization', 'cookie', 'apikey', 'credential']
+
+const isSensitiveKey = (key: string) => {
+  const normalized = key.toLowerCase().replaceAll(/[^a-z0-9]/g, '')
+  return sensitiveKeyFragments.some(fragment => normalized.includes(fragment))
+}
 
 const sanitize = (value: unknown): unknown => {
   if (!value || typeof value !== 'object') return value
@@ -14,26 +20,25 @@ const sanitize = (value: unknown): unknown => {
   return Object.fromEntries(
     Object.entries(value as Record<string, unknown>).map(([key, item]) => [
       key,
-      sensitiveKeys.has(key.toLowerCase()) ? '[redacted]' : sanitize(item)
+      isSensitiveKey(key) ? '[redacted]' : sanitize(item)
     ])
   )
 }
 
-const insertAuditEvent = ({ retentionDays, ...event }: RecordAuditEventInput) => {
+const insertAuditEvent = async ({ retentionDays, ...event }: RecordAuditEventInput) => {
   appendAuditEvent({
     ...event,
     details: sanitize(event.details) as Record<string, unknown> | undefined
   })
-  if (retentionDays) {
-    maybePruneAuditEvents(retentionDays)
-  }
+  const configuredRetentionDays = retentionDays ?? (await getWebSettings()).auditRetentionDays
+  maybePruneAuditEvents(configuredRetentionDays)
 }
 
 export const recordAuditEvent = (event: RecordAuditEventInput) => {
   try {
-    after(() => {
+    after(async () => {
       try {
-        insertAuditEvent(event)
+        await insertAuditEvent(event)
       } catch (error) {
         logger.error('audit.record_failed', {
           errorName: error instanceof Error ? error.name : 'UnknownError'

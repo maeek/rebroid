@@ -93,6 +93,10 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
   shared surfaces, `FormField`, and shared feedback components instead of feature-local visual recipes.
 - Web UI changes do not retain deprecated design-system variants or token aliases; migrate all consumers and remove the
   old API in the same change.
+- Web loading states must be implemented by the component that owns the ready-state geometry. Reuse the actual page
+  shell, responsive layout, `Section`, `DataGrid` column definitions, table markup, and scroll container; do not copy
+  widths or layout class strings into route loaders. Keep `loading.tsx` files as thin feature entrypoints, render known
+  page chrome immediately, and describe cell placeholders through the owning grid column metadata.
 
 ## Security and Performance
 
@@ -100,6 +104,9 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 - Never trust browser input, uploaded files, container names, image names, host paths, URLs, or network policy values without validation and normalization.
 - Do not expose secrets in logs, errors, OpenAPI responses, client bundles, or generated artifacts.
 - Preserve authorization checks in web server actions before calling orchestrator operations that expose backend details or change runtime behavior.
+- Use `getCurrentUser()` for authenticated web operations so auth epoch, session version, disabled state, and required password changes are enforced. Only the protected routing shell and forced-password-change completion flow may use `getAuthenticatedUser()`.
+- Automation command permissions fail closed: reject unknown required permissions and revalidate stored definitions, targets, and profile permissions when triggers are updated or run.
+- Keep TOTP secrets encrypted with `MFA_ENCRYPTION_KEY`, store only hashed recovery codes, and invalidate sessions when MFA state changes.
 - Be cautious with privileged host/container operations. Prefer allowlists, bounded inputs, explicit timeouts, and safe defaults.
 - Consider performance costs before adding polling, broad scans, synchronous filesystem work, large bundle dependencies, unbounded concurrency, or repeated Docker/API/database calls.
 - For long-running or concurrent work, use bounded concurrency, cancellation/timeout-aware APIs where available, and clear error handling.

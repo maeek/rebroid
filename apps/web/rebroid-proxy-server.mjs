@@ -28,6 +28,18 @@ const explicitNextAuthUrl = process.env.NEXTAUTH_URL
   : process.env.AUTH_URL
     ? { NEXTAUTH_URL: process.env.AUTH_URL }
     : {}
+const trustProxyHeaders = process.env.REBROID_TRUST_PROXY_HEADERS === 'true'
+const publicUrl = process.env.REBROID_PUBLIC_URL ? new URL(process.env.REBROID_PUBLIC_URL) : null
+const allowedPublicHosts = new Set(
+  (process.env.REBROID_PUBLIC_HOSTS || process.env.REBROID_TLS_HOSTS || 'localhost,127.0.0.1')
+    .split(',')
+    .map(value => value.trim().toLowerCase())
+    .filter(Boolean)
+)
+if (publicUrl) {
+  allowedPublicHosts.add(publicUrl.host.toLowerCase())
+  allowedPublicHosts.add(publicUrl.hostname.toLowerCase())
+}
 
 const nextProcess = spawn(process.execPath, [process.env.NEXT_SERVER_PATH || 'server.js'], {
   stdio: 'inherit',
@@ -345,10 +357,30 @@ const rewriteLocation = (location, target) => {
 
 const firstHeaderValue = value => (Array.isArray(value) ? value[0] : value)
 
-const forwardedProto = req => firstHeaderValue(req.headers['x-forwarded-proto']) ?? 'https'
+const directHost = req => firstHeaderValue(req.headers.host) ?? ''
+
+const hostnameFromHost = host => {
+  try {
+    return new URL(`https://${host}`).hostname.toLowerCase()
+  } catch {
+    return ''
+  }
+}
+
+const publicHost = req => {
+  if (publicUrl) return publicUrl.host
+  if (trustProxyHeaders) return firstHeaderValue(req.headers['x-forwarded-host']) ?? directHost(req)
+  return directHost(req)
+}
+
+const forwardedProto = req => {
+  if (publicUrl) return publicUrl.protocol.replace(':', '')
+  if (trustProxyHeaders) return firstHeaderValue(req.headers['x-forwarded-proto']) ?? 'https'
+  return 'https'
+}
 
 const forwardedPort = (req, host) => {
-  const forwarded = firstHeaderValue(req.headers['x-forwarded-port'])
+  const forwarded = trustProxyHeaders ? firstHeaderValue(req.headers['x-forwarded-port']) : undefined
   if (forwarded) {
     return forwarded
   }
@@ -362,28 +394,31 @@ const forwardedPort = (req, host) => {
 }
 
 const proxyHeaders = (req, target) => {
-  const publicHost = firstHeaderValue(req.headers['x-forwarded-host']) ?? firstHeaderValue(req.headers.host) ?? ''
+  const externalHost = publicHost(req)
   const proto = forwardedProto(req)
   const headers = { ...req.headers }
   delete headers['x-rebroid-sidecar-secret']
   delete headers['x-orchestrator-secret']
+  headers['x-forwarded-for'] = trustProxyHeaders
+    ? [firstHeaderValue(req.headers['x-forwarded-for']), req.socket.remoteAddress].filter(Boolean).join(', ')
+    : req.socket.remoteAddress || ''
   if (target.kind === 'sidecar') {
     return {
       ...headers,
       host: target.baseUrl.host,
-      'x-forwarded-host': publicHost,
+      'x-forwarded-host': externalHost,
       'x-forwarded-proto': proto,
-      'x-forwarded-port': forwardedPort(req, publicHost),
-      'x-rebroid-viewer-host': publicHost
+      'x-forwarded-port': forwardedPort(req, externalHost),
+      'x-rebroid-viewer-host': externalHost
     }
   }
 
   return {
     ...headers,
-    host: publicHost,
-    'x-forwarded-host': publicHost,
+    host: externalHost,
+    'x-forwarded-host': externalHost,
     'x-forwarded-proto': proto,
-    'x-forwarded-port': forwardedPort(req, publicHost)
+    'x-forwarded-port': forwardedPort(req, externalHost)
   }
 }
 
@@ -486,6 +521,11 @@ const server = https.createServer(
     key: readFileSync(tlsKeyFile)
   },
   (req, res) => {
+    const requestHost = publicHost(req).toLowerCase()
+    if (!allowedPublicHosts.has(requestHost) && !allowedPublicHosts.has(hostnameFromHost(requestHost))) {
+      writeProxyError(res, 421, 'Request host is not allowed.')
+      return
+    }
     const target = targetForRequest(req)
     proxyHttp(req, res, target)
   }

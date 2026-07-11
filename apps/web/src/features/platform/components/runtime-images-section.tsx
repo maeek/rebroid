@@ -16,6 +16,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Section } from '@/components/ui/section'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
@@ -71,16 +72,72 @@ const ImageNameCell = ({ image }: { image: PlatformImage }) => {
   )
 }
 
+export const createImageColumns = (): ColumnDef<PlatformImage>[] => [
+  {
+    id: 'name',
+    accessorFn: image => imageDisplayName(image),
+    header: 'Image',
+    size: 384,
+    meta: {
+      label: 'Image',
+      skeleton: {
+        kind: 'custom',
+        render: () => (
+          <div className='grid gap-1'>
+            <Skeleton className='h-5 w-[78%]' />
+            <Skeleton className='h-4 w-[42%] opacity-70' />
+            <div className='flex h-5 gap-1'>
+              <Skeleton className='h-5 w-16 rounded-full' />
+              <Skeleton className='h-5 w-20 rounded-full' />
+            </div>
+          </div>
+        )
+      }
+    },
+    cell: ({ row }) => <ImageNameCell image={row.original} />
+  },
+  {
+    id: 'sizeBytes',
+    accessorFn: image => image.sizeBytes,
+    header: 'Size',
+    size: 144,
+    meta: { label: 'Size', skeleton: { kind: 'text', width: 'w-20' } },
+    cell: ({ row }) => <span className='text-sm text-foreground-muted'>{formatImageSize(row.original.sizeBytes)}</span>
+  },
+  {
+    id: 'createdAt',
+    accessorFn: image => image.createdAt,
+    header: 'Created',
+    size: 144,
+    meta: { label: 'Created', skeleton: { kind: 'text', width: 'w-24' } },
+    cell: ({ row }) => <span className='text-sm text-foreground-muted'>{formatUtcDate(row.original.createdAt)}</span>
+  },
+  {
+    id: 'containers',
+    accessorFn: image => image.containers,
+    header: 'Containers',
+    size: 128,
+    meta: { label: 'Containers', skeleton: { kind: 'text', width: 'w-12' } },
+    cell: ({ row }) => (
+      <span className='text-sm text-foreground-muted'>{formatImageContainerCount(row.original.containers)}</span>
+    )
+  },
+  {
+    id: 'id',
+    header: 'ID',
+    size: 224,
+    enableSorting: false,
+    meta: { label: 'ID', skeleton: { kind: 'text', width: 'w-28' } },
+    cell: ({ row }) => <span className='text-sm text-foreground-muted'>{row.original.shortId}</span>
+  }
+]
+
 export const RuntimeImagesSection = ({
   imagesPage,
-  gridQuery,
-  refreshKey = 0,
-  onRefreshComplete
+  gridQuery
 }: {
   imagesPage: PlatformImagesGridPage
   gridQuery: PlatformImagesGridQuery
-  refreshKey?: number
-  onRefreshComplete?: () => void
 }) => {
   const router = useRouter()
   const [search, setSearch] = useState(gridQuery.q ?? '')
@@ -99,13 +156,6 @@ export const RuntimeImagesSection = ({
   useEffect(() => {
     setSelectedIds(current => retainVisiblePlatformSelection(imagesPage.items, current))
   }, [imagesPage.items])
-
-  useEffect(() => {
-    if (refreshKey > 0) {
-      router.refresh()
-      onRefreshComplete?.()
-    }
-  }, [onRefreshComplete, refreshKey, router])
 
   const selectedImages = selectedPlatformItemsFromIds(imagesPage.items, selectedIds)
 
@@ -145,57 +195,7 @@ export const RuntimeImagesSection = ({
     }
   }
 
-  const columns = useMemo<ColumnDef<PlatformImage>[]>(
-    () => [
-      {
-        id: 'name',
-        accessorFn: image => imageDisplayName(image),
-        header: 'Image',
-        size: 384,
-        meta: { label: 'Image' },
-        cell: ({ row }) => <ImageNameCell image={row.original} />
-      },
-      {
-        id: 'sizeBytes',
-        accessorFn: image => image.sizeBytes,
-        header: 'Size',
-        size: 144,
-        meta: { label: 'Size' },
-        cell: ({ row }) => (
-          <span className='text-sm text-foreground-muted'>{formatImageSize(row.original.sizeBytes)}</span>
-        )
-      },
-      {
-        id: 'createdAt',
-        accessorFn: image => image.createdAt,
-        header: 'Created',
-        size: 144,
-        meta: { label: 'Created' },
-        cell: ({ row }) => (
-          <span className='text-sm text-foreground-muted'>{formatUtcDate(row.original.createdAt)}</span>
-        )
-      },
-      {
-        id: 'containers',
-        accessorFn: image => image.containers,
-        header: 'Containers',
-        size: 128,
-        meta: { label: 'Containers' },
-        cell: ({ row }) => (
-          <span className='text-sm text-foreground-muted'>{formatImageContainerCount(row.original.containers)}</span>
-        )
-      },
-      {
-        id: 'id',
-        header: 'ID',
-        size: 224,
-        enableSorting: false,
-        meta: { label: 'ID' },
-        cell: ({ row }) => <span className='text-sm text-foreground-muted'>{row.original.shortId}</span>
-      }
-    ],
-    []
-  )
+  const columns = useMemo(() => createImageColumns(), [])
 
   return (
     <>
@@ -245,7 +245,6 @@ export const RuntimeImagesSection = ({
               selectedIds,
               onSelectedIdsChange: setSelectedIds
             }}
-            minWidth='72rem'
             emptyState={
               <div className='text-center text-foreground-muted'>
                 {gridQuery.q ? 'No images match this search.' : 'No images are visible to Docker.'}

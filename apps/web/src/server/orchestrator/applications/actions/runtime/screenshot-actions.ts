@@ -1,5 +1,7 @@
 'use server'
 
+import { PublicActionError } from '@/server/errors/public-action-error'
+
 import { recordAuditEvent } from '@/server/audit/events'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { orchestratorAppRuntimeClient } from '../../runtime-client'
@@ -8,7 +10,10 @@ import { assertCanUseOwnedApplicationRuntime, ownedRuntimeMessage } from '../com
 export const captureApplicationScreenshotAction = async (id: string) => {
   const { app, user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeMessage)
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:capture-screenshot')) {
-    throw new Error('You do not have permission to capture screenshots.')
+    throw new PublicActionError('You do not have permission to capture screenshots.', {
+      code: 'forbidden',
+      status: 403
+    })
   }
   const result = await orchestratorAppRuntimeClient.captureScreenshot(id)
   recordAuditEvent({

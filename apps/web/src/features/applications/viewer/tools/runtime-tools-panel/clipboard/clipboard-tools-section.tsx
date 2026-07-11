@@ -109,12 +109,22 @@ export const ClipboardToolsSection = ({
 
   useEffect(() => {
     const handleViewerClipboard = (event: MessageEvent) => {
+      const isKnownViewerFrame = Array.from(document.querySelectorAll('iframe')).some(
+        frame => frame.contentWindow === event.source
+      )
+      if (event.origin !== window.location.origin || !isKnownViewerFrame) {
+        return
+      }
       if (!event.data || typeof event.data !== 'object') {
         return
       }
 
       const payload = event.data as Record<string, unknown>
-      if (payload.type !== 'rebroid-viewer-clipboard' || typeof payload.text !== 'string') {
+      if (
+        payload.type !== 'rebroid-viewer-clipboard' ||
+        typeof payload.text !== 'string' ||
+        payload.text.length > 1_000_000
+      ) {
         return
       }
 

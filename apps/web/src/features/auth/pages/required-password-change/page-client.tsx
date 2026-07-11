@@ -3,7 +3,7 @@
 import { FormEvent, useState } from 'react'
 import { IconAlertTriangle, IconLoader2, IconLockAccess, IconLogout } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
-import { signOut } from 'next-auth/react'
+import { signIn, signOut } from 'next-auth/react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,9 +16,11 @@ import { unwrapActionResult } from '@/shared/actions/action-result'
 
 export const RequiredPasswordChangePageClient = ({
   displayName,
+  username,
   passwordMinimumLength
 }: {
   displayName: string
+  username: string
   passwordMinimumLength: number
 }) => {
   const router = useRouter()
@@ -43,6 +45,15 @@ export const RequiredPasswordChangePageClient = ({
     setIsSubmitting(true)
     try {
       unwrapActionResult(await completeRequiredPasswordChangeAction({ currentPassword, newPassword }))
+      const signInResult = await signIn('credentials', {
+        username,
+        password: newPassword,
+        redirect: false
+      })
+      if (!signInResult?.ok) {
+        await signOut({ callbackUrl: '/login', redirect: true })
+        return
+      }
       toast({ title: 'Password updated' })
       router.replace('/apps')
       router.refresh()

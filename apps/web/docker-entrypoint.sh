@@ -163,13 +163,13 @@ ensure_runtime_permissions
 ensure_tls_certificate
 read_shared_orchestrator_secret
 read_or_create_secret NEXTAUTH_SECRET "${NEXTAUTH_SECRET_FILE:-/app/data/nextauth-secret}"
+read_or_create_secret MFA_ENCRYPTION_KEY "${MFA_ENCRYPTION_KEY_FILE:-/app/data/mfa-encryption-key}"
 
 if [ -z "${INITIAL_ADMIN_PASSWORD:-}" ] && [ ! -s "$WEB_DATABASE_PATH" ]; then
   initial_password_file="${INITIAL_ADMIN_PASSWORD_FILE:-/app/data/initial-admin-password}"
   ensure_secret_file "$initial_password_file"
   export INITIAL_ADMIN_PASSWORD="$(cat "$initial_password_file")"
-  echo "Initial Rebroid admin credentials: username=admin password=$INITIAL_ADMIN_PASSWORD" >&2
-  echo "This password is shown only while the web database is being created." >&2
+  echo "Initial Rebroid admin password written to $initial_password_file (mode 0600)." >&2
 fi
 
 ensure_runtime_permissions

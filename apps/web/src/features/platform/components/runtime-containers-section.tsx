@@ -52,14 +52,10 @@ type PendingAction = { type: 'stop' | 'remove'; container: PlatformContainer } |
 
 export const RuntimeContainersSection = ({
   containersPage,
-  gridQuery,
-  refreshKey = 0,
-  onRefreshComplete
+  gridQuery
 }: {
   containersPage: PlatformContainersGridPage
   gridQuery: PlatformContainersGridQuery
-  refreshKey?: number
-  onRefreshComplete?: () => void
 }) => {
   const router = useRouter()
   const [search, setSearch] = useState(gridQuery.q ?? '')
@@ -75,13 +71,6 @@ export const RuntimeContainersSection = ({
   useEffect(() => {
     setSelectedIds(current => retainVisiblePlatformSelection(containersPage.items, current))
   }, [containersPage.items])
-
-  useEffect(() => {
-    if (refreshKey > 0) {
-      router.refresh()
-      onRefreshComplete?.()
-    }
-  }, [onRefreshComplete, refreshKey, router])
 
   const selectedContainers = selectedPlatformItemsFromIds(containersPage.items, selectedIds)
 
@@ -218,7 +207,6 @@ export const RuntimeContainersSection = ({
               selectedIds,
               onSelectedIdsChange: setSelectedIds
             }}
-            minWidth='90rem'
             emptyState={
               <div className='text-center text-foreground-muted'>
                 {gridQuery.q ? 'No containers match this search.' : 'No containers are visible to Docker.'}

@@ -1,6 +1,7 @@
 import { recordAuditEvent } from '@/server/audit/events'
+import { PublicActionError } from '@/server/errors/public-action-error'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
-import { hasPermission, type PermissionId } from '@/shared/permissions/permissions'
+import { allPermissionIds, hasPermission, type PermissionId } from '@/shared/permissions/permissions'
 import {
   assertCanUseOwnedApplicationRuntime,
   ownedRuntimeControlMessage
@@ -13,18 +14,12 @@ export type CurrentAutomationUser = Awaited<ReturnType<typeof getCurrentUserCont
 
 export const assertAutomationPermission = (user: CurrentAutomationUser, permission: PermissionId) => {
   if (user.role !== 'admin' && !hasPermission(user.permissions, permission)) {
-    throw new Error('You do not have permission to use automations.')
+    throw new PublicActionError('You do not have permission to use automations.', { code: 'forbidden', status: 403 })
   }
 }
 
 const commandPermissionIsKnown = (permission: string): permission is PermissionId =>
-  [
-    'automations:manage',
-    'automations:run',
-    'automations:run-ai',
-    'automations:run-adb-shell',
-    'automations:manage-network'
-  ].includes(permission)
+  allPermissionIds.some(candidate => candidate === permission)
 
 export const assertDefinitionPermissions = async (user: CurrentAutomationUser, definition: AutomationDefinition) => {
   const commands = await orchestratorAutomationsClient.listCommands()
@@ -35,9 +30,10 @@ export const assertDefinitionPermissions = async (user: CurrentAutomationUser, d
       throw new Error(`Unsupported automation command "${uses}".`)
     }
     for (const permission of command.requiredPermissions) {
-      if (commandPermissionIsKnown(permission)) {
-        assertAutomationPermission(user, permission)
+      if (!commandPermissionIsKnown(permission)) {
+        throw new Error(`Automation command "${uses}" requires an unknown permission.`)
       }
+      assertAutomationPermission(user, permission)
     }
   }
   const nestedAiTools = (step: Extract<AutomationDefinitionStep, { uses: string }>) => {
@@ -94,7 +90,7 @@ export const listPermittedAiTools = async (user: CurrentAutomationUser) => {
     .filter(command =>
       command.requiredPermissions.every(
         permission =>
-          !commandPermissionIsKnown(permission) || user.role === 'admin' || hasPermission(user.permissions, permission)
+          commandPermissionIsKnown(permission) && (user.role === 'admin' || hasPermission(user.permissions, permission))
       )
     )
     .map(command => command.uses)
@@ -112,7 +108,10 @@ export const assertRunProfilePermission = (user: CurrentAutomationUser, input: R
     (input.profileMode || input.profileName) &&
     !hasPermission(user.permissions, 'applications:switch-profile')
   ) {
-    throw new Error('You do not have permission to switch application profiles.')
+    throw new PublicActionError('You do not have permission to switch application profiles.', {
+      code: 'forbidden',
+      status: 403
+    })
   }
 }
 
@@ -131,7 +130,10 @@ export const assertTriggerProfilePermission = (
     (input.profileMode || input.profileName) &&
     !hasPermission(user.permissions, 'applications:switch-profile')
   ) {
-    throw new Error('You do not have permission to switch application profiles.')
+    throw new PublicActionError('You do not have permission to switch application profiles.', {
+      code: 'forbidden',
+      status: 403
+    })
   }
 }
 

@@ -118,7 +118,7 @@ export function AutomationsTable({
         accessorFn: automation => automation.name,
         header: 'Workflow',
         size: 320,
-        meta: { label: 'Workflow' },
+        meta: { label: 'Workflow', skeleton: { kind: 'stacked', secondaryHeight: 'h-5' } },
         cell: ({ row }) => {
           const href = `/automations/${row.original.id}`
           return (
@@ -141,7 +141,7 @@ export function AutomationsTable({
         header: 'Tags',
         size: 176,
         enableSorting: false,
-        meta: { label: 'Tags' },
+        meta: { label: 'Tags', skeleton: { kind: 'badge' } },
         cell: ({ row }) => <WorkflowTags tags={row.original.tags} />
       },
       {
@@ -149,7 +149,7 @@ export function AutomationsTable({
         header: 'Apps',
         size: 176,
         enableSorting: false,
-        meta: { label: 'Apps' },
+        meta: { label: 'Apps', skeleton: { kind: 'text', width: 'w-36' } },
         cell: ({ row }) => {
           const appIds = Array.from(automationAppIds.get(row.original.id) ?? [])
           return (
@@ -164,7 +164,7 @@ export function AutomationsTable({
         header: 'Steps',
         size: 112,
         enableSorting: false,
-        meta: { label: 'Steps' },
+        meta: { label: 'Steps', skeleton: { kind: 'text', width: 'w-20' } },
         cell: ({ row }) => {
           const count = countAutomationSteps(row.original.definition.spec.steps)
           return (
@@ -179,7 +179,7 @@ export function AutomationsTable({
         accessorFn: automation => automation.lastRunAt ?? '',
         header: 'Last run',
         size: 176,
-        meta: { label: 'Last run' },
+        meta: { label: 'Last run', skeleton: { kind: 'text', width: 'w-28' } },
         cell: ({ row }) => <span className='text-sm text-foreground-muted'>{formatDate(row.original.lastRunAt)}</span>
       },
       {
@@ -187,7 +187,7 @@ export function AutomationsTable({
         accessorFn: automation => automation.lastStatus,
         header: 'Status',
         size: 128,
-        meta: { label: 'Status' },
+        meta: { label: 'Status', skeleton: { kind: 'badge' } },
         cell: ({ row }) => (
           <Badge variant={statusVariant(row.original.lastStatus)}>
             {automationStatusLabel(row.original.lastStatus)}

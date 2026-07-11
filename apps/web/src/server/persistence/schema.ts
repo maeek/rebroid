@@ -1,4 +1,4 @@
-export const webSchemaVersion = 1
+export const webSchemaVersion = 2
 
 export const freshWebSchema = `
   CREATE TABLE groups (
@@ -25,6 +25,8 @@ export const freshWebSchema = `
     permission_overrides_json TEXT NOT NULL,
     quotas_json TEXT NOT NULL,
     password_hash TEXT NOT NULL,
+    mfa_secret_encrypted TEXT,
+    mfa_recovery_codes_json TEXT NOT NULL,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
@@ -74,11 +76,30 @@ export const freshWebSchema = `
     consumed_at TEXT
   );
 
+  CREATE TABLE auth_state (
+    id INTEGER PRIMARY KEY NOT NULL CHECK (id = 1),
+    epoch TEXT NOT NULL
+  );
+
+  CREATE TABLE login_rate_limits (
+    key_hash TEXT PRIMARY KEY NOT NULL,
+    attempt_count INTEGER NOT NULL CHECK (attempt_count > 0),
+    reset_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE mfa_setup_tokens (
+    user_id TEXT PRIMARY KEY NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    encrypted_secret TEXT NOT NULL,
+    expires_at INTEGER NOT NULL
+  );
+
   CREATE INDEX recent_applications_user_opened_at
     ON recent_applications(user_id, opened_at DESC);
   CREATE INDEX audit_events_created_at ON audit_events(created_at DESC);
   CREATE INDEX audit_events_category_created_at ON audit_events(category, created_at DESC);
   CREATE INDEX audit_events_actor_created_at ON audit_events(actor_user_id, created_at DESC);
   CREATE INDEX automation_drafts_expiry ON automation_drafts(expires_at);
+  CREATE INDEX login_rate_limits_reset_at ON login_rate_limits(reset_at);
+  CREATE INDEX mfa_setup_tokens_expires_at ON mfa_setup_tokens(expires_at);
   PRAGMA user_version = ${webSchemaVersion};
 `

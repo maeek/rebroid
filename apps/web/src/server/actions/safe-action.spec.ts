@@ -1,5 +1,6 @@
 import * as navigation from 'next/navigation'
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
+import { PublicActionError } from '@/server/errors/public-action-error'
 import * as requestIds from '@/server/observability/request-id'
 import { OrchestratorRequestError } from '@/server/orchestrator/request'
 
@@ -40,16 +41,21 @@ describe('safe server actions', () => {
 
     await expect(
       runSafeAction(() => {
-        throw new Error('Current password is incorrect.')
+        throw new PublicActionError('Current password is incorrect.', { code: 'validation', status: 422 })
       })
     ).resolves.toEqual({
       ok: false,
       requestId: 'request-1',
-      error: { code: 'internal', message: 'Current password is incorrect.', requestId: 'request-1' }
+      error: {
+        code: 'validation',
+        message: 'Current password is incorrect.',
+        requestId: 'request-1',
+        status: 422
+      }
     })
   })
 
-  it('preserves orchestrator request status', async () => {
+  it('preserves orchestrator request status without exposing its message', async () => {
     const { runSafeAction } = await import('./safe-action')
 
     await expect(
@@ -61,9 +67,31 @@ describe('safe server actions', () => {
       requestId: 'request-1',
       error: {
         code: 'conflict',
-        message: 'Docker image is still used by a container.',
+        message: 'The action failed. Try again or check the server logs.',
         requestId: 'request-1',
         status: 409
+      }
+    })
+  })
+
+  it('redacts unexpected upstream server messages', async () => {
+    const { runSafeAction } = await import('./safe-action')
+
+    await expect(
+      runSafeAction(
+        () => {
+          throw new OrchestratorRequestError('database connection string leaked', 500)
+        },
+        { fallbackMessage: 'Could not finish action.' }
+      )
+    ).resolves.toEqual({
+      ok: false,
+      requestId: 'request-1',
+      error: {
+        code: 'upstream_error',
+        message: 'Could not finish action.',
+        requestId: 'request-1',
+        status: 500
       }
     })
   })
@@ -94,6 +122,23 @@ describe('safe server actions', () => {
       runSafeAction(
         () => {
           throw new Error('database password is secret')
+        },
+        { fallbackMessage: 'Could not finish action.' }
+      )
+    ).resolves.toEqual({
+      ok: false,
+      requestId: 'request-1',
+      error: { code: 'internal', message: 'Could not finish action.', requestId: 'request-1' }
+    })
+  })
+
+  it('does not infer public visibility from familiar message wording', async () => {
+    const { runSafeAction } = await import('./safe-action')
+
+    await expect(
+      runSafeAction(
+        () => {
+          throw new Error('Current password is incorrect.')
         },
         { fallbackMessage: 'Could not finish action.' }
       )

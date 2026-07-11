@@ -1,5 +1,7 @@
 'use server'
 
+import { PublicActionError } from '@/server/errors/public-action-error'
+
 import { recordAuditEvent } from '@/server/audit/events'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { orchestratorAppRuntimeClient } from '../../runtime-client'
@@ -7,7 +9,7 @@ import { assertCanUseOwnedApplicationRuntime, ownedRuntimeMessage } from '../com
 
 const assertCanTransferFiles = (user: Awaited<ReturnType<typeof assertCanUseOwnedApplicationRuntime>>['user']) => {
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:transfer-files')) {
-    throw new Error('You do not have permission to transfer files.')
+    throw new PublicActionError('You do not have permission to transfer files.', { code: 'forbidden', status: 403 })
   }
 }
 

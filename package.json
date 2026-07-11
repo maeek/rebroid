@@ -31,5 +31,15 @@
     "openapi-typescript": "^7.9.1",
     "turbo": "^2.5.4",
     "typescript": "^5.9.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "@nestjs/platform-express>multer": "^2.2.0",
+      "@nestjs/swagger>js-yaml": "^4.2.0",
+      "dockerode>protobufjs": "^7.6.3",
+      "monaco-editor>dompurify": "^3.4.11",
+      "next-auth>uuid": "^11.1.1",
+      "next>postcss": "^8.5.10"
+    }
   }
 }

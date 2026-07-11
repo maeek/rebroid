@@ -1,10 +1,11 @@
 import 'server-only'
+import { requireAdmin } from '@/server/auth/authorization'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { orchestratorDiagnosticsClient } from '@/server/orchestrator/diagnostics/client'
 import { buildResourceLimitBounds } from '@/server/orchestrator/diagnostics/resource-limits'
 
 export const getSystemResources = async () => {
-  await getCurrentUserContext()
+  await requireAdmin()
   return orchestratorDiagnosticsClient.getSystemResources()
 }
 

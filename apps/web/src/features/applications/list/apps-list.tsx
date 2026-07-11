@@ -1,6 +1,7 @@
 'use client'
 import { Visible } from '@/components/ui/visible'
 import { StatusSplash } from '@/shared/ui/status-splash'
+import { AppsGridLayout } from './components/apps-grid-layout'
 import { AppsListBulkDialog } from './components/apps-list-bulk-dialog'
 import { AppsListProvider } from './components/apps-list-context'
 import { AppsListEmptyState } from './components/apps-list-empty-state'
@@ -82,19 +83,14 @@ const AppsGridSection = ({
   }
 
   return (
-    <section className='px-2'>
-      <div className='mb-3 px-4 max-sm:px-2'>
-        <h3 className='text-sm font-medium text-foreground-muted'>{title}</h3>
-      </div>
-      <div className='grid grid-cols-[repeat(auto-fit,minmax(4.75rem,1fr))] gap-x-3 gap-y-10 min-[360px]:grid-cols-4 min-[360px]:gap-x-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-7 px-4'>
-        {apps.map(app => (
-          <AppsListItem
-            key={app.id}
-            app={app}
-            showOwner={showOwner}
-          />
-        ))}
-      </div>
-    </section>
+    <AppsGridLayout title={title}>
+      {apps.map(app => (
+        <AppsListItem
+          key={app.id}
+          app={app}
+          showOwner={showOwner}
+        />
+      ))}
+    </AppsGridLayout>
   )
 }

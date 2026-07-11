@@ -1,6 +1,7 @@
 import 'server-only'
 import { userAccountService } from './user-account-service'
 import { userGroupService } from './user-group-service'
+import { userMfaService } from './user-mfa-service'
 import { userPasswordService } from './user-password-service'
 import { authenticate, getUserById, listGroups, listUsers } from './user-queries'
 
@@ -13,5 +14,6 @@ export const userService = {
   listUsers,
   ...userAccountService,
   ...userGroupService,
+  ...userMfaService,
   ...userPasswordService
 }

@@ -94,6 +94,16 @@ standard control, surface, feedback, and focus recipes.
 - Interactive tables use `DataGrid`, ordered as toolbar, bulk actions, table, empty state, and pagination.
 - Read-only key/value or metrics tables use `DefinitionTable`.
 - Loading UI uses list, detail, form, split, or immersive page-skeleton compositions and must match the route family.
+- Loading is a state of the component that owns the final geometry. Page shells, responsive grids, table columns,
+  scroll containers, sections, and control groups must not be reimplemented in a parallel skeleton component.
+- Render known breadcrumbs, titles, descriptions, headings, and safe actions immediately. Mask only values and regions
+  that genuinely depend on pending data.
+- `DataGrid` loading states use the same `ColumnDef` values, system columns, table markup, and column metadata as ready
+  states. Do not copy column widths or add placeholder action columns in `loading.tsx` files.
+- Route `loading.tsx` files are thin feature entrypoints. Layout markup belongs to the feature's geometry-owning loading
+  state, which is also used by explicit Suspense fallbacks.
+- Natural-height result changes and conditional notices may reflow later content, but corresponding shells, controls,
+  columns, and visible row slots must remain aligned during loading replacement.
 - Error UI displays a safe public message and request reference only. It must not render raw backend errors.
 
 ## Responsive and accessibility constraints
@@ -113,4 +123,5 @@ standard control, surface, feedback, and focus recipes.
 - Are panels built with `Surface`, `Section`, `Card`, `DataGrid`, or `StateView` rather than class recipes?
 - Are fields represented by `FormField` and actions by `Button`?
 - Are loading, empty, unavailable, error, and destructive states represented consistently?
+- Do loading and ready states share the same geometry-owning component rather than duplicate layout classes?
 - Are all literal-color or native-control exceptions within the documented categories?

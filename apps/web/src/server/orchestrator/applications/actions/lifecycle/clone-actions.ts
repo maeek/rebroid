@@ -1,5 +1,7 @@
 'use server'
 
+import { PublicActionError } from '@/server/errors/public-action-error'
+
 import { cloneStoredAppIcon } from '@/server/app-icons/store'
 import { recordAuditEvent } from '@/server/audit/events'
 import { hasPermission } from '@/shared/permissions/permissions'
@@ -13,7 +15,10 @@ export const cloneApplicationForCurrentUserAction = async (id: string) => {
   await assertCanAccessApplication(id)
   const user = await getCurrentUserContext()
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:create')) {
-    throw new Error('You do not have permission to create applications.')
+    throw new PublicActionError('You do not have permission to create applications.', {
+      code: 'forbidden',
+      status: 403
+    })
   }
 
   await assertCanOpenApplicationSlot(user)

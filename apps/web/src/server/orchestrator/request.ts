@@ -68,8 +68,8 @@ const defaultHeadersFor = (init: RequestInit | undefined, requestId: string) => 
     accept: 'application/json',
     'x-request-id': requestId,
     ...(shouldSendJsonContentType ? { 'content-type': 'application/json' } : {}),
-    ...(orchestratorSharedSecret ? { [secretHeaderName]: orchestratorSharedSecret } : {}),
-    ...init?.headers
+    ...init?.headers,
+    ...(orchestratorSharedSecret ? { [secretHeaderName]: orchestratorSharedSecret } : {})
   }
 }
 

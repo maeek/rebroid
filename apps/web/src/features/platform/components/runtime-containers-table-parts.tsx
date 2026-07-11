@@ -58,7 +58,7 @@ export const createContainerColumns = (): ColumnDef<PlatformContainer>[] => [
     accessorFn: container => containerName(container),
     header: 'Container',
     size: 288,
-    meta: { label: 'Container' },
+    meta: { label: 'Container', skeleton: { kind: 'stacked' } },
     cell: ({ row }) => <ContainerNameCell container={row.original} />
   },
   {
@@ -66,7 +66,7 @@ export const createContainerColumns = (): ColumnDef<PlatformContainer>[] => [
     accessorFn: container => container.state,
     header: 'State',
     size: 128,
-    meta: { label: 'State' },
+    meta: { label: 'State', skeleton: { kind: 'badge' } },
     cell: ({ row }) => <ContainerStateBadge state={row.original.state} />
   },
   {
@@ -74,7 +74,7 @@ export const createContainerColumns = (): ColumnDef<PlatformContainer>[] => [
     accessorFn: container => container.image,
     header: 'Image',
     size: 384,
-    meta: { label: 'Image' },
+    meta: { label: 'Image', skeleton: { kind: 'text', width: 'w-[84%]' } },
     cell: ({ row }) => <div className='truncate text-sm text-foreground-muted'>{row.original.image}</div>
   },
   {
@@ -82,7 +82,7 @@ export const createContainerColumns = (): ColumnDef<PlatformContainer>[] => [
     accessorFn: container => container.applicationId ?? '',
     header: 'Application',
     size: 256,
-    meta: { label: 'Application' },
+    meta: { label: 'Application', skeleton: { kind: 'text', width: 'w-[68%]' } },
     cell: ({ row }) => (
       <div className='truncate text-sm text-foreground-muted'>{row.original.applicationId ?? 'unmanaged'}</div>
     )
@@ -92,7 +92,7 @@ export const createContainerColumns = (): ColumnDef<PlatformContainer>[] => [
     header: 'Networks',
     size: 288,
     enableSorting: false,
-    meta: { label: 'Networks' },
+    meta: { label: 'Networks', skeleton: { kind: 'text', width: 'w-[74%]' } },
     cell: ({ row }) => (
       <div className='flex flex-wrap gap-1 text-sm text-foreground-muted'>
         {row.original.networks.length > 0

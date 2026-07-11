@@ -17,7 +17,7 @@ const defaultWebSettings: WebSettings = {
   defaultViewerSoundEnabled: true,
   aiContextualSuggestionsEnabled: true,
   auditRetentionDays: 30,
-  passwordMinimumLength: 12
+  passwordMinimumLength: 15
 }
 
 const numberInRange = (value: unknown, fallback: number, minimum: number, maximum: number) => {
@@ -72,7 +72,7 @@ const normalize = (value: Partial<WebSettings>): WebSettings => ({
       ? value.aiContextualSuggestionsEnabled
       : defaultWebSettings.aiContextualSuggestionsEnabled,
   auditRetentionDays: numberInRange(value.auditRetentionDays, defaultWebSettings.auditRetentionDays, 1, 3650),
-  passwordMinimumLength: numberInRange(value.passwordMinimumLength, defaultWebSettings.passwordMinimumLength, 1, 128)
+  passwordMinimumLength: numberInRange(value.passwordMinimumLength, defaultWebSettings.passwordMinimumLength, 15, 128)
 })
 
 export const getWebSettings = () =>

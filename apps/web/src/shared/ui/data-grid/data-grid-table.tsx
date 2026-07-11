@@ -1,13 +1,15 @@
-import type { ReactNode } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import { IconChevronDown, IconChevronUp, IconSearch } from '@tabler/icons-react'
 import { flexRender, type Row, type Table as ReactTable } from '@tanstack/react-table'
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/components/ui/context-menu'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
-import type { DataGridSelectionState } from './data-grid'
+import type { DataGridCellSkeleton, DataGridLoadingState, DataGridSelectionState } from './data-grid'
 
 type DataGridTableProps<TData> = {
   table: ReactTable<TData>
+  tableContainerRef: RefObject<HTMLDivElement | null>
   renderedTableWidth: number
   minWidth?: string
   getColumnPixelWidth: (column: ReturnType<ReactTable<TData>['getVisibleLeafColumns']>[number]) => number
@@ -18,10 +20,34 @@ type DataGridTableProps<TData> = {
   emptyState?: ReactNode
   rowContextMenu?: (row: Row<TData>) => ReactNode
   onContextMenuRow: (row: Row<TData>) => void
+  loading?: DataGridLoadingState
+}
+
+const renderLoadingCell = (skeleton: DataGridCellSkeleton | undefined) => {
+  if (skeleton?.kind === 'custom') return skeleton.render()
+  if (skeleton?.kind === 'stacked') {
+    return (
+      <div className={cn('grid min-w-0', skeleton.gap ?? 'gap-1')}>
+        <Skeleton className={cn(skeleton.primaryHeight ?? 'h-5', 'max-w-full', skeleton.primaryWidth ?? 'w-[78%]')} />
+        <Skeleton
+          className={cn(
+            skeleton.secondaryHeight ?? 'h-4',
+            'max-w-full opacity-70',
+            skeleton.secondaryWidth ?? 'w-[42%]'
+          )}
+        />
+      </div>
+    )
+  }
+  if (skeleton?.kind === 'badge') {
+    return <Skeleton className={cn('h-5 max-w-full rounded-full', skeleton.width ?? 'w-16')} />
+  }
+  return <Skeleton className={cn('h-4 max-w-full', skeleton?.width ?? 'w-[70%]')} />
 }
 
 export const DataGridTable = <TData,>({
   table,
+  tableContainerRef,
   renderedTableWidth,
   minWidth,
   getColumnPixelWidth,
@@ -31,16 +57,19 @@ export const DataGridTable = <TData,>({
   getRowId,
   emptyState,
   rowContextMenu,
-  onContextMenuRow
+  onContextMenuRow,
+  loading
 }: DataGridTableProps<TData>) => {
   const rows = table.getRowModel().rows
 
   return (
     <Table
       className='table-fixed'
+      containerClassName='overflow-x-auto overflow-y-hidden rounded-panel border border-surface-border/70 bg-surface-band/35'
+      containerRef={tableContainerRef}
       style={{
         width: renderedTableWidth,
-        minWidth: minWidth ?? renderedTableWidth
+        minWidth: minWidth ?? '100%'
       }}
     >
       <TableHeader className='bg-surface-band/55'>
@@ -121,7 +150,48 @@ export const DataGridTable = <TData,>({
         ))}
       </TableHeader>
       <TableBody>
-        {rows.length === 0 ? (
+        {loading ? (
+          Array.from({ length: loading.rowCount ?? 6 }).map((_, rowIndex) => (
+            <TableRow
+              key={rowIndex}
+              aria-hidden='true'
+              data-testid='data-grid-skeleton-row'
+            >
+              {table.getVisibleLeafColumns().map(column => {
+                const widthPx = getColumnPixelWidth(column)
+                const isSelectColumn = column.id === '__select'
+                const isSpacerColumn = column.id === '__spacer'
+                const isRowMenuColumn = column.id === '__row_menu'
+                return (
+                  <TableCell
+                    key={column.id}
+                    className={cn(
+                      'overflow-hidden py-3 align-middle',
+                      isSelectColumn || isSpacerColumn ? 'px-0' : isRowMenuColumn ? 'px-2 text-center' : 'px-4'
+                    )}
+                    style={{ width: widthPx, maxWidth: widthPx }}
+                  >
+                    <div
+                      className={cn(
+                        'min-w-0 overflow-hidden',
+                        isSelectColumn && 'flex min-h-10 w-12 items-center justify-center overflow-visible',
+                        isRowMenuColumn && 'flex min-h-10 items-center justify-end overflow-visible'
+                      )}
+                    >
+                      {isSpacerColumn ? null : isSelectColumn ? (
+                        <Skeleton className='size-4 rounded-control' />
+                      ) : isRowMenuColumn ? (
+                        <Skeleton className='size-8 rounded-control' />
+                      ) : (
+                        renderLoadingCell(column.columnDef.meta?.skeleton)
+                      )}
+                    </div>
+                  </TableCell>
+                )
+              })}
+            </TableRow>
+          ))
+        ) : rows.length === 0 ? (
           <TableRow>
             <TableCell
               colSpan={table.getVisibleLeafColumns().length}

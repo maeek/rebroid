@@ -1,11 +1,21 @@
 'use server'
 
 import { recordAuditEvent } from '@/server/audit/events'
-import { getCurrentOwnerUserId } from '../current-user'
+import { PublicActionError } from '@/server/errors/public-action-error'
+import { hasPermission } from '@/shared/permissions/permissions'
+import { getCurrentOwnerUserId, getCurrentUserContext } from '../current-user'
 import { requireAdminUser, revalidateOrchestratorSettingsPage } from '../shared'
 import { orchestratorSettingsClient } from './client'
 import type { AutomationAiProvider, AutomationAiProviderModel } from './types'
 import type { RuntimeUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
+
+const requireAutomationAiRunUser = async () => {
+  const user = await getCurrentUserContext()
+  if (user.role !== 'admin' && !hasPermission(user.permissions, 'automations:run-ai')) {
+    throw new PublicActionError('You do not have permission to use automation AI.', { code: 'forbidden', status: 403 })
+  }
+  return user
+}
 
 export const cleanupUploadedApksAction = async () => {
   const ownerUserId = await getCurrentOwnerUserId()
@@ -111,7 +121,10 @@ export const checkAutomationAiProviderHealthAction = async (
   providerId: string,
   modelId?: string,
   role?: 'controller' | 'planner' | 'vision'
-) => orchestratorSettingsClient.checkAiProviderHealth(providerId, modelId, role)
+) => {
+  await requireAutomationAiRunUser()
+  return orchestratorSettingsClient.checkAiProviderHealth(providerId, modelId, role)
+}
 
 export const listAutomationAiProviderRemoteModelsAction = async (providerId: string) => {
   await requireAdminUser()
@@ -193,4 +206,7 @@ export const deleteAutomationAiProviderModelAction = async (providerId: string, 
   revalidateOrchestratorSettingsPage()
 }
 
-export const listAutomationAiModelCatalogAction = async () => orchestratorSettingsClient.listAiModelCatalog()
+export const listAutomationAiModelCatalogAction = async () => {
+  await requireAutomationAiRunUser()
+  return orchestratorSettingsClient.listAiModelCatalog()
+}
