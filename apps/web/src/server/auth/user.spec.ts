@@ -75,6 +75,14 @@ describe('userService.changeOwnPassword', () => {
     })
   })
 
+  it('allows a short temporary bootstrap password because first-login replacement is mandatory', async () => {
+    process.env.INITIAL_ADMIN_PASSWORD = 'admin'
+
+    await expect(userService.authenticate('admin', 'admin')).resolves.toMatchObject({
+      passwordChangeRequired: true
+    })
+  })
+
   it('completes a required password change and invalidates provisional sessions', async () => {
     const user = await userService.createUser({ username: 'user', password: 'original-password' })
 
