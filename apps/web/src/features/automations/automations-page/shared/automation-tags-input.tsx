@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { chipInputSurfaceClassName } from '@/components/ui/surface-classes'
+import { chipInputSurfaceClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 import {
   createAutomationTag,
@@ -95,7 +95,7 @@ export function AutomationTagsInput({
       <Label htmlFor={id}>{label}</Label>
       <div
         className={cn(
-          'flex min-h-11 w-full flex-wrap items-center gap-2 rounded-md px-3 py-2',
+          'flex min-h-11 w-full flex-wrap items-center gap-2 rounded-control px-3 py-2',
           chipInputSurfaceClassName
         )}
       >
@@ -108,7 +108,7 @@ export function AutomationTagsInput({
             <PopoverTrigger asChild>
               <button
                 type='button'
-                className='flex max-w-full items-center gap-1 rounded-md border border-white/20 px-2 py-1 text-xs font-medium shadow-xs transition hover:ring-2 hover:ring-ring/35'
+                className='flex max-w-full items-center gap-1 rounded-control border border-white/20 px-2 py-1 text-xs font-medium shadow-xs transition hover:ring-2 hover:ring-ring/35'
                 style={{ backgroundColor: tag.color, color: colorText(tag.color) }}
               >
                 <span className='truncate'>{tag.name}</span>
@@ -131,7 +131,7 @@ export function AutomationTagsInput({
         <input
           id={id}
           value={draft}
-          className='h-7 min-w-34 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground'
+          className='h-7 min-w-34 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-foreground-muted'
           placeholder='Add tag and press Enter'
           onBlur={commitDraft}
           onChange={event => setDraft(event.target.value)}
@@ -177,7 +177,7 @@ function TagEditor({
         </div>
         <button
           type='button'
-          className='rounded-md p-1 text-foreground-muted hover:bg-secondary/70 hover:text-foreground'
+          className='rounded-control p-1 text-foreground-muted hover:bg-surface-band/70 hover:text-foreground'
           aria-label='Close tag settings'
           onClick={onClose}
         >
@@ -205,7 +205,7 @@ function TagEditor({
           <input
             type='color'
             value={colorValid ? color : defaultAutomationTagColor}
-            className='h-9 w-10 rounded-md border border-control-border bg-control p-1'
+            className='h-9 w-10 rounded-control border border-control-border bg-control p-1'
             aria-label='Tag color'
             onChange={event => {
               setColor(event.target.value)
@@ -225,12 +225,12 @@ function TagEditor({
             }}
           />
         </div>
-        {!colorValid ? <p className='text-xs text-destructive'>Use a #RRGGBB hex value.</p> : null}
+        {!colorValid ? <p className='text-xs text-danger'>Use a #RRGGBB hex value.</p> : null}
       </div>
       <Button
         type='button'
         variant='ghost'
-        className='w-fit gap-2 text-destructive hover:text-destructive'
+        className='w-fit gap-2 text-danger hover:text-danger'
         onClick={onRemove}
       >
         <IconTrash className='size-4' />

@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import { passwordChangeRedirectPath, requiredPasswordChangePath } from './password-change-routing'
 
 describe('password change route enforcement', () => {

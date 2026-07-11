@@ -1,12 +1,12 @@
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DataGridSkeleton } from '@/shared/ui/data-grid'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
 
 const ProviderConnectionSkeleton = () => (
   <Section
-    boxed
+    surface='panel'
     contentClassName='gap-5'
   >
     <div className='mb-5 grid gap-2'>
@@ -29,7 +29,7 @@ const ProviderConnectionSkeleton = () => (
 )
 
 export const AiProvidersPageSkeleton = () => (
-  <ProtectedStackPageLayout mainClassName='gap-2'>
+  <StandardPage className='gap-2'>
     <PageHeaderSkeleton
       titleWidth='w-44'
       hasTitlePrefix
@@ -38,7 +38,7 @@ export const AiProvidersPageSkeleton = () => (
     />
     <section className='flex w-full flex-col gap-4 px-6 pb-16 max-sm:px-4'>
       <div
-        className='flex w-full items-start justify-between gap-4 rounded-md border border-border/60 bg-surface-panel/35 px-4 py-3'
+        className='flex w-full items-start justify-between gap-4 rounded-control border border-surface-border/60 bg-surface-panel/35 px-4 py-3'
         data-testid='ai-context-suggestions-skeleton'
       >
         <div className='grid min-w-0 flex-1 gap-2'>
@@ -67,11 +67,11 @@ export const AiProvidersPageSkeleton = () => (
         rows={5}
       />
     </section>
-  </ProtectedStackPageLayout>
+  </StandardPage>
 )
 
 export const AiProviderEditPageSkeleton = () => (
-  <ProtectedStackPageLayout mainClassName='gap-2'>
+  <StandardPage className='gap-2'>
     <PageHeaderSkeleton
       titleWidth='w-48'
       hasTitlePrefix
@@ -80,7 +80,7 @@ export const AiProviderEditPageSkeleton = () => (
     />
     <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
       <Section
-        boxed
+        surface='panel'
         contentClassName='gap-0'
       >
         <div className='flex flex-wrap items-center justify-between gap-3'>
@@ -113,5 +113,5 @@ export const AiProviderEditPageSkeleton = () => (
         />
       </div>
     </section>
-  </ProtectedStackPageLayout>
+  </StandardPage>
 )

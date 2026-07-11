@@ -54,7 +54,7 @@ export const AutomationEditorHeader = ({
         <Button
           type='button'
           variant='secondary'
-          size='icon'
+          size='icon-md'
           disabled={busy}
           aria-label='Draft workflow from prompt'
           onClick={onDraftFromPrompt}
@@ -73,7 +73,7 @@ export const AutomationEditorHeader = ({
         <DropdownMenuTrigger asChild>
           <Button
             variant='secondary'
-            size='icon'
+            size='icon-md'
             aria-label='More automation actions'
           >
             <IconDotsVertical className='size-4' />
@@ -131,7 +131,7 @@ export const AutomationEditorHeader = ({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 disabled={busy}
-                className='gap-2 px-3 py-2 text-destructive'
+                className='gap-2 px-3 py-2 text-danger'
                 onSelect={onDelete}
               >
                 <IconTrash className='size-4' />

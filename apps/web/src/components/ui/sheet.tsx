@@ -4,7 +4,7 @@ import * as React from 'react'
 import { Dialog as SheetPrimitive } from '@base-ui/react/dialog'
 import { IconX } from '@tabler/icons-react'
 import { cva, type VariantProps } from 'class-variance-authority'
-import { floatingSurfaceClassName, overlayClassName } from '@/components/ui/surface-classes'
+import { floatingSurfaceClassName, overlayClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 
 const Sheet = SheetPrimitive.Root
@@ -28,7 +28,7 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = 'SheetOverlay'
 
 const sheetVariants = cva(
-  'scrollbar-thin fixed z-50 gap-4 overflow-x-hidden p-6 shadow-lg transition ease-in-out data-[closed]:duration-300 data-[open]:duration-500 data-[open]:animate-in data-[closed]:animate-out',
+  'scrollbar-thin fixed z-50 gap-4 overflow-x-hidden p-6 shadow-floating transition ease-in-out data-[closed]:duration-300 data-[open]:duration-500 data-[open]:animate-in data-[closed]:animate-out',
   {
     variants: {
       side: {
@@ -57,7 +57,7 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Pop
         className={cn(sheetVariants({ side }), floatingSurfaceClassName, className)}
         {...props}
       >
-        <SheetPrimitive.Close className='absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-[background-color,opacity] hover:bg-secondary/80 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[open]:bg-secondary'>
+        <SheetPrimitive.Close className='absolute right-4 top-4 rounded-control opacity-70 ring-offset-background transition-[background-color,opacity] hover:bg-surface-band/80 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[open]:bg-surface-band'>
           <IconX className='size-4' />
           <span className='sr-only'>Close</span>
         </SheetPrimitive.Close>
@@ -82,7 +82,7 @@ const SheetTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Title
     ref={ref}
-    className={cn('text-lg font-semibold text-foreground', className)}
+    className={cn('text-lg font-medium text-foreground', className)}
     {...props}
   />
 ))
@@ -94,7 +94,7 @@ const SheetDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Description
     ref={ref}
-    className={cn('text-sm text-muted-foreground', className)}
+    className={cn('text-sm text-foreground-muted', className)}
     {...props}
   />
 ))

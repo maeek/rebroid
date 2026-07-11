@@ -13,7 +13,7 @@ const AutomationMonacoYamlEditor = dynamic(
   () => import('../../editor/monaco-yaml').then(module => module.AutomationMonacoYamlEditor),
   {
     ssr: false,
-    loading: () => <div className='h-44 rounded-md border border-border/60 bg-surface-band/35' />
+    loading: () => <div className='h-44 rounded-control border border-surface-border/60 bg-surface-band/35' />
   }
 )
 
@@ -72,7 +72,7 @@ export function AutomationStepYamlEditor({
         }}
       />
       {error ? (
-        <div className='flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive'>
+        <div className='flex items-start gap-2 rounded-control border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger'>
           <IconAlertTriangle className='mt-0.5 size-4 shrink-0' />
           <span>{error}</span>
         </div>

@@ -21,7 +21,7 @@ import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { createUserAction } from '@/server/users/actions/create-user-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { GroupMembershipPicker } from './group-membership-picker'
-import { LabeledField } from './labeled-field'
+import { FormField } from '@/components/ui/form-field'
 import type { PublicUser, UserGroup, UserRole } from '@/server/auth/user'
 
 export const CreateUserDialog = ({
@@ -55,7 +55,7 @@ export const CreateUserDialog = ({
       toast({
         title: 'Could not create user',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsSaving(false)
@@ -80,23 +80,25 @@ export const CreateUserDialog = ({
           <DialogDescription>Create a username/password account and assign its groups.</DialogDescription>
         </DialogHeader>
         <div className='grid gap-4'>
-          <label className='grid gap-2'>
-            <Label>
-              Username <span className='text-xs font-medium text-muted-foreground'>* (Required)</span>
+          <div className='grid gap-2'>
+            <Label htmlFor='create-user-username'>
+              Username <span className='text-xs font-medium text-foreground-muted'>* (Required)</span>
             </Label>
             <Input
+              id='create-user-username'
               value={username}
               required
               aria-required='true'
               placeholder='admin'
               onChange={event => setUsername(event.target.value)}
             />
-          </label>
-          <label className='grid gap-2'>
-            <Label>
-              Temporary Password <span className='text-xs font-medium text-muted-foreground'>* (Required)</span>
+          </div>
+          <div className='grid gap-2'>
+            <Label htmlFor='create-user-password'>
+              Temporary Password <span className='text-xs font-medium text-foreground-muted'>* (Required)</span>
             </Label>
             <Input
+              id='create-user-password'
               value={password}
               type='password'
               required
@@ -108,9 +110,9 @@ export const CreateUserDialog = ({
               <Badge variant='warning'>Change required</Badge>
               The user must set a new password on first login.
             </div>
-          </label>
+          </div>
           <div className='grid gap-3 sm:grid-cols-2'>
-            <LabeledField
+            <FormField
               label='Role'
               required
             >
@@ -126,11 +128,11 @@ export const CreateUserDialog = ({
                   <SelectItem value='admin'>Admin</SelectItem>
                 </SelectContent>
               </Select>
-            </LabeledField>
+            </FormField>
           </div>
           <section className='grid gap-2'>
             <Label>
-              Groups <span className='text-xs font-medium text-muted-foreground'>* (Required)</span>
+              Groups <span className='text-xs font-medium text-foreground-muted'>* (Required)</span>
             </Label>
             <GroupMembershipPicker
               groups={groups}

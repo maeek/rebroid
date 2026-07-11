@@ -40,7 +40,7 @@ export const useAutomationEditorYaml = ({
       toast({
         title: 'YAML is invalid',
         description: yamlError ?? 'Fix the YAML before switching back to the visual editor.',
-        variant: 'destructive'
+        variant: 'danger'
       })
       return
     }

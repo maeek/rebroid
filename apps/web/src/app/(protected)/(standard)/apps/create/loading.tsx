@@ -1,12 +1,12 @@
 import { Skeleton } from '@/components/ui/skeleton'
 import { Visible } from '@/components/ui/visible'
 import { PageBreadcrumbsSkeleton } from '@/shared/ui/page/page-breadcrumbs-skeleton'
-import { ProtectedSplitPageContent, ProtectedSplitPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { PageContent, StandardPageSplit } from '@/shared/ui/page/page-layout'
 
 export default function Loading() {
   return (
-    <ProtectedSplitPageLayout>
-      <ProtectedSplitPageContent>
+    <StandardPageSplit>
+      <PageContent>
         <div className='flex w-full items-center justify-between gap-2'>
           <PageBreadcrumbsSkeleton itemWidths={['w-16', 'w-28']} />
           <Skeleton className='h-10 w-24 shrink-0' />
@@ -16,7 +16,7 @@ export default function Loading() {
             {Array.from({ length: 3 }).map((_, index) => (
               <div
                 key={index}
-                className='flex w-full flex-col gap-4 rounded-lg bg-surface-panel/34 p-6 backdrop-blur-md max-sm:p-4'
+                className='flex w-full flex-col gap-4 rounded-panel bg-surface-panel/34 p-6 backdrop-blur-md max-sm:p-4'
               >
                 <Skeleton className='h-5 w-28' />
                 <div className='flex flex-col gap-3'>
@@ -36,16 +36,16 @@ export default function Loading() {
             <Skeleton className='h-10 w-full' />
           </div>
           <div className='flex w-full flex-col gap-4'>
-            <div className='flex w-full flex-col items-center gap-4 rounded-lg bg-surface-panel/34 p-6 backdrop-blur-md max-sm:p-4'>
+            <div className='flex w-full flex-col items-center gap-4 rounded-panel bg-surface-panel/34 p-6 backdrop-blur-md max-sm:p-4'>
               <Skeleton className='h-5 w-16 self-start' />
               <Skeleton className='h-3 w-full opacity-70' />
-              <Skeleton className='size-56 rounded-4xl' />
+              <Skeleton className='size-56 rounded-feature' />
               <Skeleton className='h-10 w-full' />
               <Skeleton className='h-12 w-full' />
             </div>
           </div>
         </div>
-      </ProtectedSplitPageContent>
-    </ProtectedSplitPageLayout>
+      </PageContent>
+    </StandardPageSplit>
   )
 }

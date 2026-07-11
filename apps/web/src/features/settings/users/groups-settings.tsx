@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { PageHeader } from '@/shared/ui/page/page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { GroupsSection } from './components/groups-section'
 import type { UserGroup } from '@/server/auth/user'
 
@@ -10,7 +10,7 @@ export const GroupsSettings = ({ initialGroups }: { initialGroups: UserGroup[] }
   const [groups, setGroups] = useState(initialGroups)
 
   return (
-    <ProtectedStackPageLayout mainClassName='gap-2'>
+    <StandardPage className='gap-2'>
       <PageHeader
         breadcrumbs={[{ label: 'Users', href: '/security/users' }, { label: 'Groups' }]}
         title='Groups'
@@ -28,6 +28,6 @@ export const GroupsSettings = ({ initialGroups }: { initialGroups: UserGroup[] }
           onGroupsDeleted={groupIds => setGroups(current => current.filter(group => !groupIds.has(group.id)))}
         />
       </section>
-    </ProtectedStackPageLayout>
+    </StandardPage>
   )
 }

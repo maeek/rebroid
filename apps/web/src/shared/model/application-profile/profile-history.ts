@@ -1,4 +1,4 @@
-import type { ApplicationProfileMode } from '@/server/orchestrator/applications/types'
+import type { ApplicationProfileMode } from '@/shared/contracts/application'
 
 export type SavedApplicationProfile = {
   mode: ApplicationProfileMode

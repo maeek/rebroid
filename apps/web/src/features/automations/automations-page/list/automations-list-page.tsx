@@ -4,7 +4,7 @@ import { IconPlus } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/shared/ui/page/page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { AutomationEmptySplash } from '../shared/automation-empty-splash'
 import { AutomationsTable } from './automations-table'
 import type { AutomationsListPageProps } from '../editor/types'
@@ -16,7 +16,7 @@ export function AutomationsListPage({
   initialTriggers
 }: AutomationsListPageProps) {
   return (
-    <ProtectedStackPageLayout mainClassName='gap-2'>
+    <StandardPage className='gap-2'>
       <PageHeader
         breadcrumbs={[{ label: 'Automations' }, { label: 'Workflows' }]}
         title='Workflows'
@@ -48,6 +48,6 @@ export function AutomationsListPage({
           />
         </section>
       )}
-    </ProtectedStackPageLayout>
+    </StandardPage>
   )
 }

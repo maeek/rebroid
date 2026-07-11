@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import { cronToSchedule, scheduleLabel, scheduleToCron } from './schedule-utils'
 
 describe('scheduled task schedule utilities', () => {

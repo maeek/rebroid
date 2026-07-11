@@ -18,11 +18,11 @@ import { unwrapActionResult } from '@/shared/actions/action-result'
 import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
 import { PageBackdrop } from '@/shared/ui/page/page-backdrop'
 import { PageHeader } from '@/shared/ui/page/page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { UserAvatarInput } from '@/shared/ui/user-avatar/user-avatar-input'
 import { getHslColorFromCharCode, getHslColorFromCharCodeForeground } from '@/utils/hsl-from-text'
 import { GroupMembershipPicker } from './components/group-membership-picker'
-import { LabeledField } from './components/labeled-field'
+import { FormField } from '@/components/ui/form-field'
 import { PermissionSwitchTable } from './components/permission-switch-table'
 import { QuotaFields } from './components/quota-fields'
 import { buildUserUpdateInput, getPermissionInheritanceMap, toUserDraft, toUserRole } from './user-edit-page-model'
@@ -53,7 +53,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
       toast({
         title: 'Could not save user',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsSaving(false)
@@ -61,7 +61,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
   }
 
   return (
-    <ProtectedStackPageLayout mainClassName='gap-2'>
+    <StandardPage className='gap-2'>
       <PageBackdrop
         imageSrc={draft.avatarDataUrl}
         opacity={0.08}
@@ -111,7 +111,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
         <div className='grid content-start gap-6'>
           <Section
             title='Account'
-            boxed
+            surface='panel'
             titleClassName='pb-4'
             contentClassName='gap-5'
           >
@@ -121,7 +121,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
               onChange={avatarDataUrl => updateDraft({ avatarDataUrl })}
             />
             <div className='grid gap-4 md:grid-cols-2'>
-              <LabeledField
+              <FormField
                 label='Username'
                 required
               >
@@ -131,14 +131,14 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
                   aria-required='true'
                   onChange={event => updateDraft({ username: event.target.value })}
                 />
-              </LabeledField>
-              <LabeledField label='Display Name'>
+              </FormField>
+              <FormField label='Display Name'>
                 <Input
                   value={draft.name}
                   onChange={event => updateDraft({ name: event.target.value })}
                 />
-              </LabeledField>
-              <LabeledField label='New Password'>
+              </FormField>
+              <FormField label='New Password'>
                 <div className='grid gap-2'>
                   <Input
                     value={draft.password}
@@ -148,8 +148,8 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
                   />
                   <p className='text-xs text-foreground-muted'>Password resets require a change on next login.</p>
                 </div>
-              </LabeledField>
-              <LabeledField
+              </FormField>
+              <FormField
                 label='Role'
                 required
               >
@@ -165,22 +165,22 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
                     <SelectItem value='admin'>Admin</SelectItem>
                   </SelectContent>
                 </Select>
-              </LabeledField>
+              </FormField>
             </div>
-            {/* <Setting
+            {/* <FormField
               label='Active Account'
               description='Disabled users cannot sign in and their future actions are denied.'
-              className='rounded-lg bg-surface-band/55 px-4 py-3'
+              className='rounded-panel bg-surface-band/55 px-4 py-3'
             >
               <Switch
                 checked={!draft.disabled}
                 onCheckedChange={checked => updateDraft({ disabled: !checked })}
               />
-            </Setting> */}
+            </FormField> */}
           </Section>
           <Section
             title='Groups'
-            boxed
+            surface='panel'
             titleClassName='pb-4'
             contentClassName='gap-5'
           >
@@ -192,7 +192,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
           </Section>
           <Section
             title='Quotas'
-            boxed
+            surface='panel'
             titleClassName='pb-4'
             contentClassName='gap-5'
           >
@@ -212,7 +212,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
               </p>
             </div>
           }
-          boxed
+          surface='panel'
           titleClassName='pb-4'
           contentClassName='gap-4'
           className='xl:sticky xl:top-4'
@@ -224,6 +224,6 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
           />
         </Section>
       </section>
-    </ProtectedStackPageLayout>
+    </StandardPage>
   )
 }

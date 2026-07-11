@@ -31,6 +31,6 @@ export const runtimeActionErrorToast = (title: string, error: unknown) => {
   toast({
     title,
     description: getDisplayErrorMessage(error),
-    variant: 'destructive'
+    variant: 'danger'
   })
 }

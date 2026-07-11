@@ -40,7 +40,7 @@ type RuntimePowerActionContextValue = {
   open: boolean
   primaryIcon: ReactNode
   primaryLabel: string
-  primaryVariant: 'secondary' | 'update'
+  primaryVariant: 'primary' | 'secondary'
   profileMode: ApplicationProfileMode
   profileName: string
   restartDialogOpen: boolean
@@ -117,7 +117,7 @@ export const RuntimePowerActionProvider = ({ children }: { children: ReactNode }
       toast({
         title: 'Could not remove profile',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
       throw error
     }

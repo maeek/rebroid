@@ -1,10 +1,10 @@
 import { Skeleton } from '@/components/ui/skeleton'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
 import { TableSkeleton } from '@/shared/ui/skeletons/table-skeleton'
 
 export const ActivityPageSkeleton = () => (
-  <ProtectedStackPageLayout mainClassName='gap-2'>
+  <StandardPage className='gap-2'>
     <PageHeaderSkeleton
       titleWidth='w-28'
       includeOrchestratorBreadcrumb={false}
@@ -14,9 +14,12 @@ export const ActivityPageSkeleton = () => (
         {Array.from({ length: 4 }).map((_, index) => (
           <div
             key={index}
-            className='grid gap-3 rounded-md border border-l-4 border-border/60 bg-surface-panel/50 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md'
+            className='grid gap-3 rounded-control border border-surface-border/60 bg-surface-panel/50 p-4 shadow-panel backdrop-blur-md'
           >
-            <Skeleton className='h-3 w-28' />
+            <div className='flex items-center gap-2'>
+              <Skeleton className='size-2 rounded-full' />
+              <Skeleton className='h-3 w-28' />
+            </div>
             <Skeleton className='h-8 w-16' />
             <Skeleton className='h-3 w-full opacity-70' />
           </div>
@@ -51,5 +54,5 @@ export const ActivityPageSkeleton = () => (
         </div>
       </div>
     </section>
-  </ProtectedStackPageLayout>
+  </StandardPage>
 )

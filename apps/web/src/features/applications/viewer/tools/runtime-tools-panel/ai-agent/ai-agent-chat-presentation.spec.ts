@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import { approvalRequestFromEvent, generationSummary, parseAgentPlan } from './ai-agent-chat-presentation'
 import type { AutomationRunEvent, AutomationRunEventType } from '@/server/orchestrator/automations/types'
 

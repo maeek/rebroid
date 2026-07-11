@@ -15,8 +15,8 @@ const colorText = (hex: string) => {
 export function AutomationTagBadge({ tag }: { tag: AutomationTag }) {
   return (
     <Badge
-      variant='secondary'
-      className='border border-white/10 shadow-sm'
+      variant='neutral'
+      className='border border-white/10 shadow-control'
       style={{ backgroundColor: tag.color, color: colorText(tag.color) }}
     >
       {tag.name}

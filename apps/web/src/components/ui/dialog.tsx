@@ -4,7 +4,7 @@ import * as React from 'react'
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog'
 import { IconX } from '@tabler/icons-react'
 import { getBaseChildren, getBaseRender } from '@/components/ui/base-render'
-import { floatingSurfaceClassName, overlayClassName, triggerResetClassName } from '@/components/ui/surface-classes'
+import { floatingSurfaceClassName, overlayClassName, triggerResetClassName } from '@/components/ui/surface'
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 
@@ -99,7 +99,7 @@ function DialogContent({
         <DialogPrimitive.Popup
           data-slot='dialog-content'
           className={cn(
-            'scrollbar-thin pointer-events-auto relative grid w-full max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] gap-4 overflow-x-hidden overflow-y-auto rounded-lg p-6 shadow-2xl shadow-black/45 duration-200 data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 sm:max-w-lg',
+            'scrollbar-thin pointer-events-auto relative grid w-full max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] gap-4 overflow-x-hidden overflow-y-auto rounded-panel p-6 shadow-emphasis shadow-black/45 duration-200 data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 sm:max-w-lg',
             floatingSurfaceClassName,
             className
           )}
@@ -109,7 +109,7 @@ function DialogContent({
           <Visible when={showCloseButton}>
             <DialogPrimitive.Close
               data-slot='dialog-close'
-              className="ring-offset-background focus:ring-ring absolute top-4 right-4 rounded-xs p-1 text-muted-foreground opacity-80 transition-[background-color,color,opacity] hover:bg-secondary/80 hover:text-foreground hover:opacity-100 focus:bg-secondary/80 focus:text-foreground focus:ring-2 focus:ring-offset-2 focus:outline-hidden data-[open]:bg-secondary/65 data-[open]:text-secondary-foreground disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+              className="ring-offset-background focus:ring-ring absolute top-4 right-4 rounded-xs p-1 text-foreground-muted opacity-80 transition-[background-color,color,opacity] hover:bg-surface-band/80 hover:text-foreground hover:opacity-100 focus:bg-surface-band/80 focus:text-foreground focus:ring-2 focus:ring-offset-2 focus:outline-hidden data-[open]:bg-surface-band/65 data-[open]:text-foreground disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
             >
               <IconX />
               <span className='sr-only'>Close</span>
@@ -145,7 +145,7 @@ function DialogTitle({ className, ...props }: React.ComponentProps<typeof Dialog
   return (
     <DialogPrimitive.Title
       data-slot='dialog-title'
-      className={cn('text-lg leading-none font-semibold', className)}
+      className={cn('text-lg leading-none font-medium', className)}
       {...props}
     />
   )
@@ -155,7 +155,7 @@ function DialogDescription({ className, ...props }: React.ComponentProps<typeof 
   return (
     <DialogPrimitive.Description
       data-slot='dialog-description'
-      className={cn('text-muted-foreground text-sm', className)}
+      className={cn('text-foreground-muted text-sm', className)}
       {...props}
     />
   )

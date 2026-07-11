@@ -1,4 +1,4 @@
-import { describe, expect, it, jest } from '@jest/globals'
+import { describe, expect, it, vi } from 'vitest'
 import {
   parseDockerfileContextReferences,
   resolveDockerfileContextReferences,
@@ -127,7 +127,7 @@ COPY local.apk /tmp/local-copy.apk
       references,
       selectedContextFileIds: new Set()
     })
-    const upload = jest.fn<(file: LocalBuildContextFile) => Promise<ContainerImageBuildContextFile>>(file =>
+    const upload = vi.fn<(file: LocalBuildContextFile) => Promise<ContainerImageBuildContextFile>>(file =>
       Promise.resolve(uploadedFile(`uploaded-${file.contextPath}`, file.contextPath))
     )
 

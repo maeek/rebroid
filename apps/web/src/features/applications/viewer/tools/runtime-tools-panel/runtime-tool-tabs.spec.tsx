@@ -1,5 +1,5 @@
-import { describe, expect, it, jest } from '@jest/globals'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { RuntimeToolTabs } from './runtime-tool-tabs'
 import type { RuntimeToolDefinition } from './runtime-tool-definitions'
 
@@ -13,7 +13,7 @@ const tools: RuntimeToolDefinition[] = [
 
 describe('RuntimeToolTabs', () => {
   it('moves focus and selection with arrow keys', () => {
-    const onSelectTool = jest.fn()
+    const onSelectTool = vi.fn()
     render(
       <RuntimeToolTabs
         tools={tools}
@@ -29,7 +29,7 @@ describe('RuntimeToolTabs', () => {
   })
 
   it('wraps from the first tab to the last tab', () => {
-    const onSelectTool = jest.fn()
+    const onSelectTool = vi.fn()
     render(
       <RuntimeToolTabs
         tools={tools}

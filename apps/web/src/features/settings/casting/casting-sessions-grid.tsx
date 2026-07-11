@@ -92,13 +92,13 @@ const CastingSessionIdentity = ({
       )}
       {ownerId ? (
         <Link
-          className='block truncate text-xs text-muted-foreground hover:text-primary'
+          className='block truncate text-xs text-foreground-muted hover:text-primary'
           href={`/security/users/${ownerId}`}
         >
           {ownerNames.get(ownerId) ?? ownerId}
         </Link>
       ) : (
-        <span className='text-xs text-muted-foreground'>Unknown user</span>
+        <span className='text-xs text-foreground-muted'>Unknown user</span>
       )}
     </div>
   )
@@ -107,7 +107,7 @@ const CastingSessionIdentity = ({
 const CastingSessionStatusBadge = ({ status }: { status: DisplaySidecarSession['status'] }) => (
   <Badge
     className='capitalize'
-    variant={status === 'active' ? 'status' : 'secondary'}
+    variant={status === 'active' ? 'success' : 'neutral'}
   >
     {status}
   </Badge>

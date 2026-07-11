@@ -14,8 +14,8 @@ import { updateUserGroupAction } from '@/server/users/actions/update-user-group-
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
 import { PageHeader } from '@/shared/ui/page/page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
-import { LabeledField } from './components/labeled-field'
+import { StandardPage } from '@/shared/ui/page/page-layout'
+import { FormField } from '@/components/ui/form-field'
 import { PermissionSwitchTable } from './components/permission-switch-table'
 import { QuotaFields } from './components/quota-fields'
 import { buildGroupUpdateInput, toGroupDraft, type GroupDraft } from './group-edit-page-model'
@@ -42,7 +42,7 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
       toast({
         title: 'Could not save group',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsSaving(false)
@@ -50,7 +50,7 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
   }
 
   return (
-    <ProtectedStackPageLayout mainClassName='gap-2'>
+    <StandardPage className='gap-2'>
       <PageHeader
         breadcrumbs={[
           { label: 'Users', href: '/security/users' },
@@ -73,12 +73,12 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
         <div className='grid content-start gap-6'>
           <Section
             title='Group Details'
-            boxed
+            surface='panel'
             titleClassName='pb-4'
             contentClassName='gap-5'
           >
             <div className='grid gap-4 md:grid-cols-2'>
-              <LabeledField
+              <FormField
                 label='Name'
                 required
               >
@@ -88,8 +88,8 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
                   aria-required='true'
                   onChange={event => updateDraft({ name: event.target.value })}
                 />
-              </LabeledField>
-              <LabeledField
+              </FormField>
+              <FormField
                 label='Role Template'
                 required
               >
@@ -105,19 +105,19 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
                     <SelectItem value='admin'>Admin</SelectItem>
                   </SelectContent>
                 </Select>
-              </LabeledField>
+              </FormField>
             </div>
-            <LabeledField label='Description'>
+            <FormField label='Description'>
               <Textarea
                 value={draft.description}
                 rows={4}
                 onChange={event => updateDraft({ description: event.target.value })}
               />
-            </LabeledField>
+            </FormField>
           </Section>
           <Section
             title='Quotas'
-            boxed
+            surface='panel'
             titleClassName='pb-4'
             contentClassName='gap-5'
           >
@@ -137,7 +137,7 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
               </p>
             </div>
           }
-          boxed
+          surface='panel'
           titleClassName='pb-4'
           contentClassName='gap-4'
           className='xl:sticky xl:top-4'
@@ -148,6 +148,6 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
           />
         </Section>
       </section>
-    </ProtectedStackPageLayout>
+    </StandardPage>
   )
 }

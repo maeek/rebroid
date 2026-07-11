@@ -1,7 +1,7 @@
 'use client'
 
 import { NumberSliderField } from '@/components/ui/number-slider-field'
-import type { ResourceLimitBounds } from '@/server/orchestrator/diagnostics/resource-limits'
+import type { ResourceLimitBounds } from '@/shared/contracts/system-resources'
 import type { ResourceQuota } from '@/shared/permissions/permissions'
 
 type QuotaKey = keyof ResourceQuota
@@ -96,7 +96,7 @@ export const QuotaFields = ({
         >
           <div className='grid gap-1'>
             <div className='font-bold text-sm text-foreground'>{field.label}</div>
-            <div className='text-xs leading-relaxed text-muted-foreground'>{field.description}</div>
+            <div className='text-xs leading-relaxed text-foreground-muted'>{field.description}</div>
           </div>
           <div className='w-full'>
             <NumberSliderField

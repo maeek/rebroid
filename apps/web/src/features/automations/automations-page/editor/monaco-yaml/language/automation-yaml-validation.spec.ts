@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import { validateAutomationYamlModel } from './automation-yaml-validation'
 import type { AutomationCommand } from '@/server/orchestrator/automations/types'
 import type * as Monaco from 'monaco-editor'

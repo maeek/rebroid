@@ -75,7 +75,7 @@ export const useAiAgentConversationExport = ({
       toast({
         title: 'Could not export conversation',
         description: exportError instanceof Error ? exportError.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     }
   }

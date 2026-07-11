@@ -3,9 +3,9 @@ import { cn } from '@/lib/utils'
 import type { ChatTurnStatus } from '../ai-agent-chat-utils'
 
 const runStatusBadgeVariant = (status: ChatTurnStatus) => {
-  if (status === 'failed' || status === 'canceled') return 'destructive'
-  if (status === 'success') return 'status'
-  return 'secondary'
+  if (status === 'failed' || status === 'canceled') return 'danger'
+  if (status === 'success') return 'success'
+  return 'neutral'
 }
 
 export const ChatStatusBadge = ({ status, children }: { status: ChatTurnStatus; children: string }) => (

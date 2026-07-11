@@ -26,7 +26,7 @@ export const AppManageTechnicalDetails = ({ app }: { app: AppDefinition }) => {
   return (
     <Section
       title='Details'
-      boxed
+      surface='panel'
       collapsible
       titleClassName='pb-4'
       contentClassName='flex-col'

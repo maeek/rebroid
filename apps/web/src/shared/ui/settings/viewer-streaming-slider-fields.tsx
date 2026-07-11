@@ -61,7 +61,7 @@ const DefaultSetting = ({
   children: ReactNode
 }) => (
   <label className='grid min-w-0 gap-2'>
-    <span className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>{label}</span>
+    <span className='text-xs font-medium uppercase tracking-wide text-foreground-muted'>{label}</span>
     {children}
   </label>
 )

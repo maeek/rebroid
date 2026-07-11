@@ -1,4 +1,4 @@
-import { compareAppNames } from '@/features/applications/domain/app-sort'
+import { compareAppNames } from '@/shared/model/applications/app-sort'
 import type { AndroidApplicationSummary } from '@/server/orchestrator/applications/types'
 
 export const navigationAppsLimit = 5

@@ -1,8 +1,8 @@
-import { describe, expect, it, jest } from '@jest/globals'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { AppNetworkPolicyEditorSection } from './app-network-policy-editor-section'
 
-jest.mock('@/features/applications/viewer/app-info/network-access-input', () => ({
+vi.mock('@/features/applications/viewer/app-info/network-access-input', () => ({
   NetworkAccessInput: ({
     onAddCidr,
     onRemoveCidr,
@@ -40,9 +40,9 @@ jest.mock('@/features/applications/viewer/app-info/network-access-input', () => 
 
 describe('AppNetworkPolicyEditorSection', () => {
   it('wires mode and policy callbacks', () => {
-    const onAddCidr = jest.fn()
-    const onRemoveCidr = jest.fn()
-    const onInvalidCidr = jest.fn()
+    const onAddCidr = vi.fn()
+    const onRemoveCidr = vi.fn()
+    const onInvalidCidr = vi.fn()
 
     render(
       <AppNetworkPolicyEditorSection

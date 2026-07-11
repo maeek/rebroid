@@ -16,7 +16,7 @@ export const AccentColorPicker = ({
   <section className={cn('grid gap-3', className)}>
     <div>
       <h3 className='text-sm font-medium'>Accent color</h3>
-      <p className='text-sm text-muted-foreground'>
+      <p className='text-sm text-foreground-muted'>
         Primary actions, highlights, and navigation accents use this color.
       </p>
     </div>
@@ -34,7 +34,7 @@ export const AccentColorPicker = ({
             type='button'
             role='radio'
             aria-checked={selected}
-            className='flex size-12 shrink-0 items-center justify-center rounded-full border border-black/10 shadow-sm'
+            className='flex size-12 shrink-0 items-center justify-center rounded-full border border-black/10 shadow-control'
             style={{ backgroundColor: `hsl(${preset.swatch})` }}
             onClick={() => onChange(preset.id)}
           >

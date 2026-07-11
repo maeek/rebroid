@@ -17,6 +17,7 @@ const ActivityEventsContent = () => {
     <>
       <ActivitySummaryCards />
       <Section
+        surface='plain'
         title={
           <div>
             <div>Audit trail</div>

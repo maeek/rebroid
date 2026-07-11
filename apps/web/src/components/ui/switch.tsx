@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { Switch as SwitchPrimitives } from '@base-ui/react/switch'
-import { controlHoverClassName, controlSurfaceClassName, focusRingClassName } from '@/components/ui/surface-classes'
+import { controlHoverClassName, controlSurfaceClassName, focusRingClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 
 const Switch = React.forwardRef<
@@ -23,7 +23,7 @@ const Switch = React.forwardRef<
   >
     <SwitchPrimitives.Thumb
       className={cn(
-        'pointer-events-none block size-4 rounded-full border border-control-border/60 bg-surface-elevated shadow-lg ring-0 transition-[background-color,border-color,transform] data-[checked]:translate-x-4 data-[checked]:!border-primary/70 data-[checked]:!bg-primary data-[unchecked]:translate-x-0 data-[unchecked]:bg-surface-elevated dark:data-[unchecked]:border-control-border-strong/60 dark:data-[unchecked]:bg-control-border-strong oled:data-[unchecked]:border-control-border-strong oled:data-[unchecked]:bg-control-border-strong'
+        'pointer-events-none block size-4 rounded-full border border-control-border/60 bg-surface-elevated shadow-floating ring-0 transition-[background-color,border-color,transform] data-[checked]:translate-x-4 data-[checked]:!border-primary/70 data-[checked]:!bg-primary data-[unchecked]:translate-x-0 data-[unchecked]:bg-surface-elevated dark:data-[unchecked]:border-control-border-strong/60 dark:data-[unchecked]:bg-control-border-strong oled:data-[unchecked]:border-control-border-strong oled:data-[unchecked]:bg-control-border-strong'
       )}
     />
   </SwitchPrimitives.Root>

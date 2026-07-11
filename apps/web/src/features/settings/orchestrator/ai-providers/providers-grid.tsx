@@ -87,7 +87,7 @@ export const ProvidersGrid = ({
               {row.original.models.slice(0, 3).map(model => (
                 <Badge
                   key={model.id}
-                  variant={model.enabled ? 'outline' : 'secondary'}
+                  variant={model.enabled ? 'outline' : 'neutral'}
                   className='max-w-full truncate'
                 >
                   {model.defaultFor.length > 0
@@ -96,7 +96,7 @@ export const ProvidersGrid = ({
                 </Badge>
               ))}
               {row.original.models.length > 3 ? (
-                <Badge variant='secondary'>+{row.original.models.length - 3}</Badge>
+                <Badge variant='neutral'>+{row.original.models.length - 3}</Badge>
               ) : null}
             </div>
           </div>
@@ -129,7 +129,10 @@ export const ProvidersGrid = ({
   )
 
   return (
-    <Section contentClassName='gap-4'>
+    <Section
+      surface='plain'
+      contentClassName='gap-4'
+    >
       {selectedIds.size > 0 ? (
         <div className='flex flex-wrap items-center justify-between gap-3'>
           <span className='text-sm text-foreground-muted'>{selectedIds.size} selected</span>

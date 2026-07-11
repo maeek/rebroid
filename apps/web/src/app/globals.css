@@ -35,21 +35,14 @@
   --surface-band: var(--palette-neutral-100);
   --surface-elevated: var(--palette-neutral-0);
   --surface-border: var(--palette-neutral-200);
-  --border: var(--surface-border);
-  --card: var(--surface-panel);
-  --card-foreground: var(--foreground);
-  --popover: var(--surface-elevated);
-  --popover-foreground: var(--foreground);
   --primary: var(--palette-blue-40);
   --primary-foreground: var(--palette-neutral-0);
-  --secondary: var(--palette-neutral-100);
-  --secondary-foreground: var(--foreground);
-  --muted: var(--palette-neutral-100);
-  --muted-foreground: var(--foreground-muted);
   --accent: var(--palette-blue-94);
   --accent-foreground: var(--palette-blue-35);
-  --destructive: var(--palette-red);
-  --destructive-foreground: var(--palette-neutral-0);
+  --info: var(--palette-blue-40);
+  --info-foreground: var(--palette-neutral-0);
+  --danger: var(--palette-red);
+  --danger-foreground: var(--palette-neutral-0);
   --success: var(--palette-green);
   --success-foreground: var(--palette-neutral-0);
   --warning: var(--palette-amber);
@@ -64,7 +57,14 @@
   --chart-3: 197 37% 30%;
   --chart-4: 43 74% 40%;
   --chart-5: 27 87% 45%;
-  --radius: 0.75rem;
+  --shape-control: 0.625rem;
+  --shape-panel: 0.875rem;
+  --shape-overlay: 1rem;
+  --shape-feature: 1.25rem;
+  --elevation-control: 0 1px 2px rgb(15 23 42 / 0.08);
+  --elevation-panel: inset 0 1px 0 rgb(255 255 255 / 0.03);
+  --elevation-floating: 0 18px 48px -24px rgb(15 23 42 / 0.3);
+  --elevation-emphasis: 0 12px 36px -20px hsl(var(--primary) / 0.45);
 }
 
 .dark {
@@ -95,21 +95,14 @@
   --surface-band: var(--palette-neutral-125);
   --surface-elevated: var(--palette-neutral-125);
   --surface-border: var(--palette-neutral-300);
-  --border: var(--surface-border);
-  --card: var(--surface-panel);
-  --card-foreground: var(--foreground);
-  --popover: var(--surface-elevated);
-  --popover-foreground: var(--foreground);
   --primary: var(--palette-blue-55);
   --primary-foreground: var(--palette-navy-950);
-  --secondary: var(--palette-neutral-200);
-  --secondary-foreground: 210 20% 92%;
-  --muted: var(--palette-neutral-150);
-  --muted-foreground: var(--foreground-muted);
   --accent: var(--palette-neutral-225);
   --accent-foreground: var(--foreground);
-  --destructive: var(--palette-red);
-  --destructive-foreground: var(--palette-navy-950);
+  --info: var(--palette-blue-55);
+  --info-foreground: var(--palette-navy-950);
+  --danger: var(--palette-red);
+  --danger-foreground: var(--palette-navy-950);
   --success: var(--palette-green);
   --success-foreground: var(--palette-navy-950);
   --warning: var(--palette-amber);
@@ -124,7 +117,14 @@
   --chart-3: 30 80% 60%;
   --chart-4: 280 65% 68%;
   --chart-5: 340 75% 65%;
-  --radius: 0.75rem;
+  --shape-control: 0.625rem;
+  --shape-panel: 0.875rem;
+  --shape-overlay: 1rem;
+  --shape-feature: 1.25rem;
+  --elevation-control: 0 1px 2px rgb(0 0 0 / 0.24);
+  --elevation-panel: inset 0 1px 0 rgb(255 255 255 / 0.035);
+  --elevation-floating: 0 20px 52px -24px rgb(0 0 0 / 0.65);
+  --elevation-emphasis: 0 12px 36px -20px hsl(var(--primary) / 0.5);
 }
 
 .oled {
@@ -155,21 +155,14 @@
   --surface-band: var(--palette-neutral-50);
   --surface-elevated: var(--palette-neutral-100);
   --surface-border: var(--palette-neutral-180);
-  --border: var(--surface-border);
-  --card: var(--surface-panel);
-  --card-foreground: var(--foreground);
-  --popover: var(--surface-elevated);
-  --popover-foreground: var(--foreground);
   --primary: var(--palette-blue-60);
   --primary-foreground: var(--palette-navy-950);
-  --secondary: var(--palette-neutral-125);
-  --secondary-foreground: 210 20% 93%;
-  --muted: var(--palette-neutral-125);
-  --muted-foreground: var(--foreground-muted);
   --accent: 207 90% 14%;
   --accent-foreground: var(--primary);
-  --destructive: var(--palette-red);
-  --destructive-foreground: var(--palette-navy-950);
+  --info: var(--palette-blue-60);
+  --info-foreground: var(--palette-navy-950);
+  --danger: var(--palette-red);
+  --danger-foreground: var(--palette-navy-950);
   --success: var(--palette-green);
   --success-foreground: var(--palette-navy-950);
   --warning: var(--palette-amber);
@@ -184,7 +177,14 @@
   --chart-3: 32 90% 62%;
   --chart-4: 275 70% 70%;
   --chart-5: 342 78% 68%;
-  --radius: 0.75rem;
+  --shape-control: 0.625rem;
+  --shape-panel: 0.875rem;
+  --shape-overlay: 1rem;
+  --shape-feature: 1.25rem;
+  --elevation-control: none;
+  --elevation-panel: none;
+  --elevation-floating: none;
+  --elevation-emphasis: none;
 }
 
 :root[data-accent='cyan'],
@@ -347,25 +347,18 @@
   --color-surface-band: hsl(var(--surface-band));
   --color-surface-elevated: hsl(var(--surface-elevated));
   --color-surface-border: hsl(var(--surface-border));
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
-  --color-popover: hsl(var(--popover));
-  --color-popover-foreground: hsl(var(--popover-foreground));
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
-  --color-secondary: hsl(var(--secondary));
-  --color-secondary-foreground: hsl(var(--secondary-foreground));
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
   --color-accent: hsl(var(--accent));
   --color-accent-foreground: hsl(var(--accent-foreground));
-  --color-destructive: hsl(var(--destructive));
-  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-info: hsl(var(--info));
+  --color-info-foreground: hsl(var(--info-foreground));
+  --color-danger: hsl(var(--danger));
+  --color-danger-foreground: hsl(var(--danger-foreground));
   --color-success: hsl(var(--success));
   --color-success-foreground: hsl(var(--success-foreground));
   --color-warning: hsl(var(--warning));
   --color-warning-foreground: hsl(var(--warning-foreground));
-  --color-border: hsl(var(--border));
   --color-control: hsl(var(--control));
   --color-control-hover: hsl(var(--control-hover));
   --color-control-border: hsl(var(--control-border));
@@ -376,19 +369,24 @@
   --color-chart-3: hsl(var(--chart-3));
   --color-chart-4: hsl(var(--chart-4));
   --color-chart-5: hsl(var(--chart-5));
-  --radius-sm: var(--radius);
-  --radius-md: var(--radius);
-  --radius-lg: var(--radius);
-  --radius-xl: var(--radius);
+  --radius-control: var(--shape-control);
+  --radius-panel: var(--shape-panel);
+  --radius-overlay: var(--shape-overlay);
+  --radius-feature: var(--shape-feature);
+  --shadow-control: var(--elevation-control);
+  --shadow-panel: var(--elevation-panel);
+  --shadow-floating: var(--elevation-floating);
+  --shadow-emphasis: var(--elevation-emphasis);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-surface-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;
     backface-visibility: hidden;
+    min-height: 100dvh;
     overflow-x: clip;
     position: relative;
   }
@@ -397,6 +395,7 @@
   }
   .main-layout {
     backface-visibility: hidden;
+    min-height: 100dvh;
   }
 }
 

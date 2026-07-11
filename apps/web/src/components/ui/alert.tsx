@@ -3,17 +3,19 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 const alertVariants = cva(
-  'relative w-full rounded-lg border border-control-border/70 px-4 py-3 text-sm [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg~*]:pl-7',
+  'relative w-full rounded-panel border border-control-border/70 px-4 py-3 text-sm [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg~*]:pl-7',
   {
     variants: {
       variant: {
-        default: 'bg-surface-panel/92 text-foreground supports-[backdrop-filter]:bg-surface-panel/58',
-        destructive: 'border-destructive/50 bg-destructive/10 text-destructive [&>svg]:text-destructive',
-        update: 'border-success/35 bg-success/10 text-foreground hover:bg-success/18'
+        neutral: 'bg-surface-panel/92 text-foreground supports-[backdrop-filter]:bg-surface-panel/58',
+        info: 'border-info/35 bg-info/10 text-foreground [&>svg]:text-info',
+        danger: 'border-danger/50 bg-danger/10 text-danger [&>svg]:text-danger',
+        success: 'border-success/35 bg-success/10 text-foreground [&>svg]:text-success',
+        warning: 'border-warning/35 bg-warning/10 text-foreground [&>svg]:text-warning'
       }
     },
     defaultVariants: {
-      variant: 'default'
+      variant: 'neutral'
     }
   }
 )
@@ -32,12 +34,14 @@ const Alert = React.forwardRef<
 Alert.displayName = 'Alert'
 
 const AlertTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
-  ({ className, ...props }, ref) => (
+  ({ children, className, ...props }, ref) => (
     <h5
       ref={ref}
       className={cn('mb-1 font-medium leading-none tracking-tight', className)}
       {...props}
-    />
+    >
+      {children}
+    </h5>
   )
 )
 AlertTitle.displayName = 'AlertTitle'

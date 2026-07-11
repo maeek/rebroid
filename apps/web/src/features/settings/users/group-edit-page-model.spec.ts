@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import { buildGroupUpdateInput, toGroupDraft, type GroupDraft } from './group-edit-page-model'
 import type { UserGroup } from '@/server/auth/user'
 

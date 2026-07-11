@@ -88,7 +88,7 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
         toast({
           title: 'Model ID is required',
           description: 'Select or enter a model before adding it.',
-          variant: 'destructive'
+          variant: 'danger'
         })
         return false
       }
@@ -97,7 +97,7 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
         toast({
           title: 'Model already exists',
           description: normalizedModelId,
-          variant: 'destructive'
+          variant: 'danger'
         })
         return false
       }
@@ -123,7 +123,7 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
         toast({
           title: 'Could not add AI model',
           description: error instanceof Error ? error.message : 'Unknown error',
-          variant: 'destructive'
+          variant: 'danger'
         })
         return false
       }
@@ -150,7 +150,7 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
               toast({
                 title: 'Could not download AI model',
                 description: next.message,
-                variant: 'destructive'
+                variant: 'danger'
               })
             }
           })
@@ -189,7 +189,7 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
       toast({
         title: 'Model ID is required',
         description: 'Enter the Ollama model name to download.',
-        variant: 'destructive'
+        variant: 'danger'
       })
       return
     }
@@ -222,7 +222,7 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
       toast({
         title: 'Could not download AI model',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
       throw error
     } finally {
@@ -236,7 +236,7 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
       toast({
         title: 'Provider is incomplete',
         description: 'Provider ID and base URL are required.',
-        variant: 'destructive'
+        variant: 'danger'
       })
       return
     }
@@ -255,7 +255,7 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
       toast({
         title: 'Could not save AI provider',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsSaving(false)

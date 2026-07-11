@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import {
   clampFirewallPageIndex,
   firewallAllowlistDisplay,
@@ -123,7 +123,7 @@ describe('firewall settings model', () => {
     })
     expect(firewallPolicyResultDisplay(app('a', { resultCode: 'apply_failed' }))).toEqual({
       label: 'apply_failed',
-      variant: 'secondary'
+      variant: 'neutral'
     })
     expect(
       firewallPolicyResultDisplay(
@@ -134,7 +134,7 @@ describe('firewall settings model', () => {
       )
     ).toEqual({
       label: 'pending',
-      variant: 'secondary'
+      variant: 'neutral'
     })
     expect(firewallRestrictionLabel(app('restricted', { restricted: true }))).toBe('Restricted')
     expect(firewallRestrictionLabel(app('open', { restricted: false }))).toBe('Unrestricted')

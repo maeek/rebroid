@@ -217,7 +217,7 @@ export const DisplayViewerEmbed = ({
     <div className='relative h-[min(74dvh,62rem)] min-h-104 w-full overflow-hidden sm:h-[min(86dvh,64rem)] sm:min-h-136'>
       <ViewerActivityKeepalive applicationId={session.applicationId} />
       <Visible when={!session.viewerTargetConnected}>
-        <div className='absolute left-3 right-3 top-3 z-20 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning backdrop-blur-md'>
+        <div className='absolute left-3 right-3 top-3 z-20 rounded-control border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning backdrop-blur-md'>
           Viewer connection could not be confirmed yet.
         </div>
       </Visible>

@@ -17,12 +17,12 @@ import {
 } from '@/components/ui/dialog'
 import { Section } from '@/components/ui/section'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { imageDisplayName } from '@/features/platform/domain/image-display-name'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { formatUtcDate } from '@/lib/format'
 import { removePlatformImageAction } from '@/server/orchestrator/platform/image-actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
+import { imageDisplayName } from '@/shared/model/runtime-image/image-display-name'
 import { DataGrid, DataGridPagination, DataGridToolbar } from '@/shared/ui/data-grid'
 import { PlatformResourceScopeFilter } from './platform-resource-scope-filter'
 import {
@@ -65,7 +65,7 @@ const ImageNameCell = ({ image }: { image: PlatformImage }) => {
         </TooltipTrigger>
         <TooltipContent className='max-w-sm break-all'>{name}</TooltipContent>
       </Tooltip>
-      <div className='truncate text-xs text-muted-foreground'>{secondary || image.shortId}</div>
+      <div className='truncate text-xs text-foreground-muted'>{secondary || image.shortId}</div>
       <RuntimeImageBadges image={image} />
     </div>
   )
@@ -125,7 +125,7 @@ export const RuntimeImagesSection = ({
       toast({
         title: 'Could not remove image',
         description: getDisplayErrorMessage(caughtError),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setBusyId(null)
@@ -199,7 +199,10 @@ export const RuntimeImagesSection = ({
 
   return (
     <>
-      <Section contentClassName='gap-4'>
+      <Section
+        surface='plain'
+        contentClassName='gap-4'
+      >
         <DataGridToolbar
           search={search}
           searchPlaceholder='Search images'
@@ -254,7 +257,7 @@ export const RuntimeImagesSection = ({
                 <>
                   {hasBulkSelection ? (
                     <ContextMenuItem
-                      className='text-destructive focus:text-destructive'
+                      className='text-danger focus:text-danger'
                       disabled={busyId === 'bulk'}
                       onSelect={() => void removeSelectedImages()}
                     >
@@ -269,7 +272,7 @@ export const RuntimeImagesSection = ({
                     </Link>
                   </ContextMenuItem>
                   <ContextMenuItem
-                    className='text-destructive focus:text-destructive'
+                    className='text-danger focus:text-danger'
                     onSelect={() => setPendingRemove(row.original)}
                   >
                     <IconTrash className='mr-2 size-4' />
@@ -301,7 +304,7 @@ export const RuntimeImagesSection = ({
             <DialogTitle>Remove image?</DialogTitle>
             <DialogDescription className='space-y-3'>
               <span className='block'>This removes the selected image from the container engine.</span>
-              <span className='block rounded-md border border-border/60 bg-surface-band/60 px-3 py-2 font-mono text-xs text-foreground break-all'>
+              <span className='block rounded-control border border-surface-border/60 bg-surface-band/60 px-3 py-2 font-mono text-xs text-foreground break-all'>
                 {getImageRemoveDialogLabel(pendingRemove)}
               </span>
               <span className='block'>
@@ -311,7 +314,7 @@ export const RuntimeImagesSection = ({
           </DialogHeader>
           <DialogFooter>
             <Button
-              variant='destructive'
+              variant='danger'
               disabled={!pendingRemove || busyId === pendingRemove.id}
               onClick={() => void removeImage()}
             >

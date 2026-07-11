@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
-import classNames from 'classnames'
+import { cn } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
 import {
   defaultConditionStep,
@@ -94,7 +94,7 @@ export function AutomationStepOutlineListView({
       if (!step) {
         toast({
           title: 'Clipboard does not contain a workflow block',
-          variant: 'destructive'
+          variant: 'danger'
         })
         return
       }
@@ -107,7 +107,7 @@ export function AutomationStepOutlineListView({
       toast({
         title: 'Could not paste block',
         description: error instanceof Error ? error.message : 'Clipboard access failed.',
-        variant: 'destructive'
+        variant: 'danger'
       })
     }
   }
@@ -126,7 +126,7 @@ export function AutomationStepOutlineListView({
   }
 
   return (
-    <section className={classNames('grid min-w-0 content-start gap-3', root ? null : 'gap-2')}>
+    <section className={cn('grid min-w-0 content-start gap-3', root ? null : 'gap-2')}>
       {root ? (
         <div className='flex h-8 items-center justify-between gap-3'>
           <h3 className='text-xl font-medium'>Steps</h3>
@@ -135,8 +135,8 @@ export function AutomationStepOutlineListView({
 
       <div
         ref={setNodeRef}
-        className={classNames(
-          'grid min-w-0 gap-2 rounded-md transition-colors',
+        className={cn(
+          'grid min-w-0 gap-2 rounded-control transition-colors',
           isOver ? 'bg-primary/10 ring-1 ring-primary/40' : null
         )}
       >
@@ -163,7 +163,7 @@ export function AutomationStepOutlineListView({
                       toast({
                         title: 'Could not copy block',
                         description: error instanceof Error ? error.message : 'Clipboard access failed.',
-                        variant: 'destructive'
+                        variant: 'danger'
                       })
                     )
                 }}
@@ -179,7 +179,7 @@ export function AutomationStepOutlineListView({
         </div>
 
         {steps.length === 0 ? (
-          <div className='rounded-md border border-dashed border-border/60 px-3 py-3 text-center text-sm text-foreground-muted'>
+          <div className='rounded-control border border-dashed border-surface-border/60 px-3 py-3 text-center text-sm text-foreground-muted'>
             Drop steps here
           </div>
         ) : null}

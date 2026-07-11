@@ -1,9 +1,9 @@
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Switch } from '@/components/ui/switch'
-import { RuntimeImagePicker } from '@/features/platform/components/runtime-image-picker'
-import { Setting } from '@/shared/ui/settings/setting'
-import type { PlatformImage } from '@/server/orchestrator/platform/types'
+import { RuntimeImagePicker } from '@/shared/ui/runtime-image/runtime-image-picker'
+import { FormField } from '@/components/ui/form-field'
+import type { PlatformImage } from '@/shared/contracts/platform-image'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 const verticalSettingClassName = 'flex-col items-start w-full'
@@ -21,50 +21,51 @@ export const PlatformRuntimeFieldsSection = ({
   return (
     <div className='flex min-w-0 flex-col gap-6'>
       <Section
+        surface='plain'
         title='Runtime defaults'
         titleClassName='pb-4'
         contentClassName='gap-6'
       >
-        <Setting
+        <FormField
           label='API URL'
           description='Read-only base URL used by the Next.js server when proxying requests to the orchestrator.'
           className={verticalSettingClassName}
-          variant='vertical'
+          layout='vertical'
         >
           <Input
             value={settings.orchestratorApiUrl}
             readOnly
           />
-        </Setting>
-        <Setting
+        </FormField>
+        <FormField
           label='Default image'
           description='Base container image used when creating a new app without an explicit image override.'
           className={verticalSettingClassName}
-          variant='vertical'
+          layout='vertical'
         >
           <RuntimeImagePicker
             images={images}
             value={settings.defaultContainerImage}
             onChange={defaultContainerImage => onSettingsChange({ defaultContainerImage })}
           />
-        </Setting>
-        <Setting
+        </FormField>
+        <FormField
           label='Image registry'
           description='Optional registry prefix for unqualified image names. Images with an explicit host are left unchanged.'
           className={verticalSettingClassName}
-          variant='vertical'
+          layout='vertical'
         >
           <Input
             value={settings.dockerImageRegistry ?? ''}
             placeholder='registry.internal.example:5000'
             onChange={event => onSettingsChange({ dockerImageRegistry: event.target.value.trim() || null })}
           />
-        </Setting>
-        <Setting
+        </FormField>
+        <FormField
           label='Default inactivity timeout'
           description='New applications inherit this idle timeout before the orchestrator stops inactive instances.'
           className={verticalSettingClassName}
-          variant='vertical'
+          layout='vertical'
         >
           <div className='flex w-full items-center gap-2'>
             <Input
@@ -83,12 +84,12 @@ export const PlatformRuntimeFieldsSection = ({
             />
             <span className='text-sm text-foreground-muted'>seconds</span>
           </div>
-        </Setting>
-        <Setting
+        </FormField>
+        <FormField
           label='Max APK size'
           description='Maximum APK upload size accepted by the orchestrator and mirrored into the frontend proxy limit.'
           className={verticalSettingClassName}
-          variant='vertical'
+          layout='vertical'
         >
           <div className='flex w-full items-center gap-2'>
             <Input
@@ -104,8 +105,8 @@ export const PlatformRuntimeFieldsSection = ({
             />
             <span className='text-sm text-foreground-muted'>MB</span>
           </div>
-        </Setting>
-        <Setting
+        </FormField>
+        <FormField
           label='Remove app data on delete'
           description='Deleting an app also removes its persistent storage volume and stored APK data.'
           className='w-full py-3'
@@ -114,7 +115,7 @@ export const PlatformRuntimeFieldsSection = ({
             checked={settings.removeDataOnDelete}
             onCheckedChange={removeDataOnDelete => onSettingsChange({ removeDataOnDelete })}
           />
-        </Setting>
+        </FormField>
       </Section>
     </div>
   )

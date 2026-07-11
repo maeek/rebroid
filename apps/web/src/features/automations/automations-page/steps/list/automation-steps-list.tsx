@@ -227,7 +227,7 @@ export function AutomationStepsList({
             </div>
           </div>
           {hasInvalidSteps ? (
-            <div className='rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive'>
+            <div className='rounded-control border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger'>
               Some invalid steps were hidden to keep the visual editor stable. Fix the YAML before saving.
             </div>
           ) : null}

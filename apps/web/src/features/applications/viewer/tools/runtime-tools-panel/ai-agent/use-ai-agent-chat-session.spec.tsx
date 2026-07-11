@@ -1,27 +1,23 @@
-import { beforeEach, describe, expect, it, jest } from '@jest/globals'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import * as actions from '@/server/orchestrator/automations/automation-run-actions'
 import { useAiAgentChatSession } from './use-ai-agent-chat-session'
+import * as modelSettings from './use-ai-agent-model-settings'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { AutomationRun, AutomationRunEvent } from '@/server/orchestrator/automations/types'
 
-jest.mock('@/server/orchestrator/automations/automation-run-actions', () => ({
-  cancelAutomationRunAction: jest.fn(),
-  clearAdHocAiAutomationRunsAction: jest.fn(),
-  createAutomationRunEventStreamUrlAction: jest.fn(),
-  listAdHocAiAutomationRunHistoryAction: jest.fn(),
-  listAutomationRunEventsAction: jest.fn(),
-  runAdHocAiAutomationAction: jest.fn()
+vi.mock('@/server/orchestrator/automations/automation-run-actions', () => ({
+  cancelAutomationRunAction: vi.fn(),
+  clearAdHocAiAutomationRunsAction: vi.fn(),
+  createAutomationRunEventStreamUrlAction: vi.fn(),
+  listAdHocAiAutomationRunHistoryAction: vi.fn(),
+  listAutomationRunEventsAction: vi.fn(),
+  runAdHocAiAutomationAction: vi.fn()
 }))
 
-jest.mock('./use-ai-agent-model-settings', () => ({
-  useAiAgentModelSettings: jest.fn()
+vi.mock('./use-ai-agent-model-settings', () => ({
+  useAiAgentModelSettings: vi.fn()
 }))
-
-const actions = jest.requireMock<typeof import('@/server/orchestrator/automations/automation-run-actions')>(
-  '@/server/orchestrator/automations/automation-run-actions'
-)
-
-const modelSettings = jest.requireMock<typeof import('./use-ai-agent-model-settings')>('./use-ai-agent-model-settings')
 
 const app = {
   id: 'app_1',
@@ -63,10 +59,10 @@ const userEvent = {
 
 describe('useAiAgentChatSession', () => {
   beforeEach(() => {
-    jest.mocked(actions.listAdHocAiAutomationRunHistoryAction).mockResolvedValue([{ run, events: [userEvent] }])
-    jest.mocked(actions.listAutomationRunEventsAction).mockResolvedValue([])
-    jest.mocked(actions.createAutomationRunEventStreamUrlAction).mockResolvedValue('ws://localhost/events')
-    jest.mocked(modelSettings.useAiAgentModelSettings).mockReturnValue({
+    vi.mocked(actions.listAdHocAiAutomationRunHistoryAction).mockResolvedValue([{ run, events: [userEvent] }])
+    vi.mocked(actions.listAutomationRunEventsAction).mockResolvedValue([])
+    vi.mocked(actions.createAutomationRunEventStreamUrlAction).mockResolvedValue('ws://localhost/events')
+    vi.mocked(modelSettings.useAiAgentModelSettings).mockReturnValue({
       adHocTimeoutMinutes: 5,
       adHocTimeoutMs: 300_000,
       catalog: [],
@@ -74,7 +70,7 @@ describe('useAiAgentChatSession', () => {
       isCheckingHealth: false,
       modelIsValid: true,
       plannerCatalog: [],
-      recheckHealth: jest.fn<() => Promise<void>>(() => Promise.resolve()),
+      recheckHealth: vi.fn<() => Promise<void>>(() => Promise.resolve()),
       selectedModel: {
         id: 'model_1',
         label: 'Model',
@@ -87,11 +83,11 @@ describe('useAiAgentChatSession', () => {
       selectedVisionModel: undefined,
       selectedVisionProvider: undefined,
       selectionMessage: null,
-      setModelId: jest.fn(),
-      setProviderId: jest.fn(),
-      setVisionModelId: jest.fn(),
-      setVisionProviderId: jest.fn(),
-      setTimeoutMinutesInput: jest.fn(),
+      setModelId: vi.fn(),
+      setProviderId: vi.fn(),
+      setVisionModelId: vi.fn(),
+      setVisionProviderId: vi.fn(),
+      setTimeoutMinutesInput: vi.fn(),
       timeoutMinutesInput: '5',
       visionCatalog: []
     })
@@ -102,7 +98,7 @@ describe('useAiAgentChatSession', () => {
     const clearPromise = new Promise<{ cleared: number }>(resolve => {
       resolveClear = resolve
     })
-    jest.mocked(actions.clearAdHocAiAutomationRunsAction).mockReturnValue(clearPromise)
+    vi.mocked(actions.clearAdHocAiAutomationRunsAction).mockReturnValue(clearPromise)
 
     const { result } = renderHook(() => useAiAgentChatSession({ app }))
     await waitFor(() => expect(result.current.turns).toHaveLength(1))
@@ -129,7 +125,7 @@ describe('useAiAgentChatSession', () => {
     let resolveHistory: (
       value: Awaited<ReturnType<typeof actions.listAdHocAiAutomationRunHistoryAction>>
     ) => void = () => undefined
-    jest.mocked(actions.listAdHocAiAutomationRunHistoryAction).mockReturnValue(
+    vi.mocked(actions.listAdHocAiAutomationRunHistoryAction).mockReturnValue(
       new Promise(resolve => {
         resolveHistory = resolve
       })
@@ -156,7 +152,7 @@ describe('useAiAgentChatSession', () => {
     let resolveHistory: (
       value: Awaited<ReturnType<typeof actions.listAdHocAiAutomationRunHistoryAction>>
     ) => void = () => undefined
-    jest.mocked(actions.listAdHocAiAutomationRunHistoryAction).mockReturnValue(
+    vi.mocked(actions.listAdHocAiAutomationRunHistoryAction).mockReturnValue(
       new Promise(resolve => {
         resolveHistory = resolve
       })
@@ -180,7 +176,7 @@ describe('useAiAgentChatSession', () => {
   })
 
   it('starts an explicitly approved follow-up with one-run shell escalation', async () => {
-    jest.mocked(actions.runAdHocAiAutomationAction).mockResolvedValue(run)
+    vi.mocked(actions.runAdHocAiAutomationAction).mockResolvedValue(run)
     const { result } = renderHook(() => useAiAgentChatSession({ app }))
     await waitFor(() => expect(result.current.turns).toHaveLength(1))
 
@@ -202,7 +198,7 @@ describe('useAiAgentChatSession', () => {
     const { result } = renderHook(() => useAiAgentChatSession({ app: { ...app, running: false } }))
     await waitFor(() => expect(result.current.turns).toHaveLength(1))
 
-    await act(async () => {
+    act(() => {
       result.current.setPrompt('Open settings')
     })
 
@@ -227,7 +223,7 @@ const createTranscriptElement = ({
   Object.defineProperty(element, 'clientHeight', { configurable: true, value: clientHeight })
   Object.defineProperty(element, 'scrollHeight', { configurable: true, value: scrollHeight })
   element.scrollTop = scrollTop
-  const scrollTo = jest.fn((options?: ScrollToOptions) => {
+  const scrollTo = vi.fn((options?: ScrollToOptions) => {
     if (typeof options?.top === 'number') element.scrollTop = options.top
   })
   Object.defineProperty(element, 'scrollTo', { configurable: true, value: scrollTo })

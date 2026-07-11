@@ -79,13 +79,11 @@ export function AutomationTriggersTable({
             <div className='grid gap-1'>
               <div className='flex flex-wrap items-center gap-2'>
                 <span className='font-medium text-foreground'>{trigger.name}</span>
-                <Badge variant='secondary'>Schedule</Badge>
+                <Badge variant='neutral'>Schedule</Badge>
                 <Badge variant={statusVariant(trigger.lastStatus)}>{statusLabel(trigger.lastStatus)}</Badge>
               </div>
               <span className='truncate text-sm text-foreground-muted'>{automation?.name ?? trigger.automationId}</span>
-              {trigger.lastError ? (
-                <span className='truncate text-sm text-destructive'>{trigger.lastError}</span>
-              ) : null}
+              {trigger.lastError ? <span className='truncate text-sm text-danger'>{trigger.lastError}</span> : null}
             </div>
           )
         }
@@ -196,7 +194,7 @@ export function AutomationTriggersTable({
                   Disable selected ({selectedIds.size})
                 </ContextMenuItem>
                 <ContextMenuItem
-                  className='text-destructive focus:text-destructive'
+                  className='text-danger focus:text-danger'
                   onSelect={onDeleteSelected}
                 >
                   <IconTrash className='mr-2 size-4' />
@@ -213,7 +211,7 @@ export function AutomationTriggersTable({
               Run now
             </ContextMenuItem>
             <ContextMenuItem
-              className='text-destructive focus:text-destructive'
+              className='text-danger focus:text-danger'
               onSelect={() => onDelete(row.original)}
             >
               <IconTrash className='mr-2 size-4' />

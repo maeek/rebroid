@@ -129,7 +129,7 @@ export const DataGridTable = <TData,>({
             >
               {emptyState ?? (
                 <div className='mx-auto flex max-w-md flex-col items-center text-center'>
-                  <div className='mb-3 rounded-full border border-border/70 bg-surface-panel/70 p-3'>
+                  <div className='mb-3 rounded-full border border-surface-border/70 bg-surface-panel/70 p-3'>
                     <IconSearch className='size-6 text-foreground-muted' />
                   </div>
                   <div className='font-medium'>No rows found</div>

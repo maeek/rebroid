@@ -39,7 +39,7 @@ export const AiPromptComposer = ({
     <div
       className={cn(
         variant === 'panel'
-          ? 'rounded-2xl border border-border/75 bg-surface-panel/72 p-2.5 shadow-[0_18px_48px_-30px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.035)] transition-[border-color,box-shadow,background-color] duration-150 focus-within:border-primary/45 focus-within:bg-surface-panel focus-within:shadow-[0_20px_52px_-28px_hsl(var(--primary)/0.28)]'
+          ? 'rounded-feature border border-surface-border/75 bg-surface-panel/72 p-2.5 shadow-[0_18px_48px_-30px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.035)] transition-[border-color,box-shadow,background-color] duration-150 focus-within:border-primary/45 focus-within:bg-surface-panel focus-within:shadow-[0_20px_52px_-28px_hsl(var(--primary)/0.28)]'
           : 'p-0',
         className
       )}
@@ -72,14 +72,14 @@ export const AiPromptComposer = ({
           {visibleErrors.map(message => (
             <div
               key={message}
-              className='text-xs text-destructive'
+              className='text-xs text-danger'
             >
               {message}
             </div>
           ))}
         </div>
       ) : null}
-      <div className='mt-2 flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-border/40 pt-2'>
+      <div className='mt-2 flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-surface-border/40 pt-2'>
         <div className='min-w-0 text-xs text-foreground-muted'>{metadata}</div>
         <div className='flex min-w-0 flex-wrap items-center justify-end gap-2'>
           {modelControl}

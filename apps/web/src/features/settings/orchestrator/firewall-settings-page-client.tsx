@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
 import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { FirewallSettings } from './firewall-settings'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
 import type { ServiceHealth } from '@/server/orchestrator/diagnostics/types'
@@ -24,12 +24,12 @@ export const FirewallSettingsPageClient = ({
   }
 
   return (
-    <ProtectedStackPageLayout mainClassName='gap-2'>
+    <StandardPage className='gap-2'>
       <PlatformPageHeader
         title='Network policies'
         description='Apply outbound network restrictions to application containers.'
         breadcrumbRoot={{ label: 'Security' }}
-        titleActions={
+        actions={
           <PlatformPageRefreshButton
             isRefreshing={isRefreshing}
             onRefresh={refresh}
@@ -44,6 +44,6 @@ export const FirewallSettingsPageClient = ({
           onRefreshComplete={() => setIsRefreshing(false)}
         />
       </section>
-    </ProtectedStackPageLayout>
+    </StandardPage>
   )
 }

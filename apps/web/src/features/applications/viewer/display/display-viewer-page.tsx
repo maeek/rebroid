@@ -68,7 +68,7 @@ export async function DisplayViewerPage({
     <main className='relative min-h-screen overflow-hidden bg-background'>
       <ViewerActivityKeepalive applicationId={session.applicationId} />
       <Visible when={!session.viewerTargetConnected}>
-        <div className='absolute left-3 right-3 top-3 z-10 rounded-md border border-destructive/35 bg-destructive/20 px-3 py-2 text-xs text-foreground backdrop-blur-md'>
+        <div className='absolute left-3 right-3 top-3 z-10 rounded-control border border-danger/35 bg-danger/20 px-3 py-2 text-xs text-foreground backdrop-blur-md'>
           {state.warningBanner}
         </div>
       </Visible>

@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import { castingErrorMessage, filterSessions, sortSessions } from './casting-sidecar-utils'
 import type { DisplaySidecarSession } from '@/server/orchestrator/diagnostics/types'
 

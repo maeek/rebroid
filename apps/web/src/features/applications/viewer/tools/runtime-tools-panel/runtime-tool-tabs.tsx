@@ -37,7 +37,7 @@ export const RuntimeToolTabs = ({
     <div
       role='tablist'
       aria-label='Runtime tools'
-      className='scrollbar-thin flex w-full min-w-0 items-center gap-1 overflow-x-auto rounded-xl border border-border/60 bg-surface-band/28 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]'
+      className='scrollbar-thin flex w-full min-w-0 items-center gap-1 overflow-x-auto rounded-panel border border-surface-border/60 bg-surface-band/28 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]'
     >
       {tools.map(tool => (
         <button
@@ -52,16 +52,16 @@ export const RuntimeToolTabs = ({
           onClick={() => onSelectTool(tool.id)}
           onKeyDown={event => handleToolTabKeyDown(event, tool.id)}
           className={cn(
-            'group flex shrink-0 items-center gap-2 rounded-lg border border-transparent px-3.5 py-2 text-sm font-medium whitespace-nowrap text-foreground-muted transition-[color,background-color,border-color,box-shadow,transform] duration-150 hover:bg-surface-panel/55 hover:text-foreground active:scale-[0.98] focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none',
+            'group flex shrink-0 items-center gap-2 rounded-panel border border-transparent px-3.5 py-2 text-sm font-medium whitespace-nowrap text-foreground-muted transition-[color,background-color,border-color,box-shadow,transform] duration-150 hover:bg-surface-panel/55 hover:text-foreground active:scale-[0.98] focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none',
             {
-              'border-border/65 bg-surface-panel text-foreground shadow-[0_8px_24px_-18px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.04)]':
+              'border-surface-border/65 bg-surface-panel text-foreground shadow-[0_8px_24px_-18px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.04)]':
                 selectedToolId === tool.id
             }
           )}
         >
           <span
             className={cn(
-              'flex size-6 items-center justify-center rounded-md text-foreground-muted transition-colors group-hover:text-foreground',
+              'flex size-6 items-center justify-center rounded-control text-foreground-muted transition-colors group-hover:text-foreground',
               selectedToolId === tool.id && 'bg-primary/10 text-primary'
             )}
           >

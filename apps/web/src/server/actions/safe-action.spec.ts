@@ -1,18 +1,23 @@
-import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals'
+import * as navigation from 'next/navigation'
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
+import * as requestIds from '@/server/observability/request-id'
 import { OrchestratorRequestError } from '@/server/orchestrator/request'
 
-jest.mock('next/navigation', () => ({
-  unstable_rethrow: jest.fn()
+vi.mock('next/navigation', () => ({
+  unstable_rethrow: vi.fn()
+}))
+vi.mock('@/server/observability/request-id', () => ({
+  getRequestId: vi.fn(() => Promise.resolve('request-1'))
 }))
 
-const navigation = jest.requireMock<typeof import('next/navigation')>('next/navigation')
-let consoleErrorSpy: jest.SpiedFunction<typeof console.error>
+let consoleErrorSpy: MockInstance<typeof console.error>
 
 beforeEach(() => {
-  jest.mocked(navigation.unstable_rethrow).mockImplementation((error: unknown) => {
+  vi.mocked(requestIds.getRequestId).mockResolvedValue('request-1')
+  vi.mocked(navigation.unstable_rethrow).mockImplementation((error: unknown) => {
     if (error instanceof Error && error.message === 'NEXT_REDIRECT') throw error
   })
-  consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined)
+  consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
 })
 
 afterEach(() => {
@@ -23,7 +28,11 @@ describe('safe server actions', () => {
   it('returns successful action data', async () => {
     const { runSafeAction } = await import('./safe-action')
 
-    await expect(runSafeAction(() => 'saved')).resolves.toEqual({ ok: true, data: 'saved' })
+    await expect(runSafeAction(() => 'saved')).resolves.toEqual({
+      ok: true,
+      data: 'saved',
+      requestId: 'request-1'
+    })
   })
 
   it('returns specific validation messages', async () => {
@@ -35,7 +44,8 @@ describe('safe server actions', () => {
       })
     ).resolves.toEqual({
       ok: false,
-      error: { message: 'Current password is incorrect.' }
+      requestId: 'request-1',
+      error: { code: 'internal', message: 'Current password is incorrect.', requestId: 'request-1' }
     })
   })
 
@@ -48,7 +58,13 @@ describe('safe server actions', () => {
       })
     ).resolves.toEqual({
       ok: false,
-      error: { message: 'Docker image is still used by a container.', status: 409 }
+      requestId: 'request-1',
+      error: {
+        code: 'conflict',
+        message: 'Docker image is still used by a container.',
+        requestId: 'request-1',
+        status: 409
+      }
     })
   })
 
@@ -66,7 +82,8 @@ describe('safe server actions', () => {
       )
     ).resolves.toEqual({
       ok: false,
-      error: { message: 'Could not finish action.' }
+      requestId: 'request-1',
+      error: { code: 'internal', message: 'Could not finish action.', requestId: 'request-1' }
     })
   })
 
@@ -82,7 +99,8 @@ describe('safe server actions', () => {
       )
     ).resolves.toEqual({
       ok: false,
-      error: { message: 'Could not finish action.' }
+      requestId: 'request-1',
+      error: { code: 'internal', message: 'Could not finish action.', requestId: 'request-1' }
     })
   })
 

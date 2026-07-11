@@ -65,7 +65,7 @@ export const GroupsSection = ({
       cell: ({ row }) => (
         <Link href={`/security/groups/${row.original.id}`}>
           <div className='font-medium hover:underline hover:text-primary'>{row.original.name}</div>
-          <div className='text-xs text-muted-foreground'>{row.original.description}</div>
+          <div className='text-xs text-foreground-muted'>{row.original.description}</div>
         </Link>
       )
     },
@@ -90,7 +90,7 @@ export const GroupsSection = ({
       toast({
         title: 'Could not create group',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsSaving(false)
@@ -117,7 +117,7 @@ export const GroupsSection = ({
           ? {
               title: 'Some groups could not be deleted',
               description: firstError ?? `${failedCount} delete request${failedCount === 1 ? '' : 's'} failed.`,
-              variant: 'destructive'
+              variant: 'danger'
             }
           : { title: 'Selected groups deleted' }
       )
@@ -129,12 +129,13 @@ export const GroupsSection = ({
   return (
     <>
       <Section
+        surface='plain'
         title='Groups'
         titleClassName='pb-2'
         contentClassName='gap-3'
       >
         <Section
-          boxed
+          surface='panel'
           contentClassName='gap-3'
         >
           <p className='text-sm text-foreground-muted'>
@@ -159,11 +160,11 @@ export const GroupsSection = ({
           </div>
         </Section>
         {selectedGroups.length > 0 ? (
-          <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-surface-border bg-surface-panel/50 px-4 py-3 text-sm'>
+          <div className='flex flex-wrap items-center justify-between gap-3 rounded-panel border border-surface-border bg-surface-panel/50 px-4 py-3 text-sm'>
             <span className='text-foreground-muted'>{selectedGroups.length} selected</span>
             <Button
               type='button'
-              variant='destructive'
+              variant='danger'
               disabled={isSaving}
               onClick={() => setPendingDeleteGroups(selectedGroups)}
             >
@@ -195,7 +196,7 @@ export const GroupsSection = ({
               <>
                 {hasBulkSelection ? (
                   <ContextMenuItem
-                    className='text-destructive focus:text-destructive'
+                    className='text-danger focus:text-danger'
                     disabled={isSaving}
                     onSelect={() => setPendingDeleteGroups(selectedGroups)}
                   >
@@ -207,7 +208,7 @@ export const GroupsSection = ({
                   <Link href={`/security/groups/${row.original.id}`}>Open group</Link>
                 </ContextMenuItem>
                 <ContextMenuItem
-                  className='text-destructive focus:text-destructive'
+                  className='text-danger focus:text-danger'
                   disabled={isSaving}
                   onSelect={() => setPendingDeleteGroups([row.original])}
                 >
@@ -242,7 +243,7 @@ export const GroupsSection = ({
           </DialogHeader>
           <DialogFooter>
             <Button
-              variant='destructive'
+              variant='danger'
               disabled={pendingDeleteGroups.length === 0 || isSaving}
               onClick={() => void deleteGroups(pendingDeleteGroups)}
             >

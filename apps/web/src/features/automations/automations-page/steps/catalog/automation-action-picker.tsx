@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { IconCheck, IconChevronDown, IconSearch } from '@tabler/icons-react'
-import classNames from 'classnames'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -58,11 +58,11 @@ export function AutomationActionPicker({
       <PopoverTrigger asChild>
         <Button
           type='button'
-          variant='input'
+          variant='outline'
           className='h-auto min-h-11 w-full justify-between gap-3 px-3 py-2 text-left'
         >
           <span className='flex min-w-0 items-center gap-3'>
-            <span className='flex size-8 shrink-0 items-center justify-center rounded-md bg-background/70 text-primary'>
+            <span className='flex size-8 shrink-0 items-center justify-center rounded-control bg-background/70 text-primary'>
               <AutomationCommandIcon
                 uses={value}
                 className='size-5'
@@ -113,13 +113,13 @@ export function AutomationActionPicker({
                       <button
                         key={command.uses}
                         type='button'
-                        className={classNames(
-                          'grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-md px-2 py-2 text-left transition',
-                          selected ? 'bg-primary/15 text-foreground' : 'hover:bg-secondary/60'
+                        className={cn(
+                          'grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-control px-2 py-2 text-left transition',
+                          selected ? 'bg-primary/15 text-foreground' : 'hover:bg-surface-band/60'
                         )}
                         onClick={() => selectAction(command.uses)}
                       >
-                        <span className='flex size-8 items-center justify-center rounded-md bg-background/70 text-primary'>
+                        <span className='flex size-8 items-center justify-center rounded-control bg-background/70 text-primary'>
                           <AutomationCommandIcon
                             uses={command.uses}
                             className='size-5'

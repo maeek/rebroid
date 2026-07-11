@@ -1,5 +1,5 @@
 import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { ActivityEventsTable } from '../../activity-events-table'
 import { loadSecurityAuditLogPageData, type AuditSearchParams } from './page-data.server'
 
@@ -9,7 +9,7 @@ export async function SecurityAuditLogPageEntry({ searchParams }: { searchParams
   )
 
   return (
-    <ProtectedStackPageLayout mainClassName='gap-2'>
+    <StandardPage className='gap-2'>
       <PlatformPageHeader
         title='Audit log'
         description='Review recent administrative and application operations.'
@@ -24,6 +24,6 @@ export async function SecurityAuditLogPageEntry({ searchParams }: { searchParams
           auditRetentionDays={auditRetentionDays}
         />
       </section>
-    </ProtectedStackPageLayout>
+    </StandardPage>
   )
 }

@@ -1,5 +1,5 @@
-import { describe, expect, it, jest } from '@jest/globals'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { ChatEventView } from './chat-event-view'
 import type { AutomationRunEvent } from '@/server/orchestrator/automations/types'
 
@@ -36,7 +36,7 @@ describe('ChatEventView', () => {
   })
 
   it('offers one-run approval for allowlisted escalation requests', () => {
-    const onApproveEscalation = jest.fn()
+    const onApproveEscalation = vi.fn()
     render(
       <ChatEventView
         event={event('ai.guardrail.triggered', 'Raw ADB shell is disabled for this run.', {

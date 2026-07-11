@@ -51,7 +51,7 @@ export const ViewerPlaceholderScreen = ({
           <ImagePullProgress
             statusMessage={app?.statusMessage}
             progress={app?.imagePullProgress}
-            className='w-full rounded-lg border border-border/60 bg-background/60 px-4 py-3 text-left backdrop-blur-xs'
+            className='w-full rounded-panel border border-surface-border/60 bg-background/60 px-4 py-3 text-left backdrop-blur-xs'
           />
         </Visible>
       </div>
@@ -134,7 +134,7 @@ const ViewerPlaceholderStatusIcon = ({
 }) => (
   <div
     className={cn(
-      'flex size-12 items-center justify-center rounded-full border border-border/70 bg-background/70',
+      'flex size-12 items-center justify-center rounded-full border border-surface-border/70 bg-background/70',
       toneClassName
     )}
   >
@@ -155,9 +155,12 @@ const ViewerPlaceholderStartButton = ({
 }) => (
   <Button
     type='button'
-    size='icon'
+    size='icon-md'
     variant='secondary'
-    className={cn('size-12 rounded-full border border-border/70 bg-background/70 hover:bg-primary/20', toneClassName)}
+    className={cn(
+      'size-12 rounded-full border border-surface-border/70 bg-background/70 hover:bg-primary/20',
+      toneClassName
+    )}
     disabled={isStarting}
     onClick={onStart}
     aria-label={`Start ${appName}`}

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { IconMenu2, IconX } from '@tabler/icons-react'
-import classNames from 'classnames'
+import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer'
 import { Visible } from '@/components/ui/visible'
@@ -23,7 +23,7 @@ export const TopBarProtected = ({ initialUser }: { initialUser: ShellUser }) => 
         aria-hidden='true'
         className='pointer-events-none absolute inset-x-0 bottom-0 backdrop-blur-xl h-full'
       />
-      <div className={classNames(sectionClasses, 'relative z-10 justify-start items-center')}>
+      <div className={cn(sectionClasses, 'relative z-10 justify-start items-center')}>
         <Drawer
           open={drawerOpen}
           onOpenChange={setDrawerOpen}
@@ -32,7 +32,7 @@ export const TopBarProtected = ({ initialUser }: { initialUser: ShellUser }) => 
             <button
               type='button'
               aria-label={drawerOpen ? 'Close navigation' : 'Open navigation'}
-              className='inline-flex size-10 shrink-0 items-center justify-center rounded-md text-foreground-muted transition hover:bg-secondary/70 hover:text-foreground active:scale-95 lg:hidden'
+              className='inline-flex size-10 shrink-0 items-center justify-center rounded-control text-foreground-muted transition hover:bg-surface-band/70 hover:text-foreground active:scale-95 lg:hidden'
             >
               <Visible when={drawerOpen}>
                 <IconX className='size-5' />
@@ -42,7 +42,7 @@ export const TopBarProtected = ({ initialUser }: { initialUser: ShellUser }) => 
               </Visible>
             </button>
           </DrawerTrigger>
-          <DrawerContent className='max-h-[85dvh] overflow-hidden rounded-t-xl border-border/80 bg-background/95'>
+          <DrawerContent className='max-h-[85dvh] overflow-hidden rounded-t-xl border-surface-border/80 bg-background/95'>
             <DrawerTitle className='sr-only'>Navigation</DrawerTitle>
             <DrawerDescription className='sr-only'>Navigate between apps and settings pages.</DrawerDescription>
             <div className='scrollbar-thin max-h-[80dvh] overflow-x-hidden overflow-y-auto'>
@@ -58,12 +58,12 @@ export const TopBarProtected = ({ initialUser }: { initialUser: ShellUser }) => 
           href='/'
           className='min-w-0'
         >
-          <span className='block truncate text-xl font-black underline underline-offset-4 decoration-primary decoration-solid'>
+          <span className='block truncate text-xl font-bold underline underline-offset-4 decoration-primary decoration-solid'>
             Rebroid
           </span>
         </Link>
       </div>
-      <div className={classNames(sectionClasses, 'relative z-10 justify-end')}>
+      <div className={cn(sectionClasses, 'relative z-10 justify-end')}>
         <OrchestratorStatus />
         <TopBarNotifications />
         <TopBarAccount initialUser={initialUser} />

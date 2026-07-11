@@ -59,7 +59,7 @@ export const StartProfileDialog = () => {
             Cancel
           </Button>
           <Button
-            variant='update'
+            variant='primary'
             disabled={!app || isRunningAction}
             onClick={onStart}
           >

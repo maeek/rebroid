@@ -23,31 +23,31 @@ export function DetailsTable({
   return (
     <ul className='divide-y divide-border'>
       <li className='p-2 flex justify-between gap-2 text-right text-sm'>
-        <span className='font-semibold'>Platform:</span> {systemUtilization.platform}
+        <span className='font-medium'>Platform:</span> {systemUtilization.platform}
       </li>
       <li className='p-2 flex justify-between gap-2 text-right text-sm'>
-        <span className='font-semibold'>Architecture:</span> {systemUtilization.architecture}
+        <span className='font-medium'>Architecture:</span> {systemUtilization.architecture}
       </li>
       <li className='p-2 flex justify-between gap-2 text-right text-sm'>
-        <span className='font-semibold'>CPU:</span> {systemUtilization.cpu}
+        <span className='font-medium'>CPU:</span> {systemUtilization.cpu}
       </li>
       <li className='p-2 flex justify-between gap-2 text-right text-sm'>
-        <span className='font-semibold'>CPU Cores:</span> {systemUtilization.cpuCores}
+        <span className='font-medium'>CPU Cores:</span> {systemUtilization.cpuCores}
       </li>
       <li className='p-2 flex justify-between gap-2 text-right text-sm'>
-        <span className='font-semibold'>CPU Usage:</span> {systemUtilization.cpuUsage}
+        <span className='font-medium'>CPU Usage:</span> {systemUtilization.cpuUsage}
       </li>
       <li className='p-2 flex justify-between gap-2 text-right text-sm'>
-        <span className='font-semibold'>Total Memory:</span> {systemUtilization.totalMemory}
+        <span className='font-medium'>Total Memory:</span> {systemUtilization.totalMemory}
       </li>
       <li className='p-2 flex justify-between gap-2 text-right text-sm'>
-        <span className='font-semibold'>Free Memory:</span> {systemUtilization.freeMemory}
+        <span className='font-medium'>Free Memory:</span> {systemUtilization.freeMemory}
       </li>
       <li className='p-2 flex justify-between gap-2 text-right text-sm'>
-        <span className='font-semibold'>Memory Usage:</span> {systemUtilization.memoryUsage}
+        <span className='font-medium'>Memory Usage:</span> {systemUtilization.memoryUsage}
       </li>
       <li className='p-2 flex justify-between gap-2 text-right text-sm'>
-        <span className='font-semibold'>Uptime:</span> {systemUtilization.uptime}
+        <span className='font-medium'>Uptime:</span> {systemUtilization.uptime}
       </li>
     </ul>
   )

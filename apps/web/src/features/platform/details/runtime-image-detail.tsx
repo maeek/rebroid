@@ -47,7 +47,7 @@ export const RuntimeImageDetail = ({ details }: { details: PlatformImageDetails 
       toast({
         title: 'Could not remove image',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsRemoving(false)
@@ -59,19 +59,19 @@ export const RuntimeImageDetail = ({ details }: { details: PlatformImageDetails 
       <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
         <Section
           title='Overview'
-          boxed
+          surface='panel'
           contentClassName='gap-5'
         >
           <div className='flex flex-wrap items-center justify-between gap-4'>
             <div className='flex min-w-0 flex-col gap-2'>
               <div className='flex flex-wrap items-center gap-2'>
-                <Badge variant='secondary'>image</Badge>
-                <span className='font-mono text-xs text-muted-foreground'>{image.shortId}</span>
+                <Badge variant='neutral'>image</Badge>
+                <span className='font-mono text-xs text-foreground-muted'>{image.shortId}</span>
               </div>
             </div>
             <Button
               type='button'
-              variant='destructive'
+              variant='danger'
               disabled={isRemoving}
               onClick={() => setRemoveDialogOpen(true)}
             >
@@ -112,12 +112,13 @@ export const RuntimeImageDetail = ({ details }: { details: PlatformImageDetails 
         </Section>
 
         <Section
+          surface='plain'
           title='Related containers'
           contentClassName='gap-4'
           titleClassName='pb-2'
         >
           <Visible when={details.relatedContainers.length > 0}>
-            <div className='overflow-hidden rounded-lg border border-border/60 bg-surface-band/35'>
+            <div className='overflow-hidden rounded-panel border border-surface-border/60 bg-surface-band/35'>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -158,7 +159,7 @@ export const RuntimeImageDetail = ({ details }: { details: PlatformImageDetails 
 
         <Section
           title='Labels'
-          boxed
+          surface='panel'
           contentClassName='gap-4'
           titleClassName='pb-4'
         >
@@ -167,7 +168,7 @@ export const RuntimeImageDetail = ({ details }: { details: PlatformImageDetails 
 
         <Section
           title='Raw inspect'
-          boxed
+          surface='panel'
           contentClassName='gap-4'
         >
           <PlatformJsonBlock value={details.inspect} />
@@ -186,7 +187,7 @@ export const RuntimeImageDetail = ({ details }: { details: PlatformImageDetails 
           </DialogHeader>
           <DialogFooter>
             <Button
-              variant='destructive'
+              variant='danger'
               disabled={isRemoving}
               onClick={() => void removeImage()}
             >

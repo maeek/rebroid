@@ -50,7 +50,7 @@ export const LogsConsole = ({
       toast({
         title: 'Could not copy logs',
         description: 'The browser did not allow clipboard access.',
-        variant: 'destructive'
+        variant: 'danger'
       })
     }
   }
@@ -84,14 +84,14 @@ export const LogsConsole = ({
       </div>
       <pre
         className={cn(
-          'min-h-0 overflow-auto rounded-md border border-border/45 bg-surface-band/55 p-4 font-mono text-xs leading-5 text-foreground-muted supports-[backdrop-filter]:bg-background/34',
+          'min-h-0 overflow-auto rounded-control border border-surface-border/45 bg-surface-band/55 p-4 font-mono text-xs leading-5 text-foreground-muted supports-[backdrop-filter]:bg-background/34',
           outputClassName
         )}
       >
         {output || emptyMessage}
       </pre>
       <Visible when={log}>
-        <p className='text-xs text-muted-foreground'>
+        <p className='text-xs text-foreground-muted'>
           {collectedAtPrefix}{' '}
           {log?.collectedAt
             ? formatCollectedAt

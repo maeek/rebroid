@@ -9,7 +9,7 @@ import type { AutomationRun, AutomationRunStatus } from '@/server/orchestrator/a
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
 
 const statusVariant = (status: AutomationRunStatus) =>
-  status === 'failed' || status === 'canceled' ? 'destructive' : status === 'success' ? 'status' : 'secondary'
+  status === 'failed' || status === 'canceled' ? 'danger' : status === 'success' ? 'success' : 'neutral'
 
 const dateLabel = (value: string | null) =>
   value
@@ -156,9 +156,7 @@ export function AutomationTracesSection({
             >
               {row.original.status}
             </Badge>
-            {row.original.error ? (
-              <span className='truncate text-xs text-destructive'>{row.original.error}</span>
-            ) : null}
+            {row.original.error ? <span className='truncate text-xs text-danger'>{row.original.error}</span> : null}
           </div>
         )
       }

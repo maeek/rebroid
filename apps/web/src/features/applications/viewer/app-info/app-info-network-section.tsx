@@ -37,7 +37,7 @@ const NetworkPolicyEnabledBadge = ({ enabled }: { enabled: boolean }) => (
     <TooltipTrigger asChild>
       <span>
         <Badge
-          variant={enabled ? 'status' : 'secondary'}
+          variant={enabled ? 'success' : 'neutral'}
           className='capitalize'
         >
           {enabled ? 'enabled' : 'disabled'}
@@ -53,7 +53,7 @@ const NetworkPolicyStatusBadge = ({ app }: { app: AppDefinition }) => (
     <TooltipTrigger asChild>
       <span>
         <Badge
-          variant={app.networkPolicyResult?.status === 'error' ? 'destructive' : 'secondary'}
+          variant={app.networkPolicyResult?.status === 'error' ? 'danger' : 'neutral'}
           className='capitalize'
         >
           {getPolicyStatusText(app)}
@@ -172,7 +172,7 @@ const showInvalidCidrToast = (value: string) => {
   toast({
     title: 'Invalid CIDR',
     description: `${value} is not a valid IPv4 address or CIDR range.`,
-    variant: 'destructive'
+    variant: 'danger'
   })
 }
 
@@ -224,7 +224,7 @@ export const AppInfoNetworkSection = ({
       toast({
         title: 'Could not update network access',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsSaving(false)
@@ -241,6 +241,7 @@ export const AppInfoNetworkSection = ({
 
   return (
     <Section
+      surface='plain'
       title='Network'
       titleClassName='pb-4'
       contentClassName='flex-col'

@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import { mergeAppsListRefresh } from './apps-list-refresh'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 

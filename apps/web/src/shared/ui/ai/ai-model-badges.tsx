@@ -1,7 +1,7 @@
 import { aiModelRoleLabel, aiProviderKindLabel } from '@rebroid/ai-core/provider'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import type { AutomationAiProvider, AutomationAiProviderModel } from '@/server/orchestrator/settings/types'
+import type { AutomationAiProvider, AutomationAiProviderModel } from '@/shared/contracts/ai-provider'
 
 export const AiProviderKindBadge = ({
   kind,
@@ -11,7 +11,7 @@ export const AiProviderKindBadge = ({
   className?: string
 }) => (
   <Badge
-    variant='secondary'
+    variant='neutral'
     className={className}
   >
     {aiProviderKindLabel(kind)}
@@ -28,7 +28,7 @@ export const AiModelRoleBadges = ({
   const visibleRoles = roles ?? []
 
   if (visibleRoles.length === 0) {
-    return <Badge variant='secondary'>No role</Badge>
+    return <Badge variant='neutral'>No role</Badge>
   }
 
   return (
@@ -56,7 +56,7 @@ export const AiModelStateBadges = ({
   className?: string
 }) => (
   <div className={cn('flex flex-wrap items-center gap-1', className)}>
-    <Badge variant={enabled ? 'status' : 'secondary'}>{enabled ? 'Enabled' : 'Disabled'}</Badge>
+    <Badge variant={enabled ? 'success' : 'neutral'}>{enabled ? 'Enabled' : 'Disabled'}</Badge>
     {(defaultFor ?? []).map(role => (
       <Badge
         key={role}

@@ -26,6 +26,7 @@ export const BuildSection = ({
   onStartBuild
 }: BuildSectionProps) => (
   <Section
+    surface='plain'
     title='Build'
     contentClassName='gap-4'
   >
@@ -50,7 +51,7 @@ export const BuildSection = ({
       <Visible when={activeJob?.status === 'succeeded'}>
         <Button
           type='button'
-          variant='update'
+          variant='primary'
           onClick={onSetAsDefault}
         >
           Use as default
@@ -67,11 +68,9 @@ export const BuildSection = ({
       </Visible>
     </div>
     {activeJob ? (
-      <div className='flex flex-wrap items-center gap-2 text-sm text-muted-foreground'>
+      <div className='flex flex-wrap items-center gap-2 text-sm text-foreground-muted'>
         <Badge
-          variant={
-            activeJob.status === 'succeeded' ? 'status' : activeJob.status === 'failed' ? 'destructive' : 'secondary'
-          }
+          variant={activeJob.status === 'succeeded' ? 'success' : activeJob.status === 'failed' ? 'danger' : 'neutral'}
         >
           {activeJob.status}
         </Badge>
@@ -79,7 +78,7 @@ export const BuildSection = ({
         {activeJob.imageId ? <span className='font-mono'>{activeJob.imageId.slice(0, 18)}</span> : null}
       </div>
     ) : null}
-    <pre className='max-h-[28rem] min-h-48 overflow-auto rounded-md border border-border/60 bg-surface-band/35 p-3 text-xs leading-5 text-foreground-muted'>
+    <pre className='max-h-[28rem] min-h-48 overflow-auto rounded-control border border-surface-border/60 bg-surface-band/35 p-3 text-xs leading-5 text-foreground-muted'>
       {activeJob?.logTail ?? 'No build has been started.'}
     </pre>
   </Section>

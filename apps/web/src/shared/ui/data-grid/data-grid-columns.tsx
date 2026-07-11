@@ -112,7 +112,7 @@ export const rowMenuColumn = <TData,>(): ColumnDef<TData> => ({
       <Button
         type='button'
         variant='ghost'
-        size='icon'
+        size='icon-md'
         className='size-8'
         aria-label='Open row actions'
         onClick={openContextMenuFromButton}

@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { AppViewerPage } from '@/features/applications/detail/app-page'
 import { AppPageSkeleton } from '@/features/applications/detail/app-page-skeleton'
-import { getApplicationPageData } from '@/server/orchestrator/applications/page-data'
+import { getApplicationPageData } from '@/features/applications/pages/shared/application-page-data.server'
 
 const ApplicationViewerPageContent = async ({ params }: { params: Promise<{ slug: string }> }) => {
   const { slug } = await params

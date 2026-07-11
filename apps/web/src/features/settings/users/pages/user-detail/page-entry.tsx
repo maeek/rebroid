@@ -1,4 +1,4 @@
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { StatusSplash } from '@/shared/ui/status-splash'
 import { UserEditPage } from '../../user-edit-page'
 import { getUserDetailPageData } from './page-data.server'
@@ -13,7 +13,7 @@ export default async function UserDetailPageEntry({ params }: UserDetailPageEntr
 
   if (!user) {
     return (
-      <ProtectedStackPageLayout mainClassName='gap-2'>
+      <StandardPage className='gap-2'>
         <section className='px-6 py-16 max-sm:px-4'>
           <StatusSplash
             title='User not found'
@@ -25,7 +25,7 @@ export default async function UserDetailPageEntry({ params }: UserDetailPageEntr
             }}
           />
         </section>
-      </ProtectedStackPageLayout>
+      </StandardPage>
     )
   }
 

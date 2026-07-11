@@ -19,7 +19,7 @@ import { deleteUserAction } from '@/server/users/actions/delete-user-action'
 import { setUserDisabledAction } from '@/server/users/actions/set-user-disabled-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { PageHeader } from '@/shared/ui/page/page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { CreateUserDialog } from './components/create-user-dialog'
 import { UsersGrid } from './components/users-grid'
 import { PasswordPolicySection } from './sections/password-policy-section'
@@ -60,7 +60,7 @@ export const UsersSettings = ({
       toast({
         title: 'Could not update user',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setBusyUserId(null)
@@ -78,7 +78,7 @@ export const UsersSettings = ({
       toast({
         title: 'Could not delete user',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setBusyUserId(null)
@@ -101,7 +101,7 @@ export const UsersSettings = ({
           ? {
               title: 'Some users could not be updated',
               description: firstError ?? `${failedCount} update request${failedCount === 1 ? '' : 's'} failed.`,
-              variant: 'destructive'
+              variant: 'danger'
             }
           : { title: disabled ? 'Selected users disabled' : 'Selected users enabled' }
       )
@@ -129,7 +129,7 @@ export const UsersSettings = ({
           ? {
               title: 'Some users could not be deleted',
               description: firstError ?? `${failedCount} delete request${failedCount === 1 ? '' : 's'} failed.`,
-              variant: 'destructive'
+              variant: 'danger'
             }
           : { title: 'Selected users deleted' }
       )
@@ -139,7 +139,7 @@ export const UsersSettings = ({
   }
 
   return (
-    <ProtectedStackPageLayout mainClassName='gap-2'>
+    <StandardPage className='gap-2'>
       <PageHeader
         breadcrumbs={[{ label: 'Users', href: '/security/users' }, { label: 'Users' }]}
         title='Users'
@@ -153,6 +153,7 @@ export const UsersSettings = ({
       <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
         <PasswordPolicySection initialPasswordMinimumLength={initialPasswordMinimumLength} />
         <Section
+          surface='plain'
           title='Existing Users'
           titleClassName='pb-2'
           contentClassName='gap-3'
@@ -188,7 +189,7 @@ export const UsersSettings = ({
           </DialogHeader>
           <DialogFooter>
             <Button
-              variant='destructive'
+              variant='danger'
               disabled={!pendingDeleteUser || busyUserId === pendingDeleteUser.id}
               onClick={() => {
                 if (pendingDeleteUser) {
@@ -224,7 +225,7 @@ export const UsersSettings = ({
           </DialogHeader>
           <DialogFooter>
             <Button
-              variant='destructive'
+              variant='danger'
               disabled={pendingDeleteUsers.length === 0 || busyUserId === 'bulk'}
               onClick={() => void deleteUsers(pendingDeleteUsers)}
             >
@@ -237,6 +238,6 @@ export const UsersSettings = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </ProtectedStackPageLayout>
+    </StandardPage>
   )
 }

@@ -3,16 +3,16 @@ packages:
   - packages/*
 
 allowBuilds:
-  '@nestjs/core': set this to true or false
-  '@parcel/watcher': set this to true or false
-  '@scarf/scarf': set this to true or false
-  bcrypt: set this to true or false
-  better-sqlite3: set this to true or false
-  cpu-features: set this to true or false
-  protobufjs: set this to true or false
-  sharp: set this to true or false
-  ssh2: set this to true or false
-  unrs-resolver: set this to true or false
+  '@nestjs/core': true
+  '@parcel/watcher': true
+  '@scarf/scarf': false
+  bcrypt: true
+  better-sqlite3: true
+  cpu-features: false
+  protobufjs: true
+  sharp: true
+  ssh2: true
+  unrs-resolver: true
 
 injectWorkspacePackages: true
 

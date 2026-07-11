@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { Toast as ToastPrimitives } from '@base-ui/react/toast'
 
-type ToastVariant = 'default' | 'destructive'
+type ToastVariant = 'neutral' | 'danger'
 
 type ToastData = {
   variant?: ToastVariant
@@ -29,7 +29,7 @@ const TOAST_LIMIT = 5
 const toastManager = ToastPrimitives.createToastManager<ToastData>()
 
 function normalizeToastOptions(props: ToastInput) {
-  const variant = props.variant ?? props.data?.variant ?? props.type ?? 'default'
+  const variant = props.variant ?? props.data?.variant ?? props.type ?? 'neutral'
 
   return {
     id: props.id,

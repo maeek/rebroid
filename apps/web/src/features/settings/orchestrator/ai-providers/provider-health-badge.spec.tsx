@@ -1,15 +1,12 @@
-import { beforeEach, describe, expect, it, jest } from '@jest/globals'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import * as actions from '@/server/orchestrator/settings/actions'
 import { ProviderHealthBadge } from './provider-health-badge'
 import type { AutomationAiProvider, AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
 
-jest.mock('@/server/orchestrator/settings/actions', () => ({
-  checkAutomationAiProviderHealthAction: jest.fn()
+vi.mock('@/server/orchestrator/settings/actions', () => ({
+  checkAutomationAiProviderHealthAction: vi.fn()
 }))
-
-const actions = jest.requireMock<typeof import('@/server/orchestrator/settings/actions')>(
-  '@/server/orchestrator/settings/actions'
-)
 
 const provider = (id: string): AutomationAiProvider =>
   ({
@@ -45,7 +42,7 @@ const okHealth = (providerId: string): AutomationAiProviderHealth => ({
 
 describe('ProviderHealthBadge', () => {
   beforeEach(() => {
-    jest.mocked(actions.checkAutomationAiProviderHealthAction).mockReset()
+    vi.mocked(actions.checkAutomationAiProviderHealthAction).mockReset()
   })
 
   it('does not check provider health automatically by default', () => {
@@ -64,7 +61,7 @@ describe('ProviderHealthBadge', () => {
 
   it('keeps the previous health label while refreshing a known provider/model', async () => {
     const providerId = `provider_${crypto.randomUUID()}`
-    jest.mocked(actions.checkAutomationAiProviderHealthAction).mockResolvedValueOnce(okHealth(providerId))
+    vi.mocked(actions.checkAutomationAiProviderHealthAction).mockResolvedValueOnce(okHealth(providerId))
 
     const { unmount } = render(
       <ProviderHealthBadge
@@ -78,7 +75,7 @@ describe('ProviderHealthBadge', () => {
     unmount()
 
     let resolveRefresh: (health: AutomationAiProviderHealth) => void = () => undefined
-    jest.mocked(actions.checkAutomationAiProviderHealthAction).mockReturnValueOnce(
+    vi.mocked(actions.checkAutomationAiProviderHealthAction).mockReturnValueOnce(
       new Promise<AutomationAiProviderHealth>(resolve => {
         resolveRefresh = resolve
       })
@@ -107,7 +104,7 @@ describe('ProviderHealthBadge', () => {
 
   it('spins the refresh icon only for a manual health check', async () => {
     const providerId = `provider_${crypto.randomUUID()}`
-    jest.mocked(actions.checkAutomationAiProviderHealthAction).mockResolvedValueOnce(okHealth(providerId))
+    vi.mocked(actions.checkAutomationAiProviderHealthAction).mockResolvedValueOnce(okHealth(providerId))
 
     render(
       <ProviderHealthBadge
@@ -120,7 +117,7 @@ describe('ProviderHealthBadge', () => {
     expect(await screen.findByText('Online')).toBeTruthy()
 
     let resolveRefresh: (health: AutomationAiProviderHealth) => void = () => undefined
-    jest.mocked(actions.checkAutomationAiProviderHealthAction).mockReturnValueOnce(
+    vi.mocked(actions.checkAutomationAiProviderHealthAction).mockReturnValueOnce(
       new Promise<AutomationAiProviderHealth>(resolve => {
         resolveRefresh = resolve
       })

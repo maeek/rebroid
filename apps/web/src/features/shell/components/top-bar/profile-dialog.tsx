@@ -48,7 +48,7 @@ export const ProfileDialog = ({
       toast({
         title: 'Could not save accent color',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
   })
 
@@ -79,7 +79,7 @@ export const ProfileDialog = ({
       toast({
         title: 'Could not update avatar',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsSavingAvatar(false)
@@ -88,7 +88,7 @@ export const ProfileDialog = ({
 
   const changePassword = async () => {
     if (newPassword !== confirmNewPassword) {
-      toast({ title: 'Could not change password', description: 'New passwords do not match.', variant: 'destructive' })
+      toast({ title: 'Could not change password', description: 'New passwords do not match.', variant: 'danger' })
       return
     }
 
@@ -101,7 +101,7 @@ export const ProfileDialog = ({
       toast({
         title: 'Could not change password',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsChangingPassword(false)
@@ -126,14 +126,14 @@ export const ProfileDialog = ({
           onChange={nextAvatar => void saveAvatar(nextAvatar)}
         />
         <AccentColorPicker
-          className='border-t border-border/60 pt-4'
+          className='border-t border-surface-border/60 pt-4'
           value={accentColor}
           onChange={setAccentColor}
         />
-        <section className='grid gap-3 border-t border-border/60 pt-4'>
+        <section className='grid gap-3 border-t border-surface-border/60 pt-4'>
           <div>
             <h3 className='text-sm font-medium'>Change password</h3>
-            <p className='text-sm text-muted-foreground'>Confirm your current password before setting a new one.</p>
+            <p className='text-sm text-foreground-muted'>Confirm your current password before setting a new one.</p>
           </div>
           <div className='grid gap-2'>
             <Label htmlFor='profile-current-password'>Current password</Label>

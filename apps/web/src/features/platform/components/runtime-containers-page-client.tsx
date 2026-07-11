@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
 import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { RuntimeContainersSection } from './runtime-containers-section'
 import type { PlatformContainersGridPage, PlatformContainersGridQuery } from '@/server/orchestrator/platform/types'
 
@@ -23,12 +23,12 @@ export const RuntimeContainersPageClient = ({
   }
 
   return (
-    <ProtectedStackPageLayout mainClassName='gap-2'>
+    <StandardPage className='gap-2'>
       <PlatformPageHeader
         title='Containers'
         description='Docker containers visible to the platform. Managed application containers are shown first.'
         breadcrumbRoot={{ label: 'Runtime' }}
-        titleActions={
+        actions={
           <PlatformPageRefreshButton
             isRefreshing={isRefreshing}
             onRefresh={refresh}
@@ -43,6 +43,6 @@ export const RuntimeContainersPageClient = ({
           onRefreshComplete={() => setIsRefreshing(false)}
         />
       </section>
-    </ProtectedStackPageLayout>
+    </StandardPage>
   )
 }

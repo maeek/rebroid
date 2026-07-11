@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import type { AutomationRunStatus } from '@/server/orchestrator/automations/types'
+import type { AutomationRunStatus } from '@/shared/contracts/automation-run'
 
 export type AutomationRunDisplayStatus = AutomationRunStatus | 'canceling'
 
@@ -10,7 +10,7 @@ const statusPresentation: Record<
 > = {
   queued: {
     label: 'Queued',
-    className: 'border-border/70 bg-surface-band/60 text-foreground-muted',
+    className: 'border-surface-border/70 bg-surface-band/60 text-foreground-muted',
     dotClassName: 'bg-foreground-muted'
   },
   running: {
@@ -25,12 +25,12 @@ const statusPresentation: Record<
   },
   failed: {
     label: 'Failed',
-    className: 'border-destructive/30 bg-destructive/10 text-destructive',
-    dotClassName: 'bg-destructive'
+    className: 'border-danger/30 bg-danger/10 text-danger',
+    dotClassName: 'bg-danger'
   },
   canceled: {
     label: 'Canceled',
-    className: 'border-border/70 bg-surface-band/60 text-foreground-muted',
+    className: 'border-surface-border/70 bg-surface-band/60 text-foreground-muted',
     dotClassName: 'bg-foreground-muted'
   },
   canceling: {
@@ -52,7 +52,7 @@ export const AutomationRunStatusBadge = ({
   return (
     <Badge
       variant='outline'
-      className={cn('gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium', presentation.className, className)}
+      className={cn('gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium', presentation.className, className)}
     >
       <span className={cn('size-1.5 rounded-full', presentation.dotClassName)} />
       {presentation.label}

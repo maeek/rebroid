@@ -29,7 +29,7 @@ const FloatingToolbarHandle = ({
 }) => (
   <button
     type='button'
-    className='flex size-9 touch-none select-none items-center justify-center rounded-lg text-foreground-muted hover:bg-secondary active:cursor-grabbing'
+    className='flex size-9 touch-none select-none items-center justify-center rounded-panel text-foreground-muted hover:bg-surface-band active:cursor-grabbing'
     aria-label='Move viewer toolbar'
     onPointerDown={onPointerDown}
     onPointerMove={onPointerMove}
@@ -59,7 +59,7 @@ const FloatingToolbarToggle = ({
   return (
     <IconButtonTooltip label={label}>
       <Button
-        size='icon'
+        size='icon-md'
         variant={variant}
         onClick={onClick}
         aria-label={label}
@@ -89,7 +89,7 @@ const FloatingToolbarShell = ({
   >
     <div
       className={cn(
-        'flex flex-col items-center gap-1 rounded-xl border border-border/70 bg-surface-elevated/92 p-1 shadow-2xl backdrop-blur-xl',
+        'flex flex-col items-center gap-1 rounded-panel border border-surface-border/70 bg-surface-elevated/92 p-1 shadow-emphasis backdrop-blur-xl',
         expanded && 'scrollbar-thin max-h-[calc(100dvh-1rem)] overflow-x-hidden overflow-y-auto'
       )}
     >
@@ -106,8 +106,8 @@ const FloatingNavigationToggle = ({
   setFloatingOpen: (open: (current: boolean) => boolean) => void
 }) => (
   <Button
-    size='icon'
-    variant={floatingOpen ? 'default' : 'secondary'}
+    size='icon-md'
+    variant={floatingOpen ? 'primary' : 'secondary'}
     onClick={() => setFloatingOpen(current => !current)}
     aria-label='Navigation controls'
     className='size-9'
@@ -184,7 +184,7 @@ const ExpandedFloatingViewerControls = ({
       />
       <Visible when={floatingOpen}>
         <IconCommandGroup
-          className='mt-1 flex flex-col items-center gap-1 border-t border-border/60 pt-1'
+          className='mt-1 flex flex-col items-center gap-1 border-t border-surface-border/60 pt-1'
           controls={navigationControls}
           controlsDisabled={controlsDisabled}
           controlIcon={controlIcon}

@@ -1,17 +1,16 @@
-import { describe, expect, it, jest } from '@jest/globals'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { sendBff } from '@/lib/http/bff'
 import { RuntimeGappsImageBuilderPageClient } from './gapps-page-client'
-import type { ContainerImageBuildJob, GappsBuildPresetsResponse } from '@/server/orchestrator/platform/types'
-import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
+import type { ContainerImageBuildJob, GappsBuildPresetsResponse } from '@/shared/contracts/platform-image-build'
+import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
-jest.mock('@/server/orchestrator/platform/image-actions', () => ({
-  cancelImageBuildAction: jest.fn(),
-  clearGappsCacheAction: jest.fn(),
-  getImageBuildJobAction: jest.fn(),
-  startGappsBuildAction: jest.fn()
+vi.mock('@/lib/http/bff', () => ({
+  getBff: vi.fn(),
+  sendBff: vi.fn()
 }))
-jest.mock('@/shared/model/settings/use-orchestrator-ui-settings', () => ({
-  saveOrchestratorUiSettings: jest.fn()
+vi.mock('@/shared/model/settings/use-orchestrator-ui-settings', () => ({
+  saveOrchestratorUiSettings: vi.fn()
 }))
 
 const presetResponse: GappsBuildPresetsResponse = {
@@ -46,6 +45,10 @@ const presetResponse: GappsBuildPresetsResponse = {
 }
 
 describe('RuntimeGappsImageBuilderPageClient', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('presents one primary build action without custom-builder controls', () => {
     render(
       <RuntimeGappsImageBuilderPageClient
@@ -95,5 +98,35 @@ describe('RuntimeGappsImageBuilderPageClient', () => {
         Reflect.deleteProperty(HTMLElement.prototype, 'scrollHeight')
       }
     }
+  })
+
+  it('starts a build through the validated BFF endpoint', async () => {
+    const queuedJob = {
+      id: 'job-2',
+      buildKind: 'redroid_gapps_patch',
+      status: 'queued',
+      phase: 'queued',
+      targetImage: 'local/redroid-gapps:14',
+      logTail: ''
+    } as ContainerImageBuildJob
+    vi.mocked(sendBff).mockResolvedValue(queuedJob)
+
+    render(
+      <RuntimeGappsImageBuilderPageClient
+        presetResponse={presetResponse}
+        jobs={[]}
+        initialSettings={{} as OrchestratorUiSettings}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Build image' }))
+
+    await waitFor(() => {
+      expect(sendBff).toHaveBeenCalledWith('/api/bff/platform/image-builds/gapps', {
+        androidVersion: '14',
+        targetImage: 'local/redroid-gapps:14'
+      })
+    })
+    expect(screen.getByRole('button', { name: 'Build in progress' })).toBeDisabled()
   })
 })

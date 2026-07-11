@@ -1,9 +1,9 @@
-import { describe, expect, it, jest } from '@jest/globals'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { Button } from '@/components/ui/button'
 import { AiModelPicker } from './ai-model-picker'
 import { AiPromptComposer } from './ai-prompt-composer'
-import type { AutomationAiModelCatalogProvider } from '@/server/orchestrator/settings/types'
+import type { AutomationAiModelCatalogProvider } from '@/shared/contracts/ai-provider'
 
 const catalog = [
   {
@@ -40,8 +40,8 @@ const catalog = [
 
 describe('AiPromptComposer', () => {
   it('renders model control, errors, actions, and submits from keyboard', () => {
-    const onChange = jest.fn()
-    const onSubmit = jest.fn()
+    const onChange = vi.fn()
+    const onSubmit = vi.fn()
 
     render(
       <AiPromptComposer
@@ -68,12 +68,12 @@ describe('AiPromptComposer', () => {
   })
 
   it('supports chat-style enter submission while preserving shift-enter', () => {
-    const onSubmit = jest.fn()
+    const onSubmit = vi.fn()
     render(
       <AiPromptComposer
         value='hello'
         placeholder='Chat prompt'
-        onChange={jest.fn()}
+        onChange={vi.fn()}
         onSubmit={onSubmit}
         submitOnEnter
       />
@@ -95,8 +95,8 @@ describe('AiModelPicker', () => {
         selectedProvider={catalog[0]}
         selectedModel={catalog[0]?.models[0]}
         defaultOpen
-        onProviderChange={jest.fn()}
-        onModelChange={jest.fn()}
+        onProviderChange={vi.fn()}
+        onModelChange={vi.fn()}
       />
     )
 
@@ -109,8 +109,8 @@ describe('AiModelPicker', () => {
       <AiModelPicker
         catalog={[]}
         defaultOpen
-        onProviderChange={jest.fn()}
-        onModelChange={jest.fn()}
+        onProviderChange={vi.fn()}
+        onModelChange={vi.fn()}
       />
     )
 
@@ -125,8 +125,8 @@ describe('AiModelPicker', () => {
         selectedProvider={catalog[0]}
         selectedModel={catalog[0]?.models[0]}
         defaultOpen
-        onProviderChange={jest.fn()}
-        onModelChange={jest.fn()}
+        onProviderChange={vi.fn()}
+        onModelChange={vi.fn()}
       />
     )
 
@@ -157,8 +157,8 @@ describe('AiModelPicker', () => {
         selectedProvider={provider}
         selectedModel={provider.models[0]}
         defaultOpen
-        onProviderChange={jest.fn()}
-        onModelChange={jest.fn()}
+        onProviderChange={vi.fn()}
+        onModelChange={vi.fn()}
       />
     )
 

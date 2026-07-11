@@ -17,7 +17,7 @@ export const ActivityFilterSheet = () => {
       onOpenChange={controller.setFilterPanelOpen}
     >
       <SheetContent className='grid h-full w-[min(32rem,calc(100vw-2rem))] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden p-0 sm:max-w-none'>
-        <SheetHeader className='border-b border-border/70 p-6 pb-5'>
+        <SheetHeader className='border-b border-surface-border/70 p-6 pb-5'>
           <SheetTitle>Filter activity</SheetTitle>
           <SheetDescription>
             Build a focused audit view by actor, event type, target, outcome, or time range.
@@ -85,7 +85,7 @@ export const ActivityFilterSheet = () => {
               </ActivityFilterField>
             </section>
 
-            <section className='grid gap-3 border-t border-border/60 pt-5'>
+            <section className='grid gap-3 border-t border-surface-border/60 pt-5'>
               <div>
                 <h4 className='font-medium'>Event classification</h4>
                 <p className='text-sm text-foreground-muted'>Use category, action, and outcome for review workflows.</p>
@@ -164,7 +164,7 @@ export const ActivityFilterSheet = () => {
               </ActivityFilterField>
             </section>
 
-            <section className='grid gap-3 border-t border-border/60 pt-5'>
+            <section className='grid gap-3 border-t border-surface-border/60 pt-5'>
               <div>
                 <h4 className='font-medium'>Time range</h4>
                 <p className='text-sm text-foreground-muted'>Pick a preset or choose exact calendar dates.</p>
@@ -207,7 +207,7 @@ export const ActivityFilterSheet = () => {
           </div>
         </div>
 
-        <div className='flex flex-col-reverse gap-2 border-t border-border/70 bg-background/80 p-4 sm:flex-row sm:justify-end'>
+        <div className='flex flex-col-reverse gap-2 border-t border-surface-border/70 bg-background/80 p-4 sm:flex-row sm:justify-end'>
           <Button
             variant='secondary'
             disabled={!controller.hasLocalFilters}

@@ -10,8 +10,9 @@ import {
   validateAutomationYamlAction,
   updateAutomationAction
 } from '@/server/orchestrator/automations/automation-management-actions'
+import { consumePendingAutomationDraft } from '@/shared/model/automation-draft/pending-automation-draft'
 import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { AutomationStepsList } from '../steps/list/automation-steps-list'
 import { AutomationDetailsSection } from './automation-details-section'
 import {
@@ -29,7 +30,6 @@ import {
   type AutomationFormState,
   type AutomationStepForm
 } from './builder-utils'
-import { consumePendingAutomationDraft } from './pending-automation-draft'
 import { useAutomationAiDraft } from './use-automation-ai-draft'
 import { cloneAutomationForm, useAutomationEditorHistory } from './use-automation-editor-history'
 import { useAutomationEditorSelection } from './use-automation-editor-selection'
@@ -159,7 +159,7 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
         toast({
           title: 'Could not load workflow draft',
           description: error instanceof Error ? error.message : 'Unknown error',
-          variant: 'destructive'
+          variant: 'danger'
         })
       })
       .finally(() => setBusy(false))
@@ -222,7 +222,7 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
       toast({
         title: 'Could not save automation',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setBusy(false)
@@ -240,14 +240,14 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
       toast({
         title: 'Could not delete automation',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
       setBusy(false)
     }
   }
 
   return (
-    <ProtectedStackPageLayout mainClassName='gap-0'>
+    <StandardPage className='gap-0'>
       <section className='shrink-0 px-6 py-4 max-sm:px-4'>
         <div className='grid gap-3'>
           <PageBreadcrumbs
@@ -376,6 +376,6 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
           if (!open) setPendingNavigationHref(null)
         }}
       />
-    </ProtectedStackPageLayout>
+    </StandardPage>
   )
 }

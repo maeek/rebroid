@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { recordAuditEvent } from '@/server/audit/events'
 import { auditEventsToCsv, auditFiltersFromSearchParams } from '@/server/audit/query'
 import { getCurrentUser } from '@/server/auth/authorization'
-import { exportAuditEvents } from '@/server/storage/database'
+import { exportAuditEvents } from '@/server/persistence/audit-repository'
 
 export const dynamic = 'force-dynamic'
 

@@ -24,7 +24,7 @@ export const CreateAppNetworkAccessSection = ({
       toast({
         title: 'Broad internet access is restricted',
         description: 'Add a narrower app-specific IPv4 range.',
-        variant: 'destructive'
+        variant: 'danger'
       })
       return
     }
@@ -40,7 +40,7 @@ export const CreateAppNetworkAccessSection = ({
     toast({
       title: 'Invalid CIDR',
       description: getInvalidCidrMessage(value),
-      variant: 'destructive'
+      variant: 'danger'
     })
   }
 

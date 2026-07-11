@@ -68,11 +68,11 @@ export const ScheduledTasksTable = () => {
           <div className='grid gap-1'>
             <div className='flex flex-wrap items-center gap-2'>
               <span className='font-medium text-foreground'>{row.original.name}</span>
-              <Badge variant='secondary'>{row.original.kind === 'predefined' ? 'Built-in' : 'Custom'}</Badge>
+              <Badge variant='neutral'>{row.original.kind === 'predefined' ? 'Built-in' : 'Custom'}</Badge>
             </div>
             <span className='text-foreground-muted'>{actionLabel(row.original)}</span>
             <Visible when={row.original.lastError}>
-              <span className='max-w-lg truncate text-destructive'>{row.original.lastError}</span>
+              <span className='max-w-lg truncate text-danger'>{row.original.lastError}</span>
             </Visible>
           </div>
         )
@@ -85,7 +85,7 @@ export const ScheduledTasksTable = () => {
         meta: { label: 'State' },
         cell: ({ row }) => (
           <div className='flex flex-wrap gap-2'>
-            <Badge variant={row.original.enabled ? 'status' : 'secondary'}>
+            <Badge variant={row.original.enabled ? 'success' : 'neutral'}>
               {row.original.enabled ? 'Enabled' : 'Paused'}
             </Badge>
             <Badge variant={statusVariant(row.original.lastStatus)}>{statusLabel(row.original.lastStatus)}</Badge>
@@ -191,7 +191,7 @@ export const ScheduledTasksTable = () => {
                     Disable selected ({selectedTasks.length})
                   </ContextMenuItem>
                   <ContextMenuItem
-                    className='text-destructive focus:text-destructive'
+                    className='text-danger focus:text-danger'
                     disabled={busyTaskId !== null || !selectedTasksAreCustom}
                     onSelect={() => void deleteSelected()}
                   >
@@ -210,7 +210,7 @@ export const ScheduledTasksTable = () => {
               </ContextMenuItem>
               {row.original.kind === 'custom' ? (
                 <ContextMenuItem
-                  className='text-destructive focus:text-destructive'
+                  className='text-danger focus:text-danger'
                   onSelect={() => void deleteTask(row.original)}
                 >
                   <IconTrash className='mr-2 size-4' />

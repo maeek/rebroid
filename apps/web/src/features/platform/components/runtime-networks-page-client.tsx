@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
 import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { RuntimeNetworksSection } from './runtime-networks-section'
 import type { PlatformNetworksGridPage, PlatformNetworksGridQuery } from '@/server/orchestrator/platform/types'
 
@@ -23,12 +23,12 @@ export const RuntimeNetworksPageClient = ({
   }
 
   return (
-    <ProtectedStackPageLayout mainClassName='gap-2'>
+    <StandardPage className='gap-2'>
       <PlatformPageHeader
         title='Networks'
         description='Docker networks visible to the platform, including application isolation networks.'
         breadcrumbRoot={{ label: 'Runtime' }}
-        titleActions={
+        actions={
           <PlatformPageRefreshButton
             isRefreshing={isRefreshing}
             onRefresh={refresh}
@@ -43,6 +43,6 @@ export const RuntimeNetworksPageClient = ({
           onRefreshComplete={() => setIsRefreshing(false)}
         />
       </section>
-    </ProtectedStackPageLayout>
+    </StandardPage>
   )
 }

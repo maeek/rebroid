@@ -17,17 +17,17 @@ export function AutomationStepEditor({
   step,
   commands,
   onChange,
-  boxed = true
+  surface = 'panel'
 }: {
   step: AutomationActionStepForm | null
   commands: AutomationCommand[]
   onChange: (step: AutomationActionStepForm) => void
-  boxed?: boolean
+  surface?: 'plain' | 'band' | 'panel'
 }) {
   if (!step) {
     return (
       <Section
-        boxed={boxed}
+        surface={surface}
         contentClassName='text-sm text-foreground-muted'
       >
         Select a step to edit.
@@ -69,9 +69,9 @@ export function AutomationStepEditor({
   return (
     <>
       <Section
-        boxed={boxed}
+        surface={surface}
         contentClassName='gap-5'
-        className={boxed ? undefined : 'bg-transparent p-0 shadow-none'}
+        className={surface === 'plain' ? 'bg-transparent p-0 shadow-none' : undefined}
       >
         <div className='grid gap-2'>
           <Label>Action</Label>

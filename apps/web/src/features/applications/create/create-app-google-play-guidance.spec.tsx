@@ -1,8 +1,8 @@
-import { describe, expect, it, jest } from '@jest/globals'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { CreateAppGooglePlayGuidance } from './create-app-google-play-guidance'
 import type { UploadedApk } from '@/server/orchestrator/applications/types'
-import type { PlatformImage } from '@/server/orchestrator/platform/types'
+import type { PlatformImage } from '@/shared/contracts/platform-image'
 
 const image = (id: string, gmsMode: 'none' | 'gapps'): PlatformImage => ({
   id,
@@ -44,7 +44,7 @@ describe('CreateAppGooglePlayGuidance', () => {
         selectedImage='local/base:14'
         canChangeImage={false}
         canBuildImages={false}
-        onUseImage={jest.fn()}
+        onUseImage={vi.fn()}
       />
     )
 
@@ -54,7 +54,7 @@ describe('CreateAppGooglePlayGuidance', () => {
   })
 
   it('offers but does not automatically apply a recommended image', () => {
-    const onUseImage = jest.fn()
+    const onUseImage = vi.fn()
     render(
       <CreateAppGooglePlayGuidance
         uploadedApk={uploadedApk}

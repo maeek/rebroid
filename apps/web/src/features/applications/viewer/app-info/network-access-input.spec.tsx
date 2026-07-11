@@ -1,11 +1,11 @@
-import { describe, expect, it, jest } from '@jest/globals'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { NetworkAccessInput } from './network-access-input'
 
 describe('NetworkAccessInput', () => {
   it('adds normalized CIDRs and removes existing CIDRs', () => {
-    const onAddCidr = jest.fn()
-    const onRemoveCidr = jest.fn()
+    const onAddCidr = vi.fn()
+    const onRemoveCidr = vi.fn()
 
     render(
       <NetworkAccessInput
@@ -26,7 +26,7 @@ describe('NetworkAccessInput', () => {
   })
 
   it('reports invalid CIDR input', () => {
-    const onInvalidCidr = jest.fn()
+    const onInvalidCidr = vi.fn()
 
     render(
       <NetworkAccessInput

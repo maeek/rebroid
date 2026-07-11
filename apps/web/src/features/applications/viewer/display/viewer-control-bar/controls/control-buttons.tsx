@@ -44,8 +44,8 @@ const ControlButton = ({
 }) => (
   <IconButtonTooltip label={label}>
     <Button
-      size='icon'
-      variant={active ? 'default' : 'secondary'}
+      size='icon-md'
+      variant={active ? 'primary' : 'secondary'}
       disabled={disabled}
       onClick={onClick}
       aria-label={label}
@@ -143,7 +143,7 @@ export const AndroidPanelsMenu = ({
       <DropdownMenuTrigger asChild>
         <TooltipTrigger asChild>
           <Button
-            size='icon'
+            size='icon-md'
             variant='secondary'
             disabled={controlsDisabled}
             aria-label='Android panels'

@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { storePendingAutomationDraft } from '@/features/automations/automations-page/editor/pending-automation-draft'
 import { toast } from '@/hooks/use-toast'
+import { storePendingAutomationDraft } from '@/shared/model/automation-draft/pending-automation-draft'
 import type { ChatTurn } from './ai-agent-chat-utils'
 import type { AutomationYamlDraft } from '@/server/orchestrator/automations/types'
 import type { AutomationAiModelCatalogProvider } from '@/server/orchestrator/settings/types'
@@ -55,7 +55,7 @@ export const useAiAgentWorkflowDraft = ({
       toast({
         title: 'Could not draft workflow',
         description: draftError instanceof Error ? draftError.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setDraftingRunId(null)

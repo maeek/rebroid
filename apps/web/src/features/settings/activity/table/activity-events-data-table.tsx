@@ -7,7 +7,7 @@ import { DataGrid } from '@/shared/ui/data-grid'
 import { useActivityController, useActivityData } from '../activity-context'
 import { formatAction, outcomeTone } from '../activity-format'
 import { ActivityResourceTypeBadge } from '../common/activity-resource-type-badge'
-import type { AuditEvent } from '@/server/storage/database'
+import type { AuditEvent } from '@/server/persistence/audit-repository'
 import type { ColumnDef } from '@tanstack/react-table'
 
 const ActivityEventBadges = ({ event }: { event: AuditEvent }) => (
@@ -28,7 +28,7 @@ const ActivityEventTargetCell = ({ event }: { event: AuditEvent }) => (
 
 const ActivityEventsEmptyState = ({ resetFilters }: { resetFilters: () => void }) => (
   <div className='mx-auto flex max-w-md flex-col items-center text-center'>
-    <div className='mb-3 rounded-full border border-border/70 bg-surface-panel/70 p-3'>
+    <div className='mb-3 rounded-full border border-surface-border/70 bg-surface-panel/70 p-3'>
       <IconSearch className='size-6 text-foreground-muted' />
     </div>
     <div className='font-medium'>No activity found</div>
@@ -58,7 +58,7 @@ export const ActivityEventsDataTable = () => {
         meta: { label: 'Event' },
         cell: ({ row }) => (
           <div className='flex items-start gap-3'>
-            <div className='mt-0.5 rounded-lg border border-border/60 bg-secondary/50 p-2'>
+            <div className='mt-0.5 rounded-panel border border-surface-border/60 bg-surface-band/50 p-2'>
               <IconShieldCheck className='size-4 text-foreground-muted' />
             </div>
             <div className='min-w-0'>

@@ -1,10 +1,8 @@
 import type { SystemResourceCapacity } from './types'
+import type { ResourceLimitBounds } from '@/shared/contracts/system-resources'
 import type { ResourceQuota } from '@/shared/permissions/permissions'
 
-export type ResourceLimitBounds = {
-  maxMemoryMb: number | null
-  maxCpuCpus: number | null
-}
+export type { ResourceLimitBounds } from '@/shared/contracts/system-resources'
 
 const bytesToWholeMb = (bytes: number | null | undefined) =>
   typeof bytes === 'number' && Number.isFinite(bytes) && bytes > 0 ? Math.floor(bytes / 1024 / 1024) : null

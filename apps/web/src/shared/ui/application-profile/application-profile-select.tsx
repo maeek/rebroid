@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
-import type { ApplicationProfileMode } from '@/server/orchestrator/applications/types'
+import type { ApplicationProfileMode } from '@/shared/contracts/application'
 import type { SavedApplicationProfile } from '@/shared/model/application-profile/profile-history'
 
 type ApplicationProfileSelectProps = {
@@ -131,12 +131,12 @@ export const ApplicationProfileSelect = ({
               className={profileOptionItemClassName}
             >
               <span className='flex w-full min-w-0 items-center gap-3'>
-                <span className='grid size-7 shrink-0 place-items-center rounded-md bg-secondary text-muted-foreground'>
+                <span className='grid size-7 shrink-0 place-items-center rounded-control bg-surface-band text-foreground-muted'>
                   <IconSparkles className='size-4' />
                 </span>
                 <span className='min-w-0 flex-1'>
                   <span className='block truncate font-medium'>Temporary</span>
-                  <span className='block truncate text-xs text-muted-foreground'>
+                  <span className='block truncate text-xs text-foreground-muted'>
                     No data will be saved after the session ends
                   </span>
                 </span>
@@ -157,7 +157,7 @@ export const ApplicationProfileSelect = ({
                   <span className='flex w-full min-w-0 items-center gap-3'>
                     <span
                       className={cn(
-                        'grid size-7 shrink-0 place-items-center rounded-md bg-secondary text-muted-foreground',
+                        'grid size-7 shrink-0 place-items-center rounded-control bg-surface-band text-foreground-muted',
                         isSelected && 'bg-primary/18 text-primary'
                       )}
                     >
@@ -170,7 +170,7 @@ export const ApplicationProfileSelect = ({
                           <span className='ml-1 font-normal text-primary'>(Running)</span>
                         </Visible>
                       </span>
-                      <span className='block truncate text-xs text-muted-foreground'>
+                      <span className='block truncate text-xs text-foreground-muted'>
                         {isSelected ? 'Selected persistent profile' : 'Persistent data'}
                       </span>
                     </span>
@@ -178,7 +178,7 @@ export const ApplicationProfileSelect = ({
                       <button
                         type='button'
                         aria-label={`Remove ${profile.name}`}
-                        className='ml-auto grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground transition hover:bg-destructive/12 hover:text-destructive'
+                        className='ml-auto grid size-7 shrink-0 place-items-center rounded-control text-foreground-muted transition hover:bg-danger/12 hover:text-danger'
                         onPointerDown={event => {
                           event.preventDefault()
                           event.stopPropagation()
@@ -199,12 +199,12 @@ export const ApplicationProfileSelect = ({
                 className={profileOptionItemClassName}
               >
                 <span className='flex w-full min-w-0 items-center gap-3'>
-                  <span className='grid size-7 shrink-0 place-items-center rounded-md bg-secondary text-muted-foreground'>
+                  <span className='grid size-7 shrink-0 place-items-center rounded-control bg-surface-band text-foreground-muted'>
                     <IconDatabasePlus className='size-4' />
                   </span>
                   <span className='min-w-0 flex-1'>
                     <span className='block truncate font-medium'>New profile</span>
-                    <span className='block truncate text-xs text-muted-foreground'>
+                    <span className='block truncate text-xs text-foreground-muted'>
                       Create persistent data on first start
                     </span>
                   </span>
@@ -217,11 +217,11 @@ export const ApplicationProfileSelect = ({
 
       <Visible when={allowCustomName && editNewProfileName}>
         <div className='grid gap-2'>
-          <Label>New profile</Label>
+          <Label htmlFor='new-application-profile-name'>New profile</Label>
           <Input
+            id='new-application-profile-name'
             value={name}
             disabled={disabled}
-            autoFocus
             placeholder='default'
             onChange={event => onNameChange(event.target.value)}
           />
@@ -250,7 +250,7 @@ export const ApplicationProfileSelect = ({
             </Button>
             <Button
               type='button'
-              variant='destructive'
+              variant='danger'
               disabled={deleting}
               onClick={() => void confirmDelete()}
             >

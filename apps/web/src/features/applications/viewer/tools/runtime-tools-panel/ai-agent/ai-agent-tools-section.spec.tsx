@@ -1,13 +1,13 @@
 import { createRef } from 'react'
-import { describe, expect, it, jest } from '@jest/globals'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { AiAgentToolsSection } from './ai-agent-tools-section'
 import { useAiAgentChatSession } from './use-ai-agent-chat-session'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { AiPromptSuggestion, SuggestAdHocAiPromptsInput } from '@/server/orchestrator/automations/types'
 
-jest.mock('./use-ai-agent-chat-session', () => ({
-  useAiAgentChatSession: jest.fn()
+vi.mock('./use-ai-agent-chat-session', () => ({
+  useAiAgentChatSession: vi.fn()
 }))
 
 const app: AppDefinition = {
@@ -71,7 +71,7 @@ const chatSession = (
   isCheckingHealth: false,
   isClearing: false,
   isLoadingHistory: false,
-  onTranscriptScroll: jest.fn(),
+  onTranscriptScroll: vi.fn(),
   plannerCatalog: [],
   prompt: '',
   queuedTurn: undefined,
@@ -82,12 +82,12 @@ const chatSession = (
   selectedVisionModel: undefined,
   selectedVisionProvider: undefined,
   selectionMessage: 'Configure an enabled AI provider and model before sending.',
-  setModelId: jest.fn(),
-  setPrompt: jest.fn(),
-  setProviderId: jest.fn(),
-  setTimeoutMinutesInput: jest.fn(),
-  setVisionModelId: jest.fn(),
-  setVisionProviderId: jest.fn(),
+  setModelId: vi.fn(),
+  setPrompt: vi.fn(),
+  setProviderId: vi.fn(),
+  setTimeoutMinutesInput: vi.fn(),
+  setVisionModelId: vi.fn(),
+  setVisionProviderId: vi.fn(),
   showCancelRun: undefined,
   submit: () => Promise.resolve(undefined),
   submitPrompt: () => Promise.resolve(undefined),
@@ -100,7 +100,7 @@ const chatSession = (
 
 describe('AiAgentToolsSection', () => {
   it('shows the composer while chat history is loading', () => {
-    jest.mocked(useAiAgentChatSession).mockReturnValue(chatSession({ isLoadingHistory: true }))
+    vi.mocked(useAiAgentChatSession).mockReturnValue(chatSession({ isLoadingHistory: true }))
 
     render(<AiAgentToolsSection app={app} />)
 
@@ -110,7 +110,7 @@ describe('AiAgentToolsSection', () => {
   })
 
   it('shows an empty ready state when there are no turns', () => {
-    jest.mocked(useAiAgentChatSession).mockReturnValue(chatSession())
+    vi.mocked(useAiAgentChatSession).mockReturnValue(chatSession())
 
     render(<AiAgentToolsSection app={app} />)
 
@@ -120,7 +120,7 @@ describe('AiAgentToolsSection', () => {
   })
 
   it('keeps history and settings visible but pauses device actions while stopped', () => {
-    jest.mocked(useAiAgentChatSession).mockReturnValue(
+    vi.mocked(useAiAgentChatSession).mockReturnValue(
       chatSession({
         canSubmit: true,
         prompt: 'Open settings'
@@ -142,7 +142,7 @@ describe('AiAgentToolsSection', () => {
   })
 
   it('uses the transcript as the desktop scroll area', () => {
-    jest.mocked(useAiAgentChatSession).mockReturnValue(chatSession())
+    vi.mocked(useAiAgentChatSession).mockReturnValue(chatSession())
 
     render(<AiAgentToolsSection app={app} />)
 
@@ -156,7 +156,7 @@ describe('AiAgentToolsSection', () => {
   })
 
   it('keeps the inline composer dock transparent', () => {
-    jest.mocked(useAiAgentChatSession).mockReturnValue(chatSession())
+    vi.mocked(useAiAgentChatSession).mockReturnValue(chatSession())
 
     render(<AiAgentToolsSection app={app} />)
 
@@ -168,8 +168,8 @@ describe('AiAgentToolsSection', () => {
   })
 
   it('keeps clear available and delegates clearing to the session', () => {
-    const clearConversation = jest.fn<() => Promise<void>>(() => Promise.resolve())
-    jest.mocked(useAiAgentChatSession).mockReturnValue(
+    const clearConversation = vi.fn<() => Promise<void>>(() => Promise.resolve())
+    vi.mocked(useAiAgentChatSession).mockReturnValue(
       chatSession({
         clearConversation,
         turns: [
@@ -192,14 +192,14 @@ describe('AiAgentToolsSection', () => {
   })
 
   it('renders generated contextual suggestions when enabled', async () => {
-    const generatePromptSuggestions = jest.fn<
+    const generatePromptSuggestions = vi.fn<
       (input: SuggestAdHocAiPromptsInput) => Promise<{ suggestions: AiPromptSuggestion[] }>
     >(() =>
       Promise.resolve({
         suggestions: [{ id: 'dynamic', label: 'Dynamic chip', prompt: 'Inspect the current screen.' }]
       })
     )
-    jest.mocked(useAiAgentChatSession).mockReturnValue(
+    vi.mocked(useAiAgentChatSession).mockReturnValue(
       chatSession({
         selectedProvider: { id: 'provider_1', label: 'Provider', kind: 'ollama', models: [] },
         selectedModel: {
@@ -221,18 +221,18 @@ describe('AiAgentToolsSection', () => {
     )
 
     expect(await screen.findByText('Dynamic chip')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Dynamic chip' }).className).toContain('border-border/45')
+    expect(screen.getByRole('button', { name: 'Dynamic chip' }).className).toContain('border-surface-border/45')
     expect(screen.getByRole('button', { name: 'Dynamic chip' }).className).toContain('font-normal')
     expect(generatePromptSuggestions.mock.calls[0]?.[0]).toMatchObject({ targetApplicationId: app.id })
   })
 
   it('exports visible conversation turns as debug json', async () => {
-    const createObjectURL = jest.fn((_object: Blob | MediaSource) => 'blob:debug-export')
-    const revokeObjectURL = jest.fn()
-    const click = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
+    const createObjectURL = vi.fn((_object: Blob | MediaSource) => 'blob:debug-export')
+    const revokeObjectURL = vi.fn()
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
     Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: createObjectURL })
     Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: revokeObjectURL })
-    jest.mocked(useAiAgentChatSession).mockReturnValue(
+    vi.mocked(useAiAgentChatSession).mockReturnValue(
       chatSession({
         selectedProvider: { id: 'provider_1', label: 'Provider', kind: 'ollama', models: [] },
         selectedModel: {
@@ -277,10 +277,10 @@ describe('AiAgentToolsSection', () => {
   })
 
   it('uses static suggestions when contextual generation is disabled', () => {
-    const generatePromptSuggestions = jest.fn<
+    const generatePromptSuggestions = vi.fn<
       (input: SuggestAdHocAiPromptsInput) => Promise<{ suggestions: AiPromptSuggestion[] }>
     >(() => Promise.resolve({ suggestions: [] }))
-    jest.mocked(useAiAgentChatSession).mockReturnValue(
+    vi.mocked(useAiAgentChatSession).mockReturnValue(
       chatSession({
         selectedProvider: { id: 'provider_1', label: 'Provider', kind: 'ollama', models: [] },
         selectedModel: {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import { appendDockerMetricsHistory } from './docker-metrics-history'
 import type { DockerMetricsSnapshot } from '@/server/orchestrator/diagnostics/types'
 

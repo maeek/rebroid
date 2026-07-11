@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { StatusSplash } from '@/shared/ui/status-splash'
 
 export const PlatformRouteUnavailable = ({
@@ -20,7 +20,7 @@ export const PlatformRouteUnavailable = ({
   breadcrumbRoot?: { label: string; href?: string }
   actionLabel?: string
 }) => (
-  <ProtectedStackPageLayout mainClassName='gap-2'>
+  <StandardPage className='gap-2'>
     <PlatformPageHeader
       title={title}
       titlePrefix={titlePrefix}
@@ -38,5 +38,5 @@ export const PlatformRouteUnavailable = ({
         className='min-h-[52vh]'
       />
     </section>
-  </ProtectedStackPageLayout>
+  </StandardPage>
 )

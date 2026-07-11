@@ -41,6 +41,7 @@ const ViewerIframe = ({
   keyboardCaptureEnabled: boolean
 }) => (
   <iframe
+    title='Android application viewer'
     ref={viewerFrameRef}
     src={src}
     key={src}

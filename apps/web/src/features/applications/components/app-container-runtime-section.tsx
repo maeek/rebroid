@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Textarea } from '@/components/ui/textarea'
 import { Visible } from '@/components/ui/visible'
-import { Setting } from '@/shared/ui/settings/setting'
+import { FormField } from '@/components/ui/form-field'
 import { verticalSettingClassName } from './app-form-utils'
 
 type FieldMode = 'editable' | 'readonly'
@@ -54,15 +54,16 @@ export const AppContainerRuntimeSection = ({
 
   return (
     <Section
+      surface='plain'
       title={title}
       titleClassName={titleClassName}
       contentClassName={contentClassName ?? (title ? 'gap-4' : 'gap-4')}
     >
       <Visible when={showContainerImage}>
-        <Setting
+        <FormField
           label={containerImageLabel}
           description={containerImageDescription}
-          variant='vertical'
+          layout='vertical'
           className={verticalSettingClassName}
         >
           {containerImageSlot ?? (
@@ -72,16 +73,16 @@ export const AppContainerRuntimeSection = ({
               onChange={event => (isContainerImageEditable ? onContainerImageChange?.(event.target.value) : undefined)}
             />
           )}
-        </Setting>
+        </FormField>
       </Visible>
 
       <Visible when={children}>{children}</Visible>
 
       <Visible when={showContainerArgs}>
-        <Setting
+        <FormField
           label={containerArgsLabel}
           description={containerArgsDescription}
-          variant='vertical'
+          layout='vertical'
           className={verticalSettingClassName}
         >
           <Textarea
@@ -90,7 +91,7 @@ export const AppContainerRuntimeSection = ({
             readOnly={!isContainerArgsEditable}
             onChange={event => (isContainerArgsEditable ? onContainerArgsChange?.(event.target.value) : undefined)}
           />
-        </Setting>
+        </FormField>
       </Visible>
     </Section>
   )

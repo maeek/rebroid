@@ -70,7 +70,7 @@ export const useApplicationLogs = ({ app, enabled = true, loadWhenEnabled = fals
       toast({
         title: 'Could not load logs',
         description: getToastErrorDescription(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     }
   }, [app, refreshLogs, source, sourceUnavailable])

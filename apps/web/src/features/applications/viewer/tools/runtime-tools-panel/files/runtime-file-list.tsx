@@ -26,7 +26,7 @@ export const RuntimeFileList = ({
           {entry.type === 'directory' ? (
             <IconFolder className='size-5 shrink-0 text-primary' />
           ) : (
-            <IconFile className='size-5 shrink-0 text-muted-foreground' />
+            <IconFile className='size-5 shrink-0 text-foreground-muted' />
           )}
           <span className='min-w-0'>
             <span className='block truncate font-medium hover:underline'>{entry.name}</span>

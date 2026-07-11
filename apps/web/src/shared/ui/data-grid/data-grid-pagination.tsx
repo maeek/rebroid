@@ -62,7 +62,7 @@ export function DataGridPagination({
           <Button
             type='button'
             variant='secondary'
-            size='icon'
+            size='icon-md'
             disabled={pageIndex <= 0}
             onClick={() => onPageIndexChange(Math.max(pageIndex - 1, 0))}
           >
@@ -74,7 +74,7 @@ export function DataGridPagination({
           <Button
             type='button'
             variant='secondary'
-            size='icon'
+            size='icon-md'
             disabled={pageIndex >= pageCount - 1}
             onClick={() => onPageIndexChange(Math.min(pageIndex + 1, pageCount - 1))}
           >

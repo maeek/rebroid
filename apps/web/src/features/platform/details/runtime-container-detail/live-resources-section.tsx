@@ -25,7 +25,7 @@ export const LiveResourcesSection = () => {
 
   return (
     <Section
-      boxed
+      surface='panel'
       contentClassName='gap-4'
     >
       <div className='flex flex-wrap items-center justify-between gap-3'>
@@ -45,9 +45,7 @@ export const LiveResourcesSection = () => {
         </Button>
       </div>
       <Visible when={statsError}>
-        <div className='rounded-lg border border-destructive/35 bg-destructive/10 p-3 text-sm text-destructive'>
-          {statsError}
-        </div>
+        <div className='rounded-panel border border-danger/35 bg-danger/10 p-3 text-sm text-danger'>{statsError}</div>
       </Visible>
       <div className='grid grid-cols-4 gap-3 max-xl:grid-cols-2 max-sm:grid-cols-1'>
         <QuickGlanceCard

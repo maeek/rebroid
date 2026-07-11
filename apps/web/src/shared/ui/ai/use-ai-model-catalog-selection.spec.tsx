@@ -1,7 +1,7 @@
-import { describe, expect, it, jest } from '@jest/globals'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { useAiModelCatalogSelection } from './use-ai-model-catalog-selection'
-import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
+import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 
 const catalog = [
   {
@@ -23,7 +23,7 @@ const catalog = [
 
 describe('useAiModelCatalogSelection', () => {
   it('patches missing planner and vision selection from the catalog', async () => {
-    const onSelectionChange = jest.fn()
+    const onSelectionChange = vi.fn()
     renderHook(() =>
       useAiModelCatalogSelection({
         loadCatalog: () => Promise.resolve(catalog),
@@ -53,7 +53,7 @@ describe('useAiModelCatalogSelection', () => {
       message: 'Ready',
       checkedAt: '2026-01-01T00:00:00.000Z'
     } satisfies AutomationAiProviderHealth
-    const checkHealth = jest.fn<(providerId: string, modelId: string) => Promise<AutomationAiProviderHealth>>(() =>
+    const checkHealth = vi.fn<(providerId: string, modelId: string) => Promise<AutomationAiProviderHealth>>(() =>
       Promise.resolve(health)
     )
 
@@ -62,7 +62,7 @@ describe('useAiModelCatalogSelection', () => {
         checkHealth,
         loadCatalog: () => Promise.resolve(catalog),
         modelId: 'qwen',
-        onSelectionChange: jest.fn(),
+        onSelectionChange: vi.fn(),
         providerId: 'local',
         visionModelId: 'qwen',
         visionProviderId: 'local'
@@ -74,7 +74,7 @@ describe('useAiModelCatalogSelection', () => {
   })
 
   it('patches planner and matching vision model when provider changes', async () => {
-    const onSelectionChange = jest.fn()
+    const onSelectionChange = vi.fn()
     const { result } = renderHook(() =>
       useAiModelCatalogSelection({
         loadCatalog: () => Promise.resolve(catalog),

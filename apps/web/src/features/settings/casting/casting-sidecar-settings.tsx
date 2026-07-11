@@ -87,7 +87,7 @@ export const CastingSidecarSettings = ({
       toast({
         title: 'Could not load casting sessions',
         description: castingErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setBusy(null)
@@ -111,7 +111,7 @@ export const CastingSidecarSettings = ({
       toast({
         title: 'Could not restart casting sidecar',
         description: castingErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setBusy(null)
@@ -135,7 +135,7 @@ export const CastingSidecarSettings = ({
       toast({
         title: 'Could not kill casting session',
         description: castingErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setBusy(null)
@@ -176,6 +176,7 @@ export const CastingSidecarSettings = ({
         details={healthDetails}
       />
       <Section
+        surface='plain'
         title='Sessions'
         titleClassName='pb-2'
         contentClassName='gap-4'

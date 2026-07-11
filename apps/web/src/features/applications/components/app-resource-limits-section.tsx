@@ -1,8 +1,8 @@
 import { NumberSliderField } from '@/components/ui/number-slider-field'
 import { Section } from '@/components/ui/section'
-import { Setting } from '@/shared/ui/settings/setting'
+import { FormField } from '@/components/ui/form-field'
 import { verticalSettingClassName } from './app-form-utils'
-import type { ResourceLimitBounds } from '@/server/orchestrator/diagnostics/resource-limits'
+import type { ResourceLimitBounds } from '@/shared/contracts/system-resources'
 
 type AppResourceLimitsSectionProps = {
   values: {
@@ -30,14 +30,15 @@ export const AppResourceLimitsSection = ({
 }: AppResourceLimitsSectionProps) => {
   return (
     <Section
+      surface='plain'
       title={title}
       contentClassName={contentClassName}
       titleClassName={titleClassName}
     >
-      <Setting
+      <FormField
         label='RAM limit'
         description={descriptionForMemory}
-        variant='vertical'
+        layout='vertical'
         className={verticalSettingClassName}
       >
         <NumberSliderField
@@ -50,11 +51,11 @@ export const AppResourceLimitsSection = ({
           allowEmpty
           onValueChange={value => onChange({ memoryLimitMb: value })}
         />
-      </Setting>
-      <Setting
+      </FormField>
+      <FormField
         label='CPU limit'
         description={descriptionForCpu}
-        variant='vertical'
+        layout='vertical'
         className={verticalSettingClassName}
       >
         <NumberSliderField
@@ -68,7 +69,7 @@ export const AppResourceLimitsSection = ({
           allowEmpty
           onValueChange={value => onChange({ cpuLimitCpus: value })}
         />
-      </Setting>
+      </FormField>
     </Section>
   )
 }

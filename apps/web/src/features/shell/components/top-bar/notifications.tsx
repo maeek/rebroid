@@ -27,13 +27,13 @@ export const TopBarNotifications = () => {
         <button
           type='button'
           aria-label='Notifications'
-          className='relative inline-flex size-10 shrink-0 items-center justify-center rounded-full text-foreground-muted transition hover:bg-secondary/70 hover:text-foreground'
+          className='relative inline-flex size-10 shrink-0 items-center justify-center rounded-full text-foreground-muted transition hover:bg-surface-band/70 hover:text-foreground'
         >
           <IconBell className='size-5' />
           <Visible when={totalCount > 0}>
             <span
               className={cn(
-                'absolute right-0 top-0 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full border border-background bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground',
+                'absolute right-0 top-0 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full border border-background bg-primary px-1 text-xs font-bold leading-none text-primary-foreground',
                 totalCount > 9 && 'px-1.5'
               )}
             >
@@ -46,21 +46,21 @@ export const TopBarNotifications = () => {
         align='start'
         collisionPadding={16}
         sideOffset={8}
-        className='w-[min(24rem,calc(100vw-2rem))] border-border/70 bg-surface-elevated/96 p-3 backdrop-blur-xl'
+        className='w-[min(24rem,calc(100vw-2rem))] border-surface-border/70 bg-surface-elevated/96 p-3 backdrop-blur-xl'
       >
         <div className='flex items-start justify-between gap-3 pb-3'>
           <div>
-            <p className='text-sm font-semibold text-foreground'>Notifications</p>
+            <p className='text-sm font-medium text-foreground'>Notifications</p>
             <p className='text-xs text-foreground-muted'>Live notifications from your running apps.</p>
           </div>
           <Visible when={totalCount > 0}>
-            <span className='rounded-full border border-border/70 bg-secondary/60 px-2 py-0.5 text-[10px] font-semibold text-secondary-foreground'>
+            <span className='rounded-full border border-surface-border/70 bg-surface-band/60 px-2 py-0.5 text-xs font-medium text-foreground'>
               {totalCount}
             </span>
           </Visible>
         </div>
         <Visible when={notifications.length === 0}>
-          <div className='rounded-xl border border-dashed border-border/70 bg-secondary/30 px-4 py-6 text-sm text-secondary-foreground'>
+          <div className='rounded-panel border border-dashed border-surface-border/70 bg-surface-band/30 px-4 py-6 text-sm text-foreground'>
             {isLoading ? 'Checking running apps for notifications.' : 'No live notifications from your running apps.'}
           </div>
         </Visible>
@@ -74,11 +74,11 @@ export const TopBarNotifications = () => {
                 <div className='flex items-center justify-between gap-3'>
                   <Link
                     href={`/app/${app.appId}/manage`}
-                    className='truncate text-sm font-semibold text-foreground underline-offset-4 hover:underline'
+                    className='truncate text-sm font-medium text-foreground underline-offset-4 hover:underline'
                   >
                     {app.appName}
                   </Link>
-                  <span className='rounded-full border border-border/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground'>
+                  <span className='rounded-full border border-surface-border/60 px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-foreground-muted'>
                     {app.notifications.length}
                   </span>
                 </div>

@@ -71,7 +71,7 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
       toast({
         title: 'Could not save network policy',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsSaving(false)
@@ -94,7 +94,7 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
       toast({
         title: 'Could not apply policy',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsSaving(false)
@@ -115,7 +115,7 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
     toast({
       title: 'Invalid CIDR',
       description: getInvalidCidrMessage(value),
-      variant: 'destructive'
+      variant: 'danger'
     })
   }
 
@@ -125,11 +125,11 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
       topSection={
         <div className='flex flex-col gap-2'>
           <div className='flex flex-wrap items-center gap-2'>
-            <Badge variant={networkPolicyEnabled ? 'status' : 'secondary'}>
+            <Badge variant={networkPolicyEnabled ? 'success' : 'neutral'}>
               {networkPolicyEnabled ? 'Restricted' : 'Unrestricted'}
             </Badge>
             <Badge
-              variant={app.networkPolicyResult?.status === 'error' ? 'destructive' : 'secondary'}
+              variant={app.networkPolicyResult?.status === 'error' ? 'danger' : 'neutral'}
               className='capitalize'
             >
               {getPolicyStatus(app)}

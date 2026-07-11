@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import {
   buildNetworksGridHref,
   canRemoveSelectedNetworks,
@@ -43,7 +43,7 @@ describe('orchestrator networks section model', () => {
     ).toBe('/runtime/networks?page=1&pageSize=50')
   })
 
-  it('detects attached containers before destructive network removal', () => {
+  it('detects attached containers before danger network removal', () => {
     expect(networkHasAttachedContainers(network())).toBe(false)
     expect(networkHasAttachedContainers(network({ containers: ['container-1'] }))).toBe(true)
   })
@@ -66,7 +66,7 @@ describe('orchestrator networks section model', () => {
     ).toEqual({
       title: 'Some networks could not be removed',
       description: '2 remove requests failed.',
-      variant: 'destructive'
+      variant: 'danger'
     })
   })
 })

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { IconSettings, IconTerminal2 } from '@tabler/icons-react'
-import classNames from 'classnames'
+import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -34,7 +34,7 @@ export const AppViewerActions = ({
   const showLogsAction = canViewLogs && mode === 'details'
 
   return (
-    <div className={classNames('flex flex-row flex-wrap justify-end gap-2 items-center', className)}>
+    <div className={cn('flex flex-row flex-wrap justify-end gap-2 items-center', className)}>
       <Visible when={canViewLogs}>
         <AppLogsDialog
           app={app}
@@ -64,7 +64,7 @@ export const AppViewerActions = ({
             <Button
               asChild
               variant='secondary'
-              size='icon'
+              size='icon-md'
               aria-label='Manage application settings'
             >
               <Link href={`/app/${app?.id}/manage`}>
@@ -80,7 +80,7 @@ export const AppViewerActions = ({
           <TooltipTrigger asChild>
             <Button
               variant='secondary'
-              size='icon'
+              size='icon-md'
               aria-label='View application logs'
               onClick={() => setLogsOpen(true)}
             >

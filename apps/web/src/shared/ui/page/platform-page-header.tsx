@@ -6,7 +6,6 @@ export const PlatformPageHeader = ({
   titlePrefix,
   description,
   actions,
-  titleActions,
   parent,
   breadcrumbRoot = { label: 'Platform', href: '/platform' }
 }: {
@@ -14,7 +13,6 @@ export const PlatformPageHeader = ({
   titlePrefix?: ReactNode
   description?: string
   actions?: ReactNode
-  titleActions?: ReactNode
   parent?: { label: string; href: string }
   breadcrumbRoot?: { label: string; href?: string }
 }) => (
@@ -23,7 +21,6 @@ export const PlatformPageHeader = ({
     title={title}
     titlePrefix={titlePrefix}
     description={description}
-    titleActions={titleActions}
     actions={actions}
   />
 )

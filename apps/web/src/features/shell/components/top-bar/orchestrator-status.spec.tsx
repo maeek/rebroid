@@ -1,38 +1,44 @@
-import { describe, expect, it, jest } from '@jest/globals'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { getOrchestratorHealthSummaryAction } from '@/server/orchestrator/diagnostics/actions'
 import { OrchestratorStatus } from './orchestrator-status'
 
-jest.mock('@/hooks/use-polling-query', () => ({
-  usePollingQuery: jest.fn()
+vi.mock('@/hooks/use-polling-query', () => ({
+  usePollingQuery: vi.fn()
 }))
-jest.mock('@/server/orchestrator/diagnostics/actions', () => ({
-  getOrchestratorHealthSummaryAction: jest.fn()
+vi.mock('@/server/orchestrator/diagnostics/actions', () => ({
+  getOrchestratorHealthSummaryAction: vi.fn()
 }))
 
 describe('OrchestratorStatus', () => {
   it('polls the shallow diagnostics summary', async () => {
-    jest.mocked(usePollingQuery).mockReturnValue({
+    vi.mocked(usePollingQuery).mockReturnValue({
       data: undefined,
-      error: null
-    } as never)
-    jest.mocked(getOrchestratorHealthSummaryAction).mockResolvedValue({} as never)
+      error: undefined,
+      isLoading: true,
+      isValidating: false,
+      mutate: vi.fn()
+    })
+    vi.mocked(getOrchestratorHealthSummaryAction).mockResolvedValue({} as never)
 
     render(<OrchestratorStatus />)
 
     expect(usePollingQuery).toHaveBeenCalledWith('orchestrator:health', expect.any(Function), {
       intervalMs: 10_000
     })
-    await jest.mocked(usePollingQuery).mock.calls[0]?.[1]()
+    await vi.mocked(usePollingQuery).mock.calls[0]?.[1]()
     expect(getOrchestratorHealthSummaryAction).toHaveBeenCalledTimes(1)
   })
 
   it('links optional service health rows to their service editors', () => {
-    jest.mocked(usePollingQuery).mockReturnValue({
+    vi.mocked(usePollingQuery).mockReturnValue({
       data: undefined,
-      error: null
-    } as never)
+      error: undefined,
+      isLoading: true,
+      isValidating: false,
+      mutate: vi.fn()
+    })
 
     render(<OrchestratorStatus />)
     fireEvent.click(screen.getByRole('button', { name: /checking/i }))

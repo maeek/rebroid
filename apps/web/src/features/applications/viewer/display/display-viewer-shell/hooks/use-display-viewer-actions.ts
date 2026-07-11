@@ -75,7 +75,7 @@ export const useDisplayViewerActions = ({
         toast({
           title: 'Could not capture screenshot',
           description: getToastErrorDescription(error),
-          variant: 'destructive'
+          variant: 'danger'
         })
       }
     })
@@ -90,7 +90,7 @@ export const useDisplayViewerActions = ({
         toast({
           title: 'Could not add display',
           description: getToastErrorDescription(error),
-          variant: 'destructive'
+          variant: 'danger'
         })
       }
     })
@@ -121,7 +121,7 @@ export const useDisplayViewerActions = ({
       toast({
         title: currentRecording?.status === 'recording' ? 'Could not stop recording' : 'Could not start recording',
         description: getToastErrorDescription(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setRecordingSurfaceId(null)
@@ -161,7 +161,7 @@ export const useDisplayViewerActions = ({
         toast({
           title: 'Could not close display',
           description: getToastErrorDescription(error),
-          variant: 'destructive'
+          variant: 'danger'
         })
       } finally {
         setClosingSurfaceId(null)

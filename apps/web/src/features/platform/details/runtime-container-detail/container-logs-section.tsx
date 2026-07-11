@@ -17,7 +17,7 @@ export const ContainerLogsSection = () => {
           Logs
         </div>
       }
-      boxed
+      surface='panel'
       contentClassName='gap-4'
     >
       <LogsConsole
@@ -28,7 +28,7 @@ export const ContainerLogsSection = () => {
         collectedAtPrefix='Recent Docker logs collected at'
         formatCollectedAt={formatPlatformDate}
         controls={<p className='text-sm text-foreground-muted'>Recent Docker logs for this container.</p>}
-        outputClassName='max-h-128 rounded-lg bg-black/35 leading-6'
+        outputClassName='max-h-128 rounded-panel bg-black/35 leading-6'
       />
     </Section>
   )

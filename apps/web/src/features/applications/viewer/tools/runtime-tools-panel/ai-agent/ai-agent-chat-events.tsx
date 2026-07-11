@@ -43,7 +43,7 @@ export const ChatTurnView = ({
         title='Agent'
         meta={<ChatStatusBadge status={turn.status}>{chatTurnTitle(turn)}</ChatStatusBadge>}
       >
-        {turn.error ? <div className='text-xs text-destructive'>{turn.error}</div> : null}
+        {turn.error ? <div className='text-xs text-danger'>{turn.error}</div> : null}
         {turn.status === 'queued' ? (
           <AiAssistantText muted>Waiting for the active run to finish. Use Run next to start it.</AiAssistantText>
         ) : null}

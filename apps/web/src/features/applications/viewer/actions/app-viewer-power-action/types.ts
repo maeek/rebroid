@@ -28,7 +28,7 @@ export type RuntimePowerControlsProps = {
   isRunningAction: boolean
   menuActions: RuntimeMenuAction[]
   menuDisabled: boolean
-  primaryVariant: 'secondary' | 'update'
+  primaryVariant: 'primary' | 'secondary'
   primaryLabel: string
   primaryIcon: ReactNode
   onPrimaryAction: () => void

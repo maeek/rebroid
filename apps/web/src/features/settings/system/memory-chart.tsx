@@ -32,7 +32,7 @@ export function MemoryChart({ totalMemory, freeMemory }: { totalMemory: number; 
           gridType='circle'
           radialLines={false}
           stroke='none'
-          className='first:fill-muted last:fill-background'
+          className='first:fill-surface-band last:fill-background'
           polarRadius={[126, 114]}
         />
         <RadialBar
@@ -65,7 +65,7 @@ export function MemoryChart({ totalMemory, freeMemory }: { totalMemory: number; 
                     <tspan
                       x={viewBox.cx}
                       y={(viewBox.cy || 0) + 32}
-                      className='fill-muted-foreground'
+                      className='fill-foreground-muted'
                     >
                       % Memory used
                     </tspan>

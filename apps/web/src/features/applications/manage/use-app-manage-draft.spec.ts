@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import { buildAppManageUpdateInput, mergeAppPreservingDraftAssets } from './use-app-manage-draft'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 

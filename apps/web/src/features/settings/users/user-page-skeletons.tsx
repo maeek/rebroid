@@ -1,6 +1,6 @@
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageBreadcrumbsSkeleton } from '@/shared/ui/page/page-breadcrumbs-skeleton'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { TableSkeleton } from '@/shared/ui/skeletons/table-skeleton'
 
 const UsersHeaderSkeleton = ({
@@ -33,7 +33,7 @@ const UsersHeaderSkeleton = ({
 )
 
 export const UsersPageSkeleton = () => (
-  <ProtectedStackPageLayout mainClassName='gap-2'>
+  <StandardPage className='gap-2'>
     <UsersHeaderSkeleton />
     <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
       <div className='grid gap-4'>
@@ -54,11 +54,11 @@ export const UsersPageSkeleton = () => (
         />
       </div>
     </section>
-  </ProtectedStackPageLayout>
+  </StandardPage>
 )
 
 export const GroupsPageSkeleton = () => (
-  <ProtectedStackPageLayout mainClassName='gap-2'>
+  <StandardPage className='gap-2'>
     <UsersHeaderSkeleton
       itemWidths={['w-16', 'w-20']}
       titleWidth='w-28'
@@ -81,11 +81,11 @@ export const GroupsPageSkeleton = () => (
         />
       </div>
     </section>
-  </ProtectedStackPageLayout>
+  </StandardPage>
 )
 
 export const UserEditPageSkeleton = () => (
-  <ProtectedStackPageLayout mainClassName='gap-2'>
+  <StandardPage className='gap-2'>
     <UsersHeaderSkeleton
       itemWidths={['w-16', 'w-16', 'w-28']}
       titleWidth='w-48'
@@ -93,24 +93,24 @@ export const UserEditPageSkeleton = () => (
       withAvatar
     />
     <EditBodySkeleton leftTitle='w-24' />
-  </ProtectedStackPageLayout>
+  </StandardPage>
 )
 
 export const GroupEditPageSkeleton = () => (
-  <ProtectedStackPageLayout mainClassName='gap-2'>
+  <StandardPage className='gap-2'>
     <UsersHeaderSkeleton
       itemWidths={['w-16', 'w-20', 'w-28']}
       titleWidth='w-44'
       actionWidth='w-28'
     />
     <EditBodySkeleton leftTitle='w-32' />
-  </ProtectedStackPageLayout>
+  </StandardPage>
 )
 
 const EditBodySkeleton = ({ leftTitle }: { leftTitle: string }) => (
   <section className='grid w-full gap-6 px-6 pb-16 max-sm:px-4 xl:grid-cols-[minmax(0,1fr)_minmax(28rem,0.85fr)]'>
     <div className='grid content-start gap-6'>
-      <div className='rounded-lg border border-border/70 bg-surface-panel/50 p-6 max-sm:p-4'>
+      <div className='rounded-panel border border-surface-border/70 bg-surface-panel/50 p-6 max-sm:p-4'>
         <Skeleton className={`mb-5 h-5 ${leftTitle}`} />
         <div className='grid gap-4 md:grid-cols-2'>
           {Array.from({ length: 4 }).map((_, index) => (
@@ -124,7 +124,7 @@ const EditBodySkeleton = ({ leftTitle }: { leftTitle: string }) => (
           ))}
         </div>
       </div>
-      <div className='rounded-lg border border-border/70 bg-surface-panel/50 p-6 max-sm:p-4'>
+      <div className='rounded-panel border border-surface-border/70 bg-surface-panel/50 p-6 max-sm:p-4'>
         <Skeleton className='mb-5 h-5 w-20' />
         <div className='grid gap-4 md:grid-cols-2'>
           {Array.from({ length: 4 }).map((_, index) => (
@@ -139,13 +139,13 @@ const EditBodySkeleton = ({ leftTitle }: { leftTitle: string }) => (
         </div>
       </div>
     </div>
-    <div className='rounded-lg border border-border/70 bg-surface-panel/50 p-6 max-sm:p-4'>
+    <div className='rounded-panel border border-surface-border/70 bg-surface-panel/50 p-6 max-sm:p-4'>
       <Skeleton className='mb-5 h-5 w-28' />
       <div className='grid gap-3'>
         {Array.from({ length: 10 }).map((_, index) => (
           <div
             key={index}
-            className='flex items-center justify-between gap-4 border-b border-border/50 py-2 last:border-b-0'
+            className='flex items-center justify-between gap-4 border-b border-surface-border/50 py-2 last:border-b-0'
           >
             <div className='grid gap-2'>
               <Skeleton className='h-4 w-40' />

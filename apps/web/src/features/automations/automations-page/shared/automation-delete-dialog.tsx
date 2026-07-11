@@ -50,7 +50,7 @@ export function AutomationDeleteDialog({
             </Button>
           </DialogClose>
           <Button
-            variant='destructive'
+            variant='danger'
             disabled={busy}
             onClick={onConfirm}
           >

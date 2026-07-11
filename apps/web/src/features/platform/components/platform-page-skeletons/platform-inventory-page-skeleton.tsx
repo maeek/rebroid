@@ -1,6 +1,6 @@
 import { Skeleton } from '@/components/ui/skeleton'
 import { DataGridSkeleton } from '@/shared/ui/data-grid'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
 import type { ListColumn } from '@/shared/ui/skeletons/list-skeleton-types'
 
@@ -15,7 +15,7 @@ export const PlatformInventoryPageSkeleton = ({
   minWidth: string
   actionCount?: number
 }) => (
-  <ProtectedStackPageLayout mainClassName='gap-2'>
+  <StandardPage className='gap-2'>
     <PageHeaderSkeleton
       titleWidth={titleWidth}
       includeOrchestratorBreadcrumb={false}
@@ -44,5 +44,5 @@ export const PlatformInventoryPageSkeleton = ({
         </div>
       </div>
     </section>
-  </ProtectedStackPageLayout>
+  </StandardPage>
 )

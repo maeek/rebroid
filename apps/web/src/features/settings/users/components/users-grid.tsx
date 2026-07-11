@@ -52,7 +52,7 @@ const UserIdentity = ({ user }: { user: PublicUser }) => (
       </Avatar>
       <div className='min-w-0'>
         <div className='truncate font-medium hover:underline hover:text-primary focus:underline'>{user.name}</div>
-        <div className='truncate text-xs text-muted-foreground'>{user.username}</div>
+        <div className='truncate text-xs text-foreground-muted'>{user.username}</div>
       </div>
     </div>
   </Link>
@@ -66,7 +66,7 @@ const GroupBadges = ({ user, groups }: { user: PublicUser; groups: UserGroup[] }
         key={groupId}
       >
         <Badge
-          variant='secondary'
+          variant='neutral'
           className='max-w-full truncate'
         >
           {groupLabel(groups, groupId)}
@@ -90,7 +90,7 @@ const UserStatus = ({
       type='button'
       variant='link'
       disabled={busy}
-      className={user.disabled ? 'h-auto px-0 text-destructive' : 'h-auto px-0 text-primary'}
+      className={user.disabled ? 'h-auto px-0 text-danger' : 'h-auto px-0 text-primary'}
       onClick={() => onToggleDisabled(user)}
     >
       {user.disabled ? 'Disabled' : 'Active'}
@@ -180,7 +180,7 @@ export const UsersGrid = ({
   return (
     <div className='grid gap-3'>
       {selectedUsers.length > 0 ? (
-        <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-surface-border bg-surface-panel/50 px-4 py-3 text-sm'>
+        <div className='flex flex-wrap items-center justify-between gap-3 rounded-panel border border-surface-border bg-surface-panel/50 px-4 py-3 text-sm'>
           <span className='text-foreground-muted'>{selectedUsers.length} selected</span>
           <div className='flex flex-wrap gap-2'>
             <Button
@@ -201,7 +201,7 @@ export const UsersGrid = ({
             </Button>
             <Button
               type='button'
-              variant='destructive'
+              variant='danger'
               disabled={busyUserId !== null}
               onClick={() => onDeleteSelected(selectedUsers)}
             >
@@ -245,7 +245,7 @@ export const UsersGrid = ({
                     Disable selected ({selectedUsers.length})
                   </ContextMenuItem>
                   <ContextMenuItem
-                    className='text-destructive focus:text-destructive'
+                    className='text-danger focus:text-danger'
                     disabled={busyUserId !== null}
                     onSelect={() => onDeleteSelected(selectedUsers)}
                   >
@@ -261,7 +261,7 @@ export const UsersGrid = ({
                 {row.original.disabled ? 'Enable' : 'Disable'}
               </ContextMenuItem>
               <ContextMenuItem
-                className='text-destructive focus:text-destructive'
+                className='text-danger focus:text-danger'
                 disabled={busyUserId === row.original.id}
                 onSelect={() => onDelete(row.original)}
               >

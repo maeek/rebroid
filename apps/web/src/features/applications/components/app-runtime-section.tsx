@@ -1,6 +1,6 @@
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
-import { Setting } from '@/shared/ui/settings/setting'
+import { FormField } from '@/components/ui/form-field'
 
 type AppRuntimeSectionProps = {
   values: {
@@ -23,14 +23,15 @@ export const AppRuntimeSection = ({
 }: AppRuntimeSectionProps) => {
   return (
     <Section
+      surface='plain'
       title={title}
       contentClassName={contentClassName}
       titleClassName={titleClassName}
     >
-      <Setting
+      <FormField
         label='Inactivity timeout'
         description={description}
-        variant='vertical'
+        layout='vertical'
         className='flex-col items-start w-full'
       >
         <Input
@@ -40,7 +41,7 @@ export const AppRuntimeSection = ({
           type='number'
           onChange={event => onChange({ inactivityTimeoutSeconds: Number(event.target.value) })}
         />
-      </Setting>
+      </FormField>
     </Section>
   )
 }

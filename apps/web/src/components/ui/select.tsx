@@ -11,7 +11,7 @@ import {
   floatingSurfaceClassName,
   focusRingClassName,
   interactiveItemClassName
-} from '@/components/ui/surface-classes'
+} from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 
 type SelectLabelRegistry = {
@@ -186,7 +186,7 @@ function SelectTrigger({
       data-size={size}
       render={view}
       className={cn(
-        "data-[placeholder]:text-muted-foreground [&_svg:not([class*='text-'])]:text-foreground aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive flex w-fit items-center justify-between gap-2 rounded-md px-4 py-3 text-sm whitespace-nowrap transition-[color,box-shadow,background-color,border-color] disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-9 data-[size=sm]:h-8 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "data-[placeholder]:text-foreground-muted [&_svg:not([class*='text-'])]:text-foreground aria-invalid:ring-danger/20 dark:aria-invalid:ring-danger/40 aria-invalid:border-danger flex w-fit items-center justify-between gap-2 rounded-control px-4 py-3 text-sm whitespace-nowrap transition-[color,box-shadow,background-color,border-color] disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-9 data-[size=sm]:h-8 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         controlSurfaceClassName,
         controlHoverClassName,
         focusRingClassName,
@@ -230,7 +230,7 @@ function SelectContent({
         <SelectPrimitive.Popup
           data-slot='select-content'
           className={cn(
-            'scrollbar-thin relative z-50 max-h-[min(var(--available-height),24rem)] min-w-[8rem] overflow-x-hidden overflow-y-auto rounded-md data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
+            'scrollbar-thin relative z-50 max-h-[min(var(--available-height),24rem)] min-w-[8rem] overflow-x-hidden overflow-y-auto rounded-control data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
             {
               'min-w-[var(--anchor-width)]': position === 'popper'
             },

@@ -10,11 +10,11 @@ export const AppsListEmptyState = () => {
         <AppsListTitle />
       </div>
       <div className='px-6 py-12 max-sm:px-4'>
-        <div className='min-h-[50vh] flex items-center justify-center rounded-lg px-8 py-12'>
+        <div className='min-h-[50vh] flex items-center justify-center rounded-panel px-8 py-12'>
           <div className='flex flex-col items-center text-center max-w-lg gap-6'>
             <div className='relative size-28 flex items-center justify-center'>
               <div className='absolute inset-0 rounded-full bg-primary/10' />
-              <div className='absolute size-20 rounded-full bg-secondary/80' />
+              <div className='absolute size-20 rounded-full bg-surface-band/80' />
               <IconBrandAndroid className='relative size-12 text-primary' />
               <IconServerBolt className='absolute -right-1 bottom-3 size-8 text-foreground-muted' />
             </div>
@@ -26,7 +26,7 @@ export const AppsListEmptyState = () => {
             </div>
             <Link href='/apps/create'>
               <Badge
-                variant='status'
+                variant='success'
                 className='px-4 py-2 text-sm gap-2 hover:bg-primary/20'
               >
                 <IconPlus className='size-4' />

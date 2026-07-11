@@ -106,7 +106,7 @@ export const RuntimeContainersSection = ({
       toast({
         title: pendingAction.type === 'stop' ? 'Could not stop container' : 'Could not remove container',
         description: getDisplayErrorMessage(caughtError),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setBusyId(null)
@@ -145,16 +145,19 @@ export const RuntimeContainersSection = ({
 
   return (
     <>
-      <Section contentClassName='gap-4'>
+      <Section
+        surface='plain'
+        contentClassName='gap-4'
+      >
         <Visible when={containersPage.orphanedCount > 0}>
-          <div className='flex flex-wrap items-center justify-between gap-3 rounded-md border border-destructive/35 bg-destructive/10 p-3 text-sm'>
-            <span className='text-destructive'>
+          <div className='flex flex-wrap items-center justify-between gap-3 rounded-control border border-danger/35 bg-danger/10 p-3 text-sm'>
+            <span className='text-danger'>
               {containersPage.orphanedCount} managed Rebroid container
               {containersPage.orphanedCount === 1 ? '' : 's'} no longer have an app record.
             </span>
             <Button
               type='button'
-              variant='destructive'
+              variant='danger'
               disabled={busyId === 'bulk'}
               onClick={selectVisibleOrphaned}
             >
@@ -235,7 +238,7 @@ export const RuntimeContainersSection = ({
                         Stop selected ({selectedContainers.length})
                       </ContextMenuItem>
                       <ContextMenuItem
-                        className='text-destructive focus:text-destructive'
+                        className='text-danger focus:text-danger'
                         disabled={busyId === 'bulk'}
                         onSelect={() => void runBulkAction('remove')}
                       >
@@ -266,7 +269,7 @@ export const RuntimeContainersSection = ({
                     Stop
                   </ContextMenuItem>
                   <ContextMenuItem
-                    className='text-destructive focus:text-destructive'
+                    className='text-danger focus:text-danger'
                     onSelect={() => setPendingAction({ type: 'remove', container: row.original })}
                   >
                     <IconTrash className='mr-2 size-4' />
@@ -305,7 +308,7 @@ export const RuntimeContainersSection = ({
           </DialogHeader>
           <DialogFooter>
             <Button
-              variant={pendingAction?.type === 'stop' ? 'secondary' : 'destructive'}
+              variant={pendingAction?.type === 'stop' ? 'secondary' : 'danger'}
               disabled={!pendingAction || busyId === pendingAction.container.id}
               onClick={() => void runContainerAction()}
             >

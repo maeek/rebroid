@@ -4,7 +4,7 @@ import * as React from 'react'
 import { Toast as ToastPrimitives } from '@base-ui/react/toast'
 import { IconX } from '@tabler/icons-react'
 import { cva, type VariantProps } from 'class-variance-authority'
-import { floatingSurfaceClassName } from '@/components/ui/surface-classes'
+import { floatingSurfaceClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 
 const ToastProvider = ToastPrimitives.Provider
@@ -25,19 +25,16 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = 'ToastViewport'
 
 const toastVariants = cva(
-  'group pointer-events-auto relative isolate flex w-full items-start justify-between gap-3 overflow-hidden rounded-lg p-4 pr-10 shadow-2xl transition-all data-[ending-style]:fade-out-80 data-[ending-style]:slide-out-to-right-full data-[ending-style]:animate-out data-[starting-style]:animate-in data-[starting-style]:slide-in-from-bottom-full',
+  'group pointer-events-auto relative isolate flex w-full items-start justify-between gap-3 overflow-hidden rounded-panel p-4 pr-10 shadow-emphasis transition-all data-[ending-style]:fade-out-80 data-[ending-style]:slide-out-to-right-full data-[ending-style]:animate-out data-[starting-style]:animate-in data-[starting-style]:slide-in-from-bottom-full',
   {
     variants: {
       variant: {
-        default: cn(floatingSurfaceClassName, 'border-primary/35 shadow-black/45'),
-        destructive: cn(
-          floatingSurfaceClassName,
-          'destructive border-destructive/45 bg-destructive/12 text-foreground shadow-black/45'
-        )
+        neutral: cn(floatingSurfaceClassName, 'border-primary/35'),
+        danger: cn(floatingSurfaceClassName, 'danger border-danger/45 bg-danger/12 text-foreground')
       }
     },
     defaultVariants: {
-      variant: 'default'
+      variant: 'neutral'
     }
   }
 )
@@ -76,7 +73,7 @@ const ToastClose = React.forwardRef<
     ref={ref}
     aria-label='Close'
     className={cn(
-      'absolute right-3 top-3 z-10 rounded-md p-1 text-muted-foreground opacity-0 transition-[background-color,color,opacity] hover:bg-secondary/80 hover:text-foreground focus:opacity-100 focus:bg-secondary/80 focus:text-foreground focus:outline-none focus:ring-1 group-hover:opacity-100 group-[.destructive]:text-destructive group-[.destructive]:hover:bg-destructive/16 group-[.destructive]:hover:text-destructive group-[.destructive]:focus:ring-destructive/60',
+      'absolute right-3 top-3 z-10 rounded-control p-1 text-foreground-muted opacity-0 transition-[background-color,color,opacity] hover:bg-surface-band/80 hover:text-foreground focus:opacity-100 focus:bg-surface-band/80 focus:text-foreground focus:outline-none focus:ring-1 group-hover:opacity-100 group-[.danger]:text-danger group-[.danger]:hover:bg-danger/16 group-[.danger]:hover:text-danger group-[.danger]:focus:ring-danger/60',
       className
     )}
     {...props}
@@ -93,7 +90,7 @@ const ToastTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Title
     ref={ref}
-    className={cn('text-sm font-semibold tracking-wide [&+p]:text-xs', className)}
+    className={cn('text-sm font-medium tracking-wide [&+p]:text-xs', className)}
     {...props}
   />
 ))
@@ -105,7 +102,7 @@ const ToastDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Description
     ref={ref}
-    className={cn('text-sm leading-5 text-foreground-muted group-[.destructive]:text-foreground', className)}
+    className={cn('text-sm leading-5 text-foreground-muted group-[.danger]:text-foreground', className)}
     {...props}
   />
 ))

@@ -106,7 +106,7 @@ export const DockerfileMonacoEditor = ({
   return (
     <div
       ref={containerRef}
-      className={cn('min-h-[34rem] overflow-hidden rounded-md border border-border/60', className)}
+      className={cn('min-h-[34rem] overflow-hidden rounded-control border border-surface-border/60', className)}
       aria-label='Dockerfile editor'
     />
   )

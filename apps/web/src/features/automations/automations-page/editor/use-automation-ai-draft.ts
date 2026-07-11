@@ -178,7 +178,7 @@ export const useAutomationAiDraft = ({
       toast({
         title: 'Could not draft automation',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       if (abortRef.current === controller) abortRef.current = null

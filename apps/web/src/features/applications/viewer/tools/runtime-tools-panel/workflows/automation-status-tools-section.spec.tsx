@@ -1,19 +1,19 @@
-import { describe, expect, it, jest } from '@jest/globals'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { listActiveAutomationRunsAction } from '@/server/orchestrator/automations/automation-run-actions'
 import { AutomationStatusToolsSection } from './automation-status-tools-section'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { AutomationRun, AutomationRunStatus } from '@/server/orchestrator/automations/types'
 
-jest.mock('@/server/orchestrator/automations/automation-run-actions', () => ({
-  listActiveAutomationRunsAction: jest.fn()
+vi.mock('@/server/orchestrator/automations/automation-run-actions', () => ({
+  listActiveAutomationRunsAction: vi.fn()
 }))
 
-jest.mock('@/features/applications/viewer/actions/app-automation-run-action', () => ({
+vi.mock('@/features/applications/viewer/actions/app-automation-run-action', () => ({
   AppAutomationRunAction: () => <button type='button'>Run workflow</button>
 }))
 
-jest.mock('@/shared/ui/automation/automation-run-live-events', () => ({
+vi.mock('@/shared/ui/automation/automation-run-live-events', () => ({
   AutomationRunLiveEvents: ({
     run,
     onStatusChange
@@ -96,7 +96,7 @@ const run: AutomationRun = {
 
 describe('AutomationStatusToolsSection', () => {
   it('projects a live terminal status into the run list', async () => {
-    jest.mocked(listActiveAutomationRunsAction).mockResolvedValue([])
+    vi.mocked(listActiveAutomationRunsAction).mockResolvedValue([])
 
     render(
       <AutomationStatusToolsSection

@@ -11,10 +11,10 @@ const healthBannerClassName = (health: AutomationAiProviderHealth | null) =>
   health?.status === 'ok'
     ? 'border-success/30 bg-success/10'
     : health?.status === 'disabled'
-      ? 'border-border/70 bg-surface-band/35'
+      ? 'border-surface-border/70 bg-surface-band/35'
       : health
-        ? 'border-destructive/40 bg-destructive/10'
-        : 'border-border/70 bg-surface-band/35'
+        ? 'border-danger/40 bg-danger/10'
+        : 'border-surface-border/70 bg-surface-band/35'
 
 const healthMessage = (health: AutomationAiProviderHealth | null, isChecking: boolean) => {
   if (isChecking && !health) return 'Checking selected provider/model...'
@@ -117,7 +117,7 @@ export const ProviderHealthBadge = ({
         <Button
           type='button'
           variant='ghost'
-          size='icon'
+          size='icon-md'
           className='size-7 shrink-0'
           disabled={isManualChecking}
           aria-label='Check AI provider health'
@@ -148,7 +148,7 @@ export const ProviderHealthBanner = ({
   return (
     <div
       className={cn(
-        'flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md',
+        'flex flex-wrap items-center justify-between gap-3 rounded-panel border px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md',
         healthBannerClassName(health)
       )}
     >
@@ -162,7 +162,7 @@ export const ProviderHealthBanner = ({
       <Button
         type='button'
         variant='ghost'
-        size='icon'
+        size='icon-md'
         className='size-7 shrink-0'
         disabled={isManualChecking}
         aria-label='Check AI provider health'

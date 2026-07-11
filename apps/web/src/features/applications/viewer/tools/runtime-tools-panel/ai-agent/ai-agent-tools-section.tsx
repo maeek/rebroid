@@ -128,21 +128,21 @@ export const AiAgentToolsSection = ({
       data-testid='ai-agent-tools-section'
     >
       {hideHeader ? null : (
-        <div className='flex min-h-12 items-center justify-between gap-3 border-b border-border/55 px-4 py-2'>
+        <div className='flex min-h-12 items-center justify-between gap-3 border-b border-surface-border/55 px-4 py-2'>
           <div className='flex min-w-0 items-center gap-2.5'>
-            <span className='flex size-8 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/8 text-primary'>
+            <span className='flex size-8 shrink-0 items-center justify-center rounded-panel border border-primary/20 bg-primary/8 text-primary'>
               <GradientSparklesIcon className='size-4' />
             </span>
             <div className='min-w-0'>
-              <h3 className='truncate text-sm font-semibold'>Device agent</h3>
-              <p className='truncate text-[11px] text-foreground-muted'>Grounded actions · verified results</p>
+              <h3 className='truncate text-sm font-medium'>Device agent</h3>
+              <p className='truncate text-xs text-foreground-muted'>Grounded actions · verified results</p>
             </div>
           </div>
           <div className='flex items-center gap-1'>
             {turns.length > 0 ? (
               <Button
                 type='button'
-                size='icon'
+                size='icon-md'
                 variant='ghost'
                 className='size-8 text-foreground-muted'
                 aria-label='Export conversation'
@@ -155,9 +155,9 @@ export const AiAgentToolsSection = ({
             {turns.length > 0 ? (
               <Button
                 type='button'
-                size='icon'
+                size='icon-md'
                 variant='ghost'
-                className='size-8 text-foreground-muted hover:text-destructive'
+                className='size-8 text-foreground-muted hover:text-danger'
                 aria-label={isClearing ? 'Clearing conversation' : 'Clear conversation'}
                 title='Clear conversation'
                 disabled={isClearing}
@@ -184,15 +184,15 @@ export const AiAgentToolsSection = ({
       />
 
       <div
-        className='grid shrink-0 gap-2 border-t border-border/50 bg-transparent px-4 pt-3 pb-4'
+        className='grid shrink-0 gap-2 border-t border-surface-border/50 bg-transparent px-4 pt-3 pb-4'
         data-testid='ai-agent-composer-dock'
       >
         {!app.running ? (
           <div
             role='status'
-            className='flex items-start gap-2.5 rounded-xl border border-warning/30 bg-warning/8 px-3 py-2.5 text-xs text-foreground-muted'
+            className='flex items-start gap-2.5 rounded-panel border border-warning/30 bg-warning/8 px-3 py-2.5 text-xs text-foreground-muted'
           >
-            <span className='mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-lg bg-warning/12 text-warning'>
+            <span className='mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-panel bg-warning/12 text-warning'>
               <IconPlayerPlay className='size-3.5' />
             </span>
             <div className='grid gap-0.5'>
@@ -210,7 +210,7 @@ export const AiAgentToolsSection = ({
               type='button'
               size='sm'
               variant='ghost'
-              className='max-w-[18rem] shrink-0 justify-start overflow-hidden text-ellipsis rounded-full border border-border/45 bg-surface-band/18 px-3 font-normal text-foreground-muted shadow-none hover:border-border hover:bg-surface-band/55 hover:text-foreground'
+              className='max-w-[18rem] shrink-0 justify-start overflow-hidden text-ellipsis rounded-full border border-surface-border/45 bg-surface-band/18 px-3 font-normal text-foreground-muted shadow-none hover:border-surface-border hover:bg-surface-band/55 hover:text-foreground'
               title={preset.label}
               onClick={() => applyPreset(preset.prompt)}
             >
@@ -266,7 +266,7 @@ export const AiAgentToolsSection = ({
               {hideHeader && turns.length > 0 ? (
                 <Button
                   type='button'
-                  size='icon'
+                  size='icon-md'
                   variant='ghost'
                   className='size-8 text-foreground-muted'
                   aria-label='Export conversation'
@@ -279,9 +279,9 @@ export const AiAgentToolsSection = ({
               {hideHeader && turns.length > 0 ? (
                 <Button
                   type='button'
-                  size='icon'
+                  size='icon-md'
                   variant='ghost'
-                  className='size-8 text-foreground-muted hover:text-destructive'
+                  className='size-8 text-foreground-muted hover:text-danger'
                   aria-label={isClearing ? 'Clearing conversation' : 'Clear conversation'}
                   title='Clear conversation'
                   disabled={isClearing}
@@ -314,8 +314,8 @@ export const AiAgentToolsSection = ({
               ) : null}
               <Button
                 type='button'
-                size='icon'
-                className='size-8 rounded-xl shadow-[0_8px_20px_-12px_hsl(var(--primary)/0.9)]'
+                size='icon-md'
+                className='size-8 rounded-panel shadow-[0_8px_20px_-12px_hsl(var(--primary)/0.9)]'
                 disabled={!app.running || !canSubmit}
                 aria-label={activeTurn ? 'Queue message' : 'Send message'}
                 onClick={() => void submit()}

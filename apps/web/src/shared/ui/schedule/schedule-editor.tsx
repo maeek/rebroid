@@ -17,7 +17,7 @@ export const ScheduleEditor = ({
   onScheduleChange: (patch: Partial<ScheduleDraft>) => void
 }) => (
   <div className='grid gap-3'>
-    <label className='text-sm font-medium text-foreground'>Schedule</label>
+    <div className='text-sm font-medium text-foreground'>Schedule</div>
     <div className='flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center'>
       <Select
         value={schedule.frequency}

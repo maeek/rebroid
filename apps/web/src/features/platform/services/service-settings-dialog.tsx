@@ -133,7 +133,7 @@ export const ServiceSettingsDialog = ({
           <div
             role='tablist'
             aria-label='Service settings sections'
-            className='flex rounded-md border border-border/70 bg-secondary/35 p-1'
+            className='flex rounded-control border border-surface-border/70 bg-surface-band/35 p-1'
           >
             <TabButton
               active={tab === 'connection'}
@@ -180,10 +180,10 @@ const TabButton = ({ active, children, onClick }: { active: boolean; children: R
     role='tab'
     aria-selected={active}
     className={cn(
-      'flex h-8 flex-1 items-center justify-center rounded-sm px-3 text-sm font-medium transition-colors',
+      'flex h-8 flex-1 items-center justify-center rounded-control px-3 text-sm font-medium transition-colors',
       active
-        ? 'bg-control text-foreground shadow-sm'
-        : 'text-muted-foreground hover:bg-control/50 hover:text-foreground'
+        ? 'bg-control text-foreground shadow-control'
+        : 'text-foreground-muted hover:bg-control/50 hover:text-foreground'
     )}
     onClick={onClick}
   >
@@ -195,7 +195,7 @@ const Field = ({ children, description, label }: { children: ReactNode; descript
   <div className='grid gap-2'>
     <div className='grid gap-1'>
       <Label>{label}</Label>
-      <p className='text-xs text-muted-foreground'>{description}</p>
+      <p className='text-xs text-foreground-muted'>{description}</p>
     </div>
     {children}
   </div>

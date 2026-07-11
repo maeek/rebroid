@@ -1,6 +1,6 @@
 'use client'
 import { IconBrandGithub, IconSunMoon } from '@tabler/icons-react'
-import classNames from 'classnames'
+import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { useTheme } from 'next-themes'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -12,14 +12,14 @@ export const TopBarUnprotected = () => {
 
   return (
     <div className='flex justify-between h-16 w-dvw shrink-0 fixed top-0 z-10'>
-      <div className={classNames(sectionClasses, 'justify-start')}>
+      <div className={cn(sectionClasses, 'justify-start')}>
         <Link href='/'>
-          <span className='text-xl font-black underline underline-offset-4 decoration-primary decoration-solid z-99 text-foreground'>
+          <span className='text-xl font-bold underline underline-offset-4 decoration-primary decoration-solid z-99 text-foreground'>
             Rebroid
           </span>
         </Link>
       </div>
-      <div className={classNames(sectionClasses, 'justify-end flex-initial w-full max-w-(--breakpoint-sm)')}>
+      <div className={cn(sectionClasses, 'justify-end flex-initial w-full max-w-(--breakpoint-sm)')}>
         <a
           href='https://github.com/maeek/rebroid'
           target='_blank'

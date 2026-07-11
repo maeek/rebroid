@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { recordAuditEvent } from '@/server/audit/events'
 import { requireAdmin } from '@/server/auth/authorization'
-import { purgeAuditEvents } from '@/server/storage/database'
+import { purgeAuditEvents } from '@/server/persistence/audit-repository'
 import { saveWebSettings } from '@/server/web-settings/store'
 
 const adminLabel = (admin: Awaited<ReturnType<typeof requireAdmin>>) => admin.name || admin.username || admin.id

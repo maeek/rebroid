@@ -1,6 +1,6 @@
 import { ReadableStream as NodeReadableStream } from 'node:stream/web'
-import { beforeAll, describe, expect, it } from '@jest/globals'
 import { NextRequest } from 'next/server'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { prepareStreamingMultipartUpload, StreamingUploadTooLargeError } from './streaming-upload'
 
 const request = (body: ReadableStream<Uint8Array> | null, headers: Record<string, string>) =>

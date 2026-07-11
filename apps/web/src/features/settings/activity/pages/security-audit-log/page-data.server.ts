@@ -5,7 +5,7 @@ import {
   type AuditSearchParams
 } from '@/server/audit/query'
 import { requireAdmin } from '@/server/auth/authorization'
-import { listAuditEvents, listAuditFacetValues } from '@/server/storage/database'
+import { listAuditEvents, listAuditFacetValues } from '@/server/persistence/audit-repository'
 import { getWebSettings } from '@/server/web-settings/store'
 
 const firstValue = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value)

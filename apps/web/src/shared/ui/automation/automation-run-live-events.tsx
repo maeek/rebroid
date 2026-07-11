@@ -3,17 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { IconActivity, IconPlayerStop, IconRobot } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { getBff, sendBff } from '@/lib/http/bff'
 import { cn } from '@/lib/utils'
-import {
-  cancelAutomationRunAction,
-  createAutomationRunEventStreamUrlAction,
-  listAutomationRunEventsAction
-} from '@/server/orchestrator/automations/automation-run-actions'
 import {
   AutomationRunStatusBadge,
   type AutomationRunDisplayStatus
 } from '@/shared/ui/automation/automation-run-status-badge'
-import type { AutomationRun, AutomationRunEvent, AutomationRunStatus } from '@/server/orchestrator/automations/types'
+import type { AutomationRun, AutomationRunEvent, AutomationRunStatus } from '@/shared/contracts/automation-run'
 
 const activeStatuses = new Set<AutomationRunStatus>(['queued', 'running'])
 const terminalStatuses = new Set<AutomationRunStatus>(['success', 'failed', 'canceled'])
@@ -29,8 +25,8 @@ const statusFromEvent = (event: AutomationRunEvent): AutomationRunStatus | null 
 const eventPresentation = (type: AutomationRunEvent['type']) => {
   if (type.endsWith('.failed') || type === 'ai.guardrail.triggered') {
     return {
-      row: 'border-destructive/18 bg-destructive/6 text-destructive',
-      marker: 'bg-destructive'
+      row: 'border-danger/18 bg-danger/6 text-danger',
+      marker: 'bg-danger'
     }
   }
   if (type === 'run.completed' || type === 'step.completed' || type === 'ai.tool.completed') {
@@ -139,11 +135,13 @@ export function AutomationRunLiveEvents({
 
     const connect = async () => {
       try {
-        appendEvents(await listAutomationRunEventsAction(runId, lastSequenceRef.current))
+        const live = await getBff<{ events: AutomationRunEvent[]; streamUrl: string }>(
+          `/api/bff/automations/runs/${encodeURIComponent(runId)}/events?after=${lastSequenceRef.current}`
+        )
+        appendEvents(live.events)
         if (closed || !activeStatuses.has(statusRef.current)) return
-        const url = await createAutomationRunEventStreamUrlAction(runId, lastSequenceRef.current)
         if (closed || !activeStatuses.has(statusRef.current)) return
-        socket = new WebSocket(url)
+        socket = new WebSocket(live.streamUrl)
         socket.onmessage = message => {
           try {
             const payload = JSON.parse(String(message.data)) as { type: string; event?: AutomationRunEvent }
@@ -183,7 +181,10 @@ export function AutomationRunLiveEvents({
     setIsCanceling(true)
     setStreamError(null)
     try {
-      const canceledRun = await cancelAutomationRunAction(runId)
+      const canceledRun = await sendBff<AutomationRun>(
+        `/api/bff/automations/runs/${encodeURIComponent(runId)}/cancel`,
+        {}
+      )
       statusRef.current = canceledRun.status
       setLocalStatus(canceledRun.status)
       onStatusChangeRef.current?.(canceledRun.status)
@@ -201,16 +202,16 @@ export function AutomationRunLiveEvents({
   const canCancel = allowCancel && activeStatuses.has(localStatus)
 
   return (
-    <div className='grid min-h-0 overflow-hidden rounded-xl border border-border/60 bg-surface-panel/45 shadow-[0_18px_48px_-38px_rgba(0,0,0,0.75)]'>
+    <div className='grid min-h-0 overflow-hidden rounded-panel border border-surface-border/60 bg-surface-panel/45 shadow-[0_18px_48px_-38px_rgba(0,0,0,0.75)]'>
       {showHeader ? (
-        <div className='flex flex-wrap items-center justify-between gap-3 border-b border-border/50 bg-surface-band/24 px-4 py-3'>
+        <div className='flex flex-wrap items-center justify-between gap-3 border-b border-surface-border/50 bg-surface-band/24 px-4 py-3'>
           <div className='flex min-w-0 items-center gap-3'>
-            <span className='flex size-9 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/8 text-primary'>
+            <span className='flex size-9 shrink-0 items-center justify-center rounded-panel border border-primary/20 bg-primary/8 text-primary'>
               <IconRobot className='size-4.5' />
             </span>
             <div className='min-w-0'>
-              <div className='truncate text-sm font-semibold'>Run {runId.slice(0, 8)}</div>
-              <div className='mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px] text-foreground-muted'>
+              <div className='truncate text-sm font-medium'>Run {runId.slice(0, 8)}</div>
+              <div className='mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-foreground-muted'>
                 <span className='capitalize'>{run.trigger}</span>
                 <span aria-hidden='true'>·</span>
                 <span className='truncate'>{runTimeLabel(run)}</span>
@@ -243,7 +244,7 @@ export function AutomationRunLiveEvents({
         className={cn('grid gap-1.5 overflow-auto p-3', compact ? 'max-h-[28rem]' : 'max-h-[32rem]')}
       >
         {visibleEvents.length === 0 ? (
-          <div className='flex min-h-28 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border/60 bg-surface-band/15 text-center'>
+          <div className='flex min-h-28 flex-col items-center justify-center gap-2 rounded-panel border border-dashed border-surface-border/60 bg-surface-band/15 text-center'>
             <span className='flex size-8 items-center justify-center rounded-full bg-primary/8 text-primary'>
               <IconActivity className={cn('size-4', activeStatuses.has(localStatus) && 'animate-pulse')} />
             </span>
@@ -259,11 +260,11 @@ export function AutomationRunLiveEvents({
               <div
                 key={event.id}
                 className={cn(
-                  'grid grid-cols-[2.25rem_0.5rem_minmax(0,1fr)] items-start gap-2 rounded-lg border px-2.5 py-2 text-xs transition-colors',
+                  'grid grid-cols-[2.25rem_0.5rem_minmax(0,1fr)] items-start gap-2 rounded-panel border px-2.5 py-2 text-xs transition-colors',
                   presentation.row
                 )}
               >
-                <span className='pt-px text-right font-mono text-[10px] text-foreground-muted/75'>
+                <span className='pt-px text-right font-mono text-xs text-foreground-muted/75'>
                   {String(event.sequence).padStart(3, '0')}
                 </span>
                 <span className={cn('mt-1 size-1.5 rounded-full', presentation.marker)} />
@@ -273,7 +274,7 @@ export function AutomationRunLiveEvents({
           })
         )}
         {streamError ? (
-          <div className='rounded-lg border border-warning/25 bg-warning/8 px-3 py-2 text-xs text-warning'>
+          <div className='rounded-panel border border-warning/25 bg-warning/8 px-3 py-2 text-xs text-warning'>
             {streamError}
           </div>
         ) : null}

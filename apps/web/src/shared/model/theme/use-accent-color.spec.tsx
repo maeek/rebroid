@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, jest } from '@jest/globals'
 import { act, renderHook } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   applyAccentColorPreference,
   readDocumentAccentColorPreference,
@@ -58,7 +58,7 @@ describe('accent color preference', () => {
   })
 
   it('persists selected accent colors through the provided save callback', async () => {
-    const saveAccentColor = jest.fn<(accentColor: AccentColor) => Promise<void>>().mockResolvedValue(undefined)
+    const saveAccentColor = vi.fn<(accentColor: AccentColor) => Promise<void>>().mockResolvedValue(undefined)
     const { result } = renderHook(() => useAccentColorPreference({ saveAccentColor }))
 
     await act(async () => {
@@ -72,10 +72,8 @@ describe('accent color preference', () => {
   })
 
   it('reverts optimistic accent changes when persistence fails', async () => {
-    const onSaveError = jest.fn()
-    const saveAccentColor = jest
-      .fn<(accentColor: AccentColor) => Promise<void>>()
-      .mockRejectedValue(new Error('failed'))
+    const onSaveError = vi.fn()
+    const saveAccentColor = vi.fn<(accentColor: AccentColor) => Promise<void>>().mockRejectedValue(new Error('failed'))
     const { result } = renderHook(() =>
       useAccentColorPreference({ initialAccentColor: 'purple', saveAccentColor, onSaveError })
     )

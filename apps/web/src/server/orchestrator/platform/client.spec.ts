@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, jest } from '@jest/globals'
+import { beforeEach, describe, expect, it, vi, type MockedFunction } from 'vitest'
 import { orchestratorPlatformClient } from './client'
 
 const okResponse = (body: unknown = { id: 'resource-1', removed: true }) =>
@@ -8,7 +8,7 @@ const okResponse = (body: unknown = { id: 'resource-1', removed: true }) =>
   })
 
 const lastFetch = () => {
-  const fetchMock = global.fetch as jest.MockedFunction<typeof fetch>
+  const fetchMock = global.fetch as MockedFunction<typeof fetch>
   return fetchMock.mock.calls.at(-1) as [RequestInfo | URL, RequestInit]
 }
 
@@ -20,7 +20,7 @@ const urlString = (url: RequestInfo | URL) => {
 
 describe('orchestrator platform client', () => {
   beforeEach(() => {
-    const fetchMock: jest.MockedFunction<typeof fetch> = jest.fn(() => Promise.resolve(okResponse()))
+    const fetchMock: MockedFunction<typeof fetch> = vi.fn(() => Promise.resolve(okResponse()))
     global.fetch = fetchMock
   })
 

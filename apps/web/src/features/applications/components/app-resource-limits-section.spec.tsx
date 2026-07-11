@@ -1,9 +1,9 @@
-import { describe, expect, it, jest } from '@jest/globals'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { AppResourceLimitsSection } from './app-resource-limits-section'
-import type { ResourceLimitBounds } from '@/server/orchestrator/diagnostics/resource-limits'
+import type { ResourceLimitBounds } from '@/shared/contracts/system-resources'
 
-jest.mock('@/components/ui/number-slider-field', () => ({
+vi.mock('@/components/ui/number-slider-field', () => ({
   NumberSliderField: ({ value, onValueChange }: { value: string; onValueChange: (value: string) => void }) => (
     <input
       value={value}
@@ -14,7 +14,7 @@ jest.mock('@/components/ui/number-slider-field', () => ({
 
 describe('AppResourceLimitsSection', () => {
   it('forwards memory and cpu updates', () => {
-    const onChange = jest.fn()
+    const onChange = vi.fn()
     const resourceLimits: ResourceLimitBounds = {
       maxCpuCpus: 8,
       maxMemoryMb: 4096

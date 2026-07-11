@@ -1,9 +1,9 @@
 import type { HTMLAttributes } from 'react'
-import { describe, expect, it, jest } from '@jest/globals'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { AppIdentitySection } from './app-identity-section'
 
-jest.mock('@/components/ui/input', () => ({
+vi.mock('@/components/ui/input', () => ({
   Input: (props: Record<string, unknown>) => {
     const inputProps = props as {
       type?: string
@@ -20,8 +20,8 @@ jest.mock('@/components/ui/input', () => ({
 
 describe('AppIdentitySection', () => {
   it('shows uploaded apk label and forwards name changes', () => {
-    const onNameChange = jest.fn()
-    const onApkSelect = jest.fn()
+    const onNameChange = vi.fn()
+    const onApkSelect = vi.fn()
 
     render(
       <AppIdentitySection

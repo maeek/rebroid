@@ -35,7 +35,7 @@ const getIsBusy = (app: AppDefinition | undefined, isStopping: boolean) =>
 
 export const getCanRestart = (canStart: boolean, canStop: boolean) => canStart && canStop
 
-const getPrimaryVariant = (app?: AppDefinition): 'secondary' | 'update' => (app?.running ? 'secondary' : 'update')
+const getPrimaryVariant = (app?: AppDefinition): 'primary' | 'secondary' => (app?.running ? 'secondary' : 'primary')
 
 const getCanRunPrimary = (app: AppDefinition | undefined, canStart: boolean, canStop: boolean) =>
   app?.running ? canStop : canStart

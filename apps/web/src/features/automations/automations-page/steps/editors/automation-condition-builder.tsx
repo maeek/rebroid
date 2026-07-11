@@ -74,7 +74,7 @@ export function AutomationConditionBuilder({
   return (
     <div className='grid gap-3'>
       <Label>{label}</Label>
-      <div className='grid gap-3 rounded-md border border-border/60 p-3'>
+      <div className='grid gap-3 rounded-control border border-surface-border/60 p-3'>
         {groups.map((group, groupIndex) => (
           <div
             key={groupIndex}
@@ -166,13 +166,13 @@ function ConditionRow({
   }
 
   return (
-    <div className='grid gap-3 rounded-md border border-border/50 bg-surface-band/45 p-3'>
+    <div className='grid gap-3 rounded-control border border-surface-border/50 bg-surface-band/45 p-3'>
       <div className='grid grid-cols-[minmax(0,1fr)_auto] gap-3'>
         <div className='grid grid-cols-[repeat(auto-fit,minmax(min(14rem,100%),1fr))] gap-3'>
           {condition.value.source === 'literal' ? (
             <div className='grid gap-2'>
               <Label>Value</Label>
-              <div className='rounded-md border border-border/60 bg-control/40 px-3 py-2 text-sm'>
+              <div className='rounded-control border border-surface-border/60 bg-control/40 px-3 py-2 text-sm'>
                 {valueRefLabel(condition.value, stepOptions)}
               </div>
             </div>
@@ -214,12 +214,12 @@ function ConditionRow({
           <Button
             type='button'
             variant='ghost'
-            size='icon'
+            size='icon-md'
             aria-label='Delete condition'
             disabled={!canDelete}
             onClick={onDelete}
           >
-            <IconTrash className='size-4 text-destructive' />
+            <IconTrash className='size-4 text-danger' />
           </Button>
         </div>
       </div>

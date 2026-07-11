@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import {
   buildPlatformGridHref,
   compactPlatformGridParams,
@@ -61,7 +61,7 @@ describe('orchestrator grid query utils', () => {
     ).toEqual({
       title: 'Some networks could not be removed',
       description: '1 remove request failed.',
-      variant: 'destructive'
+      variant: 'danger'
     })
   })
 })

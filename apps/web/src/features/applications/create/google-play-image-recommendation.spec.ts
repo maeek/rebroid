@@ -1,6 +1,6 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import { recommendGooglePlayImage } from './google-play-image-recommendation'
-import type { PlatformImage } from '@/server/orchestrator/platform/types'
+import type { PlatformImage } from '@/shared/contracts/platform-image'
 
 const image = ({
   id,

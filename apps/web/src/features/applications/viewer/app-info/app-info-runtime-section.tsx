@@ -109,6 +109,7 @@ export const AppInfoRuntimeSection = ({
 }) => {
   return (
     <Section
+      surface='plain'
       title='Runtime'
       titleClassName='pb-4'
       contentClassName='flex-col'

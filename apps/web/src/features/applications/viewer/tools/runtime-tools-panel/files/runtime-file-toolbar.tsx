@@ -1,5 +1,5 @@
 import { IconArrowUp, IconLayoutGrid, IconList, IconLoader2, IconRefresh } from '@tabler/icons-react'
-import classNames from 'classnames'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   parentRuntimePath,
@@ -27,7 +27,7 @@ export const RuntimeFileToolbar = ({
   const pathParts = runtimePathParts(currentPath)
 
   return (
-    <div className='flex flex-wrap items-center justify-between gap-3 border-b border-border/60 px-4 py-3'>
+    <div className='flex flex-wrap items-center justify-between gap-3 border-b border-surface-border/60 px-4 py-3'>
       <div className='flex min-w-0 items-center gap-1 text-sm'>
         {pathParts.map((part, index) => {
           const path = runtimePathForPartIndex(pathParts, index)
@@ -37,12 +37,12 @@ export const RuntimeFileToolbar = ({
               key={path}
               className='flex min-w-0 items-center gap-1'
             >
-              {index > 0 ? <span className='text-muted-foreground'>/</span> : null}
+              {index > 0 ? <span className='text-foreground-muted'>/</span> : null}
               <button
                 type='button'
-                className={classNames(
+                className={cn(
                   'truncate',
-                  active ? 'font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground'
+                  active ? 'font-medium text-foreground' : 'text-foreground-muted hover:text-foreground'
                 )}
                 disabled={active}
                 onClick={() => onPathChange(path)}

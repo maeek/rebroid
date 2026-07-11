@@ -11,9 +11,9 @@ import {
   resetOrchestratorUiSettings,
   saveOrchestratorUiSettings
 } from '@/shared/model/settings/use-orchestrator-ui-settings'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { StatusSplash } from '@/shared/ui/status-splash'
-import type { PlatformImage } from '@/server/orchestrator/platform/types'
+import type { PlatformImage } from '@/shared/contracts/platform-image'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 type SaveOrchestratorUiSettingsInput = Pick<
@@ -95,7 +95,7 @@ export const PlatformRuntimeForm = ({
       toast({
         title: 'Could not save settings',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsSaving(false)
@@ -112,7 +112,7 @@ export const PlatformRuntimeForm = ({
       toast({
         title: 'Could not reset settings',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsSaving(false)
@@ -121,7 +121,7 @@ export const PlatformRuntimeForm = ({
 
   if (healthState !== 'online') {
     return (
-      <ProtectedStackPageLayout mainClassName='gap-2'>
+      <StandardPage className='gap-2'>
         <PlatformRuntimeHeader
           isSaving={isSaving}
           onReset={() => void resetSettings()}
@@ -147,12 +147,12 @@ export const PlatformRuntimeForm = ({
             />
           )}
         </section>
-      </ProtectedStackPageLayout>
+      </StandardPage>
     )
   }
 
   return (
-    <ProtectedStackPageLayout mainClassName='gap-2'>
+    <StandardPage className='gap-2'>
       <PlatformRuntimeHeader
         isSaving={isSaving}
         onReset={() => void resetSettings()}
@@ -168,6 +168,6 @@ export const PlatformRuntimeForm = ({
           <PlatformRuntimeMaintenanceSection />
         </div>
       </section>
-    </ProtectedStackPageLayout>
+    </StandardPage>
   )
 }

@@ -43,7 +43,7 @@ export const useAutomationWorkflowFiles = ({
       toast({
         title: 'YAML is invalid',
         description: yamlError ?? 'Fix the YAML before exporting.',
-        variant: 'destructive'
+        variant: 'danger'
       })
       return
     }
@@ -87,7 +87,7 @@ export const useAutomationWorkflowFiles = ({
         toast({
           title: 'Could not import workflow',
           description: error instanceof Error ? error.message : 'Unknown error',
-          variant: 'destructive'
+          variant: 'danger'
         })
       } finally {
         setBusy(false)

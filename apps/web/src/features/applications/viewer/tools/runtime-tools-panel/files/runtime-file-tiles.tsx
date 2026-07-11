@@ -16,16 +16,16 @@ export const RuntimeFileTiles = ({
       <button
         key={entry.path}
         type='button'
-        className='flex min-w-0 flex-col items-center gap-2 rounded-md border border-border/60 bg-surface-band/35 px-3 py-4 text-center hover:bg-accent/50'
+        className='flex min-w-0 flex-col items-center gap-2 rounded-control border border-surface-border/60 bg-surface-band/35 px-3 py-4 text-center hover:bg-accent/50'
         onClick={() => (entry.type === 'directory' ? onPathChange(entry.path) : onDownload(entry))}
       >
         {entry.type === 'directory' ? (
           <IconFolder className='size-8 text-primary' />
         ) : (
-          <IconFile className='size-8 text-muted-foreground' />
+          <IconFile className='size-8 text-foreground-muted' />
         )}
         <span className='w-full truncate text-sm font-medium'>{entry.name}</span>
-        <span className='text-xs text-muted-foreground'>{runtimeFileEntryDetail(entry)}</span>
+        <span className='text-xs text-foreground-muted'>{runtimeFileEntryDetail(entry)}</span>
       </button>
     ))}
   </div>

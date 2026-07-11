@@ -19,7 +19,7 @@ type PlatformGridHrefInput<TQuery extends PlatformGridQuery> = {
 type PlatformBulkRemoveToast = {
   title: string
   description?: string
-  variant?: 'destructive'
+  variant?: 'danger'
 }
 
 export const compactPlatformGridParams = (values: Record<string, string | number | undefined>) => {
@@ -78,7 +78,7 @@ export const summarizePlatformBulkActionResults = (
   return {
     title: failureTitle,
     description: firstMessage ?? `${failedCount} ${requestLabel}${failedCount === 1 ? '' : 's'} failed.`,
-    variant: 'destructive'
+    variant: 'danger'
   }
 }
 

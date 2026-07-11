@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import { workflowFileName } from './automation-editor-utils'
 
 describe('automation editor utils', () => {

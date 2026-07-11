@@ -3,7 +3,7 @@ import { AppNotFoundSplash } from '@/features/applications/components/app-not-fo
 import { AppDefinition } from '@/features/applications/domain/app-definition'
 import { resolveAppIconUrl } from '@/shared/model/media/image-url'
 import { PageBackdrop } from '@/shared/ui/page/page-backdrop'
-import { ProtectedSplitPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPageSplit } from '@/shared/ui/page/page-layout'
 import { AppViewerContent } from './app-viewer-content'
 import { AppViewerPane } from './app-viewer-pane'
 import { AppWorkspaceContent } from './app-workspace-content'
@@ -49,30 +49,24 @@ const AppViewerPageContent = ({ viewMode = 'workspace' }: { viewMode?: 'workspac
 
   if (!isDetailsView) {
     return (
-      <ProtectedSplitPageLayout
-        className='h-auto min-h-[calc(100vh-4rem)]'
-        mainClassName='h-auto min-h-[calc(100vh-4rem)] items-start'
-      >
+      <StandardPageSplit className='h-auto min-h-[calc(100vh-4rem)] items-start'>
         <PageBackdrop
           imageSrc={app.icon ? resolveAppIconUrl(app.icon) : null}
           opacity={0.08}
         />
         <AppWorkspaceContent />
-      </ProtectedSplitPageLayout>
+      </StandardPageSplit>
     )
   }
 
   return (
-    <ProtectedSplitPageLayout
-      className='h-auto min-h-[calc(100vh-4rem)]'
-      mainClassName='h-auto min-h-[calc(100vh-4rem)] items-start'
-    >
+    <StandardPageSplit className='h-auto min-h-[calc(100vh-4rem)] items-start'>
       <PageBackdrop
         imageSrc={app.icon ? resolveAppIconUrl(app.icon) : null}
         opacity={0.08}
       />
       <AppViewerContent />
       <AppViewerPane />
-    </ProtectedSplitPageLayout>
+    </StandardPageSplit>
   )
 }

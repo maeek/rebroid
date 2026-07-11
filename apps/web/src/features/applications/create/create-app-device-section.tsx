@@ -4,11 +4,11 @@ import { Section } from '@/components/ui/section'
 import { Textarea } from '@/components/ui/textarea'
 import { Visible } from '@/components/ui/visible'
 import { verticalSettingClassName } from '@/features/applications/components/app-form-utils'
-import { RuntimeImagePicker } from '@/features/platform/components/runtime-image-picker'
-import { Setting } from '@/shared/ui/settings/setting'
+import { RuntimeImagePicker } from '@/shared/ui/runtime-image/runtime-image-picker'
+import { FormField } from '@/components/ui/form-field'
 import { getCustomDisplayConfig } from './create-app-form-model'
 import type { CreateAppFormValues } from './create-app-form.types'
-import type { PlatformImage } from '@/server/orchestrator/platform/types'
+import type { PlatformImage } from '@/shared/contracts/platform-image'
 
 type CreateAppDeviceSectionProps = {
   images: PlatformImage[]
@@ -40,15 +40,16 @@ export const CreateAppDeviceSection = ({
 
   return (
     <Section
+      surface='plain'
       title={canChangeBaseImage ? 'Runtime image' : 'Runtime options'}
       titleClassName='mb-4'
       contentClassName='gap-6'
     >
       <Visible when={canChangeBaseImage}>
-        <Setting
+        <FormField
           label='Image'
           description='Container image used to boot the managed Android runtime.'
-          variant='vertical'
+          layout='vertical'
           className={verticalSettingClassName}
         >
           <RuntimeImagePicker
@@ -56,33 +57,33 @@ export const CreateAppDeviceSection = ({
             value={values.containerImage}
             onChange={value => onChange({ containerImage: value })}
           />
-        </Setting>
+        </FormField>
       </Visible>
 
       <Visible when={canChangeContainerArgs}>
-        <details className='group border-t border-border/60 pt-4'>
-          <summary className='flex cursor-pointer list-none items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground'>
+        <details className='group border-t border-surface-border/60 pt-4'>
+          <summary className='flex cursor-pointer list-none items-center gap-2 text-sm font-medium text-foreground-muted hover:text-foreground'>
             <IconChevronRight className='size-4 transition-transform group-open:rotate-90' />
             Runtime arguments
           </summary>
           <div className='grid gap-5 pt-5'>
             <Visible when={isRedroidRuntime}>
-              <div className='grid gap-2 text-xs text-muted-foreground'>
+              <div className='grid gap-2 text-xs text-foreground-muted'>
                 <p>Effective ReDroid defaults, including the selected display profile:</p>
-                <pre className='max-h-44 overflow-auto rounded-md bg-surface-panel/40 px-3 py-2 font-mono leading-5 whitespace-pre-wrap'>
+                <pre className='max-h-44 overflow-auto rounded-control bg-surface-panel/40 px-3 py-2 font-mono leading-5 whitespace-pre-wrap'>
                   {redroidDefaultArgs.split(' ').join('\n')}
                 </pre>
                 <p>The managed ADB endpoint uses TCP port 5555. Additional values override matching keys.</p>
               </div>
             </Visible>
-            <Setting
+            <FormField
               label={isRedroidRuntime ? 'Additional ReDroid arguments' : 'Container arguments'}
               description={
                 isRedroidRuntime
                   ? 'Optional androidboot or property overrides, such as FPS or proxy settings.'
                   : 'Optional Docker Cmd override for images that would otherwise exit.'
               }
-              variant='vertical'
+              layout='vertical'
               className={verticalSettingClassName}
             >
               <Textarea
@@ -96,7 +97,7 @@ export const CreateAppDeviceSection = ({
                   }
                 }}
               />
-            </Setting>
+            </FormField>
           </div>
         </details>
       </Visible>

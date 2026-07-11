@@ -2,7 +2,7 @@
 
 import { Section } from '@/components/ui/section'
 import { QuickGlanceCard } from '@/shared/ui/settings/quick-glance-card'
-import type { SystemResources } from '@/server/orchestrator/diagnostics/types'
+import type { SystemResources } from '@/shared/contracts/system-resources'
 
 export const PlatformResources = ({
   resources
@@ -13,6 +13,7 @@ export const PlatformResources = ({
 }) => {
   return (
     <Section
+      surface='plain'
       title='Managed inventory'
       titleClassName='pb-4'
       contentClassName='gap-4'

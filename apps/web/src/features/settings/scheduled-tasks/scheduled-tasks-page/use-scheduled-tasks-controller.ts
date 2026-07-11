@@ -70,7 +70,7 @@ export const useScheduledTasksController = ({ initialActions, initialTasks }: Sc
       toast({
         title: 'Could not save scheduled task',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsSaving(false)
@@ -85,7 +85,7 @@ export const useScheduledTasksController = ({ initialActions, initialTasks }: Sc
       toast({
         title: 'Could not update scheduled task',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setBusyTaskId(null)
@@ -101,7 +101,7 @@ export const useScheduledTasksController = ({ initialActions, initialTasks }: Sc
       toast({
         title: 'Could not run scheduled task',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setBusyTaskId(null)
@@ -122,7 +122,7 @@ export const useScheduledTasksController = ({ initialActions, initialTasks }: Sc
       toast({
         title: 'Could not delete scheduled task',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setBusyTaskId(null)

@@ -1,6 +1,7 @@
 import type { ResolvedContextReference } from '../dockerfile-context'
 import type { BadgeProps } from '@/components/ui/badge'
-import type { ContainerImageBuildContextFile, ContainerImageBuildStatus } from '@/server/orchestrator/platform/types'
+import type { ContainerImageBuildContextFile } from '@/server/orchestrator/platform/types'
+import type { ContainerImageBuildStatus } from '@/shared/contracts/platform-image-build'
 
 type BadgeVariant = BadgeProps['variant']
 
@@ -26,8 +27,8 @@ export const mergeContextFiles = (
 }
 
 export const detectedContextStatusVariant = (status: ResolvedContextReference['status']): BadgeVariant => {
-  if (status === 'selected') return 'status'
-  if (status === 'missing') return 'destructive'
+  if (status === 'selected') return 'success'
+  if (status === 'missing') return 'danger'
   if (status === 'unsupported') return 'warning'
-  return 'secondary'
+  return 'neutral'
 }

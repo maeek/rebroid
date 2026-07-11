@@ -9,7 +9,7 @@ import {
 } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-context'
 import { ScheduledTasksTable } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-table'
 import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import type { ScheduledTasksPageProps } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/types'
 
 export function ScheduledTasksPage(props: ScheduledTasksPageProps) {
@@ -24,7 +24,7 @@ const ScheduledTasksPageContent = () => {
   const controller = useScheduledTasksControllerContext()
 
   return (
-    <ProtectedStackPageLayout mainClassName='gap-2'>
+    <StandardPage className='gap-2'>
       <PlatformPageHeader
         title='Scheduler'
         description='Monitor scheduled jobs, run maintenance tasks, and review failures.'
@@ -45,7 +45,7 @@ const ScheduledTasksPageContent = () => {
         <ScheduledTasksTable />
       </section>
       <ScheduledTaskFormDialog />
-    </ProtectedStackPageLayout>
+    </StandardPage>
   )
 }
 
@@ -71,10 +71,10 @@ const SchedulerSummary = ({
       {items.map(item => (
         <div
           key={item.label}
-          className='rounded-lg border border-border/60 bg-surface-panel/45 px-4 py-3'
+          className='rounded-panel border border-surface-border/60 bg-surface-panel/45 px-4 py-3'
         >
-          <div className='text-xs font-medium text-muted-foreground'>{item.label}</div>
-          <div className='mt-1 text-2xl font-semibold text-foreground'>{item.value}</div>
+          <div className='text-xs font-medium text-foreground-muted'>{item.label}</div>
+          <div className='mt-1 text-2xl font-medium text-foreground'>{item.value}</div>
         </div>
       ))}
     </div>

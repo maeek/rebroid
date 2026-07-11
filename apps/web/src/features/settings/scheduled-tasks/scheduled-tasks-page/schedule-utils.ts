@@ -27,9 +27,9 @@ export const defaultForm = (actionType: ScheduledTaskActionType): FormState => (
 })
 
 export const statusVariant = (status: ScheduledTask['lastStatus']) => {
-  if (status === 'success') return 'status'
-  if (status === 'failed') return 'destructive'
-  return 'secondary'
+  if (status === 'success') return 'success'
+  if (status === 'failed') return 'danger'
+  return 'neutral'
 }
 
 export const statusLabel = (status: ScheduledTask['lastStatus']) => {

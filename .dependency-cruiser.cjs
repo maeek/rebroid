@@ -1,7 +1,9 @@
 const webFeatureDomains = [
   "applications",
+  "auth",
   "automations",
-  "orchestrator",
+  "platform",
+  "scheduled-tasks",
   "settings",
   "shell",
 ];
@@ -23,7 +25,13 @@ module.exports = {
       name: "no-circular",
       severity: "error",
       from: {},
-      to: { circular: true },
+      to: { circular: true, dependencyTypesNot: ["type-only"] },
+    },
+    {
+      name: "no-unresolved-imports",
+      severity: "error",
+      from: {},
+      to: { couldNotResolve: true, path: "^@/" },
     },
     ...noCrossWebFeatureImports,
     {
@@ -40,6 +48,7 @@ module.exports = {
       from: { path: "^apps/orchestrator/src/(?!docker/)" },
       to: {
         path: "^apps/orchestrator/src/docker/(?!contracts/|docker\\.module\\.ts$|docker\\.types\\.ts$)",
+        dependencyTypesNot: ["type-only"],
       },
     },
     {
@@ -48,6 +57,7 @@ module.exports = {
       from: { path: "^apps/orchestrator/src/automations/" },
       to: {
         path: "^apps/orchestrator/src/android-apps/(?!contracts/|android-apps\\.module\\.ts$)",
+        dependencyTypesNot: ["type-only"],
       },
     },
     {
@@ -63,13 +73,26 @@ module.exports = {
       to: { path: "^apps/web/src/server/" },
     },
     {
+      name: "no-web-shared-model-to-server",
+      severity: "error",
+      from: { path: "^apps/web/src/shared/model/" },
+      to: { path: "^apps/web/src/server/" },
+    },
+    {
+      name: "no-web-server-to-ui",
+      severity: "error",
+      from: { path: "^apps/web/src/server/" },
+      to: { path: "^apps/web/src/(components|features|shared/ui)/" },
+    },
+    {
       name: "generated-orchestrator-client-only-through-web-server",
       severity: "error",
-      from: { path: "^apps/web/src/(?!server/orchestrator/)" },
+      from: { path: "^apps/web/src/(?!server/orchestrator/|shared/contracts/)" },
       to: { path: "^packages/orchestrator-client/" },
     },
   ],
   options: {
+    tsConfig: { fileName: ".dependency-cruiser.tsconfig.json" },
     exclude: "(^|/)(node_modules|\\.next|dist)(/|$)",
     doNotFollow: { path: "node_modules" },
     enhancedResolveOptions: { extensions: [".ts", ".tsx", ".js", ".mjs"] },

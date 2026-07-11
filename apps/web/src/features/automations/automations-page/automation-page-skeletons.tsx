@@ -1,8 +1,8 @@
 import { Skeleton } from '@/components/ui/skeleton'
-import { panelSurfaceClassName } from '@/components/ui/surface-classes'
+import { panelSurfaceClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 import { PageBreadcrumbsSkeleton } from '@/shared/ui/page/page-breadcrumbs-skeleton'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { TableSkeleton } from '@/shared/ui/skeletons/table-skeleton'
 
 const AutomationHeaderSkeleton = ({
@@ -32,7 +32,7 @@ const AutomationHeaderSkeleton = ({
 )
 
 export const AutomationsListPageSkeleton = () => (
-  <ProtectedStackPageLayout mainClassName='gap-2'>
+  <StandardPage className='gap-2'>
     <AutomationHeaderSkeleton />
     <section className='px-6 pb-16 pt-2 max-sm:px-4'>
       <div className='mb-4 flex flex-wrap items-center gap-3'>
@@ -51,11 +51,11 @@ export const AutomationsListPageSkeleton = () => (
         rows={6}
       />
     </section>
-  </ProtectedStackPageLayout>
+  </StandardPage>
 )
 
 export const AutomationTriggersPageSkeleton = () => (
-  <ProtectedStackPageLayout mainClassName='gap-2'>
+  <StandardPage className='gap-2'>
     <AutomationHeaderSkeleton
       breadcrumbWidths={['w-24', 'w-20']}
       titleWidth='w-32'
@@ -79,11 +79,11 @@ export const AutomationTriggersPageSkeleton = () => (
         rows={6}
       />
     </section>
-  </ProtectedStackPageLayout>
+  </StandardPage>
 )
 
 export const AutomationEditorPageSkeleton = () => (
-  <ProtectedStackPageLayout mainClassName='gap-0'>
+  <StandardPage className='gap-0'>
     <AutomationHeaderSkeleton
       breadcrumbWidths={['w-24', 'w-24', 'w-36']}
       titleWidth='w-56'
@@ -107,7 +107,7 @@ export const AutomationEditorPageSkeleton = () => (
               </div>
               <div className='grid gap-2'>
                 <Skeleton className='h-4 w-14' />
-                <Skeleton className='h-10 w-full rounded-md' />
+                <Skeleton className='h-10 w-full rounded-control' />
               </div>
             </div>
           </section>
@@ -116,46 +116,46 @@ export const AutomationEditorPageSkeleton = () => (
             <div className='flex h-8 items-center justify-between gap-3'>
               <Skeleton className='h-7 w-20' />
             </div>
-            <div className='grid min-w-0 gap-2 rounded-md'>
+            <div className='grid min-w-0 gap-2 rounded-control'>
               <div className='relative grid min-h-10 gap-2'>
                 {Array.from({ length: 5 }).map((_, index) => (
                   <div
                     key={index}
                     data-automation-step-item='true'
-                    className='grid min-h-14 rounded-md border border-border/60 bg-surface-panel/45'
+                    className='grid min-h-14 rounded-control border border-surface-border/60 bg-surface-panel/45'
                   >
                     <div className='grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-2 py-1.5'>
-                      <Skeleton className='size-8 rounded-md' />
+                      <Skeleton className='size-8 rounded-control' />
                       <div className='grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 px-1 py-1'>
-                        <Skeleton className='size-8 rounded-md' />
+                        <Skeleton className='size-8 rounded-control' />
                         <span className='grid min-w-0 gap-1'>
                           <Skeleton className='h-4 w-44 max-w-full' />
                           <Skeleton className='h-3 w-64 max-w-full' />
                         </span>
                       </div>
                       <div className='flex items-center gap-0.5'>
-                        <Skeleton className='size-8 rounded-md' />
-                        <Skeleton className='size-8 rounded-md' />
+                        <Skeleton className='size-8 rounded-control' />
+                        <Skeleton className='size-8 rounded-control' />
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-              <Skeleton className='h-10 w-full rounded-md' />
+              <Skeleton className='h-10 w-full rounded-control' />
             </div>
           </section>
         </div>
 
         <div className='sticky top-24 grid max-h-[calc(100dvh-7rem)] min-w-0 content-start gap-6 overflow-hidden flex-3/5 shrink-0'>
           <aside className='hidden min-w-0 xl:block'>
-            <div className={cn('overflow-hidden rounded-lg', panelSurfaceClassName)}>
+            <div className={cn('overflow-hidden rounded-panel', panelSurfaceClassName)}>
               <div className='grid max-h-[calc(100dvh-7rem)] min-w-0 grid-rows-[auto_minmax(0,1fr)]'>
-                <div className='flex min-h-14 items-center justify-between gap-3 border-b border-border/60 px-4 py-3'>
+                <div className='flex min-h-14 items-center justify-between gap-3 border-b border-surface-border/60 px-4 py-3'>
                   <div className='grid min-w-0 gap-1'>
                     <Skeleton className='h-5 w-36' />
                     <Skeleton className='h-3 w-48' />
                   </div>
-                  <Skeleton className='size-9 rounded-md' />
+                  <Skeleton className='size-9 rounded-control' />
                 </div>
                 <div className='grid gap-4 px-4 py-4'>
                   {Array.from({ length: 5 }).map((_, index) => (
@@ -174,11 +174,11 @@ export const AutomationEditorPageSkeleton = () => (
         </div>
       </div>
     </section>
-  </ProtectedStackPageLayout>
+  </StandardPage>
 )
 
 export const AutomationTracesPageSkeleton = () => (
-  <ProtectedStackPageLayout mainClassName='gap-0'>
+  <StandardPage className='gap-0'>
     <AutomationHeaderSkeleton
       breadcrumbWidths={['w-24', 'w-24', 'w-36', 'w-16']}
       titleWidth='w-64'
@@ -202,5 +202,5 @@ export const AutomationTracesPageSkeleton = () => (
         />
       </div>
     </section>
-  </ProtectedStackPageLayout>
+  </StandardPage>
 )

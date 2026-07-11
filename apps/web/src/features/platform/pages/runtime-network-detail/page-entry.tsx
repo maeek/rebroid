@@ -1,5 +1,5 @@
 import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { StatusSplash } from '@/shared/ui/status-splash'
 import { RuntimeNetworkDetail } from '../../details/runtime-network-detail'
 import { loadRuntimeNetworkDetailPageData } from './page-data.server'
@@ -11,7 +11,7 @@ export async function RuntimeNetworkDetailPageEntry({ params }: { params: Promis
     const { details } = await loadRuntimeNetworkDetailPageData(id)
 
     return (
-      <ProtectedStackPageLayout mainClassName='gap-2'>
+      <StandardPage className='gap-2'>
         <PlatformPageHeader
           title={details.network.name}
           description='Network details, attached containers, and raw Docker metadata.'
@@ -19,11 +19,11 @@ export async function RuntimeNetworkDetailPageEntry({ params }: { params: Promis
           parent={{ label: 'Networks', href: '/runtime/networks' }}
         />
         <RuntimeNetworkDetail details={details} />
-      </ProtectedStackPageLayout>
+      </StandardPage>
     )
   } catch (error) {
     return (
-      <ProtectedStackPageLayout mainClassName='gap-2'>
+      <StandardPage className='gap-2'>
         <PlatformPageHeader
           title='Network'
           description='Network details could not be loaded.'
@@ -40,7 +40,7 @@ export async function RuntimeNetworkDetailPageEntry({ params }: { params: Promis
             className='min-h-[52vh]'
           />
         </section>
-      </ProtectedStackPageLayout>
+      </StandardPage>
     )
   }
 }

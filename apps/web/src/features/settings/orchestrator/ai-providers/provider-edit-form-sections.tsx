@@ -14,7 +14,7 @@ export const ProviderEnabledSection = ({
   onChange: (enabled: boolean) => void
 }) => (
   <Section
-    boxed
+    surface='panel'
     contentClassName='gap-5'
   >
     <div className='flex items-start justify-between gap-4'>
@@ -40,9 +40,12 @@ export const ProviderConnectionSection = ({
   provider: ProviderFormState
   onChange: (patch: Partial<ProviderFormState>) => void
 }) => (
-  <Section contentClassName='gap-5'>
+  <Section
+    surface='plain'
+    contentClassName='gap-5'
+  >
     <div>
-      <h3 className='text-sm font-semibold'>Provider</h3>
+      <h3 className='text-sm font-medium'>Provider</h3>
       <p className='text-xs text-foreground-muted'>
         Local providers can use Ollama or any OpenAI-compatible /v1 endpoint.
       </p>

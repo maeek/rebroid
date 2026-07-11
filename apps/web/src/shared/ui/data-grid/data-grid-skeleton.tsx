@@ -73,7 +73,7 @@ export const DataGridSkeleton = ({
       data-testid='data-grid-skeleton'
     >
       <div
-        className='overflow-x-auto overflow-y-hidden rounded-xl border border-border/70 bg-surface-band/35'
+        className='overflow-x-auto overflow-y-hidden rounded-panel border border-surface-border/70 bg-surface-band/35'
         data-testid='data-grid-skeleton-shell'
         style={{ minWidth: 0 }}
       >
@@ -87,7 +87,7 @@ export const DataGridSkeleton = ({
           >
             {selectable ? (
               <div className='flex w-12 justify-center'>
-                <Skeleton className='size-4 rounded-sm' />
+                <Skeleton className='size-4 rounded-control' />
               </div>
             ) : null}
             {columns.map((column, index) => (
@@ -104,7 +104,7 @@ export const DataGridSkeleton = ({
             ))}
             {rowMenu ? (
               <div className='flex justify-end'>
-                <Skeleton className='size-8 rounded-md' />
+                <Skeleton className='size-8 rounded-control' />
               </div>
             ) : null}
           </div>
@@ -112,19 +112,19 @@ export const DataGridSkeleton = ({
           {Array.from({ length: rows }).map((_, rowIndex) => (
             <div
               key={rowIndex}
-              className='grid min-h-16 items-center gap-3 border-t border-border/70 px-4 py-3'
+              className='grid min-h-16 items-center gap-3 border-t border-surface-border/70 px-4 py-3'
               data-testid='data-grid-skeleton-row'
               style={{ gridTemplateColumns: templateColumns }}
             >
               {selectable ? (
                 <div className='flex w-12 justify-center'>
-                  <Skeleton className='size-4 rounded-sm' />
+                  <Skeleton className='size-4 rounded-control' />
                 </div>
               ) : null}
               {columns.map(renderCell)}
               {rowMenu ? (
                 <div className='flex min-h-10 items-center justify-end'>
-                  <Skeleton className='size-9 rounded-md' />
+                  <Skeleton className='size-9 rounded-control' />
                 </div>
               ) : null}
             </div>

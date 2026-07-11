@@ -1,8 +1,16 @@
 import { unstable_rethrow } from 'next/navigation'
 import 'server-only'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
+import { logger } from '@/server/observability/logger'
+import { getRequestId } from '@/server/observability/request-id'
 import { OrchestratorRequestError } from '@/server/orchestrator/request'
-import { actionError, actionOk, type ActionError, type ActionResult } from '@/shared/actions/action-result'
+import {
+  actionError,
+  actionOk,
+  type ActionError,
+  type ActionResult,
+  type OperationErrorCode
+} from '@/shared/actions/action-result'
 
 const defaultActionFailureMessage = 'The action failed. Try again or check the server logs.'
 const orchestratorTransportPrefix = 'Orchestrator request failed:'
@@ -50,16 +58,25 @@ export class PublicActionError extends Error {
 const asErrorRecord = (error: unknown): Record<string, unknown> | null =>
   typeof error === 'object' && error !== null ? (error as Record<string, unknown>) : null
 
-const errorCode = (error: unknown) => {
-  const record = asErrorRecord(error)
-  return typeof record?.code === 'string' ? record.code : undefined
-}
-
 const errorStatus = (error: unknown) => {
   if (error instanceof OrchestratorRequestError) return error.status
   if (error instanceof PublicActionError) return error.status
   const record = asErrorRecord(error)
   return typeof record?.status === 'number' ? record.status : undefined
+}
+
+const operationErrorCode = (error: unknown): OperationErrorCode => {
+  const status = errorStatus(error)
+  if (status === 400 || status === 422) return 'validation'
+  if (status === 401) return 'unauthenticated'
+  if (status === 403) return 'forbidden'
+  if (status === 404) return 'not_found'
+  if (status === 409) return 'conflict'
+  if (status === 429) return 'rate_limited'
+  if (error instanceof OrchestratorRequestError) {
+    return status === 502 || status === 503 || status === 504 ? 'upstream_unavailable' : 'upstream_error'
+  }
+  return 'internal'
 }
 
 const isKnownPublicActionMessage = (message: string) =>
@@ -84,12 +101,16 @@ const safeMessageForActionError = (error: unknown, fallbackMessage: string) => {
   return fallbackMessage
 }
 
-export const toActionError = (error: unknown, fallbackMessage = defaultActionFailureMessage): ActionError => {
-  const code = errorCode(error)
+export const toActionError = (
+  error: unknown,
+  requestId: string,
+  fallbackMessage = defaultActionFailureMessage
+): ActionError => {
   const status = errorStatus(error)
   return {
     message: safeMessageForActionError(error, fallbackMessage),
-    ...(code ? { code } : {}),
+    code: operationErrorCode(error),
+    requestId,
     ...(status ? { status } : {})
   }
 }
@@ -104,12 +125,18 @@ export const runSafeAction = async <T>(
     logLabel?: string
   } = {}
 ): Promise<ActionResult<T>> => {
+  const requestId = await getRequestId()
   try {
-    return actionOk(await operation())
+    return actionOk(await operation(), requestId)
   } catch (error) {
     unstable_rethrow(error)
-    const safeError = toActionError(error, fallbackMessage)
-    console.error(logLabel, error)
-    return actionError(safeError)
+    const safeError = toActionError(error, requestId, fallbackMessage)
+    logger.error('server_action.failed', {
+      requestId,
+      label: logLabel,
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+      errorMessage: error instanceof Error ? error.message : 'Unknown error'
+    })
+    return actionError(safeError, requestId)
   }
 }

@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import {
   deriveAppsListSelection,
   fulfilledBulkDeleteAppIds,
@@ -82,7 +82,7 @@ describe('apps list selection model', () => {
     expect(summarizeBulkStopAppsResult(mixedResults)).toEqual({
       title: 'Some apps could not be stopped',
       description: '1 stop request failed.',
-      variant: 'destructive'
+      variant: 'danger'
     })
     expect(summarizeBulkDeleteAppsResult(fulfilledResults, ['app-1'])).toEqual({
       title: 'Selected apps deleted'
@@ -90,7 +90,7 @@ describe('apps list selection model', () => {
     expect(summarizeBulkDeleteAppsResult(mixedResults, ['app-1'])).toEqual({
       title: 'Some apps could not be deleted',
       description: '1 delete request failed.',
-      variant: 'destructive'
+      variant: 'danger'
     })
   })
 })

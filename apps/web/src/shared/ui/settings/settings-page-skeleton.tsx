@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageBreadcrumbsSkeleton } from '@/shared/ui/page/page-breadcrumbs-skeleton'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 
 const SettingsHeaderSkeleton = ({ title, variant }: { title: string; variant: 'standard' | 'orchestrator' }) => (
   <section className='flex shrink-0 items-center justify-between gap-3 px-6 py-4 max-sm:flex-col max-sm:items-start max-sm:px-4'>
@@ -44,7 +44,7 @@ const PlainSectionSkeleton = ({
   children: ReactNode
   contentClassName?: string
 }) => (
-  <section className='flex w-full flex-col rounded-xl p-0'>
+  <section className='flex w-full flex-col rounded-panel p-0'>
     <div className='flex items-center justify-between pb-4'>
       <Skeleton className={`h-5 ${titleWidth}`} />
     </div>
@@ -64,7 +64,7 @@ export const SettingsPageSkeleton = ({
   variant?: 'standard' | 'orchestrator'
 }) => {
   return (
-    <ProtectedStackPageLayout mainClassName='gap-2'>
+    <StandardPage className='gap-2'>
       <SettingsHeaderSkeleton
         title={title}
         variant={variant}
@@ -90,10 +90,10 @@ export const SettingsPageSkeleton = ({
               {Array.from({ length: 5 }).map((_, index) => (
                 <div
                   key={index}
-                  className='flex w-full items-center justify-between gap-4 rounded-lg border border-surface-border/55 bg-surface-band/50 p-3.5 max-sm:flex-col max-sm:items-stretch'
+                  className='flex w-full items-center justify-between gap-4 rounded-panel border border-surface-border/55 bg-surface-band/50 p-3.5 max-sm:flex-col max-sm:items-stretch'
                 >
                   <div className='flex min-w-0 items-start gap-3'>
-                    <Skeleton className='size-9 rounded-md' />
+                    <Skeleton className='size-9 rounded-control' />
                     <div className='flex min-w-0 flex-col gap-2'>
                       <Skeleton className='h-4 w-36' />
                       <Skeleton className='h-3 w-56 max-w-full opacity-70' />
@@ -102,10 +102,10 @@ export const SettingsPageSkeleton = ({
                   <Skeleton className='h-10 w-20 shrink-0 max-sm:w-full' />
                 </div>
               ))}
-              <div className='rounded-md bg-destructive/10 p-4'>
+              <div className='rounded-control bg-danger/10 p-4'>
                 <div className='flex items-center justify-between gap-4 max-sm:flex-col max-sm:items-stretch'>
                   <div className='flex min-w-0 items-start gap-3'>
-                    <Skeleton className='size-9 rounded-md' />
+                    <Skeleton className='size-9 rounded-control' />
                     <div className='flex flex-col gap-2'>
                       <Skeleton className='h-4 w-28' />
                       <Skeleton className='h-3 w-56 max-w-full opacity-70' />
@@ -142,6 +142,6 @@ export const SettingsPageSkeleton = ({
         </section>
       )}
       <span className='sr-only'>{sectionTitle}</span>
-    </ProtectedStackPageLayout>
+    </StandardPage>
   )
 }

@@ -51,7 +51,7 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
         toast({
           title: 'Could not load workflows',
           description: error instanceof Error ? error.message : 'Unknown error',
-          variant: 'destructive'
+          variant: 'danger'
         })
       })
       .finally(() => setLoading(false))
@@ -81,7 +81,7 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
       toast({
         title: 'Could not remove profile',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
       throw error
     }
@@ -104,7 +104,7 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
       toast({
         title: 'Could not run workflow',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setRunning(false)
@@ -136,13 +136,21 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
           </DialogHeader>
           <div className='grid gap-5'>
             <div className='grid gap-2'>
-              <label className='text-sm font-medium text-foreground'>Workflow</label>
+              <label
+                htmlFor='run-workflow-selection'
+                className='text-sm font-medium text-foreground'
+              >
+                Workflow
+              </label>
               <Select
                 value={automationId}
                 disabled={loading || automations.length === 0}
                 onValueChange={setAutomationId}
               >
-                <SelectTrigger className='w-full'>
+                <SelectTrigger
+                  id='run-workflow-selection'
+                  className='w-full'
+                >
                   <SelectValue placeholder={loading ? 'Loading workflows...' : 'Choose workflow'} />
                 </SelectTrigger>
                 <SelectContent>
@@ -171,8 +179,12 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
               onModeChange={setProfileMode}
               onNameChange={setProfileName}
             />
-            <label className='flex items-center gap-2 text-sm text-foreground'>
+            <label
+              htmlFor='run-workflow-start-if-needed'
+              className='flex items-center gap-2 text-sm text-foreground'
+            >
               <Checkbox
+                id='run-workflow-start-if-needed'
                 checked={startIfNeeded}
                 onCheckedChange={checked => setStartIfNeeded(checked === true)}
               />

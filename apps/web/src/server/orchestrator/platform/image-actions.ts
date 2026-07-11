@@ -10,7 +10,6 @@ import type {
   PlatformImagesGridPage,
   PlatformImagesGridQuery,
   StartContainerImageBuildInput,
-  StartGappsBuildInput,
   UpdateContainerImageRecipeInput,
   UpdateRuntimeImageMetadataInput
 } from './types'
@@ -136,50 +135,7 @@ export const startImageBuildAction = async (input: StartContainerImageBuildInput
     { fallbackMessage: 'Could not start image build.', logLabel: 'startImageBuildAction failed' }
   )
 
-export const getImageBuildJobAction = async (id: string) => {
-  await requireAdminUser()
-  return orchestratorPlatformClient.getImageBuildJob(id)
-}
-
-export const cancelImageBuildAction = async (id: string) =>
-  runSafeAction(
-    () =>
-      runAuditedPlatformAction({
-        action: 'docker.image_build.cancel',
-        operation: () => orchestratorPlatformClient.cancelImageBuild(id),
-        resourceType: 'docker_image_build',
-        resourceId: id
-      }),
-    { fallbackMessage: 'Could not cancel image build.', logLabel: 'cancelImageBuildAction failed' }
-  )
-
 export const listGappsBuildPresetsAction = async () => {
   await requireAdminUser()
   return orchestratorPlatformClient.listGappsBuildPresets()
 }
-
-export const startGappsBuildAction = async (input: StartGappsBuildInput) =>
-  runSafeAction(
-    () =>
-      runAuditedPlatformAction({
-        action: 'docker.image_build.gapps_patch.start',
-        details: { ...input },
-        operation: () => orchestratorPlatformClient.startGappsBuild(input),
-        resourceType: 'docker_image_build',
-        resourceId: input.targetImage ?? `android-${input.androidVersion}`
-      }),
-    { fallbackMessage: 'Could not start Google Play image build.', logLabel: 'startGappsBuildAction failed' }
-  )
-
-export const clearGappsCacheAction = async (androidVersion: string) =>
-  runSafeAction(
-    () =>
-      runAuditedPlatformAction({
-        action: 'docker.image_build.gapps_cache.clear',
-        details: { androidVersion },
-        operation: () => orchestratorPlatformClient.clearGappsCache(androidVersion),
-        resourceType: 'docker_image_build_cache',
-        resourceId: androidVersion
-      }),
-    { fallbackMessage: 'Could not clear GApps cache.', logLabel: 'clearGappsCacheAction failed' }
-  )

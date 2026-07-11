@@ -10,7 +10,7 @@ export const DataGridColumnVisibilityMenu = <TData,>({ table }: { table: Table<T
       <Button
         type='button'
         variant='secondary'
-        size='icon'
+        size='icon-md'
         className='size-8'
         aria-label='Toggle columns'
       >

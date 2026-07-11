@@ -1,11 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
-import { useSession } from 'next-auth/react'
 import { Visible } from '@/components/ui/visible'
 import { usePollingQuery } from '@/hooks/use-polling-query'
-import { listRecentAppsAction } from '@/server/recent-apps/actions'
+import { getBff } from '@/lib/http/bff'
 import { recentAppsUpdatedEvent, type RecentApp } from '@/shared/model/recent-apps/recent-apps'
 import {
   appSections,
@@ -31,19 +30,13 @@ type ProtectedNavigationProps = {
 
 export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: ProtectedNavigationProps) => {
   const pathname = usePathname()
-  const { data: session } = useSession()
-  const [role, setRole] = useState(initialUser.role)
   const { data: recentApps = [], mutate: refreshRecentApps } = usePollingQuery<RecentApp[]>(
     'navigation:recent-apps',
-    () => listRecentAppsAction(),
+    () => getBff<RecentApp[]>('/api/bff/shell/recent-apps'),
     { intervalMs: 5000 }
   )
-  const isAdmin = role === 'admin'
+  const isAdmin = initialUser.role === 'admin'
   const styles = variantStyles[variant]
-
-  useEffect(() => {
-    if (session?.user.role) setRole(session.user.role)
-  }, [session?.user.role])
 
   useEffect(() => {
     const onRecentAppsUpdated = () => void refreshRecentApps()

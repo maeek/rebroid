@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { AppsList } from '@/features/applications/list/apps-list'
 import { AppsPageSkeleton } from '@/features/applications/list/apps-page-skeleton'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { getAppsListPageData } from './page-data.server'
 
 const AppsPageContent = async () => {
@@ -19,10 +19,10 @@ const AppsPageContent = async () => {
 
 export const AppsListPageEntry = () => {
   return (
-    <ProtectedStackPageLayout>
+    <StandardPage>
       <Suspense fallback={<AppsPageSkeleton withLayout={false} />}>
         <AppsPageContent />
       </Suspense>
-    </ProtectedStackPageLayout>
+    </StandardPage>
   )
 }

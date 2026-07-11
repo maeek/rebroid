@@ -1,4 +1,4 @@
-import { imageDisplayName } from '@/features/platform/domain/image-display-name'
+import { imageDisplayName } from '@/shared/model/runtime-image/image-display-name'
 import type {
   PlatformContainer,
   PlatformContainersGridPage,

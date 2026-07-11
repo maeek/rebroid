@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from '@jest/globals'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { buildTimelineItems } from './ai-agent-chat-event-utils'
 import type { AutomationRunEvent } from '@/server/orchestrator/automations/types'
 

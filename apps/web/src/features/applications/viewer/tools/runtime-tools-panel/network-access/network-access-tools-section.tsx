@@ -64,7 +64,7 @@ export const NetworkAccessToolsSection = ({
       toast({
         title: 'Could not update network access',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsSaving(false)
@@ -85,7 +85,7 @@ export const NetworkAccessToolsSection = ({
       toast({
         title: 'Broad internet access is not allowed',
         description: 'You do not have permission to add an unrestricted outbound range.',
-        variant: 'destructive'
+        variant: 'danger'
       })
       return
     }
@@ -108,11 +108,11 @@ export const NetworkAccessToolsSection = ({
       hideHeader={hideHeader}
     >
       <div className='flex flex-col gap-4'>
-        <div className='flex items-start justify-between gap-3 rounded-md border border-border/70 bg-surface-band/40 px-3 py-3'>
+        <div className='flex items-start justify-between gap-3 rounded-control border border-surface-border/70 bg-surface-band/40 px-3 py-3'>
           <div className='min-w-0 flex-1'>
             <div className='flex flex-wrap items-center gap-2'>
               <p className='text-sm font-medium'>Restrict outbound access</p>
-              <Badge variant={app.networkPolicyEnabled ? 'status' : 'secondary'}>
+              <Badge variant={app.networkPolicyEnabled ? 'success' : 'neutral'}>
                 {app.networkPolicyEnabled ? 'Enabled' : 'Disabled'}
               </Badge>
             </div>
@@ -131,7 +131,7 @@ export const NetworkAccessToolsSection = ({
           />
         </div>
         {!canUseInternet ? (
-          <p className='text-xs text-muted-foreground'>
+          <p className='text-xs text-foreground-muted'>
             Your permissions allow allowlist edits, but not disabling restrictions or adding broad internet ranges.
           </p>
         ) : null}
@@ -145,7 +145,7 @@ export const NetworkAccessToolsSection = ({
             toast({
               title: 'Invalid CIDR',
               description: `${value} is not a valid IPv4 address or CIDR range.`,
-              variant: 'destructive'
+              variant: 'danger'
             })
           }
         />

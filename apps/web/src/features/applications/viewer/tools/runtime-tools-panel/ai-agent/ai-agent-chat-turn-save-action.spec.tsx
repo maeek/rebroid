@@ -1,5 +1,5 @@
-import { describe, expect, it, jest } from '@jest/globals'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { ChatTurnSaveWorkflowAction } from './ai-agent-chat-turn-save-action'
 import type { ChatTurn } from './ai-agent-chat-utils'
 
@@ -42,9 +42,9 @@ const turn = {
 
 describe('ChatTurnSaveWorkflowAction', () => {
   it('copies the final response and keeps workflow drafting available', async () => {
-    const writeText = jest.fn<(value: string) => Promise<void>>(() => Promise.resolve())
+    const writeText = vi.fn<(value: string) => Promise<void>>(() => Promise.resolve())
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
-    const onSaveWorkflow = jest.fn()
+    const onSaveWorkflow = vi.fn()
     render(
       <ChatTurnSaveWorkflowAction
         turn={turn}

@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageBreadcrumbsSkeleton } from '@/shared/ui/page/page-breadcrumbs-skeleton'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 
 const SectionSkeleton = ({ children, titleWidth }: { children: ReactNode; titleWidth: string }) => (
-  <section className='flex w-full flex-col rounded-xl p-0'>
+  <section className='flex w-full flex-col rounded-panel p-0'>
     <div className='flex items-center justify-between pb-4'>
       <Skeleton className={`h-5 ${titleWidth}`} />
     </div>
@@ -21,7 +21,7 @@ const SettingSkeleton = ({ controlClassName = 'h-10 w-full' }: { controlClassNam
 )
 
 export const PreferencesGeneralPageSkeleton = () => (
-  <ProtectedStackPageLayout mainClassName='gap-2'>
+  <StandardPage className='gap-2'>
     <section className='flex shrink-0 items-center justify-between gap-3 px-6 py-4 max-sm:flex-col max-sm:items-start max-sm:px-4'>
       <div className='flex flex-col gap-2'>
         <PageBreadcrumbsSkeleton
@@ -61,5 +61,5 @@ export const PreferencesGeneralPageSkeleton = () => (
         <SettingSkeleton controlClassName='h-6 w-12 rounded-full' />
       </SectionSkeleton>
     </section>
-  </ProtectedStackPageLayout>
+  </StandardPage>
 )

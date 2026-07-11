@@ -1,10 +1,10 @@
-import { describe, expect, it, jest } from '@jest/globals'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { AppRuntimeSection } from './app-runtime-section'
 
 describe('AppRuntimeSection', () => {
   it('emits inactivity timeout patch when changed', () => {
-    const onChange = jest.fn()
+    const onChange = vi.fn()
 
     render(
       <AppRuntimeSection

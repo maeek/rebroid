@@ -24,7 +24,7 @@ import { resolveAppIconUrl } from '@/shared/model/media/image-url'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
 import { PageBackdrop } from '@/shared/ui/page/page-backdrop'
 import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
-import { ProtectedSplitPageContent, ProtectedSplitPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { PageContent, StandardPageSplit } from '@/shared/ui/page/page-layout'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
 export const AppManageProfiles = ({ app, permissions }: { app?: AppDefinition; permissions: PermissionMap }) => {
@@ -63,7 +63,7 @@ export const AppManageProfiles = ({ app, permissions }: { app?: AppDefinition; p
       toast({
         title: 'Could not remove profile',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setDeleting(false)
@@ -71,12 +71,12 @@ export const AppManageProfiles = ({ app, permissions }: { app?: AppDefinition; p
   }
 
   return (
-    <ProtectedSplitPageLayout>
+    <StandardPageSplit>
       <PageBackdrop
         imageSrc={currentApp.icon ? resolveAppIconUrl(currentApp.icon) : null}
         opacity={0.08}
       />
-      <ProtectedSplitPageContent>
+      <PageContent>
         <PageBreadcrumbs
           items={[
             { label: 'Apps', href: '/apps' },
@@ -87,12 +87,13 @@ export const AppManageProfiles = ({ app, permissions }: { app?: AppDefinition; p
         />
         <AppViewerHeading app={currentApp} />
         <Section
+          surface='plain'
           title='Profiles'
           titleClassName='pb-4'
           contentClassName='gap-3'
         >
           <Visible when={persistentProfiles.length === 0}>
-            <p className='text-sm text-muted-foreground'>No saved persistent profiles are available yet.</p>
+            <p className='text-sm text-foreground-muted'>No saved persistent profiles are available yet.</p>
           </Visible>
           {persistentProfiles.map(profile => {
             const isActive = activeProfileName === profile.name
@@ -101,9 +102,9 @@ export const AppManageProfiles = ({ app, permissions }: { app?: AppDefinition; p
             return (
               <div
                 key={profile.name}
-                className='flex min-w-0 items-center gap-3 rounded-md border border-border/70 bg-surface-panel/45 p-3'
+                className='flex min-w-0 items-center gap-3 rounded-control border border-surface-border/70 bg-surface-panel/45 p-3'
               >
-                <span className='grid size-9 shrink-0 place-items-center rounded-md bg-secondary text-muted-foreground'>
+                <span className='grid size-9 shrink-0 place-items-center rounded-control bg-surface-band text-foreground-muted'>
                   <IconDatabase className='size-4' />
                 </span>
                 <div className='min-w-0 flex-1'>
@@ -113,13 +114,13 @@ export const AppManageProfiles = ({ app, permissions }: { app?: AppDefinition; p
                       <Badge variant='outline'>Active</Badge>
                     </Visible>
                   </div>
-                  <p className='text-xs text-muted-foreground'>
+                  <p className='text-xs text-foreground-muted'>
                     Persistent runtime data volume for this application profile.
                   </p>
                 </div>
                 <Button
                   type='button'
-                  variant='destructive'
+                  variant='danger'
                   size='sm'
                   disabled={!canRemove}
                   onClick={() => setProfileToDelete(profile.name)}
@@ -131,7 +132,7 @@ export const AppManageProfiles = ({ app, permissions }: { app?: AppDefinition; p
             )
           })}
         </Section>
-      </ProtectedSplitPageContent>
+      </PageContent>
       <Dialog
         open={Boolean(profileToDelete)}
         onOpenChange={open => !open && setProfileToDelete(null)}
@@ -154,7 +155,7 @@ export const AppManageProfiles = ({ app, permissions }: { app?: AppDefinition; p
             </Button>
             <Button
               type='button'
-              variant='destructive'
+              variant='danger'
               disabled={deleting}
               onClick={() => void deleteProfile()}
             >
@@ -166,6 +167,6 @@ export const AppManageProfiles = ({ app, permissions }: { app?: AppDefinition; p
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </ProtectedSplitPageLayout>
+    </StandardPageSplit>
   )
 }

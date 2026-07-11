@@ -31,7 +31,7 @@ const statusPlaceholders: Partial<Record<AppDefinition['status'], ViewerPlacehol
   error: {
     title: 'App failed to start',
     description: 'Rebroid reported an error while preparing the viewer.',
-    toneClassName: 'text-destructive',
+    toneClassName: 'text-danger',
     Icon: IconAlertTriangle
   },
   provisioning: {

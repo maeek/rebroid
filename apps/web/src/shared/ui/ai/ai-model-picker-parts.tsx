@@ -10,11 +10,11 @@ import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { controlHoverClassName, controlSurfaceClassName, focusRingClassName } from '@/components/ui/surface-classes'
+import { controlHoverClassName, controlSurfaceClassName, focusRingClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 import { AiHealthIcon, AiHealthIndicator } from './ai-health-indicator'
 import { AiProviderKindBadge } from './ai-model-badges'
-import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
+import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 
 type CatalogModel = AutomationAiModelCatalogProvider['models'][number]
 
@@ -203,7 +203,7 @@ export const AiModelPickerReadonlyChip = ({
 }) => (
   <div
     className={cn(
-      'inline-flex h-8 min-w-0 max-w-full items-center justify-start gap-2 rounded-md px-2.5 text-sm font-medium',
+      'inline-flex h-8 min-w-0 max-w-full items-center justify-start gap-2 rounded-control px-2.5 text-sm font-medium',
       controlSurfaceClassName
     )}
   >
@@ -234,7 +234,7 @@ export const AiModelPickerTrigger = ({
   <button
     type='button'
     className={cn(
-      'inline-flex h-8 min-w-0 max-w-full cursor-pointer items-center justify-start gap-2 rounded-md px-2.5 text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50',
+      'inline-flex h-8 min-w-0 max-w-full cursor-pointer items-center justify-start gap-2 rounded-control px-2.5 text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50',
       controlSurfaceClassName,
       controlHoverClassName,
       focusRingClassName
@@ -344,7 +344,7 @@ export const AiModelPickerHealthFooter = ({
         <Button
           type='button'
           variant='ghost'
-          size='icon'
+          size='icon-md'
           className='size-8'
           disabled={!selectedModel || isCheckingHealth}
           aria-label='Re-check planner health'

@@ -44,7 +44,7 @@ export function DataGridToolbar({
     >
       <div className='flex w-full flex-wrap items-end gap-2 lg:min-w-0 lg:flex-1'>
         <div className='relative w-full max-w-md'>
-          <IconSearch className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
+          <IconSearch className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-foreground-muted' />
           <Input
             value={search}
             placeholder={searchPlaceholder}

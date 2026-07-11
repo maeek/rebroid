@@ -55,14 +55,14 @@ const dotTone = (status: DisplayServiceStatus) => {
   }
 
   if (status === 'disabled') {
-    return 'bg-muted-foreground/50'
+    return 'bg-foreground-muted/50'
   }
 
   if (status === 'unhealthy' || status === 'degraded') {
     return 'bg-warning'
   }
 
-  return 'bg-destructive'
+  return 'bg-danger'
 }
 
 const badgeTone = (status: DisplayServiceStatus) => {
@@ -71,14 +71,14 @@ const badgeTone = (status: DisplayServiceStatus) => {
   }
 
   if (status === 'disabled') {
-    return 'border-border/70 bg-secondary/45 text-muted-foreground'
+    return 'border-surface-border/70 bg-surface-band/45 text-foreground-muted'
   }
 
   if (status === 'unhealthy' || status === 'degraded') {
     return 'border-warning/35 bg-warning/10 text-warning'
   }
 
-  return 'border-destructive/35 bg-destructive/15 text-destructive'
+  return 'border-danger/35 bg-danger/15 text-danger'
 }
 
 const serviceRows = (health: OrchestratorHealth | null, fallbackMessage: string) => [
@@ -176,10 +176,10 @@ export const OrchestratorStatus = () => {
           className={cn(
             'flex max-w-[18rem] items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
             {
-              'border-border/70 bg-secondary/50 text-secondary-foreground': state === 'checking',
+              'border-surface-border/70 bg-surface-band/50 text-foreground': state === 'checking',
               'border-success/35 bg-success/10 text-success': state === 'online',
               'border-warning/40 bg-warning/10 text-warning': state === 'degraded',
-              'border-destructive/50 bg-destructive/15 text-destructive': state === 'offline'
+              'border-danger/50 bg-danger/15 text-danger': state === 'offline'
             }
           )}
         >
@@ -199,14 +199,14 @@ export const OrchestratorStatus = () => {
               key={name}
               href={href}
               title={service.message}
-              className='flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-secondary/55'
+              className='flex items-center gap-3 rounded-control px-3 py-2.5 transition-colors hover:bg-surface-band/55'
             >
               <span className={cn('size-2.5 shrink-0 rounded-full', dotTone(service.status))} />
               <div className='flex min-w-0 grow items-center justify-between gap-2'>
                 <p className='truncate text-xs font-medium text-foreground'>{name}</p>
                 <span
                   className={cn(
-                    'rounded-full border px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-normal',
+                    'rounded-full border px-1.5 py-0.5 text-xs font-medium uppercase leading-none tracking-normal',
                     badgeTone(service.status)
                   )}
                 >

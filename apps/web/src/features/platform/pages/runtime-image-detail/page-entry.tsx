@@ -1,8 +1,8 @@
+import { imageDisplayName } from '@/shared/model/runtime-image/image-display-name'
 import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { StatusSplash } from '@/shared/ui/status-splash'
 import { RuntimeImageDetail } from '../../details/runtime-image-detail'
-import { imageDisplayName } from '../../domain/image-display-name'
 import { loadRuntimeImageDetailPageData } from './page-data.server'
 
 export async function RuntimeImageDetailPageEntry({ params }: { params: Promise<{ id: string }> }) {
@@ -12,7 +12,7 @@ export async function RuntimeImageDetailPageEntry({ params }: { params: Promise<
     const { details } = await loadRuntimeImageDetailPageData(id)
 
     return (
-      <ProtectedStackPageLayout mainClassName='gap-2'>
+      <StandardPage className='gap-2'>
         <PlatformPageHeader
           title={imageDisplayName(details.image)}
           description='Image details, related containers, and raw Docker metadata.'
@@ -20,11 +20,11 @@ export async function RuntimeImageDetailPageEntry({ params }: { params: Promise<
           parent={{ label: 'Images', href: '/runtime/images' }}
         />
         <RuntimeImageDetail details={details} />
-      </ProtectedStackPageLayout>
+      </StandardPage>
     )
   } catch (error) {
     return (
-      <ProtectedStackPageLayout mainClassName='gap-2'>
+      <StandardPage className='gap-2'>
         <PlatformPageHeader
           title='Image'
           description='Image details could not be loaded.'
@@ -41,7 +41,7 @@ export async function RuntimeImageDetailPageEntry({ params }: { params: Promise<
             className='min-h-[52vh]'
           />
         </section>
-      </ProtectedStackPageLayout>
+      </StandardPage>
     )
   }
 }

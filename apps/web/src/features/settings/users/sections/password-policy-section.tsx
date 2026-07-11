@@ -7,7 +7,7 @@ import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { saveWebSettingsAction } from '@/server/web-settings/actions/save-web-settings-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
-import { Setting } from '@/shared/ui/settings/setting'
+import { FormField } from '@/components/ui/form-field'
 
 type PasswordPolicySectionProps = {
   initialPasswordMinimumLength: number
@@ -27,7 +27,7 @@ export const PasswordPolicySection = ({ initialPasswordMinimumLength }: Password
       toast({
         title: 'Could not save password policy',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsSavingPasswordPolicy(false)
@@ -36,14 +36,15 @@ export const PasswordPolicySection = ({ initialPasswordMinimumLength }: Password
 
   return (
     <Section
+      surface='plain'
       title='Password policy'
       titleClassName='pb-2'
       contentClassName='gap-3'
     >
-      <Setting
+      <FormField
         label='Minimum password length'
         description='Applies to new users, admin password resets, and profile password changes.'
-        variant='vertical'
+        layout='vertical'
         className='flex-col items-start w-full'
       >
         <div className='flex w-full flex-wrap items-end gap-3'>
@@ -67,7 +68,7 @@ export const PasswordPolicySection = ({ initialPasswordMinimumLength }: Password
             Save Policy
           </Button>
         </div>
-      </Setting>
+      </FormField>
     </Section>
   )
 }

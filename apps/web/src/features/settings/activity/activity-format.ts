@@ -1,5 +1,5 @@
 import type { ActivityFacets, ActivityFilterEntry, ActivityFilterValues } from './activity-types'
-import type { AuditEvent } from '@/server/storage/database'
+import type { AuditEvent } from '@/server/persistence/audit-repository'
 
 export const allActivityFilterValue = '__all__'
 
@@ -50,7 +50,7 @@ export const activityFilterEntries = (filters: ActivityFilterValues, facets: Act
   return entries
 }
 
-export const outcomeTone = (outcome: AuditEvent['outcome']) => (outcome === 'failure' ? 'destructive' : 'secondary')
+export const outcomeTone = (outcome: AuditEvent['outcome']) => (outcome === 'failure' ? 'danger' : 'neutral')
 
 export const metricNumber = (value: number) => new Intl.NumberFormat().format(value)
 

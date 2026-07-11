@@ -1,23 +1,21 @@
-import { describe, expect, it, jest } from '@jest/globals'
+import { describe, expect, it, vi } from 'vitest'
+import { requireAdminUser, requireUser } from '../shared'
+import { getDockerMetricsAction, getOrchestratorHealthSummaryAction } from './actions'
+import { orchestratorDiagnosticsClient } from './client'
 
-jest.mock('../shared', () => ({
-  requireAdminUser: jest.fn(),
-  requireUser: jest.fn()
+vi.mock('../shared', () => ({
+  requireAdminUser: vi.fn(),
+  requireUser: vi.fn()
 }))
-jest.mock('../current-user', () => ({
-  getCurrentUserContext: jest.fn()
+vi.mock('../current-user', () => ({
+  getCurrentUserContext: vi.fn()
 }))
-jest.mock('./client', () => ({
+vi.mock('./client', () => ({
   orchestratorDiagnosticsClient: {
-    dockerMetrics: jest.fn(),
-    healthSummary: jest.fn()
+    dockerMetrics: vi.fn(),
+    healthSummary: vi.fn()
   }
 }))
-
-const { requireAdminUser, requireUser } = jest.requireMock<typeof import('../shared')>('../shared')
-const { orchestratorDiagnosticsClient } = jest.requireMock<typeof import('./client')>('./client')
-const { getDockerMetricsAction, getOrchestratorHealthSummaryAction } =
-  jest.requireActual<typeof import('./actions')>('./actions')
 
 describe('orchestrator diagnostics actions', () => {
   it('requires an admin before loading Docker metrics', async () => {

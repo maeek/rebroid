@@ -1,6 +1,5 @@
-import type { ScrcpyTransport } from '@/server/orchestrator/applications/types'
-import type { OrchestratorSettingsResponse } from '@/server/orchestrator/settings/types'
-import type { WebSettings as WebSettingsResponse } from '@/server/web-settings/types'
+import type { ScrcpyTransport } from '@/shared/contracts/application'
+import type { OrchestratorSettingsResponse, WebSettingsResponse } from '@/shared/contracts/ui-settings'
 import type { ViewerStreamingPreset } from '@/shared/model/settings/viewer-streaming-preset'
 
 export interface OrchestratorUiSettings {

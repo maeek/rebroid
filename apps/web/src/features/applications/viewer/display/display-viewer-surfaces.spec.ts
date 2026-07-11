@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import { defaultViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
 import { buildDisplayViewerSurfaces } from './display-viewer-surfaces'
 import type { ScrcpySession } from '@/server/orchestrator/applications/types'

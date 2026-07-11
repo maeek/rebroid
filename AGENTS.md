@@ -58,6 +58,9 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 - In `apps/orchestrator/src/settings`, keep generic settings facade methods in `SettingsService`, persistence/default normalization in `OrchestratorSettingsStore`, AI-provider CRUD/execution lookup in `AiProviderSettingsService`, provider connectivity checks in `AiProviderHealthService`, and provider model downloads in `AiProviderModelDownloadService`.
 - Keep AI transport protocol (`openai-chat-completions` or native Ollama) separate from detected server flavor. Probe Lemonade before Ollama compatibility endpoints and preserve exact model IDs returned by the selected transport.
 - Browser UI must not call the orchestrator directly. It should go through the Next.js backend-for-frontend in `apps/web/src/server/orchestrator`.
+- Web shared UI and model code must not import `apps/web/src/server`, including type-only imports. Browser/server DTOs belong in `apps/web/src/shared/contracts`.
+- Cross-cutting web reads should use validated `/api/bff/*` handlers backed by focused server query services. Feature-owned mutations may use Server Actions, but both transports must return the shared operation result with a request ID and stable error code.
+- Web persistence has no migration or legacy compatibility path. Schema changes assume a clean deployment and use `pnpm reset:all-state -- --execute`; preserve external environment files and bind-mounted secrets.
 - The orchestrator owns Android application lifecycle state. The display sidecar owns viewer session state. The firewall agent owns host firewall reconciliation.
 - Treat display sidecar scrcpy/server/socket startup ordering as a protected invariant. Do not reorder awaited ADB commands, socket listener registration, socket reads, process launch, retry, or cleanup without a dedicated manual Redroid verification pass. Refactoring without that pass is limited to pure SPS parsing, compatibility-probe parsing, retry classification, and stream-option selection.
 - Respect existing dependency-boundary checks in `.dependency-cruiser.cjs`; do not introduce circular dependencies.
@@ -86,6 +89,10 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 - Prefer immutable data transformations and pure helpers for domain rules.
 - Keep comments sparse and useful. Explain non-obvious constraints, security decisions, or protocol ordering; do not narrate simple code.
 - Match existing formatting. Do not introduce unrelated formatting churn.
+- Follow `docs/web-design-system.md` for web UI work. Feature code must use semantic tokens, documented page families,
+  shared surfaces, `FormField`, and shared feedback components instead of feature-local visual recipes.
+- Web UI changes do not retain deprecated design-system variants or token aliases; migrate all consumers and remove the
+  old API in the same change.
 
 ## Security and Performance
 

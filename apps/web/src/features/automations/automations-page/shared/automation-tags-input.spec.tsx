@@ -1,10 +1,10 @@
-import { describe, expect, it, jest } from '@jest/globals'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { AutomationTagsInput } from './automation-tags-input'
 
 describe('AutomationTagsInput', () => {
   it('adds a new tag from the draft input', () => {
-    const onChange = jest.fn()
+    const onChange = vi.fn()
 
     render(
       <AutomationTagsInput
@@ -22,7 +22,7 @@ describe('AutomationTagsInput', () => {
   })
 
   it('edits and removes existing tags through the popover', () => {
-    const onChange = jest.fn()
+    const onChange = vi.fn()
 
     render(
       <AutomationTagsInput

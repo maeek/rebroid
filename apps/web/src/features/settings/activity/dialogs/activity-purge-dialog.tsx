@@ -28,7 +28,7 @@ export const ActivityPurgeDialog = () => {
         </DialogHeader>
         <DialogFooter>
           <Button
-            variant='destructive'
+            variant='danger'
             disabled={controller.isPurging}
             onClick={() => void controller.purgeAll()}
           >

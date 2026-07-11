@@ -5,7 +5,7 @@ import { Section } from '@/components/ui/section'
 import { DockerMetricsDashboard } from '@/features/platform/metrics/docker-metrics-dashboard'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
 import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { PlatformQuickGlanceSection } from './platform-quick-glance-section'
 
 export const PlatformOverviewPageClient = () => {
@@ -22,11 +22,11 @@ export const PlatformOverviewPageClient = () => {
   }
 
   return (
-    <ProtectedStackPageLayout mainClassName='gap-2'>
+    <StandardPage className='gap-2'>
       <PlatformPageHeader
         title='Overview'
         description='Managed containers, resource usage, Docker API workload, latency, retries, and recent transport failures.'
-        titleActions={
+        actions={
           <PlatformPageRefreshButton
             isRefreshing={pendingRefreshes > 0}
             onRefresh={refresh}
@@ -35,6 +35,7 @@ export const PlatformOverviewPageClient = () => {
       />
       <section className='flex w-full flex-col gap-6 px-6 pb-4 max-sm:px-4'>
         <Section
+          surface='plain'
           title='Resources'
           titleClassName='pb-2'
           contentClassName='gap-4'
@@ -50,6 +51,6 @@ export const PlatformOverviewPageClient = () => {
         refreshKey={refreshKey}
         onRefreshComplete={completeRefresh}
       />
-    </ProtectedStackPageLayout>
+    </StandardPage>
   )
 }

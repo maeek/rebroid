@@ -11,7 +11,7 @@ type AutomationsGridHrefInput = {
 type AutomationOperationToast = {
   title: string
   description?: string
-  variant?: 'destructive'
+  variant?: 'danger'
 }
 
 export const automationStatusLabel = (status: Automation['lastStatus']) => {
@@ -101,7 +101,7 @@ export const summarizeAutomationDeleteResults = (
     return {
       title: 'Some workflows could not be deleted',
       description: `${failedCount} delete request failed.`,
-      variant: 'destructive'
+      variant: 'danger'
     }
   }
 

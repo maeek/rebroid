@@ -61,12 +61,10 @@ const NetworkNameCell = ({ network, className }: { network: PlatformNetwork; cla
         <span className='shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary'>managed</span>
       </Visible>
       <Visible when={network.internal}>
-        <span className='shrink-0 rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground'>
-          internal
-        </span>
+        <span className='shrink-0 rounded-full bg-surface-band px-2 py-0.5 text-xs text-foreground'>internal</span>
       </Visible>
     </div>
-    <div className='truncate text-xs text-muted-foreground'>{network.shortId}</div>
+    <div className='truncate text-xs text-foreground-muted'>{network.shortId}</div>
   </div>
 )
 
@@ -122,7 +120,7 @@ export const RuntimeNetworksSection = ({
       toast({
         title: 'Could not remove network',
         description: getDisplayErrorMessage(caughtError),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setBusyId(null)
@@ -207,7 +205,10 @@ export const RuntimeNetworksSection = ({
 
   return (
     <>
-      <Section contentClassName='gap-4'>
+      <Section
+        surface='plain'
+        contentClassName='gap-4'
+      >
         <DataGridToolbar
           search={search}
           searchPlaceholder='Search networks'
@@ -262,7 +263,7 @@ export const RuntimeNetworksSection = ({
                 <>
                   {hasBulkSelection ? (
                     <ContextMenuItem
-                      className='text-destructive focus:text-destructive'
+                      className='text-danger focus:text-danger'
                       disabled={busyId === 'bulk' || !canRemoveSelectedNetworks(selectedNetworks)}
                       onSelect={() => void removeSelectedNetworks()}
                     >
@@ -277,7 +278,7 @@ export const RuntimeNetworksSection = ({
                     </Link>
                   </ContextMenuItem>
                   <ContextMenuItem
-                    className='text-destructive focus:text-destructive'
+                    className='text-danger focus:text-danger'
                     disabled={networkHasAttachedContainers(row.original)}
                     onSelect={() => setPendingRemove(row.original)}
                   >
@@ -316,7 +317,7 @@ export const RuntimeNetworksSection = ({
           </DialogHeader>
           <DialogFooter>
             <Button
-              variant='destructive'
+              variant='danger'
               disabled={!pendingRemove || busyId === pendingRemove.id}
               onClick={() => void removeNetwork()}
             >

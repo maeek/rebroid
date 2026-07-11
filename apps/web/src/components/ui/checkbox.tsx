@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { Checkbox as CheckboxPrimitive } from '@base-ui/react/checkbox'
 import { IconCheck } from '@tabler/icons-react'
-import { controlHoverClassName, controlSurfaceClassName, focusRingClassName } from '@/components/ui/surface-classes'
+import { controlHoverClassName, controlSurfaceClassName, focusRingClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 
 const Checkbox = React.forwardRef<

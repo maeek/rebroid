@@ -4,7 +4,7 @@ import {
   selectMatchingVisionPair,
   selectPlannerVisionCatalog
 } from '@rebroid/ai-core/provider'
-import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
+import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 
 export type AiModelSelectionPatch = {
   providerId?: string

@@ -61,7 +61,6 @@ const ProviderModelLabelCell = ({
         <Input
           value={draftLabel}
           placeholder='Qwen 2.5 VL 7B'
-          autoFocus
           onChange={event => setDraftLabel(event.target.value)}
           onKeyDown={event => {
             if (event.key === 'Enter') saveLabel()
@@ -71,7 +70,7 @@ const ProviderModelLabelCell = ({
         <Button
           type='button'
           variant='ghost'
-          size='icon'
+          size='icon-md'
           className='size-8'
           aria-label='Save label'
           onClick={saveLabel}
@@ -81,7 +80,7 @@ const ProviderModelLabelCell = ({
         <Button
           type='button'
           variant='ghost'
-          size='icon'
+          size='icon-md'
           className='size-8'
           aria-label='Cancel label edit'
           onClick={cancelEditing}
@@ -103,7 +102,7 @@ const ProviderModelLabelCell = ({
       <Button
         type='button'
         variant='ghost'
-        size='icon'
+        size='icon-md'
         className='size-8'
         aria-label={`Edit label for ${model.id}`}
         onClick={startEditing}
@@ -117,7 +116,7 @@ const ProviderModelLabelCell = ({
 const recommendationClassName = {
   good: 'border-success/35 bg-success/10 text-success',
   warning: 'border-warning/35 bg-warning/10 text-warning',
-  neutral: 'border-border bg-surface-subtle text-foreground-muted'
+  neutral: 'border-surface-border bg-surface-subtle text-foreground-muted'
 } as const
 
 const ProviderModelRecommendation = ({ model }: { model: ProviderModelRow }) => {
@@ -127,7 +126,7 @@ const ProviderModelRecommendation = ({ model }: { model: ProviderModelRow }) => 
     <div className='flex min-h-10 min-w-0 items-center'>
       <span
         className={[
-          'max-w-full truncate rounded-md border px-2 py-1 text-xs',
+          'max-w-full truncate rounded-control border px-2 py-1 text-xs',
           recommendationClassName[recommendation.level]
         ].join(' ')}
         title={recommendation.message}
@@ -227,22 +226,34 @@ export const ProviderModelsGrid = ({
         meta: { label: 'Roles' },
         cell: ({ row }) => (
           <div className='flex min-h-10 items-center gap-4'>
-            <label className='flex items-center gap-2 text-sm'>
+            <label
+              htmlFor={`provider-model-${row.original.index}-controller`}
+              className='flex items-center gap-2 text-sm'
+            >
               <Checkbox
+                id={`provider-model-${row.original.index}-controller`}
                 checked={(row.original.roles ?? []).includes('controller')}
                 onCheckedChange={value => toggleRole(row.original, 'controller', value === true)}
               />
               Controller
             </label>
-            <label className='flex items-center gap-2 text-sm'>
+            <label
+              htmlFor={`provider-model-${row.original.index}-planner`}
+              className='flex items-center gap-2 text-sm'
+            >
               <Checkbox
+                id={`provider-model-${row.original.index}-planner`}
                 checked={(row.original.roles ?? []).includes('planner')}
                 onCheckedChange={value => toggleRole(row.original, 'planner', value === true)}
               />
               Planner
             </label>
-            <label className='flex items-center gap-2 text-sm'>
+            <label
+              htmlFor={`provider-model-${row.original.index}-vision`}
+              className='flex items-center gap-2 text-sm'
+            >
               <Checkbox
+                id={`provider-model-${row.original.index}-vision`}
                 checked={(row.original.roles ?? []).includes('vision')}
                 onCheckedChange={value => toggleRole(row.original, 'vision', value === true)}
               />
@@ -310,10 +321,13 @@ export const ProviderModelsGrid = ({
   )
 
   return (
-    <Section contentClassName='gap-4'>
+    <Section
+      surface='plain'
+      contentClassName='gap-4'
+    >
       <div className='flex flex-wrap items-center justify-between gap-3'>
         <div>
-          <h3 className='text-sm font-semibold'>Models</h3>
+          <h3 className='text-sm font-medium'>Models</h3>
           <p className='text-xs text-foreground-muted'>
             Good GUI-control starting points: Qwen2.5/3-VL, UI-TARS, GUI-Owl/GUI-Actor, or a tool-capable planner paired
             with a GUI-oriented vision model.

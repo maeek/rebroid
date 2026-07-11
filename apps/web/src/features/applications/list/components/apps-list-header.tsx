@@ -63,7 +63,7 @@ export const AppsListHeader = () => {
                 Stop
               </Button>
               <Button
-                variant='destructive'
+                variant='danger'
                 size='sm'
                 disabled={deletableSelectedCount === 0 || isBulkWorking}
                 onClick={() => openBulkAction('delete')}
@@ -92,7 +92,7 @@ export const AppsListHeader = () => {
         </div>
       </div>
       <Visible when={isManaging}>
-        <div className='mx-6 mb-3 flex items-center justify-between gap-3 rounded-lg border border-surface-border bg-surface-panel/50 px-4 py-3 text-sm max-sm:mx-4 max-sm:flex-col max-sm:items-start my-3'>
+        <div className='mx-6 mb-3 flex items-center justify-between gap-3 rounded-panel border border-surface-border bg-surface-panel/50 px-4 py-3 text-sm max-sm:mx-4 max-sm:flex-col max-sm:items-start my-3'>
           <span className='text-foreground-muted'>{selectionCount} selected. Choose apps, then run a bulk action.</span>
           <span className='text-foreground-muted'>
             Stop targets: {stoppableSelectedCount} - Delete targets: {deletableSelectedCount}

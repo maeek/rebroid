@@ -22,10 +22,10 @@ export const ToolEventRow = ({ item }: { item: ToolEventRowValue }) => {
 
   return (
     <div className='grid min-w-0 gap-0.5 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-2'>
-      <dt className='min-w-0 font-medium text-muted-foreground'>{item.key}</dt>
+      <dt className='min-w-0 font-medium text-foreground-muted'>{item.key}</dt>
       {isPre ? (
         <dd className='min-w-0'>
-          <pre className='max-h-72 overflow-auto whitespace-pre-wrap rounded-sm bg-background/20 p-1 font-mono text-[11px] break-all text-muted-foreground/90'>
+          <pre className='max-h-72 overflow-auto whitespace-pre-wrap rounded-control bg-background/20 p-1 font-mono text-xs break-all text-foreground-muted/90'>
             {valueText}
           </pre>
         </dd>
@@ -44,17 +44,17 @@ export const ToolEventView = ({ item }: { item: ToolTimelineItem }) => {
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-xl border bg-surface-band/24 transition-[border-color,background-color] duration-150',
-        item.status === 'failed' ? 'border-destructive/30 bg-destructive/5' : 'border-border/55'
+        'overflow-hidden rounded-panel border bg-surface-band/24 transition-[border-color,background-color] duration-150',
+        item.status === 'failed' ? 'border-danger/30 bg-danger/5' : 'border-surface-border/55'
       )}
     >
       <details className='group'>
         <summary className='flex cursor-pointer list-none items-center gap-2.5 px-3 py-2.5 text-xs text-foreground-muted transition-colors hover:bg-foreground/3'>
           <span
             className={cn(
-              'flex size-7 shrink-0 items-center justify-center rounded-lg border',
+              'flex size-7 shrink-0 items-center justify-center rounded-panel border',
               item.status === 'failed'
-                ? 'border-destructive/25 bg-destructive/8 text-destructive'
+                ? 'border-danger/25 bg-danger/8 text-danger'
                 : item.status === 'used'
                   ? 'border-success/25 bg-success/10 text-success'
                   : 'border-primary/20 bg-primary/8 text-primary'
@@ -70,7 +70,7 @@ export const ToolEventView = ({ item }: { item: ToolTimelineItem }) => {
           </span>
           <span className='grid min-w-0 flex-1 text-left'>
             <span className='font-medium text-foreground'>{label}</span>
-            <span className='truncate font-mono text-[10px]'>{item.name}</span>
+            <span className='truncate font-mono text-xs'>{item.name}</span>
           </span>
           {hasArguments || hasOutput ? (
             <IconChevronDown className='size-3.5 transition-transform duration-150 group-open:rotate-180' />
@@ -81,7 +81,7 @@ export const ToolEventView = ({ item }: { item: ToolTimelineItem }) => {
         <div className='grid gap-2 px-3 pb-3'>
           {hasArguments ? (
             <div className='grid gap-1'>
-              <span className='text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground-muted'>Input</span>
+              <span className='text-xs font-medium uppercase tracking-[0.12em] text-foreground-muted'>Input</span>
               <AiToolDetails>
                 {item.arguments.map(argument => (
                   <ToolEventRow
@@ -94,9 +94,7 @@ export const ToolEventView = ({ item }: { item: ToolTimelineItem }) => {
           ) : null}
           {hasOutput ? (
             <div className='grid gap-1'>
-              <span className='text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground-muted'>
-                Result
-              </span>
+              <span className='text-xs font-medium uppercase tracking-[0.12em] text-foreground-muted'>Result</span>
               <AiToolDetails>
                 {item.output.map(output => (
                   <ToolEventRow
@@ -110,9 +108,7 @@ export const ToolEventView = ({ item }: { item: ToolTimelineItem }) => {
         </div>
       </details>
       {item.error ? (
-        <div className='wrap-anywhere border-t border-destructive/15 px-3 py-2 text-xs text-destructive/90'>
-          {item.error}
-        </div>
+        <div className='wrap-anywhere border-t border-danger/15 px-3 py-2 text-xs text-danger/90'>{item.error}</div>
       ) : null}
     </div>
   )

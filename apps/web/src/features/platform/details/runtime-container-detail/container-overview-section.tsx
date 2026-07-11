@@ -26,11 +26,11 @@ const ContainerOverviewHeader = ({ container }: { container: PlatformContainerDe
         <div className='flex flex-wrap items-center gap-2'>
           <h3 className='text-xl font-medium'>Overview</h3>
           <Visible when={container.managed}>
-            <Badge variant='status'>managed</Badge>
+            <Badge variant='success'>managed</Badge>
           </Visible>
           <ContainerStateBadge state={container.state} />
         </div>
-        <div className='font-mono text-xs text-muted-foreground'>{container.id}</div>
+        <div className='font-mono text-xs text-foreground-muted'>{container.id}</div>
       </div>
       <div className='flex flex-wrap gap-2'>
         <Button
@@ -44,7 +44,7 @@ const ContainerOverviewHeader = ({ container }: { container: PlatformContainerDe
         </Button>
         <Button
           type='button'
-          variant='destructive'
+          variant='danger'
           onClick={() => setPendingAction('remove')}
         >
           <IconTrash className='size-4' />
@@ -111,7 +111,7 @@ export const ContainerOverviewSection = () => {
 
   return (
     <Section
-      boxed
+      surface='panel'
       className='bg-surface-panel/50'
       contentClassName='gap-5'
     >

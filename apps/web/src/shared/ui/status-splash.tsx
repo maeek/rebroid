@@ -26,7 +26,7 @@ export const StatusSplash = ({
   secondaryAction?: { label: string; href?: string; onClick?: () => void }
   className?: string
 }) => {
-  const renderAction = (action: NonNullable<typeof primaryAction>, variant: 'default' | 'secondary') => {
+  const renderAction = (action: NonNullable<typeof primaryAction>, variant: 'primary' | 'secondary') => {
     const button = (
       <Button
         type='button'
@@ -43,15 +43,15 @@ export const StatusSplash = ({
     return action.href ? <Link href={action.href}>{button}</Link> : button
   }
 
-  const primaryActionContent = primaryAction ? renderAction(primaryAction, 'default') : null
+  const primaryActionContent = primaryAction ? renderAction(primaryAction, 'primary') : null
   const secondaryActionContent = secondaryAction ? renderAction(secondaryAction, 'secondary') : null
 
   return (
-    <div className={cn('flex min-h-[48vh] items-center justify-center rounded-lg p-8 text-center', className)}>
+    <div className={cn('flex min-h-[48vh] items-center justify-center rounded-panel p-8 text-center', className)}>
       <div className='flex max-w-xl flex-col items-center gap-5'>
         <div
-          className={cn('flex size-20 items-center justify-center rounded-full bg-secondary/80 text-primary', {
-            'bg-destructive/15 text-destructive': tone === 'danger'
+          className={cn('flex size-20 items-center justify-center rounded-full bg-surface-band/80 text-primary', {
+            'bg-danger/15 text-danger': tone === 'danger'
           })}
         >
           {icon ?? <IconServerOff className='size-10' />}
@@ -61,7 +61,7 @@ export const StatusSplash = ({
           <p className='text-foreground-muted'>{description}</p>
         </div>
         <Visible when={detail}>
-          <p className='w-full text-xs text-muted-foreground text-center'>{detail}</p>
+          <p className='w-full text-xs text-foreground-muted text-center'>{detail}</p>
         </Visible>
         <Visible when={primaryAction || secondaryAction}>
           <div className='flex flex-wrap items-center justify-center gap-3'>

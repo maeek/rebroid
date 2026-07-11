@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import {
   defaultGroups,
   findGroups,
@@ -48,7 +48,7 @@ describe('user model', () => {
       id: 'user-1',
       accentColor: 'blue',
       groupIds: ['users'],
-      effectiveQuotas: expect.objectContaining({ maxOpenApps: 3 })
+      effectiveQuotas: { maxOpenApps: 3 }
     })
     expect('passwordHash' in publicUser).toBe(false)
   })

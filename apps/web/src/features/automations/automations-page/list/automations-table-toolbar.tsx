@@ -45,7 +45,7 @@ export const AutomationsTableToolbar = ({
     actions={
       <Button
         size='sm'
-        variant='destructive'
+        variant='danger'
         disabled={busy || selectedCount === 0}
         onClick={onBulkDelete}
       >

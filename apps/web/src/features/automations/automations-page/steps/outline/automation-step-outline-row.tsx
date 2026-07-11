@@ -15,7 +15,7 @@ import {
   IconSettings,
   IconTrash
 } from '@tabler/icons-react'
-import classNames from 'classnames'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -94,11 +94,11 @@ export function AutomationStepOutlineRow({
       <div
         ref={setNodeRef}
         data-automation-step-item='true'
-        className={classNames(
-          'group relative grid min-h-14 rounded-md border transition-colors',
+        className={cn(
+          'group relative grid min-h-14 rounded-control border transition-colors',
           selected
             ? 'border-primary/45 bg-primary/8 shadow-[0_0_0_1px_hsl(var(--primary)/0.08)]'
-            : 'border-border/60 bg-surface-panel/45 hover:border-border/80 hover:bg-surface-panel/60',
+            : 'border-surface-border/60 bg-surface-panel/45 hover:border-surface-border/80 hover:bg-surface-panel/60',
           isDragging ? 'pointer-events-none opacity-0' : null
         )}
       >
@@ -107,7 +107,7 @@ export function AutomationStepOutlineRow({
           <button
             type='button'
             ref={setActivatorNodeRef}
-            className='flex size-8 cursor-grab items-center justify-center rounded-md text-foreground-muted hover:bg-secondary/60 active:cursor-grabbing'
+            className='flex size-8 cursor-grab items-center justify-center rounded-control text-foreground-muted hover:bg-surface-band/60 active:cursor-grabbing'
             aria-label='Drag step'
             {...attributes}
             {...listeners}
@@ -117,10 +117,10 @@ export function AutomationStepOutlineRow({
 
           <button
             type='button'
-            className='grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-md px-1 py-1 text-left'
+            className='grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-control px-1 py-1 text-left'
             onClick={() => onSelectStep(step.clientKey)}
           >
-            <span className='flex size-8 shrink-0 items-center justify-center rounded-md bg-background/65 text-primary'>
+            <span className='flex size-8 shrink-0 items-center justify-center rounded-control bg-background/65 text-primary'>
               {step.kind === 'action' ? (
                 <AutomationCommandIcon
                   uses={step.uses}
@@ -133,7 +133,7 @@ export function AutomationStepOutlineRow({
             <span className='min-w-0'>
               <span className='flex min-w-0 items-center gap-2'>
                 <span className='truncate text-sm font-medium'>{stepTitle(step, command)}</span>
-                <span className='hidden rounded-sm border border-border/60 px-1.5 py-0.5 text-[0.625rem] uppercase tracking-normal text-foreground-muted sm:inline'>
+                <span className='hidden rounded-control border border-surface-border/60 px-1.5 py-0.5 text-xs uppercase tracking-normal text-foreground-muted sm:inline'>
                   {stepKindLabel(step)}
                 </span>
               </span>
@@ -146,20 +146,20 @@ export function AutomationStepOutlineRow({
               <Button
                 type='button'
                 variant='ghost'
-                size='icon'
+                size='icon-md'
                 aria-label={open ? 'Collapse block' : 'Expand block'}
                 onClick={event => {
                   event.stopPropagation()
                   onToggleBlock(step.clientKey)
                 }}
               >
-                <IconChevronDown className={classNames('size-4 transition-transform', open ? null : '-rotate-90')} />
+                <IconChevronDown className={cn('size-4 transition-transform', open ? null : '-rotate-90')} />
               </Button>
             ) : null}
             <Button
               type='button'
               variant='ghost'
-              size='icon'
+              size='icon-md'
               aria-label='Move step up'
               disabled={!canMoveUp}
               className='max-sm:hidden'
@@ -173,7 +173,7 @@ export function AutomationStepOutlineRow({
             <Button
               type='button'
               variant='ghost'
-              size='icon'
+              size='icon-md'
               aria-label='Move step down'
               disabled={!canMoveDown}
               className='max-sm:hidden'
@@ -188,7 +188,7 @@ export function AutomationStepOutlineRow({
               <DropdownMenuTrigger asChild>
                 <Button
                   variant='ghost'
-                  size='icon'
+                  size='icon-md'
                   aria-label='Step menu'
                   onClick={event => event.stopPropagation()}
                   onKeyDown={event => event.stopPropagation()}
@@ -235,7 +235,7 @@ export function AutomationStepOutlineRow({
                   Duplicate
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className='gap-2 px-3 py-2 text-destructive'
+                  className='gap-2 px-3 py-2 text-danger'
                   onSelect={onDelete}
                 >
                   <IconTrash className='size-4' />

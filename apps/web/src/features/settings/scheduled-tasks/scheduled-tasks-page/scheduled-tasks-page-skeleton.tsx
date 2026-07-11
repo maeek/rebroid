@@ -1,10 +1,10 @@
 import { Skeleton } from '@/components/ui/skeleton'
 import { DataGridSkeleton } from '@/shared/ui/data-grid'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
 
 export const ScheduledTasksPageSkeleton = () => (
-  <ProtectedStackPageLayout mainClassName='gap-2'>
+  <StandardPage className='gap-2'>
     <PageHeaderSkeleton
       titleWidth='w-48'
       includeOrchestratorBreadcrumb={false}
@@ -18,7 +18,7 @@ export const ScheduledTasksPageSkeleton = () => (
         {Array.from({ length: 4 }).map((_, index) => (
           <div
             key={index}
-            className='rounded-lg border border-border/60 bg-surface-panel/45 px-4 py-3'
+            className='rounded-panel border border-surface-border/60 bg-surface-panel/45 px-4 py-3'
           >
             <Skeleton className='h-3 w-20' />
             <Skeleton className='mt-2 h-8 w-12' />
@@ -29,7 +29,7 @@ export const ScheduledTasksPageSkeleton = () => (
         className='grid gap-3'
         data-testid='scheduler-grid-skeleton'
       >
-        <div className='flex flex-wrap items-center justify-between gap-3 rounded-md border border-border/60 bg-surface-panel/35 px-3 py-2'>
+        <div className='flex flex-wrap items-center justify-between gap-3 rounded-control border border-surface-border/60 bg-surface-panel/35 px-3 py-2'>
           <Skeleton className='h-4 w-32' />
           <div className='flex flex-wrap gap-2'>
             <Skeleton className='h-9 w-20' />
@@ -51,5 +51,5 @@ export const ScheduledTasksPageSkeleton = () => (
         />
       </div>
     </section>
-  </ProtectedStackPageLayout>
+  </StandardPage>
 )

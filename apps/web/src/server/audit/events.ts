@@ -1,5 +1,6 @@
 import { after } from 'next/server'
-import { appendAuditEvent, maybePruneAuditEvents, type AuditEventInput } from '@/server/storage/database'
+import { logger } from '@/server/observability/logger'
+import { appendAuditEvent, maybePruneAuditEvents, type AuditEventInput } from '@/server/persistence/audit-repository'
 
 export type RecordAuditEventInput = AuditEventInput & {
   retentionDays?: number
@@ -34,14 +35,18 @@ export const recordAuditEvent = (event: RecordAuditEventInput) => {
       try {
         insertAuditEvent(event)
       } catch (error) {
-        console.error('Could not record audit event', error)
+        logger.error('audit.record_failed', {
+          errorName: error instanceof Error ? error.name : 'UnknownError'
+        })
       }
     })
   } catch {
     void Promise.resolve()
       .then(() => insertAuditEvent(event))
       .catch(error => {
-        console.error('Could not record audit event', error)
+        logger.error('audit.record_failed', {
+          errorName: error instanceof Error ? error.name : 'UnknownError'
+        })
       })
   }
 }

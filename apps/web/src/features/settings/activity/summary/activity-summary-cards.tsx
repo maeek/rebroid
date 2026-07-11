@@ -16,19 +16,17 @@ export const ActivitySummaryCards = () => {
         label='Failures'
         value={metricNumber(result.summary.failure)}
         hint={`${metricNumber(result.summary.success)} successful`}
-        className='border-l-destructive'
+        tone='danger'
       />
       <QuickGlanceCard
         label='Last event'
         value={relativeTime(result.summary.lastEventAt)}
         hint={result.summary.lastEventAt ? new Date(result.summary.lastEventAt).toLocaleString() : 'No timestamp'}
-        className='border-l-surface-border'
       />
       <QuickGlanceCard
         label='Retention'
         value={`${auditRetentionDays} days`}
         hint='Automatic cleanup window'
-        className='border-l-surface-border'
       />
     </div>
   )

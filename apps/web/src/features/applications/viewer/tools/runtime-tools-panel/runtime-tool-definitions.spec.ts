@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import { defaultViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
 import { getRuntimeTools, runtimeToolPanelClassName } from './runtime-tool-definitions'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'

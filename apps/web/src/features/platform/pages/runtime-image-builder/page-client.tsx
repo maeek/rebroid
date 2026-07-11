@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
+import { sendBff } from '@/lib/http/bff'
 import {
-  cancelImageBuildAction,
   createImageBuildRecipeAction,
   removeImageBuildContextFileAction,
   startImageBuildAction
@@ -15,7 +15,7 @@ import {
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { saveOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import {
   parseDockerfileContextReferences,
   resolveDockerfileContextReferences,
@@ -157,7 +157,7 @@ export const RuntimeImageBuilderPageClient = ({
       toast({
         title: 'Could not upload context file',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsUploading(false)
@@ -188,7 +188,7 @@ export const RuntimeImageBuilderPageClient = ({
         toast({
           title: 'Could not connect folder',
           description: getDisplayErrorMessage(error),
-          variant: 'destructive'
+          variant: 'danger'
         })
       }
     } finally {
@@ -246,7 +246,7 @@ export const RuntimeImageBuilderPageClient = ({
       toast({
         title: 'Could not upload detected context',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     }
   }
@@ -264,7 +264,7 @@ export const RuntimeImageBuilderPageClient = ({
       toast({
         title: 'Could not remove context file',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     }
   }
@@ -286,7 +286,7 @@ export const RuntimeImageBuilderPageClient = ({
       toast({
         title: 'Could not save recipe',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsSavingRecipe(false)
@@ -313,7 +313,7 @@ export const RuntimeImageBuilderPageClient = ({
       toast({
         title: 'Could not start build',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsStarting(false)
@@ -323,13 +323,18 @@ export const RuntimeImageBuilderPageClient = ({
   const cancelBuild = async () => {
     if (!activeJob) return
     try {
-      setActiveJob(unwrapActionResult(await cancelImageBuildAction(activeJob.id)))
+      setActiveJob(
+        await sendBff<ContainerImageBuildJob>(
+          `/api/bff/platform/image-builds/${encodeURIComponent(activeJob.id)}/cancel`,
+          {}
+        )
+      )
       toast({ title: 'Build cancelled' })
     } catch (error) {
       toast({
         title: 'Could not cancel build',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     }
   }
@@ -347,7 +352,7 @@ export const RuntimeImageBuilderPageClient = ({
       toast({
         title: 'Could not update default image',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     }
   }
@@ -369,12 +374,12 @@ export const RuntimeImageBuilderPageClient = ({
   }
 
   return (
-    <ProtectedStackPageLayout mainClassName='gap-2'>
+    <StandardPage className='gap-2'>
       <PlatformPageHeader
         title='Build image'
         description='Create local Redroid-style runtime images with Rebroid metadata labels.'
         breadcrumbRoot={{ label: 'Runtime', href: '/runtime/images' }}
-        titleActions={
+        actions={
           <Button
             type='button'
             disabled={!canStart}
@@ -428,6 +433,7 @@ export const RuntimeImageBuilderPageClient = ({
 
         <main className='flex min-w-0 flex-col gap-6'>
           <Section
+            surface='plain'
             title='Dockerfile'
             contentClassName='gap-3'
           >
@@ -449,6 +455,6 @@ export const RuntimeImageBuilderPageClient = ({
           />
         </main>
       </section>
-    </ProtectedStackPageLayout>
+    </StandardPage>
   )
 }

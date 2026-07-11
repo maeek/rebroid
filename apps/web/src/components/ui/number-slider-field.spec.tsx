@@ -1,14 +1,14 @@
-import { describe, expect, it, jest } from '@jest/globals'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { NumberSliderField } from '@/components/ui/number-slider-field'
 
-jest.mock('@/lib/safe-vibrate', () => ({
-  safeVibrate: jest.fn()
+vi.mock('@/lib/safe-vibrate', () => ({
+  safeVibrate: vi.fn()
 }))
 
 describe('NumberSliderField', () => {
   it('clamps numeric input on blur', () => {
-    const onValueChange = jest.fn()
+    const onValueChange = vi.fn()
 
     render(
       <NumberSliderField
@@ -28,7 +28,7 @@ describe('NumberSliderField', () => {
     render(
       <NumberSliderField
         value='15'
-        onValueChange={jest.fn()}
+        onValueChange={vi.fn()}
         min={1}
         max={32}
         suffix=' Mbps'

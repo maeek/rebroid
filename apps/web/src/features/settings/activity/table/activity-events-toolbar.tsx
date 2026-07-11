@@ -57,7 +57,7 @@ export const ActivityEventsToolbar = () => {
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    className='text-destructive focus:text-destructive'
+                    className='text-danger focus:text-danger'
                     onClick={() => controller.setPurgeOpen(true)}
                   >
                     <IconTrash className='mr-2 size-4' />
@@ -80,7 +80,7 @@ export const ActivityEventsToolbar = () => {
         {controller.activeFilters.map(({ key, label, value }) => (
           <Badge
             key={`${label}:${value}`}
-            variant='secondary'
+            variant='neutral'
             className='gap-1 py-1 font-normal'
           >
             <span className='text-foreground-muted'>{label}</span>

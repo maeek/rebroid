@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { Drawer as DrawerPrimitive } from '@base-ui/react/drawer'
 import { getBaseChildren, getBaseRender } from '@/components/ui/base-render'
-import { floatingSurfaceClassName, overlayClassName, triggerResetClassName } from '@/components/ui/surface-classes'
+import { floatingSurfaceClassName, overlayClassName, triggerResetClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 
 type DrawerProps = React.ComponentProps<typeof DrawerPrimitive.Root> & {
@@ -68,7 +68,7 @@ const DrawerContent = React.forwardRef<
         {...props}
       >
         <DrawerPrimitive.Content className='min-h-0 overflow-hidden'>
-          <div className='mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted-foreground/55' />
+          <div className='mx-auto mt-4 h-2 w-[100px] rounded-full bg-foreground-muted/55' />
           {children}
         </DrawerPrimitive.Content>
       </DrawerPrimitive.Popup>
@@ -83,7 +83,7 @@ const DrawerTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DrawerPrimitive.Title
     ref={ref}
-    className={cn('text-lg font-semibold leading-none tracking-tight', className)}
+    className={cn('text-lg font-medium leading-none tracking-tight', className)}
     {...props}
   />
 ))
@@ -95,7 +95,7 @@ const DrawerDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DrawerPrimitive.Description
     ref={ref}
-    className={cn('text-sm text-muted-foreground', className)}
+    className={cn('text-sm text-foreground-muted', className)}
     {...props}
   />
 ))

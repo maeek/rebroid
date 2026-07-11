@@ -6,15 +6,15 @@ import { cn } from '@/lib/utils'
 const statusTone = (status: string, ok: boolean) => {
   if (status === 'offline') {
     return {
-      banner: 'border-destructive/40 bg-destructive/10',
-      badge: 'destructive' as const
+      banner: 'border-danger/40 bg-danger/10',
+      badge: 'danger' as const
     }
   }
 
   if (ok || status === 'healthy') {
     return {
       banner: 'border-success/35 bg-success/10',
-      badge: 'status' as const
+      badge: 'success' as const
     }
   }
 
@@ -44,7 +44,7 @@ export const PlatformStatusBanner = ({
   return (
     <div
       className={cn(
-        'rounded-lg border px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] supports-[backdrop-filter]:backdrop-blur-md',
+        'rounded-panel border px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] supports-[backdrop-filter]:backdrop-blur-md',
         tone.banner
       )}
     >
@@ -62,10 +62,11 @@ export const PlatformStatusBanner = ({
       </div>
       {details ? (
         <Section
+          surface='plain'
           title={detailTitle}
           collapsible
           className='mt-3'
-          titleClassName='border-t border-border/60 pt-3 text-sm text-foreground-muted'
+          titleClassName='border-t border-surface-border/60 pt-3 text-sm text-foreground-muted'
           contentClassName='gap-3'
         >
           {details}

@@ -46,7 +46,7 @@ export const GroupMembershipPicker = ({
     <div className={cn('overflow-hidden', className)}>
       <div className='pb-3'>
         <div className='relative'>
-          <IconSearch className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground' />
+          <IconSearch className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-foreground-muted' />
           <Input
             value={search}
             className='pl-9'
@@ -55,7 +55,7 @@ export const GroupMembershipPicker = ({
           />
         </div>
       </div>
-      <ScrollArea className='max-h-80 border-y border-border/60'>
+      <ScrollArea className='max-h-80 border-y border-surface-border/60'>
         <div className='divide-y divide-border/50'>
           {visibleGroups.map(group => {
             const checked = selectedGroupIds.includes(group.id)
@@ -63,9 +63,11 @@ export const GroupMembershipPicker = ({
             return (
               <label
                 key={group.id}
+                htmlFor={`group-membership-${group.id}`}
                 className='flex items-center cursor-pointer gap-4 px-0 py-3 transition-colors'
               >
                 <Checkbox
+                  id={`group-membership-${group.id}`}
                   checked={checked}
                   className='mt-0.5'
                   onCheckedChange={value => toggleGroup(group.id, value === true)}
@@ -74,23 +76,23 @@ export const GroupMembershipPicker = ({
                   <span className='flex flex-wrap items-center gap-2'>
                     <span className='truncate font-medium'>{group.name}</span>
                     <Badge
-                      variant={group.role === 'admin' ? 'status' : 'secondary'}
-                      className='text-[0.65rem]'
+                      variant={group.role === 'admin' ? 'success' : 'neutral'}
+                      className='text-xs'
                     >
                       {group.role}
                     </Badge>
                   </span>
-                  <span className='line-clamp-2 text-xs text-muted-foreground'>{group.description}</span>
+                  <span className='line-clamp-2 text-xs text-foreground-muted'>{group.description}</span>
                 </span>
               </label>
             )
           })}
           <Visible when={visibleGroups.length === 0}>
-            <div className='px-4 py-8 text-center text-sm text-muted-foreground'>No groups match your search.</div>
+            <div className='px-4 py-8 text-center text-sm text-foreground-muted'>No groups match your search.</div>
           </Visible>
         </div>
       </ScrollArea>
-      <div className='pt-2 text-xs text-muted-foreground'>
+      <div className='pt-2 text-xs text-foreground-muted'>
         {selectedGroupIds.length} of {groups.length} groups selected
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
-import { getImageBuildJobAction } from '@/server/orchestrator/platform/image-actions'
+import { getBff } from '@/lib/http/bff'
 import { terminalBuildStatuses } from '../model/context-selection'
-import type { ContainerImageBuildJob } from '@/server/orchestrator/platform/types'
+import type { ContainerImageBuildJob } from '@/shared/contracts/platform-image-build'
 
 export const useActiveBuildPolling = (
   activeJob: ContainerImageBuildJob | null,
@@ -10,7 +10,7 @@ export const useActiveBuildPolling = (
   useEffect(() => {
     if (!activeJob || terminalBuildStatuses.includes(activeJob.status)) return
     const refresh = () => {
-      void getImageBuildJobAction(activeJob.id)
+      void getBff<ContainerImageBuildJob>(`/api/bff/platform/image-builds/${encodeURIComponent(activeJob.id)}`)
         .then(setActiveJob)
         .catch(() => undefined)
     }

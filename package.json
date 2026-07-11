@@ -19,8 +19,9 @@
     "test:gapps-patcher": "./scripts/test-gapps-patcher.sh",
     "openapi:orchestrator:check": "node scripts/openapi-generate.mjs --contract=orchestrator --check",
     "openapi:orchestrator:generate": "node scripts/openapi-generate.mjs --contract=orchestrator",
+    "reset:all-state": "node scripts/reset-all-state.mjs",
     "reset:orchestrator-state": "node scripts/reset-orchestrator-state.mjs",
-    "boundaries": "depcruise --config .dependency-cruiser.cjs apps packages",
+    "boundaries": "depcruise --config .dependency-cruiser.cjs apps packages && depcruise --config .dependency-cruiser.types.cjs apps/web/src/shared",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck"
   },

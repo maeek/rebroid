@@ -19,7 +19,7 @@ export const ScheduledTaskBulkBar = ({
   onRun: () => void
 }) =>
   selectedCount > 0 ? (
-    <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-surface-border bg-surface-panel/50 px-4 py-3 text-sm'>
+    <div className='flex flex-wrap items-center justify-between gap-3 rounded-panel border border-surface-border bg-surface-panel/50 px-4 py-3 text-sm'>
       <span className='text-foreground-muted'>{selectedCount} selected</span>
       <div className='flex flex-wrap gap-2'>
         <Button
@@ -49,7 +49,7 @@ export const ScheduledTaskBulkBar = ({
         </Button>
         <Button
           type='button'
-          variant='destructive'
+          variant='danger'
           disabled={busy || !canDelete}
           onClick={onDelete}
         >

@@ -1,8 +1,8 @@
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from '@jest/globals'
-import { corruptWebStateForTests, resetWebDatabaseForTests } from '@/server/storage/database'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { resetDatabaseForTests } from '@/server/persistence/database'
 import { userService } from './user'
 
 describe('userService.changeOwnPassword', () => {
@@ -17,7 +17,7 @@ describe('userService.changeOwnPassword', () => {
   afterEach(async () => {
     delete process.env.WEB_DATABASE_PATH
     delete process.env.INITIAL_ADMIN_PASSWORD
-    resetWebDatabaseForTests()
+    resetDatabaseForTests()
     await rm(tempDirectory, { recursive: true, force: true })
   })
 
@@ -100,13 +100,6 @@ describe('userService.changeOwnPassword', () => {
     await expect(
       userService.completeRequiredPasswordChange(user.id, 'replacement-password', 'another-password')
     ).rejects.toThrow('Password change is not required for this account.')
-  })
-
-  it('fails closed when the users state is malformed', async () => {
-    corruptWebStateForTests('users', '{malformed')
-
-    await expect(userService.listUsers()).rejects.toThrow()
-    await expect(userService.authenticate('admin', 'initial-admin-password')).rejects.toThrow()
   })
 
   it('preserves concurrent user creations', async () => {

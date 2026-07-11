@@ -74,9 +74,7 @@ export const PlatformQuickGlanceSection = ({
   return (
     <>
       <Visible when={error}>
-        <div className='rounded-lg border border-destructive/35 bg-destructive/10 p-4 text-sm text-destructive'>
-          {error}
-        </div>
+        <div className='rounded-panel border border-danger/35 bg-danger/10 p-4 text-sm text-danger'>{error}</div>
       </Visible>
       <div className='grid grid-cols-3 gap-3 max-xl:grid-cols-2 max-sm:grid-cols-1'>
         <QuickGlanceCard
@@ -86,7 +84,7 @@ export const PlatformQuickGlanceSection = ({
             error
           )}
           hint={cpuHint()}
-          className='border-l-primary/50'
+          tone='primary'
         />
         <QuickGlanceCard
           label='Managed container memory'
@@ -95,7 +93,7 @@ export const PlatformQuickGlanceSection = ({
             error
           )}
           hint={memoryHint()}
-          className='border-l-primary/50'
+          tone='primary'
         />
         <QuickGlanceCard
           label='Containers'
@@ -104,7 +102,7 @@ export const PlatformQuickGlanceSection = ({
             error
           )}
           hint='Running / Total'
-          className='border-l-primary/50'
+          tone='primary'
         />
       </div>
       <div className='text-xs text-foreground-muted'>

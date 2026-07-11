@@ -13,7 +13,7 @@ type AppFormIconSectionProps = {
   autoExtractIcon: boolean
   hasExtractedIcon: boolean
   disabled?: boolean
-  boxed?: boolean
+  surface?: 'plain' | 'band' | 'panel'
   showDescription?: boolean
   showAutoExtract?: boolean
   onIconChange: (event: ChangeEvent<HTMLInputElement>) => void
@@ -28,6 +28,7 @@ export const AppFormIconSection = ({
   autoExtractIcon,
   hasExtractedIcon,
   disabled = false,
+  surface = 'plain',
   showDescription = true,
   showAutoExtract = true,
   onIconChange,
@@ -46,12 +47,13 @@ export const AppFormIconSection = ({
 
   return (
     <Section
+      surface={surface}
       title={showDescription ? 'Icon' : undefined}
       titleClassName='pb-1'
       contentClassName='gap-5'
     >
       <Visible when={showDescription}>
-        <p className='text-xs leading-relaxed text-muted-foreground'>
+        <p className='text-xs leading-relaxed text-foreground-muted'>
           Optional app icon for the web UI. Square images work best and are optimized locally before upload.
         </p>
       </Visible>

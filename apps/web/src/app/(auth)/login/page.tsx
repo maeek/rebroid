@@ -6,7 +6,7 @@ export default function Login() {
       <div className='relative grid w-full max-w-5xl gap-8 lg:grid-cols-[1fr_420px] lg:items-center max-sm:flex max-sm:flex-col-reverse max-sm:gap-10'>
         <section className='block'>
           <div className='max-w-lg'>
-            <h1 className='mt-5 text-5xl font-semibold leading-tight text-foreground'>
+            <h1 className='mt-5 text-5xl font-medium leading-tight text-foreground'>
               Run isolated Android apps from the browser.
             </h1>
             <p className='mt-5 max-w-md text-base leading-7 text-foreground-muted'>
@@ -14,7 +14,7 @@ export default function Login() {
             </p>
           </div>
         </section>
-        <div className='hidden max-sm:block w-full h-0.5 bg-border rounded-md' />
+        <div className='hidden max-sm:block w-full h-0.5 bg-border rounded-control' />
         <LoginCard />
       </div>
     </main>

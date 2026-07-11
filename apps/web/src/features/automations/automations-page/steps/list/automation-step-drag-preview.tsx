@@ -12,8 +12,8 @@ export function AutomationStepDragPreview({
   command?: AutomationCommand
 }) {
   return (
-    <div className='grid h-16 w-[min(32rem,calc(100vw-3rem))] grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-md border border-primary/40 bg-popover px-3 py-2 text-foreground shadow-xl shadow-black/30'>
-      <span className='flex size-9 shrink-0 items-center justify-center rounded-md bg-background/70 text-primary'>
+    <div className='grid h-16 w-[min(32rem,calc(100vw-3rem))] grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-control border border-primary/40 bg-surface-elevated px-3 py-2 text-foreground shadow-floating shadow-black/30'>
+      <span className='flex size-9 shrink-0 items-center justify-center rounded-control bg-background/70 text-primary'>
         {step.kind === 'action' ? (
           <AutomationCommandIcon
             uses={step.uses}

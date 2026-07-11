@@ -1,4 +1,8 @@
-import { readWebState, updateWebState, writeWebState } from '@/server/storage/database'
+import {
+  readSettingsDocument,
+  updateSettingsDocument,
+  writeSettingsDocument
+} from '@/server/persistence/settings-repository'
 import type { WebSettings } from './types'
 
 const defaultWebSettings: WebSettings = {
@@ -15,8 +19,6 @@ const defaultWebSettings: WebSettings = {
   auditRetentionDays: 30,
   passwordMinimumLength: 12
 }
-
-const settingsStateKey = 'web-settings'
 
 const numberInRange = (value: unknown, fallback: number, minimum: number, maximum: number) => {
   const parsed = Number(value)
@@ -75,24 +77,24 @@ const normalize = (value: Partial<WebSettings>): WebSettings => ({
 
 export const getWebSettings = () =>
   Promise.resolve().then(() => {
-    const stored = readWebState(settingsStateKey)
+    const stored = readSettingsDocument()
     if (stored !== null) {
-      return normalize(JSON.parse(stored) as Partial<WebSettings>)
+      return normalize(stored)
     }
 
-    writeWebState(settingsStateKey, JSON.stringify(defaultWebSettings))
+    writeSettingsDocument(defaultWebSettings)
     return { ...defaultWebSettings }
   })
 
 export const saveWebSettings = async (settings: Partial<WebSettings>) => {
   await getWebSettings()
-  return updateWebState(settingsStateKey, current => {
-    const normalized = normalize({ ...(current ? (JSON.parse(current) as Partial<WebSettings>) : {}), ...settings })
-    return [JSON.stringify(normalized), normalized]
+  return updateSettingsDocument<WebSettings>(current => {
+    const normalized = normalize({ ...(current as Partial<WebSettings> | null), ...settings })
+    return [{ ...normalized }, normalized]
   })
 }
 
 export const resetWebSettings = () => {
-  writeWebState(settingsStateKey, JSON.stringify(defaultWebSettings))
+  writeSettingsDocument(defaultWebSettings)
   return Promise.resolve({ ...defaultWebSettings })
 }

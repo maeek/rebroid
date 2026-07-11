@@ -54,9 +54,13 @@ export const ScheduledTaskFormDialog = () => {
           }}
         >
           <div className='flex flex-wrap items-center justify-between gap-3'>
-            <label className='text-sm font-medium text-foreground'>Task details</label>
-            <label className='flex items-center gap-3 text-sm text-foreground'>
+            <div className='text-sm font-medium text-foreground'>Task details</div>
+            <label
+              htmlFor='scheduled-task-enabled'
+              className='flex items-center gap-3 text-sm text-foreground'
+            >
               <Switch
+                id='scheduled-task-enabled'
                 checked={form.enabled ?? true}
                 onCheckedChange={enabled => setForm(current => ({ ...current, enabled }))}
               />
@@ -64,8 +68,14 @@ export const ScheduledTaskFormDialog = () => {
             </label>
           </div>
           <div className='grid gap-2'>
-            <label className='text-sm font-medium text-foreground'>Name</label>
+            <label
+              htmlFor='scheduled-task-name'
+              className='text-sm font-medium text-foreground'
+            >
+              Name
+            </label>
             <Input
+              id='scheduled-task-name'
               value={form.name}
               disabled={isEditingPredefined}
               placeholder='Nightly cleanup'
@@ -73,7 +83,12 @@ export const ScheduledTaskFormDialog = () => {
             />
           </div>
           <div className='grid gap-2'>
-            <label className='text-sm font-medium text-foreground'>Action</label>
+            <label
+              htmlFor='scheduled-task-action'
+              className='text-sm font-medium text-foreground'
+            >
+              Action
+            </label>
             <Select
               value={form.actionType}
               disabled={isEditingPredefined}
@@ -85,7 +100,10 @@ export const ScheduledTaskFormDialog = () => {
                 }))
               }
             >
-              <SelectTrigger className='w-full'>
+              <SelectTrigger
+                id='scheduled-task-action'
+                className='w-full'
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -106,8 +124,12 @@ export const ScheduledTaskFormDialog = () => {
             onScheduleChange={updateSchedule}
           />
           <Visible when={actionNeedsDanglingOnly(form.actionType)}>
-            <label className='flex items-center gap-2 text-sm text-foreground'>
+            <label
+              htmlFor='scheduled-task-dangling-only'
+              className='flex items-center gap-2 text-sm text-foreground'
+            >
               <Checkbox
+                id='scheduled-task-dangling-only'
                 checked={form.payload?.danglingOnly ?? true}
                 onCheckedChange={checked =>
                   setForm(current => ({
@@ -121,9 +143,15 @@ export const ScheduledTaskFormDialog = () => {
           </Visible>
           <Visible when={actionNeedsRetentionDays(form.actionType)}>
             <div className='grid gap-2'>
-              <label className='text-sm font-medium text-foreground'>Remove logs older than</label>
+              <label
+                htmlFor='scheduled-task-retention-days'
+                className='text-sm font-medium text-foreground'
+              >
+                Remove logs older than
+              </label>
               <div className='flex items-center gap-2'>
                 <Input
+                  id='scheduled-task-retention-days'
                   type='number'
                   min={1}
                   max={3650}

@@ -1,5 +1,5 @@
-import { describe, expect, it } from '@jest/globals'
 import { render, screen } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
 import { ToolEventView } from './tool-event-view'
 import type { ToolTimelineItem } from '../ai-agent-chat-event-utils'
 

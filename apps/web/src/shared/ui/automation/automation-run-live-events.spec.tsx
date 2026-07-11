@@ -1,17 +1,12 @@
-import { describe, expect, it, jest } from '@jest/globals'
 import { render, screen } from '@testing-library/react'
-import {
-  cancelAutomationRunAction,
-  createAutomationRunEventStreamUrlAction,
-  listAutomationRunEventsAction
-} from '@/server/orchestrator/automations/automation-run-actions'
+import { describe, expect, it, vi } from 'vitest'
+import { getBff, sendBff } from '@/lib/http/bff'
 import { AutomationRunLiveEvents } from './automation-run-live-events'
-import type { AutomationRun, AutomationRunEvent } from '@/server/orchestrator/automations/types'
+import type { AutomationRun, AutomationRunEvent } from '@/shared/contracts/automation-run'
 
-jest.mock('@/server/orchestrator/automations/automation-run-actions', () => ({
-  cancelAutomationRunAction: jest.fn(),
-  createAutomationRunEventStreamUrlAction: jest.fn(),
-  listAutomationRunEventsAction: jest.fn()
+vi.mock('@/lib/http/bff', () => ({
+  getBff: vi.fn(),
+  sendBff: vi.fn()
 }))
 
 const run: AutomationRun = {
@@ -47,15 +42,14 @@ const failedEvent: AutomationRunEvent = {
 
 describe('AutomationRunLiveEvents', () => {
   it('removes Stop and avoids opening a live socket after replay reaches a terminal status', async () => {
-    jest.mocked(listAutomationRunEventsAction).mockResolvedValue([failedEvent])
-    jest.mocked(createAutomationRunEventStreamUrlAction).mockResolvedValue('ws://example.test/events')
-    jest.mocked(cancelAutomationRunAction).mockResolvedValue({ ...run, status: 'canceled' })
+    vi.mocked(getBff).mockResolvedValue({ events: [failedEvent], streamUrl: 'ws://example.test/events' })
+    vi.mocked(sendBff).mockResolvedValue({ ...run, status: 'canceled' })
 
     render(<AutomationRunLiveEvents run={run} />)
 
     expect(await screen.findByText('Failed')).toBeTruthy()
     expect(screen.getByText('Provider returned an invalid decision.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Stop automation run' })).toBeNull()
-    expect(createAutomationRunEventStreamUrlAction).not.toHaveBeenCalled()
+    expect(sendBff).not.toHaveBeenCalled()
   })
 })

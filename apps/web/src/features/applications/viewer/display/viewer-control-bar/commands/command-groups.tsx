@@ -103,7 +103,7 @@ export const IconCommandGroup = ({
         label={label}
       >
         <Button
-          size='icon'
+          size='icon-md'
           variant={buttonVariant}
           disabled={controlsDisabled}
           onClick={() => sendControl(command)}

@@ -7,7 +7,7 @@ import { AppIcon } from '@/shared/ui/app-icon/app-icon'
 
 const appStatusBadgeVariant = (status?: AppDefinition['status']) => {
   if (status === 'error') {
-    return 'destructive'
+    return 'danger'
   }
 
   if (status === 'provisioning' || status === 'removing') {
@@ -15,10 +15,10 @@ const appStatusBadgeVariant = (status?: AppDefinition['status']) => {
   }
 
   if (status === 'running') {
-    return 'status'
+    return 'success'
   }
 
-  return 'secondary'
+  return 'neutral'
 }
 
 export const AppViewerHeading = ({

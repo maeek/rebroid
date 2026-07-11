@@ -142,7 +142,7 @@ export const AiDraftDialog = ({
           }
         />
         {draftLog.length > 0 ? (
-          <div className='grid gap-2 rounded-md border border-border/70 bg-surface-panel/40 p-3'>
+          <div className='grid gap-2 rounded-control border border-surface-border/70 bg-surface-panel/40 p-3'>
             <div className='flex items-center gap-2 text-sm font-medium'>
               {running ? <IconLoader2 className='size-4 animate-spin' /> : <IconSparkles className='size-4' />}
               {completed ? 'Draft ready' : needsInput ? 'More detail needed' : 'Draft progress'}
@@ -208,7 +208,7 @@ export const AutomationDeleteConfirmDialog = ({
           </Button>
         </DialogClose>
         <Button
-          variant='destructive'
+          variant='danger'
           disabled={busy}
           onClick={onConfirm}
         >

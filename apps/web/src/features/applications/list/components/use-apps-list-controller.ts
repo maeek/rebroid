@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
-import { sortApps, type AppsListSortMode } from '@/features/applications/domain/app-sort'
 import { getAppsRefreshIntervalMs } from '@/features/applications/domain/refresh'
 import {
   optimisticRemovingApp,
@@ -29,6 +28,7 @@ import {
 } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { forgetRecentAppAction } from '@/server/recent-apps/actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
+import { sortApps, type AppsListSortMode } from '@/shared/model/applications/app-sort'
 import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
 import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import type { AppsListContextValue, BulkAction, PendingAppAction } from './apps-list-context'
@@ -134,7 +134,7 @@ export const useAppsListController = ({
       toast({
         title: 'Could not start app',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     }
   }
@@ -149,7 +149,7 @@ export const useAppsListController = ({
       toast({
         title: 'Could not stop app',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     }
   }
@@ -166,7 +166,7 @@ export const useAppsListController = ({
       toast({
         title: 'Could not delete app',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     }
   }

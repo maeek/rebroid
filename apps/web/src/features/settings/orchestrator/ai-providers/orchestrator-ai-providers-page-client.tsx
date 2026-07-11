@@ -17,7 +17,7 @@ import {
 import { saveAiUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
 import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { ProviderDialog } from './provider-dialog'
 import { ProvidersGrid } from './providers-grid'
 import type { AutomationAiProvider } from '@/server/orchestrator/settings/types'
@@ -68,7 +68,7 @@ export const OrchestratorAiProvidersPageClient = ({
       toast({
         title: 'Provider is incomplete',
         description: 'Provider ID and base URL are required.',
-        variant: 'destructive'
+        variant: 'danger'
       })
       return
     }
@@ -80,7 +80,7 @@ export const OrchestratorAiProvidersPageClient = ({
         toast({
           title: 'Provider connection failed',
           description: health.message,
-          variant: 'destructive'
+          variant: 'danger'
         })
         return
       }
@@ -96,7 +96,7 @@ export const OrchestratorAiProvidersPageClient = ({
       toast({
         title: 'Could not save AI provider',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsSaving(false)
@@ -119,7 +119,7 @@ export const OrchestratorAiProvidersPageClient = ({
       toast({
         title: 'Could not update AI',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setBusyId(null)
@@ -140,7 +140,7 @@ export const OrchestratorAiProvidersPageClient = ({
       toast({
         title: 'Could not delete AI',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setBusyId(null)
@@ -157,7 +157,7 @@ export const OrchestratorAiProvidersPageClient = ({
       toast({
         title: 'Could not delete AI provider',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setBusyId(null)
@@ -178,7 +178,7 @@ export const OrchestratorAiProvidersPageClient = ({
       toast({
         title: 'Could not save AI settings',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsSavingAiSettings(false)
@@ -186,34 +186,38 @@ export const OrchestratorAiProvidersPageClient = ({
   }
 
   return (
-    <ProtectedStackPageLayout mainClassName='gap-2'>
+    <StandardPage className='gap-2'>
       <PlatformPageHeader
         title='AI'
         titlePrefix={<GradientSparklesIcon className='size-8 max-sm:size-5' />}
         description='Configure provider connections and AI-assisted automation behavior.'
-        titleActions={
-          <PlatformPageRefreshButton
-            isRefreshing={isRefreshing}
-            onRefresh={refresh}
-          />
-        }
         actions={
-          <Button
-            type='button'
-            onClick={openCreateDialog}
-          >
-            <IconPlus className='size-4' />
-            Add provider
-          </Button>
+          <>
+            <PlatformPageRefreshButton
+              isRefreshing={isRefreshing}
+              onRefresh={refresh}
+            />
+            <Button
+              type='button'
+              onClick={openCreateDialog}
+            >
+              <IconPlus className='size-4' />
+              Add provider
+            </Button>
+          </>
         }
       />
       <section className='flex w-full flex-col gap-4 px-6 pb-16 max-sm:px-4'>
-        <label className='flex w-full items-start justify-between gap-4 rounded-md border border-border/60 bg-surface-panel/35 px-4 py-3 text-sm'>
+        <label
+          htmlFor='ai-context-suggestions'
+          className='flex w-full items-start justify-between gap-4 rounded-control border border-surface-border/60 bg-surface-panel/35 px-4 py-3 text-sm'
+        >
           <div className='min-w-0 flex-1'>
             <div className='font-medium text-foreground'>Context suggestions</div>
-            <div className='mt-1 text-xs text-muted-foreground'>Generate AI prompt chips in app sessions.</div>
+            <div className='mt-1 text-xs text-foreground-muted'>Generate AI prompt chips in app sessions.</div>
           </div>
           <Switch
+            id='ai-context-suggestions'
             className='shrink-0'
             checked={settings.aiContextualSuggestionsEnabled}
             disabled={isSavingAiSettings}
@@ -221,8 +225,8 @@ export const OrchestratorAiProvidersPageClient = ({
           />
         </label>
         <div className='min-w-0'>
-          <h2 className='text-base font-semibold text-foreground'>Providers</h2>
-          <p className='mt-1 text-sm text-muted-foreground'>
+          <h2 className='text-base font-medium text-foreground'>Providers</h2>
+          <p className='mt-1 text-sm text-foreground-muted'>
             Connections and model defaults available to automation and agent workflows.
           </p>
         </div>
@@ -245,6 +249,6 @@ export const OrchestratorAiProvidersPageClient = ({
         onClose={() => setEditingProvider(null)}
         onSave={() => void saveProvider()}
       />
-    </ProtectedStackPageLayout>
+    </StandardPage>
   )
 }

@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge'
-import { resolvePlatformImageRuntimeMetadata } from '@/features/platform/domain/runtime-image-metadata'
-import type { PlatformImage } from '@/server/orchestrator/platform/types'
+import { resolvePlatformImageRuntimeMetadata } from '@/shared/model/runtime-image/runtime-image-metadata'
+import type { PlatformImage } from '@/shared/contracts/platform-image'
 
 const spoofingLabel = {
   not_applicable: 'Spoofing n/a',
@@ -10,10 +10,10 @@ const spoofingLabel = {
 } as const
 
 const spoofingVariant = {
-  not_applicable: 'secondary',
+  not_applicable: 'neutral',
   external_required: 'warning',
   present_unverified: 'warning',
-  verified: 'status'
+  verified: 'success'
 } as const
 
 export const RuntimeImageBadges = ({ image }: { image: PlatformImage }) => {
@@ -22,11 +22,11 @@ export const RuntimeImageBadges = ({ image }: { image: PlatformImage }) => {
 
   return (
     <div className='flex flex-wrap items-center gap-1.5'>
-      <Badge variant={isRedroid ? 'default' : 'secondary'}>{isRedroid ? 'Redroid' : 'Generic'}</Badge>
-      {metadata.androidVersion ? <Badge variant='secondary'>Android {metadata.androidVersion}</Badge> : null}
-      {metadata.architecture ? <Badge variant='secondary'>{metadata.architecture}</Badge> : null}
-      {metadata.gmsMode === 'microg' ? <Badge variant='status'>microG</Badge> : null}
-      {metadata.gmsMode === 'gapps' ? <Badge variant='status'>Google Play</Badge> : null}
+      <Badge variant={isRedroid ? 'info' : 'neutral'}>{isRedroid ? 'Redroid' : 'Generic'}</Badge>
+      {metadata.androidVersion ? <Badge variant='neutral'>Android {metadata.androidVersion}</Badge> : null}
+      {metadata.architecture ? <Badge variant='neutral'>{metadata.architecture}</Badge> : null}
+      {metadata.gmsMode === 'microg' ? <Badge variant='success'>microG</Badge> : null}
+      {metadata.gmsMode === 'gapps' ? <Badge variant='success'>Google Play</Badge> : null}
       <Badge variant={spoofingVariant[metadata.signatureSpoofing]}>{spoofingLabel[metadata.signatureSpoofing]}</Badge>
     </div>
   )

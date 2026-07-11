@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import { buildAutomationYamlSchema } from './automation-yaml-schema'
 import type { AutomationCommand } from '@/server/orchestrator/automations/types'
 

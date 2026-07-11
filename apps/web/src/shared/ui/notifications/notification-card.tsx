@@ -3,7 +3,7 @@
 import { IconAlarm, IconBell, IconBrandAndroid, IconDownload, IconSettings } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
 import { AppIcon } from '@/shared/ui/app-icon/app-icon'
-import type { AndroidNotification } from '@/server/orchestrator/applications/types'
+import type { AndroidNotification } from '@/shared/contracts/application'
 
 type NotificationCardProps = {
   notification: AndroidNotification
@@ -63,7 +63,7 @@ export const NotificationCard = ({
     <article
       title={notification.packageName}
       className={cn(
-        'flex items-start gap-3 rounded-2xl border border-white/8 bg-secondary/55 shadow-sm backdrop-blur-md transition-colors hover:bg-secondary/70',
+        'flex items-start gap-3 rounded-feature border border-white/8 bg-surface-band/55 shadow-control backdrop-blur-md transition-colors hover:bg-surface-band/70',
         compact ? 'px-3 py-2.5' : 'px-4 py-3.5'
       )}
     >
@@ -77,7 +77,7 @@ export const NotificationCard = ({
       ) : (
         <div
           className={cn(
-            'flex shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary',
+            'flex shrink-0 items-center justify-center rounded-panel bg-primary/12 text-primary',
             compact ? 'size-9' : 'size-10'
           )}
         >
@@ -85,10 +85,8 @@ export const NotificationCard = ({
         </div>
       )}
       <div className='min-w-0 flex-1'>
-        <p className='truncate text-[11px] font-semibold uppercase tracking-wide text-muted-foreground'>
-          {source.name}
-        </p>
-        <p className={cn('truncate font-semibold text-foreground', compact ? 'mt-0.5 text-sm' : 'mt-1 text-sm')}>
+        <p className='truncate text-xs font-medium uppercase tracking-wide text-foreground-muted'>{source.name}</p>
+        <p className={cn('truncate font-medium text-foreground', compact ? 'mt-0.5 text-sm' : 'mt-1 text-sm')}>
           {notification.title}
         </p>
         <p className={cn('text-foreground-muted', compact ? 'mt-0.5 line-clamp-2 text-xs' : 'mt-1 text-sm')}>

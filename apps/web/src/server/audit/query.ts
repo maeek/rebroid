@@ -1,4 +1,4 @@
-import type { AuditEvent, AuditEventFilters } from '@/server/storage/database'
+import type { AuditEvent, AuditEventFilters } from '@/server/persistence/audit-repository'
 
 export type AuditSearchParams = Record<string, string | string[] | undefined>
 export type AuditSortField = 'createdAt' | 'actorLabel' | 'action' | 'category' | 'outcome' | 'resourceLabel'

@@ -15,6 +15,7 @@ export const AppInfoOverviewSection = ({ app }: { app?: AppDefinition }) => {
 
   return (
     <Section
+      surface='plain'
       title='Overview'
       titleClassName='pb-4'
       contentClassName='flex-col'
@@ -31,14 +32,14 @@ export const AppInfoOverviewSection = ({ app }: { app?: AppDefinition }) => {
             <Visible when={app}>
               <div className='flex flex-wrap items-center justify-end gap-2'>
                 <Badge
-                  variant={app?.status === 'error' ? 'destructive' : 'status'}
+                  variant={app?.status === 'error' ? 'danger' : 'success'}
                   className='capitalize'
                 >
                   {app?.status}
                 </Badge>
                 <Visible when={shouldShowLifecycleBadge && lifecycleLabel}>
                   <Badge
-                    variant='secondary'
+                    variant='neutral'
                     className='capitalize'
                   >
                     {lifecycleLabel}

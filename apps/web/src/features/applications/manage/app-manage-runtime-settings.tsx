@@ -10,7 +10,7 @@ import { AppRuntimeSection } from '@/features/applications/components/app-runtim
 import { cn } from '@/lib/utils'
 import type { AppFormValues } from '@/features/applications/create/create-app-form.types'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { ResourceLimitBounds } from '@/server/orchestrator/diagnostics/resource-limits'
+import type { ResourceLimitBounds } from '@/shared/contracts/system-resources'
 
 type AppManageRuntimeSettingsProps = {
   app?: AppDefinition
@@ -60,7 +60,7 @@ export const AppManageRuntimeSettings = ({
         />
       </Visible>
       <Visible when={canViewBackendDetails || canChangeContainerArgs}>
-        <div className='flex flex-col gap-2 border-t border-border/60 pt-4'>
+        <div className='flex flex-col gap-2 border-t border-surface-border/60 pt-4'>
           <div
             className={cn(
               'grid overflow-hidden transition-[grid-template-rows,opacity,padding-top,padding-bottom] duration-200 ease-out',

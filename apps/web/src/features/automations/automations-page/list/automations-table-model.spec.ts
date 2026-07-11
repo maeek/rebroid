@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import {
   automationStatusLabel,
   automationTriggerAppIdsByAutomationId,
@@ -117,7 +117,7 @@ describe('automations table model', () => {
     expect(summarizeAutomationDeleteResults([automation('a'), automation('b')], new Set(['a']), mixedResults)).toEqual({
       title: 'Some workflows could not be deleted',
       description: '1 delete request failed.',
-      variant: 'destructive'
+      variant: 'danger'
     })
   })
 })

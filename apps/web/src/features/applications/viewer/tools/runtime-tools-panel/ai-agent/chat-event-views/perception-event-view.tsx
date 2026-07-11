@@ -83,16 +83,16 @@ export const PerceptionDisclosure = ({
   const summary = perceptionSummary(data)
   return (
     <details
-      className='group overflow-hidden rounded-xl border border-border/55 bg-surface-band/24 text-xs text-muted-foreground'
+      className='group overflow-hidden rounded-panel border border-surface-border/55 bg-surface-band/24 text-xs text-foreground-muted'
       data-testid='perception-disclosure'
     >
       <summary className='flex cursor-pointer list-none items-center gap-2.5 px-3 py-2.5 transition-colors hover:bg-foreground/3'>
-        <span className='flex size-7 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/8 text-primary'>
+        <span className='flex size-7 shrink-0 items-center justify-center rounded-panel border border-primary/20 bg-primary/8 text-primary'>
           <IconEye className='size-4' />
         </span>
         <span className='grid min-w-0 flex-1 text-left'>
           <span className='font-medium text-foreground'>Inspected screen</span>
-          {summary ? <span className='truncate text-[10px]'>{summary}</span> : null}
+          {summary ? <span className='truncate text-xs'>{summary}</span> : null}
         </span>
         <IconChevronDown className='size-3.5 transition-transform duration-150 group-open:rotate-180' />
       </summary>
@@ -120,15 +120,15 @@ export const PerceptionEventView = ({ item }: { item: PerceptionTimelineItem }) 
   }
   const summary = perceptionSummary(data)
   return (
-    <div className='text-xs text-muted-foreground'>
-      <details className='group overflow-hidden rounded-xl border border-border/55 bg-surface-band/24'>
+    <div className='text-xs text-foreground-muted'>
+      <details className='group overflow-hidden rounded-panel border border-surface-border/55 bg-surface-band/24'>
         <summary className='flex cursor-pointer list-none items-center gap-2.5 px-3 py-2.5 transition-colors hover:bg-foreground/3'>
-          <span className='flex size-7 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/8 text-primary'>
+          <span className='flex size-7 shrink-0 items-center justify-center rounded-panel border border-primary/20 bg-primary/8 text-primary'>
             <IconEye className='size-4' />
           </span>
           <span className='grid min-w-0 flex-1 text-left'>
             <span className='font-medium text-foreground'>Inspected screen</span>
-            {summary ? <span className='truncate text-[10px]'>{summary}</span> : null}
+            {summary ? <span className='truncate text-xs'>{summary}</span> : null}
           </span>
           <IconChevronDown className='size-3.5 transition-transform duration-150 group-open:rotate-180' />
         </summary>

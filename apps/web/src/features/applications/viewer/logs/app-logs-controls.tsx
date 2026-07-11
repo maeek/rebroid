@@ -31,9 +31,13 @@ export const AppLogsControls = ({
         <SelectItem value='adb'>ADB logcat</SelectItem>
       </SelectContent>
     </Select>
-    <label className='ml-auto flex items-center gap-2 text-sm text-foreground-muted max-sm:ml-0'>
+    <label
+      htmlFor='app-logs-live'
+      className='ml-auto flex items-center gap-2 text-sm text-foreground-muted max-sm:ml-0'
+    >
       Live
       <Switch
+        id='app-logs-live'
         checked={isLive}
         disabled={sourceUnavailable}
         onCheckedChange={onLiveChange}

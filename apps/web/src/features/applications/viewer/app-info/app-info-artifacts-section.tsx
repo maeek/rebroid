@@ -79,6 +79,7 @@ export const AppInfoArtifactsSection = ({ app }: { app?: AppDefinition }) => {
 
   return (
     <Section
+      surface='plain'
       title='Artifacts'
       titleClassName='pb-4'
       contentClassName='flex-col'

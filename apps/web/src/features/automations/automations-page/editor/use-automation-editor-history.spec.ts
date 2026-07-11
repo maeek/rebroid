@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import { defaultForm } from './builder-utils'
 import { cloneAutomationForm, pushUndoSnapshot, sameEditorSnapshot } from './use-automation-editor-history'
 

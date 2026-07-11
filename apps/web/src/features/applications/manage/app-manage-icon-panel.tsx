@@ -45,7 +45,7 @@ export const AppManageIconPanel = ({
       toast({
         title: 'File is too large',
         description: `The configured upload limit is ${apkSizeLabel(settings.maxApkUploadSizeMb)}.`,
-        variant: 'destructive'
+        variant: 'danger'
       })
       event.target.value = ''
       return
@@ -62,7 +62,7 @@ export const AppManageIconPanel = ({
       toast({
         title: 'Could not update icon',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsUploadingIcon(false)
@@ -81,7 +81,7 @@ export const AppManageIconPanel = ({
       toast({
         title: 'Could not clear icon',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsUploadingIcon(false)

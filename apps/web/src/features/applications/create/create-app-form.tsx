@@ -7,12 +7,12 @@ import { useTopLoader } from 'nextjs-toploader'
 import { Button } from '@/components/ui/button'
 import { Visible } from '@/components/ui/visible'
 import { uploadApkWithFeedback } from '@/features/applications/apks/upload-apk-with-feedback'
-import { runtimeKindForImageReference } from '@/features/platform/domain/runtime-image-metadata'
 import { toast } from '@/hooks/use-toast'
 import { setAppIconAction } from '@/server/app-icons/actions/set-app-icon-action'
 import { createApplicationAction } from '@/server/orchestrator/applications/actions/configuration/create-update-actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { optimizeIconFile } from '@/shared/model/media/icon-metadata'
+import { runtimeKindForImageReference } from '@/shared/model/runtime-image/runtime-image-metadata'
 import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
@@ -35,7 +35,7 @@ import { AppFormResourcesSection } from './create-app-resources-section'
 import { AppFormSessionSection } from './create-app-session-section'
 import type { CreateAppFormValues } from './create-app-form.types'
 import type { UploadedApk } from '@/server/orchestrator/applications/types'
-import type { PlatformImage } from '@/server/orchestrator/platform/types'
+import type { PlatformImage } from '@/shared/contracts/platform-image'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 
 export const CreateAppForm = ({
@@ -128,7 +128,7 @@ export const CreateAppForm = ({
       toast({
         title: 'Could not prepare icon',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     }
   }
@@ -213,7 +213,7 @@ export const CreateAppForm = ({
           toast({
             title: 'App created without icon',
             description: error instanceof Error ? error.message : 'Could not save the icon.',
-            variant: 'destructive'
+            variant: 'danger'
           })
         }
       }
@@ -226,7 +226,7 @@ export const CreateAppForm = ({
       toast({
         title: 'Could not create app',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsCreating(false)
@@ -256,10 +256,10 @@ export const CreateAppForm = ({
         className='flex w-full flex-col pt-2 pb-24'
         onSubmit={event => void handleSubmit(event)}
       >
-        <div className='flex flex-wrap items-center justify-between gap-4 border-b border-border/60 pb-6'>
+        <div className='flex flex-wrap items-center justify-between gap-4 border-b border-surface-border/60 pb-6'>
           <div>
-            <h2 className='font-semibold'>General</h2>
-            <p className='mt-1 text-sm text-muted-foreground'>Choose the app identity, APK, and runtime.</p>
+            <h2 className='font-medium'>General</h2>
+            <p className='mt-1 text-sm text-foreground-muted'>Choose the app identity, APK, and runtime.</p>
           </div>
           <Button
             form={createFormId}
@@ -286,7 +286,7 @@ export const CreateAppForm = ({
                 iconPreview={iconPreview}
                 autoExtractIcon={autoExtractIcon}
                 hasExtractedIcon={Boolean(extractedIcon)}
-                boxed={false}
+                surface='plain'
                 showDescription={false}
                 onIconChange={event => void handleIconChange(event)}
                 onClearIcon={handleClearIcon}
@@ -297,7 +297,7 @@ export const CreateAppForm = ({
         </div>
 
         <Visible when={showRuntimeSection}>
-          <div className='border-t border-border/60 py-8'>
+          <div className='border-t border-surface-border/60 py-8'>
             <Visible when={showDeviceSection}>
               <CreateAppDeviceSection
                 images={images}
@@ -324,7 +324,7 @@ export const CreateAppForm = ({
         </Visible>
 
         <Visible when={isRedroidRuntime && canChangeContainerArgs}>
-          <div className='border-t border-border/60 py-8'>
+          <div className='border-t border-surface-border/60 py-8'>
             <CreateAppDisplaySection
               values={formValues}
               onChange={updateFormValues}
@@ -333,7 +333,7 @@ export const CreateAppForm = ({
         </Visible>
 
         <Visible when={canConfigureEgress}>
-          <div className='border-t border-border/60 py-8'>
+          <div className='border-t border-surface-border/60 py-8'>
             <CreateAppNetworkAccessSection
               values={formValues}
               canUseInternet={canUseInternet}
@@ -343,10 +343,10 @@ export const CreateAppForm = ({
         </Visible>
 
         <Visible when={showAdvancedSection}>
-          <div className='border-t border-border/60 py-8'>
+          <div className='border-t border-surface-border/60 py-8'>
             <div className='mb-8'>
-              <h2 className='font-semibold'>Advanced</h2>
-              <p className='mt-1 text-sm text-muted-foreground'>Optional lifecycle and resource limits.</p>
+              <h2 className='font-medium'>Advanced</h2>
+              <p className='mt-1 text-sm text-foreground-muted'>Optional lifecycle and resource limits.</p>
             </div>
             <Visible when={showSessionSection}>
               <AppFormSessionSection
@@ -355,7 +355,7 @@ export const CreateAppForm = ({
               />
             </Visible>
             <Visible when={showResourcesSection}>
-              <div className={showSessionSection ? 'mt-8 border-t border-border/60 pt-8' : undefined}>
+              <div className={showSessionSection ? 'mt-8 border-t border-surface-border/60 pt-8' : undefined}>
                 <AppFormResourcesSection
                   values={formValues}
                   resourceLimits={resourceLimits}

@@ -19,7 +19,7 @@ type TriggerGridHrefInput = {
 type TriggerOperationToast = {
   title: string
   description?: string
-  variant?: 'destructive'
+  variant?: 'danger'
 }
 
 export const defaultTriggerName = (automation: Automation | undefined, app: AndroidApplication | undefined) => {
@@ -78,7 +78,7 @@ export const summarizeTriggerBulkUpdateResults = (
     return {
       title: 'Some triggers could not be updated',
       description: `${failedCount} update request failed.`,
-      variant: 'destructive'
+      variant: 'danger'
     }
   }
 
@@ -95,7 +95,7 @@ export const summarizeTriggerBulkDeleteResults = (
     return {
       title: 'Some triggers could not be deleted',
       description: `${failedCount} delete request failed.`,
-      variant: 'destructive'
+      variant: 'danger'
     }
   }
 

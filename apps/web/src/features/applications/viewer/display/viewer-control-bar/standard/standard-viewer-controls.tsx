@@ -16,7 +16,7 @@ import { useViewerControlContext } from '@/features/applications/viewer/display/
 
 const standardControlButtonClassName = 'size-8'
 const standardControlGroupClassName =
-  'flex h-8 items-center overflow-hidden rounded-md border border-border/60 bg-surface-band/55'
+  'flex h-8 items-center overflow-hidden rounded-control border border-surface-border/60 bg-surface-band/55'
 
 export const StandardViewerControls = () => {
   const {
@@ -80,7 +80,7 @@ export const StandardViewerControls = () => {
       </Visible>
       {surfaceActions}
       <Visible when={!canControl && runtimeAvailable}>
-        <div className='text-xs text-muted-foreground'>Viewer controls are disabled by permissions.</div>
+        <div className='text-xs text-foreground-muted'>Viewer controls are disabled by permissions.</div>
       </Visible>
     </div>
   )

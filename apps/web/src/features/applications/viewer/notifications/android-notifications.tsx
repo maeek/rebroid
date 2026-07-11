@@ -41,6 +41,7 @@ export const AndroidNotifications = ({ app }: { app: AppDefinition }) => {
   return (
     <>
       <Section
+        surface='plain'
         title='Android notifications'
         titleClassName='pb-4'
         contentClassName='gap-3'

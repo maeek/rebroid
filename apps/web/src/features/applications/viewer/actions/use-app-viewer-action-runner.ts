@@ -25,7 +25,7 @@ export const useAppViewerActionRunner = () => {
         return false
       }
 
-      toast({ title, description: message, variant: 'destructive' })
+      toast({ title, description: message, variant: 'danger' })
       return false
     } finally {
       setIsRunningAction(false)

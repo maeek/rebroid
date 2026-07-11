@@ -1,5 +1,5 @@
-import { describe, expect, it } from '@jest/globals'
 import { render, screen } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
 import { Section } from './section'
 
 describe('Section', () => {
@@ -18,18 +18,5 @@ describe('Section', () => {
     )
 
     expect(screen.getByRole('region', { name: title }).getAttribute('data-surface')).toBe(surface)
-  })
-
-  it('keeps boxed as panel compatibility', () => {
-    render(
-      <Section
-        title='Legacy'
-        boxed
-      >
-        Content
-      </Section>
-    )
-
-    expect(screen.getByRole('region', { name: 'Legacy' }).getAttribute('data-surface')).toBe('panel')
   })
 })

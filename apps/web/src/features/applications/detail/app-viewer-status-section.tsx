@@ -20,7 +20,7 @@ const getAppImagePullProgress = (app: AppDefinition): AppImagePullProgress => ap
 
 const getStatusIcon = (app: AppDefinition) => {
   if (app.status === 'error') {
-    return <IconAlertTriangle className='mr-4 size-6 text-destructive' />
+    return <IconAlertTriangle className='mr-4 size-6 text-danger' />
   }
 
   if (app.status === 'provisioning' || app.status === 'removing') {
@@ -38,9 +38,10 @@ export const AppViewerStatusSection = ({ app }: { app: AppDefinition }) => {
 
   return (
     <Section
+      surface='plain'
       className={
         isError
-          ? 'flex flex-row border border-destructive/25 bg-destructive/10 px-4 py-3 hover:bg-destructive/16'
+          ? 'flex flex-row border border-danger/25 bg-danger/10 px-4 py-3 hover:bg-danger/16'
           : 'flex flex-row border border-primary/20 bg-primary/10 px-4 py-3 hover:bg-primary/20'
       }
       contentClassName='grow shrink'
@@ -51,7 +52,7 @@ export const AppViewerStatusSection = ({ app }: { app: AppDefinition }) => {
         <div className='flex items-center gap-2'>
           <span className='text-foreground'>{statusTitle}</span>
           <Badge
-            variant={isError ? 'destructive' : 'status'}
+            variant={isError ? 'danger' : 'success'}
             className='capitalize'
           >
             {app.status}

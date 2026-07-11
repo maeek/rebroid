@@ -3,11 +3,7 @@
 import * as React from 'react'
 import { Tooltip as TooltipPrimitive } from '@base-ui/react/tooltip'
 import { getBaseChildren, getBaseRender } from '@/components/ui/base-render'
-import {
-  floatingLayerClassName,
-  floatingSurfaceClassName,
-  triggerResetClassName
-} from '@/components/ui/surface-classes'
+import { floatingLayerClassName, floatingSurfaceClassName, triggerResetClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 
 const TooltipProvider = ({
@@ -66,7 +62,7 @@ const TooltipContent = React.forwardRef<
       <TooltipPrimitive.Popup
         ref={ref}
         className={cn(
-          'z-50 overflow-hidden rounded-md px-3 py-1.5 text-xs animate-in fade-in-0 zoom-in-95 data-[closed]:animate-out data-[closed]:fade-out-0 data-[closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
+          'z-50 overflow-hidden rounded-control px-3 py-1.5 text-xs animate-in fade-in-0 zoom-in-95 data-[closed]:animate-out data-[closed]:fade-out-0 data-[closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
           floatingSurfaceClassName,
           className
         )}

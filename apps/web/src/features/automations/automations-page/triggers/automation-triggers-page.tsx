@@ -13,7 +13,7 @@ import {
 } from '@/server/orchestrator/automations/automation-trigger-actions'
 import { DataGridPagination } from '@/shared/ui/data-grid'
 import { PageHeader } from '@/shared/ui/page/page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { AutomationDeleteDialog } from '../shared/automation-delete-dialog'
 import { AutomationEmptySplash } from '../shared/automation-empty-splash'
 import { sortFromSearchParam, sortToSearchParam } from '../shared/grid-query-utils'
@@ -109,7 +109,7 @@ export function AutomationTriggersPage({
       toast({
         title: 'Could not save trigger',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setSaving(false)
@@ -125,7 +125,7 @@ export function AutomationTriggersPage({
       toast({
         title: 'Could not update trigger',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setBusyId(null)
@@ -142,7 +142,7 @@ export function AutomationTriggersPage({
       toast({
         title: 'Could not run trigger',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setBusyId(null)
@@ -161,7 +161,7 @@ export function AutomationTriggersPage({
       toast({
         title: 'Could not delete trigger',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setBusyId(null)
@@ -188,7 +188,7 @@ export function AutomationTriggersPage({
   }
 
   return (
-    <ProtectedStackPageLayout mainClassName='gap-2'>
+    <StandardPage className='gap-2'>
       <PageHeader
         breadcrumbs={[{ label: 'Automations' }, { label: 'Triggers' }]}
         title='Triggers'
@@ -287,6 +287,6 @@ export function AutomationTriggersPage({
         onUpdateForm={updater => setForm(current => (current ? updater(current) : current))}
         onUpdateTargetApplication={updateTargetApplication}
       />
-    </ProtectedStackPageLayout>
+    </StandardPage>
   )
 }

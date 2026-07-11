@@ -20,8 +20,8 @@ export const AppInfoRow = ({ label, value, copyValue, valueClassName }: AppInfoR
   }
 
   return (
-    <div className='group flex flex-col gap-2 border-b border-border/50 py-3 last:border-b-0 sm:flex-row sm:items-start sm:justify-between sm:gap-6'>
-      <div className='shrink-0 text-xs font-medium uppercase tracking-wide text-muted-foreground sm:w-36'>{label}</div>
+    <div className='group flex flex-col gap-2 border-b border-surface-border/50 py-3 last:border-b-0 sm:flex-row sm:items-start sm:justify-between sm:gap-6'>
+      <div className='shrink-0 text-xs font-medium uppercase tracking-wide text-foreground-muted sm:w-36'>{label}</div>
       <div
         className={cn(
           'flex min-w-0 items-start gap-2 text-sm text-foreground sm:ml-auto sm:max-w-[70%] sm:justify-end sm:text-right',

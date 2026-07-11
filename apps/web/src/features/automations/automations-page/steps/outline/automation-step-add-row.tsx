@@ -26,7 +26,7 @@ export function AutomationStepAddRow({
         <Button
           type='button'
           variant='outline'
-          className='h-9 w-full justify-start gap-2 rounded-md border border-dashed border-border/60 bg-background/15 px-3 text-foreground-muted hover:bg-secondary/40 hover:text-foreground'
+          className='h-9 w-full justify-start gap-2 rounded-control border border-dashed border-surface-border/60 bg-background/15 px-3 text-foreground-muted hover:bg-surface-band/40 hover:text-foreground'
         >
           <IconPlus className='size-4' />
           {label}

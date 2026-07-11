@@ -43,7 +43,7 @@ export const ClipboardToolsSection = ({
           toast({
             title: 'Clipboard unavailable',
             description: clipboard.message ?? 'This runtime does not expose Android clipboard commands.',
-            variant: 'destructive'
+            variant: 'danger'
           })
         }
       } catch (error) {
@@ -62,7 +62,7 @@ export const ClipboardToolsSection = ({
           toast({
             title: 'Clipboard unavailable',
             description: clipboard.message ?? 'This runtime does not expose Android clipboard commands.',
-            variant: 'destructive'
+            variant: 'danger'
           })
         }
         return

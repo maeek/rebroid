@@ -9,23 +9,24 @@ type ValidationSectionProps = {
 
 export const ValidationSection = ({ validation }: ValidationSectionProps) => (
   <Section
+    surface='plain'
     title='Validation'
     contentClassName='gap-2'
   >
     <div className='flex flex-wrap gap-2'>
-      <Badge variant={validation.errors.length ? 'destructive' : 'status'}>
+      <Badge variant={validation.errors.length ? 'danger' : 'success'}>
         {validation.errors.length ? `${validation.errors.length} errors` : 'Ready'}
       </Badge>
       {validation.warnings.length ? <Badge variant='warning'>{validation.warnings.length} warnings</Badge> : null}
-      <Badge variant='secondary'>microG overlay</Badge>
+      <Badge variant='neutral'>microG overlay</Badge>
     </div>
     {[...validation.errors, ...validation.warnings].map(message => (
       <div
         key={message}
         className={cn(
-          'rounded-md border px-3 py-2 text-sm',
+          'rounded-control border px-3 py-2 text-sm',
           validation.errors.includes(message)
-            ? 'border-destructive/40 bg-destructive/10 text-destructive'
+            ? 'border-danger/40 bg-danger/10 text-danger'
             : 'border-warning/35 bg-warning/10 text-warning'
         )}
       >

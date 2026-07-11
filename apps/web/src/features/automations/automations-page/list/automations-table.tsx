@@ -35,9 +35,9 @@ import type { AutomationTag } from '@rebroid/automation-core/definition'
 import type { ColumnDef } from '@tanstack/react-table'
 
 const statusVariant = (status: Automation['lastStatus']) => {
-  if (status === 'success') return 'status'
-  if (status === 'failed') return 'destructive'
-  return 'secondary'
+  if (status === 'success') return 'success'
+  if (status === 'failed') return 'danger'
+  return 'neutral'
 }
 
 const formatDate = (value: string | null) =>
@@ -238,7 +238,7 @@ export function AutomationsTable({
             <>
               {hasBulkSelection ? (
                 <ContextMenuItem
-                  className='text-destructive focus:text-destructive'
+                  className='text-danger focus:text-danger'
                   disabled={busy}
                   onSelect={() => setBulkDeleteOpen(true)}
                 >
@@ -251,7 +251,7 @@ export function AutomationsTable({
                 Traces
               </ContextMenuItem>
               <ContextMenuItem
-                className='text-destructive focus:text-destructive'
+                className='text-danger focus:text-danger'
                 onSelect={() => setPendingDelete(row.original)}
               >
                 <IconTrash className='mr-2 size-4' />

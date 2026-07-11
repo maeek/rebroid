@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { IconLoader2, IconPlayerPlayFilled } from '@tabler/icons-react'
-import classNames from 'classnames'
+import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Visible } from '@/components/ui/visible'
@@ -45,7 +45,7 @@ export const RecentAppLink = ({
   }
 
   return (
-    <li className={classNames(styles.item, 'group', isActive && styles.activeItem)}>
+    <li className={cn(styles.item, 'group', isActive && styles.activeItem)}>
       <Link
         href={`/app/${app.id}`}
         onClick={onNavigate}
@@ -59,7 +59,7 @@ export const RecentAppLink = ({
             className='size-6 text-[0.6rem]'
           />
         </div>
-        <span className={classNames(styles.label, 'truncate')}>{app.name}</span>
+        <span className={cn(styles.label, 'truncate')}>{app.name}</span>
       </Link>
       <Visible when={app.status === 'running'}>
         <span

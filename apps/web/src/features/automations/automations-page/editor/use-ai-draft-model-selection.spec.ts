@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import { selectAiDraftProviderAndModel } from './ai-draft-model-selection-utils'
 import type { AutomationAiModelCatalogProvider } from '@/server/orchestrator/settings/types'
 

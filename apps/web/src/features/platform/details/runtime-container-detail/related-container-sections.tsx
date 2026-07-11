@@ -17,7 +17,7 @@ export const RelatedImageSection = () => {
   return (
     <Section
       title='Related image'
-      boxed
+      surface='panel'
       contentClassName='gap-3'
     >
       <Visible when={relatedImage}>
@@ -49,11 +49,12 @@ export const RelatedNetworksSection = () => {
 
   return (
     <Section
+      surface='plain'
       title='Related networks'
       contentClassName='gap-3'
     >
       <Visible when={networks.length > 0}>
-        <div className='overflow-hidden rounded-lg border border-border/60 bg-surface-band/35'>
+        <div className='overflow-hidden rounded-panel border border-surface-border/60 bg-surface-band/35'>
           <Table>
             <TableHeader>
               <TableRow>

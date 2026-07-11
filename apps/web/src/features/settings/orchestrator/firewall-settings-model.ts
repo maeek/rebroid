@@ -95,7 +95,7 @@ export const firewallPolicyResultDisplay = (application: AndroidApplication) => 
 
   return {
     label: policy.result?.code ?? policy.status ?? 'Not applied',
-    variant: policy.result?.status === 'error' ? 'destructive' : 'secondary'
+    variant: policy.result?.status === 'error' ? 'danger' : 'neutral'
   } as const
 }
 

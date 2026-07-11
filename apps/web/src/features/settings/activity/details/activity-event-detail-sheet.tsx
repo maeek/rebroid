@@ -5,7 +5,7 @@ import { useActivityController } from '../activity-context'
 import { formatAction, formatDetails, outcomeTone } from '../activity-format'
 import { ActivityResourceTypeBadge } from '../common/activity-resource-type-badge'
 import { ActivityDetailField } from './activity-detail-field'
-import type { AuditEvent } from '@/server/storage/database'
+import type { AuditEvent } from '@/server/persistence/audit-repository'
 
 const ActivityUserAgentField = ({ userAgent }: { userAgent: string | null }) =>
   userAgent ? (
@@ -42,7 +42,7 @@ const ActivityEventDetailContent = ({ event }: { event: AuditEvent }) => (
     </div>
     <div>
       <Label>Details JSON</Label>
-      <pre className='mt-2 max-h-[32rem] overflow-auto rounded-lg border border-border/70 bg-background/60 p-4 font-mono text-xs text-foreground-muted'>
+      <pre className='mt-2 max-h-[32rem] overflow-auto rounded-panel border border-surface-border/70 bg-background/60 p-4 font-mono text-xs text-foreground-muted'>
         {formatDetails(event.details)}
       </pre>
     </div>

@@ -8,7 +8,7 @@ const AutomationMonacoYamlEditor = dynamic(
   () => import('./monaco-yaml').then(module => module.AutomationMonacoYamlEditor),
   {
     ssr: false,
-    loading: () => <div className='h-136 rounded-md border border-border/60 bg-surface-band/35' />
+    loading: () => <div className='h-136 rounded-control border border-surface-border/60 bg-surface-band/35' />
   }
 )
 

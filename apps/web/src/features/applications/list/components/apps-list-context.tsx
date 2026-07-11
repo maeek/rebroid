@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { AppsListSortMode } from '@/features/applications/domain/app-sort'
+import type { AppsListSortMode } from '@/shared/model/applications/app-sort'
 
 export type BulkAction = 'stop' | 'delete'
 export type PendingAppAction = { action: BulkAction; app: AppDefinition }

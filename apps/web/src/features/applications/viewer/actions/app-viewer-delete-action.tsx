@@ -55,7 +55,7 @@ export const AppViewerDeleteAction = ({
       toast({
         title: isProvisioning ? 'Could not kill app provisioning' : 'Could not delete app',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
       setIsDeleting(false)
     }
@@ -73,7 +73,7 @@ export const AppViewerDeleteAction = ({
     >
       <DialogTrigger asChild>
         <Button
-          variant='destructive'
+          variant='danger'
           disabled={!app || app.status === 'removing' || isDeleting}
         >
           {isDeleting ? (
@@ -103,11 +103,11 @@ export const AppViewerDeleteAction = ({
               ? 'The app record and runtime resources are removed with its saved profile data.'
               : 'The app record and runtime resources are removed. Saved profile data is kept when possible.'
           }
-          tone='destructive'
+          tone='danger'
         />
         <DialogFooter>
           <Button
-            variant='destructive'
+            variant='danger'
             disabled={isDeleting}
             onClick={() => void handleDelete()}
           >

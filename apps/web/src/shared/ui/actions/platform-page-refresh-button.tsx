@@ -21,7 +21,7 @@ export const PlatformPageRefreshButton = ({
         <Button
           type='button'
           variant='ghost'
-          size='icon'
+          size='icon-md'
           aria-label={label}
           disabled={disabled || isRefreshing}
           onClick={onRefresh}

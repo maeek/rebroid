@@ -1,5 +1,5 @@
-import { describe, expect, it } from '@jest/globals'
 import { defaultSchedule } from '@rebroid/automation-core/schedule'
+import { describe, expect, it } from 'vitest'
 import {
   activeTriggerFilterCount,
   applyTriggerTargetApplication,
@@ -199,7 +199,7 @@ describe('automation triggers page model', () => {
     expect(summarizeTriggerBulkUpdateResults(mixedResults, true)).toEqual({
       title: 'Some triggers could not be updated',
       description: '1 update request failed.',
-      variant: 'destructive'
+      variant: 'danger'
     })
     expect(summarizeTriggerBulkDeleteResults(fulfilledResults, new Set(['a']))).toEqual({
       title: 'Selected triggers deleted'
@@ -207,7 +207,7 @@ describe('automation triggers page model', () => {
     expect(summarizeTriggerBulkDeleteResults(mixedResults, new Set(['a']))).toEqual({
       title: 'Some triggers could not be deleted',
       description: '1 delete request failed.',
-      variant: 'destructive'
+      variant: 'danger'
     })
   })
 })

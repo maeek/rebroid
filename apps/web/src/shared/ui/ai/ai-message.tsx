@@ -7,8 +7,8 @@ import { cn } from '@/lib/utils'
 
 export const AiUserMessage = ({ children }: { children: ReactNode }) => (
   <div className='ml-auto grid max-w-[88%] justify-items-end gap-1.5'>
-    <span className='px-1 text-[10px] font-medium uppercase tracking-[0.12em] text-foreground-muted'>You</span>
-    <div className='wrap-anywhere whitespace-pre-wrap rounded-2xl rounded-br-md bg-primary px-3.5 py-2.5 text-sm leading-6 text-primary-foreground shadow-[0_8px_24px_-16px_hsl(var(--primary)/0.9)]'>
+    <span className='px-1 text-xs font-medium uppercase tracking-[0.12em] text-foreground-muted'>You</span>
+    <div className='wrap-anywhere whitespace-pre-wrap rounded-feature rounded-br-md bg-primary px-3.5 py-2.5 text-sm leading-6 text-primary-foreground shadow-[0_8px_24px_-16px_hsl(var(--primary)/0.9)]'>
       {children}
     </div>
   </div>
@@ -26,12 +26,12 @@ export const AiAssistantBlock = ({
   className?: string
 }) => (
   <div className={cn('flex min-w-0 items-start gap-3', className)}>
-    <span className='mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/8 text-primary shadow-[0_8px_24px_-18px_hsl(var(--primary)/0.8)]'>
+    <span className='mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-panel border border-primary/20 bg-primary/8 text-primary shadow-[0_8px_24px_-18px_hsl(var(--primary)/0.8)]'>
       <GradientSparklesIcon className='size-4' />
     </span>
     <div className='grid min-w-0 flex-1 gap-2.5'>
       <div className='flex min-w-0 flex-wrap items-center justify-between gap-2'>
-        <span className='truncate text-sm font-semibold'>{title}</span>
+        <span className='truncate text-sm font-medium'>{title}</span>
         {meta ? <div className='shrink-0'>{meta}</div> : null}
       </div>
       {children}
@@ -66,7 +66,7 @@ const markdownComponents: Components = {
   ol: ({ children }) => <ol className='my-1 list-decimal space-y-1 pl-5'>{children}</ol>,
   p: ({ children }) => <p className='my-1 first:mt-0 last:mb-0'>{children}</p>,
   pre: ({ children }) => (
-    <pre className='my-2 max-h-72 overflow-auto rounded-md bg-background/30 p-2 font-mono text-xs'>{children}</pre>
+    <pre className='my-2 max-h-72 overflow-auto rounded-control bg-background/30 p-2 font-mono text-xs'>{children}</pre>
   ),
   ul: ({ children }) => <ul className='my-1 list-disc space-y-1 pl-5'>{children}</ul>
 }
@@ -95,7 +95,7 @@ export const AiAssistantMarkdownText = ({
 export const AiToolDetails = ({ children, className }: { children: ReactNode; className?: string }) => (
   <dl
     className={cn(
-      'grid max-w-full gap-1.5 rounded-lg border border-border/45 bg-background/24 p-2.5 text-[11px] text-muted-foreground/90',
+      'grid max-w-full gap-1.5 rounded-panel border border-surface-border/45 bg-background/24 p-2.5 text-xs text-foreground-muted/90',
       className
     )}
   >

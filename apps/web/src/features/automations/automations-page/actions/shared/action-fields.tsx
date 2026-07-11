@@ -139,7 +139,7 @@ export function SegmentedField({
           <Button
             key={option.value}
             type='button'
-            variant={value === option.value ? 'default' : 'secondary'}
+            variant={value === option.value ? 'primary' : 'secondary'}
             onClick={() => onChange(option.value)}
           >
             {option.label ?? option.value}
@@ -151,5 +151,5 @@ export function SegmentedField({
 }
 
 export function NoInputState({ message = 'No settings.' }: { message?: string }) {
-  return <p className='rounded-md bg-surface-band/45 px-3 py-3 text-sm text-foreground-muted'>{message}</p>
+  return <p className='rounded-control bg-surface-band/45 px-3 py-3 text-sm text-foreground-muted'>{message}</p>
 }

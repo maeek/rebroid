@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getResourceLimitBoundsAction } from '@/server/orchestrator/diagnostics/actions'
-import type { ResourceLimitBounds } from '@/server/orchestrator/diagnostics/resource-limits'
+import { getBff } from '@/lib/http/bff'
+import type { ResourceLimitBounds } from '@/shared/contracts/system-resources'
 
 export const useResourceLimitBounds = (enabled: boolean, initialValue: ResourceLimitBounds | null = null) => {
   const [resourceLimits, setResourceLimits] = useState<ResourceLimitBounds | null>(initialValue)
@@ -14,7 +14,8 @@ export const useResourceLimitBounds = (enabled: boolean, initialValue: ResourceL
 
     let isCurrent = true
 
-    void getResourceLimitBoundsAction()
+    const controller = new AbortController()
+    void getBff<ResourceLimitBounds>('/api/bff/platform/resource-limits', controller.signal)
       .then(nextLimits => {
         if (isCurrent) {
           setResourceLimits(nextLimits)
@@ -28,6 +29,7 @@ export const useResourceLimitBounds = (enabled: boolean, initialValue: ResourceL
 
     return () => {
       isCurrent = false
+      controller.abort()
     }
   }, [enabled])
 

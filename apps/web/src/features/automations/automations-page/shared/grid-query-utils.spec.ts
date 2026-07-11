@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import { allFilterValue, compactGridParams, sortFromSearchParam, sortToSearchParam } from './grid-query-utils'
 
 describe('grid query utils', () => {

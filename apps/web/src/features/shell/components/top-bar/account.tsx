@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { IconLogout, IconSettings, IconUser } from '@tabler/icons-react'
 import Link from 'next/link'
-import { signOut, useSession } from 'next-auth/react'
+import { signOut } from 'next-auth/react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -19,19 +19,9 @@ import { ProfileDialog } from './profile-dialog'
 import type { ShellUser } from '../shell-user'
 
 export const TopBarAccount = ({ initialUser }: { initialUser: ShellUser }) => {
-  const session = useSession()
   const [profileOpen, setProfileOpen] = useState(false)
   const [avatar, setAvatar] = useState<string | null>(initialUser.avatarDataUrl)
-  const [displayName, setDisplayName] = useState(initialUser.name)
-  const [role, setRole] = useState(initialUser.role)
-  const isAdmin = role === 'admin'
-
-  useEffect(() => {
-    if (!session.data?.user) return
-    setAvatar(session.data.user.image ?? null)
-    setDisplayName(session.data.user.name ?? initialUser.name)
-    setRole(session.data.user.role ?? initialUser.role)
-  }, [initialUser.name, initialUser.role, session.data?.user])
+  const isAdmin = initialUser.role === 'admin'
 
   return (
     <>
@@ -41,11 +31,11 @@ export const TopBarAccount = ({ initialUser }: { initialUser: ShellUser }) => {
             <AvatarImage src={avatar ?? ''} />
             <AvatarFallback
               style={{
-                backgroundColor: getHslColorFromCharCode(displayName),
-                color: getHslColorFromCharCodeForeground(displayName)
+                backgroundColor: getHslColorFromCharCode(initialUser.name),
+                color: getHslColorFromCharCodeForeground(initialUser.name)
               }}
             >
-              {displayName.slice(0, 2).toUpperCase()}
+              {initialUser.name.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
         </DropdownMenuTrigger>
@@ -73,7 +63,7 @@ export const TopBarAccount = ({ initialUser }: { initialUser: ShellUser }) => {
       </DropdownMenu>
       <ProfileDialog
         open={profileOpen}
-        name={displayName}
+        name={initialUser.name}
         avatar={avatar}
         initialAccentColor={initialUser.accentColor}
         onOpenChange={setProfileOpen}

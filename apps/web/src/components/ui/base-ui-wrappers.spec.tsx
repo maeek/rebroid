@@ -1,6 +1,6 @@
 import * as React from 'react'
-import { describe, expect, it, jest } from '@jest/globals'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
@@ -53,7 +53,7 @@ describe('Base UI wrapper compatibility', () => {
   })
 
   it('closes Dialog through the local close control', () => {
-    const onDialogOpenChange = jest.fn()
+    const onDialogOpenChange = vi.fn()
 
     render(
       <Dialog
@@ -72,7 +72,7 @@ describe('Base UI wrapper compatibility', () => {
   })
 
   it('closes Sheet through the local close control', () => {
-    const onSheetOpenChange = jest.fn()
+    const onSheetOpenChange = vi.fn()
 
     render(
       <Sheet
@@ -90,7 +90,7 @@ describe('Base UI wrapper compatibility', () => {
   })
 
   it('opens Drawer through an asChild trigger', () => {
-    const onOpenChange = jest.fn()
+    const onOpenChange = vi.fn()
 
     render(
       <Drawer onOpenChange={onOpenChange}>
@@ -108,9 +108,9 @@ describe('Base UI wrapper compatibility', () => {
   })
 
   it('keeps Select, Checkbox, and Switch controlled change callbacks non-null', () => {
-    const onSelectChange = jest.fn()
-    const onCheckboxChange = jest.fn()
-    const onSwitchChange = jest.fn()
+    const onSelectChange = vi.fn()
+    const onCheckboxChange = vi.fn()
+    const onSwitchChange = vi.fn()
 
     render(
       <>
@@ -168,7 +168,7 @@ describe('Base UI wrapper compatibility', () => {
   })
 
   it('keeps Slider change callbacks array-shaped', () => {
-    const onSliderChange = jest.fn()
+    const onSliderChange = vi.fn()
 
     render(
       <Slider
@@ -186,8 +186,8 @@ describe('Base UI wrapper compatibility', () => {
   })
 
   it('preserves menu and context-menu onSelect handlers', () => {
-    const onDropdownSelect = jest.fn()
-    const onContextSelect = jest.fn()
+    const onDropdownSelect = vi.fn()
+    const onContextSelect = vi.fn()
 
     render(
       <>

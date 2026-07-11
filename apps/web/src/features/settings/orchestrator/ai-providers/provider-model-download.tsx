@@ -173,7 +173,7 @@ export const ProviderModelAddDialog = ({
               <Button
                 type='button'
                 variant='secondary'
-                size='icon'
+                size='icon-md'
                 disabled={isLoadingRemoteModels}
                 aria-label='Refresh available models'
                 onClick={() => void onLoadRemoteModels()}
@@ -181,7 +181,7 @@ export const ProviderModelAddDialog = ({
                 <IconRefresh className={isLoadingRemoteModels ? 'size-4 animate-spin' : 'size-4'} />
               </Button>
             </div>
-            {remoteModelsError ? <p className='text-xs text-destructive'>{remoteModelsError}</p> : null}
+            {remoteModelsError ? <p className='text-xs text-danger'>{remoteModelsError}</p> : null}
             {!remoteModelsError && !isLoadingRemoteModels && remoteModels.length === 0 ? (
               <p className='text-xs text-foreground-muted'>{emptyRemoteModelsMessage}</p>
             ) : null}
@@ -249,9 +249,7 @@ export const ProviderModelDownloadStatus = ({ download }: { download: Automation
     <div className='grid min-w-40 gap-1'>
       <div className='flex items-center gap-2'>
         <Badge
-          variant={
-            download.status === 'completed' ? 'status' : download.status === 'failed' ? 'destructive' : 'secondary'
-          }
+          variant={download.status === 'completed' ? 'success' : download.status === 'failed' ? 'danger' : 'neutral'}
         >
           {download.status === 'completed' ? 'Downloaded' : download.status === 'failed' ? 'Error' : 'Downloading'}
         </Badge>
@@ -259,7 +257,7 @@ export const ProviderModelDownloadStatus = ({ download }: { download: Automation
       </div>
       <p className='line-clamp-2 text-xs text-foreground-muted'>{download.message}</p>
       {isActive ? (
-        <div className='h-1.5 overflow-hidden rounded-full bg-muted'>
+        <div className='h-1.5 overflow-hidden rounded-full bg-surface-band'>
           <div
             className='h-full rounded-full bg-primary transition-all'
             style={{ width: `${percent ?? 8}%` }}

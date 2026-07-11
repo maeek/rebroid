@@ -1,5 +1,5 @@
 import { PageHeader } from '@/shared/ui/page/page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { StatusSplash } from '@/shared/ui/status-splash'
 
 export const AutomationPageUnavailable = ({
@@ -11,7 +11,7 @@ export const AutomationPageUnavailable = ({
   detail: string | null
   href: string
 }) => (
-  <ProtectedStackPageLayout mainClassName='gap-2'>
+  <StandardPage className='gap-2'>
     <PageHeader
       breadcrumbs={[{ label: 'Automations' }, { label: title }]}
       title={title}
@@ -27,5 +27,5 @@ export const AutomationPageUnavailable = ({
         secondaryAction={{ label: 'Back to apps', href: '/apps' }}
       />
     </section>
-  </ProtectedStackPageLayout>
+  </StandardPage>
 )

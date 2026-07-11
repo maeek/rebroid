@@ -16,7 +16,7 @@ export const appProfileName = (app: AndroidApplication | null | undefined) => ap
 export const appSavedProfiles = (app: AndroidApplication | null | undefined) => app?.storage.savedProfiles ?? []
 
 export const statusVariant = (status: AutomationLastStatus) =>
-  status === 'success' ? 'status' : status === 'failed' ? 'destructive' : 'secondary'
+  status === 'success' ? 'success' : status === 'failed' ? 'danger' : 'neutral'
 
 export const statusLabel = (status: AutomationLastStatus) => {
   if (status === 'never_run') return 'Never run'

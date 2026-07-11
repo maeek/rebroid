@@ -3,7 +3,7 @@ import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Visible } from '@/components/ui/visible'
 import { NetworkAccessInput } from '@/features/applications/viewer/app-info/network-access-input'
-import { Setting } from '@/shared/ui/settings/setting'
+import { FormField } from '@/components/ui/form-field'
 import { verticalSettingClassName } from './app-form-utils'
 
 type AppNetworkPolicyEditorSectionProps = {
@@ -62,11 +62,11 @@ export const AppNetworkPolicyEditorSection = ({
         <p className='text-sm text-foreground-muted'>{sectionDescription}</p>
       </Visible>
       <Visible when={topSection}>{topSection}</Visible>
-      <Setting
+      <FormField
         label='Mode'
         description={modeDescription}
         className={verticalSettingClassName}
-        variant='vertical'
+        layout='vertical'
       >
         <Select
           value={modeValue ? 'enabled' : 'disabled'}
@@ -85,11 +85,11 @@ export const AppNetworkPolicyEditorSection = ({
             </SelectItem>
           </SelectContent>
         </Select>
-      </Setting>
+      </FormField>
       <div className='flex w-full flex-col gap-3'>
         <div className='grid gap-1'>
           <div className='text-sm font-bold text-foreground'>{allowlistTitle}</div>
-          <p className='text-xs leading-relaxed text-muted-foreground'>{allowlistDescription}</p>
+          <p className='text-xs leading-relaxed text-foreground-muted'>{allowlistDescription}</p>
         </div>
         <NetworkAccessInput
           cidrs={allowCidrs}

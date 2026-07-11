@@ -26,7 +26,7 @@ export const uploadApkWithFeedback = async ({
     toast({
       title: 'APK is too large',
       description: `The configured upload limit is ${apkSizeLabel(maxApkUploadSizeMb)}.`,
-      variant: 'destructive'
+      variant: 'danger'
     })
     return null
   }
@@ -47,7 +47,7 @@ export const uploadApkWithFeedback = async ({
     toast({
       title: errorTitle,
       description: error instanceof Error ? error.message : 'Unknown error',
-      variant: 'destructive'
+      variant: 'danger'
     })
     return null
   } finally {

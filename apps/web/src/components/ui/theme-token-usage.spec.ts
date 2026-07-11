@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync, statSync } from 'fs'
 import { join } from 'path'
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 
 const projectRoot = join(__dirname, '../../..')
 const sourceRoot = join(projectRoot, 'src')
@@ -30,7 +30,11 @@ describe('theme token usage', () => {
       /(?:--|var\(--|color-)input\b/,
       /(?:--|var\(--|color-)layout(?:-border)?\b/,
       /(?:--|var\(--|color-)sidebar(?:-[a-z]+)*\b/,
-      /control-boundary/
+      /control-boundary/,
+      /(?:--|var\(--|color-)(?:card|popover|secondary|muted|destructive)(?:-[a-z]+)*\b/,
+      /\b(?:bg|border|text|ring|outline|from|to|via|fill|stroke)-(?:card|popover|secondary|muted|destructive)(?:\b|\/|-)/,
+      /\b(?:rounded|shadow)-(?:sm|md|lg|xl|2xl|3xl)\b/,
+      /\bfont-(?:semibold|black)\b/
     ]
 
     for (const pattern of forbiddenPatterns) {

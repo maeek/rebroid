@@ -104,7 +104,7 @@ export const AutomationStatusToolsSection = ({
         <div className='flex min-w-0 items-center gap-3'>
           <span
             className={cn(
-              'flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/8 text-primary',
+              'flex size-10 shrink-0 items-center justify-center rounded-panel border border-primary/20 bg-primary/8 text-primary',
               hideHeader && 'size-9'
             )}
           >
@@ -112,9 +112,9 @@ export const AutomationStatusToolsSection = ({
           </span>
           <div className='min-w-0'>
             <div className='flex items-center gap-2'>
-              <h3 className='truncate text-sm font-semibold'>Workflow activity</h3>
+              <h3 className='truncate text-sm font-medium'>Workflow activity</h3>
               {activeRunCount > 0 ? (
-                <span className='inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/8 px-2 py-0.5 text-[10px] font-medium text-primary'>
+                <span className='inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/8 px-2 py-0.5 text-xs font-medium text-primary'>
                   <span className='size-1.5 animate-pulse rounded-full bg-primary' />
                   {activeRunCount} active
                 </span>
@@ -129,7 +129,7 @@ export const AutomationStatusToolsSection = ({
           <AppAutomationRunAction onRunStarted={onRunStarted} />
           <Button
             type='button'
-            size='icon'
+            size='icon-md'
             variant='outline'
             className='size-9'
             aria-label='Refresh workflow runs'
@@ -143,14 +143,14 @@ export const AutomationStatusToolsSection = ({
       </div>
 
       {loadError ? (
-        <div className='rounded-lg border border-warning/25 bg-warning/8 px-3 py-2 text-xs text-warning'>
+        <div className='rounded-panel border border-warning/25 bg-warning/8 px-3 py-2 text-xs text-warning'>
           {loadError}
         </div>
       ) : null}
 
       {visibleRuns.length === 0 ? (
-        <div className='flex min-h-64 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border/60 bg-surface-band/14 px-6 text-center'>
-          <span className='flex size-11 items-center justify-center rounded-2xl border border-border/55 bg-surface-panel/70 text-foreground-muted shadow-sm'>
+        <div className='flex min-h-64 flex-col items-center justify-center gap-3 rounded-panel border border-dashed border-surface-border/60 bg-surface-band/14 px-6 text-center'>
+          <span className='flex size-11 items-center justify-center rounded-feature border border-surface-border/55 bg-surface-panel/70 text-foreground-muted shadow-control'>
             <IconActivity className='size-5' />
           </span>
           <div className='max-w-sm'>
@@ -162,10 +162,10 @@ export const AutomationStatusToolsSection = ({
         </div>
       ) : (
         <div className='grid min-h-0 gap-3 lg:grid-cols-[minmax(17rem,20rem)_minmax(0,1fr)]'>
-          <div className='grid min-h-0 content-start gap-2 rounded-xl border border-border/55 bg-surface-band/18 p-2'>
+          <div className='grid min-h-0 content-start gap-2 rounded-panel border border-surface-border/55 bg-surface-band/18 p-2'>
             <div className='flex items-center justify-between px-1.5 pt-1 pb-0.5'>
-              <span className='text-[11px] font-medium tracking-wide text-foreground-muted uppercase'>Runs</span>
-              <span className='text-[11px] text-foreground-muted'>{visibleRuns.length}</span>
+              <span className='text-xs font-medium tracking-wide text-foreground-muted uppercase'>Runs</span>
+              <span className='text-xs text-foreground-muted'>{visibleRuns.length}</span>
             </div>
             {visibleRuns.map(run => {
               const selected = selectedRun?.id === run.id
@@ -175,10 +175,10 @@ export const AutomationStatusToolsSection = ({
                   type='button'
                   aria-pressed={selected}
                   className={cn(
-                    'group grid gap-2 rounded-lg border px-3 py-2.5 text-left transition-[border-color,background-color,box-shadow,transform] duration-150 active:scale-[0.99]',
+                    'group grid gap-2 rounded-panel border px-3 py-2.5 text-left transition-[border-color,background-color,box-shadow,transform] duration-150 active:scale-[0.99]',
                     selected
                       ? 'border-primary/30 bg-primary/8 shadow-[0_10px_28px_-24px_hsl(var(--primary)/0.65)]'
-                      : 'border-transparent bg-transparent hover:border-border/55 hover:bg-surface-panel/50'
+                      : 'border-transparent bg-transparent hover:border-surface-border/55 hover:bg-surface-panel/50'
                   )}
                   onClick={() => setSelectedRunId(run.id)}
                 >
@@ -189,7 +189,7 @@ export const AutomationStatusToolsSection = ({
                       className='shrink-0'
                     />
                   </span>
-                  <span className='flex min-w-0 items-center gap-1.5 text-[11px] text-foreground-muted'>
+                  <span className='flex min-w-0 items-center gap-1.5 text-xs text-foreground-muted'>
                     <span className='capitalize'>{run.trigger}</span>
                     <span aria-hidden='true'>·</span>
                     <span className='truncate'>{runTimeLabel(run)}</span>

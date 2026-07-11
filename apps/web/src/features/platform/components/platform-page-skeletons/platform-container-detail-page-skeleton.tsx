@@ -1,20 +1,20 @@
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DataGridSkeleton } from '@/shared/ui/data-grid'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
 import { DetailRowsSkeleton } from './detail-rows-skeleton'
 import { JsonBlockSkeleton } from './json-block-skeleton'
 
 export const PlatformContainerDetailPageSkeleton = ({ titleWidth }: { titleWidth: string }) => (
-  <ProtectedStackPageLayout mainClassName='gap-2'>
+  <StandardPage className='gap-2'>
     <PageHeaderSkeleton
       titleWidth={titleWidth}
       hasParent
     />
     <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
       <Section
-        boxed
+        surface='panel'
         className='bg-surface-panel/60'
         contentClassName='gap-5'
       >
@@ -40,14 +40,14 @@ export const PlatformContainerDetailPageSkeleton = ({ titleWidth }: { titleWidth
       <div className='grid gap-6 xl:grid-cols-2'>
         <Section
           title='Related image'
-          boxed
+          surface='panel'
           contentClassName='gap-3'
         >
           <DetailRowsSkeleton rows={3} />
         </Section>
         <Section
           title='Related networks'
-          boxed
+          surface='panel'
           contentClassName='gap-3'
         >
           <DataGridSkeleton
@@ -66,7 +66,7 @@ export const PlatformContainerDetailPageSkeleton = ({ titleWidth }: { titleWidth
 
       <Section
         title='Logs'
-        boxed
+        surface='panel'
         contentClassName='gap-4'
       >
         <div className='flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-start'>
@@ -81,7 +81,7 @@ export const PlatformContainerDetailPageSkeleton = ({ titleWidth }: { titleWidth
 
       <Section
         title='Labels'
-        boxed
+        surface='panel'
         contentClassName='gap-4'
         titleClassName='pb-4'
       >
@@ -90,11 +90,11 @@ export const PlatformContainerDetailPageSkeleton = ({ titleWidth }: { titleWidth
 
       <Section
         title='Raw inspect'
-        boxed
+        surface='panel'
         contentClassName='gap-4'
       >
         <JsonBlockSkeleton lines={12} />
       </Section>
     </section>
-  </ProtectedStackPageLayout>
+  </StandardPage>
 )

@@ -48,11 +48,11 @@ export const DownloadsToolsSection = ({
       hideHeader={hideHeader}
     >
       {!runtimeAvailable ? (
-        <div className='rounded-md border border-border/65 bg-secondary/20 px-4 py-6 text-sm text-muted-foreground'>
+        <div className='rounded-control border border-surface-border/65 bg-surface-band/20 px-4 py-6 text-sm text-foreground-muted'>
           Files are available while the application runtime is running.
         </div>
       ) : (
-        <div className='overflow-hidden rounded-md border border-border/65 bg-secondary/20'>
+        <div className='overflow-hidden rounded-control border border-surface-border/65 bg-surface-band/20'>
           <RuntimeFileToolbar
             currentPath={currentPath}
             isRefreshingFiles={isRefreshingFiles}

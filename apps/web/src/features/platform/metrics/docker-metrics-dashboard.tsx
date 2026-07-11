@@ -8,7 +8,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Visible } from '@/components/ui/visible'
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
-import { cn } from '@/lib/utils'
 import { getDockerMetricsAction } from '@/server/orchestrator/diagnostics/actions'
 import { QuickGlanceCard } from '@/shared/ui/settings/quick-glance-card'
 import { StatusSplash } from '@/shared/ui/status-splash'
@@ -17,11 +16,11 @@ import type { DockerMetricsSnapshot } from '@/server/orchestrator/diagnostics/ty
 
 const summaryCards = (metrics: DockerMetricsSnapshot) =>
   [
-    ['Success', metrics.totals.success, 'Completed Docker operations', 'border-l-success/50'],
-    ['Errors', metrics.totals.errors, 'Failed Docker operations', 'border-l-destructive/50'],
-    ['Timeouts', metrics.totals.timeouts, 'Operations that exceeded timeout', 'border-l-warning/50'],
-    ['Retries', metrics.totals.retries, 'Retry attempts across operations', 'border-l-primary/50'],
-    ['Slow operations', metrics.totals.slow, 'Exceeded the slow-operation warning', '']
+    ['Success', metrics.totals.success, 'Completed Docker operations', 'success'],
+    ['Errors', metrics.totals.errors, 'Failed Docker operations', 'danger'],
+    ['Timeouts', metrics.totals.timeouts, 'Operations that exceeded timeout', 'warning'],
+    ['Retries', metrics.totals.retries, 'Retry attempts across operations', 'primary'],
+    ['Slow operations', metrics.totals.slow, 'Exceeded the slow-operation warning', 'neutral']
   ] as const
 
 export function DockerMetricsDashboard({
@@ -72,19 +71,19 @@ export function DockerMetricsDashboard({
         <h3 className='text-xl font-medium text-foreground'>{title}</h3>
       </Visible>
       <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-5'>
-        {summaryCards(data).map(([label, value, hint, borderColorClass]) => (
+        {summaryCards(data).map(([label, value, hint, tone]) => (
           <QuickGlanceCard
             key={label}
             label={label}
             value={value}
             hint={hint}
-            className={cn(borderColorClass)}
+            tone={tone}
           />
         ))}
       </div>
       <Section
         title='Docker access policy'
-        boxed
+        surface='panel'
         contentClassName='gap-2 text-sm'
       >
         <p>
@@ -111,11 +110,12 @@ export function DockerMetricsDashboard({
         />
       </div>
       <Section
+        surface='plain'
         title='Per-operation aggregates'
         titleClassName='pb-4'
         contentClassName='gap-4'
       >
-        <div className='overflow-hidden rounded-lg border border-border/60 bg-surface-band/35'>
+        <div className='overflow-hidden rounded-panel border border-surface-border/60 bg-surface-band/35'>
           <Table>
             <TableHeader className='bg-surface-band/55'>
               <TableRow className='hover:bg-transparent'>
@@ -147,6 +147,7 @@ export function DockerMetricsDashboard({
         </div>
       </Section>
       <Section
+        surface='plain'
         title='Recent slow or failed operations'
         titleClassName='pb-4'
         contentClassName='gap-4'
@@ -155,7 +156,7 @@ export function DockerMetricsDashboard({
           <p className='text-sm text-foreground-muted'>No slow or failed Docker operations recorded.</p>
         </Visible>
         <Visible when={data.events.length > 0}>
-          <div className='overflow-hidden rounded-lg border border-border/60 bg-surface-band/35'>
+          <div className='overflow-hidden rounded-panel border border-surface-border/60 bg-surface-band/35'>
             <Table>
               <TableHeader className='bg-surface-band/55'>
                 <TableRow className='hover:bg-transparent'>
@@ -193,7 +194,7 @@ function MetricsChart({ title, data, keys }: { title: string; data: HistorySampl
   return (
     <Section
       title={title}
-      boxed
+      surface='panel'
       className='min-w-0'
     >
       <div className='h-72'>

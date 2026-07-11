@@ -6,14 +6,11 @@ import Providers from './providers'
 // eslint-disable-next-line import/order
 import type { Metadata, Viewport } from 'next'
 import NextTopLoader from 'nextjs-toploader'
-import { PwaRegister } from '@/components/pwa-register'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/toaster'
 import { getServerAuthSession } from '@/server/auth/auth'
 import { getAccentColorDataAttribute } from '@/shared/model/theme/accent-color'
 // eslint-disable-next-line import/order
-import './globals.scss'
-
 import './globals.css'
 
 const ubuntu = localFont({
@@ -54,9 +51,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   width: 'device-width',
-  initialScale: 0.85,
+  initialScale: 1,
   interactiveWidget: 'resizes-content',
-  userScalable: false,
   themeColor: '#111827'
 }
 
@@ -96,8 +92,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               zIndex={9999}
             />
             <div id='modal-root' />
-            <PwaRegister />
-            <Providers session={session}>{children}</Providers>
+            <Providers>{children}</Providers>
             <Toaster />
           </ThemeProvider>
         </div>

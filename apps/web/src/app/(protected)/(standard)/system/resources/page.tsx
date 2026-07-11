@@ -1,3 +1,1 @@
-import { SystemResourcesPage } from '@/features/settings/system/system-resources-page'
-
-export default SystemResourcesPage
+export { SystemResourcesPageEntry as default } from '@/features/settings/system/pages/system-resources/page-entry'

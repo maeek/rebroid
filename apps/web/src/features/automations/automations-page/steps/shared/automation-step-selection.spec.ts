@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import { defaultConditionStep, defaultStep } from '../../editor/builder-utils'
 import { collectBlockKeys, collectStepKeys, firstStepKey, selectionAfterDelete } from './automation-step-selection'
 

@@ -25,7 +25,7 @@ import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-lim
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
 import { PageBackdrop } from '@/shared/ui/page/page-backdrop'
 import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
-import { ProtectedSplitPageContent, ProtectedSplitPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { PageContent, StandardPageSplit } from '@/shared/ui/page/page-layout'
 import { AppManageGeneralSettings } from './app-manage-general-settings'
 import { AppManageIconPanel } from './app-manage-icon-panel'
 import { AppManageNetworkPolicySettings } from './app-manage-network-policy-settings'
@@ -113,7 +113,7 @@ export default function AppManage({
       toast({
         title: 'Could not save app',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsSaving(false)
@@ -121,12 +121,12 @@ export default function AppManage({
   }
 
   return (
-    <ProtectedSplitPageLayout>
+    <StandardPageSplit>
       <PageBackdrop
         imageSrc={displayApp.icon ? resolveAppIconUrl(displayApp.icon) : null}
         opacity={0.08}
       />
-      <ProtectedSplitPageContent>
+      <PageContent>
         <PageBreadcrumbs
           items={[
             { label: 'Apps', href: '/apps' },
@@ -214,7 +214,7 @@ export default function AppManage({
           <Visible when={canViewLogs && !isForeignOwnedApp}>
             <Section
               title='Logs'
-              boxed
+              surface='panel'
               titleClassName='pb-4'
               contentClassName='min-h-[30rem]'
             >
@@ -226,7 +226,7 @@ export default function AppManage({
             </Section>
           </Visible>
         </div>
-      </ProtectedSplitPageContent>
-    </ProtectedSplitPageLayout>
+      </PageContent>
+    </StandardPageSplit>
   )
 }

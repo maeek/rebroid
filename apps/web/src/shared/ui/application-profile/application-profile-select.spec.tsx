@@ -1,5 +1,5 @@
-import { describe, expect, it, jest } from '@jest/globals'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { ApplicationProfileSelect } from './application-profile-select'
 
 const savedProfiles = [
@@ -13,8 +13,8 @@ const openSelect = () => {
 
 describe('ApplicationProfileSelect', () => {
   it('selects a temporary profile', () => {
-    const onModeChange = jest.fn()
-    const onNameChange = jest.fn()
+    const onModeChange = vi.fn()
+    const onNameChange = vi.fn()
     render(
       <ApplicationProfileSelect
         mode='persistent'
@@ -34,8 +34,8 @@ describe('ApplicationProfileSelect', () => {
   })
 
   it('selects a saved persistent profile', () => {
-    const onModeChange = jest.fn()
-    const onNameChange = jest.fn()
+    const onModeChange = vi.fn()
+    const onNameChange = vi.fn()
     render(
       <ApplicationProfileSelect
         mode='persistent'
@@ -55,8 +55,8 @@ describe('ApplicationProfileSelect', () => {
   })
 
   it('reveals the new profile input', () => {
-    const onModeChange = jest.fn()
-    const onNameChange = jest.fn()
+    const onModeChange = vi.fn()
+    const onNameChange = vi.fn()
     render(
       <ApplicationProfileSelect
         mode='persistent'
@@ -83,7 +83,7 @@ describe('ApplicationProfileSelect', () => {
         name='default'
         savedProfiles={savedProfiles}
         selectedProfile={{ mode: 'persistent', name: 'default' }}
-        onNameChange={jest.fn()}
+        onNameChange={vi.fn()}
       />
     )
 
@@ -98,7 +98,7 @@ describe('ApplicationProfileSelect', () => {
         selectedProfile={{ mode: 'persistent', name: 'default' }}
         canDeleteProfiles
         onDeleteProfile={() => undefined}
-        onNameChange={jest.fn()}
+        onNameChange={vi.fn()}
       />
     )
 
@@ -107,8 +107,8 @@ describe('ApplicationProfileSelect', () => {
   })
 
   it('does not select a profile when the delete action is clicked', async () => {
-    const onNameChange = jest.fn()
-    const onDeleteProfile = jest.fn()
+    const onNameChange = vi.fn()
+    const onDeleteProfile = vi.fn()
     const deleteProfile = (profileName: string) => {
       onDeleteProfile(profileName)
       return Promise.resolve()

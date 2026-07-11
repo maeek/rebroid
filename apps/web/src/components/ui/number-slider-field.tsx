@@ -100,7 +100,7 @@ export const NumberSliderField = ({
             }}
             className='min-w-0'
           />
-          <div className='flex items-center justify-between px-0.5 text-[10px] font-medium leading-none text-foreground-subtle'>
+          <div className='flex items-center justify-between px-0.5 text-xs font-medium leading-none text-foreground-subtle'>
             <span>
               {min}
               {suffix}

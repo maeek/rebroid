@@ -1,5 +1,5 @@
 import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { StatusSplash } from '@/shared/ui/status-splash'
 import { RuntimeContainerDetail } from '../../details/runtime-container-detail/runtime-container-detail'
 import { loadRuntimeContainerDetailPageData } from './page-data.server'
@@ -11,7 +11,7 @@ export async function RuntimeContainerDetailPageEntry({ params }: { params: Prom
     const { details, logs, name } = await loadRuntimeContainerDetailPageData(id)
 
     return (
-      <ProtectedStackPageLayout mainClassName='gap-2'>
+      <StandardPage className='gap-2'>
         <PlatformPageHeader
           title={name}
           description='Container details, related Docker resources, and recent logs.'
@@ -22,11 +22,11 @@ export async function RuntimeContainerDetailPageEntry({ params }: { params: Prom
           details={details}
           initialLogs={logs}
         />
-      </ProtectedStackPageLayout>
+      </StandardPage>
     )
   } catch (error) {
     return (
-      <ProtectedStackPageLayout mainClassName='gap-2'>
+      <StandardPage className='gap-2'>
         <PlatformPageHeader
           title='Container'
           description='Container details could not be loaded.'
@@ -46,7 +46,7 @@ export async function RuntimeContainerDetailPageEntry({ params }: { params: Prom
             className='min-h-[52vh]'
           />
         </section>
-      </ProtectedStackPageLayout>
+      </StandardPage>
     )
   }
 }

@@ -1,11 +1,26 @@
 'use client'
 import { ReactNode, useState } from 'react'
 import { IconChevronDown } from '@tabler/icons-react'
-import { bandSurfaceClassName, panelSurfaceClassName } from '@/components/ui/surface-classes'
+import { bandSurfaceClassName, panelSurfaceClassName } from '@/components/ui/surface'
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 
-type SectionSurface = 'plain' | 'band' | 'panel'
+export type SectionSurface = 'plain' | 'band' | 'panel'
+
+interface SectionProps {
+  actions?: ReactNode
+  children?: ReactNode
+  className?: string
+  collapsible?: boolean
+  contentClassName?: string
+  defaultOpen?: boolean
+  description?: ReactNode
+  headingLevel?: 2 | 3
+  orientation?: 'horizontal' | 'vertical'
+  surface: SectionSurface
+  title?: ReactNode
+  titleClassName?: string
+}
 
 export const Section = ({
   className,
@@ -14,23 +29,16 @@ export const Section = ({
   orientation = 'vertical',
   collapsible,
   contentClassName,
+  defaultOpen = false,
+  description,
+  headingLevel = 2,
+  actions,
   titleClassName,
-  boxed,
   surface
-}: {
-  className?: string
-  children?: ReactNode
-  title?: ReactNode
-  orientation?: 'horizontal' | 'vertical'
-  collapsible?: boolean
-  titleClassName?: string
-  contentClassName?: string
-  boxed?: boolean
-  surface?: SectionSurface
-}) => {
-  const [isOpen, setIsOpen] = useState(false)
-  const resolvedSurface = surface ?? (boxed ? 'panel' : 'plain')
-  const panelCollapsible = resolvedSurface === 'panel' && Boolean(collapsible)
+}: SectionProps) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen)
+  const Heading = headingLevel === 2 ? 'h2' : 'h3'
+  const panelCollapsible = surface === 'panel' && Boolean(collapsible)
   const content = (
     <div
       className={cn('flex', contentClassName, {
@@ -45,38 +53,54 @@ export const Section = ({
     <section
       aria-label={typeof title === 'string' ? title : undefined}
       data-slot='section'
-      data-surface={resolvedSurface}
+      data-surface={surface}
       className={cn(
-        'flex flex-col w-full rounded-xl',
+        'flex flex-col w-full rounded-panel',
         {
-          [cn(bandSurfaceClassName, 'p-6 max-sm:p-4')]: resolvedSurface === 'band',
-          [cn(panelSurfaceClassName, 'p-6 max-sm:p-4')]: resolvedSurface === 'panel',
+          [cn(bandSurfaceClassName, 'p-6 max-sm:p-4')]: surface === 'band',
+          [cn(panelSurfaceClassName, 'p-6 max-sm:p-4')]: surface === 'panel',
           'p-0': panelCollapsible
         },
         className
       )}
     >
       <Visible when={title}>
-        <div
-          className={cn(
-            'flex items-center justify-between',
-            {
-              'cursor-pointer': collapsible,
-              'px-6 py-5 pb-5 max-sm:px-4 max-sm:py-4 max-sm:pb-4': panelCollapsible
-            },
-            titleClassName
-          )}
-          onClick={() => collapsible && setIsOpen(p => !p)}
-        >
-          <h3 className='font-medium'>{title}</h3>
-          <Visible when={collapsible}>
+        {collapsible ? (
+          <button
+            type='button'
+            aria-expanded={isOpen}
+            className={cn(
+              'flex w-full items-center justify-between text-left',
+              { 'px-6 py-5 max-sm:px-4 max-sm:py-4': panelCollapsible },
+              titleClassName
+            )}
+            onClick={() => setIsOpen(open => !open)}
+          >
+            <span className='grid gap-1'>
+              <Heading className='font-medium'>{title}</Heading>
+              <Visible when={description}>
+                <span className='text-sm font-normal text-foreground-muted'>{description}</span>
+              </Visible>
+            </span>
             <IconChevronDown
-              className={cn('cursor-pointer transition hover:text-primary', {
+              className={cn('transition', {
                 '-rotate-180': isOpen
               })}
             />
-          </Visible>
-        </div>
+          </button>
+        ) : (
+          <div className={cn('flex items-start justify-between gap-4', titleClassName)}>
+            <div className='grid gap-1'>
+              <Heading className='font-medium'>{title}</Heading>
+              <Visible when={description}>
+                <p className='text-sm text-foreground-muted'>{description}</p>
+              </Visible>
+            </div>
+            <Visible when={actions}>
+              <div className='flex shrink-0 items-center gap-2'>{actions}</div>
+            </Visible>
+          </div>
+        )}
       </Visible>
 
       <Visible when={title && collapsible}>

@@ -63,9 +63,13 @@ export function AutomationTriggerFormDialog({
             }}
           >
             <div className='flex flex-wrap items-center justify-between gap-3'>
-              <label className='text-sm font-medium text-foreground'>Trigger details</label>
-              <label className='flex items-center gap-3 text-sm text-foreground'>
+              <div className='text-sm font-medium text-foreground'>Trigger details</div>
+              <label
+                htmlFor='automation-trigger-enabled'
+                className='flex items-center gap-3 text-sm text-foreground'
+              >
                 <Switch
+                  id='automation-trigger-enabled'
                   checked={form.enabled}
                   onCheckedChange={enabled => onUpdateForm(current => ({ ...current, enabled }))}
                 />
@@ -73,19 +77,33 @@ export function AutomationTriggerFormDialog({
               </label>
             </div>
             <div className='grid gap-2'>
-              <label className='text-sm font-medium text-foreground'>Name</label>
+              <label
+                htmlFor='automation-trigger-name'
+                className='text-sm font-medium text-foreground'
+              >
+                Name
+              </label>
               <Input
+                id='automation-trigger-name'
                 value={form.name}
                 onChange={event => onUpdateForm(current => ({ ...current, name: event.target.value }))}
               />
             </div>
             <div className='grid gap-2'>
-              <label className='text-sm font-medium text-foreground'>Automation</label>
+              <label
+                htmlFor='automation-trigger-automation'
+                className='text-sm font-medium text-foreground'
+              >
+                Automation
+              </label>
               <Select
                 value={form.automationId}
                 onValueChange={automationId => onUpdateForm(current => ({ ...current, automationId }))}
               >
-                <SelectTrigger className='w-full'>
+                <SelectTrigger
+                  id='automation-trigger-automation'
+                  className='w-full'
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -101,12 +119,20 @@ export function AutomationTriggerFormDialog({
               </Select>
             </div>
             <div className='grid gap-2'>
-              <label className='text-sm font-medium text-foreground'>Target app</label>
+              <label
+                htmlFor='automation-trigger-target'
+                className='text-sm font-medium text-foreground'
+              >
+                Target app
+              </label>
               <Select
                 value={form.targetApplicationId}
                 onValueChange={onUpdateTargetApplication}
               >
-                <SelectTrigger className='w-full'>
+                <SelectTrigger
+                  id='automation-trigger-target'
+                  className='w-full'
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -143,8 +169,12 @@ export function AutomationTriggerFormDialog({
                 onUpdateForm(current => ({ ...current, schedule: { ...current.schedule, ...patch } }))
               }
             />
-            <label className='flex items-center gap-2 text-sm text-foreground'>
+            <label
+              htmlFor='automation-trigger-start-if-needed'
+              className='flex items-center gap-2 text-sm text-foreground'
+            >
               <Checkbox
+                id='automation-trigger-start-if-needed'
                 checked={form.startPolicy === 'start-if-needed'}
                 onCheckedChange={checked =>
                   onUpdateForm(current => ({

@@ -40,7 +40,7 @@ export const RuntimePowerControls = () => {
         <DropdownMenuTrigger asChild>
           <Button
             variant={primaryVariant}
-            size='icon'
+            size='icon-md'
             disabled={menuDisabled}
             className='rounded-l-none px-2'
             aria-label='Runtime actions'

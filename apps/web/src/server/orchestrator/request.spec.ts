@@ -1,4 +1,4 @@
-import { describe, expect, it, jest, beforeEach } from '@jest/globals'
+import { beforeEach, describe, expect, it, vi, type MockedFunction } from 'vitest'
 
 const okResponse = (body: unknown = { ok: true }) =>
   new Response(JSON.stringify(body), {
@@ -15,13 +15,13 @@ const errorResponse = (body: unknown, status = 400) =>
 const noContentResponse = () => new Response(null, { status: 204 })
 
 const getFetchInit = () => {
-  const fetchMock = global.fetch as jest.MockedFunction<typeof fetch>
+  const fetchMock = global.fetch as MockedFunction<typeof fetch>
   return fetchMock.mock.calls.at(-1)?.[1] as RequestInit
 }
 
 describe('orchestrator request helpers', () => {
   beforeEach(() => {
-    const fetchMock: jest.MockedFunction<typeof fetch> = jest.fn(() => Promise.resolve(okResponse()))
+    const fetchMock: MockedFunction<typeof fetch> = vi.fn(() => Promise.resolve(okResponse()))
     global.fetch = fetchMock
   })
 
@@ -35,7 +35,7 @@ describe('orchestrator request helpers', () => {
   })
 
   it('handles no-content successful responses', async () => {
-    const fetchMock: jest.MockedFunction<typeof fetch> = jest.fn(() => Promise.resolve(noContentResponse()))
+    const fetchMock: MockedFunction<typeof fetch> = vi.fn(() => Promise.resolve(noContentResponse()))
     global.fetch = fetchMock
     const { emptyRequest } = await import('./request')
 
@@ -75,15 +75,18 @@ describe('orchestrator request helpers', () => {
   })
 
   it('uses upstream validation messages when requests fail', async () => {
-    const fetchMock: jest.MockedFunction<typeof fetch> = jest.fn(() =>
+    const fetchMock: MockedFunction<typeof fetch> = vi.fn(() =>
       Promise.resolve(errorResponse({ message: ['name is required', 'name is too short'] }))
     )
     global.fetch = fetchMock
-    const { emptyRequest, OrchestratorRequestError } = await import('./request')
+    const { emptyRequest } = await import('./request')
 
-    await expect(emptyRequest('/apps')).rejects.toEqual(
-      new OrchestratorRequestError('name is required, name is too short', 400)
-    )
+    await expect(emptyRequest('/apps')).rejects.toMatchObject({
+      name: 'OrchestratorRequestError',
+      message: 'name is required, name is too short',
+      status: 400,
+      requestId: expect.any(String) as string
+    })
   })
 
   it('rejects orchestrator API paths outside the API root', async () => {

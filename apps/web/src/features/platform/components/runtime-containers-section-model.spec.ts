@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import {
   buildContainersGridHref,
   canRunBulkContainerAction,
@@ -71,7 +71,7 @@ describe('orchestrator containers section model', () => {
     ).toEqual({
       title: 'Some containers could not be removed',
       description: '1 request failed.',
-      variant: 'destructive'
+      variant: 'danger'
     })
   })
 })

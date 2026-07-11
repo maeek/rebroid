@@ -20,7 +20,7 @@ export const AppViewerOpenAsMeAction = ({ app }: AppViewerOpenAsMeActionProps) =
 
   return (
     <Button
-      variant='update'
+      variant='primary'
       disabled={!app || isRunningAction}
       onClick={() => {
         if (!app) {

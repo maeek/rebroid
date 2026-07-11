@@ -1,5 +1,5 @@
 import type { AuditSort } from '@/server/audit/query'
-import type { AuditEventPage } from '@/server/storage/database'
+import type { AuditEventPage } from '@/server/persistence/audit-repository'
 
 export type ActivityFilterValues = {
   search?: string

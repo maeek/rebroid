@@ -2,7 +2,7 @@ import type { ChangeEvent } from 'react'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
-import { Setting } from '@/shared/ui/settings/setting'
+import { FormField } from '@/components/ui/form-field'
 import { verticalSettingClassName } from './app-form-utils'
 
 type AppIdentitySectionProps = {
@@ -52,13 +52,13 @@ export const AppIdentitySection = ({
     >
       <div className='grid gap-5 xl:grid-cols-[max-content_1fr]'>
         <Visible when={iconSlot}>
-          <div className='border-border/60 xl:pr-5'>{iconSlot}</div>
+          <div className='border-surface-border/60 xl:pr-5'>{iconSlot}</div>
         </Visible>
         <div className='flex flex-col gap-6'>
-          <Setting
+          <FormField
             label={nameLabel}
             description={nameDescription}
-            variant='vertical'
+            layout='vertical'
             className={verticalSettingClassName}
             required={nameRequired}
           >
@@ -69,11 +69,11 @@ export const AppIdentitySection = ({
               minLength={nameMinLength}
               onChange={handleNameChange}
             />
-          </Setting>
-          <Setting
+          </FormField>
+          <FormField
             label='APK file'
             description={apkDescription}
-            variant='vertical'
+            layout='vertical'
             className={verticalSettingClassName}
           >
             <div className='flex w-full flex-col gap-2'>
@@ -87,7 +87,7 @@ export const AppIdentitySection = ({
                 <p className='text-sm text-foreground-muted'>{uploadedApkLabel}</p>
               </Visible>
             </div>
-          </Setting>
+          </FormField>
         </div>
       </div>
     </Section>

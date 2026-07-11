@@ -1,5 +1,5 @@
 import { PageHeader } from '@/shared/ui/page/page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { AutomationTracesSection } from './automation-traces-section'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
 import type { Automation, AutomationRun } from '@/server/orchestrator/automations/types'
@@ -14,7 +14,7 @@ export function AutomationTracesPage({
   runs: AutomationRun[]
 }) {
   return (
-    <ProtectedStackPageLayout mainClassName='gap-0'>
+    <StandardPage className='gap-0'>
       <PageHeader
         breadcrumbs={[
           { label: 'Automations' },
@@ -31,6 +31,6 @@ export function AutomationTracesPage({
           runs={runs}
         />
       </section>
-    </ProtectedStackPageLayout>
+    </StandardPage>
   )
 }

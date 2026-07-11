@@ -4,8 +4,8 @@ import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Visible } from '@/components/ui/visible'
-import { RuntimeImagePicker } from '@/features/platform/components/runtime-image-picker'
-import { Setting } from '@/shared/ui/settings/setting'
+import { RuntimeImagePicker } from '@/shared/ui/runtime-image/runtime-image-picker'
+import { FormField } from '@/components/ui/form-field'
 import type { BuilderValues } from '../model/builder-values'
 import type { ContainerImageBuildRecipe, PlatformImage } from '@/server/orchestrator/platform/types'
 
@@ -33,6 +33,7 @@ export const RecipeSection = ({
   onSelectRecipe
 }: RecipeSectionProps) => (
   <Section
+    surface='plain'
     title='Recipe'
     contentClassName='gap-4'
   >
@@ -69,29 +70,29 @@ export const RecipeSection = ({
         </SelectContent>
       </Select>
     </Visible>
-    <Setting
+    <FormField
       label='Name'
-      variant='vertical'
+      layout='vertical'
       className={verticalSettingClassName}
     >
       <Input
         value={values.name}
         onChange={event => onPatchValues({ name: event.target.value })}
       />
-    </Setting>
-    <Setting
+    </FormField>
+    <FormField
       label='Target image'
-      variant='vertical'
+      layout='vertical'
       className={verticalSettingClassName}
     >
       <Input
         value={values.targetImage}
         onChange={event => onPatchValues({ targetImage: event.target.value })}
       />
-    </Setting>
-    <Setting
+    </FormField>
+    <FormField
       label='Base image'
-      variant='vertical'
+      layout='vertical'
       className={verticalSettingClassName}
     >
       <RuntimeImagePicker
@@ -99,32 +100,32 @@ export const RecipeSection = ({
         value={values.baseImage}
         onChange={baseImage => onPatchValues({ baseImage })}
       />
-    </Setting>
+    </FormField>
     <div className='grid grid-cols-2 gap-3'>
-      <Setting
+      <FormField
         label='Android'
-        variant='vertical'
+        layout='vertical'
         className={verticalSettingClassName}
       >
         <Input
           value={values.androidVersion}
           onChange={event => onPatchValues({ androidVersion: event.target.value })}
         />
-      </Setting>
-      <Setting
+      </FormField>
+      <FormField
         label='Arch'
-        variant='vertical'
+        layout='vertical'
         className={verticalSettingClassName}
       >
         <Input
           value={values.architecture}
           onChange={event => onPatchValues({ architecture: event.target.value })}
         />
-      </Setting>
+      </FormField>
     </div>
-    <Setting
+    <FormField
       label='Signature spoofing'
-      variant='vertical'
+      layout='vertical'
       className={verticalSettingClassName}
     >
       <Select
@@ -141,7 +142,7 @@ export const RecipeSection = ({
           <SelectItem value='not_applicable'>Not applicable</SelectItem>
         </SelectContent>
       </Select>
-    </Setting>
+    </FormField>
     <div className='flex flex-wrap gap-2'>
       <Button
         type='button'

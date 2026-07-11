@@ -12,7 +12,7 @@ export const actionDialogCopy: Record<
     title: string
     description: string
     errorTitle: string
-    buttonVariant: 'secondary' | 'destructive'
+    buttonVariant: 'secondary' | 'danger'
   }
 > = {
   stop: {
@@ -26,7 +26,7 @@ export const actionDialogCopy: Record<
     description:
       'Remove the selected Docker container. Enable force removal when Docker reports the container as stuck in removing or when a normal removal does not complete.',
     errorTitle: 'Could not remove container',
-    buttonVariant: 'destructive'
+    buttonVariant: 'danger'
   }
 }
 

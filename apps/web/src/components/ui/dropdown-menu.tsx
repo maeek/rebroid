@@ -9,7 +9,7 @@ import {
   floatingSurfaceClassName,
   interactiveItemClassName,
   triggerResetClassName
-} from '@/components/ui/surface-classes'
+} from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 
 type MenuSelectEvent = React.MouseEvent<HTMLElement> & {
@@ -80,7 +80,7 @@ const DropdownMenuSubTrigger = React.forwardRef<
       ref={ref}
       render={view}
       className={cn(
-        'flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none data-[highlighted]:bg-accent data-[open]:bg-accent',
+        'flex cursor-default select-none items-center rounded-control px-2 py-1.5 text-sm outline-none data-[highlighted]:bg-accent data-[open]:bg-accent',
         {
           'pl-8': inset
         },
@@ -108,7 +108,7 @@ const DropdownMenuSubContent = React.forwardRef<
     <DropdownMenuPrimitive.Popup
       ref={ref}
       className={cn(
-        'z-50 min-w-32 overflow-hidden rounded-md p-1 data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
+        'z-50 min-w-32 overflow-hidden rounded-control p-1 data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
         floatingSurfaceClassName,
         className
       )}
@@ -132,7 +132,7 @@ const DropdownMenuContent = React.forwardRef<
       <DropdownMenuPrimitive.Popup
         ref={ref}
         className={cn(
-          'z-50 min-w-32 overflow-hidden rounded-md p-1 data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
+          'z-50 min-w-32 overflow-hidden rounded-control p-1 data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
           floatingSurfaceClassName,
           className
         )}
@@ -182,7 +182,7 @@ const DropdownMenuLabel = React.forwardRef<
   <DropdownMenuPrimitive.GroupLabel
     ref={ref}
     className={cn(
-      'px-2 py-1.5 text-sm font-semibold',
+      'px-2 py-1.5 text-sm font-medium',
       {
         'pl-8': inset
       },

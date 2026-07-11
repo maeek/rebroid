@@ -92,7 +92,7 @@ export const PermissionSwitchTable = ({
     <div className={cn('overflow-hidden', className)}>
       <div className='pb-3'>
         <div className='relative'>
-          <IconSearch className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground' />
+          <IconSearch className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-foreground-muted' />
           <Input
             value={search}
             className='pl-9'
@@ -110,10 +110,10 @@ export const PermissionSwitchTable = ({
 
               return (
                 <section key={group.category.id}>
-                  <div className='flex items-center justify-between gap-4 border-y border-border/60 py-3'>
+                  <div className='flex items-center justify-between gap-4 border-y border-surface-border/60 py-3'>
                     <div className='min-w-0'>
-                      <h4 className='text-sm font-semibold'>{group.category.name}</h4>
-                      <p className='text-xs text-muted-foreground'>
+                      <h4 className='text-sm font-medium'>{group.category.name}</h4>
+                      <p className='text-xs text-foreground-muted'>
                         {enabledCount}/{group.allPermissions.length} enabled
                       </p>
                     </div>
@@ -139,22 +139,22 @@ export const PermissionSwitchTable = ({
                               {inheritedFrom.map(groupName => (
                                 <Badge
                                   key={groupName}
-                                  variant='status'
-                                  className='border-primary/25 bg-primary/10 text-[0.65rem] text-primary'
+                                  variant='success'
+                                  className='border-primary/25 bg-primary/10 text-xs text-primary'
                                 >
                                   {groupName}
                                 </Badge>
                               ))}
                               <Visible when={isOverridden}>
                                 <Badge
-                                  variant='secondary'
-                                  className='text-[0.65rem]'
+                                  variant='neutral'
+                                  className='text-xs'
                                 >
                                   override
                                 </Badge>
                               </Visible>
                             </div>
-                            <div className='text-xs text-muted-foreground'>{permission.description}</div>
+                            <div className='text-xs text-foreground-muted'>{permission.description}</div>
                           </div>
                           <Switch
                             checked={getPermissionEnabled(permission.id)}
@@ -171,7 +171,7 @@ export const PermissionSwitchTable = ({
           </div>
         </Visible>
         <Visible when={permissionGroups.length === 0}>
-          <div className='flex min-h-40 items-center justify-center px-6 text-center text-sm text-muted-foreground'>
+          <div className='flex min-h-40 items-center justify-center px-6 text-center text-sm text-foreground-muted'>
             No permissions match your search.
           </div>
         </Visible>

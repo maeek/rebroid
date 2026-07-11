@@ -1,5 +1,5 @@
 import { IconChevronDown, IconCirclePlus } from '@tabler/icons-react'
-import classNames from 'classnames'
+import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { Visible } from '@/components/ui/visible'
 import { variantStyles, type NavigationItem, type NavigationVariant } from './protected-navigation-config'
@@ -51,7 +51,7 @@ export const NavLink = ({ href, label, Icon, isActive, variant, onNavigate }: Na
     <li>
       <Link
         href={href}
-        className={classNames(styles.item, isActive && styles.activeItem)}
+        className={cn(styles.item, isActive && styles.activeItem)}
         onClick={onNavigate}
       >
         <div className={styles.iconWrap}>
@@ -88,16 +88,16 @@ export const NestedNavigationMenu = ({
 
   return (
     <li>
-      <div className='flex items-center rounded-sm text-foreground dark:hover:text-white'>
+      <div className='flex items-center rounded-control text-foreground dark:hover:text-white'>
         <Link
           href={href}
-          className={classNames(styles.item, 'min-w-0 flex-1 rounded-none bg-transparent')}
+          className={cn(styles.item, 'min-w-0 flex-1 rounded-none bg-transparent')}
           onClick={onNavigate}
         >
           <div className={styles.iconWrap}>
             <ParentIcon className={styles.icon} />
           </div>
-          <span className={classNames(styles.label, 'truncate')}>{label}</span>
+          <span className={cn(styles.label, 'truncate')}>{label}</span>
         </Link>
         <button
           type='button'
@@ -106,7 +106,7 @@ export const NestedNavigationMenu = ({
           aria-expanded={isOpen}
           onClick={onToggle}
         >
-          <IconChevronDown className={classNames('size-4 transition-transform', isOpen && 'rotate-180')} />
+          <IconChevronDown className={cn('size-4 transition-transform', isOpen && 'rotate-180')} />
         </button>
       </div>
       <Visible when={isOpen}>
@@ -115,10 +115,7 @@ export const NestedNavigationMenu = ({
             <li key={itemHref}>
               <Link
                 href={itemHref}
-                className={classNames(
-                  styles.nestedItem,
-                  isActivePath(itemHref, itemHref === href) && styles.nestedActiveItem
-                )}
+                className={cn(styles.nestedItem, isActivePath(itemHref, itemHref === href) && styles.nestedActiveItem)}
                 onClick={onNavigate}
               >
                 <div className={styles.nestedIconWrap}>

@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
 import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { RuntimeImagesSection } from './runtime-images-section'
 import type { PlatformImagesGridPage, PlatformImagesGridQuery } from '@/server/orchestrator/platform/types'
 
@@ -26,12 +26,12 @@ export const RuntimeImagesPageClient = ({
   }
 
   return (
-    <ProtectedStackPageLayout mainClassName='gap-2'>
+    <StandardPage className='gap-2'>
       <PlatformPageHeader
         title='Images'
         description='Local images available to application containers, custom runtimes, and platform sidecars.'
         breadcrumbRoot={{ label: 'Runtime' }}
-        titleActions={
+        actions={
           <div className='flex items-center gap-2'>
             <Button asChild>
               <Link href='/runtime/images/build'>
@@ -54,6 +54,6 @@ export const RuntimeImagesPageClient = ({
           onRefreshComplete={() => setIsRefreshing(false)}
         />
       </section>
-    </ProtectedStackPageLayout>
+    </StandardPage>
   )
 }

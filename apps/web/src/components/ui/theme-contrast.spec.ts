@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 
 type HslTuple = [number, number, number]
 type RgbTuple = [number, number, number]
@@ -184,12 +184,10 @@ describe('theme contrast tokens', () => {
     ['foreground', 'surface-panel'],
     ['foreground', 'surface-band'],
     ['foreground', 'surface-elevated'],
-    ['card-foreground', 'card'],
-    ['popover-foreground', 'popover'],
     ['primary-foreground', 'primary'],
-    ['secondary-foreground', 'secondary'],
     ['accent-foreground', 'accent'],
-    ['destructive-foreground', 'destructive'],
+    ['info-foreground', 'info'],
+    ['danger-foreground', 'danger'],
     ['success-foreground', 'success'],
     ['warning-foreground', 'warning']
   ] as const

@@ -31,7 +31,7 @@ export const UserAvatarInput = ({
       toast({
         title: 'Could not prepare avatar',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     }
   }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import classNames from 'classnames'
+import { cn } from '@/lib/utils'
 import { useTheme } from 'next-themes'
 import { Textarea } from '@/components/ui/textarea'
 import { createAutomationYamlCompletionProvider } from './language/automation-yaml-completions'
@@ -215,7 +215,7 @@ export function AutomationMonacoYamlEditor({
     return (
       <Textarea
         value={value}
-        className={classNames('h-full min-h-[28rem] resize-y font-mono text-xs', className)}
+        className={cn('h-full min-h-[28rem] resize-y font-mono text-xs', className)}
         aria-label={ariaLabel}
         onChange={event => onChange(event.target.value)}
       />
@@ -225,8 +225,8 @@ export function AutomationMonacoYamlEditor({
   return (
     <div
       ref={containerRef}
-      className={classNames(
-        'h-full min-h-[28rem] resize-y overflow-hidden rounded-md border border-border/60',
+      className={cn(
+        'h-full min-h-[28rem] resize-y overflow-hidden rounded-control border border-surface-border/60',
         className
       )}
       aria-label={`${ariaLabel} editor`}

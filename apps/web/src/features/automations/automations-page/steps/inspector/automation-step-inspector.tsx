@@ -35,7 +35,7 @@ export function AutomationStepInspector({
   return (
     <>
       <aside className='hidden min-w-0 xl:block'>
-        <div className='overflow-hidden rounded-lg border border-border/70 bg-surface-panel/50 dark:bg-white/7 backdrop-blur-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]'>
+        <div className='overflow-hidden rounded-panel border border-surface-border/70 bg-surface-panel/50 dark:bg-white/7 backdrop-blur-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]'>
           {step ? (
             <AutomationStepInspectorContent
               step={step}
@@ -59,7 +59,7 @@ export function AutomationStepInspector({
             if (!open) onClose()
           }}
         >
-          <DrawerContent className='max-h-[88dvh] overflow-hidden rounded-t-xl border-border/80 bg-background/95'>
+          <DrawerContent className='max-h-[88dvh] overflow-hidden rounded-t-xl border-surface-border/80 bg-background/95'>
             <DrawerTitle className='sr-only'>{step ? 'Edit step' : 'No step selected'}</DrawerTitle>
             <DrawerDescription className='sr-only'>Edit the selected workflow step.</DrawerDescription>
             {step ? (
@@ -128,7 +128,7 @@ function AutomationStepInspectorContent({
             <AutomationStepEditor
               step={step}
               commands={commands}
-              boxed={false}
+              surface='plain'
               onChange={onChange}
             />
           )

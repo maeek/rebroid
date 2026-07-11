@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import { isDisplayViewerStreamStatus, viewerStreamStatusMessageType } from './display-viewer-stream-status'
 
 describe('display viewer stream status messages', () => {

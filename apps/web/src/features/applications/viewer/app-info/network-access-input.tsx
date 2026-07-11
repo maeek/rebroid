@@ -1,7 +1,7 @@
 import { type KeyboardEvent, useState } from 'react'
 import { IconX } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
-import { chipInputSurfaceClassName } from '@/components/ui/surface-classes'
+import { chipInputSurfaceClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 
 type NetworkAccessInputProps = {
@@ -77,7 +77,7 @@ export const NetworkAccessInput = ({
     <div className='w-full space-y-2'>
       <div
         className={cn(
-          'flex min-h-11 w-full flex-wrap items-center gap-2 rounded-md px-3 py-2',
+          'flex min-h-11 w-full flex-wrap items-center gap-2 rounded-control px-3 py-2',
           chipInputSurfaceClassName,
           {
             'cursor-not-allowed opacity-60': disabled || isBusy
@@ -87,14 +87,14 @@ export const NetworkAccessInput = ({
         {cidrs.map(cidr => (
           <Badge
             key={cidr}
-            variant='secondary'
-            className='flex items-center gap-1 rounded-md border border-control-border/80 bg-muted/80 px-2 py-1 text-xs font-medium text-foreground-muted shadow-xs'
+            variant='neutral'
+            className='flex items-center gap-1 rounded-control border border-control-border/80 bg-surface-band/80 px-2 py-1 text-xs font-medium text-foreground-muted shadow-xs'
           >
             <span>{cidr}</span>
             <button
               type='button'
               aria-label={`Remove ${cidr}`}
-              className='cursor-pointer rounded-sm text-muted-foreground transition hover:text-foreground'
+              className='cursor-pointer rounded-control text-foreground-muted transition hover:text-foreground'
               disabled={disabled || isBusy}
               onClick={() => onRemoveCidr(cidr)}
             >
@@ -105,14 +105,14 @@ export const NetworkAccessInput = ({
         <input
           value={draft}
           disabled={disabled || isBusy}
-          className='h-7 min-w-34 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground'
+          className='h-7 min-w-34 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-foreground-muted'
           placeholder={isBusy ? 'Updating access list...' : 'Add CIDR and press Enter'}
           onBlur={commitDraft}
           onChange={event => setDraft(event.target.value)}
           onKeyDown={handleKeyDown}
         />
       </div>
-      <p className='text-xs leading-relaxed text-muted-foreground'>
+      <p className='text-xs leading-relaxed text-foreground-muted'>
         Enter app-specific IPv4 CIDRs like 10.20.0.0/16. Plain IPv4 addresses are stored as /32 entries. API/default
         destinations are applied automatically.
       </p>

@@ -12,9 +12,9 @@ const stateClassName = (state: string) => {
     return 'bg-primary/15 text-primary'
   }
   if (state === 'exited' || state === 'dead') {
-    return 'bg-destructive/15 text-destructive'
+    return 'bg-danger/15 text-danger'
   }
-  return 'bg-secondary text-secondary-foreground'
+  return 'bg-surface-band text-foreground'
 }
 
 export const ContainerNameCell = ({ container, className }: { container: PlatformContainer; className?: string }) => {
@@ -38,10 +38,10 @@ export const ContainerNameCell = ({ container, className }: { container: Platfor
           <span className='shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary'>managed</span>
         </Visible>
         <Visible when={container.orphaned}>
-          <span className='shrink-0 rounded-full bg-destructive/15 px-2 py-0.5 text-xs text-destructive'>orphaned</span>
+          <span className='shrink-0 rounded-full bg-danger/15 px-2 py-0.5 text-xs text-danger'>orphaned</span>
         </Visible>
       </div>
-      <div className='truncate text-xs text-muted-foreground'>{container.shortId}</div>
+      <div className='truncate text-xs text-foreground-muted'>{container.shortId}</div>
     </div>
   )
 }

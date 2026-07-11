@@ -36,19 +36,19 @@ const StreamingMetricBadges = ({ metrics }: { metrics?: DisplayViewerStreamMetri
 
   return (
     <div className='grid gap-2 sm:grid-cols-3'>
-      <div className='flex items-center gap-2 rounded-md border border-border/70 bg-surface-band/35 px-3 py-2 text-xs'>
+      <div className='flex items-center gap-2 rounded-control border border-surface-border/70 bg-surface-band/35 px-3 py-2 text-xs'>
         <IconActivityHeartbeat className='size-4 text-primary' />
         <span className='text-foreground-muted'>FPS</span>
         <span className='ml-auto font-medium text-foreground'>{fresh ? metricValue(metrics?.fps) : '--'}</span>
       </div>
-      <div className='flex items-center gap-2 rounded-md border border-border/70 bg-surface-band/35 px-3 py-2 text-xs'>
+      <div className='flex items-center gap-2 rounded-control border border-surface-border/70 bg-surface-band/35 px-3 py-2 text-xs'>
         <IconGauge className='size-4 text-primary' />
         <span className='text-foreground-muted'>Bitrate</span>
         <span className='ml-auto font-medium text-foreground'>
           {fresh ? `${metricValue(metrics?.bitrateMbps, 1)} Mbps` : '--'}
         </span>
       </div>
-      <div className='flex items-center gap-2 rounded-md border border-border/70 bg-surface-band/35 px-3 py-2 text-xs'>
+      <div className='flex items-center gap-2 rounded-control border border-surface-border/70 bg-surface-band/35 px-3 py-2 text-xs'>
         <IconNetwork className='size-4 text-primary' />
         <span className='text-foreground-muted'>Latency</span>
         <span className='ml-auto font-medium text-foreground'>
@@ -93,8 +93,8 @@ export const StreamingToolsSection = ({
         <div className='flex items-center gap-x-2'>
           Streaming
           <Badge
-            variant={viewerSettings.transport === 'webrtc' ? 'status' : 'secondary'}
-            className='uppercase tracking-wide px-1.5 py-0.5 text-[10px] font-medium'
+            variant={viewerSettings.transport === 'webrtc' ? 'success' : 'neutral'}
+            className='uppercase tracking-wide px-1.5 py-0.5 text-xs font-medium'
           >
             {viewerSettings.transport === 'webrtc' ? 'WebRTC' : 'WebSocket'}
           </Badge>

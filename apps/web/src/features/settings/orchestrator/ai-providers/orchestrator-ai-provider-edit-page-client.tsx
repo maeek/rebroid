@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { ProviderConnectionSection } from './provider-edit-form-sections'
 import { ProviderHealthBanner } from './provider-health-badge'
 import { ProviderModelsGrid } from './provider-models-grid'
@@ -40,7 +40,7 @@ export const OrchestratorAiProviderEditPageClient = ({
   } = useAiProviderEditController(initialProvider)
 
   return (
-    <ProtectedStackPageLayout mainClassName='gap-2'>
+    <StandardPage className='gap-2'>
       <PlatformPageHeader
         title={initialProvider.label}
         titlePrefix={<GradientSparklesIcon className='size-8 max-sm:size-5' />}
@@ -90,6 +90,6 @@ export const OrchestratorAiProviderEditPageClient = ({
           onLoadRemoteModels={loadRemoteModels}
         />
       </section>
-    </ProtectedStackPageLayout>
+    </StandardPage>
   )
 }

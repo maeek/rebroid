@@ -45,7 +45,7 @@ export function AutomationEmptySplash({
   const content = copy[variant]
   const action = (
     <Badge
-      variant='status'
+      variant='success'
       className='gap-2 px-4 py-2 text-sm hover:bg-primary/20'
     >
       <IconPlus className='size-4' />
@@ -59,7 +59,7 @@ export function AutomationEmptySplash({
         <div className='flex max-w-lg flex-col items-center gap-6 text-center'>
           <div className='relative flex size-28 items-center justify-center'>
             <div className='absolute inset-0 rounded-full bg-primary/10' />
-            <div className='absolute size-20 rounded-full bg-secondary/80' />
+            <div className='absolute size-20 rounded-full bg-surface-band/80' />
             <Icon className='relative size-12 text-primary' />
             <IconDeviceMobileCog className='absolute -right-1 bottom-3 size-8 text-foreground-muted' />
           </div>

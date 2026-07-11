@@ -26,24 +26,24 @@ export const ApprovalEventView = ({
   return (
     <section
       aria-label='Approval required'
-      className='overflow-hidden rounded-xl border border-warning/35 bg-warning/8 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1'
+      className='overflow-hidden rounded-panel border border-warning/35 bg-warning/8 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1'
     >
       <div className='flex items-start gap-3 p-3'>
-        <span className='flex size-8 shrink-0 items-center justify-center rounded-lg border border-warning/25 bg-warning/12 text-warning'>
+        <span className='flex size-8 shrink-0 items-center justify-center rounded-panel border border-warning/25 bg-warning/12 text-warning'>
           <IconShieldCheck className='size-4' />
         </span>
         <div className='min-w-0 flex-1'>
           <div className='flex flex-wrap items-center gap-2'>
-            <h4 className='text-xs font-semibold text-foreground'>Approval required</h4>
+            <h4 className='text-xs font-medium text-foreground'>Approval required</h4>
             <Badge
               variant='warning'
-              className='font-mono text-[10px] font-medium'
+              className='font-mono text-xs font-medium'
             >
               {approval.program}
             </Badge>
           </div>
           <p className='mt-1 text-xs leading-5 text-foreground-muted'>{approval.reason}</p>
-          <p className='mt-1 flex items-center gap-1.5 text-[11px] text-foreground-muted/80'>
+          <p className='mt-1 flex items-center gap-1.5 text-xs text-foreground-muted/80'>
             <IconLock className='size-3' />
             Approval applies to one follow-up run and the read-only command allowlist.
           </p>

@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import { makeAutomationStepIdsUnique } from './automation-step-clipboard'
 import type { AutomationStepForm } from '../../editor/builder-utils'
 

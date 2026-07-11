@@ -1,9 +1,9 @@
 import { Skeleton } from '@/components/ui/skeleton'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
 
 export const PlatformOverviewPageSkeleton = () => (
-  <ProtectedStackPageLayout mainClassName='gap-2'>
+  <StandardPage className='gap-2'>
     <PageHeaderSkeleton
       titleWidth='w-40'
       includeOrchestratorBreadcrumb={false}
@@ -16,7 +16,7 @@ export const PlatformOverviewPageSkeleton = () => (
           {Array.from({ length: 4 }).map((_, index) => (
             <div
               key={index}
-              className='rounded-lg border border-border/60 bg-surface-panel/45 px-4 py-3'
+              className='rounded-panel border border-surface-border/60 bg-surface-panel/45 px-4 py-3'
             >
               <Skeleton className='h-3 w-24' />
               <Skeleton className='mt-2 h-8 w-20' />
@@ -30,12 +30,12 @@ export const PlatformOverviewPageSkeleton = () => (
       {Array.from({ length: 4 }).map((_, index) => (
         <div
           key={index}
-          className='grid gap-4 rounded-lg border border-border/60 bg-surface-panel/35 p-4'
+          className='grid gap-4 rounded-panel border border-surface-border/60 bg-surface-panel/35 p-4'
         >
           <Skeleton className='h-5 w-32' />
           <Skeleton className='h-56 w-full' />
         </div>
       ))}
     </section>
-  </ProtectedStackPageLayout>
+  </StandardPage>
 )

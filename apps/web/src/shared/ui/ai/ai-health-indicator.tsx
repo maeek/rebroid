@@ -3,7 +3,7 @@ import { IconCircleCheck, IconCircleDashed, IconCircleX } from '@tabler/icons-re
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import type { AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
+import type { AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 
 export const aiHealthLabel = (health: AutomationAiProviderHealth | null, isChecking: boolean) => {
   if (isChecking) return 'Checking'
@@ -14,9 +14,9 @@ export const aiHealthLabel = (health: AutomationAiProviderHealth | null, isCheck
 }
 
 export const aiHealthBadgeVariant = (health: AutomationAiProviderHealth | null) => {
-  if (health?.status === 'ok') return 'status'
-  if (health?.status === 'disabled') return 'secondary'
-  if (health) return 'destructive'
+  if (health?.status === 'ok') return 'success'
+  if (health?.status === 'disabled') return 'neutral'
+  if (health) return 'danger'
   return 'outline'
 }
 
@@ -41,7 +41,7 @@ export const AiHealthIcon = ({
     return <IconCircleCheck className={cn('size-4 text-success', className)} />
   }
 
-  return <IconCircleX className={cn('size-4 text-destructive', className)} />
+  return <IconCircleX className={cn('size-4 text-danger', className)} />
 }
 
 export const AiHealthBadge = ({
@@ -82,7 +82,9 @@ export const AiHealthIndicator = ({
   const message = isChecking ? 'Checking selected provider/model...' : health?.message || emptyMessage
 
   return (
-    <div className={cn('rounded-md border border-border/70 bg-surface-band/35 px-3 py-2 text-xs', className)}>
+    <div
+      className={cn('rounded-control border border-surface-border/70 bg-surface-band/35 px-3 py-2 text-xs', className)}
+    >
       <div className='flex items-center justify-between gap-3'>
         <div className='flex min-w-0 items-center gap-2 font-medium text-foreground'>
           <AiHealthIcon

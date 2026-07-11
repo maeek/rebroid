@@ -15,8 +15,8 @@ import { AppActionDialogSummary } from '@/features/applications/components/app-a
 import { useAppsListContext } from './apps-list-context'
 import type { BulkAction, PendingAppAction } from './apps-list-context'
 
-type DialogTone = 'destructive' | 'warning'
-type DialogButtonVariant = 'secondary' | 'destructive'
+type DialogTone = 'danger' | 'warning'
+type DialogButtonVariant = 'secondary' | 'danger'
 type RemoveDataKey = 'false' | 'true'
 
 const actionLabels: Record<BulkAction, { singular: string; plural: string }> = {
@@ -67,8 +67,8 @@ const bulkDialogCopy: Record<
       false: ['Saved profile data is preserved when possible.'],
       true: ['Saved profile data is deleted.']
     },
-    tone: 'destructive',
-    buttonVariant: 'destructive'
+    tone: 'danger',
+    buttonVariant: 'danger'
   }
 }
 
@@ -103,8 +103,8 @@ const pendingDialogCopy: Record<
       false: 'Saved profile data is preserved when possible.',
       true: 'Saved profile data is deleted with the app.'
     },
-    tone: 'destructive',
-    buttonVariant: 'destructive'
+    tone: 'danger',
+    buttonVariant: 'danger'
   }
 }
 

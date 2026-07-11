@@ -1,5 +1,9 @@
-import '@testing-library/jest-dom'
+import '@testing-library/jest-dom/vitest'
+import { cleanup } from '@testing-library/react'
+import { afterEach } from 'vitest'
 import 'whatwg-fetch'
+
+afterEach(cleanup)
 
 if (!globalThis.PointerEvent) {
   class PointerEventPolyfill extends MouseEvent {

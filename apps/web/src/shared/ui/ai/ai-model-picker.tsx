@@ -7,7 +7,7 @@ import {
   AiModelPickerReadonlyChip,
   AiModelPickerTrigger
 } from './ai-model-picker-parts'
-import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
+import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 
 type CatalogModel = AutomationAiModelCatalogProvider['models'][number]
 
@@ -102,7 +102,7 @@ export const AiModelPicker = ({
           />
 
           {catalog.length === 0 ? (
-            <div className='rounded-md border border-border/70 bg-surface-band/35 px-3 py-2 text-xs text-foreground-muted'>
+            <div className='rounded-control border border-surface-border/70 bg-surface-band/35 px-3 py-2 text-xs text-foreground-muted'>
               No enabled AI provider or model is configured.
             </div>
           ) : null}

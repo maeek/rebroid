@@ -1,4 +1,4 @@
-import { describe, expect, it, jest } from '@jest/globals'
+import { describe, expect, it, vi } from 'vitest'
 import {
   automationYamlWorkerOptions,
   createAutomationMonacoWorkerEnvironment,
@@ -22,10 +22,10 @@ describe('automation YAML Monaco workers', () => {
     const editorWorker = {} as Worker
     const environment = createAutomationMonacoWorkerEnvironment({
       existingEnvironment: {
-        getWorker: jest.fn(() => existingWorker)
+        getWorker: vi.fn(() => existingWorker)
       },
-      createYamlWorker: jest.fn(() => yamlWorker),
-      createEditorWorker: jest.fn(() => editorWorker)
+      createYamlWorker: vi.fn(() => yamlWorker),
+      createEditorWorker: vi.fn(() => editorWorker)
     })
 
     expect(environment.getWorker?.('workerMain.js', 'yaml')).toBe(yamlWorker)

@@ -56,7 +56,7 @@ const useContainerLogs = (containerId: string, initialLogs: PlatformContainerLog
       toast({
         title: 'Could not refresh logs',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsRefreshingLogs(false)
@@ -98,7 +98,7 @@ const useContainerActions = (container: PlatformContainerDetails['container']) =
       toast({
         title: actionDialogCopy[pendingAction].errorTitle,
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsActing(false)

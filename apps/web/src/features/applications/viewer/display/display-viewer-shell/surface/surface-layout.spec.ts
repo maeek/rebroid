@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import { fitAspectRatio, getDisplayViewportSize, getFullscreenMediaSize, surfaceAspectRatio } from './surface-layout'
 import type { DisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-surfaces'
 

@@ -15,9 +15,9 @@ import { unwrapActionResult } from '@/shared/actions/action-result'
 import { resetGeneralUiSettings, saveGeneralUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { useAccentColorPreference } from '@/shared/model/theme/use-accent-color'
 import { PageHeader } from '@/shared/ui/page/page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { AccentColorPicker } from '@/shared/ui/settings/accent-color-picker'
-import { Setting } from '@/shared/ui/settings/setting'
+import { FormField } from '@/components/ui/form-field'
 import { ViewerStreamingSliderFields } from '@/shared/ui/settings/viewer-streaming-slider-fields'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import type { AccentColor } from '@/shared/model/theme/accent-color'
@@ -71,7 +71,7 @@ export const GeneralSettingsForm = ({
       toast({
         title: 'Could not save accent color',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
   })
 
@@ -94,7 +94,7 @@ export const GeneralSettingsForm = ({
       toast({
         title: 'Could not save settings',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsSaving(false)
@@ -111,7 +111,7 @@ export const GeneralSettingsForm = ({
       toast({
         title: 'Could not reset settings',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsSaving(false)
@@ -119,7 +119,7 @@ export const GeneralSettingsForm = ({
   }
 
   return (
-    <ProtectedStackPageLayout mainClassName='gap-2'>
+    <StandardPage className='gap-2'>
       <PageHeader
         breadcrumbs={[{ label: 'Preferences', href: '/preferences/general' }, { label: 'General' }]}
         title='General'
@@ -145,6 +145,7 @@ export const GeneralSettingsForm = ({
       />
       <section className='px-6 max-sm:px-4 w-full flex flex-col gap-10 pb-16'>
         <Section
+          surface='plain'
           orientation='vertical'
           title='Appearance'
           titleClassName='pb-4'
@@ -156,16 +157,17 @@ export const GeneralSettingsForm = ({
           />
         </Section>
         <Section
+          surface='plain'
           orientation='vertical'
           title='Frontend defaults'
           titleClassName='pb-4'
           contentClassName='gap-6'
         >
-          <Setting
+          <FormField
             label='List refresh interval'
             description='Controls how often app lists refresh automatically across the frontend.'
             className='flex-col items-start w-full'
-            variant='vertical'
+            layout='vertical'
           >
             <NumberSliderField
               value={String(settings.appListRefreshIntervalSeconds)}
@@ -180,20 +182,21 @@ export const GeneralSettingsForm = ({
                 })
               }
             />
-          </Setting>
+          </FormField>
         </Section>
         <Section
+          surface='plain'
           orientation='vertical'
           title='Streaming defaults'
           titleClassName='pb-4'
           contentClassName='gap-6'
         >
           <div className='grid gap-4 md:grid-cols-3'>
-            <Setting
+            <FormField
               label='Preset'
               description='Default quality profile for new viewer sessions.'
               className={verticalSettingClassName}
-              variant='vertical'
+              layout='vertical'
             >
               <Select
                 value={settings.defaultViewerPreset}
@@ -219,7 +222,7 @@ export const GeneralSettingsForm = ({
                   <SelectItem value='bandwidth-saver'>Bandwidth saver</SelectItem>
                 </SelectContent>
               </Select>
-            </Setting>
+            </FormField>
             <ViewerStreamingSliderFields
               values={{
                 bitrateMbps: settings.defaultViewerBitrateMbps,
@@ -234,21 +237,21 @@ export const GeneralSettingsForm = ({
                 })
               }
               SettingComponent={({ label, description, children }) => (
-                <Setting
+                <FormField
                   label={label}
                   description={description}
                   className={verticalSettingClassName}
-                  variant='vertical'
+                  layout='vertical'
                 >
                   {children}
-                </Setting>
+                </FormField>
               )}
             />
-            <Setting
+            <FormField
               label='Max size'
               description='Use 0 to fit the stream to the frame.'
               className={verticalSettingClassName}
-              variant='vertical'
+              layout='vertical'
             >
               <Input
                 value={settings.defaultViewerMaxSize}
@@ -257,9 +260,9 @@ export const GeneralSettingsForm = ({
                 type='number'
                 onChange={event => updateSettings({ defaultViewerMaxSize: Number(event.target.value) })}
               />
-            </Setting>
+            </FormField>
           </div>
-          <Setting
+          <FormField
             label='Enable keyboard in fullscreen'
             description='Fullscreen viewer sessions start with keyboard input captured.'
             className='w-full py-3'
@@ -268,8 +271,8 @@ export const GeneralSettingsForm = ({
               checked={settings.defaultViewerKeyboardCaptureEnabled}
               onCheckedChange={checked => updateSettings({ defaultViewerKeyboardCaptureEnabled: checked })}
             />
-          </Setting>
-          <Setting
+          </FormField>
+          <FormField
             label='Enable sound'
             description='Request audio when the viewer stream supports it.'
             className='w-full py-3'
@@ -278,9 +281,9 @@ export const GeneralSettingsForm = ({
               checked={settings.defaultViewerSoundEnabled}
               onCheckedChange={checked => updateSettings({ defaultViewerSoundEnabled: checked })}
             />
-          </Setting>
+          </FormField>
         </Section>
       </section>
-    </ProtectedStackPageLayout>
+    </StandardPage>
   )
 }

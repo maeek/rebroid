@@ -87,7 +87,7 @@ export const useViewerControlSender = ({
         toast({
           title: 'Viewer command failed',
           description: controlErrorDescription(error),
-          variant: 'destructive'
+          variant: 'danger'
         })
       } finally {
         setPendingCommand(null)

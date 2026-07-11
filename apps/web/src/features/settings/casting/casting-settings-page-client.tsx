@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
 import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { CastingSidecarSettings } from './casting-sidecar-settings'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
 import type { DisplaySidecarSession, ServiceHealth } from '@/server/orchestrator/diagnostics/types'
@@ -28,12 +28,12 @@ export const CastingSettingsPageClient = ({
   }
 
   return (
-    <ProtectedStackPageLayout mainClassName='gap-2'>
+    <StandardPage className='gap-2'>
       <PlatformPageHeader
         title='Display sessions'
         description='Inspect the casting sidecar and terminate active viewer sessions.'
         breadcrumbRoot={{ label: 'Platform' }}
-        titleActions={
+        actions={
           <PlatformPageRefreshButton
             isRefreshing={isRefreshing}
             onRefresh={refresh}
@@ -50,6 +50,6 @@ export const CastingSettingsPageClient = ({
           onRefreshComplete={() => setIsRefreshing(false)}
         />
       </section>
-    </ProtectedStackPageLayout>
+    </StandardPage>
   )
 }

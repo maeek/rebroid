@@ -121,14 +121,14 @@ function SwitchBlockSettings({
           </Button>
         </div>
         {step.cases.length === 0 ? (
-          <p className='rounded-md border border-dashed border-border/60 px-3 py-4 text-center text-sm text-foreground-muted'>
+          <p className='rounded-control border border-dashed border-surface-border/60 px-3 py-4 text-center text-sm text-foreground-muted'>
             No cases yet.
           </p>
         ) : null}
         {step.cases.map((item, index) => (
           <div
             key={item.clientKey}
-            className='grid gap-3 rounded-md border border-border/60 bg-background/20 p-3'
+            className='grid gap-3 rounded-control border border-surface-border/60 bg-background/20 p-3'
           >
             <div className='flex items-end gap-2'>
               <div className='grid flex-1 gap-2'>
@@ -141,14 +141,14 @@ function SwitchBlockSettings({
               </div>
               <Button
                 type='button'
-                size='icon'
+                size='icon-md'
                 variant='ghost'
                 aria-label='Delete case'
                 onClick={() =>
                   onChange({ ...step, cases: step.cases.filter(current => current.clientKey !== item.clientKey) })
                 }
               >
-                <IconTrash className='size-4 text-destructive' />
+                <IconTrash className='size-4 text-danger' />
               </Button>
             </div>
           </div>

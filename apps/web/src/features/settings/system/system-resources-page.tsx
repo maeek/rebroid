@@ -9,7 +9,7 @@ import { usePollingQuery } from '@/hooks/use-polling-query'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { useSystemResources } from '@/shared/model/platform/use-system-resources'
 import { PageHeader } from '@/shared/ui/page/page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { PlatformResources } from '@/shared/ui/platform/platform-resources'
 import { StatusSplash } from '@/shared/ui/status-splash'
 import { SystemResourcesPageSkeleton } from './system-resources-page-skeleton'
@@ -49,7 +49,7 @@ export function SystemResourcesPage() {
         <SystemResourcesPageSkeleton />
       </Visible>
       <Visible when={!isLoading}>
-        <ProtectedStackPageLayout mainClassName='gap-2'>
+        <StandardPage className='gap-2'>
           <PageHeader
             breadcrumbs={[{ label: 'System' }, { label: 'Resources' }]}
             title='Resources'
@@ -58,7 +58,7 @@ export function SystemResourcesPage() {
             <div className='grid gap-6 xl:grid-cols-2'>
               <Section
                 title='Host system'
-                boxed
+                surface='panel'
                 titleClassName='pb-4'
                 contentClassName='gap-3'
                 className='h-full'
@@ -70,7 +70,7 @@ export function SystemResourcesPage() {
               </Section>
               <Section
                 title='Managed containers'
-                boxed
+                surface='panel'
                 titleClassName='pb-4'
                 contentClassName='gap-3'
                 className='h-full'
@@ -103,7 +103,7 @@ export function SystemResourcesPage() {
             <div className='grid gap-6 xl:grid-cols-[minmax(20rem,24rem)_minmax(0,1fr)] min-w-0'>
               <Section
                 title='Host memory'
-                boxed
+                surface='panel'
                 titleClassName='pb-4'
                 className='h-full min-w-0'
               >
@@ -114,7 +114,7 @@ export function SystemResourcesPage() {
               </Section>
               <Section
                 title='Host CPU history'
-                boxed
+                surface='panel'
                 titleClassName='pb-4'
                 className='h-full min-w-0'
               >
@@ -124,7 +124,7 @@ export function SystemResourcesPage() {
               </Section>
             </div>
           </section>
-        </ProtectedStackPageLayout>
+        </StandardPage>
       </Visible>
     </>
   )

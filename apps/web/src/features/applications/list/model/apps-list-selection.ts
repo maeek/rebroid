@@ -5,7 +5,7 @@ type AppsListBulkAction = 'stop' | 'delete'
 type AppsListOperationToast = {
   title: string
   description?: string
-  variant?: 'destructive'
+  variant?: 'danger'
 }
 
 export const retainVisibleSelectedIds = (apps: AppDefinition[], selectedIds: Set<string>) => {
@@ -53,7 +53,7 @@ export const summarizeBulkStopAppsResult = (results: PromiseSettledResult<unknow
     return {
       title: 'Some apps could not be stopped',
       description: `${failedCount} stop request failed.`,
-      variant: 'destructive'
+      variant: 'danger'
     }
   }
 
@@ -70,7 +70,7 @@ export const summarizeBulkDeleteAppsResult = (
     return {
       title: 'Some apps could not be deleted',
       description: `${failedCount} delete request failed.`,
-      variant: 'destructive'
+      variant: 'danger'
     }
   }
 

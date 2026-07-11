@@ -30,7 +30,7 @@ export const AppsListItem = ({ app, showOwner = false }: { app: AppDefinition; s
           <Visible when={isManaging}>
             <button
               type='button'
-              className='flex w-full flex-col items-center justify-center cursor-pointer gap-2 overflow-hidden rounded-lg border border-transparent p-2 transition hover:border-primary/30 hover:bg-primary/5 data-[selected=true]:border-primary/50 data-[selected=true]:bg-primary/10'
+              className='flex w-full flex-col items-center justify-center cursor-pointer gap-2 overflow-hidden rounded-panel border border-transparent p-2 transition hover:border-primary/30 hover:bg-primary/5 data-[selected=true]:border-primary/50 data-[selected=true]:bg-primary/10'
               data-selected={isSelected}
               onClick={() => toggleSelected(app.id)}
             >
@@ -83,15 +83,11 @@ export const AppsListItem = ({ app, showOwner = false }: { app: AppDefinition; s
           Reset
         </ContextMenuItem>
         <ContextMenuItem
-          variant='destructive'
+          variant='danger'
           disabled={app.status === 'removing'}
           onClick={() => openPendingAppAction({ action: 'delete', app })}
         >
-          {app.status === 'provisioning' ? (
-            <IconX className='text-destructive' />
-          ) : (
-            <IconTrash className='text-destructive' />
-          )}
+          {app.status === 'provisioning' ? <IconX className='text-danger' /> : <IconTrash className='text-danger' />}
           {app.status === 'provisioning' ? 'Kill and delete' : 'Delete'}
         </ContextMenuItem>
       </ContextMenuContent>
@@ -102,7 +98,7 @@ export const AppsListItem = ({ app, showOwner = false }: { app: AppDefinition; s
 const OwnerBadge = ({ app }: { app: AppDefinition }) => (
   <Badge
     variant='outline'
-    className='max-w-full truncate text-[10px]'
+    className='max-w-full truncate text-xs'
   >
     {app.ownerDisplayName ?? app.ownerUserId ?? 'Unknown owner'}
   </Badge>
@@ -127,7 +123,7 @@ const AppTileContent = ({
     <div className='relative size-20 transition-all hover:scale-95 hover:saturate-150 min-[360px]:size-24'>
       <Visible when={showSelection}>
         <span
-          className='absolute left-1 top-1 z-20 flex size-5 items-center justify-center rounded-sm border border-primary bg-background text-primary data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground'
+          className='absolute left-1 top-1 z-20 flex size-5 items-center justify-center rounded-control border border-primary bg-background text-primary data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground'
           data-selected={isSelected}
           aria-hidden='true'
         >
@@ -138,12 +134,12 @@ const AppTileContent = ({
       </Visible>
       <Visible when={app.running}>
         <>
-          <div className='absolute top-2 right-2 rounded-2xl size-4 bg-primary/95 z-10' />
-          <div className='absolute top-2 right-2 rounded-2xl size-4 bg-primary z-10 animate-ping duration-[2s]' />
+          <div className='absolute top-2 right-2 rounded-feature size-4 bg-primary/95 z-10' />
+          <div className='absolute top-2 right-2 rounded-feature size-4 bg-primary z-10 animate-ping duration-[2s]' />
         </>
       </Visible>
       <Visible when={app.status === 'error'}>
-        <IconAlertTriangle className='absolute top-1 right-1 size-5 text-destructive z-10' />
+        <IconAlertTriangle className='absolute top-1 right-1 size-5 text-danger z-10' />
       </Visible>
       <Visible when={busy}>
         <IconLoader2 className='absolute top-1 right-1 size-5 text-primary z-10 animate-spin' />
@@ -157,8 +153,8 @@ const AppTileContent = ({
     </div>
     <span className='text-sm text-ellipsis w-full text-nowrap overflow-hidden text-center lg:px-2'>{app.name}</span>
     <Badge
-      variant={app.status === 'error' ? 'destructive' : 'secondary'}
-      className='max-w-full text-[10px] capitalize'
+      variant={app.status === 'error' ? 'danger' : 'neutral'}
+      className='max-w-full text-xs capitalize'
     >
       {itemStatus}
     </Badge>

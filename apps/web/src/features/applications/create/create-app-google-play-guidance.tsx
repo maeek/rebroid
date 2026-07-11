@@ -1,15 +1,15 @@
 import { IconAlertTriangle, IconCheck, IconHelpCircle, IconInfoCircle } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { imageDisplayName } from '@/features/platform/domain/image-display-name'
+import { cn } from '@/lib/utils'
+import { imageDisplayName } from '@/shared/model/runtime-image/image-display-name'
 import {
   findPlatformImageByReference,
   resolvePlatformImageRuntimeMetadata
-} from '@/features/platform/domain/runtime-image-metadata'
-import { cn } from '@/lib/utils'
+} from '@/shared/model/runtime-image/runtime-image-metadata'
 import { recommendGooglePlayImage } from './google-play-image-recommendation'
 import type { UploadedApk } from '@/server/orchestrator/applications/types'
-import type { PlatformImage } from '@/server/orchestrator/platform/types'
+import type { PlatformImage } from '@/shared/contracts/platform-image'
 
 const verdictCopy = {
   required: {
@@ -61,15 +61,17 @@ export const CreateAppGooglePlayGuidance = ({
   return (
     <div
       className={cn(
-        'rounded-lg border p-4 text-sm',
-        needsGapps && !selectedHasGapps ? 'border-warning/45 bg-warning/8' : 'border-border/70 bg-surface-panel/35'
+        'rounded-panel border p-4 text-sm',
+        needsGapps && !selectedHasGapps
+          ? 'border-warning/45 bg-warning/8'
+          : 'border-surface-border/70 bg-surface-panel/35'
       )}
     >
       <div className='flex gap-3'>
         <Icon className='mt-0.5 size-4 shrink-0' />
         <div className='min-w-0 flex-1'>
           <div className='font-medium'>{copy.title}</div>
-          <p className='mt-1 text-muted-foreground'>{copy.description}</p>
+          <p className='mt-1 text-foreground-muted'>{copy.description}</p>
           {needsGapps && selectedHasGapps ? (
             <p className='mt-2 text-success'>The selected image includes Google Play.</p>
           ) : null}

@@ -33,6 +33,16 @@ COPY packages/orchestrator-client /workspace/packages/orchestrator-client
 COPY packages/vision-core /workspace/packages/vision-core
 COPY apps/web ./
 RUN pnpm --filter @rebroid/application-core --filter @rebroid/ai-core --filter @rebroid/automation-core --filter @rebroid/firewall-policy-core --filter @rebroid/vision-core build
+# The deps stage injects package.json-only workspace snapshots. Point the
+# builder at the complete package directories after their dist output exists.
+RUN rm -rf node_modules/@rebroid \
+  && mkdir -p node_modules/@rebroid \
+  && ln -s /workspace/packages/ai-core node_modules/@rebroid/ai-core \
+  && ln -s /workspace/packages/application-core node_modules/@rebroid/application-core \
+  && ln -s /workspace/packages/automation-core node_modules/@rebroid/automation-core \
+  && ln -s /workspace/packages/firewall-policy-core node_modules/@rebroid/firewall-policy-core \
+  && ln -s /workspace/packages/orchestrator-client node_modules/@rebroid/orchestrator-client \
+  && ln -s /workspace/packages/vision-core node_modules/@rebroid/vision-core
 RUN pnpm build
 
 FROM node:24-alpine AS runner

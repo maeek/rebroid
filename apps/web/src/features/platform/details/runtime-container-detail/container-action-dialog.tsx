@@ -45,8 +45,12 @@ export const ContainerActionDialog = () => {
           <DialogDescription>{copy.description}</DialogDescription>
         </DialogHeader>
         <Visible when={pendingAction === 'remove'}>
-          <label className='flex items-start gap-3 rounded-lg border border-border/60 bg-surface-band/45 px-3 py-3'>
+          <label
+            htmlFor='force-container-removal'
+            className='flex items-start gap-3 rounded-panel border border-surface-border/60 bg-surface-band/45 px-3 py-3'
+          >
             <Checkbox
+              id='force-container-removal'
               checked={forceRemove}
               onCheckedChange={checked => setForceRemove(checked === true)}
               disabled={isActing}

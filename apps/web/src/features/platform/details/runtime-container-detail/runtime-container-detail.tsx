@@ -53,7 +53,7 @@ const RuntimeContainerDetailContent = () => {
 
         <Section
           title='Labels'
-          boxed
+          surface='panel'
           contentClassName='gap-4'
           titleClassName='pb-4'
         >
@@ -62,7 +62,7 @@ const RuntimeContainerDetailContent = () => {
 
         <Section
           title='Raw inspect'
-          boxed
+          surface='panel'
           contentClassName='gap-4'
         >
           <PlatformJsonBlock value={details.inspect} />

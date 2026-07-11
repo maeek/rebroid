@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import {
   buildImagesGridHref,
   canRemoveSelectedImages,
@@ -7,7 +7,7 @@ import {
   getImageRemoveDialogLabel,
   getImageSecondaryLabel
 } from './runtime-images-section-model'
-import type { PlatformImage } from '@/server/orchestrator/platform/types'
+import type { PlatformImage } from '@/shared/contracts/platform-image'
 
 const image = (overrides: Partial<PlatformImage> = {}): PlatformImage =>
   ({

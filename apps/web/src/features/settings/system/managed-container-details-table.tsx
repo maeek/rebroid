@@ -2,7 +2,7 @@
 
 import { formatDateLocale } from '@/lib/format'
 import { formatBytes } from '@/lib/format-bytes'
-import type { SystemResources } from '@/server/orchestrator/diagnostics/types'
+import type { SystemResources } from '@/shared/contracts/system-resources'
 
 const formatPercent = (value: number) => `${value.toFixed(1)}%`
 
@@ -12,13 +12,13 @@ export function ManagedContainerDetailsTable({ resources }: { resources?: System
   return (
     <ul className='divide-y divide-border'>
       <li className='p-2 flex justify-between gap-2 text-right text-sm'>
-        <span className='font-semibold'>CPU Usage:</span> {formatPercent(resources.managedContainersCpuUsagePercent)}
+        <span className='font-medium'>CPU Usage:</span> {formatPercent(resources.managedContainersCpuUsagePercent)}
       </li>
       <li className='p-2 flex justify-between gap-2 text-right text-sm'>
-        <span className='font-semibold'>Memory Usage:</span> {formatBytes(resources.managedContainersMemoryUsageBytes)}
+        <span className='font-medium'>Memory Usage:</span> {formatBytes(resources.managedContainersMemoryUsageBytes)}
       </li>
       <li className='p-2 flex justify-between gap-2 text-right text-sm'>
-        <span className='font-semibold'>Last Sample:</span>{' '}
+        <span className='font-medium'>Last Sample:</span>{' '}
         {resources.containerStatsCollectedAt ? formatDateLocale(resources.containerStatsCollectedAt) : 'Unavailable'}
       </li>
     </ul>

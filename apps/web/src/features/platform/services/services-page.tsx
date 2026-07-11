@@ -14,7 +14,7 @@ import {
 } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { DataGrid } from '@/shared/ui/data-grid'
 import { PageHeader } from '@/shared/ui/page/page-header'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { ServiceSettingsDialog, serviceDetails, serviceMeta, type ServiceId } from './service-settings-dialog'
 import type {
   OptionalServicesUiSettings,
@@ -39,7 +39,7 @@ const serviceStatus = (service: { enabled: boolean; endpoint: string | null }) =
 }
 
 const statusClassName = (service: { enabled: boolean; endpoint: string | null }) => {
-  if (!service.enabled) return 'border-border/70 bg-secondary/45 text-muted-foreground'
+  if (!service.enabled) return 'border-surface-border/70 bg-surface-band/45 text-foreground-muted'
   return service.endpoint
     ? 'border-success/35 bg-success/10 text-success'
     : 'border-warning/35 bg-warning/10 text-warning'
@@ -119,12 +119,12 @@ export const PlatformServicesPage = ({
         size: 320,
         cell: ({ row }) => (
           <div className='flex min-w-0 items-center gap-3'>
-            <div className='flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary'>
+            <div className='flex size-9 shrink-0 items-center justify-center rounded-control bg-primary/10 text-primary'>
               {row.original.icon}
             </div>
             <div className='min-w-0'>
               <div className='truncate font-medium text-foreground'>{row.original.title}</div>
-              <div className='mt-1 truncate text-xs text-muted-foreground'>{row.original.description}</div>
+              <div className='mt-1 truncate text-xs text-foreground-muted'>{row.original.description}</div>
             </div>
           </div>
         )
@@ -137,7 +137,7 @@ export const PlatformServicesPage = ({
         cell: ({ row }) => (
           <span
             className={cn(
-              'inline-flex rounded-full border px-2 py-1 text-[10px] font-semibold uppercase leading-none',
+              'inline-flex rounded-full border px-2 py-1 text-xs font-medium uppercase leading-none',
               statusClassName(row.original)
             )}
           >
@@ -151,7 +151,7 @@ export const PlatformServicesPage = ({
         meta: { label: 'Endpoint' },
         size: 360,
         cell: ({ row }) => (
-          <span className='truncate text-muted-foreground'>{row.original.endpoint ?? 'Not configured'}</span>
+          <span className='truncate text-foreground-muted'>{row.original.endpoint ?? 'Not configured'}</span>
         )
       },
       {
@@ -159,14 +159,14 @@ export const PlatformServicesPage = ({
         header: 'Timeout',
         meta: { label: 'Timeout' },
         size: 140,
-        cell: ({ row }) => <span className='whitespace-nowrap text-muted-foreground'>{row.original.timeoutMs} ms</span>
+        cell: ({ row }) => <span className='whitespace-nowrap text-foreground-muted'>{row.original.timeoutMs} ms</span>
       },
       {
         accessorKey: 'settingsSummary',
         header: 'Settings',
         meta: { label: 'Settings' },
         size: 320,
-        cell: ({ row }) => <span className='truncate text-muted-foreground'>{row.original.settingsSummary}</span>
+        cell: ({ row }) => <span className='truncate text-foreground-muted'>{row.original.settingsSummary}</span>
       },
       {
         id: 'actions',
@@ -218,7 +218,7 @@ export const PlatformServicesPage = ({
       toast({
         title: 'Could not save service settings',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsSaving(false)
@@ -235,7 +235,7 @@ export const PlatformServicesPage = ({
       toast({
         title: 'Could not reset service settings',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsSaving(false)
@@ -243,7 +243,7 @@ export const PlatformServicesPage = ({
   }
 
   return (
-    <ProtectedStackPageLayout mainClassName='gap-2'>
+    <StandardPage className='gap-2'>
       <PageHeader
         breadcrumbs={[{ label: 'Platform', href: '/platform' }, { label: 'Services' }]}
         title='Services'
@@ -271,7 +271,10 @@ export const PlatformServicesPage = ({
         }
       />
       <section className='px-6 pb-16 max-sm:px-4'>
-        <Section contentClassName='gap-4'>
+        <Section
+          surface='plain'
+          contentClassName='gap-4'
+        >
           <DataGrid
             columns={columns}
             data={serviceRows}
@@ -280,7 +283,7 @@ export const PlatformServicesPage = ({
             pageSize={Math.max(serviceRows.length, 1)}
             getRowId={row => row.id}
             minWidth='78rem'
-            emptyState={<div className='text-center text-muted-foreground'>No optional services configured.</div>}
+            emptyState={<div className='text-center text-foreground-muted'>No optional services configured.</div>}
           />
         </Section>
       </section>
@@ -290,6 +293,6 @@ export const PlatformServicesPage = ({
         onChange={updateServices}
         onClose={closeServiceEditor}
       />
-    </ProtectedStackPageLayout>
+    </StandardPage>
   )
 }

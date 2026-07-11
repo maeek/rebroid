@@ -32,7 +32,7 @@ export const PageHeaderSkeleton = ({
         <div className='flex min-w-0 items-center justify-between gap-3'>
           <div className='flex min-w-0 items-center gap-2.5'>
             <Visible when={hasTitlePrefix}>
-              <Skeleton className='size-7 rounded-sm max-sm:size-5' />
+              <Skeleton className='size-7 rounded-control max-sm:size-5' />
             </Visible>
             <Skeleton className={`h-10 ${titleWidth} max-sm:h-8`} />
           </div>

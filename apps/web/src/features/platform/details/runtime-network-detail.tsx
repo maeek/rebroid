@@ -72,7 +72,7 @@ export const RuntimeNetworkDetail = ({ details }: RuntimeNetworkDetailProps) => 
       toast({
         title: 'Could not remove network',
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsRemoving(false)
@@ -84,22 +84,22 @@ export const RuntimeNetworkDetail = ({ details }: RuntimeNetworkDetailProps) => 
       <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
         <Section
           title='Overview'
-          boxed
+          surface='panel'
           contentClassName='gap-5'
         >
           <div className='flex flex-wrap items-center justify-between gap-4'>
             <div className='flex flex-wrap items-center gap-2'>
               <Visible when={network.managed}>
-                <Badge variant='status'>managed</Badge>
+                <Badge variant='success'>managed</Badge>
               </Visible>
               <Visible when={network.internal}>
-                <Badge variant='secondary'>internal</Badge>
+                <Badge variant='neutral'>internal</Badge>
               </Visible>
-              <span className='font-mono text-xs text-muted-foreground'>{network.shortId}</span>
+              <span className='font-mono text-xs text-foreground-muted'>{network.shortId}</span>
             </div>
             <Button
               type='button'
-              variant='destructive'
+              variant='danger'
               disabled={isRemoving || network.containers.length > 0}
               onClick={() => setRemoveDialogOpen(true)}
             >
@@ -140,12 +140,13 @@ export const RuntimeNetworkDetail = ({ details }: RuntimeNetworkDetailProps) => 
         </Section>
 
         <Section
+          surface='plain'
           title='Related containers'
           contentClassName='gap-4'
           titleClassName='pb-2'
         >
           <Visible when={details.relatedContainers.length > 0}>
-            <div className='overflow-hidden rounded-lg border border-border/60 bg-surface-band/35'>
+            <div className='overflow-hidden rounded-panel border border-surface-border/60 bg-surface-band/35'>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -186,7 +187,7 @@ export const RuntimeNetworkDetail = ({ details }: RuntimeNetworkDetailProps) => 
 
         <Section
           title='Labels'
-          boxed
+          surface='panel'
           contentClassName='gap-4'
           titleClassName='pb-4'
         >
@@ -195,7 +196,7 @@ export const RuntimeNetworkDetail = ({ details }: RuntimeNetworkDetailProps) => 
 
         <Section
           title='Raw inspect'
-          boxed
+          surface='panel'
           contentClassName='gap-4'
           titleClassName='pb-4'
         >
@@ -217,7 +218,7 @@ export const RuntimeNetworkDetail = ({ details }: RuntimeNetworkDetailProps) => 
           </DialogHeader>
           <DialogFooter>
             <Button
-              variant='destructive'
+              variant='danger'
               disabled={isRemoving}
               onClick={() => void removeNetwork()}
             >

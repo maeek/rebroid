@@ -47,7 +47,7 @@ const AllowlistBadges = ({ cidrs }: { cidrs: string[] }) => {
       {visibleCidrs.map(cidr => (
         <Badge
           key={cidr}
-          variant='secondary'
+          variant='neutral'
         >
           {cidr}
         </Badge>
@@ -130,7 +130,7 @@ export const FirewallSettings = ({
       toast({
         title: 'Could not load network access policies',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setBusy(null)
@@ -154,7 +154,7 @@ export const FirewallSettings = ({
         toast({
           title: 'Could not update network access policy',
           description: error instanceof Error ? error.message : 'Unknown error',
-          variant: 'destructive'
+          variant: 'danger'
         })
       } finally {
         setBusy(null)
@@ -181,7 +181,7 @@ export const FirewallSettings = ({
       toast({
         title: 'Could not reconcile network access policies',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setBusy(null)
@@ -204,7 +204,7 @@ export const FirewallSettings = ({
             >
               {row.original.name}
             </Link>
-            <div className='truncate text-xs text-muted-foreground'>{row.original.id}</div>
+            <div className='truncate text-xs text-foreground-muted'>{row.original.id}</div>
           </div>
         )
       },
@@ -277,6 +277,7 @@ export const FirewallSettings = ({
         message={health.message}
       />
       <Section
+        surface='plain'
         title='Network policies'
         titleClassName='pb-2'
         contentClassName='gap-4'

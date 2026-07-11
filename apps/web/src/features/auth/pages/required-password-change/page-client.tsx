@@ -54,9 +54,9 @@ export const RequiredPasswordChangePageClient = ({
   }
 
   return (
-    <Card className='relative z-10 mx-auto w-full max-w-md border-white/10 bg-surface-panel/70 shadow-2xl backdrop-blur-xl max-sm:border-0 max-sm:bg-transparent max-sm:shadow-none max-sm:backdrop-blur-none'>
+    <Card className='relative z-10 mx-auto w-full max-w-md border-white/10 bg-surface-panel/70 shadow-emphasis backdrop-blur-xl max-sm:border-0 max-sm:bg-transparent max-sm:shadow-none max-sm:backdrop-blur-none'>
       <CardHeader className='flex-row items-start gap-4 max-sm:px-0'>
-        <div className='flex size-14 items-center justify-center rounded-lg border border-primary/30 bg-primary/15 text-primary'>
+        <div className='flex size-14 items-center justify-center rounded-panel border border-primary/30 bg-primary/15 text-primary'>
           <IconLockAccess className='size-10' />
         </div>
         <div>
@@ -104,8 +104,8 @@ export const RequiredPasswordChangePageClient = ({
           </div>
           {error ? (
             <Alert
-              variant='destructive'
-              className='bg-destructive/15'
+              variant='danger'
+              className='bg-danger/15'
             >
               <IconAlertTriangle className='size-4' />
               <AlertTitle>Could not change password</AlertTitle>

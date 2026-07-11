@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals'
+import { describe, expect, it } from 'vitest'
 import { sortTasks } from './scheduled-tasks-table-utils'
 import type { ScheduledTask } from '@/server/orchestrator/scheduled-tasks/types'
 

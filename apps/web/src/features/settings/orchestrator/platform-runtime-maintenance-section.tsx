@@ -65,16 +65,16 @@ const MaintenanceActionCard = ({
   onClick: () => void
 }) => {
   return (
-    <div className='flex w-full items-center justify-between gap-4 rounded-lg border border-border/70 bg-secondary/55 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] max-sm:flex-col max-sm:items-stretch'>
+    <div className='flex w-full items-center justify-between gap-4 rounded-panel border border-surface-border/70 bg-surface-band/55 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] max-sm:flex-col max-sm:items-stretch'>
       <div className='flex min-w-0 items-start gap-3'>
-        <div className='rounded-md bg-destructive/10 p-2 text-destructive'>{icon}</div>
+        <div className='rounded-control bg-danger/10 p-2 text-danger'>{icon}</div>
         <div className='flex flex-col gap-1'>
           <h3 className='font-medium text-foreground'>{title}</h3>
           <p className='text-sm leading-5 text-foreground-muted'>{description}</p>
         </div>
       </div>
       <Button
-        variant='destructive'
+        variant='danger'
         className='shrink-0 max-sm:w-full'
         disabled={isBusy}
         onClick={onClick}
@@ -114,7 +114,7 @@ export const PlatformRuntimeMaintenanceSection = ({
       toast({
         title: `Could not ${successTitle.toLowerCase()}`,
         description: getDisplayErrorMessage(error),
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setActiveAction(null)
@@ -123,6 +123,7 @@ export const PlatformRuntimeMaintenanceSection = ({
 
   return (
     <Section
+      surface='plain'
       title='Maintenance'
       titleClassName='pb-4'
       contentClassName='gap-4'
@@ -211,10 +212,10 @@ export const PlatformRuntimeMaintenanceSection = ({
           }
         />
       </div>
-      <div className='rounded-md bg-destructive/10 p-4 text-foreground'>
+      <div className='rounded-control bg-danger/10 p-4 text-foreground'>
         <div className='flex items-center justify-between gap-4 max-sm:flex-col max-sm:items-stretch'>
           <div className='flex min-w-0 items-start gap-3'>
-            <div className='rounded-md bg-surface-band/60 p-2 text-destructive'>
+            <div className='rounded-control bg-surface-band/60 p-2 text-danger'>
               <IconRecycle className='size-5' />
             </div>
             <div>
@@ -226,7 +227,7 @@ export const PlatformRuntimeMaintenanceSection = ({
           </div>
           <Button
             className='shrink-0 max-sm:w-full'
-            variant='destructive'
+            variant='danger'
             disabled={activeAction !== null}
             onClick={() =>
               void runMaintenanceAction({

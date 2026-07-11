@@ -2,11 +2,11 @@ import type { ReactNode } from 'react'
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageBreadcrumbsSkeleton } from '@/shared/ui/page/page-breadcrumbs-skeleton'
-import { ProtectedStackPageLayout } from '@/shared/ui/page/protected-page-shell'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 
 const BoxedSectionSkeleton = ({ titleWidth = 'w-32', children }: { titleWidth?: string; children?: ReactNode }) => (
   <Section
-    boxed
+    surface='panel'
     className='h-full min-w-0'
     title={<Skeleton className={`h-5 ${titleWidth}`} />}
     titleClassName='pb-4'
@@ -16,7 +16,7 @@ const BoxedSectionSkeleton = ({ titleWidth = 'w-32', children }: { titleWidth?: 
 )
 
 export const SystemResourcesPageSkeleton = () => (
-  <ProtectedStackPageLayout mainClassName='gap-2'>
+  <StandardPage className='gap-2'>
     <section className='shrink-0 px-6 py-4 max-sm:px-4'>
       <div className='flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-start'>
         <div className='flex flex-col gap-2'>
@@ -36,7 +36,7 @@ export const SystemResourcesPageSkeleton = () => (
             {Array.from({ length: 5 }).map((_, index) => (
               <div
                 key={index}
-                className='flex items-center justify-between gap-4 border-b border-border/50 py-2 last:border-b-0'
+                className='flex items-center justify-between gap-4 border-b border-surface-border/50 py-2 last:border-b-0'
               >
                 <Skeleton className='h-4 w-28' />
                 <Skeleton className='h-4 w-32' />
@@ -50,7 +50,7 @@ export const SystemResourcesPageSkeleton = () => (
             {Array.from({ length: 5 }).map((_, index) => (
               <div
                 key={index}
-                className='flex items-center justify-between gap-4 border-b border-border/50 py-2 last:border-b-0'
+                className='flex items-center justify-between gap-4 border-b border-surface-border/50 py-2 last:border-b-0'
               >
                 <Skeleton className='h-4 w-36' />
                 <Skeleton className='h-4 w-24' />
@@ -63,7 +63,7 @@ export const SystemResourcesPageSkeleton = () => (
         {Array.from({ length: 4 }).map((_, index) => (
           <Section
             key={index}
-            boxed
+            surface='panel'
             contentClassName='gap-3'
           >
             <Skeleton className='h-3 w-28' />
@@ -89,5 +89,5 @@ export const SystemResourcesPageSkeleton = () => (
         </BoxedSectionSkeleton>
       </div>
     </section>
-  </ProtectedStackPageLayout>
+  </StandardPage>
 )

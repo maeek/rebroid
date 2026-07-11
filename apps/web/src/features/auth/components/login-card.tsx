@@ -49,9 +49,9 @@ export default function LoginCard() {
 
   return (
     <>
-      <Card className='mx-auto w-full max-w-md border-white/10 bg-surface-panel/58 shadow-2xl backdrop-blur-xl max-sm:border-0 max-sm:border-transparent! max-sm:bg-transparent! max-sm:shadow-none! max-sm:backdrop-blur-none! max-sm:roundend-none! max-sm:mx-0 max-sm:max-w-full'>
+      <Card className='mx-auto w-full max-w-md border-white/10 bg-surface-panel/58 shadow-emphasis backdrop-blur-xl max-sm:border-0 max-sm:border-transparent! max-sm:bg-transparent! max-sm:shadow-none! max-sm:backdrop-blur-none! max-sm:rounded-none! max-sm:mx-0 max-sm:max-w-full'>
         <CardHeader className='max-sm:px-0 flex-row gap-4 items-start'>
-          <div className='flex size-14 items-center justify-center rounded-lg border border-primary/30 bg-primary/15 text-primary'>
+          <div className='flex size-14 items-center justify-center rounded-panel border border-primary/30 bg-primary/15 text-primary'>
             <IconLockAccess className='size-10' />
           </div>
           <div>
@@ -65,7 +65,7 @@ export default function LoginCard() {
               className='text-md'
               htmlFor='username'
             >
-              Username <span className='text-xs font-medium text-muted-foreground'>* (Required)</span>
+              Username <span className='text-xs font-medium text-foreground-muted'>* (Required)</span>
             </Label>
             <Input
               id='username'
@@ -86,7 +86,7 @@ export default function LoginCard() {
               className='text-md'
               htmlFor='password'
             >
-              Password <span className='text-xs font-medium text-muted-foreground'>* (Required)</span>
+              Password <span className='text-xs font-medium text-foreground-muted'>* (Required)</span>
             </Label>
             <Input
               id='password'
@@ -105,8 +105,8 @@ export default function LoginCard() {
           <div className='flex w-full flex-col'>
             <Visible when={!!error}>
               <Alert
-                variant='destructive'
-                className='mb-5 bg-destructive/15'
+                variant='danger'
+                className='mb-5 bg-danger/15'
               >
                 <IconAlertTriangle className='size-4' />
                 <AlertTitle>Could not sign in</AlertTitle>

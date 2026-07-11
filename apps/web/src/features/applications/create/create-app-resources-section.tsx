@@ -1,6 +1,6 @@
 import { AppResourceLimitsSection } from '@/features/applications/components/app-resource-limits-section'
 import type { AppFormValues } from './create-app-form.types'
-import type { ResourceLimitBounds } from '@/server/orchestrator/diagnostics/resource-limits'
+import type { ResourceLimitBounds } from '@/shared/contracts/system-resources'
 
 type AppFormResourcesSectionProps = {
   values: AppFormValues

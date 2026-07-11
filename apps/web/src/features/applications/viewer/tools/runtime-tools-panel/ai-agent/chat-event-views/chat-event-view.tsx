@@ -53,7 +53,7 @@ export const ChatEventView = ({
   if (event.type === 'ai.orientation.completed' || event.type === 'ai.action.decided') {
     return (
       <div className='flex items-start gap-2 py-0.5 text-xs text-foreground-muted'>
-        <span className='mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md bg-primary/8 text-primary'>
+        <span className='mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-control bg-primary/8 text-primary'>
           <IconArrowRight className='size-3.5' />
         </span>
         <span className='leading-5'>{event.message}</span>
@@ -78,7 +78,7 @@ export const ChatEventView = ({
   }
   if (event.type === 'ai.tool.failed' || event.type === 'ai.guardrail.triggered' || event.type === 'run.failed') {
     return (
-      <div className='flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive'>
+      <div className='flex items-start gap-2 rounded-panel border border-danger/20 bg-danger/5 px-3 py-2 text-xs text-danger'>
         <IconAlertTriangle className='mt-0.5 size-3.5 shrink-0' />
         <span className='leading-5'>{event.message}</span>
       </div>

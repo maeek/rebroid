@@ -1,9 +1,8 @@
-import { readWebState, writeWebState } from '@/server/storage/database'
+import { readUsersFileFromDatabase, replaceUsersFile } from '@/server/persistence/users-repository'
 import { hashPassword } from './password-hashing'
 import { normalizeGroups, normalizeUser, nowIso } from './user-model'
 import type { StoredUser, UsersFile } from './user-model'
 
-const usersStateKey = 'users'
 let usersMutationQueue = Promise.resolve()
 
 const defaultAdminUser = async (): Promise<StoredUser> => {
@@ -41,9 +40,9 @@ const normalizeUsersFile = async (input: Partial<UsersFile>): Promise<UsersFile>
 }
 
 export const readUsersFile = async (): Promise<UsersFile> => {
-  const stored = readWebState(usersStateKey)
+  const stored = readUsersFileFromDatabase()
   if (stored !== null) {
-    return normalizeUsersFile(parseUsersFile(stored))
+    return normalizeUsersFile(stored)
   }
 
   const initial = await normalizeUsersFile({})
@@ -52,18 +51,7 @@ export const readUsersFile = async (): Promise<UsersFile> => {
 }
 
 const writeUsersFile = (file: UsersFile) => {
-  return Promise.resolve(writeWebState(usersStateKey, JSON.stringify(file)))
-}
-
-const parseUsersFile = (content: string): Partial<UsersFile> => {
-  const parsed = JSON.parse(content) as Partial<UsersFile>
-  if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.users) || !Array.isArray(parsed.groups)) {
-    throw new Error(
-      'The users store is malformed. Restore it from backup or repair it before starting the web service.'
-    )
-  }
-
-  return parsed
+  return Promise.resolve(replaceUsersFile(file))
 }
 
 export const mutateUsersFile = async <Result>(mutation: (file: UsersFile) => Promise<Result> | Result) => {

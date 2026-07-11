@@ -7,7 +7,7 @@ import { purgeAllAuditEventsAction, saveAuditRetentionAction } from '@/server/au
 import { auditSortToSearchParam } from '@/server/audit/query'
 import { activityFilterEntries, compactActivityParams, dateDaysAgo } from './activity-format'
 import type { ActivityEventsTableProps, ActivityFilterValues } from './activity-types'
-import type { AuditEvent } from '@/server/storage/database'
+import type { AuditEvent } from '@/server/persistence/audit-repository'
 import type { SortingState } from '@tanstack/react-table'
 
 export const useActivityEventsController = ({
@@ -94,7 +94,7 @@ export const useActivityEventsController = ({
         toast({
           title: 'Could not update retention',
           description: error instanceof Error ? error.message : 'Unknown error',
-          variant: 'destructive'
+          variant: 'danger'
         })
       }
     })
@@ -111,7 +111,7 @@ export const useActivityEventsController = ({
       toast({
         title: 'Could not purge activity logs',
         description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+        variant: 'danger'
       })
     } finally {
       setIsPurging(false)

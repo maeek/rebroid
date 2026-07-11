@@ -22,7 +22,7 @@ export const IconActionButton = ({
     <TooltipTrigger asChild>
       <Button
         type='button'
-        size='icon'
+        size='icon-md'
         variant='secondary'
         disabled={disabled}
         onClick={onClick}
