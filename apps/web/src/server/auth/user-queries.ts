@@ -20,6 +20,15 @@ export const getUserById = async (id: string) => {
   return user ? toPublicUser(file, user) : null
 }
 
+export const verifyPrimaryCredentials = async (username: string, password: string) => {
+  const file = await readUsersFile()
+  const normalizedUsername = username.trim().toLocaleLowerCase('en-US')
+  const user = file.users.find(item => item.username.toLocaleLowerCase('en-US') === normalizedUsername)
+  const passwordMatches = await verifyPassword(password, user?.passwordHash ?? (await dummyPasswordHash))
+  if (!user || user.disabled || !passwordMatches) return null
+  return { userId: user.id, userLabel: user.name, mfaRequired: Boolean(user.mfaSecretEncrypted) }
+}
+
 export const authenticate = async (username: string, password: string, mfaCode?: string) => {
   const file = await readUsersFile()
   const normalizedUsername = username.trim().toLocaleLowerCase('en-US')

@@ -36,6 +36,9 @@ describe('user MFA service', () => {
 
     const { recoveryCodes } = await userService.confirmMfaSetup(user.id, '287082')
 
+    await expect(userService.verifyPrimaryCredentials('user', 'replacement-password')).resolves.toMatchObject({
+      mfaRequired: true
+    })
     await expect(userService.authenticate('user', 'replacement-password')).resolves.toBeNull()
     await expect(userService.authenticate('user', 'replacement-password', '287082')).resolves.not.toBeNull()
     await expect(userService.authenticate('user', 'replacement-password', recoveryCodes[0])).resolves.not.toBeNull()

@@ -122,6 +122,15 @@ describe('userService.changeOwnPassword', () => {
     )
   })
 
+  it('reveals MFA requirements only after valid primary credentials', async () => {
+    await userService.createUser({ username: 'user', password: 'original-password' })
+
+    await expect(userService.verifyPrimaryCredentials('user', 'wrong-password')).resolves.toBeNull()
+    await expect(userService.verifyPrimaryCredentials('user', 'original-password')).resolves.toMatchObject({
+      mfaRequired: false
+    })
+  })
+
   it('updates and authenticates the stored accent color', async () => {
     const user = await userService.createUser({ username: 'user', password: 'original-password' })
 

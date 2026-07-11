@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { IconAlertTriangle, IconLoader2, IconLockAccess } from '@tabler/icons-react'
+import { IconAlertTriangle, IconArrowLeft, IconLoader2, IconLockAccess } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -10,6 +10,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Visible } from '@/components/ui/visible'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
+import { beginLoginAction } from '@/server/users/actions/begin-login-action'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 
 export default function LoginCard() {
   const [username, setUsername] = useState('')
@@ -17,9 +20,28 @@ export default function LoginCard() {
   const [mfaCode, setMfaCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [step, setStep] = useState<'credentials' | 'mfa'>('credentials')
   const router = useRouter()
 
-  const handleSubmit = async () => {
+  const completeSignIn = async (authenticationCode?: string) => {
+    const result = await signIn('credentials', {
+      username,
+      password,
+      mfaCode: authenticationCode,
+      redirect: false
+    })
+
+    if (result?.error) {
+      throw new Error(
+        step === 'mfa' ? 'The authentication code is incorrect.' : 'The username or password is incorrect.'
+      )
+    }
+
+    router.replace('/apps')
+    router.refresh()
+  }
+
+  const submitCredentials = async () => {
     if (!username || !password) {
       setError('Enter your username and password.')
       return
@@ -28,25 +50,40 @@ export default function LoginCard() {
     setIsSubmitting(true)
     setError(null)
     try {
-      const result = await signIn('credentials', {
-        username,
-        password,
-        mfaCode,
-        redirect: false
-      })
-
-      if (result?.error) {
-        setError('The username or password is incorrect.')
+      const result = unwrapActionResult(await beginLoginAction({ username, password }))
+      if (result.mfaRequired) {
+        setStep('mfa')
         return
       }
-
-      router.replace('/apps')
-      router.refresh()
-    } catch {
-      setError('Login failed. Refresh the page and try again.')
+      await completeSignIn()
+    } catch (submitError) {
+      setError(getDisplayErrorMessage(submitError, 'Login failed. Refresh the page and try again.'))
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const submitMfaCode = async () => {
+    if (!mfaCode.trim()) {
+      setError('Enter your authentication or recovery code.')
+      return
+    }
+    setIsSubmitting(true)
+    setError(null)
+    try {
+      await completeSignIn(mfaCode)
+    } catch (submitError) {
+      setError(getDisplayErrorMessage(submitError, 'Could not verify the authentication code.'))
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const returnToCredentials = () => {
+    setStep('credentials')
+    setPassword('')
+    setMfaCode('')
+    setError(null)
   }
 
   return (
@@ -56,69 +93,76 @@ export default function LoginCard() {
           <div className='flex size-14 items-center justify-center rounded-panel border border-primary/30 bg-primary/15 text-primary'>
             <IconLockAccess className='size-10' />
           </div>
-          <div className='flex w-full flex-col gap-4 pb-4'>
-            <Label
-              className='text-md'
-              htmlFor='mfa-code'
-            >
-              Authentication code <span className='text-xs font-medium text-foreground-muted'>(if enabled)</span>
-            </Label>
-            <Input
-              id='mfa-code'
-              inputMode='numeric'
-              autoComplete='one-time-code'
-              placeholder='123456 or recovery code'
-              value={mfaCode}
-              onChange={event => setMfaCode(event.target.value)}
-              onKeyDown={event => event.key === 'Enter' && void handleSubmit()}
-            />
-          </div>
           <div>
-            <CardTitle className='text-2xl'>Login</CardTitle>
-            <CardDescription>Access your Rebroid workspace.</CardDescription>
+            <CardTitle className='text-2xl'>{step === 'mfa' ? 'Two-factor authentication' : 'Login'}</CardTitle>
+            <CardDescription>
+              {step === 'mfa' ? 'Enter the code from your authenticator.' : 'Access your Rebroid workspace.'}
+            </CardDescription>
           </div>
         </CardHeader>
         <CardContent className='max-sm:px-0'>
-          <div className='flex w-full flex-col gap-4 pt-2'>
-            <Label
-              className='text-md'
-              htmlFor='username'
-            >
-              Username <span className='text-xs font-medium text-foreground-muted'>* (Required)</span>
-            </Label>
-            <Input
-              id='username'
-              placeholder='Username'
-              required
-              aria-required='true'
-              onChange={e => setUsername(e.target.value)}
-              value={username}
-              onKeyDown={e => {
-                if (e.key === 'Enter') {
-                  document.querySelector<HTMLInputElement>('#password')?.focus()
-                }
-              }}
-            />
-          </div>
-          <div className='flex w-full flex-col gap-4 pb-4 pt-5'>
-            <Label
-              className='text-md'
-              htmlFor='password'
-            >
-              Password <span className='text-xs font-medium text-foreground-muted'>* (Required)</span>
-            </Label>
-            <Input
-              id='password'
-              type='password'
-              required
-              aria-required='true'
-              placeholder='········'
-              className='placeholder:text-lg placeholder:font-bold'
-              onChange={e => setPassword(e.target.value)}
-              value={password}
-              onKeyDown={e => e.key === 'Enter' && void handleSubmit()}
-            />
-          </div>
+          {step === 'credentials' ? (
+            <>
+              <div className='flex w-full flex-col gap-4 pt-2'>
+                <Label
+                  className='text-md'
+                  htmlFor='username'
+                >
+                  Username <span className='text-xs font-medium text-foreground-muted'>* (Required)</span>
+                </Label>
+                <Input
+                  id='username'
+                  placeholder='Username'
+                  required
+                  aria-required='true'
+                  autoComplete='username'
+                  onChange={event => setUsername(event.target.value)}
+                  value={username}
+                  onKeyDown={event => {
+                    if (event.key === 'Enter') document.querySelector<HTMLInputElement>('#password')?.focus()
+                  }}
+                />
+              </div>
+              <div className='flex w-full flex-col gap-4 pb-4 pt-5'>
+                <Label
+                  className='text-md'
+                  htmlFor='password'
+                >
+                  Password <span className='text-xs font-medium text-foreground-muted'>* (Required)</span>
+                </Label>
+                <Input
+                  id='password'
+                  type='password'
+                  required
+                  aria-required='true'
+                  autoComplete='current-password'
+                  placeholder='········'
+                  className='placeholder:text-lg placeholder:font-bold'
+                  onChange={event => setPassword(event.target.value)}
+                  value={password}
+                  onKeyDown={event => event.key === 'Enter' && void submitCredentials()}
+                />
+              </div>
+            </>
+          ) : (
+            <div className='flex w-full flex-col gap-4 pb-4 pt-2'>
+              <Label
+                className='text-md'
+                htmlFor='mfa-code'
+              >
+                Authentication or recovery code
+              </Label>
+              <Input
+                id='mfa-code'
+                inputMode='numeric'
+                autoComplete='one-time-code'
+                placeholder='123456 or recovery code'
+                value={mfaCode}
+                onChange={event => setMfaCode(event.target.value)}
+                onKeyDown={event => event.key === 'Enter' && void submitMfaCode()}
+              />
+            </div>
+          )}
         </CardContent>
         <CardFooter className='max-sm:px-0'>
           <div className='flex w-full flex-col'>
@@ -136,11 +180,22 @@ export default function LoginCard() {
               className='w-full font-bold'
               size='lg'
               disabled={isSubmitting}
-              onClick={() => void handleSubmit()}
+              onClick={() => void (step === 'mfa' ? submitMfaCode() : submitCredentials())}
             >
               {isSubmitting ? <IconLoader2 className='mr-2 size-4 animate-spin' /> : null}
-              Login
+              {step === 'mfa' ? 'Verify' : 'Login'}
             </Button>
+            {step === 'mfa' ? (
+              <Button
+                className='mt-2 w-full'
+                variant='ghost'
+                disabled={isSubmitting}
+                onClick={returnToCredentials}
+              >
+                <IconArrowLeft className='size-4' />
+                Use another account
+              </Button>
+            ) : null}
           </div>
         </CardFooter>
       </Card>

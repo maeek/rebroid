@@ -1,15 +1,11 @@
 /* eslint-disable @typescript-eslint/require-await */
-import { createHash } from 'node:crypto'
 import { getServerSession, type NextAuthOptions } from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import { z } from 'zod'
 import { recordAuditEvent } from '@/server/audit/events'
-import {
-  clearPersistentRateLimits,
-  consumePersistentRateLimit,
-  getAuthEpoch
-} from '@/server/persistence/auth-security-repository'
+import { getAuthEpoch } from '@/server/persistence/auth-security-repository'
 import { defaultAccentColor, isAccentColor } from '@/shared/model/theme/accent-color'
+import { clearLoginAttempts, consumeLoginAttempt, loginSourceFromHeaderRecord } from './login-security'
 import { userService } from './user'
 
 const credentialsSchema = z.object({
@@ -21,15 +17,6 @@ const credentialsSchema = z.object({
     .refine(value => Buffer.byteLength(value, 'utf8') <= 512),
   mfaCode: z.string().trim().max(32).optional()
 })
-
-const rateLimitKey = (kind: 'account' | 'source', value: string) =>
-  createHash('sha256').update(`${kind}:${value.trim().toLowerCase()}`).digest('hex')
-
-const requestSource = (request: { headers?: Record<string, string | string[] | undefined> }) => {
-  const forwarded = request.headers?.['x-forwarded-for']
-  const value = Array.isArray(forwarded) ? forwarded[0] : forwarded
-  return value?.split(',')[0]?.trim() || 'unknown'
-}
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -90,11 +77,8 @@ export const authOptions: NextAuthOptions = {
           return null
         }
         const { username, password, mfaCode } = parsed.data
-        const accountKey = rateLimitKey('account', username)
-        const sourceKey = rateLimitKey('source', requestSource(req))
-        const accountAllowed = consumePersistentRateLimit(accountKey, 10, 15 * 60 * 1000)
-        const sourceAllowed = consumePersistentRateLimit(sourceKey, 50, 15 * 60 * 1000)
-        if (!accountAllowed || !sourceAllowed) {
+        const attempt = consumeLoginAttempt(username, loginSourceFromHeaderRecord(req.headers))
+        if (!attempt.allowed) {
           recordAuditEvent({
             actorLabel: username,
             category: 'auth',
@@ -106,7 +90,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         const user = await userService.authenticate(username, password, mfaCode)
-        if (user) clearPersistentRateLimits([accountKey, sourceKey])
+        if (user) clearLoginAttempts(attempt.keys)
         recordAuditEvent({
           actorUserId: user?.id,
           actorLabel: user?.name || username,
