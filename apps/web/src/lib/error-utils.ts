@@ -1,7 +1,10 @@
+import { ActionResultError } from '@/shared/actions/action-result'
+
 export function getDisplayErrorMessage(
   error: unknown,
   fallback = 'The server did not return details for this failure.'
 ): string {
+  const requestId = error instanceof ActionResultError ? error.failure.requestId : null
   const message =
     typeof error === 'string'
       ? error
@@ -27,6 +30,10 @@ export function getDisplayErrorMessage(
 
   if (loweredMessage === 'failed to fetch' || loweredMessage.includes('fetch failed')) {
     return 'Could not reach the server.'
+  }
+
+  if (requestId && requestId !== 'local') {
+    return `${normalizedMessage} Reference: ${requestId}`
   }
 
   return normalizedMessage

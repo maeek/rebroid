@@ -114,9 +114,9 @@ export const rowMenuColumn = <TData,>(): ColumnDef<TData> => ({
   id: '__row_menu',
   enableHiding: false,
   enableSorting: false,
-  size: 72,
-  minSize: 72,
-  maxSize: 72,
+  size: 48,
+  minSize: 48,
+  maxSize: 48,
   enableResizing: false,
   header: () => <span className='sr-only'>Row actions</span>,
   cell: () => (

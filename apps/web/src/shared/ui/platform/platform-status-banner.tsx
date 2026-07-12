@@ -1,25 +1,25 @@
 import type { ReactNode } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Section } from '@/components/ui/section'
-import { cn } from '@/lib/utils'
+import { Surface } from '@/components/ui/surface'
 
 const statusTone = (status: string, ok: boolean) => {
   if (status === 'offline') {
     return {
-      banner: 'border-danger/40 bg-danger/10',
+      surface: 'danger' as const,
       badge: 'danger' as const
     }
   }
 
   if (ok || status === 'healthy') {
     return {
-      banner: 'border-success/35 bg-success/10',
+      surface: 'success' as const,
       badge: 'success' as const
     }
   }
 
   return {
-    banner: 'border-warning/35 bg-warning/10',
+    surface: 'warning' as const,
     badge: 'warning' as const
   }
 }
@@ -42,11 +42,12 @@ export const PlatformStatusBanner = ({
   const tone = statusTone(status, ok)
 
   return (
-    <div
-      className={cn(
-        'rounded-panel border px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] supports-[backdrop-filter]:backdrop-blur-md',
-        tone.banner
-      )}
+    <Surface
+      level='band'
+      tone={tone.surface}
+      role='status'
+      aria-live='polite'
+      className='w-full px-4 py-3'
     >
       <div className='flex flex-wrap items-center justify-between gap-3'>
         <div className='flex min-w-0 flex-wrap items-center gap-3'>
@@ -72,6 +73,6 @@ export const PlatformStatusBanner = ({
           {details}
         </Section>
       ) : null}
-    </div>
+    </Surface>
   )
 }

@@ -16,9 +16,8 @@ const RuntimeContainersPageContent = async ({ searchParams }: { searchParams?: P
       <PlatformRouteUnavailable
         title='Containers'
         description='Docker containers visible to the platform. Managed application containers are shown first.'
-        detail={orchestratorError}
         href='/runtime/containers'
-        breadcrumbRoot={{ label: 'Runtime' }}
+        section={{ label: 'Runtime' }}
       />
     )
   }

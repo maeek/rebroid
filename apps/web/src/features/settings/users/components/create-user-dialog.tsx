@@ -13,6 +13,7 @@ import {
   DialogTitle,
   DialogTrigger
 } from '@/components/ui/dialog'
+import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -21,7 +22,6 @@ import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { createUserAction } from '@/server/users/actions/create-user-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { GroupMembershipPicker } from './group-membership-picker'
-import { FormField } from '@/components/ui/form-field'
 import type { PublicUser, UserGroup, UserRole } from '@/server/auth/user'
 
 export const CreateUserDialog = ({
@@ -80,56 +80,61 @@ export const CreateUserDialog = ({
           <DialogDescription>Create a username/password account and assign its groups.</DialogDescription>
         </DialogHeader>
         <div className='grid gap-4'>
-          <div className='grid gap-2'>
-            <Label htmlFor='create-user-username'>
-              Username <span className='text-xs font-medium text-foreground-muted'>* (Required)</span>
-            </Label>
+          <FormField
+            controlId='create-user-username'
+            label='Username'
+            layout='vertical'
+            required
+          >
             <Input
-              id='create-user-username'
               value={username}
               required
               aria-required='true'
+              autoComplete='username'
               placeholder='admin'
               onChange={event => setUsername(event.target.value)}
             />
-          </div>
-          <div className='grid gap-2'>
-            <Label htmlFor='create-user-password'>
-              Temporary Password <span className='text-xs font-medium text-foreground-muted'>* (Required)</span>
-            </Label>
+          </FormField>
+          <FormField
+            controlId='create-user-password'
+            label='Temporary Password'
+            layout='vertical'
+            description={
+              <span className='flex flex-wrap items-center gap-2'>
+                <Badge variant='warning'>Change required</Badge>
+                The user must set a new password on first login.
+              </span>
+            }
+            required
+          >
             <Input
-              id='create-user-password'
               value={password}
               type='password'
               required
               aria-required='true'
+              autoComplete='new-password'
               placeholder='Minimum 1 character'
               onChange={event => setPassword(event.target.value)}
             />
-            <div className='flex flex-wrap items-center gap-2 text-xs text-foreground-muted'>
-              <Badge variant='warning'>Change required</Badge>
-              The user must set a new password on first login.
-            </div>
-          </div>
-          <div className='grid gap-3 sm:grid-cols-2'>
-            <FormField
-              label='Role'
-              required
+          </FormField>
+          <FormField
+            label='Role'
+            layout='vertical'
+            required
+          >
+            <Select
+              value={role}
+              onValueChange={value => setRole(value === 'admin' ? 'admin' : 'user')}
             >
-              <Select
-                value={role}
-                onValueChange={value => setRole(value === 'admin' ? 'admin' : 'user')}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='user'>User</SelectItem>
-                  <SelectItem value='admin'>Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </FormField>
-          </div>
+              <SelectTrigger className='w-full'>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='user'>User</SelectItem>
+                <SelectItem value='admin'>Admin</SelectItem>
+              </SelectContent>
+            </Select>
+          </FormField>
           <section className='grid gap-2'>
             <Label>
               Groups <span className='text-xs font-medium text-foreground-muted'>* (Required)</span>

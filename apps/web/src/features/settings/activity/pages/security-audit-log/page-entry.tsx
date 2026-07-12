@@ -1,5 +1,5 @@
-import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
-import { StandardPage } from '@/shared/ui/page/page-layout'
+import { PageHeader } from '@/shared/ui/page/page-header'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { ActivityEventsTable } from '../../activity-events-table'
 import { loadSecurityAuditLogPageData, type AuditSearchParams } from './page-data.server'
 
@@ -10,12 +10,12 @@ export async function SecurityAuditLogPageEntry({ searchParams }: { searchParams
 
   return (
     <StandardPage className='gap-2'>
-      <PlatformPageHeader
+      <PageHeader
+        section={{ label: 'Security' }}
         title='Audit log'
         description='Review recent administrative and application operations.'
-        breadcrumbRoot={{ label: 'Security' }}
       />
-      <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
+      <PageContent>
         <ActivityEventsTable
           result={result}
           filters={filters}
@@ -23,7 +23,7 @@ export async function SecurityAuditLogPageEntry({ searchParams }: { searchParams
           facets={facets}
           auditRetentionDays={auditRetentionDays}
         />
-      </section>
+      </PageContent>
     </StandardPage>
   )
 }

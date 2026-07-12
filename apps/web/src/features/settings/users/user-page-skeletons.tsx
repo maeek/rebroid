@@ -1,6 +1,7 @@
+import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageBreadcrumbsSkeleton } from '@/shared/ui/page/page-breadcrumbs-skeleton'
-import { StandardPage } from '@/shared/ui/page/page-layout'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { TableSkeleton } from '@/shared/ui/skeletons/table-skeleton'
 
 const UsersHeaderSkeleton = ({
@@ -92,7 +93,7 @@ export const UserEditPageSkeleton = () => (
       actionWidth='w-52'
       withAvatar
     />
-    <EditBodySkeleton leftTitle='w-24' />
+    <EditBodySkeleton variant='user' />
   </StandardPage>
 )
 
@@ -103,58 +104,135 @@ export const GroupEditPageSkeleton = () => (
       titleWidth='w-44'
       actionWidth='w-28'
     />
-    <EditBodySkeleton leftTitle='w-32' />
+    <EditBodySkeleton variant='group' />
   </StandardPage>
 )
 
-const EditBodySkeleton = ({ leftTitle }: { leftTitle: string }) => (
-  <section className='grid w-full gap-6 px-6 pb-16 max-sm:px-4 xl:grid-cols-[minmax(0,1fr)_minmax(28rem,0.85fr)]'>
-    <div className='grid content-start gap-6'>
-      <div className='rounded-panel border border-surface-border/70 bg-surface-panel/50 p-6 max-sm:p-4'>
-        <Skeleton className={`mb-5 h-5 ${leftTitle}`} />
-        <div className='grid gap-4 md:grid-cols-2'>
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div
-              key={index}
-              className='grid gap-2'
-            >
-              <Skeleton className='h-4 w-24' />
-              <Skeleton className='h-10 w-full' />
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className='rounded-panel border border-surface-border/70 bg-surface-panel/50 p-6 max-sm:p-4'>
-        <Skeleton className='mb-5 h-5 w-20' />
-        <div className='grid gap-4 md:grid-cols-2'>
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div
-              key={index}
-              className='grid gap-2'
-            >
-              <Skeleton className='h-4 w-28' />
-              <Skeleton className='h-10 w-full' />
-            </div>
-          ))}
-        </div>
+const FieldSkeleton = ({ tall = false }: { tall?: boolean }) => (
+  <div className='grid gap-2'>
+    <Skeleton className='h-4 w-24' />
+    <Skeleton className={tall ? 'h-25 w-full' : 'h-9 w-full'} />
+  </div>
+)
+
+const UserAccountSkeleton = () => (
+  <Section
+    title='Account'
+    surface='panel'
+    titleClassName='pb-4'
+    contentClassName='gap-5'
+  >
+    <div className='flex flex-wrap items-center gap-4'>
+      <Skeleton className='size-16 rounded-full' />
+      <div className='flex flex-1 flex-wrap gap-2'>
+        <Skeleton className='h-9 w-32' />
+        <Skeleton className='h-9 w-28' />
       </div>
     </div>
-    <div className='rounded-panel border border-surface-border/70 bg-surface-panel/50 p-6 max-sm:p-4'>
-      <Skeleton className='mb-5 h-5 w-28' />
-      <div className='grid gap-3'>
-        {Array.from({ length: 10 }).map((_, index) => (
-          <div
-            key={index}
-            className='flex items-center justify-between gap-4 border-b border-surface-border/50 py-2 last:border-b-0'
-          >
-            <div className='grid gap-2'>
-              <Skeleton className='h-4 w-40' />
-              <Skeleton className='h-3 w-56 max-w-full opacity-70' />
-            </div>
-            <Skeleton className='h-6 w-12 rounded-full' />
+    <div className='grid gap-4 md:grid-cols-2'>
+      {Array.from({ length: 4 }).map((_, index) => (
+        <FieldSkeleton key={index} />
+      ))}
+    </div>
+  </Section>
+)
+
+const GroupDetailsSkeleton = () => (
+  <Section
+    title='Group Details'
+    surface='panel'
+    titleClassName='pb-4'
+    contentClassName='gap-5'
+  >
+    <div className='grid gap-4 md:grid-cols-2'>
+      <FieldSkeleton />
+      <FieldSkeleton />
+    </div>
+    <FieldSkeleton tall />
+  </Section>
+)
+
+const GroupMembershipSkeleton = () => (
+  <Section
+    title='Groups'
+    surface='panel'
+    titleClassName='pb-4'
+    contentClassName='gap-5'
+  >
+    <Skeleton className='h-9 w-full' />
+    <div className='grid gap-3'>
+      {Array.from({ length: 2 }).map((_, index) => (
+        <div
+          key={index}
+          className='flex items-center gap-3 border-b border-surface-border/50 pb-3 last:border-0 last:pb-0'
+        >
+          <Skeleton className='size-4 rounded-control' />
+          <div className='grid flex-1 gap-2'>
+            <Skeleton className='h-4 w-36' />
+            <Skeleton className='h-3 w-56 max-w-full opacity-70' />
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
-  </section>
+  </Section>
+)
+
+const QuotasSkeleton = () => (
+  <Section
+    title='Quotas'
+    surface='panel'
+    titleClassName='pb-4'
+    contentClassName='gap-5'
+  >
+    {Array.from({ length: 4 }).map((_, index) => (
+      <div
+        key={index}
+        className='grid gap-3'
+      >
+        <div className='grid gap-2'>
+          <Skeleton className='h-4 w-32' />
+          <Skeleton className='h-3 w-72 max-w-full opacity-70' />
+        </div>
+        <Skeleton className='h-9 w-full' />
+        <Skeleton className='h-1 w-full' />
+      </div>
+    ))}
+  </Section>
+)
+
+const PermissionsSkeleton = () => (
+  <Section
+    title='Permissions'
+    surface='panel'
+    titleClassName='pb-4'
+    contentClassName='gap-4'
+    className='xl:sticky xl:top-4'
+  >
+    <Skeleton className='h-9 w-full' />
+    <div className='grid gap-3'>
+      {Array.from({ length: 10 }).map((_, index) => (
+        <div
+          key={index}
+          className='flex items-center justify-between gap-4 border-b border-surface-border/50 py-2 last:border-b-0'
+        >
+          <div className='grid gap-2'>
+            <Skeleton className='h-4 w-40' />
+            <Skeleton className='h-3 w-56 max-w-full opacity-70' />
+          </div>
+          <Skeleton className='h-6 w-12 rounded-full' />
+        </div>
+      ))}
+    </div>
+  </Section>
+)
+
+const EditBodySkeleton = ({ variant }: { variant: 'user' | 'group' }) => (
+  <PageContent className='grid xl:grid-cols-[minmax(0,1fr)_minmax(28rem,0.85fr)]'>
+    <div className='grid content-start gap-6'>
+      {variant === 'user' ? <UserAccountSkeleton /> : <GroupDetailsSkeleton />}
+      {variant === 'user' ? <GroupMembershipSkeleton /> : null}
+      <QuotasSkeleton />
+    </div>
+    <PermissionsSkeleton />
+  </PageContent>
 )

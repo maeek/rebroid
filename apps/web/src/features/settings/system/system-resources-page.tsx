@@ -6,12 +6,11 @@ import { DetailsTable } from '@/features/settings/system/details-table'
 import { ManagedContainerDetailsTable } from '@/features/settings/system/managed-container-details-table'
 import { MemoryChart } from '@/features/settings/system/memory-chart'
 import { usePollingQuery } from '@/hooks/use-polling-query'
-import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { useSystemResources } from '@/shared/model/platform/use-system-resources'
 import { PageHeader } from '@/shared/ui/page/page-header'
-import { StandardPage } from '@/shared/ui/page/page-layout'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { PlatformResources } from '@/shared/ui/platform/platform-resources'
-import { StatusSplash } from '@/shared/ui/status-splash'
+import { StateView } from '@/shared/ui/state-view'
 import { SystemResourcesPageSkeleton } from './system-resources-page-skeleton'
 import type { SystemStats } from '@/server/system/system-stats'
 
@@ -39,9 +38,7 @@ export function SystemResourcesPage() {
     isValidating: isRefreshingResources,
     refresh: refreshResources
   } = useSystemResources()
-  const resourcesError = caughtResourcesError
-    ? getDisplayErrorMessage(caughtResourcesError, 'Could not load orchestrator resources.')
-    : null
+  const resourcesError = Boolean(caughtResourcesError)
 
   return (
     <>
@@ -51,10 +48,10 @@ export function SystemResourcesPage() {
       <Visible when={!isLoading}>
         <StandardPage className='gap-2'>
           <PageHeader
-            breadcrumbs={[{ label: 'System' }, { label: 'Resources' }]}
+            section={{ label: 'System' }}
             title='Resources'
           />
-          <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
+          <PageContent>
             <div className='grid gap-6 xl:grid-cols-2'>
               <Section
                 title='Host system'
@@ -79,12 +76,12 @@ export function SystemResourcesPage() {
                   Live aggregated Docker stats across managed app containers, shown separately from host-level usage.
                 </p>
                 <Visible when={resourcesError}>
-                  <StatusSplash
+                  <StateView
+                    kind='unavailable'
+                    scope='grid'
                     title='Orchestrator resources unavailable'
                     description='Docker inventory could not be loaded from the orchestrator.'
-                    detail={resourcesError}
-                    tone='danger'
-                    primaryAction={{ label: 'Refresh', onClick: () => void refreshResources() }}
+                    actions={[{ label: 'Refresh', onClick: () => void refreshResources() }]}
                     className='min-h-64 p-4'
                   />
                 </Visible>
@@ -123,7 +120,7 @@ export function SystemResourcesPage() {
                 </div>
               </Section>
             </div>
-          </section>
+          </PageContent>
         </StandardPage>
       </Visible>
     </>

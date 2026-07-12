@@ -12,10 +12,10 @@ const AiProvidersListContent = async () => {
     return (
       <PlatformRouteUnavailable
         title='AI'
-        titlePrefix={<GradientSparklesIcon className='size-8 max-sm:size-5' />}
+        leading={<GradientSparklesIcon className='size-8 max-sm:size-5' />}
         description='Configure OpenAI, Ollama, and OpenAI-compatible providers used by AI automation steps.'
-        detail={orchestratorError}
         href='/platform/ai'
+        section={{ label: 'Platform' }}
       />
     )
   }

@@ -11,7 +11,8 @@ const emptyImagesPage = (gridQuery: PlatformImagesGridQuery): PlatformImagesGrid
   items: [],
   total: 0,
   page: gridQuery.page ?? 1,
-  pageSize: gridQuery.pageSize ?? 20
+  pageSize: gridQuery.pageSize ?? 20,
+  facets: { androidVersions: [], architectures: [] }
 })
 
 export const imagesGridQueryFromSearchParams = (searchParams: ImagesSearchParams): PlatformImagesGridQuery =>

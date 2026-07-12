@@ -1,7 +1,7 @@
 import { IconChevronDown, IconCirclePlus } from '@tabler/icons-react'
-import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { Visible } from '@/components/ui/visible'
+import { cn } from '@/lib/utils'
 import { variantStyles, type NavigationItem, type NavigationVariant } from './protected-navigation-config'
 
 type NavLinkProps = {

@@ -1,7 +1,7 @@
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DataGridSkeleton } from '@/shared/ui/data-grid'
-import { StandardPage } from '@/shared/ui/page/page-layout'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
 import { DetailRowsSkeleton } from './detail-rows-skeleton'
 import { JsonBlockSkeleton } from './json-block-skeleton'
@@ -12,10 +12,9 @@ export const PlatformContainerDetailPageSkeleton = ({ titleWidth }: { titleWidth
       titleWidth={titleWidth}
       hasParent
     />
-    <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
+    <PageContent>
       <Section
-        surface='panel'
-        className='bg-surface-panel/60'
+        surface='plain'
         contentClassName='gap-5'
       >
         <div className='flex flex-wrap items-center justify-between gap-4'>
@@ -37,10 +36,25 @@ export const PlatformContainerDetailPageSkeleton = ({ titleWidth }: { titleWidth
         </div>
       </Section>
 
+      <Section
+        title='Live resources'
+        surface='plain'
+        contentClassName='gap-4'
+      >
+        <div className='grid grid-cols-4 gap-3 max-xl:grid-cols-2 max-sm:grid-cols-1'>
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton
+              key={index}
+              className='h-28 rounded-control'
+            />
+          ))}
+        </div>
+      </Section>
+
       <div className='grid gap-6 xl:grid-cols-2'>
         <Section
           title='Related image'
-          surface='panel'
+          surface='plain'
           contentClassName='gap-3'
         >
           <DetailRowsSkeleton rows={3} />
@@ -66,7 +80,7 @@ export const PlatformContainerDetailPageSkeleton = ({ titleWidth }: { titleWidth
 
       <Section
         title='Logs'
-        surface='panel'
+        surface='plain'
         contentClassName='gap-4'
       >
         <div className='flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-start'>
@@ -81,7 +95,7 @@ export const PlatformContainerDetailPageSkeleton = ({ titleWidth }: { titleWidth
 
       <Section
         title='Labels'
-        surface='panel'
+        surface='plain'
         contentClassName='gap-4'
         titleClassName='pb-4'
       >
@@ -90,11 +104,12 @@ export const PlatformContainerDetailPageSkeleton = ({ titleWidth }: { titleWidth
 
       <Section
         title='Raw inspect'
-        surface='panel'
+        surface='plain'
+        collapsible
         contentClassName='gap-4'
       >
         <JsonBlockSkeleton lines={12} />
       </Section>
-    </section>
+    </PageContent>
   </StandardPage>
 )

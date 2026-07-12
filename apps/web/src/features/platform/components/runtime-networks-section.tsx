@@ -5,16 +5,8 @@ import { IconEye, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { ContextMenuItem } from '@/components/ui/context-menu'
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
 import { Section } from '@/components/ui/section'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Visible } from '@/components/ui/visible'
@@ -22,8 +14,8 @@ import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { removePlatformNetworkAction } from '@/server/orchestrator/platform/network-actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
-import { DataGrid, DataGridPagination, DataGridToolbar } from '@/shared/ui/data-grid'
-import { PlatformResourceScopeFilter } from './platform-resource-scope-filter'
+import { DataGrid, DataGridPagination, DataGridWorkspace } from '@/shared/ui/data-grid'
+import { RuntimeNetworkFilters } from './runtime-grid-filter-controls'
 import {
   platformSortFromSearchParam,
   platformSortToSearchParam,
@@ -137,7 +129,7 @@ export const RuntimeNetworksSection = ({
   const router = useRouter()
   const [search, setSearch] = useState(gridQuery.q ?? '')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
-  const [pendingRemove, setPendingRemove] = useState<PlatformNetwork | null>(null)
+  const [pendingRemove, setPendingRemove] = useState<PlatformNetwork[] | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const sorting = useMemo(() => platformSortFromSearchParam(gridQuery.sort), [gridQuery.sort])
 
@@ -152,16 +144,22 @@ export const RuntimeNetworksSection = ({
   const selectedNetworks = selectedPlatformItemsFromIds(networksPage.items, selectedIds)
 
   const pushGridParams = (patch: Partial<PlatformNetworksGridQuery>) => {
-    router.push(buildNetworksGridHref({ gridQuery, pageSize: networksPage.pageSize, patch }))
+    router.replace(buildNetworksGridHref({ gridQuery, pageSize: networksPage.pageSize, patch }), { scroll: false })
   }
 
-  const removeNetwork = async () => {
-    if (!pendingRemove) return
+  const removeNetworks = async () => {
+    if (!pendingRemove?.length) return
 
-    setBusyId(pendingRemove.id)
+    setBusyId(pendingRemove.length === 1 ? pendingRemove[0].id : 'bulk')
     try {
-      unwrapActionResult(await removePlatformNetworkAction(pendingRemove.id))
-      toast({ title: 'Network removed' })
+      const results = await Promise.all(pendingRemove.map(network => removePlatformNetworkAction(network.id)))
+      if (pendingRemove.length === 1) {
+        unwrapActionResult(results[0])
+        toast({ title: 'Network removed', variant: 'success' })
+      } else {
+        toast(summarizeNetworkRemoveResults(results))
+        setSelectedIds(new Set())
+      }
       setPendingRemove(null)
       router.refresh()
     } catch (caughtError) {
@@ -175,21 +173,59 @@ export const RuntimeNetworksSection = ({
     }
   }
 
-  const removeSelectedNetworks = async () => {
-    if (selectedNetworks.length === 0) return
-
-    setBusyId('bulk')
-    try {
-      const results = await Promise.all(selectedNetworks.map(network => removePlatformNetworkAction(network.id)))
-      setSelectedIds(new Set())
-      router.refresh()
-      toast(summarizeNetworkRemoveResults(results))
-    } finally {
-      setBusyId(null)
-    }
-  }
-
   const columns = useMemo(() => createNetworkColumns(), [])
+  const activeFilters = [
+    ...(gridQuery.ownership === 'all'
+      ? [
+          {
+            id: 'ownership',
+            label: 'Ownership',
+            value: 'All Docker',
+            onRemove: () => pushGridParams({ ownership: 'managed', page: 1 })
+          }
+        ]
+      : []),
+    ...(gridQuery.driver
+      ? [
+          {
+            id: 'driver',
+            label: 'Driver',
+            value: gridQuery.driver,
+            onRemove: () => pushGridParams({ driver: undefined, page: 1 })
+          }
+        ]
+      : []),
+    ...(gridQuery.dockerScope
+      ? [
+          {
+            id: 'dockerScope',
+            label: 'Scope',
+            value: gridQuery.dockerScope,
+            onRemove: () => pushGridParams({ dockerScope: undefined, page: 1 })
+          }
+        ]
+      : []),
+    ...(gridQuery.trait && gridQuery.trait !== 'all'
+      ? [
+          {
+            id: 'trait',
+            label: 'Characteristic',
+            value: gridQuery.trait,
+            onRemove: () => pushGridParams({ trait: 'all', page: 1 })
+          }
+        ]
+      : []),
+    ...(gridQuery.attachment && gridQuery.attachment !== 'all'
+      ? [
+          {
+            id: 'attachment',
+            label: 'Containers',
+            value: gridQuery.attachment,
+            onRemove: () => pushGridParams({ attachment: 'all', page: 1 })
+          }
+        ]
+      : [])
+  ]
 
   return (
     <>
@@ -197,125 +233,123 @@ export const RuntimeNetworksSection = ({
         surface='plain'
         contentClassName='gap-4'
       >
-        <DataGridToolbar
+        <DataGridWorkspace
           search={search}
           searchPlaceholder='Search networks'
           onSearchChange={setSearch}
-          onSearchSubmit={() => pushGridParams({ q: search.trim() || undefined, page: 1 })}
-          activeFilterCount={gridQuery.scope === 'all' ? 1 : 0}
-          selectedCount={selectedNetworks.length}
+          onSearch={value => pushGridParams({ q: value.trim() || undefined, page: 1 })}
           filters={
-            <PlatformResourceScopeFilter
-              value={gridQuery.scope ?? 'managed'}
-              onValueChange={scope => pushGridParams({ scope, page: 1 })}
+            <RuntimeNetworkFilters
+              page={networksPage}
+              query={gridQuery}
+              onUpdate={pushGridParams}
             />
           }
-          actions={
+          filterTitle='Filter networks'
+          filterDescription='Narrow networks by Docker properties and attached resources.'
+          activeFilters={activeFilters}
+          onResetFilters={() =>
+            pushGridParams({
+              ownership: 'managed',
+              driver: undefined,
+              dockerScope: undefined,
+              trait: 'all',
+              attachment: 'all',
+              page: 1
+            })
+          }
+          selectedCount={selectedNetworks.length}
+          bulkActions={
             <Button
               type='button'
-              variant='ghost'
+              variant='danger'
               disabled={busyId === 'bulk' || !canRemoveSelectedNetworks(selectedNetworks)}
-              onClick={() => void removeSelectedNetworks()}
+              onClick={() => setPendingRemove(selectedNetworks)}
             >
               Remove selected
             </Button>
           }
-        />
+        >
+          <TooltipProvider delayDuration={150}>
+            <DataGrid
+              columns={columns}
+              data={networksPage.items}
+              totalItems={networksPage.total}
+              pageIndex={networksPage.page - 1}
+              pageSize={networksPage.pageSize}
+              getRowId={network => network.id}
+              sorting={sorting}
+              onSortingChange={updater => {
+                const nextSorting = typeof updater === 'function' ? updater(sorting) : updater
+                pushGridParams({ sort: platformSortToSearchParam(nextSorting), page: 1 })
+              }}
+              selection={{
+                selectedIds,
+                onSelectedIdsChange: setSelectedIds
+              }}
+              emptyState={
+                <div className='text-center text-foreground-muted'>
+                  {gridQuery.q ? 'No networks match this search.' : 'No networks are visible to Docker.'}
+                </div>
+              }
+              rowContextMenu={row => {
+                const hasBulkSelection = selectedIds.has(row.original.id) && selectedNetworks.length > 1
+                return (
+                  <>
+                    {hasBulkSelection ? (
+                      <ContextMenuItem
+                        className='text-danger focus:text-danger'
+                        disabled={busyId === 'bulk' || !canRemoveSelectedNetworks(selectedNetworks)}
+                        onSelect={() => setPendingRemove(selectedNetworks)}
+                      >
+                        <IconTrash className='mr-2 size-4' />
+                        Remove selected ({selectedNetworks.length})
+                      </ContextMenuItem>
+                    ) : null}
+                    <ContextMenuItem asChild>
+                      <Link href={`/runtime/networks/${row.original.id}`}>
+                        <IconEye className='mr-2 size-4' />
+                        Details
+                      </Link>
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      className='text-danger focus:text-danger'
+                      disabled={networkHasAttachedContainers(row.original)}
+                      onSelect={() => setPendingRemove([row.original])}
+                    >
+                      <IconTrash className='mr-2 size-4' />
+                      Remove
+                    </ContextMenuItem>
+                  </>
+                )
+              }}
+            />
+          </TooltipProvider>
 
-        <TooltipProvider delayDuration={150}>
-          <DataGrid
-            columns={columns}
-            data={networksPage.items}
+          <DataGridPagination
             totalItems={networksPage.total}
             pageIndex={networksPage.page - 1}
             pageSize={networksPage.pageSize}
-            getRowId={network => network.id}
-            sorting={sorting}
-            onSortingChange={updater => {
-              const nextSorting = typeof updater === 'function' ? updater(sorting) : updater
-              pushGridParams({ sort: platformSortToSearchParam(nextSorting), page: 1 })
-            }}
-            selection={{
-              selectedIds,
-              onSelectedIdsChange: setSelectedIds
-            }}
-            emptyState={
-              <div className='text-center text-foreground-muted'>
-                {gridQuery.q ? 'No networks match this search.' : 'No networks are visible to Docker.'}
-              </div>
-            }
-            rowContextMenu={row => {
-              const hasBulkSelection = selectedIds.has(row.original.id) && selectedNetworks.length > 1
-              return (
-                <>
-                  {hasBulkSelection ? (
-                    <ContextMenuItem
-                      className='text-danger focus:text-danger'
-                      disabled={busyId === 'bulk' || !canRemoveSelectedNetworks(selectedNetworks)}
-                      onSelect={() => void removeSelectedNetworks()}
-                    >
-                      <IconTrash className='mr-2 size-4' />
-                      Remove selected ({selectedNetworks.length})
-                    </ContextMenuItem>
-                  ) : null}
-                  <ContextMenuItem asChild>
-                    <Link href={`/runtime/networks/${row.original.id}`}>
-                      <IconEye className='mr-2 size-4' />
-                      Details
-                    </Link>
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    className='text-danger focus:text-danger'
-                    disabled={networkHasAttachedContainers(row.original)}
-                    onSelect={() => setPendingRemove(row.original)}
-                  >
-                    <IconTrash className='mr-2 size-4' />
-                    Remove
-                  </ContextMenuItem>
-                </>
-              )
-            }}
+            onPageIndexChange={pageIndex => pushGridParams({ page: pageIndex + 1 })}
+            onPageSizeChange={pageSize => pushGridParams({ page: 1, pageSize })}
           />
-        </TooltipProvider>
-
-        <DataGridPagination
-          totalItems={networksPage.total}
-          pageIndex={networksPage.page - 1}
-          pageSize={networksPage.pageSize}
-          onPageIndexChange={pageIndex => pushGridParams({ page: pageIndex + 1 })}
-          onPageSizeChange={pageSize => pushGridParams({ page: 1, pageSize })}
-        />
+        </DataGridWorkspace>
       </Section>
 
-      <Dialog
-        modal
+      <ConfirmMutationDialog
         open={Boolean(pendingRemove)}
+        title={pendingRemove?.length === 1 ? 'Remove network?' : `Remove ${pendingRemove?.length ?? 0} networks?`}
+        description='This permanently removes the selected network configuration from Docker.'
+        summary={pendingRemove?.length === 1 ? pendingRemove[0]?.name : undefined}
+        consequence='Networks with attached containers cannot be removed.'
+        confirmLabel={pendingRemove?.length === 1 ? 'Remove network' : 'Remove networks'}
+        pendingLabel='Removing…'
+        pending={busyId !== null}
         onOpenChange={open => {
           if (!open) setPendingRemove(null)
         }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Remove network?</DialogTitle>
-            <DialogDescription>
-              This removes {pendingRemove?.name ?? 'the selected network'} from Docker. Networks with attached
-              containers cannot be removed.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant='danger'
-              disabled={!pendingRemove || busyId === pendingRemove.id}
-              onClick={() => void removeNetwork()}
-            >
-              Remove network
-            </Button>
-            <DialogClose asChild>
-              <Button variant='secondary'>Cancel</Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        onConfirm={() => void removeNetworks()}
+      />
     </>
   )
 }

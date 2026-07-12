@@ -3,25 +3,28 @@ import { PageHeader } from '@/shared/ui/page/page-header'
 
 export const PageHeaderSkeleton = ({
   titleWidth,
-  hasTitlePrefix = false,
+  hasLeading = false,
   hasParent = false,
   includeOrchestratorBreadcrumb = true,
   actionCount = 0,
   titleActionCount = 0
 }: {
   titleWidth: string
-  hasTitlePrefix?: boolean
+  hasLeading?: boolean
   hasParent?: boolean
   includeOrchestratorBreadcrumb?: boolean
   actionCount?: number
   titleActionCount?: number
 }) => {
-  const breadcrumbWidths = [
-    'w-16',
-    ...(includeOrchestratorBreadcrumb ? ['w-24'] : []),
-    ...(hasParent ? ['w-20'] : []),
-    'w-28'
-  ]
+  const trailWidths = [...(includeOrchestratorBreadcrumb ? ['w-24'] : []), ...(hasParent ? ['w-20'] : [])]
+  const breadcrumbSkeleton = (width: string) => ({
+    label: (
+      <Skeleton
+        as='span'
+        className={`block h-5 ${width}`}
+      />
+    )
+  })
   const actions = [
     ...Array.from({ length: titleActionCount }, (_, index) => (
       <Skeleton
@@ -39,22 +42,17 @@ export const PageHeaderSkeleton = ({
 
   return (
     <PageHeader
-      breadcrumbs={breadcrumbWidths.map(width => ({
-        label: (
-          <Skeleton
-            as='span'
-            className={`block h-5 ${width}`}
-          />
-        )
-      }))}
+      section={breadcrumbSkeleton('w-16')}
+      trail={trailWidths.map(breadcrumbSkeleton)}
+      breadcrumbLabel={breadcrumbSkeleton('w-28').label}
       title={
         <Skeleton
           as='span'
           className={`block h-9 ${titleWidth} max-sm:h-7`}
         />
       }
-      titlePrefix={
-        hasTitlePrefix ? (
+      leading={
+        hasLeading ? (
           <Skeleton
             as='span'
             className='block size-7 rounded-control max-sm:size-5'

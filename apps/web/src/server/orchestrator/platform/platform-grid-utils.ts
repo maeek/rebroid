@@ -1,4 +1,5 @@
 import { imageDisplayName } from '@/shared/model/runtime-image/image-display-name'
+import { resolvePlatformImageRuntimeMetadata } from '@/shared/model/runtime-image/runtime-image-metadata'
 import type {
   PlatformContainer,
   PlatformContainersGridPage,
@@ -15,6 +16,11 @@ const pageBounds = (query: { page?: number; pageSize?: number }) => ({
   page: Math.max(Math.trunc(query.page ?? 1), 1),
   pageSize: Math.min(Math.max(Math.trunc(query.pageSize ?? 20), 1), 100)
 })
+
+const uniqueValues = (values: Array<string | null | undefined>) =>
+  Array.from(new Set(values.filter((value): value is string => Boolean(value)))).toSorted((left, right) =>
+    left.localeCompare(right, undefined, { numeric: true })
+  )
 
 const parseSorting = (sort: string | undefined, fallback: string, fields: Set<string>, descDefault: boolean) =>
   (sort || fallback)
@@ -60,9 +66,16 @@ export const platformContainersGridPage = (
   const { page, pageSize } = pageBounds(query)
   const search = query.q?.trim().toLowerCase()
   const orphanedCount = containers.filter(container => container.orphaned).length
-  const scoped = query.scope === 'all' ? containers : containers.filter(container => container.managed)
+  const scoped = query.ownership === 'all' ? containers : containers.filter(container => container.managed)
+  const structured = scoped.filter(container => {
+    if (query.state && container.state !== query.state) return false
+    if (query.application && container.applicationId !== query.application) return false
+    if (query.image && container.image !== query.image) return false
+    if (query.network && !container.networks.includes(query.network)) return false
+    return true
+  })
   const filtered = search
-    ? scoped.filter(container =>
+    ? structured.filter(container =>
         [
           container.id,
           container.shortId,
@@ -81,10 +94,22 @@ export const platformContainersGridPage = (
           .toLowerCase()
           .includes(search)
       )
-    : scoped
+    : structured
   const sorted = sortContainers(filtered, query.sort)
   const offset = (page - 1) * pageSize
-  return { items: sorted.slice(offset, offset + pageSize), total: sorted.length, page, pageSize, orphanedCount }
+  return {
+    items: sorted.slice(offset, offset + pageSize),
+    total: sorted.length,
+    page,
+    pageSize,
+    orphanedCount,
+    facets: {
+      states: uniqueValues(containers.map(container => container.state)),
+      applications: uniqueValues(containers.map(container => container.applicationId)),
+      images: uniqueValues(containers.map(container => container.image)),
+      networks: uniqueValues(containers.flatMap(container => container.networks))
+    }
+  }
 }
 
 const imageSortFields = new Set(['name', 'sizeBytes', 'createdAt', 'containers'])
@@ -117,9 +142,20 @@ export const platformImagesGridPage = (
 ): PlatformImagesGridPage => {
   const { page, pageSize } = pageBounds(query)
   const search = query.q?.trim().toLowerCase()
-  const scoped = query.scope === 'all' ? images : images.filter(image => image.managed)
+  const scoped = query.ownership === 'all' ? images : images.filter(image => image.managed)
+  const structured = scoped.filter(image => {
+    const metadata = resolvePlatformImageRuntimeMetadata(image).metadata
+    if (query.usage === 'in-use' && image.containers <= 0) return false
+    if (query.usage === 'unused' && image.containers !== 0) return false
+    if (query.usage === 'unknown' && image.containers >= 0) return false
+    if (query.runtimeKind && query.runtimeKind !== 'all' && metadata.runtimeKind !== query.runtimeKind) return false
+    if (query.androidVersion && metadata.androidVersion !== query.androidVersion) return false
+    if (query.architecture && metadata.architecture !== query.architecture) return false
+    if (query.gmsMode && query.gmsMode !== 'all' && metadata.gmsMode !== query.gmsMode) return false
+    return true
+  })
   const filtered = search
-    ? scoped.filter(image =>
+    ? structured.filter(image =>
         [
           image.id,
           image.shortId,
@@ -133,14 +169,20 @@ export const platformImagesGridPage = (
           .toLowerCase()
           .includes(search)
       )
-    : scoped
+    : structured
   const sorted = sortImages(filtered, query.sort)
   const offset = (page - 1) * pageSize
   return {
     items: sorted.slice(offset, offset + pageSize),
     total: sorted.length,
     page,
-    pageSize
+    pageSize,
+    facets: {
+      androidVersions: uniqueValues(
+        images.map(image => resolvePlatformImageRuntimeMetadata(image).metadata.androidVersion)
+      ),
+      architectures: uniqueValues(images.map(image => resolvePlatformImageRuntimeMetadata(image).metadata.architecture))
+    }
   }
 }
 
@@ -170,9 +212,19 @@ export const platformNetworksGridPage = (
 ): PlatformNetworksGridPage => {
   const { page, pageSize } = pageBounds(query)
   const search = query.q?.trim().toLowerCase()
-  const scoped = query.scope === 'all' ? networks : networks.filter(network => network.managed)
+  const scoped = query.ownership === 'all' ? networks : networks.filter(network => network.managed)
+  const structured = scoped.filter(network => {
+    if (query.driver && network.driver !== query.driver) return false
+    if (query.dockerScope && network.scope !== query.dockerScope) return false
+    if (query.trait === 'internal' && !network.internal) return false
+    if (query.trait === 'attachable' && !network.attachable) return false
+    if (query.trait === 'ingress' && !network.ingress) return false
+    if (query.attachment === 'attached' && network.containers.length === 0) return false
+    if (query.attachment === 'unattached' && network.containers.length > 0) return false
+    return true
+  })
   const filtered = search
-    ? scoped.filter(network =>
+    ? structured.filter(network =>
         [
           network.id,
           network.shortId,
@@ -187,8 +239,17 @@ export const platformNetworksGridPage = (
           .toLowerCase()
           .includes(search)
       )
-    : scoped
+    : structured
   const sorted = sortNetworks(filtered, query.sort)
   const offset = (page - 1) * pageSize
-  return { items: sorted.slice(offset, offset + pageSize), total: sorted.length, page, pageSize }
+  return {
+    items: sorted.slice(offset, offset + pageSize),
+    total: sorted.length,
+    page,
+    pageSize,
+    facets: {
+      drivers: uniqueValues(networks.map(network => network.driver)),
+      scopes: uniqueValues(networks.map(network => network.scope))
+    }
+  }
 }

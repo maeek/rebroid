@@ -5,7 +5,7 @@ type PlatformGridQuery = {
   page?: number
   pageSize?: number
   q?: string
-  scope?: string
+  ownership?: string
   sort?: string
 }
 
@@ -26,7 +26,10 @@ export const compactPlatformGridParams = (values: Record<string, string | number
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(values)) {
     const text = String(value ?? '').trim()
-    if (text && !(key === 'scope' && text === 'managed')) params.set(key, text)
+    const isDefaultOwnership = key === 'ownership' && text === 'managed'
+    const isDefaultAllFilter =
+      ['usage', 'runtimeKind', 'gmsMode', 'trait', 'attachment'].includes(key) && text === 'all'
+    if (text && !isDefaultOwnership && !isDefaultAllFilter) params.set(key, text)
   }
   return params
 }
@@ -38,9 +41,9 @@ export const buildPlatformGridHref = <TQuery extends PlatformGridQuery>({
   patch
 }: PlatformGridHrefInput<TQuery>) => {
   const query = {
-    q: patch.q ?? gridQuery.q,
-    scope: patch.scope ?? gridQuery.scope ?? 'managed',
-    sort: patch.sort ?? gridQuery.sort,
+    ...gridQuery,
+    ...patch,
+    ownership: patch.ownership ?? gridQuery.ownership ?? 'managed',
     page: patch.page ?? gridQuery.page ?? 1,
     pageSize: patch.pageSize ?? gridQuery.pageSize ?? pageSize
   }

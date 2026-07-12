@@ -1,6 +1,8 @@
-import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
-import { StandardPage } from '@/shared/ui/page/page-layout'
-import { StatusSplash } from '@/shared/ui/status-splash'
+import { Badge } from '@/components/ui/badge'
+import { ContainerStateBadge } from '@/features/platform/components/runtime-containers-table-parts'
+import { PageHeader } from '@/shared/ui/page/page-header'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
+import { StateView } from '@/shared/ui/state-view'
 import { RuntimeContainerDetail } from '../../details/runtime-container-detail/runtime-container-detail'
 import { loadRuntimeContainerDetailPageData } from './page-data.server'
 
@@ -12,11 +14,18 @@ export async function RuntimeContainerDetailPageEntry({ params }: { params: Prom
 
     return (
       <StandardPage className='gap-2'>
-        <PlatformPageHeader
+        <PageHeader
+          section={{ label: 'Runtime' }}
+          trail={[{ label: 'Containers', href: '/runtime/containers' }]}
           title={name}
           description='Container details, related Docker resources, and recent logs.'
-          breadcrumbRoot={{ label: 'Runtime' }}
-          parent={{ label: 'Containers', href: '/runtime/containers' }}
+          badges={
+            <>
+              {details.container.managed ? <Badge variant='success'>managed</Badge> : null}
+              <ContainerStateBadge state={details.container.state} />
+            </>
+          }
+          meta={<span className='font-mono'>{details.container.shortId}</span>}
         />
         <RuntimeContainerDetail
           details={details}
@@ -24,28 +33,28 @@ export async function RuntimeContainerDetailPageEntry({ params }: { params: Prom
         />
       </StandardPage>
     )
-  } catch (error) {
+  } catch {
     return (
       <StandardPage className='gap-2'>
-        <PlatformPageHeader
+        <PageHeader
+          section={{ label: 'Runtime' }}
+          trail={[{ label: 'Containers', href: '/runtime/containers' }]}
           title='Container'
           description='Container details could not be loaded.'
-          breadcrumbRoot={{ label: 'Runtime' }}
-          parent={{ label: 'Containers', href: '/runtime/containers' }}
         />
-        <section className='px-6 pb-16 pt-6 max-sm:px-4'>
-          <StatusSplash
+        <PageContent>
+          <StateView
+            kind='not-found'
             title='Container not found'
             description='The container may have been removed or Docker may no longer know this id.'
-            detail={error instanceof Error ? error.message : 'Unknown error'}
-            tone='danger'
-            secondaryAction={{
-              label: 'Back to containers',
-              href: '/runtime/containers'
-            }}
-            className='min-h-[52vh]'
+            actions={[
+              {
+                label: 'Back to containers',
+                href: '/runtime/containers'
+              }
+            ]}
           />
-        </section>
+        </PageContent>
       </StandardPage>
     )
   }

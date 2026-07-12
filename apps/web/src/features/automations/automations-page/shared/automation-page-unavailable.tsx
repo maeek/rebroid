@@ -1,31 +1,24 @@
 import { PageHeader } from '@/shared/ui/page/page-header'
-import { StandardPage } from '@/shared/ui/page/page-layout'
-import { StatusSplash } from '@/shared/ui/status-splash'
+import { StandardPage, PageContent } from '@/shared/ui/page/page-layout'
+import { StateView } from '@/shared/ui/state-view'
 
-export const AutomationPageUnavailable = ({
-  title,
-  detail,
-  href
-}: {
-  title: string
-  detail: string | null
-  href: string
-}) => (
+export const AutomationPageUnavailable = ({ title, href }: { title: string; href: string }) => (
   <StandardPage className='gap-2'>
     <PageHeader
-      breadcrumbs={[{ label: 'Automations' }, { label: title }]}
+      section={{ label: 'Automations' }}
       title={title}
       description='Automation data is temporarily unavailable.'
     />
-    <section className='px-6 pb-16 pt-4 max-sm:px-4'>
-      <StatusSplash
+    <PageContent>
+      <StateView
+        kind='unavailable'
         title='Automation service unavailable'
         description='The page could not load automation data from the orchestrator.'
-        detail={detail}
-        tone='danger'
-        primaryAction={{ label: 'Refresh', href }}
-        secondaryAction={{ label: 'Back to apps', href: '/apps' }}
+        actions={[
+          { label: 'Refresh', href },
+          { label: 'Back to workflows', href: '/automations' }
+        ]}
       />
-    </section>
+    </PageContent>
   </StandardPage>
 )

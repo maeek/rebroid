@@ -25,7 +25,7 @@ export const LiveResourcesSection = () => {
 
   return (
     <Section
-      surface='panel'
+      surface='plain'
       contentClassName='gap-4'
     >
       <div className='flex flex-wrap items-center justify-between gap-3'>

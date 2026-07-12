@@ -2,8 +2,13 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { panelSurfaceClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 import { PageBreadcrumbsSkeleton } from '@/shared/ui/page/page-breadcrumbs-skeleton'
-import { StandardPage } from '@/shared/ui/page/page-layout'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { TableSkeleton } from '@/shared/ui/skeletons/table-skeleton'
+import {
+  automationVisualPrimaryClassName,
+  automationVisualSecondaryDesktopClassName,
+  automationVisualWorkspaceClassName
+} from './editor/automation-editor-layout'
 
 const AutomationHeaderSkeleton = ({
   breadcrumbWidths = ['w-24', 'w-24'],
@@ -34,7 +39,7 @@ const AutomationHeaderSkeleton = ({
 export const AutomationsListPageSkeleton = () => (
   <StandardPage className='gap-2'>
     <AutomationHeaderSkeleton />
-    <section className='px-6 pb-16 pt-2 max-sm:px-4'>
+    <PageContent className='pt-2'>
       <div className='mb-4 flex flex-wrap items-center gap-3'>
         <Skeleton className='h-10 w-full max-w-md' />
         <Skeleton className='h-10 w-28' />
@@ -50,7 +55,7 @@ export const AutomationsListPageSkeleton = () => (
         ]}
         rows={6}
       />
-    </section>
+    </PageContent>
   </StandardPage>
 )
 
@@ -61,7 +66,7 @@ export const AutomationTriggersPageSkeleton = () => (
       titleWidth='w-32'
       actionWidth='w-32'
     />
-    <section className='px-6 pb-16 pt-2 max-sm:px-4'>
+    <PageContent className='pt-2'>
       <div className='mb-4 flex flex-wrap items-center gap-3'>
         <Skeleton className='h-10 w-full max-w-md' />
         <Skeleton className='h-10 w-28' />
@@ -78,7 +83,7 @@ export const AutomationTriggersPageSkeleton = () => (
         ]}
         rows={6}
       />
-    </section>
+    </PageContent>
   </StandardPage>
 )
 
@@ -89,9 +94,9 @@ export const AutomationEditorPageSkeleton = () => (
       titleWidth='w-56'
       actionWidth='w-64'
     />
-    <section className='grid gap-6 px-6 pb-16 pt-2 max-sm:px-4'>
-      <div className='flex min-w-0 items-start gap-6 max-[1280px]:flex-wrap'>
-        <div className='grid min-w-0 content-start gap-6 flex-2/5'>
+    <PageContent className='grid gap-6 pt-2'>
+      <div className={automationVisualWorkspaceClassName}>
+        <div className={automationVisualPrimaryClassName}>
           <section className='flex w-full flex-col gap-4 pb-4'>
             <div className='flex h-8 items-center justify-between gap-3'>
               <Skeleton className='h-7 w-24' />
@@ -146,7 +151,7 @@ export const AutomationEditorPageSkeleton = () => (
           </section>
         </div>
 
-        <div className='sticky top-24 grid max-h-[calc(100dvh-7rem)] min-w-0 content-start gap-6 overflow-hidden flex-3/5 shrink-0'>
+        <div className={cn('hidden', automationVisualSecondaryDesktopClassName)}>
           <aside className='hidden min-w-0 xl:block'>
             <div className={cn('overflow-hidden rounded-panel', panelSurfaceClassName)}>
               <div className='grid max-h-[calc(100dvh-7rem)] min-w-0 grid-rows-[auto_minmax(0,1fr)]'>
@@ -173,7 +178,7 @@ export const AutomationEditorPageSkeleton = () => (
           </aside>
         </div>
       </div>
-    </section>
+    </PageContent>
   </StandardPage>
 )
 
@@ -184,7 +189,7 @@ export const AutomationTracesPageSkeleton = () => (
       titleWidth='w-64'
       actionWidth='hidden'
     />
-    <section className='grid gap-6 px-6 pb-16 pt-2 max-sm:px-4'>
+    <PageContent className='grid gap-6 pt-2'>
       <div className='grid gap-4'>
         <div className='flex flex-wrap items-center gap-3'>
           <Skeleton className='h-10 w-full max-w-md' />
@@ -201,6 +206,6 @@ export const AutomationTracesPageSkeleton = () => (
           rows={6}
         />
       </div>
-    </section>
+    </PageContent>
   </StandardPage>
 )

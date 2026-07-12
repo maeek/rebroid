@@ -6,8 +6,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
-import { StandardPage } from '@/shared/ui/page/page-layout'
-import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
+import { PageHeader } from '@/shared/ui/page/page-header'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { createImageColumns, RuntimeImagesSection } from './runtime-images-section'
 import { RuntimeInventoryLoadingSection } from './runtime-inventory-loading-section'
 import type { PlatformImagesGridPage, PlatformImagesGridQuery } from '@/server/orchestrator/platform/types'
@@ -49,10 +49,10 @@ const RuntimeImagesPageFrame = ({
   onRefresh: () => void
 }) => (
   <StandardPage className='gap-2'>
-    <PlatformPageHeader
+    <PageHeader
+      section={{ label: 'Runtime' }}
       title='Images'
       description='Local images available to application containers, custom runtimes, and platform sidecars.'
-      breadcrumbRoot={{ label: 'Runtime' }}
       actions={
         <div className='flex items-center gap-2'>
           <Button asChild>
@@ -69,7 +69,7 @@ const RuntimeImagesPageFrame = ({
         </div>
       }
     />
-    <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>{children}</section>
+    <PageContent>{children}</PageContent>
   </StandardPage>
 )
 

@@ -30,6 +30,9 @@ const toastVariants = cva(
     variants: {
       variant: {
         neutral: cn(floatingSurfaceClassName, 'border-primary/35'),
+        info: cn(floatingSurfaceClassName, 'border-info/45 bg-info/12'),
+        success: cn(floatingSurfaceClassName, 'border-success/45 bg-success/12'),
+        warning: cn(floatingSurfaceClassName, 'border-warning/45 bg-warning/12'),
         danger: cn(floatingSurfaceClassName, 'danger border-danger/45 bg-danger/12 text-foreground')
       }
     },

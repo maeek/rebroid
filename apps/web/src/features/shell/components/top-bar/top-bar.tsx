@@ -2,10 +2,10 @@
 
 import { useState } from 'react'
 import { IconMenu2, IconX } from '@tabler/icons-react'
-import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer'
 import { Visible } from '@/components/ui/visible'
+import { cn } from '@/lib/utils'
 import { ProtectedNavigation } from '../protected-navigation'
 import { TopBarAccount } from './account'
 import { TopBarNotifications } from './notifications'

@@ -10,15 +10,15 @@ import {
 } from './runtime-grid-query-utils'
 
 describe('orchestrator grid query utils', () => {
-  it('omits the default managed scope', () => {
-    expect(compactPlatformGridParams({ scope: 'managed', q: 'redroid' }).toString()).toBe('q=redroid')
+  it('omits the default managed ownership', () => {
+    expect(compactPlatformGridParams({ ownership: 'managed', q: 'redroid' }).toString()).toBe('q=redroid')
   })
 
   it('builds platform grid hrefs from current query and patch values', () => {
     expect(
       buildPlatformGridHref({
         basePath: '/runtime/images',
-        gridQuery: { q: 'redroid', scope: 'managed', sort: 'createdAt:desc', page: 4, pageSize: 25 },
+        gridQuery: { q: 'redroid', ownership: 'managed', sort: 'createdAt:desc', page: 4, pageSize: 25 },
         pageSize: 25,
         patch: { q: 'base', page: 1 }
       })

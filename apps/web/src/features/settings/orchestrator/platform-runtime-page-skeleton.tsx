@@ -1,5 +1,5 @@
 import { Skeleton } from '@/components/ui/skeleton'
-import { StandardPage } from '@/shared/ui/page/page-layout'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
 
 const SettingSkeleton = ({ tall = false }: { tall?: boolean }) => (
@@ -17,20 +17,18 @@ export const PlatformRuntimePageSkeleton = () => (
       includeOrchestratorBreadcrumb={false}
       actionCount={2}
     />
-    <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
-      <div className='grid w-full gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)]'>
+    <PageContent>
+      <div className='grid w-full items-start gap-6 xl:grid-cols-2'>
         <section className='grid content-start gap-6'>
-          <div className='grid gap-5 rounded-panel border border-surface-border/60 bg-surface-panel/35 p-5 max-sm:p-4'>
+          <div className='grid gap-6'>
             <div className='grid gap-2'>
               <Skeleton className='h-5 w-32' />
               <Skeleton className='h-4 w-full max-w-2xl opacity-70' />
             </div>
             <SettingSkeleton />
             <SettingSkeleton />
-            <div className='grid gap-5 md:grid-cols-2'>
-              <SettingSkeleton />
-              <SettingSkeleton />
-            </div>
+            <SettingSkeleton />
+            <SettingSkeleton />
             <div className='flex items-center justify-between gap-4 rounded-control border border-surface-border/60 bg-surface-band/30 px-4 py-3 max-sm:flex-col max-sm:items-start'>
               <div className='grid gap-2'>
                 <Skeleton className='h-4 w-40' />
@@ -40,7 +38,7 @@ export const PlatformRuntimePageSkeleton = () => (
             </div>
           </div>
         </section>
-        <section className='grid content-start gap-4 rounded-panel border border-surface-border/60 bg-surface-panel/35 p-5 max-sm:p-4'>
+        <section className='grid content-start gap-4'>
           <div className='grid gap-2'>
             <Skeleton className='h-5 w-28' />
             <Skeleton className='h-4 w-full max-w-lg opacity-70' />
@@ -59,6 +57,6 @@ export const PlatformRuntimePageSkeleton = () => (
           ))}
         </section>
       </div>
-    </section>
+    </PageContent>
   </StandardPage>
 )

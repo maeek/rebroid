@@ -1,5 +1,5 @@
 import { CreateAppForm } from '@/features/applications/create/create-app-form'
-import { PageContent, StandardPageSplit } from '@/shared/ui/page/page-layout'
+import { StandardPage } from '@/shared/ui/page/page-layout'
 import { getCreateAppPageData } from './page-data.server'
 
 export const CreateAppPageEntry = async ({
@@ -10,17 +10,15 @@ export const CreateAppPageEntry = async ({
     await getCreateAppPageData(uploadedApkId)
 
   return (
-    <StandardPageSplit>
-      <PageContent>
-        <CreateAppForm
-          images={images}
-          initialContainerImage={initialImage}
-          initialSettings={initialSettings}
-          permissions={permissions}
-          canBuildImages={canBuildImages}
-          initialUploadedApk={initialUploadedApk}
-        />
-      </PageContent>
-    </StandardPageSplit>
+    <StandardPage className='gap-2'>
+      <CreateAppForm
+        images={images}
+        initialContainerImage={initialImage}
+        initialSettings={initialSettings}
+        permissions={permissions}
+        canBuildImages={canBuildImages}
+        initialUploadedApk={initialUploadedApk}
+      />
+    </StandardPage>
   )
 }

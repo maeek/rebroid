@@ -8,8 +8,8 @@ import {
   useScheduledTasksControllerContext
 } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-context'
 import { ScheduledTasksTable } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-table'
-import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
-import { StandardPage } from '@/shared/ui/page/page-layout'
+import { PageHeader } from '@/shared/ui/page/page-header'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import type { ScheduledTasksPageProps } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/types'
 
 export function ScheduledTasksPage(props: ScheduledTasksPageProps) {
@@ -25,10 +25,10 @@ const ScheduledTasksPageContent = () => {
 
   return (
     <StandardPage className='gap-2'>
-      <PlatformPageHeader
+      <PageHeader
+        section={{ label: 'Platform', href: '/platform' }}
         title='Scheduler'
         description='Monitor scheduled jobs, run maintenance tasks, and review failures.'
-        breadcrumbRoot={{ label: 'Platform' }}
         actions={
           <Button onClick={controller.openCreateForm}>
             <IconPlus className='size-4' />
@@ -36,14 +36,14 @@ const ScheduledTasksPageContent = () => {
           </Button>
         }
       />
-      <section className='grid w-full gap-6 px-6 pb-16 max-sm:px-4'>
+      <PageContent>
         <SchedulerSummary
           enabledCount={controller.enabledCount}
           failedCount={controller.failedCount}
           totalCount={controller.tasks.length}
         />
         <ScheduledTasksTable />
-      </section>
+      </PageContent>
       <ScheduledTaskFormDialog />
     </StandardPage>
   )

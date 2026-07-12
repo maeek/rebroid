@@ -1,9 +1,9 @@
 import { ReactNode } from 'react'
+import { FormField } from '@/components/ui/form-field'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Visible } from '@/components/ui/visible'
 import { NetworkAccessInput } from '@/features/applications/viewer/app-info/network-access-input'
-import { FormField } from '@/components/ui/form-field'
 import { verticalSettingClassName } from './app-form-utils'
 
 type AppNetworkPolicyEditorSectionProps = {

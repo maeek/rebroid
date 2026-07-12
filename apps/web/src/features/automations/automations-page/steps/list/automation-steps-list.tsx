@@ -13,6 +13,11 @@ import {
   useSensors
 } from '@dnd-kit/core'
 import { toast } from '@/hooks/use-toast'
+import {
+  automationVisualPrimaryClassName,
+  automationVisualSecondaryDesktopClassName,
+  automationVisualWorkspaceClassName
+} from '../../editor/automation-editor-layout'
 import { AutomationStepInspector } from '../inspector/automation-step-inspector'
 import { AutomationStepOutlineListView } from '../outline/automation-step-outline-list-view'
 import {
@@ -200,8 +205,8 @@ export function AutomationStepsList({
         onDragEnd={finishDrag}
       >
         <AutomationStepsProvider value={stepsContext}>
-          <div className='flex min-w-0 items-start gap-6 max-[1280px]:flex-wrap'>
-            <div className='grid min-w-0 content-start gap-6 flex-2/5'>
+          <div className={automationVisualWorkspaceClassName}>
+            <div className={automationVisualPrimaryClassName}>
               {details}
               <AutomationStepOutlineListView
                 listId={ROOT_STEP_LIST_ID}
@@ -209,7 +214,7 @@ export function AutomationStepsList({
                 root
               />
             </div>
-            <div className='sticky top-24 grid max-h-[calc(100dvh-7rem)] min-w-0 content-start gap-6 overflow-hidden flex-3/5 shrink-0'>
+            <div className={`contents ${automationVisualSecondaryDesktopClassName}`}>
               <AutomationStepInspector
                 step={selectedStep}
                 rootSteps={safeSteps}

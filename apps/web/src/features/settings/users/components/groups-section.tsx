@@ -14,14 +14,16 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
+import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { createUserGroupAction } from '@/server/users/actions/create-user-group-action'
 import { deleteUserGroupAction } from '@/server/users/actions/delete-user-group-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
-import { DataGrid } from '@/shared/ui/data-grid'
+import { DataGrid, DataGridWorkspace } from '@/shared/ui/data-grid'
 import type { UserGroup } from '@/server/auth/user'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
 
@@ -37,9 +39,17 @@ export const GroupsSection = ({
   const [newGroupName, setNewGroupName] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [sorting, setSorting] = useState<SortingState>([{ id: 'name', desc: false }])
+  const [searchDraft, setSearchDraft] = useState('')
+  const [search, setSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState('all')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [pendingDeleteGroups, setPendingDeleteGroups] = useState<UserGroup[]>([])
-  const sortedGroups = [...groups].sort((left, right) => {
+  const visibleGroups = groups.filter(group => {
+    const query = search.trim().toLowerCase()
+    if (query && !`${group.name} ${group.description}`.toLowerCase().includes(query)) return false
+    return roleFilter === 'all' || group.role === roleFilter
+  })
+  const sortedGroups = [...visibleGroups].sort((left, right) => {
     const activeSorting = sorting.length > 0 ? sorting : [{ id: 'name', desc: false }]
     for (const item of activeSorting) {
       const multiplier = item.desc ? -1 : 1
@@ -159,9 +169,39 @@ export const GroupsSection = ({
             </Button>
           </div>
         </Section>
-        {selectedGroups.length > 0 ? (
-          <div className='flex flex-wrap items-center justify-between gap-3 rounded-panel border border-surface-border bg-surface-panel/50 px-4 py-3 text-sm'>
-            <span className='text-foreground-muted'>{selectedGroups.length} selected</span>
+        <DataGridWorkspace
+          search={searchDraft}
+          searchPlaceholder='Search groups'
+          onSearchChange={setSearchDraft}
+          onSearch={setSearch}
+          filters={
+            <FormField
+              label='Role'
+              layout='vertical'
+            >
+              <Select
+                value={roleFilter}
+                onValueChange={setRoleFilter}
+              >
+                <SelectTrigger className='w-full'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='all'>Any role</SelectItem>
+                  <SelectItem value='admin'>Admin</SelectItem>
+                  <SelectItem value='user'>User</SelectItem>
+                </SelectContent>
+              </Select>
+            </FormField>
+          }
+          activeFilters={
+            roleFilter === 'all'
+              ? []
+              : [{ id: 'role', label: 'Role', value: roleFilter, onRemove: () => setRoleFilter('all') }]
+          }
+          onResetFilters={() => setRoleFilter('all')}
+          selectedCount={selectedGroups.length}
+          bulkActions={
             <Button
               type='button'
               variant='danger'
@@ -171,54 +211,55 @@ export const GroupsSection = ({
               <IconTrash className='size-4' />
               Delete selected
             </Button>
-          </div>
-        ) : null}
-        <DataGrid
-          columns={columns}
-          data={sortedGroups}
-          totalItems={sortedGroups.length}
-          pageIndex={0}
-          pageSize={Math.max(sortedGroups.length, 1)}
-          getRowId={group => group.id}
-          sorting={sorting}
-          onSortingChange={updater =>
-            setSorting(current => (typeof updater === 'function' ? updater(current) : updater))
           }
-          selection={{
-            selectedIds,
-            onSelectedIdsChange: setSelectedIds
-          }}
-          minWidth='38rem'
-          emptyState={<div className='text-center text-foreground-muted'>No groups have been created.</div>}
-          rowContextMenu={row => {
-            const hasBulkSelection = selectedIds.has(row.original.id) && selectedGroups.length > 1
-            return (
-              <>
-                {hasBulkSelection ? (
+        >
+          <DataGrid
+            columns={columns}
+            data={sortedGroups}
+            totalItems={sortedGroups.length}
+            pageIndex={0}
+            pageSize={Math.max(sortedGroups.length, 1)}
+            getRowId={group => group.id}
+            sorting={sorting}
+            onSortingChange={updater =>
+              setSorting(current => (typeof updater === 'function' ? updater(current) : updater))
+            }
+            selection={{
+              selectedIds,
+              onSelectedIdsChange: setSelectedIds
+            }}
+            minWidth='38rem'
+            emptyState={<div className='text-center text-foreground-muted'>No groups have been created.</div>}
+            rowContextMenu={row => {
+              const hasBulkSelection = selectedIds.has(row.original.id) && selectedGroups.length > 1
+              return (
+                <>
+                  {hasBulkSelection ? (
+                    <ContextMenuItem
+                      className='text-danger focus:text-danger'
+                      disabled={isSaving}
+                      onSelect={() => setPendingDeleteGroups(selectedGroups)}
+                    >
+                      <IconTrash className='mr-2 size-4' />
+                      Delete selected ({selectedGroups.length})
+                    </ContextMenuItem>
+                  ) : null}
+                  <ContextMenuItem asChild>
+                    <Link href={`/security/groups/${row.original.id}`}>Open group</Link>
+                  </ContextMenuItem>
                   <ContextMenuItem
                     className='text-danger focus:text-danger'
                     disabled={isSaving}
-                    onSelect={() => setPendingDeleteGroups(selectedGroups)}
+                    onSelect={() => setPendingDeleteGroups([row.original])}
                   >
                     <IconTrash className='mr-2 size-4' />
-                    Delete selected ({selectedGroups.length})
+                    Delete
                   </ContextMenuItem>
-                ) : null}
-                <ContextMenuItem asChild>
-                  <Link href={`/security/groups/${row.original.id}`}>Open group</Link>
-                </ContextMenuItem>
-                <ContextMenuItem
-                  className='text-danger focus:text-danger'
-                  disabled={isSaving}
-                  onSelect={() => setPendingDeleteGroups([row.original])}
-                >
-                  <IconTrash className='mr-2 size-4' />
-                  Delete
-                </ContextMenuItem>
-              </>
-            )
-          }}
-        />
+                </>
+              )
+            }}
+          />
+        </DataGridWorkspace>
       </Section>
       <Dialog
         modal

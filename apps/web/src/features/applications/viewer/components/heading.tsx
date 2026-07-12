@@ -1,11 +1,11 @@
-import { ReactNode } from 'react'
-import { Badge } from '@/components/ui/badge'
+import type { ReactNode } from 'react'
+import { StatusBadge, type StatusBadgeTone } from '@/components/ui/status-badge'
 import { Visible } from '@/components/ui/visible'
-import { AppDefinition } from '@/features/applications/domain/app-definition'
 import { cn } from '@/lib/utils'
 import { AppIcon } from '@/shared/ui/app-icon/app-icon'
+import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
-const appStatusBadgeVariant = (status?: AppDefinition['status']) => {
+const appStatusBadgeTone = (status?: AppDefinition['status']): StatusBadgeTone => {
   if (status === 'error') {
     return 'danger'
   }
@@ -48,16 +48,16 @@ export const AppViewerHeading = ({
             className='shrink-0 size-10 -z-[1]'
           />
         </Visible>
-        <span className='text-ellipsis text-nowrap overflow-hidden max-w-[calc(100%-3rem)]'>
+        <h1 className='text-ellipsis text-nowrap overflow-hidden max-w-[calc(100%-3rem)]'>
           {app?.name || '<App Name>'}
-        </span>
+        </h1>
         <Visible when={showStatusBadge && app}>
-          <Badge
-            variant={appStatusBadgeVariant(app?.status)}
+          <StatusBadge
+            tone={appStatusBadgeTone(app?.status)}
             className='shrink-0 capitalize'
           >
             {app?.status}
-          </Badge>
+          </StatusBadge>
         </Visible>
       </div>
       <div className='shrink-0'>{children}</div>

@@ -7,7 +7,7 @@ import { Slider } from './slider'
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 
-type NumberSliderFieldProps = {
+type NumberFieldBaseProps = {
   value: string
   onValueChange: (value: string) => void
   min: number
@@ -16,11 +16,22 @@ type NumberSliderFieldProps = {
   placeholder?: string
   suffix?: string
   inputSuffix?: string
-  rangeLabel: string
   allowEmpty?: boolean
   clearLabel?: string
   className?: string
 }
+
+type NumberSliderFieldProps = NumberFieldBaseProps &
+  (
+    | {
+        showSlider?: true
+        rangeLabel: string
+      }
+    | {
+        showSlider: false
+        rangeLabel?: never
+      }
+  )
 
 export const NumberSliderField = ({
   value,
@@ -32,6 +43,7 @@ export const NumberSliderField = ({
   suffix,
   inputSuffix,
   rangeLabel,
+  showSlider = true,
   allowEmpty,
   clearLabel = 'Default',
   className
@@ -86,7 +98,7 @@ export const NumberSliderField = ({
           </Button>
         </Visible>
       </div>
-      <Visible when={hasMax}>
+      {showSlider && sliderMax !== undefined ? (
         <div className='grid w-full min-w-0 gap-1'>
           <Slider
             aria-label={rangeLabel}
@@ -111,7 +123,7 @@ export const NumberSliderField = ({
             </span>
           </div>
         </div>
-      </Visible>
+      ) : null}
     </div>
   )
 }

@@ -3,8 +3,8 @@
 import { useMemo, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
-import { StandardPage } from '@/shared/ui/page/page-layout'
-import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
+import { PageHeader } from '@/shared/ui/page/page-header'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { RuntimeInventoryLoadingSection } from './runtime-inventory-loading-section'
 import { createNetworkColumns, RuntimeNetworksSection } from './runtime-networks-section'
 import type { PlatformNetworksGridPage, PlatformNetworksGridQuery } from '@/server/orchestrator/platform/types'
@@ -46,10 +46,10 @@ const RuntimeNetworksPageFrame = ({
   onRefresh: () => void
 }) => (
   <StandardPage className='gap-2'>
-    <PlatformPageHeader
+    <PageHeader
+      section={{ label: 'Runtime' }}
       title='Networks'
       description='Docker networks visible to the platform, including application isolation networks.'
-      breadcrumbRoot={{ label: 'Runtime' }}
       actions={
         <PlatformPageRefreshButton
           disabled={loading}
@@ -58,7 +58,7 @@ const RuntimeNetworksPageFrame = ({
         />
       }
     />
-    <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>{children}</section>
+    <PageContent>{children}</PageContent>
   </StandardPage>
 )
 

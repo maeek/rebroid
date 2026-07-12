@@ -1,101 +1,53 @@
-import { IconCalendarStats, IconDotsVertical, IconDownload, IconFilter, IconTrash, IconX } from '@tabler/icons-react'
-import { Badge } from '@/components/ui/badge'
+import { IconCalendarStats, IconDotsVertical, IconDownload, IconTrash } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import { DataGridToolbar } from '@/shared/ui/data-grid'
 import { useActivityController } from '../activity-context'
 
-export const ActivityEventsToolbar = () => {
+export const ActivityEventsActions = () => {
   const controller = useActivityController()
 
   return (
-    <div className='flex flex-col gap-3 py-3'>
-      <DataGridToolbar
-        search={controller.localFilters.search ?? ''}
-        searchPlaceholder='Search actor, action, resource, or details'
-        onSearchChange={value => controller.setLocalFilters(current => ({ ...current, search: value }))}
-        onSearchSubmit={controller.applyFilters}
-        onFiltersOpen={() => controller.setFilterPanelOpen(true)}
-        activeFilterCount={controller.activeFilters.length}
-        actions={
-          <>
-            <Button
-              variant='secondary'
-              className='max-lg:w-full'
-              asChild
-            >
-              <a href={controller.exportHref}>
-                <IconDownload className='size-4' />
-                Export CSV
-              </a>
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant='secondary'
-                  className='max-lg:w-full lg:size-9 lg:px-0'
-                  aria-label='Activity actions'
-                >
-                  <IconDotsVertical className='size-4' />
-                  <span className='lg:hidden'>More actions</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align='end'>
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel>Activity log</DropdownMenuLabel>
-                  <DropdownMenuItem onClick={() => controller.setRetentionOpen(true)}>
-                    <IconCalendarStats className='mr-2 size-4' />
-                    Retention settings
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className='text-danger focus:text-danger'
-                    onClick={() => controller.setPurgeOpen(true)}
-                  >
-                    <IconTrash className='mr-2 size-4' />
-                    Purge all logs
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </>
-        }
-      />
-
-      <div className='flex min-h-7 flex-wrap items-center gap-2'>
-        <span className='flex items-center gap-1 text-sm text-foreground-muted'>
-          <IconFilter className='size-4' />
-          {controller.activeFilters.length === 0
-            ? 'No filters applied'
-            : `${controller.activeFilters.length} active filters`}
-        </span>
-        {controller.activeFilters.map(({ key, label, value }) => (
-          <Badge
-            key={`${label}:${value}`}
-            variant='neutral'
-            className='gap-1 py-1 font-normal'
+    <>
+      <Button
+        variant='secondary'
+        asChild
+      >
+        <a href={controller.exportHref}>
+          <IconDownload className='size-4' />
+          Export CSV
+        </a>
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant='secondary'
+            size='icon-md'
+            aria-label='Activity actions'
           >
-            <span className='text-foreground-muted'>{label}</span>
-            {value}
-            <button
-              type='button'
-              className='ml-1 rounded-full hover:text-foreground'
-              onClick={() => controller.removeFilter(key)}
-              aria-label={`Remove ${label} filter`}
-            >
-              <IconX className='size-3' />
-            </button>
-          </Badge>
-        ))}
-      </div>
-    </div>
+            <IconDotsVertical className='size-4' />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align='end'>
+          <DropdownMenuItem onClick={() => controller.setRetentionOpen(true)}>
+            <IconCalendarStats className='mr-2 size-4' />
+            Retention settings
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className='text-danger focus:text-danger'
+            onClick={() => controller.setPurgeOpen(true)}
+          >
+            <IconTrash className='mr-2 size-4' />
+            Purge all logs
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
   )
 }

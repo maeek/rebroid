@@ -7,7 +7,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ContextMenuItem } from '@/components/ui/context-menu'
-import { DataGrid } from '@/shared/ui/data-grid'
+import { FormField } from '@/components/ui/form-field'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DataGrid, DataGridWorkspace } from '@/shared/ui/data-grid'
 import { getHslColorFromCharCode, getHslColorFromCharCodeForeground } from '@/utils/hsl-from-text'
 import type { PublicUser, UserGroup } from '@/server/auth/user'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
@@ -119,8 +121,25 @@ export const UsersGrid = ({
   onEnableSelected: (users: PublicUser[]) => void
 }) => {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'name', desc: false }])
+  const [searchDraft, setSearchDraft] = useState('')
+  const [search, setSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [mfaFilter, setMfaFilter] = useState('all')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
-  const sortedUsers = useMemo(() => sortUsers(users, groups, sorting), [groups, sorting, users])
+  const filteredUsers = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    return users.filter(user => {
+      if (query && !`${user.name} ${user.username}`.toLowerCase().includes(query)) return false
+      if (roleFilter !== 'all' && user.role !== roleFilter) return false
+      if (statusFilter === 'active' && user.disabled) return false
+      if (statusFilter === 'disabled' && !user.disabled) return false
+      if (mfaFilter === 'enabled' && !user.mfaEnabled) return false
+      if (mfaFilter === 'disabled' && user.mfaEnabled) return false
+      return true
+    })
+  }, [mfaFilter, roleFilter, search, statusFilter, users])
+  const sortedUsers = useMemo(() => sortUsers(filteredUsers, groups, sorting), [filteredUsers, groups, sorting])
   const selectedUsers = sortedUsers.filter(user => selectedIds.has(user.id))
 
   useEffect(() => {
@@ -179,10 +198,88 @@ export const UsersGrid = ({
 
   return (
     <div className='grid gap-3'>
-      {selectedUsers.length > 0 ? (
-        <div className='flex flex-wrap items-center justify-between gap-3 rounded-panel border border-surface-border bg-surface-panel/50 px-4 py-3 text-sm'>
-          <span className='text-foreground-muted'>{selectedUsers.length} selected</span>
-          <div className='flex flex-wrap gap-2'>
+      <DataGridWorkspace
+        search={searchDraft}
+        searchPlaceholder='Search users'
+        onSearchChange={setSearchDraft}
+        onSearch={setSearch}
+        filters={
+          <>
+            <FormField
+              label='Role'
+              layout='vertical'
+            >
+              <Select
+                value={roleFilter}
+                onValueChange={setRoleFilter}
+              >
+                <SelectTrigger className='w-full'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='all'>Any role</SelectItem>
+                  <SelectItem value='admin'>Admin</SelectItem>
+                  <SelectItem value='user'>User</SelectItem>
+                </SelectContent>
+              </Select>
+            </FormField>
+            <FormField
+              label='Status'
+              layout='vertical'
+            >
+              <Select
+                value={statusFilter}
+                onValueChange={setStatusFilter}
+              >
+                <SelectTrigger className='w-full'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='all'>Any status</SelectItem>
+                  <SelectItem value='active'>Active</SelectItem>
+                  <SelectItem value='disabled'>Disabled</SelectItem>
+                </SelectContent>
+              </Select>
+            </FormField>
+            <FormField
+              label='MFA'
+              layout='vertical'
+            >
+              <Select
+                value={mfaFilter}
+                onValueChange={setMfaFilter}
+              >
+                <SelectTrigger className='w-full'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='all'>Any MFA state</SelectItem>
+                  <SelectItem value='enabled'>Enabled</SelectItem>
+                  <SelectItem value='disabled'>Disabled</SelectItem>
+                </SelectContent>
+              </Select>
+            </FormField>
+          </>
+        }
+        activeFilters={[
+          ...(roleFilter !== 'all'
+            ? [{ id: 'role', label: 'Role', value: roleFilter, onRemove: () => setRoleFilter('all') }]
+            : []),
+          ...(statusFilter !== 'all'
+            ? [{ id: 'status', label: 'Status', value: statusFilter, onRemove: () => setStatusFilter('all') }]
+            : []),
+          ...(mfaFilter !== 'all'
+            ? [{ id: 'mfa', label: 'MFA', value: mfaFilter, onRemove: () => setMfaFilter('all') }]
+            : [])
+        ]}
+        onResetFilters={() => {
+          setRoleFilter('all')
+          setStatusFilter('all')
+          setMfaFilter('all')
+        }}
+        selectedCount={selectedUsers.length}
+        bulkActions={
+          <>
             <Button
               type='button'
               variant='secondary'
@@ -208,70 +305,73 @@ export const UsersGrid = ({
               <IconTrash className='size-4' />
               Delete selected
             </Button>
-          </div>
-        </div>
-      ) : null}
-      <DataGrid
-        columns={columns}
-        data={sortedUsers}
-        totalItems={sortedUsers.length}
-        pageIndex={0}
-        pageSize={Math.max(sortedUsers.length, 1)}
-        getRowId={user => user.id}
-        sorting={sorting}
-        onSortingChange={updater => setSorting(current => (typeof updater === 'function' ? updater(current) : updater))}
-        selection={{
-          selectedIds,
-          onSelectedIdsChange: setSelectedIds
-        }}
-        minWidth='64rem'
-        emptyState={<div className='text-center text-foreground-muted'>No users have been created.</div>}
-        rowContextMenu={row => {
-          const hasBulkSelection = selectedIds.has(row.original.id) && selectedUsers.length > 1
-          return (
-            <>
-              {hasBulkSelection ? (
-                <>
-                  <ContextMenuItem
-                    disabled={busyUserId !== null}
-                    onSelect={() => onEnableSelected(selectedUsers)}
-                  >
-                    Enable selected ({selectedUsers.length})
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    disabled={busyUserId !== null}
-                    onSelect={() => onDisableSelected(selectedUsers)}
-                  >
-                    Disable selected ({selectedUsers.length})
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    className='text-danger focus:text-danger'
-                    disabled={busyUserId !== null}
-                    onSelect={() => onDeleteSelected(selectedUsers)}
-                  >
-                    <IconTrash className='mr-2 size-4' />
-                    Delete selected ({selectedUsers.length})
-                  </ContextMenuItem>
-                </>
-              ) : null}
-              <ContextMenuItem
-                disabled={busyUserId === row.original.id}
-                onSelect={() => onToggleDisabled(row.original)}
-              >
-                {row.original.disabled ? 'Enable' : 'Disable'}
-              </ContextMenuItem>
-              <ContextMenuItem
-                className='text-danger focus:text-danger'
-                disabled={busyUserId === row.original.id}
-                onSelect={() => onDelete(row.original)}
-              >
-                <IconTrash className='mr-2 size-4' />
-                Delete
-              </ContextMenuItem>
-            </>
-          )
-        }}
-      />
+          </>
+        }
+      >
+        <DataGrid
+          columns={columns}
+          data={sortedUsers}
+          totalItems={sortedUsers.length}
+          pageIndex={0}
+          pageSize={Math.max(sortedUsers.length, 1)}
+          getRowId={user => user.id}
+          sorting={sorting}
+          onSortingChange={updater =>
+            setSorting(current => (typeof updater === 'function' ? updater(current) : updater))
+          }
+          selection={{
+            selectedIds,
+            onSelectedIdsChange: setSelectedIds
+          }}
+          minWidth='64rem'
+          emptyState={<div className='text-center text-foreground-muted'>No users have been created.</div>}
+          rowContextMenu={row => {
+            const hasBulkSelection = selectedIds.has(row.original.id) && selectedUsers.length > 1
+            return (
+              <>
+                {hasBulkSelection ? (
+                  <>
+                    <ContextMenuItem
+                      disabled={busyUserId !== null}
+                      onSelect={() => onEnableSelected(selectedUsers)}
+                    >
+                      Enable selected ({selectedUsers.length})
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      disabled={busyUserId !== null}
+                      onSelect={() => onDisableSelected(selectedUsers)}
+                    >
+                      Disable selected ({selectedUsers.length})
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      className='text-danger focus:text-danger'
+                      disabled={busyUserId !== null}
+                      onSelect={() => onDeleteSelected(selectedUsers)}
+                    >
+                      <IconTrash className='mr-2 size-4' />
+                      Delete selected ({selectedUsers.length})
+                    </ContextMenuItem>
+                  </>
+                ) : null}
+                <ContextMenuItem
+                  disabled={busyUserId === row.original.id}
+                  onSelect={() => onToggleDisabled(row.original)}
+                >
+                  {row.original.disabled ? 'Enable' : 'Disable'}
+                </ContextMenuItem>
+                <ContextMenuItem
+                  className='text-danger focus:text-danger'
+                  disabled={busyUserId === row.original.id}
+                  onSelect={() => onDelete(row.original)}
+                >
+                  <IconTrash className='mr-2 size-4' />
+                  Delete
+                </ContextMenuItem>
+              </>
+            )
+          }}
+        />
+      </DataGridWorkspace>
     </div>
   )
 }

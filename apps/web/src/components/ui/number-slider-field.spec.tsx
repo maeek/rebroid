@@ -12,7 +12,7 @@ describe('NumberSliderField', () => {
 
     render(
       <NumberSliderField
-        value='99'
+        value='999'
         onValueChange={onValueChange}
         min={1}
         max={32}
@@ -39,5 +39,23 @@ describe('NumberSliderField', () => {
     expect(screen.getByText('1 Mbps')).toBeTruthy()
     expect(screen.getByText('32 Mbps')).toBeTruthy()
     expect(screen.getByRole('slider', { name: 'Bitrate range' })).toBeTruthy()
+  })
+
+  it('keeps numeric bounds without rendering a slider when disabled', () => {
+    const onValueChange = vi.fn()
+
+    render(
+      <NumberSliderField
+        value='999'
+        onValueChange={onValueChange}
+        min={8}
+        max={128}
+        showSlider={false}
+      />
+    )
+
+    expect(screen.queryByRole('slider')).toBeNull()
+    fireEvent.blur(screen.getByRole('spinbutton'))
+    expect(onValueChange).toHaveBeenCalledWith('128')
   })
 })

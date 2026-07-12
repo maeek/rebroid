@@ -14,7 +14,7 @@ import {
 } from '@/server/orchestrator/platform/image-actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { saveOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
-import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
+import { PageHeader } from '@/shared/ui/page/page-header'
 import { StandardPage } from '@/shared/ui/page/page-layout'
 import {
   parseDockerfileContextReferences,
@@ -375,10 +375,11 @@ export const RuntimeImageBuilderPageClient = ({
 
   return (
     <StandardPage className='gap-2'>
-      <PlatformPageHeader
+      <PageHeader
+        section={{ label: 'Runtime' }}
+        trail={[{ label: 'Images', href: '/runtime/images' }]}
         title='Build image'
         description='Create local Redroid-style runtime images with Rebroid metadata labels.'
-        breadcrumbRoot={{ label: 'Runtime', href: '/runtime/images' }}
         actions={
           <Button
             type='button'

@@ -14,7 +14,6 @@ export async function AutomationTriggersPageEntry({
     return (
       <AutomationPageUnavailable
         title='Triggers'
-        detail={orchestratorError}
         href='/automations/triggers'
       />
     )

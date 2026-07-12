@@ -11,9 +11,8 @@ const RuntimeNetworksPageContent = async ({ searchParams }: { searchParams?: Pro
       <PlatformRouteUnavailable
         title='Networks'
         description='Docker networks visible to the platform, including application isolation networks.'
-        detail={orchestratorError}
         href='/runtime/networks'
-        breadcrumbRoot={{ label: 'Runtime' }}
+        section={{ label: 'Runtime' }}
       />
     )
   }

@@ -1,6 +1,7 @@
 import { IconDeviceFloppy, IconRestore } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
-import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
+import { MutationButton } from '@/components/ui/mutation-button'
+import { PageHeader } from '@/shared/ui/page/page-header'
 
 export const PlatformRuntimeHeader = ({
   isSaving,
@@ -14,7 +15,8 @@ export const PlatformRuntimeHeader = ({
   showActions?: boolean
 }) => {
   return (
-    <PlatformPageHeader
+    <PageHeader
+      section={{ label: 'Platform', href: '/platform' }}
       title='Runtime defaults'
       description='Default runtime settings and maintenance actions for managed Android containers.'
       actions={
@@ -28,13 +30,14 @@ export const PlatformRuntimeHeader = ({
               <IconRestore className='size-4' />
               Reset
             </Button>
-            <Button
-              disabled={isSaving}
+            <MutationButton
+              pending={isSaving}
+              pendingLabel='Saving…'
               onClick={onSave}
             >
               <IconDeviceFloppy className='size-4' />
               Save
-            </Button>
+            </MutationButton>
           </>
         ) : null
       }

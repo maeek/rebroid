@@ -4,7 +4,7 @@ import { IconPlus } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/shared/ui/page/page-header'
-import { StandardPage } from '@/shared/ui/page/page-layout'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { AutomationEmptySplash } from '../shared/automation-empty-splash'
 import { AutomationsTable } from './automations-table'
 import type { AutomationsListPageProps } from '../editor/types'
@@ -18,7 +18,7 @@ export function AutomationsListPage({
   return (
     <StandardPage className='gap-2'>
       <PageHeader
-        breadcrumbs={[{ label: 'Automations' }, { label: 'Workflows' }]}
+        section={{ label: 'Automations' }}
         title='Workflows'
         description='User-owned Android automation workflows.'
         actions={
@@ -39,14 +39,14 @@ export function AutomationsListPage({
       !gridQuery.lastRun ? (
         <AutomationEmptySplash variant='automations' />
       ) : (
-        <section className='px-6 pb-16 pt-2 max-sm:px-4'>
+        <PageContent className='pt-2'>
           <AutomationsTable
             applications={initialApplications}
             automationsPage={automationsPage}
             gridQuery={gridQuery}
             triggers={initialTriggers}
           />
-        </section>
+        </PageContent>
       )}
     </StandardPage>
   )

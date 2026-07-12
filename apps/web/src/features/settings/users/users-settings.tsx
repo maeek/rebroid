@@ -141,7 +141,7 @@ export const UsersSettings = ({
   return (
     <StandardPage className='gap-2'>
       <PageHeader
-        breadcrumbs={[{ label: 'Users', href: '/security/users' }, { label: 'Users' }]}
+        section={{ label: 'Security' }}
         title='Users'
         actions={
           <CreateUserDialog

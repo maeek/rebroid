@@ -5,7 +5,9 @@ import { IconLoader2, IconShieldCheck } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { FormField } from '@/components/ui/form-field'
 import { Section } from '@/components/ui/section'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Visible } from '@/components/ui/visible'
@@ -17,7 +19,7 @@ import {
 } from '@/server/orchestrator/applications/actions/configuration/network-policy-actions'
 import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
 import { getOrchestratorHealthAction } from '@/server/orchestrator/diagnostics/actions'
-import { DataGrid, DataGridPagination, DataGridToolbar } from '@/shared/ui/data-grid'
+import { DataGrid, DataGridPagination, DataGridWorkspace } from '@/shared/ui/data-grid'
 import { PlatformStatusBanner } from '@/shared/ui/platform/platform-status-banner'
 import {
   clampFirewallPageIndex,
@@ -80,13 +82,24 @@ export const FirewallSettings = ({
   const [busy, setBusy] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [submittedSearch, setSubmittedSearch] = useState('')
+  const [restrictionFilter, setRestrictionFilter] = useState('all')
+  const [runtimeFilter, setRuntimeFilter] = useState('all')
+  const [resultFilter, setResultFilter] = useState('all')
   const [sorting, setSorting] = useState<SortingState>([{ id: 'name', desc: false }])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [pageIndex, setPageIndex] = useState(0)
   const [pageSize, setPageSize] = useState(20)
   const filteredApplications = useMemo(
-    () => filterFirewallApplications(applications, submittedSearch),
-    [applications, submittedSearch]
+    () =>
+      filterFirewallApplications(applications, submittedSearch).filter(application => {
+        if (restrictionFilter === 'restricted' && !application.network.policy.enabled) return false
+        if (restrictionFilter === 'unrestricted' && application.network.policy.enabled) return false
+        if (runtimeFilter !== 'all' && application.status.currentStatus !== runtimeFilter) return false
+        const result = application.network.policy.result?.code ?? application.network.policy.status ?? 'not-applied'
+        if (resultFilter !== 'all' && result !== resultFilter) return false
+        return true
+      }),
+    [applications, restrictionFilter, resultFilter, runtimeFilter, submittedSearch]
   )
   const sortedApplications = useMemo(
     () => sortFirewallApplications(filteredApplications, sorting),
@@ -282,13 +295,117 @@ export const FirewallSettings = ({
         titleClassName='pb-2'
         contentClassName='gap-4'
       >
-        <DataGridToolbar
+        <DataGridWorkspace
           search={search}
           searchPlaceholder='Search policies'
           onSearchChange={setSearch}
-          onSearchSubmit={() => setSubmittedSearch(search.trim())}
+          onSearch={value => setSubmittedSearch(value.trim())}
+          filters={
+            <>
+              <FormField
+                label='Restriction'
+                layout='vertical'
+              >
+                <Select
+                  value={restrictionFilter}
+                  onValueChange={setRestrictionFilter}
+                >
+                  <SelectTrigger className='w-full'>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='all'>Any access mode</SelectItem>
+                    <SelectItem value='restricted'>Restricted</SelectItem>
+                    <SelectItem value='unrestricted'>Unrestricted</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormField>
+              <FormField
+                label='Runtime'
+                layout='vertical'
+              >
+                <Select
+                  value={runtimeFilter}
+                  onValueChange={setRuntimeFilter}
+                >
+                  <SelectTrigger className='w-full'>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='all'>Any runtime state</SelectItem>
+                    {Array.from(new Set(applications.map(application => application.status.currentStatus))).map(
+                      value => (
+                        <SelectItem
+                          key={value}
+                          value={value}
+                        >
+                          {value}
+                        </SelectItem>
+                      )
+                    )}
+                  </SelectContent>
+                </Select>
+              </FormField>
+              <FormField
+                label='Result'
+                layout='vertical'
+              >
+                <Select
+                  value={resultFilter}
+                  onValueChange={setResultFilter}
+                >
+                  <SelectTrigger className='w-full'>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='all'>Any result</SelectItem>
+                    {Array.from(
+                      new Set(
+                        applications.map(
+                          application =>
+                            application.network.policy.result?.code ??
+                            application.network.policy.status ??
+                            'not-applied'
+                        )
+                      )
+                    ).map(value => (
+                      <SelectItem
+                        key={value}
+                        value={value}
+                      >
+                        {value}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+            </>
+          }
+          activeFilters={[
+            ...(restrictionFilter !== 'all'
+              ? [
+                  {
+                    id: 'restriction',
+                    label: 'Access',
+                    value: restrictionFilter,
+                    onRemove: () => setRestrictionFilter('all')
+                  }
+                ]
+              : []),
+            ...(runtimeFilter !== 'all'
+              ? [{ id: 'runtime', label: 'Runtime', value: runtimeFilter, onRemove: () => setRuntimeFilter('all') }]
+              : []),
+            ...(resultFilter !== 'all'
+              ? [{ id: 'result', label: 'Result', value: resultFilter, onRemove: () => setResultFilter('all') }]
+              : [])
+          ]}
+          onResetFilters={() => {
+            setRestrictionFilter('all')
+            setRuntimeFilter('all')
+            setResultFilter('all')
+          }}
           selectedCount={selectedApplications.length}
-          actions={
+          bulkActions={
             <Button
               type='button'
               variant='ghost'
@@ -303,39 +420,40 @@ export const FirewallSettings = ({
               {reconcileAction.label}
             </Button>
           }
-        />
-        <TooltipProvider delayDuration={150}>
-          <DataGrid
-            columns={columns}
-            data={paginatedApplications}
+        >
+          <TooltipProvider delayDuration={150}>
+            <DataGrid
+              columns={columns}
+              data={paginatedApplications}
+              totalItems={sortedApplications.length}
+              pageIndex={pageIndex}
+              pageSize={pageSize}
+              getRowId={application => application.id}
+              sorting={sorting}
+              onSortingChange={updater => {
+                setSorting(current => (typeof updater === 'function' ? updater(current) : updater))
+                setPageIndex(0)
+              }}
+              selection={{
+                selectedIds,
+                onSelectedIdsChange: setSelectedIds
+              }}
+              minWidth='74rem'
+              emptyState={
+                <div className='text-center text-foreground-muted'>
+                  {submittedSearch ? 'No policies match this search.' : 'No application containers are configured.'}
+                </div>
+              }
+            />
+          </TooltipProvider>
+          <DataGridPagination
             totalItems={sortedApplications.length}
             pageIndex={pageIndex}
             pageSize={pageSize}
-            getRowId={application => application.id}
-            sorting={sorting}
-            onSortingChange={updater => {
-              setSorting(current => (typeof updater === 'function' ? updater(current) : updater))
-              setPageIndex(0)
-            }}
-            selection={{
-              selectedIds,
-              onSelectedIdsChange: setSelectedIds
-            }}
-            minWidth='74rem'
-            emptyState={
-              <div className='text-center text-foreground-muted'>
-                {submittedSearch ? 'No policies match this search.' : 'No application containers are configured.'}
-              </div>
-            }
+            onPageIndexChange={setPageIndex}
+            onPageSizeChange={setPageSize}
           />
-        </TooltipProvider>
-        <DataGridPagination
-          totalItems={sortedApplications.length}
-          pageIndex={pageIndex}
-          pageSize={pageSize}
-          onPageIndexChange={setPageIndex}
-          onPageSizeChange={setPageSize}
-        />
+        </DataGridWorkspace>
       </Section>
     </>
   )

@@ -1,6 +1,6 @@
+import { FormField } from '@/components/ui/form-field'
 import { NumberSliderField } from '@/components/ui/number-slider-field'
 import { Section } from '@/components/ui/section'
-import { FormField } from '@/components/ui/form-field'
 import { verticalSettingClassName } from './app-form-utils'
 import type { ResourceLimitBounds } from '@/shared/contracts/system-resources'
 

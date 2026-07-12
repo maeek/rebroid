@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
+import { PageHeader } from '@/shared/ui/page/page-header'
 import { StandardPage } from '@/shared/ui/page/page-layout'
 import { useGappsBuildController } from './hooks/use-gapps-build-controller'
 import { GappsBuildConfiguration } from './sections/gapps-build-configuration'
@@ -22,11 +22,11 @@ export const RuntimeGappsImageBuilderPageClient = (props: RuntimeGappsImageBuild
 
   return (
     <StandardPage>
-      <PlatformPageHeader
+      <PageHeader
+        section={{ label: 'Runtime' }}
+        trail={[{ label: 'Images', href: '/runtime/images' }]}
         title='Build Google Play image'
         description='Patch an official ReDroid image with a locally built, pinned MindTheGapps payload.'
-        breadcrumbRoot={{ label: 'Runtime', href: '/runtime/images' }}
-        parent={{ label: 'Images', href: '/runtime/images' }}
         actions={
           <Button
             asChild

@@ -1,6 +1,8 @@
 'use client'
 import { Visible } from '@/components/ui/visible'
-import { StatusSplash } from '@/shared/ui/status-splash'
+import { PageHeader } from '@/shared/ui/page/page-header'
+import { PageContent } from '@/shared/ui/page/page-layout'
+import { StateView } from '@/shared/ui/state-view'
 import { AppsGridLayout } from './components/apps-grid-layout'
 import { AppsListBulkDialog } from './components/apps-list-bulk-dialog'
 import { AppsListProvider } from './components/apps-list-context'
@@ -32,15 +34,21 @@ export const AppsList = ({
 
   if (orchestratorError) {
     return (
-      <section className='px-6 py-8 max-sm:px-4'>
-        <StatusSplash
-          title='Orchestrator unavailable'
-          description='The web app is still available, but Android app management is temporarily offline.'
-          detail={orchestratorError}
-          tone='danger'
-          primaryAction={{ label: 'Refresh', onClick: () => window.location.reload() }}
+      <>
+        <PageHeader
+          section={{ label: 'Apps' }}
+          title='Apps'
+          description='Create, monitor, and manage isolated Android applications.'
         />
-      </section>
+        <PageContent>
+          <StateView
+            kind='unavailable'
+            title='Orchestrator unavailable'
+            description='The web app is still available, but Android app management is temporarily offline.'
+            actions={[{ label: 'Refresh', onClick: () => window.location.reload() }]}
+          />
+        </PageContent>
+      </>
     )
   }
 

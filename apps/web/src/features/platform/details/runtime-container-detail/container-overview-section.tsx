@@ -14,7 +14,8 @@ import {
   formatContainerNetworks,
   formatContainerPorts
 } from '@/features/platform/details/runtime-container-detail/container-detail-utils'
-import { PlatformDetailRow, formatPlatformDate } from '@/shared/ui/platform/platform-detail-parts'
+import { DefinitionTable } from '@/shared/ui/definition-table'
+import { formatPlatformDate } from '@/shared/ui/platform/platform-detail-parts'
 import type { PlatformContainerDetails } from '@/server/orchestrator/platform/types'
 
 const ContainerOverviewHeader = ({ container }: { container: PlatformContainerDetails['container'] }) => {
@@ -56,53 +57,27 @@ const ContainerOverviewHeader = ({ container }: { container: PlatformContainerDe
 }
 
 const ContainerIdentityDetails = ({ container }: { container: PlatformContainerDetails['container'] }) => (
-  <div>
-    <PlatformDetailRow
-      label='Image'
-      value={container.image}
-    />
-    <PlatformDetailRow
-      label='Image ID'
-      value={container.imageId}
-    />
-    <PlatformDetailRow
-      label='Command'
-      value={container.command || 'none'}
-    />
-    <PlatformDetailRow
-      label='Created'
-      value={formatPlatformDate(container.createdAt)}
-    />
-    <PlatformDetailRow
-      label='Status'
-      value={container.status}
-    />
-  </div>
+  <DefinitionTable
+    items={[
+      { label: 'Image', value: container.image },
+      { label: 'Image ID', value: container.imageId },
+      { label: 'Command', value: container.command || 'none' },
+      { label: 'Created', value: formatPlatformDate(container.createdAt) },
+      { label: 'Status', value: container.status }
+    ]}
+  />
 )
 
 const ContainerRuntimeDetails = ({ container }: { container: PlatformContainerDetails['container'] }) => (
-  <div>
-    <PlatformDetailRow
-      label='Application'
-      value={container.applicationId ?? 'unmanaged'}
-    />
-    <PlatformDetailRow
-      label='Component'
-      value={container.component ?? 'none'}
-    />
-    <PlatformDetailRow
-      label='Networks'
-      value={formatContainerNetworks(container.networks)}
-    />
-    <PlatformDetailRow
-      label='Ports'
-      value={formatContainerPorts(container.ports)}
-    />
-    <PlatformDetailRow
-      label='Names'
-      value={container.names.join(', ')}
-    />
-  </div>
+  <DefinitionTable
+    items={[
+      { label: 'Application', value: container.applicationId ?? 'unmanaged' },
+      { label: 'Component', value: container.component ?? 'none' },
+      { label: 'Networks', value: formatContainerNetworks(container.networks) },
+      { label: 'Ports', value: formatContainerPorts(container.ports) },
+      { label: 'Names', value: container.names.join(', ') }
+    ]}
+  />
 )
 
 export const ContainerOverviewSection = () => {
@@ -111,8 +86,7 @@ export const ContainerOverviewSection = () => {
 
   return (
     <Section
-      surface='panel'
-      className='bg-surface-panel/50'
+      surface='plain'
       contentClassName='gap-5'
     >
       <ContainerOverviewHeader container={container} />

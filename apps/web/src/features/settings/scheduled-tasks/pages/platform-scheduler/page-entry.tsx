@@ -10,9 +10,8 @@ export async function PlatformSchedulerPageEntry() {
       <PlatformRouteUnavailable
         title='Scheduler'
         description='Monitor scheduled jobs, run maintenance tasks, and review failures.'
-        detail={orchestratorError}
         href='/platform/scheduler'
-        breadcrumbRoot={{ label: 'Platform' }}
+        section={{ label: 'Platform' }}
       />
     )
   }

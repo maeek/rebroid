@@ -1,13 +1,13 @@
 'use client'
 
 import { ChangeEvent, FormEvent, useEffect, useId, useState } from 'react'
-import { IconLoader2 } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { useTopLoader } from 'nextjs-toploader'
-import { Button } from '@/components/ui/button'
+import { MutationButton } from '@/components/ui/mutation-button'
 import { Visible } from '@/components/ui/visible'
 import { uploadApkWithFeedback } from '@/features/applications/apks/upload-apk-with-feedback'
 import { toast } from '@/hooks/use-toast'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { setAppIconAction } from '@/server/app-icons/actions/set-app-icon-action'
 import { createApplicationAction } from '@/server/orchestrator/applications/actions/configuration/create-update-actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
@@ -17,7 +17,8 @@ import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestra
 import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
 import { PageBackdrop } from '@/shared/ui/page/page-backdrop'
-import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
+import { PageHeader } from '@/shared/ui/page/page-header'
+import { PageContent } from '@/shared/ui/page/page-layout'
 import { CreateAppDeviceSection } from './create-app-device-section'
 import { CreateAppDisplaySection } from './create-app-display-section'
 import {
@@ -127,7 +128,7 @@ export const CreateAppForm = ({
     } catch (error) {
       toast({
         title: 'Could not prepare icon',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
     }
@@ -212,20 +213,20 @@ export const CreateAppForm = ({
         } catch (error) {
           toast({
             title: 'App created without icon',
-            description: error instanceof Error ? error.message : 'Could not save the icon.',
+            description: getDisplayErrorMessage(error, 'Could not save the icon.'),
             variant: 'danger'
           })
         }
       }
 
       topLoader.setProgress(1)
-      toast({ title: 'App created', description: 'Provisioning has started.' })
+      toast({ title: 'App created', description: 'Provisioning has started.', variant: 'success' })
       router.push(`/app/${createdApp.id}`)
     } catch (error) {
       topLoader.done(true)
       toast({
         title: 'Could not create app',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
     } finally {
@@ -235,137 +236,135 @@ export const CreateAppForm = ({
 
   return (
     <>
-      <div className='flex gap-2 justify-between items-center w-full'>
-        <PageBreadcrumbs
-          items={[
-            { label: 'Apps', href: '/apps' },
-            {
-              label: `Create ${formValues.name.trim()}`
-            }
-          ]}
-        />
-      </div>
+      <PageHeader
+        section={{ label: 'Apps', href: '/apps' }}
+        title='Create app'
+        description='Configure the app identity, Android runtime, access, and resource limits.'
+        actions={
+          <MutationButton
+            form={createFormId}
+            type='submit'
+            pending={isCreating}
+            pendingLabel='Creating…'
+            disabled={isSubmitDisabled}
+          >
+            Create app
+          </MutationButton>
+        }
+      />
       <Visible when={iconPreview}>
         <PageBackdrop
           imageSrc={iconPreview}
           opacity={0.08}
         />
       </Visible>
-      <form
-        id={createFormId}
-        className='flex w-full flex-col pt-2 pb-24'
-        onSubmit={event => void handleSubmit(event)}
-      >
-        <div className='flex flex-wrap items-center justify-between gap-4 border-b border-surface-border/60 pb-6'>
-          <div>
-            <h2 className='font-medium'>General</h2>
-            <p className='mt-1 text-sm text-foreground-muted'>Choose the app identity, APK, and runtime.</p>
-          </div>
-          <Button
-            form={createFormId}
-            type='submit'
-            disabled={isSubmitDisabled}
-          >
-            <Visible when={isCreating}>
-              <IconLoader2 className='size-4 animate-spin' />
-            </Visible>
-            {isCreating ? 'Creating...' : 'Create'}
-          </Button>
-        </div>
-
-        <div className='py-8'>
-          <AppFormGeneralSection
-            values={formValues}
-            onChange={updateFormValues}
-            uploadedApk={uploadedApk}
-            isUploadingApk={isUploadingApk}
-            onApkSelect={file => void handleApkSelect(file)}
-            iconSlot={
-              <AppFormIconSection
-                appName={trimmedName}
-                iconPreview={iconPreview}
-                autoExtractIcon={autoExtractIcon}
-                hasExtractedIcon={Boolean(extractedIcon)}
-                surface='plain'
-                showDescription={false}
-                onIconChange={event => void handleIconChange(event)}
-                onClearIcon={handleClearIcon}
-                onAutoExtractIconChange={setAutoExtractIcon}
-              />
-            }
-          />
-        </div>
-
-        <Visible when={showRuntimeSection}>
-          <div className='border-t border-surface-border/60 py-8'>
-            <Visible when={showDeviceSection}>
-              <CreateAppDeviceSection
-                images={images}
-                values={formValues}
-                onChange={updateFormValues}
-                canChangeBaseImage={canChangeBaseImage}
-                canChangeContainerArgs={canChangeContainerArgs}
-                isRedroidRuntime={isRedroidRuntime}
-              />
-            </Visible>
-            {uploadedApk ? (
-              <div className={showDeviceSection ? 'mt-6' : undefined}>
-                <CreateAppGooglePlayGuidance
-                  uploadedApk={uploadedApk}
-                  images={images}
-                  selectedImage={formValues.containerImage}
-                  canChangeImage={canChangeBaseImage}
-                  canBuildImages={canBuildImages}
-                  onUseImage={image => updateFormValues({ containerImage: image })}
-                />
-              </div>
-            ) : null}
-          </div>
-        </Visible>
-
-        <Visible when={isRedroidRuntime && canChangeContainerArgs}>
-          <div className='border-t border-surface-border/60 py-8'>
-            <CreateAppDisplaySection
-              values={formValues}
-              onChange={updateFormValues}
-            />
-          </div>
-        </Visible>
-
-        <Visible when={canConfigureEgress}>
-          <div className='border-t border-surface-border/60 py-8'>
-            <CreateAppNetworkAccessSection
-              values={formValues}
-              canUseInternet={canUseInternet}
-              onChange={updateFormValues}
-            />
-          </div>
-        </Visible>
-
-        <Visible when={showAdvancedSection}>
-          <div className='border-t border-surface-border/60 py-8'>
-            <div className='mb-8'>
-              <h2 className='font-medium'>Advanced</h2>
-              <p className='mt-1 text-sm text-foreground-muted'>Optional lifecycle and resource limits.</p>
+      <PageContent>
+        <form
+          id={createFormId}
+          className='flex w-full flex-col pb-24'
+          onSubmit={event => void handleSubmit(event)}
+        >
+          <div className='border-b border-surface-border/60 pb-6'>
+            <div>
+              <h2 className='font-medium'>General</h2>
+              <p className='mt-1 text-sm text-foreground-muted'>Choose the app identity, APK, and runtime.</p>
             </div>
-            <Visible when={showSessionSection}>
-              <AppFormSessionSection
+          </div>
+
+          <div className='py-8'>
+            <AppFormGeneralSection
+              values={formValues}
+              onChange={updateFormValues}
+              uploadedApk={uploadedApk}
+              isUploadingApk={isUploadingApk}
+              onApkSelect={file => void handleApkSelect(file)}
+              iconSlot={
+                <AppFormIconSection
+                  appName={trimmedName}
+                  iconPreview={iconPreview}
+                  autoExtractIcon={autoExtractIcon}
+                  hasExtractedIcon={Boolean(extractedIcon)}
+                  surface='plain'
+                  showDescription={false}
+                  onIconChange={event => void handleIconChange(event)}
+                  onClearIcon={handleClearIcon}
+                  onAutoExtractIconChange={setAutoExtractIcon}
+                />
+              }
+            />
+          </div>
+
+          <Visible when={showRuntimeSection}>
+            <div className='border-t border-surface-border/60 py-8'>
+              <Visible when={showDeviceSection}>
+                <CreateAppDeviceSection
+                  images={images}
+                  values={formValues}
+                  onChange={updateFormValues}
+                  canChangeBaseImage={canChangeBaseImage}
+                  canChangeContainerArgs={canChangeContainerArgs}
+                  isRedroidRuntime={isRedroidRuntime}
+                />
+              </Visible>
+              {uploadedApk ? (
+                <div className={showDeviceSection ? 'mt-6' : undefined}>
+                  <CreateAppGooglePlayGuidance
+                    uploadedApk={uploadedApk}
+                    images={images}
+                    selectedImage={formValues.containerImage}
+                    canChangeImage={canChangeBaseImage}
+                    canBuildImages={canBuildImages}
+                    onUseImage={image => updateFormValues({ containerImage: image })}
+                  />
+                </div>
+              ) : null}
+            </div>
+          </Visible>
+
+          <Visible when={isRedroidRuntime && canChangeContainerArgs}>
+            <div className='border-t border-surface-border/60 py-8'>
+              <CreateAppDisplaySection
                 values={formValues}
                 onChange={updateFormValues}
               />
-            </Visible>
-            <Visible when={showResourcesSection}>
-              <div className={showSessionSection ? 'mt-8 border-t border-surface-border/60 pt-8' : undefined}>
-                <AppFormResourcesSection
+            </div>
+          </Visible>
+
+          <Visible when={canConfigureEgress}>
+            <div className='border-t border-surface-border/60 py-8'>
+              <CreateAppNetworkAccessSection
+                values={formValues}
+                canUseInternet={canUseInternet}
+                onChange={updateFormValues}
+              />
+            </div>
+          </Visible>
+
+          <Visible when={showAdvancedSection}>
+            <div className='border-t border-surface-border/60 py-8'>
+              <div className='mb-8'>
+                <h2 className='font-medium'>Advanced</h2>
+                <p className='mt-1 text-sm text-foreground-muted'>Optional lifecycle and resource limits.</p>
+              </div>
+              <Visible when={showSessionSection}>
+                <AppFormSessionSection
                   values={formValues}
-                  resourceLimits={resourceLimits}
                   onChange={updateFormValues}
                 />
-              </div>
-            </Visible>
-          </div>
-        </Visible>
-      </form>
+              </Visible>
+              <Visible when={showResourcesSection}>
+                <div className={showSessionSection ? 'mt-8 border-t border-surface-border/60 pt-8' : undefined}>
+                  <AppFormResourcesSection
+                    values={formValues}
+                    resourceLimits={resourceLimits}
+                    onChange={updateFormValues}
+                  />
+                </div>
+              </Visible>
+            </div>
+          </Visible>
+        </form>
+      </PageContent>
     </>
   )
 }

@@ -11,9 +11,10 @@ interface FormFieldProps {
   controlId?: string
   description?: React.ReactNode
   error?: React.ReactNode
-  label: string
+  label: React.ReactNode
   layout?: 'vertical' | 'horizontal'
   required?: boolean
+  surface?: 'plain' | 'band'
 }
 
 export const FormField = ({
@@ -25,7 +26,8 @@ export const FormField = ({
   error,
   label,
   layout = 'horizontal',
-  required
+  required,
+  surface = 'plain'
 }: FormFieldProps) => {
   const generatedId = React.useId()
   const id = controlId ?? generatedId
@@ -51,7 +53,8 @@ export const FormField = ({
     <div
       className={cn(
         'flex w-full gap-4',
-        layout === 'vertical' ? 'flex-col items-start' : 'flex-row items-start justify-between',
+        layout === 'vertical' ? 'flex-col items-start' : 'flex-row items-center justify-between',
+        surface === 'band' && 'rounded-control border border-surface-border/60 bg-surface-band/30 px-4 py-3',
         className
       )}
     >

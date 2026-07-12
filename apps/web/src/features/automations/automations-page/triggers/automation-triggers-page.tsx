@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { IconPlus } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { toast } from '@/hooks/use-toast'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import {
   createAutomationTriggerAction,
   deleteAutomationTriggerAction,
@@ -13,13 +15,11 @@ import {
 } from '@/server/orchestrator/automations/automation-trigger-actions'
 import { DataGridPagination } from '@/shared/ui/data-grid'
 import { PageHeader } from '@/shared/ui/page/page-header'
-import { StandardPage } from '@/shared/ui/page/page-layout'
-import { AutomationDeleteDialog } from '../shared/automation-delete-dialog'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { AutomationEmptySplash } from '../shared/automation-empty-splash'
 import { sortFromSearchParam, sortToSearchParam } from '../shared/grid-query-utils'
 import { AutomationTriggerFormDialog } from './automation-trigger-form-dialog'
 import {
-  activeTriggerFilterCount,
   applyTriggerTargetApplication,
   buildAutomationTriggersGridHref,
   deletedTriggerIdsFromResults,
@@ -33,7 +33,7 @@ import {
   triggerFormSavePayload
 } from './automation-triggers-page-model'
 import { AutomationTriggersTable } from './automation-triggers-table'
-import { AutomationTriggerBulkBar, AutomationTriggersToolbar } from './automation-triggers-toolbar'
+import { AutomationTriggersToolbar } from './automation-triggers-toolbar'
 import type { TriggerFormState } from './automation-trigger-types'
 import type { AutomationTriggersPageProps } from '../editor/types'
 import type { AutomationTrigger, AutomationTriggersGridQuery } from '@/server/orchestrator/automations/types'
@@ -108,7 +108,7 @@ export function AutomationTriggersPage({
     } catch (error) {
       toast({
         title: 'Could not save trigger',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
     } finally {
@@ -124,7 +124,7 @@ export function AutomationTriggersPage({
     } catch (error) {
       toast({
         title: 'Could not update trigger',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
     } finally {
@@ -141,7 +141,7 @@ export function AutomationTriggersPage({
     } catch (error) {
       toast({
         title: 'Could not run trigger',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
     } finally {
@@ -156,11 +156,11 @@ export function AutomationTriggersPage({
       setSelectedIds(current => new Set(Array.from(current).filter(id => id !== trigger.id)))
       setPendingDelete(null)
       router.refresh()
-      toast({ title: 'Trigger deleted' })
+      toast({ title: 'Trigger deleted', variant: 'success' })
     } catch (error) {
       toast({
         title: 'Could not delete trigger',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
     } finally {
@@ -190,7 +190,7 @@ export function AutomationTriggersPage({
   return (
     <StandardPage className='gap-2'>
       <PageHeader
-        breadcrumbs={[{ label: 'Automations' }, { label: 'Triggers' }]}
+        section={{ label: 'Automations' }}
         title='Triggers'
         description='Bind automation definitions to app profiles and schedule-based invocation.'
         actions={
@@ -212,66 +212,65 @@ export function AutomationTriggersPage({
           onAction={openCreate}
         />
       ) : (
-        <section className='grid gap-4 px-6 pb-16 pt-2 max-sm:px-4'>
+        <PageContent className='grid gap-4 pt-2'>
           <AutomationTriggersToolbar
             applications={initialApplications}
             tags={triggersPage.facets.tags}
             gridQuery={gridQuery}
             search={search}
             onSearchChange={setSearch}
-            onSearchSubmit={() => pushGridParams({ q: search.trim() || undefined, page: 1 })}
-            activeFilterCount={activeTriggerFilterCount(gridQuery)}
+            onSearchSubmit={value => pushGridParams({ q: value.trim() || undefined, page: 1 })}
             selectedCount={selectedTriggers.length}
             onUpdateGrid={pushGridParams}
-          />
-
-          <AutomationTriggerBulkBar
-            selectedCount={selectedTriggers.length}
             onDelete={() => setBulkDeleteOpen(true)}
             onDisable={() => void updateSelectedEnabled(false)}
             onEnable={() => void updateSelectedEnabled(true)}
-          />
-
-          <AutomationTriggersTable
-            applicationById={applicationById}
-            automationById={automationById}
-            busyId={busyId}
-            selectedIds={selectedIds}
-            sorting={sorting}
-            triggers={triggersPage.items}
-            onDelete={setPendingDelete}
-            onDeleteSelected={() => setBulkDeleteOpen(true)}
-            onDisableSelected={() => updateSelectedEnabled(false)}
-            onEdit={openEdit}
-            onEnableSelected={() => updateSelectedEnabled(true)}
-            onRun={runNow}
-            onSelectedIdsChange={setSelectedIds}
-            onSortingChange={nextSorting => pushGridParams({ sort: sortToSearchParam(nextSorting), page: 1 })}
-            onToggleEnabled={toggleEnabled}
-          />
-          <DataGridPagination
-            totalItems={triggersPage.total}
-            pageIndex={triggersPage.page - 1}
-            pageSize={triggersPage.pageSize}
-            onPageIndexChange={pageIndex => pushGridParams({ page: pageIndex + 1 })}
-            onPageSizeChange={pageSize => pushGridParams({ page: 1, pageSize })}
-          />
-        </section>
+          >
+            <AutomationTriggersTable
+              applicationById={applicationById}
+              automationById={automationById}
+              busyId={busyId}
+              selectedIds={selectedIds}
+              sorting={sorting}
+              triggers={triggersPage.items}
+              onDelete={setPendingDelete}
+              onDeleteSelected={() => setBulkDeleteOpen(true)}
+              onDisableSelected={() => updateSelectedEnabled(false)}
+              onEdit={openEdit}
+              onEnableSelected={() => updateSelectedEnabled(true)}
+              onRun={runNow}
+              onSelectedIdsChange={setSelectedIds}
+              onSortingChange={nextSorting => pushGridParams({ sort: sortToSearchParam(nextSorting), page: 1 })}
+              onToggleEnabled={toggleEnabled}
+            />
+            <DataGridPagination
+              totalItems={triggersPage.total}
+              pageIndex={triggersPage.page - 1}
+              pageSize={triggersPage.pageSize}
+              onPageIndexChange={pageIndex => pushGridParams({ page: pageIndex + 1 })}
+              onPageSizeChange={pageSize => pushGridParams({ page: 1, pageSize })}
+            />
+          </AutomationTriggersToolbar>
+        </PageContent>
       )}
 
-      <AutomationDeleteDialog
+      <ConfirmMutationDialog
         open={Boolean(pendingDelete)}
         title={`Delete ${pendingDelete?.name ?? 'trigger'}?`}
         description='This trigger will stop scheduling its workflow.'
-        busy={Boolean(pendingDelete && busyId === pendingDelete.id)}
+        confirmLabel='Delete trigger'
+        pendingLabel='Deleting…'
+        pending={Boolean(pendingDelete && busyId === pendingDelete.id)}
         onOpenChange={open => !open && setPendingDelete(null)}
         onConfirm={() => pendingDelete && void remove(pendingDelete)}
       />
-      <AutomationDeleteDialog
+      <ConfirmMutationDialog
         open={bulkDeleteOpen}
         title={`Delete ${selectedTriggers.length} selected triggers?`}
         description='The selected triggers will stop scheduling their workflows.'
-        busy={false}
+        confirmLabel='Delete triggers'
+        pendingLabel='Deleting…'
+        pending={false}
         onOpenChange={open => !open && setBulkDeleteOpen(false)}
         onConfirm={() => void deleteSelected()}
       />

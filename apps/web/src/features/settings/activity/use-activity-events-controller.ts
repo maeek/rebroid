@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from '@/hooks/use-toast'
 import { purgeAllAuditEventsAction, saveAuditRetentionAction } from '@/server/audit/actions'
 import { auditSortToSearchParam } from '@/server/audit/query'
-import { activityFilterEntries, compactActivityParams, dateDaysAgo } from './activity-format'
+import { activityFilterEntries, compactActivityParams } from './activity-format'
 import type { ActivityEventsTableProps, ActivityFilterValues } from './activity-types'
 import type { AuditEvent } from '@/server/persistence/audit-repository'
 import type { SortingState } from '@tanstack/react-table'
@@ -21,7 +21,6 @@ export const useActivityEventsController = ({
   const [selectedEvent, setSelectedEvent] = useState<AuditEvent | null>(null)
   const [localFilters, setLocalFilters] = useState<ActivityFilterValues>(filters)
   const [retentionDays, setRetentionDays] = useState(String(auditRetentionDays))
-  const [filterPanelOpen, setFilterPanelOpen] = useState(false)
   const [retentionOpen, setRetentionOpen] = useState(false)
   const [purgeOpen, setPurgeOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -52,13 +51,6 @@ export const useActivityEventsController = ({
   }, [filters])
 
   const activeFilters = useMemo(() => activityFilterEntries(filters, facets), [facets, filters])
-  const hasLocalFilters = Object.values(localFilters).some(Boolean)
-
-  const applyFilters = () => {
-    setFilterPanelOpen(false)
-    pushParams(localFilters)
-  }
-
   const resetFilters = () => {
     setLocalFilters({})
     router.push('/security/audit-log')
@@ -70,8 +62,10 @@ export const useActivityEventsController = ({
     pushParams(next)
   }
 
-  const setRange = (days: number) => {
-    setLocalFilters(current => ({ ...current, from: dateDaysAgo(days), to: undefined }))
+  const setFilterValue = (key: keyof ActivityFilterValues, value: string | undefined) => {
+    const next = { ...filters, [key]: value }
+    setLocalFilters(next)
+    pushParams(next)
   }
 
   const setSorting = (nextSorting: SortingState) => {
@@ -120,10 +114,7 @@ export const useActivityEventsController = ({
 
   return {
     activeFilters,
-    applyFilters,
     exportHref,
-    filterPanelOpen,
-    hasLocalFilters,
     isPending,
     isPurging,
     localFilters,
@@ -136,10 +127,9 @@ export const useActivityEventsController = ({
     retentionOpen,
     saveRetention,
     selectedEvent,
-    setFilterPanelOpen,
+    setFilterValue,
     setLocalFilters,
     setPurgeOpen,
-    setRange,
     setRetentionDays,
     setRetentionOpen,
     setSelectedEvent,

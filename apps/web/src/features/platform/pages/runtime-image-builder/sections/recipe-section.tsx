@@ -1,11 +1,11 @@
 import { IconDeviceFloppy, IconLoader2 } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Visible } from '@/components/ui/visible'
 import { RuntimeImagePicker } from '@/shared/ui/runtime-image/runtime-image-picker'
-import { FormField } from '@/components/ui/form-field'
 import type { BuilderValues } from '../model/builder-values'
 import type { ContainerImageBuildRecipe, PlatformImage } from '@/server/orchestrator/platform/types'
 
@@ -55,7 +55,7 @@ export const RecipeSection = ({
     </div>
     <Visible when={recipes.length > 0}>
       <Select onValueChange={onSelectRecipe}>
-        <SelectTrigger>
+        <SelectTrigger className='w-full'>
           <SelectValue placeholder='Saved recipes' />
         </SelectTrigger>
         <SelectContent>
@@ -132,7 +132,7 @@ export const RecipeSection = ({
         value={values.signatureSpoofing}
         onValueChange={signatureSpoofing => onPatchValues({ signatureSpoofing: signatureSpoofing })}
       >
-        <SelectTrigger>
+        <SelectTrigger className='w-full'>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

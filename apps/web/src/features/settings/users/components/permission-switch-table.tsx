@@ -1,9 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { IconSearch } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Switch } from '@/components/ui/switch'
 import { Visible } from '@/components/ui/visible'
@@ -14,6 +12,7 @@ import {
   type PermissionId,
   type PermissionMap
 } from '@/shared/permissions/permissions'
+import { SearchField } from '@/shared/ui/search-field'
 
 type PermissionDefinition = (typeof permissionDefinitions)[number]
 export type PermissionInheritanceMap = Partial<Record<PermissionId, string[]>>
@@ -91,15 +90,11 @@ export const PermissionSwitchTable = ({
   return (
     <div className={cn('overflow-hidden', className)}>
       <div className='pb-3'>
-        <div className='relative'>
-          <IconSearch className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-foreground-muted' />
-          <Input
-            value={search}
-            className='pl-9'
-            placeholder='Search permissions'
-            onChange={event => setSearch(event.target.value)}
-          />
-        </div>
+        <SearchField
+          value={search}
+          placeholder='Search permissions'
+          onValueChange={setSearch}
+        />
       </div>
       <ScrollArea>
         <Visible when={permissionGroups.length > 0}>

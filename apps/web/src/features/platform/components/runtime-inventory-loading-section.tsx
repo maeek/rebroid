@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
-import { DataGrid, DataGridPagination, DataGridToolbar } from '@/shared/ui/data-grid'
+import { DataGrid, DataGridPagination, DataGridWorkspace } from '@/shared/ui/data-grid'
 import { PlatformResourceScopeFilter } from './platform-resource-scope-filter'
 import type { ColumnDef } from '@tanstack/react-table'
 
@@ -21,19 +21,20 @@ export const RuntimeInventoryLoadingSection = <TData,>({
     surface='plain'
     contentClassName='gap-4'
   >
-    <DataGridToolbar
+    <DataGridWorkspace
       disabled
       search=''
       searchPlaceholder={searchPlaceholder}
       onSearchChange={() => undefined}
-      onSearchSubmit={() => undefined}
+      onSearch={() => undefined}
       filters={
         <PlatformResourceScopeFilter
           value='managed'
           onValueChange={() => undefined}
         />
       }
-      actions={actionLabels.map(label => (
+      onResetFilters={() => undefined}
+      bulkActions={actionLabels.map(label => (
         <Button
           key={label}
           type='button'
@@ -43,27 +44,28 @@ export const RuntimeInventoryLoadingSection = <TData,>({
           {label}
         </Button>
       ))}
-    />
-    <DataGrid
-      columns={columns}
-      data={[]}
-      totalItems={0}
-      pageIndex={0}
-      pageSize={pageSize}
-      getRowId={() => ''}
-      loading={{
-        rowCount: Math.min(pageSize, 20),
-        selectable: true,
-        rowMenu: true
-      }}
-    />
-    <DataGridPagination
-      loading
-      totalItems={0}
-      pageIndex={0}
-      pageSize={pageSize}
-      onPageIndexChange={() => undefined}
-      onPageSizeChange={() => undefined}
-    />
+    >
+      <DataGrid
+        columns={columns}
+        data={[]}
+        totalItems={0}
+        pageIndex={0}
+        pageSize={pageSize}
+        getRowId={() => ''}
+        loading={{
+          rowCount: Math.min(pageSize, 20),
+          selectable: true,
+          rowMenu: true
+        }}
+      />
+      <DataGridPagination
+        loading
+        totalItems={0}
+        pageIndex={0}
+        pageSize={pageSize}
+        onPageIndexChange={() => undefined}
+        onPageSizeChange={() => undefined}
+      />
+    </DataGridWorkspace>
   </Section>
 )

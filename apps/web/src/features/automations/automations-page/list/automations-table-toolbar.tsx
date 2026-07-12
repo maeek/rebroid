@@ -1,6 +1,7 @@
+import { type ReactNode } from 'react'
 import { IconTrash } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
-import { DataGridToolbar } from '@/shared/ui/data-grid'
+import { DataGridWorkspace } from '@/shared/ui/data-grid'
 import {
   AutomationLastRunFilter,
   AutomationLastStatusFilter,
@@ -15,34 +16,71 @@ export const AutomationsTableToolbar = ({
   automationsPage,
   gridQuery,
   search,
-  activeFilterCount,
   selectedCount,
   busy,
   onBulkDelete,
   onSearchChange,
   onSearchSubmit,
-  onUpdateGrid
+  onUpdateGrid,
+  children
 }: {
   applications: AndroidApplication[]
   automationsPage: AutomationsGridPage
   gridQuery: AutomationsGridQuery
   search: string
-  activeFilterCount: number
   selectedCount: number
   busy: boolean
   onBulkDelete: () => void
   onSearchChange: (search: string) => void
-  onSearchSubmit: () => void
+  onSearchSubmit: (value: string) => void
   onUpdateGrid: (patch: Partial<AutomationsGridQuery>) => void
+  children: ReactNode
 }) => (
-  <DataGridToolbar
+  <DataGridWorkspace
     search={search}
     searchPlaceholder='Search workflows'
     onSearchChange={onSearchChange}
-    onSearchSubmit={onSearchSubmit}
-    activeFilterCount={activeFilterCount}
+    onSearch={onSearchSubmit}
+    activeFilters={[
+      ...(gridQuery.tag
+        ? [{ id: 'tag', label: 'Tag', value: gridQuery.tag, onRemove: () => onUpdateGrid({ tag: undefined, page: 1 }) }]
+        : []),
+      ...(gridQuery.targetApplicationId
+        ? [
+            {
+              id: 'target',
+              label: 'Target',
+              value: gridQuery.targetApplicationId,
+              onRemove: () => onUpdateGrid({ targetApplicationId: undefined, page: 1 })
+            }
+          ]
+        : []),
+      ...(gridQuery.status
+        ? [
+            {
+              id: 'status',
+              label: 'Status',
+              value: gridQuery.status,
+              onRemove: () => onUpdateGrid({ status: undefined, page: 1 })
+            }
+          ]
+        : []),
+      ...(gridQuery.lastRun
+        ? [
+            {
+              id: 'lastRun',
+              label: 'Last run',
+              value: gridQuery.lastRun,
+              onRemove: () => onUpdateGrid({ lastRun: undefined, page: 1 })
+            }
+          ]
+        : [])
+    ]}
+    onResetFilters={() =>
+      onUpdateGrid({ tag: undefined, targetApplicationId: undefined, status: undefined, lastRun: undefined, page: 1 })
+    }
     selectedCount={selectedCount}
-    actions={
+    bulkActions={
       <Button
         size='sm'
         variant='danger'
@@ -75,5 +113,7 @@ export const AutomationsTableToolbar = ({
         />
       </>
     }
-  />
+  >
+    {children}
+  </DataGridWorkspace>
 )

@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { toast } from '@/hooks/use-toast'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { cn } from '@/lib/utils'
 import {
   createAutomationAction,
@@ -11,16 +13,13 @@ import {
   updateAutomationAction
 } from '@/server/orchestrator/automations/automation-management-actions'
 import { consumePendingAutomationDraft } from '@/shared/model/automation-draft/pending-automation-draft'
-import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
-import { StandardPage } from '@/shared/ui/page/page-layout'
+import { PageHeader } from '@/shared/ui/page/page-header'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { AutomationStepsList } from '../steps/list/automation-steps-list'
 import { AutomationDetailsSection } from './automation-details-section'
-import {
-  AiDraftDialog,
-  AutomationDeleteConfirmDialog,
-  UnsavedAutomationChangesDialog
-} from './automation-editor-dialogs'
-import { AutomationEditorHeader } from './automation-editor-header'
+import { AutomationEditorActions } from './automation-editor-actions'
+import { AiDraftDialog } from './automation-editor-dialogs'
+import { automationYamlWorkspaceClassName } from './automation-editor-layout'
 import { AutomationYamlEditorSection } from './automation-yaml-editor-section'
 import {
   automationToForm,
@@ -158,7 +157,7 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
       .catch(error => {
         toast({
           title: 'Could not load workflow draft',
-          description: error instanceof Error ? error.message : 'Unknown error',
+          description: getDisplayErrorMessage(error),
           variant: 'danger'
         })
       })
@@ -221,7 +220,7 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
     } catch (error) {
       toast({
         title: 'Could not save automation',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
     } finally {
@@ -239,7 +238,7 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
     } catch (error) {
       toast({
         title: 'Could not delete automation',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
       setBusy(false)
@@ -248,14 +247,15 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
 
   return (
     <StandardPage className='gap-0'>
-      <section className='shrink-0 px-6 py-4 max-sm:px-4'>
-        <div className='grid gap-3'>
-          <PageBreadcrumbs
-            className='pt-0'
-            items={[{ label: 'Automations' }, { label: 'Workflows', href: '/automations' }, { label: title }]}
-          />
-          <AutomationEditorHeader
-            title={title}
+      <PageHeader
+        section={{ label: 'Automations' }}
+        trail={[{ label: 'Workflows', href: '/automations' }]}
+        title={title}
+        description={
+          automation ? 'Edit workflow steps, settings, and execution behavior.' : 'Create a reusable workflow.'
+        }
+        actions={
+          <AutomationEditorActions
             busy={busy}
             canDraftFromPrompt={canDraftFromPrompt}
             canDelete={Boolean(automation)}
@@ -269,8 +269,8 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
             onShowTraces={showTraces}
             onToggleYaml={toggleYamlEditor}
           />
-        </div>
-      </section>
+        }
+      />
 
       <AiDraftDialog
         open={aiDraftOpen && canDraftFromPrompt}
@@ -295,18 +295,12 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
         onSubmitClarification={() => void submitClarification()}
       />
 
-      <section
-        className={cn(
-          'grid gap-6 px-6 pb-16 pt-2 max-sm:px-4',
-          yamlOpen ? 'min-h-[calc(100dvh-9rem)] grid-rows-[auto_minmax(32rem,1fr)] 2xl:flex' : null
-        )}
-      >
+      <PageContent className={cn('grid gap-6 pt-2', yamlOpen ? automationYamlWorkspaceClassName : null)}>
         {yamlOpen ? (
           <>
             <AutomationDetailsSection
               form={form}
               onChange={updateForm}
-              className='flex-2/5'
             />
             <AutomationYamlEditorSection
               yaml={yamlDraft}
@@ -326,7 +320,6 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
                 setYamlValid(true)
                 setYamlError(null)
               }}
-              className='flex-3/5'
             />
           </>
         ) : (
@@ -351,7 +344,7 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
             className='w-full'
           />
         )}
-      </section>
+      </PageContent>
 
       <input
         ref={importInputRef}
@@ -361,16 +354,28 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
         onChange={event => void handleWorkflowImport(event.currentTarget.files?.[0] ?? null)}
       />
 
-      <AutomationDeleteConfirmDialog
+      <ConfirmMutationDialog
         open={deleteOpen}
-        busy={busy}
-        automationName={automation?.name ?? 'workflow'}
+        title={`Delete ${automation?.name ?? 'workflow'}?`}
+        description='This removes the workflow and its triggers.'
+        consequence='Existing run history is retained.'
+        confirmLabel='Delete workflow'
+        pendingLabel='Deleting…'
+        pending={busy}
         onConfirm={() => void remove()}
         onOpenChange={setDeleteOpen}
       />
 
-      <UnsavedAutomationChangesDialog
+      <ConfirmMutationDialog
         open={Boolean(pendingNavigationHref)}
+        title='Leave without saving?'
+        description='This workflow has unsaved changes.'
+        consequence='Leaving now permanently discards the changes made since the last save.'
+        tone='warning'
+        cancelLabel='Stay'
+        confirmLabel='Leave without saving'
+        pendingLabel='Leaving…'
+        pending={false}
         onConfirm={confirmPendingNavigation}
         onOpenChange={open => {
           if (!open) setPendingNavigationHref(null)

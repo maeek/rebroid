@@ -18,21 +18,21 @@ describe('runtime inventory loading geometry', () => {
   it('uses the real image columns without a duplicate actions column', () => {
     render(<RuntimeImagesPageLoading />)
 
-    expectLoadingGrid('1144px', ['Image', 'Size', 'Created', 'Containers', 'ID'])
+    expectLoadingGrid('1120px', ['Image', 'Size', 'Created', 'Containers', 'ID'])
     expect(screen.getAllByRole('columnheader')).toHaveLength(8)
   })
 
   it('uses the real container columns without a duplicate actions column', () => {
     render(<RuntimeContainersPageLoading />)
 
-    expectLoadingGrid('1464px', ['Container', 'State', 'Image', 'Application', 'Networks'])
+    expectLoadingGrid('1440px', ['Container', 'State', 'Image', 'Application', 'Networks'])
     expect(screen.getAllByRole('columnheader')).toHaveLength(8)
   })
 
   it('uses the real network columns and derived width', () => {
     render(<RuntimeNetworksPageLoading />)
 
-    expectLoadingGrid('1352px', ['Network', 'Driver', 'Scope', 'Subnet', 'Gateway', 'Containers'])
+    expectLoadingGrid('1328px', ['Network', 'Driver', 'Scope', 'Subnet', 'Gateway', 'Containers'])
     expect(screen.getAllByRole('columnheader')).toHaveLength(9)
   })
 })

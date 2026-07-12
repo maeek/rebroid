@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { IconAlertTriangle, IconArrowLeft, IconLoader2, IconLockAccess } from '@tabler/icons-react'
-import { useRouter } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -14,16 +13,22 @@ import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { beginLoginAction } from '@/server/users/actions/begin-login-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 
-export default function LoginCard() {
+const requiredPasswordChangePath = '/account/required-password-change'
+
+export default function LoginCard({
+  navigate = path => window.location.assign(path)
+}: {
+  navigate?: (path: string) => void
+}) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [mfaCode, setMfaCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [step, setStep] = useState<'credentials' | 'mfa'>('credentials')
-  const router = useRouter()
+  const [postLoginPath, setPostLoginPath] = useState('/apps')
 
-  const completeSignIn = async (authenticationCode?: string) => {
+  const completeSignIn = async (authenticationCode: string | undefined, destination: string) => {
     const result = await signIn('credentials', {
       username,
       password,
@@ -37,8 +42,7 @@ export default function LoginCard() {
       )
     }
 
-    router.replace('/apps')
-    router.refresh()
+    navigate(destination)
   }
 
   const submitCredentials = async () => {
@@ -51,11 +55,13 @@ export default function LoginCard() {
     setError(null)
     try {
       const result = unwrapActionResult(await beginLoginAction({ username, password }))
+      const destination = result.passwordChangeRequired ? requiredPasswordChangePath : '/apps'
       if (result.mfaRequired) {
+        setPostLoginPath(destination)
         setStep('mfa')
         return
       }
-      await completeSignIn()
+      await completeSignIn(undefined, destination)
     } catch (submitError) {
       setError(getDisplayErrorMessage(submitError, 'Login failed. Refresh the page and try again.'))
     } finally {
@@ -71,7 +77,7 @@ export default function LoginCard() {
     setIsSubmitting(true)
     setError(null)
     try {
-      await completeSignIn(mfaCode)
+      await completeSignIn(mfaCode, postLoginPath)
     } catch (submitError) {
       setError(getDisplayErrorMessage(submitError, 'Could not verify the authentication code.'))
     } finally {

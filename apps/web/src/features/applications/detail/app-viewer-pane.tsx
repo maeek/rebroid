@@ -11,7 +11,7 @@ import { getToastErrorDescription } from '@/features/applications/viewer/utils/v
 import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { startApplicationAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
-import { StatusSplash } from '@/shared/ui/status-splash'
+import { StateView } from '@/shared/ui/state-view'
 import { useApplicationViewerApp } from './application-viewer-context'
 import type { ViewerOrientation } from '@/features/applications/viewer/player/android-viewer'
 
@@ -103,7 +103,9 @@ export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'to
         </Visible>
         <Visible when={!canAttach}>
           <div className='flex min-h-112 w-full items-center justify-center rounded-feature border border-white/10 bg-surface-panel/64 p-6 backdrop-blur-xl'>
-            <StatusSplash
+            <StateView
+              kind='unavailable'
+              scope='grid'
               title='Separate session required'
               description='This app belongs to another user. Open it as your own copy to start a private viewer session.'
               icon={<IconShieldLock className='size-10' />}

@@ -15,7 +15,6 @@ import {
   IconSettings,
   IconTrash
 } from '@tabler/icons-react'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -24,6 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
+import { cn } from '@/lib/utils'
 import { AutomationCommandIcon } from '../catalog/automation-command-catalog'
 import { AutomationStepSettingsDialog } from '../editors/automation-step-dialogs'
 import { getStepDraggableId, getStepRowDropId } from '../list/automation-step-drop-target'

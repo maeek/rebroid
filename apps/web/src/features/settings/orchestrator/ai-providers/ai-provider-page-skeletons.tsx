@@ -32,7 +32,7 @@ export const AiProvidersPageSkeleton = () => (
   <StandardPage className='gap-2'>
     <PageHeaderSkeleton
       titleWidth='w-44'
-      hasTitlePrefix
+      hasLeading
       titleActionCount={1}
       actionCount={1}
     />
@@ -74,7 +74,7 @@ export const AiProviderEditPageSkeleton = () => (
   <StandardPage className='gap-2'>
     <PageHeaderSkeleton
       titleWidth='w-48'
-      hasTitlePrefix
+      hasLeading
       hasParent
       actionCount={2}
     />

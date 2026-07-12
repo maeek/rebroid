@@ -11,7 +11,8 @@ const emptyNetworksPage = (gridQuery: PlatformNetworksGridQuery): PlatformNetwor
   items: [],
   total: 0,
   page: gridQuery.page ?? 1,
-  pageSize: gridQuery.pageSize ?? 20
+  pageSize: gridQuery.pageSize ?? 20,
+  facets: { drivers: [], scopes: [] }
 })
 
 export const networksGridQueryFromSearchParams = (searchParams: NetworksSearchParams): PlatformNetworksGridQuery =>

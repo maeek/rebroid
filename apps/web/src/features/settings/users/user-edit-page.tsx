@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Section } from '@/components/ui/section'
@@ -18,11 +19,10 @@ import { unwrapActionResult } from '@/shared/actions/action-result'
 import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
 import { PageBackdrop } from '@/shared/ui/page/page-backdrop'
 import { PageHeader } from '@/shared/ui/page/page-header'
-import { StandardPage } from '@/shared/ui/page/page-layout'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { UserAvatarInput } from '@/shared/ui/user-avatar/user-avatar-input'
 import { getHslColorFromCharCode, getHslColorFromCharCodeForeground } from '@/utils/hsl-from-text'
 import { GroupMembershipPicker } from './components/group-membership-picker'
-import { FormField } from '@/components/ui/form-field'
 import { PermissionSwitchTable } from './components/permission-switch-table'
 import { QuotaFields } from './components/quota-fields'
 import { buildUserUpdateInput, getPermissionInheritanceMap, toUserDraft, toUserRole } from './user-edit-page-model'
@@ -67,13 +67,11 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
         opacity={0.08}
       />
       <PageHeader
-        breadcrumbs={[
-          { label: 'Users', href: '/security/users' },
-          { label: 'Users', href: '/security/users' },
-          { label: user.username }
-        ]}
+        section={{ label: 'Security' }}
+        trail={[{ label: 'Users', href: '/security/users' }]}
+        breadcrumbLabel={user.username}
         title={draft.name || draft.username}
-        titlePrefix={
+        leading={
           <Avatar className='size-12 max-sm:size-10'>
             <AvatarImage src={draft.avatarDataUrl ?? ''} />
             <AvatarFallback
@@ -107,7 +105,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
           </>
         }
       />
-      <section className='grid w-full gap-6 px-6 pb-16 max-sm:px-4 xl:grid-cols-[minmax(0,1fr)_minmax(28rem,0.85fr)]'>
+      <PageContent className='grid xl:grid-cols-[minmax(0,1fr)_minmax(28rem,0.85fr)]'>
         <div className='grid content-start gap-6'>
           <Section
             title='Account'
@@ -124,25 +122,35 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
               <FormField
                 label='Username'
                 required
+                layout='vertical'
               >
                 <Input
                   value={draft.username}
                   required
                   aria-required='true'
+                  autoComplete='username'
                   onChange={event => updateDraft({ username: event.target.value })}
                 />
               </FormField>
-              <FormField label='Display Name'>
+              <FormField
+                label='Display Name'
+                layout='vertical'
+              >
                 <Input
                   value={draft.name}
+                  autoComplete='name'
                   onChange={event => updateDraft({ name: event.target.value })}
                 />
               </FormField>
-              <FormField label='New Password'>
+              <FormField
+                label='New Password'
+                layout='vertical'
+              >
                 <div className='grid gap-2'>
                   <Input
                     value={draft.password}
                     type='password'
+                    autoComplete='new-password'
                     placeholder='Leave empty to keep current password'
                     onChange={event => updateDraft({ password: event.target.value })}
                   />
@@ -152,12 +160,13 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
               <FormField
                 label='Role'
                 required
+                layout='vertical'
               >
                 <Select
                   value={draft.role}
                   onValueChange={value => updateDraft({ role: toUserRole(value) })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className='w-full'>
                     <SelectValue className='w-auto' />
                   </SelectTrigger>
                   <SelectContent>
@@ -167,16 +176,6 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
                 </Select>
               </FormField>
             </div>
-            {/* <FormField
-              label='Active Account'
-              description='Disabled users cannot sign in and their future actions are denied.'
-              className='rounded-panel bg-surface-band/55 px-4 py-3'
-            >
-              <Switch
-                checked={!draft.disabled}
-                onCheckedChange={checked => updateDraft({ disabled: !checked })}
-              />
-            </FormField> */}
           </Section>
           <Section
             title='Groups'
@@ -223,7 +222,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
             onChange={permissionOverrides => updateDraft({ permissionOverrides })}
           />
         </Section>
-      </section>
+      </PageContent>
     </StandardPage>
   )
 }

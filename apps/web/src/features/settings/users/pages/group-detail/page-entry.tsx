@@ -1,5 +1,6 @@
-import { StandardPage } from '@/shared/ui/page/page-layout'
-import { StatusSplash } from '@/shared/ui/status-splash'
+import { PageHeader } from '@/shared/ui/page/page-header'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
+import { StateView } from '@/shared/ui/state-view'
 import { GroupEditPage } from '../../group-edit-page'
 import { getGroupDetailPageData } from './page-data.server'
 
@@ -14,17 +15,24 @@ export default async function GroupDetailPageEntry({ params }: GroupDetailPageEn
   if (!group) {
     return (
       <StandardPage className='gap-2'>
-        <section className='px-6 py-16 max-sm:px-4'>
-          <StatusSplash
+        <PageHeader
+          section={{ label: 'Security' }}
+          trail={[{ label: 'Groups', href: '/security/groups' }]}
+          title='Group'
+        />
+        <PageContent>
+          <StateView
+            kind='not-found'
             title='Group not found'
             description='The group may have been removed or the link may be stale.'
-            tone='danger'
-            secondaryAction={{
-              label: 'Back to groups',
-              href: '/security/groups'
-            }}
+            actions={[
+              {
+                label: 'Back to groups',
+                href: '/security/groups'
+              }
+            ]}
           />
-        </section>
+        </PageContent>
       </StandardPage>
     )
   }

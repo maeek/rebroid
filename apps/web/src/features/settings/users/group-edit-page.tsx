@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { IconDeviceFloppy } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -14,8 +15,7 @@ import { updateUserGroupAction } from '@/server/users/actions/update-user-group-
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
 import { PageHeader } from '@/shared/ui/page/page-header'
-import { StandardPage } from '@/shared/ui/page/page-layout'
-import { FormField } from '@/components/ui/form-field'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { PermissionSwitchTable } from './components/permission-switch-table'
 import { QuotaFields } from './components/quota-fields'
 import { buildGroupUpdateInput, toGroupDraft, type GroupDraft } from './group-edit-page-model'
@@ -52,11 +52,9 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
   return (
     <StandardPage className='gap-2'>
       <PageHeader
-        breadcrumbs={[
-          { label: 'Users', href: '/security/users' },
-          { label: 'Groups', href: '/security/groups' },
-          { label: group.name }
-        ]}
+        section={{ label: 'Security' }}
+        trail={[{ label: 'Groups', href: '/security/groups' }]}
+        breadcrumbLabel={group.name}
         title={draft.name || group.name}
         description='Default permissions and quotas for group members.'
         actions={
@@ -69,7 +67,7 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
           </Button>
         }
       />
-      <section className='grid w-full gap-6 px-6 pb-16 max-sm:px-4 xl:grid-cols-[minmax(0,1fr)_minmax(28rem,0.85fr)]'>
+      <PageContent className='grid xl:grid-cols-[minmax(0,1fr)_minmax(28rem,0.85fr)]'>
         <div className='grid content-start gap-6'>
           <Section
             title='Group Details'
@@ -81,6 +79,7 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
               <FormField
                 label='Name'
                 required
+                layout='vertical'
               >
                 <Input
                   value={draft.name}
@@ -92,12 +91,13 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
               <FormField
                 label='Role Template'
                 required
+                layout='vertical'
               >
                 <Select
                   value={draft.role}
                   onValueChange={value => updateDraft({ role: toUserRole(value) })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className='w-full'>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -107,7 +107,10 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
                 </Select>
               </FormField>
             </div>
-            <FormField label='Description'>
+            <FormField
+              label='Description'
+              layout='vertical'
+            >
               <Textarea
                 value={draft.description}
                 rows={4}
@@ -147,7 +150,7 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
             onChange={permissions => updateDraft({ permissions })}
           />
         </Section>
-      </section>
+      </PageContent>
     </StandardPage>
   )
 }

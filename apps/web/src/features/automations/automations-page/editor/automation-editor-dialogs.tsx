@@ -1,16 +1,8 @@
 import { selectCatalogModel } from '@rebroid/ai-core/provider'
-import { IconAlertTriangle, IconCircleCheck, IconLoader2, IconSparkles, IconTrash } from '@tabler/icons-react'
+import { IconCircleCheck, IconLoader2, IconSparkles } from '@tabler/icons-react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { AiModelPicker } from '@/shared/ui/ai/ai-model-picker'
 import { AiPromptComposer } from '@/shared/ui/ai/ai-prompt-composer'
@@ -175,78 +167,3 @@ export const AiDraftDialog = ({
     </Dialog>
   )
 }
-
-export const AutomationDeleteConfirmDialog = ({
-  open,
-  busy,
-  automationName,
-  onConfirm,
-  onOpenChange
-}: {
-  open: boolean
-  busy: boolean
-  automationName: string
-  onConfirm: () => void
-  onOpenChange: (open: boolean) => void
-}) => (
-  <Dialog
-    open={open}
-    onOpenChange={onOpenChange}
-  >
-    <DialogContent className='sm:max-w-md'>
-      <DialogHeader>
-        <DialogTitle>Delete {automationName}?</DialogTitle>
-        <DialogDescription>This removes the workflow and its triggers.</DialogDescription>
-      </DialogHeader>
-      <DialogFooter>
-        <DialogClose asChild>
-          <Button
-            variant='secondary'
-            disabled={busy}
-          >
-            Cancel
-          </Button>
-        </DialogClose>
-        <Button
-          variant='danger'
-          disabled={busy}
-          onClick={onConfirm}
-        >
-          <IconTrash className='size-4' />
-          Delete
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
-)
-
-export const UnsavedAutomationChangesDialog = ({
-  open,
-  onConfirm,
-  onOpenChange
-}: {
-  open: boolean
-  onConfirm: () => void
-  onOpenChange: (open: boolean) => void
-}) => (
-  <Dialog
-    open={open}
-    onOpenChange={onOpenChange}
-  >
-    <DialogContent className='sm:max-w-md'>
-      <DialogHeader>
-        <DialogTitle>Leave without saving?</DialogTitle>
-        <DialogDescription>This workflow has unsaved changes. Leaving now will discard them.</DialogDescription>
-      </DialogHeader>
-      <DialogFooter>
-        <DialogClose asChild>
-          <Button variant='secondary'>Stay</Button>
-        </DialogClose>
-        <Button onClick={onConfirm}>
-          <IconAlertTriangle className='size-4' />
-          Leave
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
-)

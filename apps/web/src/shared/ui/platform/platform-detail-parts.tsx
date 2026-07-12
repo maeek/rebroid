@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { formatDateLocale } from '@/lib/format'
+import { JsonViewer } from '@/shared/ui/json-viewer'
 
 export const formatPlatformDate = (value: string | null | undefined) => {
   if (!value) {
@@ -26,8 +27,4 @@ export const PlatformDetailRow = ({ label, value }: { label: string; value: Reac
   </div>
 )
 
-export const PlatformJsonBlock = ({ value }: { value: unknown }) => (
-  <pre className='max-h-[28rem] overflow-auto rounded-panel border border-surface-border/60 bg-surface-band/55 p-4 font-mono text-xs leading-6 text-foreground-muted'>
-    {JSON.stringify(value, null, 2)}
-  </pre>
-)
+export const PlatformJsonBlock = ({ value }: { value: unknown }) => <JsonViewer value={value} />

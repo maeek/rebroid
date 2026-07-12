@@ -1,20 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { IconLoader2, IconTrash, IconX } from '@tabler/icons-react'
+import { IconTrash, IconX } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger
-} from '@/components/ui/dialog'
-import { AppActionDialogSummary } from '@/features/applications/components/app-action-dialog-summary'
+import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { removeAppIconAction } from '@/server/app-icons/actions/remove-app-icon-action'
@@ -53,7 +43,7 @@ export const AppViewerDeleteAction = ({
       router.push('/apps')
     } catch (error) {
       toast({
-        title: isProvisioning ? 'Could not kill app provisioning' : 'Could not delete app',
+        title: isProvisioning ? 'Could not cancel app provisioning' : 'Could not delete app',
         description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
@@ -62,82 +52,35 @@ export const AppViewerDeleteAction = ({
   }
 
   return (
-    <Dialog
-      modal
-      open={open}
-      onOpenChange={nextOpen => {
-        if (!isDeleting) {
-          setOpen(nextOpen)
+    <>
+      <Button
+        variant='danger'
+        disabled={!app || app.status === 'removing' || isDeleting}
+        onClick={() => setOpen(true)}
+      >
+        {isProvisioning ? <IconX className='size-4' /> : <IconTrash className='size-4' />}
+        {isProvisioning ? 'Cancel provisioning' : 'Delete app'}
+      </Button>
+      <ConfirmMutationDialog
+        open={open}
+        title={isProvisioning ? `Cancel provisioning for ${app?.name}?` : `Delete ${app?.name}?`}
+        description={
+          isProvisioning
+            ? 'This cancels setup and removes the partially created app.'
+            : 'This permanently removes the app from Rebroid.'
         }
-      }}
-    >
-      <DialogTrigger asChild>
-        <Button
-          variant='danger'
-          disabled={!app || app.status === 'removing' || isDeleting}
-        >
-          {isDeleting ? (
-            <IconLoader2 className='size-4 animate-spin' />
-          ) : isProvisioning ? (
-            <IconX className='size-4' />
-          ) : (
-            <IconTrash className='size-4' />
-          )}
-          {isProvisioning ? 'Kill' : 'Delete'}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className='sm:max-w-md'>
-        <DialogHeader>
-          <DialogTitle>{isProvisioning ? `Kill provisioning for ${app?.name}?` : `Delete ${app?.name}?`}</DialogTitle>
-          <DialogDescription>
-            {isProvisioning
-              ? 'This cancels setup and removes the partially created app.'
-              : 'This removes the app from Rebroid.'}
-          </DialogDescription>
-        </DialogHeader>
-        <AppActionDialogSummary
-          icon={isProvisioning ? <IconX className='size-4' /> : <IconTrash className='size-4' />}
-          title={settings.removeDataOnDelete ? 'Saved profile data will be deleted' : 'Saved profile data is preserved'}
-          description={
-            settings.removeDataOnDelete
-              ? 'The app record and runtime resources are removed with its saved profile data.'
-              : 'The app record and runtime resources are removed. Saved profile data is kept when possible.'
-          }
-          tone='danger'
-        />
-        <DialogFooter>
-          <Button
-            variant='danger'
-            disabled={isDeleting}
-            onClick={() => void handleDelete()}
-          >
-            {isDeleting ? (
-              <>
-                <IconLoader2 className='size-4 animate-spin' />
-                {isProvisioning ? 'Killing and deleting...' : 'Deleting...'}
-              </>
-            ) : isProvisioning ? (
-              <>
-                <IconX className='size-4' />
-                Kill and delete
-              </>
-            ) : (
-              <>
-                <IconTrash className='size-4' />
-                Delete
-              </>
-            )}
-          </Button>
-          <DialogClose asChild>
-            <Button
-              variant='secondary'
-              disabled={isDeleting}
-            >
-              Cancel
-            </Button>
-          </DialogClose>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        summary={app?.name}
+        consequence={
+          settings.removeDataOnDelete
+            ? 'Saved profile data, the app record, and runtime resources will be deleted.'
+            : 'The app record and runtime resources will be deleted. Saved profile data is preserved when possible.'
+        }
+        confirmLabel={isProvisioning ? 'Cancel and delete' : 'Delete app'}
+        pendingLabel={isProvisioning ? 'Cancelling…' : 'Deleting…'}
+        pending={isDeleting}
+        onOpenChange={setOpen}
+        onConfirm={() => void handleDelete()}
+      />
+    </>
   )
 }

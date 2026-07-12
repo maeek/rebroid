@@ -16,7 +16,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { cn } from '@/lib/utils'
+import { TabsList, TabsPanel, TabsRoot, TabsTrigger } from '@/components/ui/tabs'
 import type { OptionalServicesUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 export type ServiceId = keyof OptionalServicesUiSettings
@@ -130,40 +130,45 @@ export const ServiceSettingsDialog = ({
           <DialogDescription>{meta.description}</DialogDescription>
         </DialogHeader>
         {meta.hasSettings ? (
-          <div
-            role='tablist'
-            aria-label='Service settings sections'
-            className='flex rounded-control border border-surface-border/70 bg-surface-band/35 p-1'
+          <TabsRoot
+            value={tab}
+            onValueChange={value => setTab(value as DialogTab)}
           >
-            <TabButton
-              active={tab === 'connection'}
-              onClick={() => setTab('connection')}
+            <TabsList ariaLabel='Service settings sections'>
+              <TabsTrigger value='connection'>Connection</TabsTrigger>
+              <TabsTrigger value='settings'>Settings</TabsTrigger>
+            </TabsList>
+            <TabsPanel
+              value='connection'
+              className='min-h-[14.5rem] pt-4'
             >
-              Connection
-            </TabButton>
-            <TabButton
-              active={tab === 'settings'}
-              onClick={() => setTab('settings')}
+              <ConnectionTab
+                description={meta.endpointDescription}
+                placeholder={meta.endpointPlaceholder}
+                service={service}
+                onChange={value => patch(serviceId, value)}
+              />
+            </TabsPanel>
+            <TabsPanel
+              value='settings'
+              className='min-h-[14.5rem] pt-4'
             >
-              Settings
-            </TabButton>
-          </div>
-        ) : null}
-        <div className='min-h-[14.5rem]'>
-          {tab === 'connection' || !meta.hasSettings ? (
+              <OcrSettingsTab
+                services={services}
+                onChange={patch}
+              />
+            </TabsPanel>
+          </TabsRoot>
+        ) : (
+          <div className='min-h-[14.5rem]'>
             <ConnectionTab
               description={meta.endpointDescription}
               placeholder={meta.endpointPlaceholder}
               service={service}
               onChange={value => patch(serviceId, value)}
             />
-          ) : (
-            <OcrSettingsTab
-              services={services}
-              onChange={patch}
-            />
-          )}
-        </div>
+          </div>
+        )}
         <DialogFooter>
           <DialogClose asChild>
             <Button type='button'>Done</Button>
@@ -173,23 +178,6 @@ export const ServiceSettingsDialog = ({
     </Dialog>
   )
 }
-
-const TabButton = ({ active, children, onClick }: { active: boolean; children: ReactNode; onClick: () => void }) => (
-  <button
-    type='button'
-    role='tab'
-    aria-selected={active}
-    className={cn(
-      'flex h-8 flex-1 items-center justify-center rounded-control px-3 text-sm font-medium transition-colors',
-      active
-        ? 'bg-control text-foreground shadow-control'
-        : 'text-foreground-muted hover:bg-control/50 hover:text-foreground'
-    )}
-    onClick={onClick}
-  >
-    {children}
-  </button>
-)
 
 const Field = ({ children, description, label }: { children: ReactNode; description: string; label: string }) => (
   <div className='grid gap-2'>

@@ -12,9 +12,9 @@ import {
   resetOrchestratorUiSettings,
   saveOrchestratorUiSettings
 } from '@/shared/model/settings/use-orchestrator-ui-settings'
-import { DataGrid } from '@/shared/ui/data-grid'
+import { DataGrid, DataGridWorkspace } from '@/shared/ui/data-grid'
 import { PageHeader } from '@/shared/ui/page/page-header'
-import { StandardPage } from '@/shared/ui/page/page-layout'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { ServiceSettingsDialog, serviceDetails, serviceMeta, type ServiceId } from './service-settings-dialog'
 import type {
   OptionalServicesUiSettings,
@@ -70,6 +70,8 @@ export const PlatformServicesPage = ({
   const [settings, setSettings] = useState(initialSettings)
   const [editingService, setEditingService] = useState<ServiceId | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [searchDraft, setSearchDraft] = useState('')
+  const [search, setSearch] = useState('')
 
   const setServiceRoute = useCallback(
     (serviceId: ServiceId | null) => {
@@ -192,6 +194,13 @@ export const PlatformServicesPage = ({
     ],
     [openServiceEditor]
   )
+  const visibleServiceRows = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    if (!query) return serviceRows
+    return serviceRows.filter(service =>
+      `${service.title} ${service.description} ${service.endpoint ?? ''}`.toLowerCase().includes(query)
+    )
+  }, [search, serviceRows])
 
   useEffect(() => {
     setSettings(initialSettings)
@@ -245,7 +254,7 @@ export const PlatformServicesPage = ({
   return (
     <StandardPage className='gap-2'>
       <PageHeader
-        breadcrumbs={[{ label: 'Platform', href: '/platform' }, { label: 'Services' }]}
+        section={{ label: 'Platform', href: '/platform' }}
         title='Services'
         description='Configure optional sidecar services. Disabled services are ignored by automation and health checks.'
         actions={
@@ -270,23 +279,30 @@ export const PlatformServicesPage = ({
           </>
         }
       />
-      <section className='px-6 pb-16 max-sm:px-4'>
+      <PageContent>
         <Section
           surface='plain'
           contentClassName='gap-4'
         >
-          <DataGrid
-            columns={columns}
-            data={serviceRows}
-            totalItems={serviceRows.length}
-            pageIndex={0}
-            pageSize={Math.max(serviceRows.length, 1)}
-            getRowId={row => row.id}
-            minWidth='78rem'
-            emptyState={<div className='text-center text-foreground-muted'>No optional services configured.</div>}
-          />
+          <DataGridWorkspace
+            search={searchDraft}
+            searchPlaceholder='Search services'
+            onSearchChange={setSearchDraft}
+            onSearch={setSearch}
+          >
+            <DataGrid
+              columns={columns}
+              data={visibleServiceRows}
+              totalItems={visibleServiceRows.length}
+              pageIndex={0}
+              pageSize={Math.max(visibleServiceRows.length, 1)}
+              getRowId={row => row.id}
+              minWidth='78rem'
+              emptyState={<div className='text-center text-foreground-muted'>No optional services configured.</div>}
+            />
+          </DataGridWorkspace>
         </Section>
-      </section>
+      </PageContent>
       <ServiceSettingsDialog
         serviceId={editingService}
         services={settings.services}

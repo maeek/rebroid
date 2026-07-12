@@ -17,7 +17,7 @@ export const ContainerLogsSection = () => {
           Logs
         </div>
       }
-      surface='panel'
+      surface='plain'
       contentClassName='gap-4'
     >
       <LogsConsole

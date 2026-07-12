@@ -35,8 +35,8 @@ describe('userService.changeOwnPassword', () => {
   it('rejects a short replacement password', async () => {
     const user = await userService.createUser({ username: 'user', password: 'original-password' })
 
-    await expect(userService.changeOwnPassword(user.id, 'original-password', 'too-short')).rejects.toThrow(
-      'Password must be at least 15 characters.'
+    await expect(userService.changeOwnPassword(user.id, 'original-password', 'short')).rejects.toThrow(
+      'Password must be at least 8 characters.'
     )
   })
 

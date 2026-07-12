@@ -5,18 +5,17 @@ import { IconActivityHeartbeat, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
+import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { toast } from '@/hooks/use-toast'
 import { deleteAutomationAction } from '@/server/orchestrator/automations/automation-management-actions'
 import { DataGrid, DataGridPagination } from '@/shared/ui/data-grid'
-import { AutomationDeleteDialog } from '../shared/automation-delete-dialog'
 import { AutomationTagBadge } from '../shared/automation-tag-badge'
 import { sortFromSearchParam, sortToSearchParam } from '../shared/grid-query-utils'
 import {
   automationStatusLabel,
   automationTriggerAppIdsByAutomationId,
   buildAutomationsGridHref,
-  countActiveAutomationFilters,
   countAutomationSteps,
   deletedAutomationIdsFromResults,
   retainPageAutomationSelection,
@@ -93,7 +92,6 @@ export function AutomationsTable({
   const appNameById = useMemo(() => new Map(applications.map(app => [app.id, app.name])), [applications])
   const automationAppIds = useMemo(() => automationTriggerAppIdsByAutomationId(triggers), [triggers])
   const selectedAutomations = selectedAutomationsFromIds(automationsPage.items, selectedIds)
-  const activeFilterCount = countActiveAutomationFilters(gridQuery)
 
   const pushGridParams = (patch: Partial<AutomationsGridQuery>) => {
     router.push(buildAutomationsGridHref({ gridQuery, pageSize: automationsPage.pageSize, patch }))
@@ -205,85 +203,90 @@ export function AutomationsTable({
         automationsPage={automationsPage}
         gridQuery={gridQuery}
         search={search}
-        activeFilterCount={activeFilterCount}
         selectedCount={selectedAutomations.length}
         busy={busy}
         onBulkDelete={() => setBulkDeleteOpen(true)}
         onSearchChange={setSearch}
-        onSearchSubmit={() => pushGridParams({ q: search.trim() || undefined, page: 1 })}
+        onSearchSubmit={value => pushGridParams({ q: value.trim() || undefined, page: 1 })}
         onUpdateGrid={pushGridParams}
-      />
-
-      <DataGrid
-        columns={columns}
-        data={automationsPage.items}
-        totalItems={automationsPage.total}
-        pageIndex={automationsPage.page - 1}
-        pageSize={automationsPage.pageSize}
-        getRowId={automation => automation.id}
-        sorting={sorting}
-        onSortingChange={updater => {
-          const nextSorting = typeof updater === 'function' ? updater(sorting) : updater
-          pushGridParams({ sort: sortToSearchParam(nextSorting), page: 1 })
-        }}
-        selection={{
-          selectedIds,
-          onSelectedIdsChange: setSelectedIds
-        }}
-        minWidth='72rem'
-        emptyState={<div className='text-center text-foreground-muted'>No workflows match the current filters.</div>}
-        rowContextMenu={row => {
-          const hasBulkSelection = selectedIds.has(row.original.id) && selectedAutomations.length > 1
-          return (
-            <>
-              {hasBulkSelection ? (
+      >
+        <DataGrid
+          columns={columns}
+          data={automationsPage.items}
+          totalItems={automationsPage.total}
+          pageIndex={automationsPage.page - 1}
+          pageSize={automationsPage.pageSize}
+          getRowId={automation => automation.id}
+          sorting={sorting}
+          onSortingChange={updater => {
+            const nextSorting = typeof updater === 'function' ? updater(sorting) : updater
+            pushGridParams({ sort: sortToSearchParam(nextSorting), page: 1 })
+          }}
+          selection={{
+            selectedIds,
+            onSelectedIdsChange: setSelectedIds
+          }}
+          minWidth='72rem'
+          emptyState={<div className='text-center text-foreground-muted'>No workflows match the current filters.</div>}
+          rowContextMenu={row => {
+            const hasBulkSelection = selectedIds.has(row.original.id) && selectedAutomations.length > 1
+            return (
+              <>
+                {hasBulkSelection ? (
+                  <ContextMenuItem
+                    className='text-danger focus:text-danger'
+                    disabled={busy}
+                    onSelect={() => setBulkDeleteOpen(true)}
+                  >
+                    <IconTrash className='mr-2 size-4' />
+                    Delete selected ({selectedAutomations.length})
+                  </ContextMenuItem>
+                ) : null}
+                <ContextMenuItem onSelect={() => router.push(`/automations/${row.original.id}/traces`)}>
+                  <IconActivityHeartbeat className='mr-2 size-4' />
+                  Traces
+                </ContextMenuItem>
                 <ContextMenuItem
                   className='text-danger focus:text-danger'
-                  disabled={busy}
-                  onSelect={() => setBulkDeleteOpen(true)}
+                  onSelect={() => setPendingDelete(row.original)}
                 >
                   <IconTrash className='mr-2 size-4' />
-                  Delete selected ({selectedAutomations.length})
+                  Delete
                 </ContextMenuItem>
-              ) : null}
-              <ContextMenuItem onSelect={() => router.push(`/automations/${row.original.id}/traces`)}>
-                <IconActivityHeartbeat className='mr-2 size-4' />
-                Traces
-              </ContextMenuItem>
-              <ContextMenuItem
-                className='text-danger focus:text-danger'
-                onSelect={() => setPendingDelete(row.original)}
-              >
-                <IconTrash className='mr-2 size-4' />
-                Delete
-              </ContextMenuItem>
-            </>
-          )
-        }}
-      />
-      <DataGridPagination
-        totalItems={automationsPage.total}
-        pageIndex={automationsPage.page - 1}
-        pageSize={automationsPage.pageSize}
-        onPageIndexChange={pageIndex => pushGridParams({ page: pageIndex + 1 })}
-        onPageSizeChange={pageSize => pushGridParams({ page: 1, pageSize })}
-      />
+              </>
+            )
+          }}
+        />
+        <DataGridPagination
+          totalItems={automationsPage.total}
+          pageIndex={automationsPage.page - 1}
+          pageSize={automationsPage.pageSize}
+          onPageIndexChange={pageIndex => pushGridParams({ page: pageIndex + 1 })}
+          onPageSizeChange={pageSize => pushGridParams({ page: 1, pageSize })}
+        />
+      </AutomationsTableToolbar>
 
-      <AutomationDeleteDialog
+      <ConfirmMutationDialog
         open={Boolean(pendingDelete)}
         title={`Delete ${pendingDelete?.name ?? 'workflow'}?`}
         description='This removes the workflow and its triggers.'
-        busy={busy}
+        consequence='Existing run history is retained.'
+        confirmLabel='Delete workflow'
+        pendingLabel='Deleting…'
+        pending={busy}
         onOpenChange={open => !open && setPendingDelete(null)}
         onConfirm={() => {
           if (pendingDelete) void deleteMany([pendingDelete])
         }}
       />
-      <AutomationDeleteDialog
+      <ConfirmMutationDialog
         open={bulkDeleteOpen}
         title={`Delete ${selectedAutomations.length} selected workflows?`}
         description='This removes the selected workflows and their triggers.'
-        busy={busy}
+        consequence='Existing run history is retained.'
+        confirmLabel='Delete workflows'
+        pendingLabel='Deleting…'
+        pending={busy}
         onOpenChange={open => !open && setBulkDeleteOpen(false)}
         onConfirm={() => {
           void deleteMany(selectedAutomations)

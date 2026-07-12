@@ -1,20 +1,18 @@
 'use client'
 
 import Link from 'next/link'
+import { StatusBadge, type StatusBadgeTone } from '@/components/ui/status-badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 import type { PlatformContainer } from '@/server/orchestrator/platform/types'
 import type { ColumnDef } from '@tanstack/react-table'
 
-const stateClassName = (state: string) => {
-  if (state === 'running') {
-    return 'bg-primary/15 text-primary'
-  }
-  if (state === 'exited' || state === 'dead') {
-    return 'bg-danger/15 text-danger'
-  }
-  return 'bg-surface-band text-foreground'
+const stateTone = (state: string): StatusBadgeTone => {
+  if (state === 'running') return 'success'
+  if (state === 'exited' || state === 'dead') return 'danger'
+  if (state === 'paused' || state === 'restarting') return 'warning'
+  return 'neutral'
 }
 
 export const ContainerNameCell = ({ container, className }: { container: PlatformContainer; className?: string }) => {
@@ -47,7 +45,12 @@ export const ContainerNameCell = ({ container, className }: { container: Platfor
 }
 
 export const ContainerStateBadge = ({ state }: { state: string }) => (
-  <span className={cn('inline-flex w-fit rounded-full px-2.5 py-1 text-xs', stateClassName(state))}>{state}</span>
+  <StatusBadge
+    tone={stateTone(state)}
+    className='w-fit capitalize'
+  >
+    {state}
+  </StatusBadge>
 )
 
 export const containerName = (container: PlatformContainer) => container.names[0] ?? container.shortId

@@ -5,8 +5,8 @@ import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
-import { StandardPage } from '@/shared/ui/page/page-layout'
+import { PageHeader } from '@/shared/ui/page/page-header'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { ProviderConnectionSection } from './provider-edit-form-sections'
 import { ProviderHealthBanner } from './provider-health-badge'
 import { ProviderModelsGrid } from './provider-models-grid'
@@ -41,10 +41,11 @@ export const OrchestratorAiProviderEditPageClient = ({
 
   return (
     <StandardPage className='gap-2'>
-      <PlatformPageHeader
+      <PageHeader
+        section={{ label: 'Platform', href: '/platform' }}
+        trail={[{ label: 'AI', href: '/platform/ai' }]}
         title={initialProvider.label}
-        titlePrefix={<GradientSparklesIcon className='size-8 max-sm:size-5' />}
-        parent={{ label: 'AI', href: '/platform/ai' }}
+        leading={<GradientSparklesIcon className='size-8 max-sm:size-5' />}
         description='Edit provider connection details and the models exposed to AI automation steps.'
         actions={
           <div className='flex flex-wrap items-center justify-end gap-4'>
@@ -66,7 +67,7 @@ export const OrchestratorAiProviderEditPageClient = ({
           </div>
         }
       />
-      <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
+      <PageContent>
         <ProviderHealthBanner provider={initialProvider} />
         <ProviderConnectionSection
           provider={provider}
@@ -89,7 +90,7 @@ export const OrchestratorAiProviderEditPageClient = ({
           remoteModelsError={remoteModelsError}
           onLoadRemoteModels={loadRemoteModels}
         />
-      </section>
+      </PageContent>
     </StandardPage>
   )
 }

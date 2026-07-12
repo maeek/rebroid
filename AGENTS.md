@@ -97,6 +97,11 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
   shell, responsive layout, `Section`, `DataGrid` column definitions, table markup, and scroll container; do not copy
   widths or layout class strings into route loaders. Keep `loading.tsx` files as thin feature entrypoints, render known
   page chrome immediately, and describe cell placeholders through the owning grid column metadata.
+- Compose every interactive `DataGrid` through the shared `DataGridWorkspace`. Use its filter sidebar/drawer only for
+  page-level datasets with meaningful structured facets; embedded related-resource grids and small fixed datasets use
+  its search-only mode. Keep enabled filter chrome real during loading, and keep feature-specific filter controls and
+  validated state in the owning feature. Do not add separate search buttons, filter popovers, or column-header
+  filtering.
 
 ## Security and Performance
 

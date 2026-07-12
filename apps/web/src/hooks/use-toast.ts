@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { Toast as ToastPrimitives } from '@base-ui/react/toast'
 
-type ToastVariant = 'neutral' | 'danger'
+type ToastVariant = 'neutral' | 'info' | 'success' | 'warning' | 'danger'
 
 type ToastData = {
   variant?: ToastVariant

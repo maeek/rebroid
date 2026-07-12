@@ -41,6 +41,7 @@ export const UserAvatarInput = ({
       <Avatar className='size-16'>
         <AvatarImage src={avatar ?? ''} />
         <AvatarFallback
+          className='text-base'
           style={{
             backgroundColor: getHslColorFromCharCode(name),
             color: getHslColorFromCharCodeForeground(name)

@@ -1,8 +1,8 @@
 import type { ChangeEvent } from 'react'
+import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
-import { FormField } from '@/components/ui/form-field'
 import { verticalSettingClassName } from './app-form-utils'
 
 type AppIdentitySectionProps = {

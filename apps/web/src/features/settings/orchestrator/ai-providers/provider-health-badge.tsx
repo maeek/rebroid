@@ -148,7 +148,7 @@ export const ProviderHealthBanner = ({
   return (
     <div
       className={cn(
-        'flex flex-wrap items-center justify-between gap-3 rounded-panel border px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md',
+        'flex w-full flex-wrap items-center justify-between gap-3 rounded-panel border px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md',
         healthBannerClassName(health)
       )}
     >

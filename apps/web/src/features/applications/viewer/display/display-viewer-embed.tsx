@@ -16,7 +16,7 @@ import {
 import { ViewerPlaceholderScreen } from '@/features/applications/viewer/player/viewer-placeholder-screen'
 import { getToastErrorDescription } from '@/features/applications/viewer/utils/viewer-error-utils'
 import { getScrcpySessionAction } from '@/server/orchestrator/applications/actions/runtime/viewer-actions'
-import { StatusSplash } from '@/shared/ui/status-splash'
+import { StateView } from '@/shared/ui/state-view'
 import { ViewerActivityKeepalive } from './viewer-activity-keepalive'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { DisplayViewerStreamMetrics } from '@/features/applications/viewer/display/display-viewer-stream-status'
@@ -50,16 +50,17 @@ const EmbeddedViewerSplash = ({
   icon?: ReactNode
 }) => (
   <div className='flex min-h-136 w-full items-center justify-center p-6'>
-    <StatusSplash
+    <StateView
+      kind={tone === 'danger' ? 'error' : 'unavailable'}
+      scope='grid'
       title={title}
       description={description}
       detail={detail}
-      tone={tone}
       icon={
         icon ??
         (tone === 'danger' ? <IconAlertTriangle className='size-10' /> : <IconDeviceDesktop className='size-10' />)
       }
-      className='min-h-0'
+      className='min-h-full'
     />
   </div>
 )

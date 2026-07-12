@@ -61,7 +61,7 @@ export const ScheduleEditor = ({
         value={schedule.weekday}
         onValueChange={weekday => onScheduleChange({ weekday })}
       >
-        <SelectTrigger>
+        <SelectTrigger className='w-full sm:max-w-md'>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

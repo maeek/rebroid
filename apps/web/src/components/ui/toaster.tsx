@@ -32,7 +32,7 @@ function ToastList() {
     <>
       {toasts.map(currentToast => {
         const { id, title, description } = currentToast
-        const variant = currentToast.data?.variant ?? (currentToast.type === 'danger' ? 'danger' : 'neutral')
+        const variant = currentToast.data?.variant ?? 'neutral'
 
         return (
           <Toast

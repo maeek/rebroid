@@ -1,13 +1,12 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { IconSearch } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
+import { SearchField } from '@/shared/ui/search-field'
 import type { UserGroup } from '@/server/auth/user'
 
 export const GroupMembershipPicker = ({
@@ -45,15 +44,11 @@ export const GroupMembershipPicker = ({
   return (
     <div className={cn('overflow-hidden', className)}>
       <div className='pb-3'>
-        <div className='relative'>
-          <IconSearch className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-foreground-muted' />
-          <Input
-            value={search}
-            className='pl-9'
-            placeholder='Search groups'
-            onChange={event => setSearch(event.target.value)}
-          />
-        </div>
+        <SearchField
+          value={search}
+          placeholder='Search groups'
+          onValueChange={setSearch}
+        />
       </div>
       <ScrollArea className='max-h-80 border-y border-surface-border/60'>
         <div className='divide-y divide-border/50'>

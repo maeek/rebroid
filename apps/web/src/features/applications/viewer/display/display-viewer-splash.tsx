@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { IconAlertTriangle, IconDeviceDesktop } from '@tabler/icons-react'
-import { StatusSplash } from '@/shared/ui/status-splash'
+import { StateView } from '@/shared/ui/state-view'
 
 export const ViewerSplash = ({
   title,
@@ -27,11 +27,12 @@ export const ViewerSplash = ({
         </div>
         <div className='absolute bottom-5 left-1/2 h-1.5 w-16 -translate-x-1/2 rounded-full bg-primary/70 shadow-[0_0_18px_hsl(var(--primary))]' />
       </div>
-      <StatusSplash
+      <StateView
+        kind={tone === 'danger' ? 'error' : 'unavailable'}
+        scope='immersive'
         title={title}
         description={description}
         detail={detail}
-        tone={tone}
         icon={
           icon ??
           (tone === 'danger' ? <IconAlertTriangle className='size-10' /> : <IconDeviceDesktop className='size-10' />)

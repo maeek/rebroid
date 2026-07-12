@@ -8,7 +8,7 @@ const AutomationMonacoYamlEditor = dynamic(
   () => import('./monaco-yaml').then(module => module.AutomationMonacoYamlEditor),
   {
     ssr: false,
-    loading: () => <div className='h-136 rounded-control border border-surface-border/60 bg-surface-band/35' />
+    loading: () => <div className='h-136 w-full rounded-control border border-surface-border/60 bg-surface-band/35' />
   }
 )
 
@@ -26,14 +26,14 @@ export function AutomationYamlEditorSection({
   className?: string
 }) {
   return (
-    <section className={cn('flex min-h-0 min-w-0 flex-col gap-3', className)}>
+    <section className={cn('flex min-h-0 min-w-0 w-full flex-col gap-3', className)}>
       <div className='flex h-8 items-center justify-between gap-3'>
-        <h3 className='text-xl font-medium'>YAML</h3>
+        <h2 className='text-xl font-medium'>YAML</h2>
       </div>
       <AutomationMonacoYamlEditor
         value={yaml}
         commands={commands}
-        className='min-h-112 flex-1'
+        className='min-h-112 w-full flex-1'
         onChange={onYamlChange}
         onValidationChange={onValidationChange}
       />

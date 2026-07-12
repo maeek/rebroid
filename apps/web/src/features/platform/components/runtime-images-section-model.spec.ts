@@ -26,7 +26,7 @@ describe('orchestrator images section model', () => {
   it('builds compact image grid hrefs', () => {
     expect(
       buildImagesGridHref({
-        gridQuery: { q: 'redroid', scope: 'managed', sort: 'createdAt:desc', page: 3, pageSize: 25 },
+        gridQuery: { q: 'redroid', ownership: 'managed', sort: 'createdAt:desc', page: 3, pageSize: 25 },
         pageSize: 25,
         patch: { q: 'base', page: 1 }
       })

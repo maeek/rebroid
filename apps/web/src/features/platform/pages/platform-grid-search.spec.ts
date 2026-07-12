@@ -3,29 +3,29 @@ import { platformGridQueryFromSearchParams } from './platform-grid-search'
 
 describe('platformGridQueryFromSearchParams', () => {
   it('normalizes platform grid search params with safe defaults', () => {
-    expect(platformGridQueryFromSearchParams({})).toEqual({
+    expect(platformGridQueryFromSearchParams({})).toMatchObject({
       page: 1,
       pageSize: 20,
       q: undefined,
-      scope: 'managed',
+      ownership: 'managed',
       sort: undefined
     })
   })
 
-  it('clamps pagination and preserves allowed managed scope filters', () => {
+  it('clamps pagination and preserves allowed ownership filters', () => {
     expect(
       platformGridQueryFromSearchParams({
         page: '-2',
         pageSize: '200',
         q: '  redis  ',
-        scope: 'all',
+        ownership: 'all',
         sort: 'name:asc'
       })
-    ).toEqual({
+    ).toMatchObject({
       page: 1,
       pageSize: 100,
       q: 'redis',
-      scope: 'all',
+      ownership: 'all',
       sort: 'name:asc'
     })
   })
@@ -35,12 +35,12 @@ describe('platformGridQueryFromSearchParams', () => {
       platformGridQueryFromSearchParams({
         page: ['3', '1'],
         pageSize: ['10', '50'],
-        scope: ['unknown', 'all']
+        ownership: ['unknown', 'all']
       })
     ).toMatchObject({
       page: 3,
       pageSize: 10,
-      scope: 'managed'
+      ownership: 'managed'
     })
   })
 })

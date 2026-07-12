@@ -13,7 +13,6 @@ const AutomationsListPageContent = async ({ searchParams }: { searchParams?: Pro
     return (
       <AutomationPageUnavailable
         title='Workflows'
-        detail={orchestratorError}
         href='/automations'
       />
     )

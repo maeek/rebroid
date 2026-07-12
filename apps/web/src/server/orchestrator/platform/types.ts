@@ -12,12 +12,20 @@ export type PlatformNetwork = OrchestratorApiSchemas['DockerPlatformNetworkDto']
 export type PlatformNetworkDetails = OrchestratorApiSchemas['DockerPlatformNetworkDetailsDto']
 
 export type PlatformResourceScope = 'managed' | 'all'
+export type PlatformResourceOwnership = 'managed' | 'all'
+export type PlatformUsageFilter = 'all' | 'in-use' | 'unused' | 'unknown'
+export type PlatformAttachmentFilter = 'all' | 'attached' | 'unattached'
 
 export interface PlatformImagesGridQuery {
   page?: number
   pageSize?: number
   q?: string
-  scope?: PlatformResourceScope
+  ownership?: PlatformResourceOwnership
+  usage?: PlatformUsageFilter
+  runtimeKind?: 'all' | 'redroid' | 'generic'
+  androidVersion?: string
+  architecture?: string
+  gmsMode?: 'all' | 'none' | 'microg' | 'gapps'
   sort?: string
 }
 
@@ -26,13 +34,21 @@ export interface PlatformImagesGridPage {
   total: number
   page: number
   pageSize: number
+  facets: {
+    androidVersions: string[]
+    architectures: string[]
+  }
 }
 
 export interface PlatformContainersGridQuery {
   page?: number
   pageSize?: number
   q?: string
-  scope?: PlatformResourceScope
+  ownership?: PlatformResourceOwnership
+  state?: string
+  application?: string
+  image?: string
+  network?: string
   sort?: string
 }
 
@@ -42,13 +58,23 @@ export interface PlatformContainersGridPage {
   page: number
   pageSize: number
   orphanedCount: number
+  facets: {
+    states: string[]
+    applications: string[]
+    images: string[]
+    networks: string[]
+  }
 }
 
 export interface PlatformNetworksGridQuery {
   page?: number
   pageSize?: number
   q?: string
-  scope?: PlatformResourceScope
+  ownership?: PlatformResourceOwnership
+  driver?: string
+  dockerScope?: string
+  trait?: 'all' | 'internal' | 'attachable' | 'ingress'
+  attachment?: PlatformAttachmentFilter
   sort?: string
 }
 
@@ -57,6 +83,10 @@ export interface PlatformNetworksGridPage {
   total: number
   page: number
   pageSize: number
+  facets: {
+    drivers: string[]
+    scopes: string[]
+  }
 }
 
 export type ContainerImageBuildStatus = OrchestratorApiSchemas['ContainerImageBuildJob']['status']

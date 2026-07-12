@@ -68,7 +68,7 @@ export type UsersFile = {
   groups: UserGroup[]
 }
 
-export const defaultPasswordMinimumLength = 15
+export const defaultPasswordMinimumLength = 8
 
 const maxAvatarBytes = 2 * 1024 * 1024
 

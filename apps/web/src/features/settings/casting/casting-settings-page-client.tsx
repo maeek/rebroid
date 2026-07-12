@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
-import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
-import { StandardPage } from '@/shared/ui/page/page-layout'
+import { PageHeader } from '@/shared/ui/page/page-header'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { CastingSidecarSettings } from './casting-sidecar-settings'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
 import type { DisplaySidecarSession, ServiceHealth } from '@/server/orchestrator/diagnostics/types'
@@ -29,10 +29,10 @@ export const CastingSettingsPageClient = ({
 
   return (
     <StandardPage className='gap-2'>
-      <PlatformPageHeader
+      <PageHeader
+        section={{ label: 'Platform', href: '/platform' }}
         title='Display sessions'
-        description='Inspect the casting sidecar and terminate active viewer sessions.'
-        breadcrumbRoot={{ label: 'Platform' }}
+        description='Inspect the display service and end active viewer sessions.'
         actions={
           <PlatformPageRefreshButton
             isRefreshing={isRefreshing}
@@ -40,7 +40,7 @@ export const CastingSettingsPageClient = ({
           />
         }
       />
-      <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
+      <PageContent>
         <CastingSidecarSettings
           initialHealth={initialHealth}
           initialSessions={initialSessions}
@@ -49,7 +49,7 @@ export const CastingSettingsPageClient = ({
           refreshKey={refreshKey}
           onRefreshComplete={() => setIsRefreshing(false)}
         />
-      </section>
+      </PageContent>
     </StandardPage>
   )
 }

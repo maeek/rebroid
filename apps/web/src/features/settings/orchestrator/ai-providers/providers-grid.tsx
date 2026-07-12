@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { aiModelRoleLabel } from '@rebroid/ai-core/provider'
 import { IconPencil, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Section } from '@/components/ui/section'
 import { AiProviderKindBadge } from '@/shared/ui/ai/ai-model-badges'
-import { DataGrid } from '@/shared/ui/data-grid'
+import { DataGrid, DataGridWorkspace } from '@/shared/ui/data-grid'
 import { ProviderHealthBadge } from './provider-health-badge'
 import { ProviderStatusBadge } from './provider-status-badge'
 import type { AutomationAiProvider } from '@/server/orchestrator/settings/types'
@@ -35,6 +35,8 @@ export const ProvidersGrid = ({
   onEdit: (provider: AutomationAiProvider) => void
   onDelete: (provider: AutomationAiProvider) => void
 }) => {
+  const [searchDraft, setSearchDraft] = useState('')
+  const [search, setSearch] = useState('')
   const columns = useMemo<ColumnDef<AutomationAiProvider>[]>(
     () => [
       {
@@ -127,16 +129,29 @@ export const ProvidersGrid = ({
     ],
     []
   )
+  const visibleProviders = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    if (!query) return providers
+    return providers.filter(provider =>
+      `${provider.label} ${provider.id} ${provider.baseUrl} ${provider.models.map(model => model.label).join(' ')}`
+        .toLowerCase()
+        .includes(query)
+    )
+  }, [providers, search])
 
   return (
     <Section
       surface='plain'
       contentClassName='gap-4'
     >
-      {selectedIds.size > 0 ? (
-        <div className='flex flex-wrap items-center justify-between gap-3'>
-          <span className='text-sm text-foreground-muted'>{selectedIds.size} selected</span>
-          <div className='flex flex-wrap items-center gap-2'>
+      <DataGridWorkspace
+        search={searchDraft}
+        searchPlaceholder='Search AI providers'
+        onSearchChange={setSearchDraft}
+        onSearch={setSearch}
+        selectedCount={selectedIds.size}
+        bulkActions={
+          <>
             <Button
               type='button'
               variant='secondary'
@@ -155,49 +170,51 @@ export const ProvidersGrid = ({
             </Button>
             <Button
               type='button'
-              variant='ghost'
+              variant='danger'
               disabled={busyId === 'bulk'}
               onClick={onDeleteSelected}
             >
               Delete selected
             </Button>
-          </div>
-        </div>
-      ) : null}
-      <DataGrid
-        columns={columns}
-        data={providers}
-        totalItems={providers.length}
-        pageIndex={0}
-        pageSize={Math.max(providers.length, 1)}
-        getRowId={provider => provider.id}
-        selection={{ selectedIds, onSelectedIdsChange }}
-        minWidth='74rem'
-        emptyState={
-          <div className='flex items-center justify-center gap-2 text-center text-foreground-muted'>
-            <GradientSparklesIcon className='size-4' />
-            No AI configured.
-          </div>
+          </>
         }
-        rowContextMenu={row => {
-          const provider = row.original
-          return (
-            <>
-              <ContextMenuItem onSelect={() => onEdit(provider)}>
-                <IconPencil className='mr-2 size-4' />
-                Edit
-              </ContextMenuItem>
-              <ContextMenuItem
-                disabled={busyId === provider.id}
-                onSelect={() => onDelete(provider)}
-              >
-                <IconTrash className='mr-2 size-4' />
-                Delete
-              </ContextMenuItem>
-            </>
-          )
-        }}
-      />
+      >
+        <DataGrid
+          columns={columns}
+          data={visibleProviders}
+          totalItems={visibleProviders.length}
+          pageIndex={0}
+          pageSize={Math.max(visibleProviders.length, 1)}
+          getRowId={provider => provider.id}
+          selection={{ selectedIds, onSelectedIdsChange }}
+          minWidth='74rem'
+          emptyState={
+            <div className='flex items-center justify-center gap-2 text-center text-foreground-muted'>
+              <GradientSparklesIcon className='size-4' />
+              No AI configured.
+            </div>
+          }
+          rowContextMenu={row => {
+            const provider = row.original
+            return (
+              <>
+                <ContextMenuItem onSelect={() => onEdit(provider)}>
+                  <IconPencil className='mr-2 size-4' />
+                  Edit
+                </ContextMenuItem>
+                <ContextMenuItem
+                  className='text-danger focus:text-danger'
+                  disabled={busyId === provider.id}
+                  onSelect={() => onDelete(provider)}
+                >
+                  <IconTrash className='mr-2 size-4' />
+                  Delete
+                </ContextMenuItem>
+              </>
+            )
+          }}
+        />
+      </DataGridWorkspace>
     </Section>
   )
 }

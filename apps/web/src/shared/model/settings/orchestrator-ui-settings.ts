@@ -85,7 +85,7 @@ export const defaultOrchestratorUiSettings: OrchestratorUiSettings = {
   defaultViewerSoundEnabled: true,
   aiContextualSuggestionsEnabled: true,
   auditRetentionDays: 30,
-  passwordMinimumLength: 15,
+  passwordMinimumLength: 8,
   services: {
     ocr: {
       enabled: true,

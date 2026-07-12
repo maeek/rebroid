@@ -13,6 +13,7 @@ import {
   RelatedImageSection,
   RelatedNetworksSection
 } from '@/features/platform/details/runtime-container-detail/related-container-sections'
+import { PageContent } from '@/shared/ui/page/page-layout'
 import { PlatformJsonBlock } from '@/shared/ui/platform/platform-detail-parts'
 import type { PlatformContainerDetails, PlatformContainerLog } from '@/server/orchestrator/platform/types'
 
@@ -39,7 +40,7 @@ const RuntimeContainerDetailContent = () => {
 
   return (
     <>
-      <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
+      <PageContent>
         <ContainerOverviewSection />
 
         <LiveResourcesSection />
@@ -53,7 +54,7 @@ const RuntimeContainerDetailContent = () => {
 
         <Section
           title='Labels'
-          surface='panel'
+          surface='plain'
           contentClassName='gap-4'
           titleClassName='pb-4'
         >
@@ -62,12 +63,13 @@ const RuntimeContainerDetailContent = () => {
 
         <Section
           title='Raw inspect'
-          surface='panel'
+          surface='plain'
+          collapsible
           contentClassName='gap-4'
         >
           <PlatformJsonBlock value={details.inspect} />
         </Section>
-      </section>
+      </PageContent>
 
       <ContainerActionDialog />
     </>

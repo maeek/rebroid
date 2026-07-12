@@ -5,16 +5,8 @@ import { IconEye, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { ContextMenuItem } from '@/components/ui/context-menu'
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -24,8 +16,8 @@ import { formatUtcDate } from '@/lib/format'
 import { removePlatformImageAction } from '@/server/orchestrator/platform/image-actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { imageDisplayName } from '@/shared/model/runtime-image/image-display-name'
-import { DataGrid, DataGridPagination, DataGridToolbar } from '@/shared/ui/data-grid'
-import { PlatformResourceScopeFilter } from './platform-resource-scope-filter'
+import { DataGrid, DataGridPagination, DataGridWorkspace } from '@/shared/ui/data-grid'
+import { RuntimeImageFilters } from './runtime-grid-filter-controls'
 import {
   platformSortFromSearchParam,
   platformSortToSearchParam,
@@ -142,7 +134,7 @@ export const RuntimeImagesSection = ({
   const router = useRouter()
   const [search, setSearch] = useState(gridQuery.q ?? '')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
-  const [pendingRemove, setPendingRemove] = useState<PlatformImage | null>(null)
+  const [pendingRemove, setPendingRemove] = useState<PlatformImage[] | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const sorting = useMemo(
     () => platformSortFromSearchParam(gridQuery.sort, { defaultSort: 'createdAt:desc', missingDirection: 'desc' }),
@@ -160,15 +152,21 @@ export const RuntimeImagesSection = ({
   const selectedImages = selectedPlatformItemsFromIds(imagesPage.items, selectedIds)
 
   const pushGridParams = (patch: Partial<PlatformImagesGridQuery>) => {
-    router.push(buildImagesGridHref({ gridQuery, pageSize: imagesPage.pageSize, patch }))
+    router.replace(buildImagesGridHref({ gridQuery, pageSize: imagesPage.pageSize, patch }), { scroll: false })
   }
 
-  const removeImage = async () => {
-    if (!pendingRemove) return
-    setBusyId(pendingRemove.id)
+  const removeImages = async () => {
+    if (!pendingRemove?.length) return
+    setBusyId(pendingRemove.length === 1 ? pendingRemove[0].id : 'bulk')
     try {
-      unwrapActionResult(await removePlatformImageAction(pendingRemove.id))
-      toast({ title: 'Image removed' })
+      const results = await Promise.all(pendingRemove.map(image => removePlatformImageAction(image.id)))
+      if (pendingRemove.length === 1) {
+        unwrapActionResult(results[0])
+        toast({ title: 'Image removed', variant: 'success' })
+      } else {
+        toast(summarizePlatformBulkRemoveResults(results, 'image'))
+        setSelectedIds(new Set())
+      }
       setPendingRemove(null)
       router.refresh()
     } catch (caughtError) {
@@ -182,20 +180,69 @@ export const RuntimeImagesSection = ({
     }
   }
 
-  const removeSelectedImages = async () => {
-    if (selectedImages.length === 0) return
-    setBusyId('bulk')
-    try {
-      const results = await Promise.all(selectedImages.map(image => removePlatformImageAction(image.id)))
-      setSelectedIds(new Set())
-      router.refresh()
-      toast(summarizePlatformBulkRemoveResults(results, 'image'))
-    } finally {
-      setBusyId(null)
-    }
-  }
-
   const columns = useMemo(() => createImageColumns(), [])
+  const activeFilters = [
+    ...(gridQuery.ownership === 'all'
+      ? [
+          {
+            id: 'ownership',
+            label: 'Ownership',
+            value: 'All Docker',
+            onRemove: () => pushGridParams({ ownership: 'managed', page: 1 })
+          }
+        ]
+      : []),
+    ...(gridQuery.usage && gridQuery.usage !== 'all'
+      ? [
+          {
+            id: 'usage',
+            label: 'Usage',
+            value: gridQuery.usage,
+            onRemove: () => pushGridParams({ usage: 'all', page: 1 })
+          }
+        ]
+      : []),
+    ...(gridQuery.runtimeKind && gridQuery.runtimeKind !== 'all'
+      ? [
+          {
+            id: 'runtimeKind',
+            label: 'Runtime',
+            value: gridQuery.runtimeKind,
+            onRemove: () => pushGridParams({ runtimeKind: 'all', page: 1 })
+          }
+        ]
+      : []),
+    ...(gridQuery.androidVersion
+      ? [
+          {
+            id: 'androidVersion',
+            label: 'Android',
+            value: gridQuery.androidVersion,
+            onRemove: () => pushGridParams({ androidVersion: undefined, page: 1 })
+          }
+        ]
+      : []),
+    ...(gridQuery.architecture
+      ? [
+          {
+            id: 'architecture',
+            label: 'Architecture',
+            value: gridQuery.architecture,
+            onRemove: () => pushGridParams({ architecture: undefined, page: 1 })
+          }
+        ]
+      : []),
+    ...(gridQuery.gmsMode && gridQuery.gmsMode !== 'all'
+      ? [
+          {
+            id: 'gmsMode',
+            label: 'Google services',
+            value: gridQuery.gmsMode,
+            onRemove: () => pushGridParams({ gmsMode: 'all', page: 1 })
+          }
+        ]
+      : [])
+  ]
 
   return (
     <>
@@ -203,128 +250,122 @@ export const RuntimeImagesSection = ({
         surface='plain'
         contentClassName='gap-4'
       >
-        <DataGridToolbar
+        <DataGridWorkspace
           search={search}
           searchPlaceholder='Search images'
           onSearchChange={setSearch}
-          onSearchSubmit={() => pushGridParams({ q: search.trim() || undefined, page: 1 })}
-          activeFilterCount={gridQuery.scope === 'all' ? 1 : 0}
-          selectedCount={selectedImages.length}
+          onSearch={value => pushGridParams({ q: value.trim() || undefined, page: 1 })}
           filters={
-            <PlatformResourceScopeFilter
-              value={gridQuery.scope ?? 'managed'}
-              onValueChange={scope => pushGridParams({ scope, page: 1 })}
+            <RuntimeImageFilters
+              page={imagesPage}
+              query={gridQuery}
+              onUpdate={pushGridParams}
             />
           }
-          actions={
+          filterTitle='Filter images'
+          filterDescription='Find images by ownership, usage, and Android runtime compatibility.'
+          activeFilters={activeFilters}
+          onResetFilters={() =>
+            pushGridParams({
+              ownership: 'managed',
+              usage: 'all',
+              runtimeKind: 'all',
+              androidVersion: undefined,
+              architecture: undefined,
+              gmsMode: 'all',
+              page: 1
+            })
+          }
+          selectedCount={selectedImages.length}
+          bulkActions={
             <Button
               type='button'
-              variant='ghost'
+              variant='danger'
               disabled={busyId === 'bulk' || !canRemoveSelectedImages(selectedImages)}
-              onClick={() => void removeSelectedImages()}
+              onClick={() => setPendingRemove(selectedImages)}
             >
               Remove selected
             </Button>
           }
-        />
-
-        <TooltipProvider delayDuration={150}>
-          <DataGrid
-            columns={columns}
-            data={imagesPage.items}
+        >
+          <TooltipProvider delayDuration={150}>
+            <DataGrid
+              columns={columns}
+              data={imagesPage.items}
+              totalItems={imagesPage.total}
+              pageIndex={imagesPage.page - 1}
+              pageSize={imagesPage.pageSize}
+              getRowId={image => image.id}
+              sorting={sorting}
+              onSortingChange={updater => {
+                const nextSorting = typeof updater === 'function' ? updater(sorting) : updater
+                pushGridParams({ sort: platformSortToSearchParam(nextSorting), page: 1 })
+              }}
+              selection={{
+                selectedIds,
+                onSelectedIdsChange: setSelectedIds
+              }}
+              emptyState={
+                <div className='text-center text-foreground-muted'>
+                  {gridQuery.q ? 'No images match this search.' : 'No images are visible to Docker.'}
+                </div>
+              }
+              rowContextMenu={row => {
+                const hasBulkSelection = selectedIds.has(row.original.id) && selectedImages.length > 1
+                return (
+                  <>
+                    {hasBulkSelection ? (
+                      <ContextMenuItem
+                        className='text-danger focus:text-danger'
+                        disabled={busyId === 'bulk'}
+                        onSelect={() => setPendingRemove(selectedImages)}
+                      >
+                        <IconTrash className='mr-2 size-4' />
+                        Remove selected ({selectedImages.length})
+                      </ContextMenuItem>
+                    ) : null}
+                    <ContextMenuItem asChild>
+                      <Link href={`/runtime/images/${encodeURIComponent(row.original.id)}`}>
+                        <IconEye className='mr-2 size-4' />
+                        Details
+                      </Link>
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      className='text-danger focus:text-danger'
+                      onSelect={() => setPendingRemove([row.original])}
+                    >
+                      <IconTrash className='mr-2 size-4' />
+                      Remove
+                    </ContextMenuItem>
+                  </>
+                )
+              }}
+            />
+          </TooltipProvider>
+          <DataGridPagination
             totalItems={imagesPage.total}
             pageIndex={imagesPage.page - 1}
             pageSize={imagesPage.pageSize}
-            getRowId={image => image.id}
-            sorting={sorting}
-            onSortingChange={updater => {
-              const nextSorting = typeof updater === 'function' ? updater(sorting) : updater
-              pushGridParams({ sort: platformSortToSearchParam(nextSorting), page: 1 })
-            }}
-            selection={{
-              selectedIds,
-              onSelectedIdsChange: setSelectedIds
-            }}
-            emptyState={
-              <div className='text-center text-foreground-muted'>
-                {gridQuery.q ? 'No images match this search.' : 'No images are visible to Docker.'}
-              </div>
-            }
-            rowContextMenu={row => {
-              const hasBulkSelection = selectedIds.has(row.original.id) && selectedImages.length > 1
-              return (
-                <>
-                  {hasBulkSelection ? (
-                    <ContextMenuItem
-                      className='text-danger focus:text-danger'
-                      disabled={busyId === 'bulk'}
-                      onSelect={() => void removeSelectedImages()}
-                    >
-                      <IconTrash className='mr-2 size-4' />
-                      Remove selected ({selectedImages.length})
-                    </ContextMenuItem>
-                  ) : null}
-                  <ContextMenuItem asChild>
-                    <Link href={`/runtime/images/${encodeURIComponent(row.original.id)}`}>
-                      <IconEye className='mr-2 size-4' />
-                      Details
-                    </Link>
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    className='text-danger focus:text-danger'
-                    onSelect={() => setPendingRemove(row.original)}
-                  >
-                    <IconTrash className='mr-2 size-4' />
-                    Remove
-                  </ContextMenuItem>
-                </>
-              )
-            }}
+            onPageIndexChange={pageIndex => pushGridParams({ page: pageIndex + 1 })}
+            onPageSizeChange={pageSize => pushGridParams({ page: 1, pageSize })}
           />
-        </TooltipProvider>
-        <DataGridPagination
-          totalItems={imagesPage.total}
-          pageIndex={imagesPage.page - 1}
-          pageSize={imagesPage.pageSize}
-          onPageIndexChange={pageIndex => pushGridParams({ page: pageIndex + 1 })}
-          onPageSizeChange={pageSize => pushGridParams({ page: 1, pageSize })}
-        />
+        </DataGridWorkspace>
       </Section>
 
-      <Dialog
-        modal
+      <ConfirmMutationDialog
         open={Boolean(pendingRemove)}
+        title={pendingRemove?.length === 1 ? 'Remove image?' : `Remove ${pendingRemove?.length ?? 0} images?`}
+        description='This permanently removes the selected image data from the container engine.'
+        summary={pendingRemove?.length === 1 ? getImageRemoveDialogLabel(pendingRemove[0]) : undefined}
+        consequence='Images used by containers may require additional Docker cleanup.'
+        confirmLabel={pendingRemove?.length === 1 ? 'Remove image' : 'Remove images'}
+        pendingLabel='Removing…'
+        pending={busyId !== null}
         onOpenChange={open => {
           if (!open) setPendingRemove(null)
         }}
-      >
-        <DialogContent className='sm:max-w-xl'>
-          <DialogHeader>
-            <DialogTitle>Remove image?</DialogTitle>
-            <DialogDescription className='space-y-3'>
-              <span className='block'>This removes the selected image from the container engine.</span>
-              <span className='block rounded-control border border-surface-border/60 bg-surface-band/60 px-3 py-2 font-mono text-xs text-foreground break-all'>
-                {getImageRemoveDialogLabel(pendingRemove)}
-              </span>
-              <span className='block'>
-                Images used by containers may need cleanup or force removal from Docker directly.
-              </span>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant='danger'
-              disabled={!pendingRemove || busyId === pendingRemove.id}
-              onClick={() => void removeImage()}
-            >
-              Remove image
-            </Button>
-            <DialogClose asChild>
-              <Button variant='secondary'>Cancel</Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        onConfirm={() => void removeImages()}
+      />
     </>
   )
 }

@@ -19,7 +19,14 @@ type SelectLabelRegistry = {
   registerLabel: (value: string, label: string) => () => void
 }
 
+type SelectFieldAttributes = {
+  id?: string
+  'aria-describedby'?: string
+  'aria-invalid'?: boolean
+}
+
 const SelectLabelContext = React.createContext<SelectLabelRegistry | null>(null)
+const SelectFieldAttributesContext = React.createContext<SelectFieldAttributes>({})
 
 type SelectItemProps = Omit<React.ComponentProps<typeof SelectPrimitive.Item>, 'value'> & {
   value?: string
@@ -28,11 +35,12 @@ type SelectItemProps = Omit<React.ComponentProps<typeof SelectPrimitive.Item>, '
 type SelectRootProps<Value extends string = string> = Omit<
   SelectPrimitive.Root.Props<Value>,
   'defaultValue' | 'multiple' | 'onValueChange' | 'value'
-> & {
-  defaultValue?: Value
-  onValueChange?: (value: Value) => void
-  value?: Value
-}
+> &
+  SelectFieldAttributes & {
+    defaultValue?: Value
+    onValueChange?: (value: Value) => void
+    value?: Value
+  }
 
 const getSelectItemText = (children: React.ReactNode): string => {
   if (children === null || children === undefined || typeof children === 'boolean') {
@@ -81,7 +89,19 @@ const collectSelectLabels = (children: React.ReactNode, labels = new Map<string,
   return labels
 }
 
-function Select<Value extends string = string>({ onValueChange, children, ...props }: SelectRootProps<Value>) {
+function Select<Value extends string = string>({
+  onValueChange,
+  children,
+  id,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
+  ...rootProps
+}: SelectRootProps<Value>) {
+  const fieldAttributes: SelectFieldAttributes = {
+    id,
+    'aria-describedby': ariaDescribedBy,
+    'aria-invalid': ariaInvalid
+  }
   const staticLabels = React.useMemo(() => collectSelectLabels(children), [children])
   const [registeredLabels, setRegisteredLabels] = React.useState(() => new Map<string, string>())
 
@@ -120,19 +140,21 @@ function Select<Value extends string = string>({ onValueChange, children, ...pro
   )
 
   return (
-    <SelectLabelContext.Provider value={labelContext}>
-      <SelectPrimitive.Root
-        data-slot='select'
-        onValueChange={value => {
-          if (value !== null) {
-            onValueChange?.(value)
-          }
-        }}
-        {...props}
-      >
-        {children}
-      </SelectPrimitive.Root>
-    </SelectLabelContext.Provider>
+    <SelectFieldAttributesContext.Provider value={fieldAttributes}>
+      <SelectLabelContext.Provider value={labelContext}>
+        <SelectPrimitive.Root
+          data-slot='select'
+          onValueChange={value => {
+            if (value !== null) {
+              onValueChange?.(value)
+            }
+          }}
+          {...rootProps}
+        >
+          {children}
+        </SelectPrimitive.Root>
+      </SelectLabelContext.Provider>
+    </SelectFieldAttributesContext.Provider>
   )
 }
 
@@ -179,6 +201,7 @@ function SelectTrigger({
   asChild?: boolean
 }) {
   const view = getBaseRender(asChild, children)
+  const fieldAttributes = React.useContext(SelectFieldAttributesContext)
 
   return (
     <SelectPrimitive.Trigger
@@ -192,6 +215,7 @@ function SelectTrigger({
         focusRingClassName,
         className
       )}
+      {...fieldAttributes}
       {...props}
     >
       {getBaseChildren(asChild, children)}

@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { IconLoader2 } from '@tabler/icons-react'
 import { PlatformRuntimeFieldsSection } from '@/features/settings/orchestrator/platform-runtime-fields-section'
 import { PlatformRuntimeHeader } from '@/features/settings/orchestrator/platform-runtime-header'
 import { PlatformRuntimeMaintenanceSection } from '@/features/settings/orchestrator/platform-runtime-maintenance-section'
@@ -11,8 +10,8 @@ import {
   resetOrchestratorUiSettings,
   saveOrchestratorUiSettings
 } from '@/shared/model/settings/use-orchestrator-ui-settings'
-import { StandardPage } from '@/shared/ui/page/page-layout'
-import { StatusSplash } from '@/shared/ui/status-splash'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
+import { StateView } from '@/shared/ui/state-view'
 import type { PlatformImage } from '@/shared/contracts/platform-image'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
@@ -90,7 +89,7 @@ export const PlatformRuntimeForm = ({
       const runtimeSettings: SaveOrchestratorUiSettingsInput = toRuntimeUiSettings(settings)
       const saved: OrchestratorUiSettings = await persistOrchestratorUiSettings(runtimeSettings)
       setSettings(current => ({ ...saved, orchestratorApiUrl: current.orchestratorApiUrl }))
-      toast({ title: 'Settings saved' })
+      toast({ title: 'Settings saved', variant: 'success' })
     } catch (error) {
       toast({
         title: 'Could not save settings',
@@ -107,7 +106,7 @@ export const PlatformRuntimeForm = ({
     try {
       const saved: OrchestratorUiSettings = await restoreOrchestratorUiSettings()
       setSettings(current => ({ ...saved, orchestratorApiUrl: current.orchestratorApiUrl }))
-      toast({ title: 'Settings reset' })
+      toast({ title: 'Settings reset', variant: 'success' })
     } catch (error) {
       toast({
         title: 'Could not reset settings',
@@ -128,25 +127,23 @@ export const PlatformRuntimeForm = ({
           onSave={() => void saveSettings()}
           showActions={false}
         />
-        <section className='px-6 pb-16 pt-6 max-sm:px-4'>
+        <PageContent>
           {healthState === 'checking' ? (
-            <StatusSplash
+            <StateView
+              kind='loading'
               title='Checking orchestrator'
               description='Waiting for the API health check before loading Docker settings.'
-              icon={<IconLoader2 className='size-10 animate-spin' />}
-              className='min-h-[60vh]'
             />
           ) : (
-            <StatusSplash
+            <StateView
+              kind='unavailable'
               title='Orchestrator unavailable'
               description='Docker settings and platform management are offline until the orchestrator responds.'
-              detail={healthError}
-              tone='danger'
-              primaryAction={{ label: 'Refresh', onClick: () => void checkHealth() }}
-              className='min-h-[60vh]'
+              detail={healthError ? 'Check the orchestrator service and Docker, then try again.' : undefined}
+              actions={[{ label: 'Try again', onClick: () => void checkHealth() }]}
             />
           )}
-        </section>
+        </PageContent>
       </StandardPage>
     )
   }
@@ -158,8 +155,8 @@ export const PlatformRuntimeForm = ({
         onReset={() => void resetSettings()}
         onSave={() => void saveSettings()}
       />
-      <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
-        <div className='grid w-full gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)]'>
+      <PageContent>
+        <div className='grid w-full items-start gap-6 xl:grid-cols-2'>
           <PlatformRuntimeFieldsSection
             images={images}
             settings={settings}
@@ -167,7 +164,7 @@ export const PlatformRuntimeForm = ({
           />
           <PlatformRuntimeMaintenanceSection />
         </div>
-      </section>
+      </PageContent>
     </StandardPage>
   )
 }

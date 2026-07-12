@@ -9,7 +9,6 @@ export async function AutomationCreatePageEntry() {
     return (
       <AutomationPageUnavailable
         title='New workflow'
-        detail={orchestratorError}
         href='/automations/create'
       />
     )

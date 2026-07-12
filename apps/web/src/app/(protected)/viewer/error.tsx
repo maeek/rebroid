@@ -1,18 +1,19 @@
 'use client'
 
 import { IconAlertTriangle } from '@tabler/icons-react'
-import { StatusSplash } from '@/shared/ui/status-splash'
+import { StateView } from '@/shared/ui/state-view'
 
 export default function ViewerErrorPage({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
     <main className='flex min-h-screen items-center justify-center overflow-hidden bg-black p-6'>
-      <StatusSplash
+      <StateView
+        scope='immersive'
+        kind='error'
         title='Viewer unavailable'
         description='The live display could not finish loading.'
         detail='Try again, or restart the app if the viewer does not recover.'
-        tone='danger'
         icon={<IconAlertTriangle className='size-10' />}
-        primaryAction={{ label: 'Try again', onClick: reset }}
+        actions={[{ label: 'Try again', onClick: reset }]}
       />
     </main>
   )

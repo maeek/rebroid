@@ -1,7 +1,7 @@
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DataGridSkeleton } from '@/shared/ui/data-grid'
-import { StandardPage } from '@/shared/ui/page/page-layout'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
 import { DetailRowsSkeleton } from './detail-rows-skeleton'
 import { JsonBlockSkeleton } from './json-block-skeleton'
@@ -22,10 +22,10 @@ export const PlatformResourceDetailPageSkeleton = ({
       titleWidth={titleWidth}
       hasParent
     />
-    <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
+    <PageContent>
       <Section
         title='Overview'
-        surface='panel'
+        surface='plain'
         contentClassName='gap-5'
       >
         <div className='flex flex-wrap items-center justify-between gap-4'>
@@ -57,7 +57,7 @@ export const PlatformResourceDetailPageSkeleton = ({
 
       <Section
         title='Related containers'
-        surface='panel'
+        surface='plain'
         contentClassName='gap-4'
         titleClassName='pb-4'
       >
@@ -77,7 +77,7 @@ export const PlatformResourceDetailPageSkeleton = ({
 
       <Section
         title='Labels'
-        surface='panel'
+        surface='plain'
         contentClassName='gap-4'
         titleClassName='pb-4'
       >
@@ -86,11 +86,12 @@ export const PlatformResourceDetailPageSkeleton = ({
 
       <Section
         title='Raw inspect'
-        surface='panel'
+        surface='plain'
+        collapsible
         contentClassName='gap-4'
       >
         <JsonBlockSkeleton lines={12} />
       </Section>
-    </section>
+    </PageContent>
   </StandardPage>
 )

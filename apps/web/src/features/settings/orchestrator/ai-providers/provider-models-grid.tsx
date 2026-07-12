@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Switch } from '@/components/ui/switch'
 import { AiModelStateBadges } from '@/shared/ui/ai/ai-model-badges'
-import { DataGrid } from '@/shared/ui/data-grid'
+import { DataGrid, DataGridWorkspace } from '@/shared/ui/data-grid'
 import { ProviderHealthBadge } from './provider-health-badge'
 import { ProviderModelAddDialog, ProviderModelDownloadStatus } from './provider-model-download'
 import { ProviderModelSettingsDialog } from './provider-model-settings-dialog'
@@ -173,8 +173,15 @@ export const ProviderModelsGrid = ({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [settingsRowId, setSettingsRowId] = useState<string | null>(null)
   const [addOpen, setAddOpen] = useState(false)
+  const [searchDraft, setSearchDraft] = useState('')
+  const [search, setSearch] = useState('')
   const selectedIndexes = selectedProviderModelIndexes(modelRows, selectedIds)
   const settingsRow = findProviderModelSettingsRow(modelRows, settingsRowId)
+  const visibleModelRows = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    if (!query) return modelRows
+    return modelRows.filter(model => `${model.id} ${model.label}`.toLowerCase().includes(query))
+  }, [modelRows, search])
   const toggleRole = useCallback(
     (model: ProviderModelRow, role: ProviderModelRole, enabled: boolean) => {
       onUpdateModel(model.index, { roles: nextProviderModelRoles(model.roles, role, enabled) })
@@ -344,10 +351,14 @@ export const ProviderModelsGrid = ({
           </Button>
         </div>
       </div>
-      {selectedIds.size > 0 ? (
-        <div className='flex flex-wrap items-center justify-between gap-3'>
-          <span className='text-sm text-foreground-muted'>{selectedIds.size} selected</span>
-          <div className='flex flex-wrap items-center gap-2'>
+      <DataGridWorkspace
+        search={searchDraft}
+        searchPlaceholder='Search models'
+        onSearchChange={setSearchDraft}
+        onSearch={setSearch}
+        selectedCount={selectedIds.size}
+        bulkActions={
+          <>
             <Button
               type='button'
               variant='secondary'
@@ -378,68 +389,69 @@ export const ProviderModelsGrid = ({
             >
               Delete selected
             </Button>
-          </div>
-        </div>
-      ) : null}
-      <DataGrid
-        columns={columns}
-        data={modelRows}
-        totalItems={modelRows.length}
-        pageIndex={0}
-        pageSize={Math.max(modelRows.length, 1)}
-        getRowId={model => model.rowId}
-        selection={{ selectedIds, onSelectedIdsChange: setSelectedIds }}
-        minWidth='86rem'
-        emptyState={<div className='text-center text-foreground-muted'>No models configured.</div>}
-        rowContextMenu={row => (
-          <>
-            <ContextMenuItem onSelect={() => setSettingsRowId(row.original.rowId)}>
-              <IconSettings className='mr-2 size-4' />
-              Settings
-            </ContextMenuItem>
-            {initialProvider.kind === 'ollama' ? (
-              <ContextMenuItem onSelect={() => void onDownloadModel(row.original.id, row.original.label)}>
-                <IconDownload className='mr-2 size-4' />
-                Pull model
-              </ContextMenuItem>
-            ) : null}
-            <ContextMenuItem
-              disabled={
-                !row.original.enabled ||
-                !row.original.roles.includes('controller') ||
-                row.original.defaultFor.includes('controller')
-              }
-              onSelect={() => onSetDefaultModel(row.original.index, 'controller')}
-            >
-              Set as controller default
-            </ContextMenuItem>
-            <ContextMenuItem
-              disabled={
-                !row.original.enabled ||
-                !row.original.roles.includes('planner') ||
-                row.original.defaultFor.includes('planner')
-              }
-              onSelect={() => onSetDefaultModel(row.original.index, 'planner')}
-            >
-              Set as planner default
-            </ContextMenuItem>
-            <ContextMenuItem
-              disabled={
-                !row.original.enabled ||
-                !row.original.roles.includes('vision') ||
-                row.original.defaultFor.includes('vision')
-              }
-              onSelect={() => onSetDefaultModel(row.original.index, 'vision')}
-            >
-              Set as vision default
-            </ContextMenuItem>
-            <ContextMenuItem onSelect={() => onRemoveModel(row.original.index)}>
-              <IconTrash className='mr-2 size-4' />
-              Delete
-            </ContextMenuItem>
           </>
-        )}
-      />
+        }
+      >
+        <DataGrid
+          columns={columns}
+          data={visibleModelRows}
+          totalItems={visibleModelRows.length}
+          pageIndex={0}
+          pageSize={Math.max(visibleModelRows.length, 1)}
+          getRowId={model => model.rowId}
+          selection={{ selectedIds, onSelectedIdsChange: setSelectedIds }}
+          minWidth='86rem'
+          emptyState={<div className='text-center text-foreground-muted'>No models configured.</div>}
+          rowContextMenu={row => (
+            <>
+              <ContextMenuItem onSelect={() => setSettingsRowId(row.original.rowId)}>
+                <IconSettings className='mr-2 size-4' />
+                Settings
+              </ContextMenuItem>
+              {initialProvider.kind === 'ollama' ? (
+                <ContextMenuItem onSelect={() => void onDownloadModel(row.original.id, row.original.label)}>
+                  <IconDownload className='mr-2 size-4' />
+                  Pull model
+                </ContextMenuItem>
+              ) : null}
+              <ContextMenuItem
+                disabled={
+                  !row.original.enabled ||
+                  !row.original.roles.includes('controller') ||
+                  row.original.defaultFor.includes('controller')
+                }
+                onSelect={() => onSetDefaultModel(row.original.index, 'controller')}
+              >
+                Set as controller default
+              </ContextMenuItem>
+              <ContextMenuItem
+                disabled={
+                  !row.original.enabled ||
+                  !row.original.roles.includes('planner') ||
+                  row.original.defaultFor.includes('planner')
+                }
+                onSelect={() => onSetDefaultModel(row.original.index, 'planner')}
+              >
+                Set as planner default
+              </ContextMenuItem>
+              <ContextMenuItem
+                disabled={
+                  !row.original.enabled ||
+                  !row.original.roles.includes('vision') ||
+                  row.original.defaultFor.includes('vision')
+                }
+                onSelect={() => onSetDefaultModel(row.original.index, 'vision')}
+              >
+                Set as vision default
+              </ContextMenuItem>
+              <ContextMenuItem onSelect={() => onRemoveModel(row.original.index)}>
+                <IconTrash className='mr-2 size-4' />
+                Delete
+              </ContextMenuItem>
+            </>
+          )}
+        />
+      </DataGridWorkspace>
       <ProviderModelSettingsDialog
         model={settingsRow}
         onClose={() => setSettingsRowId(null)}

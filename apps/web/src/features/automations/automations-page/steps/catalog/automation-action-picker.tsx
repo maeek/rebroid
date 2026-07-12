@@ -1,11 +1,11 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { IconCheck, IconChevronDown, IconSearch } from '@tabler/icons-react'
-import { cn } from '@/lib/utils'
+import { IconCheck, IconChevronDown } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { cn } from '@/lib/utils'
+import { SearchField } from '@/shared/ui/search-field'
 import {
   AutomationCommandIcon,
   getAutomationCommandCategories,
@@ -85,15 +85,11 @@ export function AutomationActionPicker({
         onWheelCapture={event => event.stopPropagation()}
       >
         <div className='grid gap-2'>
-          <div className='relative'>
-            <IconSearch className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-foreground-muted' />
-            <Input
-              value={query}
-              placeholder='Search actions'
-              className='pl-9'
-              onChange={event => setQuery(event.target.value)}
-            />
-          </div>
+          <SearchField
+            value={query}
+            placeholder='Search actions'
+            onValueChange={setQuery}
+          />
           <div
             className='scrollbar-thin max-h-[min(24rem,calc(var(--available-height)-5rem))] overflow-x-hidden overflow-y-auto overscroll-contain pr-1'
             onTouchMoveCapture={event => event.stopPropagation()}

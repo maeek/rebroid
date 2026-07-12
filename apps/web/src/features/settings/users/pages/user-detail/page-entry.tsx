@@ -1,5 +1,6 @@
-import { StandardPage } from '@/shared/ui/page/page-layout'
-import { StatusSplash } from '@/shared/ui/status-splash'
+import { PageHeader } from '@/shared/ui/page/page-header'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
+import { StateView } from '@/shared/ui/state-view'
 import { UserEditPage } from '../../user-edit-page'
 import { getUserDetailPageData } from './page-data.server'
 
@@ -14,17 +15,24 @@ export default async function UserDetailPageEntry({ params }: UserDetailPageEntr
   if (!user) {
     return (
       <StandardPage className='gap-2'>
-        <section className='px-6 py-16 max-sm:px-4'>
-          <StatusSplash
+        <PageHeader
+          section={{ label: 'Security' }}
+          trail={[{ label: 'Users', href: '/security/users' }]}
+          title='User'
+        />
+        <PageContent>
+          <StateView
+            kind='not-found'
             title='User not found'
             description='The account may have been removed or the link may be stale.'
-            tone='danger'
-            secondaryAction={{
-              label: 'Back to users',
-              href: '/security/users'
-            }}
+            actions={[
+              {
+                label: 'Back to users',
+                href: '/security/users'
+              }
+            ]}
           />
-        </section>
+        </PageContent>
       </StandardPage>
     )
   }

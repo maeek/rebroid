@@ -3,8 +3,8 @@
 import { useMemo, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
-import { StandardPage } from '@/shared/ui/page/page-layout'
-import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
+import { PageHeader } from '@/shared/ui/page/page-header'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { RuntimeContainersSection } from './runtime-containers-section'
 import { createContainerColumns } from './runtime-containers-table-parts'
 import { RuntimeInventoryLoadingSection } from './runtime-inventory-loading-section'
@@ -47,10 +47,10 @@ const RuntimeContainersPageFrame = ({
   onRefresh: () => void
 }) => (
   <StandardPage className='gap-2'>
-    <PlatformPageHeader
+    <PageHeader
+      section={{ label: 'Runtime' }}
       title='Containers'
       description='Docker containers visible to the platform. Managed application containers are shown first.'
-      breadcrumbRoot={{ label: 'Runtime' }}
       actions={
         <PlatformPageRefreshButton
           disabled={loading}
@@ -59,7 +59,7 @@ const RuntimeContainersPageFrame = ({
         />
       }
     />
-    <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>{children}</section>
+    <PageContent>{children}</PageContent>
   </StandardPage>
 )
 

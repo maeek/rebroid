@@ -36,7 +36,10 @@ export const beginLoginAction = async (input: { username: string; password: stri
       })
       if (!result) throw invalidCredentials()
       clearLoginAttempts(attempt.keys)
-      return { mfaRequired: result.mfaRequired }
+      return {
+        mfaRequired: result.mfaRequired,
+        passwordChangeRequired: result.passwordChangeRequired
+      }
     },
     { fallbackMessage: 'Could not sign in.', logLabel: 'beginLoginAction failed' }
   )

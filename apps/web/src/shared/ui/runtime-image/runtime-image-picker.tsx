@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
-import { IconBox, IconCheck, IconChevronDown, IconSearch } from '@tabler/icons-react'
+import { IconBox, IconCheck, IconChevronDown } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { imageDisplayName } from '@/shared/model/runtime-image/image-display-name'
@@ -9,6 +8,7 @@ import {
   findPlatformImageByReference,
   resolvePlatformImageRuntimeMetadata
 } from '@/shared/model/runtime-image/runtime-image-metadata'
+import { SearchField } from '@/shared/ui/search-field'
 import type { PlatformImage } from '@/shared/contracts/platform-image'
 
 type RuntimeImagePickerProps = {
@@ -85,7 +85,7 @@ export const RuntimeImagePicker = ({
           role='combobox'
           aria-expanded={open}
           disabled={disabled}
-          className='h-auto min-h-12 w-full max-w-3xl justify-between px-3 py-2 text-left'
+          className='h-auto min-h-12 w-full justify-between px-3 py-2 text-left'
         >
           <span className='flex min-w-0 items-center gap-3'>
             <IconBox className='size-4 text-foreground-muted' />
@@ -109,15 +109,11 @@ export const RuntimeImagePicker = ({
         className='w-[var(--anchor-width)] max-w-[calc(100vw-1.5rem)] p-1.5'
       >
         <div className='grid gap-2'>
-          <div className='relative'>
-            <IconSearch className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-foreground-muted' />
-            <Input
-              className='pl-9'
-              value={query}
-              placeholder='Filter runtime images'
-              onChange={event => setQuery(event.target.value)}
-            />
-          </div>
+          <SearchField
+            value={query}
+            placeholder='Filter runtime images'
+            onValueChange={setQuery}
+          />
           <div
             className='grid max-h-[min(20rem,var(--available-height))] gap-0.5 overflow-auto overscroll-contain'
             role='listbox'

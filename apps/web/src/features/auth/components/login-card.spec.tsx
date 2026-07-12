@@ -4,16 +4,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { beginLoginAction } from '@/server/users/actions/begin-login-action'
 import LoginCard from './login-card'
 
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() })
-}))
-
 vi.mock('next-auth/react', () => ({ signIn: vi.fn() }))
 vi.mock('@/server/users/actions/begin-login-action', () => ({ beginLoginAction: vi.fn() }))
 
-const successfulAction = (mfaRequired: boolean) => ({
+const successfulAction = (mfaRequired: boolean, passwordChangeRequired = false) => ({
   ok: true as const,
-  data: { mfaRequired },
+  data: { mfaRequired, passwordChangeRequired },
   requestId: 'request-1'
 })
 
@@ -44,7 +40,8 @@ describe('login card', () => {
 
   it('signs in directly after valid credentials when MFA is disabled', async () => {
     vi.mocked(beginLoginAction).mockResolvedValue(successfulAction(false))
-    render(<LoginCard />)
+    const navigate = vi.fn()
+    render(<LoginCard navigate={navigate} />)
 
     fireEvent.change(screen.getByLabelText(/Username/), { target: { value: 'admin' } })
     fireEvent.change(screen.getByLabelText(/Password/), { target: { value: 'correct-password' } })
@@ -58,5 +55,18 @@ describe('login card', () => {
         redirect: false
       })
     )
+    expect(navigate).toHaveBeenCalledWith('/apps')
+  })
+
+  it('performs a full navigation directly to forced password change after login', async () => {
+    vi.mocked(beginLoginAction).mockResolvedValue(successfulAction(false, true))
+    const navigate = vi.fn()
+    render(<LoginCard navigate={navigate} />)
+
+    fireEvent.change(screen.getByLabelText(/Username/), { target: { value: 'admin' } })
+    fireEvent.change(screen.getByLabelText(/Password/), { target: { value: 'temporary-password' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Login' }))
+
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/account/required-password-change'))
   })
 })

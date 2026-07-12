@@ -2,8 +2,10 @@
 
 import { useMemo, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
+import { FormField } from '@/components/ui/form-field'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AutomationRunLiveEvents } from '@/shared/ui/automation/automation-run-live-events'
-import { DataGrid } from '@/shared/ui/data-grid'
+import { DataGrid, DataGridWorkspace } from '@/shared/ui/data-grid'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
 import type { AutomationRun, AutomationRunStatus } from '@/server/orchestrator/automations/types'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
@@ -76,11 +78,27 @@ export function AutomationTracesSection({
   runs: AutomationRun[]
 }) {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'startedAt', desc: true }])
+  const [searchDraft, setSearchDraft] = useState('')
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [sourceFilter, setSourceFilter] = useState('all')
+  const [targetFilter, setTargetFilter] = useState('all')
   const applicationById = useMemo(
     () => new Map(applications.map(application => [application.id, application])),
     [applications]
   )
-  const sortedRuns = useMemo(() => sortRuns(runs, sorting), [runs, sorting])
+  const filteredRuns = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    return runs.filter(run => {
+      const target = applicationById.get(run.targetApplicationId)?.name ?? run.targetApplicationId
+      if (query && !`${run.id} ${target} ${run.error ?? ''}`.toLowerCase().includes(query)) return false
+      if (statusFilter !== 'all' && run.status !== statusFilter) return false
+      if (sourceFilter !== 'all' && run.trigger !== sourceFilter) return false
+      if (targetFilter !== 'all' && run.targetApplicationId !== targetFilter) return false
+      return true
+    })
+  }, [applicationById, runs, search, sourceFilter, statusFilter, targetFilter])
+  const sortedRuns = useMemo(() => sortRuns(filteredRuns, sorting), [filteredRuns, sorting])
   const activeRuns = useMemo(
     () => sortedRuns.filter(run => run.status === 'queued' || run.status === 'running'),
     [sortedRuns]
@@ -167,7 +185,7 @@ export function AutomationTracesSection({
   return (
     <section className='grid gap-3'>
       <div className='flex h-8 items-center justify-between gap-3'>
-        <h3 className='text-xl font-medium'>Traces</h3>
+        <h2 className='text-xl font-medium'>Traces</h2>
       </div>
 
       {activeRuns.length > 0 ? (
@@ -181,22 +199,130 @@ export function AutomationTracesSection({
         </div>
       ) : null}
 
-      <DataGrid
-        columns={columns}
-        data={sortedRuns}
-        totalItems={sortedRuns.length}
-        pageIndex={0}
-        pageSize={Math.max(sortedRuns.length, 1)}
-        getRowId={run => run.id}
-        sorting={sorting}
-        onSortingChange={updater => setSorting(current => (typeof updater === 'function' ? updater(current) : updater))}
-        minWidth='72rem'
-        emptyState={
-          <div className='text-center text-foreground-muted'>
-            No traces yet. Run this flow from an app or trigger to inspect execution history here.
-          </div>
+      <DataGridWorkspace
+        search={searchDraft}
+        searchPlaceholder='Search traces'
+        onSearchChange={setSearchDraft}
+        onSearch={setSearch}
+        filters={
+          <>
+            <FormField
+              label='Status'
+              layout='vertical'
+            >
+              <Select
+                value={statusFilter}
+                onValueChange={setStatusFilter}
+              >
+                <SelectTrigger className='w-full'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='all'>Any status</SelectItem>
+                  {['queued', 'running', 'success', 'failed', 'canceled'].map(value => (
+                    <SelectItem
+                      key={value}
+                      value={value}
+                    >
+                      {value}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+            <FormField
+              label='Source'
+              layout='vertical'
+            >
+              <Select
+                value={sourceFilter}
+                onValueChange={setSourceFilter}
+              >
+                <SelectTrigger className='w-full'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='all'>Any source</SelectItem>
+                  {['manual', 'schedule', 'webhook', 'event'].map(value => (
+                    <SelectItem
+                      key={value}
+                      value={value}
+                    >
+                      {value}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+            <FormField
+              label='Target'
+              layout='vertical'
+            >
+              <Select
+                value={targetFilter}
+                onValueChange={setTargetFilter}
+              >
+                <SelectTrigger className='w-full'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='all'>Any target</SelectItem>
+                  {applications.map(application => (
+                    <SelectItem
+                      key={application.id}
+                      value={application.id}
+                    >
+                      {application.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+          </>
         }
-      />
+        activeFilters={[
+          ...(statusFilter !== 'all'
+            ? [{ id: 'status', label: 'Status', value: statusFilter, onRemove: () => setStatusFilter('all') }]
+            : []),
+          ...(sourceFilter !== 'all'
+            ? [{ id: 'source', label: 'Source', value: sourceFilter, onRemove: () => setSourceFilter('all') }]
+            : []),
+          ...(targetFilter !== 'all'
+            ? [
+                {
+                  id: 'target',
+                  label: 'Target',
+                  value: applicationById.get(targetFilter)?.name ?? targetFilter,
+                  onRemove: () => setTargetFilter('all')
+                }
+              ]
+            : [])
+        ]}
+        onResetFilters={() => {
+          setStatusFilter('all')
+          setSourceFilter('all')
+          setTargetFilter('all')
+        }}
+      >
+        <DataGrid
+          columns={columns}
+          data={sortedRuns}
+          totalItems={sortedRuns.length}
+          pageIndex={0}
+          pageSize={Math.max(sortedRuns.length, 1)}
+          getRowId={run => run.id}
+          sorting={sorting}
+          onSortingChange={updater =>
+            setSorting(current => (typeof updater === 'function' ? updater(current) : updater))
+          }
+          minWidth='72rem'
+          emptyState={
+            <div className='text-center text-foreground-muted'>
+              No traces yet. Run this flow from an app or trigger to inspect execution history here.
+            </div>
+          }
+        />
+      </DataGridWorkspace>
     </section>
   )
 }

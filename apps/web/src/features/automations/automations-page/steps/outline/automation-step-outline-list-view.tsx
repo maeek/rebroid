@@ -2,8 +2,8 @@
 
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
-import { cn } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
+import { cn } from '@/lib/utils'
 import {
   defaultConditionStep,
   defaultRepeatStep,

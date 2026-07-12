@@ -390,6 +390,15 @@
     overflow-x: clip;
     position: relative;
   }
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-text-fill-color: hsl(var(--foreground));
+    caret-color: hsl(var(--foreground));
+    box-shadow: 0 0 0 1000px hsl(var(--control)) inset;
+    transition: background-color 9999s ease-out;
+  }
   .root {
     isolation: isolate;
   }

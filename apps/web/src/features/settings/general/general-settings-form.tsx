@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { IconDeviceFloppy, IconRestore } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
+import { MutationButton } from '@/components/ui/mutation-button'
 import { NumberSliderField } from '@/components/ui/number-slider-field'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -15,9 +17,8 @@ import { unwrapActionResult } from '@/shared/actions/action-result'
 import { resetGeneralUiSettings, saveGeneralUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { useAccentColorPreference } from '@/shared/model/theme/use-accent-color'
 import { PageHeader } from '@/shared/ui/page/page-header'
-import { StandardPage } from '@/shared/ui/page/page-layout'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { AccentColorPicker } from '@/shared/ui/settings/accent-color-picker'
-import { FormField } from '@/components/ui/form-field'
 import { ViewerStreamingSliderFields } from '@/shared/ui/settings/viewer-streaming-slider-fields'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import type { AccentColor } from '@/shared/model/theme/accent-color'
@@ -89,7 +90,7 @@ export const GeneralSettingsForm = ({
       const generalSettings: SaveGeneralUiSettingsInput = toGeneralUiSettings(settings)
       const saved: OrchestratorUiSettings = await persistGeneralUiSettings(generalSettings)
       setSettings(saved)
-      toast({ title: 'Settings saved' })
+      toast({ title: 'Settings saved', variant: 'success' })
     } catch (error) {
       toast({
         title: 'Could not save settings',
@@ -106,7 +107,7 @@ export const GeneralSettingsForm = ({
     try {
       const saved: OrchestratorUiSettings = await restoreGeneralUiSettings()
       setSettings(saved)
-      toast({ title: 'Settings reset' })
+      toast({ title: 'Settings reset', variant: 'success' })
     } catch (error) {
       toast({
         title: 'Could not reset settings',
@@ -121,7 +122,7 @@ export const GeneralSettingsForm = ({
   return (
     <StandardPage className='gap-2'>
       <PageHeader
-        breadcrumbs={[{ label: 'Preferences', href: '/preferences/general' }, { label: 'General' }]}
+        section={{ label: 'Preferences' }}
         title='General'
         actions={
           <>
@@ -133,17 +134,18 @@ export const GeneralSettingsForm = ({
               <IconRestore className='size-4' />
               Reset
             </Button>
-            <Button
-              disabled={isSaving}
+            <MutationButton
+              pending={isSaving}
+              pendingLabel='Saving…'
               onClick={() => void saveSettings()}
             >
               <IconDeviceFloppy className='size-4' />
               Save
-            </Button>
+            </MutationButton>
           </>
         }
       />
-      <section className='px-6 max-sm:px-4 w-full flex flex-col gap-10 pb-16'>
+      <PageContent className='gap-10'>
         <Section
           surface='plain'
           orientation='vertical'
@@ -265,7 +267,8 @@ export const GeneralSettingsForm = ({
           <FormField
             label='Enable keyboard in fullscreen'
             description='Fullscreen viewer sessions start with keyboard input captured.'
-            className='w-full py-3'
+            layout='horizontal'
+            surface='band'
           >
             <Switch
               checked={settings.defaultViewerKeyboardCaptureEnabled}
@@ -275,7 +278,8 @@ export const GeneralSettingsForm = ({
           <FormField
             label='Enable sound'
             description='Request audio when the viewer stream supports it.'
-            className='w-full py-3'
+            layout='horizontal'
+            surface='band'
           >
             <Switch
               checked={settings.defaultViewerSoundEnabled}
@@ -283,7 +287,7 @@ export const GeneralSettingsForm = ({
             />
           </FormField>
         </Section>
-      </section>
+      </PageContent>
     </StandardPage>
   )
 }

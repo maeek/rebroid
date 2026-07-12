@@ -6,8 +6,10 @@ import { IconPlus } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
+import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { Switch } from '@/components/ui/switch'
 import { toast } from '@/hooks/use-toast'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import {
   checkAutomationAiProviderCandidateHealthAction,
   createAutomationAiProviderAction,
@@ -16,8 +18,8 @@ import {
 } from '@/server/orchestrator/settings/actions'
 import { saveAiUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
-import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
-import { StandardPage } from '@/shared/ui/page/page-layout'
+import { PageHeader } from '@/shared/ui/page/page-header'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { ProviderDialog } from './provider-dialog'
 import { ProvidersGrid } from './providers-grid'
 import type { AutomationAiProvider } from '@/server/orchestrator/settings/types'
@@ -39,6 +41,7 @@ export const OrchestratorAiProvidersPageClient = ({
   const [isRefreshing, startRefreshTransition] = useTransition()
   const [busyId, setBusyId] = useState<string | null>(null)
   const [selectedProviderIds, setSelectedProviderIds] = useState<Set<string>>(() => new Set())
+  const [pendingDeleteProviders, setPendingDeleteProviders] = useState<AutomationAiProvider[]>([])
 
   useEffect(() => {
     setProviders(initialProviders)
@@ -90,12 +93,12 @@ export const OrchestratorAiProvidersPageClient = ({
         return [...withoutCurrent, saved].sort((left, right) => left.label.localeCompare(right.label))
       })
       setEditingProvider(null)
-      toast({ title: 'AI provider created' })
+      toast({ title: 'AI provider created', variant: 'success' })
       router.push(`/platform/ai/${encodeURIComponent(saved.id)}`)
     } catch (error) {
       toast({
         title: 'Could not save AI provider',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
     } finally {
@@ -118,7 +121,7 @@ export const OrchestratorAiProvidersPageClient = ({
     } catch (error) {
       toast({
         title: 'Could not update AI',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
     } finally {
@@ -126,37 +129,23 @@ export const OrchestratorAiProvidersPageClient = ({
     }
   }
 
-  const deleteSelectedProviders = async () => {
-    const selected = providers.filter(provider => selectedProviderIds.has(provider.id))
-    if (selected.length === 0) return
-
-    setBusyId('bulk')
+  const confirmDeleteProviders = async () => {
+    if (pendingDeleteProviders.length === 0) return
+    setBusyId(pendingDeleteProviders.length === 1 ? pendingDeleteProviders[0].id : 'bulk')
     try {
-      await Promise.all(selected.map(provider => deleteAutomationAiProviderAction(provider.id)))
-      setProviders(current => current.filter(provider => !selectedProviderIds.has(provider.id)))
-      setSelectedProviderIds(new Set())
-      toast({ title: 'AI deleted' })
-    } catch (error) {
+      const deletedIds = new Set(pendingDeleteProviders.map(provider => provider.id))
+      await Promise.all(pendingDeleteProviders.map(provider => deleteAutomationAiProviderAction(provider.id)))
+      setProviders(current => current.filter(provider => !deletedIds.has(provider.id)))
+      setSelectedProviderIds(current => new Set(Array.from(current).filter(id => !deletedIds.has(id))))
       toast({
-        title: 'Could not delete AI',
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'danger'
+        title: pendingDeleteProviders.length === 1 ? 'AI provider deleted' : 'AI providers deleted',
+        variant: 'success'
       })
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  const deleteProvider = async (provider: AutomationAiProvider) => {
-    setBusyId(provider.id)
-    try {
-      await deleteAutomationAiProviderAction(provider.id)
-      setProviders(current => current.filter(item => item.id !== provider.id))
-      toast({ title: 'AI provider deleted' })
+      setPendingDeleteProviders([])
     } catch (error) {
       toast({
-        title: 'Could not delete AI provider',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        title: pendingDeleteProviders.length === 1 ? 'Could not delete AI provider' : 'Could not delete AI providers',
+        description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
     } finally {
@@ -177,7 +166,7 @@ export const OrchestratorAiProvidersPageClient = ({
       setSettings(current => ({ ...current, aiContextualSuggestionsEnabled: previousValue }))
       toast({
         title: 'Could not save AI settings',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
     } finally {
@@ -187,9 +176,10 @@ export const OrchestratorAiProvidersPageClient = ({
 
   return (
     <StandardPage className='gap-2'>
-      <PlatformPageHeader
+      <PageHeader
+        section={{ label: 'Platform', href: '/platform' }}
         title='AI'
-        titlePrefix={<GradientSparklesIcon className='size-8 max-sm:size-5' />}
+        leading={<GradientSparklesIcon className='size-8 max-sm:size-5' />}
         description='Configure provider connections and AI-assisted automation behavior.'
         actions={
           <>
@@ -207,7 +197,7 @@ export const OrchestratorAiProvidersPageClient = ({
           </>
         }
       />
-      <section className='flex w-full flex-col gap-4 px-6 pb-16 max-sm:px-4'>
+      <PageContent className='gap-4'>
         <label
           htmlFor='ai-context-suggestions'
           className='flex w-full items-start justify-between gap-4 rounded-control border border-surface-border/60 bg-surface-panel/35 px-4 py-3 text-sm'
@@ -237,17 +227,37 @@ export const OrchestratorAiProvidersPageClient = ({
           onSelectedIdsChange={setSelectedProviderIds}
           onEnableSelected={() => void updateSelectedProviders(true)}
           onDisableSelected={() => void updateSelectedProviders(false)}
-          onDeleteSelected={() => void deleteSelectedProviders()}
+          onDeleteSelected={() =>
+            setPendingDeleteProviders(providers.filter(provider => selectedProviderIds.has(provider.id)))
+          }
           onEdit={openEditDialog}
-          onDelete={provider => void deleteProvider(provider)}
+          onDelete={provider => setPendingDeleteProviders([provider])}
         />
-      </section>
+      </PageContent>
       <ProviderDialog
         provider={editingProvider}
         isSaving={isSaving}
         onChange={setEditingProvider}
         onClose={() => setEditingProvider(null)}
         onSave={() => void saveProvider()}
+      />
+      <ConfirmMutationDialog
+        open={pendingDeleteProviders.length > 0}
+        title={
+          pendingDeleteProviders.length === 1
+            ? 'Delete AI provider?'
+            : `Delete ${pendingDeleteProviders.length} AI providers?`
+        }
+        description='This permanently removes the selected provider configuration and its model assignments.'
+        summary={pendingDeleteProviders.length === 1 ? pendingDeleteProviders[0]?.label : undefined}
+        consequence='Automations that depend on these providers may stop working until another provider is configured.'
+        confirmLabel={pendingDeleteProviders.length === 1 ? 'Delete provider' : 'Delete providers'}
+        pendingLabel='Deleting…'
+        pending={busyId !== null}
+        onOpenChange={open => {
+          if (!open) setPendingDeleteProviders([])
+        }}
+        onConfirm={() => void confirmDeleteProviders()}
       />
     </StandardPage>
   )

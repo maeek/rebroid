@@ -2,13 +2,14 @@ import type { ReactNode } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { bandSurfaceClassName, panelSurfaceClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
+import { AppIconSkeleton } from '@/shared/ui/app-icon/app-icon-skeleton'
 import { PageBreadcrumbsSkeleton } from '@/shared/ui/page/page-breadcrumbs-skeleton'
 import { PageContent, StandardPageSplit } from '@/shared/ui/page/page-layout'
 
 const AppHeadingSkeleton = ({ showStatus = true, actionCount = 2 }: { showStatus?: boolean; actionCount?: number }) => (
   <div className='flex w-full flex-wrap items-center justify-between gap-4 py-4 max-sm:pb-0'>
     <div className='flex min-w-0 items-center gap-4 overflow-hidden'>
-      <Skeleton className='size-10 shrink-0 rounded-[24%]' />
+      <AppIconSkeleton className='size-10 shrink-0' />
       <Skeleton className='h-8 w-48 max-w-[calc(100vw-12rem)] max-sm:h-7 max-sm:w-32' />
       {showStatus ? <Skeleton className='h-5 w-20 shrink-0 rounded-full' /> : null}
     </div>
@@ -156,7 +157,7 @@ export const AppManagePageSkeleton = () => (
         >
           <div className='grid gap-5 xl:grid-cols-[max-content_1fr]'>
             <div className='flex flex-col items-center gap-4 xl:w-76 xl:pr-5'>
-              <Skeleton className='size-44 rounded-[24%]' />
+              <AppIconSkeleton className='size-44' />
               <Skeleton className='h-10 w-full' />
             </div>
             <div className='flex flex-col gap-6'>

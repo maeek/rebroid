@@ -48,14 +48,13 @@ export const PasswordPolicySection = ({ initialPasswordMinimumLength }: Password
         className='flex-col items-start w-full'
       >
         <div className='flex w-full flex-wrap items-end gap-3'>
-          <div className='min-w-72 flex-1'>
+          <div className='w-full max-w-md'>
             <NumberSliderField
               value={String(passwordMinimumLength)}
-              min={15}
+              min={8}
               max={128}
               inputSuffix='characters'
-              suffix='chars'
-              rangeLabel='Minimum password length range'
+              showSlider={false}
               onValueChange={value => setPasswordMinimumLength(Number(value) || initialPasswordMinimumLength)}
             />
           </div>

@@ -12,7 +12,7 @@ export const GroupsSettings = ({ initialGroups }: { initialGroups: UserGroup[] }
   return (
     <StandardPage className='gap-2'>
       <PageHeader
-        breadcrumbs={[{ label: 'Users', href: '/security/users' }, { label: 'Groups' }]}
+        section={{ label: 'Security' }}
         title='Groups'
       />
       <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>

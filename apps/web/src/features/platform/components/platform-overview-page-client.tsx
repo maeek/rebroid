@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Section } from '@/components/ui/section'
 import { DockerMetricsDashboard } from '@/features/platform/metrics/docker-metrics-dashboard'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
-import { PlatformPageHeader } from '@/shared/ui/page/platform-page-header'
+import { PageHeader } from '@/shared/ui/page/page-header'
 import { StandardPage } from '@/shared/ui/page/page-layout'
 import { PlatformQuickGlanceSection } from './platform-quick-glance-section'
 
@@ -23,7 +23,8 @@ export const PlatformOverviewPageClient = () => {
 
   return (
     <StandardPage className='gap-2'>
-      <PlatformPageHeader
+      <PageHeader
+        section={{ label: 'Platform', href: '/platform' }}
         title='Overview'
         description='Managed containers, resource usage, Docker API workload, latency, retries, and recent transport failures.'
         actions={

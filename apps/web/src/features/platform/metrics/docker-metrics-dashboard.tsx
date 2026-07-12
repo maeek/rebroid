@@ -7,10 +7,9 @@ import { Section } from '@/components/ui/section'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Visible } from '@/components/ui/visible'
 import { usePollingQuery } from '@/hooks/use-polling-query'
-import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { getDockerMetricsAction } from '@/server/orchestrator/diagnostics/actions'
 import { QuickGlanceCard } from '@/shared/ui/settings/quick-glance-card'
-import { StatusSplash } from '@/shared/ui/status-splash'
+import { StateView } from '@/shared/ui/state-view'
 import { appendDockerMetricsHistory, type HistorySample } from './docker-metrics-history'
 import type { DockerMetricsSnapshot } from '@/server/orchestrator/diagnostics/types'
 
@@ -50,15 +49,26 @@ export function DockerMetricsDashboard({
     setHistory(current => appendDockerMetricsHistory(current, data))
   }, [data])
 
-  if (isLoading) return <section className='px-6 pb-16 max-sm:px-4'>Loading Docker metrics...</section>
+  if (isLoading) {
+    return (
+      <section className='w-full px-6 pb-16 max-sm:px-4'>
+        <StateView
+          kind='loading'
+          scope='grid'
+          title='Loading Docker metrics'
+          description='Fetching the latest Docker operation totals and performance samples.'
+          className='min-h-64'
+        />
+      </section>
+    )
+  }
   if (error || !data) {
     return (
       <section className='px-6 pb-16 max-sm:px-4'>
-        <StatusSplash
+        <StateView
+          kind='unavailable'
           title='Docker metrics unavailable'
           description='The orchestrator metrics snapshot could not be loaded.'
-          detail={getDisplayErrorMessage(error, 'Unknown metrics error')}
-          tone='danger'
           className='min-h-64'
         />
       </section>

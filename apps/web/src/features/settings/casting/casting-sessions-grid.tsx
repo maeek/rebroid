@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { formatTimestamp } from './casting-sidecar-utils'
 import type { AndroidApplication } from '@/server/orchestrator/applications/types'
 import type { DisplaySidecarSession } from '@/server/orchestrator/diagnostics/types'
@@ -105,10 +105,10 @@ const CastingSessionIdentity = ({
 }
 
 const CastingSessionStatusBadge = ({ status }: { status: DisplaySidecarSession['status'] }) => (
-  <Badge
+  <StatusBadge
     className='capitalize'
-    variant={status === 'active' ? 'success' : 'neutral'}
+    tone={status === 'active' ? 'success' : 'neutral'}
   >
     {status}
-  </Badge>
+  </StatusBadge>
 )

@@ -1,5 +1,6 @@
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Surface } from '@/components/ui/surface'
 import { DataGridSkeleton } from '@/shared/ui/data-grid'
 import { StandardPage } from '@/shared/ui/page/page-layout'
 import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
@@ -15,13 +16,16 @@ export const OperationalSettingsSkeleton = ({
   minWidth: string
 }) => (
   <>
-    <div className='flex flex-wrap items-center justify-between gap-3 rounded-panel border border-surface-border/70 bg-surface-panel/45 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md'>
+    <Surface
+      level='band'
+      className='flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3'
+    >
       <div className='flex items-center gap-3'>
         <Skeleton className='h-6 w-16 rounded-full' />
         <Skeleton className='h-4 w-56 max-sm:w-36' />
       </div>
       <Skeleton className='h-9 w-24' />
-    </div>
+    </Surface>
     <Section
       surface='plain'
       title={title}

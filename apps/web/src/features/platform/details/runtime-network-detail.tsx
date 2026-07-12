@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { IconEye, IconTrash } from '@tabler/icons-react'
-import Link from 'next/link'
+import { IconTrash } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -16,42 +15,17 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Section } from '@/components/ui/section'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Visible } from '@/components/ui/visible'
-import { ContainerStateBadge } from '@/features/platform/components/runtime-containers-table-parts'
+import { RelatedContainersGrid } from '@/features/platform/details/related-containers-grid'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { removePlatformNetworkAction } from '@/server/orchestrator/platform/network-actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
-import { PlatformDetailRow, PlatformJsonBlock, formatPlatformDate } from '@/shared/ui/platform/platform-detail-parts'
-type NetworkDetailModel = {
-  id: string
-  shortId: string
-  driver: string
-  scope: string
-  createdAt: string | null
-  internal: boolean
-  managed: boolean
-  containers: string[]
-  subnets: string[]
-  gateways: string[]
-  labels: Record<string, string>
-}
-
-type NetworkDetailContainer = {
-  id: string
-  names: string[]
-  shortId: string
-  state: string
-  image: string
-}
-
+import { DefinitionTable } from '@/shared/ui/definition-table'
+import { PageContent } from '@/shared/ui/page/page-layout'
+import { PlatformJsonBlock, formatPlatformDate } from '@/shared/ui/platform/platform-detail-parts'
 type RuntimeNetworkDetailProps = {
-  details: {
-    network: NetworkDetailModel
-    inspect: unknown
-    relatedContainers: NetworkDetailContainer[]
-  }
+  details: import('@/server/orchestrator/platform/types').PlatformNetworkDetails
 }
 
 const removePlatformNetwork = removePlatformNetworkAction
@@ -81,10 +55,10 @@ export const RuntimeNetworkDetail = ({ details }: RuntimeNetworkDetailProps) => 
 
   return (
     <>
-      <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
+      <PageContent>
         <Section
           title='Overview'
-          surface='panel'
+          surface='plain'
           contentClassName='gap-5'
         >
           <div className='flex flex-wrap items-center justify-between gap-4'>
@@ -107,36 +81,17 @@ export const RuntimeNetworkDetail = ({ details }: RuntimeNetworkDetailProps) => 
               Remove
             </Button>
           </div>
-          <div className='grid gap-6 xl:grid-cols-2'>
-            <div>
-              <PlatformDetailRow
-                label='Driver'
-                value={network.driver}
-              />
-              <PlatformDetailRow
-                label='Scope'
-                value={network.scope}
-              />
-              <PlatformDetailRow
-                label='Created'
-                value={formatPlatformDate(network.createdAt)}
-              />
-            </div>
-            <div>
-              <PlatformDetailRow
-                label='Subnets'
-                value={network.subnets.length > 0 ? network.subnets.join(', ') : 'none'}
-              />
-              <PlatformDetailRow
-                label='Gateways'
-                value={network.gateways.length > 0 ? network.gateways.join(', ') : 'none'}
-              />
-              <PlatformDetailRow
-                label='Containers'
-                value={network.containers.length}
-              />
-            </div>
-          </div>
+          <DefinitionTable
+            columns={2}
+            items={[
+              { label: 'Driver', value: network.driver },
+              { label: 'Subnets', value: network.subnets.length > 0 ? network.subnets.join(', ') : 'none' },
+              { label: 'Scope', value: network.scope },
+              { label: 'Gateways', value: network.gateways.length > 0 ? network.gateways.join(', ') : 'none' },
+              { label: 'Created', value: formatPlatformDate(network.createdAt) },
+              { label: 'Containers', value: network.containers.length }
+            ]}
+          />
         </Section>
 
         <Section
@@ -146,39 +101,10 @@ export const RuntimeNetworkDetail = ({ details }: RuntimeNetworkDetailProps) => 
           titleClassName='pb-2'
         >
           <Visible when={details.relatedContainers.length > 0}>
-            <div className='overflow-hidden rounded-panel border border-surface-border/60 bg-surface-band/35'>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Container</TableHead>
-                    <TableHead>State</TableHead>
-                    <TableHead>Image</TableHead>
-                    <TableHead className='text-right'>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {details.relatedContainers.map(container => (
-                    <TableRow key={container.id}>
-                      <TableCell className='font-medium'>{container.names[0] ?? container.shortId}</TableCell>
-                      <TableCell>
-                        <ContainerStateBadge state={container.state} />
-                      </TableCell>
-                      <TableCell className='text-foreground-muted'>{container.image}</TableCell>
-                      <TableCell className='text-right'>
-                        <Button
-                          asChild
-                          variant='secondary'
-                        >
-                          <Link href={`/runtime/containers/${container.id}`}>
-                            <IconEye className='size-4' />
-                          </Link>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            <RelatedContainersGrid
+              containers={details.relatedContainers}
+              relation='image'
+            />
           </Visible>
           <Visible when={details.relatedContainers.length === 0}>
             <p className='text-sm text-foreground-muted'>No local containers are attached to this network.</p>
@@ -187,7 +113,7 @@ export const RuntimeNetworkDetail = ({ details }: RuntimeNetworkDetailProps) => 
 
         <Section
           title='Labels'
-          surface='panel'
+          surface='plain'
           contentClassName='gap-4'
           titleClassName='pb-4'
         >
@@ -196,13 +122,14 @@ export const RuntimeNetworkDetail = ({ details }: RuntimeNetworkDetailProps) => 
 
         <Section
           title='Raw inspect'
-          surface='panel'
+          surface='plain'
+          collapsible
           contentClassName='gap-4'
           titleClassName='pb-4'
         >
           <PlatformJsonBlock value={details.inspect} />
         </Section>
-      </section>
+      </PageContent>
 
       <Dialog
         modal

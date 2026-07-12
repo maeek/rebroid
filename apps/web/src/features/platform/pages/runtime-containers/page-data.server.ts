@@ -12,7 +12,8 @@ const emptyContainersPage = (gridQuery: PlatformContainersGridQuery): PlatformCo
   total: 0,
   page: gridQuery.page ?? 1,
   pageSize: gridQuery.pageSize ?? 20,
-  orphanedCount: 0
+  orphanedCount: 0,
+  facets: { states: [], applications: [], images: [], networks: [] }
 })
 
 export const containersGridQueryFromSearchParams = (

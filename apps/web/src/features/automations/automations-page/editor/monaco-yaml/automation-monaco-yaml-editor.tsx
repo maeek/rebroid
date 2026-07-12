@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { cn } from '@/lib/utils'
 import { useTheme } from 'next-themes'
 import { Textarea } from '@/components/ui/textarea'
+import { cn } from '@/lib/utils'
 import { createAutomationYamlCompletionProvider } from './language/automation-yaml-completions'
 import {
   automationYamlMarkerOwner,
@@ -226,7 +226,7 @@ export function AutomationMonacoYamlEditor({
     <div
       ref={containerRef}
       className={cn(
-        'h-full min-h-[28rem] resize-y overflow-hidden rounded-control border border-surface-border/60',
+        'h-full min-h-[28rem] w-full resize-y overflow-hidden rounded-control border border-surface-border/60',
         className
       )}
       aria-label={`${ariaLabel} editor`}

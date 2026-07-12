@@ -5,16 +5,8 @@ import { IconEye, IconPlayerStopFilled, IconTerminal2, IconTrash } from '@tabler
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { ContextMenuItem } from '@/components/ui/context-menu'
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
 import { Section } from '@/components/ui/section'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Visible } from '@/components/ui/visible'
@@ -25,8 +17,7 @@ import {
   stopPlatformContainerAction
 } from '@/server/orchestrator/platform/container-actions'
 import { actionOk, unwrapActionResult } from '@/shared/actions/action-result'
-import { DataGrid, DataGridPagination, DataGridToolbar } from '@/shared/ui/data-grid'
-import { PlatformResourceScopeFilter } from './platform-resource-scope-filter'
+import { DataGrid, DataGridPagination, DataGridWorkspace } from '@/shared/ui/data-grid'
 import {
   buildContainersGridHref,
   canRunBulkContainerAction,
@@ -36,6 +27,7 @@ import {
   type ContainerBulkActionType
 } from './runtime-containers-section-model'
 import { createContainerColumns } from './runtime-containers-table-parts'
+import { RuntimeContainerFilters } from './runtime-grid-filter-controls'
 import {
   platformSortFromSearchParam,
   platformSortToSearchParam,
@@ -61,6 +53,7 @@ export const RuntimeContainersSection = ({
   const [search, setSearch] = useState(gridQuery.q ?? '')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [pendingAction, setPendingAction] = useState<PendingAction>(null)
+  const [pendingBulkAction, setPendingBulkAction] = useState<ContainerBulkActionType | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const sorting = useMemo(() => platformSortFromSearchParam(gridQuery.sort), [gridQuery.sort])
 
@@ -75,7 +68,7 @@ export const RuntimeContainersSection = ({
   const selectedContainers = selectedPlatformItemsFromIds(containersPage.items, selectedIds)
 
   const pushGridParams = (patch: Partial<PlatformContainersGridQuery>) =>
-    router.push(buildContainersGridHref({ gridQuery, pageSize: containersPage.pageSize, patch }))
+    router.replace(buildContainersGridHref({ gridQuery, pageSize: containersPage.pageSize, patch }), { scroll: false })
 
   const runContainerAction = async () => {
     if (!pendingAction) return
@@ -84,10 +77,10 @@ export const RuntimeContainersSection = ({
     try {
       if (pendingAction.type === 'stop') {
         unwrapActionResult(await stopPlatformContainerAction(pendingAction.container.id))
-        toast({ title: 'Container stopped' })
+        toast({ title: 'Container stopped', variant: 'success' })
       } else {
         unwrapActionResult(await removePlatformContainerAction(pendingAction.container.id))
-        toast({ title: 'Container removed' })
+        toast({ title: 'Container removed', variant: 'success' })
       }
       setPendingAction(null)
       router.refresh()
@@ -119,6 +112,7 @@ export const RuntimeContainersSection = ({
         })
       )
       setSelectedIds(new Set())
+      setPendingBulkAction(null)
       router.refresh()
       toast(summarizeContainerBulkActionResults(results, type))
     } finally {
@@ -131,6 +125,68 @@ export const RuntimeContainersSection = ({
   }
 
   const columns = useMemo(() => createContainerColumns(), [])
+  const activeFilters = [
+    ...(gridQuery.ownership === 'all'
+      ? [
+          {
+            id: 'ownership',
+            label: 'Ownership',
+            value: 'All Docker',
+            onRemove: () => pushGridParams({ ownership: 'managed', page: 1 })
+          }
+        ]
+      : []),
+    ...(gridQuery.state
+      ? [
+          {
+            id: 'state',
+            label: 'State',
+            value: gridQuery.state,
+            onRemove: () => pushGridParams({ state: undefined, page: 1 })
+          }
+        ]
+      : []),
+    ...(gridQuery.application
+      ? [
+          {
+            id: 'application',
+            label: 'Application',
+            value: gridQuery.application,
+            onRemove: () => pushGridParams({ application: undefined, page: 1 })
+          }
+        ]
+      : []),
+    ...(gridQuery.image
+      ? [
+          {
+            id: 'image',
+            label: 'Image',
+            value: gridQuery.image,
+            onRemove: () => pushGridParams({ image: undefined, page: 1 })
+          }
+        ]
+      : []),
+    ...(gridQuery.network
+      ? [
+          {
+            id: 'network',
+            label: 'Network',
+            value: gridQuery.network,
+            onRemove: () => pushGridParams({ network: undefined, page: 1 })
+          }
+        ]
+      : [])
+  ]
+
+  const resetFilters = () =>
+    pushGridParams({
+      ownership: 'managed',
+      state: undefined,
+      application: undefined,
+      image: undefined,
+      network: undefined,
+      page: 1
+    })
 
   return (
     <>
@@ -155,159 +211,174 @@ export const RuntimeContainersSection = ({
           </div>
         </Visible>
 
-        <DataGridToolbar
+        <DataGridWorkspace
           search={search}
           searchPlaceholder='Search containers'
           onSearchChange={setSearch}
-          onSearchSubmit={() => pushGridParams({ q: search.trim() || undefined, page: 1 })}
-          activeFilterCount={gridQuery.scope === 'all' ? 1 : 0}
-          selectedCount={selectedContainers.length}
+          onSearch={value => pushGridParams({ q: value.trim() || undefined, page: 1 })}
           filters={
-            <PlatformResourceScopeFilter
-              value={gridQuery.scope ?? 'managed'}
-              onValueChange={scope => pushGridParams({ scope, page: 1 })}
+            <RuntimeContainerFilters
+              page={containersPage}
+              query={gridQuery}
+              onUpdate={pushGridParams}
             />
           }
-          actions={
+          filterTitle='Filter containers'
+          filterDescription='Narrow the Docker inventory by lifecycle and resource relationships.'
+          activeFilters={activeFilters}
+          onResetFilters={resetFilters}
+          selectedCount={selectedContainers.length}
+          bulkActions={
             <>
               <Button
                 type='button'
-                variant='ghost'
+                variant='secondary'
                 disabled={busyId === 'bulk' || !canRunBulkContainerAction(selectedContainers)}
-                onClick={() => void runBulkAction('stop')}
+                onClick={() => setPendingBulkAction('stop')}
               >
                 Stop selected
               </Button>
               <Button
                 type='button'
-                variant='ghost'
+                variant='danger'
                 disabled={busyId === 'bulk' || !canRunBulkContainerAction(selectedContainers)}
-                onClick={() => void runBulkAction('remove')}
+                onClick={() => setPendingBulkAction('remove')}
               >
                 Remove selected
               </Button>
             </>
           }
-        />
+        >
+          <TooltipProvider delayDuration={150}>
+            <DataGrid
+              columns={columns}
+              data={containersPage.items}
+              totalItems={containersPage.total}
+              pageIndex={containersPage.page - 1}
+              pageSize={containersPage.pageSize}
+              getRowId={container => container.id}
+              sorting={sorting}
+              onSortingChange={updater => {
+                const nextSorting = typeof updater === 'function' ? updater(sorting) : updater
+                pushGridParams({ sort: platformSortToSearchParam(nextSorting), page: 1 })
+              }}
+              selection={{
+                selectedIds,
+                onSelectedIdsChange: setSelectedIds
+              }}
+              emptyState={
+                <div className='text-center text-foreground-muted'>
+                  {gridQuery.q ? 'No containers match this search.' : 'No containers are visible to Docker.'}
+                </div>
+              }
+              rowContextMenu={row => {
+                const hasBulkSelection = selectedIds.has(row.original.id) && selectedContainers.length > 1
+                return (
+                  <>
+                    {hasBulkSelection ? (
+                      <>
+                        <ContextMenuItem
+                          disabled={busyId === 'bulk'}
+                          onSelect={() => setPendingBulkAction('stop')}
+                        >
+                          <IconPlayerStopFilled className='mr-2 size-4' />
+                          Stop selected ({selectedContainers.length})
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          className='text-danger focus:text-danger'
+                          disabled={busyId === 'bulk'}
+                          onSelect={() => setPendingBulkAction('remove')}
+                        >
+                          <IconTrash className='mr-2 size-4' />
+                          Remove selected ({selectedContainers.length})
+                        </ContextMenuItem>
+                      </>
+                    ) : null}
+                    <ContextMenuItem asChild>
+                      <Link href={`/runtime/containers/${row.original.id}`}>
+                        <IconEye className='mr-2 size-4' />
+                        Details
+                      </Link>
+                    </ContextMenuItem>
+                    {row.original.applicationId && !row.original.orphaned ? (
+                      <ContextMenuItem asChild>
+                        <Link href={`/app/${row.original.applicationId}?logs=1`}>
+                          <IconTerminal2 className='mr-2 size-4' />
+                          Logs
+                        </Link>
+                      </ContextMenuItem>
+                    ) : null}
+                    <ContextMenuItem
+                      disabled={row.original.state !== 'running'}
+                      onSelect={() => setPendingAction({ type: 'stop', container: row.original })}
+                    >
+                      <IconPlayerStopFilled className='mr-2 size-4' />
+                      Stop
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      className='text-danger focus:text-danger'
+                      onSelect={() => setPendingAction({ type: 'remove', container: row.original })}
+                    >
+                      <IconTrash className='mr-2 size-4' />
+                      Remove
+                    </ContextMenuItem>
+                  </>
+                )
+              }}
+            />
+          </TooltipProvider>
 
-        <TooltipProvider delayDuration={150}>
-          <DataGrid
-            columns={columns}
-            data={containersPage.items}
+          <DataGridPagination
             totalItems={containersPage.total}
             pageIndex={containersPage.page - 1}
             pageSize={containersPage.pageSize}
-            getRowId={container => container.id}
-            sorting={sorting}
-            onSortingChange={updater => {
-              const nextSorting = typeof updater === 'function' ? updater(sorting) : updater
-              pushGridParams({ sort: platformSortToSearchParam(nextSorting), page: 1 })
-            }}
-            selection={{
-              selectedIds,
-              onSelectedIdsChange: setSelectedIds
-            }}
-            emptyState={
-              <div className='text-center text-foreground-muted'>
-                {gridQuery.q ? 'No containers match this search.' : 'No containers are visible to Docker.'}
-              </div>
-            }
-            rowContextMenu={row => {
-              const hasBulkSelection = selectedIds.has(row.original.id) && selectedContainers.length > 1
-              return (
-                <>
-                  {hasBulkSelection ? (
-                    <>
-                      <ContextMenuItem
-                        disabled={busyId === 'bulk'}
-                        onSelect={() => void runBulkAction('stop')}
-                      >
-                        <IconPlayerStopFilled className='mr-2 size-4' />
-                        Stop selected ({selectedContainers.length})
-                      </ContextMenuItem>
-                      <ContextMenuItem
-                        className='text-danger focus:text-danger'
-                        disabled={busyId === 'bulk'}
-                        onSelect={() => void runBulkAction('remove')}
-                      >
-                        <IconTrash className='mr-2 size-4' />
-                        Remove selected ({selectedContainers.length})
-                      </ContextMenuItem>
-                    </>
-                  ) : null}
-                  <ContextMenuItem asChild>
-                    <Link href={`/runtime/containers/${row.original.id}`}>
-                      <IconEye className='mr-2 size-4' />
-                      Details
-                    </Link>
-                  </ContextMenuItem>
-                  {row.original.applicationId && !row.original.orphaned ? (
-                    <ContextMenuItem asChild>
-                      <Link href={`/app/${row.original.applicationId}?logs=1`}>
-                        <IconTerminal2 className='mr-2 size-4' />
-                        Logs
-                      </Link>
-                    </ContextMenuItem>
-                  ) : null}
-                  <ContextMenuItem
-                    disabled={row.original.state !== 'running'}
-                    onSelect={() => setPendingAction({ type: 'stop', container: row.original })}
-                  >
-                    <IconPlayerStopFilled className='mr-2 size-4' />
-                    Stop
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    className='text-danger focus:text-danger'
-                    onSelect={() => setPendingAction({ type: 'remove', container: row.original })}
-                  >
-                    <IconTrash className='mr-2 size-4' />
-                    Remove
-                  </ContextMenuItem>
-                </>
-              )
-            }}
+            onPageIndexChange={pageIndex => pushGridParams({ page: pageIndex + 1 })}
+            onPageSizeChange={pageSize => pushGridParams({ page: 1, pageSize })}
           />
-        </TooltipProvider>
-
-        <DataGridPagination
-          totalItems={containersPage.total}
-          pageIndex={containersPage.page - 1}
-          pageSize={containersPage.pageSize}
-          onPageIndexChange={pageIndex => pushGridParams({ page: pageIndex + 1 })}
-          onPageSizeChange={pageSize => pushGridParams({ page: 1, pageSize })}
-        />
+        </DataGridWorkspace>
       </Section>
 
-      <Dialog
-        modal
+      <ConfirmMutationDialog
         open={Boolean(pendingAction)}
+        title={pendingAction?.type === 'stop' ? 'Stop container?' : 'Remove container?'}
+        description={
+          pendingAction?.type === 'stop'
+            ? 'This stops the selected Docker container without deleting it.'
+            : 'This permanently removes the selected Docker container.'
+        }
+        summary={pendingAction?.container.names[0] ?? pendingAction?.container.shortId}
+        consequence={
+          pendingAction?.type === 'remove' ? 'Persistent volumes are not removed by this action.' : undefined
+        }
+        tone={pendingAction?.type === 'stop' ? 'warning' : 'danger'}
+        confirmLabel={pendingAction?.type === 'stop' ? 'Stop container' : 'Remove container'}
+        pendingLabel={pendingAction?.type === 'stop' ? 'Stopping…' : 'Removing…'}
+        pending={Boolean(pendingAction && busyId === pendingAction.container.id)}
         onOpenChange={open => {
           if (!open) setPendingAction(null)
         }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{pendingAction?.type === 'stop' ? 'Stop container?' : 'Remove container?'}</DialogTitle>
-            <DialogDescription>
-              {pendingAction?.type === 'stop'
-                ? 'This stops the selected Docker container without deleting it.'
-                : 'This force-removes the selected Docker container. Persistent volumes are not removed by this action.'}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant={pendingAction?.type === 'stop' ? 'secondary' : 'danger'}
-              disabled={!pendingAction || busyId === pendingAction.container.id}
-              onClick={() => void runContainerAction()}
-            >
-              {pendingAction?.type === 'stop' ? 'Stop container' : 'Remove container'}
-            </Button>
-            <DialogClose asChild>
-              <Button variant='secondary'>Cancel</Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        onConfirm={() => void runContainerAction()}
+      />
+      <ConfirmMutationDialog
+        open={Boolean(pendingBulkAction)}
+        title={`${pendingBulkAction === 'stop' ? 'Stop' : 'Remove'} ${selectedContainers.length} containers?`}
+        description={
+          pendingBulkAction === 'stop'
+            ? 'This stops every running container in the current selection.'
+            : 'This permanently removes every eligible container in the current selection.'
+        }
+        consequence={pendingBulkAction === 'remove' ? 'Persistent volumes are not removed by this action.' : undefined}
+        tone={pendingBulkAction === 'stop' ? 'warning' : 'danger'}
+        confirmLabel={pendingBulkAction === 'stop' ? 'Stop containers' : 'Remove containers'}
+        pendingLabel={pendingBulkAction === 'stop' ? 'Stopping…' : 'Removing…'}
+        pending={busyId === 'bulk'}
+        onOpenChange={open => {
+          if (!open) setPendingBulkAction(null)
+        }}
+        onConfirm={() => {
+          if (pendingBulkAction) void runBulkAction(pendingBulkAction)
+        }}
+      />
     </>
   )
 }

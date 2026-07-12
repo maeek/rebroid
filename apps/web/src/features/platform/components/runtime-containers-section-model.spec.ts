@@ -30,11 +30,11 @@ describe('orchestrator containers section model', () => {
   it('builds compact container grid hrefs', () => {
     expect(
       buildContainersGridHref({
-        gridQuery: { q: 'app', scope: 'managed', sort: 'name:asc', page: 3, pageSize: 25 },
+        gridQuery: { q: 'app', ownership: 'managed', sort: 'name:asc', page: 3, pageSize: 25 },
         pageSize: 25,
-        patch: { scope: 'all', page: 1 }
+        patch: { ownership: 'all', page: 1 }
       })
-    ).toBe('/runtime/containers?q=app&scope=all&sort=name%3Aasc&page=1&pageSize=25')
+    ).toBe('/runtime/containers?q=app&ownership=all&sort=name%3Aasc&page=1&pageSize=25')
   })
 
   it('allows bulk actions only with at least one selected container', () => {

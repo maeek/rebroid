@@ -1,14 +1,18 @@
 'use client'
 
+import { useMemo, useState } from 'react'
 import { Section } from '@/components/ui/section'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Visible } from '@/components/ui/visible'
 import { useContainerDetailContext } from '@/features/platform/details/runtime-container-detail/container-detail-context'
 import {
   getRelatedImageSize,
   getRelatedImageTags
 } from '@/features/platform/details/runtime-container-detail/container-detail-utils'
-import { PlatformDetailRow, formatPlatformDate } from '@/shared/ui/platform/platform-detail-parts'
+import { DataGrid, DataGridWorkspace } from '@/shared/ui/data-grid'
+import { DefinitionTable } from '@/shared/ui/definition-table'
+import { formatPlatformDate } from '@/shared/ui/platform/platform-detail-parts'
+import type { PlatformNetwork } from '@/server/orchestrator/platform/types'
+import type { ColumnDef } from '@tanstack/react-table'
 
 export const RelatedImageSection = () => {
   const { details } = useContainerDetailContext()
@@ -17,22 +21,17 @@ export const RelatedImageSection = () => {
   return (
     <Section
       title='Related image'
-      surface='panel'
+      surface='plain'
       contentClassName='gap-3'
     >
       <Visible when={relatedImage}>
         <>
-          <PlatformDetailRow
-            label='Tags'
-            value={getRelatedImageTags(relatedImage)}
-          />
-          <PlatformDetailRow
-            label='Size'
-            value={getRelatedImageSize(relatedImage)}
-          />
-          <PlatformDetailRow
-            label='Created'
-            value={formatPlatformDate(relatedImage?.createdAt ?? null)}
+          <DefinitionTable
+            items={[
+              { label: 'Tags', value: getRelatedImageTags(relatedImage) },
+              { label: 'Size', value: getRelatedImageSize(relatedImage) },
+              { label: 'Created', value: formatPlatformDate(relatedImage?.createdAt ?? null) }
+            ]}
           />
         </>
       </Visible>
@@ -46,6 +45,47 @@ export const RelatedImageSection = () => {
 export const RelatedNetworksSection = () => {
   const { details } = useContainerDetailContext()
   const networks = details.relatedNetworks
+  const [searchDraft, setSearchDraft] = useState('')
+  const [search, setSearch] = useState('')
+  const visibleNetworks = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    if (!query) return networks
+    return networks.filter(network =>
+      `${network.name} ${network.id} ${network.subnets.join(' ')}`.toLowerCase().includes(query)
+    )
+  }, [networks, search])
+  const columns = useMemo<ColumnDef<PlatformNetwork>[]>(
+    () => [
+      {
+        id: 'name',
+        accessorFn: network => network.name,
+        header: 'Name',
+        size: 280,
+        meta: { label: 'Name', skeleton: { kind: 'stacked' } },
+        cell: ({ row }) => <span className='font-medium'>{row.original.name}</span>
+      },
+      {
+        id: 'driver',
+        accessorFn: network => network.driver,
+        header: 'Driver',
+        size: 140,
+        meta: { label: 'Driver', skeleton: { kind: 'text' } },
+        cell: ({ row }) => <span className='text-foreground-muted'>{row.original.driver}</span>
+      },
+      {
+        id: 'subnet',
+        header: 'Subnet',
+        size: 280,
+        meta: { label: 'Subnet', skeleton: { kind: 'text' } },
+        cell: ({ row }) => (
+          <span className='text-foreground-muted'>
+            {row.original.subnets.length > 0 ? row.original.subnets.join(', ') : 'none'}
+          </span>
+        )
+      }
+    ],
+    []
+  )
 
   return (
     <Section
@@ -54,28 +94,23 @@ export const RelatedNetworksSection = () => {
       contentClassName='gap-3'
     >
       <Visible when={networks.length > 0}>
-        <div className='overflow-hidden rounded-panel border border-surface-border/60 bg-surface-band/35'>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Driver</TableHead>
-                <TableHead>Subnet</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {networks.map(network => (
-                <TableRow key={network.id}>
-                  <TableCell className='font-medium'>{network.name}</TableCell>
-                  <TableCell className='text-foreground-muted'>{network.driver}</TableCell>
-                  <TableCell className='text-foreground-muted'>
-                    {network.subnets.length > 0 ? network.subnets.join(', ') : 'none'}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <DataGridWorkspace
+          search={searchDraft}
+          searchPlaceholder='Search related networks'
+          onSearchChange={setSearchDraft}
+          onSearch={setSearch}
+        >
+          <DataGrid
+            columns={columns}
+            data={visibleNetworks}
+            totalItems={visibleNetworks.length}
+            pageIndex={0}
+            pageSize={Math.max(visibleNetworks.length, 1)}
+            getRowId={network => network.id}
+            minWidth='44rem'
+            emptyState={<div className='text-center text-foreground-muted'>No related networks match this search.</div>}
+          />
+        </DataGridWorkspace>
       </Visible>
       <Visible when={networks.length === 0}>
         <p className='text-sm text-foreground-muted'>No related networks were found for this container.</p>

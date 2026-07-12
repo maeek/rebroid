@@ -32,6 +32,7 @@ describe('theme token usage', () => {
       /(?:--|var\(--|color-)sidebar(?:-[a-z]+)*\b/,
       /control-boundary/,
       /(?:--|var\(--|color-)(?:card|popover|secondary|muted|destructive)(?:-[a-z]+)*\b/,
+      // eslint-disable-next-line max-len
       /\b(?:bg|border|text|ring|outline|from|to|via|fill|stroke)-(?:card|popover|secondary|muted|destructive)(?:\b|\/|-)/,
       /\b(?:rounded|shadow)-(?:sm|md|lg|xl|2xl|3xl)\b/,
       /\bfont-(?:semibold|black)\b/
