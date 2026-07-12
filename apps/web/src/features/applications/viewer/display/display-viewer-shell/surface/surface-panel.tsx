@@ -33,7 +33,7 @@ export const SurfacePanel = ({ surface }: { surface: DisplayViewerSurface }) => 
       ref={onSurfaceElement}
       onFocus={onSelect}
       onPointerDown={onSelect}
-      className='flex shrink-0 snap-center scroll-mx-2 flex-col overflow-hidden rounded-panel shadow-emphasis sm:scroll-mx-6'
+      className='flex shrink-0 snap-center scroll-mx-2 flex-col overflow-hidden rounded-panel sm:scroll-mx-6'
       style={{ width: viewportSize.width }}
     >
       <SurfaceChrome

@@ -69,7 +69,7 @@ const ViewerPaneSkeleton = ({ workspace = true }: { workspace?: boolean }) => (
           <Skeleton className='h-9 w-9 rounded-full' />
         </div>
         <div className='flex min-h-0 flex-1 items-center justify-center px-2 py-3 sm:px-6'>
-          <div className='flex h-full max-h-184 w-auto max-w-full aspect-9/16 flex-col shadow-emphasis'>
+          <div className='flex h-full max-h-184 w-auto max-w-full aspect-9/16 flex-col'>
             <Skeleton className='h-8 w-full rounded-t-lg' />
             <Skeleton className='min-h-0 flex-1 rounded-b-lg border border-surface-border/70' />
           </div>
