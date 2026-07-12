@@ -163,6 +163,8 @@ describe('AiAgentToolsSection', () => {
     const composerDock = screen.getByTestId('ai-agent-composer-dock')
 
     expect(composerDock.className).toContain('bg-transparent')
+    expect(composerDock.className).toContain('px-0')
+    expect(composerDock.className).toContain('sm:px-4')
     expect(composerDock.className).not.toContain('bg-background')
     expect(composerDock.className).not.toContain('backdrop-blur')
   })

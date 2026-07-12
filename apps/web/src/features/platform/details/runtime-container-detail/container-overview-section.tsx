@@ -31,7 +31,7 @@ const ContainerOverviewHeader = ({ container }: { container: PlatformContainerDe
           </Visible>
           <ContainerStateBadge state={container.state} />
         </div>
-        <div className='font-mono text-xs text-foreground-muted'>{container.id}</div>
+        <div className='max-w-full break-all font-mono text-xs text-foreground-muted'>{container.id}</div>
       </div>
       <div className='flex flex-wrap gap-2'>
         <Button

@@ -14,7 +14,7 @@ export const PageBreadcrumbsSkeleton = ({
           key={`${width}-${index}`}
           className='flex items-center gap-2'
         >
-          <Skeleton className={`h-3 ${width}`} />
+          <Skeleton className={`h-5 ${width}`} />
           {index < itemWidths.length - 1 ? <Skeleton className='h-3 w-3 rounded-full opacity-55' /> : null}
         </div>
       ))}

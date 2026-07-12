@@ -184,7 +184,7 @@ export const AiAgentToolsSection = ({
       />
 
       <div
-        className='grid shrink-0 gap-2 border-t border-surface-border/50 bg-transparent px-4 pt-3 pb-4'
+        className='grid shrink-0 gap-2 border-t border-surface-border/50 bg-transparent px-0 pt-3 pb-4 sm:px-4'
         data-testid='ai-agent-composer-dock'
       >
         {!app.running ? (

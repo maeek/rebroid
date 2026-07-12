@@ -64,7 +64,7 @@ export const AiAgentTranscript = ({
   <div
     ref={transcriptRef}
     aria-label='AI agent transcript'
-    className='scrollbar-thin flex min-h-0 max-h-[min(46dvh,26rem)] flex-1 flex-col gap-6 overflow-y-auto px-4 py-5 motion-safe:scroll-smooth md:max-h-none'
+    className='scrollbar-thin flex min-h-0 max-h-[min(46dvh,26rem)] flex-1 flex-col gap-6 overflow-y-auto px-0 py-5 motion-safe:scroll-smooth sm:px-4 md:max-h-none'
     onScroll={onTranscriptScroll}
   >
     {isLoadingHistory ? <AiAgentTranscriptSkeleton /> : null}
