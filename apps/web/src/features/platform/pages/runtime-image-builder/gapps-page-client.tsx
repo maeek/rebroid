@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/shared/ui/page/page-header'
-import { StandardPage } from '@/shared/ui/page/page-layout'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { useGappsBuildController } from './hooks/use-gapps-build-controller'
 import { GappsBuildConfiguration } from './sections/gapps-build-configuration'
 import { GappsBuildProgress } from './sections/gapps-build-progress'
@@ -37,15 +37,15 @@ export const RuntimeGappsImageBuilderPageClient = (props: RuntimeGappsImageBuild
         }
       />
 
-      <div className='mx-auto w-full max-w-7xl px-6 pb-12 max-sm:px-4'>
-        <div className='grid gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(28rem,1.15fr)] xl:gap-14'>
+      <PageContent className='mx-auto max-w-6xl'>
+        <div className='grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.8fr)] xl:gap-14'>
           <GappsBuildConfiguration
             controller={controller}
             resources={props.presetResponse.resources}
           />
           <GappsBuildProgress controller={controller} />
         </div>
-      </div>
+      </PageContent>
     </StandardPage>
   )
 }

@@ -15,7 +15,7 @@ import {
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { saveOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { PageHeader } from '@/shared/ui/page/page-header'
-import { StandardPage } from '@/shared/ui/page/page-layout'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import {
   parseDockerfileContextReferences,
   resolveDockerfileContextReferences,
@@ -374,7 +374,7 @@ export const RuntimeImageBuilderPageClient = ({
   }
 
   return (
-    <StandardPage className='gap-2'>
+    <StandardPage>
       <PageHeader
         section={{ label: 'Runtime' }}
         trail={[{ label: 'Images', href: '/runtime/images' }]}
@@ -391,71 +391,73 @@ export const RuntimeImageBuilderPageClient = ({
           </Button>
         }
       />
-      <section className='grid w-full gap-6 px-6 pb-16 max-sm:px-4 xl:grid-cols-[22rem_minmax(0,1fr)]'>
-        <aside className='flex min-w-0 flex-col gap-6'>
-          <RecipeSection
-            images={images}
-            isSavingRecipe={isSavingRecipe}
-            recipes={savedRecipes}
-            values={values}
-            onApplyTemplate={applyTemplate}
-            onPatchValues={patchValues}
-            onSaveRecipe={() => void saveRecipe()}
-            onSelectRecipe={selectRecipe}
-          />
-
-          <ContextSection
-            availableContextFiles={availableContextFiles}
-            detectedContextUploadLabel={detectedContextUploadLabel}
-            detectedUploadableCount={detectedUploadableCount}
-            fileInputRef={fileInputRef}
-            folderInputRef={folderInputRef}
-            isConnectingContext={isConnectingContext}
-            isUploading={isUploading}
-            isUploadingDetectedContext={isUploadingDetectedContext}
-            localContextFiles={localContextFiles}
-            localContextLabel={localContextLabel}
-            resolvedContextReferences={resolvedContextReferences}
-            selectedContextFileIds={selectedContextFileIds}
-            uploadFile={uploadFile}
-            uploadPath={uploadPath}
-            uploadProgress={uploadProgress}
-            onConnectFolder={() => void connectFolder()}
-            onFileInputChange={event => handleLocalFileInput(event, false)}
-            onFolderInputChange={event => handleLocalFileInput(event, true)}
-            onRemoveContextFile={id => void removeContextFile(id)}
-            onToggleContextFile={toggleContextFile}
-            onUpload={() => void handleUpload()}
-            onUploadDetectedContext={() => void handleUploadDetectedContext()}
-            onUploadFileChange={setUploadFile}
-            onUploadPathChange={setUploadPath}
-          />
-        </aside>
-
-        <main className='flex min-w-0 flex-col gap-6'>
-          <Section
-            surface='plain'
-            title='Dockerfile'
-            contentClassName='gap-3'
-          >
-            <DockerfileMonacoEditor
-              value={values.dockerfile}
-              onChange={dockerfile => patchValues({ dockerfile })}
+      <PageContent className='mx-auto max-w-7xl'>
+        <section className='grid w-full gap-8 lg:grid-cols-[minmax(18rem,22rem)_minmax(0,48rem)] lg:justify-center xl:gap-10'>
+          <aside className='flex min-w-0 flex-col gap-6'>
+            <RecipeSection
+              images={images}
+              isSavingRecipe={isSavingRecipe}
+              recipes={savedRecipes}
+              values={values}
+              onApplyTemplate={applyTemplate}
+              onPatchValues={patchValues}
+              onSaveRecipe={() => void saveRecipe()}
+              onSelectRecipe={selectRecipe}
             />
-          </Section>
 
-          <ValidationSection validation={validation} />
-          <BuildSection
-            activeJob={activeJob}
-            canStart={canStart}
-            isActiveJobRunning={isActiveJobRunning}
-            isStarting={isStarting}
-            onCancelBuild={() => void cancelBuild()}
-            onSetAsDefault={() => void setAsDefault()}
-            onStartBuild={() => void startBuild()}
-          />
-        </main>
-      </section>
+            <ContextSection
+              availableContextFiles={availableContextFiles}
+              detectedContextUploadLabel={detectedContextUploadLabel}
+              detectedUploadableCount={detectedUploadableCount}
+              fileInputRef={fileInputRef}
+              folderInputRef={folderInputRef}
+              isConnectingContext={isConnectingContext}
+              isUploading={isUploading}
+              isUploadingDetectedContext={isUploadingDetectedContext}
+              localContextFiles={localContextFiles}
+              localContextLabel={localContextLabel}
+              resolvedContextReferences={resolvedContextReferences}
+              selectedContextFileIds={selectedContextFileIds}
+              uploadFile={uploadFile}
+              uploadPath={uploadPath}
+              uploadProgress={uploadProgress}
+              onConnectFolder={() => void connectFolder()}
+              onFileInputChange={event => handleLocalFileInput(event, false)}
+              onFolderInputChange={event => handleLocalFileInput(event, true)}
+              onRemoveContextFile={id => void removeContextFile(id)}
+              onToggleContextFile={toggleContextFile}
+              onUpload={() => void handleUpload()}
+              onUploadDetectedContext={() => void handleUploadDetectedContext()}
+              onUploadFileChange={setUploadFile}
+              onUploadPathChange={setUploadPath}
+            />
+          </aside>
+
+          <main className='flex min-w-0 flex-col gap-6'>
+            <Section
+              surface='plain'
+              title='Dockerfile'
+              contentClassName='gap-3'
+            >
+              <DockerfileMonacoEditor
+                value={values.dockerfile}
+                onChange={dockerfile => patchValues({ dockerfile })}
+              />
+            </Section>
+
+            <ValidationSection validation={validation} />
+            <BuildSection
+              activeJob={activeJob}
+              canStart={canStart}
+              isActiveJobRunning={isActiveJobRunning}
+              isStarting={isStarting}
+              onCancelBuild={() => void cancelBuild()}
+              onSetAsDefault={() => void setAsDefault()}
+              onStartBuild={() => void startBuild()}
+            />
+          </main>
+        </section>
+      </PageContent>
     </StandardPage>
   )
 }

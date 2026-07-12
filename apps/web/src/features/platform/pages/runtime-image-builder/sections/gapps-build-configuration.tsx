@@ -1,5 +1,6 @@
 import { IconExternalLink, IconHammer, IconLoader2, IconTrash } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { bytesToGb } from '../model/gapps-build'
@@ -20,10 +21,12 @@ export const GappsBuildConfiguration = ({ controller, resources }: GappsBuildCon
       <p className='mt-1 text-sm text-foreground-muted'>Choose a version and the local tag for the result.</p>
     </div>
 
-    <div className='grid gap-6 py-7'>
-      <div className='grid gap-2'>
-        <div className='text-sm font-medium'>Android version</div>
-        <div className='grid grid-cols-2 gap-2'>
+    <div className='grid gap-7 py-8'>
+      <FormField
+        label='Android version'
+        layout='vertical'
+      >
+        <div className='grid w-full grid-cols-2 gap-2'>
           {androidVersions.map(version => (
             <Button
               key={version}
@@ -36,20 +39,20 @@ export const GappsBuildConfiguration = ({ controller, resources }: GappsBuildCon
             </Button>
           ))}
         </div>
-      </div>
+      </FormField>
 
-      <label
-        htmlFor='gapps-target-image'
-        className='grid gap-2 text-sm font-medium'
+      <FormField
+        controlId='gapps-target-image'
+        label='Target image'
+        layout='vertical'
       >
-        Target image
         <Input
-          id='gapps-target-image'
+          className='w-full'
           value={controller.targetImage}
           disabled={controller.isRunning}
           onChange={event => controller.setTargetImage(event.target.value)}
         />
-      </label>
+      </FormField>
 
       {controller.preset ? (
         <dl className='grid gap-4 border-y border-surface-border/60 py-5 text-sm sm:grid-cols-2'>
@@ -81,18 +84,17 @@ export const GappsBuildConfiguration = ({ controller, resources }: GappsBuildCon
         </div>
       </div>
 
-      <div>
-        <Button
-          size='lg'
-          disabled={
-            !resources.canBuild || controller.isStarting || controller.isRunning || !controller.targetImage.trim()
-          }
-          onClick={() => void controller.startBuild()}
-        >
-          {controller.isStarting ? <IconLoader2 className='animate-spin' /> : <IconHammer />}
-          {controller.isRunning ? 'Build in progress' : 'Build image'}
-        </Button>
-      </div>
+      <Button
+        className='w-full'
+        size='lg'
+        disabled={
+          !resources.canBuild || controller.isStarting || controller.isRunning || !controller.targetImage.trim()
+        }
+        onClick={() => void controller.startBuild()}
+      >
+        {controller.isStarting ? <IconLoader2 className='animate-spin' /> : <IconHammer />}
+        {controller.isRunning ? 'Build in progress' : 'Build image'}
+      </Button>
     </div>
 
     <details className='group border-t border-surface-border/60 pt-5 text-sm'>
