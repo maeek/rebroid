@@ -9,8 +9,6 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      ORCHESTRATOR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
-      ORCHESTRATOR_SHARED_SECRET_FILE: /app/secrets/orchestrator-secret
       CONTAINER_IMAGE: ${CONTAINER_IMAGE:-redroid/redroid:14.0.0-latest}
       REDROID_ADB_PORT: ${REDROID_ADB_PORT:-5555}
       REDROID_PRIVILEGED: ${REDROID_PRIVILEGED:-true}

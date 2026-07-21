@@ -167,36 +167,6 @@ export interface AndroidAutomationDisplayPort {
     app: AndroidAutomationApplication,
     surfaceId: string,
   ): Promise<AndroidAutomationDisplaySession>;
-  startRecording(
-    app: AndroidAutomationApplication,
-    surfaceId: string,
-  ): Promise<AndroidAutomationDisplayRecording>;
-  stopRecording(
-    app: AndroidAutomationApplication,
-    surfaceId: string,
-  ): Promise<AndroidAutomationDisplayRecording>;
-  downloadRecording(
-    app: AndroidAutomationApplication,
-    surfaceId: string,
-    recordingId: string,
-  ): Promise<{
-    recording: AndroidAutomationDisplayRecording;
-    response: Response;
-  }>;
-}
-
-export interface AndroidAutomationDisplayRecording {
-  id: string;
-  sessionId: string;
-  status: 'recording' | 'stopped';
-  startedAt: string;
-  stoppedAt: string | null;
-  fileName: string;
-  mimeType: string;
-  sizeBytes: number;
-  durationMs: number;
-  sampleCount: number;
-  downloadPath: string | null;
 }
 
 export interface AndroidAutomationNetworkPolicyPort {

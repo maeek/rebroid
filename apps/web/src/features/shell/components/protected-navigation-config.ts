@@ -16,6 +16,7 @@ import {
   IconUsers
 } from '@tabler/icons-react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
+import type { FeatureFlagKey } from '@/shared/contracts/feature-flags'
 
 export type NavigationVariant = 'sidebar' | 'drawer'
 
@@ -23,6 +24,7 @@ export type NavigationItem = {
   name: string
   href: string
   Icon: ElementType<{ className?: string }>
+  feature?: FeatureFlagKey
 }
 
 export const appSections: NavigationItem[] = [{ name: 'Installed Apps', Icon: IconApps, href: '/apps' }]
@@ -35,7 +37,7 @@ export const automationSections: NavigationItem[] = [
 export const securitySections: NavigationItem[] = [
   { name: 'Users', Icon: IconUsers, href: '/security/users' },
   { name: 'Groups', Icon: IconShield, href: '/security/groups' },
-  { name: 'Network policies', Icon: IconNetwork, href: '/security/network-policies' },
+  { name: 'Network policies', Icon: IconNetwork, href: '/security/network-policies', feature: 'feature.firewall' },
   { name: 'Audit log', Icon: IconHistory, href: '/security/audit-log' }
 ]
 
@@ -44,6 +46,7 @@ export const platformSections: NavigationItem[] = [
   { name: 'Runtime defaults', Icon: IconAdjustments, href: '/platform/runtime' },
   { name: 'AI', Icon: GradientSparklesIcon, href: '/platform/ai' },
   { name: 'Services', Icon: IconPlugConnected, href: '/platform/services' },
+  { name: 'Features', Icon: IconAdjustments, href: '/platform/features' },
   { name: 'Display sessions', Icon: IconCast, href: '/platform/display-sessions' },
   { name: 'Scheduler', Icon: IconCalendarTime, href: '/platform/scheduler' }
 ]

@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  PayloadTooLargeException,
-} from '@nestjs/common';
+import { Injectable, PayloadTooLargeException } from '@nestjs/common';
 import type { BufferedUploadFile } from '../common/http-upload';
 import type { AutomationAiProviderModelRole } from './contracts/ai-provider';
 import { AiProviderSettingsService } from './ai-provider-settings.service';
@@ -36,10 +32,10 @@ export class SettingsService {
    * Merges partial updates through normalization so persisted values always stay in range.
    */
   async updateSettings(dto: UpdateOrchestratorSettingsDto) {
-    const current = await this.store.getStoredSettings();
-    const updated = this.store.normalizeSettings({ ...current, ...dto });
-    this.assertOptionalServicesValid(updated.services);
-    await this.store.writeSettings(updated);
+    const updated = await this.store.updateSettings((current) => {
+      const next = this.store.normalizeSettings({ ...current, ...dto });
+      return next;
+    });
     return this.store.toPublicSettings(updated);
   }
 
@@ -48,9 +44,11 @@ export class SettingsService {
    */
   async resetSettings() {
     const defaults = this.store.defaults();
-    this.assertOptionalServicesValid(defaults.services);
-    await this.store.writeSettings(defaults);
-    return this.store.toPublicSettings(defaults);
+    const updated = await this.store.updateSettings((current) => ({
+      ...defaults,
+      featureFlags: current.featureFlags,
+    }));
+    return this.store.toPublicSettings(updated);
   }
 
   /**
@@ -146,21 +144,5 @@ export class SettingsService {
 
   getAiProviderModelDownload(providerId: string, downloadId: string) {
     return this.aiProviders.getProviderModelDownload(providerId, downloadId);
-  }
-
-  private assertOptionalServicesValid(
-    settings: OrchestratorSettingsDto['services'],
-  ) {
-    if (settings.ocr.enabled && !settings.ocr.endpoint) {
-      throw new BadRequestException(
-        'OCR sidecar endpoint is required when OCR perception is enabled.',
-      );
-    }
-
-    if (settings.firewall.enabled && !settings.firewall.endpoint) {
-      throw new BadRequestException(
-        'Firewall agent endpoint is required when the firewall agent is enabled.',
-      );
-    }
   }
 }

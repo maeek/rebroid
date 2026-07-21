@@ -1,5 +1,5 @@
-import { emitViewerStreamMetrics } from "./stream-status";
-import type { ViewerStreamMetrics } from "./types";
+import { emitViewerStreamMetrics } from "./stream-status.js";
+import type { ViewerStreamMetrics } from "./types.js";
 
 const metricsIntervalMs = 1_000;
 

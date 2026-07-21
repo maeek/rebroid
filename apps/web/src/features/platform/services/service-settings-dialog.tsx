@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
 import { TabsList, TabsPanel, TabsRoot, TabsTrigger } from '@/components/ui/tabs'
 import type { OptionalServicesUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
@@ -54,7 +53,7 @@ export const serviceMeta: Record<
 export const serviceDetails = (services: OptionalServicesUiSettings, id: ServiceId) => {
   if (id === 'ocr') {
     const ocr = services.ocr
-    return `${ocr.languages.join(', ')} · ${ocr.preprocessingModes.join(', ')} · min ${ocr.minConfidence}`
+    return `${ocr.language} · quality-gated cascade · min ${ocr.minConfidence}`
   }
 
   return 'Network policy reconciliation'
@@ -71,14 +70,6 @@ export const updateService = <T extends ServiceId>(
     ...patch
   }
 })
-
-const csvToList = (value: string) =>
-  value
-    .split(',')
-    .map(item => item.trim())
-    .filter(Boolean)
-
-const listToCsv = (value: string[]) => value.join(', ')
 
 const numberValue = (value: number, fallback: number) => (Number.isFinite(value) ? value : fallback)
 
@@ -202,15 +193,6 @@ const ConnectionTab = ({
 }) => (
   <div className='grid gap-4'>
     <Field
-      label='Enabled'
-      description='Disabled optional services are skipped by automation and health checks.'
-    >
-      <Switch
-        checked={service.enabled}
-        onCheckedChange={enabled => onChange({ enabled })}
-      />
-    </Field>
-    <Field
       label='Endpoint'
       description={description}
     >
@@ -277,23 +259,13 @@ const OcrSettingsTab = ({
       />
     </Field>
     <Field
-      label='Languages'
-      description='Comma-separated PaddleOCR language codes.'
+      label='Language'
+      description='The PaddleOCR language/model selected for this deployment.'
     >
       <Input
-        value={listToCsv(services.ocr.languages)}
+        value={services.ocr.language}
         placeholder='en'
-        onChange={event => onChange('ocr', { languages: csvToList(event.target.value) })}
-      />
-    </Field>
-    <Field
-      label='Preprocessing modes'
-      description='Comma-separated modes attempted in order.'
-    >
-      <Input
-        value={listToCsv(services.ocr.preprocessingModes)}
-        placeholder='raw, grayscale, contrast, threshold'
-        onChange={event => onChange('ocr', { preprocessingModes: csvToList(event.target.value) })}
+        onChange={event => onChange('ocr', { language: event.target.value })}
       />
     </Field>
   </div>

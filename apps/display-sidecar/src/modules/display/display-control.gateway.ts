@@ -2,18 +2,10 @@ import { Logger } from "@nestjs/common";
 import { OnGatewayConnection, WebSocketGateway } from "@nestjs/websockets";
 import { IncomingMessage } from "node:http";
 import { RawData, WebSocket } from "ws";
-import { AdbService } from "../adb/adb.service";
-import { type ViewerCommand } from "@rebroid/android-application-core/viewer-control";
-import { ScrcpyService } from "../scrcpy/scrcpy.service";
-import { VIEWER_CONTROL_COMMANDS } from "../scrcpy/scrcpy-control-codec";
 import { DisplaySessionService } from "./display-session.service";
-import type { DisplayKeyboardBody, DisplayTouchBody } from "./display.types";
-
-type DisplayControlMessage =
-  | { id?: string; type: "action"; command?: string }
-  | ({ id?: string; type: "keyboard" } & DisplayKeyboardBody)
-  | ({ id?: string; type: "touch" } & DisplayTouchBody)
-  | { id?: string; type: "clipboard"; text?: string };
+import type { DisplayControlRequest } from "./display.types";
+import { DisplayControlService } from "./display-control.service";
+import { displayControlError } from "./display-control-response";
 
 @WebSocketGateway({ path: "/rebroid/display/control" })
 export class DisplayControlGateway implements OnGatewayConnection {
@@ -21,13 +13,11 @@ export class DisplayControlGateway implements OnGatewayConnection {
 
   constructor(
     private readonly sessions: DisplaySessionService,
-    private readonly adb: AdbService,
-    private readonly scrcpy: ScrcpyService,
+    private readonly controls: DisplayControlService,
   ) {}
 
   handleConnection(client: WebSocket, request: IncomingMessage) {
     let sessionId: string;
-    let udid: string;
 
     try {
       const url = new URL(request.url ?? "", "http://display-sidecar.local");
@@ -38,145 +28,48 @@ export class DisplayControlGateway implements OnGatewayConnection {
         return;
       }
 
-      const session = this.sessions.assertStreamToken(sessionId, token);
-      udid = session.udid;
+      this.sessions.assertStreamToken(sessionId, token);
     } catch (error) {
       client.close(1008, this.errorMessage(error).slice(0, 120));
       return;
     }
 
     client.on("message", (raw) => {
-      void this.handleMessage(client, sessionId, udid, raw);
+      void this.handleMessage(client, sessionId, raw);
     });
   }
 
   private async handleMessage(
     client: WebSocket,
     sessionId: string,
-    udid: string,
     raw: RawData,
   ) {
     const message = this.parseMessage(raw);
     if (!message) {
       this.send(client, {
         ok: false,
+        code: "invalid_control",
         message: "Invalid viewer control message.",
       });
       return;
     }
 
     try {
-      const session = this.sessions.get(sessionId);
-      this.sessions.assertCapability(
-        session,
-        message.type === "clipboard" ? "clipboard" : "control",
-      );
-      const result = await this.executeControlMessage(sessionId, udid, message);
-      this.sessions.touch(sessionId);
+      const result = await this.controls.execute(sessionId, message);
       this.send(client, { id: message.id, ok: true, ...result });
     } catch (error) {
-      const messageText = this.errorMessage(error);
+      const failure = displayControlError(error);
       this.logger.debug(
-        `[display-control:${sessionId}] control message failed: ${messageText}`,
+        `[display-control:${sessionId}] control message failed: ${failure.code}`,
       );
       this.send(client, {
         id: message.id,
-        ok: false,
-        message: this.publicErrorMessage(messageText),
+        ...failure,
       });
     }
   }
 
-  private async executeControlMessage(
-    sessionId: string,
-    udid: string,
-    message: DisplayControlMessage,
-  ) {
-    if (message.type === "action") {
-      return this.executeAction(sessionId, udid, message.command);
-    }
-
-    if (message.type === "keyboard") {
-      const handledByStream = this.scrcpy.sendKeyboardEvent(sessionId, message);
-      if (handledByStream) {
-        return { executed: true, transport: "stream-control" };
-      }
-
-      return this.executeAdbFallback(sessionId, () =>
-        this.adb.keyboardEvent(udid, message),
-      );
-    }
-
-    if (message.type === "touch") {
-      const handledByStream = this.scrcpy.sendTouchEvent(sessionId, message);
-      if (handledByStream) {
-        return { executed: true, transport: "stream-control" };
-      }
-
-      return this.executeAdbFallback(sessionId, () =>
-        this.adb.touchEvent(udid, message),
-      );
-    }
-
-    if (message.type === "clipboard") {
-      const handledByStream = this.scrcpy.sendClipboard(
-        sessionId,
-        message.text ?? "",
-      );
-      if (handledByStream) {
-        return { executed: true, transport: "stream-control" };
-      }
-
-      return this.executeAdbFallback(sessionId, () =>
-        this.adb.setClipboard(udid, message.text ?? ""),
-      );
-    }
-
-    return { executed: false };
-  }
-
-  private async executeAction(
-    sessionId: string,
-    udid: string,
-    command: string | undefined,
-  ) {
-    if (!command || !VIEWER_CONTROL_COMMANDS.has(command as ViewerCommand)) {
-      throw new Error(
-        `Unsupported display action command: ${command ?? "missing"}`,
-      );
-    }
-
-    const viewerCommand = command as ViewerCommand;
-    const handledByStream = this.scrcpy.sendViewerAction(
-      sessionId,
-      viewerCommand,
-    );
-    if (handledByStream) {
-      return {
-        command: viewerCommand,
-        executed: true,
-        transport: "stream-control",
-      };
-    }
-
-    return this.executeAdbFallback(sessionId, () =>
-      this.adb.viewerAction(udid, viewerCommand),
-    );
-  }
-
-  private async executeAdbFallback(
-    sessionId: string,
-    execute: () => Promise<unknown>,
-  ) {
-    if (this.scrcpy.shouldWaitForStreamControl(sessionId)) {
-      throw new Error("Live controls are reconnecting. Try again in a moment.");
-    }
-
-    await execute();
-    return { executed: true, transport: "adb" };
-  }
-
-  private parseMessage(raw: RawData): DisplayControlMessage | null {
+  private parseMessage(raw: RawData): DisplayControlRequest | null {
     try {
       const text = Array.isArray(raw)
         ? Buffer.concat(raw).toString("utf8")
@@ -192,7 +85,7 @@ export class DisplayControlGateway implements OnGatewayConnection {
 
       const record = parsed as Record<string, unknown>;
       return typeof record.type === "string"
-        ? (record as DisplayControlMessage)
+        ? (record as DisplayControlRequest)
         : null;
     } catch {
       return null;
@@ -203,13 +96,6 @@ export class DisplayControlGateway implements OnGatewayConnection {
     if (client.readyState === WebSocket.OPEN) {
       client.send(JSON.stringify(payload));
     }
-  }
-
-  private publicErrorMessage(message: string) {
-    return (
-      message ||
-      "The viewer could not send that command. Refresh the viewer or restart the app, then try again."
-    );
   }
 
   private errorMessage(error: unknown) {

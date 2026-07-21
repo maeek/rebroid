@@ -3,6 +3,7 @@ import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ApplicationCommandResultDto } from '../../common/dto/application-command-result.dto';
 import { UpdateNetworkPolicyDto } from '../dto/update-network-policy.dto';
 import { AndroidAppsNetworkPolicyService } from '../services/android-apps-network-policy.service';
+import { RequiresFeature } from '../../../feature-flags/feature-flags.guard';
 
 @ApiTags('network-policies')
 @Controller()
@@ -10,6 +11,7 @@ export class AndroidAppsNetworkController {
   constructor(private readonly network: AndroidAppsNetworkPolicyService) {}
 
   @Post('network-policies/reconcile')
+  @RequiresFeature('feature.firewall')
   @ApiOperation({
     summary:
       'Rebuild firewall agent rules from stored applications and prune stale rules.',
@@ -19,6 +21,7 @@ export class AndroidAppsNetworkController {
   }
 
   @Patch('apps/:id/network-policy')
+  @RequiresFeature('feature.firewall')
   @ApiOperation({
     summary: 'Update and reconcile the app container egress allowlist.',
   })
@@ -33,6 +36,7 @@ export class AndroidAppsNetworkController {
   }
 
   @Post('apps/:id/network-policy/apply')
+  @RequiresFeature('feature.firewall')
   @ApiOperation({
     summary:
       'Re-apply the stored network policy without restarting the container.',

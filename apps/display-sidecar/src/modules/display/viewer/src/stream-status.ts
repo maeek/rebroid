@@ -1,8 +1,8 @@
 import {
   viewerStreamMetricsMessageType,
   viewerStreamStatusMessageType,
-} from "./config";
-import type { ViewerStreamMetrics, ViewerStreamStatus } from "./types";
+} from "./config.js";
+import type { ViewerStreamMetrics, ViewerStreamStatus } from "./types.js";
 
 export type CompatibilityStatusInput = {
   mode?: unknown;

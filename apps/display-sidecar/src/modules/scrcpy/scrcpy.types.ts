@@ -53,31 +53,6 @@ export interface ScrcpyStreamOptions {
   onActivity?: () => void;
 }
 
-export interface ScrcpyKeyboardEventPayload {
-  eventType?: "keydown" | "keyup";
-  key?: string;
-  code?: string;
-  repeat?: boolean;
-  altKey?: boolean;
-  ctrlKey?: boolean;
-  metaKey?: boolean;
-  shiftKey?: boolean;
-}
-
-export interface ScrcpyTouchEventPayload {
-  action?: "tap" | "swipe" | "pointer";
-  eventType?: "down" | "move" | "up" | "cancel";
-  x?: number;
-  y?: number;
-  x1?: number;
-  y1?: number;
-  x2?: number;
-  y2?: number;
-  videoWidth?: number;
-  videoHeight?: number;
-  durationMs?: number;
-}
-
 export interface ScrcpySocket {
   destroyed: boolean;
   writable: boolean;

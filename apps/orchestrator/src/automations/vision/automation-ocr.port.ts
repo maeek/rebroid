@@ -9,7 +9,7 @@ export interface AutomationOcrResult {
   elapsedMs?: number;
   engine?: string;
   model?: string;
-  languages?: string[];
+  language?: string;
   preprocessingMode?: string;
   preprocessingAttempts?: OcrPreprocessingAttempt[];
   error?: string;

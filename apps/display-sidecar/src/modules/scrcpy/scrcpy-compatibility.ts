@@ -107,21 +107,36 @@ export const shouldRetryWithoutStreamControl = (
   );
 };
 
+export interface ScrcpyStableOptions {
+  bitrate: number;
+  maxFps: number;
+  maxSize: number;
+  iFrameInterval: number;
+}
+
+const defaultStableOptions: ScrcpyStableOptions = {
+  bitrate: 3_000_000,
+  maxFps: 24,
+  maxSize: 720,
+  iFrameInterval: 2,
+};
+
 const stableStreamOptions = (
   options: ScrcpyStreamOptions,
+  stable: ScrcpyStableOptions,
 ): ScrcpyStreamOptions => ({
   ...options,
   compatibilityMode: "stable-video",
-  bitrate: Math.min(options.bitrate, stableBitrate),
-  maxFps: Math.min(options.maxFps, stableMaxFps),
+  bitrate: Math.min(options.bitrate, stable.bitrate),
+  maxFps: Math.min(options.maxFps, stable.maxFps),
   maxSize:
     options.maxSize === 0
-      ? stableMaxSize
-      : Math.min(options.maxSize, stableMaxSize),
+      ? stable.maxSize
+      : Math.min(options.maxSize, stable.maxSize),
   iFrameInterval:
     options.iFrameInterval && options.iFrameInterval > 0
-      ? Math.max(options.iFrameInterval, stableIFrameInterval)
-      : stableIFrameInterval,
+      ? Math.max(options.iFrameInterval, stable.iFrameInterval)
+      : stable.iFrameInterval,
 });
 
 const sameStreamSettings = (
@@ -137,6 +152,7 @@ export const selectInitialRetryStreamOptions = (
   options: ScrcpyStreamOptions,
   errorMessage: string,
   probe: ScrcpyCompatibilityProbe | null,
+  stable: ScrcpyStableOptions = defaultStableOptions,
 ) => {
   if (options.audio) {
     return {
@@ -155,14 +171,15 @@ export const selectInitialRetryStreamOptions = (
       compatibilityMode: "stream-control-disabled" as const,
     };
   }
-  const stable = stableStreamOptions(options);
-  return sameStreamSettings(options, stable) ? options : stable;
+  const stableOptions = stableStreamOptions(options, stable);
+  return sameStreamSettings(options, stableOptions) ? options : stableOptions;
 };
 
 export const selectRestartStreamOptions = (
   options: ScrcpyStreamOptions,
   result: ScrcpyAttemptResult,
   audioDisabled: boolean,
+  stable: ScrcpyStableOptions = defaultStableOptions,
 ) => {
   if (
     options.audio &&
@@ -182,8 +199,8 @@ export const selectRestartStreamOptions = (
   if (!shortAndroidStreamExit || result.durationMs > cleanExitDowngradeMs) {
     return options;
   }
-  const stable = stableStreamOptions(options);
-  return sameStreamSettings(options, stable) ? options : stable;
+  const stableOptions = stableStreamOptions(options, stable);
+  return sameStreamSettings(options, stableOptions) ? options : stableOptions;
 };
 
 export const compatibilityStateChanged = (
@@ -198,9 +215,3 @@ import type { ScrcpyAttemptResult, ScrcpyStreamOptions } from "./scrcpy.types";
 const audioConfigurationFailureReason =
   "invalid audio stream: scrcpy stream configuration failed on the device";
 const cleanExitDowngradeMs = 15_000;
-const stableBitrate = Number(process.env.SCRCPY_STABLE_BITRATE ?? 3_000_000);
-const stableMaxFps = Number(process.env.SCRCPY_STABLE_MAX_FPS ?? 24);
-const stableMaxSize = Number(process.env.SCRCPY_STABLE_MAX_SIZE ?? 720);
-const stableIFrameInterval = Number(
-  process.env.SCRCPY_STABLE_I_FRAME_INTERVAL ?? 2,
-);

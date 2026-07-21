@@ -25,7 +25,6 @@ export interface OrchestratorUiSettings {
 }
 
 export interface OptionalServiceUiSettings {
-  enabled: boolean
   endpoint: string | null
   timeoutMs: number
 }
@@ -33,8 +32,7 @@ export interface OptionalServiceUiSettings {
 export interface OcrServiceUiSettings extends OptionalServiceUiSettings {
   maxImageDimension: number
   minConfidence: number
-  languages: string[]
-  preprocessingModes: string[]
+  language: string
 }
 
 export interface OptionalServicesUiSettings {
@@ -88,16 +86,13 @@ export const defaultOrchestratorUiSettings: OrchestratorUiSettings = {
   passwordMinimumLength: 8,
   services: {
     ocr: {
-      enabled: true,
       endpoint: null,
       timeoutMs: 15000,
       maxImageDimension: 1600,
       minConfidence: 0.4,
-      languages: ['en'],
-      preprocessingModes: ['raw', 'grayscale', 'contrast', 'threshold']
+      language: 'en'
     },
     firewall: {
-      enabled: true,
       endpoint: '/run/rebroid-firewall/agent.sock',
       timeoutMs: 5000
     }
@@ -134,28 +129,19 @@ const normalizeEndpoint = (value: unknown) => {
   return normalized.length > 0 ? normalized : null
 }
 
-const normalizeStringList = (value: unknown, fallback: string[]) => {
-  if (!Array.isArray(value)) return fallback
-  const normalized = value.map(item => (typeof item === 'string' ? item.trim() : '')).filter(item => item.length > 0)
-  return normalized.length > 0 ? Array.from(new Set(normalized)) : fallback
-}
-
 const normalizeServices = (value: Partial<OrchestratorSettingsResponse['services']> | undefined) => {
   const defaults = defaultOrchestratorUiSettings.services
   const ocr = value?.ocr
   const firewall = value?.firewall
   return {
     ocr: {
-      enabled: typeof ocr?.enabled === 'boolean' ? ocr.enabled : defaults.ocr.enabled,
       endpoint: normalizeEndpoint(ocr?.endpoint) ?? defaults.ocr.endpoint,
       timeoutMs: Number(ocr?.timeoutMs) || defaults.ocr.timeoutMs,
       maxImageDimension: Number(ocr?.maxImageDimension) || defaults.ocr.maxImageDimension,
       minConfidence: typeof ocr?.minConfidence === 'number' ? ocr.minConfidence : defaults.ocr.minConfidence,
-      languages: normalizeStringList(ocr?.languages, defaults.ocr.languages),
-      preprocessingModes: normalizeStringList(ocr?.preprocessingModes, defaults.ocr.preprocessingModes)
+      language: ocr?.language?.trim() || defaults.ocr.language
     },
     firewall: {
-      enabled: typeof firewall?.enabled === 'boolean' ? firewall.enabled : defaults.firewall.enabled,
       endpoint: normalizeEndpoint(firewall?.endpoint) ?? defaults.firewall.endpoint,
       timeoutMs: Number(firewall?.timeoutMs) || defaults.firewall.timeoutMs
     }

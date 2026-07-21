@@ -28,7 +28,6 @@ export type ApplicationScreenshot = OrchestratorApiSchemas['ApplicationScreensho
 export type ApplicationViewerControlCommand = OrchestratorApiSchemas['ApplicationViewerControlDto']['command']
 export type ApplicationViewerControlResponse = OrchestratorApiSchemas['ApplicationViewerControlResponseDto']
 export type ScrcpySession = OrchestratorApiSchemas['ScrcpySessionDto']
-export type ApplicationDisplayRecording = OrchestratorApiSchemas['DisplayRecordingDto']
 export type DeleteAndroidApplicationResponse = OrchestratorApiSchemas['DeleteAndroidApplicationResponseDto']
 export type AndroidAppRuntimeReconciliation = OrchestratorApiSchemas['AndroidAppRuntimeReconciliationDto']
 export type CleanupUploadedApksResponse = OrchestratorApiSchemas['CleanupUploadedApksResponseDto']

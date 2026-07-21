@@ -16,6 +16,7 @@ import { ScheduledTasksModule } from './scheduled-tasks/scheduled-tasks.module';
 import { SecurityModule } from './security/security.module';
 import { SettingsModule } from './settings/settings.module';
 import { SystemResourcesModule } from './system-resources/system-resources.module';
+import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { SystemResourcesModule } from './system-resources/system-resources.modul
     DockerMaintenanceModule,
     ScheduledTasksModule,
     SettingsModule,
+    FeatureFlagsModule,
     SystemResourcesModule,
     HealthModule,
     MetricsModule,

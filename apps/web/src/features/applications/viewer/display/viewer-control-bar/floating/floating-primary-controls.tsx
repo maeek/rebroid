@@ -25,7 +25,6 @@ export const FloatingPrimaryControls = () => {
     keyboardCaptureEnabled,
     runtimeAvailable,
     sendControl,
-    surfaceActions,
     onCaptureScreenshot,
     onOpenPopout,
     onToggleFullscreen,
@@ -70,7 +69,6 @@ export const FloatingPrimaryControls = () => {
         controlsDisabled={controlsDisabled}
         sendControl={sendControl}
       />
-      {surfaceActions}
       <FullscreenButton
         className='size-9'
         fullscreen={fullscreen}

@@ -8,6 +8,7 @@ import type {
   AutomationAiProviderRemoteModel
 } from '@/shared/contracts/ai-provider'
 import type { CleanupUploadedApksResponse } from '@/shared/contracts/application'
+import type { FeatureFlagManifest, UpdateFeatureFlags } from '@/shared/contracts/feature-flags'
 import type { OrchestratorSettingsResponse } from '@/shared/contracts/ui-settings'
 import type { RuntimeUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
@@ -26,6 +27,14 @@ export const orchestratorSettingsClient = {
 
   resetSettings() {
     return emptyRequest<OrchestratorSettingsResponse>('/settings/reset', { method: 'POST' })
+  },
+
+  getFeatures() {
+    return emptyRequest<FeatureFlagManifest>('/features')
+  },
+
+  updateFeatures(input: UpdateFeatureFlags) {
+    return jsonRequest<FeatureFlagManifest>('/features', 'PATCH', input)
   },
 
   listAiProviders() {

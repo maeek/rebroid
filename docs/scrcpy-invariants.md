@@ -9,6 +9,7 @@
 - Add diagnostics without changing timing or control flow.
 - Extract one responsibility at a time only after manual Redroid verification.
 - Verify launch, video, control input, disconnect, retry, and shutdown for every extraction.
+- Recording hooks were removed and stable/tunnel/control configuration was injected without reordering the startup, socket, retry, or cleanup sequence. Treat those touched lifecycle regions as requiring the full manual matrix before merge.
 
 ## Future Harness
 

@@ -33,6 +33,7 @@ import { validateContainerImageBuildReference } from '../utils/container-image-r
 import { ContainerImageBuildArchiveService } from './container-image-build-archive.service';
 import { ContainerImageBuildJobService } from './container-image-build-job.service';
 import { ContainerImageGappsCacheService } from './container-image-gapps-cache.service';
+import { FeatureFlagsService } from '../../feature-flags/feature-flags.service';
 import { ContainerImageGappsPackageService } from './container-image-gapps-package.service';
 import { ContainerImageGappsPresetService } from './container-image-gapps-preset.service';
 import { ContainerImageGappsSourceService } from './container-image-gapps-source.service';
@@ -79,6 +80,7 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
     private readonly images: DockerImageRuntimePort,
     @Inject(DOCKER_IMAGE_RUNTIME_METADATA)
     private readonly metadata: DockerImageRuntimeMetadataPort,
+    private readonly features: FeatureFlagsService,
   ) {}
 
   async onModuleInit() {
@@ -87,6 +89,7 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
   }
 
   async startBuild(dto: StartGappsBuildDto) {
+    this.features.assertEnabled('feature.image-builder');
     const resources = await this.presets.list();
     if (!resources.resources.canBuild) {
       throw new ConflictException(resources.resources.messages.join(' '));

@@ -6,6 +6,7 @@ import { recordAuditEvent } from '@/server/audit/events'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { hasPermission, isRedroidImage } from '@/shared/permissions/permissions'
 import { getCurrentOwnerUserId, getCurrentUserContext } from '../../../current-user'
+import { requireFeature } from '../../../features'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
 import { orchestratorAppCatalogClient } from '../../catalog-client'
 import { orchestratorAppLifecycleClient } from '../../lifecycle-client'
@@ -144,6 +145,9 @@ export const updateApplicationAction = async (id: string, input: UpdateAndroidAp
 
 export const createApplicationAction = async (input: CreateApplicationActionInput) => {
   const user = await getCurrentUserContext()
+  if (input.networkPolicyEnabled !== undefined || input.networkPolicyAllowCidrs !== undefined) {
+    await requireFeature('feature.firewall')
+  }
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:create')) {
     throw new PublicActionError('You do not have permission to create applications.', {
       code: 'forbidden',

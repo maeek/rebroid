@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { Visible } from '@/components/ui/visible'
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { getBff } from '@/lib/http/bff'
+import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { recentAppsUpdatedEvent } from '@/shared/model/recent-apps/recent-apps'
 import {
   appSections,
@@ -37,6 +38,7 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
     { intervalMs: 5000 }
   )
   const isAdmin = initialUser.role === 'admin'
+  const { isFeatureEnabled } = useFeatureFlags()
   const styles = variantStyles[variant]
 
   useEffect(() => {
@@ -66,19 +68,21 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
         variant={variant}
       />
       <ul className={styles.list}>
-        {items.map(({ name, Icon, href }) => {
-          return (
-            <NavLink
-              key={href}
-              href={href}
-              label={name}
-              Icon={Icon}
-              isActive={itemIsActive(href)}
-              variant={variant}
-              onNavigate={onNavigate}
-            />
-          )
-        })}
+        {items
+          .filter(item => !item.feature || isFeatureEnabled(item.feature))
+          .map(({ name, Icon, href }) => {
+            return (
+              <NavLink
+                key={href}
+                href={href}
+                label={name}
+                Icon={Icon}
+                isActive={itemIsActive(href)}
+                variant={variant}
+                onNavigate={onNavigate}
+              />
+            )
+          })}
       </ul>
     </>
   )

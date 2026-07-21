@@ -28,29 +28,18 @@ export class SidecarAuthGuard implements CanActivate {
     const request = context
       .switchToHttp()
       .getRequest<{ headers: Record<string, string | string[] | undefined> }>();
-    const provided = this.readHeader(
-      request.headers["x-rebroid-sidecar-secret"],
-    );
-    if (
-      !provided ||
-      !this.constantTimeEquals(provided, this.config.sharedSecret)
-    ) {
+    const header = request.headers["x-rebroid-sidecar-secret"];
+    const provided = Array.isArray(header) ? header[0] : header;
+    const expected = this.config.sharedSecret;
+    const providedBuffer = Buffer.from(provided ?? "");
+    const expectedBuffer = Buffer.from(expected);
+    const matches =
+      providedBuffer.length === expectedBuffer.length &&
+      timingSafeEqual(providedBuffer, expectedBuffer);
+    if (!provided || !matches) {
       throw new UnauthorizedException("Invalid sidecar shared secret.");
     }
 
     return true;
-  }
-
-  private readHeader(value: string | string[] | undefined) {
-    return Array.isArray(value) ? value[0] : value;
-  }
-
-  private constantTimeEquals(left: string, right: string) {
-    const leftBuffer = Buffer.from(left);
-    const rightBuffer = Buffer.from(right);
-    return (
-      leftBuffer.length === rightBuffer.length &&
-      timingSafeEqual(leftBuffer, rightBuffer)
-    );
   }
 }

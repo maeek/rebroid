@@ -1,17 +1,10 @@
-import { Body, Controller, Get, Param, Post, Query, Res } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { FastifyReply } from 'fastify';
-import { Readable } from 'node:stream';
-import type { ReadableStream as NodeReadableStream } from 'node:stream/web';
 import {
   ApplicationViewerControlDto,
   ApplicationViewerControlResponseDto,
 } from '../../contracts/application-viewer-control';
-import {
-  DisplayRecordingDto,
-  DisplaySessionDto,
-  ScrcpySessionDto,
-} from '../dto/scrcpy-session.dto';
+import { DisplaySessionDto, ScrcpySessionDto } from '../dto/scrcpy-session.dto';
 import { AndroidAppsViewerService } from '../services/android-apps-viewer.service';
 
 @ApiTags('app-viewer')
@@ -83,55 +76,5 @@ export class AndroidAppsViewerController {
     @Param('surfaceId') surfaceId: string,
   ) {
     return this.viewer.releaseVirtualDisplay(id, surfaceId);
-  }
-
-  @Post(':id/viewer/displays/:surfaceId/recording/start')
-  @ApiOperation({ summary: 'Start recording one display surface.' })
-  @ApiOkResponse({ type: DisplayRecordingDto })
-  startRecording(
-    @Param('id') id: string,
-    @Param('surfaceId') surfaceId: string,
-  ) {
-    return this.viewer.startRecording(id, surfaceId);
-  }
-
-  @Post(':id/viewer/displays/:surfaceId/recording/stop')
-  @ApiOperation({
-    summary: 'Stop recording one display surface and return the file data.',
-  })
-  @ApiOkResponse({ type: DisplayRecordingDto })
-  stopRecording(
-    @Param('id') id: string,
-    @Param('surfaceId') surfaceId: string,
-  ) {
-    return this.viewer.stopRecording(id, surfaceId);
-  }
-
-  @Get(':id/viewer/recordings/:recordingId')
-  @ApiOperation({ summary: 'Download one completed display recording.' })
-  async downloadRecording(
-    @Param('id') id: string,
-    @Param('recordingId') recordingId: string,
-    @Query('surfaceSessionId') surfaceSessionId: string,
-    @Res() response: FastifyReply,
-  ) {
-    const { recording, response: upstream } =
-      await this.viewer.downloadRecording(id, surfaceSessionId, recordingId);
-    if (!upstream.body) {
-      response.status(502).send('Display recording download is empty.');
-      return;
-    }
-
-    response
-      .type(recording.mimeType)
-      .header(
-        'content-disposition',
-        `attachment; filename="${recording.fileName.replace(/"/g, '')}"`,
-      )
-      .send(
-        Readable.fromWeb(
-          upstream.body as unknown as NodeReadableStream<Uint8Array>,
-        ),
-      );
   }
 }

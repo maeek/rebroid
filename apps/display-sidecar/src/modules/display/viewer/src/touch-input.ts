@@ -3,7 +3,7 @@ import type {
   TouchInputPayload,
   TouchPayload,
   TouchPoint,
-} from "./types";
+} from "./types.js";
 
 type TouchInputOptions = {
   target: HTMLElement;

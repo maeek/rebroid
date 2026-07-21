@@ -1,12 +1,11 @@
 import { Module } from "@nestjs/common";
-import { SidecarAuthGuard } from "../shared/sidecar-auth.guard";
-import { SidecarConfigService } from "../shared/sidecar-config.service";
 import { AdbController } from "./adb.controller";
 import { AdbService } from "./adb.service";
+import { AdbCommandRunner } from "./adb-command-runner";
 
 @Module({
   controllers: [AdbController],
-  providers: [AdbService, SidecarAuthGuard, SidecarConfigService],
+  providers: [AdbCommandRunner, AdbService],
   exports: [AdbService],
 })
 export class AdbModule {}

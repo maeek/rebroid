@@ -1,4 +1,4 @@
-import type { PageLifecycle } from "./types";
+import type { PageLifecycle } from "./types.js";
 
 export function createPageLifecycle(): PageLifecycle {
   const cleanupCallbacks = new Set<() => void>();

@@ -1,31 +1,75 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { DisplaySidecarApiSchemas } from '@rebroid/display-sidecar-contracts';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DockerEngineService } from '../../docker-engine.service';
+import { FeatureFlagsService } from '../../../feature-flags/feature-flags.service';
+import type { SidecarFeatureSyncPort } from '../../contracts/sidecar-feature-sync.port';
 
 type DisplaySidecarSession = DisplaySidecarApiSchemas['DisplaySessionDto'];
 type DisplaySidecarSessionListResponse =
   DisplaySidecarApiSchemas['DisplaySessionListResponseDto'];
 
 @Injectable()
-export class DockerSidecarApiService {
+export class DockerSidecarApiService
+  implements SidecarFeatureSyncPort, OnModuleInit, OnModuleDestroy
+{
+  private unsubscribeFeatures?: () => void;
+
   constructor(
     private readonly config: ConfigService,
     private readonly engine: DockerEngineService,
+    private readonly features: FeatureFlagsService,
   ) {}
 
+  onModuleInit() {
+    this.unsubscribeFeatures = this.features.subscribe(() => {
+      void this.synchronizeFeatures().catch(() => undefined);
+    });
+  }
+
+  onModuleDestroy() {
+    this.unsubscribeFeatures?.();
+  }
+
   async listDisplaySessions() {
-    const response =
-      await this.request<DisplaySidecarSessionListResponse>('/sessions');
-    return response.items.map((session) => this.toAdminDisplaySession(session));
+    const response = await this.request<unknown>('/sessions');
+    if (
+      !response ||
+      typeof response !== 'object' ||
+      !Array.isArray((response as DisplaySidecarSessionListResponse).items) ||
+      !(response as DisplaySidecarSessionListResponse).items.every((session) =>
+        this.isDisplaySession(session),
+      )
+    ) {
+      throw new ConflictException({
+        statusCode: 409,
+        code: 'display_sidecar_invalid_response',
+        message: 'Display sidecar returned a malformed session list.',
+      });
+    }
+    return (response as DisplaySidecarSessionListResponse).items.map(
+      (session) => this.toAdminDisplaySession(session),
+    );
   }
 
   async releaseDisplaySession(id: string) {
-    const session = await this.request<DisplaySidecarSession>(
+    const session = await this.request<unknown>(
       `/sessions/${encodeURIComponent(id)}`,
       { method: 'DELETE' },
     );
+    if (!this.isDisplaySession(session)) {
+      throw new ConflictException({
+        statusCode: 409,
+        code: 'display_sidecar_invalid_response',
+        message: 'Display sidecar returned a malformed session.',
+      });
+    }
     return this.toAdminDisplaySession(session);
   }
 
@@ -36,16 +80,52 @@ export class DockerSidecarApiService {
     while (Date.now() < deadline) {
       const error = await this.probeHealth();
       if (!error) {
-        return;
+        try {
+          await this.synchronizeFeatures();
+          return;
+        } catch (syncError) {
+          lastError = this.engine.errorMessage(syncError);
+        }
+      } else {
+        lastError = error;
       }
-
-      lastError = error;
       await delay(250);
     }
 
     throw new ConflictException(
       `Display sidecar API did not become ready: ${lastError}`,
     );
+  }
+
+  async synchronizeFeatures() {
+    const manifest = this.features.getManifest();
+    const displayVirtual = this.features.getState('feature.display-virtual');
+    try {
+      await this.request('/features', {
+        method: 'PUT',
+        body: JSON.stringify({
+          revision: manifest.revision,
+          features: [
+            {
+              key: displayVirtual.key,
+              effective: displayVirtual.enabled && displayVirtual.supported,
+            },
+          ],
+        }),
+      });
+      this.features.markSynchronization(
+        'feature.display-virtual',
+        manifest.revision,
+        'applied',
+      );
+    } catch (error) {
+      this.features.markSynchronization(
+        'feature.display-virtual',
+        manifest.revision,
+        'failed',
+      );
+      throw error;
+    }
   }
 
   async probeHealth() {
@@ -67,6 +147,7 @@ export class DockerSidecarApiService {
       ...init,
       headers: {
         accept: 'application/json',
+        ...(init.body ? { 'content-type': 'application/json' } : {}),
         ...(secret ? { 'x-rebroid-sidecar-secret': secret } : {}),
         ...(init.headers ?? {}),
       },
@@ -103,5 +184,19 @@ export class DockerSidecarApiService {
       expiresAt: session.expiresAt,
       capabilities: session.capabilities,
     };
+  }
+
+  private isDisplaySession(value: unknown): value is DisplaySidecarSession {
+    if (!value || typeof value !== 'object') return false;
+    const session = value as Partial<DisplaySidecarSession>;
+    return (
+      typeof session.id === 'string' &&
+      typeof session.udid === 'string' &&
+      typeof session.status === 'string' &&
+      typeof session.createdAt === 'string' &&
+      typeof session.lastActivityAt === 'string' &&
+      typeof session.expiresAt === 'string' &&
+      Array.isArray(session.capabilities)
+    );
   }
 }

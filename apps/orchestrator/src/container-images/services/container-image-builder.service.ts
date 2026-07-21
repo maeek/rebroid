@@ -22,6 +22,7 @@ import {
   requiredRuntimeImageLabels,
 } from '../utils/container-image-dockerfile-labels';
 import { validateContainerImageBuildReference } from '../utils/container-image-reference';
+import { FeatureFlagsService } from '../../feature-flags/feature-flags.service';
 
 type DockerProgressEvent = {
   stream?: string;
@@ -57,6 +58,7 @@ export class ContainerImageBuilderService {
     private readonly metadata: DockerImageRuntimeMetadataPort,
     private readonly context: ContainerImageBuildContextService,
     private readonly archive: ContainerImageBuildArchiveService,
+    private readonly features: FeatureFlagsService,
   ) {}
 
   listJobs() {
@@ -68,6 +70,7 @@ export class ContainerImageBuilderService {
   }
 
   async startBuild(dto: StartContainerImageBuildDto) {
+    this.features.assertEnabled('feature.image-builder');
     const targetImage = validateContainerImageBuildReference(
       dto.targetImage,
       'Target image',

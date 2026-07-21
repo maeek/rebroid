@@ -1,4 +1,5 @@
 import 'server-only'
+import { requireFeature } from '@/server/orchestrator/features'
 import { orchestratorPlatformClient } from '@/server/orchestrator/platform/client'
 import { runAuditedPlatformAction } from '@/server/orchestrator/platform/platform-audit'
 import { requireAdminUser } from '@/server/orchestrator/shared'
@@ -19,6 +20,7 @@ export const cancelImageBuild = async (id: string) => {
 }
 
 export const startGappsBuild = async (input: StartGappsBuildInput) => {
+  await requireFeature('feature.image-builder')
   return runAuditedPlatformAction({
     action: 'docker.image_build.gapps_patch.start',
     details: { ...input },
@@ -29,6 +31,7 @@ export const startGappsBuild = async (input: StartGappsBuildInput) => {
 }
 
 export const clearGappsCache = async (androidVersion: string) => {
+  await requireFeature('feature.image-builder')
   return runAuditedPlatformAction({
     action: 'docker.image_build.gapps_cache.clear',
     details: { androidVersion },

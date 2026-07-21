@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
 import { RuntimeContainersPageLoading } from './runtime-containers-page-client'
 import { RuntimeImagesPageLoading } from './runtime-images-page-client'
 import { RuntimeNetworksPageLoading } from './runtime-networks-page-client'
@@ -16,7 +17,11 @@ const expectLoadingGrid = (expectedWidth: string, headings: string[]) => {
 
 describe('runtime inventory loading geometry', () => {
   it('uses the real image columns without a duplicate actions column', () => {
-    render(<RuntimeImagesPageLoading />)
+    render(
+      <FeatureFlagsProvider manifest={null}>
+        <RuntimeImagesPageLoading />
+      </FeatureFlagsProvider>
+    )
 
     expectLoadingGrid('1120px', ['Image', 'Size', 'Created', 'Containers', 'ID'])
     expect(screen.getAllByRole('columnheader')).toHaveLength(8)

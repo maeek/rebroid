@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"strings"
@@ -117,5 +118,33 @@ func TestOpusDurationUsesPTS(t *testing.T) {
 	}
 	if got := opusDuration(0, 2_000_000); got != defaultOpusDuration {
 		t.Fatalf("expected default duration for large pts delta, got %s", got)
+	}
+}
+
+func TestReadCommandsForwardsOnlyValidDataChannelMessages(t *testing.T) {
+	reader := bufio.NewReader(strings.NewReader(
+		"not-json\n" +
+			`{"type":"ignored","payload":{"type":"action"}}` + "\n" +
+			`{"type":"datachannel","payload":{"type":"action"}}` + "\n",
+	))
+	var messages [][]byte
+	readCommands(reader, func(payload []byte) {
+		messages = append(messages, append([]byte(nil), payload...))
+	})
+	if len(messages) != 1 || string(messages[0]) != `{"type":"action"}` {
+		t.Fatalf("expected one bounded data-channel payload, got %q", messages)
+	}
+}
+
+func TestProtocolBoundsPortRangeAndMalformedNalUnits(t *testing.T) {
+	if _, _, ok := parsePortRange("40000-40100"); !ok {
+		t.Fatal("expected valid port range")
+	}
+	if _, _, ok := parsePortRange("60000-70000"); ok {
+		t.Fatal("expected out-of-range port to fail")
+	}
+	parser := newAnnexBParser()
+	if sample := parser.handleNal(nil); sample != nil {
+		t.Fatalf("expected empty NAL to be ignored, got %x", sample)
 	}
 }

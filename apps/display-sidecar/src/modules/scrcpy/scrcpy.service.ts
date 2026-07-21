@@ -5,7 +5,6 @@ import type { AdbChildProcess } from "../adb/adb.service";
 import { type ViewerCommand } from "@rebroid/android-application-core/viewer-control";
 import { SidecarConfigService } from "../shared/sidecar-config.service";
 import { DirectAdbConnection } from "./direct-adb-connection";
-import { H264Mp4Recorder } from "./h264-mp4-recorder";
 import { ScrcpyControlCodec } from "./scrcpy-control-codec";
 import {
   compatibilityStateChanged,
@@ -32,13 +31,15 @@ import {
   ScrcpyAudioPacket,
   ScrcpyAttemptResult,
   ScrcpyCompatibilityMode,
-  ScrcpyKeyboardEventPayload,
   ScrcpySocket,
   ScrcpyStreamClient,
   ScrcpyStreamOptions,
-  ScrcpyTouchEventPayload,
   ScrcpyTunnelMode,
 } from "./scrcpy.types";
+import type {
+  KeyboardControlPayload,
+  TouchControlPayload,
+} from "../shared/display-control.types";
 
 const LOCALHOST = "127.0.0.1";
 const SOCKET_CONNECT_TIMEOUT_MS = 10_000;
@@ -51,15 +52,6 @@ const REVERSE_SOCKET_ACCEPT_TIMEOUT_MS = 5_000;
 const AUXILIARY_SOCKET_CONNECT_TIMEOUT_MS = 2_000;
 const MAX_QUEUED_CONTROL_MESSAGES = 128;
 const MAX_QUEUED_CONTROL_AGE_MS = 10_000;
-const SCRCPY_TUNNEL_MODE = process.env.SCRCPY_TUNNEL_MODE?.trim().toLowerCase();
-const SCRCPY_SERVER_LOG_LEVEL =
-  process.env.SCRCPY_SERVER_LOG_LEVEL?.trim() || "debug";
-const SCRCPY_CONTROL_CHANNEL =
-  process.env.SCRCPY_CONTROL_CHANNEL?.trim().toLowerCase() !== "false";
-const SCRCPY_LOGCAT_ON_SERVER_EXIT =
-  process.env.SCRCPY_LOGCAT_ON_SERVER_EXIT?.trim().toLowerCase() !== "false";
-const SCRCPY_SERVER_LAUNCH_MODE =
-  process.env.SCRCPY_SERVER_LAUNCH_MODE?.trim().toLowerCase();
 const SCRCPY_LOGCAT_INTERVAL_MS = 10_000;
 const DEVICE_MESSAGE_CLIPBOARD = 0;
 const DEVICE_MESSAGE_ACK_CLIPBOARD = 1;
@@ -67,7 +59,6 @@ const AUDIO_PACKET_MAGIC = Buffer.from("RA01");
 const AUDIO_PACKET_HEADER_BYTES = AUDIO_PACKET_MAGIC.length + 1 + 8;
 const MINIMUM_SCRCPY_SERVER_MAJOR = 4;
 const MAX_SUPPORTED_ANDROID_SDK = 34;
-const SCRCPY_RECORDING_MP4_TIMESCALE = 90_000;
 const COMPATIBILITY_PROBE_LOGCAT_LINES = 220;
 const COMPATIBILITY_PROBE_PROPERTIES = [
   "ro.build.version.release",
@@ -100,27 +91,6 @@ interface ReverseSocketAcceptor {
 }
 
 
-interface ActiveRecording {
-  id: string;
-  sessionId: string;
-  startedAt: string;
-  fileName: string;
-  recorder: H264Mp4Recorder;
-}
-
-interface CompletedRecording {
-  id: string;
-  sessionId: string;
-  startedAt: string;
-  stoppedAt: string;
-  fileName: string;
-  mimeType: string;
-  sizeBytes: number;
-  durationMs: number;
-  sampleCount: number;
-  data: Buffer;
-}
-
 @Injectable()
 export class ScrcpyService {
   private readonly logger = new Logger(ScrcpyService.name);
@@ -133,8 +103,6 @@ export class ScrcpyService {
     QueuedControlMessage[]
   >();
   private readonly lastLogcatDiagnosticsAt = new Map<string, number>();
-  private readonly activeRecordings = new Map<string, ActiveRecording>();
-  private readonly completedRecordings = new Map<string, CompletedRecording>();
   private readonly scrcpyServerPushes = new Set<string>();
   private readonly streamSessions = new ScrcpyStreamSessionRegistry();
 
@@ -193,6 +161,7 @@ export class ScrcpyService {
             effectiveOptions,
             result,
             this.streamSessions.isAudioDisabled(effectiveOptions.sessionId),
+            this.config.scrcpyStableOptions,
           );
           if (audioWasEnabled && !effectiveOptions.audio) {
             this.streamSessions.markAudioDisabled(effectiveOptions.sessionId);
@@ -236,6 +205,7 @@ export class ScrcpyService {
               effectiveOptions,
               this.errorMessage(error),
               diagnostics,
+              this.config.scrcpyStableOptions,
             );
             if (nextOptions !== effectiveOptions) {
               const audioWasEnabled = effectiveOptions.audio;
@@ -293,61 +263,10 @@ export class ScrcpyService {
 
   closeSession(sessionId: string) {
     this.streamSessions.closeSession(sessionId);
-    this.finishRecordingForSession(sessionId);
   }
 
   serverVersion() {
     return this.config.scrcpyVersion;
-  }
-
-  startRecording(sessionId: string, displayName = "display") {
-    const existing = this.activeRecordings.get(sessionId);
-    if (existing) {
-      return this.recordingMetadata(existing);
-    }
-
-    const startedAt = new Date().toISOString();
-    const id = `${sessionId}-${Date.now().toString(36)}`;
-    const fileName = `${this.safeFileSegment(displayName)}-${startedAt.replace(/[:.]/g, "-")}.mp4`;
-    const recording: ActiveRecording = {
-      id,
-      sessionId,
-      startedAt,
-      fileName,
-      recorder: new H264Mp4Recorder(
-        Math.max(1, Math.round(SCRCPY_RECORDING_MP4_TIMESCALE / 30)),
-      ),
-    };
-    this.activeRecordings.set(sessionId, recording);
-    return this.recordingMetadata(recording);
-  }
-
-  stopRecording(sessionId: string) {
-    const recording = this.activeRecordings.get(sessionId);
-    if (!recording) {
-      throw new ConflictException("Display recording is not active.");
-    }
-
-    try {
-      return this.completeRecording(recording);
-    } catch (error) {
-      throw new ConflictException(this.errorMessage(error));
-    }
-  }
-
-  listRecordings(sessionId: string) {
-    return [
-      ...[this.activeRecordings.get(sessionId)]
-        .filter((recording): recording is ActiveRecording => Boolean(recording))
-        .map((recording) => this.recordingMetadata(recording)),
-      ...[...this.completedRecordings.values()]
-        .filter((recording) => recording.sessionId === sessionId)
-        .map((recording) => this.recordingMetadata(recording)),
-    ];
-  }
-
-  getRecording(recordingId: string) {
-    return this.completedRecordings.get(recordingId) ?? null;
   }
 
   async assertTargetSupported(udid: string) {
@@ -357,95 +276,19 @@ export class ScrcpyService {
     );
   }
 
-  private recordVideoPacket(sessionId: string, packet: ScrcpyPacket) {
-    const recording = this.activeRecordings.get(sessionId);
-    if (!recording) {
-      return;
-    }
-
-    recording.recorder.addPacket(packet.data, packet.timestampUs);
-  }
-
-  private finishRecordingForSession(sessionId: string) {
-    const recording = this.activeRecordings.get(sessionId);
-    if (!recording) {
-      return null;
-    }
-
-    try {
-      return this.completeRecording(recording);
-    } catch (error) {
-      this.logger.warn(
-        `[scrcpy:${sessionId}] dropping unfinished recording: ${this.errorMessage(error)}`,
-      );
-      this.activeRecordings.delete(sessionId);
-      return null;
-    }
-  }
-
-  private completeRecording(recording: ActiveRecording) {
-    const data = recording.recorder.finish();
-    const stoppedAt = new Date().toISOString();
-    const completed: CompletedRecording = {
-      id: recording.id,
-      sessionId: recording.sessionId,
-      startedAt: recording.startedAt,
-      stoppedAt,
-      fileName: recording.fileName,
-      mimeType: "video/mp4",
-      sizeBytes: data.length,
-      durationMs: recording.recorder.durationMs,
-      sampleCount: recording.recorder.sampleCount,
-      data,
-    };
-    this.activeRecordings.delete(recording.sessionId);
-    this.completedRecordings.set(recording.id, completed);
-    return this.recordingMetadata(completed);
-  }
-
-  private recordingMetadata(recording: ActiveRecording | CompletedRecording) {
-    const completed = "data" in recording;
-    return {
-      id: recording.id,
-      sessionId: recording.sessionId,
-      status: completed ? ("stopped" as const) : ("recording" as const),
-      startedAt: recording.startedAt,
-      stoppedAt: completed ? recording.stoppedAt : null,
-      fileName: recording.fileName,
-      mimeType: "video/mp4",
-      sizeBytes: completed ? recording.sizeBytes : 0,
-      durationMs: completed ? recording.durationMs : 0,
-      sampleCount: completed ? recording.sampleCount : 0,
-      downloadPath: completed
-        ? `/rebroid/display/recordings/${encodeURIComponent(recording.id)}`
-        : null,
-    };
-  }
-
-  private safeFileSegment(value: string) {
-    return (
-      value
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9._-]+/g, "-")
-        .replace(/^-+|-+$/g, "")
-        .slice(0, 64) || "display"
-    );
-  }
-
   private async streamRawVideoAttempt(
     options: ScrcpyStreamOptions,
     registerStop: (stop: () => Promise<void>) => void,
   ): Promise<ScrcpyAttemptResult> {
     if (
-      SCRCPY_TUNNEL_MODE === "reverse" ||
-      SCRCPY_TUNNEL_MODE === "direct" ||
-      SCRCPY_TUNNEL_MODE === "forward"
+      this.config.scrcpyTunnelMode === "reverse" ||
+      this.config.scrcpyTunnelMode === "direct" ||
+      this.config.scrcpyTunnelMode === "forward"
     ) {
       return this.streamRawVideoAttemptWithTunnel(
         options,
         registerStop,
-        SCRCPY_TUNNEL_MODE,
+        this.config.scrcpyTunnelMode,
       );
     }
 
@@ -701,7 +544,7 @@ export class ScrcpyService {
           this.controlUnavailableSessions.add(options.sessionId);
           this.queuedControlMessages.delete(options.sessionId);
         }
-      } else if (SCRCPY_CONTROL_CHANNEL) {
+      } else if (this.config.scrcpyControlChannel) {
         this.controlUnavailableSessions.add(options.sessionId);
         this.queuedControlMessages.delete(options.sessionId);
       }
@@ -781,7 +624,6 @@ export class ScrcpyService {
         if (!chunk.length) {
           return;
         }
-        this.recordVideoPacket(options.sessionId, mergedPacket);
         if (options.client.readyState === SCRCPY_WS_OPEN) {
           bytesForwarded += chunk.byteLength;
           if (options.client.bufferedAmount > WS_HIGH_WATERMARK_BYTES) {
@@ -999,19 +841,19 @@ export class ScrcpyService {
   }
 
   usesStreamControl() {
-    return SCRCPY_CONTROL_CHANNEL;
+    return this.config.scrcpyControlChannel;
   }
 
   shouldWaitForStreamControl(sessionId: string) {
     return (
-      SCRCPY_CONTROL_CHANNEL &&
+      this.config.scrcpyControlChannel &&
       this.streamingSessions.has(sessionId) &&
       !this.controlUnavailableSessions.has(sessionId)
     );
   }
 
   private streamControlEnabled(options: ScrcpyStreamOptions) {
-    return SCRCPY_CONTROL_CHANNEL && options.control !== false;
+    return this.config.scrcpyControlChannel && options.control !== false;
   }
 
   isStreamingSession(sessionId: string) {
@@ -1023,12 +865,12 @@ export class ScrcpyService {
     return payloads ? this.writeControlMessages(sessionId, payloads) : false;
   }
 
-  sendKeyboardEvent(sessionId: string, event: ScrcpyKeyboardEventPayload) {
+  sendKeyboardEvent(sessionId: string, event: KeyboardControlPayload) {
     const payloads = this.controlCodec.keyboardEventPayloads(event);
     return payloads ? this.writeControlMessages(sessionId, payloads) : true;
   }
 
-  sendTouchEvent(sessionId: string, event: ScrcpyTouchEventPayload) {
+  sendTouchEvent(sessionId: string, event: TouchControlPayload) {
     const payloads = this.controlCodec.touchEventPayloads(event);
     return payloads ? this.writeControlMessages(sessionId, payloads) : false;
   }
@@ -1048,7 +890,7 @@ export class ScrcpyService {
     const serverOptions = [
       this.config.scrcpyVersion,
       `scid=${scid}`,
-      `log_level=${SCRCPY_SERVER_LOG_LEVEL}`,
+      `log_level=${this.config.scrcpyServerLogLevel}`,
       "video=true",
       `audio=${options.audio ? "true" : "false"}`,
       "audio_codec=opus",
@@ -1146,10 +988,10 @@ export class ScrcpyService {
   }
 
   private shouldLaunchDetached(tunnelMode: ScrcpyTunnelMode) {
-    if (SCRCPY_SERVER_LAUNCH_MODE === "shell") {
+    if (this.config.scrcpyServerLaunchMode === "shell") {
       return false;
     }
-    if (SCRCPY_SERVER_LAUNCH_MODE === "detached") {
+    if (this.config.scrcpyServerLaunchMode === "detached") {
       return true;
     }
     return tunnelMode !== "reverse";
@@ -1780,7 +1622,7 @@ export class ScrcpyService {
     logPrefix: string,
     reason: string,
   ) {
-    if (!SCRCPY_LOGCAT_ON_SERVER_EXIT) {
+    if (!this.config.scrcpyLogcatOnServerExit) {
       return;
     }
 
@@ -1840,7 +1682,7 @@ export class ScrcpyService {
       }
     }
 
-    if (!SCRCPY_CONTROL_CHANNEL) {
+    if (!this.config.scrcpyControlChannel) {
       return false;
     }
 

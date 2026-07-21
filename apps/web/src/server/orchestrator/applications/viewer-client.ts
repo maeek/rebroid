@@ -1,8 +1,7 @@
-import { emptyRequest, jsonRequest, responseRequest } from '../request'
+import { emptyRequest, jsonRequest } from '../request'
 import type {
   ApplicationViewerControlCommand,
   ApplicationViewerControlResponse,
-  ApplicationDisplayRecording,
   ScrcpySession,
   ScrcpySessionAccess
 } from '@/shared/contracts/application'
@@ -40,30 +39,5 @@ export const orchestratorAppViewerClient = {
         method: 'POST'
       }
     )
-  },
-
-  startRecording(id: string, surfaceId: string) {
-    return emptyRequest<ApplicationDisplayRecording>(
-      `/apps/${id}/viewer/displays/${encodeURIComponent(surfaceId)}/recording/start`,
-      {
-        method: 'POST'
-      }
-    )
-  },
-
-  stopRecording(id: string, surfaceId: string) {
-    return emptyRequest<ApplicationDisplayRecording>(
-      `/apps/${id}/viewer/displays/${encodeURIComponent(surfaceId)}/recording/stop`,
-      {
-        method: 'POST'
-      }
-    )
-  },
-
-  downloadRecording(id: string, recordingId: string, surfaceSessionId: string) {
-    const query = new URLSearchParams({ surfaceSessionId })
-    return responseRequest(`/apps/${id}/viewer/recordings/${encodeURIComponent(recordingId)}?${query.toString()}`, {
-      headers: { accept: 'video/mp4' }
-    })
   }
 }

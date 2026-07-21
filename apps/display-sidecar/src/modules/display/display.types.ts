@@ -1,3 +1,8 @@
+import type {
+  KeyboardControlPayload,
+  TouchControlPayload,
+} from "../shared/display-control.types";
+
 export type DisplaySessionStatus =
   | "created"
   | "active"
@@ -83,33 +88,20 @@ export interface PublicDisplayActionBody extends DisplayActionBody {
   token?: string | null;
 }
 
-export interface DisplayKeyboardBody {
+export interface DisplayKeyboardBody extends KeyboardControlPayload {
   token?: string | null;
-  eventType?: "keydown" | "keyup";
-  key?: string;
-  code?: string;
-  repeat?: boolean;
-  altKey?: boolean;
-  ctrlKey?: boolean;
-  metaKey?: boolean;
-  shiftKey?: boolean;
 }
 
-export interface DisplayTouchBody {
+export interface DisplayTouchBody extends TouchControlPayload {
   token?: string | null;
-  action?: "tap" | "swipe" | "pointer";
-  eventType?: "down" | "move" | "up" | "cancel";
-  x?: number;
-  y?: number;
-  x1?: number;
-  y1?: number;
-  x2?: number;
-  y2?: number;
-  videoWidth?: number;
-  videoHeight?: number;
-  durationMs?: number;
 }
 
 export interface DisplayClipboardBody {
   text?: string;
 }
+
+export type DisplayControlRequest =
+  | { id?: string; type: "action"; command?: string }
+  | ({ id?: string; type: "keyboard" } & DisplayKeyboardBody)
+  | ({ id?: string; type: "touch" } & DisplayTouchBody)
+  | { id?: string; type: "clipboard"; text?: string };

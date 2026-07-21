@@ -1,25 +1,27 @@
 import { Injectable, InternalServerErrorException } from "@nestjs/common";
-import { ChildProcessByStdio, spawn } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Readable } from "node:stream";
 import { type ViewerCommand } from "@rebroid/android-application-core/viewer-control";
 
-export type AdbChildProcess = ChildProcessByStdio<null, Readable, Readable>;
+import {
+  AdbCommandRunner,
+  type AdbChildProcess,
+  type AdbCommandResult,
+} from "./adb-command-runner";
+import {
+  clampDuration,
+  escapeAdbInputText,
+  keyboardCommand,
+  touchCommand,
+} from "./adb-input";
+import type {
+  KeyboardControlPayload,
+  TouchControlPayload,
+} from "../shared/display-control.types";
+export type { AdbChildProcess } from "./adb-command-runner";
 
-const MAX_ADB_TEXT_OUTPUT_BYTES = Number(
-  process.env.ADB_TEXT_OUTPUT_MAX_BYTES ?? 2 * 1024 * 1024,
-);
-const MAX_ADB_BINARY_OUTPUT_BYTES = Number(
-  process.env.ADB_BINARY_OUTPUT_MAX_BYTES ?? 64 * 1024 * 1024,
-);
-
-export interface CommandResult {
-  stdout: string;
-  stderr: string;
-  exitCode: number;
-}
+export type CommandResult = AdbCommandResult;
 
 export interface UiDumpDiagnostics {
   command: string;
@@ -40,12 +42,6 @@ export interface UiDumpResult {
   attempts: UiDumpDiagnostics[];
 }
 
-interface BoundedOutput {
-  chunks: Buffer[];
-  byteLength: number;
-  truncatedBytes: number;
-}
-
 const KEY_EVENTS: Partial<Record<ViewerCommand, string>> = {
   back: "KEYCODE_BACK",
   home: "KEYCODE_HOME",
@@ -58,50 +54,9 @@ const KEY_EVENTS: Partial<Record<ViewerCommand, string>> = {
   mute: "KEYCODE_MUTE",
 };
 
-const BROWSER_KEY_EVENTS: Record<string, string> = {
-  Enter: "KEYCODE_ENTER",
-  Backspace: "KEYCODE_DEL",
-  Delete: "KEYCODE_FORWARD_DEL",
-  Escape: "KEYCODE_BACK",
-  Tab: "KEYCODE_TAB",
-  ArrowUp: "KEYCODE_DPAD_UP",
-  ArrowDown: "KEYCODE_DPAD_DOWN",
-  ArrowLeft: "KEYCODE_DPAD_LEFT",
-  ArrowRight: "KEYCODE_DPAD_RIGHT",
-  PageUp: "KEYCODE_PAGE_UP",
-  PageDown: "KEYCODE_PAGE_DOWN",
-  Home: "KEYCODE_MOVE_HOME",
-  End: "KEYCODE_MOVE_END",
-};
-
-export interface BrowserKeyboardEventPayload {
-  eventType?: "keydown" | "keyup";
-  key?: string;
-  code?: string;
-  repeat?: boolean;
-  altKey?: boolean;
-  ctrlKey?: boolean;
-  metaKey?: boolean;
-  shiftKey?: boolean;
-}
-
-export interface BrowserTouchEventPayload {
-  action?: "tap" | "swipe" | "pointer";
-  eventType?: "down" | "move" | "up" | "cancel";
-  x?: number;
-  y?: number;
-  x1?: number;
-  y1?: number;
-  x2?: number;
-  y2?: number;
-  videoWidth?: number;
-  videoHeight?: number;
-  durationMs?: number;
-}
-
 @Injectable()
 export class AdbService {
-  readonly adbPath = process.env.ADB_PATH?.trim() || "adb";
+  constructor(private readonly runner: AdbCommandRunner) {}
 
   async connect(udid: string) {
     return this.adb(["connect", udid], 15_000);
@@ -248,7 +203,7 @@ export class AdbService {
   }
 
   spawnAdb(args: string[]): AdbChildProcess {
-    return spawn(this.adbPath, args, { stdio: ["ignore", "pipe", "pipe"] });
+    return this.runner.spawn(args);
   }
 
   async getClipboard(udid: string) {
@@ -312,74 +267,15 @@ export class AdbService {
     return this.shell(udid, ["input", "keyevent", key]);
   }
 
-  async keyboardEvent(udid: string, event: BrowserKeyboardEventPayload) {
-    if (event.eventType !== "keydown") {
-      return this.noop();
-    }
-
-    if (event.metaKey || event.ctrlKey || event.altKey) {
-      return this.noop();
-    }
-
-    const specialKey = event.key ? BROWSER_KEY_EVENTS[event.key] : null;
-    if (specialKey) {
-      return this.shell(udid, ["input", "keyevent", specialKey], 5_000);
-    }
-
-    if (event.key && event.key.length === 1) {
-      return this.shell(
-        udid,
-        ["input", "text", this.escapeInputText(event.key)],
-        5_000,
-      );
-    }
-
-    return this.noop();
+  async keyboardEvent(udid: string, event: KeyboardControlPayload) {
+    const args = keyboardCommand(event);
+    return args ? this.shell(udid, args, 5_000) : this.noop();
   }
 
-  async touchEvent(udid: string, event: BrowserTouchEventPayload) {
-    const videoWidth = this.positiveNumber(event.videoWidth);
-    const videoHeight = this.positiveNumber(event.videoHeight);
+  async touchEvent(udid: string, event: TouchControlPayload) {
     const displaySize = await this.getDisplaySize(udid).catch(() => null);
-    const scaleX =
-      displaySize && videoWidth ? displaySize.width / videoWidth : 1;
-    const scaleY =
-      displaySize && videoHeight ? displaySize.height / videoHeight : 1;
-    const duration = this.clampNumber(event.durationMs, 50, 2_000, 120);
-
-    if (event.action === "pointer") {
-      return this.noop();
-    }
-
-    if (event.action === "swipe") {
-      const from = this.touchPoint(event.x1, event.y1, scaleX, scaleY);
-      const to = this.touchPoint(event.x2, event.y2, scaleX, scaleY);
-      return this.shell(
-        udid,
-        [
-          "input",
-          "swipe",
-          String(from.x),
-          String(from.y),
-          String(to.x),
-          String(to.y),
-          String(duration),
-        ],
-        5_000,
-      );
-    }
-
-    const point = this.touchPoint(
-      event.x ?? event.x1,
-      event.y ?? event.y1,
-      scaleX,
-      scaleY,
-    );
-    return this.shell(
-      udid,
-      ["input", "tap", String(point.x), String(point.y)],
-      5_000,
-    );
+    const args = touchCommand(event, displaySize);
+    return args ? this.shell(udid, args, 5_000) : this.noop();
   }
 
   async tap(udid: string, x: number, y: number) {
@@ -405,7 +301,7 @@ export class AdbService {
         String(input.y1),
         String(input.x2),
         String(input.y2),
-        String(this.clampNumber(input.durationMs, 50, 5_000, 300)),
+        String(clampDuration(input.durationMs, 50, 5_000, 300)),
       ],
       10_000,
     );
@@ -414,7 +310,7 @@ export class AdbService {
   async inputText(udid: string, text: string) {
     return this.shell(
       udid,
-      ["input", "text", this.escapeInputText(text)],
+      ["input", "text", escapeAdbInputText(text)],
       10_000,
     );
   }
@@ -619,10 +515,6 @@ export class AdbService {
     );
   }
 
-  private escapeInputText(value: string) {
-    return value.replace(/%/g, "%25").replace(/\s/g, "%s");
-  }
-
   private async getDisplaySize(udid: string) {
     const result = await this.shell(udid, ["wm", "size"], 5_000);
     const matches = [...result.stdout.matchAll(/(\d+)x(\d+)/g)];
@@ -635,41 +527,6 @@ export class AdbService {
       width: Number(match[1]),
       height: Number(match[2]),
     };
-  }
-
-  private touchPoint(
-    x: number | undefined,
-    y: number | undefined,
-    scaleX: number,
-    scaleY: number,
-  ) {
-    return {
-      x: Math.max(0, Math.round(this.finiteNumber(x) * scaleX)),
-      y: Math.max(0, Math.round(this.finiteNumber(y) * scaleY)),
-    };
-  }
-
-  private positiveNumber(value: number | undefined) {
-    const parsed = this.finiteNumber(value);
-    return parsed > 0 ? parsed : null;
-  }
-
-  private clampNumber(
-    value: number | undefined,
-    min: number,
-    max: number,
-    fallback: number,
-  ) {
-    const parsed = this.finiteNumber(value);
-    if (parsed <= 0) {
-      return fallback;
-    }
-
-    return Math.min(Math.max(Math.round(parsed), min), max);
-  }
-
-  private finiteNumber(value: number | undefined) {
-    return typeof value === "number" && Number.isFinite(value) ? value : 0;
   }
 
   private shellQuote(value: string) {
@@ -705,156 +562,10 @@ export class AdbService {
     timeoutMs: number,
     options: { rejectOnNonZero?: boolean } = {},
   ) {
-    const rejectOnNonZero = options.rejectOnNonZero ?? true;
-    return new Promise<CommandResult>((resolve, reject) => {
-      const child = spawn(this.adbPath, args, {
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-      const stdout = this.createBoundedOutput();
-      const stderr = this.createBoundedOutput();
-      let timedOut = false;
-
-      const timer = setTimeout(() => {
-        timedOut = true;
-        child.kill("SIGTERM");
-      }, timeoutMs);
-
-      child.stdout.on("data", (chunk: Buffer) =>
-        this.pushBoundedOutput(stdout, chunk, MAX_ADB_TEXT_OUTPUT_BYTES),
-      );
-      child.stderr.on("data", (chunk: Buffer) =>
-        this.pushBoundedOutput(stderr, chunk, MAX_ADB_TEXT_OUTPUT_BYTES),
-      );
-      child.on("error", reject);
-      child.on("close", (exitCode) => {
-        clearTimeout(timer);
-        const result = {
-          stdout: this.boundedOutputToString(stdout),
-          stderr: this.boundedOutputToString(stderr),
-          exitCode: exitCode ?? 0,
-        };
-
-        if (timedOut) {
-          reject(
-            new InternalServerErrorException(
-              `adb ${args.join(" ")} timed out after ${timeoutMs}ms`,
-            ),
-          );
-          return;
-        }
-
-        if (rejectOnNonZero && result.exitCode !== 0) {
-          reject(
-            new InternalServerErrorException(
-              `adb ${args.join(" ")} failed with exit code ${result.exitCode}: ${result.stderr || result.stdout}`,
-            ),
-          );
-          return;
-        }
-
-        resolve(result);
-      });
-    });
+    return this.runner.text(args, timeoutMs, options);
   }
 
   private adbBuffer(args: string[], timeoutMs: number) {
-    return new Promise<Buffer>((resolve, reject) => {
-      const child = spawn(this.adbPath, args, {
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-      const stdout = this.createBoundedOutput();
-      const stderr = this.createBoundedOutput();
-      let timedOut = false;
-
-      const timer = setTimeout(() => {
-        timedOut = true;
-        child.kill("SIGTERM");
-      }, timeoutMs);
-
-      child.stdout.on("data", (chunk: Buffer) =>
-        this.pushBoundedOutput(stdout, chunk, MAX_ADB_BINARY_OUTPUT_BYTES),
-      );
-      child.stderr.on("data", (chunk: Buffer) =>
-        this.pushBoundedOutput(stderr, chunk, MAX_ADB_TEXT_OUTPUT_BYTES),
-      );
-      child.on("error", reject);
-      child.on("close", (exitCode) => {
-        clearTimeout(timer);
-        const output = this.boundedOutputToBuffer(stdout);
-        const error = this.boundedOutputToString(stderr);
-
-        if (timedOut) {
-          reject(
-            new InternalServerErrorException(
-              `adb ${args.join(" ")} timed out after ${timeoutMs}ms`,
-            ),
-          );
-          return;
-        }
-
-        if ((exitCode ?? 0) !== 0) {
-          reject(
-            new InternalServerErrorException(
-              `adb ${args.join(" ")} failed with exit code ${exitCode ?? 0}: ${error || output.toString("utf8")}`,
-            ),
-          );
-          return;
-        }
-
-        if (stdout.truncatedBytes > 0) {
-          reject(
-            new InternalServerErrorException(
-              `adb ${args.join(" ")} produced more than ${MAX_ADB_BINARY_OUTPUT_BYTES} bytes of output.`,
-            ),
-          );
-          return;
-        }
-
-        resolve(output);
-      });
-    });
-  }
-
-  private createBoundedOutput(): BoundedOutput {
-    return {
-      chunks: [],
-      byteLength: 0,
-      truncatedBytes: 0,
-    };
-  }
-
-  private pushBoundedOutput(
-    output: BoundedOutput,
-    chunk: Buffer,
-    maxBytes: number,
-  ) {
-    const remaining = maxBytes - output.byteLength;
-    if (remaining <= 0) {
-      output.truncatedBytes += chunk.byteLength;
-      return;
-    }
-
-    if (chunk.byteLength <= remaining) {
-      output.chunks.push(chunk);
-      output.byteLength += chunk.byteLength;
-      return;
-    }
-
-    output.chunks.push(chunk.subarray(0, remaining));
-    output.byteLength += remaining;
-    output.truncatedBytes += chunk.byteLength - remaining;
-  }
-
-  private boundedOutputToBuffer(output: BoundedOutput) {
-    return Buffer.concat(output.chunks, output.byteLength);
-  }
-
-  private boundedOutputToString(output: BoundedOutput) {
-    const text = this.boundedOutputToBuffer(output).toString("utf8");
-    if (!output.truncatedBytes) {
-      return text;
-    }
-
-    return `${text}\n[truncated ${output.truncatedBytes} bytes]`;
+    return this.runner.buffer(args, timeoutMs);
   }
 }

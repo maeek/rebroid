@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { recordAuditEvent } from '@/server/audit/events'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
+import { loadFeatureFlags } from '@/server/orchestrator/features'
 import { orchestratorPlatformClient } from '@/server/orchestrator/platform/client'
 import { OrchestratorRequestError } from '@/server/orchestrator/request'
 import { prepareStreamingMultipartUpload } from '@/server/upload-proxy/streaming-upload'
@@ -43,6 +44,14 @@ export const POST = async (request: NextRequest) => {
 
   if (user.role !== 'admin') {
     return NextResponse.json({ message: 'Administrator access required' }, { status: 403 })
+  }
+
+  const features = await loadFeatureFlags()
+  const imageBuilderEnabled = features?.features.some(
+    feature => feature.key === 'feature.image-builder' && feature.enabled && feature.supported
+  )
+  if (!imageBuilderEnabled) {
+    return NextResponse.json({ code: 'feature_disabled', message: 'Image building is disabled.' }, { status: 404 })
   }
 
   try {

@@ -8,6 +8,7 @@ import type {
   AutomationOcrResult,
   OcrPreprocessingAttempt,
 } from './automation-ocr.port';
+import { FeatureFlagsService } from '../../feature-flags/feature-flags.service';
 
 interface OcrSidecarDetection {
   id?: string;
@@ -28,14 +29,17 @@ interface OcrSidecarResponse {
   elapsedMs?: number;
   engine?: string;
   model?: string;
-  languages?: string[];
+  language?: string;
   preprocessingMode?: string;
   preprocessingAttempts?: OcrPreprocessingAttempt[];
 }
 
 @Injectable()
 export class AutomationOcrService implements AutomationOcrPort {
-  constructor(private readonly settingsStore: OrchestratorSettingsStore) {}
+  constructor(
+    private readonly settingsStore: OrchestratorSettingsStore,
+    private readonly features: FeatureFlagsService,
+  ) {}
 
   async recognize(
     image: AiScreenshot,
@@ -44,7 +48,7 @@ export class AutomationOcrService implements AutomationOcrPort {
     const settings = (await this.settingsStore.getStoredSettings()).services
       .ocr;
     const baseUrl = settings.endpoint ?? '';
-    if (!settings.enabled || !baseUrl) {
+    if (!this.features.isEnabled('feature.ocr') || !baseUrl) {
       return { status: 'disabled', detections: [] };
     }
 
@@ -59,10 +63,9 @@ export class AutomationOcrService implements AutomationOcrPort {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           dataUrl: image.dataUrl,
-          languages: settings.languages,
+          language: settings.language,
           minConfidence: settings.minConfidence,
           maxImageDimension: settings.maxImageDimension,
-          preprocessingModes: settings.preprocessingModes,
         }),
         signal: controller.signal,
       });
@@ -140,7 +143,7 @@ export class AutomationOcrService implements AutomationOcrPort {
         : {}),
       ...(payload?.engine ? { engine: payload.engine } : {}),
       ...(payload?.model ? { model: payload.model } : {}),
-      ...(payload?.languages ? { languages: payload.languages } : {}),
+      ...(payload?.language ? { language: payload.language } : {}),
       ...(payload?.preprocessingMode
         ? { preprocessingMode: payload.preprocessingMode }
         : {}),

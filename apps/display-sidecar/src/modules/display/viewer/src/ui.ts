@@ -1,4 +1,4 @@
-import type { ViewerElements, ViewerUi } from "./types";
+import type { ViewerElements, ViewerUi } from "./types.js";
 
 export function createViewerUi(elements: ViewerElements): ViewerUi {
   const { title, copy, status, compatibility, message, canvas, video } =

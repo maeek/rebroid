@@ -20,7 +20,7 @@ const ocrData = (observation: Observation) => ({
   ocrElapsedMs: observation.ocr?.elapsedMs ?? null,
   ocrEngine: observation.ocr?.engine ?? null,
   ocrModel: observation.ocr?.model ?? null,
-  ocrLanguages: observation.ocr?.languages ?? [],
+  ocrLanguage: observation.ocr?.language ?? null,
   ocrPreprocessingMode: observation.ocr?.preprocessingMode ?? null,
   ocrPreprocessingAttempts: observation.ocr?.preprocessingAttempts ?? [],
   ocrError: observation.ocr?.error ?? null,

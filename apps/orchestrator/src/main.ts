@@ -39,6 +39,7 @@ async function bootstrap() {
     .addTag('platform-display-sidecar')
     .addTag('platform-system-resources')
     .addTag('settings')
+    .addTag('features')
     .addTag('health')
     .addApiKey(
       {

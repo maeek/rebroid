@@ -21,7 +21,6 @@ const generalSettingsSchema = z.object({
 })
 
 const optionalServiceSchema = z.object({
-  enabled: z.boolean(),
   endpoint: z.string().trim().min(1).nullable(),
   timeoutMs: z.number().int().positive().max(120_000)
 })
@@ -36,8 +35,7 @@ const runtimeSettingsSchema = z.object({
     ocr: optionalServiceSchema.extend({
       maxImageDimension: z.number().int().positive().max(16_384),
       minConfidence: z.number().min(0).max(1),
-      languages: z.array(z.string().trim().min(1).max(32)).max(32),
-      preprocessingModes: z.array(z.string().trim().min(1).max(64)).max(32)
+      language: z.string().trim().min(1).max(16)
     }),
     firewall: optionalServiceSchema
   })

@@ -1,8 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
-  IsArray,
-  IsBoolean,
   IsIn,
   IsInt,
   IsNumber,
@@ -20,13 +18,6 @@ import {
 } from '@rebroid/android-application-core/viewer-control';
 
 export class OptionalServiceSettingsDto {
-  @ApiProperty({
-    example: true,
-    description: 'Whether the optional sidecar integration should be used.',
-  })
-  @IsBoolean()
-  enabled!: boolean;
-
   @ApiProperty({
     type: String,
     nullable: true,
@@ -62,18 +53,9 @@ export class OcrServiceSettingsDto extends OptionalServiceSettingsDto {
   @Max(1)
   minConfidence!: number;
 
-  @ApiProperty({ type: [String], example: ['en'] })
-  @IsArray()
-  @IsString({ each: true })
-  languages!: string[];
-
-  @ApiProperty({
-    type: [String],
-    example: ['raw', 'grayscale', 'contrast', 'threshold'],
-  })
-  @IsArray()
-  @IsString({ each: true })
-  preprocessingModes!: string[];
+  @ApiProperty({ example: 'en' })
+  @IsString()
+  language!: string;
 }
 
 export class OptionalServicesSettingsDto {

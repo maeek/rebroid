@@ -15,21 +15,24 @@ describe('AutomationOcrService', () => {
       }),
     );
     global.fetch = fetchMock;
-    const service = new AutomationOcrService({
-      getStoredSettings: jest.fn().mockResolvedValue({
-        services: {
-          ocr: {
-            enabled: true,
-            endpoint: 'http://ocr.test',
-            timeoutMs: 1_000,
-            languages: ['en'],
-            minConfidence: 0.4,
-            maxImageDimension: 1600,
-            preprocessingModes: ['raw'],
+    const service = new AutomationOcrService(
+      {
+        getStoredSettings: jest.fn().mockResolvedValue({
+          services: {
+            ocr: {
+              endpoint: 'http://ocr.test',
+              timeoutMs: 1_000,
+              language: 'en',
+              minConfidence: 0.4,
+              maxImageDimension: 1600,
+            },
           },
-        },
-      }),
-    } as never);
+        }),
+      } as never,
+      {
+        isEnabled: jest.fn().mockReturnValue(true),
+      } as never,
+    );
 
     await service.recognize({
       dataUrl: 'data:image/png;base64,original-lossless-pixels',

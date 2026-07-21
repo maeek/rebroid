@@ -1,18 +1,18 @@
-import { getViewerElements, readViewerConfig } from "./config";
-import { createViewerAudioPlayer } from "./audio-player";
-import { createControlChannel } from "./control-channel";
-import { createDisplayStream } from "./display-stream";
-import { createH264Decoder } from "./h264-decoder";
-import { createPageLifecycle } from "./page-lifecycle";
-import { setupTouchInput } from "./touch-input";
-import { createStreamMetricsReporter } from "./stream-metrics";
+import { getViewerElements, readViewerConfig } from "./config.js";
+import { createViewerAudioPlayer } from "./audio-player.js";
+import { createControlChannel } from "./control-channel.js";
+import { createDisplayStream } from "./display-stream.js";
+import { createH264Decoder } from "./h264-decoder.js";
+import { createPageLifecycle } from "./page-lifecycle.js";
+import { setupTouchInput } from "./touch-input.js";
+import { createStreamMetricsReporter } from "./stream-metrics.js";
 import {
   emitViewerStreamStatus,
   statusFromCompatibility,
-} from "./stream-status";
-import { createViewerUi } from "./ui";
-import { createWebrtcStream } from "./webrtc-stream";
-import type { DisplayTransport } from "./types";
+} from "./stream-status.js";
+import { createViewerUi } from "./ui.js";
+import { createWebrtcStream } from "./webrtc-stream.js";
+import type { DisplayTransport } from "./types.js";
 
 const config = readViewerConfig();
 const elements = getViewerElements();

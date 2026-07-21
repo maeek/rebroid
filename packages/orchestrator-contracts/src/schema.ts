@@ -104,6 +104,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FeatureFlagsController_getManifest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["FeatureFlagsController_update"];
+        trace?: never;
+    };
+    "/api/v1/features/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["FeatureFlagsController_reset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/settings": {
         parameters: {
             query?: never;
@@ -539,57 +571,6 @@ export interface paths {
         put?: never;
         /** Release one experimental virtual display surface. */
         post: operations["AndroidAppsViewerController_releaseVirtualDisplay"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/viewer/displays/{surfaceId}/recording/start": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Start recording one display surface. */
-        post: operations["AndroidAppsViewerController_startRecording"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/viewer/displays/{surfaceId}/recording/stop": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Stop recording one display surface and return the file data. */
-        post: operations["AndroidAppsViewerController_stopRecording"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/viewer/recordings/{recordingId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Download one completed display recording. */
-        get: operations["AndroidAppsViewerController_downloadRecording"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1926,12 +1907,62 @@ export interface components {
             expiresAt: string;
             capabilities: string[];
         };
-        OcrServiceSettingsDto: {
+        FeatureFlagStateDto: {
             /**
-             * @description Whether the optional sidecar integration should be used.
-             * @example true
+             * @example feature.ocr
+             * @enum {string}
              */
+            key: "feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual";
+            /** @enum {string} */
+            owner: "automations" | "network-policy" | "container-images" | "display";
+            /** @example 3 */
+            revision: number;
+            /** @example OCR-backed automation perception. */
+            description: string;
+            /** @enum {string} */
+            control: "runtime" | "deployment";
+            /** @example true */
+            mutable: boolean;
+            /** @example true */
             enabled: boolean;
+            /** @example true */
+            supported: boolean;
+            /** @example true */
+            effective: boolean;
+            /** @enum {string} */
+            syncStatus: "applied" | "pending" | "restart_required" | "failed";
+            /** @enum {string} */
+            disablePolicy: "block_new" | "drain_active" | "stop_active" | "restart_required";
+            /** @enum {string} */
+            lifecycle: "permanent" | "rollout";
+            removalCondition: string | null;
+            dependencies: ("feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual")[];
+            conflicts: ("feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual")[];
+        };
+        FeatureFlagManifestDto: {
+            /** @example 3 */
+            revision: number;
+            features: components["schemas"]["FeatureFlagStateDto"][];
+        };
+        FeatureFlagChangeDto: {
+            /**
+             * @example feature.ocr
+             * @enum {string}
+             */
+            key: "feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual";
+            /** @example false */
+            enabled: boolean;
+        };
+        UpdateFeatureFlagsDto: {
+            /** @example 3 */
+            revision: number;
+            changes: components["schemas"]["FeatureFlagChangeDto"][];
+        };
+        ResetFeatureFlagsDto: {
+            /** @example 3 */
+            revision: number;
+        };
+        OcrServiceSettingsDto: {
             /**
              * @description Service endpoint. HTTP(S) URL for HTTP sidecars; socket path for local agent integrations.
              * @example http://ocr-sidecar:4300
@@ -1943,28 +1974,10 @@ export interface components {
             maxImageDimension: number;
             /** @example 0.4 */
             minConfidence: number;
-            /**
-             * @example [
-             *       "en"
-             *     ]
-             */
-            languages: string[];
-            /**
-             * @example [
-             *       "raw",
-             *       "grayscale",
-             *       "contrast",
-             *       "threshold"
-             *     ]
-             */
-            preprocessingModes: string[];
+            /** @example en */
+            language: string;
         };
         OptionalServiceSettingsDto: {
-            /**
-             * @description Whether the optional sidecar integration should be used.
-             * @example true
-             */
-            enabled: boolean;
             /**
              * @description Service endpoint. HTTP(S) URL for HTTP sidecars; socket path for local agent integrations.
              * @example http://ocr-sidecar:4300
@@ -2382,7 +2395,7 @@ export interface components {
             containerArgs: string | null;
             adbPort: number;
             /** @enum {string} */
-            scrcpyTransport: "websocket" | "webrtc";
+            scrcpyTransport: "webrtc" | "websocket";
             inactivityTimeoutSeconds: number;
             resources: components["schemas"]["AndroidApplicationRuntimeResourcesDto"];
         };
@@ -2539,7 +2552,7 @@ export interface components {
         ScrcpySessionDto: {
             applicationId: string;
             /** @enum {string} */
-            transport: "websocket" | "webrtc";
+            transport: "webrtc" | "websocket";
             udid: string;
             proxyRemote: string;
             player: string;
@@ -2568,20 +2581,6 @@ export interface components {
             executed: boolean;
             /** @example Viewer control command executed. */
             message: string;
-        };
-        DisplayRecordingDto: {
-            id: string;
-            sessionId: string;
-            /** @enum {string} */
-            status: "recording" | "stopped";
-            startedAt: string;
-            stoppedAt: string | null;
-            fileName: string;
-            mimeType: string;
-            sizeBytes: number;
-            durationMs: number;
-            sampleCount: number;
-            downloadPath: string | null;
         };
         UpdateNetworkPolicyDto: {
             /** @example true */
@@ -2799,7 +2798,7 @@ export interface components {
             /** @example user_123 */
             ownerUserId: string;
             /** @example 98a530d6-a45d-466a-9cb4-c023067c4971 */
-            targetApplicationId: string | null;
+            targetApplicationId: string;
             /** @enum {string} */
             profileMode?: "persistent" | "temporary";
             /** @example default */
@@ -3628,6 +3627,71 @@ export interface operations {
             };
         };
     };
+    FeatureFlagsController_getManifest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeatureFlagManifestDto"];
+                };
+            };
+        };
+    };
+    FeatureFlagsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateFeatureFlagsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeatureFlagManifestDto"];
+                };
+            };
+        };
+    };
+    FeatureFlagsController_reset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetFeatureFlagsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeatureFlagManifestDto"];
+                };
+            };
+        };
+    };
     SettingsController_getSettings: {
         parameters: {
             query?: never;
@@ -4431,72 +4495,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DisplaySessionDto"];
                 };
-            };
-        };
-    };
-    AndroidAppsViewerController_startRecording: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-                surfaceId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DisplayRecordingDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsViewerController_stopRecording: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-                surfaceId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DisplayRecordingDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsViewerController_downloadRecording: {
-        parameters: {
-            query: {
-                surfaceSessionId: string;
-            };
-            header?: never;
-            path: {
-                id: string;
-                recordingId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };

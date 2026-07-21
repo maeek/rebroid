@@ -2,8 +2,8 @@ import {
   keyboardCaptureMessageType,
   keyboardEventMessageType,
   viewerControlMessageType,
-} from "./config";
-import type { ControlChannel, JsonRecord, PageLifecycle } from "./types";
+} from "./config.js";
+import type { ControlChannel, JsonRecord, PageLifecycle } from "./types.js";
 
 type ControlChannelOptions = {
   sessionId: string | null;

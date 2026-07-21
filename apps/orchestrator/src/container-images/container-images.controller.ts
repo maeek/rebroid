@@ -46,6 +46,7 @@ import {
 import { ContainerImageGappsBuilderService } from './services/container-image-gapps-builder.service';
 import { ContainerImageGappsPresetService } from './services/container-image-gapps-preset.service';
 import { resolveContainerImage } from '../common/container-image-reference';
+import { RequiresFeature } from '../feature-flags/feature-flags.guard';
 
 @ApiTags('platform-container-images')
 @Controller('platform/container-images')
@@ -92,6 +93,7 @@ export class ContainerImagesController {
   }
 
   @Get('build-context')
+  @RequiresFeature('feature.image-builder')
   @ApiOperation({ summary: 'List uploaded image build context files.' })
   @ApiOkResponse({ type: ContainerImageBuildContextFile, isArray: true })
   listBuildContextFiles() {
@@ -99,6 +101,7 @@ export class ContainerImagesController {
   }
 
   @Post('build-context')
+  @RequiresFeature('feature.image-builder')
   @ApiOperation({ summary: 'Upload one image build context file.' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -119,12 +122,14 @@ export class ContainerImagesController {
   }
 
   @Delete('build-context/:id')
+  @RequiresFeature('feature.image-builder')
   @ApiOperation({ summary: 'Remove one uploaded image build context file.' })
   removeBuildContextFile(@Param('id') id: string) {
     return this.buildContext.removeFile(id);
   }
 
   @Get('recipes')
+  @RequiresFeature('feature.image-builder')
   @ApiOperation({ summary: 'List saved image build recipes.' })
   @ApiOkResponse({ type: ContainerImageBuildRecipe, isArray: true })
   listRecipes() {
@@ -132,6 +137,7 @@ export class ContainerImagesController {
   }
 
   @Post('recipes')
+  @RequiresFeature('feature.image-builder')
   @ApiOperation({ summary: 'Create an image build recipe.' })
   @ApiCreatedResponse({ type: ContainerImageBuildRecipe })
   createRecipe(@Body() dto: CreateContainerImageRecipeDto) {
@@ -139,6 +145,7 @@ export class ContainerImagesController {
   }
 
   @Get('recipes/:id')
+  @RequiresFeature('feature.image-builder')
   @ApiOperation({ summary: 'Read an image build recipe.' })
   @ApiOkResponse({ type: ContainerImageBuildRecipe })
   getRecipe(@Param('id') id: string) {
@@ -146,6 +153,7 @@ export class ContainerImagesController {
   }
 
   @Patch('recipes/:id')
+  @RequiresFeature('feature.image-builder')
   @ApiOperation({ summary: 'Update an image build recipe.' })
   @ApiOkResponse({ type: ContainerImageBuildRecipe })
   updateRecipe(
@@ -156,6 +164,7 @@ export class ContainerImagesController {
   }
 
   @Delete('recipes/:id')
+  @RequiresFeature('feature.image-builder')
   @ApiOperation({ summary: 'Remove an image build recipe.' })
   removeRecipe(@Param('id') id: string) {
     return this.recipes.remove(id);
@@ -169,6 +178,7 @@ export class ContainerImagesController {
   }
 
   @Get('gapps-presets')
+  @RequiresFeature('feature.image-builder')
   @ApiOperation({ summary: 'List managed ReDroid Google Play build presets.' })
   @ApiOkResponse({ type: GappsBuildPresetsResponseDto })
   listGappsPresets() {
@@ -176,6 +186,7 @@ export class ContainerImagesController {
   }
 
   @Post('gapps-builds')
+  @RequiresFeature('feature.image-builder')
   @ApiOperation({ summary: 'Queue a lightweight ReDroid GApps patch build.' })
   @ApiCreatedResponse({ type: ContainerImageBuildJob })
   startGappsBuild(@Body() dto: StartGappsBuildDto) {
@@ -183,6 +194,7 @@ export class ContainerImagesController {
   }
 
   @Delete('gapps-cache/:androidVersion')
+  @RequiresFeature('feature.image-builder')
   @ApiOperation({ summary: 'Clear the managed GApps package cache.' })
   @ApiParam({ name: 'androidVersion', enum: ['13', '14'] })
   clearGappsCache(@Param('androidVersion') androidVersion: string) {
@@ -190,6 +202,7 @@ export class ContainerImagesController {
   }
 
   @Post('builds')
+  @RequiresFeature('feature.image-builder')
   @ApiOperation({ summary: 'Start an image build job.' })
   @ApiCreatedResponse({ type: ContainerImageBuildJob })
   startBuild(@Body() dto: StartContainerImageBuildDto) {

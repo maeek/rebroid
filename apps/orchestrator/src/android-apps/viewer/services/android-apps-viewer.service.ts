@@ -303,34 +303,6 @@ export class AndroidAppsViewerService {
     return surface;
   }
 
-  /** Starts recording one display surface. */
-  async startRecording(id: string, surfaceId: string) {
-    const app = await this.getRunningRuntimeApp(id);
-    const recording = await this.displaySidecar.startRecording(app, surfaceId);
-    await this.recordViewerActivity(id);
-    return recording;
-  }
-
-  /** Stops recording one display surface and returns a downloadable data URL. */
-  async stopRecording(id: string, surfaceId: string) {
-    const app = await this.getRunningRuntimeApp(id);
-    const recording = await this.displaySidecar.stopRecording(app, surfaceId);
-    await this.recordViewerActivity(id);
-    return recording;
-  }
-
-  /** Downloads one completed display recording after validating the app surface. */
-  async downloadRecording(id: string, surfaceId: string, recordingId: string) {
-    const app = await this.getRunningRuntimeApp(id);
-    const recording = await this.displaySidecar.downloadRecording(
-      app,
-      surfaceId,
-      recordingId,
-    );
-    await this.recordViewerActivity(id);
-    return recording;
-  }
-
   /** Loads one running app for viewer actions. */
   private async getRunningRuntimeApp(id: string) {
     // Viewer bootstrap already probes the runtime and sidecar. Avoid adding a

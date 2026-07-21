@@ -15,6 +15,7 @@ import {
   DOCKER_CONTAINER_LIFECYCLE,
   type DockerContainerLifecyclePort,
 } from '../../docker/contracts/docker-container-lifecycle.port';
+import { FeatureFlagsService } from '../../feature-flags/feature-flags.service';
 
 @Injectable()
 export class NetworkPolicyBootstrapService implements OnApplicationBootstrap {
@@ -27,9 +28,16 @@ export class NetworkPolicyBootstrapService implements OnApplicationBootstrap {
     private readonly policies: NetworkPolicyService,
     @Inject(DOCKER_CONTAINER_LIFECYCLE)
     private readonly containers: DockerContainerLifecyclePort,
+    private readonly features: FeatureFlagsService,
   ) {}
 
   async onApplicationBootstrap() {
+    if (!this.features.isEnabled('feature.firewall')) {
+      this.logger.warn(
+        'Firewall feature is disabled; existing host rules are left unchanged.',
+      );
+      return;
+    }
     if (!this.config.get<boolean>('app.networkPolicy.bootstrap')) {
       this.logger.warn('Firewall policy restore is disabled for this run.');
       return;

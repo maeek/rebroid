@@ -5,6 +5,7 @@ import { recordAuditEvent } from '@/server/audit/events'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { getCurrentUserContext } from '../../../current-user'
+import { requireFeature } from '../../../features'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
 import { orchestratorAppCatalogClient } from '../../catalog-client'
 import { orchestratorAppNetworkPolicyClient } from '../../network-policy-client'
@@ -14,6 +15,7 @@ import type { UpdateNetworkPolicyInput } from '@/shared/contracts/application'
 
 export const updateNetworkPolicyAction = async (id: string, input: UpdateNetworkPolicyInput) => {
   await assertCanAccessApplication(id)
+  await requireFeature('feature.firewall')
   const user = await getCurrentUserContext()
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:configure-egress')) {
     throw new PublicActionError('You do not have permission to configure network access.', {
@@ -53,6 +55,7 @@ export const updateNetworkPolicyAction = async (id: string, input: UpdateNetwork
 
 export const applyNetworkPolicyAction = async (id: string) => {
   await assertCanAccessApplication(id)
+  await requireFeature('feature.firewall')
   const user = await getCurrentUserContext()
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:configure-egress')) {
     throw new PublicActionError('You do not have permission to apply network policy.', {
@@ -76,6 +79,7 @@ export const applyNetworkPolicyAction = async (id: string) => {
 }
 
 export const reconcileNetworkPoliciesAction = async () => {
+  await requireFeature('feature.firewall')
   const user = await getCurrentUserContext()
   if (user.role !== 'admin') {
     throw new PublicActionError('You do not have permission to reconcile all network policies.', {

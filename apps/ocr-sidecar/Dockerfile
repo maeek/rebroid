@@ -3,10 +3,9 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PORT=8100 \
-    OCR_LANGUAGES=en \
+    OCR_LANGUAGE=en \
     OCR_MIN_CONFIDENCE=0.4 \
     OCR_MAX_IMAGE_DIMENSION=1600 \
-    OCR_PREPROCESS_MODES=raw,grayscale,contrast,threshold \
     XDG_CACHE_HOME=/app/cache \
     PADDLEOCR_HOME=/app/cache/paddleocr
 
@@ -21,10 +20,11 @@ RUN apt-get update \
     libgomp1 \
   && rm -rf /var/lib/apt/lists/*
 
-COPY apps/ocr-sidecar/requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+COPY apps/ocr-sidecar/requirements.txt apps/ocr-sidecar/requirements-runtime.txt /app/
+RUN pip install --no-cache-dir -r /app/requirements-runtime.txt
 
 COPY apps/ocr-sidecar/main.py /app/main.py
+COPY apps/ocr-sidecar/ocr_sidecar /app/ocr_sidecar
 
 RUN useradd --create-home --uid 10001 --user-group rebroid \
   && mkdir -p /app/cache \

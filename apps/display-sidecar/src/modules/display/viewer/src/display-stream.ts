@@ -3,16 +3,16 @@ import type {
   ViewerConfig,
   ViewerUi,
   PageLifecycle,
-} from "./types";
+} from "./types.js";
 import {
   parseViewerAudioPacket,
   type ViewerAudioPlayer,
-} from "./audio-player";
+} from "./audio-player.js";
 import {
   emitViewerStreamStatus,
   statusFromCompatibility,
-} from "./stream-status";
-import type { StreamMetricsReporter } from "./stream-metrics";
+} from "./stream-status.js";
+import type { StreamMetricsReporter } from "./stream-metrics.js";
 
 type DisplayStreamOptions = {
   config: ViewerConfig;

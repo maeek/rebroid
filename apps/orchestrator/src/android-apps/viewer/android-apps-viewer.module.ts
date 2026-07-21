@@ -8,6 +8,7 @@ import { AndroidAppsDisplaySidecarService } from './services/android-apps-displa
 import { AndroidAppsSidecarAdbService } from './services/android-apps-sidecar-adb.service';
 import { AndroidAppsViewerNetworkService } from './services/android-apps-viewer-network.service';
 import { AndroidAppsViewerService } from './services/android-apps-viewer.service';
+import { FeatureFlagsModule } from '../../feature-flags/feature-flags.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { AndroidAppsViewerService } from './services/android-apps-viewer.service
     NetworkPolicyModule,
     SettingsModule,
     AndroidAppsCommonModule,
+    FeatureFlagsModule,
   ],
   controllers: [AndroidAppsViewerController],
   providers: [

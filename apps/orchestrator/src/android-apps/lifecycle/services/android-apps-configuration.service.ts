@@ -27,6 +27,7 @@ import { AndroidRuntimeImageResolverService } from './android-runtime-image-reso
 import { LifecycleBackgroundJobRunner } from './lifecycle-background-job-runner.service';
 import { SwitchApplicationProfileDto } from '../dto/switch-application-profile.dto';
 import { UpdateAndroidApplicationApkDto } from '../dto/update-android-application-apk.dto';
+import { FeatureFlagsService } from '../../../feature-flags/feature-flags.service';
 
 @Injectable()
 export class AndroidAppsConfigurationService {
@@ -46,9 +47,13 @@ export class AndroidAppsConfigurationService {
     private readonly tracker: AndroidAppsProvisioningTrackerService,
     private readonly transitions: AndroidAppsLifecycleTransitionService,
     private readonly writer: AndroidAppsStateWriter,
+    private readonly features: FeatureFlagsService,
   ) {}
 
   async create(dto: CreateAndroidApplicationDto) {
+    if (dto.networkPolicyEnabled !== false) {
+      this.features.assertEnabled('feature.firewall');
+    }
     const [settings, uploadedApk] = await Promise.all([
       this.settings.getSettings(),
       dto.uploadedApkId

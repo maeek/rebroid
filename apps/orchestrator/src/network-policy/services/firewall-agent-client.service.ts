@@ -4,6 +4,7 @@ import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 import { OrchestratorSettingsStore } from '../../settings/orchestrator-settings-store';
 import type { FirewallAgentPolicy } from '@rebroid/firewall-policy-core/policy';
+import { FeatureFlagsService } from '../../feature-flags/feature-flags.service';
 
 const FIREWALL_AGENT_TIMEOUT_MS = 5_000;
 
@@ -19,6 +20,7 @@ export class FirewallAgentClientService {
   constructor(
     private readonly config: ConfigService,
     private readonly settingsStore: OrchestratorSettingsStore,
+    private readonly features: FeatureFlagsService,
   ) {}
 
   health() {
@@ -50,19 +52,18 @@ export class FirewallAgentClientService {
     body?: unknown,
     authenticated = true,
   ): Promise<FirewallAgentResponse> {
+    if (!this.features.isEnabled('feature.firewall')) {
+      if (!authenticated) {
+        return Promise.resolve({
+          ok: true,
+          status: 'disabled',
+          message: 'Firewall agent integration is disabled.',
+        });
+      }
+      this.features.assertEnabled('feature.firewall');
+    }
     return this.settingsStore.getStoredSettings().then((settings) => {
       const service = settings.services.firewall;
-      if (!service.enabled) {
-        if (!authenticated) {
-          return {
-            ok: true,
-            status: 'disabled',
-            message: 'Firewall agent integration is disabled.',
-          };
-        }
-        throw new Error('Firewall agent integration is disabled.');
-      }
-
       const endpoint = service.endpoint?.trim();
       if (!endpoint) {
         throw new Error('Firewall agent endpoint is not configured.');

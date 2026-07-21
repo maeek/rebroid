@@ -38,6 +38,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/rebroid/display/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SidecarFeatureController_getState"];
+        put: operations["SidecarFeatureController_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/rebroid/adb/{udid}/clipboard": {
         parameters: {
             query?: never;
@@ -405,74 +421,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/rebroid/display/sessions/{id}/recordings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List recordings for one display session. */
-        get: operations["DisplayController_listRecordings"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/rebroid/display/sessions/{id}/recording/start": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Start recording one display session. */
-        post: operations["DisplayController_startRecording"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/rebroid/display/sessions/{id}/recording/stop": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Stop recording one display session. */
-        post: operations["DisplayController_stopRecording"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/rebroid/display/recordings/{recordingId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Download a completed display recording. */
-        get: operations["DisplayController_downloadRecording"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/rebroid/display/sessions/{id}/clipboard": {
         parameters: {
             query?: never;
@@ -507,6 +455,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/rebroid/display/sessions/{id}/logcat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read recent Android logcat output for a display session. */
+        get: operations["DisplayController_logcat"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/rebroid/display/public/sessions/{id}/actions": {
         parameters: {
             query?: never;
@@ -517,7 +482,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Execute a viewer control action using a display session token. */
-        post: operations["DisplayController_publicAction"];
+        post: operations["DisplayPublicController_action"];
         delete?: never;
         options?: never;
         head?: never;
@@ -534,7 +499,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Create a WebRTC display answer using a display session token. */
-        post: operations["DisplayController_publicWebrtcOffer"];
+        post: operations["DisplayPublicController_publicWebrtcOffer"];
         delete?: never;
         options?: never;
         head?: never;
@@ -551,7 +516,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Send a browser keyboard event using a display session token. */
-        post: operations["DisplayController_publicKeyboard"];
+        post: operations["DisplayPublicController_keyboard"];
         delete?: never;
         options?: never;
         head?: never;
@@ -568,24 +533,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Send a tap or swipe event using a display session token. */
-        post: operations["DisplayController_publicTouch"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/rebroid/display/sessions/{id}/logcat": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read recent Android logcat output for a display session. */
-        get: operations["DisplayController_logcat"];
-        put?: never;
-        post?: never;
+        post: operations["DisplayPublicController_touch"];
         delete?: never;
         options?: never;
         head?: never;
@@ -608,6 +556,15 @@ export interface components {
             /** @example 8000 */
             port: number;
             auth: components["schemas"]["HealthAuthDto"];
+        };
+        DisplayFeatureStateDto: {
+            /** @enum {string} */
+            key: "feature.display-virtual";
+            effective: boolean;
+        };
+        DisplayFeatureSnapshotDto: {
+            revision: number;
+            features: components["schemas"]["DisplayFeatureStateDto"][];
         };
         AdbClipboardResultDto: {
             /** @example Clipboard text */
@@ -811,17 +768,10 @@ export interface components {
              *     }
              */
             surfaces: Record<string, never>;
-            /**
-             * @example {
-             *       "container": "mp4",
-             *       "videoCodec": "h264",
-             *       "audio": "not-recorded"
-             *     }
-             */
-            recording: Record<string, never>;
             actions: ("back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-notifications" | "expand-settings" | "collapse-panels")[];
             /** @example true */
             adbOwnedBySidecar: boolean;
+            features: components["schemas"]["DisplayFeatureStateDto"][];
         };
         DisplayNewDisplayDto: {
             /** @example 1280 */
@@ -989,37 +939,6 @@ export interface components {
             /** @example 160 */
             dpi?: number;
         };
-        DisplayRecordingDto: {
-            /** @example display-1-lx5s2m */
-            id: string;
-            /** @example display-1 */
-            sessionId: string;
-            /**
-             * @example recording
-             * @enum {string}
-             */
-            status: "recording" | "stopped";
-            /** @example 2026-05-25T20:30:00.000Z */
-            startedAt: string;
-            stoppedAt: string | null;
-            /** @example main-display-2026-05-25T20-30-00-000Z.mp4 */
-            fileName: string;
-            /** @example video/mp4 */
-            mimeType: string;
-            /** @example 1024000 */
-            sizeBytes: number;
-            /** @example 15000 */
-            durationMs: number;
-            /** @example 450 */
-            sampleCount: number;
-            downloadPath: string | null;
-        };
-        DisplayRecordingListResponseDto: {
-            items: components["schemas"]["DisplayRecordingDto"][];
-        };
-        DisplayRecordingResponseDto: {
-            recording: components["schemas"]["DisplayRecordingDto"];
-        };
         DisplayClipboardDto: {
             /** @example Text copied from the host. */
             text?: string;
@@ -1059,6 +978,12 @@ export interface components {
             stderr?: string;
             /** @example Unsupported display action command: foo */
             message?: string;
+        };
+        DisplayLogcatDto: {
+            /** @example 2026-05-25T20:30:00.000Z */
+            collectedAt: string;
+            /** @example 05-25 20:30:00.000 ... */
+            output: string;
         };
         PublicDisplayActionDto: {
             /**
@@ -1159,12 +1084,6 @@ export interface components {
             /** @example 250 */
             durationMs?: number;
         };
-        DisplayLogcatDto: {
-            /** @example 2026-05-25T20:30:00.000Z */
-            collectedAt: string;
-            /** @example 05-25 20:30:00.000 ... */
-            output: string;
-        };
     };
     responses: never;
     parameters: never;
@@ -1208,6 +1127,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthDto"];
+                };
+            };
+        };
+    };
+    SidecarFeatureController_getState: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisplayFeatureSnapshotDto"];
+                };
+            };
+        };
+    };
+    SidecarFeatureController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DisplayFeatureSnapshotDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisplayFeatureSnapshotDto"];
                 };
             };
         };
@@ -1945,100 +1906,6 @@ export interface operations {
             };
         };
     };
-    DisplayController_listRecordings: {
-        parameters: {
-            query?: never;
-            header?: {
-                "x-rebroid-sidecar-secret"?: string;
-            };
-            path: {
-                /** @description Display session id. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DisplayRecordingListResponseDto"];
-                };
-            };
-        };
-    };
-    DisplayController_startRecording: {
-        parameters: {
-            query?: never;
-            header?: {
-                "x-rebroid-sidecar-secret"?: string;
-            };
-            path: {
-                /** @description Display session id. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DisplayRecordingResponseDto"];
-                };
-            };
-        };
-    };
-    DisplayController_stopRecording: {
-        parameters: {
-            query?: never;
-            header?: {
-                "x-rebroid-sidecar-secret"?: string;
-            };
-            path: {
-                /** @description Display session id. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DisplayRecordingResponseDto"];
-                };
-            };
-        };
-    };
-    DisplayController_downloadRecording: {
-        parameters: {
-            query?: never;
-            header?: {
-                "x-rebroid-sidecar-secret"?: string;
-            };
-            path: {
-                /** @description Display recording id. */
-                recordingId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     DisplayController_setClipboard: {
         parameters: {
             query?: never;
@@ -2095,7 +1962,33 @@ export interface operations {
             };
         };
     };
-    DisplayController_publicAction: {
+    DisplayController_logcat: {
+        parameters: {
+            query?: {
+                tail?: string;
+            };
+            header?: {
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path: {
+                /** @description Display session id. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisplayLogcatDto"];
+                };
+            };
+        };
+    };
+    DisplayPublicController_action: {
         parameters: {
             query?: never;
             header?: never;
@@ -2121,7 +2014,7 @@ export interface operations {
             };
         };
     };
-    DisplayController_publicWebrtcOffer: {
+    DisplayPublicController_publicWebrtcOffer: {
         parameters: {
             query?: never;
             header?: never;
@@ -2147,7 +2040,7 @@ export interface operations {
             };
         };
     };
-    DisplayController_publicKeyboard: {
+    DisplayPublicController_keyboard: {
         parameters: {
             query?: never;
             header?: never;
@@ -2173,7 +2066,7 @@ export interface operations {
             };
         };
     };
-    DisplayController_publicTouch: {
+    DisplayPublicController_touch: {
         parameters: {
             query?: never;
             header?: never;
@@ -2195,32 +2088,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DisplayCommandResultDto"];
-                };
-            };
-        };
-    };
-    DisplayController_logcat: {
-        parameters: {
-            query?: {
-                tail?: string;
-            };
-            header?: {
-                "x-rebroid-sidecar-secret"?: string;
-            };
-            path: {
-                /** @description Display session id. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DisplayLogcatDto"];
                 };
             };
         };

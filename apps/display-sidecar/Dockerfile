@@ -30,6 +30,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build CGO_ENABLED=0 go build -o /o
 FROM node:24-bookworm-slim AS scrcpy-server
 
 ARG SCRCPY_VERSION=4.0
+ARG SCRCPY_LINUX_X86_64_SHA256=7daf05af5d575862e62b068cf6852d6068faf7ef3178f3735e3953e778fbf0ab
 
 RUN apt-get -o Acquire::Check-Date=false update \
   && apt-get install -y --no-install-recommends \
@@ -41,6 +42,7 @@ RUN apt-get -o Acquire::Check-Date=false update \
 RUN curl -fL --retry 3 --max-time 60 \
   -o /tmp/scrcpy.tar.gz \
   "https://github.com/Genymobile/scrcpy/releases/download/v${SCRCPY_VERSION}/scrcpy-linux-x86_64-v${SCRCPY_VERSION}.tar.gz" \
+  && echo "${SCRCPY_LINUX_X86_64_SHA256}  /tmp/scrcpy.tar.gz" | sha256sum -c - \
   && mkdir -p /tmp/scrcpy \
   && tar -xzf /tmp/scrcpy.tar.gz -C /tmp/scrcpy --strip-components=1 \
   && test -f /tmp/scrcpy/scrcpy-server

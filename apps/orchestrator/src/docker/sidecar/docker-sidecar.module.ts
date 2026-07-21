@@ -11,6 +11,8 @@ import { DockerSidecarImageService } from './services/docker-sidecar-image.servi
 import { DockerSidecarNetworkService } from './services/docker-sidecar-network.service';
 import { DockerSidecarService } from './services/docker-sidecar.service';
 import { DOCKER_SIDECAR } from '../contracts/docker-sidecar.port';
+import { SIDECAR_FEATURE_SYNC } from '../contracts/sidecar-feature-sync.port';
+import { FeatureFlagsModule } from '../../feature-flags/feature-flags.module';
 
 @Module({
   imports: [
@@ -18,6 +20,7 @@ import { DOCKER_SIDECAR } from '../contracts/docker-sidecar.port';
     DockerContainersModule,
     DockerImagesModule,
     DockerNetworksModule,
+    FeatureFlagsModule,
   ],
   controllers: [DockerSidecarController],
   providers: [
@@ -28,6 +31,7 @@ import { DOCKER_SIDECAR } from '../contracts/docker-sidecar.port';
     DockerSidecarNetworkService,
     DockerSidecarService,
     { provide: DOCKER_SIDECAR, useExisting: DockerSidecarService },
+    { provide: SIDECAR_FEATURE_SYNC, useExisting: DockerSidecarApiService },
   ],
   exports: [
     DockerSidecarAdbService,
@@ -36,6 +40,7 @@ import { DOCKER_SIDECAR } from '../contracts/docker-sidecar.port';
     DockerSidecarNetworkService,
     DockerSidecarService,
     DOCKER_SIDECAR,
+    SIDECAR_FEATURE_SYNC,
   ],
 })
 export class DockerSidecarModule {}

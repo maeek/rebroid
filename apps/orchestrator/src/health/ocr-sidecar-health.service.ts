@@ -1,13 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { OrchestratorSettingsStore } from '../settings/orchestrator-settings-store';
 import type { ServiceHealthDto } from './dto/health-response.dto';
+import { FeatureFlagsService } from '../feature-flags/feature-flags.service';
 
 type OcrHealthPayload = {
   ok?: boolean;
   status?: string;
   service?: string;
   engine?: string;
-  languages?: string[];
+  language?: string;
   preprocessingModes?: string[];
   ready?: boolean;
   message?: string;
@@ -15,22 +16,24 @@ type OcrHealthPayload = {
 
 @Injectable()
 export class OcrSidecarHealthService {
-  constructor(private readonly settingsStore: OrchestratorSettingsStore) {}
+  constructor(
+    private readonly settingsStore: OrchestratorSettingsStore,
+    private readonly features: FeatureFlagsService,
+  ) {}
 
   async health(): Promise<ServiceHealthDto> {
     const settings = (await this.settingsStore.getStoredSettings()).services
       .ocr;
     const details = {
-      enabled: settings.enabled,
+      enabled: this.features.isEnabled('feature.ocr'),
       endpoint: settings.endpoint,
       timeoutMs: settings.timeoutMs,
       maxImageDimension: settings.maxImageDimension,
       minConfidence: settings.minConfidence,
-      languages: settings.languages,
-      preprocessingModes: settings.preprocessingModes,
+      language: settings.language,
     };
 
-    if (!settings.enabled) {
+    if (!details.enabled) {
       return {
         ok: true,
         status: 'disabled',
@@ -97,7 +100,7 @@ export class OcrSidecarHealthService {
       status: payload.status,
       service: payload.service,
       engine: payload.engine,
-      languages: payload.languages,
+      language: payload.language,
       preprocessingModes: payload.preprocessingModes,
       ready: payload.ready,
     };

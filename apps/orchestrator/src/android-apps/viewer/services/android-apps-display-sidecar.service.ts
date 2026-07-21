@@ -1,50 +1,25 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { DisplaySidecarApiSchemas } from '@rebroid/display-sidecar-contracts';
 import { getErrorMessage } from '../../../common/error-message';
 import { AndroidApplication } from '../../android-application.entity';
 import type { ApplicationViewerControlCommand } from '../../contracts/application-viewer-control';
 import type { DisplaySessionDto } from '../dto/scrcpy-session.dto';
 import { AndroidAppsViewerNetworkService } from './android-apps-viewer-network.service';
+import { FeatureFlagsService } from '../../../feature-flags/feature-flags.service';
+import {
+  SIDECAR_FEATURE_SYNC,
+  type SidecarFeatureSyncPort,
+} from '../../../docker/contracts/sidecar-feature-sync.port';
 
-interface DisplaySessionResponse {
-  session: DisplaySessionDto;
-}
-
-interface DisplaySessionListResponse {
-  items: DisplaySessionDto[];
-}
-
-interface DisplayActionResponse extends DisplaySessionResponse {
-  command: ApplicationViewerControlCommand;
-  executed: boolean;
-}
-
-interface DisplayClipboardResponse extends DisplaySessionResponse {
-  text: string;
-  supported: boolean;
-}
-
-export interface DisplayRecording {
-  id: string;
-  sessionId: string;
-  status: 'recording' | 'stopped';
-  startedAt: string;
-  stoppedAt: string | null;
-  fileName: string;
-  mimeType: string;
-  sizeBytes: number;
-  durationMs: number;
-  sampleCount: number;
-  downloadPath: string | null;
-}
-
-interface DisplayRecordingResponse {
-  recording: DisplayRecording;
-}
-
-interface DisplayRecordingListResponse {
-  items: DisplayRecording[];
-}
+type DisplaySessionResponse =
+  DisplaySidecarApiSchemas['DisplaySessionResponseDto'];
+type DisplaySessionListResponse =
+  DisplaySidecarApiSchemas['DisplaySessionListResponseDto'];
+type DisplayActionResponse =
+  DisplaySidecarApiSchemas['DisplayCommandResultDto'];
+type DisplayClipboardResponse =
+  DisplaySidecarApiSchemas['DisplayClipboardResultDto'];
 
 interface CreateVirtualSurfaceInput {
   name?: string;
@@ -62,6 +37,9 @@ export class AndroidAppsDisplaySidecarService {
   constructor(
     private readonly config: ConfigService,
     private readonly viewerNetwork: AndroidAppsViewerNetworkService,
+    private readonly features: FeatureFlagsService,
+    @Inject(SIDECAR_FEATURE_SYNC)
+    private readonly featureSync: SidecarFeatureSyncPort,
   ) {}
 
   /** Creates or reuses a sidecar-owned display session for an already prepared ADB target. */
@@ -107,29 +85,42 @@ export class AndroidAppsDisplaySidecarService {
   async viewerControl(
     app: AndroidApplication,
     command: ApplicationViewerControlCommand,
-  ): Promise<DisplayActionResponse> {
+  ) {
     const session = await this.ensureSession(app);
-    return this.request<DisplayActionResponse>(
+    const response = await this.request<DisplayActionResponse>(
       `/sessions/${session.id}/actions`,
       {
         method: 'POST',
         body: JSON.stringify({ command }),
       },
     );
+    if (!response.session || response.executed !== true) {
+      throw new ConflictException(
+        'Display sidecar returned a malformed control response.',
+      );
+    }
+    return { session: response.session, command, executed: true };
   }
 
-  async setClipboard(
-    app: AndroidApplication,
-    text: string,
-  ): Promise<DisplayClipboardResponse> {
+  async setClipboard(app: AndroidApplication, text: string) {
     const session = await this.ensureSession(app);
-    return this.request<DisplayClipboardResponse>(
+    const response = await this.request<DisplayClipboardResponse>(
       `/sessions/${session.id}/clipboard`,
       {
         method: 'PUT',
         body: JSON.stringify({ text }),
       },
     );
+    if (!response.session) {
+      throw new ConflictException(
+        'Display sidecar returned a malformed clipboard response.',
+      );
+    }
+    return {
+      session: response.session,
+      text: response.text,
+      supported: response.supported,
+    };
   }
 
   async releaseSessionsForApp(appId: string) {
@@ -146,6 +137,8 @@ export class AndroidAppsDisplaySidecarService {
     app: AndroidApplication,
     input: CreateVirtualSurfaceInput = {},
   ) {
+    this.features.assertEnabled('feature.display-virtual');
+    await this.featureSync.synchronizeFeatures();
     const session = await this.getOrCreateMainSession(app);
     const result = await this.request<DisplaySessionResponse>(
       `/sessions/${encodeURIComponent(session.id)}/surfaces`,
@@ -170,46 +163,6 @@ export class AndroidAppsDisplaySidecarService {
         method: 'DELETE',
       },
     );
-  }
-
-  async startRecording(app: AndroidApplication, surfaceId: string) {
-    const surface = await this.findSurfaceSession(app, surfaceId);
-    const result = await this.request<DisplayRecordingResponse>(
-      `/sessions/${encodeURIComponent(surface.id)}/recording/start`,
-      { method: 'POST' },
-    );
-
-    return result.recording;
-  }
-
-  async stopRecording(app: AndroidApplication, surfaceId: string) {
-    const surface = await this.findSurfaceSession(app, surfaceId);
-    const result = await this.request<DisplayRecordingResponse>(
-      `/sessions/${encodeURIComponent(surface.id)}/recording/stop`,
-      { method: 'POST' },
-    );
-
-    return result.recording;
-  }
-
-  async downloadRecording(
-    app: AndroidApplication,
-    surfaceId: string,
-    recordingId: string,
-  ) {
-    const surface = await this.findSurfaceSession(app, surfaceId);
-    const recordings = await this.request<DisplayRecordingListResponse>(
-      `/sessions/${encodeURIComponent(surface.id)}/recordings`,
-    );
-    const recording = recordings.items.find((item) => item.id === recordingId);
-    if (!recording?.downloadPath) {
-      throw new ConflictException('Display recording is not available.');
-    }
-
-    return {
-      recording,
-      response: await this.requestBinaryResponse(recording.downloadPath),
-    };
   }
 
   private async ensureSession(app: AndroidApplication) {
@@ -292,18 +245,6 @@ export class AndroidAppsDisplaySidecarService {
     }
 
     return payload as T;
-  }
-
-  private async requestBinaryResponse(path: string): Promise<Response> {
-    const response = await this.fetchDisplay(path);
-    if (!response.ok) {
-      const payload = this.parseJson(await response.text());
-      throw new ConflictException(
-        payload.message ?? `Display sidecar API returned ${response.status}.`,
-      );
-    }
-
-    return response;
   }
 
   private async fetchDisplay(path: string, init: RequestInit = {}) {

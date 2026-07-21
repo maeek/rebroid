@@ -28,7 +28,6 @@ export const StandardViewerControls = () => {
     keyboardCaptureEnabled,
     runtimeAvailable,
     sendControl,
-    surfaceActions,
     onCaptureScreenshot,
     onToggleKeyboardCapture
   } = useViewerControlContext()
@@ -78,7 +77,6 @@ export const StandardViewerControls = () => {
           onCaptureScreenshot={onCaptureScreenshot}
         />
       </Visible>
-      {surfaceActions}
       <Visible when={!canControl && runtimeAvailable}>
         <div className='text-xs text-foreground-muted'>Viewer controls are disabled by permissions.</div>
       </Visible>

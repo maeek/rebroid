@@ -5,6 +5,7 @@ import { DockerModule } from '../../docker/docker.module';
 import { NetworkIsolationModule } from '../../network-isolation/network-isolation.module';
 import { NetworkPolicyModule } from '../../network-policy/network-policy.module';
 import { SettingsModule } from '../../settings/settings.module';
+import { FeatureFlagsModule } from '../../feature-flags/feature-flags.module';
 import { AndroidAppsCommonModule } from '../common/android-apps-common.module';
 import { AndroidAppsPersistenceModule } from '../persistence/android-apps-persistence.module';
 import { AndroidAppsLifecycleController } from './controllers/android-apps-lifecycle.controller';
@@ -31,6 +32,7 @@ import { AndroidRuntimeImageResolverService } from './services/android-runtime-i
     NetworkIsolationModule,
     NetworkPolicyModule,
     SettingsModule,
+    FeatureFlagsModule,
     AndroidAppsCommonModule,
     AndroidAppsRuntimeNetworkModule,
     AndroidAppsProvisioningModule,

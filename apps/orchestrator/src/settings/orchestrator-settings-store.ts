@@ -15,13 +15,28 @@ import {
   OrchestratorSettingsDto,
 } from './dto/orchestrator-settings.dto';
 import type { AutomationAiProvider } from './contracts/ai-provider';
+import {
+  featureFlagDefinitions,
+  type FeatureFlagKey,
+} from '../feature-flags/feature-flag.registry';
+
+export interface PersistedFeatureFlags {
+  revision: number;
+  values: Partial<Record<FeatureFlagKey, boolean>>;
+}
 
 export type StoredOrchestratorSettings = OrchestratorSettingsDto & {
   aiProviders: AutomationAiProvider[];
+  featureFlags: PersistedFeatureFlags;
 };
 
 @Injectable()
 export class OrchestratorSettingsStore {
+  private writeQueue: Promise<void> = Promise.resolve();
+  private readonly subscribers = new Set<
+    (settings: StoredOrchestratorSettings) => void
+  >();
+
   constructor(private readonly config: ConfigService) {}
 
   async readStoredSettings() {
@@ -40,7 +55,33 @@ export class OrchestratorSettingsStore {
     return this.normalizeSettings(await this.readStoredSettings());
   }
 
-  async writeSettings(settings: StoredOrchestratorSettings) {
+  writeSettings(settings: StoredOrchestratorSettings) {
+    return this.enqueueWrite(async () => {
+      const normalized = this.normalizeSettings(settings);
+      await this.persistSettings(normalized);
+      return normalized;
+    });
+  }
+
+  updateSettings(
+    update: (
+      current: StoredOrchestratorSettings,
+    ) => StoredOrchestratorSettings | Promise<StoredOrchestratorSettings>,
+  ) {
+    return this.enqueueWrite(async () => {
+      const current = await this.getStoredSettings();
+      const updated = this.normalizeSettings(await update(current));
+      await this.persistSettings(updated);
+      return updated;
+    });
+  }
+
+  subscribe(listener: (settings: StoredOrchestratorSettings) => void) {
+    this.subscribers.add(listener);
+    return () => this.subscribers.delete(listener);
+  }
+
+  private async persistSettings(settings: StoredOrchestratorSettings) {
     const path = this.settingsPath();
     const temporaryPath = `${path}.tmp`;
     await mkdir(dirname(path), { recursive: true });
@@ -49,6 +90,16 @@ export class OrchestratorSettingsStore {
       mode: 0o600,
     });
     await rename(temporaryPath, path);
+    for (const subscriber of this.subscribers) subscriber(settings);
+  }
+
+  private enqueueWrite<T>(operation: () => Promise<T>) {
+    const pending = this.writeQueue.then(operation, operation);
+    this.writeQueue = pending.then(
+      () => undefined,
+      () => undefined,
+    );
+    return pending;
   }
 
   defaults(): StoredOrchestratorSettings {
@@ -66,6 +117,7 @@ export class OrchestratorSettingsStore {
       ),
       services: this.defaultServices(),
       aiProviders: defaultAiProviders(),
+      featureFlags: this.defaultFeatureFlags(),
     };
   }
 
@@ -94,6 +146,10 @@ export class OrchestratorSettingsStore {
       ),
       services: this.normalizeServices(value.services, defaults.services),
       aiProviders: normalizeAiProviders(value.aiProviders),
+      featureFlags: this.normalizeFeatureFlags(
+        value.featureFlags,
+        defaults.featureFlags,
+      ),
     };
   }
 
@@ -102,7 +158,36 @@ export class OrchestratorSettingsStore {
   ): OrchestratorSettingsDto {
     const publicSettings = { ...settings };
     delete (publicSettings as Partial<StoredOrchestratorSettings>).aiProviders;
+    delete (publicSettings as Partial<StoredOrchestratorSettings>).featureFlags;
     return publicSettings;
+  }
+
+  private defaultFeatureFlags(): PersistedFeatureFlags {
+    const values: Partial<Record<FeatureFlagKey, boolean>> = {};
+    for (const definition of featureFlagDefinitions) {
+      if (definition.control !== 'runtime') continue;
+      const deploymentSupported =
+        definition.key !== 'feature.ocr' ||
+        Boolean(this.config.get<string>('app.ocr.baseUrl'));
+      values[definition.key] = definition.defaultEnabled && deploymentSupported;
+    }
+    return { revision: 0, values };
+  }
+
+  private normalizeFeatureFlags(
+    value: Partial<PersistedFeatureFlags> | undefined,
+    defaults: PersistedFeatureFlags,
+  ): PersistedFeatureFlags {
+    const values = { ...defaults.values };
+    for (const definition of featureFlagDefinitions) {
+      if (definition.control !== 'runtime') continue;
+      const stored = value?.values?.[definition.key];
+      if (typeof stored === 'boolean') values[definition.key] = stored;
+    }
+    const revision = Number.isSafeInteger(value?.revision)
+      ? Math.max(0, Number(value?.revision))
+      : defaults.revision;
+    return { revision, values };
   }
 
   private settingsPath() {
@@ -120,25 +205,14 @@ export class OrchestratorSettingsStore {
     );
     return {
       ocr: {
-        enabled:
-          Boolean(ocrEndpoint) &&
-          (this.config.get<boolean>('app.ocr.enabled') ?? false),
         endpoint: ocrEndpoint,
         timeoutMs: this.config.get<number>('app.ocr.timeoutMs') ?? 15_000,
         maxImageDimension:
           this.config.get<number>('app.ocr.maxImageDimension') ?? 1600,
         minConfidence: this.config.get<number>('app.ocr.minConfidence') ?? 0.4,
-        languages: this.normalizeStringList(
-          this.config.get<string[]>('app.ocr.languages'),
-          ['en'],
-        ),
-        preprocessingModes: this.normalizeStringList(
-          this.config.get<string[]>('app.ocr.preprocessingModes'),
-          ['raw', 'grayscale', 'contrast', 'threshold'],
-        ),
+        language: this.config.get<string>('app.ocr.language')?.trim() || 'en',
       },
       firewall: {
-        enabled: true,
         endpoint: this.normalizePlainEndpoint(
           this.config.get<string>('app.firewallAgent.socketPath') ?? null,
         ),
@@ -180,11 +254,7 @@ export class OrchestratorSettingsStore {
         0,
         1,
       ),
-      languages: this.normalizeStringList(value?.languages, defaults.languages),
-      preprocessingModes: this.normalizeStringList(
-        value?.preprocessingModes,
-        defaults.preprocessingModes,
-      ),
+      language: value?.language?.trim() || defaults.language,
     };
   }
 
@@ -198,8 +268,6 @@ export class OrchestratorSettingsStore {
         ? this.normalizeHttpEndpoint(value?.endpoint ?? defaults.endpoint)
         : this.normalizePlainEndpoint(value?.endpoint ?? defaults.endpoint);
     return {
-      enabled:
-        typeof value?.enabled === 'boolean' ? value.enabled : defaults.enabled,
       endpoint,
       timeoutMs: numberInRange(
         value?.timeoutMs,
@@ -227,13 +295,5 @@ export class OrchestratorSettingsStore {
   private normalizePlainEndpoint(value?: string | null) {
     const normalized = value?.trim() ?? '';
     return normalized.length > 0 ? normalized : null;
-  }
-
-  private normalizeStringList(value: unknown, fallback: string[]) {
-    if (!Array.isArray(value)) return fallback;
-    const normalized = value
-      .map((item) => (typeof item === 'string' ? item.trim() : ''))
-      .filter((item) => item.length > 0);
-    return normalized.length > 0 ? Array.from(new Set(normalized)) : fallback;
   }
 }

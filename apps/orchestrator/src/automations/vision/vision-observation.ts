@@ -56,7 +56,7 @@ export interface VisionObservation {
     elapsedMs?: number;
     engine?: string;
     model?: string;
-    languages?: string[];
+    language?: string;
     preprocessingMode?: string;
     preprocessingAttempts?: Array<{
       mode: string;

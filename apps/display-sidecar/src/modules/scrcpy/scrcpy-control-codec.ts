@@ -2,10 +2,10 @@ import {
   viewerCommands,
   type ViewerCommand,
 } from "@rebroid/android-application-core/viewer-control";
-import {
-  ScrcpyKeyboardEventPayload,
-  ScrcpyTouchEventPayload,
-} from "./scrcpy.types";
+import type {
+  KeyboardControlPayload,
+  TouchControlPayload,
+} from "../shared/display-control.types";
 
 export const CONTROL_MESSAGE = {
   INJECT_KEYCODE: 0,
@@ -105,7 +105,7 @@ export class ScrcpyControlCodec {
     ];
   }
 
-  keyboardEventPayloads(event: ScrcpyKeyboardEventPayload) {
+  keyboardEventPayloads(event: KeyboardControlPayload) {
     if (event.eventType !== "keydown") {
       return null;
     }
@@ -126,7 +126,7 @@ export class ScrcpyControlCodec {
     return null;
   }
 
-  touchEventPayloads(event: ScrcpyTouchEventPayload) {
+  touchEventPayloads(event: TouchControlPayload) {
     const videoWidth = this.clampUInt16(event.videoWidth);
     const videoHeight = this.clampUInt16(event.videoHeight);
     if (!videoWidth || !videoHeight) {
@@ -209,7 +209,7 @@ export class ScrcpyControlCodec {
     return this.serializeClipboard(text);
   }
 
-  private keyCodeForKeyboardEvent(event: ScrcpyKeyboardEventPayload) {
+  private keyCodeForKeyboardEvent(event: KeyboardControlPayload) {
     if (event.key) {
       const special = BROWSER_CONTROL_KEY_CODES[event.key];
       if (special) {
@@ -252,7 +252,7 @@ export class ScrcpyControlCodec {
     return null;
   }
 
-  private androidMetaState(event: ScrcpyKeyboardEventPayload) {
+  private androidMetaState(event: KeyboardControlPayload) {
     let metaState = 0;
     if (event.shiftKey) {
       metaState |= ANDROID_META_SHIFT_ON;

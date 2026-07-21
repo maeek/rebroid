@@ -1,4 +1,4 @@
-import type { ViewerConfig, ViewerElements } from "./types";
+import type { ViewerConfig, ViewerElements } from "./types.js";
 
 export const keyboardEventMessageType = "rebroid-viewer-keyboard-event";
 export const keyboardCaptureMessageType = "rebroid-viewer-keyboard-capture";

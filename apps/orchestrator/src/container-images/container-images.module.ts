@@ -18,12 +18,14 @@ import { ContainerImageGappsPackageService } from './services/container-image-ga
 import { ContainerImageGappsPresetService } from './services/container-image-gapps-preset.service';
 import { ContainerImageGappsSourceService } from './services/container-image-gapps-source.service';
 import { ContainerImageGappsWorkerService } from './services/container-image-gapps-worker.service';
+import { FeatureFlagsModule } from '../feature-flags/feature-flags.module';
 
 @Module({
   imports: [
     DockerModule,
     ApkModule,
     SettingsModule,
+    FeatureFlagsModule,
     TypeOrmModule.forFeature([
       ContainerImageBuildContextFile,
       ContainerImageBuildJob,

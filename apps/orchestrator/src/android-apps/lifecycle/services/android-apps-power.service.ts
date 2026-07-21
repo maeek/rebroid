@@ -22,6 +22,7 @@ import { AndroidAppsRemovalService } from './android-apps-removal.service';
 import { AndroidAppsRuntimePreparationService } from './android-apps-runtime-preparation.service';
 import { AndroidAppsStartLifecycleService } from './android-apps-start-lifecycle.service';
 import { LifecycleBackgroundJobRunner } from './lifecycle-background-job-runner.service';
+import { FeatureFlagsService } from '../../../feature-flags/feature-flags.service';
 
 type StopOptions = { reason?: string; details?: Record<string, unknown> };
 
@@ -41,11 +42,15 @@ export class AndroidAppsPowerService {
     private readonly tracker: AndroidAppsProvisioningTrackerService,
     private readonly transitions: AndroidAppsLifecycleTransitionService,
     private readonly writer: AndroidAppsStateWriter,
+    private readonly features: FeatureFlagsService,
   ) {}
 
   async start(id: string, dto: StartAndroidApplicationDto = {}) {
     const app = await this.reconciler.reconcileById(id);
     this.assertRunnable(app);
+    if (app.networkPolicyEnabled) {
+      this.features.assertEnabled('feature.firewall');
+    }
 
     if (app.status === AndroidApplicationStatus.Provisioning) {
       const recovered =

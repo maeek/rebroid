@@ -11,18 +11,24 @@ const createSettings = (): StoredOrchestratorSettings => ({
   maxApkUploadSizeMb: 128,
   services: {
     ocr: {
-      enabled: false,
       endpoint: null,
       timeoutMs: 15000,
       maxImageDimension: 1600,
       minConfidence: 0.4,
-      languages: ['en'],
-      preprocessingModes: ['raw'],
+      language: 'en',
     },
     firewall: {
-      enabled: true,
       endpoint: '/run/rebroid-firewall/agent.sock',
       timeoutMs: 5000,
+    },
+  },
+  featureFlags: {
+    revision: 0,
+    values: {
+      'feature.ocr': false,
+      'feature.firewall': true,
+      'feature.image-builder': true,
+      'feature.display-virtual': false,
     },
   },
   aiProviders: [
@@ -78,9 +84,17 @@ const createSettings = (): StoredOrchestratorSettings => ({
 const createService = (settings = createSettings()) => {
   const store = {
     getStoredSettings: jest.fn(async () => settings),
-    writeSettings: jest.fn(async (next: StoredOrchestratorSettings) => {
-      Object.assign(settings, next);
-    }),
+    updateSettings: jest.fn(
+      async (
+        update: (
+          current: StoredOrchestratorSettings,
+        ) => StoredOrchestratorSettings | Promise<StoredOrchestratorSettings>,
+      ) => {
+        const next = await update(settings);
+        Object.assign(settings, next);
+        return settings;
+      },
+    ),
   };
   const service = new AiProviderSettingsService(
     store as never,
@@ -117,7 +131,7 @@ describe('AiProviderSettingsService', () => {
   });
 
   it('rejects duplicate provider ids on create', async () => {
-    const { service, store } = createService();
+    const { service, settings, store } = createService();
 
     await expect(
       service.createProvider({
@@ -130,6 +144,7 @@ describe('AiProviderSettingsService', () => {
         models: [],
       }),
     ).rejects.toThrow(BadRequestException);
-    expect(store.writeSettings).not.toHaveBeenCalled();
+    expect(store.updateSettings).toHaveBeenCalledTimes(1);
+    expect(settings.aiProviders).toHaveLength(1);
   });
 });

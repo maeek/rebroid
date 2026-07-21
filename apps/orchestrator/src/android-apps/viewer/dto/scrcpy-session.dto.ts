@@ -78,41 +78,6 @@ export class DisplaySurfaceDto {
   newDisplay?: DisplayNewDisplayDto;
 }
 
-export class DisplayRecordingDto {
-  @ApiProperty()
-  id!: string;
-
-  @ApiProperty()
-  sessionId!: string;
-
-  @ApiProperty({ enum: ['recording', 'stopped'] })
-  status!: 'recording' | 'stopped';
-
-  @ApiProperty()
-  startedAt!: string;
-
-  @ApiProperty({ type: String, nullable: true })
-  stoppedAt!: string | null;
-
-  @ApiProperty()
-  fileName!: string;
-
-  @ApiProperty()
-  mimeType!: string;
-
-  @ApiProperty()
-  sizeBytes!: number;
-
-  @ApiProperty()
-  durationMs!: number;
-
-  @ApiProperty()
-  sampleCount!: number;
-
-  @ApiProperty({ type: String, nullable: true })
-  downloadPath!: string | null;
-}
-
 export class DisplaySessionDto {
   @ApiProperty()
   id!: string;

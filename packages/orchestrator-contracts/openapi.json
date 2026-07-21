@@ -136,6 +136,87 @@
         ]
       }
     },
+    "/api/v1/features": {
+      "get": {
+        "operationId": "FeatureFlagsController_getManifest",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureFlagManifestDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "features"
+        ]
+      },
+      "patch": {
+        "operationId": "FeatureFlagsController_update",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFeatureFlagsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureFlagManifestDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "features"
+        ]
+      }
+    },
+    "/api/v1/features/reset": {
+      "post": {
+        "operationId": "FeatureFlagsController_reset",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetFeatureFlagsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureFlagManifestDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "features"
+        ]
+      }
+    },
     "/api/v1/settings": {
       "get": {
         "operationId": "SettingsController_getSettings",
@@ -1387,124 +1468,6 @@
           }
         },
         "summary": "Release one experimental virtual display surface.",
-        "tags": [
-          "app-viewer"
-        ]
-      }
-    },
-    "/api/v1/apps/{id}/viewer/displays/{surfaceId}/recording/start": {
-      "post": {
-        "operationId": "AndroidAppsViewerController_startRecording",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "surfaceId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DisplayRecordingDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Start recording one display surface.",
-        "tags": [
-          "app-viewer"
-        ]
-      }
-    },
-    "/api/v1/apps/{id}/viewer/displays/{surfaceId}/recording/stop": {
-      "post": {
-        "operationId": "AndroidAppsViewerController_stopRecording",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "surfaceId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DisplayRecordingDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Stop recording one display surface and return the file data.",
-        "tags": [
-          "app-viewer"
-        ]
-      }
-    },
-    "/api/v1/apps/{id}/viewer/recordings/{recordingId}": {
-      "get": {
-        "operationId": "AndroidAppsViewerController_downloadRecording",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "recordingId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "surfaceSessionId",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "summary": "Download one completed display recording.",
         "tags": [
           "app-viewer"
         ]
@@ -5090,6 +5053,10 @@
       "description": ""
     },
     {
+      "name": "features",
+      "description": ""
+    },
+    {
       "name": "health",
       "description": ""
     }
@@ -5396,14 +5363,213 @@
           "capabilities"
         ]
       },
+      "FeatureFlagStateDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "feature.ocr",
+              "feature.firewall",
+              "feature.image-builder",
+              "feature.display-virtual"
+            ],
+            "example": "feature.ocr"
+          },
+          "owner": {
+            "type": "string",
+            "enum": [
+              "automations",
+              "network-policy",
+              "container-images",
+              "display"
+            ]
+          },
+          "revision": {
+            "type": "number",
+            "example": 3,
+            "minimum": 0
+          },
+          "description": {
+            "type": "string",
+            "example": "OCR-backed automation perception."
+          },
+          "control": {
+            "type": "string",
+            "enum": [
+              "runtime",
+              "deployment"
+            ]
+          },
+          "mutable": {
+            "type": "boolean",
+            "example": true
+          },
+          "enabled": {
+            "type": "boolean",
+            "example": true
+          },
+          "supported": {
+            "type": "boolean",
+            "example": true
+          },
+          "effective": {
+            "type": "boolean",
+            "example": true
+          },
+          "syncStatus": {
+            "type": "string",
+            "enum": [
+              "applied",
+              "pending",
+              "restart_required",
+              "failed"
+            ]
+          },
+          "disablePolicy": {
+            "type": "string",
+            "enum": [
+              "block_new",
+              "drain_active",
+              "stop_active",
+              "restart_required"
+            ]
+          },
+          "lifecycle": {
+            "type": "string",
+            "enum": [
+              "permanent",
+              "rollout"
+            ]
+          },
+          "removalCondition": {
+            "type": "string",
+            "nullable": true
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "feature.ocr",
+                "feature.firewall",
+                "feature.image-builder",
+                "feature.display-virtual"
+              ]
+            }
+          },
+          "conflicts": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "feature.ocr",
+                "feature.firewall",
+                "feature.image-builder",
+                "feature.display-virtual"
+              ]
+            }
+          }
+        },
+        "required": [
+          "key",
+          "owner",
+          "revision",
+          "description",
+          "control",
+          "mutable",
+          "enabled",
+          "supported",
+          "effective",
+          "syncStatus",
+          "disablePolicy",
+          "lifecycle",
+          "removalCondition",
+          "dependencies",
+          "conflicts"
+        ]
+      },
+      "FeatureFlagManifestDto": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "number",
+            "example": 3,
+            "minimum": 0
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeatureFlagStateDto"
+            }
+          }
+        },
+        "required": [
+          "revision",
+          "features"
+        ]
+      },
+      "FeatureFlagChangeDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "feature.ocr",
+              "feature.firewall",
+              "feature.image-builder",
+              "feature.display-virtual"
+            ],
+            "example": "feature.ocr"
+          },
+          "enabled": {
+            "type": "boolean",
+            "example": false
+          }
+        },
+        "required": [
+          "key",
+          "enabled"
+        ]
+      },
+      "UpdateFeatureFlagsDto": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "number",
+            "example": 3,
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeatureFlagChangeDto"
+            }
+          }
+        },
+        "required": [
+          "revision",
+          "changes"
+        ]
+      },
+      "ResetFeatureFlagsDto": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "number",
+            "example": 3,
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "revision"
+        ]
+      },
       "OcrServiceSettingsDto": {
         "type": "object",
         "properties": {
-          "enabled": {
-            "type": "boolean",
-            "example": true,
-            "description": "Whether the optional sidecar integration should be used."
-          },
           "endpoint": {
             "type": "string",
             "nullable": true,
@@ -5428,45 +5594,21 @@
             "minimum": 0,
             "maximum": 1
           },
-          "languages": {
-            "example": [
-              "en"
-            ],
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "preprocessingModes": {
-            "example": [
-              "raw",
-              "grayscale",
-              "contrast",
-              "threshold"
-            ],
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+          "language": {
+            "type": "string",
+            "example": "en"
           }
         },
         "required": [
-          "enabled",
           "timeoutMs",
           "maxImageDimension",
           "minConfidence",
-          "languages",
-          "preprocessingModes"
+          "language"
         ]
       },
       "OptionalServiceSettingsDto": {
         "type": "object",
         "properties": {
-          "enabled": {
-            "type": "boolean",
-            "example": true,
-            "description": "Whether the optional sidecar integration should be used."
-          },
           "endpoint": {
             "type": "string",
             "nullable": true,
@@ -5481,7 +5623,6 @@
           }
         },
         "required": [
-          "enabled",
           "timeoutMs"
         ]
       },
@@ -6844,8 +6985,8 @@
           "scrcpyTransport": {
             "type": "string",
             "enum": [
-              "websocket",
-              "webrtc"
+              "webrtc",
+              "websocket"
             ]
           },
           "inactivityTimeoutSeconds": {
@@ -7488,8 +7629,8 @@
           "transport": {
             "type": "string",
             "enum": [
-              "websocket",
-              "webrtc"
+              "webrtc",
+              "websocket"
             ]
           },
           "udid": {
@@ -7613,63 +7754,6 @@
           "command",
           "executed",
           "message"
-        ]
-      },
-      "DisplayRecordingDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "sessionId": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "recording",
-              "stopped"
-            ]
-          },
-          "startedAt": {
-            "type": "string"
-          },
-          "stoppedAt": {
-            "type": "string",
-            "nullable": true
-          },
-          "fileName": {
-            "type": "string"
-          },
-          "mimeType": {
-            "type": "string"
-          },
-          "sizeBytes": {
-            "type": "number"
-          },
-          "durationMs": {
-            "type": "number"
-          },
-          "sampleCount": {
-            "type": "number"
-          },
-          "downloadPath": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "required": [
-          "id",
-          "sessionId",
-          "status",
-          "startedAt",
-          "stoppedAt",
-          "fileName",
-          "mimeType",
-          "sizeBytes",
-          "durationMs",
-          "sampleCount",
-          "downloadPath"
         ]
       },
       "UpdateNetworkPolicyDto": {
@@ -8226,8 +8310,7 @@
           },
           "targetApplicationId": {
             "type": "string",
-            "example": "98a530d6-a45d-466a-9cb4-c023067c4971",
-            "nullable": true
+            "example": "98a530d6-a45d-466a-9cb4-c023067c4971"
           },
           "profileMode": {
             "type": "string",

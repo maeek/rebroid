@@ -3,7 +3,6 @@
 import { createContext, useContext, useState } from 'react'
 import type { Dispatch, ReactNode, SetStateAction } from 'react'
 import { useDisplayViewerControls } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-context'
-import { SurfaceToolbarActions } from '@/features/applications/viewer/display/display-viewer-shell/surface/surface-toolbar-actions'
 import { renderControlIcon } from '@/features/applications/viewer/display/viewer-control-bar/commands/command-groups'
 import { useViewerControlSender } from '@/features/applications/viewer/display/viewer-control-bar/commands/use-viewer-control-sender'
 import { useFloatingToolbarDrag } from '@/features/applications/viewer/display/viewer-control-bar/floating/use-floating-toolbar-drag'
@@ -28,7 +27,6 @@ type ViewerControlContextValue = {
   sendControl: SendControl
   setFloatingCollapsed: Dispatch<SetStateAction<boolean>>
   setFloatingOpen: Dispatch<SetStateAction<boolean>>
-  surfaceActions: ReactNode
   onCaptureScreenshot: () => void
   onFloatingPointerDown: ReturnType<typeof useFloatingToolbarDrag>['handleFloatingPointerDown']
   onFloatingPointerMove: ReturnType<typeof useFloatingToolbarDrag>['handleFloatingPointerMove']
@@ -42,7 +40,6 @@ const ViewerControlContext = createContext<ViewerControlContextValue | null>(nul
 
 export const ViewerControlProvider = ({
   children,
-  mode,
   surfaceId
 }: {
   children: ReactNode
@@ -64,15 +61,6 @@ export const ViewerControlProvider = ({
     setFloatingPosition
   )
   const controlIcon: ControlIconRenderer = (command, icon) => renderControlIcon(pendingCommand, command, icon)
-  const surfaceActions = controls.onToggleRecording ? (
-    <SurfaceToolbarActions
-      recording={controls.recording}
-      canRecord={controls.canCaptureScreenshot}
-      isRecordingBusy={controls.isRecordingBusy}
-      buttonClassName={mode === 'bar' ? 'size-8' : 'size-9'}
-      onToggleRecording={controls.onToggleRecording}
-    />
-  ) : null
 
   return (
     <ViewerControlContext.Provider
@@ -91,7 +79,6 @@ export const ViewerControlProvider = ({
         sendControl,
         setFloatingCollapsed,
         setFloatingOpen,
-        surfaceActions,
         onCaptureScreenshot: controls.onCaptureScreenshot,
         onFloatingPointerDown: handleFloatingPointerDown,
         onFloatingPointerMove: handleFloatingPointerMove,

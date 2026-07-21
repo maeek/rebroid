@@ -1,5 +1,5 @@
-import { concatBytes, findStartCodes } from "./bytes";
-import type { DisplayDecoder, ViewerUi } from "./types";
+import { concatBytes, findStartCodes } from "./bytes.js";
+import type { DisplayDecoder, ViewerUi } from "./types.js";
 
 const videoFrameDurationUs = 16_667;
 type H264DecoderOptions = {

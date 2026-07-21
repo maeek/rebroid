@@ -1,5 +1,6 @@
 import { viewerCommands } from "@rebroid/android-application-core/viewer-control";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { DisplayFeatureStateDto } from "../shared/sidecar-feature.dto";
 
 export type DisplaySessionStatus =
   | "created"
@@ -391,51 +392,6 @@ export class DisplayCommandResultDto {
   message?: string;
 }
 
-export class DisplayRecordingDto {
-  @ApiProperty({ example: "display-1-lx5s2m" })
-  id!: string;
-
-  @ApiProperty({ example: "display-1" })
-  sessionId!: string;
-
-  @ApiProperty({ enum: ["recording", "stopped"], example: "recording" })
-  status!: "recording" | "stopped";
-
-  @ApiProperty({ example: "2026-05-25T20:30:00.000Z" })
-  startedAt!: string;
-
-  @ApiProperty({ type: String, nullable: true })
-  stoppedAt!: string | null;
-
-  @ApiProperty({ example: "main-display-2026-05-25T20-30-00-000Z.mp4" })
-  fileName!: string;
-
-  @ApiProperty({ example: "video/mp4" })
-  mimeType!: string;
-
-  @ApiProperty({ example: 1024000 })
-  sizeBytes!: number;
-
-  @ApiProperty({ example: 15_000 })
-  durationMs!: number;
-
-  @ApiProperty({ example: 450 })
-  sampleCount!: number;
-
-  @ApiProperty({ type: String, nullable: true })
-  downloadPath!: string | null;
-}
-
-export class DisplayRecordingResponseDto {
-  @ApiProperty({ type: DisplayRecordingDto })
-  recording!: DisplayRecordingDto;
-}
-
-export class DisplayRecordingListResponseDto {
-  @ApiProperty({ type: DisplayRecordingDto, isArray: true })
-  items!: DisplayRecordingDto[];
-}
-
 export class DisplayCapabilitiesDto {
   @ApiProperty({
     example: {
@@ -472,20 +428,14 @@ export class DisplayCapabilitiesDto {
   })
   surfaces!: Record<string, string | number>;
 
-  @ApiProperty({
-    example: {
-      container: "mp4",
-      videoCodec: "h264",
-      audio: "not-recorded",
-    },
-  })
-  recording!: Record<string, string>;
-
   @ApiProperty({ enum: viewerCommands, isArray: true })
   actions!: string[];
 
   @ApiProperty({ example: true })
   adbOwnedBySidecar!: boolean;
+
+  @ApiProperty({ type: DisplayFeatureStateDto, isArray: true })
+  features!: DisplayFeatureStateDto[];
 }
 
 export class DisplayHealthDto {

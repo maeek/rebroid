@@ -1,0 +1,1 @@
+"""Rebroid OCR sidecar."""

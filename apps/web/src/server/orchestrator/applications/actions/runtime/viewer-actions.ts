@@ -3,6 +3,7 @@
 import { recordAuditEvent } from '@/server/audit/events'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { hasPermission } from '@/shared/permissions/permissions'
+import { requireFeature } from '../../../features'
 import { sanitizeScrcpySessionForUser } from '../../safety'
 import { orchestratorAppViewerClient } from '../../viewer-client'
 import {
@@ -51,6 +52,7 @@ export const sendApplicationViewerControlAction = async (id: string, command: Ap
 
 export const createApplicationVirtualDisplayAction = async (id: string) => {
   const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
+  await requireFeature('feature.display-virtual')
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:control-viewer')) {
     throw new PublicActionError('You do not have permission to add displays for this viewer.', {
       code: 'forbidden',
@@ -71,22 +73,4 @@ export const releaseApplicationVirtualDisplayAction = async (id: string, surface
   }
 
   return orchestratorAppViewerClient.releaseVirtualDisplay(id, surfaceId)
-}
-
-export const startApplicationDisplayRecordingAction = async (id: string, surfaceId: string) => {
-  const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
-  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:capture-screenshot')) {
-    throw new PublicActionError('You do not have permission to record this viewer.', { code: 'forbidden', status: 403 })
-  }
-
-  return orchestratorAppViewerClient.startRecording(id, surfaceId)
-}
-
-export const stopApplicationDisplayRecordingAction = async (id: string, surfaceId: string) => {
-  const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
-  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:capture-screenshot')) {
-    throw new PublicActionError('You do not have permission to record this viewer.', { code: 'forbidden', status: 403 })
-  }
-
-  return orchestratorAppViewerClient.stopRecording(id, surfaceId)
 }

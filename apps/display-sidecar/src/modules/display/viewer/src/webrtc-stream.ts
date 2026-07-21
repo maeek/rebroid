@@ -3,12 +3,12 @@ import type {
   PageLifecycle,
   ViewerConfig,
   ViewerUi,
-} from "./types";
-import { rememberWebsocketFallback } from "./config";
+} from "./types.js";
+import { rememberWebsocketFallback } from "./config.js";
 import {
   emitViewerStreamMetrics,
   emitViewerStreamStatus,
-} from "./stream-status";
+} from "./stream-status.js";
 
 type WebrtcStreamOptions = {
   config: ViewerConfig;

@@ -135,16 +135,9 @@ const gappsPatcherSection = (env: Environment) => {
 };
 
 const ocrSection = (env: Environment) => ({
-  enabled: environmentBoolean(env.OCR_ENABLED, true),
   baseUrl: env.OCR_SIDECAR_BASE_URL?.replace(/\/$/, '') || '',
   timeoutMs: environmentNumber(env.OCR_TIMEOUT_MS, 15_000),
   maxImageDimension: environmentNumber(env.OCR_MAX_IMAGE_DIMENSION, 1600),
   minConfidence: environmentNumber(env.OCR_MIN_CONFIDENCE, 0.4),
-  languages: environmentCsv(env.OCR_LANGUAGES, ['en']),
-  preprocessingModes: environmentCsv(env.OCR_PREPROCESS_MODES, [
-    'raw',
-    'grayscale',
-    'contrast',
-    'threshold',
-  ]),
+  language: env.OCR_LANGUAGE?.trim() || 'en',
 });

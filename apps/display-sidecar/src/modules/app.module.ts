@@ -2,11 +2,10 @@ import { Module } from "@nestjs/common";
 import { AdbModule } from "./adb/adb.module";
 import { DisplayModule } from "./display/display.module";
 import { HealthController } from "./health/health.controller";
-import { SidecarConfigService } from "./shared/sidecar-config.service";
+import { SidecarCoreModule } from "./shared/sidecar-core.module";
 
 @Module({
-  imports: [AdbModule, DisplayModule],
+  imports: [SidecarCoreModule, AdbModule, DisplayModule],
   controllers: [HealthController],
-  providers: [SidecarConfigService],
 })
 export class AppModule {}

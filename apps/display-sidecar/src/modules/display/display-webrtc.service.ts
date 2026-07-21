@@ -2,10 +2,7 @@ import { ConflictException, Injectable, Logger } from "@nestjs/common";
 import { ChildProcess, spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { Writable } from "node:stream";
-import { AdbService } from "../adb/adb.service";
-import { type ViewerCommand } from "@rebroid/android-application-core/viewer-control";
 import { ScrcpyService } from "../scrcpy/scrcpy.service";
-import { VIEWER_CONTROL_COMMANDS } from "../scrcpy/scrcpy-control-codec";
 import {
   SCRCPY_WS_OPEN,
   ScrcpyAudioPacket,
@@ -13,7 +10,9 @@ import {
 } from "../scrcpy/scrcpy.types";
 import { SidecarConfigService } from "../shared/sidecar-config.service";
 import { DisplaySessionService } from "./display-session.service";
-import type { DisplayKeyboardBody, DisplayTouchBody } from "./display.types";
+import type { DisplayControlRequest } from "./display.types";
+import { DisplayControlService } from "./display-control.service";
+import { displayControlError } from "./display-control-response";
 
 type WebrtcOfferOptions = {
   sessionId: string;
@@ -34,12 +33,6 @@ type BridgeMessage =
   | { type: "log"; message: string }
   | { type: "error"; message: string };
 
-type DisplayControlMessage =
-  | { id?: string; type: "action"; command?: string }
-  | ({ id?: string; type: "keyboard" } & DisplayKeyboardBody)
-  | ({ id?: string; type: "touch" } & DisplayTouchBody)
-  | { id?: string; type: "clipboard"; text?: string };
-
 const DEFAULT_MAX_SIZE = 1080;
 const DEFAULT_MAX_FPS = 60;
 const DEFAULT_BITRATE = 7_000_000;
@@ -51,9 +44,9 @@ export class DisplayWebrtcService {
 
   constructor(
     private readonly sessions: DisplaySessionService,
-    private readonly adb: AdbService,
     private readonly scrcpy: ScrcpyService,
     private readonly config: SidecarConfigService,
+    private readonly controls: DisplayControlService,
   ) {}
 
   async createAnswer(options: WebrtcOfferOptions) {
@@ -184,7 +177,7 @@ export class DisplayWebrtcService {
         while (newline >= 0) {
           const line = buffer.slice(0, newline).trim();
           buffer = buffer.slice(newline + 1);
-          this.handleBridgeLine(sessionId, line, (sdp) => {
+          this.handleBridgeLine(bridge, sessionId, line, (sdp) => {
             if (settled) {
               return;
             }
@@ -214,6 +207,7 @@ export class DisplayWebrtcService {
   }
 
   private handleBridgeLine(
+    bridge: ChildProcess,
     sessionId: string,
     line: string,
     onAnswer?: (sdp: string) => void,
@@ -234,13 +228,15 @@ export class DisplayWebrtcService {
       return;
     }
     if (message.type === "control") {
-      void this.handleControlMessage(sessionId, message.payload).catch(
-        (error) => {
+      void this.handleControlMessage(sessionId, message.payload)
+        .then((payload) => this.sendDataChannelMessage(bridge, payload))
+        .catch((error) => {
+          const failure = displayControlError(error);
           this.logger.warn(
-            `[webrtc:${sessionId}] control message failed: ${this.errorMessage(error)}`,
+            `[webrtc:${sessionId}] control message failed: ${failure.code}`,
           );
-        },
-      );
+          this.sendDataChannelMessage(bridge, failure);
+        });
       return;
     }
     if (message.type === "error") {
@@ -255,60 +251,34 @@ export class DisplayWebrtcService {
   }
 
   private async handleControlMessage(sessionId: string, payload: unknown) {
-    const session = this.sessions.get(sessionId);
     const message = this.parseControlMessage(payload);
     if (!message) {
-      return;
+      return {
+        ok: false as const,
+        code: "invalid_control",
+        message: "Invalid viewer control message.",
+      };
     }
-    this.sessions.assertCapability(
-      session,
-      message.type === "clipboard" ? "clipboard" : "control",
-    );
-    this.sessions.touch(sessionId);
-    if (message.type === "action") {
-      await this.executeAction(sessionId, session.udid, message.command);
-    } else if (message.type === "keyboard") {
-      const handled = this.scrcpy.sendKeyboardEvent(sessionId, message);
-      if (!handled) {
-        await this.adb.keyboardEvent(session.udid, message);
-      }
-    } else if (message.type === "touch") {
-      const handled = this.scrcpy.sendTouchEvent(sessionId, message);
-      if (!handled) {
-        await this.adb.touchEvent(session.udid, message);
-      }
-    } else if (message.type === "clipboard") {
-      const handled = this.scrcpy.sendClipboard(sessionId, message.text ?? "");
-      if (!handled) {
-        await this.adb.setClipboard(session.udid, message.text ?? "");
-      }
-    }
+    return {
+      id: message.id,
+      ok: true as const,
+      ...(await this.controls.execute(sessionId, message)),
+    };
   }
 
-  private async executeAction(
-    sessionId: string,
-    udid: string,
-    command: string | undefined,
-  ) {
-    if (!command || !VIEWER_CONTROL_COMMANDS.has(command as ViewerCommand)) {
-      return;
-    }
-    const handled = this.scrcpy.sendViewerAction(
-      sessionId,
-      command as ViewerCommand,
+  private sendDataChannelMessage(bridge: ChildProcess, payload: unknown) {
+    bridge.stdin?.write(
+      `${JSON.stringify({ type: "datachannel", payload })}\n`,
     );
-    if (!handled) {
-      await this.adb.viewerAction(udid, command as ViewerCommand);
-    }
   }
 
-  private parseControlMessage(payload: unknown): DisplayControlMessage | null {
+  private parseControlMessage(payload: unknown): DisplayControlRequest | null {
     if (!payload || typeof payload !== "object") {
       return null;
     }
     const record = payload as Record<string, unknown>;
     return typeof record.type === "string"
-      ? (record as DisplayControlMessage)
+      ? (record as DisplayControlRequest)
       : null;
   }
 

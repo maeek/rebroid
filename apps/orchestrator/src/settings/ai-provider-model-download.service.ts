@@ -232,33 +232,36 @@ export class AiProviderModelDownloadService {
     modelId: string,
     label?: string,
   ) {
-    const settings = await this.store.getStoredSettings();
-    const index = settings.aiProviders.findIndex(
-      (provider) => provider.id === providerId,
-    );
-    if (index < 0) {
-      throw new NotFoundException(`AI provider "${providerId}" was not found.`);
-    }
-    const provider = settings.aiProviders[index];
-    const existingIndex = provider.models.findIndex(
-      (model) => model.id === modelId,
-    );
-    const nextModel = normalizeAiModel({
-      ...(existingIndex >= 0 ? provider.models[existingIndex] : {}),
-      id: modelId,
-      label: text(label) || provider.models[existingIndex]?.label || modelId,
-      enabled: true,
-      defaultFor: provider.models.length === 0 ? ['planner'] : [],
-      settings: provider.models[existingIndex]?.settings ?? {},
+    await this.store.updateSettings((settings) => {
+      const index = settings.aiProviders.findIndex(
+        (provider) => provider.id === providerId,
+      );
+      if (index < 0) {
+        throw new NotFoundException(
+          `AI provider "${providerId}" was not found.`,
+        );
+      }
+      const provider = settings.aiProviders[index];
+      const existingIndex = provider.models.findIndex(
+        (model) => model.id === modelId,
+      );
+      const nextModel = normalizeAiModel({
+        ...(existingIndex >= 0 ? provider.models[existingIndex] : {}),
+        id: modelId,
+        label: text(label) || provider.models[existingIndex]?.label || modelId,
+        enabled: true,
+        defaultFor: provider.models.length === 0 ? ['planner'] : [],
+        settings: provider.models[existingIndex]?.settings ?? {},
+      });
+      const nextModels = [...provider.models];
+      if (existingIndex >= 0) nextModels[existingIndex] = nextModel;
+      else nextModels.push(nextModel);
+      const providers = [...settings.aiProviders];
+      providers[index] = {
+        ...provider,
+        models: normalizeDefaultModel(nextModels),
+      };
+      return { ...settings, aiProviders: providers };
     });
-    const nextModels = [...provider.models];
-    if (existingIndex >= 0) nextModels[existingIndex] = nextModel;
-    else nextModels.push(nextModel);
-
-    settings.aiProviders[index] = {
-      ...provider,
-      models: normalizeDefaultModel(nextModels),
-    };
-    await this.store.writeSettings(settings);
   }
 }

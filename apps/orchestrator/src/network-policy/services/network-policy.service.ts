@@ -27,6 +27,7 @@ import {
 } from '../utils/network-policy.utils';
 import { FirewallAgentClientService } from './firewall-agent-client.service';
 import { mapWithConcurrency } from '../../common/map-with-concurrency';
+import { FeatureFlagsService } from '../../feature-flags/feature-flags.service';
 
 @Injectable()
 export class NetworkPolicyService {
@@ -41,9 +42,19 @@ export class NetworkPolicyService {
     @Inject(DOCKER_SIDECAR)
     private readonly sidecar: DockerSidecarPort,
     private readonly agent: FirewallAgentClientService,
+    private readonly features: FeatureFlagsService,
   ) {}
 
   async apply(app: NetworkPolicyTarget): Promise<AppliedNetworkPolicy> {
+    if (!this.features.isEnabled('feature.firewall')) {
+      return app.networkPolicyEnabled
+        ? {
+            status: 'error',
+            message:
+              'Restricted networking cannot be enforced while feature.firewall is disabled.',
+          }
+        : { status: 'skipped', message: 'Firewall enforcement is disabled.' };
+    }
     if (!app.containerId) {
       return {
         status: 'skipped',
@@ -85,6 +96,7 @@ export class NetworkPolicyService {
   }
 
   async reconcile(apps: NetworkPolicyTarget[]) {
+    if (!this.features.isEnabled('feature.firewall')) return;
     const policies = (
       await mapWithConcurrency(
         apps.filter((app) => app.containerId && app.networkPolicyEnabled),
@@ -101,6 +113,7 @@ export class NetworkPolicyService {
   }
 
   async remove(app: Pick<NetworkPolicyTarget, 'id'>) {
+    if (!this.features.isEnabled('feature.firewall')) return;
     await this.agent.remove(app.id).catch((error) => {
       this.logger.warn(
         `Could not remove firewall policy for ${app.id}: ${

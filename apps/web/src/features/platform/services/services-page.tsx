@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
 import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
+import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import {
   resetOrchestratorUiSettings,
   saveOrchestratorUiSettings
@@ -28,19 +29,14 @@ type ServiceRow = {
   title: string
   description: string
   icon: ReactNode
-  enabled: boolean
   endpoint: string | null
   timeoutMs: number
   settingsSummary: string
 }
 
-const serviceStatus = (service: { enabled: boolean; endpoint: string | null }) => {
-  if (!service.enabled) return 'Disabled'
-  return service.endpoint ? 'Enabled' : 'Needs endpoint'
-}
+const serviceStatus = (service: { endpoint: string | null }) => (service.endpoint ? 'Configured' : 'Needs endpoint')
 
-const statusClassName = (service: { enabled: boolean; endpoint: string | null }) => {
-  if (!service.enabled) return 'border-surface-border/70 bg-surface-band/45 text-foreground-muted'
+const statusClassName = (service: { endpoint: string | null }) => {
   return service.endpoint
     ? 'border-success/35 bg-success/10 text-success'
     : 'border-warning/35 bg-warning/10 text-warning'
@@ -73,6 +69,7 @@ export const PlatformServicesPage = ({
   const [isSaving, setIsSaving] = useState(false)
   const [searchDraft, setSearchDraft] = useState('')
   const [search, setSearch] = useState('')
+  const { isFeatureEnabled } = useFeatureFlags()
 
   const setServiceRoute = useCallback(
     (serviceId: ServiceId | null) => {
@@ -96,21 +93,22 @@ export const PlatformServicesPage = ({
 
   const serviceRows = useMemo<ServiceRow[]>(
     () =>
-      (Object.keys(serviceMeta) as ServiceId[]).map(id => {
-        const service = settings.services[id]
-        const meta = serviceMeta[id]
-        return {
-          id,
-          title: meta.title,
-          description: meta.description,
-          icon: meta.icon,
-          enabled: service.enabled,
-          endpoint: service.endpoint,
-          timeoutMs: service.timeoutMs,
-          settingsSummary: serviceDetails(settings.services, id)
-        }
-      }),
-    [settings.services]
+      (Object.keys(serviceMeta) as ServiceId[])
+        .filter(id => (id === 'ocr' ? isFeatureEnabled('feature.ocr') : isFeatureEnabled('feature.firewall')))
+        .map(id => {
+          const service = settings.services[id]
+          const meta = serviceMeta[id]
+          return {
+            id,
+            title: meta.title,
+            description: meta.description,
+            icon: meta.icon,
+            endpoint: service.endpoint,
+            timeoutMs: service.timeoutMs,
+            settingsSummary: serviceDetails(settings.services, id)
+          }
+        }),
+    [isFeatureEnabled, settings.services]
   )
 
   const columns = useMemo<ColumnDef<ServiceRow>[]>(
@@ -208,8 +206,12 @@ export const PlatformServicesPage = ({
   }, [initialSettings])
 
   useEffect(() => {
-    setEditingService(isServiceId(requestedServiceId) ? requestedServiceId : null)
-  }, [requestedServiceId])
+    const enabled =
+      requestedServiceId === 'ocr'
+        ? isFeatureEnabled('feature.ocr')
+        : requestedServiceId === 'firewall' && isFeatureEnabled('feature.firewall')
+    setEditingService(enabled && isServiceId(requestedServiceId) ? requestedServiceId : null)
+  }, [isFeatureEnabled, requestedServiceId])
 
   const updateServices = (services: OptionalServicesUiSettings) => {
     setSettings(current => ({
@@ -257,7 +259,7 @@ export const PlatformServicesPage = ({
       <PageHeader
         section={{ label: 'Platform', href: '/platform' }}
         title='Services'
-        description='Configure optional sidecar services. Disabled services are ignored by automation and health checks.'
+        description='Configure optional sidecar connection and runtime settings. Feature availability is managed separately.'
         actions={
           <>
             <Button

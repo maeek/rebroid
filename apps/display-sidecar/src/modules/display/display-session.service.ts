@@ -1,10 +1,12 @@
 import {
   BadRequestException,
+  HttpException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
 import { randomBytes, randomUUID } from "node:crypto";
 import { SidecarConfigService } from "../shared/sidecar-config.service";
+import { SidecarFeatureService } from "../shared/sidecar-feature.service";
 import {
   CreateDisplaySessionBody,
   CreateDisplaySurfaceBody,
@@ -30,26 +32,37 @@ const DEFAULT_DISPLAY_CAPABILITIES = [
   "screenshot",
   "diagnostics",
 ] as const;
-const DISPLAY_CAPABILITY_ALIASES: Record<string, string> = {
-  stream: "video",
-  input: "control",
-};
 
 @Injectable()
 export class DisplaySessionService {
   private readonly sessions = new Map<string, DisplaySession>();
 
-  constructor(private readonly config: SidecarConfigService) {}
+  constructor(
+    private readonly config: SidecarConfigService,
+    private readonly features: SidecarFeatureService,
+  ) {}
 
   create(body: CreateDisplaySessionBody): PublicDisplaySession {
     if (!body.udid?.trim()) {
       throw new BadRequestException("udid is required.");
     }
 
+    this.purgeInactiveSessions();
     const reusable = this.findReusable(body);
     if (reusable) {
       this.extend(reusable);
       return this.toPublic(reusable);
+    }
+
+    if (this.sessions.size >= this.config.sessionMaxActive) {
+      throw new HttpException(
+        {
+          statusCode: 429,
+          code: "display_session_capacity_exceeded",
+          message: "The display sidecar has reached its active session limit.",
+        },
+        429,
+      );
     }
 
     const now = new Date();
@@ -85,6 +98,7 @@ export class DisplaySessionService {
     parentSessionId: string,
     body: CreateDisplaySurfaceBody = {},
   ): PublicDisplaySession {
+    this.features.assertVirtualDisplayEnabled();
     const parent = this.get(parentSessionId);
     if (parent.surfaceKind !== "main") {
       throw new BadRequestException(
@@ -113,12 +127,12 @@ export class DisplaySessionService {
   }
 
   list(): PublicDisplaySession[] {
-    this.expireOldSessions();
+    this.purgeInactiveSessions();
     return [...this.sessions.values()].map((session) => this.toPublic(session));
   }
 
   get(id: string): DisplaySession {
-    this.expireOldSessions();
+    this.purgeInactiveSessions();
     const session = this.sessions.get(id);
     if (!session) {
       throw new NotFoundException("Display session not found.");
@@ -140,17 +154,21 @@ export class DisplaySessionService {
     const session = this.get(id);
     session.status = "released";
     session.lastActivityAt = new Date().toISOString();
-    return this.toPublic(session);
+    const released = this.toPublic(session);
+    this.sessions.delete(id);
+    return released;
   }
 
   releaseForApp(appId: string): PublicDisplaySession[] {
-    return [...this.sessions.values()]
+    const released = [...this.sessions.values()]
       .filter((session) => session.appId === appId)
       .map((session) => {
         session.status = "released";
         session.lastActivityAt = new Date().toISOString();
         return this.toPublic(session);
       });
+    for (const session of released) this.sessions.delete(session.id);
+    return released;
   }
 
   releaseSurface(
@@ -170,7 +188,9 @@ export class DisplaySessionService {
 
     surface.status = "released";
     surface.lastActivityAt = new Date().toISOString();
-    return this.toPublic(surface);
+    const released = this.toPublic(surface);
+    this.sessions.delete(surface.id);
+    return released;
   }
 
   assertStreamToken(id: string, token: string | null): DisplaySession {
@@ -189,9 +209,12 @@ export class DisplaySessionService {
   assertCapability(session: DisplaySession, capability: string) {
     const normalized = this.normalizeCapability(capability);
     if (!session.capabilities.includes(normalized)) {
-      throw new BadRequestException(
-        `Display session does not allow ${normalized}.`,
-      );
+      throw new BadRequestException({
+        statusCode: 400,
+        code: "missing_capability",
+        capability: normalized,
+        message: `Display session does not allow ${normalized}.`,
+      });
     }
   }
 
@@ -257,30 +280,29 @@ export class DisplaySessionService {
 
   private normalizeCapabilities(capabilities?: string[]) {
     const normalized = (capabilities ?? [...DEFAULT_DISPLAY_CAPABILITIES])
-      .map((capability) => this.normalizeCapability(capability))
+      .map((capability) => capability.trim())
       .filter(Boolean);
     return [...new Set(normalized)];
   }
 
   private normalizeCapability(capability: string) {
-    const trimmed = capability.trim();
-    return DISPLAY_CAPABILITY_ALIASES[trimmed] ?? trimmed;
+    return capability.trim();
   }
 
-  private expireOldSessions() {
+  private purgeInactiveSessions() {
     const now = Date.now();
-    for (const session of this.sessions.values()) {
+    for (const [id, session] of this.sessions) {
       if (
-        session.status !== "released" &&
+        session.status === "released" ||
         new Date(session.expiresAt).getTime() <= now
       ) {
-        session.status = "expired";
+        this.sessions.delete(id);
       }
     }
   }
 
   private findActiveSurfaces(session: DisplaySession) {
-    this.expireOldSessions();
+    this.purgeInactiveSessions();
     return [...this.sessions.values()]
       .filter((candidate) => {
         if (candidate.status === "released" || candidate.status === "expired") {

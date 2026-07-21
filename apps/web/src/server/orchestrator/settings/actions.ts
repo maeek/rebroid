@@ -7,6 +7,7 @@ import { getCurrentOwnerUserId, getCurrentUserContext } from '../current-user'
 import { requireAdminUser, revalidateOrchestratorSettingsPage } from '../shared'
 import { orchestratorSettingsClient } from './client'
 import type { AutomationAiProvider, AutomationAiProviderModel } from '@/shared/contracts/ai-provider'
+import type { UpdateFeatureFlags } from '@/shared/contracts/feature-flags'
 import type { RuntimeUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 const requireAutomationAiRunUser = async () => {
@@ -60,6 +61,32 @@ export const resetOrchestratorSettingsAction = async () => {
     action: 'settings.orchestrator.reset',
     resourceType: 'orchestrator_settings'
   })
+  return result
+}
+
+export const getFeatureFlagsAction = async () => {
+  await requireAdminUser()
+  return orchestratorSettingsClient.getFeatures()
+}
+
+export const updateFeatureFlagsAction = async (input: UpdateFeatureFlags) => {
+  const admin = await requireAdminUser()
+  const before = await orchestratorSettingsClient.getFeatures()
+  const result = await orchestratorSettingsClient.updateFeatures(input)
+  const previous = new Map(before.features.map(feature => [feature.key, feature.enabled]))
+  const changes = result.features
+    .filter(feature => previous.get(feature.key) !== feature.enabled)
+    .map(feature => ({ key: feature.key, from: previous.get(feature.key), to: feature.enabled }))
+
+  recordAuditEvent({
+    actorUserId: admin.id,
+    actorLabel: admin.name || admin.username || admin.id,
+    category: 'settings',
+    action: 'settings.features.update',
+    resourceType: 'feature_flags',
+    details: { changes }
+  })
+  revalidateOrchestratorSettingsPage()
   return result
 }
 

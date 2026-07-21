@@ -123,10 +123,8 @@ export const useDisplayViewerSurface = (surface: DisplayViewerSurface) => {
     isActive: surface.id === activeSurface?.id,
     isCapturing: viewerActions.isCapturing,
     isClosing: viewerActions.closingSurfaceId === surface.id,
-    isRecordingBusy: viewerActions.recordingSurfaceId === surface.id,
     keyboardCaptureEnabled,
     mediaSize,
-    recording: viewerActions.recordingsBySurfaceId[surface.id],
     streamMetrics: streamMetrics[surface.id],
     streamStatus: streamStatuses[surface.id],
     viewportSize,
@@ -142,7 +140,6 @@ export const useDisplayViewerSurface = (surface: DisplayViewerSurface) => {
     },
     onToggleFullscreen: toggleSurfaceFullscreen,
     onToggleKeyboardCapture: toggleKeyboardCapture,
-    onToggleRecording: () => void viewerActions.toggleRecording(surface),
     onViewportElement: (element: HTMLDivElement | null) => {
       surfaceViewportElementsRef.current[surface.id] = element
     }
@@ -167,8 +164,6 @@ export const useDisplayViewerControls = (surfaceId?: string) => {
     viewerActions
   } = useDisplayViewerContext()
   const surface = orderedSurfaces.find(item => item.id === surfaceId) ?? activeSurface ?? orderedSurfaces[0]
-  const recording = surface ? viewerActions.recordingsBySurfaceId[surface.id] : undefined
-  const isRecordingBusy = surface ? viewerActions.recordingSurfaceId === surface.id : false
 
   const toggleSurfaceFullscreen = () => {
     if (!surface) {
@@ -186,15 +181,12 @@ export const useDisplayViewerControls = (surfaceId?: string) => {
     fullscreen,
     isCapturing: viewerActions.isCapturing,
     keyboardCaptureEnabled,
-    recording,
     runtimeAvailable: true,
     surfaceId: surface?.id,
-    isRecordingBusy,
     onCaptureScreenshot: viewerActions.captureScreenshot,
     onOpenPopout: surface ? () => openViewerPopout(applicationId, surface) : undefined,
     onRotateViewer: surface ? () => rotateSurface(surface) : rotateActiveSurface,
     onToggleFullscreen: toggleSurfaceFullscreen,
-    onToggleKeyboardCapture: toggleKeyboardCapture,
-    onToggleRecording: surface ? () => void viewerActions.toggleRecording(surface) : undefined
+    onToggleKeyboardCapture: toggleKeyboardCapture
   }
 }

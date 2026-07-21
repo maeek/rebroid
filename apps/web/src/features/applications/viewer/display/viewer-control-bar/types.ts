@@ -31,7 +31,6 @@ export type ViewerControlRenderProps = {
   keyboardCaptureEnabled: boolean
   runtimeAvailable: boolean
   sendControl: SendControl
-  surfaceActions?: ReactNode
   onCaptureScreenshot: () => void
   onOpenPopout?: () => void
   onToggleFullscreen?: () => void

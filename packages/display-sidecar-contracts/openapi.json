@@ -45,6 +45,56 @@
         ]
       }
     },
+    "/rebroid/display/features": {
+      "get": {
+        "operationId": "SidecarFeatureController_getState",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayFeatureSnapshotDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "features"
+        ]
+      },
+      "put": {
+        "operationId": "SidecarFeatureController_update",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisplayFeatureSnapshotDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayFeatureSnapshotDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "features"
+        ]
+      }
+    },
     "/rebroid/adb/{udid}/clipboard": {
       "get": {
         "operationId": "AdbController_getClipboard",
@@ -1267,159 +1317,6 @@
         ]
       }
     },
-    "/rebroid/display/sessions/{id}/recordings": {
-      "get": {
-        "operationId": "DisplayController_listRecordings",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "description": "Display session id.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "x-rebroid-sidecar-secret",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DisplayRecordingListResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "List recordings for one display session.",
-        "tags": [
-          "display"
-        ]
-      }
-    },
-    "/rebroid/display/sessions/{id}/recording/start": {
-      "post": {
-        "operationId": "DisplayController_startRecording",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "description": "Display session id.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "x-rebroid-sidecar-secret",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DisplayRecordingResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Start recording one display session.",
-        "tags": [
-          "display"
-        ]
-      }
-    },
-    "/rebroid/display/sessions/{id}/recording/stop": {
-      "post": {
-        "operationId": "DisplayController_stopRecording",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "description": "Display session id.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "x-rebroid-sidecar-secret",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DisplayRecordingResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Stop recording one display session.",
-        "tags": [
-          "display"
-        ]
-      }
-    },
-    "/rebroid/display/recordings/{recordingId}": {
-      "get": {
-        "operationId": "DisplayController_downloadRecording",
-        "parameters": [
-          {
-            "name": "recordingId",
-            "required": true,
-            "in": "path",
-            "description": "Display recording id.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "x-rebroid-sidecar-secret",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "summary": "Download a completed display recording.",
-        "tags": [
-          "display"
-        ]
-      }
-    },
     "/rebroid/display/sessions/{id}/clipboard": {
       "put": {
         "operationId": "DisplayController_setClipboard",
@@ -1520,174 +1417,6 @@
         ]
       }
     },
-    "/rebroid/display/public/sessions/{id}/actions": {
-      "post": {
-        "operationId": "DisplayController_publicAction",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "description": "Display session id.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PublicDisplayActionDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DisplayCommandResultDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Execute a viewer control action using a display session token.",
-        "tags": [
-          "display"
-        ]
-      }
-    },
-    "/rebroid/display/public/sessions/{id}/webrtc/offer": {
-      "post": {
-        "operationId": "DisplayController_publicWebrtcOffer",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "description": "Display session id.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DisplayWebrtcOfferDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DisplayWebrtcAnswerDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Create a WebRTC display answer using a display session token.",
-        "tags": [
-          "display"
-        ]
-      }
-    },
-    "/rebroid/display/public/sessions/{id}/keyboard": {
-      "post": {
-        "operationId": "DisplayController_publicKeyboard",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "description": "Display session id.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DisplayKeyboardDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DisplayCommandResultDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Send a browser keyboard event using a display session token.",
-        "tags": [
-          "display"
-        ]
-      }
-    },
-    "/rebroid/display/public/sessions/{id}/touch": {
-      "post": {
-        "operationId": "DisplayController_publicTouch",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "description": "Display session id.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DisplayTouchDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DisplayCommandResultDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Send a tap or swipe event using a display session token.",
-        "tags": [
-          "display"
-        ]
-      }
-    },
     "/rebroid/display/sessions/{id}/logcat": {
       "get": {
         "operationId": "DisplayController_logcat",
@@ -1734,6 +1463,174 @@
         "summary": "Read recent Android logcat output for a display session.",
         "tags": [
           "display"
+        ]
+      }
+    },
+    "/rebroid/display/public/sessions/{id}/actions": {
+      "post": {
+        "operationId": "DisplayPublicController_action",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Display session id.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicDisplayActionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayCommandResultDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Execute a viewer control action using a display session token.",
+        "tags": [
+          "display-public"
+        ]
+      }
+    },
+    "/rebroid/display/public/sessions/{id}/webrtc/offer": {
+      "post": {
+        "operationId": "DisplayPublicController_publicWebrtcOffer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Display session id.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisplayWebrtcOfferDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayWebrtcAnswerDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a WebRTC display answer using a display session token.",
+        "tags": [
+          "display-public"
+        ]
+      }
+    },
+    "/rebroid/display/public/sessions/{id}/keyboard": {
+      "post": {
+        "operationId": "DisplayPublicController_keyboard",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Display session id.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisplayKeyboardDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayCommandResultDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Send a browser keyboard event using a display session token.",
+        "tags": [
+          "display-public"
+        ]
+      }
+    },
+    "/rebroid/display/public/sessions/{id}/touch": {
+      "post": {
+        "operationId": "DisplayPublicController_touch",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Display session id.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisplayTouchDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplayCommandResultDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Send a tap or swipe event using a display session token.",
+        "tags": [
+          "display-public"
         ]
       }
     }
@@ -1792,6 +1689,43 @@
           "service",
           "port",
           "auth"
+        ]
+      },
+      "DisplayFeatureStateDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "feature.display-virtual"
+            ]
+          },
+          "effective": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "effective"
+        ]
+      },
+      "DisplayFeatureSnapshotDto": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "number",
+            "minimum": 0
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DisplayFeatureStateDto"
+            }
+          }
+        },
+        "required": [
+          "revision",
+          "features"
         ]
       },
       "AdbClipboardResultDto": {
@@ -2271,14 +2205,6 @@
               "virtualDisplayDefault": "1280x720/160"
             }
           },
-          "recording": {
-            "type": "object",
-            "example": {
-              "container": "mp4",
-              "videoCodec": "h264",
-              "audio": "not-recorded"
-            }
-          },
           "actions": {
             "type": "array",
             "items": {
@@ -2303,15 +2229,21 @@
           "adbOwnedBySidecar": {
             "type": "boolean",
             "example": true
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DisplayFeatureStateDto"
+            }
           }
         },
         "required": [
           "stream",
           "compatibility",
           "surfaces",
-          "recording",
           "actions",
-          "adbOwnedBySidecar"
+          "adbOwnedBySidecar",
+          "features"
         ]
       },
       "DisplayNewDisplayDto": {
@@ -2667,97 +2599,6 @@
           }
         }
       },
-      "DisplayRecordingDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "example": "display-1-lx5s2m"
-          },
-          "sessionId": {
-            "type": "string",
-            "example": "display-1"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "recording",
-              "stopped"
-            ],
-            "example": "recording"
-          },
-          "startedAt": {
-            "type": "string",
-            "example": "2026-05-25T20:30:00.000Z"
-          },
-          "stoppedAt": {
-            "type": "string",
-            "nullable": true
-          },
-          "fileName": {
-            "type": "string",
-            "example": "main-display-2026-05-25T20-30-00-000Z.mp4"
-          },
-          "mimeType": {
-            "type": "string",
-            "example": "video/mp4"
-          },
-          "sizeBytes": {
-            "type": "number",
-            "example": 1024000
-          },
-          "durationMs": {
-            "type": "number",
-            "example": 15000
-          },
-          "sampleCount": {
-            "type": "number",
-            "example": 450
-          },
-          "downloadPath": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "required": [
-          "id",
-          "sessionId",
-          "status",
-          "startedAt",
-          "stoppedAt",
-          "fileName",
-          "mimeType",
-          "sizeBytes",
-          "durationMs",
-          "sampleCount",
-          "downloadPath"
-        ]
-      },
-      "DisplayRecordingListResponseDto": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/DisplayRecordingDto"
-            }
-          }
-        },
-        "required": [
-          "items"
-        ]
-      },
-      "DisplayRecordingResponseDto": {
-        "type": "object",
-        "properties": {
-          "recording": {
-            "$ref": "#/components/schemas/DisplayRecordingDto"
-          }
-        },
-        "required": [
-          "recording"
-        ]
-      },
       "DisplayClipboardDto": {
         "type": "object",
         "properties": {
@@ -2867,6 +2708,23 @@
         },
         "required": [
           "ok"
+        ]
+      },
+      "DisplayLogcatDto": {
+        "type": "object",
+        "properties": {
+          "collectedAt": {
+            "type": "string",
+            "example": "2026-05-25T20:30:00.000Z"
+          },
+          "output": {
+            "type": "string",
+            "example": "05-25 20:30:00.000 ..."
+          }
+        },
+        "required": [
+          "collectedAt",
+          "output"
         ]
       },
       "PublicDisplayActionDto": {
@@ -3076,23 +2934,6 @@
             "example": 250
           }
         }
-      },
-      "DisplayLogcatDto": {
-        "type": "object",
-        "properties": {
-          "collectedAt": {
-            "type": "string",
-            "example": "2026-05-25T20:30:00.000Z"
-          },
-          "output": {
-            "type": "string",
-            "example": "05-25 20:30:00.000 ..."
-          }
-        },
-        "required": [
-          "collectedAt",
-          "output"
-        ]
       }
     }
   }
