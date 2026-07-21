@@ -1,6 +1,6 @@
 'use client'
 
-import type { SystemStats } from '@/server/system/system-stats'
+import type { SystemStats } from '@/shared/contracts/system-stats'
 
 export function DetailsTable({
   systemUtilization

@@ -7,7 +7,7 @@ import { toast } from '@/hooks/use-toast'
 import { getApplicationLogsAction } from '@/server/orchestrator/applications/actions/runtime/log-actions'
 import { isSourceUnavailableForApp, unavailableSourceMessage, type LogSource } from './app-logs-utils'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { ApplicationLog } from '@/server/orchestrator/applications/types'
+import type { ApplicationLog } from '@/shared/contracts/application'
 
 type UseApplicationLogsOptions = {
   app?: AppDefinition

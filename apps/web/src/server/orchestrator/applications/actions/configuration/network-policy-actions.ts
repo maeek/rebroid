@@ -1,9 +1,8 @@
 'use server'
 
-import { PublicActionError } from '@/server/errors/public-action-error'
-
 import { allowsBroadInternetAccess } from '@rebroid/firewall-policy-core/policy'
 import { recordAuditEvent } from '@/server/audit/events'
+import { PublicActionError } from '@/server/errors/public-action-error'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { getCurrentUserContext } from '../../../current-user'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
@@ -11,7 +10,7 @@ import { orchestratorAppCatalogClient } from '../../catalog-client'
 import { orchestratorAppNetworkPolicyClient } from '../../network-policy-client'
 import { sanitizeAndroidApplicationForUser } from '../../safety'
 import { assertCanAccessApplication } from '../common/action-helpers'
-import type { UpdateNetworkPolicyInput } from '../../types'
+import type { UpdateNetworkPolicyInput } from '@/shared/contracts/application'
 
 export const updateNetworkPolicyAction = async (id: string, input: UpdateNetworkPolicyInput) => {
   await assertCanAccessApplication(id)

@@ -3,7 +3,7 @@ import { IsIn } from 'class-validator';
 import {
   viewerCommands,
   type ViewerCommand,
-} from '@rebroid/application-core/viewer-control';
+} from '@rebroid/android-application-core/viewer-control';
 
 export type ApplicationViewerControlCommand = ViewerCommand;
 export const applicationViewerControlCommands = viewerCommands;

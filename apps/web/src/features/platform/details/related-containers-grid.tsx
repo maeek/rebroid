@@ -5,8 +5,9 @@ import { IconEye } from '@tabler/icons-react'
 import Link from 'next/link'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { ContainerStateBadge } from '@/features/platform/components/runtime-containers-table-parts'
-import { DataGrid, DataGridWorkspace } from '@/shared/ui/data-grid'
-import type { PlatformContainer } from '@/server/orchestrator/platform/types'
+import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
+import type { PlatformContainer } from '@/shared/contracts/platform'
 import type { ColumnDef } from '@tanstack/react-table'
 
 export const RelatedContainersGrid = ({

@@ -2,7 +2,7 @@ import 'server-only'
 import { orchestratorPlatformClient } from '@/server/orchestrator/platform/client'
 import { runAuditedPlatformAction } from '@/server/orchestrator/platform/platform-audit'
 import { requireAdminUser } from '@/server/orchestrator/shared'
-import type { StartGappsBuildInput } from '@/shared/contracts/platform-image-build'
+import type { StartGappsBuildInput } from '@/shared/contracts/platform'
 
 export const getImageBuildJob = async (id: string) => {
   await requireAdminUser()

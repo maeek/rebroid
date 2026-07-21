@@ -10,7 +10,7 @@ import {
   recordAutomationAudit
 } from './action-helpers'
 import { orchestratorAutomationsClient } from './client'
-import type { SaveAutomationTriggerInput } from './types'
+import type { SaveAutomationTriggerInput } from '@/shared/contracts/automation'
 
 export const listAutomationTriggersAction = async () => {
   const user = await getCurrentUserContext()

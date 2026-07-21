@@ -1,7 +1,8 @@
 import 'server-only'
 import { z } from 'zod'
 import { getDatabase } from './database'
-import type { StoredUser, UserGroup, UserRole, UsersFile } from '@/server/auth/user-model'
+import type { StoredUser, UsersFile } from '@/server/auth/user-model'
+import type { UserGroup, UserRole } from '@/shared/contracts/auth-user'
 import type { PermissionMap, ResourceQuota } from '@/shared/permissions/permissions'
 
 const permissionMapSchema = z.record(z.string(), z.boolean())

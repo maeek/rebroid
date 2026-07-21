@@ -1,10 +1,9 @@
 'use server'
 
-import { PublicActionError } from '@/server/errors/public-action-error'
-
-import { applyRedroidDefaultContainerArgs } from '@rebroid/application-core/redroid-runtime'
+import { applyRedroidDefaultContainerArgs } from '@rebroid/android-application-core/redroid-runtime'
 import { allowsBroadInternetAccess } from '@rebroid/firewall-policy-core/policy'
 import { recordAuditEvent } from '@/server/audit/events'
+import { PublicActionError } from '@/server/errors/public-action-error'
 import { hasPermission, isRedroidImage } from '@/shared/permissions/permissions'
 import { getCurrentOwnerUserId, getCurrentUserContext } from '../../../current-user'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
@@ -12,7 +11,7 @@ import { orchestratorAppCatalogClient } from '../../catalog-client'
 import { orchestratorAppLifecycleClient } from '../../lifecycle-client'
 import { enforceResourceQuotas, enforceSessionQuota, sanitizeAndroidApplicationForUser } from '../../safety'
 import { assertCanAccessApplication, assertCanOpenApplicationSlot } from '../common/action-helpers'
-import type { CreateApplicationActionInput, UpdateAndroidApplicationInput } from '../../types'
+import type { CreateApplicationActionInput, UpdateAndroidApplicationInput } from '@/shared/contracts/application'
 
 const assertCanChangeResources = (
   user: Awaited<ReturnType<typeof getCurrentUserContext>>,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildAutomationYamlSchema } from './automation-yaml-schema'
-import type { AutomationCommand } from '@/server/orchestrator/automations/types'
+import type { AutomationCommand } from '@/shared/contracts/automation'
 
 const commands: AutomationCommand[] = [
   {

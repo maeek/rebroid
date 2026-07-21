@@ -11,14 +11,16 @@ import { AndroidAppsLifecycleController } from './controllers/android-apps-lifec
 import { AndroidAppsRuntimeNetworkModule } from '../network/android-apps-runtime-network.module';
 import { AndroidAppsProvisioningModule } from '../provisioning/android-apps-provisioning.module';
 import { AndroidAppsViewerModule } from '../viewer/android-apps-viewer.module';
-import { AndroidAppsApkInstallLifecycleService } from './services/android-apps-apk-install-lifecycle.service';
 import { AndroidApplicationFactory } from './services/android-application.factory';
+import { AndroidAppsConfigurationService } from './services/android-apps-configuration.service';
+import { AndroidAppsLifecycleRecoveryService } from './services/android-apps-lifecycle-recovery.service';
 import { AndroidAppsLifecycleService } from './services/android-apps-lifecycle.service';
+import { AndroidAppsPowerService } from './services/android-apps-power.service';
+import { AndroidAppsRemovalCleanupService } from './services/android-apps-removal-cleanup.service';
 import { AndroidAppsRemovalService } from './services/android-apps-removal.service';
 import { AndroidAppsRuntimePreparationService } from './services/android-apps-runtime-preparation.service';
 import { AndroidAppsStartLifecycleService } from './services/android-apps-start-lifecycle.service';
 import { AndroidRuntimeImageResolverService } from './services/android-runtime-image-resolver.service';
-import { LifecycleBackgroundJobRunner } from './services/lifecycle-background-job-runner.service';
 
 @Module({
   imports: [
@@ -36,14 +38,16 @@ import { LifecycleBackgroundJobRunner } from './services/lifecycle-background-jo
   ],
   controllers: [AndroidAppsLifecycleController],
   providers: [
-    AndroidAppsApkInstallLifecycleService,
     AndroidApplicationFactory,
+    AndroidAppsConfigurationService,
+    AndroidAppsLifecycleRecoveryService,
     AndroidAppsLifecycleService,
+    AndroidAppsPowerService,
+    AndroidAppsRemovalCleanupService,
     AndroidAppsRemovalService,
     AndroidAppsRuntimePreparationService,
     AndroidAppsStartLifecycleService,
     AndroidRuntimeImageResolverService,
-    LifecycleBackgroundJobRunner,
   ],
   exports: [AndroidAppsLifecycleService],
 })

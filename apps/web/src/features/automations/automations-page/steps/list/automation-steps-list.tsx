@@ -43,7 +43,7 @@ import {
   pointerAwareStepCollisionDetection
 } from './automation-steps-list-model'
 import type { AutomationStepForm } from '../../editor/builder-utils'
-import type { AutomationCommand } from '@/server/orchestrator/automations/types'
+import type { AutomationCommand } from '@/shared/contracts/automation'
 
 export function AutomationStepsList({
   steps,

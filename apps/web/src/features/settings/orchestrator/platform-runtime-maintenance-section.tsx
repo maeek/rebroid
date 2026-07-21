@@ -22,8 +22,8 @@ import {
 } from '@/server/orchestrator/docker-maintenance/actions'
 import { cleanupUploadedApksAction } from '@/server/orchestrator/settings/actions'
 import { isActionResult, unwrapActionResult } from '@/shared/actions/action-result'
-import type { DockerPruneResponse } from '@/server/orchestrator/docker-maintenance/types'
-import type { CleanupUploadedApksResponse } from '@/server/orchestrator/settings/types'
+import type { CleanupUploadedApksResponse } from '@/shared/contracts/application'
+import type { DockerPruneResponse } from '@/shared/contracts/docker-maintenance'
 
 const formatBytes = (bytes?: number) => {
   if (!bytes) {

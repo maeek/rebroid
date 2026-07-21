@@ -12,6 +12,7 @@ export type AndroidApplicationLifecyclePatch = Partial<
     | 'lastError'
     | 'provisioningStartedAt'
     | 'provisioningCompletedAt'
+    | 'removeDataOnRemoval'
   >
 >;
 
@@ -36,5 +37,30 @@ export class AndroidAppsStateWriter {
     patch: AndroidApplicationLifecyclePatch,
   ) {
     await this.applications.updateLifecycle(applicationId, patch);
+  }
+
+  async setApkPackageName(applicationId: string, apkPackageName: string) {
+    await this.applications.updateApkPackageName(applicationId, apkPackageName);
+  }
+
+  async setContainerReference(
+    applicationId: string,
+    containerId: string,
+    recreateContainerOnNextStart: boolean,
+  ) {
+    await this.applications.updateContainerReference(
+      applicationId,
+      containerId,
+      recreateContainerOnNextStart,
+    );
+  }
+
+  async setNetworkPolicyState(
+    applicationId: string,
+    patch: Parameters<
+      AndroidApplicationsRepository['updateNetworkPolicyState']
+    >[1],
+  ) {
+    await this.applications.updateNetworkPolicyState(applicationId, patch);
   }
 }

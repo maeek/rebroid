@@ -11,7 +11,7 @@ import {
 } from './ai-provider-settings';
 import { AiProviderHealthService } from './ai-provider-health.service';
 import { OrchestratorSettingsStore } from './orchestrator-settings-store';
-import type { AutomationAiProviderModelDownloadDto } from './dto/automation-ai-provider.dto';
+import type { AutomationAiProviderModelDownloadDto } from './dto/automation-ai-provider-download.dto';
 
 type AutomationAiProviderModelDownloadJob =
   AutomationAiProviderModelDownloadDto;

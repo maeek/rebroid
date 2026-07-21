@@ -3,7 +3,7 @@ import { IconTrash } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Visible } from '@/components/ui/visible'
-import { DataGridWorkspace } from '@/shared/ui/data-grid'
+import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import {
   AutomationLastRunFilter,
   AutomationLastStatusFilter,
@@ -11,8 +11,8 @@ import {
   AutomationTargetApplicationFilter
 } from '../shared/automation-grid-filter-controls'
 import { allFilterValue } from '../shared/grid-query-utils'
-import type { AndroidApplication } from '@/server/orchestrator/applications/types'
-import type { AutomationTriggersGridQuery } from '@/server/orchestrator/automations/types'
+import type { AndroidApplication } from '@/shared/contracts/application'
+import type { AutomationTriggersGridQuery } from '@/shared/contracts/automation'
 
 export const AutomationTriggersToolbar = ({
   applications,

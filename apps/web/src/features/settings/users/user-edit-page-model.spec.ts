@@ -6,7 +6,7 @@ import {
   toUserRole,
   type UserDraft
 } from './user-edit-page-model'
-import type { PublicUser, UserGroup } from '@/server/auth/user'
+import type { PublicUser, UserGroup } from '@/shared/contracts/auth-user'
 
 const baseUser: PublicUser = {
   id: 'user-1',

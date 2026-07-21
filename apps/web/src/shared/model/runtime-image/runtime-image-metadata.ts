@@ -1,6 +1,6 @@
-import { resolveRuntimeImageMetadata, type RuntimeImageKind } from '@rebroid/application-core/redroid-runtime'
+import { resolveRuntimeImageMetadata, type RuntimeImageKind } from '@rebroid/android-application-core/redroid-runtime'
 import { imageDisplayName } from './image-display-name'
-import type { PlatformImage } from '@/shared/contracts/platform-image'
+import type { PlatformImage } from '@/shared/contracts/platform'
 
 export const findPlatformImageByReference = (images: PlatformImage[], reference: string) => {
   const normalized = reference.trim()

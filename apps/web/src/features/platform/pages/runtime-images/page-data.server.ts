@@ -1,6 +1,6 @@
 import { listPlatformImagesGridAction } from '@/server/orchestrator/platform/image-actions'
 import { platformGridQueryFromSearchParams, type PlatformGridSearchParams } from '../platform-grid-search'
-import type { PlatformImagesGridPage, PlatformImagesGridQuery } from '@/server/orchestrator/platform/types'
+import type { PlatformImagesGridPage, PlatformImagesGridQuery } from '@/shared/contracts/platform'
 
 export type ImagesSearchParams = PlatformGridSearchParams
 

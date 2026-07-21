@@ -1,7 +1,7 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { allFilterValue } from './grid-query-utils'
-import type { AndroidApplication } from '@/server/orchestrator/applications/types'
-import type { AutomationLastStatus, AutomationsGridLastRunFilter } from '@/server/orchestrator/automations/types'
+import type { AndroidApplication } from '@/shared/contracts/application'
+import type { AutomationLastStatus, AutomationsGridLastRunFilter } from '@/shared/contracts/automation'
 
 export const AutomationTagFilter = ({
   onChange,

@@ -5,7 +5,7 @@ import {
   networkHasAttachedContainers,
   summarizeNetworkRemoveResults
 } from './runtime-networks-section-model'
-import type { PlatformNetwork } from '@/server/orchestrator/platform/types'
+import type { PlatformNetwork } from '@/shared/contracts/platform'
 
 const network = (overrides: Partial<PlatformNetwork> = {}): PlatformNetwork =>
   ({

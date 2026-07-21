@@ -21,11 +21,8 @@ export class AndroidAppLifecycleJobsRepository {
     return this.jobs.save(job);
   }
 
-  findByApplicationAndKind(
-    applicationId: string,
-    kind: AndroidAppLifecycleJobKind,
-  ) {
-    return this.jobs.findOneBy({ applicationId, kind });
+  findByApplication(applicationId: string) {
+    return this.jobs.findOneBy({ applicationId });
   }
 
   deleteByApplicationAndKind(
@@ -39,7 +36,7 @@ export class AndroidAppLifecycleJobsRepository {
     return this.jobs.delete({ applicationId });
   }
 
-  listPending() {
+  listActive() {
     return this.jobs.find({ order: { updatedAt: 'ASC' } });
   }
 }

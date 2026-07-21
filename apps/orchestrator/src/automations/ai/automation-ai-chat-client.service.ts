@@ -7,15 +7,15 @@ import {
 import {
   buildChatRequestBody,
   chatCompletionsEndpoint,
-  consumeChatCompletionStream,
   providerProtocol,
   type ChatResponseFormat,
   type ChatMessage,
-} from '@rebroid/ai-core/harness';
+} from '../../common/ai-provider-request';
+import { consumeChatCompletionStream } from './core/streaming';
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,
-} from '@rebroid/ai-core/provider';
+} from '../../settings/contracts/ai-provider';
 import {
   providerErrorDetailFromText,
   sanitizeAiText,
@@ -26,7 +26,7 @@ import {
   isProviderAbortError,
   providerRequestHeaders,
   readBoundedProviderText,
-} from '@rebroid/ai-core/provider-http';
+} from '../../common/ai-provider-http';
 
 @Injectable()
 export class AutomationAiChatClientService {

@@ -8,7 +8,7 @@ import {
 import { downloadDataUrl, runtimeActionErrorToast } from '../runtime-tools-panel.utils'
 import { runtimeFilesRootPath, topLoaderProgressForUpload, type BrowserView } from './downloads-tools-section-model'
 import { uploadDownloadFileWithProgress } from './upload-download-file'
-import type { ApplicationRuntimeFile } from '@/server/orchestrator/applications/types'
+import type { ApplicationRuntimeFile } from '@/shared/contracts/application'
 
 export const useRuntimeFileBrowser = ({
   appId,

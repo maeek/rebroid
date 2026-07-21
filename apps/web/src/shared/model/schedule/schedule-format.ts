@@ -4,7 +4,7 @@ import {
   scheduleToCron,
   type ScheduleDraft,
   weekdays
-} from '@rebroid/automation-core/schedule'
+} from '@/shared/model/automation-schedule'
 
 export { cronToSchedule, defaultSchedule, scheduleToCron, weekdays }
 

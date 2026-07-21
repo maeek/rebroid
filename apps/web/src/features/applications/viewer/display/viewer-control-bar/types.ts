@@ -1,5 +1,5 @@
 import type { PointerEvent, ReactNode } from 'react'
-import type { ApplicationViewerControlCommand } from '@/server/orchestrator/applications/types'
+import type { ApplicationViewerControlCommand } from '@/shared/contracts/application'
 
 export type SendControl = (command: ApplicationViewerControlCommand) => void
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildGroupUpdateInput, toGroupDraft, type GroupDraft } from './group-edit-page-model'
-import type { UserGroup } from '@/server/auth/user'
+import type { UserGroup } from '@/shared/contracts/auth-user'
 
 const group: UserGroup = {
   id: 'operators',

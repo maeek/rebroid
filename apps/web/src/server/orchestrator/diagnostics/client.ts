@@ -3,10 +3,9 @@ import type {
   DisplaySidecarSession,
   OrchestratorHealth,
   DockerMetricsSnapshot,
-  ServiceHealth,
-  SystemResourceCapacity,
-  SystemResources
-} from './types'
+  ServiceHealth
+} from '@/shared/contracts/diagnostics'
+import type { SystemResourceCapacity, SystemResources } from '@/shared/contracts/system-resources'
 
 export const orchestratorDiagnosticsClient = {
   health() {

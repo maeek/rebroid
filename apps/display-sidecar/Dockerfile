@@ -7,10 +7,10 @@ RUN corepack enable
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/display-sidecar/package.json apps/display-sidecar/package.json
-COPY packages/application-core/package.json packages/application-core/package.json
+COPY packages/android-application-core/package.json packages/android-application-core/package.json
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --filter @rebroid/display-sidecar... --frozen-lockfile
-COPY packages/application-core /workspace/packages/application-core
-RUN pnpm --filter @rebroid/application-core build
+COPY packages/android-application-core /workspace/packages/android-application-core
+RUN pnpm --filter @rebroid/android-application-core build
 RUN pnpm --filter @rebroid/display-sidecar deploy --prod /out
 
 WORKDIR /workspace/apps/display-sidecar

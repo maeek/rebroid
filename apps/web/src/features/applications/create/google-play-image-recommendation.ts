@@ -2,7 +2,7 @@ import {
   findPlatformImageByReference,
   resolvePlatformImageRuntimeMetadata
 } from '@/shared/model/runtime-image/runtime-image-metadata'
-import type { PlatformImage } from '@/shared/contracts/platform-image'
+import type { PlatformImage } from '@/shared/contracts/platform'
 
 export const recommendGooglePlayImage = (images: PlatformImage[], selectedReference: string) => {
   const selected = findPlatformImageByReference(images, selectedReference)

@@ -6,7 +6,10 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { setTimeout as delay } from 'node:timers/promises';
-import { AndroidApplicationsRepository } from '../../android-apps/persistence/android-applications.repository';
+import {
+  ANDROID_APPS_RUNTIME_INVENTORY,
+  type AndroidAppsRuntimeInventoryPort,
+} from '../../android-apps/contracts/android-apps-runtime-inventory.port';
 import { NetworkPolicyService } from './network-policy.service';
 import {
   DOCKER_CONTAINER_LIFECYCLE,
@@ -19,7 +22,8 @@ export class NetworkPolicyBootstrapService implements OnApplicationBootstrap {
 
   constructor(
     private readonly config: ConfigService,
-    private readonly applications: AndroidApplicationsRepository,
+    @Inject(ANDROID_APPS_RUNTIME_INVENTORY)
+    private readonly applications: AndroidAppsRuntimeInventoryPort,
     private readonly policies: NetworkPolicyService,
     @Inject(DOCKER_CONTAINER_LIFECYCLE)
     private readonly containers: DockerContainerLifecyclePort,
@@ -34,7 +38,7 @@ export class NetworkPolicyBootstrapService implements OnApplicationBootstrap {
     for (let attempt = 1; attempt <= 30; attempt += 1) {
       try {
         const applications =
-          await this.applications.findRunningWithNetworkPolicy();
+          await this.applications.findRunningNetworkPolicyTargets();
         await this.policies.reconcile(applications);
         return;
       } catch (error) {
@@ -61,7 +65,8 @@ export class NetworkPolicyBootstrapService implements OnApplicationBootstrap {
   }
 
   private async stopApplicationsWithUnverifiedPolicies() {
-    const applications = await this.applications.findRunningWithNetworkPolicy();
+    const applications =
+      await this.applications.findRunningNetworkPolicyTargets();
     for (const app of applications) {
       if (app.containerId) {
         await this.containers.stopContainer(app.containerId);

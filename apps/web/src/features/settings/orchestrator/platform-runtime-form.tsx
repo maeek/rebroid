@@ -12,7 +12,7 @@ import {
 } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { StateView } from '@/shared/ui/state-view'
-import type { PlatformImage } from '@/shared/contracts/platform-image'
+import type { PlatformImage } from '@/shared/contracts/platform'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 type SaveOrchestratorUiSettingsInput = Pick<

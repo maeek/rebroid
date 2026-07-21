@@ -33,7 +33,7 @@ import {
 import {
   applyRedroidDefaultContainerArgs,
   isRedroidRuntime,
-} from '@rebroid/application-core/redroid-runtime';
+} from '@rebroid/android-application-core/redroid-runtime';
 import { StartAndroidApplicationDto } from '../dto/start-android-application.dto';
 import { SwitchApplicationProfileDto } from '../dto/switch-application-profile.dto';
 import { UpdateAndroidApplicationDto } from '../../common/dto/update-android-application.dto';

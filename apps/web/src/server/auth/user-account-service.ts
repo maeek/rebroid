@@ -7,7 +7,8 @@ import { assertPasswordMeetsPolicy, getPasswordMinimumLength } from './password-
 import { assertCanRemoveOrDisableUser, assertCanUpdateUser } from './user-admin-guard'
 import { findGroups, nowIso, toPublicUser, validateAvatarDataUrl } from './user-model'
 import { mutateUsersFile } from './user-store'
-import type { StoredUser, UserEditorInput } from './user-model'
+import type { StoredUser } from './user-model'
+import type { UserEditorInput } from '@/shared/contracts/auth-user'
 
 const createUser = async ({
   username,

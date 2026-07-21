@@ -4,7 +4,7 @@ import * as actions from '@/server/orchestrator/automations/automation-run-actio
 import { useAiAgentChatSession } from './use-ai-agent-chat-session'
 import * as modelSettings from './use-ai-agent-model-settings'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { AutomationRun, AutomationRunEvent } from '@/server/orchestrator/automations/types'
+import type { AutomationRun, AutomationRunEvent } from '@/shared/contracts/automation'
 
 vi.mock('@/server/orchestrator/automations/automation-run-actions', () => ({
   cancelAutomationRunAction: vi.fn(),

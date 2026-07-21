@@ -8,12 +8,10 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { AndroidApplicationsRepository } from '../../../android-apps/persistence/android-applications.repository';
 import {
   DOCKER_PLATFORM_CONTAINERS,
   type DockerPlatformContainersPort,
 } from '../../../docker/contracts/docker-platform-containers.port';
-import { PlatformContainer } from '../../../docker/docker.types';
 import {
   DockerPlatformContainerDetailsDto,
   DockerPlatformContainerDto,
@@ -22,6 +20,7 @@ import {
   DockerPlatformRemovalResponseDto,
   DockerPlatformStopResponseDto,
 } from '../../dto/docker-maintenance-response.dto';
+import { DockerMaintenanceContainerQueryService } from '../services/docker-maintenance-container-query.service';
 
 @ApiTags('platform-docker')
 @Controller('platform/docker/containers')
@@ -29,23 +28,21 @@ export class DockerMaintenanceContainersController {
   constructor(
     @Inject(DOCKER_PLATFORM_CONTAINERS)
     private readonly containers: DockerPlatformContainersPort,
-    private readonly applications: AndroidApplicationsRepository,
+    private readonly queries: DockerMaintenanceContainerQueryService,
   ) {}
 
   @Get()
   @ApiOperation({ summary: 'List Docker containers visible to the platform.' })
   @ApiOkResponse({ type: [DockerPlatformContainerDto] })
   async listContainers() {
-    return this.markOrphaned(await this.containers.listPlatformContainers());
+    return this.queries.listContainers();
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Read Docker container details and relationships.' })
   @ApiOkResponse({ type: DockerPlatformContainerDetailsDto })
   async getContainer(@Param('id') id: string) {
-    const details = await this.containers.getPlatformContainerDetails(id);
-    const [container] = await this.markOrphaned([details.container]);
-    return { ...details, container };
+    return this.queries.getContainer(id);
   }
 
   @Get(':id/logs')
@@ -79,28 +76,5 @@ export class DockerMaintenanceContainersController {
   @ApiOkResponse({ type: DockerPlatformRemovalResponseDto })
   removeContainer(@Param('id') id: string, @Query('force') force?: string) {
     return this.containers.removePlatformContainer(id, force === 'true');
-  }
-
-  private async markOrphaned(containers: PlatformContainer[]) {
-    const appIds = [
-      ...new Set(
-        containers
-          .filter((container) => container.managed && container.applicationId)
-          .map((container) => container.applicationId as string),
-      ),
-    ];
-    if (!appIds.length) {
-      return containers;
-    }
-
-    const existing = await this.applications.findExistingIds(appIds);
-
-    return containers.map((container) => ({
-      ...container,
-      orphaned:
-        container.managed &&
-        Boolean(container.applicationId) &&
-        !existing.has(container.applicationId as string),
-    }));
   }
 }

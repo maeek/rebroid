@@ -1,4 +1,4 @@
-import type { ScheduledTask } from '@/server/orchestrator/scheduled-tasks/types'
+import type { ScheduledTask } from '@/shared/contracts/scheduled-task'
 import type { SortingState } from '@tanstack/react-table'
 
 const sortDate = (left: string | null, right: string | null) => {

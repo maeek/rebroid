@@ -25,8 +25,3 @@ export enum AndroidApplicationLifecycleStage {
   Removed = 'removed',
   Error = 'error',
 }
-
-export enum ScrcpyTransport {
-  WebSocket = 'websocket',
-  WebRTC = 'webrtc',
-}

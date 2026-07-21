@@ -1,4 +1,4 @@
-import { isRedroidImageName } from '@rebroid/application-core/redroid-runtime'
+import { isRedroidImageName } from '@rebroid/android-application-core/redroid-runtime'
 
 export const permissionCategories = [
   {

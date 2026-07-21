@@ -10,7 +10,7 @@ import {
   sortChatTurnsByRunCreatedAt
 } from './ai-agent-chat-session-model'
 import type { ChatTurn } from './ai-agent-chat-utils'
-import type { AutomationRun, AutomationRunEvent } from '@/server/orchestrator/automations/types'
+import type { AutomationRun, AutomationRunEvent } from '@/shared/contracts/automation'
 
 const run = (override: Partial<AutomationRun> = {}): AutomationRun => ({
   id: 'run-1',

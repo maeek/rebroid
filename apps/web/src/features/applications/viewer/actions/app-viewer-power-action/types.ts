@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { ApplicationProfileMode } from '@/server/orchestrator/applications/types'
+import type { ApplicationProfileMode } from '@/shared/contracts/application'
 import type { loadSavedApplicationProfiles } from '@/shared/model/application-profile/profile-history'
 
 export type RuntimeActionPhase = 'starting' | 'stopping' | 'restarting' | null

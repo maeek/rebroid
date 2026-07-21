@@ -14,17 +14,17 @@ import {
 import type {
   AutomationAiProviderModel,
   AutomationAiProviderModelRole,
-} from '@rebroid/ai-core/provider';
+} from './contracts/ai-provider';
 import { AiProviderHealthService } from './ai-provider-health.service';
 import { AiProviderModelDownloadService } from './ai-provider-model-download.service';
 import { OrchestratorSettingsStore } from './orchestrator-settings-store';
 import type {
-  AutomationAiProviderHealthDto,
   CreateAutomationAiProviderDto,
   CreateAutomationAiProviderModelDto,
   UpdateAutomationAiProviderDto,
   UpdateAutomationAiProviderModelDto,
 } from './dto/automation-ai-provider.dto';
+import type { AutomationAiProviderHealthDto } from './dto/automation-ai-provider-health.dto';
 
 @Injectable()
 export class AiProviderSettingsService {

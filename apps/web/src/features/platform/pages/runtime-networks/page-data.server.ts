@@ -1,6 +1,6 @@
 import { listPlatformNetworksGridAction } from '@/server/orchestrator/platform/network-actions'
 import { platformGridQueryFromSearchParams, type PlatformGridSearchParams } from '../platform-grid-search'
-import type { PlatformNetworksGridPage, PlatformNetworksGridQuery } from '@/server/orchestrator/platform/types'
+import type { PlatformNetworksGridPage, PlatformNetworksGridQuery } from '@/shared/contracts/platform'
 
 export type NetworksSearchParams = PlatformGridSearchParams
 

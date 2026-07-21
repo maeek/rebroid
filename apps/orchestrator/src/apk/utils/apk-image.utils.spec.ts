@@ -1,4 +1,9 @@
-import { imageDimensions, imageMimeType } from './apk-image.utils';
+import {
+  imageDimensions,
+  imageMimeType,
+  launcherIconDataUrl,
+  normalizeApkDisplayName,
+} from './apk-image.utils';
 
 describe('apk image utilities', () => {
   it('detects supported image mime types by extension', () => {
@@ -26,5 +31,25 @@ describe('apk image utilities', () => {
       imageDimensions(Buffer.from('not-an-image'), 'image/png'),
     ).toBeNull();
     expect(imageDimensions(Buffer.from('nope'), 'image/jpeg')).toBeNull();
+  });
+
+  it('rejects unsupported, undersized, and oversized icon candidates', () => {
+    const smallPng = Buffer.alloc(24);
+    smallPng[0] = 0x89;
+    smallPng.write('PNG', 1, 'ascii');
+    smallPng.writeUInt32BE(16, 16);
+    smallPng.writeUInt32BE(16, 20);
+
+    expect(launcherIconDataUrl('icon.svg', smallPng, 10_000)).toBeNull();
+    expect(launcherIconDataUrl('icon.png', smallPng, 100)).toBeNull();
+    expect(
+      launcherIconDataUrl('icon.png', Buffer.alloc(8 * 1024 * 1024 + 1), 100),
+    ).toBeNull();
+  });
+
+  it('normalizes bounded display names', () => {
+    expect(normalizeApkDisplayName('  Rebroid\n App  ')).toBe('Rebroid App');
+    expect(normalizeApkDisplayName('  ')).toBeNull();
+    expect(normalizeApkDisplayName('a'.repeat(130))).toHaveLength(120);
   });
 });

@@ -1,4 +1,4 @@
-import { summarizeVisualAffordances } from '@rebroid/ai-core/harness';
+import { summarizeVisualAffordances } from '../ai/core/screen-state-policy';
 import type { AutomationVisionService } from './automation-vision.service';
 
 type Observation = Awaited<ReturnType<AutomationVisionService['observe']>>;

@@ -16,6 +16,37 @@
     "apps/firewall-agent": {
       "entry": ["src/index.ts"],
       "project": ["src/**/*.ts"]
+    },
+    "packages/android-application-core": {
+      "entry": [
+        "src/redroid-runtime.ts",
+        "src/viewer-control.ts",
+        "src/**/*.spec.ts"
+      ],
+      "project": ["src/**/*.ts"]
+    },
+    "packages/automation-core": {
+      "entry": [
+        "src/ai-public-text.ts",
+        "src/command-registry.ts",
+        "src/definition.ts",
+        "src/metadata.ts",
+        "src/yaml-draft.ts",
+        "src/**/*.spec.ts"
+      ],
+      "project": ["src/**/*.ts"]
+    },
+    "packages/firewall-policy-core": {
+      "entry": ["src/policy.ts", "src/**/*.spec.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "packages/orchestrator-contracts": {
+      "entry": ["src/index.ts"],
+      "project": ["src/index.ts"]
+    },
+    "packages/display-sidecar-contracts": {
+      "entry": ["src/index.ts"],
+      "project": ["src/index.ts"]
     }
   }
 }

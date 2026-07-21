@@ -14,7 +14,7 @@ import {
 import {
   resolveRuntimeImageMetadata,
   type RuntimeImageKind,
-} from '@rebroid/application-core/redroid-runtime';
+} from '@rebroid/android-application-core/redroid-runtime';
 
 @Injectable()
 export class AndroidRuntimeImageResolverService {

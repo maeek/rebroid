@@ -18,8 +18,9 @@ import {
 } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/schedule-utils'
 import { useScheduledTasksControllerContext } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-context'
 import { sortTasks } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-table-utils'
-import { DataGrid, DataGridWorkspace } from '@/shared/ui/data-grid'
-import type { ScheduledTask } from '@/server/orchestrator/scheduled-tasks/types'
+import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
+import type { ScheduledTask } from '@/shared/contracts/scheduled-task'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
 
 export const ScheduledTasksTable = () => {

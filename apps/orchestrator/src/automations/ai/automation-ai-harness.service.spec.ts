@@ -1,4 +1,6 @@
-import { DEVICE_DECISION_TOOL_NAME } from '@rebroid/ai-core/harness';
+import { DEVICE_DECISION_TOOL_NAME } from './core/device-decision';
+import { AutomationAiActionExecutor } from './automation-ai-action-executor.service';
+import { AutomationAiDecisionService } from './automation-ai-decision.service';
 import { AutomationAiHarnessService } from './automation-ai-harness.service';
 import type { AutomationAiHarnessContext } from './automation-ai.types';
 import type { AutomationRunEventInput } from '../events/automation-run-events.types';
@@ -127,6 +129,24 @@ const createHarness = ({
   for (const response of chatResponses) chat.mockResolvedValueOnce(response);
   const perception = jest.fn();
   for (const value of observations) perception.mockResolvedValueOnce(value);
+  const eventBus = {
+    emit: jest.fn(async (event: AutomationRunEventInput) => {
+      events.push(event);
+      return {
+        ...event,
+        id: `event-${events.length}`,
+        sequence: events.length,
+      };
+    }),
+  };
+  const decisions = new AutomationAiDecisionService(
+    { chat } as never,
+    eventBus as never,
+  );
+  const actions = new AutomationAiActionExecutor(
+    eventBus as never,
+    { observe: perception } as never,
+  );
   const service = new AutomationAiHarnessService(
     { getProvider: jest.fn().mockResolvedValue({ provider, model }) } as never,
     {
@@ -140,18 +160,9 @@ const createHarness = ({
         },
       ]),
     } as never,
-    {
-      emit: jest.fn(async (event: AutomationRunEventInput) => {
-        events.push(event);
-        return {
-          ...event,
-          id: `event-${events.length}`,
-          sequence: events.length,
-        };
-      }),
-    } as never,
-    { observe: perception } as never,
-    { chat } as never,
+    eventBus as never,
+    decisions,
+    actions,
   );
   return { service, events, chat, perception };
 };
@@ -333,5 +344,115 @@ describe('AutomationAiHarnessService', () => {
           event.message?.includes('disabled'),
       ),
     ).toBe(true);
+  });
+
+  it('records an unchanged screen as a failed action', async () => {
+    const { service, events } = createHarness({
+      observations: [
+        observation('screen-1', 'same-image'),
+        observation('screen-2', 'same-image'),
+      ],
+      chatResponses: [
+        decisionResponse({
+          kind: 'act',
+          snapshotId: 'screen-1',
+          intent: 'Open Settings',
+          expectedOutcome: 'Settings screen is visible',
+          action: { type: 'tap', candidateId: 'candidate-1' },
+        }),
+        decisionResponse({
+          kind: 'finish',
+          status: 'blocked',
+          finalText: 'The screen did not change.',
+          reason: 'The action could not be verified.',
+          evidenceIds: ['action:1'],
+          completedSubgoalIds: [],
+        }),
+      ],
+    });
+    const toolExecutor = jest.fn().mockResolvedValue({
+      summary: 'Tapped Settings.',
+      data: { x: 216, y: 585 },
+    });
+
+    await service.run(input, context(toolExecutor));
+
+    expect(
+      events.some(
+        (event) =>
+          event.type === 'ai.tool.failed' &&
+          event.message?.includes('Screen did not change'),
+      ),
+    ).toBe(true);
+  });
+
+  it('stops at the action budget after a structured command failure', async () => {
+    const { service, events, chat } = createHarness({
+      chatResponses: [
+        decisionResponse({
+          kind: 'act',
+          snapshotId: 'screen-1',
+          intent: 'List packages',
+          expectedOutcome: 'Installed packages are returned',
+          action: {
+            type: 'invoke_capability',
+            uses: 'android.listPackages',
+            input: {},
+          },
+        }),
+      ],
+    });
+    const toolExecutor = jest.fn().mockResolvedValue({
+      summary: 'Package query failed.',
+      data: { success: false },
+    });
+
+    const result = await service.run(
+      { ...input, maxToolCalls: 1 },
+      context(toolExecutor),
+    );
+
+    expect(result.data).toMatchObject({ status: 'blocked', toolCalls: 1 });
+    expect(chat).toHaveBeenCalledTimes(1);
+    expect(events.some((event) => event.type === 'ai.tool.failed')).toBe(true);
+  });
+
+  it('executes only an approved allowlisted shell escalation', async () => {
+    const { service } = createHarness({
+      chatResponses: [
+        decisionResponse({
+          kind: 'request_escalation',
+          reason: 'Inspect the Android release',
+          program: 'getprop',
+          args: ['ro.build.version.release'],
+        }),
+        decisionResponse({
+          kind: 'finish',
+          status: 'completed',
+          finalText: 'Android release inspected.',
+          evidenceIds: ['action:1'],
+          completedSubgoalIds: [],
+        }),
+      ],
+    });
+    const toolExecutor = jest.fn().mockResolvedValue({
+      summary: 'Android 14',
+      data: { output: '14' },
+    });
+
+    await service.run(
+      { ...input, rawShellPolicy: 'allowlisted' },
+      context(toolExecutor),
+    );
+
+    expect(toolExecutor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'android.adbShell',
+        arguments: {
+          command: 'getprop ro.build.version.release',
+          timeoutMs: 10_000,
+        },
+      }),
+    );
   });
 });

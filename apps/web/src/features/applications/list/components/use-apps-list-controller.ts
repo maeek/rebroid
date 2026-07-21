@@ -33,7 +33,7 @@ import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
 import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import type { AppsListContextValue, BulkAction, PendingAppAction } from './apps-list-context'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { AndroidApplication } from '@/server/orchestrator/applications/types'
+import type { AndroidApplication } from '@/shared/contracts/application'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 
 const listApplications = async () => {

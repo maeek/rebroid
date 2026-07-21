@@ -8,7 +8,7 @@ import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { RuntimeContainersSection } from './runtime-containers-section'
 import { createContainerColumns } from './runtime-containers-table-parts'
 import { RuntimeInventoryLoadingSection } from './runtime-inventory-loading-section'
-import type { PlatformContainersGridPage, PlatformContainersGridQuery } from '@/server/orchestrator/platform/types'
+import type { PlatformContainersGridPage, PlatformContainersGridQuery } from '@/shared/contracts/platform'
 
 export const RuntimeContainersPageClient = ({
   containersPage,

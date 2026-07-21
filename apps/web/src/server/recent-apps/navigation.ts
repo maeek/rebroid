@@ -1,5 +1,5 @@
 import { compareAppNames } from '@/shared/model/applications/app-sort'
-import type { AndroidApplicationSummary } from '@/server/orchestrator/applications/types'
+import type { AndroidApplicationSummary } from '@/shared/contracts/application'
 
 export const navigationAppsLimit = 5
 

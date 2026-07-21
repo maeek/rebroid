@@ -1,6 +1,6 @@
 import { imageDisplayName } from '@/shared/model/runtime-image/image-display-name'
 import { buildPlatformGridHref } from './runtime-grid-query-utils'
-import type { PlatformImage, PlatformImagesGridQuery } from '@/server/orchestrator/platform/types'
+import type { PlatformImage, PlatformImagesGridQuery } from '@/shared/contracts/platform'
 
 type ImagesGridHrefInput = {
   gridQuery: PlatformImagesGridQuery

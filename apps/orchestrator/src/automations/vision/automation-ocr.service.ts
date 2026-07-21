@@ -1,8 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  createDetection,
-  type VisionDetection,
-} from '@rebroid/vision-core/observation';
+import { createDetection, type VisionDetection } from './vision-observation';
 import { OrchestratorSettingsStore } from '../../settings/orchestrator-settings-store';
 import { sanitizeAiText } from '../ai/automation-ai-observation.utils';
 import type { AiScreenshot } from '../ai/automation-ai-screenshot.utils';

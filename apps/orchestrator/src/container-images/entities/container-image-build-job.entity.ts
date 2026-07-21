@@ -10,7 +10,7 @@ import type {
   RuntimeImageGmsMode,
   RuntimeImageKind,
   RuntimeImageSignatureSpoofing,
-} from '@rebroid/application-core/redroid-runtime';
+} from '@rebroid/android-application-core/redroid-runtime';
 import {
   containerImageBuildStatuses,
   type ContainerImageBuildStatus,

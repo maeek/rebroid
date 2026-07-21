@@ -1,5 +1,5 @@
-import { defaultSchedule } from '@rebroid/automation-core/schedule'
 import { describe, expect, it } from 'vitest'
+import { defaultSchedule } from '@/shared/model/automation-schedule'
 import {
   activeTriggerFilterCount,
   applyTriggerTargetApplication,
@@ -16,12 +16,8 @@ import {
   triggerFormSavePayload
 } from './automation-triggers-page-model'
 import type { TriggerFormState } from './automation-trigger-types'
-import type { AndroidApplication } from '@/server/orchestrator/applications/types'
-import type {
-  Automation,
-  AutomationTrigger,
-  AutomationTriggersGridQuery
-} from '@/server/orchestrator/automations/types'
+import type { AndroidApplication } from '@/shared/contracts/application'
+import type { Automation, AutomationTrigger, AutomationTriggersGridQuery } from '@/shared/contracts/automation'
 
 const automation = {
   id: 'automation-1',

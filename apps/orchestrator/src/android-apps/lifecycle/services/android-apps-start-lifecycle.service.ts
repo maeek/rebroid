@@ -1,198 +1,108 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { getErrorMessage } from '../../../common/error-message';
-import { RedroidRuntimeConfigService } from '../../../config/redroid-runtime-config.service';
-import {
-  DOCKER_CONTAINER_LIFECYCLE,
-  type DockerContainerLifecyclePort,
-} from '../../../docker/contracts/docker-container-lifecycle.port';
-import {
-  DOCKER_CONTAINER_PROVISIONING,
-  type DockerContainerProvisioningPort,
-} from '../../../docker/contracts/docker-container-provisioning.port';
-import {
-  DOCKER_IMAGE_RUNTIME,
-  type DockerImageRuntimePort,
-} from '../../../docker/contracts/docker-image-runtime.port';
-import {
-  DOCKER_RESOURCE_RUNTIME,
-  type DockerResourceRuntimePort,
-} from '../../../docker/contracts/docker-resource-runtime.port';
 import { AndroidApplication } from '../../android-application.entity';
+import { AndroidAppsLifecycleTransitionService } from '../../common/services/android-apps-lifecycle-transition.service';
+import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
+import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
+import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
 } from '../../contracts/android-application-status';
-import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
-import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
-import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
-import { AndroidAppsStateWriter } from '../../common/services/android-apps-state-writer.service';
-import { AndroidAppsRuntimeNetworkService } from '../../network/services/android-apps-runtime-network.service';
-import { AndroidAppsProvisioningApkService } from '../../provisioning/services/android-apps-provisioning-apk.service';
-import { AndroidAppsProvisioningService } from '../../provisioning/services/android-apps-provisioning.service';
 import { AndroidAppLifecycleJobKind } from '../entities/android-app-lifecycle-job.entity';
-import { AndroidAppsApkInstallLifecycleService } from './android-apps-apk-install-lifecycle.service';
 import { AndroidAppLifecycleJobsService } from './android-app-lifecycle-jobs.service';
+import { AndroidAppsApkInstallLifecycleService } from '../../provisioning/services/android-apps-apk-install-lifecycle.service';
+import { AndroidAppsProvisioningApkService } from '../../provisioning/services/android-apps-provisioning-apk.service';
+import { AndroidAppsRuntimeActivationService } from '../../provisioning/services/android-apps-runtime-activation.service';
 
 @Injectable()
 export class AndroidAppsStartLifecycleService {
   private readonly logger = new Logger(AndroidAppsStartLifecycleService.name);
 
   constructor(
-    private readonly redroidConfig: RedroidRuntimeConfigService,
-    @Inject(DOCKER_CONTAINER_LIFECYCLE)
-    private readonly lifecycle: DockerContainerLifecyclePort,
-    @Inject(DOCKER_CONTAINER_PROVISIONING)
-    private readonly provisioningContainers: DockerContainerProvisioningPort,
-    @Inject(DOCKER_IMAGE_RUNTIME)
-    private readonly images: DockerImageRuntimePort,
-    @Inject(DOCKER_RESOURCE_RUNTIME)
-    private readonly resources: DockerResourceRuntimePort,
-    private readonly provisioning: AndroidAppsProvisioningService,
+    private readonly activation: AndroidAppsRuntimeActivationService,
+    private readonly apkInstall: AndroidAppsApkInstallLifecycleService,
     private readonly apkProvisioning: AndroidAppsProvisioningApkService,
+    private readonly transitions: AndroidAppsLifecycleTransitionService,
+    private readonly jobs: AndroidAppLifecycleJobsService,
     private readonly tracker: AndroidAppsProvisioningTrackerService,
     private readonly logs: AndroidAppsLogService,
-    private readonly runtimeNetwork: AndroidAppsRuntimeNetworkService,
     private readonly queries: AndroidAppsQueryService,
-    private readonly writer: AndroidAppsStateWriter,
-    private readonly jobs: AndroidAppLifecycleJobsService,
-    private readonly apkInstallLifecycle: AndroidAppsApkInstallLifecycleService,
   ) {}
 
-  async startInBackground(id: string) {
+  async startInBackground(applicationId: string) {
     try {
-      await this.jobs.markRunning(id, AndroidAppLifecycleJobKind.Start);
-      const app = await this.queries.getStored(id);
+      await this.jobs.markRunning(
+        applicationId,
+        AndroidAppLifecycleJobKind.Start,
+      );
+      const app = await this.queries.getStored(applicationId);
       this.tracker.ensureActive(app.id);
-
-      void this.resources
-        .engineSummary()
-        .then((summary) =>
-          this.logs.append(app.id, 'Container engine selected', summary),
-        )
-        .catch((error) => {
-          this.logger.warn(
-            `Could not collect container engine summary for ${app.id}: ${getErrorMessage(error)}`,
-          );
-        });
-
-      await this.writer.setLifecycle(app.id, {
-        lifecycleStage: AndroidApplicationLifecycleStage.ImageChecking,
-        statusMessage:
-          'Checking whether the container image is available locally.',
+      await this.logs.append(app.id, 'Container start preparing', {
+        profileMode: app.profileMode,
+        profileName: app.profileName,
+        existingContainerId: app.containerId,
+        image: app.containerImage,
       });
-      this.tracker.ensureActive(app.id);
+      await this.transitions.updateProgress(
+        app.id,
+        AndroidAppLifecycleJobKind.Start,
+        {
+          lifecycleStage: AndroidApplicationLifecycleStage.ImageChecking,
+          statusMessage:
+            'Checking whether the container image is available locally.',
+        },
+      );
 
-      await this.startPreparedApplication(app);
-      await this.jobs.complete(id, AndroidAppLifecycleJobKind.Start);
+      await this.activation.activate(
+        app,
+        AndroidAppLifecycleJobKind.Start,
+        'start',
+      );
+      if (await this.handoffMissingApk(app)) {
+        return;
+      }
+
+      this.tracker.ensureActive(app.id);
+      await this.apkProvisioning.launchInstalledApk(app);
+      await this.logs.append(app.id, 'Application marked running', {
+        containerId: app.containerId,
+      });
+      await this.transitions.completeJob(
+        app.id,
+        AndroidAppLifecycleJobKind.Start,
+        {
+          status: AndroidApplicationStatus.Running,
+          lifecycleStage: AndroidApplicationLifecycleStage.Ready,
+          statusMessage: 'Application is running.',
+          lastError: null,
+          provisioningCompletedAt: new Date(),
+        },
+      );
     } catch (error) {
       if (this.tracker.isCancellationError(error)) {
-        this.logger.log(`Start cancelled for ${id}.`);
-        await this.jobs.complete(id, AndroidAppLifecycleJobKind.Start);
+        this.logger.log(`Start cancelled for ${applicationId}.`);
         return;
       }
 
       const message = getErrorMessage(error);
-      await this.jobs.markFailed(id, AndroidAppLifecycleJobKind.Start, message);
-      this.logger.error(`Start failed for ${id}: ${message}`);
-      await this.writer.setLifecycle(id, {
-        status: AndroidApplicationStatus.Error,
-        lifecycleStage: AndroidApplicationLifecycleStage.Error,
-        statusMessage: message,
-        lastError: message,
-      });
-      await this.logs.append(id, 'Start failed', { error: message });
+      this.logger.error(`Start failed for ${applicationId}: ${message}`);
+      await this.transitions.failJob(
+        applicationId,
+        AndroidAppLifecycleJobKind.Start,
+        message,
+        {
+          status: AndroidApplicationStatus.Error,
+          lifecycleStage: AndroidApplicationLifecycleStage.Error,
+          statusMessage: message,
+          lastError: message,
+        },
+      );
+      await this.logs.append(applicationId, 'Start failed', { error: message });
     }
   }
 
-  private async startPreparedApplication(app: AndroidApplication) {
-    await this.logs.append(app.id, 'Container start preparing', {
-      profileMode: app.profileMode,
-      profileName: app.profileName,
-      existingContainerId: app.containerId,
-      image: app.containerImage,
-    });
-
-    if (!(await this.images.imageExists(app.containerImage))) {
-      this.tracker.ensureActive(app.id);
-      await this.writer.setLifecycle(app.id, {
-        lifecycleStage: AndroidApplicationLifecycleStage.ImagePulling,
-        statusMessage: `Docker image "${app.containerImage}" is not available locally. Pulling it now.`,
-      });
-      await this.images.pullImage(app.containerImage, (message) => {
-        void this.writer.setLifecycle(app.id, {
-          statusMessage: message || `Pulling ${app.containerImage}.`,
-        });
-        void this.logs
-          .append(app.id, 'Image pull progress', {
-            image: app.containerImage,
-            message: message || `Pulling ${app.containerImage}.`,
-          })
-          .catch((error) => {
-            this.logger.warn(
-              `Could not write image pull log for ${app.id}: ${error}`,
-            );
-          });
-      });
-    }
-    this.tracker.ensureActive(app.id);
-
-    if (!app.containerId) {
-      await this.writer.setLifecycle(app.id, {
-        lifecycleStage: AndroidApplicationLifecycleStage.ContainerCreating,
-        statusMessage: `Creating application container ${app.containerName}.`,
-      });
-      await this.runtimeNetwork.createRuntimeBoundary(app);
-      this.tracker.ensureActive(app.id);
-      const container =
-        await this.provisioningContainers.createApplicationContainer({
-          applicationId: app.id,
-          containerName: app.containerName,
-          networkName: app.networkName,
-          volumeName: app.volumeName,
-          image: app.containerImage,
-          dataMountPath: this.redroidConfig.dataMountPath,
-          adbPort: app.adbPort,
-          privileged: this.redroidConfig.privileged,
-          profileMode: app.profileMode,
-          memoryLimitMb: app.memoryLimitMb,
-          cpuLimitCpus: app.cpuLimitCpus,
-          containerArgs: app.containerArgs,
-          securityOptions: this.redroidConfig.securityOptions,
-          cgroupnsMode: this.redroidConfig.cgroupnsMode,
-          devices: this.redroidConfig.devices,
-          optionalDevices: this.redroidConfig.optionalDevices,
-        });
-      app.containerId = container.id;
-      app.recreateContainerOnNextStart = false;
-      await this.writer.save(app);
-      await this.logs.append(app.id, 'Container created for start', {
-        containerId: container.id,
-        containerName: app.containerName,
-        image: app.containerImage,
-      });
-    } else {
-      await this.writer.setLifecycle(app.id, {
-        lifecycleStage: AndroidApplicationLifecycleStage.ContainerStarting,
-        statusMessage: 'Starting application container.',
-      });
-      await this.runtimeNetwork.attachRuntimeSupport(app);
-    }
-    this.tracker.ensureActive(app.id);
-
-    await this.writer.setLifecycle(app.id, {
-      lifecycleStage: AndroidApplicationLifecycleStage.ContainerStarting,
-      statusMessage: 'Starting application container.',
-    });
-    await this.lifecycle.startContainer(app.containerId);
-    await this.runtimeNetwork.enforcePolicyAfterStart(app, {
-      recordLastStartedAt: true,
-      retryAttempts: 10,
-    });
-    await this.logs.append(app.id, 'Container start requested', {
-      containerId: app.containerId,
-    });
-    this.tracker.ensureActive(app.id);
-    await this.provisioning.prepareRuntimeReadiness(app);
+  private async handoffMissingApk(app: AndroidApplication) {
     await this.logs.append(app.id, 'APK startup check', {
       hasApk: Boolean(app.apkFilePath),
       apkOriginalName: app.apkOriginalName,
@@ -204,29 +114,21 @@ export class AndroidAppsStartLifecycleService {
       await this.logs.append(app.id, 'APK startup skipped', {
         reason: 'No APK is attached to this app.',
       });
-    } else if (await this.apkProvisioning.isInstalled(app)) {
+      return false;
+    }
+    if (await this.apkProvisioning.isInstalled(app)) {
       await this.logs.append(app.id, 'APK startup install skipped', {
         reason: 'APK package is already installed.',
         apkPackageName: app.apkPackageName,
       });
-    } else {
-      await this.apkInstallLifecycle.begin(
-        app,
-        'Installing APK inside Android before launch. Viewer is available while installation finishes.',
-      );
-      return;
+      return false;
     }
-    this.tracker.ensureActive(app.id);
-    await this.apkProvisioning.launchInstalledApk(app);
 
-    app.status = AndroidApplicationStatus.Running;
-    app.lifecycleStage = AndroidApplicationLifecycleStage.Ready;
-    app.statusMessage = 'Application is running.';
-    app.lastError = null;
-    app.provisioningCompletedAt = new Date();
-    await this.logs.append(app.id, 'Application marked running', {
-      containerId: app.containerId,
-    });
-    await this.writer.save(app);
+    await this.apkInstall.begin(
+      app,
+      'Installing APK inside Android before launch. Viewer is available while installation finishes.',
+      AndroidAppLifecycleJobKind.Start,
+    );
+    return true;
   }
 }

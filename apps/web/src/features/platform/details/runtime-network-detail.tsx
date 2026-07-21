@@ -25,7 +25,7 @@ import { DefinitionTable } from '@/shared/ui/definition-table'
 import { PageContent } from '@/shared/ui/page/page-layout'
 import { PlatformJsonBlock, formatPlatformDate } from '@/shared/ui/platform/platform-detail-parts'
 type RuntimeNetworkDetailProps = {
-  details: import('@/server/orchestrator/platform/types').PlatformNetworkDetails
+  details: import('@/shared/contracts/platform').PlatformNetworkDetails
 }
 
 const removePlatformNetwork = removePlatformNetworkAction

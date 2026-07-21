@@ -6,7 +6,7 @@ import {
   shouldStopContainerInBulkAction,
   summarizeContainerBulkActionResults
 } from './runtime-containers-section-model'
-import type { PlatformContainer } from '@/server/orchestrator/platform/types'
+import type { PlatformContainer } from '@/shared/contracts/platform'
 
 const container = (overrides: Partial<PlatformContainer> = {}): PlatformContainer =>
   ({

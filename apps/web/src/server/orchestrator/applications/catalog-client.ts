@@ -8,7 +8,7 @@ import type {
   DeleteAndroidApplicationResponse,
   AndroidAppRuntimeReconciliation,
   UpdateAndroidApplicationInput
-} from './types'
+} from '@/shared/contracts/application'
 
 export const orchestratorAppCatalogClient = {
   createApplication(input: CreateAndroidApplicationInput) {

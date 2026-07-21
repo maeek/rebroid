@@ -5,7 +5,7 @@ import { viewerControlCommandEventType } from '@/features/applications/viewer/pl
 import { toast } from '@/hooks/use-toast'
 import { sendApplicationViewerControlAction } from '@/server/orchestrator/applications/actions/runtime/viewer-actions'
 import type { ViewerControlCommandEventDetail } from '@/features/applications/viewer/player/viewer-keyboard-relay'
-import type { ApplicationViewerControlCommand } from '@/server/orchestrator/applications/types'
+import type { ApplicationViewerControlCommand } from '@/shared/contracts/application'
 
 const controlErrorDescription = (error: unknown) => {
   const message = error instanceof Error ? error.message.trim() : ''

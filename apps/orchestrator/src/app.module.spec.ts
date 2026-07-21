@@ -141,6 +141,23 @@ describe('AppModule', () => {
       reservations.filter((result) => result.status === 'rejected'),
     ).toHaveLength(1);
 
+    const lifecycleReservations = await Promise.allSettled(
+      [randomUUID(), randomUUID()].map((id) =>
+        dataSource.query(
+          `INSERT INTO android_app_lifecycle_jobs
+           (id, applicationId, kind, status)
+           VALUES (?, ?, 'start', 'pending')`,
+          [id, 'app-with-reserved-lifecycle'],
+        ),
+      ),
+    );
+    expect(
+      lifecycleReservations.filter((result) => result.status === 'fulfilled'),
+    ).toHaveLength(1);
+    expect(
+      lifecycleReservations.filter((result) => result.status === 'rejected'),
+    ).toHaveLength(1);
+
     const runId = randomUUID();
     await dataSource.query(
       `INSERT INTO automation_runs

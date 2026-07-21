@@ -2,6 +2,9 @@
 
 Next.js frontend and backend-for-frontend for Rebroid.
 
+See the [web contributor guide](../../docs/web-contributor-guide.md) for ownership boundaries, data-access choices, and
+the page-development workflow.
+
 ## Defaults
 
 The Docker image is designed to run without a `.env` file:

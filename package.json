@@ -2,10 +2,14 @@
   "name": "rebroid",
   "private": true,
   "packageManager": "pnpm@10.12.4",
+  "engines": {
+    "node": ">=24 <25"
+  },
   "scripts": {
     "build": "turbo run build",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm openapi:check && pnpm boundaries && pnpm deadcode && pnpm build",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm openapi:check && pnpm boundaries && pnpm packages:check && pnpm deadcode && pnpm build",
     "deadcode": "knip --no-exit-code",
+    "deadcode:packages": "knip --workspace 'packages/*'",
     "dev": "turbo run dev --parallel",
     "fallow:web:audit": "corepack pnpm dlx fallow --root . --workspace apps/web audit",
     "fallow:web:dead-code": "corepack pnpm dlx fallow --root . --workspace apps/web --only dead-code",
@@ -19,6 +23,9 @@
     "test:gapps-patcher": "./scripts/test-gapps-patcher.sh",
     "openapi:orchestrator:check": "node scripts/openapi-generate.mjs --contract=orchestrator --check",
     "openapi:orchestrator:generate": "node scripts/openapi-generate.mjs --contract=orchestrator",
+    "packages:check": "node scripts/check-package-boundaries.mjs && pnpm deadcode:packages && pnpm packages:duplication",
+    "packages:duplication": "corepack pnpm dlx jscpd packages --min-lines 8 --min-tokens 50 --reporters console --mode mild --threshold 3 --ignore '**/schema.ts,**/openapi.json,**/dist/**'",
+    "packages:duplication:generated": "corepack pnpm dlx jscpd packages/orchestrator-contracts packages/display-sidecar-contracts --min-lines 8 --min-tokens 50 --reporters console --mode mild --ignore '**/index.ts'",
     "reset:all-state": "node scripts/reset-all-state.mjs",
     "reset:orchestrator-state": "node scripts/reset-orchestrator-state.mjs",
     "boundaries": "depcruise --config .dependency-cruiser.cjs apps packages && depcruise --config .dependency-cruiser.types.cjs apps/web/src/shared",
@@ -30,7 +37,7 @@
     "knip": "^5.63.1",
     "openapi-typescript": "^7.9.1",
     "turbo": "^2.5.4",
-    "typescript": "^5.9.3"
+    "typescript": "catalog:"
   },
   "pnpm": {
     "overrides": {

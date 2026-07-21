@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { ScrcpyTransport } from '../android-apps/contracts/android-application-status';
+import { viewerTransport } from '@rebroid/android-application-core/viewer-control';
 import { numberInRange } from '../common/number-range';
 import {
   defaultAiProviders,
@@ -14,7 +14,7 @@ import {
   OptionalServicesSettingsDto,
   OrchestratorSettingsDto,
 } from './dto/orchestrator-settings.dto';
-import type { AutomationAiProvider } from '@rebroid/ai-core/provider';
+import type { AutomationAiProvider } from './contracts/ai-provider';
 
 export type StoredOrchestratorSettings = OrchestratorSettingsDto & {
   aiProviders: AutomationAiProvider[];
@@ -57,7 +57,7 @@ export class OrchestratorSettingsStore {
         'app.container.image',
       ),
       dockerImageRegistry: null,
-      defaultScrcpyTransport: ScrcpyTransport.WebRTC,
+      defaultScrcpyTransport: viewerTransport.WebRTC,
       defaultInactivityTimeoutSeconds: this.config.getOrThrow<number>(
         'app.redroid.defaultInactivityTimeoutSeconds',
       ),
@@ -79,7 +79,7 @@ export class OrchestratorSettingsStore {
       dockerImageRegistry: this.normalizeRegistry(
         value.dockerImageRegistry ?? defaults.dockerImageRegistry,
       ),
-      defaultScrcpyTransport: ScrcpyTransport.WebRTC,
+      defaultScrcpyTransport: viewerTransport.WebRTC,
       defaultInactivityTimeoutSeconds: numberInRange(
         value.defaultInactivityTimeoutSeconds,
         defaults.defaultInactivityTimeoutSeconds,

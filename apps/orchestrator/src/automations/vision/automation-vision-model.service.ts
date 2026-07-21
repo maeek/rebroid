@@ -3,23 +3,23 @@ import {
   Injectable,
   RequestTimeoutException,
 } from '@nestjs/common';
-import { createDetection } from '@rebroid/vision-core/observation';
+import { createDetection } from './vision-observation';
 import {
   buildChatRequestBody,
   chatCompletionsEndpoint,
-  correctScreenStateHypothesis,
   type ChatMessage,
-} from '@rebroid/ai-core/harness';
+} from '../../common/ai-provider-request';
+import { correctScreenStateHypothesis } from '../ai/core/screen-state-policy';
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,
-} from '@rebroid/ai-core/provider';
+} from '../../settings/contracts/ai-provider';
 import {
   createProviderRequestScope,
   isProviderAbortError,
   providerRequestHeaders,
   readBoundedProviderText,
-} from '@rebroid/ai-core/provider-http';
+} from '../../common/ai-provider-http';
 import { MetricsService } from '../../metrics/metrics.service';
 import {
   providerErrorDetailFromText,

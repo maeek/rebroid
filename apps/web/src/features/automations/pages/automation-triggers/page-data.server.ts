@@ -1,20 +1,20 @@
 import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
 import { listAutomationsAction } from '@/server/orchestrator/automations/automation-management-actions'
 import { listAutomationTriggersGridAction } from '@/server/orchestrator/automations/automation-trigger-actions'
-import type { AndroidApplication } from '@/server/orchestrator/applications/types'
+import { firstSearchParamValue, positiveIntegerSearchParam, validatedSearchParam } from '@/shared/model/search-params'
+import type { AndroidApplication } from '@/shared/contracts/application'
 import type {
   Automation,
   AutomationLastStatus,
   AutomationTriggersGridPage,
   AutomationTriggersGridQuery
-} from '@/server/orchestrator/automations/types'
+} from '@/shared/contracts/automation'
 
 export type AutomationTriggersSearchParams = Record<string, string | string[] | undefined>
 
-const firstValue = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value)
 const statuses = new Set<AutomationLastStatus>(['never_run', 'running', 'success', 'failed'])
-const lastRuns = new Set(['all', 'never', '7d', '30d', '90d'])
-const enabledValues = new Set(['true', 'false'])
+const lastRuns = new Set<NonNullable<AutomationTriggersGridQuery['lastRun']>>(['all', 'never', '7d', '30d', '90d'])
+const enabledValues = new Set<NonNullable<AutomationTriggersGridQuery['enabled']>>(['true', 'false'])
 
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : 'The orchestrator API is not responding.'
@@ -33,19 +33,16 @@ const emptyAutomationTriggersGridPage = (gridQuery: AutomationTriggersGridQuery)
 export const triggersGridQueryFromSearchParams = (
   searchParams: AutomationTriggersSearchParams
 ): AutomationTriggersGridQuery => {
-  const status = firstValue(searchParams.status)
-  const lastRun = firstValue(searchParams.lastRun)
-  const enabled = firstValue(searchParams.enabled)
   return {
-    page: Math.max(Number(firstValue(searchParams.page)) || 1, 1),
-    pageSize: Math.min(Math.max(Number(firstValue(searchParams.pageSize)) || 20, 1), 100),
-    q: firstValue(searchParams.q)?.trim() || undefined,
-    tag: firstValue(searchParams.tag)?.trim() || undefined,
-    targetApplicationId: firstValue(searchParams.targetApplicationId)?.trim() || undefined,
-    enabled: enabledValues.has(enabled ?? '') ? (enabled as AutomationTriggersGridQuery['enabled']) : undefined,
-    status: statuses.has(status as AutomationLastStatus) ? (status as AutomationLastStatus) : undefined,
-    lastRun: lastRuns.has(lastRun ?? '') ? (lastRun as AutomationTriggersGridQuery['lastRun']) : undefined,
-    sort: firstValue(searchParams.sort)?.trim() || undefined
+    page: positiveIntegerSearchParam(searchParams.page, { fallback: 1 }),
+    pageSize: positiveIntegerSearchParam(searchParams.pageSize, { fallback: 20, max: 100 }),
+    q: firstSearchParamValue(searchParams.q)?.trim() || undefined,
+    tag: firstSearchParamValue(searchParams.tag)?.trim() || undefined,
+    targetApplicationId: firstSearchParamValue(searchParams.targetApplicationId)?.trim() || undefined,
+    enabled: validatedSearchParam(searchParams.enabled, enabledValues),
+    status: validatedSearchParam(searchParams.status, statuses),
+    lastRun: validatedSearchParam(searchParams.lastRun, lastRuns),
+    sort: firstSearchParamValue(searchParams.sort)?.trim() || undefined
   }
 }
 

@@ -2,7 +2,7 @@ import { ConflictException } from '@nestjs/common';
 import {
   runtimeImageLabelKeys,
   type RuntimeImageMetadata,
-} from '@rebroid/application-core/redroid-runtime';
+} from '@rebroid/android-application-core/redroid-runtime';
 
 export const requiredRuntimeImageLabels = (
   metadata: RuntimeImageMetadata,

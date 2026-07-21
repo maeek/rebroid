@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { recommendAiModelForAutomation, type ProviderModelRow } from '@rebroid/ai-core/provider'
 import { IconCheck, IconDownload, IconPencil, IconPlus, IconSettings, IconTrash, IconX } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -7,8 +6,10 @@ import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Switch } from '@/components/ui/switch'
+import { recommendAiModelForAutomation } from '@/shared/model/ai-model-recommendation'
 import { AiModelStateBadges } from '@/shared/ui/ai/ai-model-badges'
-import { DataGrid, DataGridWorkspace } from '@/shared/ui/data-grid'
+import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { ProviderHealthBadge } from './provider-health-badge'
 import { ProviderModelAddDialog, ProviderModelDownloadStatus } from './provider-model-download'
 import { ProviderModelSettingsDialog } from './provider-model-settings-dialog'
@@ -18,12 +19,13 @@ import {
   selectedProviderModelIndexes,
   type ProviderModelRole
 } from './provider-models-grid-model'
+import type { ProviderModelRow } from './provider-form-model'
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,
   AutomationAiProviderModelDownload,
   AutomationAiProviderRemoteModel
-} from '@/server/orchestrator/settings/types'
+} from '@/shared/contracts/ai-provider'
 import type { ColumnDef } from '@tanstack/react-table'
 
 const ProviderModelLabelCell = ({

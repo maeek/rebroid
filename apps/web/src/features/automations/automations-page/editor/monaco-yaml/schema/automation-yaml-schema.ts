@@ -1,5 +1,5 @@
 import { conditionOperators, runContextOutputs, unaryOperators } from '@rebroid/automation-core/metadata'
-import type { AutomationCommand } from '@/server/orchestrator/automations/types'
+import type { AutomationCommand } from '@/shared/contracts/automation'
 
 type JsonSchema = Record<string, unknown>
 

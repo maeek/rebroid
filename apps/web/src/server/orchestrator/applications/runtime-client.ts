@@ -8,7 +8,7 @@ import type {
   ApplicationRuntimeFilesProfileInput,
   ApplicationRuntimeFileUpload,
   ApplicationScreenshot
-} from './types'
+} from '@/shared/contracts/application'
 
 export const orchestratorAppRuntimeClient = {
   getNotifications(id: string) {

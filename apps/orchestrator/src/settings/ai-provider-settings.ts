@@ -1,18 +1,15 @@
 import { BadRequestException } from '@nestjs/common';
+import { defaultAiProviders, MASKED_API_KEY } from './ai-provider-defaults';
+import { normalizeDefaultModel } from './ai-provider-default-model';
 import {
-  MASKED_API_KEY,
-  defaultAiProviders,
   maskProvider,
   normalizeAiModel as normalizeAiModelCore,
-  normalizeAiModelSettings,
-  normalizeAiModels,
   normalizeAiProvider as normalizeAiProviderCore,
   normalizeAiProviders,
-  normalizeDefaultModel,
   resolveUpdatedApiKey,
-  text,
-  type AutomationAiProvider,
-} from '@rebroid/ai-core/provider';
+} from './ai-provider-normalization';
+import { text } from './ai-provider-values';
+import type { AutomationAiProvider } from './contracts/ai-provider';
 
 const asBadRequest = <T>(operation: () => T): T => {
   try {
@@ -39,8 +36,6 @@ export {
   defaultAiProviders,
   maskProvider,
   normalizeAiModel,
-  normalizeAiModelSettings,
-  normalizeAiModels,
   normalizeAiProvider,
   normalizeAiProviders,
   normalizeDefaultModel,

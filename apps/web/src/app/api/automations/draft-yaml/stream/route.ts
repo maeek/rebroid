@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { assertAutomationPermission, listPermittedAiTools } from '@/server/orchestrator/automations/action-helpers'
 import { orchestratorAutomationsClient } from '@/server/orchestrator/automations/client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
-import type { DraftAutomationYamlInput } from '@/server/orchestrator/automations/types'
+import type { DraftAutomationYamlInput } from '@/shared/contracts/automation'
 
 export const dynamic = 'force-dynamic'
 

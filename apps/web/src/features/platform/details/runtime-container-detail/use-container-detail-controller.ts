@@ -21,7 +21,7 @@ import type {
   PlatformContainerDetails,
   PlatformContainerLog,
   PlatformContainerStats
-} from '@/server/orchestrator/platform/types'
+} from '@/shared/contracts/platform'
 
 const useContainerStats = (container: PlatformContainerDetails['container']) => {
   const {

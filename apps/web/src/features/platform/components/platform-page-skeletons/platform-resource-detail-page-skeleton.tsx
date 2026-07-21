@@ -1,6 +1,6 @@
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
-import { DataGridSkeleton } from '@/shared/ui/data-grid'
+import { DataGridSkeleton } from '@/shared/ui/data-grid/data-grid-skeleton'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
 import { DetailRowsSkeleton } from './detail-rows-skeleton'

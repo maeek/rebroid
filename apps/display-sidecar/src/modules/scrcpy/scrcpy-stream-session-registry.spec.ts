@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { ScrcpyStreamSessionRegistry } from "./scrcpy-stream-session-registry";
-import type {
-  ScrcpyStreamClient,
-  ScrcpyStreamOptions,
-} from "./scrcpy.types";
+import type { ScrcpyStreamClient, ScrcpyStreamOptions } from "./scrcpy.types";
 
 function fakeClient() {
   const closes: Array<{ code?: number; reason?: string }> = [];

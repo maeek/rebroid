@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { StandardPage } from '@/shared/ui/page/page-layout'
 import { GroupsSection } from './components/groups-section'
-import type { UserGroup } from '@/server/auth/user'
+import type { UserGroup } from '@/shared/contracts/auth-user'
 
 export const GroupsSettings = ({ initialGroups }: { initialGroups: UserGroup[] }) => {
   const [groups, setGroups] = useState(initialGroups)

@@ -1,4 +1,4 @@
-import type { GappsBuildPhase } from '@/shared/contracts/platform-image-build'
+import type { GappsBuildPhase } from '@/shared/contracts/platform'
 
 export const gappsBuildPhases: Array<{ id: GappsBuildPhase; label: string }> = [
   { id: 'queued', label: 'Queued' },

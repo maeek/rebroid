@@ -1,4 +1,10 @@
-export type AuditEventOutcome = 'success' | 'failure'
+import type {
+  AuditEvent,
+  AuditEventFilters,
+  AuditEventOutcome,
+  AuditEventSort,
+  AuditEventSortField
+} from '@/shared/contracts/audit'
 
 export type AuditEventInput = {
   actorUserId?: string | null
@@ -13,49 +19,6 @@ export type AuditEventInput = {
   sourceIp?: string | null
   userAgent?: string | null
 }
-
-export type AuditEvent = {
-  id: number
-  actorUserId: string | null
-  actorLabel: string
-  action: string
-  category: string
-  resourceType: string | null
-  resourceId: string | null
-  resourceLabel: string | null
-  outcome: AuditEventOutcome
-  details: Record<string, unknown>
-  sourceIp: string | null
-  userAgent: string | null
-  createdAt: string
-}
-
-export type AuditEventFilters = {
-  search?: string
-  actorUserId?: string
-  category?: string
-  action?: string
-  resourceType?: string
-  resourceId?: string
-  outcome?: AuditEventOutcome
-  from?: string
-  to?: string
-}
-
-export type AuditEventPage = {
-  events: AuditEvent[]
-  total: number
-  page: number
-  pageSize: number
-  summary: {
-    success: number
-    failure: number
-    lastEventAt: string | null
-  }
-}
-
-export type AuditEventSortField = 'createdAt' | 'actorLabel' | 'action' | 'category' | 'outcome' | 'resourceLabel'
-export type AuditEventSort = { id: AuditEventSortField; desc: boolean }
 
 export type AuditEventRow = {
   id: number

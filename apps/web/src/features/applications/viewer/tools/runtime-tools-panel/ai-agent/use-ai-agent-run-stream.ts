@@ -5,7 +5,7 @@ import {
   listAutomationRunEventsAction
 } from '@/server/orchestrator/automations/automation-run-actions'
 import { activeRunStatuses } from './ai-agent-chat-utils'
-import type { AutomationRun, AutomationRunEvent } from '@/server/orchestrator/automations/types'
+import type { AutomationRun, AutomationRunEvent } from '@/shared/contracts/automation'
 
 export const useAiAgentRunStream = ({
   activeRun,

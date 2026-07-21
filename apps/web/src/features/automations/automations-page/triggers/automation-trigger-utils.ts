@@ -1,10 +1,6 @@
-import { defaultSchedule, scheduleToCron } from '@rebroid/automation-core/schedule'
-import type { AndroidApplication, ApplicationProfileMode } from '@/server/orchestrator/applications/types'
-import type {
-  AutomationLastStatus,
-  AutomationStartPolicy,
-  AutomationTrigger
-} from '@/server/orchestrator/automations/types'
+import { defaultSchedule, scheduleToCron } from '@/shared/model/automation-schedule'
+import type { AndroidApplication, ApplicationProfileMode } from '@/shared/contracts/application'
+import type { AutomationLastStatus, AutomationStartPolicy, AutomationTrigger } from '@/shared/contracts/automation'
 
 export type LastRunFilter = 'all' | 'never' | '7d' | '30d' | '90d'
 

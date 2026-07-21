@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
-import type { ContainerImageBuildJob } from '@/server/orchestrator/platform/types'
+import type { ContainerImageBuildJob } from '@/shared/contracts/platform'
 
 type BuildSectionProps = {
   activeJob: ContainerImageBuildJob | null

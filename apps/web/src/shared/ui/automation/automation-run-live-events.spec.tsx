@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { getBff, sendBff } from '@/lib/http/bff'
 import { AutomationRunLiveEvents } from './automation-run-live-events'
-import type { AutomationRun, AutomationRunEvent } from '@/shared/contracts/automation-run'
+import type { AutomationRun, AutomationRunEvent } from '@/shared/contracts/automation'
 
 vi.mock('@/lib/http/bff', () => ({
   getBff: vi.fn(),

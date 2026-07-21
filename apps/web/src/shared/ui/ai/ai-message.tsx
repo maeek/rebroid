@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { normalizePublicAiText } from '@rebroid/ai-core/harness'
+import { normalizePublicAiText } from '@rebroid/automation-core/ai-public-text'
 import Markdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'

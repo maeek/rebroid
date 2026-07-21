@@ -1,9 +1,9 @@
-import type { ContainerImageBuildRecipe } from '@/server/orchestrator/platform/types'
+import type { ContainerImageBuildRecipe } from '@/shared/contracts/platform'
 import type {
   RuntimeImageGmsMode,
   RuntimeImageKind,
   RuntimeImageSignatureSpoofing
-} from '@rebroid/application-core/redroid-runtime'
+} from '@rebroid/android-application-core/redroid-runtime'
 
 export type BuilderValues = {
   name: string

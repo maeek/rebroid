@@ -4,6 +4,8 @@ import { AutomationCommandsModule } from '../commands/automation-commands.module
 import { VisionAutomationCommandsService } from '../commands/vision-automation-commands.service';
 import { AutomationEventsModule } from '../events/automation-events.module';
 import { AutomationAiChatClientService } from './automation-ai-chat-client.service';
+import { AutomationAiActionExecutor } from './automation-ai-action-executor.service';
+import { AutomationAiDecisionService } from './automation-ai-decision.service';
 import { AutomationAiHarnessService } from './automation-ai-harness.service';
 import { AutomationAiProviderService } from './automation-ai-provider.service';
 import { AutomationAiSuggestionsService } from './automation-ai-suggestions.service';
@@ -26,6 +28,8 @@ import { AUTOMATION_OCR } from '../vision/automation-ocr.port';
   ],
   providers: [
     AutomationAiChatClientService,
+    AutomationAiActionExecutor,
+    AutomationAiDecisionService,
     AutomationAiHarnessService,
     AutomationAiProviderService,
     AutomationAiSuggestionsService,

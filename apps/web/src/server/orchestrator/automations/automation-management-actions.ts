@@ -9,13 +9,8 @@ import {
   recordAutomationAudit
 } from './action-helpers'
 import { orchestratorAutomationsClient } from './client'
-import type {
-  AutomationRunEvent,
-  AutomationYamlDraft,
-  AutomationYamlDraftStreamEvent,
-  DraftAutomationYamlInput,
-  SaveAutomationInput
-} from './types'
+import type { AutomationRunEvent, DraftAutomationYamlInput, SaveAutomationInput } from '@/shared/contracts/automation'
+import type { AutomationYamlDraft, AutomationYamlDraftStreamEvent } from '@rebroid/automation-core/yaml-draft'
 
 export const listAutomationCommandsAction = async () => {
   const user = await getCurrentUserContext()

@@ -10,7 +10,7 @@ import type {
   PlatformNetwork,
   PlatformNetworksGridPage,
   PlatformNetworksGridQuery
-} from './types'
+} from '@/shared/contracts/platform'
 
 const pageBounds = (query: { page?: number; pageSize?: number }) => ({
   page: Math.max(Math.trunc(query.page ?? 1), 1),

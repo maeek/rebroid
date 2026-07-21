@@ -1,4 +1,4 @@
-import type { AutomationRunEvent } from '@/server/orchestrator/automations/types'
+import type { AutomationRunEvent } from '@/shared/contracts/automation'
 
 export type CompactValueRow = {
   key: string

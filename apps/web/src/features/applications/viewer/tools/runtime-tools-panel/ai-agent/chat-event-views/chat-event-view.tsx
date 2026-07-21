@@ -6,7 +6,7 @@ import { ObservationEventDetails } from './observation-event-details'
 import { observationValues } from './observation-values'
 import { PerceptionDisclosure } from './perception-event-view'
 import { ReasoningEventView } from './reasoning-event-view'
-import type { AutomationRunEvent } from '@/server/orchestrator/automations/types'
+import type { AutomationRunEvent } from '@/shared/contracts/automation'
 
 export const ChatEventView = ({
   event,

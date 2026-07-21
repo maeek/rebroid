@@ -3,9 +3,6 @@ import {
   buildPlatformGridHref,
   compactPlatformGridParams,
   platformSortFromSearchParam,
-  platformSortToSearchParam,
-  retainVisiblePlatformSelection,
-  selectedPlatformItemsFromIds,
   summarizePlatformBulkRemoveResults
 } from './runtime-grid-query-utils'
 
@@ -25,14 +22,13 @@ describe('orchestrator grid query utils', () => {
     ).toBe('/runtime/images?q=base&sort=createdAt%3Adesc&page=1&pageSize=25')
   })
 
-  it('parses and serializes platform sorting', () => {
+  it('parses platform sorting', () => {
     const sorting = platformSortFromSearchParam('name:asc,state:desc')
 
     expect(sorting).toEqual([
       { id: 'name', desc: false },
       { id: 'state', desc: true }
     ])
-    expect(platformSortToSearchParam(sorting)).toBe('name:asc,state:desc')
   })
 
   it('supports resource-specific sort defaults', () => {
@@ -42,14 +38,6 @@ describe('orchestrator grid query utils', () => {
     expect(platformSortFromSearchParam('createdAt', { missingDirection: 'desc' })).toEqual([
       { id: 'createdAt', desc: true }
     ])
-  })
-
-  it('retains and derives visible platform selections', () => {
-    const items = [{ id: 'a' }, { id: 'c' }]
-    const selectedIds = new Set(['a', 'b', 'c'])
-
-    expect([...retainVisiblePlatformSelection(items, selectedIds)]).toEqual(['a', 'c'])
-    expect(selectedPlatformItemsFromIds(items, selectedIds)).toEqual([{ id: 'a' }, { id: 'c' }])
   })
 
   it('summarizes platform bulk remove results', () => {

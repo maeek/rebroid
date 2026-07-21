@@ -1,10 +1,4 @@
 import type { ReactNode } from 'react'
-import {
-  aiModelDisplayName,
-  aiModelRoleLabel,
-  aiProviderKindLabel,
-  nextCatalogProviderAndModel
-} from '@rebroid/ai-core/provider'
 import { IconChevronDown, IconRefresh } from '@tabler/icons-react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
@@ -12,6 +6,12 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { controlHoverClassName, controlSurfaceClassName, focusRingClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
+import {
+  aiModelDisplayName,
+  aiModelRoleLabel,
+  aiProviderKindLabel,
+  nextCatalogProviderAndModel
+} from '@/shared/model/ai-model-catalog'
 import { AiHealthIcon, AiHealthIndicator } from './ai-health-indicator'
 import { AiProviderKindBadge } from './ai-model-badges'
 import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'

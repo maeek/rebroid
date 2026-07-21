@@ -1,8 +1,7 @@
 'use server'
 
-import { PublicActionError } from '@/server/errors/public-action-error'
-
 import { recordAuditEvent } from '@/server/audit/events'
+import { PublicActionError } from '@/server/errors/public-action-error'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { sanitizeScrcpySessionForUser } from '../../safety'
 import { orchestratorAppViewerClient } from '../../viewer-client'
@@ -11,7 +10,7 @@ import {
   ownedRuntimeControlMessage,
   ownedRuntimeMessage
 } from '../common/action-helpers'
-import type { ApplicationViewerControlCommand } from '../../types'
+import type { ApplicationViewerControlCommand } from '@/shared/contracts/application'
 
 export const getScrcpySessionAction = async (id: string) => {
   const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeMessage)

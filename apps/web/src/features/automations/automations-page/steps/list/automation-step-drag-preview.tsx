@@ -2,7 +2,7 @@ import { IconRoute } from '@tabler/icons-react'
 import { AutomationCommandIcon } from '../catalog/automation-command-catalog'
 import { stepSummary, stepTitle } from '../shared/automation-step-utils'
 import type { AutomationStepForm } from '../../editor/builder-utils'
-import type { AutomationCommand } from '@/server/orchestrator/automations/types'
+import type { AutomationCommand } from '@/shared/contracts/automation'
 
 export function AutomationStepDragPreview({
   step,

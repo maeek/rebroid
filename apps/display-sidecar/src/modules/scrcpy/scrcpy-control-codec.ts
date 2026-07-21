@@ -1,7 +1,7 @@
 import {
   viewerCommands,
   type ViewerCommand,
-} from "@rebroid/application-core/viewer-control";
+} from "@rebroid/android-application-core/viewer-control";
 import {
   ScrcpyKeyboardEventPayload,
   ScrcpyTouchEventPayload,

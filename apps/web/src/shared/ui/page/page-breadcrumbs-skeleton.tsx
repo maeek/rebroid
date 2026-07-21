@@ -8,10 +8,16 @@ export const PageBreadcrumbsSkeleton = ({
   className?: string
 }) => {
   return (
-    <div className={`flex w-full flex-wrap items-center gap-2 ${className}`.trim()}>
+    <div
+      role='list'
+      aria-busy='true'
+      aria-label='Loading breadcrumbs'
+      className={`flex w-full flex-wrap items-center gap-2 ${className}`.trim()}
+    >
       {itemWidths.map((width, index) => (
         <div
           key={`${width}-${index}`}
+          role='listitem'
           className='flex items-center gap-2'
         >
           <Skeleton className={`h-5 ${width}`} />

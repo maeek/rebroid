@@ -1,5 +1,5 @@
 import { emptyRequest, streamRequest } from '../request'
-import type { UploadedApk } from './types'
+import type { UploadedApk } from '@/shared/contracts/application'
 
 export const orchestratorApkUploadsClient = {
   uploadApk(input: ReadableStream<Uint8Array>, ownerUserId: string, contentType: string, signal?: AbortSignal) {

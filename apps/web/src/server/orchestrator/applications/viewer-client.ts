@@ -5,7 +5,7 @@ import type {
   ApplicationDisplayRecording,
   ScrcpySession,
   ScrcpySessionAccess
-} from './types'
+} from '@/shared/contracts/application'
 
 export const orchestratorAppViewerClient = {
   sendViewerControl(id: string, command: ApplicationViewerControlCommand) {

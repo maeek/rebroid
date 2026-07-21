@@ -1,5 +1,5 @@
 import { AiProviderHealthService } from './ai-provider-health.service';
-import type { AutomationAiProvider } from '@rebroid/ai-core/provider';
+import type { AutomationAiProvider } from './contracts/ai-provider';
 
 const provider = (
   override: Partial<AutomationAiProvider> = {},

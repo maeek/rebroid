@@ -11,7 +11,7 @@ import { ProviderConnectionSection } from './provider-edit-form-sections'
 import { ProviderHealthBanner } from './provider-health-badge'
 import { ProviderModelsGrid } from './provider-models-grid'
 import { useAiProviderEditController } from './use-ai-provider-edit-controller'
-import type { AutomationAiProvider } from '@/server/orchestrator/settings/types'
+import type { AutomationAiProvider } from '@/shared/contracts/ai-provider'
 
 export const OrchestratorAiProviderEditPageClient = ({
   initialProvider

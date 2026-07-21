@@ -1,5 +1,5 @@
 import { uploadFormDataWithProgress } from '@/lib/http/upload-form-data-with-progress'
-import type { UploadedApk } from '@/server/orchestrator/applications/types'
+import type { UploadedApk } from '@/shared/contracts/application'
 
 type UploadApkOptions = {
   file: File

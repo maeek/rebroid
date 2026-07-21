@@ -1,22 +1,12 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { DisplaySidecarApiSchemas } from '@rebroid/display-sidecar-contracts';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DockerEngineService } from '../../docker-engine.service';
 
-interface DisplaySidecarSession {
-  id: string;
-  appId?: string;
-  ownerUserId?: string;
-  status: 'created' | 'active' | 'released' | 'expired';
-  createdAt: string;
-  lastActivityAt: string;
-  expiresAt: string;
-  capabilities: string[];
-}
-
-interface DisplaySidecarSessionListResponse {
-  items: DisplaySidecarSession[];
-}
+type DisplaySidecarSession = DisplaySidecarApiSchemas['DisplaySessionDto'];
+type DisplaySidecarSessionListResponse =
+  DisplaySidecarApiSchemas['DisplaySessionListResponseDto'];
 
 @Injectable()
 export class DockerSidecarApiService {

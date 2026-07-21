@@ -4,7 +4,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Readable } from "node:stream";
-import { type ViewerCommand } from "@rebroid/application-core/viewer-control";
+import { type ViewerCommand } from "@rebroid/android-application-core/viewer-control";
 
 export type AdbChildProcess = ChildProcessByStdio<null, Readable, Readable>;
 

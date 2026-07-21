@@ -7,7 +7,7 @@ import { useAiAgentRunActions } from './use-ai-agent-run-actions'
 import { useAiAgentRunStream } from './use-ai-agent-run-stream'
 import { useAiAgentTranscriptScroll } from './use-ai-agent-transcript-scroll'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { AutomationRun, AutomationRunEvent } from '@/server/orchestrator/automations/types'
+import type { AutomationRun, AutomationRunEvent } from '@/shared/contracts/automation'
 
 export const useAiAgentChatSession = ({
   app,

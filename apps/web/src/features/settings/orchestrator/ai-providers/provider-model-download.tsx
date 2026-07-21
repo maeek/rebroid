@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { IconDownload, IconPlus, IconRefresh } from '@tabler/icons-react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Badge } from '@/components/ui/badge'
@@ -12,13 +12,10 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
+import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import type {
-  AutomationAiProviderModelDownload,
-  AutomationAiProviderRemoteModel
-} from '@/server/orchestrator/settings/types'
+import type { AutomationAiProviderModelDownload, AutomationAiProviderRemoteModel } from '@/shared/contracts/ai-provider'
 
 const MANUAL_VALUE = '__manual__'
 
@@ -135,17 +132,24 @@ export const ProviderModelAddDialog = ({
           </DialogDescription>
         </DialogHeader>
         <div className='grid gap-4'>
-          <Field
+          <FormField
+            controlId='provider-model-available'
             label='Available model'
             description='Models reported by the configured provider.'
+            layout='vertical'
+            contentClassName='block'
           >
-            <div className='flex gap-2'>
+            <div className='flex w-full gap-2'>
               <Select
                 value={selectedValue}
                 onValueChange={setSelectedValue}
                 disabled={isLoadingRemoteModels}
               >
-                <SelectTrigger className='w-full'>
+                <SelectTrigger
+                  id='provider-model-available'
+                  className='w-full'
+                  aria-describedby='provider-model-available-description'
+                >
                   <SelectValue placeholder={isLoadingRemoteModels ? 'Loading models' : 'Select model'} />
                 </SelectTrigger>
                 <SelectContent>
@@ -185,29 +189,33 @@ export const ProviderModelAddDialog = ({
             {!remoteModelsError && !isLoadingRemoteModels && remoteModels.length === 0 ? (
               <p className='text-xs text-foreground-muted'>{emptyRemoteModelsMessage}</p>
             ) : null}
-          </Field>
+          </FormField>
           {isManualMode ? (
             <>
-              <Field
+              <FormField
+                controlId='provider-model-id'
                 label='Model ID'
                 description={manualDescription}
+                layout='vertical'
               >
                 <Input
                   value={downloadModelId}
                   placeholder={canDownloadModels ? 'qwen3.5:latest' : 'gemma-4'}
                   onChange={event => setDownloadModelId(event.target.value)}
                 />
-              </Field>
-              <Field
+              </FormField>
+              <FormField
+                controlId='provider-model-label'
                 label='Label'
                 description='Optional display name shown in tables and model selectors.'
+                layout='vertical'
               >
                 <Input
                   value={downloadLabel}
                   placeholder={canDownloadModels ? 'Qwen 3.5 Latest' : 'Gemma 4'}
                   onChange={event => setDownloadLabel(event.target.value)}
                 />
-              </Field>
+              </FormField>
               <p className='text-sm text-foreground-muted'>
                 {canDownloadModels
                   ? 'The model row is added immediately. Download progress is shown in that row.'
@@ -267,13 +275,3 @@ export const ProviderModelDownloadStatus = ({ download }: { download: Automation
     </div>
   )
 }
-
-const Field = ({ label, description, children }: { label: string; description: string; children: ReactNode }) => (
-  <div className='grid gap-2'>
-    <div className='grid gap-1'>
-      <Label>{label}</Label>
-      <p className='text-xs text-foreground-muted'>{description}</p>
-    </div>
-    {children}
-  </div>
-)

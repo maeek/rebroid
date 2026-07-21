@@ -1,5 +1,5 @@
 import { emptyRequest, jsonRequest } from '../request'
-import type { ApplicationCommandResult, UpdateNetworkPolicyInput } from './types'
+import type { ApplicationCommandResult, UpdateNetworkPolicyInput } from '@/shared/contracts/application'
 
 export const orchestratorAppNetworkPolicyClient = {
   updateNetworkPolicy(id: string, input: UpdateNetworkPolicyInput) {

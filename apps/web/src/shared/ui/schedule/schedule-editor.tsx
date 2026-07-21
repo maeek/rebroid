@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Visible } from '@/components/ui/visible'
 import { defaultSchedule, weekdays } from '@/shared/model/schedule/schedule-format'
-import type { ScheduleDraft } from '@rebroid/automation-core/schedule'
+import type { ScheduleDraft } from '@/shared/model/automation-schedule'
 
 const clampInteger = (value: number, minimum: number, maximum: number) =>
   Math.min(maximum, Math.max(minimum, Math.trunc(Number.isFinite(value) ? value : minimum)))

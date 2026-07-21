@@ -12,7 +12,7 @@ import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { PlatformResources } from '@/shared/ui/platform/platform-resources'
 import { StateView } from '@/shared/ui/state-view'
 import { SystemResourcesPageSkeleton } from './system-resources-page-skeleton'
-import type { SystemStats } from '@/server/system/system-stats'
+import type { SystemStats } from '@/shared/contracts/system-stats'
 
 export function SystemResourcesPage() {
   const fetchSystemUtilization = async (): Promise<SystemStats> => {

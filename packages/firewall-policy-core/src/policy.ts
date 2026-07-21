@@ -9,4 +9,3 @@ export {
   validatePolicy,
 } from "./validation/policy-validation";
 export { type FirewallAgentPolicy, type FirewallPolicy } from "./policy/types";
-export { parseJsonStringArray, uniqueStrings } from "./policy/string-list";

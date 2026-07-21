@@ -15,7 +15,7 @@ import {
   updateScheduledTaskAction
 } from '@/server/orchestrator/scheduled-tasks/actions'
 import type { FormState, ScheduledTasksPageProps } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/types'
-import type { ScheduledTask } from '@/server/orchestrator/scheduled-tasks/types'
+import type { ScheduledTask } from '@/shared/contracts/scheduled-task'
 
 export const useScheduledTasksController = ({ initialActions, initialTasks }: ScheduledTasksPageProps) => {
   const firstActionType = initialActions[0]?.type ?? 'clean_uploaded_apks'

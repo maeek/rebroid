@@ -1,14 +1,13 @@
 import {
   auditFiltersFromSearchParams,
   auditPageFromSearchParams,
-  auditSortFromSearchParams,
-  type AuditSearchParams
+  auditSortFromSearchParams
 } from '@/server/audit/query'
 import { requireAdmin } from '@/server/auth/authorization'
 import { listAuditEvents, listAuditFacetValues } from '@/server/persistence/audit-repository'
 import { getWebSettings } from '@/server/web-settings/store'
-
-const firstValue = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value)
+import { firstSearchParamValue } from '@/shared/model/search-params'
+import type { AuditSearchParams } from '@/shared/contracts/audit'
 
 export const loadSecurityAuditLogPageData = async (searchParams: AuditSearchParams) => {
   await requireAdmin()
@@ -22,18 +21,16 @@ export const loadSecurityAuditLogPageData = async (searchParams: AuditSearchPara
     auditRetentionDays: settings.auditRetentionDays,
     facets: listAuditFacetValues(),
     filters: {
-      search: firstValue(searchParams.search),
-      actor: firstValue(searchParams.actor),
-      category: firstValue(searchParams.category),
-      action: firstValue(searchParams.action),
-      resourceType: firstValue(searchParams.resourceType),
-      outcome: firstValue(searchParams.outcome),
-      from: firstValue(searchParams.from),
-      to: firstValue(searchParams.to)
+      search: firstSearchParamValue(searchParams.search),
+      actor: firstSearchParamValue(searchParams.actor),
+      category: firstSearchParamValue(searchParams.category),
+      action: firstSearchParamValue(searchParams.action),
+      resourceType: firstSearchParamValue(searchParams.resourceType),
+      outcome: firstSearchParamValue(searchParams.outcome),
+      from: firstSearchParamValue(searchParams.from),
+      to: firstSearchParamValue(searchParams.to)
     },
     result: listAuditEvents(filters, { ...page, sorting }),
     sorting
   }
 }
-
-export type { AuditSearchParams }

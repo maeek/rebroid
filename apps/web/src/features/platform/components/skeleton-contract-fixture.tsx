@@ -3,7 +3,9 @@
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
-import { DataGrid, DataGridPagination, DataGridToolbar } from '@/shared/ui/data-grid'
+import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
+import { DataGridToolbar } from '@/shared/ui/data-grid/data-grid-toolbar'
 import type { ColumnDef } from '@tanstack/react-table'
 
 type FixtureRow = {

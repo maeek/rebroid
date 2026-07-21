@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import { startApplicationAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { AppIcon } from '@/shared/ui/app-icon/app-icon'
 import { variantStyles, type NavigationVariant } from './protected-navigation-config'
-import type { RecentApp } from '@/shared/model/recent-apps/recent-apps'
+import type { RecentApp } from '@/shared/contracts/recent-app'
 
 export const RecentAppLink = ({
   app,

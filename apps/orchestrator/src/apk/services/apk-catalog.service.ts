@@ -1,24 +1,30 @@
 import {
   ConflictException,
+  Inject,
   Injectable,
   PayloadTooLargeException,
 } from '@nestjs/common';
-import { AndroidApplicationsRepository } from '../../android-apps/persistence/android-applications.repository';
+import {
+  ANDROID_APPS_APK_REFERENCES,
+  type AndroidAppsApkReferencesPort,
+} from '../../android-apps/contracts/android-apps-apk-references.port';
 import {
   type MultipartUploadRequest,
   consumeSingleFileUpload,
 } from '../../common/http-upload';
 import { SettingsService } from '../../settings/settings.service';
+import type { ApkCatalogPort } from '../contracts/apk-catalog.port';
 import { UploadedApksRepository } from '../persistence/uploaded-apks.repository';
 import { ApkIconExtractorService } from './apk-icon-extractor.service';
 import { ApkGooglePlayServicesAnalyzerService } from './apk-google-play-services-analyzer.service';
 import { ApkStorageService } from './apk-storage.service';
 
 @Injectable()
-export class ApkCatalogService {
+export class ApkCatalogService implements ApkCatalogPort {
   constructor(
     private readonly uploadedApks: UploadedApksRepository,
-    private readonly applications: AndroidApplicationsRepository,
+    @Inject(ANDROID_APPS_APK_REFERENCES)
+    private readonly applicationReferences: AndroidAppsApkReferencesPort,
     private readonly settings: SettingsService,
     private readonly storage: ApkStorageService,
     private readonly iconExtractor: ApkIconExtractorService,
@@ -182,7 +188,8 @@ export class ApkCatalogService {
    */
   async remove(id: string) {
     const uploaded = await this.get(id);
-    const inUseCount = await this.applications.countUsingUploadedApk(id);
+    const inUseCount =
+      await this.applicationReferences.countUsingUploadedApk(id);
     if (inUseCount > 0) {
       throw new ConflictException(
         'Uploaded APK is used by one or more Android applications.',
@@ -207,7 +214,8 @@ export class ApkCatalogService {
       };
     }
 
-    const usedIds = await this.applications.findReferencedUploadedApkIds(ids);
+    const usedIds =
+      await this.applicationReferences.findReferencedUploadedApkIds(ids);
     const unused = uploads.filter((upload) => !usedIds.has(upload.id));
 
     let removedFiles = 0;

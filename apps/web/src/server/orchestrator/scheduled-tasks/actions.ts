@@ -3,7 +3,7 @@
 import { recordAuditEvent } from '@/server/audit/events'
 import { requireAdminUser } from '../shared'
 import { orchestratorScheduledTasksClient } from './client'
-import type { SaveScheduledTaskInput } from './types'
+import type { SaveScheduledTaskInput } from '@/shared/contracts/scheduled-task'
 
 const recordScheduledTaskAudit = async (
   action: string,

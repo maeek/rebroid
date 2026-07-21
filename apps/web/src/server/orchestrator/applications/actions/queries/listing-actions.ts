@@ -5,7 +5,7 @@ import { getCurrentUserContext } from '../../../current-user'
 import { orchestratorAppCatalogClient } from '../../catalog-client'
 import { orchestratorAppRuntimeClient } from '../../runtime-client'
 import { sanitizeAndroidApplicationForUser } from '../../safety'
-import type { RunningApplicationNotifications } from '../../types'
+import type { RunningApplicationNotifications } from '@/shared/contracts/application'
 
 export const listApplicationsAction = async () => {
   const user = await getCurrentUserContext()

@@ -9,24 +9,8 @@ import {
   parseAuditRow
 } from './audit-model'
 import { getDatabase } from './database'
-import type {
-  AuditEventFilters,
-  AuditEventInput,
-  AuditEventOutcome,
-  AuditEventPage,
-  AuditEventRow,
-  AuditEventSort
-} from './audit-model'
-
-export type {
-  AuditEvent,
-  AuditEventFilters,
-  AuditEventInput,
-  AuditEventOutcome,
-  AuditEventPage,
-  AuditEventSort,
-  AuditEventSortField
-} from './audit-model'
+import type { AuditEventInput, AuditEventRow } from './audit-model'
+import type { AuditEventFilters, AuditEventOutcome, AuditEventPage, AuditEventSort } from '@/shared/contracts/audit'
 
 let lastRetentionAt = 0
 

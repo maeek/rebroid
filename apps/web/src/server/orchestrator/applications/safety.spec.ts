@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { sanitizeApplicationLogForUser, sanitizeScrcpySessionForUser } from './safety'
-import type { ScrcpySession } from './types'
+import type { ScrcpySession } from '@/shared/contracts/application'
 
 const userContext = {
   role: 'user' as const,

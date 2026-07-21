@@ -3,12 +3,12 @@ import {
   createDetection,
   matchesDetectionQuery,
   sortDetections,
-} from '@rebroid/vision-core/observation';
-import { pointWithinBox } from '@rebroid/vision-core/geometry';
+} from './vision-observation';
+import { pointWithinBox } from './vision-geometry';
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,
-} from '@rebroid/ai-core/provider';
+} from '../../settings/contracts/ai-provider';
 import type { AutomationCommandContext } from '../commands/automation-command.types';
 import { AutomationVisionCaptureService } from './automation-vision-capture.service';
 import { AutomationVisionFusionService } from './automation-vision-fusion.service';

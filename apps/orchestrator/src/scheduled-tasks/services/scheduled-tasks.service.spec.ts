@@ -10,7 +10,6 @@ import { ScheduledTaskActionsService } from './scheduled-task-actions.service';
 import { ScheduledTaskCronRegistryService } from './scheduled-task-cron-registry.service';
 import { ScheduledTaskPredefinedSeederService } from './scheduled-task-predefined-seeder.service';
 import { ScheduledTaskRunnerService } from './scheduled-task-runner.service';
-import { ScheduledTaskScheduleService } from './scheduled-task-schedule.service';
 import { ScheduledTasksService } from './scheduled-tasks.service';
 
 const task = (patch: Partial<ScheduledTask> = {}): ScheduledTask => ({
@@ -37,14 +36,12 @@ const createService = ({
   actions = {},
   seeder = {},
   runner = {},
-  schedule = {},
 }: {
   repository?: Partial<ScheduledTasksRepository>;
   cron?: Partial<ScheduledTaskCronRegistryService>;
   actions?: Partial<ScheduledTaskActionsService>;
   seeder?: Partial<ScheduledTaskPredefinedSeederService>;
   runner?: Partial<ScheduledTaskRunnerService>;
-  schedule?: Partial<ScheduledTaskScheduleService>;
 } = {}) => {
   const tasks = {
     create: jest.fn((value: Partial<ScheduledTask>) => task(value)),
@@ -81,17 +78,6 @@ const createService = ({
     ),
     ...runner,
   } as unknown as ScheduledTaskRunnerService;
-  const taskSchedule = {
-    validateCronExpression: jest.fn((value: string) => {
-      if (value === 'not cron') {
-        throw new BadRequestException('Invalid cron expression.');
-      }
-      return value.trim();
-    }),
-    nextRun: jest.fn(() => new Date('2026-01-02T00:00:00.000Z')),
-    ...schedule,
-  } as unknown as ScheduledTaskScheduleService;
-
   return {
     service: new ScheduledTasksService(
       tasks,
@@ -99,14 +85,12 @@ const createService = ({
       cronRegistry,
       predefinedSeeder,
       taskRunner,
-      taskSchedule,
     ),
     tasks,
     taskActions,
     cronRegistry,
     predefinedSeeder,
     taskRunner,
-    taskSchedule,
   };
 };
 

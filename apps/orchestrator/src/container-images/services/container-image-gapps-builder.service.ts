@@ -24,7 +24,7 @@ import type {
   StartGappsBuildDto,
   SupportedGappsAndroidVersion,
 } from '../dto/gapps-build.dto';
-import { runtimeImageLabelKeys } from '@rebroid/application-core/redroid-runtime';
+import { runtimeImageLabelKeys } from '@rebroid/android-application-core/redroid-runtime';
 import {
   dockerfileWithRequiredLabels,
   requiredRuntimeImageLabels,

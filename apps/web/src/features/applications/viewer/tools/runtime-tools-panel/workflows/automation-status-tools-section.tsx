@@ -9,7 +9,7 @@ import { listActiveAutomationRunsAction } from '@/server/orchestrator/automation
 import { AutomationRunLiveEvents } from '@/shared/ui/automation/automation-run-live-events'
 import { AutomationRunStatusBadge } from '@/shared/ui/automation/automation-run-status-badge'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { AutomationRun, AutomationRunStatus } from '@/server/orchestrator/automations/types'
+import type { AutomationRun, AutomationRunStatus } from '@/shared/contracts/automation'
 
 const activeStatuses = new Set<AutomationRunStatus>(['queued', 'running'])
 

@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
-import { emptyProvider, normalizeProviderForm, type ProviderFormState } from '@rebroid/ai-core/provider'
 import { IconPlus } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
@@ -21,8 +20,9 @@ import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-ref
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { ProviderDialog } from './provider-dialog'
+import { emptyProvider, normalizeProviderForm, type ProviderFormState } from './provider-form-model'
 import { ProvidersGrid } from './providers-grid'
-import type { AutomationAiProvider } from '@/server/orchestrator/settings/types'
+import type { AutomationAiProvider } from '@/shared/contracts/ai-provider'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 export const OrchestratorAiProvidersPageClient = ({

@@ -1,4 +1,4 @@
-import type { ChatMessage } from '@rebroid/ai-core/harness';
+import type { ChatMessage } from '../../common/ai-provider-request';
 
 export const textContent = (content: ChatMessage['content']) =>
   typeof content === 'string'

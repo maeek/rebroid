@@ -19,6 +19,7 @@ const createService = (
     } as unknown as AndroidAppsLogService,
     {
       save: jest.fn().mockResolvedValue(undefined),
+      setNetworkPolicyState: jest.fn().mockResolvedValue(undefined),
     } as unknown as AndroidAppsStateWriter,
     {} as AndroidAppsViewerNetworkService,
     { stopContainer } as unknown as DockerContainerLifecycleService,

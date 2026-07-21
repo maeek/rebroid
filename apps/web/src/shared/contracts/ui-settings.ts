@@ -1,5 +1,5 @@
 import type { ViewerStreamingPreset } from '@/shared/model/settings/viewer-streaming-preset'
-import type { OrchestratorApiSchemas } from '@rebroid/orchestrator-client'
+import type { OrchestratorApiSchemas } from '@rebroid/orchestrator-contracts'
 
 export type OrchestratorSettingsResponse = OrchestratorApiSchemas['OrchestratorSettingsDto']
 

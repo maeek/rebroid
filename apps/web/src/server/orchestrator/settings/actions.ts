@@ -6,7 +6,7 @@ import { hasPermission } from '@/shared/permissions/permissions'
 import { getCurrentOwnerUserId, getCurrentUserContext } from '../current-user'
 import { requireAdminUser, revalidateOrchestratorSettingsPage } from '../shared'
 import { orchestratorSettingsClient } from './client'
-import type { AutomationAiProvider, AutomationAiProviderModel } from './types'
+import type { AutomationAiProvider, AutomationAiProviderModel } from '@/shared/contracts/ai-provider'
 import type { RuntimeUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 const requireAutomationAiRunUser = async () => {

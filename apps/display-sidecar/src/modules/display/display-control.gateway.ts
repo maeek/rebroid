@@ -3,7 +3,7 @@ import { OnGatewayConnection, WebSocketGateway } from "@nestjs/websockets";
 import { IncomingMessage } from "node:http";
 import { RawData, WebSocket } from "ws";
 import { AdbService } from "../adb/adb.service";
-import { type ViewerCommand } from "@rebroid/application-core/viewer-control";
+import { type ViewerCommand } from "@rebroid/android-application-core/viewer-control";
 import { ScrcpyService } from "../scrcpy/scrcpy.service";
 import { VIEWER_CONTROL_COMMANDS } from "../scrcpy/scrcpy-control-codec";
 import { DisplaySessionService } from "./display-session.service";

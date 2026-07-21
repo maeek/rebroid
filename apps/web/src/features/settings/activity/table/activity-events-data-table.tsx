@@ -3,11 +3,11 @@ import { IconEye, IconSearch, IconShieldCheck } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ContextMenuItem } from '@/components/ui/context-menu'
-import { DataGrid } from '@/shared/ui/data-grid'
+import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { useActivityController, useActivityData } from '../activity-context'
 import { formatAction, outcomeTone } from '../activity-format'
 import { ActivityResourceTypeBadge } from '../common/activity-resource-type-badge'
-import type { AuditEvent } from '@/server/persistence/audit-repository'
+import type { AuditEvent } from '@/shared/contracts/audit'
 import type { ColumnDef } from '@tanstack/react-table'
 
 const ActivityEventBadges = ({ event }: { event: AuditEvent }) => (

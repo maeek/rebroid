@@ -4,7 +4,7 @@ import {
   PayloadTooLargeException,
 } from '@nestjs/common';
 import type { BufferedUploadFile } from '../common/http-upload';
-import type { AutomationAiProviderModelRole } from '@rebroid/ai-core/provider';
+import type { AutomationAiProviderModelRole } from './contracts/ai-provider';
 import { AiProviderSettingsService } from './ai-provider-settings.service';
 import { OrchestratorSettingsDto } from './dto/orchestrator-settings.dto';
 import { OrchestratorSettingsStore } from './orchestrator-settings-store';

@@ -18,7 +18,7 @@ import type {
   SaveAutomationInput,
   SaveAutomationTriggerInput,
   SuggestAdHocAiPromptsInput
-} from './types'
+} from '@/shared/contracts/automation'
 
 const ownerQuery = (ownerUserId: string) => {
   const query = new URLSearchParams({ ownerUserId })

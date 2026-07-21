@@ -8,10 +8,11 @@ import {
   getRelatedImageSize,
   getRelatedImageTags
 } from '@/features/platform/details/runtime-container-detail/container-detail-utils'
-import { DataGrid, DataGridWorkspace } from '@/shared/ui/data-grid'
+import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { DefinitionTable } from '@/shared/ui/definition-table'
 import { formatPlatformDate } from '@/shared/ui/platform/platform-detail-parts'
-import type { PlatformNetwork } from '@/server/orchestrator/platform/types'
+import type { PlatformNetwork } from '@/shared/contracts/platform'
 import type { ColumnDef } from '@tanstack/react-table'
 
 export const RelatedImageSection = () => {

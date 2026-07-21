@@ -23,8 +23,8 @@ import { listRunnableAutomationsAction } from '@/server/orchestrator/automations
 import { runAutomationAction } from '@/server/orchestrator/automations/automation-run-actions'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { ApplicationProfileSelect } from '@/shared/ui/application-profile/application-profile-select'
-import type { ApplicationProfileMode } from '@/server/orchestrator/applications/types'
-import type { Automation, AutomationRun } from '@/server/orchestrator/automations/types'
+import type { ApplicationProfileMode } from '@/shared/contracts/application'
+import type { Automation, AutomationRun } from '@/shared/contracts/automation'
 
 export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: AutomationRun) => void }) => {
   const { app, permissions, setApp } = useApplicationViewerContext()

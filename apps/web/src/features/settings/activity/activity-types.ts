@@ -1,5 +1,4 @@
-import type { AuditSort } from '@/server/audit/query'
-import type { AuditEventPage } from '@/server/persistence/audit-repository'
+import type { AuditEventPage, AuditEventSort } from '@/shared/contracts/audit'
 
 export type ActivityFilterValues = {
   search?: string
@@ -28,7 +27,7 @@ export type ActivityFilterEntry = {
 export type ActivityEventsTableProps = {
   result: AuditEventPage
   filters: ActivityFilterValues
-  sorting: AuditSort[]
+  sorting: AuditEventSort[]
   facets: ActivityFacets
   auditRetentionDays: number
 }

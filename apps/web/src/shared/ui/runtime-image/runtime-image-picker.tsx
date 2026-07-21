@@ -9,7 +9,7 @@ import {
   resolvePlatformImageRuntimeMetadata
 } from '@/shared/model/runtime-image/runtime-image-metadata'
 import { SearchField } from '@/shared/ui/search-field'
-import type { PlatformImage } from '@/shared/contracts/platform-image'
+import type { PlatformImage } from '@/shared/contracts/platform'
 
 type RuntimeImagePickerProps = {
   images: PlatformImage[]

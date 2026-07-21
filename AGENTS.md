@@ -15,7 +15,7 @@ This is a pnpm/Turbo monorepo. Runtime applications live in `apps/*`; reusable c
 - `apps/orchestrator`: NestJS API that owns Android application lifecycle state, Docker operations, scheduled tasks, automations, APK handling, network policy coordination, metrics, settings, and system resources. Preserve the existing top-level module split in `src/*`; improve discoverability by splitting oversized files inside the owning module. Keep controllers, DTOs, services, facades, contracts, policies, mappers, repositories, entities, utils, and modules in the appropriate subfolders used by that domain.
 - `apps/display-sidecar`: NestJS sidecar for ADB, scrcpy, WebSocket, and WebRTC display sessions. Server modules live under `src/modules/*`. The embedded viewer client lives under `src/modules/display/viewer`.
 - `apps/firewall-agent`: host firewall reconciler. Keep host-network/firewall execution code here. Shared policy calculation belongs in `packages/firewall-policy-core`, not in this app.
-- `packages/*`: reusable, app-agnostic code. Packages may expose explicit public entrypoints through `package.json` `exports` and small entrypoint files.
+- `packages/*`: a deliberately small layer for code used by at least two runtime apps or generated cross-app contracts. Packages may expose explicit public entrypoints through `package.json` `exports` and small entrypoint files.
 - `deploy`: Docker Compose files and image transfer scripts.
 - `docs`: architecture, operations, and invariant notes. Update docs when behavior or deployment assumptions change.
 - `scripts`: repository automation such as OpenAPI client generation.
@@ -24,11 +24,15 @@ This is a pnpm/Turbo monorepo. Runtime applications live in `apps/*`; reusable c
 
 Put code in `packages/*` only when it is genuinely reusable across apps or is a generated/shared contract.
 
-- `packages/ai-core`: provider configuration, model metadata, AI harness helpers, and shared AI domain types. Do not put app-specific UI state, Nest providers, or Next server actions here.
-- `packages/automation-core`: automation definitions, metadata, condition/control vocabulary, and pure helpers shared by orchestrator and web.
+- `packages/automation-core`: automation definitions, metadata, condition/control vocabulary, YAML draft contracts, and public AI-text normalization shared by orchestrator and web.
+- `packages/android-application-core`: shared Redroid runtime vocabulary and viewer-control contracts used by web, orchestrator, and display sidecar. Keep container-image registry policy in the orchestrator and keep command-line parsing internal to the Redroid runtime entrypoint.
 - `packages/firewall-policy-core`: pure firewall policy types, validation, CIDR/access helpers, and chain naming logic shared by the firewall agent and other apps.
-- `packages/orchestrator-client`: generated OpenAPI client/schema for the orchestrator API. Regenerate with `pnpm openapi:generate`; do not hand-edit generated schema drift unless the generator is broken.
-- `packages/sidecar-client`: generated OpenAPI client/schema for the display sidecar API. Keep it contract-focused.
+- `packages/orchestrator-contracts`: generated, type-only OpenAPI contract for the orchestrator API. Regenerate with `pnpm openapi:generate`; never hand-edit `schema.ts`.
+- `packages/display-sidecar-contracts`: generated, type-only OpenAPI contract consumed by the orchestrator. Keep request execution, authentication, retry, timeout, and error translation in the owning app.
+
+AI provider normalization and persistence belong under `apps/orchestrator/src/settings`; provider request helpers are app-local under `apps/orchestrator/src/common`; device-agent policy and harness behavior belong under `apps/orchestrator/src/automations/ai`; provider form/catalog/recommendation and conversation presentation belong to the owning web feature or shared web model. Do not recreate a general AI package unless two applications require a concrete framework-neutral contract.
+
+New handwritten packages require dependencies from at least two runtime applications. Generated contract packages are the only standing exception; `pnpm packages:check` enforces this admission rule.
 
 Do not move runtime integrations, framework adapters, database access, HTTP controllers, React components, or environment parsing into a package unless multiple apps already need them and the code can remain framework-neutral.
 
@@ -45,10 +49,10 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 - Normal Android application list/get operations read stored state and must not contact Docker. Use the explicit runtime-state reconciliation services or API endpoints when fresh Docker state is required.
 - Automations consume Android runtime behavior through the `ANDROID_APPS_AUTOMATION` token and types under `android-apps/contracts`; do not inject `AndroidAppsFacadeService` or import Android lifecycle, viewer, network, state, or persistence implementations directly.
 - In `apps/orchestrator/src/docker/sidecar`, keep sidecar orchestration, repair, network, and ADB coordination in `DockerSidecarService`; keep display sidecar image existence/build work in `DockerSidecarImageService`; keep pure parsing helpers in `utils`.
-- In `apps/orchestrator/src/android-apps/lifecycle`, keep request-facing lifecycle operations in `AndroidAppsLifecycleService`; keep the long background container start/image/network/readiness/APK launch sequence in `AndroidAppsStartLifecycleService`.
+- In `apps/orchestrator/src/android-apps/lifecycle`, keep `AndroidAppsLifecycleService` as the thin request-facing facade, definition/profile/APK commands in `AndroidAppsConfigurationService`, start/stop commands in `AndroidAppsPowerService`, persisted-job startup recovery in `AndroidAppsLifecycleRecoveryService`, and bounded removal retries/cleanup in the removal services. Provision and start share `AndroidAppsRuntimeActivationService`; application/job transitions go through `AndroidAppsLifecycleTransitionService`, with one active job per application and guarded progress/completion.
 - In `apps/orchestrator/src/android-apps/runtime`, keep runtime download use-case routing and running-container media-scan orchestration in `RuntimeDownloadFilesService`; keep persistent volume lookup, listing, reads, and writes in `RuntimeDownloadVolumeService`.
 - In `apps/orchestrator/src/android-apps/provisioning`, keep provisioning orchestration in `AndroidAppsProvisioningService`, Android boot/remote-access preparation in `AndroidAppsProvisioningAndroidService`, APK install/launch orchestration in `AndroidAppsProvisioningApkService`, and pure APK shell/package-resolution plus Android boot diagnostic helpers under `provisioning/utils`.
-- In `apps/orchestrator/src/automations`, keep `AutomationsModule` as the composition root for internal commands, events, AI/vision, execution, definition, and scheduling modules, and keep `AutomationsService` as the controller-facing facade. Keep enqueue/cancel/dispatch/abort-controller ownership in `AutomationRunnerService`; keep target preparation, step execution, guarded terminalization, metrics, and cleanup in `AutomationRunExecutionService`. Keep the snapshot-grounded controller/planner state machine in `AutomationAiHarnessService` and provider streaming normalization in `AutomationAiChatClientService`. Keep vision capture, provider description, OCR adapters, set-of-marks rendering, and deterministic evidence fusion separate behind `AutomationVisionService`.
+- In `apps/orchestrator/src/automations`, keep `AutomationsModule` as the composition root for internal commands, events, AI/vision, execution, definition, and scheduling modules, and keep `AutomationsService` as the controller-facing facade. Keep enqueue/cancel/dispatch/abort-controller ownership in `AutomationRunnerService`; keep target preparation, step execution, guarded terminalization, metrics, and cleanup in `AutomationRunExecutionService`. Keep the snapshot-grounded deadline/action loop in `AutomationAiHarnessService`, provider controller/planner calls in `AutomationAiDecisionService`, grounded action validation/execution in `AutomationAiActionExecutor`, and provider streaming normalization in `AutomationAiChatClientService`. Keep vision capture, provider description, OCR adapters, set-of-marks rendering, and deterministic evidence fusion separate behind `AutomationVisionService`.
 - Device-decision compatibility normalization may repair known provider envelopes, naming aliases, and omitted descriptive boilerplate, but it must not invent grounding. Mutating actions remain bound to the current snapshot, and taps require an observed candidate ID or normalized coordinates before execution.
 - AI controller turns expose one `DeviceDecision` schema or one fallback decision tool, never the full automation command registry. Bind actions to the latest snapshot and target fingerprint, observe after screen changes, and require known evidence IDs for successful completion.
 - Raw `android.adbShell` is never a default AI capability. AI escalation requires an explicit allowlisted policy and a validated read-only `{program,args}` command; human-authored automation commands remain separately permission checked.
@@ -58,7 +62,7 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 - In `apps/orchestrator/src/settings`, keep generic settings facade methods in `SettingsService`, persistence/default normalization in `OrchestratorSettingsStore`, AI-provider CRUD/execution lookup in `AiProviderSettingsService`, provider connectivity checks in `AiProviderHealthService`, and provider model downloads in `AiProviderModelDownloadService`.
 - Keep AI transport protocol (`openai-chat-completions` or native Ollama) separate from detected server flavor. Probe Lemonade before Ollama compatibility endpoints and preserve exact model IDs returned by the selected transport.
 - Browser UI must not call the orchestrator directly. It should go through the Next.js backend-for-frontend in `apps/web/src/server/orchestrator`.
-- Web shared UI and model code must not import `apps/web/src/server`, including type-only imports. Browser/server DTOs belong in `apps/web/src/shared/contracts`.
+- Web client modules must not import server-owned types. Browser/server DTOs belong in `apps/web/src/shared/contracts`; the only allowed runtime import from `apps/web/src/server` is a module whose first directive is `'use server'`, used to invoke a Server Action.
 - Cross-cutting web reads should use validated `/api/bff/*` handlers backed by focused server query services. Feature-owned mutations may use Server Actions, but both transports must return the shared operation result with a request ID and stable error code.
 - Web persistence has no migration or legacy compatibility path. Schema changes assume a clean deployment and use `pnpm reset:all-state -- --execute`; preserve external environment files and bind-mounted secrets.
 - The orchestrator owns Android application lifecycle state. The display sidecar owns viewer session state. The firewall agent owns host firewall reconciliation.
@@ -105,7 +109,7 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 
 ## Security and Performance
 
-- Consider security implications for every change touching auth, permissions, secrets, uploads, filesystem paths, network access, Docker/container operations, ADB/scrcpy control, firewall rules, database queries, server actions, or generated clients.
+- Consider security implications for every change touching auth, permissions, secrets, uploads, filesystem paths, network access, Docker/container operations, ADB/scrcpy control, firewall rules, database queries, server actions, or generated contracts.
 - Never trust browser input, uploaded files, container names, image names, host paths, URLs, or network policy values without validation and normalization.
 - Do not expose secrets in logs, errors, OpenAPI responses, client bundles, or generated artifacts.
 - Preserve authorization checks in web server actions before calling orchestrator operations that expose backend details or change runtime behavior.
@@ -118,8 +122,8 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 
 ## API Contracts and Generated Code
 
-- When the orchestrator API changes, update DTOs/controllers first, then run `pnpm openapi:generate` and include generated client/schema changes.
-- Keep generated clients contract-only. Put feature-specific mapping and UI behavior in the consuming app.
+- When the orchestrator API changes, update DTOs/controllers first, then run `pnpm openapi:generate` and include generated contract/schema changes.
+- Keep generated contract packages type-only. Put runtime HTTP clients, feature-specific mapping, and UI behavior in the consuming app.
 - Add or update contract tests when changing OpenAPI-visible behavior.
 
 ## Verification Expectations

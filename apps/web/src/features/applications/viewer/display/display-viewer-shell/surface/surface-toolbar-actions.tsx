@@ -3,7 +3,7 @@
 import { IconLoader2, IconPlayerRecord, IconPlayerStop } from '@tabler/icons-react'
 import { Visible } from '@/components/ui/visible'
 import { IconActionButton } from '@/features/applications/viewer/display/display-viewer-shell/surface/icon-action-button'
-import type { ApplicationDisplayRecording } from '@/server/orchestrator/applications/types'
+import type { ApplicationDisplayRecording } from '@/shared/contracts/application'
 
 export const SurfaceToolbarActions = ({
   isRecordingBusy,

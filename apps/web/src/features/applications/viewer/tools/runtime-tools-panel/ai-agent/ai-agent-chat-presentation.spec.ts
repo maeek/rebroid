@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { approvalRequestFromEvent, generationSummary, parseAgentPlan } from './ai-agent-chat-presentation'
-import type { AutomationRunEvent, AutomationRunEventType } from '@/server/orchestrator/automations/types'
+import type { AutomationRunEvent, AutomationRunEventType } from '@/shared/contracts/automation'
 
 const event = (
   type: AutomationRunEventType,

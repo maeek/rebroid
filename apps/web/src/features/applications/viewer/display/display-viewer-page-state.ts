@@ -11,7 +11,7 @@ import {
 } from '@/features/applications/viewer/display/display-viewer-page-utils'
 import { getApplicationAction } from '@/server/orchestrator/applications/actions/queries/get-application-action'
 import { getScrcpySessionAction } from '@/server/orchestrator/applications/actions/runtime/viewer-actions'
-import type { AndroidApplication, ScrcpySession } from '@/server/orchestrator/applications/types'
+import type { AndroidApplication, ScrcpySession } from '@/shared/contracts/application'
 
 type ViewerSplashState = {
   kind: 'splash'

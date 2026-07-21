@@ -5,7 +5,7 @@ import type {
   ResolvedContextReference,
   ResolvedContextReferenceStatus
 } from './dockerfile-context-types'
-import type { ContainerImageBuildContextFile } from '@/server/orchestrator/platform/types'
+import type { ContainerImageBuildContextFile } from '@/shared/contracts/platform'
 
 export const resolveDockerfileContextReferences = ({
   contextFiles,

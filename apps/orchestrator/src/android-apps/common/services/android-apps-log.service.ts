@@ -10,6 +10,7 @@ import {
 } from 'node:fs/promises';
 import { join } from 'node:path';
 import { getErrorMessage } from '../../../common/error-message';
+import type { AndroidAppsRuntimeLogMaintenancePort } from '../../contracts/android-apps-runtime-log-maintenance.port';
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
@@ -23,7 +24,7 @@ type RuntimeLogPatch = Partial<{
 }>;
 
 @Injectable()
-export class AndroidAppsLogService {
+export class AndroidAppsLogService implements AndroidAppsRuntimeLogMaintenancePort {
   private readonly logDir: string;
 
   constructor(private readonly config: ConfigService) {

@@ -1,7 +1,7 @@
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,
-} from '@rebroid/ai-core/provider';
+} from '../../settings/contracts/ai-provider';
 import { AutomationAiSuggestionsService } from './automation-ai-suggestions.service';
 
 const provider: AutomationAiProvider = {

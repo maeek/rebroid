@@ -5,9 +5,10 @@ import { Badge } from '@/components/ui/badge'
 import { FormField } from '@/components/ui/form-field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AutomationRunLiveEvents } from '@/shared/ui/automation/automation-run-live-events'
-import { DataGrid, DataGridWorkspace } from '@/shared/ui/data-grid'
-import type { AndroidApplication } from '@/server/orchestrator/applications/types'
-import type { AutomationRun, AutomationRunStatus } from '@/server/orchestrator/automations/types'
+import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
+import type { AndroidApplication } from '@/shared/contracts/application'
+import type { AutomationRun, AutomationRunStatus } from '@/shared/contracts/automation'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
 
 const statusVariant = (status: AutomationRunStatus) =>

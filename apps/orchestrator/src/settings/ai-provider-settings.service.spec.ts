@@ -1,12 +1,12 @@
 import { BadRequestException } from '@nestjs/common';
 import type { StoredOrchestratorSettings } from './orchestrator-settings-store';
 import { AiProviderSettingsService } from './ai-provider-settings.service';
-import { ScrcpyTransport } from '../android-apps/contracts/android-application-status';
+import { viewerTransport } from '@rebroid/android-application-core/viewer-control';
 
 const createSettings = (): StoredOrchestratorSettings => ({
   defaultContainerImage: 'redroid/redroid:latest',
   dockerImageRegistry: null,
-  defaultScrcpyTransport: ScrcpyTransport.WebRTC,
+  defaultScrcpyTransport: viewerTransport.WebRTC,
   defaultInactivityTimeoutSeconds: 300,
   maxApkUploadSizeMb: 128,
   services: {

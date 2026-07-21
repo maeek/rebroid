@@ -7,8 +7,8 @@ import type {
   AndroidNetworkPolicyResult,
   ApplicationProfileMode,
   ScrcpyTransport
-} from '@/server/orchestrator/applications/types'
-import type { RuntimeImageKind } from '@rebroid/application-core/redroid-runtime'
+} from '@/shared/contracts/application'
+import type { RuntimeImageKind } from '@rebroid/android-application-core/redroid-runtime'
 
 export interface AppDefinition {
   id: string

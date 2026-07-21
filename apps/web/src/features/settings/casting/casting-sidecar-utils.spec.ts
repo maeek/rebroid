@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { castingErrorMessage, filterSessions, sortSessions } from './casting-sidecar-utils'
-import type { DisplaySidecarSession } from '@/server/orchestrator/diagnostics/types'
+import type { DisplaySidecarSession } from '@/shared/contracts/diagnostics'
 
 const sessions: DisplaySidecarSession[] = [
   {

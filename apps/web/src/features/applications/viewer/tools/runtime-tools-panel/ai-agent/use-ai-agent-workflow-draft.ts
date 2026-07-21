@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { toast } from '@/hooks/use-toast'
 import { storePendingAutomationDraft } from '@/shared/model/automation-draft/pending-automation-draft'
 import type { ChatTurn } from './ai-agent-chat-utils'
-import type { AutomationYamlDraft } from '@/server/orchestrator/automations/types'
-import type { AutomationAiModelCatalogProvider } from '@/server/orchestrator/settings/types'
+import type { AutomationAiModelCatalogProvider } from '@/shared/contracts/ai-provider'
+import type { AutomationYamlDraft } from '@rebroid/automation-core/yaml-draft'
 
 export type DraftWorkflowFromRun = (input: {
   runId: string

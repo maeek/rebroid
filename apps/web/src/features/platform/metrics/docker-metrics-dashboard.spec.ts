@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { appendDockerMetricsHistory } from './docker-metrics-history'
-import type { DockerMetricsSnapshot } from '@/server/orchestrator/diagnostics/types'
+import type { DockerMetricsSnapshot } from '@/shared/contracts/diagnostics'
 
 const snapshot = (index: number): DockerMetricsSnapshot => ({
   collectedAt: new Date(Date.UTC(2026, 0, 1, 0, 0, index)).toISOString(),

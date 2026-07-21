@@ -19,7 +19,9 @@ import {
 } from '@/server/orchestrator/applications/actions/configuration/network-policy-actions'
 import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
 import { getOrchestratorHealthAction } from '@/server/orchestrator/diagnostics/actions'
-import { DataGrid, DataGridPagination, DataGridWorkspace } from '@/shared/ui/data-grid'
+import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
+import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { PlatformStatusBanner } from '@/shared/ui/platform/platform-status-banner'
 import {
   clampFirewallPageIndex,
@@ -35,8 +37,8 @@ import {
   selectedFirewallApplicationsFromIds,
   sortFirewallApplications
 } from './firewall-settings-model'
-import type { AndroidApplication } from '@/server/orchestrator/applications/types'
-import type { ServiceHealth } from '@/server/orchestrator/diagnostics/types'
+import type { AndroidApplication } from '@/shared/contracts/application'
+import type { ServiceHealth } from '@/shared/contracts/diagnostics'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
 
 const AllowlistBadges = ({ cidrs }: { cidrs: string[] }) => {

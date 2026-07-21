@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { selectAiDraftProviderAndModel } from './ai-draft-model-selection-utils'
-import type { AutomationAiModelCatalogProvider } from '@/server/orchestrator/settings/types'
+import type { AutomationAiModelCatalogProvider } from '@/shared/contracts/ai-provider'
 
 const catalog = [
   {

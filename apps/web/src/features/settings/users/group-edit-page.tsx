@@ -20,7 +20,7 @@ import { PermissionSwitchTable } from './components/permission-switch-table'
 import { QuotaFields } from './components/quota-fields'
 import { buildGroupUpdateInput, toGroupDraft, type GroupDraft } from './group-edit-page-model'
 import { toUserRole } from './user-edit-page-model'
-import type { UserGroup } from '@/server/auth/user'
+import type { UserGroup } from '@/shared/contracts/auth-user'
 
 export const GroupEditPage = ({ group }: { group: UserGroup }) => {
   const router = useRouter()

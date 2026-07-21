@@ -1,11 +1,13 @@
-import type { AuditEvent, AuditEventFilters } from '@/server/persistence/audit-repository'
+import { firstSearchParamValue, positiveIntegerSearchParam, serializeSortParam } from '@/shared/model/search-params'
+import type {
+  AuditEvent,
+  AuditEventFilters,
+  AuditEventSort,
+  AuditEventSortField,
+  AuditSearchParams
+} from '@/shared/contracts/audit'
 
-export type AuditSearchParams = Record<string, string | string[] | undefined>
-export type AuditSortField = 'createdAt' | 'actorLabel' | 'action' | 'category' | 'outcome' | 'resourceLabel'
-export type AuditSort = { id: AuditSortField; desc: boolean }
-
-const firstValue = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value)
-const auditSortFields = new Set<AuditSortField>([
+const auditSortFields = new Set<AuditEventSortField>([
   'createdAt',
   'actorLabel',
   'action',
@@ -24,42 +26,41 @@ const isoDateParam = (value: string | undefined, boundary: 'start' | 'end') => {
 }
 
 export const auditFiltersFromSearchParams = (searchParams: AuditSearchParams): AuditEventFilters => {
-  const outcome = firstValue(searchParams.outcome)
+  const outcome = firstSearchParamValue(searchParams.outcome)
   return {
-    search: firstValue(searchParams.search)?.trim() || undefined,
-    actorUserId: firstValue(searchParams.actor)?.trim() || undefined,
-    category: firstValue(searchParams.category)?.trim() || undefined,
-    action: firstValue(searchParams.action)?.trim() || undefined,
-    resourceType: firstValue(searchParams.resourceType)?.trim() || undefined,
-    resourceId: firstValue(searchParams.resourceId)?.trim() || undefined,
+    search: firstSearchParamValue(searchParams.search)?.trim() || undefined,
+    actorUserId: firstSearchParamValue(searchParams.actor)?.trim() || undefined,
+    category: firstSearchParamValue(searchParams.category)?.trim() || undefined,
+    action: firstSearchParamValue(searchParams.action)?.trim() || undefined,
+    resourceType: firstSearchParamValue(searchParams.resourceType)?.trim() || undefined,
+    resourceId: firstSearchParamValue(searchParams.resourceId)?.trim() || undefined,
     outcome: outcome === 'success' || outcome === 'failure' ? outcome : undefined,
-    from: isoDateParam(firstValue(searchParams.from), 'start'),
-    to: isoDateParam(firstValue(searchParams.to), 'end')
+    from: isoDateParam(firstSearchParamValue(searchParams.from), 'start'),
+    to: isoDateParam(firstSearchParamValue(searchParams.to), 'end')
   }
 }
 
 export const auditPageFromSearchParams = (searchParams: AuditSearchParams) => ({
-  page: Math.max(Number(firstValue(searchParams.page)) || 1, 1),
-  pageSize: Math.min(Math.max(Number(firstValue(searchParams.pageSize)) || 20, 1), 100)
+  page: positiveIntegerSearchParam(searchParams.page, { fallback: 1 }),
+  pageSize: positiveIntegerSearchParam(searchParams.pageSize, { fallback: 20, max: 100 })
 })
 
-export const auditSortFromSearchParams = (searchParams: AuditSearchParams): AuditSort[] => {
-  const sort = firstValue(searchParams.sort)
+export const auditSortFromSearchParams = (searchParams: AuditSearchParams): AuditEventSort[] => {
+  const sort = firstSearchParamValue(searchParams.sort)
   if (!sort) return [{ id: 'createdAt', desc: true }]
 
   return sort
     .split(',')
     .map(part => {
       const [id, direction] = part.split(':')
-      if (!auditSortFields.has(id as AuditSortField)) return null
-      return { id: id as AuditSortField, desc: direction === 'desc' }
+      if (!auditSortFields.has(id as AuditEventSortField)) return null
+      return { id: id as AuditEventSortField, desc: direction === 'desc' }
     })
-    .filter((item): item is AuditSort => Boolean(item))
+    .filter((item): item is AuditEventSort => Boolean(item))
     .slice(0, 3)
 }
 
-export const auditSortToSearchParam = (sorting: AuditSort[]) =>
-  sorting.length === 0 ? undefined : sorting.map(item => `${item.id}:${item.desc ? 'desc' : 'asc'}`).join(',')
+export const auditSortToSearchParam = serializeSortParam
 
 const csvCell = (value: unknown) => {
   let text: string

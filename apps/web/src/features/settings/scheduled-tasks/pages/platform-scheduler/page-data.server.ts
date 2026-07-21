@@ -1,5 +1,5 @@
 import { listScheduledTaskActionsAction, listScheduledTasksAction } from '@/server/orchestrator/scheduled-tasks/actions'
-import type { ScheduledTask, ScheduledTaskAction } from '@/server/orchestrator/scheduled-tasks/types'
+import type { ScheduledTask, ScheduledTaskAction } from '@/shared/contracts/scheduled-task'
 
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : 'The orchestrator API is not responding.'

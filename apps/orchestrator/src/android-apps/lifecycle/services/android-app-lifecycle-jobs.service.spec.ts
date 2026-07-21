@@ -4,31 +4,25 @@ import { AndroidAppLifecycleJobsService } from './android-app-lifecycle-jobs.ser
 describe('AndroidAppLifecycleJobsService', () => {
   const createRepository = () => {
     const records = new Map<string, Record<string, unknown>>();
-    const key = (value: { applicationId: string; kind?: string }) =>
-      `${value.applicationId}:${value.kind ?? '*'}`;
     const repository = {
       create: jest.fn((value) => ({ ...value })),
       save: jest.fn(async (value) => {
-        records.set(key(value), { ...value });
+        records.set(value.applicationId, { ...value });
         return value;
       }),
-      findByApplicationAndKind: jest.fn(
-        async (applicationId: string, kind: AndroidAppLifecycleJobKind) =>
-          records.get(key({ applicationId, kind })) ?? null,
+      findByApplication: jest.fn(
+        async (applicationId: string) => records.get(applicationId) ?? null,
       ),
       deleteByApplicationAndKind: jest.fn(
         async (applicationId: string, kind: AndroidAppLifecycleJobKind) => {
-          records.delete(key({ applicationId, kind }));
+          const record = records.get(applicationId);
+          if (record?.kind === kind) records.delete(applicationId);
         },
       ),
       deleteByApplication: jest.fn(async (applicationId: string) => {
-        for (const recordKey of records.keys()) {
-          if (recordKey.startsWith(`${applicationId}:`)) {
-            records.delete(recordKey);
-          }
-        }
+        records.delete(applicationId);
       }),
-      listPending: jest.fn(async () => [...records.values()]),
+      listActive: jest.fn(async () => [...records.values()]),
     };
     return { records, repository };
   };
@@ -47,7 +41,7 @@ describe('AndroidAppLifecycleJobsService', () => {
       'adb unavailable',
     );
 
-    expect(records.get('app-1:install_apk')).toMatchObject({
+    expect(records.get('app-1')).toMatchObject({
       attempts: 1,
       payloadJson: '{"statusMessage":"Install after restart."}',
       lastError: 'adb unavailable',
@@ -61,6 +55,9 @@ describe('AndroidAppLifecycleJobsService', () => {
 
     await jobs.enqueue('app-1', AndroidAppLifecycleJobKind.Start);
     await jobs.enqueue('app-1', AndroidAppLifecycleJobKind.Remove);
+    expect(records.get('app-1')).toMatchObject({
+      kind: AndroidAppLifecycleJobKind.Remove,
+    });
     await jobs.removeForApplication('app-1');
 
     expect(records.size).toBe(0);

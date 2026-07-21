@@ -1,7 +1,7 @@
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,
-} from '@rebroid/ai-core/provider';
+} from '../../settings/contracts/ai-provider';
 import { AndroidAutomationCommandsService } from '../commands/android-automation-commands.service';
 import { AiAutomationCommandsService } from '../commands/ai-automation-commands.service';
 import { AutomationCommandRegistryService } from '../commands/automation-command-registry.service';
@@ -12,10 +12,8 @@ import { AutomationDefinitionNormalizerService } from '../definition/automation-
 import { AutomationDefinitionService } from '../definition/automation-definition.service';
 import { AutomationAiChatClientService } from './automation-ai-chat-client.service';
 import { AutomationAiProviderService } from './automation-ai-provider.service';
-import {
-  AutomationAiYamlDraftService,
-  type AutomationYamlDraftStreamEvent,
-} from './automation-ai-yaml-draft.service';
+import type { AutomationYamlDraftStreamEvent } from '@rebroid/automation-core/yaml-draft';
+import { AutomationAiYamlDraftService } from './automation-ai-yaml-draft.service';
 
 const provider: AutomationAiProvider = {
   id: 'local',

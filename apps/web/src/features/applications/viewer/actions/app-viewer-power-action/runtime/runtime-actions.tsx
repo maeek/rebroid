@@ -14,7 +14,7 @@ import type {
   PowerActionRuntimeHandlersOptions,
   RuntimeActionPhase
 } from '@/features/applications/viewer/actions/app-viewer-power-action/types'
-import type { ApplicationProfileMode } from '@/server/orchestrator/applications/types'
+import type { ApplicationProfileMode } from '@/shared/contracts/application'
 
 export const usePowerActionRuntimeHandlers = ({
   app,

@@ -1,8 +1,8 @@
-import { recommendAiModelForAutomation } from '@rebroid/ai-core/provider'
 import { toast } from '@/hooks/use-toast'
+import { recommendAiModelForAutomation } from '@/shared/model/ai-model-recommendation'
 import type { ChatTurn } from './ai-agent-chat-utils'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { AutomationAiModelCatalogProvider } from '@/server/orchestrator/settings/types'
+import type { AutomationAiModelCatalogProvider } from '@/shared/contracts/ai-provider'
 
 const safeExportName = (app: AppDefinition) =>
   app.name

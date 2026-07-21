@@ -2,7 +2,7 @@ import { ConflictException, Injectable, Logger } from "@nestjs/common";
 import { createServer, Server, Socket } from "node:net";
 import { AdbService } from "../adb/adb.service";
 import type { AdbChildProcess } from "../adb/adb.service";
-import { type ViewerCommand } from "@rebroid/application-core/viewer-control";
+import { type ViewerCommand } from "@rebroid/android-application-core/viewer-control";
 import { SidecarConfigService } from "../shared/sidecar-config.service";
 import { DirectAdbConnection } from "./direct-adb-connection";
 import { H264Mp4Recorder } from "./h264-mp4-recorder";

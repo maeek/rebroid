@@ -20,7 +20,22 @@ describe('OrchestratorStatus', () => {
       isValidating: false,
       mutate: vi.fn()
     })
-    vi.mocked(getOrchestratorHealthSummaryAction).mockResolvedValue({} as never)
+    vi.mocked(getOrchestratorHealthSummaryAction).mockResolvedValue({
+      ok: true,
+      docker: true,
+      runtime: true,
+      display: true,
+      firewall: true,
+      ocr: true,
+      services: {
+        orchestrator: { ok: true, status: 'healthy', message: 'Healthy' },
+        docker: { ok: true, status: 'healthy', message: 'Healthy' },
+        runtime: { ok: true, status: 'healthy', message: 'Healthy' },
+        display: { ok: true, status: 'healthy', message: 'Healthy' },
+        firewall: { ok: true, status: 'healthy', message: 'Healthy' },
+        ocr: { ok: true, status: 'healthy', message: 'Healthy' }
+      }
+    })
 
     render(<OrchestratorStatus />)
 

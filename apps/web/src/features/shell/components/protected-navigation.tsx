@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { Visible } from '@/components/ui/visible'
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { getBff } from '@/lib/http/bff'
-import { recentAppsUpdatedEvent, type RecentApp } from '@/shared/model/recent-apps/recent-apps'
+import { recentAppsUpdatedEvent } from '@/shared/model/recent-apps/recent-apps'
 import {
   appSections,
   automationSections,
@@ -21,6 +21,7 @@ import {
 import { NavLink, SectionHeader } from './protected-navigation-parts'
 import { RecentAppLink } from './recent-app-link'
 import type { ShellUser } from './shell-user'
+import type { RecentApp } from '@/shared/contracts/recent-app'
 
 type ProtectedNavigationProps = {
   variant: NavigationVariant

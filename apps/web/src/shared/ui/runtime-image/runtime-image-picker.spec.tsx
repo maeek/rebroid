@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { RuntimeImagePicker } from './runtime-image-picker'
-import type { PlatformImage } from '@/shared/contracts/platform-image'
+import type { PlatformImage } from '@/shared/contracts/platform'
 
 const image = (id: string, gmsMode: 'none' | 'gapps'): PlatformImage => ({
   id,

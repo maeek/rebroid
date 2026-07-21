@@ -2,7 +2,9 @@
 
 import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
-import { DataGrid, DataGridPagination, DataGridWorkspace } from '@/shared/ui/data-grid'
+import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
+import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { PlatformResourceScopeFilter } from './platform-resource-scope-filter'
 import type { ColumnDef } from '@tanstack/react-table'
 

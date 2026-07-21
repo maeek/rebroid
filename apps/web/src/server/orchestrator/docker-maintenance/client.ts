@@ -1,5 +1,5 @@
 import { emptyRequest } from '../request'
-import type { DockerPruneAllResponse, DockerPruneResponse } from './types'
+import type { DockerPruneAllResponse, DockerPruneResponse } from '@/shared/contracts/docker-maintenance'
 
 export const orchestratorDockerMaintenanceClient = {
   pruneImages(danglingOnly = true) {

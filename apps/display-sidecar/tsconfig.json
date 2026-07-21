@@ -17,8 +17,7 @@
     "types": ["node"],
     "moduleResolution": "node16",
     "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "ignoreDeprecations": "6.0"
+    "forceConsistentCasingInFileNames": true
   },
   "include": ["src/**/*.ts"],
   "exclude": ["src/modules/display/viewer/src/**/*.ts"]

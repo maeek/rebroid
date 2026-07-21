@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { AutomationAiRunInput } from '@rebroid/ai-core/provider';
+import type { AutomationAiRunInput } from '../../settings/contracts/ai-provider';
 import { z } from 'zod';
 import type { AutomationCommandDefinition } from './automation-command.types';
 

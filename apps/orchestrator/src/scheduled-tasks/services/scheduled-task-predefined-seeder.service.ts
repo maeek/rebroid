@@ -1,12 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import {
+  nextCronRun,
+  normalizeCronExpression,
+} from '../../common/cron-schedule';
+import {
   ScheduledTaskActionType,
   ScheduledTaskKind,
   ScheduledTaskLastStatus,
 } from '../entities/scheduled-task.entity';
 import { ScheduledTasksRepository } from '../persistence/scheduled-tasks.repository';
 import { ScheduledTaskActionsService } from './scheduled-task-actions.service';
-import { ScheduledTaskScheduleService } from './scheduled-task-schedule.service';
 
 type PredefinedScheduledTask = {
   key: string;
@@ -81,7 +84,6 @@ export class ScheduledTaskPredefinedSeederService {
   constructor(
     private readonly tasks: ScheduledTasksRepository,
     private readonly actions: ScheduledTaskActionsService,
-    private readonly schedule: ScheduledTaskScheduleService,
   ) {}
 
   async ensurePredefinedTasks() {
@@ -97,9 +99,7 @@ export class ScheduledTaskPredefinedSeederService {
         continue;
       }
 
-      const cronExpression = this.schedule.validateCronExpression(
-        predefined.cronExpression,
-      );
+      const cronExpression = normalizeCronExpression(predefined.cronExpression);
       const payload = this.actions.normalizePayload(
         predefined.actionType,
         predefined.payload,
@@ -116,9 +116,7 @@ export class ScheduledTaskPredefinedSeederService {
           lastStatus: ScheduledTaskLastStatus.NeverRun,
           lastRunAt: null,
           lastError: null,
-          nextRunAt: predefined.enabled
-            ? this.schedule.nextRun(cronExpression)
-            : null,
+          nextRunAt: predefined.enabled ? nextCronRun(cronExpression) : null,
         }),
       );
     }

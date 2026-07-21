@@ -11,7 +11,7 @@ import type {
   GappsBuildPreset,
   GappsBuildPresetsResponse,
   SupportedGappsAndroidVersion
-} from '@/shared/contracts/platform-image-build'
+} from '@/shared/contracts/platform'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 interface GappsBuildControllerInput {

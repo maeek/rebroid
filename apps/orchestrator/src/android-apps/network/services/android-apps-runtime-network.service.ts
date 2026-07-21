@@ -9,6 +9,7 @@ import {
   type DockerContainerLifecyclePort,
 } from '../../../docker/contracts/docker-container-lifecycle.port';
 import { AndroidApplication } from '../../android-application.entity';
+import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsStateWriter } from '../../common/services/android-apps-state-writer.service';
 import { AndroidAppsViewerNetworkService } from '../../viewer/services/android-apps-viewer-network.service';
@@ -29,10 +30,14 @@ export class AndroidAppsRuntimeNetworkService {
 
   /** Creates the app network boundary. Viewer support attaches lazily when needed. */
   async createRuntimeBoundary(app: AndroidApplication) {
-    await this.networkIsolation.createRuntimeBoundary(app.id, app.profileMode, {
-      networkName: app.networkName,
-      volumeName: app.volumeName,
-    });
+    await this.networkIsolation.createRuntimeBoundary(
+      app.id,
+      app.profileMode === ApplicationProfileMode.Persistent,
+      {
+        networkName: app.networkName,
+        volumeName: app.volumeName,
+      },
+    );
   }
 
   /** Reattaches control-plane support. Viewer support attaches lazily when needed. */
@@ -69,7 +74,14 @@ export class AndroidAppsRuntimeNetworkService {
     if (options.recordLastStartedAt) {
       app.lastStartedAt = new Date();
     }
-    await this.writer.save(app);
+    await this.writer.setNetworkPolicyState(app.id, {
+      networkPolicyStatus: app.networkPolicyStatus,
+      networkPolicyMessage: app.networkPolicyMessage,
+      networkPolicyAppliedAt: app.networkPolicyAppliedAt,
+      ...(options.recordLastStartedAt
+        ? { lastStartedAt: app.lastStartedAt }
+        : {}),
+    });
 
     if (
       options.failClosed &&

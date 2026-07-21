@@ -27,7 +27,7 @@ import { PermissionSwitchTable } from './components/permission-switch-table'
 import { QuotaFields } from './components/quota-fields'
 import { buildUserUpdateInput, getPermissionInheritanceMap, toUserDraft, toUserRole } from './user-edit-page-model'
 import type { UserDraft } from './user-edit-page-model'
-import type { PublicUser, UserGroup } from '@/server/auth/user'
+import type { PublicUser, UserGroup } from '@/shared/contracts/auth-user'
 
 export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserGroup[] }) => {
   const router = useRouter()

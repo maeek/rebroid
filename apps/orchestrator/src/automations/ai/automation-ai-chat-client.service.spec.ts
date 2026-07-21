@@ -2,7 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,
-} from '@rebroid/ai-core/provider';
+} from '../../settings/contracts/ai-provider';
 import { AutomationAiChatClientService } from './automation-ai-chat-client.service';
 
 const provider: AutomationAiProvider = {

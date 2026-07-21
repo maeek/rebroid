@@ -1,5 +1,5 @@
 import { uploadFormDataWithProgress } from '@/lib/http/upload-form-data-with-progress'
-import type { ContainerImageBuildContextFile } from '@/server/orchestrator/platform/types'
+import type { ContainerImageBuildContextFile } from '@/shared/contracts/platform'
 
 export const uploadRuntimeImageContextFile = ({
   contextPath,

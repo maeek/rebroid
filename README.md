@@ -8,6 +8,8 @@ Browser-managed application containers with a Next.js UI, a NestJS orchestrator,
 - `apps/orchestrator`: NestJS API for Android container lifecycle and Docker operations.
 - `apps/display-sidecar`: ADB, scrcpy, WebSocket, and WebRTC viewer service.
 - `apps/firewall-agent`: Host-network firewall reconciler.
+- `packages`: Small, framework-neutral shared libraries and generated OpenAPI contracts. See
+  [`packages/README.md`](packages/README.md) for ownership and admission rules.
 - `deploy`: Docker Compose and image transfer scripts.
 - `docs`: Architecture and operational notes.
 
@@ -18,6 +20,9 @@ corepack enable
 pnpm install
 pnpm check
 ```
+
+Generated OpenAPI schemas live in the two `*-contracts` packages. Change the owning DTO/controller, then run
+`pnpm openapi:generate`; do not edit generated `schema.ts` files directly.
 
 ## Quick Start
 
@@ -35,17 +40,15 @@ https://localhost:3443
 
 The web container now terminates HTTPS itself. On first boot it generates a self-signed certificate and stores it in the persistent `web-data` volume.
 
-The first admin user is created automatically. Check the web logs for the generated password:
+The first admin user is created automatically. If no password was configured, read the generated password from the
+web container's protected data file:
 
 ```bash
-docker compose -f deploy/compose.yaml logs web
+docker compose -f deploy/compose.yaml exec web cat /app/data/initial-admin-password
 ```
 
-Look for:
-
-```text
-Initial Rebroid admin credentials: username=admin password=...
-```
+The password is not printed to logs. The username is `admin`, and the user must change the generated password on first
+login.
 
 No `.env` file, `NEXTAUTH_URL`, shared secret, Redroid device mapping, or sidecar URL is required for the default Docker compose setup. The containers generate and persist their own secrets in Docker volumes, and the orchestrator applies the Redroid runtime defaults internally.
 
@@ -82,7 +85,7 @@ missing.
 The scripts use this local development wiring by default:
 
 ```text
-web:             https://localhost:3000
+web:             https://127.0.0.1:3000
 orchestrator:    http://localhost:4100
 display-sidecar: http://localhost:8000
 firewall-agent:  /tmp/rebroid-firewall/agent.sock
@@ -96,10 +99,9 @@ machine sockets, and macOS Podman temporary sockets. If you set `DOCKER_HOST`
 manually, prefer a Docker URL such as `unix:///var/run/docker.sock`; raw socket
 paths are normalized by the script when the path exists.
 
-The web dev server binds to `0.0.0.0` and does not require `NEXTAUTH_URL`.
-For LAN browser testing, open `https://<host-or-ip>:3000/login`. Override
-`NEXT_ALLOWED_DEV_ORIGINS` when your browser origin is outside the built-in
-private-network defaults.
+The web dev server binds to `127.0.0.1` and does not require `NEXTAUTH_URL`. Set `DEV_HOST=0.0.0.0` explicitly for LAN
+browser testing, then open `https://<host-or-ip>:3000/login`. Override `NEXT_ALLOWED_DEV_ORIGINS` when your browser
+origin is outside the built-in private-network defaults.
 
 The orchestrator dev script sets `FIREWALL_POLICY_BOOTSTRAP=false`, so the API
 starts even when the local firewall agent reports unhealthy or the host cannot

@@ -1,5 +1,5 @@
 import type { AiScreenshot } from '../ai/automation-ai-screenshot.utils';
-import type { VisionDetection } from '@rebroid/vision-core/observation';
+import type { VisionDetection } from './vision-observation';
 
 export const AUTOMATION_OCR = Symbol('AUTOMATION_OCR');
 

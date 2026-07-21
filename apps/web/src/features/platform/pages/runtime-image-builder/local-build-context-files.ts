@@ -1,4 +1,5 @@
-import { normalizeBuildContextPath, type LocalBuildContextFile } from './dockerfile-context'
+import { normalizeBuildContextPath } from './model/dockerfile-context-path'
+import type { LocalBuildContextFile } from './model/dockerfile-context-types'
 
 interface BrowserFileHandle {
   kind: 'file'

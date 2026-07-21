@@ -24,15 +24,19 @@ import {
 } from '../dto/automation.dto';
 import { AutomationCommandDto } from '../dto/automation-command.dto';
 import {
-  AutomationRunDto,
+  AiPromptSuggestionsDto,
+  RunAdHocAiAutomationDto,
+  SuggestAdHocAiPromptsDto,
+} from '../dto/automation-ai-run.dto';
+import {
   AutomationRunEventDto,
   AutomationRunEventStreamTokenDto,
-  AiPromptSuggestionsDto,
+} from '../dto/automation-run-event.dto';
+import {
+  AutomationRunDto,
   ListActiveAutomationRunsQueryDto,
   ListAutomationRunsQueryDto,
-  RunAdHocAiAutomationDto,
   RunAutomationDto,
-  SuggestAdHocAiPromptsDto,
 } from '../dto/automation-run.dto';
 import {
   AutomationTriggerDto,

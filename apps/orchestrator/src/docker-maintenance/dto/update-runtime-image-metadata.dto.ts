@@ -4,7 +4,7 @@ import type {
   RuntimeImageGmsMode,
   RuntimeImageKind,
   RuntimeImageSignatureSpoofing,
-} from '@rebroid/application-core/redroid-runtime';
+} from '@rebroid/android-application-core/redroid-runtime';
 
 const runtimeKinds = ['redroid', 'generic'] as const;
 const gmsModes = ['none', 'microg', 'gapps'] as const;

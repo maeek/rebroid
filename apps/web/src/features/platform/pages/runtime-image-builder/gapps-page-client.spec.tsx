@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { sendBff } from '@/lib/http/bff'
 import { RuntimeGappsImageBuilderPageClient } from './gapps-page-client'
-import type { ContainerImageBuildJob, GappsBuildPresetsResponse } from '@/shared/contracts/platform-image-build'
+import type { ContainerImageBuildJob, GappsBuildPresetsResponse } from '@/shared/contracts/platform'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 vi.mock('@/lib/http/bff', () => ({

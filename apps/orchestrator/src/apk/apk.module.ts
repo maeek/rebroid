@@ -4,6 +4,7 @@ import { AndroidAppsPersistenceModule } from '../android-apps/persistence/androi
 import { SettingsModule } from '../settings/settings.module';
 import { ApkController } from './controllers/apk.controller';
 import { APK_PACKAGE_INSPECTION } from './contracts/apk-package-inspection.port';
+import { APK_CATALOG } from './contracts/apk-catalog.port';
 import { UploadedApk } from './entities/uploaded-apk.entity';
 import { UploadedApksRepository } from './persistence/uploaded-apks.repository';
 import { ApkArchiveService } from './services/apk-archive.service';
@@ -38,13 +39,11 @@ import { ApkZipReaderService } from './services/apk-zip-reader.service';
       provide: APK_PACKAGE_INSPECTION,
       useExisting: ApkIconExtractorService,
     },
+    {
+      provide: APK_CATALOG,
+      useExisting: ApkCatalogService,
+    },
   ],
-  exports: [
-    UploadedApksRepository,
-    ApkCatalogService,
-    ApkIconExtractorService,
-    ApkStorageService,
-    APK_PACKAGE_INSPECTION,
-  ],
+  exports: [APK_CATALOG, APK_PACKAGE_INSPECTION],
 })
 export class ApkModule {}

@@ -2,10 +2,10 @@
 
 import dynamic from 'next/dynamic'
 import { cn } from '@/lib/utils'
-import type { AutomationCommand } from '@/server/orchestrator/automations/types'
+import type { AutomationCommand } from '@/shared/contracts/automation'
 
 const AutomationMonacoYamlEditor = dynamic(
-  () => import('./monaco-yaml').then(module => module.AutomationMonacoYamlEditor),
+  () => import('./monaco-yaml/automation-monaco-yaml-editor').then(module => module.AutomationMonacoYamlEditor),
   {
     ssr: false,
     loading: () => <div className='h-136 w-full rounded-control border border-surface-border/60 bg-surface-band/35' />

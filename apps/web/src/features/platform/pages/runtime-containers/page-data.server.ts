@@ -1,6 +1,6 @@
 import { listPlatformContainersGridAction } from '@/server/orchestrator/platform/container-actions'
 import { platformGridQueryFromSearchParams, type PlatformGridSearchParams } from '../platform-grid-search'
-import type { PlatformContainersGridPage, PlatformContainersGridQuery } from '@/server/orchestrator/platform/types'
+import type { PlatformContainersGridPage, PlatformContainersGridQuery } from '@/shared/contracts/platform'
 
 export type ContainersSearchParams = PlatformGridSearchParams
 

@@ -12,7 +12,7 @@ import {
   stopApplicationDisplayRecordingAction
 } from '@/server/orchestrator/applications/actions/runtime/viewer-actions'
 import type { DisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-surfaces'
-import type { ApplicationDisplayRecording } from '@/server/orchestrator/applications/types'
+import type { ApplicationDisplayRecording } from '@/shared/contracts/application'
 
 const downloadRecording = (
   applicationId: string,

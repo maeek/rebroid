@@ -1,7 +1,4 @@
-import type {
-  ScrcpyStreamClient,
-  ScrcpyStreamOptions,
-} from "./scrcpy.types";
+import type { ScrcpyStreamClient, ScrcpyStreamOptions } from "./scrcpy.types";
 
 export class ScrcpyStreamSessionRegistry {
   private readonly streamClients = new Map<string, ScrcpyStreamClient>();

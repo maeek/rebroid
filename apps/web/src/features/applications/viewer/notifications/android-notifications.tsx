@@ -9,7 +9,7 @@ import { AppDefinition } from '@/features/applications/domain/app-definition'
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { getAndroidNotificationsAction } from '@/server/orchestrator/applications/actions/runtime/notification-actions'
 import { NotificationCard } from '@/shared/ui/notifications/notification-card'
-import type { AndroidNotification } from '@/server/orchestrator/applications/types'
+import type { AndroidNotification } from '@/shared/contracts/application'
 
 export const AndroidNotifications = ({ app }: { app: AppDefinition }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false)

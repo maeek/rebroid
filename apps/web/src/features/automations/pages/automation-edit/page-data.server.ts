@@ -3,7 +3,7 @@ import {
   getAutomationAction,
   listAutomationCommandsAction
 } from '@/server/orchestrator/automations/automation-management-actions'
-import type { Automation, AutomationCommand } from '@/server/orchestrator/automations/types'
+import type { Automation, AutomationCommand } from '@/shared/contracts/automation'
 
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : 'The orchestrator API is not responding.'

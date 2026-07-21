@@ -5,7 +5,7 @@ import { requireAdminUser } from '../shared'
 import { orchestratorPlatformClient } from './client'
 import { runAuditedPlatformAction } from './platform-audit'
 import { platformContainersGridPage } from './platform-grid-utils'
-import type { PlatformContainersGridPage, PlatformContainersGridQuery } from './types'
+import type { PlatformContainersGridPage, PlatformContainersGridQuery } from '@/shared/contracts/platform'
 
 export const listPlatformContainersAction = async () => {
   await requireAdminUser()

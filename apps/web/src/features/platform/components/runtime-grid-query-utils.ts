@@ -96,9 +96,6 @@ export const summarizePlatformBulkRemoveResults = (
     'remove request'
   )
 
-export const platformSortToSearchParam = (sorting: SortingState) =>
-  sorting.length === 0 ? undefined : sorting.map(item => `${item.id}:${item.desc ? 'desc' : 'asc'}`).join(',')
-
 export const platformSortFromSearchParam = (
   sort: string | undefined,
   options: { defaultSort?: string; missingDirection?: 'asc' | 'desc' } = {}
@@ -113,12 +110,3 @@ export const platformSortFromSearchParam = (
     })
     .filter((item): item is SortingState[number] => Boolean(item))
     .slice(0, 3)
-
-export const retainVisiblePlatformSelection = <T extends { id: string }>(items: T[], selectedIds: Set<string>) => {
-  const visibleIds = new Set(items.map(item => item.id))
-
-  return new Set([...selectedIds].filter(id => visibleIds.has(id)))
-}
-
-export const selectedPlatformItemsFromIds = <T extends { id: string }>(items: T[], selectedIds: Set<string>) =>
-  items.filter(item => selectedIds.has(item.id))

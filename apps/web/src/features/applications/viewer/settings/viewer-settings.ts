@@ -1,8 +1,8 @@
+import { viewerTransport, type ViewerTransport } from '@rebroid/android-application-core/viewer-control'
 import type { ViewerStreamingPreset } from '@/shared/model/settings/viewer-streaming-preset'
 
 export type { ViewerStreamingPreset } from '@/shared/model/settings/viewer-streaming-preset'
 export type ViewerPlayer = 'webcodecs'
-export type ViewerTransport = 'webrtc' | 'websocket'
 
 export type ViewerPlayerDefinition = {
   value: ViewerPlayer
@@ -40,7 +40,7 @@ export type ViewerSettings = ViewerStreamingSettings & {
 export const viewerStreamingPresets: Record<ViewerStreamingPreset, ViewerStreamingSettings> = {
   'low-latency': {
     player: 'webcodecs',
-    transport: 'webrtc',
+    transport: viewerTransport.WebRTC,
     preset: 'low-latency',
     bitrateMbps: 5,
     maxFps: 60,
@@ -50,7 +50,7 @@ export const viewerStreamingPresets: Record<ViewerStreamingPreset, ViewerStreami
   },
   balanced: {
     player: 'webcodecs',
-    transport: 'webrtc',
+    transport: viewerTransport.WebRTC,
     preset: 'balanced',
     bitrateMbps: 3,
     maxFps: 30,
@@ -60,7 +60,7 @@ export const viewerStreamingPresets: Record<ViewerStreamingPreset, ViewerStreami
   },
   'high-quality': {
     player: 'webcodecs',
-    transport: 'webrtc',
+    transport: viewerTransport.WebRTC,
     preset: 'high-quality',
     bitrateMbps: 15,
     maxFps: 60,
@@ -70,7 +70,7 @@ export const viewerStreamingPresets: Record<ViewerStreamingPreset, ViewerStreami
   },
   'bandwidth-saver': {
     player: 'webcodecs',
-    transport: 'webrtc',
+    transport: viewerTransport.WebRTC,
     preset: 'bandwidth-saver',
     bitrateMbps: 1.5,
     maxFps: 24,
@@ -88,7 +88,8 @@ export const defaultViewerSettings: ViewerSettings = {
 
 export const viewerSettingsStorageKey = 'rebroid.viewer.settings.v8'
 
-const isViewerTransport = (value: unknown): value is ViewerTransport => value === 'webrtc' || value === 'websocket'
+const isViewerTransport = (value: unknown): value is ViewerTransport =>
+  value === viewerTransport.WebRTC || value === viewerTransport.WebSocket
 
 const isValidNumber = (value: unknown, fallback: number, min: number, max: number) => {
   if (typeof value !== 'number' || Number.isNaN(value)) {

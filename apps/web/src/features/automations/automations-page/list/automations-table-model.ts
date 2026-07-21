@@ -1,5 +1,5 @@
 import { compactGridParams } from '../shared/grid-query-utils'
-import type { Automation, AutomationsGridQuery, AutomationTrigger } from '@/server/orchestrator/automations/types'
+import type { Automation, AutomationsGridQuery, AutomationTrigger } from '@/shared/contracts/automation'
 import type { AutomationDefinitionStep } from '@rebroid/automation-core/definition'
 
 type AutomationsGridHrefInput = {

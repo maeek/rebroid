@@ -1,7 +1,8 @@
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { ActivityEventsTable } from '../../activity-events-table'
-import { loadSecurityAuditLogPageData, type AuditSearchParams } from './page-data.server'
+import { loadSecurityAuditLogPageData } from './page-data.server'
+import type { AuditSearchParams } from '@/shared/contracts/audit'
 
 export async function SecurityAuditLogPageEntry({ searchParams }: { searchParams?: Promise<AuditSearchParams> }) {
   const { auditRetentionDays, facets, filters, result, sorting } = await loadSecurityAuditLogPageData(

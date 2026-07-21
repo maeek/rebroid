@@ -18,6 +18,35 @@ const noCrossWebFeatureImports = webFeatureDomains.flatMap((fromDomain) =>
     })),
 );
 
+const orchestratorDomains = [
+  "android-apps",
+  "apk",
+  "automations",
+  "container-images",
+  "docker",
+  "docker-maintenance",
+  "health",
+  "metrics",
+  "network-isolation",
+  "network-policy",
+  "scheduled-tasks",
+  "settings",
+  "system-resources",
+];
+const noCrossOrchestratorPersistenceImports = orchestratorDomains.flatMap(
+  (fromDomain) =>
+    orchestratorDomains
+      .filter((toDomain) => toDomain !== fromDomain)
+      .map((toDomain) => ({
+        name: `no-orchestrator-${fromDomain}-to-${toDomain}-persistence`,
+        severity: "error",
+        from: { path: `^apps/orchestrator/src/${fromDomain}/` },
+        to: {
+          path: `^apps/orchestrator/src/${toDomain}/(?:persistence/(?![^/]+\\.module\\.ts$)|entities/|[^/]+\\.entity\\.ts$|.+/entities/)`,
+        },
+      })),
+);
+
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
   forbidden: [
@@ -33,7 +62,32 @@ module.exports = {
       from: {},
       to: { couldNotResolve: true, path: "^@/" },
     },
+    {
+      name: "packages-do-not-import-apps",
+      severity: "error",
+      from: { path: "^packages/" },
+      to: { path: "^apps/" },
+    },
     ...noCrossWebFeatureImports,
+    ...noCrossOrchestratorPersistenceImports,
+    {
+      name: "orchestrator-ports-do-not-import-adapters",
+      severity: "error",
+      from: {
+        path: "^apps/orchestrator/src/.+\\.port\\.ts$",
+      },
+      to: {
+        path: "^apps/orchestrator/src/(?:.+/(?:controllers|dto|entities|persistence|services)/|.+\\.entity\\.ts$)",
+      },
+    },
+    {
+      name: "orchestrator-controllers-do-not-import-repositories",
+      severity: "error",
+      from: { path: "^apps/orchestrator/src/.+/controllers/" },
+      to: {
+        path: "^apps/orchestrator/src/.+/(persistence/|[^/]+\\.repository\\.ts$)",
+      },
+    },
     {
       name: "no-orchestrator-http-from-domain",
       severity: "error",
@@ -85,10 +139,12 @@ module.exports = {
       to: { path: "^apps/web/src/(components|features|shared/ui)/" },
     },
     {
-      name: "generated-orchestrator-client-only-through-web-server",
+      name: "generated-orchestrator-contracts-only-through-web-boundaries",
       severity: "error",
-      from: { path: "^apps/web/src/(?!server/orchestrator/|shared/contracts/)" },
-      to: { path: "^packages/orchestrator-client/" },
+      from: {
+        path: "^apps/web/src/(?!server/orchestrator/|shared/contracts/)",
+      },
+      to: { path: "^packages/orchestrator-contracts/" },
     },
   ],
   options: {

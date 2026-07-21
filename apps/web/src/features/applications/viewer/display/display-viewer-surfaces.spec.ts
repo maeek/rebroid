@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { defaultViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
 import { buildDisplayViewerSurfaces } from './display-viewer-surfaces'
-import type { ScrcpySession } from '@/server/orchestrator/applications/types'
+import type { ScrcpySession } from '@/shared/contracts/application'
 
 const createSession = (displaySession: NonNullable<ScrcpySession['displaySession']>): ScrcpySession => ({
   applicationId: 'app-1',

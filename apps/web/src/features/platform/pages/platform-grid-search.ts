@@ -21,33 +21,32 @@ type PlatformGridSearchQuery = {
   sort?: string
 }
 
-const firstValue = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value)
-
 export const platformGridQueryFromSearchParams = (searchParams: PlatformGridSearchParams): PlatformGridSearchQuery => {
-  const ownership = firstValue(searchParams.ownership)
-  const usage = firstValue(searchParams.usage)
-  const runtimeKind = firstValue(searchParams.runtimeKind)
-  const gmsMode = firstValue(searchParams.gmsMode)
-  const trait = firstValue(searchParams.trait)
-  const attachment = firstValue(searchParams.attachment)
+  const ownership = firstSearchParamValue(searchParams.ownership)
+  const usage = firstSearchParamValue(searchParams.usage)
+  const runtimeKind = firstSearchParamValue(searchParams.runtimeKind)
+  const gmsMode = firstSearchParamValue(searchParams.gmsMode)
+  const trait = firstSearchParamValue(searchParams.trait)
+  const attachment = firstSearchParamValue(searchParams.attachment)
   return {
-    page: Math.max(Number(firstValue(searchParams.page)) || 1, 1),
-    pageSize: Math.min(Math.max(Number(firstValue(searchParams.pageSize)) || 20, 1), 100),
-    q: firstValue(searchParams.q)?.trim() || undefined,
+    page: positiveIntegerSearchParam(searchParams.page, { fallback: 1 }),
+    pageSize: positiveIntegerSearchParam(searchParams.pageSize, { fallback: 20, max: 100 }),
+    q: firstSearchParamValue(searchParams.q)?.trim() || undefined,
     ownership: ownership === 'all' ? 'all' : 'managed',
-    state: firstValue(searchParams.state)?.trim() || undefined,
-    application: firstValue(searchParams.application)?.trim() || undefined,
-    image: firstValue(searchParams.image)?.trim() || undefined,
-    network: firstValue(searchParams.network)?.trim() || undefined,
+    state: firstSearchParamValue(searchParams.state)?.trim() || undefined,
+    application: firstSearchParamValue(searchParams.application)?.trim() || undefined,
+    image: firstSearchParamValue(searchParams.image)?.trim() || undefined,
+    network: firstSearchParamValue(searchParams.network)?.trim() || undefined,
     usage: usage === 'in-use' || usage === 'unused' || usage === 'unknown' ? usage : 'all',
     runtimeKind: runtimeKind === 'redroid' || runtimeKind === 'generic' ? runtimeKind : 'all',
-    androidVersion: firstValue(searchParams.androidVersion)?.trim() || undefined,
-    architecture: firstValue(searchParams.architecture)?.trim() || undefined,
+    androidVersion: firstSearchParamValue(searchParams.androidVersion)?.trim() || undefined,
+    architecture: firstSearchParamValue(searchParams.architecture)?.trim() || undefined,
     gmsMode: gmsMode === 'none' || gmsMode === 'microg' || gmsMode === 'gapps' ? gmsMode : 'all',
-    driver: firstValue(searchParams.driver)?.trim() || undefined,
-    dockerScope: firstValue(searchParams.dockerScope)?.trim() || undefined,
+    driver: firstSearchParamValue(searchParams.driver)?.trim() || undefined,
+    dockerScope: firstSearchParamValue(searchParams.dockerScope)?.trim() || undefined,
     trait: trait === 'internal' || trait === 'attachable' || trait === 'ingress' ? trait : 'all',
     attachment: attachment === 'attached' || attachment === 'unattached' ? attachment : 'all',
-    sort: firstValue(searchParams.sort)?.trim() || undefined
+    sort: firstSearchParamValue(searchParams.sort)?.trim() || undefined
   }
 }
+import { firstSearchParamValue, positiveIntegerSearchParam } from '@/shared/model/search-params'

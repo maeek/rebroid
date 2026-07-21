@@ -7,7 +7,7 @@ import {
 } from '../types/apk.types';
 import { imageDimensions, imageMimeType } from '../utils/apk-image.utils';
 
-export type IconEntryReader = (
+type IconEntryReader = (
   candidate: IconCandidate,
 ) => Buffer | null | Promise<Buffer | null>;
 

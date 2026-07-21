@@ -1,4 +1,4 @@
-import type { DisplaySidecarSession } from '@/server/orchestrator/diagnostics/types'
+import type { DisplaySidecarSession } from '@/shared/contracts/diagnostics'
 import type { SortingState } from '@tanstack/react-table'
 
 export const formatTimestamp = (value: string) => new Date(value).toLocaleString()

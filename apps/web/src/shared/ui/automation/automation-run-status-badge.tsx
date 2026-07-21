@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import type { AutomationRunStatus } from '@/shared/contracts/automation-run'
+import type { AutomationRunStatus } from '@/shared/contracts/automation'
 
 export type AutomationRunDisplayStatus = AutomationRunStatus | 'canceling'
 

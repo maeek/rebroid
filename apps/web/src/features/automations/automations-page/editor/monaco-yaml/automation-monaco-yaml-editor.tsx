@@ -14,7 +14,7 @@ import {
 import { validateAutomationYamlModel } from './language/automation-yaml-validation'
 import { registerAutomationMonacoWorkers } from './language/automation-yaml-workers'
 import { buildAutomationYamlSchema } from './schema/automation-yaml-schema'
-import type { AutomationCommand } from '@/server/orchestrator/automations/types'
+import type { AutomationCommand } from '@/shared/contracts/automation'
 import type * as Monaco from 'monaco-editor'
 
 const defaultModelUri = 'file:///rebroid-automation.yaml'

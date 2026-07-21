@@ -45,7 +45,7 @@ import {
 } from './dto/gapps-build.dto';
 import { ContainerImageGappsBuilderService } from './services/container-image-gapps-builder.service';
 import { ContainerImageGappsPresetService } from './services/container-image-gapps-preset.service';
-import { resolveContainerImage } from '@rebroid/application-core/container-image';
+import { resolveContainerImage } from '../common/container-image-reference';
 
 @ApiTags('platform-container-images')
 @Controller('platform/container-images')

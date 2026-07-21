@@ -5,8 +5,8 @@ import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-ref
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { CastingSidecarSettings } from './casting-sidecar-settings'
-import type { AndroidApplication } from '@/server/orchestrator/applications/types'
-import type { DisplaySidecarSession, ServiceHealth } from '@/server/orchestrator/diagnostics/types'
+import type { AndroidApplication } from '@/shared/contracts/application'
+import type { DisplaySidecarSession, ServiceHealth } from '@/shared/contracts/diagnostics'
 
 export const CastingSettingsPageClient = ({
   initialHealth,

@@ -11,23 +11,27 @@ import {
 } from '@nestjs/common';
 import { ApiNoContentResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import {
-  AutomationAiModelCatalogProviderDto,
   AutomationAiProviderCandidateHealthDto,
-  AutomationAiProviderHealthDto,
   AutomationAiProviderDto,
-  AutomationAiProviderModelDownloadDto,
   AutomationAiProviderModelDto,
-  AutomationAiProviderRemoteModelDto,
   CreateAutomationAiProviderDto,
   CreateAutomationAiProviderModelDto,
-  DownloadAutomationAiProviderModelDto,
   UpdateAutomationAiProviderDto,
   UpdateAutomationAiProviderModelDto,
 } from './dto/automation-ai-provider.dto';
+import {
+  AutomationAiProviderModelDownloadDto,
+  DownloadAutomationAiProviderModelDto,
+} from './dto/automation-ai-provider-download.dto';
+import {
+  AutomationAiModelCatalogProviderDto,
+  AutomationAiProviderHealthDto,
+  AutomationAiProviderRemoteModelDto,
+} from './dto/automation-ai-provider-health.dto';
 import { OrchestratorSettingsDto } from './dto/orchestrator-settings.dto';
 import { UpdateOrchestratorSettingsDto } from './dto/update-orchestrator-settings.dto';
 import { SettingsService } from './settings.service';
-import type { AutomationAiProviderModelRole } from '@rebroid/ai-core/provider';
+import type { AutomationAiProviderModelRole } from './contracts/ai-provider';
 
 @ApiTags('settings')
 @Controller('settings')

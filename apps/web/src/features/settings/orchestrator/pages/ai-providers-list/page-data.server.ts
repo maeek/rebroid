@@ -1,6 +1,6 @@
 import { getServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
 import { listAutomationAiProvidersAction } from '@/server/orchestrator/settings/actions'
-import type { AutomationAiProvider } from '@/server/orchestrator/settings/types'
+import type { AutomationAiProvider } from '@/shared/contracts/ai-provider'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 const errorMessage = (error: unknown) =>

@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge'
 import { resolvePlatformImageRuntimeMetadata } from '@/shared/model/runtime-image/runtime-image-metadata'
-import type { PlatformImage } from '@/shared/contracts/platform-image'
+import type { PlatformImage } from '@/shared/contracts/platform'
 
 const spoofingLabel = {
   not_applicable: 'Spoofing n/a',

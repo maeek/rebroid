@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { AppIdentitySection } from '@/features/applications/components/app-identity-section'
 import type { AppFormValues } from './create-app-form.types'
-import type { UploadedApk } from '@/server/orchestrator/applications/types'
+import type { UploadedApk } from '@/shared/contracts/application'
 
 type AppFormGeneralSectionProps = {
   values: AppFormValues

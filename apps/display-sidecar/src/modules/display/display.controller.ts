@@ -27,7 +27,7 @@ import { createReadStream } from "node:fs";
 import { access } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import { AdbService } from "../adb/adb.service";
-import type { ViewerCommand } from "@rebroid/application-core/viewer-control";
+import type { ViewerCommand } from "@rebroid/android-application-core/viewer-control";
 import { VIEWER_CONTROL_COMMANDS } from "../scrcpy/scrcpy-control-codec";
 import { ScrcpyService } from "../scrcpy/scrcpy.service";
 import { SidecarAuthGuard } from "../shared/sidecar-auth.guard";
@@ -53,7 +53,7 @@ import {
   DisplayWebrtcOfferDto,
   PublicDisplayActionDto,
 } from "./display.dto";
-import { viewerCommands } from "@rebroid/application-core/viewer-control";
+import { viewerCommands } from "@rebroid/android-application-core/viewer-control";
 import { DisplaySessionService } from "./display-session.service";
 import { DisplayWebrtcService } from "./display-webrtc.service";
 

@@ -5,7 +5,7 @@ import {
   normalizeViewerSettings
 } from '@/features/applications/viewer/settings/viewer-settings'
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
-import type { ScrcpySession } from '@/server/orchestrator/applications/types'
+import type { ScrcpySession } from '@/shared/contracts/application'
 
 export const redroidViewerStartupGracePeriodMs = 45_000
 export const redroidViewerRefreshIntervalMs = 3_000

@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { AiAgentToolsSection } from './ai-agent-tools-section'
 import { useAiAgentChatSession } from './use-ai-agent-chat-session'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { AiPromptSuggestion, SuggestAdHocAiPromptsInput } from '@/server/orchestrator/automations/types'
+import type { AiPromptSuggestion, SuggestAdHocAiPromptsInput } from '@/shared/contracts/automation'
 
 vi.mock('./use-ai-agent-chat-session', () => ({
   useAiAgentChatSession: vi.fn()

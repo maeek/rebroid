@@ -3,7 +3,7 @@ import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
-  IsEnum,
+  IsIn,
   IsInt,
   IsNumber,
   IsObject,
@@ -13,7 +13,11 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { ScrcpyTransport } from '../../android-apps/contracts/android-application-status';
+import {
+  viewerTransport,
+  viewerTransports,
+  type ViewerTransport,
+} from '@rebroid/android-application-core/viewer-control';
 
 export class OptionalServiceSettingsDto {
   @ApiProperty({
@@ -103,11 +107,11 @@ export class OrchestratorSettingsDto {
   dockerImageRegistry!: string | null;
 
   @ApiProperty({
-    enum: [ScrcpyTransport.WebRTC, ScrcpyTransport.WebSocket],
-    default: ScrcpyTransport.WebRTC,
+    enum: viewerTransports,
+    default: viewerTransport.WebRTC,
   })
-  @IsEnum(ScrcpyTransport)
-  defaultScrcpyTransport!: ScrcpyTransport;
+  @IsIn(viewerTransports)
+  defaultScrcpyTransport!: ViewerTransport;
 
   @ApiProperty({
     example: 900,

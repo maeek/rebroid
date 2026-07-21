@@ -11,9 +11,6 @@ export const compactGridParams = (values: Record<string, string | number | undef
   return params
 }
 
-export const sortToSearchParam = (sorting: SortingState) =>
-  sorting.length === 0 ? undefined : sorting.map(item => `${item.id}:${item.desc ? 'desc' : 'asc'}`).join(',')
-
 export const sortFromSearchParam = (sort: string | undefined): SortingState =>
   (sort ?? 'updatedAt:desc')
     .split(',')

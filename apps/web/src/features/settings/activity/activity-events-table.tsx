@@ -1,7 +1,7 @@
 'use client'
 
 import { Section } from '@/components/ui/section'
-import { DataGridWorkspace } from '@/shared/ui/data-grid'
+import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { ActivityProvider, useActivityController } from './activity-context'
 import { ActivityEventDetailSheet } from './details/activity-event-detail-sheet'
 import { ActivityPurgeDialog } from './dialogs/activity-purge-dialog'

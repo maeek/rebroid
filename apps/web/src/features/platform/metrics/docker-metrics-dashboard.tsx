@@ -11,7 +11,7 @@ import { getDockerMetricsAction } from '@/server/orchestrator/diagnostics/action
 import { QuickGlanceCard } from '@/shared/ui/settings/quick-glance-card'
 import { StateView } from '@/shared/ui/state-view'
 import { appendDockerMetricsHistory, type HistorySample } from './docker-metrics-history'
-import type { DockerMetricsSnapshot } from '@/server/orchestrator/diagnostics/types'
+import type { DockerMetricsSnapshot } from '@/shared/contracts/diagnostics'
 
 const summaryCards = (metrics: DockerMetricsSnapshot) =>
   [

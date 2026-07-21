@@ -35,8 +35,8 @@ import { CreateAppNetworkAccessSection } from './create-app-network-access-secti
 import { AppFormResourcesSection } from './create-app-resources-section'
 import { AppFormSessionSection } from './create-app-session-section'
 import type { CreateAppFormValues } from './create-app-form.types'
-import type { UploadedApk } from '@/server/orchestrator/applications/types'
-import type { PlatformImage } from '@/shared/contracts/platform-image'
+import type { UploadedApk } from '@/shared/contracts/application'
+import type { PlatformImage } from '@/shared/contracts/platform'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 
 export const CreateAppForm = ({

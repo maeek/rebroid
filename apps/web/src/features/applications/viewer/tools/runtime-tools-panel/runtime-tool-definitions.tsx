@@ -4,7 +4,7 @@ import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
-import type { AutomationRun } from '@/server/orchestrator/automations/types'
+import type { AutomationRun } from '@/shared/contracts/automation'
 
 export type RuntimeToolId = 'clipboard' | 'files' | 'streaming' | 'network-access' | 'logs' | 'ai-agent' | 'workflows'
 

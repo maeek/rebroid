@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import type { DeviceAgentAction } from '@rebroid/ai-core/harness';
-import type { AutomationAiRunInput } from '@rebroid/ai-core/provider';
+import type { DeviceAgentAction } from './core/device-decision';
+import type { AutomationAiRunInput } from '../../settings/contracts/ai-provider';
 import type { AutomationCommandDto } from '../dto/automation-command.dto';
 import type { AutomationAiHarnessContext } from './automation-ai.types';
 import type { AutomationScreenObservation } from '../vision/automation-vision.types';

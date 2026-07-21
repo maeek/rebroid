@@ -8,7 +8,7 @@ import {
   weekdays
 } from '@/shared/model/schedule/schedule-format'
 import type { FormState } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/types'
-import type { ScheduledTask, ScheduledTaskActionType } from '@/server/orchestrator/scheduled-tasks/types'
+import type { ScheduledTask, ScheduledTaskActionType } from '@/shared/contracts/scheduled-task'
 
 export { cronToSchedule, dateLabel, defaultSchedule, scheduleLabel, scheduleToCron, weekdays }
 

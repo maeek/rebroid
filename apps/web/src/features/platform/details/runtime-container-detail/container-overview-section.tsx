@@ -16,7 +16,7 @@ import {
 } from '@/features/platform/details/runtime-container-detail/container-detail-utils'
 import { DefinitionTable } from '@/shared/ui/definition-table'
 import { formatPlatformDate } from '@/shared/ui/platform/platform-detail-parts'
-import type { PlatformContainerDetails } from '@/server/orchestrator/platform/types'
+import type { PlatformContainerDetails } from '@/shared/contracts/platform'
 
 const ContainerOverviewHeader = ({ container }: { container: PlatformContainerDetails['container'] }) => {
   const { setPendingAction } = useContainerDetailControllerContext()

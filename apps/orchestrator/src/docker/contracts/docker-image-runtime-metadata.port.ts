@@ -4,9 +4,8 @@ import type {
   RuntimeImageMetadata,
   RuntimeImageMetadataSource,
   RuntimeImageSignatureSpoofing,
-} from '@rebroid/application-core/redroid-runtime';
+} from '@rebroid/android-application-core/redroid-runtime';
 import type { PlatformImage } from '../docker.types';
-import type { ContainerImageRuntimeMetadata } from '../images/entities/container-image-runtime-metadata.entity';
 
 export const DOCKER_IMAGE_RUNTIME_METADATA = Symbol(
   'DOCKER_IMAGE_RUNTIME_METADATA',
@@ -22,6 +21,16 @@ export interface UpsertRuntimeImageMetadataInput {
   signatureSpoofing: RuntimeImageSignatureSpoofing;
 }
 
+export interface RuntimeImageMetadataRecord {
+  imageRef: string;
+  imageId: string | null;
+  runtimeKind: RuntimeImageKind;
+  androidVersion: string | null;
+  architecture: string | null;
+  gmsMode: RuntimeImageGmsMode;
+  signatureSpoofing: RuntimeImageSignatureSpoofing;
+}
+
 export interface ResolvedRuntimeImageMetadata {
   metadata: RuntimeImageMetadata;
   source: RuntimeImageMetadataSource;
@@ -30,10 +39,10 @@ export interface ResolvedRuntimeImageMetadata {
 export interface DockerImageRuntimeMetadataPort {
   upsert(
     input: UpsertRuntimeImageMetadataInput,
-  ): Promise<ContainerImageRuntimeMetadata>;
+  ): Promise<RuntimeImageMetadataRecord>;
   findByReferences(
     references: string[],
-  ): Promise<ContainerImageRuntimeMetadata | null>;
+  ): Promise<RuntimeImageMetadataRecord | null>;
   resolveForReference(
     image: string,
     options?: {
@@ -43,7 +52,5 @@ export interface DockerImageRuntimeMetadataPort {
   ): Promise<ResolvedRuntimeImageMetadata>;
   enrichPlatformImages(images: PlatformImage[]): Promise<PlatformImage[]>;
   enrichPlatformImage(image: PlatformImage): Promise<PlatformImage>;
-  toRuntimeMetadata(
-    record: ContainerImageRuntimeMetadata,
-  ): RuntimeImageMetadata;
+  toRuntimeMetadata(record: RuntimeImageMetadataRecord): RuntimeImageMetadata;
 }

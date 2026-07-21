@@ -5,7 +5,7 @@ import {
   getDefaultActionInput,
   normalizeActionInput
 } from '../actions/action-registry'
-import type { Automation, SaveAutomationInput } from '@/server/orchestrator/automations/types'
+import type { Automation, SaveAutomationInput } from '@/shared/contracts/automation'
 import type {
   AutomationActionStep,
   AutomationConditionStep,

@@ -1,5 +1,5 @@
 import type { ChatTurn, ChatTurnStatus } from './ai-agent-chat-utils'
-import type { AutomationRunEvent } from '@/server/orchestrator/automations/types'
+import type { AutomationRunEvent } from '@/shared/contracts/automation'
 
 export type AgentPlanStepStatus = 'pending' | 'active' | 'completed'
 

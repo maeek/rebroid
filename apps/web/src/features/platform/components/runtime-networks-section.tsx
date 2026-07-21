@@ -1,123 +1,29 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { IconEye, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Section } from '@/components/ui/section'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Visible } from '@/components/ui/visible'
-import { toast } from '@/hooks/use-toast'
-import { getDisplayErrorMessage } from '@/lib/error-utils'
-import { removePlatformNetworkAction } from '@/server/orchestrator/platform/network-actions'
-import { unwrapActionResult } from '@/shared/actions/action-result'
-import { DataGrid, DataGridPagination, DataGridWorkspace } from '@/shared/ui/data-grid'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
+import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
+import { useRuntimeNetworkActions } from '../hooks/use-runtime-network-actions'
+import { useRuntimeResourceGridController } from '../hooks/use-runtime-resource-grid-controller'
 import { RuntimeNetworkFilters } from './runtime-grid-filter-controls'
-import {
-  platformSortFromSearchParam,
-  platformSortToSearchParam,
-  retainVisiblePlatformSelection,
-  selectedPlatformItemsFromIds
-} from './runtime-grid-query-utils'
+import { platformSortFromSearchParam } from './runtime-grid-query-utils'
 import {
   buildNetworksGridHref,
   canRemoveSelectedNetworks,
-  networkHasAttachedContainers,
-  summarizeNetworkRemoveResults
+  networkHasAttachedContainers
 } from './runtime-networks-section-model'
-import type {
-  PlatformNetwork,
-  PlatformNetworksGridPage,
-  PlatformNetworksGridQuery
-} from '@/server/orchestrator/platform/types'
-import type { ColumnDef } from '@tanstack/react-table'
+import { createNetworkColumns } from './runtime-networks-table-parts'
+import type { PlatformNetworksGridPage, PlatformNetworksGridQuery } from '@/shared/contracts/platform'
 
-const NetworkNameCell = ({ network, className }: { network: PlatformNetwork; className?: string }) => (
-  <div className={className ?? 'flex min-w-[16rem] flex-col gap-1'}>
-    <div className='flex min-w-0 items-center gap-2'>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Link
-            href={`/runtime/networks/${network.id}`}
-            className='block min-w-0 truncate font-medium hover:text-primary'
-          >
-            {network.name}
-          </Link>
-        </TooltipTrigger>
-        <TooltipContent className='max-w-sm break-all'>{network.name}</TooltipContent>
-      </Tooltip>
-      <Visible when={network.managed}>
-        <span className='shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary'>managed</span>
-      </Visible>
-      <Visible when={network.internal}>
-        <span className='shrink-0 rounded-full bg-surface-band px-2 py-0.5 text-xs text-foreground'>internal</span>
-      </Visible>
-    </div>
-    <div className='truncate text-xs text-foreground-muted'>{network.shortId}</div>
-  </div>
-)
-
-export const createNetworkColumns = (): ColumnDef<PlatformNetwork>[] => [
-  {
-    id: 'name',
-    accessorFn: network => network.name,
-    header: 'Network',
-    size: 352,
-    meta: { label: 'Network', skeleton: { kind: 'stacked' } },
-    cell: ({ row }) => <NetworkNameCell network={row.original} />
-  },
-  {
-    id: 'driver',
-    accessorFn: network => network.driver,
-    header: 'Driver',
-    size: 128,
-    meta: { label: 'Driver', skeleton: { kind: 'text', width: 'w-20' } },
-    cell: ({ row }) => <span className='text-sm text-foreground-muted'>{row.original.driver}</span>
-  },
-  {
-    id: 'scope',
-    accessorFn: network => network.scope,
-    header: 'Scope',
-    size: 112,
-    meta: { label: 'Scope', skeleton: { kind: 'text', width: 'w-14' } },
-    cell: ({ row }) => <span className='text-sm text-foreground-muted'>{row.original.scope}</span>
-  },
-  {
-    id: 'subnets',
-    header: 'Subnet',
-    size: 320,
-    enableSorting: false,
-    meta: { label: 'Subnet', skeleton: { kind: 'text', width: 'w-[76%]' } },
-    cell: ({ row }) => (
-      <div className='truncate text-sm text-foreground-muted'>
-        {row.original.subnets.length > 0 ? row.original.subnets.join(', ') : 'none'}
-      </div>
-    )
-  },
-  {
-    id: 'gateways',
-    header: 'Gateway',
-    size: 192,
-    enableSorting: false,
-    meta: { label: 'Gateway', skeleton: { kind: 'text', width: 'w-[72%]' } },
-    cell: ({ row }) => (
-      <div className='truncate text-sm text-foreground-muted'>
-        {row.original.gateways.length > 0 ? row.original.gateways.join(', ') : 'none'}
-      </div>
-    )
-  },
-  {
-    id: 'containers',
-    accessorFn: network => network.containers.length,
-    header: 'Containers',
-    size: 128,
-    meta: { label: 'Containers', skeleton: { kind: 'text', width: 'w-12' } },
-    cell: ({ row }) => <span className='text-sm text-foreground-muted'>{row.original.containers.length}</span>
-  }
-]
+const networkId = (network: PlatformNetworksGridPage['items'][number]) => network.id
 
 export const RuntimeNetworksSection = ({
   networksPage,
@@ -126,52 +32,32 @@ export const RuntimeNetworksSection = ({
   networksPage: PlatformNetworksGridPage
   gridQuery: PlatformNetworksGridQuery
 }) => {
-  const router = useRouter()
-  const [search, setSearch] = useState(gridQuery.q ?? '')
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
-  const [pendingRemove, setPendingRemove] = useState<PlatformNetwork[] | null>(null)
-  const [busyId, setBusyId] = useState<string | null>(null)
-  const sorting = useMemo(() => platformSortFromSearchParam(gridQuery.sort), [gridQuery.sort])
-
-  useEffect(() => {
-    setSearch(gridQuery.q ?? '')
-  }, [gridQuery.q])
-
-  useEffect(() => {
-    setSelectedIds(current => retainVisiblePlatformSelection(networksPage.items, current))
-  }, [networksPage.items])
-
-  const selectedNetworks = selectedPlatformItemsFromIds(networksPage.items, selectedIds)
-
-  const pushGridParams = (patch: Partial<PlatformNetworksGridQuery>) => {
-    router.replace(buildNetworksGridHref({ gridQuery, pageSize: networksPage.pageSize, patch }), { scroll: false })
-  }
-
-  const removeNetworks = async () => {
-    if (!pendingRemove?.length) return
-
-    setBusyId(pendingRemove.length === 1 ? pendingRemove[0].id : 'bulk')
-    try {
-      const results = await Promise.all(pendingRemove.map(network => removePlatformNetworkAction(network.id)))
-      if (pendingRemove.length === 1) {
-        unwrapActionResult(results[0])
-        toast({ title: 'Network removed', variant: 'success' })
-      } else {
-        toast(summarizeNetworkRemoveResults(results))
-        setSelectedIds(new Set())
-      }
-      setPendingRemove(null)
-      router.refresh()
-    } catch (caughtError) {
-      toast({
-        title: 'Could not remove network',
-        description: getDisplayErrorMessage(caughtError),
-        variant: 'danger'
-      })
-    } finally {
-      setBusyId(null)
-    }
-  }
+  const {
+    search,
+    setSearch,
+    selectedIds,
+    setSelectedIds,
+    selectedItems: selectedNetworks,
+    sorting,
+    pushGridParams,
+    onSearch,
+    onSortingChange,
+    onPageIndexChange,
+    onPageSizeChange,
+    clearSelection,
+    refresh
+  } = useRuntimeResourceGridController({
+    items: networksPage.items,
+    gridQuery,
+    pageSize: networksPage.pageSize,
+    getItemId: networkId,
+    parseSort: platformSortFromSearchParam,
+    buildHref: buildNetworksGridHref
+  })
+  const { pendingRemove, setPendingRemove, busyId, removeNetworks } = useRuntimeNetworkActions({
+    clearSelection,
+    refresh
+  })
 
   const columns = useMemo(() => createNetworkColumns(), [])
   const activeFilters = [
@@ -237,7 +123,7 @@ export const RuntimeNetworksSection = ({
           search={search}
           searchPlaceholder='Search networks'
           onSearchChange={setSearch}
-          onSearch={value => pushGridParams({ q: value.trim() || undefined, page: 1 })}
+          onSearch={onSearch}
           filters={
             <RuntimeNetworkFilters
               page={networksPage}
@@ -279,10 +165,7 @@ export const RuntimeNetworksSection = ({
               pageSize={networksPage.pageSize}
               getRowId={network => network.id}
               sorting={sorting}
-              onSortingChange={updater => {
-                const nextSorting = typeof updater === 'function' ? updater(sorting) : updater
-                pushGridParams({ sort: platformSortToSearchParam(nextSorting), page: 1 })
-              }}
+              onSortingChange={onSortingChange}
               selection={{
                 selectedIds,
                 onSelectedIdsChange: setSelectedIds
@@ -330,8 +213,8 @@ export const RuntimeNetworksSection = ({
             totalItems={networksPage.total}
             pageIndex={networksPage.page - 1}
             pageSize={networksPage.pageSize}
-            onPageIndexChange={pageIndex => pushGridParams({ page: pageIndex + 1 })}
-            onPageSizeChange={pageSize => pushGridParams({ page: 1, pageSize })}
+            onPageIndexChange={onPageIndexChange}
+            onPageSizeChange={onPageSizeChange}
           />
         </DataGridWorkspace>
       </Section>

@@ -1,4 +1,4 @@
-import type { ProviderModelRow } from '@rebroid/ai-core/provider'
+import type { ProviderModelRow } from './provider-form-model'
 
 export type ProviderModelRole = 'controller' | 'planner' | 'vision'
 

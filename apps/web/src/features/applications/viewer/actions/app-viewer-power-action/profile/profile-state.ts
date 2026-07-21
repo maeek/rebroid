@@ -7,7 +7,7 @@ import {
 } from '@/shared/model/application-profile/profile-history'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { SetSavedProfiles } from '@/features/applications/viewer/actions/app-viewer-power-action/types'
-import type { ApplicationProfileMode } from '@/server/orchestrator/applications/types'
+import type { ApplicationProfileMode } from '@/shared/contracts/application'
 
 export const getProfileDefaults = (app: AppDefinition) => ({
   mode: app.profileMode ?? 'persistent',

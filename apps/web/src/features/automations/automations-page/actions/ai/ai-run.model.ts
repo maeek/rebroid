@@ -1,6 +1,6 @@
-import { catalogByRole, selectCatalogModel, selectCatalogProvider } from '@rebroid/ai-core/provider'
-import type { AutomationCommand } from '@/server/orchestrator/automations/types'
-import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
+import { catalogByRole, selectCatalogModel, selectCatalogProvider } from '@/shared/model/ai-model-catalog'
+import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
+import type { AutomationCommand } from '@/shared/contracts/automation'
 
 const defaultPrompt = 'Inspect the screen and complete the requested task.'
 const defaultMaxToolCalls = 20

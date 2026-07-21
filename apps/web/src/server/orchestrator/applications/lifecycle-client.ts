@@ -1,5 +1,5 @@
 import { emptyRequest, jsonRequest } from '../request'
-import type { ApplicationCommandResult, SwitchApplicationProfileInput } from './types'
+import type { ApplicationCommandResult, SwitchApplicationProfileInput } from '@/shared/contracts/application'
 
 export const orchestratorAppLifecycleClient = {
   switchProfile(id: string, input: SwitchApplicationProfileInput) {

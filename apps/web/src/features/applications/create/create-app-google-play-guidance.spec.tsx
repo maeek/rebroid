@@ -1,8 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { CreateAppGooglePlayGuidance } from './create-app-google-play-guidance'
-import type { UploadedApk } from '@/server/orchestrator/applications/types'
-import type { PlatformImage } from '@/shared/contracts/platform-image'
+import type { UploadedApk } from '@/shared/contracts/application'
+import type { PlatformImage } from '@/shared/contracts/platform'
 
 const image = (id: string, gmsMode: 'none' | 'gapps'): PlatformImage => ({
   id,

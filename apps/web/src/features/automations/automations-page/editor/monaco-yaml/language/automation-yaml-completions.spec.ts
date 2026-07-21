@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createAutomationYamlCompletionProvider } from './automation-yaml-completions'
-import type { AutomationCommand } from '@/server/orchestrator/automations/types'
+import type { AutomationCommand } from '@/shared/contracts/automation'
 import type * as Monaco from 'monaco-editor'
 
 const monaco = {

@@ -9,7 +9,7 @@ import type {
   PlatformImagesGridQuery,
   PlatformNetworksGridPage,
   PlatformNetworksGridQuery
-} from '@/server/orchestrator/platform/types'
+} from '@/shared/contracts/platform'
 
 const all = 'all'
 

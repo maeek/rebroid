@@ -10,10 +10,11 @@ import type {
   RuntimeImageGmsMode,
   RuntimeImageKind,
   RuntimeImageSignatureSpoofing,
-} from '@rebroid/application-core/redroid-runtime';
+} from '@rebroid/android-application-core/redroid-runtime';
+import type { RuntimeImageMetadataRecord } from '../../contracts/docker-image-runtime-metadata.port';
 
 @Entity({ name: 'container_image_runtime_metadata' })
-export class ContainerImageRuntimeMetadata {
+export class ContainerImageRuntimeMetadata implements RuntimeImageMetadataRecord {
   @ApiProperty({ example: 'local/redroid-microg:14' })
   @PrimaryColumn()
   imageRef!: string;

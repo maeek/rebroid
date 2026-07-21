@@ -4,7 +4,7 @@ import type {
   RuntimeImageKind,
   RuntimeImageMetadataSource,
   RuntimeImageSignatureSpoofing,
-} from '@rebroid/application-core/redroid-runtime';
+} from '@rebroid/android-application-core/redroid-runtime';
 
 export class RuntimeImageMetadataDto {
   @ApiProperty({ enum: ['redroid', 'generic'] })

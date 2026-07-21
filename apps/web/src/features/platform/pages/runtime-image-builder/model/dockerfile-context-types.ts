@@ -1,4 +1,4 @@
-import type { ContainerImageBuildContextFile } from '@/server/orchestrator/platform/types'
+import type { ContainerImageBuildContextFile } from '@/shared/contracts/platform'
 
 export type DockerfileContextInstruction = 'ADD' | 'COPY'
 export type DockerfileContextReferenceState = 'local' | 'ignored' | 'unsupported'

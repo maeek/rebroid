@@ -8,7 +8,7 @@ import {
   yamlScalar
 } from './automation-yaml-language-utils'
 import { commandStepSnippet, commandWithBlockSnippet } from './automation-yaml-snippets'
-import type { AutomationCommand } from '@/server/orchestrator/automations/types'
+import type { AutomationCommand } from '@/shared/contracts/automation'
 import type * as Monaco from 'monaco-editor'
 
 export const createAutomationYamlCompletionProvider = ({

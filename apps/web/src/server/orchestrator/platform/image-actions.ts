@@ -12,7 +12,7 @@ import type {
   StartContainerImageBuildInput,
   UpdateContainerImageRecipeInput,
   UpdateRuntimeImageMetadataInput
-} from './types'
+} from '@/shared/contracts/platform'
 
 export const listPlatformImagesAction = async () => {
   await requireAdminUser()

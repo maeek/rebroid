@@ -1,29 +1,57 @@
-import type { AndroidApplication } from '../android-application.entity';
-import type { UpdateNetworkPolicyDto } from '../network/dto/update-network-policy.dto';
-import type { DisplaySessionDto } from '../viewer/dto/scrcpy-session.dto';
 import type { ApplicationViewerControlCommand } from './application-viewer-control';
 import type { ApplicationProfileMode } from './application-profile-mode';
-import type { parseAndroidNotifications } from '../runtime/utils/android-apps-notification.utils';
+import type { AndroidApplicationStatus } from './android-application-status';
 
 export const ANDROID_APPS_AUTOMATION = Symbol('ANDROID_APPS_AUTOMATION');
 
-export type AndroidAutomationApplication = AndroidApplication;
+export interface AndroidAutomationApplication {
+  id: string;
+  ownerUserId: string | null;
+  status: AndroidApplicationStatus;
+  statusMessage: string | null;
+  profileMode: ApplicationProfileMode;
+  profileName: string | null;
+  containerId: string | null;
+  containerName: string;
+  networkName: string;
+  adbPort: number;
+  networkPolicyEnabled: boolean;
+  networkPolicyAllowCidrs: string;
+}
+
+export interface AndroidAutomationDisplaySession {
+  id: string;
+  surfaceId: string;
+}
+
+export interface AndroidAutomationNotification {
+  packageName: string;
+  title: string;
+  text: string;
+  appName: string | null;
+  raw: string;
+}
+
+export interface AndroidAutomationNetworkPolicyUpdate {
+  networkPolicyEnabled?: boolean;
+  networkPolicyAllowCidrs?: string[];
+}
 
 export interface AndroidAutomationAdbPort {
   getClipboard(
-    app: AndroidApplication,
+    app: AndroidAutomationApplication,
   ): Promise<{ text: string; supported: boolean }>;
   setClipboard(
-    app: AndroidApplication,
+    app: AndroidAutomationApplication,
     text: string,
   ): Promise<{ text: string; supported: boolean }>;
   tap(
-    app: AndroidApplication,
+    app: AndroidAutomationApplication,
     x: number,
     y: number,
   ): Promise<{ executed: boolean }>;
   swipe(
-    app: AndroidApplication,
+    app: AndroidAutomationApplication,
     input: {
       x1: number;
       y1: number;
@@ -33,12 +61,15 @@ export interface AndroidAutomationAdbPort {
     },
   ): Promise<{ executed: boolean }>;
   inputText(
-    app: AndroidApplication,
+    app: AndroidAutomationApplication,
     text: string,
   ): Promise<{ executed: boolean }>;
-  key(app: AndroidApplication, key: string): Promise<{ executed: boolean }>;
+  key(
+    app: AndroidAutomationApplication,
+    key: string,
+  ): Promise<{ executed: boolean }>;
   rotateDisplay(
-    app: AndroidApplication,
+    app: AndroidAutomationApplication,
     orientation:
       | 'portrait'
       | 'landscape'
@@ -46,11 +77,11 @@ export interface AndroidAutomationAdbPort {
       | 'reverse-landscape',
   ): Promise<{ executed: boolean }>;
   shell(
-    app: AndroidApplication,
+    app: AndroidAutomationApplication,
     command: string,
     timeoutMs: number,
   ): Promise<{ stdout: string; stderr: string; exitCode: number }>;
-  dumpUi(app: AndroidApplication): Promise<{
+  dumpUi(app: AndroidAutomationApplication): Promise<{
     status: 'available' | 'failed';
     xml?: string;
     error?: string;
@@ -59,33 +90,33 @@ export interface AndroidAutomationAdbPort {
     attempts?: AndroidAutomationUiDumpAttempt[];
   }>;
   tapText(
-    app: AndroidApplication,
+    app: AndroidAutomationApplication,
     text: string,
   ): Promise<{ found: boolean; x: number | null; y: number | null }>;
   pushFile(
-    app: AndroidApplication,
+    app: AndroidAutomationApplication,
     path: string,
     contentBase64: string,
   ): Promise<{ pushed: boolean }>;
   pullFile(
-    app: AndroidApplication,
+    app: AndroidAutomationApplication,
     path: string,
   ): Promise<{ path: string; contentBase64: string; sizeBytes: number }>;
   deleteFile(
-    app: AndroidApplication,
+    app: AndroidAutomationApplication,
     path: string,
   ): Promise<{ deleted: boolean }>;
-  fileExists(app: AndroidApplication, path: string): Promise<boolean>;
-  listFiles(app: AndroidApplication, path: string): Promise<string[]>;
+  fileExists(app: AndroidAutomationApplication, path: string): Promise<boolean>;
+  listFiles(app: AndroidAutomationApplication, path: string): Promise<string[]>;
   logcat(
-    app: AndroidApplication,
+    app: AndroidAutomationApplication,
     tail: number,
   ): Promise<{ source: 'adb'; collectedAt: string; output: string }>;
   notifications(
-    app: AndroidApplication,
-  ): Promise<ReturnType<typeof parseAndroidNotifications>>;
+    app: AndroidAutomationApplication,
+  ): Promise<AndroidAutomationNotification[]>;
   screenshot(
-    app: AndroidApplication,
+    app: AndroidAutomationApplication,
   ): Promise<{ mimeType: string; dataUrl: string; capturedAt: string }>;
 }
 
@@ -102,46 +133,50 @@ export interface AndroidAutomationUiDumpAttempt {
 
 export interface AndroidAutomationDisplayPort {
   createSessionForPreparedTarget(
-    app: AndroidApplication,
+    app: AndroidAutomationApplication,
     udid: string,
     capabilities?: string[],
-  ): Promise<DisplaySessionDto>;
+  ): Promise<AndroidAutomationDisplaySession>;
   tryCreateSessionForPreparedTarget(
-    app: AndroidApplication,
+    app: AndroidAutomationApplication,
     udid: string,
     capabilities?: string[],
-  ): Promise<DisplaySessionDto | null>;
+  ): Promise<AndroidAutomationDisplaySession | null>;
   viewerControl(
-    app: AndroidApplication,
+    app: AndroidAutomationApplication,
     command: ApplicationViewerControlCommand,
   ): Promise<{
-    session: DisplaySessionDto;
+    session: AndroidAutomationDisplaySession;
     command: ApplicationViewerControlCommand;
     executed: boolean;
   }>;
   setClipboard(
-    app: AndroidApplication,
+    app: AndroidAutomationApplication,
     text: string,
-  ): Promise<{ session: DisplaySessionDto; text: string; supported: boolean }>;
+  ): Promise<{
+    session: AndroidAutomationDisplaySession;
+    text: string;
+    supported: boolean;
+  }>;
   releaseSessionsForApp(appId: string): Promise<void>;
   createVirtualSurface(
-    app: AndroidApplication,
+    app: AndroidAutomationApplication,
     input?: { name?: string; width?: number; height?: number; dpi?: number },
-  ): Promise<DisplaySessionDto>;
+  ): Promise<AndroidAutomationDisplaySession>;
   releaseVirtualSurface(
-    app: AndroidApplication,
+    app: AndroidAutomationApplication,
     surfaceId: string,
-  ): Promise<DisplaySessionDto>;
+  ): Promise<AndroidAutomationDisplaySession>;
   startRecording(
-    app: AndroidApplication,
+    app: AndroidAutomationApplication,
     surfaceId: string,
   ): Promise<AndroidAutomationDisplayRecording>;
   stopRecording(
-    app: AndroidApplication,
+    app: AndroidAutomationApplication,
     surfaceId: string,
   ): Promise<AndroidAutomationDisplayRecording>;
   downloadRecording(
-    app: AndroidApplication,
+    app: AndroidAutomationApplication,
     surfaceId: string,
     recordingId: string,
   ): Promise<{
@@ -167,8 +202,8 @@ export interface AndroidAutomationDisplayRecording {
 export interface AndroidAutomationNetworkPolicyPort {
   updateNetworkPolicy(
     id: string,
-    dto: UpdateNetworkPolicyDto,
-  ): Promise<AndroidApplication>;
+    input: AndroidAutomationNetworkPolicyUpdate,
+  ): Promise<AndroidAutomationApplication>;
 }
 
 export interface AndroidAutomationAdapters {
@@ -178,10 +213,10 @@ export interface AndroidAutomationAdapters {
 }
 
 export interface AndroidAppsAutomationPort {
-  get(id: string): Promise<AndroidApplication>;
+  get(id: string): Promise<AndroidAutomationApplication>;
   start(
     id: string,
     dto?: { profileMode?: ApplicationProfileMode; profileName?: string },
-  ): Promise<AndroidApplication>;
+  ): Promise<AndroidAutomationApplication>;
   automationAdapters(): AndroidAutomationAdapters;
 }

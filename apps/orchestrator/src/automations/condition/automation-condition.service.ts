@@ -10,6 +10,7 @@ import {
   runContextOutputs,
   unaryOperators,
 } from '@rebroid/automation-core/metadata';
+import { evaluateConditionPredicate } from './automation-condition-predicates';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -211,46 +212,7 @@ export class AutomationConditionService {
       ? this.resolveValueRef(condition.compare, state)
       : undefined;
 
-    switch (condition.operator) {
-      case 'exists':
-        return value !== undefined && value !== null;
-      case 'doesNotExist':
-        return value === undefined || value === null;
-      case 'isEmpty':
-        return isEmptyValue(value);
-      case 'isNotEmpty':
-        return !isEmptyValue(value);
-      case 'isTrue':
-        return value === true;
-      case 'isFalse':
-        return value === false;
-      case 'equals':
-        return Object.is(value, compare);
-      case 'notEquals':
-        return !Object.is(value, compare);
-      case 'contains':
-        return String(value ?? '').includes(String(compare ?? ''));
-      case 'doesNotContain':
-        return !String(value ?? '').includes(String(compare ?? ''));
-      case 'matches':
-        return new RegExp(String(compare ?? '')).test(String(value ?? ''));
-      case 'greaterThan':
-        return Number(value) > Number(compare);
-      case 'greaterThanOrEqual':
-        return Number(value) >= Number(compare);
-      case 'lessThan':
-        return Number(value) < Number(compare);
-      case 'lessThanOrEqual':
-        return Number(value) <= Number(compare);
-      case 'lengthEquals':
-        return lengthOf(value) === Number(compare);
-      case 'lengthGreaterThan':
-        return lengthOf(value) > Number(compare);
-      case 'lengthLessThan':
-        return lengthOf(value) < Number(compare);
-      default:
-        return false;
-    }
+    return evaluateConditionPredicate(condition.operator, value, compare);
   }
 
   private valueAtPath(value: unknown, path?: string) {
@@ -271,16 +233,3 @@ export class AutomationConditionService {
     }, value);
   }
 }
-
-const isEmptyValue = (value: unknown) => {
-  if (value === undefined || value === null) return true;
-  if (typeof value === 'string') return value.length === 0;
-  if (Array.isArray(value)) return value.length === 0;
-  if (typeof value === 'object') return Object.keys(value).length === 0;
-  return false;
-};
-
-const lengthOf = (value: unknown) => {
-  if (typeof value === 'string' || Array.isArray(value)) return value.length;
-  return Number.NaN;
-};

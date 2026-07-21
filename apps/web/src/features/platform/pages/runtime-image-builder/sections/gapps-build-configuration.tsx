@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { bytesToGb } from '../model/gapps-build'
 import type { GappsBuildController } from '../hooks/use-gapps-build-controller'
-import type { GappsBuildPresetsResponse, SupportedGappsAndroidVersion } from '@/shared/contracts/platform-image-build'
+import type { GappsBuildPresetsResponse, SupportedGappsAndroidVersion } from '@/shared/contracts/platform'
 
 interface GappsBuildConfigurationProps {
   controller: GappsBuildController

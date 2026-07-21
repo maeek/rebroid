@@ -1,6 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ApplicationProfileMode } from '../android-apps/contracts/application-profile-mode';
 import { dockerSafeName } from '../common/docker-name';
 import {
   DOCKER_NETWORK_RUNTIME,
@@ -51,26 +50,14 @@ export class NetworkIsolationService {
   }
 
   /**
-   * Creates the volume and isolated network needed for a managed runtime.
-   * The orchestrator is attached so it can still reach the app over that network.
-   */
-  async createBoundary(applicationId: string, names: IsolatedRuntimeNames) {
-    await this.createRuntimeBoundary(
-      applicationId,
-      ApplicationProfileMode.Persistent,
-      names,
-    );
-  }
-
-  /**
    * Creates the isolated runtime network and only provisions persistent storage when required.
    */
   async createRuntimeBoundary(
     applicationId: string,
-    profileMode: ApplicationProfileMode,
+    persistentData: boolean,
     names: Pick<IsolatedRuntimeNames, 'networkName' | 'volumeName'>,
   ) {
-    if (profileMode === ApplicationProfileMode.Persistent) {
+    if (persistentData) {
       await this.resources.createVolume(applicationId, names.volumeName);
     }
     await this.networks.createIsolatedNetwork(applicationId, names.networkName);

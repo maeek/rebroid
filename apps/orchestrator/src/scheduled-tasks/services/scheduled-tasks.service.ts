@@ -5,6 +5,10 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import {
+  nextCronRun,
+  normalizeCronExpression,
+} from '../../common/cron-schedule';
+import {
   CreateScheduledTaskDto,
   ScheduledTaskDto,
   UpdateScheduledTaskDto,
@@ -20,7 +24,6 @@ import { ScheduledTaskActionsService } from './scheduled-task-actions.service';
 import { ScheduledTaskCronRegistryService } from './scheduled-task-cron-registry.service';
 import { ScheduledTaskPredefinedSeederService } from './scheduled-task-predefined-seeder.service';
 import { ScheduledTaskRunnerService } from './scheduled-task-runner.service';
-import { ScheduledTaskScheduleService } from './scheduled-task-schedule.service';
 
 const toIso = (value: Date | string | null | undefined) =>
   value ? new Date(value).toISOString() : null;
@@ -33,7 +36,6 @@ export class ScheduledTasksService implements OnModuleInit {
     private readonly cronRegistry: ScheduledTaskCronRegistryService,
     private readonly predefinedSeeder: ScheduledTaskPredefinedSeederService,
     private readonly runner: ScheduledTaskRunnerService,
-    private readonly schedule: ScheduledTaskScheduleService,
   ) {}
 
   async onModuleInit() {
@@ -56,9 +58,7 @@ export class ScheduledTasksService implements OnModuleInit {
   }
 
   async create(dto: CreateScheduledTaskDto) {
-    const cronExpression = this.schedule.validateCronExpression(
-      dto.cronExpression,
-    );
+    const cronExpression = normalizeCronExpression(dto.cronExpression);
     const actionType = dto.actionType;
     const payload = this.actions.normalizePayload(
       actionType,
@@ -75,8 +75,7 @@ export class ScheduledTasksService implements OnModuleInit {
       lastStatus: ScheduledTaskLastStatus.NeverRun,
       lastRunAt: null,
       lastError: null,
-      nextRunAt:
-        dto.enabled === false ? null : this.schedule.nextRun(cronExpression),
+      nextRunAt: dto.enabled === false ? null : nextCronRun(cronExpression),
     });
     const saved = await this.tasks.save(task);
     this.registerTask(saved);
@@ -92,9 +91,7 @@ export class ScheduledTasksService implements OnModuleInit {
       task.enabled = dto.enabled;
     }
     if (dto.cronExpression !== undefined) {
-      task.cronExpression = this.schedule.validateCronExpression(
-        dto.cronExpression,
-      );
+      task.cronExpression = normalizeCronExpression(dto.cronExpression);
     }
     if (dto.actionType !== undefined) {
       task.actionType = dto.actionType;
@@ -110,9 +107,7 @@ export class ScheduledTasksService implements OnModuleInit {
       );
       task.payloadJson = payload ? JSON.stringify(payload) : null;
     }
-    task.nextRunAt = task.enabled
-      ? this.schedule.nextRun(task.cronExpression)
-      : null;
+    task.nextRunAt = task.enabled ? nextCronRun(task.cronExpression) : null;
 
     const saved = await this.tasks.save(task);
     this.registerTask(saved);

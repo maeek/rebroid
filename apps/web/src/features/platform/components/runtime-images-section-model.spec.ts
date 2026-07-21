@@ -7,7 +7,7 @@ import {
   getImageRemoveDialogLabel,
   getImageSecondaryLabel
 } from './runtime-images-section-model'
-import type { PlatformImage } from '@/shared/contracts/platform-image'
+import type { PlatformImage } from '@/shared/contracts/platform'
 
 const image = (overrides: Partial<PlatformImage> = {}): PlatformImage =>
   ({

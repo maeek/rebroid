@@ -5,7 +5,7 @@ import { IconRefresh } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { AiHealthBadge } from '@/shared/ui/ai/ai-health-indicator'
-import type { AutomationAiProvider, AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
+import type { AutomationAiProvider, AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 
 const healthBannerClassName = (health: AutomationAiProviderHealth | null) =>
   health?.status === 'ok'

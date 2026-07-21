@@ -2,8 +2,7 @@ import { ConflictException } from '@nestjs/common';
 import type {
   RuntimeImageMetadata,
   RuntimeImageMetadataSource,
-} from '@rebroid/application-core/redroid-runtime';
-import { ApplicationProfileMode } from '../android-apps/contracts/application-profile-mode';
+} from '@rebroid/android-application-core/redroid-runtime';
 
 export interface ApplicationContainerSpec {
   applicationId: string;
@@ -14,7 +13,7 @@ export interface ApplicationContainerSpec {
   dataMountPath: string;
   adbPort: number;
   privileged: boolean;
-  profileMode: ApplicationProfileMode;
+  persistentData: boolean;
   memoryLimitMb?: number | null;
   cpuLimitCpus?: number | null;
   containerArgs?: string | null;

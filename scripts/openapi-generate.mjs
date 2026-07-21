@@ -13,15 +13,15 @@ const requestedContract = process.argv
 const contracts = [
   {
     name: "orchestrator",
-    spec: "packages/orchestrator-client/openapi.json",
-    schema: "packages/orchestrator-client/src/schema.ts",
+    spec: "packages/orchestrator-contracts/openapi.json",
+    schema: "packages/orchestrator-contracts/src/schema.ts",
     url:
       process.env.ORCHESTRATOR_OPENAPI_URL || "http://127.0.0.1:4100/docs-json",
   },
   {
     name: "display-sidecar",
-    spec: "packages/sidecar-client/openapi.json",
-    schema: "packages/sidecar-client/src/schema.ts",
+    spec: "packages/display-sidecar-contracts/openapi.json",
+    schema: "packages/display-sidecar-contracts/src/schema.ts",
     url:
       process.env.SIDECAR_OPENAPI_URL ||
       "http://127.0.0.1:8000/docs/openapi.json",

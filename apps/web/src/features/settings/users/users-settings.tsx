@@ -23,7 +23,7 @@ import { StandardPage } from '@/shared/ui/page/page-layout'
 import { CreateUserDialog } from './components/create-user-dialog'
 import { UsersGrid } from './components/users-grid'
 import { PasswordPolicySection } from './sections/password-policy-section'
-import type { PublicUser, UserGroup } from '@/server/auth/user'
+import type { PublicUser, UserGroup } from '@/shared/contracts/auth-user'
 
 export const UsersSettings = ({
   initialUsers,

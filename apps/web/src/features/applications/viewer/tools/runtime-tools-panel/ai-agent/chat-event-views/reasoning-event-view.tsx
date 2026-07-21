@@ -1,6 +1,6 @@
 import { IconBrain } from '@tabler/icons-react'
 import { generationSummary } from '../ai-agent-chat-presentation'
-import type { AutomationRunEvent } from '@/server/orchestrator/automations/types'
+import type { AutomationRunEvent } from '@/shared/contracts/automation'
 
 export const ReasoningEventView = ({ event }: { event: AutomationRunEvent }) => {
   const summary = generationSummary(event)

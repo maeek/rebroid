@@ -5,11 +5,8 @@ import { toast } from '@/hooks/use-toast'
 import { definitionToForm } from './builder-utils'
 import { useAiDraftModelSelection } from './use-ai-draft-model-selection'
 import type { EditorSnapshot } from './use-automation-editor-history'
-import type {
-  AutomationYamlDraft,
-  AutomationYamlDraftStreamEvent,
-  DraftAutomationYamlInput
-} from '@/server/orchestrator/automations/types'
+import type { DraftAutomationYamlInput } from '@/shared/contracts/automation'
+import type { AutomationYamlDraft, AutomationYamlDraftStreamEvent } from '@rebroid/automation-core/yaml-draft'
 
 export type AiDraftStatus = 'idle' | 'running' | 'needs-input' | 'completed' | 'failed'
 

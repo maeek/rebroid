@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { toast } from '@/hooks/use-toast'
 import { validateAutomationYamlAction } from '@/server/orchestrator/automations/automation-management-actions'
 import { buildYaml, definitionToForm, type AutomationFormState } from './builder-utils'
-import type { Automation } from '@/server/orchestrator/automations/types'
+import type { Automation } from '@/shared/contracts/automation'
 
 export const useAutomationEditorYaml = ({
   automation,

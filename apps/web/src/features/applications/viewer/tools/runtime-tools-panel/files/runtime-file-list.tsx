@@ -1,7 +1,7 @@
 import { IconDownload, IconFile, IconFolder } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { runtimeFileEntrySubtitle } from './downloads-tools-section-model'
-import type { ApplicationRuntimeFile } from '@/server/orchestrator/applications/types'
+import type { ApplicationRuntimeFile } from '@/shared/contracts/application'
 
 export const RuntimeFileList = ({
   files,

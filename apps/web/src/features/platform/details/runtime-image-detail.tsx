@@ -24,7 +24,7 @@ import { unwrapActionResult } from '@/shared/actions/action-result'
 import { DefinitionTable } from '@/shared/ui/definition-table'
 import { PageContent } from '@/shared/ui/page/page-layout'
 import { PlatformJsonBlock, formatPlatformBytes, formatPlatformDate } from '@/shared/ui/platform/platform-detail-parts'
-import type { PlatformImageDetails } from '@/server/orchestrator/platform/types'
+import type { PlatformImageDetails } from '@/shared/contracts/platform'
 
 export const RuntimeImageDetail = ({ details }: { details: PlatformImageDetails }) => {
   const router = useRouter()

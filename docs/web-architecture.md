@@ -4,6 +4,8 @@ The web application is a Next.js backend-for-frontend. Browser code never calls 
 imports server-owned models. The repository intentionally has no compatibility or state-migration layer: deployments
 that change persisted state start from a clean state with `pnpm reset:all-state -- --execute`.
 
+For file-placement decisions and the page-development workflow, see the [web contributor guide](web-contributor-guide.md).
+
 ## Dependency direction
 
 The enforced dependency direction is:

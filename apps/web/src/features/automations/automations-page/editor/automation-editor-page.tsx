@@ -36,7 +36,7 @@ import { useAutomationEditorYaml } from './use-automation-editor-yaml'
 import { useAutomationWorkflowFiles } from './use-automation-workflow-files'
 import { useUnsavedAutomationNavigation } from './use-unsaved-automation-navigation'
 import type { AutomationEditorPageProps } from './types'
-import type { Automation } from '@/server/orchestrator/automations/types'
+import type { Automation } from '@/shared/contracts/automation'
 
 export function AutomationEditorPage({ initialAutomation, initialCommands }: AutomationEditorPageProps) {
   const router = useRouter()

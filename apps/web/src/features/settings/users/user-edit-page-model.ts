@@ -1,6 +1,6 @@
 import { allPermissionIds, type PermissionMap, type ResourceQuota } from '@/shared/permissions/permissions'
 import type { PermissionInheritanceMap } from './components/permission-switch-table'
-import type { PublicUser, UserEditorInput, UserGroup, UserRole } from '@/server/auth/user'
+import type { PublicUser, UserEditorInput, UserGroup, UserRole } from '@/shared/contracts/auth-user'
 
 export type UserDraft = {
   username: string

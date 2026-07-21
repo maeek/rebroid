@@ -2,8 +2,9 @@
 
 import { runSafeAction } from '@/server/actions/safe-action'
 import { recordAuditEvent } from '@/server/audit/events'
-import { userService, type UserGroup } from '@/server/auth/user'
+import { userService } from '@/server/auth/user'
 import { requireAdminUser, revalidateUsersPage } from '../shared'
+import type { UserGroup } from '@/shared/contracts/auth-user'
 import type { ResourceQuota } from '@/shared/permissions/permissions'
 
 export const updateUserGroupAction = async (

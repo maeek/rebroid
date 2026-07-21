@@ -1,5 +1,5 @@
 import type { ActivityFacets, ActivityFilterEntry, ActivityFilterValues } from './activity-types'
-import type { AuditEvent } from '@/server/persistence/audit-repository'
+import type { AuditEvent } from '@/shared/contracts/audit'
 
 export const allActivityFilterValue = '__all__'
 

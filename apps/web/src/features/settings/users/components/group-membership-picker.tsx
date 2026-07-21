@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 import { SearchField } from '@/shared/ui/search-field'
-import type { UserGroup } from '@/server/auth/user'
+import type { UserGroup } from '@/shared/contracts/auth-user'
 
 export const GroupMembershipPicker = ({
   groups,

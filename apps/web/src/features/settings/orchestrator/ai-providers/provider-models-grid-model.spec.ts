@@ -4,7 +4,7 @@ import {
   nextProviderModelRoles,
   selectedProviderModelIndexes
 } from './provider-models-grid-model'
-import type { ProviderModelRow } from '@rebroid/ai-core/provider'
+import type { ProviderModelRow } from './provider-form-model'
 
 const modelRow = (override: Partial<ProviderModelRow>): ProviderModelRow => ({
   rowId: 'row-1',

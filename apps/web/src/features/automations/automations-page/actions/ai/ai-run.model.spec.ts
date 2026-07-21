@@ -8,8 +8,8 @@ import {
   selectableAiRunCommands,
   summarizeAiRunInput
 } from './ai-run.model'
-import type { AutomationCommand } from '@/server/orchestrator/automations/types'
-import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
+import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
+import type { AutomationCommand } from '@/shared/contracts/automation'
 
 const command = (uses: string): AutomationCommand => ({
   uses,

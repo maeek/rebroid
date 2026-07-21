@@ -4,7 +4,7 @@ import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
 import { ImagePullProgress } from '@/features/applications/viewer/components/image-pull-progress'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { AndroidApplicationStatusDetail } from '@/server/orchestrator/applications/types'
+import type { AndroidApplicationStatusDetail } from '@/shared/contracts/application'
 
 type AppImagePullProgress = {
   status: string

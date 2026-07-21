@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { cn } from '@/lib/utils'
 import { getOrchestratorHealthSummaryAction } from '@/server/orchestrator/diagnostics/actions'
-import type { OrchestratorHealth, ServiceHealth } from '@/server/orchestrator/diagnostics/types'
+import type { OrchestratorHealth, ServiceHealth } from '@/shared/contracts/diagnostics'
 
 type HealthState = 'checking' | 'online' | 'degraded' | 'offline'
 type DisplayServiceStatus = ServiceHealth['status'] | 'degraded'

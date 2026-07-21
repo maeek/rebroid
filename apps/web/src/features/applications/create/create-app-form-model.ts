@@ -2,9 +2,9 @@ import {
   applyRedroidDisplayContainerArgs,
   defaultRedroidDisplayProfileId,
   type RuntimeImageKind
-} from '@rebroid/application-core/redroid-runtime'
+} from '@rebroid/android-application-core/redroid-runtime'
 import type { CreateAppFormValues } from './create-app-form.types'
-import type { CreateApplicationActionInput, UploadedApk } from '@/server/orchestrator/applications/types'
+import type { CreateApplicationActionInput, UploadedApk } from '@/shared/contracts/application'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 
 export const getInitialCreateAppFormValues = (settings: OrchestratorUiSettings): CreateAppFormValues => ({

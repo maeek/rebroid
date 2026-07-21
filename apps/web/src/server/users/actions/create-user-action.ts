@@ -2,8 +2,9 @@
 
 import { runSafeAction } from '@/server/actions/safe-action'
 import { recordAuditEvent } from '@/server/audit/events'
-import { userService, type UserEditorInput } from '@/server/auth/user'
+import { userService } from '@/server/auth/user'
 import { requireAdminUser, revalidateUsersPage } from '../shared'
+import type { UserEditorInput } from '@/shared/contracts/auth-user'
 
 export const createUserAction = async (input: UserEditorInput & { username: string; password: string }) =>
   runSafeAction(

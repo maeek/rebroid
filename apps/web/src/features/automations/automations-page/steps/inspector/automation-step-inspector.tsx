@@ -9,7 +9,7 @@ import { collectStepReferenceOptions } from '../shared/automation-step-reference
 import { AutomationStepInspectorHeader } from './automation-step-inspector-header'
 import { useMediaQuery } from './use-media-query'
 import type { AutomationStepForm } from '../../editor/builder-utils'
-import type { AutomationCommand } from '@/server/orchestrator/automations/types'
+import type { AutomationCommand } from '@/shared/contracts/automation'
 
 export function AutomationStepInspector({
   step,

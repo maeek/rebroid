@@ -5,7 +5,7 @@ import { IconCheck, IconLock, IconShieldCheck, IconX } from '@tabler/icons-react
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { approvalRequestFromEvent } from '../ai-agent-chat-presentation'
-import type { AutomationRunEvent } from '@/server/orchestrator/automations/types'
+import type { AutomationRunEvent } from '@/shared/contracts/automation'
 
 export const ApprovalEventView = ({
   event,

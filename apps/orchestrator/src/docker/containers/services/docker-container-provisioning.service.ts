@@ -1,8 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { ApplicationProfileMode } from '../../../android-apps/contracts/application-profile-mode';
 import { DockerEngineService } from '../../docker-engine.service';
 import { ApplicationContainerSpec } from '../../docker.types';
-import { parseCommandLine } from '@rebroid/application-core/command-line';
+import { parseCommandLine } from '@rebroid/android-application-core/redroid-runtime';
 import { DockerImageRuntimeService } from '../../images/services/docker-image-runtime.service';
 import { DockerContainerLifecycleService } from './docker-container-lifecycle.service';
 import { withHostTimezoneEnv } from '../../utils/docker-container-env.utils';
@@ -54,7 +53,7 @@ export class DockerContainerProvisioningService implements DockerContainerProvis
       },
     };
 
-    if (spec.profileMode === ApplicationProfileMode.Persistent) {
+    if (spec.persistentData) {
       hostConfig.Mounts = [
         {
           Type: 'volume',

@@ -1,9 +1,8 @@
 'use server'
 
-import { PublicActionError } from '@/server/errors/public-action-error'
-
 import { cloneStoredAppIcon } from '@/server/app-icons/store'
 import { recordAuditEvent } from '@/server/audit/events'
+import { PublicActionError } from '@/server/errors/public-action-error'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { getCurrentUserContext } from '../../../current-user'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'

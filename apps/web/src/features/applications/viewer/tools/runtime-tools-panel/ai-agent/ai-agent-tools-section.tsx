@@ -14,7 +14,7 @@ import { useAiAgentConversationExport } from './use-ai-agent-conversation-export
 import { useAiAgentPromptSuggestions, type GeneratePromptSuggestions } from './use-ai-agent-prompt-suggestions'
 import { useAiAgentWorkflowDraft, type DraftWorkflowFromRun } from './use-ai-agent-workflow-draft'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { AutomationRun } from '@/server/orchestrator/automations/types'
+import type { AutomationRun } from '@/shared/contracts/automation'
 
 export const AiAgentToolsSection = ({
   app,

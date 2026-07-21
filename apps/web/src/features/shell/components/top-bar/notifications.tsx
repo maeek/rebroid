@@ -8,7 +8,7 @@ import { usePollingQuery } from '@/hooks/use-polling-query'
 import { cn } from '@/lib/utils'
 import { listRunningApplicationNotificationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
 import { NotificationCard } from '@/shared/ui/notifications/notification-card'
-import type { RunningApplicationNotifications } from '@/server/orchestrator/applications/types'
+import type { RunningApplicationNotifications } from '@/shared/contracts/application'
 
 const refreshIntervalMs = 10000
 

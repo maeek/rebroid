@@ -15,7 +15,7 @@ import {
 } from '@/features/platform/details/runtime-container-detail/related-container-sections'
 import { PageContent } from '@/shared/ui/page/page-layout'
 import { PlatformJsonBlock } from '@/shared/ui/platform/platform-detail-parts'
-import type { PlatformContainerDetails, PlatformContainerLog } from '@/server/orchestrator/platform/types'
+import type { PlatformContainerDetails, PlatformContainerLog } from '@/shared/contracts/platform'
 
 export const RuntimeContainerDetail = ({
   details,

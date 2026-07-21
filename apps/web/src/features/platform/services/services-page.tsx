@@ -12,7 +12,8 @@ import {
   resetOrchestratorUiSettings,
   saveOrchestratorUiSettings
 } from '@/shared/model/settings/use-orchestrator-ui-settings'
-import { DataGrid, DataGridWorkspace } from '@/shared/ui/data-grid'
+import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { ServiceSettingsDialog, serviceDetails, serviceMeta, type ServiceId } from './service-settings-dialog'

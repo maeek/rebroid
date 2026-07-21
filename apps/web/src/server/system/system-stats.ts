@@ -1,22 +1,5 @@
 import os from 'node:os'
-
-export interface SystemStats {
-  platform: string
-  architecture: string
-  cpu: string
-  cpuCores: number
-  cpuUsage: string
-  totalMemory: string
-  totalMemoryBytes: number
-  freeMemory: string
-  freeMemoryBytes: number
-  memoryUsage: string
-  uptime: string
-  networkInterfaces: ReturnType<typeof os.networkInterfaces>
-  homeDirectory: string
-  hostname: string
-  cpuUsagePercentLast50Entrires: [string, number][]
-}
+import type { SystemStats } from '@/shared/contracts/system-stats'
 
 type CpuTimes = ReturnType<typeof os.cpus>[number]['times']
 

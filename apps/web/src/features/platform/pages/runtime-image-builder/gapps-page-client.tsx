@@ -7,7 +7,7 @@ import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { useGappsBuildController } from './hooks/use-gapps-build-controller'
 import { GappsBuildConfiguration } from './sections/gapps-build-configuration'
 import { GappsBuildProgress } from './sections/gapps-build-progress'
-import type { ContainerImageBuildJob, GappsBuildPresetsResponse } from '@/shared/contracts/platform-image-build'
+import type { ContainerImageBuildJob, GappsBuildPresetsResponse } from '@/shared/contracts/platform'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 interface RuntimeGappsImageBuilderPageClientProps {

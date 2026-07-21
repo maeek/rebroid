@@ -1,4 +1,4 @@
-import { viewerCommands } from "@rebroid/application-core/viewer-control";
+import { viewerCommands } from "@rebroid/android-application-core/viewer-control";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export type DisplaySessionStatus =

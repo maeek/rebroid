@@ -1,8 +1,8 @@
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { AutomationTracesSection } from './automation-traces-section'
-import type { AndroidApplication } from '@/server/orchestrator/applications/types'
-import type { Automation, AutomationRun } from '@/server/orchestrator/automations/types'
+import type { AndroidApplication } from '@/shared/contracts/application'
+import type { Automation, AutomationRun } from '@/shared/contracts/automation'
 
 export function AutomationTracesPage({
   applications,

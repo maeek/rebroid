@@ -2,7 +2,7 @@ import type {
   RuntimeImageGmsMode,
   RuntimeImageKind,
   RuntimeImageSignatureSpoofing,
-} from '@rebroid/application-core/redroid-runtime';
+} from '@rebroid/android-application-core/redroid-runtime';
 import type { PlatformImage, PlatformImageDetails } from '../docker.types';
 
 export const DOCKER_PLATFORM_IMAGES = Symbol('DOCKER_PLATFORM_IMAGES');

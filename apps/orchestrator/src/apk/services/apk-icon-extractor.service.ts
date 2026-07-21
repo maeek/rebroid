@@ -2,7 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { getErrorMessage } from '../../common/error-message';
 import type { ApkPackageInspectionPort } from '../contracts/apk-package-inspection.port';
 import { maxIconBytes, ZipEntry } from '../types/apk.types';
-import { imageDimensions, imageMimeType } from '../utils/apk-image.utils';
+import {
+  imageMimeType,
+  launcherIconDataUrl,
+  normalizeApkDisplayName,
+} from '../utils/apk-image.utils';
 import { ApkArchiveService } from './apk-archive.service';
 import { ApkIconSelectorService } from './apk-icon-selector.service';
 import { ApkManifestReaderService } from './apk-manifest-reader.service';
@@ -59,14 +63,14 @@ export class ApkIconExtractorService implements ApkPackageInspectionPort {
       };
 
       let displayName = label.value
-        ? this.normalizeDisplayName(label.value)
+        ? normalizeApkDisplayName(label.value)
         : null;
       if (!displayName && typeof label.resourceId === 'number') {
         const content = await getResources();
         const resolved = content
           ? this.resourceReader.readString(content, label.resourceId)
           : null;
-        displayName = resolved ? this.normalizeDisplayName(resolved) : null;
+        displayName = resolved ? normalizeApkDisplayName(resolved) : null;
       }
 
       let extractedIconDataUrl: string | null = null;
@@ -191,7 +195,7 @@ export class ApkIconExtractorService implements ApkPackageInspectionPort {
 
       const label = this.manifestReader.readApplicationLabel(manifest);
       if (label.value) {
-        return this.normalizeDisplayName(label.value);
+        return normalizeApkDisplayName(label.value);
       }
 
       if (typeof label.resourceId !== 'number') {
@@ -206,7 +210,7 @@ export class ApkIconExtractorService implements ApkPackageInspectionPort {
         ? this.resourceReader.readString(resources, label.resourceId)
         : null;
 
-      return resolvedLabel ? this.normalizeDisplayName(resolvedLabel) : null;
+      return resolvedLabel ? normalizeApkDisplayName(resolvedLabel) : null;
     } catch (error) {
       this.logger.warn(
         `Could not extract APK display name: ${getErrorMessage(error, 'unknown error')}`,
@@ -263,16 +267,7 @@ export class ApkIconExtractorService implements ApkPackageInspectionPort {
       return null;
     }
 
-    const dimensions = imageDimensions(content, mimeType);
-    if (
-      score < 10_000 &&
-      dimensions &&
-      (dimensions.width < 24 || dimensions.height < 24)
-    ) {
-      return null;
-    }
-
-    return `data:${mimeType};base64,${content.toString('base64')}`;
+    return launcherIconDataUrl(normalizedPath, content, score);
   }
 
   /**
@@ -355,20 +350,6 @@ export class ApkIconExtractorService implements ApkPackageInspectionPort {
       return null;
     }
 
-    const dimensions = imageDimensions(content, mimeType);
-    if (
-      score < 10_000 &&
-      dimensions &&
-      (dimensions.width < 24 || dimensions.height < 24)
-    ) {
-      return null;
-    }
-
-    return `data:${mimeType};base64,${content.toString('base64')}`;
-  }
-
-  private normalizeDisplayName(value: string) {
-    const normalized = value.replace(/\s+/g, ' ').trim();
-    return normalized.length > 0 ? normalized.slice(0, 120) : null;
+    return launcherIconDataUrl(normalizedPath, content, score);
   }
 }

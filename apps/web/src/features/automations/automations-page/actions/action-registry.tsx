@@ -44,7 +44,7 @@ import type {
   AutomationActionDefinition,
   AutomationActionIconKey
 } from './automation-action-definition'
-import type { AutomationCommand } from '@/server/orchestrator/automations/types'
+import type { AutomationCommand } from '@/shared/contracts/automation'
 
 const actionCategories: AutomationActionCategory[] = [
   'Device',

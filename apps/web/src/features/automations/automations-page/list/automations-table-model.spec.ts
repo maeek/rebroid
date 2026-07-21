@@ -10,7 +10,7 @@ import {
   selectedAutomationsFromIds,
   summarizeAutomationDeleteResults
 } from './automations-table-model'
-import type { Automation, AutomationTrigger } from '@/server/orchestrator/automations/types'
+import type { Automation, AutomationTrigger } from '@/shared/contracts/automation'
 import type { AutomationDefinitionStep } from '@rebroid/automation-core/definition'
 
 const automation = (id: string): Automation => ({ id, name: id }) as Automation

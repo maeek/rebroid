@@ -1,7 +1,8 @@
 import { after } from 'next/server'
 import { logger } from '@/server/observability/logger'
-import { appendAuditEvent, maybePruneAuditEvents, type AuditEventInput } from '@/server/persistence/audit-repository'
+import { appendAuditEvent, maybePruneAuditEvents } from '@/server/persistence/audit-repository'
 import { getWebSettings } from '@/server/web-settings/store'
+import type { AuditEventInput } from '@/server/persistence/audit-model'
 
 export type RecordAuditEventInput = AuditEventInput & {
   retentionDays?: number

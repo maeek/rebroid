@@ -4,7 +4,7 @@ import { PublicActionError } from '@/server/errors/public-action-error'
 import { defaultUserPermissions, fullPermissions, mergeQuotas, unlimitedQuota } from '@/shared/permissions/permissions'
 import { nowIso } from './user-model'
 import { mutateUsersFile } from './user-store'
-import type { UserGroup, UserRole } from './user-model'
+import type { UserGroup, UserRole } from '@/shared/contracts/auth-user'
 import type { PermissionMap, ResourceQuota } from '@/shared/permissions/permissions'
 
 const updateGroup = async (

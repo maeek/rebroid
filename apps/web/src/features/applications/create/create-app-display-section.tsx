@@ -1,4 +1,4 @@
-import { getRedroidDisplayProfile, redroidDisplayProfiles } from '@rebroid/application-core/redroid-runtime'
+import { getRedroidDisplayProfile, redroidDisplayProfiles } from '@rebroid/android-application-core/redroid-runtime'
 import { IconAdjustmentsHorizontal, IconDeviceMobile, IconDeviceTablet } from '@tabler/icons-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'

@@ -1,4 +1,4 @@
-import { PlatformResourceDetailPageSkeleton } from '@/features/platform/components/loaders/platform-page-skeletons'
+import { PlatformResourceDetailPageSkeleton } from '@/features/platform/components/platform-page-skeletons/platform-resource-detail-page-skeleton'
 
 export default function Loading() {
   return (

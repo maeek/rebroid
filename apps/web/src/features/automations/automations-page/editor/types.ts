@@ -1,4 +1,4 @@
-import type { AndroidApplication } from '@/server/orchestrator/applications/types'
+import type { AndroidApplication } from '@/shared/contracts/application'
 import type {
   Automation,
   AutomationCommand,
@@ -7,7 +7,7 @@ import type {
   AutomationTriggersGridPage,
   AutomationTriggersGridQuery,
   AutomationTrigger
-} from '@/server/orchestrator/automations/types'
+} from '@/shared/contracts/automation'
 
 export interface AutomationsListPageProps {
   initialApplications: AndroidApplication[]

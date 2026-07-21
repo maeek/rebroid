@@ -9,9 +9,10 @@ import { Button } from '@/components/ui/button'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { FormField } from '@/components/ui/form-field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { DataGrid, DataGridWorkspace } from '@/shared/ui/data-grid'
+import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { getHslColorFromCharCode, getHslColorFromCharCodeForeground } from '@/utils/hsl-from-text'
-import type { PublicUser, UserGroup } from '@/server/auth/user'
+import type { PublicUser, UserGroup } from '@/shared/contracts/auth-user'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
 
 const groupLabel = (groups: UserGroup[], groupId: string) => groups.find(group => group.id === groupId)?.name ?? groupId

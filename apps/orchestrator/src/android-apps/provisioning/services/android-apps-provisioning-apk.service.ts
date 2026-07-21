@@ -3,7 +3,10 @@ import {
   Injectable,
   InternalServerErrorException,
 } from '@nestjs/common';
-import { ApkIconExtractorService } from '../../../apk/services/apk-icon-extractor.service';
+import {
+  APK_PACKAGE_INSPECTION,
+  type ApkPackageInspectionPort,
+} from '../../../apk/contracts/apk-package-inspection.port';
 import { getErrorMessage } from '../../../common/error-message';
 import {
   DOCKER_CONTAINER_ARCHIVE,
@@ -15,10 +18,6 @@ import {
 } from '../../../docker/contracts/docker-container-exec.port';
 import { ContainerCommandFailedException } from '../../../docker/docker.types';
 import { AndroidApplication } from '../../android-application.entity';
-import {
-  AndroidApplicationLifecycleStage,
-  AndroidApplicationStatus,
-} from '../../contracts/android-application-status';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsStateWriter } from '../../common/services/android-apps-state-writer.service';
 import {
@@ -37,14 +36,12 @@ export class AndroidAppsProvisioningApkService {
     private readonly exec: DockerContainerExecPort,
     private readonly logs: AndroidAppsLogService,
     private readonly writer: AndroidAppsStateWriter,
-    private readonly apkMetadata: ApkIconExtractorService,
+    @Inject(APK_PACKAGE_INSPECTION)
+    private readonly apkMetadata: ApkPackageInspectionPort,
   ) {}
 
   /** Copies the APK in and runs the install command. */
-  async installApk(
-    app: AndroidApplication,
-    statusMessage = 'Installing APK inside Android.',
-  ) {
+  async installApk(app: AndroidApplication) {
     if (!app.containerId || !app.apkFilePath) {
       throw new InternalServerErrorException('Container and APK are required.');
     }
@@ -52,17 +49,6 @@ export class AndroidAppsProvisioningApkService {
     const targetDir = '/data/local/tmp';
     const targetName = `${app.id}.apk`;
     const targetPath = `${targetDir}/${targetName}`;
-
-    await this.logs.appendLifecycle(app.id, {
-      status: AndroidApplicationStatus.Running,
-      lifecycleStage: AndroidApplicationLifecycleStage.ApkInstalling,
-      statusMessage,
-    });
-    await this.writer.setLifecycle(app.id, {
-      status: AndroidApplicationStatus.Running,
-      lifecycleStage: AndroidApplicationLifecycleStage.ApkInstalling,
-      statusMessage,
-    });
 
     await this.logs.append(app.id, 'Preparing APK install', {
       source: app.apkFilePath,
@@ -119,7 +105,7 @@ export class AndroidAppsProvisioningApkService {
     }
 
     app.apkPackageName = packageName;
-    await this.writer.save(app);
+    await this.writer.setApkPackageName(app.id, packageName);
 
     await this.logs.append(app.id, 'APK install command completed', {
       target: targetPath,

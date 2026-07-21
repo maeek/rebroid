@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { AndroidAppLifecycleJobsRepository } from '../../persistence/android-app-lifecycle-jobs.repository';
 import {
   AndroidAppLifecycleJobKind,
@@ -14,10 +14,7 @@ export class AndroidAppLifecycleJobsService {
     kind: AndroidAppLifecycleJobKind,
     payload?: Record<string, unknown>,
   ) {
-    const existing = await this.jobs.findByApplicationAndKind(
-      applicationId,
-      kind,
-    );
+    const existing = await this.jobs.findByApplication(applicationId);
     const job =
       existing ??
       this.jobs.create({
@@ -25,17 +22,16 @@ export class AndroidAppLifecycleJobsService {
         kind,
         attempts: 0,
       });
+    job.kind = kind;
     job.status = AndroidAppLifecycleJobStatus.Pending;
     job.payloadJson = payload ? JSON.stringify(payload) : null;
     job.lastError = null;
     try {
       return await this.jobs.save(job);
     } catch (error) {
-      const concurrent = await this.jobs.findByApplicationAndKind(
-        applicationId,
-        kind,
-      );
+      const concurrent = await this.jobs.findByApplication(applicationId);
       if (!concurrent) throw error;
+      concurrent.kind = kind;
       concurrent.status = AndroidAppLifecycleJobStatus.Pending;
       concurrent.payloadJson = job.payloadJson;
       concurrent.lastError = null;
@@ -44,7 +40,7 @@ export class AndroidAppLifecycleJobsService {
   }
 
   async markRunning(applicationId: string, kind: AndroidAppLifecycleJobKind) {
-    const job = await this.findOrCreate(applicationId, kind);
+    const job = await this.findActive(applicationId, kind);
     job.status = AndroidAppLifecycleJobStatus.Running;
     job.attempts += 1;
     return this.jobs.save(job);
@@ -55,7 +51,7 @@ export class AndroidAppLifecycleJobsService {
     kind: AndroidAppLifecycleJobKind,
     error: string,
   ) {
-    const job = await this.findOrCreate(applicationId, kind);
+    const job = await this.findActive(applicationId, kind);
     job.status = AndroidAppLifecycleJobStatus.Pending;
     job.lastError = error;
     return this.jobs.save(job);
@@ -69,17 +65,25 @@ export class AndroidAppLifecycleJobsService {
     await this.jobs.deleteByApplication(applicationId);
   }
 
-  listPending() {
-    return this.jobs.listPending();
+  listActive() {
+    return this.jobs.listActive();
   }
 
-  private async findOrCreate(
+  private async findActive(
     applicationId: string,
     kind: AndroidAppLifecycleJobKind,
   ) {
-    return (
-      (await this.jobs.findByApplicationAndKind(applicationId, kind)) ??
-      this.jobs.create({ applicationId, kind, attempts: 0 })
-    );
+    const job = await this.jobs.findByApplication(applicationId);
+    if (!job) {
+      throw new ConflictException(
+        `No active ${kind} lifecycle job exists for application "${applicationId}".`,
+      );
+    }
+    if (job.kind !== kind) {
+      throw new ConflictException(
+        `Application "${applicationId}" is reserved by a ${job.kind} lifecycle job.`,
+      );
+    }
+    return job;
   }
 }

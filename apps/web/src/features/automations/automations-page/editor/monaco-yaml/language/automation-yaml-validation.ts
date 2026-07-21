@@ -10,7 +10,7 @@ import {
   workflowContext,
   type JsonSchema
 } from './automation-yaml-language-utils'
-import type { AutomationCommand } from '@/server/orchestrator/automations/types'
+import type { AutomationCommand } from '@/shared/contracts/automation'
 import type * as Monaco from 'monaco-editor'
 
 export const validateAutomationYamlModel = ({

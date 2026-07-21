@@ -1,4 +1,4 @@
-import { normalizedPointToPixels } from '@rebroid/vision-core/geometry';
+import { normalizedPointToPixels } from '../vision/vision-geometry';
 import { z } from 'zod';
 import { readAiScreenshotMetadata } from '../ai/automation-ai-screenshot.utils';
 import {

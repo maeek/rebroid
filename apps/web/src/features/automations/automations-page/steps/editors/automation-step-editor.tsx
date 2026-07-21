@@ -11,7 +11,7 @@ import {
 import { AutomationActionPicker } from '../catalog/automation-action-picker'
 import { parseStepInput } from '../shared/automation-step-utils'
 import type { AutomationActionStepForm } from '../../editor/builder-utils'
-import type { AutomationCommand } from '@/server/orchestrator/automations/types'
+import type { AutomationCommand } from '@/shared/contracts/automation'
 
 export function AutomationStepEditor({
   step,

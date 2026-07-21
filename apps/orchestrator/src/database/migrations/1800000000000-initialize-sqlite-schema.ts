@@ -228,8 +228,8 @@ export class InitializeSqliteSchema1800000000000 implements MigrationInterface {
         ],
         uniques: [
           {
-            name: 'android_app_lifecycle_jobs_application_kind_unique',
-            columnNames: ['applicationId', 'kind'],
+            name: 'android_app_lifecycle_jobs_application_unique',
+            columnNames: ['applicationId'],
           },
         ],
       }),

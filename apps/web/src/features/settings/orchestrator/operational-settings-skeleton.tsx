@@ -1,7 +1,7 @@
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Surface } from '@/components/ui/surface'
-import { DataGridSkeleton } from '@/shared/ui/data-grid'
+import { DataGridSkeleton } from '@/shared/ui/data-grid/data-grid-skeleton'
 import { StandardPage } from '@/shared/ui/page/page-layout'
 import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
 import type { ListColumn } from '@/shared/ui/skeletons/list-skeleton-types'

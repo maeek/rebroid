@@ -13,7 +13,7 @@ import { AutomationStatusToolsSection } from './workflows/automation-status-tool
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { DisplayViewerStreamMetrics } from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
-import type { AutomationRun } from '@/server/orchestrator/automations/types'
+import type { AutomationRun } from '@/shared/contracts/automation'
 
 export const RuntimeToolContent = ({
   app,

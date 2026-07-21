@@ -3,7 +3,7 @@ import {
   nextCatalogProviderAndModel,
   selectMatchingVisionPair,
   selectPlannerVisionCatalog
-} from '@rebroid/ai-core/provider'
+} from '@/shared/model/ai-model-catalog'
 import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 
 export type AiModelSelectionPatch = {

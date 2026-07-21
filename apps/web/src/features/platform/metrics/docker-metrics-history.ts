@@ -1,4 +1,4 @@
-import type { DockerMetricsSnapshot } from '@/server/orchestrator/diagnostics/types'
+import type { DockerMetricsSnapshot } from '@/shared/contracts/diagnostics'
 
 export interface HistorySample {
   collectedAt: string

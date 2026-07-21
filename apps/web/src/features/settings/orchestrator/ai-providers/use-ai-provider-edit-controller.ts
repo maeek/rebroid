@@ -1,13 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import {
-  createProviderModelRows,
-  emptyModel,
-  normalizeProviderForm,
-  setDefaultProviderModelAt,
-  updateProviderModelAt,
-  type AutomationAiProviderModelRole,
-  type ProviderFormState
-} from '@rebroid/ai-core/provider'
 import { useRouter } from 'next/navigation'
 import { toast } from '@/hooks/use-toast'
 import {
@@ -17,12 +8,21 @@ import {
   listAutomationAiProviderRemoteModelsAction,
   updateAutomationAiProviderAction
 } from '@/server/orchestrator/settings/actions'
+import {
+  createProviderModelRows,
+  emptyModel,
+  normalizeProviderForm,
+  setDefaultProviderModelAt,
+  updateProviderModelAt,
+  type AutomationAiProviderModelRole,
+  type ProviderFormState
+} from './provider-form-model'
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,
   AutomationAiProviderModelDownload,
   AutomationAiProviderRemoteModel
-} from '@/server/orchestrator/settings/types'
+} from '@/shared/contracts/ai-provider'
 
 const controllerPlannerRoles = (): AutomationAiProviderModelRole[] => ['controller', 'planner']
 

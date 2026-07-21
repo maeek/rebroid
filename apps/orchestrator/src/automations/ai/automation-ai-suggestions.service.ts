@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { type ChatMessage } from '@rebroid/ai-core/harness';
+import type { ChatMessage } from '../../common/ai-provider-request';
 import { AutomationAiProviderService } from './automation-ai-provider.service';
 import { AutomationAiChatClientService } from './automation-ai-chat-client.service';
 import { sanitizeAiText } from './automation-ai-observation.utils';
@@ -7,7 +7,7 @@ import { textContent } from './automation-ai-message.utils';
 import type {
   AiPromptSuggestionDto,
   SuggestAdHocAiPromptsDto,
-} from '../dto/automation-run.dto';
+} from '../dto/automation-ai-run.dto';
 
 @Injectable()
 export class AutomationAiSuggestionsService {

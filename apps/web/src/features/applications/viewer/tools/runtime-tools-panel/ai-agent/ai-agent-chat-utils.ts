@@ -2,8 +2,8 @@ import {
   conversationBeforeTurn,
   currentStreamingText,
   type AutomationAiConversationMessage
-} from '@rebroid/ai-core/harness'
-import type { AutomationRun, AutomationRunEvent } from '@/server/orchestrator/automations/types'
+} from './ai-agent-conversation'
+import type { AutomationRun, AutomationRunEvent } from '@/shared/contracts/automation'
 
 export const activeRunStatuses = new Set<AutomationRun['status']>(['queued', 'running'])
 export const terminalRunStatuses = new Set<AutomationRun['status']>(['success', 'failed', 'canceled'])

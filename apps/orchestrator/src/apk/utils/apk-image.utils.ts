@@ -47,3 +47,29 @@ export const imageDimensions = (content: Buffer, mimeType: string) => {
 
   return null;
 };
+
+export const launcherIconDataUrl = (
+  path: string,
+  content: Buffer,
+  score: number,
+) => {
+  const mimeType = imageMimeType(path.toLowerCase());
+  if (!mimeType || content.length === 0 || content.length > maxIconBytes) {
+    return null;
+  }
+  const dimensions = imageDimensions(content, mimeType);
+  if (
+    score < 10_000 &&
+    dimensions &&
+    (dimensions.width < 24 || dimensions.height < 24)
+  ) {
+    return null;
+  }
+  return `data:${mimeType};base64,${content.toString('base64')}`;
+};
+
+export const normalizeApkDisplayName = (value: string) => {
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  return normalized.length > 0 ? normalized.slice(0, 120) : null;
+};
+import { maxIconBytes } from '../types/apk.types';

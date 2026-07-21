@@ -6,12 +6,16 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import type { RuntimeImageKind } from '@rebroid/application-core/redroid-runtime';
+import type { RuntimeImageKind } from '@rebroid/android-application-core/redroid-runtime';
+import {
+  viewerTransport,
+  viewerTransports,
+  type ViewerTransport,
+} from '@rebroid/android-application-core/viewer-control';
 import { ApplicationProfileMode } from './contracts/application-profile-mode';
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
-  ScrcpyTransport,
 } from './contracts/android-application-status';
 
 export class AndroidImagePullProgress {
@@ -321,9 +325,9 @@ export class AndroidApplication {
   @Column({ type: 'text', nullable: true })
   uploadedApkId!: string | null;
 
-  @ApiProperty({ enum: ScrcpyTransport, example: ScrcpyTransport.WebRTC })
-  @Column({ default: ScrcpyTransport.WebRTC })
-  scrcpyTransport!: ScrcpyTransport;
+  @ApiProperty({ enum: viewerTransports, example: viewerTransport.WebRTC })
+  @Column({ default: viewerTransport.WebRTC })
+  scrcpyTransport!: ViewerTransport;
 
   @ApiProperty({ example: 5555 })
   @Column({ default: 5555 })

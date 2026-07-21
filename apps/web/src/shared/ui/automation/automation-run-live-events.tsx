@@ -9,7 +9,7 @@ import {
   AutomationRunStatusBadge,
   type AutomationRunDisplayStatus
 } from '@/shared/ui/automation/automation-run-status-badge'
-import type { AutomationRun, AutomationRunEvent, AutomationRunStatus } from '@/shared/contracts/automation-run'
+import type { AutomationRun, AutomationRunEvent, AutomationRunStatus } from '@/shared/contracts/automation'
 
 const activeStatuses = new Set<AutomationRunStatus>(['queued', 'running'])
 const terminalStatuses = new Set<AutomationRunStatus>(['success', 'failed', 'canceled'])

@@ -1,46 +1,30 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { IconEye, IconPlayerStopFilled, IconTerminal2, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Section } from '@/components/ui/section'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Visible } from '@/components/ui/visible'
-import { toast } from '@/hooks/use-toast'
-import { getDisplayErrorMessage } from '@/lib/error-utils'
-import {
-  removePlatformContainerAction,
-  stopPlatformContainerAction
-} from '@/server/orchestrator/platform/container-actions'
-import { actionOk, unwrapActionResult } from '@/shared/actions/action-result'
-import { DataGrid, DataGridPagination, DataGridWorkspace } from '@/shared/ui/data-grid'
+import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
+import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
+import { useRuntimeContainerActions } from '../hooks/use-runtime-container-actions'
+import { useRuntimeResourceGridController } from '../hooks/use-runtime-resource-grid-controller'
 import {
   buildContainersGridHref,
   canRunBulkContainerAction,
-  selectVisibleOrphanedContainerIds,
-  shouldStopContainerInBulkAction,
-  summarizeContainerBulkActionResults,
-  type ContainerBulkActionType
+  selectVisibleOrphanedContainerIds
 } from './runtime-containers-section-model'
 import { createContainerColumns } from './runtime-containers-table-parts'
 import { RuntimeContainerFilters } from './runtime-grid-filter-controls'
-import {
-  platformSortFromSearchParam,
-  platformSortToSearchParam,
-  retainVisiblePlatformSelection,
-  selectedPlatformItemsFromIds
-} from './runtime-grid-query-utils'
-import type {
-  PlatformContainer,
-  PlatformContainersGridPage,
-  PlatformContainersGridQuery
-} from '@/server/orchestrator/platform/types'
+import { platformSortFromSearchParam } from './runtime-grid-query-utils'
+import type { PlatformContainersGridPage, PlatformContainersGridQuery } from '@/shared/contracts/platform'
 
-type PendingAction = { type: 'stop' | 'remove'; container: PlatformContainer } | null
+const containerId = (container: PlatformContainersGridPage['items'][number]) => container.id
 
 export const RuntimeContainersSection = ({
   containersPage,
@@ -49,76 +33,37 @@ export const RuntimeContainersSection = ({
   containersPage: PlatformContainersGridPage
   gridQuery: PlatformContainersGridQuery
 }) => {
-  const router = useRouter()
-  const [search, setSearch] = useState(gridQuery.q ?? '')
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
-  const [pendingAction, setPendingAction] = useState<PendingAction>(null)
-  const [pendingBulkAction, setPendingBulkAction] = useState<ContainerBulkActionType | null>(null)
-  const [busyId, setBusyId] = useState<string | null>(null)
-  const sorting = useMemo(() => platformSortFromSearchParam(gridQuery.sort), [gridQuery.sort])
-
-  useEffect(() => {
-    setSearch(gridQuery.q ?? '')
-  }, [gridQuery.q])
-
-  useEffect(() => {
-    setSelectedIds(current => retainVisiblePlatformSelection(containersPage.items, current))
-  }, [containersPage.items])
-
-  const selectedContainers = selectedPlatformItemsFromIds(containersPage.items, selectedIds)
-
-  const pushGridParams = (patch: Partial<PlatformContainersGridQuery>) =>
-    router.replace(buildContainersGridHref({ gridQuery, pageSize: containersPage.pageSize, patch }), { scroll: false })
-
-  const runContainerAction = async () => {
-    if (!pendingAction) return
-
-    setBusyId(pendingAction.container.id)
-    try {
-      if (pendingAction.type === 'stop') {
-        unwrapActionResult(await stopPlatformContainerAction(pendingAction.container.id))
-        toast({ title: 'Container stopped', variant: 'success' })
-      } else {
-        unwrapActionResult(await removePlatformContainerAction(pendingAction.container.id))
-        toast({ title: 'Container removed', variant: 'success' })
-      }
-      setPendingAction(null)
-      router.refresh()
-    } catch (caughtError) {
-      toast({
-        title: pendingAction.type === 'stop' ? 'Could not stop container' : 'Could not remove container',
-        description: getDisplayErrorMessage(caughtError),
-        variant: 'danger'
-      })
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  const runBulkAction = async (type: ContainerBulkActionType) => {
-    if (selectedContainers.length === 0) return
-
-    setBusyId('bulk')
-    try {
-      const results = await Promise.all(
-        selectedContainers.map(async container => {
-          if (type === 'stop' && shouldStopContainerInBulkAction(container)) {
-            return stopPlatformContainerAction(container.id)
-          }
-          if (type === 'remove') {
-            return removePlatformContainerAction(container.id)
-          }
-          return actionOk(undefined)
-        })
-      )
-      setSelectedIds(new Set())
-      setPendingBulkAction(null)
-      router.refresh()
-      toast(summarizeContainerBulkActionResults(results, type))
-    } finally {
-      setBusyId(null)
-    }
-  }
+  const {
+    search,
+    setSearch,
+    selectedIds,
+    setSelectedIds,
+    selectedItems: selectedContainers,
+    sorting,
+    pushGridParams,
+    onSearch,
+    onSortingChange,
+    onPageIndexChange,
+    onPageSizeChange,
+    clearSelection,
+    refresh
+  } = useRuntimeResourceGridController({
+    items: containersPage.items,
+    gridQuery,
+    pageSize: containersPage.pageSize,
+    getItemId: containerId,
+    parseSort: platformSortFromSearchParam,
+    buildHref: buildContainersGridHref
+  })
+  const {
+    pendingAction,
+    setPendingAction,
+    pendingBulkAction,
+    setPendingBulkAction,
+    busyId,
+    runContainerAction,
+    runBulkAction
+  } = useRuntimeContainerActions({ selectedContainers, clearSelection, refresh })
 
   const selectVisibleOrphaned = () => {
     setSelectedIds(selectVisibleOrphanedContainerIds(containersPage.items, selectedIds))
@@ -215,7 +160,7 @@ export const RuntimeContainersSection = ({
           search={search}
           searchPlaceholder='Search containers'
           onSearchChange={setSearch}
-          onSearch={value => pushGridParams({ q: value.trim() || undefined, page: 1 })}
+          onSearch={onSearch}
           filters={
             <RuntimeContainerFilters
               page={containersPage}
@@ -258,10 +203,7 @@ export const RuntimeContainersSection = ({
               pageSize={containersPage.pageSize}
               getRowId={container => container.id}
               sorting={sorting}
-              onSortingChange={updater => {
-                const nextSorting = typeof updater === 'function' ? updater(sorting) : updater
-                pushGridParams({ sort: platformSortToSearchParam(nextSorting), page: 1 })
-              }}
+              onSortingChange={onSortingChange}
               selection={{
                 selectedIds,
                 onSelectedIdsChange: setSelectedIds
@@ -332,8 +274,8 @@ export const RuntimeContainersSection = ({
             totalItems={containersPage.total}
             pageIndex={containersPage.page - 1}
             pageSize={containersPage.pageSize}
-            onPageIndexChange={pageIndex => pushGridParams({ page: pageIndex + 1 })}
-            onPageSizeChange={pageSize => pushGridParams({ page: 1, pageSize })}
+            onPageIndexChange={onPageIndexChange}
+            onPageSizeChange={onPageSizeChange}
           />
         </DataGridWorkspace>
       </Section>

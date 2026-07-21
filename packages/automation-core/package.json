@@ -1,6 +1,7 @@
 {
   "name": "@rebroid/automation-core",
   "version": "0.1.0",
+  "description": "Framework-neutral automation definitions and metadata shared by Rebroid applications.",
   "private": true,
   "type": "commonjs",
   "sideEffects": false,
@@ -17,9 +18,32 @@
       "types": "./dist/command-registry.d.ts",
       "default": "./dist/command-registry.js"
     },
-    "./schedule": {
-      "types": "./dist/schedule.d.ts",
-      "default": "./dist/schedule.js"
+    "./ai-public-text": {
+      "types": "./dist/ai-public-text.d.ts",
+      "default": "./dist/ai-public-text.js"
+    },
+    "./yaml-draft": {
+      "types": "./dist/yaml-draft.d.ts",
+      "default": "./dist/yaml-draft.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "definition": [
+        "dist/definition.d.ts"
+      ],
+      "metadata": [
+        "dist/metadata.d.ts"
+      ],
+      "command-registry": [
+        "dist/command-registry.d.ts"
+      ],
+      "ai-public-text": [
+        "dist/ai-public-text.d.ts"
+      ],
+      "yaml-draft": [
+        "dist/yaml-draft.d.ts"
+      ]
     }
   },
   "scripts": {
@@ -30,8 +54,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1",
-    "prettier": "^3.8.3",
-    "typescript": "^6.0.3"
+    "@types/node": "catalog:",
+    "prettier": "catalog:",
+    "typescript": "catalog:"
   }
 }

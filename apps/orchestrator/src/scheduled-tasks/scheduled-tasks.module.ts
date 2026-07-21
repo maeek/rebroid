@@ -10,7 +10,6 @@ import { ScheduledTaskActionsService } from './services/scheduled-task-actions.s
 import { ScheduledTaskCronRegistryService } from './services/scheduled-task-cron-registry.service';
 import { ScheduledTaskPredefinedSeederService } from './services/scheduled-task-predefined-seeder.service';
 import { ScheduledTaskRunnerService } from './services/scheduled-task-runner.service';
-import { ScheduledTaskScheduleService } from './services/scheduled-task-schedule.service';
 import { ScheduledTasksService } from './services/scheduled-tasks.service';
 
 @Module({
@@ -28,7 +27,6 @@ import { ScheduledTasksService } from './services/scheduled-tasks.service';
     ScheduledTaskCronRegistryService,
     ScheduledTaskPredefinedSeederService,
     ScheduledTaskRunnerService,
-    ScheduledTaskScheduleService,
   ],
 })
 export class ScheduledTasksModule {}

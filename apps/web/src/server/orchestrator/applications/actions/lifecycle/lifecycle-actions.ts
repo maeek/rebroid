@@ -1,8 +1,7 @@
 'use server'
 
-import { PublicActionError } from '@/server/errors/public-action-error'
-
 import { recordAuditEvent } from '@/server/audit/events'
+import { PublicActionError } from '@/server/errors/public-action-error'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { getCurrentUserContext } from '../../../current-user'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
@@ -15,7 +14,7 @@ import {
   assertCanUseOwnedApplicationRuntime,
   ownedRuntimeControlMessage
 } from '../common/action-helpers'
-import type { SwitchApplicationProfileInput } from '../../types'
+import type { SwitchApplicationProfileInput } from '@/shared/contracts/application'
 
 export const startApplicationAction = async (id: string, input?: SwitchApplicationProfileInput) => {
   const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)

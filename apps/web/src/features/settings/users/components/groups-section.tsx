@@ -23,8 +23,9 @@ import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { createUserGroupAction } from '@/server/users/actions/create-user-group-action'
 import { deleteUserGroupAction } from '@/server/users/actions/delete-user-group-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
-import { DataGrid, DataGridWorkspace } from '@/shared/ui/data-grid'
-import type { UserGroup } from '@/server/auth/user'
+import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
+import type { UserGroup } from '@/shared/contracts/auth-user'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
 
 export const GroupsSection = ({

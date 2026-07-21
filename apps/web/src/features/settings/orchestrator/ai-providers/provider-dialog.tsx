@@ -1,5 +1,4 @@
-import { useState, type ReactNode } from 'react'
-import { normalizeProviderForm, type ProviderFormState } from '@rebroid/ai-core/provider'
+import { useState } from 'react'
 import { IconRefresh } from '@tabler/icons-react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
@@ -12,13 +11,13 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { FormField } from '@/components/ui/form-field'
 import { Switch } from '@/components/ui/switch'
 import { checkAutomationAiProviderCandidateHealthAction } from '@/server/orchestrator/settings/actions'
 import { AiHealthBadge } from '@/shared/ui/ai/ai-health-indicator'
-import type { AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
+import { ProviderConnectionFields } from './provider-connection-fields'
+import { normalizeProviderForm, type ProviderFormState } from './provider-form-model'
+import type { AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 
 export const ProviderDialog = ({
   provider,
@@ -78,102 +77,11 @@ export const ProviderDialog = ({
         {provider ? (
           <div className='grid gap-5'>
             <div className='grid gap-4'>
-              <Field
-                label='Provider ID'
-                description='Stable identifier used by automation steps and model selectors.'
-              >
-                <Input
-                  value={provider.id}
-                  placeholder='local-ollama'
-                  onChange={event => update({ id: event.target.value })}
-                />
-              </Field>
-              <Field
-                label='Label'
-                description='Human-readable name shown in tables, editors, and viewer controls.'
-              >
-                <Input
-                  value={provider.label}
-                  placeholder='Local Ollama'
-                  onChange={event => update({ label: event.target.value })}
-                />
-              </Field>
-              <Field
-                label='Provider family'
-                description='Used for defaults, downloads, and display.'
-              >
-                <Select
-                  value={provider.kind}
-                  onValueChange={kind => update({ kind: kind })}
-                >
-                  <SelectTrigger className='w-full'>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='ollama'>Ollama</SelectItem>
-                    <SelectItem value='openai'>OpenAI</SelectItem>
-                    <SelectItem value='openai-compatible'>OpenAI-compatible</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field
-                label='Transport protocol'
-                description='Use OpenAI chat completions for llama.cpp, Lemonade, and compatible servers.'
-              >
-                <Select
-                  value={provider.protocol ?? 'openai-chat-completions'}
-                  onValueChange={protocol => update({ protocol })}
-                >
-                  <SelectTrigger className='w-full'>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='openai-chat-completions'>OpenAI chat completions</SelectItem>
-                    <SelectItem value='ollama-native-chat'>Ollama native chat</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field
-                label='Server flavor'
-                description='Auto-detection checks Lemonade before Ollama compatibility endpoints.'
-              >
-                <Select
-                  value={provider.serverFlavor ?? 'auto'}
-                  onValueChange={serverFlavor => update({ serverFlavor })}
-                >
-                  <SelectTrigger className='w-full'>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='auto'>Auto-detect</SelectItem>
-                    <SelectItem value='lemonade'>Lemonade</SelectItem>
-                    <SelectItem value='llama-cpp'>llama.cpp</SelectItem>
-                    <SelectItem value='ollama'>Ollama</SelectItem>
-                    <SelectItem value='openai'>OpenAI</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field
-                label='Base URL'
-                description='Use the provider root URL. OpenAI-compatible providers should include their /v1 endpoint.'
-              >
-                <Input
-                  value={provider.baseUrl}
-                  placeholder='http://localhost:11434'
-                  onChange={event => update({ baseUrl: event.target.value })}
-                />
-              </Field>
-              <Field
-                label='API key'
-                description='Stored as a secret. Leave blank for local providers.'
-              >
-                <Input
-                  value={provider.apiKey ?? ''}
-                  placeholder='Leave blank for local providers'
-                  type='password'
-                  onChange={event => update({ apiKey: event.target.value || null })}
-                />
-              </Field>
+              <ProviderConnectionFields
+                provider={provider}
+                mode='create'
+                onChange={update}
+              />
               <div className='flex flex-wrap items-center justify-between gap-3'>
                 <div className='flex min-w-0 flex-wrap items-center gap-3'>
                   {health ? (
@@ -198,19 +106,18 @@ export const ProviderDialog = ({
                   Check connection
                 </Button>
               </div>
-              <div className='flex items-start justify-between gap-3'>
-                <div className='min-w-0 flex-1'>
-                  <Label>Enabled</Label>
-                  <p className='text-xs text-foreground-muted'>
-                    Keep disabled until at least one usable model is configured.
-                  </p>
-                </div>
+              <FormField
+                controlId='provider-create-enabled'
+                label='Enabled'
+                description='Keep disabled until at least one usable model is configured.'
+                layout='horizontal'
+              >
                 <Switch
                   className='shrink-0'
                   checked={provider.enabled}
                   onCheckedChange={enabled => update({ enabled })}
                 />
-              </div>
+              </FormField>
             </div>
           </div>
         ) : null}
@@ -235,13 +142,3 @@ export const ProviderDialog = ({
     </Dialog>
   )
 }
-
-const Field = ({ label, description, children }: { label: string; description: string; children: ReactNode }) => (
-  <div className='grid gap-2'>
-    <div className='grid gap-1'>
-      <Label>{label}</Label>
-      <p className='text-xs text-foreground-muted'>{description}</p>
-    </div>
-    {children}
-  </div>
-)

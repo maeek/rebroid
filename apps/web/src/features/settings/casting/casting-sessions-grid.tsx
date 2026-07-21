@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { formatTimestamp } from './casting-sidecar-utils'
-import type { AndroidApplication } from '@/server/orchestrator/applications/types'
-import type { DisplaySidecarSession } from '@/server/orchestrator/diagnostics/types'
+import type { AndroidApplication } from '@/shared/contracts/application'
+import type { DisplaySidecarSession } from '@/shared/contracts/diagnostics'
 import type { ColumnDef } from '@tanstack/react-table'
 
 type CastingApp = Pick<AndroidApplication, 'id' | 'name' | 'ownerUserId' | 'runtime'>

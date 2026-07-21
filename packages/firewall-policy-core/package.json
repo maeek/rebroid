@@ -1,6 +1,7 @@
 {
   "name": "@rebroid/firewall-policy-core",
   "version": "0.1.0",
+  "description": "Pure firewall policy contracts and validation shared by Rebroid runtimes.",
   "private": true,
   "type": "commonjs",
   "sideEffects": false,
@@ -8,6 +9,13 @@
     "./policy": {
       "types": "./dist/policy.d.ts",
       "default": "./dist/policy.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "policy": [
+        "dist/policy.d.ts"
+      ]
     }
   },
   "scripts": {
@@ -18,8 +26,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1",
-    "prettier": "^3.8.3",
-    "typescript": "^6.0.3"
+    "@types/node": "catalog:",
+    "prettier": "catalog:",
+    "typescript": "catalog:"
   }
 }

@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { lookup } from 'node:dns/promises';
-import { AndroidApplication } from '../../android-apps/android-application.entity';
+import type { NetworkPolicyTarget } from '../../android-apps/contracts/android-apps-runtime-inventory.port';
 import {
   DOCKER_NETWORK_RUNTIME,
   type DockerNetworkRuntimePort,
@@ -43,7 +43,7 @@ export class NetworkPolicyService {
     private readonly agent: FirewallAgentClientService,
   ) {}
 
-  async apply(app: AndroidApplication): Promise<AppliedNetworkPolicy> {
+  async apply(app: NetworkPolicyTarget): Promise<AppliedNetworkPolicy> {
     if (!app.containerId) {
       return {
         status: 'skipped',
@@ -84,7 +84,7 @@ export class NetworkPolicyService {
     }
   }
 
-  async reconcile(apps: AndroidApplication[]) {
+  async reconcile(apps: NetworkPolicyTarget[]) {
     const policies = (
       await mapWithConcurrency(
         apps.filter((app) => app.containerId && app.networkPolicyEnabled),
@@ -100,7 +100,7 @@ export class NetworkPolicyService {
     await this.agent.reconcile(policies);
   }
 
-  async remove(app: Pick<AndroidApplication, 'id'>) {
+  async remove(app: Pick<NetworkPolicyTarget, 'id'>) {
     await this.agent.remove(app.id).catch((error) => {
       this.logger.warn(
         `Could not remove firewall policy for ${app.id}: ${
@@ -112,7 +112,7 @@ export class NetworkPolicyService {
     });
   }
 
-  private async validatedContainerIp(app: AndroidApplication) {
+  private async validatedContainerIp(app: NetworkPolicyTarget) {
     const inspect = await this.engine.read(
       () => this.engine.docker.getContainer(app.containerId!).inspect(),
       `Inspect runtime container ${app.containerId} for network policy`,
@@ -130,7 +130,7 @@ export class NetworkPolicyService {
     );
   }
 
-  private async resolvePolicy(app: AndroidApplication) {
+  private async resolvePolicy(app: NetworkPolicyTarget) {
     const containerIp = await this.validatedContainerIp(app);
     if (!containerIp || !app.containerId) {
       return null;
@@ -149,7 +149,7 @@ export class NetworkPolicyService {
   }
 
   private async allowedDestinations(
-    app: AndroidApplication,
+    app: NetworkPolicyTarget,
   ): Promise<AllowedDestinations> {
     const customCidrs = parseAllowCidrs(app.networkPolicyAllowCidrs);
     const defaultDestinations = await this.resolveDefaultDestinations(app);
@@ -168,7 +168,7 @@ export class NetworkPolicyService {
   }
 
   private async resolveDefaultDestinations(
-    app: AndroidApplication,
+    app: NetworkPolicyTarget,
   ): Promise<ResolvedDefaultDestinations> {
     const destinations = this.config.get<string[]>(
       'app.networkPolicy.defaultAllowDestinations',
@@ -185,7 +185,7 @@ export class NetworkPolicyService {
   }
 
   private async resolveDefaultDestination(
-    app: AndroidApplication,
+    app: NetworkPolicyTarget,
     destination: string,
   ): Promise<ResolvedDefaultDestinations> {
     const normalized = destination.trim();
@@ -224,7 +224,7 @@ export class NetworkPolicyService {
       : { cidrs: [], unresolved: [normalized] };
   }
 
-  private async resolveApiCidrs(app: AndroidApplication) {
+  private async resolveApiCidrs(app: NetworkPolicyTarget) {
     const configured = (
       this.config.get<string[]>('app.networkPolicy.apiCidrs') ?? []
     )

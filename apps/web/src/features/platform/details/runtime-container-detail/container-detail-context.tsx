@@ -3,7 +3,7 @@
 import { createContext, useContext } from 'react'
 import type { ReactNode } from 'react'
 import { useContainerDetailController } from '@/features/platform/details/runtime-container-detail/use-container-detail-controller'
-import type { PlatformContainerDetails, PlatformContainerLog } from '@/server/orchestrator/platform/types'
+import type { PlatformContainerDetails, PlatformContainerLog } from '@/shared/contracts/platform'
 
 type ContainerDetailContextValue = {
   controller: ReturnType<typeof useContainerDetailController>

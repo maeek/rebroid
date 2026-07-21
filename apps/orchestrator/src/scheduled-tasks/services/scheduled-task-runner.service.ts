@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { nextCronRun } from '../../common/cron-schedule';
 import { getErrorMessage } from '../../common/error-message';
 import {
   ScheduledTask,
@@ -7,7 +8,6 @@ import {
 import { ScheduledTasksRepository } from '../persistence/scheduled-tasks.repository';
 import { ScheduledTaskActionsService } from './scheduled-task-actions.service';
 import { ScheduledTaskCronRegistryService } from './scheduled-task-cron-registry.service';
-import { ScheduledTaskScheduleService } from './scheduled-task-schedule.service';
 
 @Injectable()
 export class ScheduledTaskRunnerService {
@@ -18,7 +18,6 @@ export class ScheduledTaskRunnerService {
     private readonly tasks: ScheduledTasksRepository,
     private readonly actions: ScheduledTaskActionsService,
     private readonly registry: ScheduledTaskCronRegistryService,
-    private readonly schedule: ScheduledTaskScheduleService,
   ) {}
 
   async runTask(id: string) {
@@ -45,9 +44,7 @@ export class ScheduledTaskRunnerService {
       );
     } finally {
       task.lastRunAt = new Date();
-      task.nextRunAt = task.enabled
-        ? this.schedule.nextRun(task.cronExpression)
-        : null;
+      task.nextRunAt = task.enabled ? nextCronRun(task.cronExpression) : null;
       await this.tasks.save(task);
       this.runningTasks.delete(id);
     }

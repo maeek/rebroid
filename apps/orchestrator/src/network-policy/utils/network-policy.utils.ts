@@ -2,8 +2,9 @@ export {
   networkPolicyChainName,
   normalizeIpv4Cidr,
   parseAllowCidrs,
-  uniqueStrings,
 } from '@rebroid/firewall-policy-core/policy';
+
+export const uniqueStrings = (values: string[]) => [...new Set(values)];
 
 export const extractHostname = (value?: string) => {
   if (!value?.trim()) {

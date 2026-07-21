@@ -1,15 +1,15 @@
 import { type ReactNode } from 'react'
 import { IconTrash } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
-import { DataGridWorkspace } from '@/shared/ui/data-grid'
+import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import {
   AutomationLastRunFilter,
   AutomationLastStatusFilter,
   AutomationTagFilter,
   AutomationTargetApplicationFilter
 } from '../shared/automation-grid-filter-controls'
-import type { AndroidApplication } from '@/server/orchestrator/applications/types'
-import type { AutomationsGridPage, AutomationsGridQuery } from '@/server/orchestrator/automations/types'
+import type { AndroidApplication } from '@/shared/contracts/application'
+import type { AutomationsGridPage, AutomationsGridQuery } from '@/shared/contracts/automation'
 
 export const AutomationsTableToolbar = ({
   applications,

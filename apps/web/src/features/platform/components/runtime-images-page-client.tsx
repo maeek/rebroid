@@ -8,9 +8,10 @@ import { Button } from '@/components/ui/button'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
-import { createImageColumns, RuntimeImagesSection } from './runtime-images-section'
+import { RuntimeImagesSection } from './runtime-images-section'
+import { createImageColumns } from './runtime-images-table-parts'
 import { RuntimeInventoryLoadingSection } from './runtime-inventory-loading-section'
-import type { PlatformImagesGridPage, PlatformImagesGridQuery } from '@/server/orchestrator/platform/types'
+import type { PlatformImagesGridPage, PlatformImagesGridQuery } from '@/shared/contracts/platform'
 
 export const RuntimeImagesPageClient = ({
   imagesPage,

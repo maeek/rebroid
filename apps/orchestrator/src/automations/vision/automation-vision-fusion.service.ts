@@ -3,12 +3,12 @@ import {
   extractUiDetections,
   sortDetections,
   type VisionDetection,
-} from '@rebroid/vision-core/observation';
+} from './vision-observation';
 import {
   rankObservationCandidates,
   reconcileScreenStateHypothesis,
   type AiObservationCandidate,
-} from '@rebroid/ai-core/harness';
+} from '../ai/core/screen-state-policy';
 import { prepareUiXml } from '../ai/automation-ai-observation.utils';
 import { createMarkedAiScreenshot } from '../ai/automation-ai-screenshot.utils';
 import type {

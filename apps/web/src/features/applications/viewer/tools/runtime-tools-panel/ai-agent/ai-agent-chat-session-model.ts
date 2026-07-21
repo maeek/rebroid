@@ -5,7 +5,7 @@ import {
   type ChatTurn,
   type ChatTurnStatus
 } from './ai-agent-chat-utils'
-import type { AutomationRunEvent } from '@/server/orchestrator/automations/types'
+import type { AutomationRunEvent } from '@/shared/contracts/automation'
 
 export const sortChatTurnsByRunCreatedAt = (turns: ChatTurn[]) =>
   [...turns].sort(

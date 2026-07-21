@@ -4,7 +4,7 @@ import type {
   UploadProgress,
   UploadResolvedContextResult
 } from './dockerfile-context-types'
-import type { ContainerImageBuildContextFile } from '@/server/orchestrator/platform/types'
+import type { ContainerImageBuildContextFile } from '@/shared/contracts/platform'
 
 const maxSelectedContextFiles = 200
 

@@ -1,5 +1,4 @@
 import { ConflictException, Injectable } from '@nestjs/common';
-import { UploadedApk } from '../../../apk/entities/uploaded-apk.entity';
 import { RedroidRuntimeConfigService } from '../../../config/redroid-runtime-config.service';
 import { NetworkIsolationService } from '../../../network-isolation/network-isolation.service';
 import { SettingsService } from '../../../settings/settings.service';
@@ -10,13 +9,13 @@ import {
   AndroidApplicationStatus,
 } from '../../contracts/android-application-status';
 import { CreateAndroidApplicationDto } from '../../common/dto/create-android-application.dto';
-import { resolveContainerImage } from '@rebroid/application-core/container-image';
+import { resolveContainerImage } from '../../../common/container-image-reference';
 import { rememberSavedProfile } from '../../common/utils/android-apps-profile-history.utils';
-import { applyRedroidDefaultContainerArgs } from '@rebroid/application-core/redroid-runtime';
-import type { RuntimeImageKind } from '@rebroid/application-core/redroid-runtime';
+import { applyRedroidDefaultContainerArgs } from '@rebroid/android-application-core/redroid-runtime';
+import type { RuntimeImageKind } from '@rebroid/android-application-core/redroid-runtime';
+import type { UploadedApkReference } from '../../../apk/contracts/apk-catalog.port';
 
 type ApplicationSettings = Awaited<ReturnType<SettingsService['getSettings']>>;
-
 @Injectable()
 export class AndroidApplicationFactory {
   constructor(
@@ -93,7 +92,7 @@ export class AndroidApplicationFactory {
     );
   }
 
-  applyUploadedApk(app: AndroidApplication, uploadedApk: UploadedApk) {
+  applyUploadedApk(app: AndroidApplication, uploadedApk: UploadedApkReference) {
     if (
       uploadedApk.ownerUserId &&
       app.ownerUserId &&

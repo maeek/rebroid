@@ -1,5 +1,5 @@
 import { request } from '../request'
-import type { SaveScheduledTaskInput, ScheduledTask, ScheduledTaskAction } from './types'
+import type { SaveScheduledTaskInput, ScheduledTask, ScheduledTaskAction } from '@/shared/contracts/scheduled-task'
 
 export const orchestratorScheduledTasksClient = {
   listActions() {

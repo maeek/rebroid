@@ -1,6 +1,6 @@
 import { isMap, isScalar, parseDocument, type ParsedNode } from 'yaml'
 import { yamlNodeAtPath, yamlPathAt } from './automation-yaml-ast-utils'
-import type { AutomationCommand } from '@/server/orchestrator/automations/types'
+import type { AutomationCommand } from '@/shared/contracts/automation'
 import type * as Monaco from 'monaco-editor'
 
 export type JsonSchema = Record<string, unknown>

@@ -11,7 +11,10 @@ type OpenApiDocument = {
 
 const document = JSON.parse(
   readFileSync(
-    resolve(__dirname, '../../../../packages/orchestrator-client/openapi.json'),
+    resolve(
+      __dirname,
+      '../../../../packages/orchestrator-contracts/openapi.json',
+    ),
     'utf8',
   ),
 ) as OpenApiDocument;

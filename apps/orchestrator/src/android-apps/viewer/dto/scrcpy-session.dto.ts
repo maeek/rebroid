@@ -1,5 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ScrcpyTransport } from '../../contracts/android-application-status';
+import {
+  viewerTransports,
+  type ViewerTransport,
+} from '@rebroid/android-application-core/viewer-control';
 
 export class ScrcpyViewerErrorDto {
   @ApiProperty({
@@ -170,8 +173,8 @@ export class ScrcpySessionDto {
   @ApiProperty()
   applicationId!: string;
 
-  @ApiProperty({ enum: ScrcpyTransport })
-  transport!: ScrcpyTransport;
+  @ApiProperty({ enum: viewerTransports })
+  transport!: ViewerTransport;
 
   @ApiProperty()
   udid!: string;

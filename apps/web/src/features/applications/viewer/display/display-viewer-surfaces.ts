@@ -8,7 +8,7 @@ import type {
   DisplaySurfaceRef
 } from '@/features/applications/viewer/display/display-viewer-url'
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
-import type { ScrcpySession } from '@/server/orchestrator/applications/types'
+import type { ScrcpySession } from '@/shared/contracts/application'
 
 export type DisplaySize = {
   width: number

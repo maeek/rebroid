@@ -1,5 +1,5 @@
 import { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { AndroidApplication } from '@/server/orchestrator/applications/types'
+import type { AndroidApplication } from '@/shared/contracts/application'
 
 const isApplicationRunning = (app: AndroidApplication) => app.status.currentStatus === 'running'
 

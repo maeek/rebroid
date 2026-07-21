@@ -5,7 +5,7 @@ import {
 } from '@/server/orchestrator/settings/actions'
 import { useAiModelCatalogSelection, type AiModelSelectionPatch } from '@/shared/ui/ai/use-ai-model-catalog-selection'
 import { clampAdHocTimeoutMinutes, DEFAULT_AD_HOC_AI_TIMEOUT_MINUTES } from './ai-agent-chat-utils'
-import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
+import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 
 const isValidAgentModel = (
   provider: AutomationAiModelCatalogProvider | undefined,

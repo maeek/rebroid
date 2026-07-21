@@ -16,12 +16,14 @@ import {
   UpdateAutomationDto,
 } from '../dto/automation.dto';
 import {
+  RunAdHocAiAutomationDto,
+  SuggestAdHocAiPromptsDto,
+} from '../dto/automation-ai-run.dto';
+import {
   AutomationRunEventDto,
   AutomationRunEventStreamTokenDto,
-  RunAdHocAiAutomationDto,
-  RunAutomationDto,
-  SuggestAdHocAiPromptsDto,
-} from '../dto/automation-run.dto';
+} from '../dto/automation-run-event.dto';
+import { RunAutomationDto } from '../dto/automation-run.dto';
 import {
   CreateAutomationTriggerDto,
   UpdateAutomationTriggerDto,

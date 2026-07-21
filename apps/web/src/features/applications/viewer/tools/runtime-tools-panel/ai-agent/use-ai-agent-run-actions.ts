@@ -14,8 +14,8 @@ import {
   type ChatTurnStatus
 } from './ai-agent-chat-utils'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { AutomationRun } from '@/server/orchestrator/automations/types'
-import type { AutomationAiModelCatalogProvider } from '@/server/orchestrator/settings/types'
+import type { AutomationAiModelCatalogProvider } from '@/shared/contracts/ai-provider'
+import type { AutomationRun } from '@/shared/contracts/automation'
 
 export const useAiAgentRunActions = ({
   activeTurn,

@@ -1,11 +1,14 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import {
+  nextCronRun,
+  normalizeCronExpression,
+} from '../../common/cron-schedule';
+import {
   AutomationStartPolicy,
   AutomationTrigger,
   AutomationTriggerType,
 } from '../entities/automation-trigger.entity';
 import { AutomationCronRegistryService } from '../scheduler/automation-cron-registry.service';
-import { AutomationScheduleService } from '../scheduler/automation-schedule.service';
 
 export interface ScheduleTriggerConfig {
   cronExpression: string;
@@ -14,10 +17,7 @@ export interface ScheduleTriggerConfig {
 
 @Injectable()
 export class AutomationTriggerSchedulerService {
-  constructor(
-    private readonly cronRegistry: AutomationCronRegistryService,
-    private readonly schedule: AutomationScheduleService,
-  ) {}
+  constructor(private readonly cronRegistry: AutomationCronRegistryService) {}
 
   normalizeConfig(
     triggerType: AutomationTriggerType,
@@ -40,7 +40,7 @@ export class AutomationTriggerSchedulerService {
         : AutomationStartPolicy.StartIfNeeded;
 
     return {
-      cronExpression: this.schedule.validateCronExpression(cronExpressionValue),
+      cronExpression: normalizeCronExpression(cronExpressionValue),
       startPolicy,
     } satisfies ScheduleTriggerConfig;
   }
@@ -52,7 +52,7 @@ export class AutomationTriggerSchedulerService {
     if (triggerType !== AutomationTriggerType.Schedule) {
       return null;
     }
-    return this.schedule.nextRun(
+    return nextCronRun(
       (config as unknown as ScheduleTriggerConfig).cronExpression,
     );
   }

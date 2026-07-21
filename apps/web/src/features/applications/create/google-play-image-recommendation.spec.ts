@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { recommendGooglePlayImage } from './google-play-image-recommendation'
-import type { PlatformImage } from '@/shared/contracts/platform-image'
+import type { PlatformImage } from '@/shared/contracts/platform'
 
 const image = ({
   id,

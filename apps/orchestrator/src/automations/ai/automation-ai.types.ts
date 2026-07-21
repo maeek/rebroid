@@ -1,4 +1,4 @@
-import type { AutomationAiToolRequest } from '@rebroid/ai-core/provider';
+import type { AutomationAiToolRequest } from '../../settings/contracts/ai-provider';
 import type { AutomationCommandContext } from '../commands/automation-command.types';
 
 export interface AutomationAiHarnessContext extends AutomationCommandContext {

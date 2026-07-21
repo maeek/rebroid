@@ -1,7 +1,7 @@
 import { summarizeActionInput } from '../../actions/action-registry'
 import { conditionOperatorLabel, valueRefLabel } from '../value-ref/automation-value-ref-utils'
 import type { AutomationStepForm } from '../../editor/builder-utils'
-import type { AutomationCommand } from '@/server/orchestrator/automations/types'
+import type { AutomationCommand } from '@/shared/contracts/automation'
 
 export const parseStepInput = (step: AutomationStepForm): Record<string, unknown> => {
   if (step.kind !== 'action') return {}

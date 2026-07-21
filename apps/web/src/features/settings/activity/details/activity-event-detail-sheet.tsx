@@ -5,7 +5,7 @@ import { useActivityController } from '../activity-context'
 import { formatAction, formatDetails, outcomeTone } from '../activity-format'
 import { ActivityResourceTypeBadge } from '../common/activity-resource-type-badge'
 import { ActivityDetailField } from './activity-detail-field'
-import type { AuditEvent } from '@/server/persistence/audit-repository'
+import type { AuditEvent } from '@/shared/contracts/audit'
 
 const ActivityUserAgentField = ({ userAgent }: { userAgent: string | null }) =>
   userAgent ? (

@@ -11,7 +11,7 @@ import {
   getAutomationCommandCategories,
   getAutomationCommandCategory
 } from './automation-command-catalog'
-import type { AutomationCommand } from '@/server/orchestrator/automations/types'
+import type { AutomationCommand } from '@/shared/contracts/automation'
 
 export function AutomationActionPicker({
   commands,

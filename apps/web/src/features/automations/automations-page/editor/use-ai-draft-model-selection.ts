@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { selectCatalogModel } from '@rebroid/ai-core/provider'
 import { listAutomationAiModelCatalogAction } from '@/server/orchestrator/settings/actions'
+import { selectCatalogModel } from '@/shared/model/ai-model-catalog'
 import { selectAiDraftProviderAndModel } from './ai-draft-model-selection-utils'
-import type { AutomationAiModelCatalogProvider } from '@/server/orchestrator/settings/types'
+import type { AutomationAiModelCatalogProvider } from '@/shared/contracts/ai-provider'
 
 export const useAiDraftModelSelection = () => {
   const [catalog, setCatalog] = useState<AutomationAiModelCatalogProvider[]>([])

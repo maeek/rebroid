@@ -1,4 +1,4 @@
-import type { AndroidApplication } from '@/server/orchestrator/applications/types'
+import type { AndroidApplication } from '@/shared/contracts/application'
 import type { SortingState } from '@tanstack/react-table'
 
 const defaultSorting: SortingState = [{ id: 'name', desc: false }]

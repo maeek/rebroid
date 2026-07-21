@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -19,6 +20,9 @@ export enum AndroidAppLifecycleJobStatus {
 }
 
 @Entity({ name: 'android_app_lifecycle_jobs' })
+@Index('android_app_lifecycle_jobs_application_unique', ['applicationId'], {
+  unique: true,
+})
 export class AndroidAppLifecycleJob {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

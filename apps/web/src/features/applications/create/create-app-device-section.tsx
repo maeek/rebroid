@@ -1,4 +1,4 @@
-import { applyRedroidDisplayContainerArgs } from '@rebroid/application-core/redroid-runtime'
+import { applyRedroidDisplayContainerArgs } from '@rebroid/android-application-core/redroid-runtime'
 import { IconChevronRight } from '@tabler/icons-react'
 import { FormField } from '@/components/ui/form-field'
 import { Section } from '@/components/ui/section'
@@ -8,7 +8,7 @@ import { verticalSettingClassName } from '@/features/applications/components/app
 import { RuntimeImagePicker } from '@/shared/ui/runtime-image/runtime-image-picker'
 import { getCustomDisplayConfig } from './create-app-form-model'
 import type { CreateAppFormValues } from './create-app-form.types'
-import type { PlatformImage } from '@/shared/contracts/platform-image'
+import type { PlatformImage } from '@/shared/contracts/platform'
 
 type CreateAppDeviceSectionProps = {
   images: PlatformImage[]

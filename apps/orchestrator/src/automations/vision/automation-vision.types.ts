@@ -1,8 +1,5 @@
-import type {
-  VisionDetection,
-  VisionObservation,
-} from '@rebroid/vision-core/observation';
-import type { AiObservationCandidate } from '@rebroid/ai-core/harness';
+import type { VisionDetection, VisionObservation } from './vision-observation';
+import type { AiObservationCandidate } from '../ai/core/screen-state-policy';
 import type { OptimizedAiScreenshot } from '../ai/automation-ai-screenshot.utils';
 
 export interface AutomationScreenObservation extends VisionObservation {

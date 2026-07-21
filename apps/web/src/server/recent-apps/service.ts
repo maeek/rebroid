@@ -4,7 +4,7 @@ import { orchestratorAppCatalogClient } from '@/server/orchestrator/applications
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { navigationAppsLimit, selectNavigationAppEntries } from './navigation'
 import { listStoredRecentApps } from './store'
-import type { AndroidApplicationSummary } from '@/server/orchestrator/applications/types'
+import type { AndroidApplicationSummary } from '@/shared/contracts/application'
 import type { RecentApp } from '@/shared/contracts/recent-app'
 
 const toRecentApp = async (app: AndroidApplicationSummary, openedAt: number): Promise<RecentApp> => ({

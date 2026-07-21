@@ -1,13 +1,13 @@
-import { selectCatalogModel } from '@rebroid/ai-core/provider'
 import { IconCircleCheck, IconLoader2, IconSparkles } from '@tabler/icons-react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
+import { selectCatalogModel } from '@/shared/model/ai-model-catalog'
 import { AiModelPicker } from '@/shared/ui/ai/ai-model-picker'
 import { AiPromptComposer } from '@/shared/ui/ai/ai-prompt-composer'
 import type { AiDraftLogItem, AiDraftStatus } from './use-automation-ai-draft'
-import type { AutomationAiModelCatalogProvider } from '@/server/orchestrator/settings/types'
+import type { AutomationAiModelCatalogProvider } from '@/shared/contracts/ai-provider'
 
 export const AiDraftDialog = ({
   open,

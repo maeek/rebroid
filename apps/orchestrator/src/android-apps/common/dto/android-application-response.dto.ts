@@ -1,5 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import type { RuntimeImageKind } from '@rebroid/application-core/redroid-runtime';
+import type { RuntimeImageKind } from '@rebroid/android-application-core/redroid-runtime';
+import {
+  viewerTransports,
+  type ViewerTransport,
+} from '@rebroid/android-application-core/viewer-control';
 import { parseJsonStringArray } from '../../../common/json-array';
 import { AndroidApplication } from '../../android-application.entity';
 import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
@@ -7,7 +11,6 @@ import { parseSavedProfiles } from '../utils/android-apps-profile-history.utils'
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
-  ScrcpyTransport,
 } from '../../contracts/android-application-status';
 import {
   AndroidApplicationError,
@@ -92,8 +95,8 @@ export class AndroidApplicationRuntimeDto {
   @ApiProperty()
   adbPort!: number;
 
-  @ApiProperty({ enum: ScrcpyTransport })
-  scrcpyTransport!: ScrcpyTransport;
+  @ApiProperty({ enum: viewerTransports })
+  scrcpyTransport!: ViewerTransport;
 
   @ApiProperty()
   inactivityTimeoutSeconds!: number;

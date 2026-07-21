@@ -13,7 +13,7 @@ import {
   selectedFirewallApplicationsFromIds,
   sortFirewallApplications
 } from './firewall-settings-model'
-import type { AndroidApplication } from '@/server/orchestrator/applications/types'
+import type { AndroidApplication } from '@/shared/contracts/application'
 
 const app = (
   id: string,

@@ -1,4 +1,4 @@
-import { viewerCommands } from '@rebroid/application-core/viewer-control'
+import { viewerCommands } from '@rebroid/android-application-core/viewer-control'
 import { SelectField } from '../shared/action-fields'
 import { normalizeStringInput, stringInputValue } from '../shared/input-values'
 import type { AutomationActionDefinition } from '../automation-action-definition'

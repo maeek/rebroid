@@ -1,4 +1,3 @@
-import { type ReactNode } from 'react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
 import {
@@ -10,12 +9,13 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
+import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import type { AutomationAiProviderModel } from '@/server/orchestrator/settings/types'
-import type { ProviderModelRow } from '@rebroid/ai-core/provider'
+import { ProviderNumberField } from './provider-number-field'
+import type { ProviderModelRow } from './provider-form-model'
+import type { AutomationAiProviderModel } from '@/shared/contracts/ai-provider'
 
 export const ProviderModelSettingsDialog = ({
   model,
@@ -49,20 +49,24 @@ export const ProviderModelSettingsDialog = ({
         </DialogHeader>
         {model ? (
           <div className='grid gap-4'>
-            <Field
+            <FormField
+              controlId='provider-model-system-prompt'
               label='System prompt'
               description='Additional system instructions appended to AI automation runs for this model.'
+              layout='vertical'
             >
               <Textarea
                 value={settings.systemPrompt ?? ''}
                 rows={5}
                 onChange={event => updateSettings({ systemPrompt: event.target.value || null })}
               />
-            </Field>
+            </FormField>
             <div className='grid gap-4 sm:grid-cols-2'>
-              <Field
+              <FormField
+                controlId='provider-model-thinking-mode'
                 label='Thinking mode'
                 description='Bound or disable hidden reasoning for latency-sensitive controller turns.'
+                layout='vertical'
               >
                 <Select
                   value={settings.thinkingMode ?? 'provider-default'}
@@ -72,7 +76,11 @@ export const ProviderModelSettingsDialog = ({
                     })
                   }
                 >
-                  <SelectTrigger className='w-full'>
+                  <SelectTrigger
+                    id='provider-model-thinking-mode'
+                    className='w-full'
+                    aria-describedby='provider-model-thinking-mode-description'
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -81,8 +89,9 @@ export const ProviderModelSettingsDialog = ({
                     <SelectItem value='provider-default'>Provider default</SelectItem>
                   </SelectContent>
                 </Select>
-              </Field>
-              <NumberField
+              </FormField>
+              <ProviderNumberField
+                controlId='provider-model-reasoning-budget'
                 label='Reasoning budget'
                 description='Maximum hidden reasoning tokens when bounded mode is selected.'
                 value={settings.reasoningBudgetTokens}
@@ -91,7 +100,8 @@ export const ProviderModelSettingsDialog = ({
                 step={64}
                 onChange={reasoningBudgetTokens => updateSettings({ reasoningBudgetTokens })}
               />
-              <NumberField
+              <ProviderNumberField
+                controlId='provider-model-temperature'
                 label='Temperature'
                 description='Sampling randomness from 0 to 2.'
                 value={settings.temperature}
@@ -100,7 +110,8 @@ export const ProviderModelSettingsDialog = ({
                 step={0.1}
                 onChange={temperature => updateSettings({ temperature })}
               />
-              <NumberField
+              <ProviderNumberField
+                controlId='provider-model-top-p'
                 label='Top P'
                 description='Nucleus sampling value from 0 to 1.'
                 value={settings.topP}
@@ -109,7 +120,8 @@ export const ProviderModelSettingsDialog = ({
                 step={0.05}
                 onChange={topP => updateSettings({ topP })}
               />
-              <NumberField
+              <ProviderNumberField
+                controlId='provider-model-top-k'
                 label='Top K'
                 description='Ollama top-k sampling limit.'
                 value={settings.topK}
@@ -118,7 +130,8 @@ export const ProviderModelSettingsDialog = ({
                 step={1}
                 onChange={topK => updateSettings({ topK })}
               />
-              <NumberField
+              <ProviderNumberField
+                controlId='provider-model-context-length'
                 label='Context length'
                 description='Ollama num_ctx option.'
                 value={settings.numCtx}
@@ -127,7 +140,8 @@ export const ProviderModelSettingsDialog = ({
                 step={128}
                 onChange={numCtx => updateSettings({ numCtx })}
               />
-              <NumberField
+              <ProviderNumberField
+                controlId='provider-model-repeat-penalty'
                 label='Repeat penalty'
                 description='Ollama repeat_penalty option.'
                 value={settings.repeatPenalty}
@@ -136,7 +150,8 @@ export const ProviderModelSettingsDialog = ({
                 step={0.05}
                 onChange={repeatPenalty => updateSettings({ repeatPenalty })}
               />
-              <NumberField
+              <ProviderNumberField
+                controlId='provider-model-seed'
                 label='Seed'
                 description='Optional deterministic seed.'
                 value={settings.seed}
@@ -144,16 +159,18 @@ export const ProviderModelSettingsDialog = ({
                 onChange={seed => updateSettings({ seed })}
               />
             </div>
-            <Field
+            <FormField
+              controlId='provider-model-keep-alive'
               label='Keep alive'
               description='Ollama keep_alive value such as 5m, 1h, or -1.'
+              layout='vertical'
             >
               <Input
                 value={settings.keepAlive ?? ''}
                 placeholder='5m'
                 onChange={event => updateSettings({ keepAlive: event.target.value || null })}
               />
-            </Field>
+            </FormField>
           </div>
         ) : null}
         <DialogFooter>
@@ -165,45 +182,3 @@ export const ProviderModelSettingsDialog = ({
     </Dialog>
   )
 }
-
-const Field = ({ label, description, children }: { label: string; description: string; children: ReactNode }) => (
-  <div className='grid gap-2'>
-    <div className='grid gap-1'>
-      <Label>{label}</Label>
-      <p className='text-xs text-foreground-muted'>{description}</p>
-    </div>
-    {children}
-  </div>
-)
-
-const NumberField = ({
-  label,
-  description,
-  value,
-  min,
-  max,
-  step,
-  onChange
-}: {
-  label: string
-  description: string
-  value?: number | null
-  min?: number
-  max?: number
-  step?: number
-  onChange: (value: number | null) => void
-}) => (
-  <Field
-    label={label}
-    description={description}
-  >
-    <Input
-      type='number'
-      value={value ?? ''}
-      min={min}
-      max={max}
-      step={step}
-      onChange={event => onChange(event.target.value === '' ? null : Number(event.target.value))}
-    />
-  </Field>
-)

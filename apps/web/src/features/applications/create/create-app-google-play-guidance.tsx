@@ -8,8 +8,8 @@ import {
   resolvePlatformImageRuntimeMetadata
 } from '@/shared/model/runtime-image/runtime-image-metadata'
 import { recommendGooglePlayImage } from './google-play-image-recommendation'
-import type { UploadedApk } from '@/server/orchestrator/applications/types'
-import type { PlatformImage } from '@/shared/contracts/platform-image'
+import type { UploadedApk } from '@/shared/contracts/application'
+import type { PlatformImage } from '@/shared/contracts/platform'
 
 const verdictCopy = {
   required: {

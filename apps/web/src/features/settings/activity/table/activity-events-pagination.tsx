@@ -1,4 +1,4 @@
-import { DataGridPagination } from '@/shared/ui/data-grid'
+import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
 import { useActivityController, useActivityData } from '../activity-context'
 
 export const ActivityEventsPagination = () => {

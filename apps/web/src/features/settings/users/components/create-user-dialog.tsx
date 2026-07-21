@@ -22,7 +22,7 @@ import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { createUserAction } from '@/server/users/actions/create-user-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { GroupMembershipPicker } from './group-membership-picker'
-import type { PublicUser, UserGroup, UserRole } from '@/server/auth/user'
+import type { PublicUser, UserGroup, UserRole } from '@/shared/contracts/auth-user'
 
 export const CreateUserDialog = ({
   groups,

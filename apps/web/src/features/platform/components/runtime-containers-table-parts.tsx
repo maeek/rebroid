@@ -5,7 +5,7 @@ import { StatusBadge, type StatusBadgeTone } from '@/components/ui/status-badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
-import type { PlatformContainer } from '@/server/orchestrator/platform/types'
+import type { PlatformContainer } from '@/shared/contracts/platform'
 import type { ColumnDef } from '@tanstack/react-table'
 
 const stateTone = (state: string): StatusBadgeTone => {

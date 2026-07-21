@@ -9,12 +9,10 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat python3 make g++
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json apps/web/package.json
-COPY packages/ai-core/package.json packages/ai-core/package.json
 COPY packages/automation-core/package.json packages/automation-core/package.json
-COPY packages/application-core/package.json packages/application-core/package.json
+COPY packages/android-application-core/package.json packages/android-application-core/package.json
 COPY packages/firewall-policy-core/package.json packages/firewall-policy-core/package.json
-COPY packages/orchestrator-client/package.json packages/orchestrator-client/package.json
-COPY packages/vision-core/package.json packages/vision-core/package.json
+COPY packages/orchestrator-contracts/package.json packages/orchestrator-contracts/package.json
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --filter rebroid-web... --frozen-lockfile
 
 FROM base AS builder
@@ -25,24 +23,20 @@ ARG DISPLAY_SIDECAR_INTERNAL_BASE_URL=http://rebroid-display-sidecar:8000
 ENV NEXT_PROXY_CLIENT_MAX_BODY_SIZE=${NEXT_PROXY_CLIENT_MAX_BODY_SIZE}
 ENV DISPLAY_SIDECAR_INTERNAL_BASE_URL=${DISPLAY_SIDECAR_INTERNAL_BASE_URL}
 COPY --from=deps /workspace /workspace
-COPY packages/ai-core /workspace/packages/ai-core
 COPY packages/automation-core /workspace/packages/automation-core
-COPY packages/application-core /workspace/packages/application-core
+COPY packages/android-application-core /workspace/packages/android-application-core
 COPY packages/firewall-policy-core /workspace/packages/firewall-policy-core
-COPY packages/orchestrator-client /workspace/packages/orchestrator-client
-COPY packages/vision-core /workspace/packages/vision-core
+COPY packages/orchestrator-contracts /workspace/packages/orchestrator-contracts
 COPY apps/web ./
-RUN pnpm --filter @rebroid/application-core --filter @rebroid/ai-core --filter @rebroid/automation-core --filter @rebroid/firewall-policy-core --filter @rebroid/vision-core build
+RUN pnpm --filter @rebroid/android-application-core --filter @rebroid/automation-core --filter @rebroid/firewall-policy-core build
 # The deps stage injects package.json-only workspace snapshots. Point the
 # builder at the complete package directories after their dist output exists.
 RUN rm -rf node_modules/@rebroid \
   && mkdir -p node_modules/@rebroid \
-  && ln -s /workspace/packages/ai-core node_modules/@rebroid/ai-core \
-  && ln -s /workspace/packages/application-core node_modules/@rebroid/application-core \
+  && ln -s /workspace/packages/android-application-core node_modules/@rebroid/android-application-core \
   && ln -s /workspace/packages/automation-core node_modules/@rebroid/automation-core \
   && ln -s /workspace/packages/firewall-policy-core node_modules/@rebroid/firewall-policy-core \
-  && ln -s /workspace/packages/orchestrator-client node_modules/@rebroid/orchestrator-client \
-  && ln -s /workspace/packages/vision-core node_modules/@rebroid/vision-core
+  && ln -s /workspace/packages/orchestrator-contracts node_modules/@rebroid/orchestrator-contracts
 RUN pnpm build
 
 FROM node:24-alpine AS runner

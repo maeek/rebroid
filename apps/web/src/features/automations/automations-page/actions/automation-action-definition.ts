@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { AutomationCommand } from '@/server/orchestrator/automations/types'
+import type { AutomationCommand } from '@/shared/contracts/automation'
 
 export type AutomationActionCategory =
   | 'Device'

@@ -4,10 +4,10 @@ import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from '@/hooks/use-toast'
 import { purgeAllAuditEventsAction, saveAuditRetentionAction } from '@/server/audit/actions'
-import { auditSortToSearchParam } from '@/server/audit/query'
+import { serializeSortParam } from '@/shared/model/search-params'
 import { activityFilterEntries, compactActivityParams } from './activity-format'
 import type { ActivityEventsTableProps, ActivityFilterValues } from './activity-types'
-import type { AuditEvent } from '@/server/persistence/audit-repository'
+import type { AuditEvent } from '@/shared/contracts/audit'
 import type { SortingState } from '@tanstack/react-table'
 
 export const useActivityEventsController = ({
@@ -40,7 +40,7 @@ export const useActivityEventsController = ({
       ...patch,
       page: patch.page ?? 1,
       pageSize: patch.pageSize ?? result.pageSize,
-      sort: patch.sort ?? auditSortToSearchParam(sorting)
+      sort: patch.sort ?? serializeSortParam(sorting)
     })
     router.push(`/security/audit-log${params.size ? `?${params.toString()}` : ''}`)
   }
@@ -69,7 +69,7 @@ export const useActivityEventsController = ({
   }
 
   const setSorting = (nextSorting: SortingState) => {
-    pushParams({ page: 1, sort: auditSortToSearchParam(nextSorting as typeof sorting) })
+    pushParams({ page: 1, sort: serializeSortParam(nextSorting) })
   }
 
   const saveRetention = () => {

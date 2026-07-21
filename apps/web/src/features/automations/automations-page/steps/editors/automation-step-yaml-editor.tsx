@@ -5,12 +5,13 @@ import { IconAlertTriangle } from '@tabler/icons-react'
 import dynamic from 'next/dynamic'
 import { parse, stringify } from 'yaml'
 import { getActionUiStateFromInput, normalizeActionInput } from '../../actions/action-registry'
-import { buildAutomationActionInputYamlSchema } from '../../editor/monaco-yaml'
+import { buildAutomationActionInputYamlSchema } from '../../editor/monaco-yaml/schema/automation-yaml-schema'
 import type { AutomationActionStepForm } from '../../editor/builder-utils'
-import type { AutomationCommand } from '@/server/orchestrator/automations/types'
+import type { AutomationCommand } from '@/shared/contracts/automation'
 
 const AutomationMonacoYamlEditor = dynamic(
-  () => import('../../editor/monaco-yaml').then(module => module.AutomationMonacoYamlEditor),
+  () =>
+    import('../../editor/monaco-yaml/automation-monaco-yaml-editor').then(module => module.AutomationMonacoYamlEditor),
   {
     ssr: false,
     loading: () => <div className='h-44 rounded-control border border-surface-border/60 bg-surface-band/35' />

@@ -1,5 +1,5 @@
 import { enumValues, isRecord, propertiesOf, yamlScalar } from './automation-yaml-language-utils'
-import type { AutomationCommand } from '@/server/orchestrator/automations/types'
+import type { AutomationCommand } from '@/shared/contracts/automation'
 
 export const commandStepSnippet = ({
   command,

@@ -1,3 +1,3 @@
-import type { PlatformImage } from '@/shared/contracts/platform-image'
+import type { PlatformImage } from '@/shared/contracts/platform'
 
 export const imageDisplayName = (image: PlatformImage) => image.repoTags[0] ?? image.repoDigests[0] ?? image.shortId

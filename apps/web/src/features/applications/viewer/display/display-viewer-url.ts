@@ -1,5 +1,5 @@
 import { defaultViewerSettings, type ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
-import type { ScrcpySession } from '@/server/orchestrator/applications/types'
+import type { ScrcpySession } from '@/shared/contracts/application'
 
 export type DisplaySurfaceRef = {
   id: string

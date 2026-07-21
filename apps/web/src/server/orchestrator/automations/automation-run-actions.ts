@@ -13,7 +13,11 @@ import {
   recordAutomationAudit
 } from './action-helpers'
 import { orchestratorAutomationsClient } from './client'
-import type { RunAdHocAiAutomationInput, RunAutomationInput, SuggestAdHocAiPromptsInput } from './types'
+import type {
+  RunAdHocAiAutomationInput,
+  RunAutomationInput,
+  SuggestAdHocAiPromptsInput
+} from '@/shared/contracts/automation'
 
 export const runAutomationAction = async (id: string, input: RunAutomationInput) => {
   const user = await getCurrentUserContext()

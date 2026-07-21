@@ -1,6 +1,12 @@
 import { Inject, BadRequestException, Injectable } from '@nestjs/common';
-import { ApkCatalogService } from '../../apk/services/apk-catalog.service';
-import { AndroidAppsLogService } from '../../android-apps/common/services/android-apps-log.service';
+import {
+  APK_CATALOG,
+  type ApkCatalogPort,
+} from '../../apk/contracts/apk-catalog.port';
+import {
+  ANDROID_APPS_RUNTIME_LOG_MAINTENANCE,
+  type AndroidAppsRuntimeLogMaintenancePort,
+} from '../../android-apps/contracts/android-apps-runtime-log-maintenance.port';
 import {
   DOCKER_PLATFORM_PRUNE,
   type DockerPlatformPrunePort,
@@ -55,8 +61,9 @@ const integerValue = (
 @Injectable()
 export class ScheduledTaskActionsService {
   constructor(
-    private readonly apks: ApkCatalogService,
-    private readonly logs: AndroidAppsLogService,
+    @Inject(APK_CATALOG) private readonly apks: ApkCatalogPort,
+    @Inject(ANDROID_APPS_RUNTIME_LOG_MAINTENANCE)
+    private readonly logs: AndroidAppsRuntimeLogMaintenancePort,
     @Inject(DOCKER_PLATFORM_PRUNE)
     private readonly prune: DockerPlatformPrunePort,
   ) {}

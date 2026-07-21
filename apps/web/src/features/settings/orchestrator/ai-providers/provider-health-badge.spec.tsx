@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as actions from '@/server/orchestrator/settings/actions'
 import { ProviderHealthBadge } from './provider-health-badge'
-import type { AutomationAiProvider, AutomationAiProviderHealth } from '@/server/orchestrator/settings/types'
+import type { AutomationAiProvider, AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 
 vi.mock('@/server/orchestrator/settings/actions', () => ({
   checkAutomationAiProviderHealthAction: vi.fn()

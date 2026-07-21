@@ -1,4 +1,4 @@
-import type { UserGroup, UserRole } from '@/server/auth/user'
+import type { UserGroup, UserRole } from '@/shared/contracts/auth-user'
 import type { PermissionMap, ResourceQuota } from '@/shared/permissions/permissions'
 
 export type GroupDraft = {

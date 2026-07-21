@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Visible } from '@/components/ui/visible'
 import { RuntimeImagePicker } from '@/shared/ui/runtime-image/runtime-image-picker'
 import type { BuilderValues } from '../model/builder-values'
-import type { ContainerImageBuildRecipe, PlatformImage } from '@/server/orchestrator/platform/types'
+import type { ContainerImageBuildRecipe, PlatformImage } from '@/shared/contracts/platform'
 
 const verticalSettingClassName = 'flex-col items-start w-full'
 

@@ -17,7 +17,7 @@ import type {
   StartGappsBuildInput,
   UpdateContainerImageRecipeInput,
   UpdateRuntimeImageMetadataInput
-} from './types'
+} from '@/shared/contracts/platform'
 
 export const orchestratorPlatformClient = {
   listPlatformContainers() {

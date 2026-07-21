@@ -1,14 +1,14 @@
-import { cronToSchedule, defaultSchedule, scheduleToCron } from '@rebroid/automation-core/schedule'
+import { cronToSchedule, defaultSchedule, scheduleToCron } from '@/shared/model/automation-schedule'
 import { compactGridParams } from '../shared/grid-query-utils'
 import { appProfileMode, appProfileName, getScheduleCron, getStartPolicy } from './automation-trigger-utils'
 import type { TriggerFormState } from './automation-trigger-types'
-import type { AndroidApplication, ApplicationProfileMode } from '@/server/orchestrator/applications/types'
+import type { AndroidApplication, ApplicationProfileMode } from '@/shared/contracts/application'
 import type {
   Automation,
   AutomationTrigger,
   AutomationTriggersGridQuery,
   SaveAutomationTriggerInput
-} from '@/server/orchestrator/automations/types'
+} from '@/shared/contracts/automation'
 
 type TriggerGridHrefInput = {
   gridQuery: AutomationTriggersGridQuery

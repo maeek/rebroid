@@ -19,7 +19,7 @@ import type {
   IconControl,
   SendControl
 } from '@/features/applications/viewer/display/viewer-control-bar/types'
-import type { ApplicationViewerControlCommand } from '@/server/orchestrator/applications/types'
+import type { ApplicationViewerControlCommand } from '@/shared/contracts/application'
 
 export const navigationControls: IconControl[] = [
   {

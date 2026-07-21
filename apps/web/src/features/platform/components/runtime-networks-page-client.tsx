@@ -6,8 +6,9 @@ import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-ref
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { RuntimeInventoryLoadingSection } from './runtime-inventory-loading-section'
-import { createNetworkColumns, RuntimeNetworksSection } from './runtime-networks-section'
-import type { PlatformNetworksGridPage, PlatformNetworksGridQuery } from '@/server/orchestrator/platform/types'
+import { RuntimeNetworksSection } from './runtime-networks-section'
+import { createNetworkColumns } from './runtime-networks-table-parts'
+import type { PlatformNetworksGridPage, PlatformNetworksGridQuery } from '@/shared/contracts/platform'
 
 export const RuntimeNetworksPageClient = ({
   networksPage,

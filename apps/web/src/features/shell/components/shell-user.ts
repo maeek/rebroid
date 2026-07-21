@@ -1,3 +1,3 @@
-import type { PublicUser } from '@/server/auth/user'
+import type { PublicUser } from '@/shared/contracts/auth-user'
 
 export type ShellUser = Pick<PublicUser, 'accentColor' | 'avatarDataUrl' | 'mfaEnabled' | 'name' | 'role'>

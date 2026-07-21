@@ -6,7 +6,7 @@ import type {
   CreateApplicationActionInput,
   ScrcpySession,
   UpdateAndroidApplicationInput
-} from './types'
+} from '@/shared/contracts/application'
 
 type AppSafetyContext = {
   role: 'admin' | 'user'

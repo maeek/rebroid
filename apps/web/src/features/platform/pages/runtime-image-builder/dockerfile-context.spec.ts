@@ -1,11 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import {
-  parseDockerfileContextReferences,
-  resolveDockerfileContextReferences,
-  uploadResolvedContextReferences,
-  type LocalBuildContextFile
-} from './dockerfile-context'
-import type { ContainerImageBuildContextFile } from '@/server/orchestrator/platform/types'
+import { parseDockerfileContextReferences } from './model/dockerfile-context-parser'
+import { resolveDockerfileContextReferences } from './model/dockerfile-context-resolver'
+import { uploadResolvedContextReferences } from './model/dockerfile-context-upload-planner'
+import type { LocalBuildContextFile } from './model/dockerfile-context-types'
+import type { ContainerImageBuildContextFile } from '@/shared/contracts/platform'
 
 const uploadedFile = (id: string, contextPath: string): ContainerImageBuildContextFile => ({
   contextPath,

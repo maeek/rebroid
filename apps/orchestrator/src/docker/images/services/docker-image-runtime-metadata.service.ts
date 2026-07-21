@@ -4,12 +4,13 @@ import { In, Repository } from 'typeorm';
 import {
   resolveRuntimeImageMetadata,
   type RuntimeImageMetadata,
-} from '@rebroid/application-core/redroid-runtime';
+} from '@rebroid/android-application-core/redroid-runtime';
 import { PlatformImage } from '../../docker.types';
 import { ContainerImageRuntimeMetadata } from '../entities/container-image-runtime-metadata.entity';
 import type {
   DockerImageRuntimeMetadataPort,
   ResolvedRuntimeImageMetadata,
+  RuntimeImageMetadataRecord,
   UpsertRuntimeImageMetadataInput,
 } from '../../contracts/docker-image-runtime-metadata.port';
 
@@ -115,9 +116,7 @@ export class DockerImageRuntimeMetadataService implements DockerImageRuntimeMeta
     };
   }
 
-  toRuntimeMetadata(
-    record: ContainerImageRuntimeMetadata,
-  ): RuntimeImageMetadata {
+  toRuntimeMetadata(record: RuntimeImageMetadataRecord): RuntimeImageMetadata {
     return {
       runtimeKind: record.runtimeKind,
       androidVersion: record.androidVersion,

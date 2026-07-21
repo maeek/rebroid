@@ -3,8 +3,8 @@ import type {
   ScheduledTask,
   ScheduledTaskAction,
   ScheduledTaskActionType
-} from '@/server/orchestrator/scheduled-tasks/types'
-import type { ScheduleDraft, ScheduleFrequency } from '@rebroid/automation-core/schedule'
+} from '@/shared/contracts/scheduled-task'
+import type { ScheduleDraft, ScheduleFrequency } from '@/shared/model/automation-schedule'
 
 export type FormState = Omit<SaveScheduledTaskInput, 'cronExpression'> & {
   id?: string

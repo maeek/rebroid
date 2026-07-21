@@ -20,8 +20,8 @@ import { ScheduleEditor } from '@/shared/ui/schedule/schedule-editor'
 import { AutomationTagsInput } from '../shared/automation-tags-input'
 import { appProfileMode, appProfileName, appSavedProfiles } from './automation-trigger-utils'
 import type { TriggerFormState } from './automation-trigger-types'
-import type { AndroidApplication } from '@/server/orchestrator/applications/types'
-import type { Automation } from '@/server/orchestrator/automations/types'
+import type { AndroidApplication } from '@/shared/contracts/application'
+import type { Automation } from '@/shared/contracts/automation'
 
 export function AutomationTriggerFormDialog({
   applications,

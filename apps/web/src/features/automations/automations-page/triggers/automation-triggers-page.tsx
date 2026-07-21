@@ -13,11 +13,12 @@ import {
   runAutomationTriggerAction,
   updateAutomationTriggerAction
 } from '@/server/orchestrator/automations/automation-trigger-actions'
-import { DataGridPagination } from '@/shared/ui/data-grid'
+import { serializeSortParam } from '@/shared/model/search-params'
+import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { AutomationEmptySplash } from '../shared/automation-empty-splash'
-import { sortFromSearchParam, sortToSearchParam } from '../shared/grid-query-utils'
+import { sortFromSearchParam } from '../shared/grid-query-utils'
 import { AutomationTriggerFormDialog } from './automation-trigger-form-dialog'
 import {
   applyTriggerTargetApplication,
@@ -36,7 +37,7 @@ import { AutomationTriggersTable } from './automation-triggers-table'
 import { AutomationTriggersToolbar } from './automation-triggers-toolbar'
 import type { TriggerFormState } from './automation-trigger-types'
 import type { AutomationTriggersPageProps } from '../editor/types'
-import type { AutomationTrigger, AutomationTriggersGridQuery } from '@/server/orchestrator/automations/types'
+import type { AutomationTrigger, AutomationTriggersGridQuery } from '@/shared/contracts/automation'
 
 export function AutomationTriggersPage({
   initialApplications,
@@ -240,7 +241,7 @@ export function AutomationTriggersPage({
               onEnableSelected={() => updateSelectedEnabled(true)}
               onRun={runNow}
               onSelectedIdsChange={setSelectedIds}
-              onSortingChange={nextSorting => pushGridParams({ sort: sortToSearchParam(nextSorting), page: 1 })}
+              onSortingChange={nextSorting => pushGridParams({ sort: serializeSortParam(nextSorting), page: 1 })}
               onToggleEnabled={toggleEnabled}
             />
             <DataGridPagination

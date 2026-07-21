@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { getRedroidDisplayDimensionsFromArgs } from '@rebroid/application-core/redroid-runtime'
+import { getRedroidDisplayDimensionsFromArgs } from '@rebroid/android-application-core/redroid-runtime'
 import { IconAlertTriangle, IconDeviceDesktop, IconLoader2 } from '@tabler/icons-react'
 import { Visible } from '@/components/ui/visible'
 import { DisplayViewerProvider } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-context'
@@ -22,7 +22,7 @@ import type { AppDefinition } from '@/features/applications/domain/app-definitio
 import type { DisplayViewerStreamMetrics } from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { ViewerOrientation } from '@/features/applications/viewer/player/android-viewer'
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
-import type { ScrcpySession } from '@/server/orchestrator/applications/types'
+import type { ScrcpySession } from '@/shared/contracts/application'
 
 const sessionRetryIntervalMs = 3_000
 

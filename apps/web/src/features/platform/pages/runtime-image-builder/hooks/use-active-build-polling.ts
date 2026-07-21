@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { getBff } from '@/lib/http/bff'
 import { terminalBuildStatuses } from '../model/context-selection'
-import type { ContainerImageBuildJob } from '@/shared/contracts/platform-image-build'
+import type { ContainerImageBuildJob } from '@/shared/contracts/platform'
 
 export const useActiveBuildPolling = (
   activeJob: ContainerImageBuildJob | null,

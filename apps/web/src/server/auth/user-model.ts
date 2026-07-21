@@ -1,61 +1,14 @@
 import { PublicActionError } from '@/server/errors/public-action-error'
-import { defaultAccentColor, isAccentColor, type AccentColor } from '@/shared/model/theme/accent-color'
+import { defaultAccentColor, isAccentColor } from '@/shared/model/theme/accent-color'
 import {
   defaultUserPermissions,
   defaultUserQuota,
   fullPermissions,
   mergePermissions,
   mergeQuotas,
-  unlimitedQuota,
-  type PermissionMap,
-  type ResourceQuota
+  unlimitedQuota
 } from '@/shared/permissions/permissions'
-
-export type UserRole = 'admin' | 'user'
-
-export type UserGroup = {
-  id: string
-  name: string
-  description: string
-  role: UserRole
-  permissions: PermissionMap
-  quotas: ResourceQuota
-  createdAt: string
-  updatedAt: string
-}
-
-export type PublicUser = {
-  id: string
-  username: string
-  name: string
-  role: UserRole
-  groupIds: string[]
-  disabled: boolean
-  passwordChangeRequired: boolean
-  mfaEnabled: boolean
-  sessionVersion: number
-  avatarDataUrl: string | null
-  accentColor: AccentColor
-  permissionOverrides: PermissionMap
-  effectivePermissions: PermissionMap
-  quotas: Partial<ResourceQuota>
-  effectiveQuotas: ResourceQuota
-  createdAt: string
-  updatedAt: string
-}
-
-export type UserEditorInput = {
-  username?: string
-  name?: string
-  password?: string
-  role?: UserRole
-  groupIds?: string[]
-  disabled?: boolean
-  avatarDataUrl?: string | null
-  accentColor?: AccentColor
-  permissionOverrides?: PermissionMap
-  quotas?: Partial<ResourceQuota>
-}
+import type { PublicUser, UserGroup, UserRole } from '@/shared/contracts/auth-user'
 
 export type StoredUser = Omit<PublicUser, 'effectivePermissions' | 'effectiveQuotas' | 'mfaEnabled'> & {
   passwordHash: string
