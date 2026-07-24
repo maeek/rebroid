@@ -739,6 +739,42 @@ export interface paths {
         put?: never;
         /** Upload a file into a directory in the active data volume. */
         post: operations["AndroidAppsRuntimeController_uploadFile"];
+        /** Permanently delete a file or directory from the active data volume. */
+        delete: operations["AndroidAppsRuntimeController_deleteFile"];
+        options?: never;
+        head?: never;
+        /** Rename a file or directory in place. */
+        patch: operations["AndroidAppsRuntimeController_renameFile"];
+        trace?: never;
+    };
+    "/api/v1/apps/{id}/runtime/data-directories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a directory in the active data volume. */
+        post: operations["AndroidAppsRuntimeController_createDirectory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/apps/{id}/runtime/data-files/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Create a bounded WebP preview for an image file. */
+        get: operations["AndroidAppsRuntimeController_previewFile"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2660,6 +2696,29 @@ export interface components {
             modifiedAt: string | null;
             /** @example true */
             uploaded: boolean;
+        };
+        CreateApplicationRuntimeDirectoryDto: {
+            /** @example /data/media/0/Documents */
+            parentPath: string;
+            /** @example Reports */
+            name: string;
+        };
+        RenameApplicationRuntimeFileDto: {
+            /** @example /data/media/0/Documents/report-draft.pdf */
+            path: string;
+            /** @example report.pdf */
+            name: string;
+        };
+        DeleteApplicationRuntimeFileDto: {
+            /** @example true */
+            deleted: boolean;
+            /** @example /data/media/0/Documents/report.pdf */
+            path: string;
+            /**
+             * @example file
+             * @enum {string}
+             */
+            type: "file" | "directory";
         };
         ApplicationRuntimeFileDownloadDto: {
             /** @example report.pdf */
@@ -4740,6 +4799,8 @@ export interface operations {
                 profileMode?: "persistent" | "temporary";
                 /** @description Persistent profile name to browse when profileMode is persistent. */
                 profileName?: string;
+                /** @description Replace an existing file with the same name. Omitted uploads fail on conflicts. */
+                overwrite?: string;
             };
             header?: never;
             path: {
@@ -4762,6 +4823,112 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApplicationRuntimeFileUploadDto"];
+                };
+            };
+        };
+    };
+    AndroidAppsRuntimeController_deleteFile: {
+        parameters: {
+            query?: {
+                /** @description Absolute path inside the active runtime data volume. */
+                path?: string;
+                /** @description Profile storage mode to browse when the app is not running. */
+                profileMode?: "persistent" | "temporary";
+                /** @description Persistent profile name to browse when profileMode is persistent. */
+                profileName?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteApplicationRuntimeFileDto"];
+                };
+            };
+        };
+    };
+    AndroidAppsRuntimeController_renameFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenameApplicationRuntimeFileDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationRuntimeFileDto"];
+                };
+            };
+        };
+    };
+    AndroidAppsRuntimeController_createDirectory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateApplicationRuntimeDirectoryDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationRuntimeFileDto"];
+                };
+            };
+        };
+    };
+    AndroidAppsRuntimeController_previewFile: {
+        parameters: {
+            query?: {
+                /** @description Absolute path inside the active runtime data volume. */
+                path?: string;
+                /** @description Profile storage mode to browse when the app is not running. */
+                profileMode?: "persistent" | "temporary";
+                /** @description Persistent profile name to browse when profileMode is persistent. */
+                profileName?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/webp": string;
                 };
             };
         };

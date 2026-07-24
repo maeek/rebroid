@@ -14,11 +14,9 @@ type TouchInputOptions = {
 type PointerStart = {
   id: number;
   point: TouchPoint;
-  lastSentAt: number;
   lastPoint: TouchPoint;
 };
 
-const moveThrottleMs = 16;
 const moveMinDistance = 1;
 
 function targetPoint(
@@ -43,6 +41,8 @@ export function setupTouchInput({
   controlChannel,
 }: TouchInputOptions): void {
   let pointerStart: PointerStart | null = null;
+  let pendingMove: TouchPoint | null = null;
+  let moveFrame = 0;
 
   target.addEventListener("contextmenu", (event) => {
     event.preventDefault();
@@ -81,7 +81,6 @@ export function setupTouchInput({
       id: event.pointerId,
       point,
       lastPoint: point,
-      lastSentAt: performance.now(),
     };
     postTouch({
       action: "pointer",
@@ -102,26 +101,31 @@ export function setupTouchInput({
     }
 
     event.preventDefault();
-    const now = performance.now();
     const distance = Math.hypot(
       point.x - pointerStart.lastPoint.x,
       point.y - pointerStart.lastPoint.y,
     );
-    if (
-      distance < moveMinDistance ||
-      now - pointerStart.lastSentAt < moveThrottleMs
-    ) {
+    if (distance < moveMinDistance) {
       return;
     }
 
     pointerStart.lastPoint = point;
-    pointerStart.lastSentAt = now;
-    postTouch({
-      action: "pointer",
-      eventType: "move",
-      x: point.x,
-      y: point.y,
-    }).catch(() => undefined);
+    pendingMove = point;
+    if (!moveFrame) {
+      moveFrame = window.requestAnimationFrame(() => {
+        moveFrame = 0;
+        const latest = pendingMove;
+        pendingMove = null;
+        if (latest) {
+          postTouch({
+            action: "pointer",
+            eventType: "move",
+            x: latest.x,
+            y: latest.y,
+          }).catch(() => undefined);
+        }
+      });
+    }
   });
 
   target.addEventListener("pointerup", (event) => {
@@ -132,6 +136,7 @@ export function setupTouchInput({
     const point =
       targetPoint(target, getVideoSize(), event) ?? pointerStart.lastPoint;
     pointerStart = null;
+    pendingMove = null;
 
     event.preventDefault();
     postTouch({
@@ -146,6 +151,7 @@ export function setupTouchInput({
     if (pointerStart?.id === event.pointerId) {
       const point = pointerStart.lastPoint;
       pointerStart = null;
+      pendingMove = null;
       postTouch({
         action: "pointer",
         eventType: "cancel",

@@ -1,14 +1,31 @@
-import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
-import { useTopLoader } from 'nextjs-toploader'
+'use client'
+
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/hooks/use-toast'
+import { getBff } from '@/lib/http/bff'
 import {
+  createApplicationRuntimeDirectoryAction,
+  deleteApplicationRuntimeFileAction,
   downloadApplicationRuntimeFileAction,
-  listApplicationFilesAction
+  renameApplicationRuntimeFileAction
 } from '@/server/orchestrator/applications/actions/runtime/file-actions'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import { downloadDataUrl, runtimeActionErrorToast } from '../runtime-tools-panel.utils'
-import { runtimeFilesRootPath, topLoaderProgressForUpload, type BrowserView } from './downloads-tools-section-model'
-import { uploadDownloadFileWithProgress } from './upload-download-file'
+import {
+  filterAndSortRuntimeFiles,
+  runtimeFilesRootPath,
+  type RuntimeFileSort,
+  type RuntimeFileSortDirection
+} from './downloads-tools-section-model'
 import type { ApplicationRuntimeFile } from '@/shared/contracts/application'
+
+export const runtimeFilesQueryKey = (appId: string, path: string) => ['runtime-files', appId, path] as const
+
+export const runtimeFilesUrl = (appId: string, path: string) => {
+  const query = new URLSearchParams({ path })
+  return `/api/bff/applications/${encodeURIComponent(appId)}/runtime/files?${query.toString()}`
+}
 
 export const useRuntimeFileBrowser = ({
   appId,
@@ -19,96 +36,153 @@ export const useRuntimeFileBrowser = ({
   canTransferFiles: boolean
   runtimeAvailable: boolean
 }) => {
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const topLoader = useTopLoader()
+  const queryClient = useQueryClient()
   const [currentPath, setCurrentPath] = useState(runtimeFilesRootPath)
-  const [files, setFiles] = useState<ApplicationRuntimeFile[]>([])
-  const [view, setView] = useState<BrowserView>('list')
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
-  const [uploadFileName, setUploadFileName] = useState('')
-  const [isRefreshingFiles, startRefreshFilesTransition] = useTransition()
-  const isUploading = uploadProgress !== null
-
-  const refreshFiles = useCallback(
-    (options: { notifyOnError?: boolean } = {}) => {
-      if (!runtimeAvailable || !canTransferFiles) return
-      startRefreshFilesTransition(async () => {
-        try {
-          setFiles(await listApplicationFilesAction(appId, currentPath))
-        } catch (error) {
-          setFiles([])
-          if (options.notifyOnError) runtimeActionErrorToast('Could not list files', error)
-        }
-      })
-    },
-    [appId, canTransferFiles, currentPath, runtimeAvailable]
-  )
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedFile, setSelectedFile] = useState<ApplicationRuntimeFile | null>(null)
+  const [sort, setSort] = useState<RuntimeFileSort>('name')
+  const [sortDirection, setSortDirection] = useState<RuntimeFileSortDirection>('asc')
 
   useEffect(() => {
     setCurrentPath(runtimeFilesRootPath)
+    setSearchQuery('')
+    setSelectedFile(null)
   }, [appId])
 
-  useEffect(() => {
-    if (!runtimeAvailable) {
-      setFiles([])
-      return
-    }
-    refreshFiles()
-  }, [refreshFiles, runtimeAvailable])
+  const filesQuery = useQuery<ApplicationRuntimeFile[], Error>({
+    queryKey: runtimeFilesQueryKey(appId, currentPath),
+    queryFn: ({ signal }) => getBff(runtimeFilesUrl(appId, currentPath), signal),
+    enabled: runtimeAvailable && canTransferFiles,
+    gcTime: 5 * 60 * 1000,
+    staleTime: 10_000,
+    retry: 1
+  })
 
-  const handleFileUpload = (file: File | undefined) => {
-    if (!file || !runtimeAvailable) return
-    setUploadFileName(file.name)
-    setUploadProgress(0)
-    topLoader.start()
-    topLoader.setProgress(0.08)
-    uploadDownloadFileWithProgress({
-      appId,
-      file,
-      path: currentPath,
-      onProgress: progress => {
-        setUploadProgress(progress)
-        topLoader.setProgress(topLoaderProgressForUpload(progress))
-      }
-    })
-      .then(() => {
-        topLoader.setProgress(1)
-        toast({ title: 'File uploaded', description: `${file.name} is available in ${currentPath}.` })
-        refreshFiles()
-      })
-      .catch(error => runtimeActionErrorToast('Could not upload file', error))
-      .finally(() => {
-        topLoader.done(true)
-        setUploadProgress(null)
-        setUploadFileName('')
-        if (fileInputRef.current) fileInputRef.current.value = ''
-      })
-  }
+  const files = useMemo(
+    () =>
+      filterAndSortRuntimeFiles({
+        files: filesQuery.data ?? [],
+        query: searchQuery,
+        sort,
+        direction: sortDirection
+      }),
+    [filesQuery.data, searchQuery, sort, sortDirection]
+  )
 
-  const handleDownload = (file: ApplicationRuntimeFile) => {
-    startRefreshFilesTransition(async () => {
+  const navigateTo = useCallback((path: string) => {
+    setCurrentPath(path)
+    setSearchQuery('')
+    setSelectedFile(null)
+  }, [])
+
+  const prefetchPath = useCallback(
+    (path: string) =>
+      queryClient.prefetchQuery({
+        queryKey: runtimeFilesQueryKey(appId, path),
+        queryFn: ({ signal }) => getBff<ApplicationRuntimeFile[]>(runtimeFilesUrl(appId, path), signal),
+        staleTime: 10_000
+      }),
+    [appId, queryClient]
+  )
+
+  const updateParentCache = useCallback(
+    (path: string, update: (files: ApplicationRuntimeFile[]) => ApplicationRuntimeFile[]) => {
+      queryClient.setQueryData<ApplicationRuntimeFile[]>(runtimeFilesQueryKey(appId, path), current =>
+        update(current ?? [])
+      )
+    },
+    [appId, queryClient]
+  )
+
+  const createDirectory = useCallback(
+    async (name: string) => {
       try {
-        const download = await downloadApplicationRuntimeFileAction(appId, file.path)
+        const created = unwrapActionResult(await createApplicationRuntimeDirectoryAction(appId, currentPath, name))
+        updateParentCache(currentPath, current => [...current, created])
+        toast({ title: 'Folder created', description: `${created.name} is available in ${currentPath}.` })
+        return true
+      } catch (error) {
+        runtimeActionErrorToast('Could not create folder', error)
+        return false
+      }
+    },
+    [appId, currentPath, updateParentCache]
+  )
+
+  const renameFile = useCallback(
+    async (entry: ApplicationRuntimeFile, name: string) => {
+      try {
+        const renamed = unwrapActionResult(await renameApplicationRuntimeFileAction(appId, entry.path, name))
+        updateParentCache(currentPath, current =>
+          current.map(candidate => (candidate.path === entry.path ? renamed : candidate))
+        )
+        setSelectedFile(current => (current?.path === entry.path ? renamed : current))
+        if (entry.type === 'directory') {
+          void queryClient.invalidateQueries({ queryKey: ['runtime-files', appId] })
+        }
+        toast({ title: 'Item renamed', description: `${entry.name} is now ${renamed.name}.` })
+        return true
+      } catch (error) {
+        runtimeActionErrorToast('Could not rename item', error)
+        return false
+      }
+    },
+    [appId, currentPath, queryClient, updateParentCache]
+  )
+
+  const deleteFile = useCallback(
+    async (entry: ApplicationRuntimeFile) => {
+      try {
+        unwrapActionResult(await deleteApplicationRuntimeFileAction(appId, entry.path))
+        updateParentCache(currentPath, current => current.filter(candidate => candidate.path !== entry.path))
+        setSelectedFile(current => (current?.path === entry.path ? null : current))
+        if (entry.type === 'directory') {
+          void queryClient.invalidateQueries({ queryKey: ['runtime-files', appId] })
+        }
+        toast({ title: 'Item deleted', description: `${entry.name} was permanently deleted.` })
+        return true
+      } catch (error) {
+        runtimeActionErrorToast('Could not delete item', error)
+        return false
+      }
+    },
+    [appId, currentPath, queryClient, updateParentCache]
+  )
+
+  const downloadFile = useCallback(
+    async (entry: ApplicationRuntimeFile) => {
+      try {
+        const download = unwrapActionResult(await downloadApplicationRuntimeFileAction(appId, entry.path))
         downloadDataUrl(download.dataUrl, download.name)
       } catch (error) {
         runtimeActionErrorToast('Could not download file', error)
       }
-    })
-  }
+    },
+    [appId]
+  )
 
   return {
+    createDirectory,
     currentPath,
-    fileInputRef,
+    deleteFile,
+    downloadFile,
+    error: filesQuery.error,
     files,
-    handleDownload,
-    handleFileUpload,
-    isRefreshingFiles,
-    isUploading,
-    refreshFiles,
-    setCurrentPath,
-    setView,
-    uploadFileName,
-    uploadProgress,
-    view
+    hasLoadedFiles: filesQuery.data !== undefined,
+    isLoading: filesQuery.isLoading,
+    isRefreshing: filesQuery.isFetching && filesQuery.data !== undefined,
+    navigateTo,
+    prefetchPath,
+    refresh: filesQuery.refetch,
+    renameFile,
+    searchQuery,
+    selectedFile,
+    setSearchQuery,
+    setSelectedFile,
+    setSort,
+    setSortDirection,
+    sort,
+    sortDirection,
+    updateParentCache
   }
 }

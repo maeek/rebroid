@@ -1,248 +1,126 @@
-import type {
-  DisplayDecoder,
-  ViewerConfig,
-  ViewerUi,
-  PageLifecycle,
-} from "./types.js";
+import { configuredStreamProfile } from "./config.js";
 import {
-  parseViewerAudioPacket,
-  type ViewerAudioPlayer,
-} from "./audio-player.js";
+  MseVideoPlayer,
+  type MseMediaSegment,
+} from "./mse-video-player.js";
 import {
+  emitViewerStreamMetrics,
   emitViewerStreamStatus,
   statusFromCompatibility,
 } from "./stream-status.js";
-import type { StreamMetricsReporter } from "./stream-metrics.js";
+import type {
+  DisplayTransport,
+  PageLifecycle,
+  ViewerConfig,
+  ViewerStreamMetricsV4,
+  ViewerUi,
+} from "./types.js";
 
 type DisplayStreamOptions = {
   config: ViewerConfig;
-  decoder: DisplayDecoder;
   ui: ViewerUi;
   lifecycle: PageLifecycle;
-  audioPlayer: ViewerAudioPlayer;
-  metricsReporter: StreamMetricsReporter;
 };
 
-type StreamTextMessage = {
-  type?: unknown;
-  mode?: unknown;
-  message?: unknown;
-  diagnostic?: unknown;
-  text?: unknown;
+type ReconnectCause = {
+  initiator: "worker" | "main" | "transport";
+  category: "heartbeat" | "first-frame" | "malformed-media" | "socket";
+  generation: number;
+  closeCode?: number;
+  detail: string;
 };
 
-const firstFrameTimeoutMs = 8_000;
-const streamHeartbeatTimeoutMs = 15_000;
+type MediaWorkerMessage =
+  | { type: "first-frame" }
+  | { type: "resolution"; width: number; height: number }
+  | { type: "status"; payload: Record<string, unknown> }
+  | { type: "metrics"; metrics: ViewerStreamMetricsV4 }
+  | {
+      type: "mse-init";
+      codec: string;
+      width: number;
+      height: number;
+      sourcePtsOriginUs: number;
+      segment: ArrayBuffer;
+    }
+  | ({ type: "mse-segment" } & MseMediaSegment)
+  | { type: "renderer-fallback"; reason: string }
+  | { type: "reconnecting"; cause: ReconnectCause; delayMs: number }
+  | { type: "fatal"; message: string };
 
-function parseTextMessage(text: string): StreamTextMessage | null {
-  try {
-    const payload: unknown = JSON.parse(text);
-    return payload && typeof payload === "object"
-      ? (payload as StreamTextMessage)
-      : null;
-  } catch {
-    return null;
+async function createAudioWorklet(): Promise<{
+  context: AudioContext;
+  workerPort: MessagePort;
+}> {
+  if (!("AudioWorkletNode" in window)) {
+    throw new Error("This browser does not support low-latency display audio.");
   }
+  const context = new AudioContext({
+    latencyHint: "interactive",
+    sampleRate: 48_000,
+  });
+  await context.audioWorklet.addModule(
+    new URL("./display-audio-worklet.js", import.meta.url),
+  );
+  const node = new AudioWorkletNode(context, "rebroid-audio", {
+    numberOfInputs: 0,
+    numberOfOutputs: 1,
+    outputChannelCount: [2],
+  });
+  node.connect(context.destination);
+  const channel = new MessageChannel();
+  node.port.postMessage({ type: "connect", port: channel.port1 }, [
+    channel.port1,
+  ]);
+  return { context, workerPort: channel.port2 };
+}
+
+function websocketUrl(config: ViewerConfig): string {
+  const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+  const streamParams = new URLSearchParams(location.search);
+  streamParams.set("sessionId", config.sessionId ?? "");
+  streamParams.set("token", config.token ?? "");
+  for (const [key, value] of Object.entries(config.streamDefaults)) {
+    if (!streamParams.has(key)) {
+      streamParams.set(key, value);
+    }
+  }
+  return `${protocol}//${location.host}/rebroid/display/stream?${streamParams.toString()}`;
 }
 
 export function createDisplayStream({
   config,
-  decoder,
   ui,
   lifecycle,
-  audioPlayer,
-  metricsReporter,
-}: DisplayStreamOptions) {
-  let activeWs: WebSocket | null = null;
-  let reconnectTimer = 0;
-  let reconnectAttempt = 0;
-  let streamGeneration = 0;
-  let streamQueue: Promise<void> = Promise.resolve();
-  let firstFrameTimer = 0;
-  let heartbeatTimer = 0;
+}: DisplayStreamOptions): DisplayTransport {
+  let worker: Worker | null = null;
+  let audioContext: AudioContext | null = null;
+  let msePlayer: MseVideoPlayer | null = null;
+  let mseVideo: HTMLVideoElement | null = null;
+  let initialized = false;
   let hasVisibleFrame = false;
 
-  lifecycle.onClose(() => {
-    clearStreamTimers();
-    metricsReporter.stop();
-    audioPlayer.reset();
-    if (activeWs?.readyState === WebSocket.OPEN) {
-      activeWs.close(1000, "viewer closed");
-    }
-  });
-
-  function resetForReconnect() {
-    clearStreamTimers();
-    streamQueue = Promise.resolve();
-    decoder.reset();
-    audioPlayer.reset();
-    metricsReporter.start();
-  }
-
-  function clearStreamTimers() {
-    if (firstFrameTimer) {
-      window.clearTimeout(firstFrameTimer);
-      firstFrameTimer = 0;
-    }
-    if (heartbeatTimer) {
-      window.clearTimeout(heartbeatTimer);
-      heartbeatTimer = 0;
-    }
-  }
-
-  function forceReconnect(reason: string): void {
-    if (lifecycle.isClosing()) {
-      return;
-    }
-    console.warn(reason);
+  const showAudioDisabled = (message?: unknown) => {
     emitViewerStreamStatus({
-      code: hasVisibleFrame ? "video-stalled" : "first-frame-timeout",
-      severity: hasVisibleFrame ? "warning" : "error",
-      blocking: !hasVisibleFrame,
-      message: reason,
+      code: "audio-disabled",
+      severity: "info",
+      blocking: false,
+      message:
+        typeof message === "string"
+          ? message
+          : "Audio capture is disabled for this stream.",
       transport: "websocket",
     });
-    if (
-      activeWs?.readyState === WebSocket.OPEN ||
-      activeWs?.readyState === WebSocket.CONNECTING
-    ) {
-      activeWs.close(4000, reason);
-    }
-    scheduleReconnect();
-  }
+  };
 
-  function armFirstFrameTimer(generation: number): void {
-    if (firstFrameTimer || decoder.hasFrames()) {
-      return;
-    }
-    firstFrameTimer = window.setTimeout(() => {
-      firstFrameTimer = 0;
-      if (generation !== streamGeneration || decoder.hasFrames()) {
-        return;
-      }
-      if (!hasVisibleFrame) {
-        console.warn("Display stream first-frame debug state.", {
-          decoder: decoder.debugState(),
-        });
-        ui.showStatus(
-          "Reconnecting...",
-          "Starting live display",
-          "Rebroid is opening the app screen.",
-        );
-      }
-      forceReconnect("Display stream did not deliver a decodable first frame.");
-    }, firstFrameTimeoutMs);
-  }
-
-  function markStreamAlive(generation: number): void {
-    if (generation !== streamGeneration) {
-      return;
-    }
-    if (heartbeatTimer) {
-      window.clearTimeout(heartbeatTimer);
-    }
-    heartbeatTimer = window.setTimeout(() => {
-      heartbeatTimer = 0;
-      if (generation !== streamGeneration) {
-        return;
-      }
-      forceReconnect("Display stream stopped sending heartbeats.");
-    }, streamHeartbeatTimeoutMs);
-  }
-
-  function scheduleReconnect(event?: CloseEvent): void {
-    if (lifecycle.isClosing() || reconnectTimer) {
-      return;
-    }
-
-    const hadFrames = hasVisibleFrame || decoder.hasFrames();
-    streamGeneration += 1;
-    resetForReconnect();
-    if (!hadFrames && reconnectAttempt >= 8) {
-      console.warn("Display stream closed before video was decoded.", {
-        code: event?.code,
-        reason: event?.reason,
-      });
-      ui.showFailure("Refresh the viewer or restart the app.");
-      return;
-    }
-
-    const delay = Math.min(300 * 2 ** reconnectAttempt, 2_500);
-    reconnectAttempt += 1;
-    if (!hadFrames) {
-      ui.showStatus(
-        "Reconnecting...",
-        "Starting live display",
-        "Rebroid is opening the app screen.",
-      );
-    } else {
-      console.warn("Display stream closed; reconnecting.", {
-        code: event?.code,
-        reason: event?.reason,
-      });
-    }
-    emitViewerStreamStatus({
-      code: "reconnecting",
-      severity: hadFrames ? "info" : "warning",
-      blocking: !hadFrames,
-      message: "Reconnecting live display...",
-      transport: "websocket",
-    });
-
-    reconnectTimer = window.setTimeout(() => {
-      reconnectTimer = 0;
-      connect().catch((error) => {
-        console.warn("Could not reconnect display stream.", error);
-        scheduleReconnect();
-      });
-    }, delay);
-  }
-
-  async function handleTextMessage(text: string): Promise<void> {
-    const payload = parseTextMessage(text);
-    if (!payload) {
-      markStreamAlive(streamGeneration);
-      if (!hasVisibleFrame && !decoder.hasFrames()) {
-        ui.showStatus("Preparing live display...");
-      }
-      return;
-    }
-
-    markStreamAlive(streamGeneration);
-    if (payload.type === "heartbeat") {
-      return;
-    }
-
-    if (payload.type === "reconnecting") {
-      const hadFrames = hasVisibleFrame || decoder.hasFrames();
-      resetForReconnect();
-      emitViewerStreamStatus({
-        code: "reconnecting",
-        severity: hadFrames ? "info" : "warning",
-        blocking: !hadFrames,
-        message:
-          typeof payload.message === "string"
-            ? payload.message
-            : "Reconnecting live display...",
-        transport: "websocket",
-      });
-      if (!hadFrames) {
-        ui.showStatus(
-          typeof payload.message === "string"
-            ? payload.message
-            : "Reconnecting live display...",
-        );
-      }
-      return;
-    }
-
+  const handleStatus = (payload: Record<string, unknown>) => {
     if (payload.type === "compatibility") {
       const status = statusFromCompatibility({
         mode: payload.mode,
         message: payload.message,
         diagnostic: payload.diagnostic,
         transport: "websocket",
-        hasVisibleFrame: hasVisibleFrame || decoder.hasFrames(),
+        hasVisibleFrame,
       });
       if (status) {
         emitViewerStreamStatus(status);
@@ -251,166 +129,255 @@ export function createDisplayStream({
         typeof payload.mode === "string" ? payload.mode : "normal",
         typeof payload.message === "string" ? payload.message : undefined,
       );
-      if (
-        status?.blocking &&
-        !hasVisibleFrame &&
-        typeof payload.diagnostic === "string"
-      ) {
-        ui.showStatus(payload.diagnostic.slice(0, 180));
-      }
       return;
     }
-
     if (payload.type === "clipboard" && typeof payload.text === "string") {
       window.parent.postMessage(
         { type: "rebroid-viewer-clipboard", text: payload.text },
         window.location.origin,
       );
       if (navigator.clipboard && document.visibilityState === "visible") {
-        await navigator.clipboard
-          .writeText(payload.text)
-          .catch(() => undefined);
+        void navigator.clipboard.writeText(payload.text).catch(() => undefined);
       }
       return;
     }
-
     if (payload.type === "audio-disabled") {
-      audioPlayer.disable("Audio capture is disabled for this stream.");
+      showAudioDisabled(payload.message);
       return;
     }
-
-    if (!hasVisibleFrame && !decoder.hasFrames()) {
-      ui.showStatus(
-        typeof payload.message === "string"
-          ? payload.message
-          : "Preparing live display...",
-      );
+    if (payload.type === "reconnecting") {
+      emitViewerStreamStatus({
+        code: "reconnecting",
+        severity: hasVisibleFrame ? "info" : "warning",
+        blocking: !hasVisibleFrame,
+        message:
+          typeof payload.message === "string"
+            ? payload.message
+            : "Reconnecting live display...",
+        transport: "websocket",
+      });
     }
-  }
+  };
 
-  async function handleBinaryMessage(data: unknown): Promise<void> {
-    if (data instanceof ArrayBuffer) {
-      const bytes = new Uint8Array(data);
-      metricsReporter.addBytes(bytes.byteLength);
-      markStreamAlive(streamGeneration);
-      const audioPacket = parseViewerAudioPacket(bytes);
-      if (audioPacket) {
-        await audioPlayer.appendPacket(audioPacket);
+  const handleWorkerMessage = (event: MessageEvent<MediaWorkerMessage>) => {
+    const message = event.data;
+    if (message.type === "first-frame") {
+      if (!hasVisibleFrame) {
+        hasVisibleFrame = true;
+        ui.showCanvas();
+      }
+      return;
+    }
+    if (message.type === "resolution") {
+      return;
+    }
+    if (message.type === "status") {
+      handleStatus(message.payload);
+      return;
+    }
+    if (message.type === "metrics") {
+      if (!msePlayer) {
+        emitViewerStreamMetrics(message.metrics);
         return;
       }
-      await decoder.appendVideoPacket(bytes);
-      return;
-    }
-
-    if (data instanceof Blob) {
-      await handleBinaryMessage(await data.arrayBuffer());
-    }
-  }
-
-  async function connect(): Promise<void> {
-    if (!config.sessionId || !config.token) {
-      ui.showFailure("Open the viewer again from the app page.");
-      return;
-    }
-
-    if (!("VideoDecoder" in window) || !("EncodedVideoChunk" in window)) {
-      ui.showFailure(
-        "Open Rebroid over HTTPS in a compatible browser and try again.",
+      const nativeMetrics = msePlayer.snapshot(
+        (message.metrics.sourceFps ?? 0) > 0,
       );
+      worker?.postMessage({
+        type: "watermark",
+        decodedSequence: nativeMetrics.highestDecodedSequence,
+        presentedSequence: nativeMetrics.highestPresentedSequence,
+        presentedTimestampUs: nativeMetrics.highestPresentedTimestampUs,
+      });
+      emitViewerStreamMetrics({
+        ...message.metrics,
+        ...nativeMetrics,
+        renderer: "firefox-mse",
+        decoderPreference: "native",
+        presentationSequenceLag:
+          message.metrics.highestReceivedSequence !== undefined &&
+          nativeMetrics.highestPresentedSequence !== undefined
+            ? (message.metrics.highestReceivedSequence -
+                nativeMetrics.highestPresentedSequence) >>>
+              0
+            : undefined,
+      });
       return;
     }
-
-    metricsReporter.start();
-    const generation = ++streamGeneration;
-    const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-    const streamParams = new URLSearchParams(location.search);
-    streamParams.set("sessionId", config.sessionId);
-    streamParams.set("token", config.token);
-    for (const [key, value] of Object.entries(config.streamDefaults)) {
-      if (!streamParams.has(key)) {
-        streamParams.set(key, value);
-      }
-    }
-
-    const ws = new WebSocket(
-      `${protocol}//${location.host}/rebroid/display/stream?${streamParams.toString()}`,
-    );
-    activeWs = ws;
-    ws.binaryType = "arraybuffer";
-
-    ws.addEventListener("open", () => {
-      if (generation !== streamGeneration) {
-        return;
-      }
-      if (!hasVisibleFrame && !decoder.hasFrames()) {
-        ui.showStatus(
-          "Waiting for the first frame...",
-          "Starting live display",
-          "Rebroid is opening the app screen.",
+    if (message.type === "mse-init") {
+      try {
+        if (hasVisibleFrame && mseVideo) {
+          ui.preserveVideoFrame(mseVideo);
+        }
+        msePlayer?.initialize(
+          message.codec,
+          message.segment,
+          message.sourcePtsOriginUs,
         );
-        armFirstFrameTimer(generation);
-      } else {
-        markStreamAlive(generation);
+      } catch (error) {
+        msePlayer?.close();
+        msePlayer = null;
+        worker?.postMessage({ type: "use-webcodecs-fallback" });
+        console.warn(
+          "Firefox native WebSocket playback is unavailable; using WebCodecs.",
+          error,
+        );
       }
-    });
-
-    ws.addEventListener("message", (event) => {
-      if (generation !== streamGeneration) {
-        return;
+      return;
+    }
+    if (message.type === "renderer-fallback") {
+      if (msePlayer && mseVideo && hasVisibleFrame) {
+        ui.preserveVideoFrame(mseVideo);
       }
-
-      if (typeof event.data === "string") {
-        void handleTextMessage(event.data);
-        return;
-      }
-
-      streamQueue = streamQueue
-        .then(() => handleBinaryMessage(event.data))
-        .then(() => {
-          if (decoder.hasFrames()) {
-            hasVisibleFrame = true;
-            reconnectAttempt = 0;
-            if (firstFrameTimer) {
-              window.clearTimeout(firstFrameTimer);
-              firstFrameTimer = 0;
-            }
-            markStreamAlive(generation);
-          } else {
-            armFirstFrameTimer(generation);
-          }
-        })
-        .catch((error) => {
-          console.warn("Could not process display bytes.", error);
-        });
-    });
-
-    ws.addEventListener("close", (event) => {
-      if (generation !== streamGeneration) {
-        return;
-      }
-      if (activeWs === ws) {
-        activeWs = null;
-      }
-      scheduleReconnect(event);
-    });
-
-    ws.addEventListener("error", (event) => {
-      if (generation !== streamGeneration) {
-        return;
-      }
-      if (!hasVisibleFrame && !decoder.hasFrames()) {
+      msePlayer?.close();
+      msePlayer = null;
+      hasVisibleFrame = false;
+      console.warn(
+        "Firefox native WebSocket playback failed; using WebCodecs.",
+        message.reason,
+      );
+      return;
+    }
+    if (message.type === "mse-segment") {
+      msePlayer?.appendMedia(message);
+      return;
+    }
+    if (message.type === "reconnecting") {
+      console.warn("Display stream consumer reconnecting.", message.cause);
+      emitViewerStreamStatus({
+        code: "reconnecting",
+        severity: hasVisibleFrame ? "info" : "warning",
+        blocking: !hasVisibleFrame,
+        message: message.cause.detail,
+        transport: "websocket",
+      });
+      if (!hasVisibleFrame) {
         ui.showStatus(
           "Reconnecting...",
           "Starting live display",
           "Rebroid is opening the app screen.",
         );
       }
-      console.warn("Display stream socket error.", event);
+      return;
+    }
+    ui.showFailure(message.message);
+  };
+
+  lifecycle.onClose(() => {
+    worker?.postMessage({ type: "close" });
+    worker = null;
+    void audioContext?.close().catch(() => undefined);
+    audioContext = null;
+    msePlayer?.close();
+    msePlayer = null;
+    mseVideo = null;
+  });
+
+  async function connect(): Promise<void> {
+    if (initialized) {
+      return;
+    }
+    if (!config.sessionId || !config.token) {
+      ui.showFailure("Open the viewer again from the app page.");
+      return;
+    }
+    const firefoxMse =
+      navigator.userAgent.includes("Firefox/") && "MediaSource" in window;
+    const webCodecs =
+      "VideoDecoder" in window && "EncodedVideoChunk" in window;
+    if (
+      !("Worker" in window) ||
+      (!firefoxMse && !webCodecs) ||
+      !("transferControlToOffscreen" in HTMLCanvasElement.prototype)
+    ) {
+      ui.showFailure(
+        "WebSocket playback requires Worker, OffscreenCanvas, and either MediaSource or WebCodecs.",
+      );
+      return;
+    }
+
+    initialized = true;
+    ui.showStatus(
+      "Waiting for the first frame...",
+      "Starting live display",
+      "Rebroid is opening the app screen.",
+    );
+    worker = new Worker(new URL("./display-media-worker.js", import.meta.url), {
+      type: "module",
+      name: "rebroid-display-media",
     });
+    worker.addEventListener("message", handleWorkerMessage);
+    worker.addEventListener("error", (event) => {
+      ui.showFailure(event.message || "The display media worker failed.");
+    });
+    const canvas = document.getElementById("screen");
+    if (!(canvas instanceof HTMLCanvasElement)) {
+      throw new Error("Viewer canvas is missing.");
+    }
+    const video = document.getElementById("screen-video");
+    if (firefoxMse && video instanceof HTMLVideoElement) {
+      mseVideo = video;
+      ui.preserveVideoFrame(video);
+      msePlayer = new MseVideoPlayer(
+        video,
+        () => {
+          hasVisibleFrame = true;
+          ui.showVideo();
+          worker?.postMessage({ type: "mse-presented" });
+        },
+        (reason) => {
+          worker?.postMessage({ type: "mse-resync", reason });
+        },
+      );
+    }
+    const offscreen = canvas.transferControlToOffscreen();
+    const transfer: Transferable[] = [offscreen];
+    let audioPort: MessagePort | undefined;
+    if (config.audio) {
+      try {
+        const audio = await createAudioWorklet();
+        audioContext = audio.context;
+        audioPort = audio.workerPort;
+        transfer.push(audioPort);
+      } catch (error) {
+        showAudioDisabled(error instanceof Error ? error.message : undefined);
+      }
+    }
+    worker.postMessage(
+      {
+        type: "init",
+        url: websocketUrl(config),
+        canvas: offscreen,
+        audio: Boolean(audioPort),
+        audioPort,
+        effectiveProfile: configuredStreamProfile(config, "websocket"),
+        renderer: firefoxMse ? "mse" : "webcodecs",
+      },
+      transfer,
+    );
+    window.addEventListener(
+      "pointerdown",
+      () => {
+        if (audioContext?.state === "suspended") {
+          void audioContext.resume().catch(() => undefined);
+        }
+      },
+      { passive: true },
+    );
   }
 
   return {
     connect,
-    scheduleReconnect,
+    scheduleReconnect() {
+      worker?.postMessage({
+        type: "reconnect",
+        cause: {
+          initiator: "main",
+          category: "socket",
+          generation: 0,
+          detail: "Display consumer requested reconnection.",
+        } satisfies ReconnectCause,
+      });
+    },
   };
 }

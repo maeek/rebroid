@@ -725,7 +725,7 @@ export interface components {
              *         "webrtc"
              *       ],
              *       "adapters": [
-             *         "scrcpy-server-v4-raw"
+             *         "scrcpy-server-v4-rbd1"
              *       ],
              *       "codecs": [
              *         "h264"
@@ -754,8 +754,7 @@ export interface components {
              *       ],
              *       "fallbackModes": [
              *         "audio-disabled",
-             *         "stream-control-disabled",
-             *         "stable-video"
+             *         "stream-control-disabled"
              *       ]
              *     }
              */
@@ -1002,11 +1001,14 @@ export interface components {
              *     ...
              */
             sdp: string;
-            /** @example 7000000 */
+            /** @example 16000000 */
             bitrate?: number;
-            /** @example 30 */
+            /** @example 60 */
             maxFps?: number;
-            /** @example 1080 */
+            /**
+             * @description 0 keeps native resolution
+             * @example 0
+             */
             maxSize?: number;
             /** @example 1 */
             iFrameInterval?: number;
@@ -1028,6 +1030,8 @@ export interface components {
             sdp: string;
             /** @example [] */
             iceServers: string[];
+            /** @example 42e033 */
+            profileLevelId: string;
         };
         DisplayKeyboardDto: {
             /** @example display-session-token */

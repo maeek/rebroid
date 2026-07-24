@@ -236,13 +236,13 @@ export class DisplayWebrtcOfferDto {
   @ApiProperty({ example: "v=0\r\n..." })
   sdp!: string;
 
-  @ApiPropertyOptional({ example: 7000000 })
+  @ApiPropertyOptional({ example: 16000000 })
   bitrate?: number;
 
-  @ApiPropertyOptional({ example: 30 })
+  @ApiPropertyOptional({ example: 60 })
   maxFps?: number;
 
-  @ApiPropertyOptional({ example: 1080 })
+  @ApiPropertyOptional({ example: 0, description: "0 keeps native resolution" })
   maxSize?: number;
 
   @ApiPropertyOptional({ example: 1 })
@@ -264,6 +264,9 @@ export class DisplayWebrtcAnswerDto {
 
   @ApiProperty({ type: [String], example: [] })
   iceServers!: string[];
+
+  @ApiProperty({ example: "42e033" })
+  profileLevelId!: string;
 }
 
 export class DisplayKeyboardDto {
@@ -396,7 +399,7 @@ export class DisplayCapabilitiesDto {
   @ApiProperty({
     example: {
       protocols: ["websocket", "webrtc"],
-      adapters: ["scrcpy-server-v4-raw"],
+      adapters: ["scrcpy-server-v4-rbd1"],
       codecs: ["h264"],
       audioCodecs: ["opus"],
       defaultCodec: "h264",
@@ -410,11 +413,7 @@ export class DisplayCapabilitiesDto {
       scrcpyVersion: "4.0",
       supportedAndroidVersions: ["13", "14"],
       unsupportedAndroidVersions: ["15", "16"],
-      fallbackModes: [
-        "audio-disabled",
-        "stream-control-disabled",
-        "stable-video",
-      ],
+      fallbackModes: ["audio-disabled", "stream-control-disabled"],
     },
   })
   compatibility!: Record<string, string | string[]>;

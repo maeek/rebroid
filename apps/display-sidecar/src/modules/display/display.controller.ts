@@ -68,7 +68,7 @@ export class DisplayController {
     return {
       stream: {
         protocols: ["websocket", "webrtc"],
-        adapters: ["scrcpy-server-v4-raw"],
+        adapters: ["scrcpy-server-v4-rbd1"],
         codecs: ["h264"],
         audioCodecs: ["opus"],
         defaultCodec: "h264",
@@ -78,11 +78,7 @@ export class DisplayController {
         scrcpyVersion: this.scrcpy.serverVersion(),
         supportedAndroidVersions: ["13", "14"],
         unsupportedAndroidVersions: ["15", "16"],
-        fallbackModes: [
-          "audio-disabled",
-          "stream-control-disabled",
-          "stable-video",
-        ],
+        fallbackModes: ["audio-disabled", "stream-control-disabled"],
       },
       surfaces: {
         defaultSurface: "main",

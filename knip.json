@@ -2,7 +2,7 @@
   "ignoreDependencies": ["openapi-typescript", "tw-animate-css"],
   "workspaces": {
     "apps/web": {
-      "entry": ["src/app/**/*.{ts,tsx}", "rebroid-proxy-server.mjs"],
+      "entry": ["src/app/**/*.{ts,tsx}"],
       "project": ["src/**/*.{ts,tsx}"]
     },
     "apps/orchestrator": {

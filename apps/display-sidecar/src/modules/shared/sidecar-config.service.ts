@@ -4,6 +4,15 @@ import { z } from "zod";
 
 const optionalInteger = (minimum: number, maximum: number) =>
   z.coerce.number().int().min(minimum).max(maximum).optional();
+const optionalVideoEncoder = z.preprocess(
+  (value) =>
+    typeof value === "string" && value.trim() === "" ? undefined : value,
+  z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9._-]{1,160}$/)
+    .optional(),
+);
 
 const environmentSchema = z.object({
   PORT: optionalInteger(1, 65_535),
@@ -39,12 +48,9 @@ const environmentSchema = z.object({
     .enum(["verbose", "debug", "info", "warn", "error"])
     .optional(),
   SCRCPY_CONTROL_CHANNEL: z.enum(["true", "false"]).optional(),
+  SCRCPY_VIDEO_ENCODER: optionalVideoEncoder,
   SCRCPY_LOGCAT_ON_SERVER_EXIT: z.enum(["true", "false"]).optional(),
   SCRCPY_SERVER_LAUNCH_MODE: z.enum(["shell", "detached"]).optional(),
-  SCRCPY_STABLE_BITRATE: optionalInteger(100_000, 100_000_000),
-  SCRCPY_STABLE_MAX_FPS: optionalInteger(1, 240),
-  SCRCPY_STABLE_MAX_SIZE: optionalInteger(1, 8_192),
-  SCRCPY_STABLE_I_FRAME_INTERVAL: optionalInteger(1, 60),
   SCRCPY_VERSION: z
     .string()
     .trim()
@@ -96,15 +102,10 @@ export class SidecarConfigService {
     environment.SCRCPY_SERVER_LOG_LEVEL ?? "debug";
   readonly scrcpyControlChannel =
     environment.SCRCPY_CONTROL_CHANNEL !== "false";
+  readonly scrcpyVideoEncoder = environment.SCRCPY_VIDEO_ENCODER;
   readonly scrcpyLogcatOnServerExit =
     environment.SCRCPY_LOGCAT_ON_SERVER_EXIT !== "false";
   readonly scrcpyServerLaunchMode = environment.SCRCPY_SERVER_LAUNCH_MODE;
-  readonly scrcpyStableOptions = Object.freeze({
-    bitrate: environment.SCRCPY_STABLE_BITRATE ?? 3_000_000,
-    maxFps: environment.SCRCPY_STABLE_MAX_FPS ?? 24,
-    maxSize: environment.SCRCPY_STABLE_MAX_SIZE ?? 720,
-    iFrameInterval: environment.SCRCPY_STABLE_I_FRAME_INTERVAL ?? 2,
-  });
 
   get hasSharedSecret() {
     return this.sharedSecret.length > 0;

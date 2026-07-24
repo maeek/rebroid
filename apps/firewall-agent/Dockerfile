@@ -1,7 +1,7 @@
 FROM node:24-alpine AS builder
 WORKDIR /workspace
 RUN corepack enable
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.package.json ./
 COPY apps/firewall-agent/package.json apps/firewall-agent/package.json
 COPY packages/firewall-policy-core/package.json packages/firewall-policy-core/package.json
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --filter rebroid-firewall-agent... --frozen-lockfile

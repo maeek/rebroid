@@ -1,18 +1,21 @@
 import { ConflictException, Injectable, Logger } from "@nestjs/common";
 import { ChildProcess, spawn } from "node:child_process";
-import { EventEmitter } from "node:events";
 import { Writable } from "node:stream";
+import { ScrcpyBootstrapSink } from "../scrcpy/scrcpy-bootstrap-sink";
+import { QueuedScrcpyMediaSink } from "../scrcpy/scrcpy-media-sink";
 import { ScrcpyService } from "../scrcpy/scrcpy.service";
-import {
-  SCRCPY_WS_OPEN,
-  ScrcpyAudioPacket,
-  ScrcpyStreamClient,
+import { supportsH264PixelRate } from "../scrcpy/scrcpy-h264-profile";
+import type {
+  ScrcpyStreamAttachment,
+  ScrcpyStreamOptions,
+  ScrcpyVideoBootstrap,
 } from "../scrcpy/scrcpy.types";
 import { SidecarConfigService } from "../shared/sidecar-config.service";
 import { DisplaySessionService } from "./display-session.service";
 import type { DisplayControlRequest } from "./display.types";
 import { DisplayControlService } from "./display-control.service";
 import { displayControlError } from "./display-control-response";
+import { findCompatibleH264Offer } from "./display-webrtc-codec";
 
 type WebrtcOfferOptions = {
   sessionId: string;
@@ -31,11 +34,14 @@ type BridgeMessage =
   | { type: "control"; payload: unknown }
   | { type: "state"; state: string }
   | { type: "log"; message: string }
+  | { type: "metrics"; metrics: Record<string, number> }
+  | { type: "video-resync-request"; message?: string }
   | { type: "error"; message: string };
 
-const DEFAULT_MAX_SIZE = 1080;
+const DEFAULT_MAX_SIZE = 0;
 const DEFAULT_MAX_FPS = 60;
-const DEFAULT_BITRATE = 7_000_000;
+const DEFAULT_BITRATE = 16_000_000;
+const INTERACTIVE_I_FRAME_INTERVAL = 1;
 
 @Injectable()
 export class DisplayWebrtcService {
@@ -62,13 +68,128 @@ export class DisplayWebrtcService {
     }
 
     this.stopSession(options.sessionId);
+    const sourceOptions = this.sourceOptions(options, session);
+    const bootstrapSink = new ScrcpyBootstrapSink();
+    let bootstrapAttachment: ScrcpyStreamAttachment | null = null;
+    try {
+      bootstrapAttachment = this.scrcpy.attachStream({
+        ...sourceOptions,
+        sink: bootstrapSink,
+      });
+      const bootstrap = await bootstrapAttachment.awaitVideoBootstrap(3_000);
+      this.assertBootstrapHasDimensions(bootstrap);
+      this.assertOfferSupportsBootstrap(options.sdp, bootstrap);
+      const declaredLevelSupportsRequestedRate = supportsH264PixelRate(
+        bootstrap.profileLevelId,
+        bootstrap.width!,
+        bootstrap.height!,
+        sourceOptions.maxFps,
+      );
+      if (!declaredLevelSupportsRequestedRate) {
+        this.logger.warn(
+          `[webrtc:${options.sessionId}] encoder SPS ${bootstrap.profileLevelId} declares a lower macroblock rate than ${bootstrap.width}x${bootstrap.height}@${sourceOptions.maxFps}; continuing because scrcpy max_fps is a variable-frame-rate cap`,
+        );
+      }
+      return await this.createBridgeAnswer({
+        options,
+        sourceOptions,
+        bootstrap,
+        bootstrapAttachment,
+        iceHost,
+        declaredLevelSupportsRequestedRate,
+      });
+    } catch (error) {
+      bootstrapAttachment?.detach("WebRTC bootstrap failed");
+      throw error;
+    }
+  }
+
+  private async createBridgeAnswer({
+    options,
+    sourceOptions,
+    bootstrap,
+    bootstrapAttachment,
+    iceHost,
+    declaredLevelSupportsRequestedRate,
+  }: {
+    options: WebrtcOfferOptions;
+    sourceOptions: Omit<ScrcpyStreamOptions, "sink">;
+    bootstrap: ScrcpyVideoBootstrap;
+    bootstrapAttachment: ScrcpyStreamAttachment;
+    iceHost: string;
+    declaredLevelSupportsRequestedRate: boolean;
+  }) {
     const bridge = spawn(this.config.webrtcBridgePath, [], {
       stdio: ["pipe", "pipe", "pipe", "pipe", "pipe"],
     });
     const videoInput = bridge.stdio[3] as Writable;
     const audioInput = bridge.stdio[4] as Writable;
-    const client = new BridgeScrcpyClient(bridge, videoInput, audioInput);
-    this.active.set(options.sessionId, () => client.close());
+    const sink = new QueuedScrcpyMediaSink({
+      isOpen: () => bridge.exitCode === null && !bridge.killed,
+      onClose: (listener) => {
+        bridge.once("close", (code, signal) =>
+          listener(code ?? undefined, signal ? Buffer.from(signal) : undefined),
+        );
+      },
+      writeStatus: (payload) => {
+        bridge.stdin?.write(
+          `${JSON.stringify({ type: "datachannel", payload: JSON.parse(payload) })}\n`,
+        );
+      },
+      writeVideo: (payload) => this.writeBridgeInput(videoInput, payload),
+      writeAudio: (payload) => this.writeBridgeInput(audioInput, payload),
+      close: () => {
+        videoInput.end();
+        audioInput.end();
+        bridge.kill("SIGTERM");
+      },
+    });
+    let attachment: ScrcpyStreamAttachment | null = null;
+    let previousSourceFrames = 0;
+    let previousSourceBytes = 0;
+    let previousSnapshotAt = Date.now();
+    const queueMetricsTimer = setInterval(() => {
+      const snapshotAt = Date.now();
+      const snapshot = sink.snapshot();
+      const elapsedSeconds = Math.max(
+        (snapshotAt - previousSnapshotAt) / 1_000,
+        0.001,
+      );
+      sink.sendStatus({
+        type: "relay-metrics",
+        metrics: {
+          sourceFps:
+            (snapshot.sourceVideoFrames - previousSourceFrames) /
+            elapsedSeconds,
+          sourceBitrateMbps:
+            (((snapshot.sourceVideoBytes ?? 0) - previousSourceBytes) * 8) /
+            elapsedSeconds /
+            1_000_000,
+          sourceFrameSizeP95Bytes: snapshot.sourceFrameSizeP95Bytes,
+          keyFrameSizeBytes: snapshot.lastKeyFrameBytes,
+          sourceInterFrameP95Ms: snapshot.sourceInterFrameP95Ms,
+          droppedFrames: snapshot.video.droppedFrames,
+          queueDepthMs: snapshot.video.queueDepthMs,
+          relayP95Ms: snapshot.scrcpyReadToSinkWriteP95Ms,
+          relayP99Ms: snapshot.scrcpyReadToSinkWriteP99Ms,
+          eventLoopUtilization: snapshot.eventLoopUtilization,
+          gcPauseP95Ms: snapshot.gcPauseP95Ms,
+        },
+      });
+      previousSourceFrames = snapshot.sourceVideoFrames;
+      previousSourceBytes = snapshot.sourceVideoBytes ?? 0;
+      previousSnapshotAt = snapshotAt;
+    }, 1_000);
+    queueMetricsTimer.unref?.();
+    const close = () => {
+      clearInterval(queueMetricsTimer);
+      attachment?.detach("WebRTC consumer closed");
+      bootstrapAttachment.detach("WebRTC bootstrap consumer closed");
+      if (!attachment) {
+        sink.close();
+      }
+    };
+    this.active.set(options.sessionId, close);
 
     bridge.stderr.setEncoding("utf8");
     bridge.stderr.on("data", (chunk: string) => {
@@ -80,54 +201,97 @@ export class DisplayWebrtcService {
     });
 
     bridge.once("close", (code, signal) => {
-      this.active.delete(options.sessionId);
-      client.close();
+      clearInterval(queueMetricsTimer);
+      if (this.active.get(options.sessionId) === close) {
+        this.active.delete(options.sessionId);
+      }
       this.logger.debug(
         `[webrtc:${options.sessionId}] bridge closed code=${code ?? 0}${signal ? ` signal=${signal}` : ""}`,
       );
     });
 
-    const answer = await this.configureBridge({
-      bridge,
-      sessionId: options.sessionId,
-      offerSdp: options.sdp,
-      iceHost,
-      maxFps: this.number(options.maxFps, DEFAULT_MAX_FPS, 1, 120),
-      audio: options.audio,
-    });
-
-    void this.scrcpy
-      .streamRawVideo({
+    let answer: { sdp: string };
+    try {
+      answer = await this.configureBridge({
+        bridge,
         sessionId: options.sessionId,
-        udid: session.udid,
-        client,
-        codec: "h264",
-        displayId: session.displayId,
-        newDisplay: session.newDisplay,
-        audio: options.audio,
-        maxSize: this.maxSize(options.maxSize),
+        offerSdp: options.sdp,
+        iceHost,
         maxFps: this.number(options.maxFps, DEFAULT_MAX_FPS, 1, 120),
-        bitrate: this.number(
-          options.bitrate,
-          DEFAULT_BITRATE,
-          100_000,
-          100_000_000,
-        ),
-        iFrameInterval: this.optionalNumber(options.iFrameInterval, 1, 60),
-        onActivity: () => this.sessions.touch(options.sessionId),
-      })
-      .catch((error) => {
-        this.logger.warn(
-          `[webrtc:${options.sessionId}] scrcpy stream failed: ${this.errorMessage(error)}`,
-        );
-        client.close();
+        audio: options.audio,
+        h264FmtpLine: bootstrap.sdpFmtpLine,
+        h264ProfileLevelId: bootstrap.profileLevelId,
       });
+    } catch (error) {
+      if (this.active.get(options.sessionId) === close) {
+        this.active.delete(options.sessionId);
+      }
+      close();
+      throw error;
+    }
+
+    try {
+      attachment = this.scrcpy.attachStream({
+        ...sourceOptions,
+        sink,
+      });
+      bootstrapAttachment.detach("WebRTC bridge attached");
+      sink.sendStatus({
+        type: "webrtc-profile",
+        profileLevelId: bootstrap.profileLevelId,
+        sdpFmtpLine: bootstrap.sdpFmtpLine,
+        width: bootstrap.width,
+        height: bootstrap.height,
+        actualEncoder: bootstrap.actualEncoder,
+        declaredLevelSupportsRequestedRate,
+      });
+      void attachment.closed.then(() => {
+        if (bridge.exitCode === null && !bridge.killed) {
+          bridge.kill("SIGTERM");
+        }
+      });
+    } catch (error) {
+      this.logger.warn(
+        `[webrtc:${options.sessionId}] scrcpy stream failed: ${this.errorMessage(error)}`,
+      );
+      sink.close();
+      bootstrapAttachment.detach("WebRTC bridge attach failed");
+      if (this.active.get(options.sessionId) === close) {
+        this.active.delete(options.sessionId);
+      }
+      throw error;
+    }
 
     return {
       transport: "webrtc" as const,
       codec: "h264" as const,
       sdp: answer.sdp,
       iceServers: this.config.webrtcStunUrls,
+      profileLevelId: bootstrap.profileLevelId,
+    };
+  }
+
+  private sourceOptions(
+    options: WebrtcOfferOptions,
+    session: ReturnType<DisplaySessionService["assertStreamToken"]>,
+  ): Omit<ScrcpyStreamOptions, "sink"> {
+    return {
+      sessionId: options.sessionId,
+      udid: session.udid,
+      codec: "h264",
+      displayId: session.displayId,
+      newDisplay: session.newDisplay,
+      audio: options.audio,
+      maxSize: this.nativeMaxSize(options.maxSize),
+      maxFps: this.nativeFrameRate(options.maxFps),
+      bitrate: this.number(
+        options.bitrate,
+        DEFAULT_BITRATE,
+        100_000,
+        100_000_000,
+      ),
+      iFrameInterval: INTERACTIVE_I_FRAME_INTERVAL,
+      onActivity: () => this.sessions.touch(options.sessionId),
     };
   }
 
@@ -138,6 +302,8 @@ export class DisplayWebrtcService {
     iceHost,
     maxFps,
     audio,
+    h264FmtpLine,
+    h264ProfileLevelId,
   }: {
     bridge: ChildProcess;
     sessionId: string;
@@ -145,6 +311,8 @@ export class DisplayWebrtcService {
     iceHost: string;
     maxFps: number;
     audio: boolean;
+    h264FmtpLine: string;
+    h264ProfileLevelId: string;
   }) {
     return new Promise<{ sdp: string }>((resolve, reject) => {
       let settled = false;
@@ -201,6 +369,8 @@ export class DisplayWebrtcService {
           stunUrls: this.config.webrtcStunUrls,
           maxFps,
           audio,
+          h264FmtpLine,
+          h264ProfileLevelId,
         })}\n`,
       );
     });
@@ -241,6 +411,20 @@ export class DisplayWebrtcService {
     }
     if (message.type === "error") {
       this.logger.warn(`[webrtc:${sessionId}] ${message.message}`);
+      return;
+    }
+    if (message.type === "metrics") {
+      this.sendDataChannelMessage(bridge, {
+        type: "webrtc-bridge-metrics",
+        metrics: message.metrics,
+      });
+      return;
+    }
+    if (message.type === "video-resync-request") {
+      this.scrcpy.requestVideoReset(
+        sessionId,
+        `webrtc:${message.message?.slice(0, 80) || "pli"}`,
+      );
       return;
     }
     if (message.type === "log" || message.type === "state") {
@@ -312,11 +496,7 @@ export class DisplayWebrtcService {
       : fallback;
   }
 
-  private optionalNumber(value: number | undefined, min: number, max: number) {
-    return value === undefined ? undefined : this.number(value, min, min, max);
-  }
-
-  private maxSize(value: number | undefined) {
+  private nativeMaxSize(value: number | undefined) {
     const parsed = Number(value);
     if (!Number.isFinite(parsed)) {
       return DEFAULT_MAX_SIZE;
@@ -324,80 +504,60 @@ export class DisplayWebrtcService {
     if (Math.round(parsed) === 0) {
       return 0;
     }
-    return Math.min(Math.max(Math.round(parsed), 1080), 4096);
+    throw new ConflictException(
+      "Interactive display streaming requires native resolution (maxSize=0).",
+    );
+  }
+
+  private nativeFrameRate(value: number | undefined) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return DEFAULT_MAX_FPS;
+    }
+    if (Math.round(parsed) === DEFAULT_MAX_FPS) {
+      return DEFAULT_MAX_FPS;
+    }
+    throw new ConflictException(
+      "Interactive display streaming requires maxFps=60.",
+    );
+  }
+
+  private assertOfferSupportsBootstrap(
+    offerSdp: string,
+    bootstrap: ScrcpyVideoBootstrap,
+  ): void {
+    if (!findCompatibleH264Offer(offerSdp, bootstrap.profileLevelId)) {
+      throw new ConflictException({
+        code: "h264_profile_incompatible",
+        message: `Browser does not offer H.264 packetization-mode=1 for source profile ${bootstrap.profileLevelId}.`,
+        sourceProfileLevelId: bootstrap.profileLevelId,
+      });
+    }
+  }
+
+  private assertBootstrapHasDimensions(bootstrap: ScrcpyVideoBootstrap): void {
+    if (!bootstrap.width || !bootstrap.height) {
+      throw new ConflictException({
+        code: "h264_dimensions_missing",
+        message:
+          "The H.264 encoder did not report exact native dimensions in its SPS.",
+      });
+    }
   }
 
   private errorMessage(error: unknown) {
     return error instanceof Error ? error.message : String(error);
   }
-}
 
-class BridgeScrcpyClient extends EventEmitter implements ScrcpyStreamClient {
-  readyState: number = SCRCPY_WS_OPEN;
-  bufferedAmount = 0;
-  audioBufferedAmount = 0;
-
-  constructor(
-    private readonly process: ChildProcess,
-    private readonly videoInput: Writable,
-    private readonly audioInput: Writable,
-  ) {
-    super();
-  }
-
-  send(
-    data: Buffer | string,
-    optionsOrCallback?: { binary?: boolean } | ((error?: Error) => void),
-    callback?: (error?: Error) => void,
-  ) {
-    const done =
-      typeof optionsOrCallback === "function" ? optionsOrCallback : callback;
-    if (typeof data === "string") {
-      try {
-        this.process.stdin?.write(
-          `${JSON.stringify({ type: "datachannel", payload: JSON.parse(data) })}\n`,
-          (error) => {
-            done?.(error ?? undefined);
-          },
-        );
-      } catch (error) {
-        done?.(error instanceof Error ? error : new Error(String(error)));
-      }
-      return;
-    }
-    this.bufferedAmount += data.byteLength;
-    this.videoInput.write(data, (error) => {
-      this.bufferedAmount = Math.max(0, this.bufferedAmount - data.byteLength);
-      done?.(error ?? undefined);
+  private writeBridgeInput(input: Writable, payload: Buffer): Promise<void> {
+    return new Promise((resolve, reject) => {
+      input.write(payload, (error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve();
+      });
     });
-  }
-
-  sendAudio(packet: ScrcpyAudioPacket, done?: (error?: Error) => void) {
-    if (packet.config) {
-      done?.();
-      return;
-    }
-    const header = Buffer.alloc(12);
-    header.writeBigInt64BE(packet.timestampUs);
-    header.writeUInt32BE(packet.data.byteLength, 8);
-    this.audioBufferedAmount += header.byteLength + packet.data.byteLength;
-    this.audioInput.write(Buffer.concat([header, packet.data]), (error) => {
-      this.audioBufferedAmount = Math.max(
-        0,
-        this.audioBufferedAmount - header.byteLength - packet.data.byteLength,
-      );
-      done?.(error ?? undefined);
-    });
-  }
-
-  close() {
-    if (this.readyState !== SCRCPY_WS_OPEN) {
-      return;
-    }
-    this.readyState = 3;
-    this.videoInput.end();
-    this.audioInput.end();
-    this.process.kill("SIGTERM");
-    this.emit("close");
   }
 }

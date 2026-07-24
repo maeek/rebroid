@@ -20,12 +20,17 @@ export const getViewerPlayerCapabilities = (): ViewerPlayerCapabilities => {
     ) as ViewerPlayerCapabilities
   }
 
-  const hasWebCodecs = typeof window.VideoDecoder !== 'undefined'
+  const hasWebRtc = typeof window.RTCPeerConnection !== 'undefined'
+  const hasWorkerMedia =
+    typeof window.Worker !== 'undefined' &&
+    typeof window.OffscreenCanvas !== 'undefined' &&
+    (typeof window.VideoDecoder !== 'undefined' || typeof window.MediaSource !== 'undefined')
+  const supported = hasWebRtc || hasWorkerMedia
 
   return {
     webcodecs: {
-      supported: hasWebCodecs,
-      reason: hasWebCodecs ? null : 'WebCodecs is unavailable in this browser.'
+      supported,
+      reason: supported ? null : 'WebRTC and worker-owned WebSocket media APIs are unavailable in this browser.'
     }
   }
 }

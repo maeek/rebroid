@@ -61,6 +61,30 @@ test("parses codec id, frame metadata, and keyframe flag", () => {
   assert.equal(packets[0]!.keyFrame, true);
 });
 
+test("parses a packet split across every header and payload boundary", () => {
+  const packets: ScrcpyPacket[] = [];
+  const payload = Buffer.from([9, 8, 7, 6, 5]);
+  const stream = Buffer.concat([
+    codecHeader(SCRCPY_CODEC_H264),
+    packetHeader({ size: payload.byteLength, pts: 9001n, keyFrame: true }),
+    payload,
+  ]);
+  const parser = new ScrcpyPacketParser({
+    expectedCodec: SCRCPY_CODEC_H264,
+    allowSessionPackets: true,
+    onPacket: (packet) => packets.push(packet),
+  });
+
+  for (const byte of stream) {
+    parser.push(Buffer.from([byte]));
+  }
+
+  assert.equal(packets.length, 1);
+  assert.equal(packets[0]!.timestampUs, 9001n);
+  assert.equal(packets[0]!.keyFrame, true);
+  assert.deepEqual([...packets[0]!.data], [...payload]);
+});
+
 test("parses and skips video session packets", () => {
   const sessions: Array<{
     width: number;

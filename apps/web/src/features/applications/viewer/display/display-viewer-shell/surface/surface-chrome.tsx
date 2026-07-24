@@ -20,9 +20,6 @@ const streamStatusLabel = (status: DisplayViewerStreamStatus) => {
   if (status.code === 'audio-disabled') {
     return 'Audio disabled'
   }
-  if (status.code === 'transport-fallback') {
-    return 'Using WebSocket'
-  }
   if (status.code === 'reconnecting') {
     return 'Reconnecting'
   }

@@ -8,10 +8,10 @@ import type { WebSettings } from './types'
 const defaultWebSettings: WebSettings = {
   appListRefreshIntervalSeconds: 5,
   removeDataOnDelete: true,
-  defaultViewerPreset: 'balanced',
-  defaultViewerBitrateMbps: 3,
-  defaultViewerMaxFps: 30,
-  defaultViewerMaxSize: 1080,
+  defaultViewerPreset: 'low-latency',
+  defaultViewerBitrateMbps: 16,
+  defaultViewerMaxFps: 60,
+  defaultViewerMaxSize: 0,
   defaultViewerIFrameInterval: 1,
   defaultViewerKeyboardCaptureEnabled: false,
   defaultViewerSoundEnabled: true,
@@ -48,17 +48,9 @@ const normalize = (value: Partial<WebSettings>): WebSettings => ({
     1,
     32
   ),
-  defaultViewerMaxFps: numberInRange(value.defaultViewerMaxFps, defaultWebSettings.defaultViewerMaxFps, 1, 120),
-  defaultViewerMaxSize:
-    value.defaultViewerMaxSize === 0
-      ? 0
-      : numberInRange(value.defaultViewerMaxSize, defaultWebSettings.defaultViewerMaxSize, 1080, 4096),
-  defaultViewerIFrameInterval: numberInRange(
-    value.defaultViewerIFrameInterval,
-    defaultWebSettings.defaultViewerIFrameInterval,
-    1,
-    30
-  ),
+  defaultViewerMaxFps: 60,
+  defaultViewerMaxSize: 0,
+  defaultViewerIFrameInterval: 1,
   defaultViewerKeyboardCaptureEnabled:
     typeof value.defaultViewerKeyboardCaptureEnabled === 'boolean'
       ? value.defaultViewerKeyboardCaptureEnabled

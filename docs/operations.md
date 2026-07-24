@@ -2,6 +2,7 @@
 
 ## Health Endpoints
 
+- Edge `/edge-health`: nginx ingress liveness over HTTPS.
 - Orchestrator `/health/live`: process liveness only.
 - Orchestrator `/health/ready`: required Docker dependency readiness.
 - Orchestrator `/api/v1/diagnostics`: authenticated aggregated diagnostics.
@@ -104,7 +105,29 @@ certification, or Play Integrity behavior.
 
 Scrcpy integration work requires a Linux Docker-compatible host with Redroid support, binder devices, and the display-sidecar image. Start the appliance, create an Android application, and manually verify launch, video, input, disconnect, retry, and shutdown before and after any scrcpy change. Record the host configuration and test result in the change description.
 
-For Redroid display changes, verify both WebRTC and WebSocket streams on supported Redroid 13 and 14 images. Confirm the sidecar reports scrcpy server 4.0 or newer, collect the compatibility mode shown by the viewer, and capture sidecar log lines for any fallback. Verify video with and without audio; touch, keyboard, actions, and clipboard through scrcpy control and ADB fallback; direct and forward connection paths; disconnect/reconnect/final cleanup; and repeated session create/release. Confirm virtual-display creation fails while `feature.display-virtual` is disabled, then enable it through the feature API and verify creation and release. Redroid 15 and 16 are intentionally unsupported until their scrcpy video startup issues are resolved upstream; verify they fail with a clear unsupported-version message rather than a reconnect loop.
+For Redroid display changes, verify both WebRTC and WebSocket streams on
+supported Redroid 13 and 14 images. Confirm the sidecar reports scrcpy server
+4.0 or newer and `scrcpy-server-v4-rbd1`, collect the requested and effective
+stream profiles, and capture sidecar queue and Pion feedback metrics. Verify
+video with and without audio; touch, keyboard, actions, and clipboard through
+scrcpy control and ADB fallback; direct and forward connection paths;
+disconnect/reconnect/final cleanup; and repeated session create/release.
+Confirm virtual-display creation fails while `feature.display-virtual` is
+disabled, then enable it through the feature API and verify creation and
+release. Redroid 15 and 16 are intentionally unsupported until their scrcpy
+video startup issues are resolved upstream; verify they fail with a clear
+unsupported-version message rather than a reconnect loop.
+
+For the native 1080×2340@60 gate, run the deterministic motion workload for 10
+minutes in current stable Chromium and Firefox over wired LAN through the
+direct-sidecar, Rebroid edge, and VPS master-proxy paths. Record one-second
+`ViewerStreamMetricsV4` windows, stage sequence watermarks,
+source/relay/bridge/RTP/browser drops, Firefox MSE buffered lead, adaptive
+jitter target, freezes, RTT, loss, NACK/PLI, audio skew, CPU, and
+display-sidecar event-loop utilization. Repeat WebRTC at 50 ms RTT and 1% packet
+loss. The exact targets and native gateway escalation gate are documented in
+[display streaming](display-streaming.md#acceptance-and-escalation).
+
 ## Local AI Provider Compatibility
 
 - Configure llama.cpp and Lemonade with the `openai-chat-completions` protocol. Use server flavor `auto` unless an explicit override is needed; auto-detection checks Lemonade before Ollama compatibility endpoints.

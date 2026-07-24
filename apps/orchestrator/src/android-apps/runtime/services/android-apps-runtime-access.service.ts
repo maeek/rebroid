@@ -43,8 +43,25 @@ export class AndroidAppsRuntimeAccessService {
     id: string,
     request: MultipartUploadRequest,
     requestedPath?: string,
+    overwrite = false,
   ) {
-    return this.dataFiles.uploadFile(id, request, requestedPath);
+    return this.dataFiles.uploadFile(id, request, requestedPath, overwrite);
+  }
+
+  createDirectory(id: string, parentPath: string, name: string) {
+    return this.dataFiles.createDirectory(id, parentPath, name);
+  }
+
+  renameFile(id: string, path: string, name: string) {
+    return this.dataFiles.renameFile(id, path, name);
+  }
+
+  deleteFile(id: string, path: string) {
+    return this.dataFiles.deleteFile(id, path);
+  }
+
+  previewFile(id: string, path?: string) {
+    return this.dataFiles.previewFile(id, path);
   }
 
   downloadRuntimeFile(id: string, requestedPath?: string) {

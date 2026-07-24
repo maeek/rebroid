@@ -14,12 +14,12 @@ const packet = (
   ...overrides,
 });
 
-test("config packets are counted but not forwarded as media", () => {
+test("config packets are counted and forwarded separately", () => {
   const forwarder = new ScrcpyVideoPacketForwarder();
 
   const result = forwarder.accept(packet([1, 2], { config: true }));
 
-  assert.equal(result.packet, null);
+  assert.deepEqual([...(result.packet?.data ?? [])], [1, 2]);
   assert.equal(result.firstConfigPacket, true);
   assert.equal(result.firstMediaPacket, false);
   assert.equal(result.firstKeyFrame, false);
@@ -30,14 +30,14 @@ test("config packets are counted but not forwarded as media", () => {
   });
 });
 
-test("prepends pending config to the first media keyframe", () => {
+test("keeps config separate from the first media keyframe", () => {
   const forwarder = new ScrcpyVideoPacketForwarder();
 
   forwarder.accept(packet([1, 2], { config: true }));
   const result = forwarder.accept(packet([3, 4], { keyFrame: true }));
 
-  assert.deepEqual([...(result.packet?.data ?? [])], [1, 2, 3, 4]);
-  assert.equal(result.configPrepended, true);
+  assert.deepEqual([...(result.packet?.data ?? [])], [3, 4]);
+  assert.equal(result.configPrepended, false);
   assert.equal(result.firstConfigPacket, false);
   assert.equal(result.firstMediaPacket, true);
   assert.equal(result.firstKeyFrame, true);

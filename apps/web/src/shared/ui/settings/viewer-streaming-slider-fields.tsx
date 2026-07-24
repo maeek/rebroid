@@ -30,24 +30,6 @@ const viewerStreamingSliderFields: ViewerStreamingSliderFieldDefinition[] = [
     step: 0.5,
     suffix: ' Mbps',
     rangeLabel: 'Bitrate range'
-  },
-  {
-    key: 'maxFps',
-    label: 'Max FPS',
-    description: 'Frame rate limit.',
-    min: 1,
-    max: 120,
-    suffix: ' fps',
-    rangeLabel: 'Max FPS range'
-  },
-  {
-    key: 'iFrameInterval',
-    label: 'I-frame interval',
-    description: 'Keyframe interval in seconds.',
-    min: 1,
-    max: 30,
-    suffix: 's',
-    rangeLabel: 'I-frame interval range'
   }
 ]
 

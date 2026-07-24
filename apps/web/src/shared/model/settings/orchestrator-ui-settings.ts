@@ -74,10 +74,10 @@ export const defaultOrchestratorUiSettings: OrchestratorUiSettings = {
   appListRefreshIntervalSeconds: 5,
   removeDataOnDelete: true,
   scrcpyTransport: 'webrtc',
-  defaultViewerPreset: 'balanced',
-  defaultViewerBitrateMbps: 3,
-  defaultViewerMaxFps: 30,
-  defaultViewerMaxSize: 1080,
+  defaultViewerPreset: 'low-latency',
+  defaultViewerBitrateMbps: 16,
+  defaultViewerMaxFps: 60,
+  defaultViewerMaxSize: 0,
   defaultViewerIFrameInterval: 1,
   defaultViewerKeyboardCaptureEnabled: false,
   defaultViewerSoundEnabled: true,
@@ -169,13 +169,9 @@ export const normalizeOrchestratorUiSettings = (
       : defaultOrchestratorUiSettings.defaultViewerPreset,
   defaultViewerBitrateMbps:
     Number(web.defaultViewerBitrateMbps) || defaultOrchestratorUiSettings.defaultViewerBitrateMbps,
-  defaultViewerMaxFps: Number(web.defaultViewerMaxFps) || defaultOrchestratorUiSettings.defaultViewerMaxFps,
-  defaultViewerMaxSize:
-    typeof web.defaultViewerMaxSize === 'number'
-      ? web.defaultViewerMaxSize
-      : defaultOrchestratorUiSettings.defaultViewerMaxSize,
-  defaultViewerIFrameInterval:
-    Number(web.defaultViewerIFrameInterval) || defaultOrchestratorUiSettings.defaultViewerIFrameInterval,
+  defaultViewerMaxFps: 60,
+  defaultViewerMaxSize: 0,
+  defaultViewerIFrameInterval: 1,
   defaultViewerKeyboardCaptureEnabled:
     typeof web.defaultViewerKeyboardCaptureEnabled === 'boolean'
       ? web.defaultViewerKeyboardCaptureEnabled

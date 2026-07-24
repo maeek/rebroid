@@ -8,8 +8,8 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"time"
 
+	"github.com/pion/interceptor"
 	"github.com/pion/webrtc/v4"
 )
 
@@ -39,31 +39,56 @@ func run() error {
 	}
 
 	mediaEngine := &webrtc.MediaEngine{}
-	if err := mediaEngine.RegisterDefaultCodecs(); err != nil {
+	if err := registerMediaCodecs(mediaEngine, cfg); err != nil {
 		return err
 	}
-	api := webrtc.NewAPI(webrtc.WithSettingEngine(setting), webrtc.WithMediaEngine(mediaEngine))
+	interceptorRegistry := &interceptor.Registry{}
+	if err := webrtc.RegisterDefaultInterceptors(mediaEngine, interceptorRegistry); err != nil {
+		return err
+	}
+	if err := webrtc.ConfigureTWCCHeaderExtensionSender(mediaEngine, interceptorRegistry); err != nil {
+		return err
+	}
+	api := webrtc.NewAPI(
+		webrtc.WithSettingEngine(setting),
+		webrtc.WithMediaEngine(mediaEngine),
+		webrtc.WithInterceptorRegistry(interceptorRegistry),
+	)
 	peer, err := api.NewPeerConnection(webrtc.Configuration{ICEServers: iceServers(cfg.STUNUrls)})
 	if err != nil {
 		return err
 	}
 	defer peer.Close()
 
-	videoTrack, err := webrtc.NewTrackLocalStaticSample(
-		webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeH264, ClockRate: 90000},
+	metrics := &bridgeMetrics{}
+	recovery := &videoRecovery{}
+	timeline := &sourceTimeline{}
+	metricsStop := make(chan struct{})
+	defer close(metricsStop)
+	go reportBridgeMetrics(metrics, peer, metricsStop)
+
+	videoTrack, err := webrtc.NewTrackLocalStaticRTP(
+		webrtc.RTPCodecCapability{
+			MimeType:     webrtc.MimeTypeH264,
+			ClockRate:    90000,
+			SDPFmtpLine:  cfg.H264FmtpLine,
+			RTCPFeedback: h264RTCPFeedback(),
+		},
 		"video",
 		"rebroid",
 	)
 	if err != nil {
 		return err
 	}
-	if _, err := peer.AddTrack(videoTrack); err != nil {
+	videoSender, err := peer.AddTrack(videoTrack)
+	if err != nil {
 		return err
 	}
+	go drainRTCP(videoSender, metrics, recovery)
 
-	var audioTrack *webrtc.TrackLocalStaticSample
+	var audioTrack *webrtc.TrackLocalStaticRTP
 	if cfg.Audio {
-		audioTrack, err = webrtc.NewTrackLocalStaticSample(
+		audioTrack, err = webrtc.NewTrackLocalStaticRTP(
 			webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeOpus, ClockRate: 48000, Channels: 2},
 			"audio",
 			"rebroid",
@@ -71,18 +96,32 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		if _, err := peer.AddTrack(audioTrack); err != nil {
+		audioSender, err := peer.AddTrack(audioTrack)
+		if err != nil {
 			return err
 		}
+		go drainRTCP(audioSender, metrics, nil)
 		write(stdoutMessage{Type: "log", Message: "audio track negotiated"})
 	}
 
 	var dataChannel *webrtc.DataChannel
 	var dataMu sync.Mutex
+	var pendingDataMessages [][]byte
 	peer.OnDataChannel(func(channel *webrtc.DataChannel) {
-		dataMu.Lock()
-		dataChannel = channel
-		dataMu.Unlock()
+		if channel.Label() == "rebroid-control" {
+			dataMu.Lock()
+			dataChannel = channel
+			dataMu.Unlock()
+			channel.OnOpen(func() {
+				dataMu.Lock()
+				pending := pendingDataMessages
+				pendingDataMessages = nil
+				dataMu.Unlock()
+				for _, payload := range pending {
+					_ = channel.Send(payload)
+				}
+			})
+		}
 		channel.OnMessage(func(message webrtc.DataChannelMessage) {
 			write(stdoutMessage{Type: "control", Payload: json.RawMessage(message.Data)})
 		})
@@ -111,10 +150,16 @@ func run() error {
 	go readCommands(reader, func(payload []byte) {
 		dataMu.Lock()
 		channel := dataChannel
-		dataMu.Unlock()
 		if channel != nil && channel.ReadyState() == webrtc.DataChannelStateOpen {
+			dataMu.Unlock()
 			_ = channel.Send(payload)
+			return
 		}
+		if len(pendingDataMessages) >= 32 {
+			pendingDataMessages = pendingDataMessages[1:]
+		}
+		pendingDataMessages = append(pendingDataMessages, append([]byte(nil), payload...))
+		dataMu.Unlock()
 	})
 
 	video := os.NewFile(uintptr(3), "video")
@@ -130,15 +175,61 @@ func run() error {
 		}
 		defer audio.Close()
 		go func() {
-			if err := streamOpus(audio, audioTrack); err != nil && !errors.Is(err, io.EOF) {
+			if err := streamOpus(audio, audioTrack, metrics, timeline); err != nil && !errors.Is(err, io.EOF) {
 				write(stdoutMessage{Type: "log", Message: "audio disabled: " + err.Error()})
 			}
 		}()
 	}
 
-	fps := cfg.MaxFPS
-	if fps <= 0 {
-		fps = 30
+	return streamH264(video, videoTrack, metrics, recovery, timeline)
+}
+
+func h264RTCPFeedback() []webrtc.RTCPFeedback {
+	return []webrtc.RTCPFeedback{
+		{Type: "goog-remb"},
+		{Type: "ccm", Parameter: "fir"},
+		{Type: "nack"},
+		{Type: "nack", Parameter: "pli"},
+		{Type: "transport-cc"},
 	}
-	return streamAnnexB(video, videoTrack, time.Second/time.Duration(fps))
+}
+
+func registerMediaCodecs(mediaEngine *webrtc.MediaEngine, cfg configMessage) error {
+	if err := mediaEngine.RegisterCodec(
+		configuredH264Codec(cfg),
+		webrtc.RTPCodecTypeVideo,
+	); err != nil {
+		return err
+	}
+	if !cfg.Audio {
+		return nil
+	}
+	return mediaEngine.RegisterCodec(
+		webrtc.RTPCodecParameters{
+			RTPCodecCapability: webrtc.RTPCodecCapability{
+				MimeType:    webrtc.MimeTypeOpus,
+				ClockRate:   48000,
+				Channels:    2,
+				SDPFmtpLine: "minptime=10;useinbandfec=1",
+			},
+			PayloadType: 111,
+		},
+		webrtc.RTPCodecTypeAudio,
+	)
+}
+
+func configuredH264Codec(cfg configMessage) webrtc.RTPCodecParameters {
+	fmtp := cfg.H264FmtpLine
+	if fmtp == "" {
+		fmtp = "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f"
+	}
+	return webrtc.RTPCodecParameters{
+		RTPCodecCapability: webrtc.RTPCodecCapability{
+			MimeType:     webrtc.MimeTypeH264,
+			ClockRate:    90000,
+			SDPFmtpLine:  fmtp,
+			RTCPFeedback: h264RTCPFeedback(),
+		},
+		PayloadType: 96,
+	}
 }

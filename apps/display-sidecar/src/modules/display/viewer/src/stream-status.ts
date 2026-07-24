@@ -2,7 +2,7 @@ import {
   viewerStreamMetricsMessageType,
   viewerStreamStatusMessageType,
 } from "./config.js";
-import type { ViewerStreamMetrics, ViewerStreamStatus } from "./types.js";
+import type { ViewerStreamMetricsV4, ViewerStreamStatus } from "./types.js";
 
 export type CompatibilityStatusInput = {
   mode?: unknown;
@@ -40,16 +40,6 @@ export function statusFromCompatibility({
     };
   }
 
-  if (mode === "stable-video") {
-    return {
-      code: "video-stalled",
-      severity: "warning",
-      blocking: !hasVisibleFrame,
-      message: detail ?? "The stream switched to a conservative video mode.",
-      transport,
-    };
-  }
-
   return {
     code: "stream-error",
     severity: hasVisibleFrame ? "warning" : "error",
@@ -69,7 +59,7 @@ export function emitViewerStreamStatus(status: ViewerStreamStatus): void {
   );
 }
 
-export function emitViewerStreamMetrics(metrics: ViewerStreamMetrics): void {
+export function emitViewerStreamMetrics(metrics: ViewerStreamMetricsV4): void {
   window.parent.postMessage(
     {
       type: viewerStreamMetricsMessageType,

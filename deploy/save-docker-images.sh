@@ -69,6 +69,11 @@ build_image \
   --build-arg "DISPLAY_SIDECAR_INTERNAL_BASE_URL=${DISPLAY_SIDECAR_INTERNAL_BASE_URL:-http://rebroid-display-sidecar:8000}"
 
 build_image \
+  "localhost/rebroid/edge:local" \
+  "${repo_dir}" \
+  "${repo_dir}/deploy/edge/Dockerfile"
+
+build_image \
   "localhost/rebroid/display-sidecar:local" \
   "${repo_dir}" \
   "${repo_dir}/apps/display-sidecar/Dockerfile"
@@ -91,6 +96,7 @@ build_image \
 "${container_engine}" image inspect \
   localhost/rebroid/orchestrator:local \
   localhost/rebroid/web:local \
+  localhost/rebroid/edge:local \
   localhost/rebroid/display-sidecar:local \
   localhost/rebroid/ocr-sidecar:local \
   localhost/rebroid/firewall-agent:local \
@@ -112,6 +118,7 @@ while read -r image_name archive_name; do
   "${container_engine}" image save --output "${archive_path}" "${image_name}"
 done <<'EOF'
 localhost/rebroid/web:local rebroid-web-local.tar
+localhost/rebroid/edge:local rebroid-edge-local.tar
 localhost/rebroid/orchestrator:local rebroid-orchestrator-local.tar
 localhost/rebroid/display-sidecar:local rebroid-display-sidecar-local.tar
 localhost/rebroid/ocr-sidecar:local rebroid-ocr-sidecar-local.tar

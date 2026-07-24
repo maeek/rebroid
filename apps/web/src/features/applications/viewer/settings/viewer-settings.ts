@@ -13,8 +13,8 @@ export type ViewerPlayerDefinition = {
 export const viewerPlayerDefinitions: ViewerPlayerDefinition[] = [
   {
     value: 'webcodecs',
-    label: 'WebCodecs',
-    description: 'Low-latency live display playback. Best tested in Chromium-based browsers.'
+    label: 'Native low latency',
+    description: 'WebRTC native video with optimized Chromium WebCodecs and Firefox MediaSource fallback.'
   }
 ]
 
@@ -42,19 +42,19 @@ export const viewerStreamingPresets: Record<ViewerStreamingPreset, ViewerStreami
     player: 'webcodecs',
     transport: viewerTransport.WebRTC,
     preset: 'low-latency',
-    bitrateMbps: 5,
+    bitrateMbps: 16,
     maxFps: 60,
-    maxSize: 1080,
+    maxSize: 0,
     iFrameInterval: 1,
-    fitToFrame: false
+    fitToFrame: true
   },
   balanced: {
     player: 'webcodecs',
     transport: viewerTransport.WebRTC,
     preset: 'balanced',
     bitrateMbps: 3,
-    maxFps: 30,
-    maxSize: 1080,
+    maxFps: 60,
+    maxSize: 0,
     iFrameInterval: 1,
     fitToFrame: false
   },
@@ -62,7 +62,7 @@ export const viewerStreamingPresets: Record<ViewerStreamingPreset, ViewerStreami
     player: 'webcodecs',
     transport: viewerTransport.WebRTC,
     preset: 'high-quality',
-    bitrateMbps: 15,
+    bitrateMbps: 16,
     maxFps: 60,
     maxSize: 0,
     iFrameInterval: 1,
@@ -73,20 +73,20 @@ export const viewerStreamingPresets: Record<ViewerStreamingPreset, ViewerStreami
     transport: viewerTransport.WebRTC,
     preset: 'bandwidth-saver',
     bitrateMbps: 1.5,
-    maxFps: 24,
-    maxSize: 1080,
-    iFrameInterval: 2,
+    maxFps: 60,
+    maxSize: 0,
+    iFrameInterval: 1,
     fitToFrame: false
   }
 }
 
 export const defaultViewerSettings: ViewerSettings = {
-  ...viewerStreamingPresets.balanced,
+  ...viewerStreamingPresets['low-latency'],
   keyboardCaptureEnabled: false,
   soundEnabled: false
 }
 
-export const viewerSettingsStorageKey = 'rebroid.viewer.settings.v8'
+export const viewerSettingsStorageKey = 'rebroid.viewer.settings.v10'
 
 const isViewerTransport = (value: unknown): value is ViewerTransport =>
   value === viewerTransport.WebRTC || value === viewerTransport.WebSocket
@@ -110,9 +110,9 @@ export const normalizeViewerSettings = (value: Partial<ViewerSettings> | null | 
   preset:
     value?.preset && Object.hasOwn(viewerStreamingPresets, value.preset) ? value.preset : defaultViewerSettings.preset,
   bitrateMbps: isValidNumber(value?.bitrateMbps, defaultViewerSettings.bitrateMbps, 1, 32),
-  maxFps: isValidNumber(value?.maxFps, defaultViewerSettings.maxFps, 1, 120),
-  maxSize: value?.maxSize === 0 ? 0 : isValidNumber(value?.maxSize, defaultViewerSettings.maxSize, 1080, 4096),
-  iFrameInterval: isValidNumber(value?.iFrameInterval, defaultViewerSettings.iFrameInterval, 1, 30),
+  maxFps: 60,
+  maxSize: 0,
+  iFrameInterval: 1,
   fitToFrame: typeof value?.fitToFrame === 'boolean' ? value.fitToFrame : defaultViewerSettings.fitToFrame
 })
 

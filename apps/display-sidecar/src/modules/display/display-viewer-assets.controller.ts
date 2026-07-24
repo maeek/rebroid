@@ -10,12 +10,15 @@ const assetContentTypes: Record<string, string> = {
   ".css": "text/css; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
 };
+const viewerContentSecurityPolicy =
+  "frame-ancestors 'self'; object-src 'none'; base-uri 'none'";
 
 @Controller("viewer/display")
 export class DisplayViewerAssetsController {
   @Get()
   @ApiExcludeEndpoint()
   viewer(@Res() response: FastifyReply) {
+    response.header("Content-Security-Policy", viewerContentSecurityPolicy);
     return this.sendFile(
       response,
       join(viewerDirectory, "index.html"),

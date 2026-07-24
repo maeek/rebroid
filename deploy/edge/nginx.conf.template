@@ -1,0 +1,148 @@
+worker_processes auto;
+pid /tmp/nginx.pid;
+
+events {
+  worker_connections 4096;
+  multi_accept on;
+}
+
+http {
+  include /etc/nginx/mime.types;
+  default_type application/octet-stream;
+  access_log /dev/stdout;
+  error_log /dev/stderr warn;
+  client_body_temp_path /tmp/nginx/client;
+  fastcgi_temp_path /tmp/nginx/fastcgi;
+  proxy_temp_path /tmp/nginx/proxy;
+  scgi_temp_path /tmp/nginx/scgi;
+  uwsgi_temp_path /tmp/nginx/uwsgi;
+  client_max_body_size 512m;
+  sendfile on;
+  tcp_nodelay on;
+  keepalive_timeout 65;
+
+  map $http_upgrade $connection_upgrade {
+    default upgrade;
+    '' close;
+  }
+
+  upstream rebroid_web {
+    server web:3101;
+    keepalive 32;
+  }
+
+  upstream rebroid_orchestrator {
+    server orchestrator:4100;
+    keepalive 16;
+  }
+
+  upstream rebroid_display {
+    server display-sidecar:8000;
+    keepalive 32;
+  }
+
+  server {
+    listen 3443 ssl default_server;
+    server_name "";
+    ssl_certificate /app/data/certificates/rebroid-web.crt;
+    ssl_certificate_key /app/data/certificates/rebroid-web.key;
+    return 421;
+  }
+
+  server {
+    listen 3443 ssl;
+    server_name ${REBROID_NGINX_SERVER_NAMES};
+    ssl_certificate /app/data/certificates/rebroid-web.crt;
+    ssl_certificate_key /app/data/certificates/rebroid-web.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:REBROID_TLS:10m;
+    ssl_session_timeout 10m;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy no-referrer always;
+
+    location = /edge-health {
+      access_log off;
+      add_header Content-Type text/plain;
+      return 200 'ok';
+    }
+
+    location ^~ /viewer/display {
+      proxy_pass http://rebroid_display;
+      proxy_http_version 1.1;
+      proxy_set_header Host $http_host;
+      proxy_set_header X-Forwarded-Host $http_host;
+      proxy_set_header X-Forwarded-Proto https;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Rebroid-Viewer-Host $http_host;
+      proxy_set_header X-Rebroid-Sidecar-Secret "";
+      proxy_set_header X-Orchestrator-Secret "";
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection $connection_upgrade;
+      proxy_set_header Accept-Encoding "";
+      proxy_cache off;
+      proxy_buffering off;
+      proxy_request_buffering off;
+      proxy_socket_keepalive on;
+      gzip off;
+      proxy_read_timeout 1h;
+      proxy_send_timeout 1h;
+    }
+
+    location ^~ /rebroid/display {
+      proxy_pass http://rebroid_display;
+      proxy_http_version 1.1;
+      proxy_set_header Host $http_host;
+      proxy_set_header X-Forwarded-Host $http_host;
+      proxy_set_header X-Forwarded-Proto https;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Rebroid-Viewer-Host $http_host;
+      proxy_set_header X-Rebroid-Sidecar-Secret "";
+      proxy_set_header X-Orchestrator-Secret "";
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection $connection_upgrade;
+      proxy_set_header Accept-Encoding "";
+      proxy_cache off;
+      proxy_buffering off;
+      proxy_request_buffering off;
+      proxy_socket_keepalive on;
+      gzip off;
+      proxy_read_timeout 1h;
+      proxy_send_timeout 1h;
+    }
+
+    location ^~ /api/v1 {
+      proxy_pass http://rebroid_orchestrator;
+      proxy_http_version 1.1;
+      proxy_set_header Host $http_host;
+      proxy_set_header X-Forwarded-Host $http_host;
+      proxy_set_header X-Forwarded-Proto https;
+      proxy_set_header X-Forwarded-For $remote_addr;
+      proxy_set_header X-Rebroid-Sidecar-Secret "";
+      proxy_set_header X-Orchestrator-Secret "";
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection $connection_upgrade;
+      proxy_buffering off;
+      proxy_request_buffering off;
+      proxy_read_timeout 5m;
+      proxy_send_timeout 5m;
+    }
+
+    location / {
+      proxy_pass http://rebroid_web;
+      proxy_http_version 1.1;
+      proxy_set_header Host $http_host;
+      proxy_set_header X-Forwarded-Host $http_host;
+      proxy_set_header X-Forwarded-Proto https;
+      proxy_set_header X-Forwarded-For $remote_addr;
+      proxy_set_header X-Rebroid-Sidecar-Secret "";
+      proxy_set_header X-Orchestrator-Secret "";
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection $connection_upgrade;
+      proxy_buffering off;
+      proxy_request_buffering off;
+      proxy_read_timeout 5m;
+      proxy_send_timeout 5m;
+    }
+  }
+}

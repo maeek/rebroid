@@ -22,21 +22,21 @@ export const RuntimeToolTabs = ({
       <TabsList
         ariaLabel='Runtime tools'
         variant='scrollable'
-        className='w-full shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]'
+        className='w-full p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]'
       >
         {tools.map(tool => (
           <TabsTrigger
             key={tool.id}
             value={tool.id}
-            className='group flex-none px-3.5 py-2'
+            className='group min-h-7 flex-none gap-1.5 px-2.5 py-1.5 text-xs'
           >
             <span
               className={cn(
-                'flex size-6 items-center justify-center rounded-control text-foreground-muted transition-colors group-hover:text-foreground',
+                'flex size-5 items-center justify-center rounded-control text-foreground-muted transition-colors group-hover:text-foreground',
                 selectedToolId === tool.id && 'bg-primary/10 text-primary'
               )}
             >
-              <tool.Icon className='size-4' />
+              <tool.Icon className='size-3.5' />
             </span>
             {tool.title}
           </TabsTrigger>

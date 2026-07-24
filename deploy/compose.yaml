@@ -53,11 +53,36 @@ services:
       - display-sidecar
     environment:
       REBROID_TLS_HOSTS: ${REBROID_TLS_HOSTS:-localhost,127.0.0.1}
-    ports:
-      - "${REBROID_HTTPS_PORT:-3443}:3443"
+    expose:
+      - "3101"
     volumes:
       - web-data:/app/data
       - shared-secrets:/app/secrets
+    networks:
+      - platform
+
+  edge:
+    build:
+      context: ..
+      dockerfile: deploy/edge/Dockerfile
+    image: localhost/rebroid/edge:local
+    container_name: rebroid-edge
+    user: "1000:1000"
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+      orchestrator:
+        condition: service_started
+      display-sidecar:
+        condition: service_started
+    environment:
+      REBROID_TLS_HOSTS: ${REBROID_TLS_HOSTS:-localhost,127.0.0.1}
+      REBROID_PUBLIC_HOSTS: ${REBROID_PUBLIC_HOSTS:-}
+    ports:
+      - "${REBROID_HTTPS_PORT:-3443}:3443"
+    volumes:
+      - web-data:/app/data:ro
     networks:
       - platform
 
@@ -73,6 +98,7 @@ services:
       DISPLAY_SIDECAR_SHARED_SECRET_FILE: /app/secrets/rebroid-shared-secret
       DISPLAY_WEBRTC_UDP_PORT_RANGE: ${DISPLAY_WEBRTC_UDP_PORT_RANGE:-40000-40100}
       DISPLAY_WEBRTC_ICE_HOST: ${DISPLAY_WEBRTC_ICE_HOST:-}
+      SCRCPY_VIDEO_ENCODER: ${SCRCPY_VIDEO_ENCODER:-}
     expose:
       - "8000"
     ports:

@@ -2,6 +2,13 @@ import type { Readable } from 'node:stream';
 
 export const DOCKER_CONTAINER_ARCHIVE = Symbol('DOCKER_CONTAINER_ARCHIVE');
 
+export class DockerContainerArchiveReadLimitError extends Error {
+  constructor(readonly maximumBytes: number) {
+    super(`Container archive entry exceeds ${maximumBytes} bytes.`);
+    this.name = 'DockerContainerArchiveReadLimitError';
+  }
+}
+
 export interface DockerContainerArchivePort {
   copyFileToContainer(
     containerId: string,
@@ -25,5 +32,6 @@ export interface DockerContainerArchivePort {
   readFileFromContainer(
     containerId: string,
     containerPath: string,
+    options?: { maximumBytes?: number },
   ): Promise<Buffer>;
 }

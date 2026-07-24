@@ -56,7 +56,31 @@ test("does not downgrade older non-redroid devices", () => {
 const streamOptions = {
   sessionId: "session-1",
   udid: "device-1",
-  client: { readyState: 1, bufferedAmount: 0, once() {}, send() {} },
+  sink: {
+    isOpen: () => true,
+    onClose: () => undefined,
+    sendStatus: () => undefined,
+    writeVideo: () => undefined,
+    writeAudio: () => undefined,
+    snapshot: () => ({
+      sourceVideoFrames: 0,
+      video: {
+        queuedFrames: 0,
+        queuedBytes: 0,
+        queueDepthMs: 0,
+        droppedFrames: 0,
+        awaitingKeyFrame: true,
+      },
+      audio: {
+        queuedFrames: 0,
+        queuedBytes: 0,
+        queueDepthMs: 0,
+        droppedFrames: 0,
+        awaitingKeyFrame: false,
+      },
+    }),
+    close: () => undefined,
+  },
   codec: "h264" as const,
   maxSize: 1080,
   maxFps: 60,
@@ -65,7 +89,7 @@ const streamOptions = {
   control: true,
 };
 
-test("selects audio, control, and stable-video retry options", () => {
+test("retries audio and control without changing the requested video profile", () => {
   const withoutAudio = selectInitialRetryStreamOptions(
     streamOptions,
     "audio failed",
@@ -82,17 +106,35 @@ test("selects audio, control, and stable-video retry options", () => {
   assert.equal(withoutControl.control, false);
   assert.equal(withoutControl.compatibilityMode, "stream-control-disabled");
 
-  const stable = selectRestartStreamOptions(
+  const unchanged = selectRestartStreamOptions(
     { ...streamOptions, audio: false },
+    { reason: "socket closed", durationMs: 1_000, bytesForwarded: 1 },
+    false,
+  );
+  assert.equal(unchanged.compatibilityMode, undefined);
+  assert.equal(unchanged.maxSize, 1080);
+  assert.equal(unchanged.maxFps, 60);
+  assert.equal(unchanged.bitrate, 8_000_000);
+});
+
+test("restart disables audio only after the scrcpy audio configuration marker", () => {
+  const ordinaryRestart = selectRestartStreamOptions(
+    streamOptions,
+    { reason: "video socket closed", durationMs: 1_000, bytesForwarded: 1 },
+    false,
+  );
+  assert.equal(ordinaryRestart.audio, true);
+
+  const audioFailure = selectRestartStreamOptions(
+    streamOptions,
     {
-      reason: "display stream socket closed",
-      durationMs: 100,
-      bytesForwarded: 0,
+      reason:
+        "invalid audio stream: scrcpy stream configuration failed on the device",
+      durationMs: 1_000,
+      bytesForwarded: 1,
     },
     false,
   );
-  assert.equal(stable.compatibilityMode, "stable-video");
-  assert.equal(stable.maxSize, 720);
-  assert.equal(stable.maxFps, 24);
-  assert.equal(stable.bitrate, 3_000_000);
+  assert.equal(audioFailure.audio, false);
+  assert.equal(audioFailure.maxFps, 60);
 });

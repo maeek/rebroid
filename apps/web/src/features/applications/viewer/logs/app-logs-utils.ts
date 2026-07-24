@@ -15,7 +15,7 @@ export const isSourceUnavailableForApp = (app: AppDefinition | undefined, source
     return !app.running
   }
 
-  return !app.containerId || app.status === 'stopped' || app.status === 'removed'
+  return !app.containerId || app.status === 'removed'
 }
 
 export const unavailableSourceMessage = (app: AppDefinition | undefined, source: LogSource) => {
@@ -28,9 +28,7 @@ export const unavailableSourceMessage = (app: AppDefinition | undefined, source:
   }
 
   if (source === 'container') {
-    return app.status === 'stopped'
-      ? 'Container logs are unavailable because the runtime container is currently stopped.'
-      : 'Container logs are unavailable because no runtime container exists yet.'
+    return 'Container logs are unavailable because no runtime container exists yet.'
   }
 
   return 'Refresh logs to inspect orchestrator lifecycle events.'

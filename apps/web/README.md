@@ -11,7 +11,10 @@ The Docker image is designed to run without a `.env` file:
 
 - `ORCHESTRATOR_API_URL` defaults to `http://orchestrator:4100`.
 - `DISPLAY_SIDECAR_INTERNAL_BASE_URL` defaults to `http://rebroid-display-sidecar:8000` for server-side health and session checks.
-- Browser viewer traffic is same-origin through the web container. The display sidecar is addressed only by `DISPLAY_SIDECAR_INTERNAL_BASE_URL`.
+- Browser viewer traffic is same-origin through the nginx edge, which routes
+  viewer and display paths directly to the sidecar. Next.js uses
+  `DISPLAY_SIDECAR_INTERNAL_BASE_URL` only for server-side health and session
+  operations.
 - `NEXTAUTH_SECRET` is generated into `/app/data` when missing.
 - `MFA_ENCRYPTION_KEY` is generated into `/app/data` when missing.
 - `ORCHESTRATOR_SHARED_SECRET` is read from `/app/secrets/rebroid-shared-secret`, shared with the orchestrator container.
@@ -46,4 +49,7 @@ NEXT_PROXY_CLIENT_MAX_BODY_SIZE=8192mb docker compose build web
 
 ## Viewer
 
-The browser connects to the display sidecar viewer URL using a short-lived app-scoped display-session token. Next.js still performs authorization before creating that session, while the sidecar owns ADB viewer actions and streaming.
+The browser connects to the display sidecar viewer URL through the same-origin
+nginx edge using a short-lived app-scoped display-session token. Next.js still
+performs authorization before creating that session, while the sidecar owns ADB
+viewer actions and streaming. The Next.js process is not a media relay.

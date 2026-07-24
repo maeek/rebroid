@@ -127,6 +127,12 @@ export const permissionDefinitions = [
     description: 'Upload and download files through the live viewer workspace.'
   },
   {
+    id: 'applications:manage-files',
+    category: 'profiles-observability',
+    name: 'Manage files',
+    description: 'Create folders, rename entries, and permanently delete files in live application storage.'
+  },
+  {
     id: 'applications:sync-clipboard',
     category: 'profiles-observability',
     name: 'Sync clipboard',

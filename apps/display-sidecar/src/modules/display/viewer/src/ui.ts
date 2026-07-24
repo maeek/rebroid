@@ -1,8 +1,16 @@
 import type { ViewerElements, ViewerUi } from "./types.js";
 
 export function createViewerUi(elements: ViewerElements): ViewerUi {
-  const { title, copy, status, compatibility, message, canvas, video } =
-    elements;
+  const {
+    title,
+    copy,
+    status,
+    compatibility,
+    message,
+    canvas,
+    snapshot,
+    video,
+  } = elements;
 
   const showStatus = (text: string, nextTitle?: string, nextCopy?: string) => {
     if (nextTitle && title) title.textContent = nextTitle;
@@ -22,11 +30,13 @@ export function createViewerUi(elements: ViewerElements): ViewerUi {
     },
     showCanvas() {
       video.classList.add("hidden");
+      snapshot.classList.add("hidden");
       canvas.classList.remove("hidden");
       message?.classList.add("hidden");
     },
     showVideo() {
       canvas.classList.add("hidden");
+      snapshot.classList.add("hidden");
       video.classList.remove("hidden");
       message?.classList.add("hidden");
     },
@@ -39,10 +49,19 @@ export function createViewerUi(elements: ViewerElements): ViewerUi {
         return false;
       }
 
-      canvas.width = source.videoWidth;
-      canvas.height = source.videoHeight;
-      elements.context.drawImage(source, 0, 0, canvas.width, canvas.height);
-      canvas.classList.remove("hidden");
+      snapshot.width = source.videoWidth;
+      snapshot.height = source.videoHeight;
+      const context = snapshot.getContext("2d", { alpha: false });
+      if (!context) {
+        return false;
+      }
+      try {
+        context.drawImage(source, 0, 0, snapshot.width, snapshot.height);
+      } catch {
+        return false;
+      }
+      snapshot.classList.remove("hidden");
+      canvas.classList.add("hidden");
       video.classList.add("hidden");
       message?.classList.add("hidden");
       return true;

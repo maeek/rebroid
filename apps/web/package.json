@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "next build",
+    "build": "next build --webpack",
     "dev": "next dev --experimental-https",
     "format": "prettier --check --ignore-path .gitignore .",
     "format:check": "prettier --check --ignore-path .gitignore .",

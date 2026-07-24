@@ -1,20 +1,31 @@
 # Architecture
 
-Rebroid is a single-host appliance. The browser communicates with the Next.js backend-for-frontend. The web service calls the internal orchestrator API, which owns persistent Android application state and talks to the Docker-compatible host socket. The firewall agent applies host rules through a private Unix socket. The display sidecar owns ADB viewer sessions and streaming.
+Rebroid is a single-host appliance. Nginx is the only public HTTPS ingress. It
+routes application traffic to the Next.js backend-for-frontend and display
+viewer/media paths directly to the display sidecar. The web service calls the
+internal orchestrator API, which owns persistent Android application state and
+talks to the Docker-compatible host socket. The firewall agent applies host
+rules through a private Unix socket. The display sidecar owns ADB viewer
+sessions and streaming.
 
 ```mermaid
 flowchart LR
-  Browser --> Web["web: Next.js BFF"]
+  Browser --> Edge["edge: nginx TLS ingress"]
+  Edge --> Web["web: Next.js BFF"]
+  Edge --> Orchestrator["orchestrator: NestJS API"]
+  Edge --> Sidecar["display-sidecar: viewer and signaling"]
   Web --> Orchestrator["orchestrator: NestJS"]
   Orchestrator --> Docker["Docker-compatible socket"]
   Orchestrator --> Firewall["firewall-agent: Unix socket"]
   Orchestrator --> Sidecar["display-sidecar"]
-  Browser --> Sidecar
+  Sidecar -. "WebRTC UDP media" .-> Browser
 ```
 
 ## Boundaries
 
 - Browser code does not call the orchestrator directly.
+- Nginx owns public TLS and native streaming ingress. Viewer/media routes bypass
+  Next.js, but short-lived display-session tokens remain authoritative.
 - Next.js `app` route files should stay thin and delegate page composition to feature `pages/*/page-entry.tsx` files. Reusable layout/status/data-grid/setting primitives live in `apps/web/src/shared/ui`, not in a feature folder.
 - The orchestrator owns Android application lifecycle state. Normal application reads return stored state and never trigger Docker calls; runtime reconciliation is an explicit command exposed by the orchestrator API.
 - The orchestrator keeps its existing top-level Nest module ownership. Maintainability work should split oversized files inside the owning module and expose intentional `facades` or `contracts` for cross-module use instead of importing deep implementation files.

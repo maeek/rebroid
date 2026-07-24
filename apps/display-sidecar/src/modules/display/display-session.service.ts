@@ -36,6 +36,7 @@ const DEFAULT_DISPLAY_CAPABILITIES = [
 @Injectable()
 export class DisplaySessionService {
   private readonly sessions = new Map<string, DisplaySession>();
+  private readonly closeListeners = new Set<(sessionId: string) => void>();
 
   constructor(
     private readonly config: SidecarConfigService,
@@ -150,12 +151,18 @@ export class DisplaySessionService {
     return session;
   }
 
+  onClosed(listener: (sessionId: string) => void): () => void {
+    this.closeListeners.add(listener);
+    return () => this.closeListeners.delete(listener);
+  }
+
   release(id: string): PublicDisplaySession {
     const session = this.get(id);
     session.status = "released";
     session.lastActivityAt = new Date().toISOString();
     const released = this.toPublic(session);
     this.sessions.delete(id);
+    this.notifyClosed(id);
     return released;
   }
 
@@ -167,7 +174,10 @@ export class DisplaySessionService {
         session.lastActivityAt = new Date().toISOString();
         return this.toPublic(session);
       });
-    for (const session of released) this.sessions.delete(session.id);
+    for (const session of released) {
+      this.sessions.delete(session.id);
+      this.notifyClosed(session.id);
+    }
     return released;
   }
 
@@ -190,6 +200,7 @@ export class DisplaySessionService {
     surface.lastActivityAt = new Date().toISOString();
     const released = this.toPublic(surface);
     this.sessions.delete(surface.id);
+    this.notifyClosed(surface.id);
     return released;
   }
 
@@ -296,8 +307,16 @@ export class DisplaySessionService {
         session.status === "released" ||
         new Date(session.expiresAt).getTime() <= now
       ) {
+        session.status = "expired";
         this.sessions.delete(id);
+        this.notifyClosed(id);
       }
+    }
+  }
+
+  private notifyClosed(sessionId: string): void {
+    for (const listener of this.closeListeners) {
+      listener(sessionId);
     }
   }
 

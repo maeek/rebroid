@@ -23,7 +23,8 @@ export function createControlChannel({
 }: ControlChannelOptions): ControlChannel {
   let keyboardCaptureEnabled = false;
   let controlWs: WebSocket | null = null;
-  let dataChannel: RTCDataChannel | null = null;
+  let reliableDataChannel: RTCDataChannel | null = null;
+  let movementDataChannel: RTCDataChannel | null = null;
   let controlRequestSeq = 0;
 
   lifecycle.onClose(() => {
@@ -82,8 +83,17 @@ export function createControlChannel({
       ...messagePayload,
     };
 
+    const movement =
+      messagePayload.type === "touch" &&
+      messagePayload.action === "pointer" &&
+      messagePayload.eventType === "move";
+    const dataChannel = movement ? movementDataChannel : reliableDataChannel;
     if (dataChannel?.readyState === "open") {
       dataChannel.send(JSON.stringify(payload));
+      return Promise.resolve();
+    }
+
+    if (movement && movementDataChannel) {
       return Promise.resolve();
     }
 
@@ -168,9 +178,10 @@ export function createControlChannel({
 
   return {
     connect: connectControlWs,
-    useDataChannel(channel: RTCDataChannel) {
-      dataChannel = channel;
-      dataChannel.onmessage = (event) => {
+    useDataChannels(reliable: RTCDataChannel, movement?: RTCDataChannel) {
+      reliableDataChannel = reliable;
+      movementDataChannel = movement ?? null;
+      reliable.onmessage = (event) => {
         if (typeof event.data !== "string") {
           return;
         }
@@ -183,11 +194,18 @@ export function createControlChannel({
           return;
         }
       };
-      dataChannel.onclose = () => {
-        if (dataChannel === channel) {
-          dataChannel = null;
+      reliable.onclose = () => {
+        if (reliableDataChannel === reliable) {
+          reliableDataChannel = null;
         }
       };
+      if (movement) {
+        movement.onclose = () => {
+          if (movementDataChannel === movement) {
+            movementDataChannel = null;
+          }
+        };
+      }
     },
     send,
   };

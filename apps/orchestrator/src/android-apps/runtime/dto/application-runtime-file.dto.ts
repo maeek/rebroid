@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsString, MaxLength } from 'class-validator';
 
 export class ApplicationRuntimeFileDto {
   @ApiProperty({ example: 'report.pdf' })
@@ -40,4 +41,39 @@ export class ApplicationRuntimeFileDownloadDto {
     example: 'data:application/octet-stream;base64,SGVsbG8=',
   })
   dataUrl!: string;
+}
+
+export class CreateApplicationRuntimeDirectoryDto {
+  @ApiProperty({ example: '/data/media/0/Documents' })
+  @IsString()
+  @MaxLength(4096)
+  parentPath!: string;
+
+  @ApiProperty({ example: 'Reports' })
+  @IsString()
+  @MaxLength(255)
+  name!: string;
+}
+
+export class RenameApplicationRuntimeFileDto {
+  @ApiProperty({ example: '/data/media/0/Documents/report-draft.pdf' })
+  @IsString()
+  @MaxLength(4096)
+  path!: string;
+
+  @ApiProperty({ example: 'report.pdf' })
+  @IsString()
+  @MaxLength(255)
+  name!: string;
+}
+
+export class DeleteApplicationRuntimeFileDto {
+  @ApiProperty({ example: true })
+  deleted!: boolean;
+
+  @ApiProperty({ example: '/data/media/0/Documents/report.pdf' })
+  path!: string;
+
+  @ApiProperty({ enum: ['file', 'directory'], example: 'file' })
+  type!: 'file' | 'directory';
 }

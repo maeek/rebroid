@@ -214,7 +214,7 @@ describe('buildDisplayViewerSurfaces', () => {
     expect(surfaces[0]).toMatchObject({
       id: 'main',
       sessionId: 'session-current',
-      src: '/viewer/display?sessionId=session-current&player=webcodecs&transport=webrtc&audio=1&bitrate=3000000&maxFps=30&maxSize=1080&iFrameInterval=1&fitToFrame=0'
+      src: '/viewer/display?sessionId=session-current&player=webcodecs&transport=webrtc&audio=1&bitrate=16000000&maxFps=60&maxSize=0&iFrameInterval=1&fitToFrame=1'
     })
   })
 })

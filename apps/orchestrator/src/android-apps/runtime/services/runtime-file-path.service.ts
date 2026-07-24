@@ -31,6 +31,31 @@ export class RuntimeFilePathService {
     return sanitizeRuntimeFileName(value);
   }
 
+  normalizeEntryName(value: string) {
+    const normalized = value.trim();
+    const hasControlCharacter = [...normalized].some((character) => {
+      const codePoint = character.codePointAt(0) ?? 0;
+      return codePoint <= 31 || codePoint === 127;
+    });
+    if (
+      !normalized ||
+      normalized === '.' ||
+      normalized === '..' ||
+      normalized.includes('/') ||
+      normalized.includes('\\') ||
+      hasControlCharacter
+    ) {
+      throw new ConflictException('Invalid file or directory name.');
+    }
+    return normalized;
+  }
+
+  assertMutablePath(path: string) {
+    if (path === this.dataDirectory) {
+      throw new ConflictException('The runtime data root cannot be changed.');
+    }
+  }
+
   shouldUseRunningContainer(
     app: AndroidApplication,
     query: ApplicationRuntimeFilesQueryDto,

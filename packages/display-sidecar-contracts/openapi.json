@@ -18,9 +18,7 @@
           }
         },
         "summary": "Read sidecar process health.",
-        "tags": [
-          "health"
-        ]
+        "tags": ["health"]
       }
     },
     "/health/ready": {
@@ -40,9 +38,7 @@
           }
         },
         "summary": "Read sidecar readiness.",
-        "tags": [
-          "health"
-        ]
+        "tags": ["health"]
       }
     },
     "/rebroid/display/features": {
@@ -61,9 +57,7 @@
             }
           }
         },
-        "tags": [
-          "features"
-        ]
+        "tags": ["features"]
       },
       "put": {
         "operationId": "SidecarFeatureController_update",
@@ -90,9 +84,7 @@
             }
           }
         },
-        "tags": [
-          "features"
-        ]
+        "tags": ["features"]
       }
     },
     "/rebroid/adb/{udid}/clipboard": {
@@ -131,9 +123,7 @@
           }
         },
         "summary": "Read Android clipboard text through ADB.",
-        "tags": [
-          "adb"
-        ]
+        "tags": ["adb"]
       },
       "put": {
         "operationId": "AdbController_setClipboard",
@@ -180,9 +170,7 @@
           }
         },
         "summary": "Set Android clipboard text through ADB.",
-        "tags": [
-          "adb"
-        ]
+        "tags": ["adb"]
       }
     },
     "/rebroid/adb/{udid}/logcat": {
@@ -230,9 +218,7 @@
           }
         },
         "summary": "Read recent Android logcat output through ADB.",
-        "tags": [
-          "adb"
-        ]
+        "tags": ["adb"]
       }
     },
     "/rebroid/adb/{udid}/notifications": {
@@ -271,9 +257,7 @@
           }
         },
         "summary": "Read Android notification dump through ADB.",
-        "tags": [
-          "adb"
-        ]
+        "tags": ["adb"]
       }
     },
     "/rebroid/adb/{udid}/screenshot": {
@@ -312,9 +296,7 @@
           }
         },
         "summary": "Capture a PNG screenshot through ADB.",
-        "tags": [
-          "adb"
-        ]
+        "tags": ["adb"]
       }
     },
     "/rebroid/adb/{udid}/tap": {
@@ -362,9 +344,7 @@
             }
           }
         },
-        "tags": [
-          "adb"
-        ]
+        "tags": ["adb"]
       }
     },
     "/rebroid/adb/{udid}/swipe": {
@@ -412,9 +392,7 @@
             }
           }
         },
-        "tags": [
-          "adb"
-        ]
+        "tags": ["adb"]
       }
     },
     "/rebroid/adb/{udid}/input-text": {
@@ -462,9 +440,7 @@
             }
           }
         },
-        "tags": [
-          "adb"
-        ]
+        "tags": ["adb"]
       }
     },
     "/rebroid/adb/{udid}/key": {
@@ -512,9 +488,7 @@
             }
           }
         },
-        "tags": [
-          "adb"
-        ]
+        "tags": ["adb"]
       }
     },
     "/rebroid/adb/{udid}/rotate-display": {
@@ -562,9 +536,7 @@
             }
           }
         },
-        "tags": [
-          "adb"
-        ]
+        "tags": ["adb"]
       }
     },
     "/rebroid/adb/{udid}/shell": {
@@ -612,9 +584,7 @@
             }
           }
         },
-        "tags": [
-          "adb"
-        ]
+        "tags": ["adb"]
       }
     },
     "/rebroid/adb/{udid}/ui-dump": {
@@ -652,9 +622,7 @@
             }
           }
         },
-        "tags": [
-          "adb"
-        ]
+        "tags": ["adb"]
       }
     },
     "/rebroid/adb/{udid}/tap-text": {
@@ -702,9 +670,7 @@
             }
           }
         },
-        "tags": [
-          "adb"
-        ]
+        "tags": ["adb"]
       }
     },
     "/rebroid/adb/{udid}/files": {
@@ -752,9 +718,7 @@
             }
           }
         },
-        "tags": [
-          "adb"
-        ]
+        "tags": ["adb"]
       },
       "get": {
         "operationId": "AdbController_pullFile",
@@ -798,9 +762,7 @@
             }
           }
         },
-        "tags": [
-          "adb"
-        ]
+        "tags": ["adb"]
       },
       "delete": {
         "operationId": "AdbController_deleteFile",
@@ -846,9 +808,7 @@
             }
           }
         },
-        "tags": [
-          "adb"
-        ]
+        "tags": ["adb"]
       }
     },
     "/rebroid/adb/{udid}/files/exists": {
@@ -894,9 +854,7 @@
             }
           }
         },
-        "tags": [
-          "adb"
-        ]
+        "tags": ["adb"]
       }
     },
     "/rebroid/adb/{udid}/files/list": {
@@ -942,9 +900,7 @@
             }
           }
         },
-        "tags": [
-          "adb"
-        ]
+        "tags": ["adb"]
       }
     },
     "/rebroid/display/health": {
@@ -964,9 +920,7 @@
           }
         },
         "summary": "Read display service health.",
-        "tags": [
-          "display"
-        ]
+        "tags": ["display"]
       }
     },
     "/rebroid/display/capabilities": {
@@ -986,9 +940,7 @@
           }
         },
         "summary": "Read display stream and control capabilities.",
-        "tags": [
-          "display"
-        ]
+        "tags": ["display"]
       }
     },
     "/rebroid/display/sessions": {
@@ -1028,9 +980,7 @@
           }
         },
         "summary": "Create or reuse a token-scoped display session for an ADB target.",
-        "tags": [
-          "display"
-        ]
+        "tags": ["display"]
       },
       "get": {
         "operationId": "DisplayController_listSessions",
@@ -1057,9 +1007,7 @@
           }
         },
         "summary": "List display sessions known to this sidecar instance.",
-        "tags": [
-          "display"
-        ]
+        "tags": ["display"]
       }
     },
     "/rebroid/display/sessions/{id}": {
@@ -1097,9 +1045,7 @@
           }
         },
         "summary": "Read one display session.",
-        "tags": [
-          "display"
-        ]
+        "tags": ["display"]
       },
       "delete": {
         "operationId": "DisplayController_releaseSession",
@@ -1135,9 +1081,7 @@
           }
         },
         "summary": "Release one display session.",
-        "tags": [
-          "display"
-        ]
+        "tags": ["display"]
       }
     },
     "/rebroid/display/sessions/{id}/surfaces": {
@@ -1175,9 +1119,7 @@
           }
         },
         "summary": "List display surfaces for one display session.",
-        "tags": [
-          "display"
-        ]
+        "tags": ["display"]
       },
       "post": {
         "operationId": "DisplayController_createSessionSurface",
@@ -1223,9 +1165,7 @@
           }
         },
         "summary": "Create or reuse one experimental virtual display surface.",
-        "tags": [
-          "display"
-        ]
+        "tags": ["display"]
       }
     },
     "/rebroid/display/sessions/{id}/surfaces/{surfaceId}": {
@@ -1272,9 +1212,7 @@
           }
         },
         "summary": "Release one virtual display surface.",
-        "tags": [
-          "display"
-        ]
+        "tags": ["display"]
       }
     },
     "/rebroid/display/sessions/apps/{appId}": {
@@ -1312,9 +1250,7 @@
           }
         },
         "summary": "Release every display session for one app.",
-        "tags": [
-          "display"
-        ]
+        "tags": ["display"]
       }
     },
     "/rebroid/display/sessions/{id}/clipboard": {
@@ -1362,9 +1298,7 @@
           }
         },
         "summary": "Set Android clipboard for a display session.",
-        "tags": [
-          "display"
-        ]
+        "tags": ["display"]
       }
     },
     "/rebroid/display/sessions/{id}/actions": {
@@ -1412,9 +1346,7 @@
           }
         },
         "summary": "Execute a viewer control action for a display session.",
-        "tags": [
-          "display"
-        ]
+        "tags": ["display"]
       }
     },
     "/rebroid/display/sessions/{id}/logcat": {
@@ -1461,9 +1393,7 @@
           }
         },
         "summary": "Read recent Android logcat output for a display session.",
-        "tags": [
-          "display"
-        ]
+        "tags": ["display"]
       }
     },
     "/rebroid/display/public/sessions/{id}/actions": {
@@ -1503,9 +1433,7 @@
           }
         },
         "summary": "Execute a viewer control action using a display session token.",
-        "tags": [
-          "display-public"
-        ]
+        "tags": ["display-public"]
       }
     },
     "/rebroid/display/public/sessions/{id}/webrtc/offer": {
@@ -1545,9 +1473,7 @@
           }
         },
         "summary": "Create a WebRTC display answer using a display session token.",
-        "tags": [
-          "display-public"
-        ]
+        "tags": ["display-public"]
       }
     },
     "/rebroid/display/public/sessions/{id}/keyboard": {
@@ -1587,9 +1513,7 @@
           }
         },
         "summary": "Send a browser keyboard event using a display session token.",
-        "tags": [
-          "display-public"
-        ]
+        "tags": ["display-public"]
       }
     },
     "/rebroid/display/public/sessions/{id}/touch": {
@@ -1629,9 +1553,7 @@
           }
         },
         "summary": "Send a tap or swipe event using a display session token.",
-        "tags": [
-          "display-public"
-        ]
+        "tags": ["display-public"]
       }
     }
   },
@@ -1661,9 +1583,7 @@
             "example": true
           }
         },
-        "required": [
-          "sharedSecretConfigured"
-        ]
+        "required": ["sharedSecretConfigured"]
       },
       "HealthDto": {
         "type": "object",
@@ -1684,30 +1604,20 @@
             "$ref": "#/components/schemas/HealthAuthDto"
           }
         },
-        "required": [
-          "ok",
-          "service",
-          "port",
-          "auth"
-        ]
+        "required": ["ok", "service", "port", "auth"]
       },
       "DisplayFeatureStateDto": {
         "type": "object",
         "properties": {
           "key": {
             "type": "string",
-            "enum": [
-              "feature.display-virtual"
-            ]
+            "enum": ["feature.display-virtual"]
           },
           "effective": {
             "type": "boolean"
           }
         },
-        "required": [
-          "key",
-          "effective"
-        ]
+        "required": ["key", "effective"]
       },
       "DisplayFeatureSnapshotDto": {
         "type": "object",
@@ -1723,10 +1633,7 @@
             }
           }
         },
-        "required": [
-          "revision",
-          "features"
-        ]
+        "required": ["revision", "features"]
       },
       "AdbClipboardResultDto": {
         "type": "object",
@@ -1740,10 +1647,7 @@
             "example": true
           }
         },
-        "required": [
-          "text",
-          "supported"
-        ]
+        "required": ["text", "supported"]
       },
       "AdbClipboardDto": {
         "type": "object",
@@ -1770,11 +1674,7 @@
             "example": "05-25 20:30:00.000 ..."
           }
         },
-        "required": [
-          "source",
-          "collectedAt",
-          "output"
-        ]
+        "required": ["source", "collectedAt", "output"]
       },
       "AdbNotificationsDto": {
         "type": "object",
@@ -1784,9 +1684,7 @@
             "example": "Notification dump output"
           }
         },
-        "required": [
-          "output"
-        ]
+        "required": ["output"]
       },
       "AdbScreenshotDto": {
         "type": "object",
@@ -1804,11 +1702,7 @@
             "example": "2026-05-25T20:30:00.000Z"
           }
         },
-        "required": [
-          "mimeType",
-          "dataUrl",
-          "capturedAt"
-        ]
+        "required": ["mimeType", "dataUrl", "capturedAt"]
       },
       "AdbTapDto": {
         "type": "object",
@@ -1822,10 +1716,7 @@
             "example": 640
           }
         },
-        "required": [
-          "x",
-          "y"
-        ]
+        "required": ["x", "y"]
       },
       "AdbSwipeDto": {
         "type": "object",
@@ -1851,12 +1742,7 @@
             "example": 300
           }
         },
-        "required": [
-          "x1",
-          "y1",
-          "x2",
-          "y2"
-        ]
+        "required": ["x1", "y1", "x2", "y2"]
       },
       "AdbInputTextDto": {
         "type": "object",
@@ -1866,9 +1752,7 @@
             "example": "example text"
           }
         },
-        "required": [
-          "text"
-        ]
+        "required": ["text"]
       },
       "AdbKeyDto": {
         "type": "object",
@@ -1878,9 +1762,7 @@
             "example": "ENTER"
           }
         },
-        "required": [
-          "key"
-        ]
+        "required": ["key"]
       },
       "AdbRotateDisplayDto": {
         "type": "object",
@@ -1896,9 +1778,7 @@
             "example": "landscape"
           }
         },
-        "required": [
-          "orientation"
-        ]
+        "required": ["orientation"]
       },
       "AdbShellDto": {
         "type": "object",
@@ -1912,9 +1792,7 @@
             "example": 15000
           }
         },
-        "required": [
-          "command"
-        ]
+        "required": ["command"]
       },
       "AdbShellResultDto": {
         "type": "object",
@@ -1932,11 +1810,7 @@
             "example": 0
           }
         },
-        "required": [
-          "stdout",
-          "stderr",
-          "exitCode"
-        ]
+        "required": ["stdout", "stderr", "exitCode"]
       },
       "AdbUiDumpDiagnosticsDto": {
         "type": "object",
@@ -1991,10 +1865,7 @@
         "properties": {
           "status": {
             "type": "string",
-            "enum": [
-              "available",
-              "failed"
-            ],
+            "enum": ["available", "failed"],
             "example": "available"
           },
           "xml": {
@@ -2019,10 +1890,7 @@
             "example": "2026-05-25T20:30:00.000Z"
           }
         },
-        "required": [
-          "status",
-          "dumpedAt"
-        ]
+        "required": ["status", "dumpedAt"]
       },
       "AdbTapTextDto": {
         "type": "object",
@@ -2032,9 +1900,7 @@
             "example": "Install"
           }
         },
-        "required": [
-          "text"
-        ]
+        "required": ["text"]
       },
       "AdbTapTextResultDto": {
         "type": "object",
@@ -2052,11 +1918,7 @@
             "nullable": true
           }
         },
-        "required": [
-          "found",
-          "x",
-          "y"
-        ]
+        "required": ["found", "x", "y"]
       },
       "AdbPushFileDto": {
         "type": "object",
@@ -2070,10 +1932,7 @@
             "example": "SGVsbG8="
           }
         },
-        "required": [
-          "path",
-          "contentBase64"
-        ]
+        "required": ["path", "contentBase64"]
       },
       "AdbPullFileResultDto": {
         "type": "object",
@@ -2091,11 +1950,7 @@
             "example": 5
           }
         },
-        "required": [
-          "path",
-          "contentBase64",
-          "sizeBytes"
-        ]
+        "required": ["path", "contentBase64", "sizeBytes"]
       },
       "AdbFileDto": {
         "type": "object",
@@ -2105,9 +1960,7 @@
             "example": "/sdcard/Download/example.txt"
           }
         },
-        "required": [
-          "path"
-        ]
+        "required": ["path"]
       },
       "AdbFileExistsResultDto": {
         "type": "object",
@@ -2117,9 +1970,7 @@
             "example": true
           }
         },
-        "required": [
-          "exists"
-        ]
+        "required": ["exists"]
       },
       "AdbListFilesResultDto": {
         "type": "object",
@@ -2131,9 +1982,7 @@
             }
           }
         },
-        "required": [
-          "files"
-        ]
+        "required": ["files"]
       },
       "DisplayHealthDto": {
         "type": "object",
@@ -2147,10 +1996,7 @@
             "example": "rebroid-display"
           }
         },
-        "required": [
-          "ok",
-          "service"
-        ]
+        "required": ["ok", "service"]
       },
       "DisplayCapabilitiesDto": {
         "type": "object",
@@ -2158,43 +2004,21 @@
           "stream": {
             "type": "object",
             "example": {
-              "protocols": [
-                "websocket",
-                "webrtc"
-              ],
-              "adapters": [
-                "scrcpy-server-v4-raw"
-              ],
-              "codecs": [
-                "h264"
-              ],
-              "audioCodecs": [
-                "opus"
-              ],
+              "protocols": ["websocket", "webrtc"],
+              "adapters": ["scrcpy-server-v4-rbd1"],
+              "codecs": ["h264"],
+              "audioCodecs": ["opus"],
               "defaultCodec": "h264",
-              "players": [
-                "webcodecs",
-                "webrtc"
-              ]
+              "players": ["webcodecs", "webrtc"]
             }
           },
           "compatibility": {
             "type": "object",
             "example": {
               "scrcpyVersion": "4.0",
-              "supportedAndroidVersions": [
-                "13",
-                "14"
-              ],
-              "unsupportedAndroidVersions": [
-                "15",
-                "16"
-              ],
-              "fallbackModes": [
-                "audio-disabled",
-                "stream-control-disabled",
-                "stable-video"
-              ]
+              "supportedAndroidVersions": ["13", "14"],
+              "unsupportedAndroidVersions": ["15", "16"],
+              "fallbackModes": ["audio-disabled", "stream-control-disabled"]
             }
           },
           "surfaces": {
@@ -2262,11 +2086,7 @@
             "example": 160
           }
         },
-        "required": [
-          "width",
-          "height",
-          "dpi"
-        ]
+        "required": ["width", "height", "dpi"]
       },
       "CreateDisplaySessionDto": {
         "type": "object",
@@ -2292,13 +2112,7 @@
             "description": "Session TTL in seconds. Defaults to DISPLAY_SESSION_TTL_SECONDS."
           },
           "capabilities": {
-            "example": [
-              "video",
-              "audio",
-              "control",
-              "clipboard",
-              "screenshot"
-            ],
+            "example": ["video", "audio", "control", "clipboard", "screenshot"],
             "description": "Informational capability labels assigned to the session.",
             "type": "array",
             "items": {
@@ -2312,10 +2126,7 @@
           },
           "surfaceKind": {
             "type": "string",
-            "enum": [
-              "main",
-              "virtual"
-            ],
+            "enum": ["main", "virtual"],
             "example": "main"
           },
           "displayName": {
@@ -2339,9 +2150,7 @@
             ]
           }
         },
-        "required": [
-          "udid"
-        ]
+        "required": ["udid"]
       },
       "DisplaySurfaceDto": {
         "type": "object",
@@ -2356,10 +2165,7 @@
           },
           "kind": {
             "type": "string",
-            "enum": [
-              "main",
-              "virtual"
-            ],
+            "enum": ["main", "virtual"],
             "example": "main"
           },
           "name": {
@@ -2368,12 +2174,7 @@
           },
           "status": {
             "type": "string",
-            "enum": [
-              "created",
-              "active",
-              "released",
-              "expired"
-            ],
+            "enum": ["created", "active", "released", "expired"],
             "example": "created"
           },
           "createdAt": {
@@ -2442,10 +2243,7 @@
           },
           "surfaceKind": {
             "type": "string",
-            "enum": [
-              "main",
-              "virtual"
-            ],
+            "enum": ["main", "virtual"],
             "example": "main"
           },
           "displayName": {
@@ -2461,12 +2259,7 @@
           },
           "status": {
             "type": "string",
-            "enum": [
-              "created",
-              "active",
-              "released",
-              "expired"
-            ],
+            "enum": ["created", "active", "released", "expired"],
             "example": "created"
           },
           "createdAt": {
@@ -2486,13 +2279,7 @@
             "example": "2026-05-25T21:30:10.000Z"
           },
           "capabilities": {
-            "example": [
-              "video",
-              "audio",
-              "control",
-              "clipboard",
-              "screenshot"
-            ],
+            "example": ["video", "audio", "control", "clipboard", "screenshot"],
             "type": "array",
             "items": {
               "type": "string"
@@ -2546,9 +2333,7 @@
             "$ref": "#/components/schemas/DisplaySessionDto"
           }
         },
-        "required": [
-          "session"
-        ]
+        "required": ["session"]
       },
       "DisplaySessionListResponseDto": {
         "type": "object",
@@ -2560,9 +2345,7 @@
             }
           }
         },
-        "required": [
-          "items"
-        ]
+        "required": ["items"]
       },
       "DisplaySurfaceListResponseDto": {
         "type": "object",
@@ -2574,9 +2357,7 @@
             }
           }
         },
-        "required": [
-          "items"
-        ]
+        "required": ["items"]
       },
       "CreateDisplaySurfaceDto": {
         "type": "object",
@@ -2627,10 +2408,7 @@
             "example": "stream-control"
           }
         },
-        "required": [
-          "text",
-          "supported"
-        ]
+        "required": ["text", "supported"]
       },
       "DisplayActionDto": {
         "type": "object",
@@ -2706,9 +2484,7 @@
             "example": "Unsupported display action command: foo"
           }
         },
-        "required": [
-          "ok"
-        ]
+        "required": ["ok"]
       },
       "DisplayLogcatDto": {
         "type": "object",
@@ -2722,10 +2498,7 @@
             "example": "05-25 20:30:00.000 ..."
           }
         },
-        "required": [
-          "collectedAt",
-          "output"
-        ]
+        "required": ["collectedAt", "output"]
       },
       "PublicDisplayActionDto": {
         "type": "object",
@@ -2770,15 +2543,16 @@
           },
           "bitrate": {
             "type": "number",
-            "example": 7000000
+            "example": 16000000
           },
           "maxFps": {
             "type": "number",
-            "example": 30
+            "example": 60
           },
           "maxSize": {
             "type": "number",
-            "example": 1080
+            "example": 0,
+            "description": "0 keeps native resolution"
           },
           "iFrameInterval": {
             "type": "number",
@@ -2790,9 +2564,7 @@
             "default": false
           }
         },
-        "required": [
-          "sdp"
-        ]
+        "required": ["sdp"]
       },
       "DisplayWebrtcAnswerDto": {
         "type": "object",
@@ -2815,13 +2587,18 @@
             "items": {
               "type": "string"
             }
+          },
+          "profileLevelId": {
+            "type": "string",
+            "example": "42e033"
           }
         },
         "required": [
           "transport",
           "codec",
           "sdp",
-          "iceServers"
+          "iceServers",
+          "profileLevelId"
         ]
       },
       "DisplayKeyboardDto": {
@@ -2834,10 +2611,7 @@
           },
           "eventType": {
             "type": "string",
-            "enum": [
-              "keydown",
-              "keyup"
-            ],
+            "enum": ["keydown", "keyup"],
             "example": "keydown"
           },
           "key": {
@@ -2880,21 +2654,12 @@
           },
           "action": {
             "type": "string",
-            "enum": [
-              "tap",
-              "swipe",
-              "pointer"
-            ],
+            "enum": ["tap", "swipe", "pointer"],
             "example": "pointer"
           },
           "eventType": {
             "type": "string",
-            "enum": [
-              "down",
-              "move",
-              "up",
-              "cancel"
-            ],
+            "enum": ["down", "move", "up", "cancel"],
             "example": "move"
           },
           "x": {

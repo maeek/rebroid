@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { IconDeviceFloppy, IconRestore } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
-import { Input } from '@/components/ui/input'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { NumberSliderField } from '@/components/ui/number-slider-field'
 import { Section } from '@/components/ui/section'
@@ -249,21 +248,10 @@ export const GeneralSettingsForm = ({
                 </FormField>
               )}
             />
-            <FormField
-              label='Max size'
-              description='Use 0 to fit the stream to the frame.'
-              className={verticalSettingClassName}
-              layout='vertical'
-            >
-              <Input
-                value={settings.defaultViewerMaxSize}
-                min={0}
-                max={4096}
-                type='number'
-                onChange={event => updateSettings({ defaultViewerMaxSize: Number(event.target.value) })}
-              />
-            </FormField>
           </div>
+          <p className='text-sm text-foreground-muted'>
+            Interactive video always requests the native display at 60 fps with a one-second IDR interval.
+          </p>
           <FormField
             label='Enable keyboard in fullscreen'
             description='Fullscreen viewer sessions start with keyboard input captured.'

@@ -51,6 +51,7 @@ while read -r archive_name image_name; do
 done <<'EOF'
 rebroid-orchestrator-local.tar localhost/rebroid/orchestrator:local
 rebroid-web-local.tar localhost/rebroid/web:local
+rebroid-edge-local.tar localhost/rebroid/edge:local
 rebroid-display-sidecar-local.tar localhost/rebroid/display-sidecar:local
 rebroid-ocr-sidecar-local.tar localhost/rebroid/ocr-sidecar:local
 rebroid-firewall-agent-local.tar localhost/rebroid/firewall-agent:local

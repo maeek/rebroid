@@ -13,20 +13,17 @@ test('login form remains usable at mobile width', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Login' })).toBeVisible()
 })
 
-test('auth artwork is visible in dark mode and suppressed in OLED mode', async ({ page }) => {
+test('auth pixel backdrop is visible in dark mode and suppressed in OLED mode', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('theme', 'dark'))
   await page.goto('/login')
 
   const canvas = page.getByTestId('auth-pixel-canvas')
-  const androidArtwork = page.locator('img[src*="auth-android-backdrop.svg"]')
   await expect(page.locator('html')).toHaveClass(/dark/)
   await expect(canvas).toBeVisible()
-  await expect(androidArtwork).toBeVisible()
 
   await page.getByRole('button', { name: 'Choose theme' }).click()
   await page.getByRole('menuitem', { name: 'OLED' }).click()
 
   await expect(page.locator('html')).toHaveClass(/oled/)
   await expect(canvas).toBeHidden()
-  await expect(androidArtwork).toBeHidden()
 })

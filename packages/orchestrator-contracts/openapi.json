@@ -1902,6 +1902,16 @@
               "example": "default",
               "type": "string"
             }
+          },
+          {
+            "name": "overwrite",
+            "required": false,
+            "in": "query",
+            "description": "Replace an existing file with the same name. Omitted uploads fail on conflicts.",
+            "schema": {
+              "example": "false",
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -1936,6 +1946,213 @@
           }
         },
         "summary": "Upload a file into a directory in the active data volume.",
+        "tags": [
+          "app-runtime"
+        ]
+      },
+      "patch": {
+        "operationId": "AndroidAppsRuntimeController_renameFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameApplicationRuntimeFileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationRuntimeFileDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Rename a file or directory in place.",
+        "tags": [
+          "app-runtime"
+        ]
+      },
+      "delete": {
+        "operationId": "AndroidAppsRuntimeController_deleteFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "required": false,
+            "in": "query",
+            "description": "Absolute path inside the active runtime data volume.",
+            "schema": {
+              "example": "/data",
+              "type": "string"
+            }
+          },
+          {
+            "name": "profileMode",
+            "required": false,
+            "in": "query",
+            "description": "Profile storage mode to browse when the app is not running.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "persistent",
+                "temporary"
+              ]
+            }
+          },
+          {
+            "name": "profileName",
+            "required": false,
+            "in": "query",
+            "description": "Persistent profile name to browse when profileMode is persistent.",
+            "schema": {
+              "example": "default",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteApplicationRuntimeFileDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Permanently delete a file or directory from the active data volume.",
+        "tags": [
+          "app-runtime"
+        ]
+      }
+    },
+    "/api/v1/apps/{id}/runtime/data-directories": {
+      "post": {
+        "operationId": "AndroidAppsRuntimeController_createDirectory",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateApplicationRuntimeDirectoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationRuntimeFileDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a directory in the active data volume.",
+        "tags": [
+          "app-runtime"
+        ]
+      }
+    },
+    "/api/v1/apps/{id}/runtime/data-files/preview": {
+      "get": {
+        "operationId": "AndroidAppsRuntimeController_previewFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "required": false,
+            "in": "query",
+            "description": "Absolute path inside the active runtime data volume.",
+            "schema": {
+              "example": "/data",
+              "type": "string"
+            }
+          },
+          {
+            "name": "profileMode",
+            "required": false,
+            "in": "query",
+            "description": "Profile storage mode to browse when the app is not running.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "persistent",
+                "temporary"
+              ]
+            }
+          },
+          {
+            "name": "profileName",
+            "required": false,
+            "in": "query",
+            "description": "Persistent profile name to browse when profileMode is persistent.",
+            "schema": {
+              "example": "default",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Create a bounded WebP preview for an image file.",
         "tags": [
           "app-runtime"
         ]
@@ -7934,6 +8151,66 @@
           "itemCount",
           "modifiedAt",
           "uploaded"
+        ]
+      },
+      "CreateApplicationRuntimeDirectoryDto": {
+        "type": "object",
+        "properties": {
+          "parentPath": {
+            "type": "string",
+            "example": "/data/media/0/Documents"
+          },
+          "name": {
+            "type": "string",
+            "example": "Reports"
+          }
+        },
+        "required": [
+          "parentPath",
+          "name"
+        ]
+      },
+      "RenameApplicationRuntimeFileDto": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "example": "/data/media/0/Documents/report-draft.pdf"
+          },
+          "name": {
+            "type": "string",
+            "example": "report.pdf"
+          }
+        },
+        "required": [
+          "path",
+          "name"
+        ]
+      },
+      "DeleteApplicationRuntimeFileDto": {
+        "type": "object",
+        "properties": {
+          "deleted": {
+            "type": "boolean",
+            "example": true
+          },
+          "path": {
+            "type": "string",
+            "example": "/data/media/0/Documents/report.pdf"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "file",
+              "directory"
+            ],
+            "example": "file"
+          }
+        },
+        "required": [
+          "deleted",
+          "path",
+          "type"
         ]
       },
       "ApplicationRuntimeFileDownloadDto": {

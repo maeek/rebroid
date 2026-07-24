@@ -1,9 +1,12 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
+  Patch,
   Post,
+  StreamableFile,
   Put,
   Query,
   Req,
@@ -26,8 +29,14 @@ import {
   ApplicationRuntimeFileDownloadDto,
   ApplicationRuntimeFileDto,
   ApplicationRuntimeFileUploadDto,
+  CreateApplicationRuntimeDirectoryDto,
+  DeleteApplicationRuntimeFileDto,
+  RenameApplicationRuntimeFileDto,
 } from '../dto/application-runtime-file.dto';
-import { ApplicationRuntimeFilesQueryDto } from '../dto/application-runtime-files-query.dto';
+import {
+  ApplicationRuntimeDataFileUploadQueryDto,
+  ApplicationRuntimeFilesQueryDto,
+} from '../dto/application-runtime-files-query.dto';
 import { ApplicationScreenshotDto } from '../dto/application-screenshot.dto';
 import { AndroidAppsRuntimeAccessService } from '../services/android-apps-runtime-access.service';
 
@@ -71,10 +80,63 @@ export class AndroidAppsRuntimeController {
   @ApiOkResponse({ type: ApplicationRuntimeFileUploadDto })
   uploadFile(
     @Param('id') id: string,
-    @Query() query: ApplicationRuntimeFilesQueryDto,
+    @Query() query: ApplicationRuntimeDataFileUploadQueryDto,
     @Req() request: FastifyRequest,
   ) {
-    return this.runtime.uploadFile(id, request.raw, query.path);
+    return this.runtime.uploadFile(
+      id,
+      request.raw,
+      query.path,
+      query.overwrite === 'true',
+    );
+  }
+
+  @Post(':id/runtime/data-directories')
+  @ApiOperation({ summary: 'Create a directory in the active data volume.' })
+  @ApiOkResponse({ type: ApplicationRuntimeFileDto })
+  createDirectory(
+    @Param('id') id: string,
+    @Body() dto: CreateApplicationRuntimeDirectoryDto,
+  ) {
+    return this.runtime.createDirectory(id, dto.parentPath, dto.name);
+  }
+
+  @Patch(':id/runtime/data-files')
+  @ApiOperation({ summary: 'Rename a file or directory in place.' })
+  @ApiOkResponse({ type: ApplicationRuntimeFileDto })
+  renameFile(
+    @Param('id') id: string,
+    @Body() dto: RenameApplicationRuntimeFileDto,
+  ) {
+    return this.runtime.renameFile(id, dto.path, dto.name);
+  }
+
+  @Delete(':id/runtime/data-files')
+  @ApiOperation({
+    summary:
+      'Permanently delete a file or directory from the active data volume.',
+  })
+  @ApiOkResponse({ type: DeleteApplicationRuntimeFileDto })
+  deleteFile(
+    @Param('id') id: string,
+    @Query() query: ApplicationRuntimeFilesQueryDto,
+  ) {
+    return this.runtime.deleteFile(id, query.path ?? '/data');
+  }
+
+  @Get(':id/runtime/data-files/preview')
+  @ApiOperation({ summary: 'Create a bounded WebP preview for an image file.' })
+  @ApiOkResponse({
+    content: {
+      'image/webp': { schema: { type: 'string', format: 'binary' } },
+    },
+  })
+  async previewFile(
+    @Param('id') id: string,
+    @Query() query: ApplicationRuntimeFilesQueryDto,
+  ) {
+    const preview = await this.runtime.previewFile(id, query.path);
+    return new StreamableFile(preview.content, { type: preview.mimeType });
   }
 
   @Get(':id/runtime/data-files/download')

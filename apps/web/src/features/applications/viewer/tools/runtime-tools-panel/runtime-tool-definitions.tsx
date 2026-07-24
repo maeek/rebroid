@@ -82,11 +82,11 @@ export const getRuntimeTools = ({
           Icon: IconFolder
         }
       : null,
-    hasPermission(permissions, 'applications:view-logs') && app.running
+    hasPermission(permissions, 'applications:view-logs')
       ? {
           id: 'logs' as const,
           title: 'Logs',
-          description: 'View application logs',
+          description: app.running ? 'View application logs' : 'Inspect startup and crash logs',
           Icon: IconLogs
         }
       : null

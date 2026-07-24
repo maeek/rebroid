@@ -6,7 +6,7 @@ RUN corepack enable
 
 FROM base AS deps
 RUN apk add --no-cache --virtual .build-deps python3 make g++
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.package.json ./
 COPY apps/orchestrator/package.json apps/orchestrator/package.json
 COPY packages/automation-core/package.json packages/automation-core/package.json
 COPY packages/android-application-core/package.json packages/android-application-core/package.json

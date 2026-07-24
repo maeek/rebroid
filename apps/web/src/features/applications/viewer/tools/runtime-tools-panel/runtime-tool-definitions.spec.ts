@@ -86,7 +86,7 @@ describe('getRuntimeTools', () => {
     expect(tools.find(tool => tool.id === 'workflows')?.description).toBe('Run run_1234')
   })
 
-  it('keeps the AI workspace visible while hiding device-only tools when stopped', () => {
+  it('keeps diagnostics visible while hiding device-only tools when stopped', () => {
     const tools = getRuntimeTools({
       app: { ...app, running: false, status: 'stopped' },
       latestAutomationRun: null,
@@ -94,7 +94,8 @@ describe('getRuntimeTools', () => {
       viewerSettings: defaultViewerSettings
     })
 
-    expect(tools.map(tool => tool.id)).toEqual(['ai-agent', 'workflows', 'streaming', 'network-access'])
+    expect(tools.map(tool => tool.id)).toEqual(['ai-agent', 'workflows', 'streaming', 'network-access', 'logs'])
     expect(tools.find(tool => tool.id === 'ai-agent')?.description).toContain('remain available')
+    expect(tools.find(tool => tool.id === 'logs')?.description).toBe('Inspect startup and crash logs')
   })
 })

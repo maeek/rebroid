@@ -5,7 +5,7 @@ services:
       dockerfile: apps/orchestrator/Dockerfile
     image: rebroid/orchestrator:test
     container_name: rebroid-orchestrator-test
-    user: '0:0'
+    user: "0:0"
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -16,11 +16,11 @@ services:
       DISPLAY_SIDECAR_IMAGE: rebroid/display-sidecar:test
       DISPLAY_SIDECAR_CONTAINER_NAME: rebroid-display-sidecar-test
       DISPLAY_SIDECAR_INTERNAL_BASE_URL: http://rebroid-display-sidecar-test:8000
-      DISPLAY_SIDECAR_AUTO_START: 'false'
+      DISPLAY_SIDECAR_AUTO_START: "false"
       OCR_SIDECAR_BASE_URL: http://rebroid-ocr-sidecar-test:8100
       MAX_APK_UPLOAD_SIZE_MB: ${MAX_APK_UPLOAD_SIZE_MB:-512}
     expose:
-      - '4100'
+      - "4100"
     volumes:
       - ${CONTAINER_ENGINE_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
       - orchestrator-test-data:/app/data
@@ -64,14 +64,39 @@ services:
       NODE_ENV: production
       ORCHESTRATOR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
       ORCHESTRATOR_SHARED_SECRET_FILE: /app/secrets/orchestrator-secret
+      SCRCPY_VIDEO_ENCODER: ${SCRCPY_VIDEO_ENCODER:-}
       ORCHESTRATOR_API_URL: http://orchestrator:4100
       DISPLAY_SIDECAR_INTERNAL_BASE_URL: http://rebroid-display-sidecar-test:8000
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
-    ports:
-      - '${REBROID_PORT:-3001}:3001'
+    expose:
+      - "3101"
     volumes:
       - web-test-data:/app/data
       - shared-test-secrets:/app/secrets
+    networks:
+      - platform
+
+  edge:
+    build:
+      context: ..
+      dockerfile: deploy/edge/Dockerfile
+    image: rebroid/edge:test
+    container_name: rebroid-edge-test
+    user: "1000:1000"
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+      orchestrator:
+        condition: service_started
+      display-sidecar:
+        condition: service_started
+    environment:
+      REBROID_TLS_HOSTS: ${REBROID_TLS_HOSTS:-localhost,127.0.0.1}
+    ports:
+      - "${REBROID_PORT:-3001}:3443"
+    volumes:
+      - web-test-data:/app/data:ro
     networks:
       - platform
 
@@ -88,7 +113,7 @@ services:
       ORCHESTRATOR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
       ORCHESTRATOR_SHARED_SECRET_FILE: /app/secrets/orchestrator-secret
     expose:
-      - '8000'
+      - "8000"
     volumes:
       - shared-test-secrets:/app/secrets
     networks:
@@ -104,7 +129,7 @@ services:
     container_name: rebroid-ocr-sidecar-test
     restart: unless-stopped
     expose:
-      - '8100'
+      - "8100"
     networks:
       platform:
         aliases:

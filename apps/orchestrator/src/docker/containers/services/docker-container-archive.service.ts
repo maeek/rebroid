@@ -6,7 +6,10 @@ import type { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import tar from 'tar-stream';
 import { DockerEngineService } from '../../docker-engine.service';
-import type { DockerContainerArchivePort } from '../../contracts/docker-container-archive.port';
+import {
+  DockerContainerArchiveReadLimitError,
+  type DockerContainerArchivePort,
+} from '../../contracts/docker-container-archive.port';
 
 @Injectable()
 export class DockerContainerArchiveService implements DockerContainerArchivePort {
@@ -127,7 +130,11 @@ export class DockerContainerArchiveService implements DockerContainerArchivePort
     );
   }
 
-  async readFileFromContainer(containerId: string, containerPath: string) {
+  async readFileFromContainer(
+    containerId: string,
+    containerPath: string,
+    options: { maximumBytes?: number } = {},
+  ) {
     return this.engine.longOperation(
       'archive_download',
       `Download archive from container ${containerId}`,
@@ -151,8 +158,26 @@ export class DockerContainerArchiveService implements DockerContainerArchivePort
 
             extract.on('entry', (header, stream, next) => {
               const chunks: Buffer[] = [];
+              let totalBytes = 0;
 
               stream.on('data', (chunk: Buffer) => {
+                if (header.type !== 'file') {
+                  return;
+                }
+                totalBytes += chunk.length;
+                if (
+                  options.maximumBytes !== undefined &&
+                  totalBytes > options.maximumBytes
+                ) {
+                  const error = new DockerContainerArchiveReadLimitError(
+                    options.maximumBytes,
+                  );
+                  stream.destroy(error);
+                  extract.destroy(error);
+                  (archive as unknown as Readable).destroy(error);
+                  reject(error);
+                  return;
+                }
                 chunks.push(Buffer.from(chunk));
               });
 

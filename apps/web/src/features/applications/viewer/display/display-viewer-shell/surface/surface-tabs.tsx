@@ -22,6 +22,9 @@ export const SurfaceTabs = ({
   onScrollSurfaceIntoView: (surfaceId: string) => void
 }) => {
   const { isFeatureEnabled } = useFeatureFlags()
+  const virtualDisplaysEnabled = isFeatureEnabled('feature.display-virtual')
+
+  if (!virtualDisplaysEnabled) return null
 
   return (
     <div className='flex shrink-0 items-center justify-between gap-3 pt-2 sm:px-6 sm:pt-3'>
@@ -41,7 +44,7 @@ export const SurfaceTabs = ({
             <span className='max-w-28 truncate'>{surface.name}</span>
           </Button>
         ))}
-        <Visible when={isFeatureEnabled('feature.display-virtual') && !surfaces.some(item => item.kind === 'virtual')}>
+        <Visible when={!surfaces.some(item => item.kind === 'virtual')}>
           <Button
             type='button'
             size='sm'

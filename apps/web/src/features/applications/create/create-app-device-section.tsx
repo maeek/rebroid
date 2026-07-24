@@ -61,7 +61,7 @@ export const CreateAppDeviceSection = ({
       </Visible>
 
       <Visible when={canChangeContainerArgs}>
-        <details className='group border-t border-surface-border/60 pt-4'>
+        <details className='group'>
           <summary className='flex cursor-pointer list-none items-center gap-2 text-sm font-medium text-foreground-muted hover:text-foreground'>
             <IconChevronRight className='size-4 transition-transform group-open:rotate-90' />
             Runtime arguments

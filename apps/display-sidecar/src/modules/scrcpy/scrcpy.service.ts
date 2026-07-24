@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, Logger } from "@nestjs/common";
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+} from "@nestjs/common";
 import { createServer, Server, Socket } from "node:net";
 import { AdbService } from "../adb/adb.service";
 import type { AdbChildProcess } from "../adb/adb.service";
@@ -17,22 +22,22 @@ import {
 } from "./scrcpy-compatibility";
 import {
   SCRCPY_CODEC_H264,
-  SCRCPY_CODEC_H265,
   SCRCPY_CODEC_OPUS,
   ScrcpyPacketParser,
 } from "./scrcpy-packet-parser";
 import type { ScrcpyPacket } from "./scrcpy-packet-parser";
 import { ScrcpyStreamLiveness } from "./scrcpy-stream-liveness";
 import { ScrcpyStreamSessionRegistry } from "./scrcpy-stream-session-registry";
+import { ScrcpySourceStream } from "./scrcpy-source-stream";
 import { ScrcpyVideoPacketForwarder } from "./scrcpy-video-packet-forwarder";
 import {
   ForwardedVideoSocket,
-  SCRCPY_WS_OPEN,
   ScrcpyAudioPacket,
   ScrcpyAttemptResult,
   ScrcpyCompatibilityMode,
+  ScrcpyMediaSink,
   ScrcpySocket,
-  ScrcpyStreamClient,
+  ScrcpyStreamAttachment,
   ScrcpyStreamOptions,
   ScrcpyTunnelMode,
 } from "./scrcpy.types";
@@ -43,8 +48,6 @@ import type {
 
 const LOCALHOST = "127.0.0.1";
 const SOCKET_CONNECT_TIMEOUT_MS = 10_000;
-const WS_HIGH_WATERMARK_BYTES = 8 * 1024 * 1024;
-const WS_LOW_WATERMARK_BYTES = 2 * 1024 * 1024;
 const STREAM_RESTART_BACKOFF_MS = 500;
 const STREAM_HEARTBEAT_INTERVAL_MS = 5_000;
 const SCRCPY_CONNECT_RETRY_DELAY_MS = 100;
@@ -55,11 +58,13 @@ const MAX_QUEUED_CONTROL_AGE_MS = 10_000;
 const SCRCPY_LOGCAT_INTERVAL_MS = 10_000;
 const DEVICE_MESSAGE_CLIPBOARD = 0;
 const DEVICE_MESSAGE_ACK_CLIPBOARD = 1;
-const AUDIO_PACKET_MAGIC = Buffer.from("RA01");
-const AUDIO_PACKET_HEADER_BYTES = AUDIO_PACKET_MAGIC.length + 1 + 8;
 const MINIMUM_SCRCPY_SERVER_MAJOR = 4;
 const MAX_SUPPORTED_ANDROID_SDK = 34;
 const COMPATIBILITY_PROBE_LOGCAT_LINES = 220;
+const SOURCE_IDLE_GRACE_MS = 30_000;
+const VIDEO_RESET_MIN_INTERVAL_MS = 1_000;
+const VIDEO_RESET_WATCHDOG_MS = 3_000;
+const SCRCPY_CONTROL_RESET_VIDEO = 17;
 const COMPATIBILITY_PROBE_PROPERTIES = [
   "ro.build.version.release",
   "ro.build.version.sdk",
@@ -90,9 +95,25 @@ interface ReverseSocketAcceptor {
   close: () => Promise<void>;
 }
 
+interface ActiveScrcpySource {
+  profileKey: string;
+  stream: ScrcpySourceStream;
+  idleTimer: NodeJS.Timeout | null;
+  resetTimer: NodeJS.Timeout | null;
+  resetWatchdog: NodeJS.Timeout | null;
+  resetPending: boolean;
+  resetReason: string;
+  resetGeneration: number;
+  resetCount: number;
+  resetSawConfig: boolean;
+  resetSawKeyFrame: boolean;
+  lastResetAt: number;
+  restartAttempt: (() => Promise<void>) | null;
+}
+
 
 @Injectable()
-export class ScrcpyService {
+export class ScrcpyService implements OnModuleDestroy {
   private readonly logger = new Logger(ScrcpyService.name);
   private readonly controlCodec = new ScrcpyControlCodec();
   private readonly controlSockets = new Map<string, ActiveControlSocket>();
@@ -105,30 +126,118 @@ export class ScrcpyService {
   private readonly lastLogcatDiagnosticsAt = new Map<string, number>();
   private readonly scrcpyServerPushes = new Set<string>();
   private readonly streamSessions = new ScrcpyStreamSessionRegistry();
+  private readonly sources = new Map<string, ActiveScrcpySource>();
 
   constructor(
     private readonly adb: AdbService,
     private readonly config: SidecarConfigService,
   ) {}
 
-  async streamRawVideo(options: ScrcpyStreamOptions) {
+  attachStream(options: ScrcpyStreamOptions): ScrcpyStreamAttachment {
+    this.assertCompatibleScrcpyServerVersion();
+    const profileKey = this.streamProfileKey(options);
+    let source = this.sources.get(options.sessionId);
+    if (source && source.profileKey !== profileKey) {
+      this.closeSource(
+        options.sessionId,
+        1012,
+        "Display encoder profile changed",
+      );
+      source = undefined;
+    }
+
+    if (!source) {
+      const stream = new ScrcpySourceStream(
+        () => this.armSourceIdleTimer(options.sessionId),
+        () => this.cancelSourceIdleTimer(options.sessionId),
+        (reason) => this.requestVideoReset(options.sessionId, reason),
+      );
+      source = {
+        profileKey,
+        stream,
+        idleTimer: null,
+        resetTimer: null,
+        resetWatchdog: null,
+        resetPending: false,
+        resetReason: "",
+        resetGeneration: 0,
+        resetCount: 0,
+        resetSawConfig: false,
+        resetSawKeyFrame: false,
+        lastResetAt: 0,
+        restartAttempt: null,
+      };
+      this.sources.set(options.sessionId, source);
+      const sourceOptions: ScrcpyStreamOptions = {
+        ...options,
+        sink: stream,
+        onActivity: () => {
+          if (stream.consumerCount() > 0) {
+            options.onActivity?.();
+          }
+        },
+      };
+      void this.runSource(sourceOptions, source)
+        .then(() => {
+          if (this.sources.get(options.sessionId) === source) {
+            this.closeSource(
+              options.sessionId,
+              1011,
+              "scrcpy source stopped unexpectedly",
+            );
+          }
+        })
+        .catch((error) => {
+          if (this.sources.get(options.sessionId) !== source) {
+            return;
+          }
+          this.logger.warn(
+            `[scrcpy:${options.udid}:${options.sessionId}] source failed: ${this.errorMessage(error)}`,
+          );
+          this.closeSource(
+            options.sessionId,
+            1011,
+            this.errorMessage(error).slice(0, 120),
+          );
+        });
+    }
+
+    const attachment = source.stream.attach(options.sink);
+    this.requestVideoReset(options.sessionId, "consumer-attached");
+    return attachment;
+  }
+
+  private async runSource(
+    options: ScrcpyStreamOptions,
+    source: ActiveScrcpySource,
+  ) {
     let clientClosed = false;
     let stopCurrentAttempt: (() => Promise<void>) | null = null;
     let streamedOnce = false;
     let restartAttempt = 0;
-    this.assertCompatibleScrcpyServerVersion();
-    let effectiveOptions = this.streamSessions.beginStream(options);
+    let effectiveOptions = this.streamSessions.beginStream({
+      ...options,
+      requestedProfile: {
+        codec: options.codec,
+        maxSize: options.maxSize,
+        maxFps: options.maxFps,
+        bitrate: options.bitrate,
+        iFrameInterval: options.iFrameInterval ?? 1,
+        audio: options.audio,
+        control: options.control ?? true,
+      },
+    });
     this.streamingSessions.add(options.sessionId);
     const compatibilityProbe = await this.collectCompatibilityProbe(
       options.udid,
       `scrcpy:${options.udid}:${options.sessionId}`,
     );
     this.assertSupportedAndroidVersion(compatibilityProbe);
-    this.sendCompatibilityStatus(options.client, effectiveOptions, {
+    this.sendCompatibilityStatus(options.sink, effectiveOptions, {
       message: this.compatibilityProbeSummary(compatibilityProbe),
     });
 
-    options.client.once("close", (code, reason) => {
+    options.sink.onClose((code, reason) => {
       clientClosed = true;
       this.logger.debug(
         `[scrcpy:${options.udid}:${options.sessionId}] stream client closed code=${code ?? "unknown"} reason=${reason?.toString() || ""}`,
@@ -140,17 +249,19 @@ export class ScrcpyService {
     });
 
     try {
-      while (!clientClosed && options.client.readyState === SCRCPY_WS_OPEN) {
+      while (!clientClosed && options.sink.isOpen()) {
         try {
           const result = await this.streamRawVideoAttempt(
             effectiveOptions,
             (stop) => {
               stopCurrentAttempt = stop;
+              source.restartAttempt = stop;
             },
           );
           stopCurrentAttempt = null;
+          source.restartAttempt = null;
 
-          if (clientClosed || options.client.readyState !== SCRCPY_WS_OPEN) {
+          if (clientClosed || !options.sink.isOpen()) {
             return;
           }
 
@@ -161,40 +272,32 @@ export class ScrcpyService {
             effectiveOptions,
             result,
             this.streamSessions.isAudioDisabled(effectiveOptions.sessionId),
-            this.config.scrcpyStableOptions,
           );
           if (audioWasEnabled && !effectiveOptions.audio) {
             this.streamSessions.markAudioDisabled(effectiveOptions.sessionId);
           }
-          if (
-            previousOptions.compatibilityMode !== "stable-video" &&
-            effectiveOptions.compatibilityMode === "stable-video"
-          ) {
-            this.logger.warn(
-              `[scrcpy:${options.udid}:${options.sessionId}] Android display encoder exited after ${result.durationMs}ms; retrying with stable stream settings maxSize=${effectiveOptions.maxSize}, maxFps=${effectiveOptions.maxFps}, bitrate=${effectiveOptions.bitrate}, iFrameInterval=${effectiveOptions.iFrameInterval}`,
-            );
-          }
           if (compatibilityStateChanged(previousOptions, effectiveOptions)) {
-            this.sendCompatibilityStatus(options.client, effectiveOptions);
+            this.sendCompatibilityStatus(options.sink, effectiveOptions);
           }
           if (audioWasEnabled && !effectiveOptions.audio) {
             this.logger.debug(
               `[scrcpy:${options.udid}:${options.sessionId}] Android audio configuration failed; retrying with video only`,
             );
-            this.sendJson(options.client, { type: "audio-disabled" });
+            this.sendJson(options.sink, { type: "audio-disabled" });
           }
           restartAttempt = result.durationMs > 30_000 ? 0 : restartAttempt + 1;
           const delayMs = this.restartDelayMs(restartAttempt);
           this.logger.debug(
             `[scrcpy:${options.udid}:${options.sessionId}] restarting display stream after: ${result.reason}; delayMs=${delayMs}`,
           );
-          this.sendJson(options.client, {
+          this.sendJson(options.sink, {
             type: "reconnecting",
             message: "Reconnecting live display...",
           });
           await this.delay(delayMs);
         } catch (error) {
           stopCurrentAttempt = null;
+          source.restartAttempt = null;
 
           if (!streamedOnce) {
             const diagnostics = await this.collectCompatibilityProbe(
@@ -205,7 +308,6 @@ export class ScrcpyService {
               effectiveOptions,
               this.errorMessage(error),
               diagnostics,
-              this.config.scrcpyStableOptions,
             );
             if (nextOptions !== effectiveOptions) {
               const audioWasEnabled = effectiveOptions.audio;
@@ -222,13 +324,13 @@ export class ScrcpyService {
                 `[scrcpy:${options.udid}:${options.sessionId}] initial display stream setup failed: ${this.errorMessage(error)}; retrying with ${this.retryDescription(effectiveOptions, audioWasEnabled, controlWasEnabled)}; delayMs=${delayMs}`,
               );
               if (audioWasEnabled && !effectiveOptions.audio) {
-                this.sendJson(options.client, { type: "audio-disabled" });
+                this.sendJson(options.sink, { type: "audio-disabled" });
               }
-              this.sendCompatibilityStatus(options.client, effectiveOptions, {
+              this.sendCompatibilityStatus(options.sink, effectiveOptions, {
                 message: this.compatibilityProbeSummary(diagnostics),
                 diagnostic: this.firstDiagnosticLine(diagnostics),
               });
-              this.sendJson(options.client, {
+              this.sendJson(options.sink, {
                 type: "reconnecting",
                 message: this.reconnectMessage(effectiveOptions, error),
                 diagnostic: this.firstDiagnosticLine(diagnostics),
@@ -239,7 +341,7 @@ export class ScrcpyService {
             throw error;
           }
 
-          if (clientClosed || options.client.readyState !== SCRCPY_WS_OPEN) {
+          if (clientClosed || !options.sink.isOpen()) {
             return;
           }
 
@@ -248,7 +350,7 @@ export class ScrcpyService {
           this.logger.debug(
             `[scrcpy:${options.udid}:${options.sessionId}] restarting display stream after setup failure: ${this.errorMessage(error)}; delayMs=${delayMs}`,
           );
-          this.sendJson(options.client, {
+          this.sendJson(options.sink, {
             type: "reconnecting",
             message: "Reconnecting live display...",
           });
@@ -257,12 +359,30 @@ export class ScrcpyService {
       }
     } finally {
       this.streamingSessions.delete(options.sessionId);
-      this.streamSessions.clearStreamClient(options.sessionId, options.client);
+      source.restartAttempt = null;
     }
   }
 
   closeSession(sessionId: string) {
+    this.closeSource(sessionId, 1000, "Display session released");
     this.streamSessions.closeSession(sessionId);
+  }
+
+  requestVideoReset(sessionId: string, reason: string): boolean {
+    const source = this.sources.get(sessionId);
+    if (!source || !source.stream.isOpen()) {
+      return false;
+    }
+    source.resetPending = true;
+    source.resetReason = reason.slice(0, 120);
+    this.scheduleVideoReset(sessionId, source);
+    return true;
+  }
+
+  onModuleDestroy(): void {
+    for (const sessionId of [...this.sources.keys()]) {
+      this.closeSource(sessionId, 1001, "Display sidecar shutting down");
+    }
   }
 
   serverVersion() {
@@ -308,7 +428,7 @@ export class ScrcpyService {
       } catch (error) {
         lastError = error;
         if (
-          options.client.readyState !== SCRCPY_WS_OPEN ||
+          !options.sink.isOpen() ||
           mode === modes[modes.length - 1]
         ) {
           throw error;
@@ -348,6 +468,11 @@ export class ScrcpyService {
     let released = false;
     let resolveAttempt: ((result: ScrcpyAttemptResult) => void) | null = null;
     let launcherFailure: Error | null = null;
+    let actualEncoder =
+      this.config.scrcpyVideoEncoder ?? "scrcpy-android-mediacodec";
+    this.sources
+      .get(options.sessionId)
+      ?.stream.setActualEncoder(actualEncoder);
 
     const cleanup = async (reason = "display stream stopped") => {
       if (released) {
@@ -361,7 +486,7 @@ export class ScrcpyService {
         configPackets: 0,
       };
       this.logger.debug(
-        `[${logPrefix}] closing scrcpy attempt: ${reason}; bytes=${bytesForwarded}; mediaPackets=${videoStats.mediaPackets}; keyframes=${videoStats.keyFrames}; configPackets=${videoStats.configPackets}; durationMs=${Date.now() - startedAt}; clientState=${options.client.readyState}`,
+        `[${logPrefix}] closing scrcpy attempt: ${reason}; bytes=${bytesForwarded}; mediaPackets=${videoStats.mediaPackets}; keyframes=${videoStats.keyFrames}; configPackets=${videoStats.configPackets}; durationMs=${Date.now() - startedAt}; sinkOpen=${options.sink.isOpen()}; queues=${JSON.stringify(options.sink.snapshot())}`,
       );
 
       if (this.shouldCollectDeviceDiagnostics(reason)) {
@@ -383,7 +508,7 @@ export class ScrcpyService {
       directConnection?.destroy();
       this.controlSockets.delete(options.sessionId);
       this.controlUnavailableSessions.delete(options.sessionId);
-      if (options.client.readyState !== SCRCPY_WS_OPEN) {
+      if (!options.sink.isOpen()) {
         this.queuedControlMessages.delete(options.sessionId);
       }
       serverLaunch?.process.kill("SIGTERM");
@@ -450,7 +575,20 @@ export class ScrcpyService {
       }
 
       serverLaunch = this.startServer(options, scid, socketName, tunnelMode);
-      this.pipeServerLogs(serverLaunch.process, logPrefix);
+      this.pipeServerLogs(serverLaunch.process, logPrefix, (line) => {
+        const match = line.match(/(?:video\s+)?encoder:\s*([^,;]+)/i);
+        if (!match?.[1]) {
+          return;
+        }
+        actualEncoder = match[1].trim().slice(0, 160);
+        this.sources
+          .get(options.sessionId)
+          ?.stream.setActualEncoder(actualEncoder);
+        this.sendJson(options.sink, {
+          type: "encoder",
+          name: actualEncoder,
+        });
+      });
       if (serverLaunch.detached) {
         serverLaunch.process.once("close", (code, signal) => {
           if (!code) {
@@ -576,23 +714,58 @@ export class ScrcpyService {
           udid: options.udid,
         });
         this.flushQueuedControlMessages(options.sessionId);
+        const activeSource = this.sources.get(options.sessionId);
+        if (activeSource) {
+          this.scheduleVideoReset(options.sessionId, activeSource);
+        }
       }
       if (options.audio && !audioSocket) {
         this.streamSessions.markAudioDisabled(options.sessionId);
-        this.sendJson(options.client, { type: "audio-disabled" });
+        this.sendJson(options.sink, { type: "audio-disabled" });
       }
       options.onActivity?.();
 
-      this.sendJson(options.client, {
+      this.sendJson(options.sink, {
         type: "ready",
-        adapter: "scrcpy-server-v4-raw",
+        adapter: "scrcpy-server-v4-rbd1",
+        protocolVersion: 1,
         codec: options.codec,
+        encoder: actualEncoder,
+        scrcpyVersion: this.config.scrcpyVersion,
         sessionId: options.sessionId,
         udid: options.udid,
+        requestedProfile: options.requestedProfile ?? {
+          codec: options.codec,
+          maxSize: options.maxSize,
+          maxFps: options.maxFps,
+          bitrate: options.bitrate,
+          iFrameInterval: options.iFrameInterval ?? 1,
+          audio: options.audio,
+          control: this.streamControlEnabled(options),
+        },
+        effectiveProfile: {
+          codec: options.codec,
+          maxSize: options.maxSize,
+          maxFps: options.maxFps,
+          bitrate: options.bitrate,
+          iFrameInterval: options.iFrameInterval ?? 1,
+          audio: options.audio,
+          control: this.streamControlEnabled(options),
+          tunnel: tunnelMode,
+        },
+        sourceAttemptId:
+          this.sources.get(options.sessionId)?.stream.sourceAttemptId,
+        encoderResetCount:
+          this.sources.get(options.sessionId)?.resetCount ?? 0,
+        downgradeReason:
+          options.compatibilityMode === "normal"
+            ? null
+            : options.compatibilityMode,
       });
 
       heartbeatTimer = setInterval(() => {
-        this.sendJson(options.client, { type: "heartbeat" });
+        options.onActivity?.();
+        this.sendJson(options.sink, { type: "heartbeat" });
       }, STREAM_HEARTBEAT_INTERVAL_MS);
       heartbeatTimer.unref?.();
 
@@ -608,44 +781,36 @@ export class ScrcpyService {
         if (!forwarded.packet) {
           return;
         }
-        const mergedPacket = forwarded.packet;
+        const streamPacket = forwarded.packet;
+        const activeSource = this.sources.get(options.sessionId);
+        if (activeSource) {
+          this.observeVideoReset(activeSource, streamPacket);
+        }
         if (forwarded.firstMediaPacket) {
           this.logger.debug(
-            `[${logPrefix}] first video media packet received; keyFrame=${mergedPacket.keyFrame}; bytes=${mergedPacket.data.byteLength}`,
+            `[${logPrefix}] first video media packet received; keyFrame=${streamPacket.keyFrame}; bytes=${streamPacket.data.byteLength}`,
           );
         }
         if (forwarded.firstKeyFrame) {
           this.logger.debug(
-            `[${logPrefix}] first video keyframe received; bytes=${mergedPacket.data.byteLength}; configPrepended=${forwarded.configPrepended}`,
+            `[${logPrefix}] first video keyframe received; bytes=${streamPacket.data.byteLength}; configPrepended=${forwarded.configPrepended}`,
           );
         }
-        liveness?.recordVideoPacket(mergedPacket);
-        const chunk = mergedPacket.data;
+        if (!streamPacket.config) {
+          liveness?.recordVideoPacket(streamPacket);
+        }
+        const chunk = streamPacket.data;
         if (!chunk.length) {
           return;
         }
-        if (options.client.readyState === SCRCPY_WS_OPEN) {
+        if (options.sink.isOpen()) {
           bytesForwarded += chunk.byteLength;
-          if (options.client.bufferedAmount > WS_HIGH_WATERMARK_BYTES) {
-            streamSocket?.pause();
-          }
-
-          options.client.send(chunk, { binary: true }, (error?: Error) => {
+          options.sink.writeVideo(streamPacket, (error?: Error) => {
             if (error) {
               this.runInBackground(
-                cleanup(`display websocket send failed: ${error.message}`),
-                `[${logPrefix}] websocket cleanup`,
+                cleanup(`display video send failed: ${error.message}`),
+                `[${logPrefix}] video sink cleanup`,
               );
-              return;
-            }
-
-            if (
-              streamSocket &&
-              !streamSocket.destroyed &&
-              options.client.readyState === SCRCPY_WS_OPEN &&
-              options.client.bufferedAmount < WS_LOW_WATERMARK_BYTES
-            ) {
-              streamSocket.resume();
             }
           });
         }
@@ -656,45 +821,23 @@ export class ScrcpyService {
         }
         this.streamSessions.markAudioDisabled(options.sessionId);
         this.logger.debug(`[${logPrefix}] ${reason}; continuing video only`);
-        this.sendJson(options.client, { type: "audio-disabled" });
+        this.sendJson(options.sink, { type: "audio-disabled" });
         audioSocket.destroy();
         audioSocket = null;
       };
       const forwardAudioPayload = (packet: ScrcpyAudioPacket) => {
         options.onActivity?.();
-        if (options.client.readyState !== SCRCPY_WS_OPEN || !audioSocket) {
+        if (!options.sink.isOpen() || !audioSocket) {
           return;
         }
         bytesForwarded += packet.data.byteLength;
-        const audioBufferedAmount =
-          options.client.audioBufferedAmount ?? options.client.bufferedAmount;
-        if (audioBufferedAmount > WS_HIGH_WATERMARK_BYTES) {
-          audioSocket?.pause();
-        }
         const done = (error?: Error) => {
           if (error) {
             disableAudio(`display audio send failed: ${error.message}`);
             return;
           }
-          if (
-            audioSocket &&
-            !audioSocket.destroyed &&
-            options.client.readyState === SCRCPY_WS_OPEN &&
-            (options.client.audioBufferedAmount ?? options.client.bufferedAmount) <
-              WS_LOW_WATERMARK_BYTES
-          ) {
-            audioSocket.resume();
-          }
         };
-        if (options.client.sendAudio) {
-          options.client.sendAudio(packet, done);
-          return;
-        }
-        options.client.send(
-          this.websocketAudioPacket(packet),
-          { binary: true },
-          done,
-        );
+        options.sink.writeAudio(packet, done);
       };
 
       this.logger.log(
@@ -714,7 +857,7 @@ export class ScrcpyService {
         if (options.audio) {
           const videoParser = new ScrcpyPacketParser({
             expectedCodec:
-              options.codec === "h265" ? SCRCPY_CODEC_H265 : SCRCPY_CODEC_H264,
+              SCRCPY_CODEC_H264,
             allowSessionPackets: true,
             onPacket: forwardVideoPayload,
           });
@@ -750,7 +893,7 @@ export class ScrcpyService {
         } else {
           const videoParser = new ScrcpyPacketParser({
             expectedCodec:
-              options.codec === "h265" ? SCRCPY_CODEC_H265 : SCRCPY_CODEC_H264,
+              SCRCPY_CODEC_H264,
             allowSessionPackets: true,
             onPacket: forwardVideoPayload,
           });
@@ -770,7 +913,7 @@ export class ScrcpyService {
         let controlReadBuffer = Buffer.alloc(0);
         controlSocket?.on("data", (chunk: Buffer) => {
           controlReadBuffer = this.forwardDeviceControlMessages(
-            options.client,
+            options.sink,
             options.sessionId,
             controlReadBuffer,
             chunk,
@@ -908,6 +1051,9 @@ export class ScrcpyService {
       `max_fps=${options.maxFps}`,
       `video_codec=${options.codec}`,
     ];
+    if (this.config.scrcpyVideoEncoder) {
+      serverOptions.push(`video_encoder=${this.config.scrcpyVideoEncoder}`);
+    }
 
     if (options.newDisplay) {
       serverOptions.push(
@@ -924,7 +1070,7 @@ export class ScrcpyService {
 
     if (options.iFrameInterval && options.iFrameInterval > 0) {
       serverOptions.push(
-        `video_codec_options=i-frame-interval:int=${options.iFrameInterval}`,
+        `video_codec_options=i-frame-interval:int=${options.iFrameInterval},max-bframes:int=0`,
       );
     }
 
@@ -1019,10 +1165,15 @@ export class ScrcpyService {
     }
   }
 
-  private pipeServerLogs(child: AdbChildProcess, logPrefix: string) {
+  private pipeServerLogs(
+    child: AdbChildProcess,
+    logPrefix: string,
+    onLine?: (line: string) => void,
+  ) {
     child.stderr.on("data", (chunk: Buffer) => {
       for (const line of chunk.toString("utf8").split(/\r?\n/)) {
         if (line.trim()) {
+          onLine?.(line.trim());
           this.logger.debug(`[${logPrefix}] ${line}`);
         }
       }
@@ -1031,6 +1182,7 @@ export class ScrcpyService {
     child.stdout.on("data", (chunk: Buffer) => {
       for (const line of chunk.toString("utf8").split(/\r?\n/)) {
         if (line.trim()) {
+          onLine?.(line.trim());
           this.logger.debug(`[${logPrefix}] ${line}`);
         }
       }
@@ -1426,18 +1578,8 @@ export class ScrcpyService {
       .padStart(8, "0");
   }
 
-  private sendJson(client: ScrcpyStreamClient, payload: unknown) {
-    if (client.readyState === SCRCPY_WS_OPEN) {
-      client.send(JSON.stringify(payload));
-    }
-  }
-
-  private websocketAudioPacket(packet: ScrcpyAudioPacket) {
-    const header = Buffer.alloc(AUDIO_PACKET_HEADER_BYTES);
-    AUDIO_PACKET_MAGIC.copy(header);
-    header[AUDIO_PACKET_MAGIC.length] = packet.config ? 1 : 0;
-    header.writeBigInt64BE(packet.timestampUs, AUDIO_PACKET_MAGIC.length + 1);
-    return Buffer.concat([header, packet.data]);
+  private sendJson(sink: ScrcpyMediaSink, payload: unknown) {
+    sink.sendStatus(payload);
   }
 
   private delay(ms: number) {
@@ -1536,11 +1678,11 @@ export class ScrcpyService {
   }
 
   private sendCompatibilityStatus(
-    client: ScrcpyStreamClient,
+    sink: ScrcpyMediaSink,
     options: ScrcpyStreamOptions,
     details: { message?: string; diagnostic?: string } = {},
   ) {
-    this.sendJson(client, {
+    this.sendJson(sink, {
       type: "compatibility",
       mode: options.compatibilityMode ?? "normal",
       control: this.streamControlEnabled(options),
@@ -1558,9 +1700,6 @@ export class ScrcpyService {
     if (mode === "stream-control-disabled") {
       return "Stream control is disabled for this Android build; viewer controls use ADB fallback.";
     }
-    if (mode === "stable-video") {
-      return "Using conservative video settings after the Android encoder exited early.";
-    }
     return "Using the standard scrcpy display stream.";
   }
 
@@ -1571,9 +1710,6 @@ export class ScrcpyService {
     }
     if (mode === "audio-disabled") {
       return "Retrying live display without Android audio capture...";
-    }
-    if (mode === "stable-video") {
-      return "Retrying live display with stable video settings...";
     }
     return `Reconnecting live display: ${this.errorMessage(error)}`;
   }
@@ -1589,7 +1725,7 @@ export class ScrcpyService {
     if (controlWasEnabled && options.control === false) {
       return "ADB control fallback";
     }
-    return `stable stream settings maxSize=${options.maxSize}, maxFps=${options.maxFps}, bitrate=${options.bitrate}, iFrameInterval=${options.iFrameInterval}`;
+    return "the requested video profile";
   }
 
   private compatibilityProbeSummary(probe: ScrcpyCompatibilityProbe | null) {
@@ -1699,7 +1835,7 @@ export class ScrcpyService {
   }
 
   private forwardDeviceControlMessages(
-    client: ScrcpyStreamClient,
+    sink: ScrcpyMediaSink,
     sessionId: string,
     pending: Buffer,
     chunk: Buffer,
@@ -1721,7 +1857,7 @@ export class ScrcpyService {
 
         const text = buffer.subarray(5, 5 + length).toString("utf8");
         buffer = buffer.subarray(5 + length);
-        this.sendJson(client, {
+        this.sendJson(sink, {
           type: "clipboard",
           sessionId,
           text,
@@ -1789,6 +1925,170 @@ export class ScrcpyService {
         `[scrcpy:${active.udid}:${sessionId}] flushed ${flushed} queued control messages`,
       );
     }
+  }
+
+  private streamProfileKey(options: ScrcpyStreamOptions): string {
+    return JSON.stringify({
+      udid: options.udid,
+      codec: options.codec,
+      displayId: options.displayId ?? null,
+      newDisplay: options.newDisplay ?? null,
+      maxSize: options.maxSize,
+      maxFps: options.maxFps,
+      bitrate: options.bitrate,
+      audio: options.audio,
+      control: options.control ?? true,
+      iFrameInterval: options.iFrameInterval ?? 1,
+    });
+  }
+
+  private armSourceIdleTimer(sessionId: string): void {
+    const source = this.sources.get(sessionId);
+    if (!source || source.idleTimer || source.stream.consumerCount() > 0) {
+      return;
+    }
+    source.idleTimer = setTimeout(() => {
+      source.idleTimer = null;
+      if (
+        this.sources.get(sessionId) === source &&
+        source.stream.consumerCount() === 0
+      ) {
+        this.closeSource(sessionId, 1000, "Display source idle timeout");
+      }
+    }, SOURCE_IDLE_GRACE_MS);
+    source.idleTimer.unref?.();
+  }
+
+  private cancelSourceIdleTimer(sessionId: string): void {
+    const source = this.sources.get(sessionId);
+    if (!source?.idleTimer) {
+      return;
+    }
+    clearTimeout(source.idleTimer);
+    source.idleTimer = null;
+  }
+
+  private closeSource(sessionId: string, code: number, reason: string): void {
+    const source = this.sources.get(sessionId);
+    if (!source) {
+      return;
+    }
+    this.sources.delete(sessionId);
+    if (source.idleTimer) {
+      clearTimeout(source.idleTimer);
+    }
+    if (source.resetTimer) {
+      clearTimeout(source.resetTimer);
+    }
+    if (source.resetWatchdog) {
+      clearTimeout(source.resetWatchdog);
+    }
+    source.idleTimer = null;
+    source.resetTimer = null;
+    source.resetWatchdog = null;
+    source.stream.close(code, reason);
+  }
+
+  private scheduleVideoReset(
+    sessionId: string,
+    source: ActiveScrcpySource,
+  ): void {
+    if (
+      !source.resetPending ||
+      source.resetTimer ||
+      this.sources.get(sessionId) !== source
+    ) {
+      return;
+    }
+    const active = this.controlSockets.get(sessionId);
+    if (!active || active.socket.destroyed || !active.socket.writable) {
+      return;
+    }
+    const waitMs = Math.max(
+      0,
+      source.lastResetAt + VIDEO_RESET_MIN_INTERVAL_MS - Date.now(),
+    );
+    if (waitMs > 0) {
+      source.resetTimer = setTimeout(() => {
+        source.resetTimer = null;
+        this.scheduleVideoReset(sessionId, source);
+      }, waitMs);
+      source.resetTimer.unref?.();
+      return;
+    }
+
+    try {
+      active.socket.write(Buffer.from([SCRCPY_CONTROL_RESET_VIDEO]));
+    } catch (error) {
+      this.logger.debug(
+        `[scrcpy:${active.udid}:${sessionId}] video reset write failed: ${this.errorMessage(error)}`,
+      );
+      return;
+    }
+
+    source.resetPending = false;
+    source.lastResetAt = Date.now();
+    source.resetCount += 1;
+    source.resetGeneration += 1;
+    source.resetSawConfig = false;
+    source.resetSawKeyFrame = false;
+    if (source.resetWatchdog) {
+      clearTimeout(source.resetWatchdog);
+    }
+    const generation = source.resetGeneration;
+    const reason = source.resetReason;
+    this.logger.debug(
+      `[scrcpy:${active.udid}:${sessionId}] requested encoder reset generation=${generation} reason=${reason}`,
+    );
+    source.stream.sendStatus({
+      type: "video-reset",
+      generation,
+      reason,
+      count: source.resetCount,
+    });
+    source.resetWatchdog = setTimeout(() => {
+      source.resetWatchdog = null;
+      if (
+        this.sources.get(sessionId) !== source ||
+        source.resetGeneration !== generation ||
+        (source.resetSawConfig && source.resetSawKeyFrame)
+      ) {
+        return;
+      }
+      this.logger.warn(
+        `[scrcpy:${active.udid}:${sessionId}] encoder reset generation=${generation} did not produce configuration and IDR within ${VIDEO_RESET_WATCHDOG_MS}ms; restarting scrcpy attempt`,
+      );
+      this.runInBackground(
+        source.restartAttempt?.(),
+        `[scrcpy:${active.udid}:${sessionId}] encoder reset watchdog restart`,
+      );
+    }, VIDEO_RESET_WATCHDOG_MS);
+    source.resetWatchdog.unref?.();
+  }
+
+  private observeVideoReset(
+    source: ActiveScrcpySource,
+    packet: ScrcpyPacket,
+  ): void {
+    if (!source.resetWatchdog) {
+      return;
+    }
+    if (packet.config) {
+      source.resetSawConfig = true;
+    }
+    if (!packet.config && packet.keyFrame) {
+      source.resetSawKeyFrame = true;
+    }
+    if (!source.resetSawConfig || !source.resetSawKeyFrame) {
+      return;
+    }
+    clearTimeout(source.resetWatchdog);
+    source.resetWatchdog = null;
+    source.stream.sendStatus({
+      type: "video-reset-complete",
+      generation: source.resetGeneration,
+      count: source.resetCount,
+    });
   }
 
   private shellQuote(value: string) {

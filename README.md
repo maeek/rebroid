@@ -38,7 +38,9 @@ Open:
 https://localhost:3443
 ```
 
-The web container now terminates HTTPS itself. On first boot it generates a self-signed certificate and stores it in the persistent `web-data` volume.
+The `edge` container is the only published HTTPS service. On first boot the web
+container generates a self-signed certificate in the persistent `web-data`
+volume; the edge mounts that certificate read-only and terminates TLS.
 
 The first admin user is created automatically. If no password was configured, read the generated password from the
 web container's protected data file:
@@ -128,7 +130,9 @@ mv apps/web/data/web.sqlite apps/web/data/web.sqlite.backup
 
 ## Local HTTPS
 
-The web service starts its own HTTPS listener and auto-generates a self-signed certificate on first boot. The certificate is persisted under `/app/data/certificates` inside the `web` container.
+The nginx edge is the public HTTPS listener. The internal web service generates
+the self-signed certificate on first boot and persists it under
+`/app/data/certificates` in the shared `web-data` volume.
 
 For LAN testing, run the stack normally:
 
@@ -151,7 +155,11 @@ docker compose -f deploy/compose.yaml up --build
 
 Without that override, the default certificate only covers `localhost` and `127.0.0.1`.
 
-WebSocket viewer traffic is proxied through the same endpoint; no separate WebSocket proxy configuration is required.
+The edge routes viewer assets, WebSocket media, and WebRTC signaling directly to
+the display sidecar. WebRTC media then travels directly between the sidecar and
+browser over the published UDP range; neither path traverses the Next.js
+process. See [display streaming](docs/display-streaming.md) for the media flow and
+performance runbook.
 
 To trust the generated certificate, start the stack once and export it from the web container:
 
@@ -274,8 +282,10 @@ compatibility modes:
 - `audio-disabled`: video is retried without Android audio capture.
 - `stream-control-disabled`: scrcpy stream control is disabled and viewer
   controls use the sidecar ADB fallback.
-- `stable-video`: video is retried with lower resolution, frame rate, bitrate,
-  and a conservative I-frame interval.
+
+The sidecar never silently lowers the requested video resolution, frame rate,
+or bitrate. Encoder exits are retried with the same video profile so the viewer
+reports the effective stream instead of appearing to run at a misleading cap.
 
 Recommended Redroid runtime defaults remain:
 
@@ -291,9 +301,6 @@ The viewer workspace can create one experimental virtual display per running
 app. The main display stays first, virtual displays are appended horizontally,
 and overflowing panes scroll sideways instead of wrapping. Any viewer can be
 opened in a minimal popout window with the display and essential controls.
-Each display pane can record a video-only MP4 by muxing the H.264 packets
-already received by the sidecar; the browser downloads the file when recording
-stops.
 
 ## Configuration Surface
 
@@ -302,6 +309,7 @@ The defaults are intended to work without a `.env` file. For a normal admin inst
 ```bash
 REBROID_HTTPS_PORT=3443
 REBROID_TLS_HOSTS=localhost,127.0.0.1
+REBROID_PUBLIC_HOSTS=localhost,127.0.0.1
 CONTAINER_ENGINE_SOCKET=/var/run/docker.sock
 DISPLAY_WEBRTC_UDP_PORT_RANGE=40000-40100
 DISPLAY_WEBRTC_ICE_HOST=
@@ -351,7 +359,9 @@ Network allowlists are applied by the firewall agent while apps are running. Doc
 
 ## Services
 
-- `web`: Next.js UI, backend-for-frontend, and built-in HTTPS proxy for secure browser APIs such as WebCodecs.
+- `edge`: nginx TLS termination and native routing for web, API, viewer, and
+  streaming traffic.
+- `web`: internal Next.js UI and backend-for-frontend.
 - `orchestrator`: NestJS API that manages containers through the Docker-compatible socket.
 - `firewall-agent`: host-network service that applies Rebroid-owned outbound firewall rules.
 - `display-sidecar`: display service for ADB viewer sessions and streaming.

@@ -2,12 +2,12 @@
 
 ## Ownership
 
-| Process | Owns | Does not own |
-| --- | --- | --- |
-| Orchestrator | Android lifecycle, Docker/network operations, persisted feature intent and revision | Display sockets/sessions, OCR inference |
-| Display sidecar | ADB execution, scrcpy processes/sockets, viewer sessions, WebSocket and WebRTC transport | Android container lifecycle, persisted feature values |
-| Go WebRTC bridge | One peer connection, SDP/data-channel protocol, H.264 and Opus forwarding | Sessions, ADB, feature decisions |
-| OCR sidecar | Image bounds, preprocessing cascade, selected Paddle model, inference capacity | Automation policy, persisted feature values |
+| Process          | Owns                                                                                     | Does not own                                          |
+| ---------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Orchestrator     | Android lifecycle, Docker/network operations, persisted feature intent and revision      | Display sockets/sessions, OCR inference               |
+| Display sidecar  | ADB execution, scrcpy processes/sockets, viewer sessions, WebSocket and WebRTC transport | Android container lifecycle, persisted feature values |
+| Go WebRTC bridge | One peer connection, SDP/data-channel protocol, PTS-driven H.264/Opus RTP, RTCP feedback | Sessions, ADB, feature decisions                      |
+| OCR sidecar      | Image bounds, preprocessing cascade, selected Paddle model, inference capacity           | Automation policy, persisted feature values           |
 
 One display sidecar serves one host. Session state is bounded and intentionally local; do not add a database or distributed session layer without changing the deployment architecture.
 
@@ -19,15 +19,33 @@ Virtual surfaces are child sessions. New creation requires a synchronized, enabl
 
 ## Streaming and controls
 
-- WebSocket: the viewer connects with its session token; the sidecar owns scrcpy packet parsing and sends H.264 plus optional framed Opus.
-- WebRTC: the viewer posts an offer; the TypeScript service launches the Go bridge and passes video/audio file descriptors. The bridge owns SDP, peer state, codec packetization, and data-channel forwarding.
+- The segmented scrcpy parser emits complete access units without repeatedly
+  concatenating its input. Each consumer receives a versioned `RBD1` envelope
+  containing media kind, flags, sequence, unsigned source PTS, and payload
+  length. H.264 configuration remains distinct from media access units.
+- Every consumer owns a three-frame/75 ms video live-edge queue and a 100 ms
+  audio queue. Overflow clears queued delta frames and resumes only with cached
+  SPS/PPS plus an IDR. Consumer writes never pause the scrcpy source.
+- WebSocket: nginx routes the token-scoped connection directly to the sidecar.
+  A dedicated browser worker parses H.264 and owns `VideoDecoder`, using a track
+  generator or `OffscreenCanvas` ahead of the main-thread Canvas2D fallback.
+- WebRTC: the viewer posts an offer; the TypeScript service launches the Go
+  bridge and passes `RBD1` video/audio file descriptors. The bridge packetizes
+  one access unit at a time, derives the 90 kHz RTP clock from source PTS, and
+  continuously drains sender RTCP for reports, NACK, PLI, and transport-wide
+  congestion feedback. RTP travels directly between Pion and the browser.
 - HTTP, WebSocket, and WebRTC control messages enter the same `DisplayControlService`. It validates the session capability and delegates to scrcpy control, with the existing ADB fallback. Transport envelopes differ, but semantic errors are `invalid_control`, `missing_capability`, `control_reconnecting`, or `execution_failed`.
 
 The public token controllers are separate from shared-secret-protected internal session controllers. Viewer asset serving is separate from both.
 
 ## Protected scrcpy boundary
 
-`ScrcpyService` deliberately remains a large lifecycle owner because its awaited ADB commands, listener registration, socket reads, process launch, retry classification, and cleanup are order-sensitive. This pass removed recording hooks and injected typed configuration without extracting or reordering that lifecycle. See [scrcpy-invariants.md](scrcpy-invariants.md). A real Redroid matrix is mandatory after edits to protected methods.
+`ScrcpyService` deliberately remains a large lifecycle owner because its awaited
+ADB commands, listener registration, socket reads, process launch, retry
+classification, and cleanup are order-sensitive. `RBD1` framing and queueing
+were added around that lifecycle without reordering it. See
+[scrcpy-invariants.md](scrcpy-invariants.md). A real Redroid matrix is mandatory
+after edits to protected methods.
 
 ## ADB boundary
 
@@ -67,4 +85,6 @@ Each process validates deployment configuration at startup. Runtime feature valu
 - Persisted registry and mutation semantics: orchestrator `feature-flags`.
 - Shared generated API shapes only: contract packages.
 
-Good first contributions are pure ADB input cases, Annex-B/Opus parsing fixtures, OCR cascade/limit tests, and docs. Run the focused display test, `go test ./...`, or `python3 -m pytest -q` before broader repository checks.
+Good first contributions are pure ADB input cases, `RBD1`/Annex-B/Opus parsing
+fixtures, OCR cascade/limit tests, and docs. Run the focused display test,
+`go test ./...`, or `python3 -m pytest -q` before broader repository checks.

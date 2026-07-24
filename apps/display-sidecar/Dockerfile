@@ -5,7 +5,7 @@ FROM node:24-bookworm-slim AS builder
 WORKDIR /workspace
 RUN corepack enable
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.package.json ./
 COPY apps/display-sidecar/package.json apps/display-sidecar/package.json
 COPY packages/android-application-core/package.json packages/android-application-core/package.json
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --filter @rebroid/display-sidecar... --frozen-lockfile
