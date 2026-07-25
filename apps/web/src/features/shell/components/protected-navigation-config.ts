@@ -5,7 +5,6 @@ import {
   IconBox,
   IconBrandDocker,
   IconCalendarTime,
-  IconCast,
   IconChartHistogram,
   IconHistory,
   IconNetwork,
@@ -44,11 +43,10 @@ export const securitySections: NavigationItem[] = [
 export const platformSections: NavigationItem[] = [
   { name: 'Overview', Icon: IconChartHistogram, href: '/platform' },
   { name: 'Runtime defaults', Icon: IconAdjustments, href: '/platform/runtime' },
-  { name: 'AI', Icon: GradientSparklesIcon, href: '/platform/ai' },
-  { name: 'Services', Icon: IconPlugConnected, href: '/platform/services' },
   { name: 'Features', Icon: IconAdjustments, href: '/platform/features' },
-  { name: 'Display sessions', Icon: IconCast, href: '/platform/display-sessions' },
-  { name: 'Scheduler', Icon: IconCalendarTime, href: '/platform/scheduler' }
+  { name: 'Services', Icon: IconPlugConnected, href: '/platform/services' },
+  { name: 'Scheduler', Icon: IconCalendarTime, href: '/platform/scheduler' },
+  { name: 'AI', Icon: GradientSparklesIcon, href: '/platform/ai' }
 ]
 
 export const runtimeSections: NavigationItem[] = [

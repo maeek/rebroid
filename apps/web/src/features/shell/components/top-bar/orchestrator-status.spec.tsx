@@ -46,7 +46,7 @@ describe('OrchestratorStatus', () => {
     expect(getOrchestratorHealthSummaryAction).toHaveBeenCalledTimes(1)
   })
 
-  it('links optional service health rows to their service editors', () => {
+  it('links service health rows to their service pages and editors', () => {
     vi.mocked(usePollingQuery).mockReturnValue({
       data: undefined,
       error: undefined,
@@ -58,6 +58,9 @@ describe('OrchestratorStatus', () => {
     render(<OrchestratorStatus />)
     fireEvent.click(screen.getByRole('button', { name: /checking/i }))
 
+    expect(screen.getByRole('link', { name: /casting/i }).getAttribute('href')).toBe(
+      '/platform/services/display-sessions'
+    )
     expect(screen.getByRole('link', { name: /firewall/i }).getAttribute('href')).toBe(
       '/platform/services?service=firewall'
     )

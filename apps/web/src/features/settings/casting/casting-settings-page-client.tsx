@@ -31,6 +31,7 @@ export const CastingSettingsPageClient = ({
     <StandardPage className='gap-2'>
       <PageHeader
         section={{ label: 'Platform', href: '/platform' }}
+        trail={[{ label: 'Services', href: '/platform/services' }]}
         title='Display sessions'
         description='Inspect the display service and end active viewer sessions.'
         actions={

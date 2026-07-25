@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { IconLoader2, IconPencil, IconRestore, IconSettings } from '@tabler/icons-react'
+import { IconCast, IconListDetails, IconLoader2, IconPencil, IconRestore, IconSettings } from '@tabler/icons-react'
+import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
+import { StatusBadge, type StatusBadgeTone } from '@/components/ui/status-badge'
 import { toast } from '@/hooks/use-toast'
-import { cn } from '@/lib/utils'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import {
   resetOrchestratorUiSettings,
@@ -18,6 +19,7 @@ import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { ServiceSettingsDialog, serviceDetails, serviceMeta, type ServiceId } from './service-settings-dialog'
+import type { ServiceHealth } from '@/shared/contracts/diagnostics'
 import type {
   OptionalServicesUiSettings,
   OrchestratorUiSettings
@@ -25,22 +27,42 @@ import type {
 import type { ColumnDef } from '@tanstack/react-table'
 
 type ServiceRow = {
-  id: ServiceId
+  id: ServiceId | 'display'
   title: string
   description: string
   icon: ReactNode
   endpoint: string | null
-  timeoutMs: number
+  timeoutMs: number | null
   settingsSummary: string
+  state: {
+    label: string
+    tone: StatusBadgeTone
+  }
+  action:
+    | {
+        type: 'edit'
+        serviceId: ServiceId
+      }
+    | {
+        type: 'link'
+        href: string
+        label: string
+      }
 }
 
-const serviceStatus = (service: { endpoint: string | null }) => (service.endpoint ? 'Configured' : 'Needs endpoint')
+const displayStatusTones = {
+  healthy: 'success',
+  unhealthy: 'danger',
+  offline: 'danger',
+  disabled: 'neutral'
+} satisfies Record<ServiceHealth['status'], StatusBadgeTone>
 
-const statusClassName = (service: { endpoint: string | null }) => {
-  return service.endpoint
-    ? 'border-success/35 bg-success/10 text-success'
-    : 'border-warning/35 bg-warning/10 text-warning'
-}
+const displayStatusLabels = {
+  healthy: 'Healthy',
+  unhealthy: 'Unhealthy',
+  offline: 'Offline',
+  disabled: 'Disabled'
+} satisfies Record<ServiceHealth['status'], string>
 
 const runtimeSettings = (settings: OrchestratorUiSettings) => ({
   defaultContainerImage: settings.defaultContainerImage,
@@ -56,9 +78,11 @@ const isServiceId = (value: string | null | undefined): value is ServiceId =>
   Boolean(value) && serviceIds.includes(value as ServiceId)
 
 export const PlatformServicesPage = ({
+  initialDisplayHealth,
   initialSettings,
   requestedServiceId
 }: {
+  initialDisplayHealth: ServiceHealth
   initialSettings: OrchestratorUiSettings
   requestedServiceId?: string | null
 }) => {
@@ -91,25 +115,53 @@ export const PlatformServicesPage = ({
     setServiceRoute(null)
   }, [setServiceRoute])
 
-  const serviceRows = useMemo<ServiceRow[]>(
-    () =>
-      (Object.keys(serviceMeta) as ServiceId[])
-        .filter(id => (id === 'ocr' ? isFeatureEnabled('feature.ocr') : isFeatureEnabled('feature.firewall')))
-        .map(id => {
-          const service = settings.services[id]
-          const meta = serviceMeta[id]
-          return {
-            id,
-            title: meta.title,
-            description: meta.description,
-            icon: meta.icon,
-            endpoint: service.endpoint,
-            timeoutMs: service.timeoutMs,
-            settingsSummary: serviceDetails(settings.services, id)
+  const serviceRows = useMemo<ServiceRow[]>(() => {
+    const configurableRows: ServiceRow[] = (Object.keys(serviceMeta) as ServiceId[])
+      .filter(id => (id === 'ocr' ? isFeatureEnabled('feature.ocr') : isFeatureEnabled('feature.firewall')))
+      .map(id => {
+        const service = settings.services[id]
+        const meta = serviceMeta[id]
+        return {
+          id,
+          title: meta.title,
+          description: meta.description,
+          icon: meta.icon,
+          endpoint: service.endpoint,
+          timeoutMs: service.timeoutMs,
+          settingsSummary: serviceDetails(settings.services, id),
+          state: {
+            label: service.endpoint ? 'Configured' : 'Needs endpoint',
+            tone: service.endpoint ? 'success' : 'warning'
+          },
+          action: {
+            type: 'edit',
+            serviceId: id
           }
-        }),
-    [isFeatureEnabled, settings.services]
-  )
+        }
+      })
+
+    return [
+      ...configurableRows,
+      {
+        id: 'display',
+        title: 'Display service',
+        description: 'Live display streaming and viewer session management.',
+        icon: <IconCast className='size-5' />,
+        endpoint: 'Managed internally',
+        timeoutMs: null,
+        settingsSummary: 'Viewer session management',
+        state: {
+          label: displayStatusLabels[initialDisplayHealth.status],
+          tone: displayStatusTones[initialDisplayHealth.status]
+        },
+        action: {
+          type: 'link',
+          href: '/platform/services/display-sessions',
+          label: 'View sessions'
+        }
+      }
+    ]
+  }, [initialDisplayHealth.status, isFeatureEnabled, settings.services])
 
   const columns = useMemo<ColumnDef<ServiceRow>[]>(
     () => [
@@ -135,16 +187,7 @@ export const PlatformServicesPage = ({
         header: 'State',
         meta: { label: 'State' },
         size: 132,
-        cell: ({ row }) => (
-          <span
-            className={cn(
-              'inline-flex rounded-full border px-2 py-1 text-xs font-medium uppercase leading-none',
-              statusClassName(row.original)
-            )}
-          >
-            {serviceStatus(row.original)}
-          </span>
-        )
+        cell: ({ row }) => <StatusBadge tone={row.original.state.tone}>{row.original.state.label}</StatusBadge>
       },
       {
         accessorKey: 'endpoint',
@@ -160,7 +203,11 @@ export const PlatformServicesPage = ({
         header: 'Timeout',
         meta: { label: 'Timeout' },
         size: 140,
-        cell: ({ row }) => <span className='whitespace-nowrap text-foreground-muted'>{row.original.timeoutMs} ms</span>
+        cell: ({ row }) => (
+          <span className='whitespace-nowrap text-foreground-muted'>
+            {row.original.timeoutMs === null ? '—' : `${row.original.timeoutMs} ms`}
+          </span>
+        )
       },
       {
         accessorKey: 'settingsSummary',
@@ -175,20 +222,36 @@ export const PlatformServicesPage = ({
         meta: { label: 'Actions' },
         enableSorting: false,
         enableResizing: false,
-        size: 112,
-        cell: ({ row }) => (
-          <div className='flex justify-end'>
-            <Button
-              type='button'
-              variant='ghost'
-              size='sm'
-              onClick={() => openServiceEditor(row.original.id)}
-            >
-              <IconPencil className='size-4' />
-              Edit
-            </Button>
-          </div>
-        )
+        size: 144,
+        cell: ({ row }) => {
+          const action = row.original.action
+          return (
+            <div className='flex justify-end'>
+              {action.type === 'link' ? (
+                <Button
+                  asChild
+                  variant='ghost'
+                  size='sm'
+                >
+                  <Link href={action.href}>
+                    <IconListDetails className='size-4' />
+                    {action.label}
+                  </Link>
+                </Button>
+              ) : (
+                <Button
+                  type='button'
+                  variant='ghost'
+                  size='sm'
+                  onClick={() => openServiceEditor(action.serviceId)}
+                >
+                  <IconPencil className='size-4' />
+                  Edit
+                </Button>
+              )}
+            </div>
+          )
+        }
       }
     ],
     [openServiceEditor]
@@ -197,7 +260,9 @@ export const PlatformServicesPage = ({
     const query = search.trim().toLowerCase()
     if (!query) return serviceRows
     return serviceRows.filter(service =>
-      `${service.title} ${service.description} ${service.endpoint ?? ''}`.toLowerCase().includes(query)
+      `${service.title} ${service.description} ${service.endpoint ?? ''} ${service.state.label} ${service.settingsSummary}`
+        .toLowerCase()
+        .includes(query)
     )
   }, [search, serviceRows])
 
@@ -301,7 +366,7 @@ export const PlatformServicesPage = ({
               pageSize={Math.max(visibleServiceRows.length, 1)}
               getRowId={row => row.id}
               minWidth='78rem'
-              emptyState={<div className='text-center text-foreground-muted'>No optional services configured.</div>}
+              emptyState={<div className='text-center text-foreground-muted'>No services match your search.</div>}
             />
           </DataGridWorkspace>
         </Section>

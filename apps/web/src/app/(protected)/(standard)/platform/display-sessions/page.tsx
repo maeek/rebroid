@@ -1,5 +1,5 @@
-import { PlatformDisplaySessionsPageEntry } from '@/features/settings/casting/pages/platform-display-sessions/page-entry'
+import { redirect } from 'next/navigation'
 
-export default function CastingSettingsPage() {
-  return <PlatformDisplaySessionsPageEntry />
+export default function LegacyPlatformDisplaySessionsPage() {
+  redirect('/platform/services/display-sessions')
 }

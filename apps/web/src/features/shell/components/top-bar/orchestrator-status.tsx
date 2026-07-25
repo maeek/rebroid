@@ -94,7 +94,7 @@ const serviceRows = (health: OrchestratorHealth | null, fallbackMessage: string)
   },
   {
     name: 'Casting',
-    href: '/platform/display-sessions',
+    href: '/platform/services/display-sessions',
     service: health?.services.display ?? checkingService(fallbackMessage)
   },
   {
