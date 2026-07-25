@@ -37,8 +37,8 @@ export const RuntimeGappsImageBuilderPageClient = (props: RuntimeGappsImageBuild
         }
       />
 
-      <PageContent className='mx-auto max-w-6xl'>
-        <div className='grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.8fr)] xl:gap-14'>
+      <PageContent>
+        <div className='grid w-full gap-10 lg:grid-cols-[minmax(20rem,2fr)_minmax(20rem,3fr)] xl:gap-14'>
           <GappsBuildConfiguration
             controller={controller}
             resources={props.presetResponse.resources}

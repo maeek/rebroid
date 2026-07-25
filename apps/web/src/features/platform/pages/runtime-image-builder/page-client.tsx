@@ -52,8 +52,8 @@ export const RuntimeImageBuilderPageClient = ({
           </Button>
         }
       />
-      <PageContent className='mx-auto max-w-7xl'>
-        <section className='grid w-full gap-8 lg:grid-cols-[minmax(18rem,22rem)_minmax(0,48rem)] lg:justify-center xl:gap-10'>
+      <PageContent>
+        <section className='grid w-full gap-8 lg:grid-cols-[minmax(18rem,26rem)_minmax(0,1fr)] xl:gap-10 2xl:grid-cols-[minmax(22rem,28rem)_minmax(0,1fr)]'>
           <aside className='flex min-w-0 flex-col gap-6'>
             <RecipeSection {...builder.recipeSectionProps} />
             <ContextSection {...builder.contextSectionProps} />
