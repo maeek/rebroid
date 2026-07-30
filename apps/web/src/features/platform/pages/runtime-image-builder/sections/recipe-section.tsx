@@ -1,7 +1,8 @@
-import { IconDeviceFloppy, IconLoader2 } from '@tabler/icons-react'
+import { IconDeviceFloppy } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
+import { MutationButton } from '@/components/ui/mutation-button'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Visible } from '@/components/ui/visible'
@@ -144,15 +145,16 @@ export const RecipeSection = ({
       </Select>
     </FormField>
     <div className='flex flex-wrap gap-2'>
-      <Button
+      <MutationButton
         type='button'
         variant='secondary'
-        disabled={isSavingRecipe}
+        pending={isSavingRecipe}
+        pendingLabel='Saving recipe…'
         onClick={onSaveRecipe}
       >
-        {isSavingRecipe ? <IconLoader2 className='size-4 animate-spin' /> : <IconDeviceFloppy />}
+        <IconDeviceFloppy />
         Save recipe
-      </Button>
+      </MutationButton>
     </div>
   </Section>
 )

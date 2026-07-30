@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
-import { PageBreadcrumbsSkeleton } from '@/shared/ui/page/page-breadcrumbs-skeleton'
+import { PageHeader } from '@/shared/ui/page/page-header'
 import { StandardPage } from '@/shared/ui/page/page-layout'
 
 const BoxedSectionSkeleton = ({ titleWidth = 'w-32', children }: { titleWidth?: string; children?: ReactNode }) => (
@@ -9,7 +9,7 @@ const BoxedSectionSkeleton = ({ titleWidth = 'w-32', children }: { titleWidth?: 
     surface='panel'
     className='h-full min-w-0'
     title={<Skeleton className={`h-5 ${titleWidth}`} />}
-    titleClassName='pb-4'
+    headingSpacing='default'
   >
     {children}
   </Section>
@@ -17,17 +17,11 @@ const BoxedSectionSkeleton = ({ titleWidth = 'w-32', children }: { titleWidth?: 
 
 export const SystemResourcesPageSkeleton = () => (
   <StandardPage className='gap-2'>
-    <section className='shrink-0 px-6 py-4 max-sm:px-4'>
-      <div className='flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-start'>
-        <div className='flex flex-col gap-2'>
-          <PageBreadcrumbsSkeleton
-            className='pt-0'
-            itemWidths={['w-24', 'w-16']}
-          />
-          <Skeleton className='mt-4 h-9 w-28 max-sm:h-7' />
-        </div>
-      </div>
-    </section>
+    <PageHeader
+      section={{ label: 'System' }}
+      title='Resources'
+      description='Inspect host capacity, utilization, and recent resource pressure.'
+    />
     <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
       <div className='grid gap-6 xl:grid-cols-2'>
         <BoxedSectionSkeleton titleWidth='w-28'>

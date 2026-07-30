@@ -8,7 +8,7 @@ describe('ScheduledTasksPageSkeleton', () => {
 
     expect(screen.getByTestId('scheduler-summary-skeleton')).toBeTruthy()
     expect(screen.getByTestId('scheduler-grid-skeleton')).toBeTruthy()
-    expect(screen.getByTestId('data-grid-skeleton')).toBeTruthy()
+    expect(screen.getAllByTestId('data-grid-skeleton-row')).toHaveLength(5)
     expect(screen.queryByText('Tasks')).toBeNull()
   })
 })

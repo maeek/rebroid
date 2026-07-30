@@ -14,6 +14,14 @@ export interface UserGroup {
   updatedAt: string
 }
 
+export type CreateUserGroupInput = {
+  name: string
+  description: string
+  role: UserRole
+  quotas: Partial<ResourceQuota>
+  permissions: PermissionMap
+}
+
 export interface PublicUser {
   id: string
   username: string

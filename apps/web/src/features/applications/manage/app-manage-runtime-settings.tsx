@@ -42,7 +42,7 @@ export const AppManageRuntimeSettings = ({
     <Section
       title='Runtime'
       surface='band'
-      titleClassName='pb-4'
+      headingSpacing='default'
       contentClassName='gap-5'
     >
       <Visible when={canChangeSessionLimit}>

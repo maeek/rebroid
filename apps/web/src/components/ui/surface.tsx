@@ -22,6 +22,16 @@ export const overlayClassName = 'bg-black/64 supports-[backdrop-filter]:backdrop
 export const interactiveItemClassName =
   'rounded-control outline-none transition-colors data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50'
 
+export const semanticToneClassNames = {
+  neutral: '',
+  info: 'data-[tone=info]:!border-info/45 data-[tone=info]:!bg-info/14 data-[tone=info]:text-foreground',
+  success:
+    'data-[tone=success]:!border-success/45 data-[tone=success]:!bg-success/14 data-[tone=success]:text-foreground',
+  warning:
+    'data-[tone=warning]:!border-warning/45 data-[tone=warning]:!bg-warning/14 data-[tone=warning]:text-foreground',
+  danger: 'data-[tone=danger]:!border-danger/45 data-[tone=danger]:!bg-danger/14 data-[tone=danger]:text-danger'
+} as const
+
 export const surfaceVariants = cva('border text-foreground', {
   variants: {
     level: {
@@ -33,11 +43,11 @@ export const surfaceVariants = cva('border text-foreground', {
       control: cn('rounded-control', controlSurfaceClassName)
     },
     tone: {
-      neutral: '',
-      info: 'border-info/35 bg-info/10 text-foreground',
-      success: 'border-success/35 bg-success/10 text-foreground',
-      warning: 'border-warning/35 bg-warning/10 text-foreground',
-      danger: 'border-danger/40 bg-danger/10 text-danger'
+      neutral: semanticToneClassNames.neutral,
+      info: semanticToneClassNames.info,
+      success: semanticToneClassNames.success,
+      warning: semanticToneClassNames.warning,
+      danger: semanticToneClassNames.danger
     },
     interactive: {
       true: cn('transition-[background-color,border-color,box-shadow]', controlHoverClassName),

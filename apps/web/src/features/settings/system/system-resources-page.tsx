@@ -56,7 +56,7 @@ export function SystemResourcesPage() {
               <Section
                 title='Host system'
                 surface='panel'
-                titleClassName='pb-4'
+                headingSpacing='default'
                 contentClassName='gap-3'
                 className='h-full'
               >
@@ -68,7 +68,7 @@ export function SystemResourcesPage() {
               <Section
                 title='Managed containers'
                 surface='panel'
-                titleClassName='pb-4'
+                headingSpacing='default'
                 contentClassName='gap-3'
                 className='h-full'
               >
@@ -101,7 +101,7 @@ export function SystemResourcesPage() {
               <Section
                 title='Host memory'
                 surface='panel'
-                titleClassName='pb-4'
+                headingSpacing='default'
                 className='h-full min-w-0'
               >
                 <MemoryChart
@@ -112,7 +112,7 @@ export function SystemResourcesPage() {
               <Section
                 title='Host CPU history'
                 surface='panel'
-                titleClassName='pb-4'
+                headingSpacing='default'
                 className='h-full min-w-0'
               >
                 <div className='h-160 w-full max-lg:h-96'>

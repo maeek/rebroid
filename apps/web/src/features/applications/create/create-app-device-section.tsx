@@ -42,7 +42,7 @@ export const CreateAppDeviceSection = ({
     <Section
       surface='plain'
       title={canChangeBaseImage ? 'Runtime image' : 'Runtime options'}
-      titleClassName='mb-4'
+      headingSpacing='default'
       contentClassName='gap-6'
     >
       <Visible when={canChangeBaseImage}>

@@ -1,5 +1,1 @@
-import { AppsPageSkeleton } from '@/features/applications/list/apps-page-skeleton'
-
-export default function Loading() {
-  return <AppsPageSkeleton />
-}
+export { AppsPageSkeleton as default } from '@/features/applications/list/apps-page-skeleton'

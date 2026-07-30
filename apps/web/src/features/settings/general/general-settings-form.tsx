@@ -149,7 +149,7 @@ export const GeneralSettingsForm = ({
           surface='plain'
           orientation='vertical'
           title='Appearance'
-          titleClassName='pb-4'
+          headingSpacing='default'
           contentClassName='gap-6'
         >
           <AccentColorPicker
@@ -161,7 +161,7 @@ export const GeneralSettingsForm = ({
           surface='plain'
           orientation='vertical'
           title='Frontend defaults'
-          titleClassName='pb-4'
+          headingSpacing='default'
           contentClassName='gap-6'
         >
           <FormField
@@ -189,7 +189,7 @@ export const GeneralSettingsForm = ({
           surface='plain'
           orientation='vertical'
           title='Streaming defaults'
-          titleClassName='pb-4'
+          headingSpacing='default'
           contentClassName='gap-6'
         >
           <div className='grid gap-4 md:grid-cols-3'>

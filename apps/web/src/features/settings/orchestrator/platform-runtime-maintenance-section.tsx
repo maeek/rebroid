@@ -125,7 +125,7 @@ export const PlatformRuntimeMaintenanceSection = ({
     <Section
       surface='plain'
       title='Maintenance'
-      titleClassName='pb-4'
+      headingSpacing='default'
       contentClassName='gap-4'
       className='w-full'
     >

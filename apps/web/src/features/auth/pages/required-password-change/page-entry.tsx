@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { AuthBackdrop } from '@/features/auth/components/auth-backdrop'
 import { getAuthenticatedUser } from '@/server/auth/authorization'
 import { getWebSettings } from '@/server/web-settings/store'
-import { RequiredPasswordChangePageClient } from './page-client'
+import { RequiredPasswordChangePageClient, RequiredPasswordChangePageLoading } from './page-client'
 
 export const RequiredPasswordChangePageEntry = async () => {
   const [user, settings] = await Promise.all([getAuthenticatedUser(), getWebSettings()])
@@ -22,3 +22,10 @@ export const RequiredPasswordChangePageEntry = async () => {
     </main>
   )
 }
+
+export const RequiredPasswordChangePageLoadingEntry = () => (
+  <main className='relative flex min-h-dvh w-full items-center justify-center overflow-hidden px-5 py-10'>
+    <AuthBackdrop />
+    <RequiredPasswordChangePageLoading />
+  </main>
+)

@@ -243,7 +243,7 @@ export const AppInfoNetworkSection = ({
     <Section
       surface='plain'
       title='Network'
-      titleClassName='pb-4'
+      headingSpacing='default'
       contentClassName='flex-col'
     >
       <Visible when={canViewBackendDetails}>

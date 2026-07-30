@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
-import { PageBreadcrumbsSkeleton } from '@/shared/ui/page/page-breadcrumbs-skeleton'
+import { PageHeader } from '@/shared/ui/page/page-header'
 import { StandardPage } from '@/shared/ui/page/page-layout'
 
 const SectionSkeleton = ({ children, titleWidth }: { children: ReactNode; titleWidth: string }) => (
@@ -22,19 +22,11 @@ const SettingSkeleton = ({ controlClassName = 'h-10 w-full' }: { controlClassNam
 
 export const PreferencesGeneralPageSkeleton = () => (
   <StandardPage className='gap-2'>
-    <section className='flex shrink-0 items-center justify-between gap-3 px-6 py-4 max-sm:flex-col max-sm:items-start max-sm:px-4'>
-      <div className='flex flex-col gap-2'>
-        <PageBreadcrumbsSkeleton
-          className='pt-0'
-          itemWidths={['w-24', 'w-16']}
-        />
-        <Skeleton className='h-9 w-36 pt-4 max-sm:h-7 max-sm:w-28' />
-      </div>
-      <div className='flex gap-2'>
-        <Skeleton className='h-10 w-24' />
-        <Skeleton className='h-10 w-24' />
-      </div>
-    </section>
+    <PageHeader
+      section={{ label: 'Preferences' }}
+      title='General'
+      description='Customize your interface, theme, and local display preferences.'
+    />
     <section className='flex w-full flex-col gap-10 px-6 pb-16 max-sm:px-4'>
       <SectionSkeleton titleWidth='w-28'>
         <div className='flex flex-wrap gap-2'>

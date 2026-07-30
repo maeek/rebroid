@@ -12,6 +12,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { MutationButton } from '@/components/ui/mutation-button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Visible } from '@/components/ui/visible'
@@ -176,13 +177,15 @@ export const ScheduledTaskFormDialog = () => {
             >
               Cancel
             </Button>
-            <Button
+            <MutationButton
               type='submit'
-              disabled={isSaving || form.name.trim().length < 2}
+              disabled={form.name.trim().length < 2}
+              pending={isSaving}
+              pendingLabel={isEditing ? 'Saving changes…' : 'Creating task…'}
             >
               {isEditing ? <IconDeviceFloppy className='size-4' /> : <IconPlus className='size-4' />}
               {isEditing ? 'Save changes' : 'Create task'}
-            </Button>
+            </MutationButton>
           </DialogFooter>
         </form>
       </DialogContent>

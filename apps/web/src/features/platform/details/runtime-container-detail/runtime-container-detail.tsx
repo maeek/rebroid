@@ -56,7 +56,7 @@ const RuntimeContainerDetailContent = () => {
           title='Labels'
           surface='plain'
           contentClassName='gap-4'
-          titleClassName='pb-4'
+          headingSpacing='default'
         >
           <PlatformJsonBlock value={container.labels} />
         </Section>

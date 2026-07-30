@@ -1,13 +1,17 @@
+'use client'
+
 import { Skeleton } from '@/components/ui/skeleton'
+import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { createDataGridLoadingProps } from '@/shared/ui/data-grid/data-grid-loading-state'
+import { PageHeader } from '@/shared/ui/page/page-header'
 import { StandardPage } from '@/shared/ui/page/page-layout'
-import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
-import { TableSkeleton } from '@/shared/ui/skeletons/table-skeleton'
 
 export const ActivityPageSkeleton = () => (
   <StandardPage className='gap-2'>
-    <PageHeaderSkeleton
-      titleWidth='w-28'
-      includeOrchestratorBreadcrumb={false}
+    <PageHeader
+      section={{ label: 'Security' }}
+      title='Audit log'
+      description='Review recent administrative and application operations.'
     />
     <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
       <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-4'>
@@ -35,15 +39,19 @@ export const ActivityPageSkeleton = () => (
           <Skeleton className='h-10 w-28' />
           <Skeleton className='h-10 w-28' />
         </div>
-        <TableSkeleton
-          columns={[
-            { headerWidth: 'w-16', cellWidth: 'w-32' },
-            { headerWidth: 'w-16', cellWidth: 'w-36' },
-            { headerWidth: 'w-20', cellWidth: 'w-44' },
-            { headerWidth: 'w-20', kind: 'badge' },
-            { headerWidth: 'w-20', cellWidth: 'w-32' }
-          ]}
-          rows={7}
+        <DataGrid
+          {...createDataGridLoadingProps({
+            columns: [
+              { headerWidth: 'w-16', cellWidth: 'w-32' },
+              { headerWidth: 'w-16', cellWidth: 'w-36' },
+              { headerWidth: 'w-20', cellWidth: 'w-44' },
+              { headerWidth: 'w-20', kind: 'badge' },
+              { headerWidth: 'w-20', cellWidth: 'w-32' }
+            ],
+            rows: 7,
+            selectable: false,
+            rowMenu: false
+          })}
         />
         <div className='flex items-center justify-between gap-3'>
           <Skeleton className='h-4 w-40 opacity-70' />

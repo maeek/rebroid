@@ -4,7 +4,7 @@ import * as React from 'react'
 import { Toast as ToastPrimitives } from '@base-ui/react/toast'
 import { IconX } from '@tabler/icons-react'
 import { cva, type VariantProps } from 'class-variance-authority'
-import { floatingSurfaceClassName } from '@/components/ui/surface'
+import { floatingSurfaceClassName, semanticToneClassNames } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 
 const ToastProvider = ToastPrimitives.Provider
@@ -30,10 +30,10 @@ const toastVariants = cva(
     variants: {
       variant: {
         neutral: cn(floatingSurfaceClassName, 'border-primary/35'),
-        info: cn(floatingSurfaceClassName, 'border-info/45 bg-info/12'),
-        success: cn(floatingSurfaceClassName, 'border-success/45 bg-success/12'),
-        warning: cn(floatingSurfaceClassName, 'border-warning/45 bg-warning/12'),
-        danger: cn(floatingSurfaceClassName, 'danger border-danger/45 bg-danger/12 text-foreground')
+        info: cn(floatingSurfaceClassName, semanticToneClassNames.info),
+        success: cn(floatingSurfaceClassName, semanticToneClassNames.success),
+        warning: cn(floatingSurfaceClassName, semanticToneClassNames.warning),
+        danger: cn(floatingSurfaceClassName, 'danger text-foreground', semanticToneClassNames.danger)
       }
     },
     defaultVariants: {
@@ -49,6 +49,7 @@ const Toast = React.forwardRef<
   return (
     <ToastPrimitives.Root
       ref={ref}
+      data-tone={variant ?? 'neutral'}
       className={cn(toastVariants({ variant }), className)}
       {...props}
     />

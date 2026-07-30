@@ -1,5 +1,5 @@
-import { IconLoader2, IconRestore } from '@tabler/icons-react'
-import { Button } from '@/components/ui/button'
+import { IconRestore } from '@tabler/icons-react'
+import { MutationButton } from '@/components/ui/mutation-button'
 import { PlatformDetailRow } from '@/shared/ui/platform/platform-detail-parts'
 import { PlatformStatusBanner } from '@/shared/ui/platform/platform-status-banner'
 import { castingDetailLabels, castingMessage, formatHealthDetail } from './casting-sidecar-utils'
@@ -32,15 +32,17 @@ export const CastingSidecarServiceSection = ({
       ok={health.ok}
       message={castingMessage(health.message)}
       actions={
-        <Button
+        <MutationButton
           type='button'
           variant='outline'
-          disabled={busy !== null}
+          pending={busy === 'restart'}
+          pendingLabel='Restarting…'
+          disabled={busy !== null && busy !== 'restart'}
           onClick={onRestart}
         >
-          {busy === 'restart' ? <IconLoader2 className='size-4 animate-spin' /> : <IconRestore className='size-4' />}
+          <IconRestore className='size-4' />
           Restart sidecar
-        </Button>
+        </MutationButton>
       }
       details={details}
     />

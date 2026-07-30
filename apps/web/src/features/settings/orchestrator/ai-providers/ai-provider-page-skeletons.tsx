@@ -1,8 +1,11 @@
+'use client'
+
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
-import { DataGridSkeleton } from '@/shared/ui/data-grid/data-grid-skeleton'
+import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { createDataGridLoadingProps } from '@/shared/ui/data-grid/data-grid-loading-state'
+import { PageHeader } from '@/shared/ui/page/page-header'
 import { StandardPage } from '@/shared/ui/page/page-layout'
-import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
 
 const ProviderConnectionSkeleton = () => (
   <Section
@@ -30,11 +33,10 @@ const ProviderConnectionSkeleton = () => (
 
 export const AiProvidersPageSkeleton = () => (
   <StandardPage className='gap-2'>
-    <PageHeaderSkeleton
-      titleWidth='w-44'
-      hasLeading
-      titleActionCount={1}
-      actionCount={1}
+    <PageHeader
+      section={{ label: 'Platform', href: '/platform' }}
+      title='AI'
+      description='Configure provider connections and AI-assisted automation behavior.'
     />
     <section className='flex w-full flex-col gap-4 px-6 pb-16 max-sm:px-4'>
       <div
@@ -54,17 +56,19 @@ export const AiProvidersPageSkeleton = () => (
         <Skeleton className='h-5 w-20' />
         <Skeleton className='h-4 w-full max-w-2xl opacity-70' />
       </div>
-      <DataGridSkeleton
-        columns={[
-          { width: '20rem', headerWidth: 'w-20', cellWidth: 'w-44', kind: 'stacked' },
-          { width: '10rem', headerWidth: 'w-12', cellWidth: 'w-20' },
-          { width: '24rem', headerWidth: 'w-20', cellWidth: 'w-64' },
-          { width: '20rem', headerWidth: 'w-16', cellWidth: 'w-52' },
-          { width: '10rem', headerWidth: 'w-14', kind: 'badge' },
-          { width: '10rem', headerWidth: 'w-14', kind: 'badge' }
-        ]}
-        minWidth='76rem'
-        rows={5}
+      <DataGrid
+        {...createDataGridLoadingProps({
+          columns: [
+            { width: '20rem', headerWidth: 'w-20', cellWidth: 'w-44', kind: 'stacked' },
+            { width: '10rem', headerWidth: 'w-12', cellWidth: 'w-20' },
+            { width: '24rem', headerWidth: 'w-20', cellWidth: 'w-64' },
+            { width: '20rem', headerWidth: 'w-16', cellWidth: 'w-52' },
+            { width: '10rem', headerWidth: 'w-14', kind: 'badge' },
+            { width: '10rem', headerWidth: 'w-14', kind: 'badge' }
+          ],
+          minWidth: '76rem',
+          rows: 5
+        })}
       />
     </section>
   </StandardPage>
@@ -72,11 +76,11 @@ export const AiProvidersPageSkeleton = () => (
 
 export const AiProviderEditPageSkeleton = () => (
   <StandardPage className='gap-2'>
-    <PageHeaderSkeleton
-      titleWidth='w-48'
-      hasLeading
-      hasParent
-      actionCount={2}
+    <PageHeader
+      section={{ label: 'Platform', href: '/platform' }}
+      trail={[{ label: 'AI', href: '/platform/ai' }]}
+      title={<Skeleton className='h-8 w-48' />}
+      description='Edit provider connection details and the models exposed to AI automation steps.'
     />
     <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
       <Section
@@ -100,16 +104,18 @@ export const AiProviderEditPageSkeleton = () => (
           </div>
           <Skeleton className='h-9 w-28' />
         </div>
-        <DataGridSkeleton
-          columns={[
-            { width: '18rem', headerWidth: 'w-20', cellWidth: 'w-44' },
-            { width: '18rem', headerWidth: 'w-12', cellWidth: 'w-44' },
-            { width: '12rem', headerWidth: 'w-12', cellWidth: 'w-32' },
-            { width: '12rem', headerWidth: 'w-12', cellWidth: 'w-28' },
-            { width: '10rem', headerWidth: 'w-14', kind: 'badge' }
-          ]}
-          minWidth='70rem'
-          rows={4}
+        <DataGrid
+          {...createDataGridLoadingProps({
+            columns: [
+              { width: '18rem', headerWidth: 'w-20', cellWidth: 'w-44' },
+              { width: '18rem', headerWidth: 'w-12', cellWidth: 'w-44' },
+              { width: '12rem', headerWidth: 'w-12', cellWidth: 'w-32' },
+              { width: '12rem', headerWidth: 'w-12', cellWidth: 'w-28' },
+              { width: '10rem', headerWidth: 'w-14', kind: 'badge' }
+            ],
+            minWidth: '70rem',
+            rows: 4
+          })}
         />
       </div>
     </section>

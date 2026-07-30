@@ -7,6 +7,11 @@ import { getErrorMessage } from '../../common/error-message';
 import { ContainerImageBuildContextFile } from '../entities/container-image-build-context-file.entity';
 import { sanitizeBuildContextPath } from '../utils/container-image-build-paths';
 
+type ContainerImageBuildArchiveExtraFile = {
+  content: Buffer;
+  mode?: number;
+};
+
 @Injectable()
 export class ContainerImageBuildArchiveService {
   async createTar(
@@ -23,7 +28,7 @@ export class ContainerImageBuildArchiveService {
   createDirectoryTar(
     dockerfile: string,
     rootDirectory: string,
-    extraFiles: Record<string, Buffer> = {},
+    extraFiles: Record<string, ContainerImageBuildArchiveExtraFile> = {},
   ) {
     const pack = tar.pack();
     void this.writeDirectoryEntries(
@@ -92,10 +97,15 @@ export class ContainerImageBuildArchiveService {
     }
   }
 
-  private async addBuffer(pack: tar.Pack, name: string, content: Buffer) {
+  private async addBuffer(
+    pack: tar.Pack,
+    name: string,
+    content: Buffer,
+    mode = 0o644,
+  ) {
     await new Promise<void>((resolve, reject) => {
       pack.entry(
-        { name, mode: 0o644, size: content.length, type: 'file' },
+        { name, mode, size: content.length, type: 'file' },
         content,
         (error) => (error ? reject(error) : resolve()),
       );
@@ -127,12 +137,17 @@ export class ContainerImageBuildArchiveService {
     pack: tar.Pack,
     dockerfile: string,
     rootDirectory: string,
-    extraFiles: Record<string, Buffer>,
+    extraFiles: Record<string, ContainerImageBuildArchiveExtraFile>,
   ) {
     try {
       await this.addBuffer(pack, 'Dockerfile', Buffer.from(dockerfile));
-      for (const [name, content] of Object.entries(extraFiles)) {
-        await this.addBuffer(pack, sanitizeBuildContextPath(name), content);
+      for (const [name, file] of Object.entries(extraFiles)) {
+        await this.addBuffer(
+          pack,
+          sanitizeBuildContextPath(name),
+          file.content,
+          file.mode,
+        );
       }
       await this.addDirectoryTree(pack, rootDirectory);
       pack.finalize();

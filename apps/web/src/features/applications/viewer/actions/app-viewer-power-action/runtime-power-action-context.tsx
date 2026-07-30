@@ -112,7 +112,11 @@ export const RuntimePowerActionProvider = ({ children }: { children: ReactNode }
       if (profileMode === 'persistent' && profileName.trim() === deletedProfileName.trim()) {
         setProfileName('default')
       }
-      toast({ title: 'Profile removed', description: `${deletedProfileName} was deleted with its saved data.` })
+      toast({
+        title: 'Profile removed',
+        description: `${deletedProfileName} was deleted with its saved data.`,
+        variant: 'success'
+      })
     } catch (error) {
       toast({
         title: 'Could not remove profile',

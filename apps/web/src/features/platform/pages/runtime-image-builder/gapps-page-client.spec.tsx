@@ -89,6 +89,12 @@ describe('RuntimeGappsImageBuilderPageClient', () => {
       expect(screen.getByRole('heading', { name: 'Build progress' })).toBeTruthy()
       expect(screen.getByRole('complementary')).toBeTruthy()
       expect(screen.getByText('Following latest output')).toBeTruthy()
+      expect(screen.getByText('Step 4 of 8')).toBeTruthy()
+      const activePhase = screen.getByTestId('active-build-phase')
+      expect(activePhase).toHaveAttribute('aria-current', 'step')
+      expect(screen.getByTestId('active-phase-spinner')).toHaveClass('animate-spin')
+      expect(screen.getByRole('progressbar', { name: 'Build phase progress' })).toHaveAttribute('aria-valuenow', '4')
+      expect(log).toHaveClass('max-w-full', 'min-w-0', 'overflow-auto', 'whitespace-pre')
       expect(log.textContent).toContain('Building package')
       expect(log.scrollTop).toBe(480)
     } finally {
@@ -128,5 +134,29 @@ describe('RuntimeGappsImageBuilderPageClient', () => {
       })
     })
     expect(screen.getByRole('button', { name: 'Build in progress' })).toBeDisabled()
+  })
+
+  it('shows cancellation progress while the request is pending', async () => {
+    const activeJob = {
+      id: 'job-3',
+      buildKind: 'redroid_gapps_patch',
+      status: 'running',
+      phase: 'building_image',
+      targetImage: 'local/redroid-gapps:14',
+      logTail: 'Patching image'
+    } as ContainerImageBuildJob
+    vi.mocked(sendBff).mockImplementation(() => new Promise(() => undefined))
+
+    render(
+      <RuntimeGappsImageBuilderPageClient
+        presetResponse={presetResponse}
+        jobs={[activeJob]}
+        initialSettings={{} as OrchestratorUiSettings}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    expect(await screen.findByRole('button', { name: 'Cancelling…' })).toHaveAttribute('aria-busy', 'true')
   })
 })

@@ -99,7 +99,11 @@ export const useRuntimeFileBrowser = ({
       try {
         const created = unwrapActionResult(await createApplicationRuntimeDirectoryAction(appId, currentPath, name))
         updateParentCache(currentPath, current => [...current, created])
-        toast({ title: 'Folder created', description: `${created.name} is available in ${currentPath}.` })
+        toast({
+          title: 'Folder created',
+          description: `${created.name} is available in ${currentPath}.`,
+          variant: 'success'
+        })
         return true
       } catch (error) {
         runtimeActionErrorToast('Could not create folder', error)
@@ -139,7 +143,11 @@ export const useRuntimeFileBrowser = ({
         if (entry.type === 'directory') {
           void queryClient.invalidateQueries({ queryKey: ['runtime-files', appId] })
         }
-        toast({ title: 'Item deleted', description: `${entry.name} was permanently deleted.` })
+        toast({
+          title: 'Item deleted',
+          description: `${entry.name} was permanently deleted.`,
+          variant: 'success'
+        })
         return true
       } catch (error) {
         runtimeActionErrorToast('Could not delete item', error)

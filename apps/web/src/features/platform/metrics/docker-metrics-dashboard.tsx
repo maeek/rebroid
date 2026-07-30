@@ -122,7 +122,7 @@ export function DockerMetricsDashboard({
       <Section
         surface='plain'
         title='Per-operation aggregates'
-        titleClassName='pb-4'
+        headingSpacing='default'
         contentClassName='gap-4'
       >
         <div className='overflow-hidden rounded-panel border border-surface-border/60 bg-surface-band/35'>
@@ -159,7 +159,7 @@ export function DockerMetricsDashboard({
       <Section
         surface='plain'
         title='Recent slow or failed operations'
-        titleClassName='pb-4'
+        headingSpacing='default'
         contentClassName='gap-4'
       >
         <Visible when={data.events.length === 0}>

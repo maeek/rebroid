@@ -9,7 +9,11 @@ const boxes = async (page: Page) => {
     '[data-testid="contract-grid"] table',
     '[data-testid="contract-grid"] thead',
     '[data-testid="contract-grid"] tbody tr:first-child',
-    '[data-testid="contract-pagination"]'
+    '[data-testid="contract-pagination"]',
+    '[data-testid="contract-family-detail"]',
+    '[data-testid="contract-family-form"]',
+    '[data-testid="contract-family-split"]',
+    '[data-testid="contract-family-immersive"]'
   ]
   const result: Box[] = []
   for (const selector of selectors) {
@@ -58,4 +62,30 @@ test('loading and ready states keep stable geometry', async ({ page }) => {
 
   const documentOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
   expect(documentOverflow).toBeLessThanOrEqual(0)
+})
+
+test('success banners and toasts retain semantic backgrounds in dark and OLED themes', async ({ page }) => {
+  await page.goto('/skeleton-contract-test')
+
+  for (const theme of ['dark', 'oled']) {
+    await page.evaluate(value => {
+      document.documentElement.className = value
+    }, theme)
+
+    const bannerColors = await page.evaluate(() => ({
+      success: getComputedStyle(document.querySelector('[data-testid="contract-success-banner"]')!).backgroundColor,
+      neutral: getComputedStyle(document.querySelector('[data-testid="contract-neutral-banner"]')!).backgroundColor
+    }))
+    expect(bannerColors.success).not.toBe(bannerColors.neutral)
+    expect(bannerColors.success).not.toBe('transparent')
+
+    await page.getByRole('button', { name: 'Show success toast' }).click()
+    const toastBackground = await page
+      .locator('[data-tone="success"]')
+      .filter({ hasText: 'Mutation complete' })
+      .last()
+      .evaluate(node => getComputedStyle(node).backgroundColor)
+    expect(toastBackground).not.toBe(bannerColors.neutral)
+    expect(toastBackground).not.toBe('transparent')
+  }
 })

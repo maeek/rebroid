@@ -1,6 +1,6 @@
 import { Skeleton } from '@/components/ui/skeleton'
+import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
-import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
 
 const SettingSkeleton = ({ tall = false }: { tall?: boolean }) => (
   <div className='grid gap-2'>
@@ -12,10 +12,10 @@ const SettingSkeleton = ({ tall = false }: { tall?: boolean }) => (
 
 export const PlatformRuntimePageSkeleton = () => (
   <StandardPage className='gap-2'>
-    <PageHeaderSkeleton
-      titleWidth='w-48'
-      includeOrchestratorBreadcrumb={false}
-      actionCount={2}
+    <PageHeader
+      section={{ label: 'Platform', href: '/platform' }}
+      title='Runtime defaults'
+      description='Default runtime settings and maintenance actions for managed Android containers.'
     />
     <PageContent>
       <div className='grid w-full items-start gap-6 xl:grid-cols-2'>

@@ -37,6 +37,22 @@ const readTarEntries = async (pack: tar.Pack) =>
     pack.pipe(extract);
   });
 
+const readTarHeaders = async (pack: tar.Pack) =>
+  new Promise<tar.Headers[]>((resolve, reject) => {
+    const extract = tar.extract();
+    const headers: tar.Headers[] = [];
+
+    extract.on('entry', (header, stream, next) => {
+      headers.push(header);
+      stream.on('end', next);
+      stream.resume();
+    });
+    extract.on('finish', () => resolve(headers));
+    extract.on('error', reject);
+    pack.on('error', reject);
+    pack.pipe(extract);
+  });
+
 describe('ContainerImageBuildArchiveService', () => {
   it('streams Dockerfile and context files into a tar archive', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'rebroid-build-context-'));
@@ -73,6 +89,29 @@ describe('ContainerImageBuildArchiveService', () => {
       expect(result.status).toBe('resolved');
       result.pack?.on('error', () => undefined);
       result.pack?.destroy();
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('preserves explicit modes for generated context files', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'rebroid-build-context-'));
+    try {
+      const pack = createService().createDirectoryTar(
+        'FROM scratch',
+        directory,
+        {
+          entrypoint: {
+            content: Buffer.from('#!/bin/sh\n'),
+            mode: 0o755,
+          },
+        },
+      );
+
+      const headers = await readTarHeaders(pack);
+      expect(headers.find((header) => header.name === 'entrypoint')?.mode).toBe(
+        0o755,
+      );
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

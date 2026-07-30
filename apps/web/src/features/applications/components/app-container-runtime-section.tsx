@@ -10,7 +10,6 @@ type FieldMode = 'editable' | 'readonly'
 
 type AppContainerRuntimeSectionProps = {
   title?: ReactNode
-  titleClassName?: string
   contentClassName?: string
   containerImage: string
   onContainerImageChange?: (value: string) => void
@@ -31,7 +30,6 @@ type AppContainerRuntimeSectionProps = {
 
 export const AppContainerRuntimeSection = ({
   title,
-  titleClassName,
   contentClassName,
   containerImage,
   onContainerImageChange,
@@ -56,8 +54,8 @@ export const AppContainerRuntimeSection = ({
     <Section
       surface='plain'
       title={title}
-      titleClassName={titleClassName}
-      contentClassName={contentClassName ?? (title ? 'gap-4' : 'gap-4')}
+      headingSpacing='default'
+      contentClassName={contentClassName ?? 'gap-4'}
     >
       <Visible when={showContainerImage}>
         <FormField

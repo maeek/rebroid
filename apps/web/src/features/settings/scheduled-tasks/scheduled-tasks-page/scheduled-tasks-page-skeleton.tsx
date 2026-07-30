@@ -1,14 +1,17 @@
+'use client'
+
 import { Skeleton } from '@/components/ui/skeleton'
-import { DataGridSkeleton } from '@/shared/ui/data-grid/data-grid-skeleton'
+import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { createDataGridLoadingProps } from '@/shared/ui/data-grid/data-grid-loading-state'
+import { PageHeader } from '@/shared/ui/page/page-header'
 import { StandardPage } from '@/shared/ui/page/page-layout'
-import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
 
 export const ScheduledTasksPageSkeleton = () => (
   <StandardPage className='gap-2'>
-    <PageHeaderSkeleton
-      titleWidth='w-48'
-      includeOrchestratorBreadcrumb={false}
-      actionCount={1}
+    <PageHeader
+      section={{ label: 'Platform', href: '/platform' }}
+      title='Scheduler'
+      description='Monitor scheduled jobs, run maintenance tasks, and review failures.'
     />
     <section className='grid w-full gap-6 px-6 pb-16 max-sm:px-4'>
       <div
@@ -37,17 +40,19 @@ export const ScheduledTasksPageSkeleton = () => (
             <Skeleton className='h-9 w-24' />
           </div>
         </div>
-        <DataGridSkeleton
-          columns={[
-            { width: '24rem', headerWidth: 'w-16', cellWidth: 'w-44', kind: 'stacked' },
-            { width: '11rem', headerWidth: 'w-20', cellWidth: 'w-28', kind: 'badge' },
-            { width: '11rem', headerWidth: 'w-16', cellWidth: 'w-32' },
-            { width: '11rem', headerWidth: 'w-20', cellWidth: 'w-32' },
-            { width: '11rem', headerWidth: 'w-20', cellWidth: 'w-32' },
-            { width: '7rem', headerWidth: 'w-16', kind: 'action' }
-          ]}
-          minWidth='82rem'
-          rows={5}
+        <DataGrid
+          {...createDataGridLoadingProps({
+            columns: [
+              { width: '24rem', headerWidth: 'w-16', cellWidth: 'w-44', kind: 'stacked' },
+              { width: '11rem', headerWidth: 'w-20', cellWidth: 'w-28', kind: 'badge' },
+              { width: '11rem', headerWidth: 'w-16', cellWidth: 'w-32' },
+              { width: '11rem', headerWidth: 'w-20', cellWidth: 'w-32' },
+              { width: '11rem', headerWidth: 'w-20', cellWidth: 'w-32' },
+              { width: '7rem', headerWidth: 'w-16', kind: 'action' }
+            ],
+            minWidth: '82rem',
+            rows: 5
+          })}
         />
       </div>
     </section>

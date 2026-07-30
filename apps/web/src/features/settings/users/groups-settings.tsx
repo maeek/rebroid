@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { PageHeader } from '@/shared/ui/page/page-header'
-import { StandardPage } from '@/shared/ui/page/page-layout'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
+import { CreateGroupDialog } from './components/create-group-dialog'
 import { GroupsSection } from './components/groups-section'
 import type { UserGroup } from '@/shared/contracts/auth-user'
 
@@ -14,20 +15,24 @@ export const GroupsSettings = ({ initialGroups }: { initialGroups: UserGroup[] }
       <PageHeader
         section={{ label: 'Security' }}
         title='Groups'
+        actions={
+          <CreateGroupDialog
+            onCreated={group =>
+              setGroups(current =>
+                current.some(item => item.id === group.id)
+                  ? current.map(item => (item.id === group.id ? group : item))
+                  : [...current, group]
+              )
+            }
+          />
+        }
       />
-      <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
+      <PageContent>
         <GroupsSection
           groups={groups}
-          onGroupUpdated={group =>
-            setGroups(current =>
-              current.some(item => item.id === group.id)
-                ? current.map(item => (item.id === group.id ? group : item))
-                : [...current, group]
-            )
-          }
           onGroupsDeleted={groupIds => setGroups(current => current.filter(group => !groupIds.has(group.id)))}
         />
-      </section>
+      </PageContent>
     </StandardPage>
   )
 }

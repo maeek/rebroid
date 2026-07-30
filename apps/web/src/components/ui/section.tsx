@@ -6,6 +6,7 @@ import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 
 export type SectionSurface = 'plain' | 'band' | 'panel'
+export type SectionHeadingSpacing = 'none' | 'compact' | 'default'
 
 interface SectionProps {
   actions?: ReactNode
@@ -16,6 +17,7 @@ interface SectionProps {
   defaultOpen?: boolean
   description?: ReactNode
   headingLevel?: 2 | 3
+  headingSpacing?: SectionHeadingSpacing
   orientation?: 'horizontal' | 'vertical'
   surface: SectionSurface
   title?: ReactNode
@@ -32,6 +34,7 @@ export const Section = ({
   defaultOpen = false,
   description,
   headingLevel = 2,
+  headingSpacing = 'default',
   actions,
   titleClassName,
   surface
@@ -89,7 +92,19 @@ export const Section = ({
             />
           </button>
         ) : (
-          <div className={cn('flex items-start justify-between gap-4', titleClassName)}>
+          <div
+            data-testid='section-heading'
+            data-heading-spacing={headingSpacing}
+            className={cn(
+              'flex items-start justify-between gap-4',
+              {
+                'pb-0': headingSpacing === 'none',
+                'pb-2': headingSpacing === 'compact',
+                'pb-4': headingSpacing === 'default'
+              },
+              titleClassName
+            )}
+          >
             <div className='grid gap-1'>
               <Heading className='font-medium'>{title}</Heading>
               <Visible when={description}>

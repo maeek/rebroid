@@ -16,7 +16,7 @@ export const CreateAppDisplaySection = ({ values, onChange }: CreateAppDisplaySe
     surface='plain'
     title='Display size'
     contentClassName='gap-4'
-    titleClassName='mb-4'
+    headingSpacing='default'
   >
     <div className='scrollbar-thin grid grid-cols-2 gap-3 overflow-x-hidden max-sm:max-h-[27rem] max-sm:grid-cols-1 max-sm:overflow-y-auto max-sm:pr-1'>
       {redroidDisplayProfiles.map((profile: (typeof redroidDisplayProfiles)[number]) => {

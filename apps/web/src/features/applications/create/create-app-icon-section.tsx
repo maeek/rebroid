@@ -49,7 +49,7 @@ export const AppFormIconSection = ({
     <Section
       surface={surface}
       title={showDescription ? 'Icon' : undefined}
-      titleClassName='pb-1'
+      headingSpacing='compact'
       contentClassName='gap-5'
     >
       <Visible when={showDescription}>

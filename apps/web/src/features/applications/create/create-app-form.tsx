@@ -167,9 +167,13 @@ export const CreateAppForm = ({
       }
 
       if (!uploaded.extractedIconDataUrl) {
-        toast({ title: 'APK uploaded', description: 'No direct launcher icon was found in the APK.' })
+        toast({
+          title: 'APK uploaded',
+          description: 'No direct launcher icon was found in the APK.',
+          variant: 'success'
+        })
       } else {
-        toast({ title: 'APK uploaded', description: 'Launcher icon was extracted.' })
+        toast({ title: 'APK uploaded', description: 'Launcher icon was extracted.', variant: 'success' })
       }
     } finally {
       setIsUploadingApk(false)

@@ -1,17 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { IconTrash } from '@tabler/icons-react'
-import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
+import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { Section } from '@/components/ui/section'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
@@ -21,8 +11,8 @@ import { unwrapActionResult } from '@/shared/actions/action-result'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { StandardPage } from '@/shared/ui/page/page-layout'
 import { CreateUserDialog } from './components/create-user-dialog'
+import { PasswordPolicyDialog } from './components/password-policy-dialog'
 import { UsersGrid } from './components/users-grid'
-import { PasswordPolicySection } from './sections/password-policy-section'
 import type { PublicUser, UserGroup } from '@/shared/contracts/auth-user'
 
 export const UsersSettings = ({
@@ -55,7 +45,7 @@ export const UsersSettings = ({
     try {
       const updated = unwrapActionResult(await setUserDisabledAction(user.id, !user.disabled))
       upsertUser(updated)
-      toast({ title: updated.disabled ? 'User disabled' : 'User enabled' })
+      toast({ title: updated.disabled ? 'User disabled' : 'User enabled', variant: 'success' })
     } catch (error) {
       toast({
         title: 'Could not update user',
@@ -73,7 +63,7 @@ export const UsersSettings = ({
       unwrapActionResult(await deleteUserAction(id))
       setUsers(current => current.filter(user => user.id !== id))
       setPendingDeleteUser(null)
-      toast({ title: 'User deleted' })
+      toast({ title: 'User deleted', variant: 'success' })
     } catch (error) {
       toast({
         title: 'Could not delete user',
@@ -103,7 +93,7 @@ export const UsersSettings = ({
               description: firstError ?? `${failedCount} update request${failedCount === 1 ? '' : 's'} failed.`,
               variant: 'danger'
             }
-          : { title: disabled ? 'Selected users disabled' : 'Selected users enabled' }
+          : { title: disabled ? 'Selected users disabled' : 'Selected users enabled', variant: 'success' }
       )
     } finally {
       setBusyUserId(null)
@@ -131,7 +121,7 @@ export const UsersSettings = ({
               description: firstError ?? `${failedCount} delete request${failedCount === 1 ? '' : 's'} failed.`,
               variant: 'danger'
             }
-          : { title: 'Selected users deleted' }
+          : { title: 'Selected users deleted', variant: 'success' }
       )
     } finally {
       setBusyUserId(null)
@@ -144,18 +134,20 @@ export const UsersSettings = ({
         section={{ label: 'Security' }}
         title='Users'
         actions={
-          <CreateUserDialog
-            groups={groups}
-            onCreated={upsertUser}
-          />
+          <>
+            <PasswordPolicyDialog initialPasswordMinimumLength={initialPasswordMinimumLength} />
+            <CreateUserDialog
+              groups={groups}
+              onCreated={upsertUser}
+            />
+          </>
         }
       />
       <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
-        <PasswordPolicySection initialPasswordMinimumLength={initialPasswordMinimumLength} />
         <Section
           surface='plain'
           title='Existing Users'
-          titleClassName='pb-2'
+          headingSpacing='default'
           contentClassName='gap-3'
         >
           <UsersGrid
@@ -170,74 +162,36 @@ export const UsersSettings = ({
           />
         </Section>
       </section>
-      <Dialog
-        modal
+      <ConfirmMutationDialog
         open={Boolean(pendingDeleteUser)}
-        onOpenChange={isOpen => {
-          if (!isOpen) {
-            setPendingDeleteUser(null)
-          }
+        title={`Delete ${pendingDeleteUser?.username ?? 'user'}?`}
+        description='This removes the user account from the web app user store.'
+        consequence='Existing orchestrator deployments are not deleted by this action.'
+        confirmLabel='Delete user'
+        pending={Boolean(pendingDeleteUser && busyUserId === pendingDeleteUser.id)}
+        pendingLabel='Deleting…'
+        confirmDisabled={!pendingDeleteUser}
+        onConfirm={() => {
+          if (pendingDeleteUser) void deleteUser(pendingDeleteUser.id)
         }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete {pendingDeleteUser?.username}?</DialogTitle>
-            <DialogDescription>
-              This removes the user account from the web app user store. Existing orchestrator deployments are not
-              deleted by this action.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant='danger'
-              disabled={!pendingDeleteUser || busyUserId === pendingDeleteUser.id}
-              onClick={() => {
-                if (pendingDeleteUser) {
-                  void deleteUser(pendingDeleteUser.id)
-                }
-              }}
-            >
-              <IconTrash className='size-4' />
-              Delete User
-            </Button>
-            <DialogClose asChild>
-              <Button variant='secondary'>Cancel</Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog
-        modal
+        onOpenChange={isOpen => {
+          if (!isOpen) setPendingDeleteUser(null)
+        }}
+      />
+      <ConfirmMutationDialog
         open={pendingDeleteUsers.length > 0}
+        title={`Delete ${pendingDeleteUsers.length} selected users?`}
+        description='This removes the selected user accounts from the web app user store.'
+        consequence='Existing orchestrator deployments are not deleted by this action.'
+        confirmLabel='Delete users'
+        pending={busyUserId === 'bulk'}
+        pendingLabel='Deleting…'
+        confirmDisabled={pendingDeleteUsers.length === 0}
+        onConfirm={() => void deleteUsers(pendingDeleteUsers)}
         onOpenChange={isOpen => {
-          if (!isOpen) {
-            setPendingDeleteUsers([])
-          }
+          if (!isOpen) setPendingDeleteUsers([])
         }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete {pendingDeleteUsers.length} selected users?</DialogTitle>
-            <DialogDescription>
-              This removes the selected user accounts from the web app user store. Existing orchestrator deployments are
-              not deleted by this action.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant='danger'
-              disabled={pendingDeleteUsers.length === 0 || busyUserId === 'bulk'}
-              onClick={() => void deleteUsers(pendingDeleteUsers)}
-            >
-              <IconTrash className='size-4' />
-              Delete Users
-            </Button>
-            <DialogClose asChild>
-              <Button variant='secondary'>Cancel</Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      />
     </StandardPage>
   )
 }

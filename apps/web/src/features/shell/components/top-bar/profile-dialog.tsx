@@ -152,7 +152,11 @@ export const ProfileDialog = ({
     setIsUpdatingMfa(true)
     try {
       unwrapActionResult(await disableMfaAction({ currentPassword: mfaPassword, code: mfaCode }))
-      toast({ title: 'Multi-factor authentication disabled', description: 'Log in again to continue.' })
+      toast({
+        title: 'Multi-factor authentication disabled',
+        description: 'Log in again to continue.',
+        variant: 'success'
+      })
       await signOut({ callbackUrl: '/login', redirect: true })
     } catch (error) {
       toast({ title: 'Could not disable MFA', description: getDisplayErrorMessage(error), variant: 'danger' })

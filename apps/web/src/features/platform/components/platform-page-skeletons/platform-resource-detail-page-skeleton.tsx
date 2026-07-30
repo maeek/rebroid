@@ -1,8 +1,11 @@
+'use client'
+
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
-import { DataGridSkeleton } from '@/shared/ui/data-grid/data-grid-skeleton'
+import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { createDataGridLoadingProps } from '@/shared/ui/data-grid/data-grid-loading-state'
+import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
-import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
 import { DetailRowsSkeleton } from './detail-rows-skeleton'
 import { JsonBlockSkeleton } from './json-block-skeleton'
 
@@ -18,9 +21,10 @@ export const PlatformResourceDetailPageSkeleton = ({
   relatedColumns?: number
 }) => (
   <StandardPage className='gap-2'>
-    <PageHeaderSkeleton
-      titleWidth={titleWidth}
-      hasParent
+    <PageHeader
+      section={{ label: 'Runtime' }}
+      title={<Skeleton className={`h-8 ${titleWidth}`} />}
+      description='Inspect runtime metadata and related containers.'
     />
     <PageContent>
       <Section
@@ -59,19 +63,31 @@ export const PlatformResourceDetailPageSkeleton = ({
         title='Related containers'
         surface='plain'
         contentClassName='gap-4'
-        titleClassName='pb-4'
+        headingSpacing='default'
       >
-        <DataGridSkeleton
-          minWidth='48rem'
-          rows={4}
-          selectable={false}
-          rowMenu={false}
-          columns={Array.from({ length: relatedColumns }).map((_, index) => ({
-            width: index === relatedColumns - 1 ? '10rem' : index === 0 ? 'minmax(12rem,2fr)' : 'minmax(10rem,1fr)',
-            headerWidth: index === relatedColumns - 1 ? 'w-16' : 'w-20',
-            kind: index === 0 ? 'stacked' : index === relatedColumns - 1 ? 'actions' : 'text',
-            cellWidth: index === 1 ? 'w-20' : 'w-[70%]'
-          }))}
+        <DataGrid
+          {...createDataGridLoadingProps({
+            minWidth: '48rem',
+            rows: 4,
+            selectable: false,
+            rowMenu: false,
+            columns: Array.from({ length: relatedColumns }).map((_, index) => {
+              let width = 'minmax(10rem,1fr)'
+              if (index === 0) width = 'minmax(12rem,2fr)'
+              if (index === relatedColumns - 1) width = '10rem'
+
+              let kind: 'stacked' | 'actions' | 'text' = 'text'
+              if (index === 0) kind = 'stacked'
+              if (index === relatedColumns - 1) kind = 'actions'
+
+              return {
+                width,
+                headerWidth: index === relatedColumns - 1 ? 'w-16' : 'w-20',
+                kind,
+                cellWidth: index === 1 ? 'w-20' : 'w-[70%]'
+              }
+            })
+          })}
         />
       </Section>
 
@@ -79,7 +95,7 @@ export const PlatformResourceDetailPageSkeleton = ({
         title='Labels'
         surface='plain'
         contentClassName='gap-4'
-        titleClassName='pb-4'
+        headingSpacing='default'
       >
         <JsonBlockSkeleton lines={8} />
       </Section>
@@ -94,4 +110,22 @@ export const PlatformResourceDetailPageSkeleton = ({
       </Section>
     </PageContent>
   </StandardPage>
+)
+
+export const RuntimeNetworkDetailPageLoading = () => (
+  <PlatformResourceDetailPageSkeleton
+    titleWidth='w-48 max-sm:w-36'
+    actionCount={1}
+    badgeCount={2}
+    relatedColumns={4}
+  />
+)
+
+export const RuntimeImageDetailPageLoading = () => (
+  <PlatformResourceDetailPageSkeleton
+    titleWidth='w-64 max-sm:w-44'
+    actionCount={1}
+    badgeCount={1}
+    relatedColumns={4}
+  />
 )

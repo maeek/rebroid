@@ -2,8 +2,8 @@
 
 import { IconDeviceFloppy } from '@tabler/icons-react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
-import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { MutationButton } from '@/components/ui/mutation-button'
 import { Switch } from '@/components/ui/switch'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
@@ -56,14 +56,15 @@ export const OrchestratorAiProviderEditPageClient = ({
                 onCheckedChange={enabled => updateProvider({ enabled })}
               />
             </div>
-            <Button
+            <MutationButton
               type='button'
-              disabled={isSaving}
+              pending={isSaving}
+              pendingLabel='Saving…'
               onClick={() => void saveProvider()}
             >
               <IconDeviceFloppy className='size-4' />
               Save
-            </Button>
+            </MutationButton>
           </div>
         }
       />

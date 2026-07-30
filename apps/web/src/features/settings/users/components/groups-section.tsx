@@ -1,28 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { IconPlus, IconTrash } from '@tabler/icons-react'
+import { IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { ContextMenuItem } from '@/components/ui/context-menu'
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
 import { FormField } from '@/components/ui/form-field'
-import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/hooks/use-toast'
-import { getDisplayErrorMessage } from '@/lib/error-utils'
-import { createUserGroupAction } from '@/server/users/actions/create-user-group-action'
 import { deleteUserGroupAction } from '@/server/users/actions/delete-user-group-action'
-import { unwrapActionResult } from '@/shared/actions/action-result'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import type { UserGroup } from '@/shared/contracts/auth-user'
@@ -30,14 +18,11 @@ import type { ColumnDef, SortingState } from '@tanstack/react-table'
 
 export const GroupsSection = ({
   groups,
-  onGroupUpdated,
   onGroupsDeleted
 }: {
   groups: UserGroup[]
-  onGroupUpdated: (group: UserGroup) => void
   onGroupsDeleted: (groupIds: Set<string>) => void
 }) => {
-  const [newGroupName, setNewGroupName] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [sorting, setSorting] = useState<SortingState>([{ id: 'name', desc: false }])
   const [searchDraft, setSearchDraft] = useState('')
@@ -90,24 +75,6 @@ export const GroupsSection = ({
     }
   ]
 
-  const createGroup = async () => {
-    setIsSaving(true)
-    try {
-      const group = unwrapActionResult(await createUserGroupAction({ name: newGroupName }))
-      onGroupUpdated(group)
-      setNewGroupName('')
-      toast({ title: 'Group created' })
-    } catch (error) {
-      toast({
-        title: 'Could not create group',
-        description: getDisplayErrorMessage(error),
-        variant: 'danger'
-      })
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
   const deleteGroups = async (targets: UserGroup[]) => {
     if (targets.length === 0) return
     setIsSaving(true)
@@ -130,7 +97,7 @@ export const GroupsSection = ({
               description: firstError ?? `${failedCount} delete request${failedCount === 1 ? '' : 's'} failed.`,
               variant: 'danger'
             }
-          : { title: 'Selected groups deleted' }
+          : { title: 'Selected groups deleted', variant: 'success' }
       )
     } finally {
       setIsSaving(false)
@@ -142,34 +109,10 @@ export const GroupsSection = ({
       <Section
         surface='plain'
         title='Groups'
-        titleClassName='pb-2'
+        description='Groups provide default permissions and quotas. User-level settings can override them when needed.'
+        headingSpacing='default'
         contentClassName='gap-3'
       >
-        <Section
-          surface='panel'
-          contentClassName='gap-3'
-        >
-          <p className='text-sm text-foreground-muted'>
-            Groups provide default permissions and quotas. User-level settings can override them when needed.
-          </p>
-          <div className='flex flex-wrap gap-2'>
-            <Input
-              value={newGroupName}
-              className='max-w-sm'
-              placeholder='New Group Name'
-              onChange={event => setNewGroupName(event.target.value)}
-            />
-            <Button
-              type='button'
-              variant='secondary'
-              disabled={isSaving || !newGroupName.trim()}
-              onClick={() => void createGroup()}
-            >
-              <IconPlus className='size-4' />
-              Create Group
-            </Button>
-          </div>
-        </Section>
         <DataGridWorkspace
           search={searchDraft}
           searchPlaceholder='Search groups'
@@ -262,42 +205,24 @@ export const GroupsSection = ({
           />
         </DataGridWorkspace>
       </Section>
-      <Dialog
-        modal
+      <ConfirmMutationDialog
         open={pendingDeleteGroups.length > 0}
+        title={
+          pendingDeleteGroups.length === 1
+            ? `Delete ${pendingDeleteGroups[0]?.name}?`
+            : `Delete ${pendingDeleteGroups.length} selected groups?`
+        }
+        description='This removes the selected groups from the user store.'
+        consequence='Users assigned to these groups will fall back to their role defaults.'
+        confirmLabel={pendingDeleteGroups.length === 1 ? 'Delete group' : 'Delete groups'}
+        pending={isSaving}
+        pendingLabel='Deleting…'
+        confirmDisabled={pendingDeleteGroups.length === 0}
+        onConfirm={() => void deleteGroups(pendingDeleteGroups)}
         onOpenChange={open => {
           if (!open) setPendingDeleteGroups([])
         }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              Delete{' '}
-              {pendingDeleteGroups.length === 1
-                ? pendingDeleteGroups[0]?.name
-                : `${pendingDeleteGroups.length} selected groups`}
-              ?
-            </DialogTitle>
-            <DialogDescription>
-              This removes the selected groups from the user store. Users assigned to these groups will fall back to
-              their role defaults.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant='danger'
-              disabled={pendingDeleteGroups.length === 0 || isSaving}
-              onClick={() => void deleteGroups(pendingDeleteGroups)}
-            >
-              <IconTrash className='size-4' />
-              Delete Groups
-            </Button>
-            <DialogClose asChild>
-              <Button variant='secondary'>Cancel</Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      />
     </>
   )
 }

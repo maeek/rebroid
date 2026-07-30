@@ -27,6 +27,7 @@ export interface GappsBuildController {
   createAppHref: string
   currentPhaseIndex: number
   isClearing: boolean
+  isCancelling: boolean
   isRunning: boolean
   isStarting: boolean
   preset: GappsBuildPreset | undefined
@@ -57,6 +58,7 @@ export const useGappsBuildController = ({
   const [settings, setSettings] = useState(initialSettings)
   const [isStarting, setIsStarting] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
+  const [isCancelling, setIsCancelling] = useState(false)
   const isRunning = activeJob ? !terminalBuildStatuses.includes(activeJob.status) : false
   const currentPhaseIndex = gappsBuildPhases.findIndex(phase => phase.id === (activeJob?.phase ?? 'queued'))
 
@@ -76,7 +78,7 @@ export const useGappsBuildController = ({
         targetImage
       })
       setActiveJob(job)
-      toast({ title: 'Google Play image queued' })
+      toast({ title: 'Google Play image queued', variant: 'success' })
     } catch (error) {
       toast({
         title: 'Could not start build',
@@ -90,6 +92,7 @@ export const useGappsBuildController = ({
 
   const cancelBuild = async () => {
     if (!activeJob) return
+    setIsCancelling(true)
     try {
       setActiveJob(
         await sendBff<ContainerImageBuildJob>(
@@ -97,8 +100,11 @@ export const useGappsBuildController = ({
           {}
         )
       )
+      toast({ title: 'Build cancelled', variant: 'success' })
     } catch (error) {
       toast({ title: 'Could not cancel build', description: getDisplayErrorMessage(error), variant: 'danger' })
+    } finally {
+      setIsCancelling(false)
     }
   }
 
@@ -107,7 +113,7 @@ export const useGappsBuildController = ({
     try {
       const saved = await saveOrchestratorUiSettings({ ...settings, defaultContainerImage: activeJob.targetImage })
       setSettings(saved)
-      toast({ title: 'Default image updated' })
+      toast({ title: 'Default image updated', variant: 'success' })
     } catch (error) {
       toast({
         title: 'Could not update default image',
@@ -121,7 +127,7 @@ export const useGappsBuildController = ({
     setIsClearing(true)
     try {
       await sendBff<unknown>('/api/bff/platform/image-builds/gapps/cache', { androidVersion }, 'DELETE')
-      toast({ title: `Android ${androidVersion} GApps cache cleared` })
+      toast({ title: `Android ${androidVersion} GApps cache cleared`, variant: 'success' })
     } catch (error) {
       toast({ title: 'Could not clear cache', description: getDisplayErrorMessage(error), variant: 'danger' })
     } finally {
@@ -138,6 +144,7 @@ export const useGappsBuildController = ({
     createAppHref: `/apps/create?${createAppQuery.toString()}`,
     currentPhaseIndex,
     isClearing,
+    isCancelling,
     isRunning,
     isStarting,
     preset,

@@ -5,7 +5,12 @@ import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/component
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
-import type { DataGridCellSkeleton, DataGridLoadingState, DataGridSelectionState } from './data-grid'
+import type {
+  DataGridCellSkeleton,
+  DataGridLoadingState,
+  DataGridRowActivation,
+  DataGridSelectionState
+} from './data-grid'
 
 type DataGridTableProps<TData> = {
   table: ReactTable<TData>
@@ -19,8 +24,33 @@ type DataGridTableProps<TData> = {
   getRowId: (row: TData) => string
   emptyState?: ReactNode
   rowContextMenu?: (row: Row<TData>) => ReactNode
+  rowActivation?: DataGridRowActivation<TData>
   onContextMenuRow: (row: Row<TData>) => void
   loading?: DataGridLoadingState
+}
+
+const interactiveRowTargetSelector = [
+  'a',
+  'button',
+  'input',
+  'label',
+  'select',
+  'textarea',
+  'summary',
+  '[contenteditable="true"]',
+  '[data-row-activation-ignore]',
+  '[tabindex]:not([tabindex="-1"])',
+  '[role="button"]',
+  '[role="checkbox"]',
+  '[role="link"]',
+  '[role="menuitem"]',
+  '[role="switch"]'
+].join(',')
+
+const isNestedInteractiveTarget = (target: EventTarget | null, row: HTMLTableRowElement) => {
+  if (!(target instanceof Element) || target === row) return false
+  const interactiveTarget = target.closest(interactiveRowTargetSelector)
+  return interactiveTarget !== null && interactiveTarget !== row
 }
 
 const renderLoadingCell = (skeleton: DataGridCellSkeleton | undefined) => {
@@ -57,6 +87,7 @@ export const DataGridTable = <TData,>({
   getRowId,
   emptyState,
   rowContextMenu,
+  rowActivation,
   onContextMenuRow,
   loading
 }: DataGridTableProps<TData>) => {
@@ -212,14 +243,28 @@ export const DataGridTable = <TData,>({
             const rowContent = (
               <TableRow
                 key={row.id}
+                aria-label={rowActivation?.getLabel(row.original)}
                 className={cn(
                   'hover:bg-surface-band/50 data-[state=selected]:border-primary/25',
                   'data-[state=selected]:bg-primary/8 data-[state=selected]:shadow-[inset_2px_0_0_hsl(var(--primary))]',
                   'data-[state=selected]:hover:bg-primary/12 dark:data-[state=selected]:bg-primary/10',
-                  'oled:data-[state=selected]:bg-primary/12 oled:data-[state=selected]:hover:bg-primary/16'
+                  'oled:data-[state=selected]:bg-primary/12 oled:data-[state=selected]:hover:bg-primary/16',
+                  rowActivation &&
+                    'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring'
                 )}
                 data-state={selection?.selectedIds.has(getRowId(row.original)) ? 'selected' : undefined}
+                tabIndex={rowActivation ? 0 : undefined}
+                onClick={event => {
+                  if (!rowActivation || isNestedInteractiveTarget(event.target, event.currentTarget)) return
+                  rowActivation.onActivate(row.original)
+                }}
                 onContextMenu={() => onContextMenuRow(row)}
+                onKeyDown={event => {
+                  if (!rowActivation || event.target !== event.currentTarget) return
+                  if (event.key !== 'Enter' && event.key !== ' ') return
+                  event.preventDefault()
+                  rowActivation.onActivate(row.original)
+                }}
               >
                 {row.getVisibleCells().map(cell => (
                   <TableCell

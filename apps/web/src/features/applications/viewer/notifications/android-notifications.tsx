@@ -43,7 +43,7 @@ export const AndroidNotifications = ({ app }: { app: AppDefinition }) => {
       <Section
         surface='plain'
         title='Android notifications'
-        titleClassName='pb-4'
+        headingSpacing='default'
         contentClassName='gap-3'
       >
         {previewNotifications.map(renderNotificationCard)}

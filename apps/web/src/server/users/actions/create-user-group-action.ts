@@ -4,8 +4,9 @@ import { runSafeAction } from '@/server/actions/safe-action'
 import { recordAuditEvent } from '@/server/audit/events'
 import { userService } from '@/server/auth/user'
 import { requireAdminUser, revalidateUsersPage } from '../shared'
+import type { CreateUserGroupInput } from '@/shared/contracts/auth-user'
 
-export const createUserGroupAction = async (input: { name: string; description?: string }) =>
+export const createUserGroupAction = async (input: CreateUserGroupInput) =>
   runSafeAction(
     async () => {
       const admin = await requireAdminUser()

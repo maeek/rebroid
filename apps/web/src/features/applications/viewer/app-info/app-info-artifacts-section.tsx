@@ -81,7 +81,7 @@ export const AppInfoArtifactsSection = ({ app }: { app?: AppDefinition }) => {
     <Section
       surface='plain'
       title='Artifacts'
-      titleClassName='pb-4'
+      headingSpacing='default'
       contentClassName='flex-col'
     >
       <AppInfoRow

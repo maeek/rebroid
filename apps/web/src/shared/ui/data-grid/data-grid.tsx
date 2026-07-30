@@ -46,6 +46,11 @@ export type DataGridSelectionState = {
   onSelectedIdsChange: (selectedIds: Set<string>) => void
 }
 
+export type DataGridRowActivation<TData> = {
+  getLabel: (row: TData) => string
+  onActivate: (row: TData) => void
+}
+
 export type DataGridProps<TData> = {
   columns: ColumnDef<TData>[]
   data: TData[]
@@ -63,6 +68,7 @@ export type DataGridProps<TData> = {
   emptyState?: ReactNode
   minWidth?: string
   rowContextMenu?: (row: Row<TData>) => ReactNode
+  rowActivation?: DataGridRowActivation<TData>
   className?: string
   loading?: boolean | DataGridLoadingState
 }
@@ -82,6 +88,7 @@ export function DataGrid<TData>({
   emptyState,
   minWidth,
   rowContextMenu,
+  rowActivation,
   className,
   loading = false
 }: DataGridProps<TData>) {
@@ -129,6 +136,7 @@ export function DataGrid<TData>({
         getRowId={getRowId}
         emptyState={emptyState}
         rowContextMenu={rowContextMenu}
+        rowActivation={rowActivation}
         onContextMenuRow={selectRowForContextMenu}
         loading={loadingState}
       />

@@ -1,10 +1,11 @@
 import type { ChangeEvent, RefObject } from 'react'
-import { IconFiles, IconFolderOpen, IconLoader2, IconTrash, IconUpload } from '@tabler/icons-react'
+import { IconFiles, IconFolderOpen, IconTrash, IconUpload } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
+import { MutationButton } from '@/components/ui/mutation-button'
 import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
 import { detectedContextStatusVariant, directoryInputProps } from '../model/context-selection'
@@ -87,15 +88,16 @@ export const ContextSection = ({
       onChange={onFileInputChange}
     />
     <div className='flex flex-wrap gap-2'>
-      <Button
+      <MutationButton
         type='button'
         variant='secondary'
-        disabled={isConnectingContext}
+        pending={isConnectingContext}
+        pendingLabel='Connecting…'
         onClick={onConnectFolder}
       >
-        {isConnectingContext ? <IconLoader2 className='size-4 animate-spin' /> : <IconFolderOpen />}
+        <IconFolderOpen />
         Connect folder
-      </Button>
+      </MutationButton>
       <Button
         type='button'
         variant='secondary'
@@ -149,15 +151,16 @@ export const ContextSection = ({
       </div>
     </Visible>
     <Visible when={detectedUploadableCount > 0}>
-      <Button
+      <MutationButton
         type='button'
         variant='primary'
-        disabled={isUploadingDetectedContext}
+        pending={isUploadingDetectedContext}
+        pendingLabel='Uploading detected files…'
         onClick={onUploadDetectedContext}
       >
-        {isUploadingDetectedContext ? <IconLoader2 className='size-4 animate-spin' /> : <IconUpload />}
+        <IconUpload />
         {detectedContextUploadLabel}
-      </Button>
+      </MutationButton>
     </Visible>
     <FormField
       label='Path'
@@ -173,15 +176,17 @@ export const ContextSection = ({
       type='file'
       onChange={(event: ChangeEvent<HTMLInputElement>) => onUploadFileChange(event.target.files?.[0] ?? null)}
     />
-    <Button
+    <MutationButton
       type='button'
       variant='secondary'
-      disabled={!uploadFile || isUploading}
+      disabled={!uploadFile}
+      pending={isUploading}
+      pendingLabel={uploadProgress === null ? 'Uploading…' : `Uploading ${uploadProgress}%`}
       onClick={onUpload}
     >
-      {isUploading ? <IconLoader2 className='size-4 animate-spin' /> : <IconUpload />}
+      <IconUpload />
       {uploadProgress === null ? 'Upload' : `Upload ${uploadProgress}%`}
-    </Button>
+    </MutationButton>
     <div className='grid gap-2'>
       {availableContextFiles.map(file => (
         <div

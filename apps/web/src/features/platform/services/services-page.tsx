@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { IconCast, IconListDetails, IconLoader2, IconPencil, IconRestore, IconSettings } from '@tabler/icons-react'
+import { IconCast, IconListDetails, IconPencil, IconRestore, IconSettings } from '@tabler/icons-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { MutationButton } from '@/components/ui/mutation-button'
 import { Section } from '@/components/ui/section'
 import { StatusBadge, type StatusBadgeTone } from '@/components/ui/status-badge'
 import { toast } from '@/hooks/use-toast'
@@ -90,7 +91,7 @@ export const PlatformServicesPage = ({
   const router = useRouter()
   const [settings, setSettings] = useState(initialSettings)
   const [editingService, setEditingService] = useState<ServiceId | null>(null)
-  const [isSaving, setIsSaving] = useState(false)
+  const [pendingAction, setPendingAction] = useState<'save' | 'reset' | null>(null)
   const [searchDraft, setSearchDraft] = useState('')
   const [search, setSearch] = useState('')
   const { isFeatureEnabled } = useFeatureFlags()
@@ -114,6 +115,17 @@ export const PlatformServicesPage = ({
     setEditingService(null)
     setServiceRoute(null)
   }, [setServiceRoute])
+
+  const activateService = useCallback(
+    (service: ServiceRow) => {
+      if (service.action.type === 'link') {
+        router.push(service.action.href)
+        return
+      }
+      openServiceEditor(service.action.serviceId)
+    },
+    [openServiceEditor, router]
+  )
 
   const serviceRows = useMemo<ServiceRow[]>(() => {
     const configurableRows: ServiceRow[] = (Object.keys(serviceMeta) as ServiceId[])
@@ -286,11 +298,11 @@ export const PlatformServicesPage = ({
   }
 
   const saveSettings = async () => {
-    setIsSaving(true)
+    setPendingAction('save')
     try {
       const saved = await saveOrchestratorUiSettings(runtimeSettings(settings))
       setSettings(current => ({ ...saved, orchestratorApiUrl: current.orchestratorApiUrl }))
-      toast({ title: 'Service settings saved' })
+      toast({ title: 'Service settings saved', variant: 'success' })
     } catch (error) {
       toast({
         title: 'Could not save service settings',
@@ -298,16 +310,16 @@ export const PlatformServicesPage = ({
         variant: 'danger'
       })
     } finally {
-      setIsSaving(false)
+      setPendingAction(null)
     }
   }
 
   const resetSettings = async () => {
-    setIsSaving(true)
+    setPendingAction('reset')
     try {
       const saved = await resetOrchestratorUiSettings()
       setSettings(current => ({ ...saved, orchestratorApiUrl: current.orchestratorApiUrl }))
-      toast({ title: 'Service settings reset' })
+      toast({ title: 'Service settings reset', variant: 'success' })
     } catch (error) {
       toast({
         title: 'Could not reset service settings',
@@ -315,7 +327,7 @@ export const PlatformServicesPage = ({
         variant: 'danger'
       })
     } finally {
-      setIsSaving(false)
+      setPendingAction(null)
     }
   }
 
@@ -327,23 +339,27 @@ export const PlatformServicesPage = ({
         description='Configure optional sidecar connection and runtime settings. Feature availability is managed separately.'
         actions={
           <>
-            <Button
+            <MutationButton
               type='button'
               variant='secondary'
               onClick={() => void resetSettings()}
-              disabled={isSaving}
+              pending={pendingAction === 'reset'}
+              pendingLabel='Resetting…'
+              disabled={pendingAction === 'save'}
             >
               <IconRestore className='size-4' />
               Reset
-            </Button>
-            <Button
+            </MutationButton>
+            <MutationButton
               type='button'
               onClick={() => void saveSettings()}
-              disabled={isSaving}
+              pending={pendingAction === 'save'}
+              pendingLabel='Saving…'
+              disabled={pendingAction === 'reset'}
             >
-              {isSaving ? <IconLoader2 className='size-4 animate-spin' /> : <IconSettings className='size-4' />}
+              <IconSettings className='size-4' />
               Save
-            </Button>
+            </MutationButton>
           </>
         }
       />
@@ -365,6 +381,11 @@ export const PlatformServicesPage = ({
               pageIndex={0}
               pageSize={Math.max(visibleServiceRows.length, 1)}
               getRowId={row => row.id}
+              rowActivation={{
+                getLabel: row =>
+                  row.action.type === 'edit' ? `Edit ${row.title}` : `${row.action.label} for ${row.title}`,
+                onActivate: activateService
+              }}
               minWidth='78rem'
               emptyState={<div className='text-center text-foreground-muted'>No services match your search.</div>}
             />

@@ -98,7 +98,7 @@ export const RuntimeNetworkDetail = ({ details }: RuntimeNetworkDetailProps) => 
           surface='plain'
           title='Related containers'
           contentClassName='gap-4'
-          titleClassName='pb-2'
+          headingSpacing='compact'
         >
           <Visible when={details.relatedContainers.length > 0}>
             <RelatedContainersGrid
@@ -115,7 +115,7 @@ export const RuntimeNetworkDetail = ({ details }: RuntimeNetworkDetailProps) => 
           title='Labels'
           surface='plain'
           contentClassName='gap-4'
-          titleClassName='pb-4'
+          headingSpacing='default'
         >
           <PlatformJsonBlock value={network.labels} />
         </Section>
@@ -125,7 +125,7 @@ export const RuntimeNetworkDetail = ({ details }: RuntimeNetworkDetailProps) => 
           surface='plain'
           collapsible
           contentClassName='gap-4'
-          titleClassName='pb-4'
+          headingSpacing='default'
         >
           <PlatformJsonBlock value={details.inspect} />
         </Section>

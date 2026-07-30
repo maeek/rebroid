@@ -12,6 +12,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { FormField } from '@/components/ui/form-field'
+import { MutationButton } from '@/components/ui/mutation-button'
 import { Switch } from '@/components/ui/switch'
 import { checkAutomationAiProviderCandidateHealthAction } from '@/server/orchestrator/settings/actions'
 import { AiHealthBadge } from '@/shared/ui/ai/ai-health-indicator'
@@ -130,13 +131,14 @@ export const ProviderDialog = ({
               Cancel
             </Button>
           </DialogClose>
-          <Button
+          <MutationButton
             type='button'
-            disabled={isSaving}
+            pending={isSaving}
+            pendingLabel='Saving…'
             onClick={onSave}
           >
             Save
-          </Button>
+          </MutationButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

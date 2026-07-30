@@ -294,7 +294,7 @@ export const FirewallSettings = ({
       <Section
         surface='plain'
         title='Network policies'
-        titleClassName='pb-2'
+        headingSpacing='compact'
         contentClassName='gap-4'
       >
         <DataGridWorkspace

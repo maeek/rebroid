@@ -37,6 +37,7 @@ function ToastList() {
         return (
           <Toast
             key={id}
+            data-testid={`toast-${variant}`}
             toast={currentToast}
             variant={variant}
           >

@@ -111,7 +111,7 @@ export const AppInfoRuntimeSection = ({
     <Section
       surface='plain'
       title='Runtime'
-      titleClassName='pb-4'
+      headingSpacing='default'
       contentClassName='flex-col'
     >
       <Visible when={canViewBackendDetails}>

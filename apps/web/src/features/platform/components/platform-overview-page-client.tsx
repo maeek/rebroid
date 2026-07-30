@@ -38,7 +38,7 @@ export const PlatformOverviewPageClient = () => {
         <Section
           surface='plain'
           title='Resources'
-          titleClassName='pb-2'
+          headingSpacing='compact'
           contentClassName='gap-4'
         >
           <PlatformQuickGlanceSection

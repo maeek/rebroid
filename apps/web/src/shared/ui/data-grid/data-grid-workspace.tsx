@@ -86,7 +86,7 @@ export const DataGridWorkspace = ({
   children,
   className
 }: DataGridWorkspaceProps) => {
-  const [desktopFiltersOpen, setDesktopFiltersOpen] = useState(true)
+  const [desktopFiltersOpen, setDesktopFiltersOpen] = useState(false)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const hasFilters = Boolean(filters)
   const filterContent = hasFilters ? (
@@ -100,7 +100,9 @@ export const DataGridWorkspace = ({
   ) : null
 
   const openFilters = () => {
-    if (window.matchMedia('(min-width: 1024px)').matches) {
+    const desktop = window.matchMedia?.('(min-width: 1024px)').matches ?? window.innerWidth >= 1024
+
+    if (desktop) {
       setDesktopFiltersOpen(open => !open)
       return
     }

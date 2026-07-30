@@ -47,7 +47,7 @@ export const AppIdentitySection = ({
     <Section
       title='Application'
       surface={surface}
-      titleClassName='pb-4'
+      headingSpacing='default'
       contentClassName='gap-5'
     >
       <div className='grid gap-5 xl:grid-cols-[max-content_1fr]'>

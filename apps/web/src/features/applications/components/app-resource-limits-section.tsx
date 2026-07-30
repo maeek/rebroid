@@ -14,7 +14,6 @@ type AppResourceLimitsSectionProps = {
   title?: string
   descriptionForMemory?: string
   descriptionForCpu?: string
-  titleClassName?: string
   contentClassName?: string
 }
 
@@ -25,7 +24,6 @@ export const AppResourceLimitsSection = ({
   title = 'Resources',
   descriptionForMemory = 'Optional memory limit in MB for the app container. Leave empty to use the runtime default.',
   descriptionForCpu = 'Optional CPU quota in cores. Fractional values like 0.5 are allowed.',
-  titleClassName = 'mb-4',
   contentClassName = 'gap-4'
 }: AppResourceLimitsSectionProps) => {
   return (
@@ -33,7 +31,7 @@ export const AppResourceLimitsSection = ({
       surface='plain'
       title={title}
       contentClassName={contentClassName}
-      titleClassName={titleClassName}
+      headingSpacing='default'
     >
       <FormField
         label='RAM limit'

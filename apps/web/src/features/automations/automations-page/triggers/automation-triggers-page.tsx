@@ -138,7 +138,7 @@ export function AutomationTriggersPage({
     try {
       const run = await runAutomationTriggerAction(trigger.id)
       router.refresh()
-      toast({ title: 'Automation queued', description: `Run ${run.id.slice(0, 8)} started.` })
+      toast({ title: 'Automation queued', description: `Run ${run.id.slice(0, 8)} started.`, variant: 'success' })
     } catch (error) {
       toast({
         title: 'Could not run trigger',

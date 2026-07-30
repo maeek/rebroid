@@ -65,7 +65,7 @@ describe('useRuntimeImageBuilderController', () => {
     expect(buildInput?.name).toBe('Team image')
     expect(buildInput?.contextFileIds).toEqual(['apk', 'permissions'])
     expect(result.current.buildSectionProps.activeJob?.status).toBe('queued')
-    expect(toast).toHaveBeenCalledWith({ title: 'Build started' })
+    expect(toast).toHaveBeenCalledWith({ title: 'Build started', variant: 'success' })
   })
 
   it('exposes live progress and replaces it with the cancelled job', async () => {

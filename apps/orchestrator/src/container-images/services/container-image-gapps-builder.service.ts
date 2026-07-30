@@ -312,7 +312,10 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
     active: ActiveGappsBuild,
   ) {
     const context = this.archive.createDirectoryTar(dockerfile, workDirectory, {
-      'rebroid-gapps-entrypoint': entrypoint,
+      'rebroid-gapps-entrypoint': {
+        content: entrypoint,
+        mode: 0o755,
+      },
     });
     await this.engine.longOperation(
       'container_image_gapps_patch',
@@ -327,16 +330,23 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
           stream.destroy(new Error('GApps image build aborted.'));
         signal.addEventListener('abort', abort, { once: true });
         await new Promise<void>((resolve, reject) => {
+          let streamedError: Error | null = null;
           docker.modem.followProgress(
             stream,
             (error) => {
               signal.removeEventListener('abort', abort);
               if (error) reject(error);
+              else if (streamedError) reject(streamedError);
               else resolve();
             },
             (event: DockerProgressEvent) => {
               const message = this.progressMessage(event);
               if (message) void this.jobs.appendLog(jobId, message);
+              const errorMessage =
+                event.errorDetail?.message ?? event.error ?? null;
+              if (errorMessage && !streamedError) {
+                streamedError = new Error(errorMessage);
+              }
             },
           );
         });
@@ -385,7 +395,7 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
       `FROM ${baseImage}
 USER root
 COPY system/ /system/
-COPY --chmod=0755 rebroid-gapps-entrypoint /usr/local/bin/rebroid-gapps-entrypoint
+COPY rebroid-gapps-entrypoint /usr/local/bin/rebroid-gapps-entrypoint
 ENTRYPOINT ["/usr/local/bin/rebroid-gapps-entrypoint"]
 CMD ["/init"]`,
       requiredRuntimeImageLabels(metadata),

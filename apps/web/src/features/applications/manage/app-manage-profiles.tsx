@@ -56,7 +56,11 @@ export const AppManageProfiles = ({ app, permissions }: { app?: AppDefinition; p
         icon: current?.icon ?? updated.icon,
         ownerDisplayName: current?.ownerDisplayName ?? updated.ownerDisplayName
       }))
-      toast({ title: 'Profile removed', description: `${profileToDelete} was deleted with its saved data.` })
+      toast({
+        title: 'Profile removed',
+        description: `${profileToDelete} was deleted with its saved data.`,
+        variant: 'success'
+      })
       setProfileToDelete(null)
       router.refresh()
     } catch (error) {
@@ -89,7 +93,7 @@ export const AppManageProfiles = ({ app, permissions }: { app?: AppDefinition; p
         <Section
           surface='plain'
           title='Profiles'
-          titleClassName='pb-4'
+          headingSpacing='default'
           contentClassName='gap-3'
         >
           <Visible when={persistentProfiles.length === 0}>

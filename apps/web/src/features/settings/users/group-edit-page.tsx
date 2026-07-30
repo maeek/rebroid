@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import { IconDeviceFloppy } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
+import { MutationButton } from '@/components/ui/mutation-button'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
@@ -36,7 +36,7 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
     setIsSaving(true)
     try {
       unwrapActionResult(await updateUserGroupAction(group.id, buildGroupUpdateInput(draft)))
-      toast({ title: 'Group saved' })
+      toast({ title: 'Group saved', variant: 'success' })
       router.refresh()
     } catch (error) {
       toast({
@@ -58,13 +58,14 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
         title={draft.name || group.name}
         description='Default permissions and quotas for group members.'
         actions={
-          <Button
-            disabled={isSaving}
+          <MutationButton
+            pending={isSaving}
+            pendingLabel='Saving…'
             onClick={() => void saveGroup()}
           >
             <IconDeviceFloppy className='size-4' />
             Save Group
-          </Button>
+          </MutationButton>
         }
       />
       <PageContent className='grid xl:grid-cols-[minmax(0,1fr)_minmax(28rem,0.85fr)]'>
@@ -72,7 +73,7 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
           <Section
             title='Group Details'
             surface='panel'
-            titleClassName='pb-4'
+            headingSpacing='default'
             contentClassName='gap-5'
           >
             <div className='grid gap-4 md:grid-cols-2'>
@@ -121,7 +122,7 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
           <Section
             title='Quotas'
             surface='panel'
-            titleClassName='pb-4'
+            headingSpacing='default'
             contentClassName='gap-5'
           >
             <QuotaFields
@@ -132,16 +133,10 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
           </Section>
         </div>
         <Section
-          title={
-            <div>
-              <div>Permissions</div>
-              <p className='mt-1 text-sm font-normal text-foreground-muted'>
-                These permissions are inherited by every group member.
-              </p>
-            </div>
-          }
+          title='Permissions'
+          description='These permissions are inherited by every group member.'
           surface='panel'
-          titleClassName='pb-4'
+          headingSpacing='default'
           contentClassName='gap-4'
           className='xl:sticky xl:top-4'
         >

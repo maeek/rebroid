@@ -1,41 +1,38 @@
+'use client'
+
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
-import { PageBreadcrumbsSkeleton } from '@/shared/ui/page/page-breadcrumbs-skeleton'
+import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { createDataGridLoadingProps } from '@/shared/ui/data-grid/data-grid-loading-state'
+import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
-import { TableSkeleton } from '@/shared/ui/skeletons/table-skeleton'
 
 const UsersHeaderSkeleton = ({
-  itemWidths = ['w-16', 'w-16'],
-  titleWidth = 'w-24',
-  actionWidth = 'w-28',
+  title,
+  description,
+  trail = [],
   withAvatar = false
 }: {
-  itemWidths?: string[]
-  titleWidth?: string
-  actionWidth?: string
+  title: string
+  description: string
+  trail?: Array<{ label: string; href?: string }>
   withAvatar?: boolean
 }) => (
-  <section className='shrink-0 px-6 py-4 max-sm:px-4'>
-    <PageBreadcrumbsSkeleton
-      className='pt-0'
-      itemWidths={itemWidths}
-    />
-    <div className='flex items-center justify-between gap-3 pt-4 max-sm:flex-col max-sm:items-start'>
-      <div className='flex min-w-0 items-center gap-4'>
-        {withAvatar ? <Skeleton className='size-12 rounded-full' /> : null}
-        <div className='grid gap-2'>
-          <Skeleton className={`h-9 ${titleWidth} max-sm:h-7`} />
-          <Skeleton className='h-4 w-96 max-w-full opacity-70' />
-        </div>
-      </div>
-      <Skeleton className={`h-10 ${actionWidth}`} />
-    </div>
-  </section>
+  <PageHeader
+    section={{ label: 'Security' }}
+    trail={trail}
+    title={title}
+    description={description}
+    leading={withAvatar ? <Skeleton className='size-12 rounded-full' /> : undefined}
+  />
 )
 
 export const UsersPageSkeleton = () => (
   <StandardPage className='gap-2'>
-    <UsersHeaderSkeleton />
+    <UsersHeaderSkeleton
+      title='Users'
+      description='Manage local accounts, roles, group memberships, and password policy.'
+    />
     <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
       <div className='grid gap-4'>
         <Skeleton className='h-5 w-32' />
@@ -43,15 +40,19 @@ export const UsersPageSkeleton = () => (
           <Skeleton className='h-10 w-full max-w-md' />
           <Skeleton className='h-10 w-28' />
         </div>
-        <TableSkeleton
-          columns={[
-            { headerWidth: 'w-16', cellWidth: 'w-44', kind: 'stacked' },
-            { headerWidth: 'w-12', cellWidth: 'w-24' },
-            { headerWidth: 'w-16', cellWidth: 'w-36' },
-            { headerWidth: 'w-16', kind: 'badge' },
-            { headerWidth: 'w-16', kind: 'action' }
-          ]}
-          rows={6}
+        <DataGrid
+          {...createDataGridLoadingProps({
+            columns: [
+              { headerWidth: 'w-16', cellWidth: 'w-44', kind: 'stacked' },
+              { headerWidth: 'w-12', cellWidth: 'w-24' },
+              { headerWidth: 'w-16', cellWidth: 'w-36' },
+              { headerWidth: 'w-16', kind: 'badge' },
+              { headerWidth: 'w-16', kind: 'action' }
+            ],
+            rows: 6,
+            selectable: false,
+            rowMenu: false
+          })}
         />
       </div>
     </section>
@@ -61,9 +62,8 @@ export const UsersPageSkeleton = () => (
 export const GroupsPageSkeleton = () => (
   <StandardPage className='gap-2'>
     <UsersHeaderSkeleton
-      itemWidths={['w-16', 'w-20']}
-      titleWidth='w-28'
-      actionWidth='hidden'
+      title='Groups'
+      description='Manage reusable roles, quotas, and permission defaults.'
     />
     <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
       <div className='grid gap-4'>
@@ -71,14 +71,18 @@ export const GroupsPageSkeleton = () => (
           <Skeleton className='h-5 w-32' />
           <Skeleton className='h-10 w-28' />
         </div>
-        <TableSkeleton
-          columns={[
-            { headerWidth: 'w-16', cellWidth: 'w-44', kind: 'stacked' },
-            { headerWidth: 'w-20', cellWidth: 'w-56' },
-            { headerWidth: 'w-12', cellWidth: 'w-20' },
-            { headerWidth: 'w-16', kind: 'action' }
-          ]}
-          rows={5}
+        <DataGrid
+          {...createDataGridLoadingProps({
+            columns: [
+              { headerWidth: 'w-16', cellWidth: 'w-44', kind: 'stacked' },
+              { headerWidth: 'w-20', cellWidth: 'w-56' },
+              { headerWidth: 'w-12', cellWidth: 'w-20' },
+              { headerWidth: 'w-16', kind: 'action' }
+            ],
+            rows: 5,
+            selectable: false,
+            rowMenu: false
+          })}
         />
       </div>
     </section>
@@ -88,9 +92,9 @@ export const GroupsPageSkeleton = () => (
 export const UserEditPageSkeleton = () => (
   <StandardPage className='gap-2'>
     <UsersHeaderSkeleton
-      itemWidths={['w-16', 'w-16', 'w-28']}
-      titleWidth='w-48'
-      actionWidth='w-52'
+      trail={[{ label: 'Users', href: '/security/users' }]}
+      title='Edit user'
+      description='Update account details, group membership, permissions, and quotas.'
       withAvatar
     />
     <EditBodySkeleton variant='user' />
@@ -100,9 +104,9 @@ export const UserEditPageSkeleton = () => (
 export const GroupEditPageSkeleton = () => (
   <StandardPage className='gap-2'>
     <UsersHeaderSkeleton
-      itemWidths={['w-16', 'w-20', 'w-28']}
-      titleWidth='w-44'
-      actionWidth='w-28'
+      trail={[{ label: 'Groups', href: '/security/groups' }]}
+      title='Edit group'
+      description='Update group details, quotas, and inherited permissions.'
     />
     <EditBodySkeleton variant='group' />
   </StandardPage>
@@ -119,7 +123,7 @@ const UserAccountSkeleton = () => (
   <Section
     title='Account'
     surface='panel'
-    titleClassName='pb-4'
+    headingSpacing='default'
     contentClassName='gap-5'
   >
     <div className='flex flex-wrap items-center gap-4'>
@@ -141,7 +145,7 @@ const GroupDetailsSkeleton = () => (
   <Section
     title='Group Details'
     surface='panel'
-    titleClassName='pb-4'
+    headingSpacing='default'
     contentClassName='gap-5'
   >
     <div className='grid gap-4 md:grid-cols-2'>
@@ -156,7 +160,7 @@ const GroupMembershipSkeleton = () => (
   <Section
     title='Groups'
     surface='panel'
-    titleClassName='pb-4'
+    headingSpacing='default'
     contentClassName='gap-5'
   >
     <Skeleton className='h-9 w-full' />
@@ -181,7 +185,7 @@ const QuotasSkeleton = () => (
   <Section
     title='Quotas'
     surface='panel'
-    titleClassName='pb-4'
+    headingSpacing='default'
     contentClassName='gap-5'
   >
     {Array.from({ length: 4 }).map((_, index) => (
@@ -204,7 +208,7 @@ const PermissionsSkeleton = () => (
   <Section
     title='Permissions'
     surface='panel'
-    titleClassName='pb-4'
+    headingSpacing='default'
     contentClassName='gap-4'
     className='xl:sticky xl:top-4'
   >

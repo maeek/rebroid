@@ -5,10 +5,10 @@ import { IconDeviceFloppy } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { MutationButton } from '@/components/ui/mutation-button'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
@@ -47,7 +47,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
     setIsSaving(true)
     try {
       unwrapActionResult(await updateUserAction(user.id, buildUserUpdateInput(draft)))
-      toast({ title: 'User saved' })
+      toast({ title: 'User saved', variant: 'success' })
       router.refresh()
     } catch (error) {
       toast({
@@ -95,13 +95,14 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
                 onCheckedChange={checked => updateDraft({ disabled: !checked })}
               />
             </Label>
-            <Button
-              disabled={isSaving}
+            <MutationButton
+              pending={isSaving}
+              pendingLabel='Saving…'
               onClick={() => void saveUser()}
             >
               <IconDeviceFloppy className='size-4' />
               Save User
-            </Button>
+            </MutationButton>
           </>
         }
       />
@@ -110,7 +111,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
           <Section
             title='Account'
             surface='panel'
-            titleClassName='pb-4'
+            headingSpacing='default'
             contentClassName='gap-5'
           >
             <UserAvatarInput
@@ -180,7 +181,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
           <Section
             title='Groups'
             surface='panel'
-            titleClassName='pb-4'
+            headingSpacing='default'
             contentClassName='gap-5'
           >
             <GroupMembershipPicker
@@ -192,7 +193,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
           <Section
             title='Quotas'
             surface='panel'
-            titleClassName='pb-4'
+            headingSpacing='default'
             contentClassName='gap-5'
           >
             <QuotaFields
@@ -203,16 +204,10 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
           </Section>
         </div>
         <Section
-          title={
-            <div>
-              <div>Permissions</div>
-              <p className='mt-1 text-sm font-normal text-foreground-muted'>
-                Group permissions are inherited. Toggling a permission here creates a user-level override.
-              </p>
-            </div>
-          }
+          title='Permissions'
+          description='Group permissions are inherited. Toggling a permission here creates a user-level override.'
           surface='panel'
-          titleClassName='pb-4'
+          headingSpacing='default'
           contentClassName='gap-4'
           className='xl:sticky xl:top-4'
         >

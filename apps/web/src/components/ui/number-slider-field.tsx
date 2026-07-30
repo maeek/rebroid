@@ -8,6 +8,9 @@ import { Slider } from './slider'
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 
 type NumberFieldBaseProps = {
+  id?: string
+  'aria-describedby'?: string
+  'aria-invalid'?: boolean
   value: string
   onValueChange: (value: string) => void
   min: number
@@ -34,6 +37,9 @@ type NumberSliderFieldProps = NumberFieldBaseProps &
   )
 
 export const NumberSliderField = ({
+  id,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
   value,
   onValueChange,
   min,
@@ -73,6 +79,9 @@ export const NumberSliderField = ({
     <div className={cn('flex w-full flex-col gap-2', className)}>
       <div className='flex min-w-0 items-center gap-2'>
         <Input
+          id={id}
+          aria-describedby={ariaDescribedBy}
+          aria-invalid={ariaInvalid}
           className='min-w-0'
           value={value}
           min={min}

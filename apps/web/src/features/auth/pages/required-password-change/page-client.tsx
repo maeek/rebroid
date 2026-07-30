@@ -1,14 +1,16 @@
 'use client'
 
 import { FormEvent, useState } from 'react'
-import { IconAlertTriangle, IconLoader2, IconLockAccess, IconLogout } from '@tabler/icons-react'
+import { IconAlertTriangle, IconLockAccess, IconLogout } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { signIn, signOut } from 'next-auth/react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { MutationButton } from '@/components/ui/mutation-button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { completeRequiredPasswordChangeAction } from '@/server/users/actions/complete-required-password-change-action'
@@ -54,7 +56,7 @@ export const RequiredPasswordChangePageClient = ({
         await signOut({ callbackUrl: '/login', redirect: true })
         return
       }
-      toast({ title: 'Password updated' })
+      toast({ title: 'Password updated', variant: 'success' })
       router.replace('/apps')
       router.refresh()
     } catch (submitError) {
@@ -77,21 +79,26 @@ export const RequiredPasswordChangePageClient = ({
       </CardHeader>
       <form onSubmit={event => void submit(event)}>
         <CardContent className='grid gap-5 max-sm:px-0'>
-          <div className='grid gap-3'>
-            <Label htmlFor='current-password'>Current password</Label>
+          <FormField
+            controlId='current-password'
+            label='Current password'
+            layout='vertical'
+          >
             <Input
-              id='current-password'
               type='password'
               autoComplete='current-password'
               required
               value={currentPassword}
               onChange={event => setCurrentPassword(event.target.value)}
             />
-          </div>
-          <div className='grid gap-3'>
-            <Label htmlFor='new-password'>New password</Label>
+          </FormField>
+          <FormField
+            controlId='new-password'
+            label='New password'
+            layout='vertical'
+            description={`Use at least ${passwordMinimumLength} characters.`}
+          >
             <Input
-              id='new-password'
               type='password'
               autoComplete='new-password'
               required
@@ -100,11 +107,13 @@ export const RequiredPasswordChangePageClient = ({
               value={newPassword}
               onChange={event => setNewPassword(event.target.value)}
             />
-          </div>
-          <div className='grid gap-3'>
-            <Label htmlFor='confirm-password'>Confirm password</Label>
+          </FormField>
+          <FormField
+            controlId='confirm-password'
+            label='Confirm password'
+            layout='vertical'
+          >
             <Input
-              id='confirm-password'
               type='password'
               autoComplete='new-password'
               required
@@ -112,7 +121,7 @@ export const RequiredPasswordChangePageClient = ({
               value={confirmPassword}
               onChange={event => setConfirmPassword(event.target.value)}
             />
-          </div>
+          </FormField>
           {error ? (
             <Alert
               variant='danger'
@@ -125,15 +134,15 @@ export const RequiredPasswordChangePageClient = ({
           ) : null}
         </CardContent>
         <CardFooter className='grid gap-3 max-sm:px-0'>
-          <Button
+          <MutationButton
             type='submit'
             size='lg'
             className='w-full font-bold'
-            disabled={isSubmitting}
+            pending={isSubmitting}
+            pendingLabel='Updating…'
           >
-            {isSubmitting ? <IconLoader2 className='mr-2 size-4 animate-spin' /> : null}
             Update password
-          </Button>
+          </MutationButton>
           <Button
             type='button'
             variant='secondary'
@@ -149,3 +158,44 @@ export const RequiredPasswordChangePageClient = ({
     </Card>
   )
 }
+
+export const RequiredPasswordChangePageLoading = () => (
+  <Card className='relative z-10 mx-auto w-full max-w-md border-white/10 bg-surface-panel/70 shadow-emphasis backdrop-blur-xl max-sm:border-0 max-sm:bg-transparent max-sm:shadow-none max-sm:backdrop-blur-none'>
+    <CardHeader className='flex-row items-start gap-4 max-sm:px-0'>
+      <div className='flex size-14 items-center justify-center rounded-panel border border-primary/30 bg-primary/15 text-primary'>
+        <IconLockAccess className='size-10' />
+      </div>
+      <div className='grid flex-1 gap-2'>
+        <CardTitle className='text-2xl'>Change password</CardTitle>
+        <Skeleton className='h-4 w-52 max-w-full' />
+      </div>
+    </CardHeader>
+    <CardContent className='grid gap-5 max-sm:px-0'>
+      {Array.from({ length: 3 }, (_, index) => (
+        <div
+          key={index}
+          className='grid gap-2'
+        >
+          <Skeleton className='h-4 w-28' />
+          <Skeleton className='h-9 w-full' />
+        </div>
+      ))}
+    </CardContent>
+    <CardFooter className='grid gap-3 max-sm:px-0'>
+      <Button
+        size='lg'
+        className='w-full'
+        disabled
+      >
+        Update password
+      </Button>
+      <Button
+        variant='secondary'
+        className='w-full'
+        disabled
+      >
+        Sign out
+      </Button>
+    </CardFooter>
+  </Card>
+)

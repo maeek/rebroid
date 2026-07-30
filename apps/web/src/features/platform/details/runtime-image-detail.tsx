@@ -91,7 +91,7 @@ export const RuntimeImageDetail = ({ details }: { details: PlatformImageDetails 
           surface='plain'
           title='Related containers'
           contentClassName='gap-4'
-          titleClassName='pb-2'
+          headingSpacing='compact'
         >
           <Visible when={details.relatedContainers.length > 0}>
             <RelatedContainersGrid
@@ -108,7 +108,7 @@ export const RuntimeImageDetail = ({ details }: { details: PlatformImageDetails 
           title='Labels'
           surface='plain'
           contentClassName='gap-4'
-          titleClassName='pb-4'
+          headingSpacing='default'
         >
           <PlatformJsonBlock value={image.labels} />
         </Section>

@@ -113,6 +113,14 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 - Match existing formatting. Do not introduce unrelated formatting churn.
 - Follow `docs/web-design-system.md` for web UI work. Feature code must use semantic tokens, documented page families,
   shared surfaces, `FormField`, and shared feedback components instead of feature-local visual recipes.
+- Treat `Surface` `data-tone` styling as authoritative across notices, service banners, and toasts; successful mutation
+  completion uses the success variant and must retain its visible semantic tint in light, dark, and OLED themes.
+- Use `Section.headingSpacing` and `Section.description` for heading rhythm and helper copy. Do not add ad-hoc title
+  padding in protected feature pages.
+- Use the Base UI-backed `MultiSelectCombobox` for searchable multiple relationships instead of rendering an expanded
+  checkbox list. Keep its removable chips, keyboard behavior, option descriptions, and empty state intact.
+- Use `MutationButton` for asynchronous actions so the pending label, spinner, disabled state, and `aria-busy` remain
+  visible and consistent.
 - Web UI changes do not retain deprecated design-system variants or token aliases; migrate all consumers and remove the
   old API in the same change.
 - Web loading states must be implemented by the component that owns the ready-state geometry. Reuse the actual page
@@ -122,8 +130,12 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 - Compose every interactive `DataGrid` through the shared `DataGridWorkspace`. Use its filter sidebar/drawer only for
   page-level datasets with meaningful structured facets; embedded related-resource grids and small fixed datasets use
   its search-only mode. Keep enabled filter chrome real during loading, and keep feature-specific filter controls and
-  validated state in the owning feature. Do not add separate search buttons, filter popovers, or column-header
+  validated state in the owning feature. Desktop filter sidebars start closed; preserve the filter button, active
+  count/chips, reset behavior, and mobile drawer. Do not add separate search buttons, filter popovers, or column-header
   filtering.
+- Keep the protected route loading matrix at 36 renderable routes with thin feature-owned loaders; the legacy
+  display-sessions redirect is the only loader-free exclusion. Explicit Suspense boundaries reuse the same feature
+  loading component as the route loader.
 
 ## Security and Performance
 

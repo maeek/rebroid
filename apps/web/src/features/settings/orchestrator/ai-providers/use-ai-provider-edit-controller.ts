@@ -217,7 +217,7 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
           ]
         }
       })
-      toast({ title: 'AI model download started', description: normalizedModelId })
+      toast({ title: 'AI model download started', description: normalizedModelId, variant: 'success' })
     } catch (error) {
       toast({
         title: 'Could not download AI model',

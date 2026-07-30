@@ -1,13 +1,13 @@
 import { Skeleton } from '@/components/ui/skeleton'
+import { PageHeader } from '@/shared/ui/page/page-header'
 import { StandardPage } from '@/shared/ui/page/page-layout'
-import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
 
 export const PlatformOverviewPageSkeleton = () => (
   <StandardPage className='gap-2'>
-    <PageHeaderSkeleton
-      titleWidth='w-40'
-      includeOrchestratorBreadcrumb={false}
-      titleActionCount={1}
+    <PageHeader
+      section={{ label: 'Platform', href: '/platform' }}
+      title='Overview'
+      description='Managed containers, resource usage, Docker API workload, latency, retries, and recent transport failures.'
     />
     <section className='flex w-full flex-col gap-6 px-6 pb-4 max-sm:px-4'>
       <div className='grid gap-4'>

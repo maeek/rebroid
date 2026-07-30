@@ -74,6 +74,7 @@ export const useRuntimeImageBuilderController = ({
   const [isSavingRecipe, setIsSavingRecipe] = useState(false)
   const [activeJob, setActiveJob] = useState<ContainerImageBuildJob | null>(() => jobs[0] ?? null)
   const [isStarting, setIsStarting] = useState(false)
+  const [isCancelling, setIsCancelling] = useState(false)
   const [runtimeSettings, setRuntimeSettings] = useState(initialSettings)
   const dockerfileContextReferences = useMemo(
     () => parseDockerfileContextReferences(values.dockerfile),
@@ -136,7 +137,7 @@ export const useRuntimeImageBuilderController = ({
       setSelectedContextFileIds(current => new Set(current).add(uploaded.id))
       setUploadFile(null)
       setUploadProgress(null)
-      toast({ title: 'Context file uploaded' })
+      toast({ title: 'Context file uploaded', variant: 'success' })
     } catch (error) {
       toast({
         title: 'Could not upload context file',
@@ -153,7 +154,8 @@ export const useRuntimeImageBuilderController = ({
     setLocalContextLabel(selection.label)
     toast({
       title: 'Local context connected',
-      description: `${selection.files.length} files available from ${selection.label}.`
+      description: `${selection.files.length} files available from ${selection.label}.`,
+      variant: 'success'
     })
   }
 
@@ -222,7 +224,8 @@ export const useRuntimeImageBuilderController = ({
       const nextSelectedIds = await uploadDetectedContext()
       toast({
         title: 'Context files ready',
-        description: `${nextSelectedIds.size} context files selected.`
+        description: `${nextSelectedIds.size} context files selected.`,
+        variant: 'success'
       })
     } catch (error) {
       toast({
@@ -263,7 +266,7 @@ export const useRuntimeImageBuilderController = ({
         })
       )
       setSavedRecipes(current => [recipe, ...current])
-      toast({ title: 'Recipe saved' })
+      toast({ title: 'Recipe saved', variant: 'success' })
     } catch (error) {
       toast({
         title: 'Could not save recipe',
@@ -290,7 +293,7 @@ export const useRuntimeImageBuilderController = ({
         })
       )
       setActiveJob(job)
-      toast({ title: 'Build started' })
+      toast({ title: 'Build started', variant: 'success' })
     } catch (error) {
       toast({
         title: 'Could not start build',
@@ -304,6 +307,7 @@ export const useRuntimeImageBuilderController = ({
 
   const cancelBuild = async () => {
     if (!activeJob) return
+    setIsCancelling(true)
     try {
       setActiveJob(
         await sendBff<ContainerImageBuildJob>(
@@ -311,13 +315,15 @@ export const useRuntimeImageBuilderController = ({
           {}
         )
       )
-      toast({ title: 'Build cancelled' })
+      toast({ title: 'Build cancelled', variant: 'success' })
     } catch (error) {
       toast({
         title: 'Could not cancel build',
         description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
+    } finally {
+      setIsCancelling(false)
     }
   }
 
@@ -329,7 +335,7 @@ export const useRuntimeImageBuilderController = ({
         defaultContainerImage: activeJob.targetImage
       })
       setRuntimeSettings(saved)
-      toast({ title: 'Default image updated' })
+      toast({ title: 'Default image updated', variant: 'success' })
     } catch (error) {
       toast({
         title: 'Could not update default image',
@@ -403,6 +409,7 @@ export const useRuntimeImageBuilderController = ({
       activeJob,
       canStart,
       isActiveJobRunning,
+      isCancelling,
       isStarting,
       onCancelBuild: () => void cancelBuild(),
       onSetAsDefault: () => void setAsDefault(),

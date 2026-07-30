@@ -58,6 +58,13 @@ surface recipes.
 - `StatusBadge`: compact state only; never a call to action.
 - `Notice`: inline informational, success, warning, or danger feedback.
 - `StateView`: loading, empty, unavailable, not-found, and error states at page, section, grid, or immersive scope.
+- Semantic tone styling is authoritative over a surface level. `Surface`, `Notice`, status banners, and toasts set
+  `data-tone`; success uses a visible `bg-success/14` tint in light, dark, and OLED themes. Do not add neutral
+  backgrounds to a toned component or recreate tone styling in a feature.
+- Completion feedback from successful mutations uses the `success` toast variant. Reserve neutral and informational
+  toasts for facts that do not represent successful completion.
+- `Section` owns heading-to-content rhythm through `headingSpacing`: `none`, `compact` (8 px), or `default` (16 px).
+  Use the `description` prop for helper copy and do not add feature-local title padding.
 
 ## Controls and forms
 
@@ -77,6 +84,9 @@ surface recipes.
   manipulation does not improve the task; bounds and blur normalization still apply to the number input.
 - `SelectTrigger` is intrinsic-width by default. Every feature call site declares its width explicitly; vertical forms,
   dialogs, and filter panels normally use `w-full`, while compact toolbar controls use a documented fixed width.
+- Multiple searchable relationships use `MultiSelectCombobox`. Options provide a value and label with optional
+  description, keywords, and disabled state; the primitive owns filtering, keyboard navigation, checked options,
+  wrapped removable chips, the empty state, and the anchored scrolling popup.
 - Form actions live in the page header for page forms and in the footer for dialogs. Do not create a second save bar.
 - Hidden file inputs and canvas/media surfaces are the only native-control exceptions.
 
@@ -110,11 +120,15 @@ standard control, surface, feedback, and focus recipes.
   contextual bulk actions, and—when appropriate—the collapsible desktop filter sidebar and mobile filter drawer.
   Filter panels are reserved for page-level datasets with meaningful structured facets. Embedded related-resource
   grids and small fixed datasets use the workspace's search-only mode. Features provide domain controls and filter
-  state without rebuilding the workspace shell.
+  state without rebuilding the workspace shell. Desktop filter sidebars are closed by default and open only when the
+  user activates Filters; active-filter counts, chips, reset, and the mobile drawer remain available while closed.
 - Grid search is debounced and does not use a separate submit button. Structured filters apply immediately. Page-level
   grids keep shareable filter state in validated URL parameters; embedded grids may keep local controlled state.
 - Filtering lives in the workspace sidebar rather than column headers. The column visibility menu remains independent
   from filtering, and bulk actions are hidden until one or more visible rows are selected.
+- Grids whose rows have one clear primary destination use `DataGrid.rowActivation`. The entire non-control row area
+  activates that destination with pointer, Enter, or Space; nested links, buttons, selection controls, and menus keep
+  their own behavior. Provide a concise activation label for assistive technology.
 - Read-only key/value or metrics tables use `DefinitionTable`.
 - Loading UI uses list, detail, form, split, or immersive page-skeleton compositions and must match the route family.
 - Loading is a state of the component that owns the final geometry. Page shells, responsive grids, table columns,
@@ -127,6 +141,9 @@ standard control, surface, feedback, and focus recipes.
   or workspace geometry with anonymous skeleton blocks.
 - Route `loading.tsx` files are thin feature entrypoints. Layout markup belongs to the feature's geometry-owning loading
   state, which is also used by explicit Suspense fallbacks.
+- The protected route contract contains 37 routes: 36 renderable routes have feature-owned loading states and the
+  legacy display-sessions redirect is the sole loader-free route. Keep the static route matrix current when routes are
+  added, removed, or converted to redirects.
 - Natural-height result changes and conditional notices may reflow later content, but corresponding shells, controls,
   columns, and visible row slots must remain aligned during loading replacement.
 - Page-level notices and service-status banners span the available content width; compact badges remain intrinsic.

@@ -1,13 +1,18 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import { PlatformServicesPage } from './services-page'
 import type { FeatureFlagManifest, FeatureFlagState } from '@/shared/contracts/feature-flags'
 
+const navigation = vi.hoisted(() => ({
+  push: vi.fn(),
+  replace: vi.fn()
+}))
+
 vi.mock('next/navigation', () => ({
   usePathname: () => '/platform/services',
-  useRouter: () => ({ replace: vi.fn() })
+  useRouter: () => navigation
 }))
 
 const feature = (key: FeatureFlagState['key']): FeatureFlagState => ({
@@ -55,5 +60,30 @@ describe('PlatformServicesPage', () => {
     expect(displayRow).toHaveTextContent('Managed internally')
     expect(sessionsLink.getAttribute('href')).toBe('/platform/services/display-sessions')
     expect(screen.queryByRole('navigation', { name: 'Services pages' })).toBeNull()
+  })
+
+  it('opens the service destination when its row is activated', () => {
+    render(
+      <FeatureFlagsProvider manifest={manifest}>
+        <PlatformServicesPage
+          initialSettings={defaultOrchestratorUiSettings}
+          initialDisplayHealth={{
+            ok: true,
+            status: 'healthy',
+            message: 'Display sidecar API is responding.'
+          }}
+        />
+      </FeatureFlagsProvider>
+    )
+
+    fireEvent.click(screen.getByRole('row', { name: 'Edit OCR perception' }))
+
+    expect(screen.getByRole('dialog', { name: 'OCR perception' })).toBeInTheDocument()
+    expect(navigation.replace).toHaveBeenCalledWith('/platform/services?service=ocr', { scroll: false })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    fireEvent.keyDown(screen.getByRole('row', { name: 'View sessions for Display service' }), { key: 'Enter' })
+
+    expect(navigation.push).toHaveBeenCalledWith('/platform/services/display-sessions')
   })
 })

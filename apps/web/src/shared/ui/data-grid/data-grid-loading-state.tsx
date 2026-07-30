@@ -1,19 +1,9 @@
-'use client'
-
 import { Skeleton } from '@/components/ui/skeleton'
-import { DataGrid } from './data-grid'
+import type { DataGridProps } from './data-grid'
 import type { ListColumn } from '@/shared/ui/skeletons/list-skeleton-types'
 import type { ColumnDef } from '@tanstack/react-table'
 
-export type DataGridSkeletonProps = {
-  columns: ListColumn[]
-  minWidth?: string
-  rows?: number
-  selectable?: boolean
-  rowMenu?: boolean
-}
-
-type LoadingRow = { id: string }
+export type DataGridLoadingRow = { id: string }
 
 const columnSize = (width: string | undefined) => {
   if (!width) return 160
@@ -41,14 +31,20 @@ const skeletonDescriptor = (column: ListColumn) => {
   return { kind: 'text' as const, width: column.cellWidth }
 }
 
-export const DataGridSkeleton = ({
+export const createDataGridLoadingProps = ({
   columns,
   minWidth,
   rows = 6,
   selectable = true,
   rowMenu = true
-}: DataGridSkeletonProps) => {
-  const columnDefinitions: ColumnDef<LoadingRow>[] = columns.map((column, index) => ({
+}: {
+  columns: ListColumn[]
+  minWidth?: string
+  rows?: number
+  selectable?: boolean
+  rowMenu?: boolean
+}): DataGridProps<DataGridLoadingRow> => {
+  const columnDefinitions: ColumnDef<DataGridLoadingRow>[] = columns.map((column, index) => ({
     id: `loading-${index}`,
     header: () => <Skeleton className={`h-3 max-w-full ${column.headerWidth}`} />,
     size: columnSize(column.width),
@@ -59,20 +55,14 @@ export const DataGridSkeleton = ({
     }
   }))
 
-  return (
-    <div data-testid='data-grid-skeleton'>
-      <div data-testid='data-grid-skeleton-shell'>
-        <DataGrid
-          columns={columnDefinitions}
-          data={[]}
-          totalItems={0}
-          pageIndex={0}
-          pageSize={rows}
-          getRowId={row => row.id}
-          minWidth={minWidth}
-          loading={{ rowCount: rows, selectable, rowMenu }}
-        />
-      </div>
-    </div>
-  )
+  return {
+    columns: columnDefinitions,
+    data: [],
+    totalItems: 0,
+    pageIndex: 0,
+    pageSize: rows,
+    getRowId: row => row.id,
+    minWidth,
+    loading: { rowCount: rows, selectable, rowMenu }
+  }
 }

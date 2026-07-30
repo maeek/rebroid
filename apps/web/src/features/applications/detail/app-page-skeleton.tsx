@@ -3,7 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { bandSurfaceClassName, panelSurfaceClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 import { AppIconSkeleton } from '@/shared/ui/app-icon/app-icon-skeleton'
-import { PageBreadcrumbsSkeleton } from '@/shared/ui/page/page-breadcrumbs-skeleton'
+import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
 import { PageContent, StandardPageSplit } from '@/shared/ui/page/page-layout'
 
 const AppHeadingSkeleton = ({ showStatus = true, actionCount = 2 }: { showStatus?: boolean; actionCount?: number }) => (
@@ -127,7 +127,7 @@ export const AppPageSkeleton = () => (
   <StandardPageSplit className='h-auto min-h-[calc(100vh-4rem)] items-start'>
     <PageContent className='min-w-0 gap-5 pr-6 lg:min-h-[calc(100dvh-4rem)] lg:flex-1 lg:self-stretch lg:items-stretch'>
       <div className='flex w-full grow flex-col gap-5 lg:min-h-0 lg:flex-1'>
-        <PageBreadcrumbsSkeleton itemWidths={['w-16', 'w-32']} />
+        <PageBreadcrumbs items={[{ label: 'Apps', href: '/apps' }, { label: 'Application' }]} />
         <AppHeadingSkeleton showStatus />
         <div className='hidden min-h-[24rem] grow flex-col lg:flex lg:min-h-0 lg:flex-1'>
           <RuntimeToolsSkeleton />
@@ -144,7 +144,9 @@ export const AppPageSkeleton = () => (
 export const AppManagePageSkeleton = () => (
   <StandardPageSplit>
     <PageContent>
-      <PageBreadcrumbsSkeleton itemWidths={['w-16', 'w-32', 'w-20']} />
+      <PageBreadcrumbs
+        items={[{ label: 'Apps', href: '/apps' }, { label: 'Application', href: '#' }, { label: 'Manage' }]}
+      />
       <AppHeadingSkeleton
         showStatus={false}
         actionCount={2}

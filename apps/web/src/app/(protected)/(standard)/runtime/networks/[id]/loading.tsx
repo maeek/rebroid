@@ -1,12 +1,1 @@
-import { PlatformResourceDetailPageSkeleton } from '@/features/platform/components/platform-page-skeletons/platform-resource-detail-page-skeleton'
-
-export default function Loading() {
-  return (
-    <PlatformResourceDetailPageSkeleton
-      titleWidth='w-48 max-sm:w-36'
-      actionCount={1}
-      badgeCount={2}
-      relatedColumns={4}
-    />
-  )
-}
+export { RuntimeNetworkDetailPageLoading as default } from '@/features/platform/components/platform-page-skeletons/platform-resource-detail-page-skeleton'

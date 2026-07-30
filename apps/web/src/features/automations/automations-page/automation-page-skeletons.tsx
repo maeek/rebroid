@@ -1,9 +1,12 @@
+'use client'
+
 import { Skeleton } from '@/components/ui/skeleton'
 import { panelSurfaceClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
-import { PageBreadcrumbsSkeleton } from '@/shared/ui/page/page-breadcrumbs-skeleton'
+import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { createDataGridLoadingProps } from '@/shared/ui/data-grid/data-grid-loading-state'
+import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
-import { TableSkeleton } from '@/shared/ui/skeletons/table-skeleton'
 import {
   automationVisualPrimaryClassName,
   automationVisualSecondaryDesktopClassName,
@@ -11,49 +14,47 @@ import {
 } from './editor/automation-editor-layout'
 
 const AutomationHeaderSkeleton = ({
-  breadcrumbWidths = ['w-24', 'w-24'],
-  titleWidth = 'w-36',
-  actionWidth = 'w-28'
+  title,
+  description,
+  trail = []
 }: {
-  breadcrumbWidths?: string[]
-  titleWidth?: string
-  actionWidth?: string
+  title: string
+  description: string
+  trail?: Array<{ label: string; href?: string }>
 }) => (
-  <section className='shrink-0 px-6 py-4 max-sm:px-4'>
-    <div className='grid gap-3'>
-      <PageBreadcrumbsSkeleton
-        className='pt-0'
-        itemWidths={breadcrumbWidths}
-      />
-      <div className='flex items-center justify-between gap-3 max-sm:flex-wrap'>
-        <div className='grid gap-2'>
-          <Skeleton className={`h-9 ${titleWidth} max-sm:h-7`} />
-          <Skeleton className='h-4 w-full max-w-3xl opacity-70' />
-        </div>
-        <Skeleton className={`h-10 ${actionWidth}`} />
-      </div>
-    </div>
-  </section>
+  <PageHeader
+    section={{ label: 'Automations', href: '/automations' }}
+    trail={trail}
+    title={title}
+    description={description}
+  />
 )
 
 export const AutomationsListPageSkeleton = () => (
   <StandardPage className='gap-2'>
-    <AutomationHeaderSkeleton />
+    <AutomationHeaderSkeleton
+      title='Automations'
+      description='Create, run, and monitor reusable Android workflows.'
+    />
     <PageContent className='pt-2'>
       <div className='mb-4 flex flex-wrap items-center gap-3'>
         <Skeleton className='h-10 w-full max-w-md' />
         <Skeleton className='h-10 w-28' />
         <Skeleton className='h-10 w-28' />
       </div>
-      <TableSkeleton
-        columns={[
-          { headerWidth: 'w-20', cellWidth: 'w-48', kind: 'stacked' },
-          { headerWidth: 'w-12', cellWidth: 'w-36' },
-          { headerWidth: 'w-16', kind: 'badge' },
-          { headerWidth: 'w-20', cellWidth: 'w-28' },
-          { headerWidth: 'w-16', cellWidth: 'w-24' }
-        ]}
-        rows={6}
+      <DataGrid
+        {...createDataGridLoadingProps({
+          columns: [
+            { headerWidth: 'w-20', cellWidth: 'w-48', kind: 'stacked' },
+            { headerWidth: 'w-12', cellWidth: 'w-36' },
+            { headerWidth: 'w-16', kind: 'badge' },
+            { headerWidth: 'w-20', cellWidth: 'w-28' },
+            { headerWidth: 'w-16', cellWidth: 'w-24' }
+          ],
+          rows: 6,
+          selectable: false,
+          rowMenu: false
+        })}
       />
     </PageContent>
   </StandardPage>
@@ -62,9 +63,8 @@ export const AutomationsListPageSkeleton = () => (
 export const AutomationTriggersPageSkeleton = () => (
   <StandardPage className='gap-2'>
     <AutomationHeaderSkeleton
-      breadcrumbWidths={['w-24', 'w-20']}
-      titleWidth='w-32'
-      actionWidth='w-32'
+      title='Triggers'
+      description='Schedule or externally trigger automation runs.'
     />
     <PageContent className='pt-2'>
       <div className='mb-4 flex flex-wrap items-center gap-3'>
@@ -73,15 +73,19 @@ export const AutomationTriggersPageSkeleton = () => (
         <Skeleton className='h-10 w-28' />
         <Skeleton className='h-10 w-28' />
       </div>
-      <TableSkeleton
-        columns={[
-          { headerWidth: 'w-16', cellWidth: 'w-44', kind: 'stacked' },
-          { headerWidth: 'w-20', cellWidth: 'w-40' },
-          { headerWidth: 'w-16', cellWidth: 'w-36' },
-          { headerWidth: 'w-14', kind: 'badge' },
-          { headerWidth: 'w-20', cellWidth: 'w-24' }
-        ]}
-        rows={6}
+      <DataGrid
+        {...createDataGridLoadingProps({
+          columns: [
+            { headerWidth: 'w-16', cellWidth: 'w-44', kind: 'stacked' },
+            { headerWidth: 'w-20', cellWidth: 'w-40' },
+            { headerWidth: 'w-16', cellWidth: 'w-36' },
+            { headerWidth: 'w-14', kind: 'badge' },
+            { headerWidth: 'w-20', cellWidth: 'w-24' }
+          ],
+          rows: 6,
+          selectable: false,
+          rowMenu: false
+        })}
       />
     </PageContent>
   </StandardPage>
@@ -90,9 +94,8 @@ export const AutomationTriggersPageSkeleton = () => (
 export const AutomationEditorPageSkeleton = () => (
   <StandardPage className='gap-0'>
     <AutomationHeaderSkeleton
-      breadcrumbWidths={['w-24', 'w-24', 'w-36']}
-      titleWidth='w-56'
-      actionWidth='w-64'
+      title='Automation editor'
+      description='Define workflow metadata, steps, targets, and execution policy.'
     />
     <PageContent className='grid gap-6 pt-2'>
       <div className={automationVisualWorkspaceClassName}>
@@ -185,9 +188,9 @@ export const AutomationEditorPageSkeleton = () => (
 export const AutomationTracesPageSkeleton = () => (
   <StandardPage className='gap-0'>
     <AutomationHeaderSkeleton
-      breadcrumbWidths={['w-24', 'w-24', 'w-36', 'w-16']}
-      titleWidth='w-64'
-      actionWidth='hidden'
+      trail={[{ label: 'Automation' }]}
+      title='Run traces'
+      description='Inspect automation execution history and step evidence.'
     />
     <PageContent className='grid gap-6 pt-2'>
       <div className='grid gap-4'>
@@ -195,15 +198,19 @@ export const AutomationTracesPageSkeleton = () => (
           <Skeleton className='h-10 w-full max-w-md' />
           <Skeleton className='h-10 w-28' />
         </div>
-        <TableSkeleton
-          columns={[
-            { headerWidth: 'w-16', cellWidth: 'w-32' },
-            { headerWidth: 'w-20', cellWidth: 'w-44' },
-            { headerWidth: 'w-16', kind: 'badge' },
-            { headerWidth: 'w-20', cellWidth: 'w-24' },
-            { headerWidth: 'w-20', cellWidth: 'w-36' }
-          ]}
-          rows={6}
+        <DataGrid
+          {...createDataGridLoadingProps({
+            columns: [
+              { headerWidth: 'w-16', cellWidth: 'w-32' },
+              { headerWidth: 'w-20', cellWidth: 'w-44' },
+              { headerWidth: 'w-16', kind: 'badge' },
+              { headerWidth: 'w-20', cellWidth: 'w-24' },
+              { headerWidth: 'w-20', cellWidth: 'w-36' }
+            ],
+            rows: 6,
+            selectable: false,
+            rowMenu: false
+          })}
         />
       </div>
     </PageContent>

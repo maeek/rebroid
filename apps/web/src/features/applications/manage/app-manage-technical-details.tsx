@@ -28,7 +28,7 @@ export const AppManageTechnicalDetails = ({ app }: { app: AppDefinition }) => {
       title='Details'
       surface='panel'
       collapsible
-      titleClassName='pb-4'
+      headingSpacing='default'
       contentClassName='flex-col'
     >
       <AppInfoRow

@@ -15,7 +15,7 @@ export const PlatformResources = ({
     <Section
       surface='plain'
       title='Managed inventory'
-      titleClassName='pb-4'
+      headingSpacing='default'
       contentClassName='gap-4'
       className='w-full'
     >

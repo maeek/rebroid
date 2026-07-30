@@ -76,7 +76,11 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
       if (profileMode === 'persistent' && profileName.trim() === deletedProfileName.trim()) {
         setProfileName('default')
       }
-      toast({ title: 'Profile removed', description: `${deletedProfileName} was deleted with its saved data.` })
+      toast({
+        title: 'Profile removed',
+        description: `${deletedProfileName} was deleted with its saved data.`,
+        variant: 'success'
+      })
     } catch (error) {
       toast({
         title: 'Could not remove profile',
@@ -97,7 +101,11 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
         profileName: profileName.trim() || 'default',
         startPolicy: startIfNeeded ? 'start-if-needed' : 'require-running'
       })
-      toast({ title: 'Automation queued', description: `Run ${result.id.slice(0, 8)} started.` })
+      toast({
+        title: 'Automation queued',
+        description: `Run ${result.id.slice(0, 8)} started.`,
+        variant: 'success'
+      })
       onRunStarted?.(result)
       setOpen(false)
     } catch (error) {

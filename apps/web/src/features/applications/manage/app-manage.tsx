@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { MutationButton } from '@/components/ui/mutation-button'
 import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
 import { AppNotFoundSplash } from '@/features/applications/components/app-not-found-splash'
@@ -151,13 +152,14 @@ export default function AppManage({
                 initialSettings={initialSettings}
               />
             </Visible>
-            <Button
-              disabled={isSaving}
+            <MutationButton
+              pending={isSaving}
+              pendingLabel='Saving…'
               onClick={() => void handleSave()}
             >
               <IconDeviceFloppy className='size-4' />
               Save
-            </Button>
+            </MutationButton>
           </div>
         </AppViewerHeading>
         <Visible when={isForeignOwnedApp}>
@@ -215,7 +217,7 @@ export default function AppManage({
             <Section
               title='Logs'
               surface='panel'
-              titleClassName='pb-4'
+              headingSpacing='default'
               contentClassName='min-h-[30rem]'
             >
               <AppLogsContent

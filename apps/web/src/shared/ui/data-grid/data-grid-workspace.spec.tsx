@@ -20,7 +20,7 @@ describe('DataGridWorkspace', () => {
     expect(screen.getByText('Grid content')).toBeTruthy()
   })
 
-  it('renders its desktop filter surface open by default', () => {
+  it('keeps its desktop filter surface closed until requested', () => {
     render(
       <DataGridWorkspace
         search=''
@@ -34,6 +34,10 @@ describe('DataGridWorkspace', () => {
         <div>Grid content</div>
       </DataGridWorkspace>
     )
+
+    expect(screen.queryByRole('complementary', { name: 'Filter rows' })).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
 
     expect(screen.getByRole('complementary', { name: 'Filter rows' })).toBeTruthy()
     expect(screen.getByText('State filter')).toBeTruthy()

@@ -8,6 +8,6 @@ describe('AiProvidersPageSkeleton', () => {
 
     expect(screen.getByTestId('ai-context-suggestions-skeleton')).toBeTruthy()
     expect(screen.getByTestId('ai-providers-heading-skeleton')).toBeTruthy()
-    expect(screen.getByTestId('data-grid-skeleton')).toBeTruthy()
+    expect(screen.getAllByTestId('data-grid-skeleton-row')).toHaveLength(5)
   })
 })

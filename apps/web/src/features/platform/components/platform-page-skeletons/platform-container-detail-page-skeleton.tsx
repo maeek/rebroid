@@ -1,16 +1,21 @@
+'use client'
+
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
-import { DataGridSkeleton } from '@/shared/ui/data-grid/data-grid-skeleton'
+import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { createDataGridLoadingProps } from '@/shared/ui/data-grid/data-grid-loading-state'
+import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
-import { PageHeaderSkeleton } from '@/shared/ui/skeletons/page-header-skeleton'
 import { DetailRowsSkeleton } from './detail-rows-skeleton'
 import { JsonBlockSkeleton } from './json-block-skeleton'
 
 export const PlatformContainerDetailPageSkeleton = ({ titleWidth }: { titleWidth: string }) => (
   <StandardPage className='gap-2'>
-    <PageHeaderSkeleton
-      titleWidth={titleWidth}
-      hasParent
+    <PageHeader
+      section={{ label: 'Runtime' }}
+      trail={[{ label: 'Containers', href: '/runtime/containers' }]}
+      title={<Skeleton className={`h-8 ${titleWidth}`} />}
+      description='Inspect container configuration, live resources, related runtime objects, and logs.'
     />
     <PageContent>
       <Section
@@ -64,16 +69,18 @@ export const PlatformContainerDetailPageSkeleton = ({ titleWidth }: { titleWidth
           surface='panel'
           contentClassName='gap-3'
         >
-          <DataGridSkeleton
-            minWidth='32rem'
-            rows={3}
-            selectable={false}
-            rowMenu={false}
-            columns={[
-              { width: 'minmax(12rem,1.5fr)', headerWidth: 'w-20', kind: 'stacked' },
-              { width: 'minmax(8rem,1fr)', headerWidth: 'w-16', kind: 'text' },
-              { width: 'minmax(10rem,1.2fr)', headerWidth: 'w-20', kind: 'text' }
-            ]}
+          <DataGrid
+            {...createDataGridLoadingProps({
+              minWidth: '32rem',
+              rows: 3,
+              selectable: false,
+              rowMenu: false,
+              columns: [
+                { width: 'minmax(12rem,1.5fr)', headerWidth: 'w-20', kind: 'stacked' },
+                { width: 'minmax(8rem,1fr)', headerWidth: 'w-16', kind: 'text' },
+                { width: 'minmax(10rem,1.2fr)', headerWidth: 'w-20', kind: 'text' }
+              ]
+            })}
           />
         </Section>
       </div>
@@ -97,7 +104,7 @@ export const PlatformContainerDetailPageSkeleton = ({ titleWidth }: { titleWidth
         title='Labels'
         surface='plain'
         contentClassName='gap-4'
-        titleClassName='pb-4'
+        headingSpacing='default'
       >
         <JsonBlockSkeleton lines={8} />
       </Section>
@@ -112,4 +119,8 @@ export const PlatformContainerDetailPageSkeleton = ({ titleWidth }: { titleWidth
       </Section>
     </PageContent>
   </StandardPage>
+)
+
+export const RuntimeContainerDetailPageLoading = () => (
+  <PlatformContainerDetailPageSkeleton titleWidth='w-56 max-sm:w-40' />
 )

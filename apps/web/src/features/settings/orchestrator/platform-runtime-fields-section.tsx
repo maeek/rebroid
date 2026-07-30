@@ -38,7 +38,7 @@ export const PlatformRuntimeFieldsSection = ({
       <Section
         surface='plain'
         title='Runtime defaults'
-        titleClassName='pb-4'
+        headingSpacing='default'
         contentClassName='gap-6'
       >
         <FormField

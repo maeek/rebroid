@@ -21,14 +21,9 @@ const ActivityEventsContent = () => {
       <ActivitySummaryCards />
       <Section
         surface='plain'
-        title={
-          <div>
-            <div>Audit trail</div>
-            <div className='mt-1 text-sm font-normal text-foreground-muted'>
-              Search, filter, export, and inspect administrative activity.
-            </div>
-          </div>
-        }
+        title='Audit trail'
+        description='Search, filter, export, and inspect administrative activity.'
+        headingSpacing='default'
         contentClassName='gap-4'
       >
         <DataGridWorkspace

@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { MutationButton } from '@/components/ui/mutation-button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
@@ -50,7 +50,7 @@ export const CreateUserDialog = ({
       setRole('user')
       setGroupIds([groups.find(group => group.role === 'user')?.id ?? groups[0]?.id ?? 'users'])
       setOpen(false)
-      toast({ title: 'User created' })
+      toast({ title: 'User created', variant: 'success' })
     } catch (error) {
       toast({
         title: 'Could not create user',
@@ -135,24 +135,27 @@ export const CreateUserDialog = ({
               </SelectContent>
             </Select>
           </FormField>
-          <section className='grid gap-2'>
-            <Label>
-              Groups <span className='text-xs font-medium text-foreground-muted'>* (Required)</span>
-            </Label>
+          <FormField
+            label='Groups'
+            layout='vertical'
+            required
+          >
             <GroupMembershipPicker
               groups={groups}
               selectedGroupIds={groupIds}
               onChange={setGroupIds}
             />
-          </section>
+          </FormField>
         </div>
         <DialogFooter>
-          <Button
-            disabled={isSaving}
+          <MutationButton
+            pending={isSaving}
+            pendingLabel='Creating…'
+            disabled={!username.trim() || !password || groupIds.length === 0}
             onClick={() => void createUser()}
           >
             Create User
-          </Button>
+          </MutationButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

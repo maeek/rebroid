@@ -24,7 +24,6 @@ type AppNetworkPolicyEditorSectionProps = {
   topSection?: ReactNode
   unrestrictedLabel?: string
   restrictedLabel?: string
-  titleClassName?: string
   contentClassName?: string
   surface?: 'plain' | 'band' | 'panel'
 }
@@ -47,20 +46,17 @@ export const AppNetworkPolicyEditorSection = ({
   topSection,
   unrestrictedLabel = 'Disabled',
   restrictedLabel = 'Only API plus allowlist',
-  titleClassName = 'pb-4',
   contentClassName = 'gap-5',
   surface = 'band'
 }: AppNetworkPolicyEditorSectionProps) => {
   return (
     <Section
       title={title}
+      description={sectionDescription}
       surface={surface}
-      titleClassName={titleClassName}
+      headingSpacing='default'
       contentClassName={contentClassName}
     >
-      <Visible when={sectionDescription}>
-        <p className='text-sm text-foreground-muted'>{sectionDescription}</p>
-      </Visible>
       <Visible when={topSection}>{topSection}</Visible>
       <FormField
         label='Mode'

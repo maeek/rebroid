@@ -1,7 +1,8 @@
-import { IconExternalLink, IconHammer, IconLoader2, IconTrash } from '@tabler/icons-react'
+import { IconExternalLink, IconHammer, IconTrash } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
+import { MutationButton } from '@/components/ui/mutation-button'
 import { cn } from '@/lib/utils'
 import { bytesToGb } from '../model/gapps-build'
 import type { GappsBuildController } from '../hooks/use-gapps-build-controller'
@@ -84,17 +85,17 @@ export const GappsBuildConfiguration = ({ controller, resources }: GappsBuildCon
         </div>
       </div>
 
-      <Button
+      <MutationButton
         className='w-full'
         size='lg'
-        disabled={
-          !resources.canBuild || controller.isStarting || controller.isRunning || !controller.targetImage.trim()
-        }
+        pending={controller.isStarting || controller.isRunning}
+        pendingLabel={controller.isRunning ? 'Build in progress' : 'Starting build…'}
+        disabled={!resources.canBuild || !controller.targetImage.trim()}
         onClick={() => void controller.startBuild()}
       >
-        {controller.isStarting ? <IconLoader2 className='animate-spin' /> : <IconHammer />}
-        {controller.isRunning ? 'Build in progress' : 'Build image'}
-      </Button>
+        <IconHammer />
+        Build image
+      </MutationButton>
     </div>
 
     <details className='group border-t border-surface-border/60 pt-5 text-sm'>
@@ -106,14 +107,16 @@ export const GappsBuildConfiguration = ({ controller, resources }: GappsBuildCon
         <span className='text-foreground-muted'>
           Remove the verified Android {controller.androidVersion} package cache.
         </span>
-        <Button
+        <MutationButton
           variant='outline'
+          pending={controller.isClearing}
+          pendingLabel='Clearing…'
           disabled={controller.isClearing || controller.isRunning}
           onClick={() => void controller.clearCache()}
         >
-          {controller.isClearing ? <IconLoader2 className='animate-spin' /> : <IconTrash />}
+          <IconTrash />
           Clear cache
-        </Button>
+        </MutationButton>
       </div>
     </details>
   </div>
