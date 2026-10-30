@@ -2,11 +2,7 @@ export const viewerStreamStatusMessageType = 'rebroid-viewer-stream-status'
 export const viewerStreamMetricsMessageType = 'rebroid-viewer-stream-metrics-v4'
 
 export type DisplayViewerStreamStatusCode =
-  | 'audio-disabled'
-  | 'reconnecting'
-  | 'first-frame-timeout'
-  | 'video-stalled'
-  | 'stream-error'
+  'audio-disabled' | 'reconnecting' | 'first-frame-timeout' | 'video-stalled' | 'stream-error'
 
 export type DisplayViewerStreamStatusSeverity = 'info' | 'warning' | 'error'
 

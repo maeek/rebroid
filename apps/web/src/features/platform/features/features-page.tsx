@@ -21,13 +21,7 @@ type FeatureRow = FeatureFlagManifest['features'][number]
 
 export type EffectiveFeatureStatus = {
   label:
-    | 'Unavailable'
-    | 'Sync failed'
-    | 'Restart required'
-    | 'Waiting for display service'
-    | 'Off'
-    | 'Active'
-    | 'Applying'
+    'Unavailable' | 'Sync failed' | 'Restart required' | 'Waiting for display service' | 'Off' | 'Active' | 'Applying'
   tone: StatusBadgeTone
   description: string
 }

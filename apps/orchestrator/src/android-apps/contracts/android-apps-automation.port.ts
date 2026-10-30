@@ -71,10 +71,7 @@ export interface AndroidAutomationAdbPort {
   rotateDisplay(
     app: AndroidAutomationApplication,
     orientation:
-      | 'portrait'
-      | 'landscape'
-      | 'reverse-portrait'
-      | 'reverse-landscape',
+      'portrait' | 'landscape' | 'reverse-portrait' | 'reverse-landscape',
   ): Promise<{ executed: boolean }>;
   shell(
     app: AndroidAutomationApplication,

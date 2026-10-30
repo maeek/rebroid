@@ -36,8 +36,7 @@ export const consumeAutomationDraft = (userId: string, token: string): Automatio
         'SELECT token, yaml, source_run_id, expires_at FROM automation_drafts WHERE token = ? AND user_id = ? AND consumed_at IS NULL AND expires_at > ?'
       )
       .get(token, userId, now) as
-      | { token: string; yaml: string; source_run_id: string | null; expires_at: string }
-      | undefined
+      { token: string; yaml: string; source_run_id: string | null; expires_at: string } | undefined
     if (!row) return null
     getDatabase().prepare('UPDATE automation_drafts SET consumed_at = ? WHERE token = ?').run(now, token)
     return { token: row.token, yaml: row.yaml, sourceRunId: row.source_run_id, expiresAt: row.expires_at }

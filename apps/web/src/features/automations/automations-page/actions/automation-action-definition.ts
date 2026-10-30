@@ -2,16 +2,7 @@ import type { ReactNode } from 'react'
 import type { AutomationCommand } from '@/shared/contracts/automation'
 
 export type AutomationActionCategory =
-  | 'Device'
-  | 'Touch'
-  | 'Text'
-  | 'Files'
-  | 'Network'
-  | 'Assertions'
-  | 'Flow'
-  | 'Debug'
-  | 'Vision'
-  | 'AI'
+  'Device' | 'Touch' | 'Text' | 'Files' | 'Network' | 'Assertions' | 'Flow' | 'Debug' | 'Vision' | 'AI'
 
 export type AutomationActionIconKey =
   | 'alert'

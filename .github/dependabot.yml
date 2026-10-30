@@ -1,18 +1,42 @@
 version: 2
 updates:
   - package-ecosystem: npm
-    directory: /apps/web
+    # One pnpm workspace, catalog, and lockfile for all apps and packages.
+    directory: /
     schedule:
       interval: weekly
-  - package-ecosystem: npm
-    directory: /apps/orchestrator
-    schedule:
-      interval: weekly
-  - package-ecosystem: npm
-    directory: /apps/firewall-agent
-    schedule:
-      interval: weekly
-  - package-ecosystem: npm
-    directory: /apps/display-sidecar
-    schedule:
-      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      nestjs:
+        patterns:
+          - "@nestjs/*"
+        update-types:
+          - minor
+          - patch
+      development:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+      production:
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+    ignore:
+      # Keep declarations aligned with the Node 24 deployment runtime.
+      - dependency-name: "@types/node"
+        versions: [">=25"]
+      # Upgrade the shared compiler and its consumers together.
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+      # The web lint plugins still declare ESLint 9 compatibility.
+      - dependency-name: eslint
+        update-types: [version-update:semver-major]
+      # p-limit 4+ is ESM-only; the orchestrator Jest setup uses CommonJS.
+      - dependency-name: p-limit
+        update-types: [version-update:semver-major]

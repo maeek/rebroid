@@ -2,12 +2,7 @@ export const AUTOMATION_API_VERSION = "rebroid.io/automation/v1" as const;
 export const AUTOMATION_KIND = "AndroidAutomation" as const;
 
 export type AutomationValueType =
-  | "string"
-  | "number"
-  | "boolean"
-  | "array"
-  | "object"
-  | "unknown";
+  "string" | "number" | "boolean" | "array" | "object" | "unknown";
 
 export interface AutomationTag {
   name: string;

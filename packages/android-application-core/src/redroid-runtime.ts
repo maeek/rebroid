@@ -123,10 +123,7 @@ export type RuntimeImageKind = "redroid" | "generic";
 export type RuntimeImageGmsMode = "none" | "microg" | "gapps";
 
 export type RuntimeImageSignatureSpoofing =
-  | "not_applicable"
-  | "external_required"
-  | "present_unverified"
-  | "verified";
+  "not_applicable" | "external_required" | "present_unverified" | "verified";
 
 export type RuntimeImageMetadataSource = "stored" | "labels" | "name";
 
