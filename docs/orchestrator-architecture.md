@@ -93,6 +93,9 @@ Raw ADB shell is not a default capability. Approved escalation validates an allo
 command for one follow-up run. Provider streaming adapters preserve public results and usage
 without storing hidden reasoning text.
 
+The [AI automation README](../apps/orchestrator/src/automations/ai/README.md) covers usage,
+decision kinds, provider/perception boundaries, and the implementation map.
+
 ## Image builds and settings
 
 Managed GApps builds use one queued patch job at a time, a non-root worker without engine access,
