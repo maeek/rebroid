@@ -41,6 +41,8 @@
   },
   "pnpm": {
     "overrides": {
+      "@nestjs/platform-express": "11.1.26",
+      "@nestjs/websockets": "11.1.26",
       "@nestjs/platform-express>multer": "^2.2.0",
       "@nestjs/swagger>js-yaml": "^4.2.0",
       "dockerode>protobufjs": "^7.6.3",

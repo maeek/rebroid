@@ -5,6 +5,7 @@
 - Prefix shell commands with `rtk`.
 - Use Node.js 24 and pnpm through Corepack.
 - Run repo-level checks from the root when practical: `pnpm check`.
+- Manage dependency updates from the root pnpm workspace and shared catalog. Keep Node types on the deployed Node 24 major; compiler, ESLint, and ESM-only dependency major upgrades need explicit compatibility verification. See `docs/dependency-updates.md`.
 - For narrower verification, use the owning workspace script first, for example `pnpm --filter rebroid-web test`, `pnpm --filter rebroid-orchestrator typecheck`, or the package-specific `build`, `test`, and `typecheck` scripts.
 
 ## High-Level Structure

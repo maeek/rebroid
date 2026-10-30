@@ -8,8 +8,7 @@ const parseSettings = (value: string) => settingsDocumentSchema.parse(JSON.parse
 
 export const readSettingsDocument = () => {
   const row = getDatabase().prepare('SELECT settings_json FROM web_settings WHERE id = 1').get() as
-    | { settings_json: string }
-    | undefined
+    { settings_json: string } | undefined
   return row ? parseSettings(row.settings_json) : null
 }
 

@@ -23,9 +23,7 @@ import { AndroidAppsStatusService } from './android-apps-status.service';
 const MAX_RECONCILIATION_CONCURRENCY = 4;
 
 export type AndroidAppRuntimeReconciliationOutcome =
-  | 'updated'
-  | 'unchanged'
-  | 'unavailable';
+  'updated' | 'unchanged' | 'unavailable';
 
 export type AndroidAppRuntimeReconciliationResult = {
   application: AndroidApplication;

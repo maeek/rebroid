@@ -238,8 +238,7 @@ export class AndroidAppsRuntimePreparationService {
 
     const inspect = await this.lifecycle.inspectContainer(app.containerId);
     const hostConfig = inspect.HostConfig as
-      | (Record<string, unknown> & { CgroupnsMode?: unknown })
-      | undefined;
+      (Record<string, unknown> & { CgroupnsMode?: unknown }) | undefined;
     const currentCgroupnsMode =
       typeof hostConfig?.CgroupnsMode === 'string'
         ? this.normalizedHostConfigValue(hostConfig.CgroupnsMode)

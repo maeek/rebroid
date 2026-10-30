@@ -6,8 +6,7 @@ import type {
 
 type FinishDecision = Extract<DeviceAgentDecision, { kind: 'finish' }>;
 type FinishVerification =
-  | { ok: true; subgoals: DeviceAgentSubgoal[] }
-  | { ok: false; reason: string };
+  { ok: true; subgoals: DeviceAgentSubgoal[] } | { ok: false; reason: string };
 
 export const verifyAutomationAiFinish = (
   decision: FinishDecision,

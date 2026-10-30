@@ -12,13 +12,11 @@ export const loadPlatformServicesPageData = async (searchParams?: Promise<Servic
     getServerOrchestratorUiSettings(),
     getOrchestratorHealthSummaryAction()
       .then(health => health.services.display)
-      .catch(
-        (): ServiceHealth => ({
-          ok: false,
-          status: 'offline',
-          message: 'Display service health is unavailable.'
-        })
-      ),
+      .catch((): ServiceHealth => ({
+        ok: false,
+        status: 'offline',
+        message: 'Display service health is unavailable.'
+      })),
     searchParams?.then(value => value ?? {}) ?? Promise.resolve<ServicesSearchParams>({})
   ])
   return {
