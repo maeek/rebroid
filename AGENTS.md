@@ -2,7 +2,7 @@
 
 ## Local Codex Runtime
 
-- Follow the local Codex shell rule from `/Users/maek/.codex/RTK.md`: prefix shell commands with `rtk`.
+- Prefix shell commands with `rtk`.
 - Use Node.js 24 and pnpm through Corepack.
 - Run repo-level checks from the root when practical: `pnpm check`.
 - For narrower verification, use the owning workspace script first, for example `pnpm --filter rebroid-web test`, `pnpm --filter rebroid-orchestrator typecheck`, or the package-specific `build`, `test`, and `typecheck` scripts.
