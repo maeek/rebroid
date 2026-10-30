@@ -5,7 +5,7 @@
 - Prefix shell commands with `rtk`.
 - Use Node.js 24 and pnpm through Corepack.
 - Run repo-level checks from the root when practical: `pnpm check`.
-- Manage dependency updates from the root pnpm workspace and shared catalog. Keep Node types on the deployed Node 24 major; compiler, ESLint, and ESM-only dependency major upgrades need explicit compatibility verification. See `docs/dependency-updates.md`.
+- Manage dependency updates from the root pnpm workspace and shared catalog. Keep Node types on the deployed Node 24 major; compiler, ESLint, and ESM-only dependency major upgrades need explicit compatibility verification. See `CONTRIBUTING.md#dependency-updates`.
 - For narrower verification, use the owning workspace script first, for example `pnpm --filter rebroid-web test`, `pnpm --filter rebroid-orchestrator typecheck`, or the package-specific `build`, `test`, and `typecheck` scripts.
 
 ## High-Level Structure
@@ -18,7 +18,7 @@ This is a pnpm/Turbo monorepo. Runtime applications live in `apps/*`; reusable c
 - `apps/firewall-agent`: host firewall reconciler. Keep host-network/firewall execution code here. Shared policy calculation belongs in `packages/firewall-policy-core`, not in this app.
 - `packages/*`: a deliberately small layer for code used by at least two runtime apps or generated cross-app contracts. Packages may expose explicit public entrypoints through `package.json` `exports` and small entrypoint files.
 - `deploy`: Docker Compose files and image transfer scripts.
-- `docs`: architecture, operations, and invariant notes. Update docs when behavior or deployment assumptions change.
+- `docs`: focused architecture, deployment, operations, and contributor guides indexed in `docs/README.md`. Update the relevant guide and index when behavior or deployment assumptions change; keep file-placement rules here and avoid feature-specific implementation diaries.
 - `scripts`: repository automation such as OpenAPI client generation.
 
 ## Package Placement Rules

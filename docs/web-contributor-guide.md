@@ -1,75 +1,70 @@
 # Web contributor guide
 
-The web workspace is a Next.js backend-for-frontend with feature-owned UI. Keep routes thin, keep browser/server
-contracts explicit, and promote code to shared folders only after more than one feature genuinely needs it.
+The web app is a Next.js backend-for-frontend (BFF). Routes compose feature-owned pages;
+server services own authentication, persistence, and upstream calls. Start with the
+[architecture overview](architecture.md) and [local development setup](../CONTRIBUTING.md#local-development).
 
 ## Page structure
 
-New or migrated pages follow this dependency flow:
-
 ```text
 src/app/.../page.tsx
-  -> src/features/<feature>/pages/<page>/page-entry.tsx
-       -> page-data.server.ts and/or page-client.tsx
-            -> sections/*
-                 -> ui/*, model/*, hooks/*
+  → src/features/<feature>/pages/<page>/page-entry.tsx
+      → page-data.server.ts / page-client.tsx
+          → sections/
+              → ui/, model/, hooks/
 ```
 
-- Route files select a feature entry and translate route parameters. They do not own page markup or domain behavior.
-- `page-entry.tsx` composes the route-facing page and may await a colocated server loader.
-- `page-data.server.ts` performs authenticated initial reads and maps server data to shared contracts.
-- `page-client.tsx` is the smallest useful client boundary. Do not mark a whole route client-side for one control.
-- `sections` compose meaningful page regions. `ui`, `model`, and `hooks` own focused presentation, pure rules, and
-  reusable page behavior respectively.
+Route files select an entry and translate parameters. `page-data.server.ts` loads authorized data;
+`page-client.tsx` defines the smallest necessary client boundary. Sections compose the page,
+leaf UI renders controls, and model/hooks files own state and behavior.
 
-## Placement rules
+| Code                                                      | Location                             |
+| --------------------------------------------------------- | ------------------------------------ |
+| Feature pages, UI, state, and behavior                    | `src/features/<feature>`.            |
+| Reusable controls and layouts                             | `src/components` or `src/shared/ui`. |
+| Shared pure vocabulary                                    | `src/shared/model`.                  |
+| Browser/server DTOs                                       | `src/shared/contracts`.              |
+| Auth, permissions, persistence, audit, and upstream calls | `src/server`.                        |
+| Routing, layouts, error boundaries, and BFF handlers      | `src/app`.                           |
 
-| Code                                                                        | Location                            |
-| --------------------------------------------------------------------------- | ----------------------------------- |
-| Feature page, component, hook, or domain rule                               | `src/features/<feature>`            |
-| Reusable visual/layout primitive                                            | `src/components` or `src/shared/ui` |
-| App-wide pure browser/server vocabulary                                     | `src/shared/model`                  |
-| DTO crossing a browser/server boundary                                      | `src/shared/contracts`              |
-| Authentication, authorization, persistence, auditing, or upstream transport | `src/server`                        |
-| Routing, layout, error boundary, or HTTP handler                            | `src/app`                           |
+Import from owning files directly. Do not add app barrels or reach across feature folders;
+promote proven shared behavior deliberately. Shared model/UI/contracts must not import server-owned
+types. Client code may import a server module only to invoke a Server Action whose first directive
+is `'use server'`.
 
-Do not add app-level barrels. Import the owning file directly. Do not reach across feature folders; deliberately move a
-proven cross-feature primitive or model to `shared` instead.
+## Data access
 
-## Choosing a data boundary
+| Need                                       | Boundary                                                         |
+| ------------------------------------------ | ---------------------------------------------------------------- |
+| Initial page data                          | Authenticated Server Component loader.                           |
+| Refreshable or cross-cutting browser reads | Validated `/api/bff/*` handler and focused server query service. |
+| Feature mutation                           | Authorized Server Action.                                        |
+| Upload, download, streaming, or webhook    | Route Handler.                                                   |
 
-| Need                                                       | Use                                  | Why                                                                         |
-| ---------------------------------------------------------- | ------------------------------------ | --------------------------------------------------------------------------- |
-| Initial page read tied to rendering                        | Server Component loader              | Keeps secrets and transport server-side and avoids a client waterfall.      |
-| Cross-cutting or refreshable browser read                  | Validated `/api/bff/*` Route Handler | Gives browser code a stable same-origin contract and focused query service. |
-| Feature-owned mutation initiated by React UI               | Server Action                        | Keeps the mutation colocated while preserving server authorization.         |
-| Webhook, upload, download, streaming, or external HTTP API | Route Handler                        | Exposes explicit HTTP semantics that are not coupled to a component tree.   |
+Ordinary browser requests never call the orchestrator directly. The server client in
+`src/server/orchestrator` owns upstream authentication, deadlines, request IDs, and error translation.
+Operations return the shared result envelope with a request ID, stable error code, and safe public message.
 
-Browser code never calls the orchestrator directly. Client modules may import a server module only to invoke a Server
-Action whose module starts with `'use server'`; they must not import server-owned types. Put its input/output DTO in
-`src/shared/contracts`, and return the shared operation result with a request ID and stable error code.
+Use `getCurrentUser()` before protected operations. Check permission, ownership, and input before
+calling upstream services. Shared permission definitions and quotas live in `src/shared/permissions`;
+they provide vocabulary, not a substitute for server authorization. See [web security](web-security.md).
 
-## UI conventions
+Repositories own SQL and runtime validation of stored data. Web schema changes require the
+[full clean-state reset](operations.md#full-reset); there is no legacy persistence adapter.
 
-- Compose every interactive grid with `DataGridWorkspace`. Page-level datasets may use its structured filter surface;
-  embedded and small fixed datasets use search-only mode.
-- Use `FormField` for labels, descriptions, errors, required state, and accessible associations.
-- The component that owns ready-state geometry also owns loading geometry. Keep route `loading.tsx` files as thin
-  feature entrypoints and reuse actual shells, sections, columns, and scroll containers.
-- Use the semantic tokens and page families in [the web design system](web-design-system.md). Do not create local
-  border/background/shadow recipes.
-- Import concrete files directly. Packages alone may expose intentional public entrypoints.
+## UI and loading
 
-## Adding a page
+Follow the [web design system](web-design-system.md) for page families, semantic tokens,
+forms, feedback, grids, and accessibility. Feature code composes shared primitives rather than
+recreating visual recipes.
 
-For a new `widgets` page:
+The component that owns ready-state geometry also owns loading geometry. Thin route loaders
+and explicit Suspense boundaries reuse that feature loading component. Keep known page chrome
+visible and mask only data-dependent regions.
 
-1. Add `src/app/(protected)/(standard)/widgets/page.tsx` that renders the feature page entry.
-2. Add `src/features/widgets/pages/widgets/page-entry.tsx` and the smallest necessary loader or client boundary.
-3. Put page composition in `sections`, leaf presentation in `ui`, pure rules in `model`, and stateful reusable behavior
-   in `hooks`.
-4. Define browser/server DTOs in `src/shared/contracts` and add a focused BFF query or authorized Server Action.
-5. Co-locate tests with the behavior they characterize, then run:
+## Verification
+
+From the repository root:
 
 ```bash
 pnpm --filter rebroid-web lint
@@ -78,4 +73,6 @@ pnpm --filter rebroid-web test --run --coverage.enabled=false path/to/focused.sp
 pnpm boundaries
 ```
 
-Run the full web tests and production build before handing off a cross-cutting change.
+Vitest separates Node server tests from JSDOM client tests. Playwright covers desktop and mobile
+browser journeys. Run the full web tests and build for cross-cutting changes, and `pnpm check`
+for shared contracts or changes across apps.

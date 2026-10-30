@@ -1,215 +1,137 @@
 # Display streaming
 
-Rebroid keeps scrcpy/Redroid as the H.264 and Opus encoder. The display
-sidecar relays timestamped media without transcoding. WebRTC is the primary
-transport. WebSocket uses worker-owned WebCodecs/WebGL2 in Chromium and
+The display sidecar relays ReDroid's scrcpy H.264 video and Opus audio without transcoding.
+WebRTC is the primary transport. WebSocket playback uses WebCodecs/WebGL2 in Chromium and
 fragmented MP4/MediaSource in Firefox.
 
-## Data flow and ownership
+## Media flow
 
 ```mermaid
 flowchart LR
-  Android["Redroid display"] --> Scrcpy["scrcpy H.264 / Opus"]
-  Scrcpy --> Parser["segmented packet parser"]
-  Parser --> Frame["RBD1 access units with source PTS"]
-  Frame --> Source["session/profile source supervisor"]
-  Source --> QueueA["WebRTC consumer queue"]
-  Source --> QueueB["WebSocket consumer queue"]
-  QueueA --> Pion["Pion RTP + RTCP, exact H.264 profile"]
-  Pion -. "UDP media" .-> Video["native browser video"]
-  QueueB --> Edge["nginx WebSocket tunnel"]
-  Edge --> Worker["media worker"]
-  Worker --> Chromium["Chromium WebCodecs + WebGL2"]
-  Worker --> Firefox["Firefox fMP4 + native MSE video"]
-  Worker --> Audio["AudioWorklet ring"]
+  Android["ReDroid"] --> Scrcpy["scrcpy H.264 and Opus"]
+  Scrcpy --> Source["Session/profile source supervisor"]
+  Source --> RTC["WebRTC consumer queue"]
+  Source --> WS["WebSocket consumer queue"]
+  RTC --> Pion["Go / Pion bridge"]
+  Pion -.->|RTP and RTCP over UDP| Browser["Browser video"]
+  WS --> Edge["nginx edge"]
+  Edge --> Worker["Browser media worker"]
 ```
 
-The source supervisor owns the scrcpy process and the protected video → audio
-→ control socket sequence. A browser, WebSocket, decoder, bridge, or peer
-failure detaches only that consumer. The source stays alive for 30 seconds
-without consumers. Session release/expiry, an intentional profile change,
-sidecar shutdown, a genuine scrcpy failure, or a failed explicit encoder-reset
-watchdog closes it.
+The edge sends `/viewer/display` and `/rebroid/display` traffic directly to the sidecar.
+WebRTC signaling uses HTTPS; RTP/RTCP uses the published UDP range. Next.js authorizes viewer
+access but never relays media.
 
-Consumer attachment, PLI, and decoder recovery send the rate-limited scrcpy v4
-reset-video control message (`17`) over the existing control socket. They do
-not reset ADB or reorder scrcpy socket setup. The reset must produce codec
-configuration and an IDR within three seconds; only that explicit watchdog may
-escalate the recovery to a source-attempt restart.
+The sidecar owns in-memory sessions, expiry, and capacity. Internal session management requires
+a shared secret; public viewer routes require a short-lived session token. A source supervisor
+owns scrcpy for a session/profile. Browser, peer, decoder, or bridge failures detach only that
+consumer. Sources can remain alive for 30 seconds without consumers; release, expiry, profile
+changes, shutdown, or a genuine source failure close them.
 
-Nginx is the only published HTTPS service. It routes `/viewer/display` and
-`/rebroid/display` directly to the private display sidecar, `/api/v1` to the
-orchestrator, and remaining traffic to Next.js. WebRTC signaling crosses
-nginx, but RTP/RTCP uses the sidecar UDP range directly. Neither transport
-traverses the Next.js process.
+## RBD1 protocol
 
-## RBD1 frame envelope
+Every internal media sink uses this big-endian envelope:
 
-All internal media sinks use one breaking, big-endian envelope:
+| Offset | Bytes | Field                                             |
+| -----: | ----: | ------------------------------------------------- |
+|      0 |     4 | ASCII magic `RBD1`.                               |
+|      4 |     1 | Version `1`.                                      |
+|      5 |     1 | Media kind: video `1`, audio `2`.                 |
+|      6 |     2 | Configuration, keyframe, and discontinuity flags. |
+|      8 |     4 | Unsigned sequence number.                         |
+|     12 |     8 | Unsigned scrcpy timestamp in microseconds.        |
+|     20 |     4 | Payload length.                                   |
 
-| Offset | Size | Field                                         |
-| -----: | ---: | --------------------------------------------- |
-|      0 |    4 | ASCII magic `RBD1`                            |
-|      4 |    1 | version, currently `1`                        |
-|      5 |    1 | media kind: video `1`, audio `2`              |
-|      6 |    2 | flags: configuration, keyframe, discontinuity |
-|      8 |    4 | unsigned sequence number                      |
-|     12 |    8 | unsigned scrcpy timestamp in microseconds     |
-|     20 |    4 | payload byte length                           |
+Video payloads are complete H.264 Annex-B access units; codec configuration is a separate frame.
+Audio payloads contain one Opus packet. TypeScript, Go, and browser consumers validate envelopes.
 
-Each video payload is one complete H.264 Annex-B access unit. Codec
-configuration remains a separate frame. Audio payloads contain one scrcpy Opus
-packet. TypeScript, Go, and the browser worker reject malformed envelopes; no
-legacy parser remains.
+## Source and recovery invariants
 
-## Queue and recovery invariants
+- Preserve unsigned source timestamps and flags. Never replace source timing with a configured-FPS clock.
+- Each consumer owns an independent bounded queue: video is capped at three frames or 75 ms;
+  audio is capped at 100 ms. A slow consumer must not pause scrcpy or another consumer.
+- Video overflow discards the queued group of pictures (GOP), suppresses delta frames, and resumes
+  with cached codec configuration plus an IDR keyframe. Never drop an arbitrary delta and continue.
+- Resynchronization discards audio older than the resumed keyframe. Reattachment caches are bounded
+  to two seconds and 16 MiB.
+- WebRTC waits for configuration and an IDR before answering, negotiates the exact compatible H.264
+  profile, derives RTP timing from source timestamps, and continuously drains sender RTCP.
+- Consumer attachment, PLI, and decoder recovery use scrcpy v4 reset-video message `17` over the
+  existing control socket, coalesced to at most once per second. An explicit reset must yield
+  configuration and an IDR within three seconds before its watchdog can restart the source attempt.
+- Static screens are healthy. Recovery must compare advancing source frames with delivery and
+  presentation, rather than treating an idle source as a freeze.
+- Retries never silently lower requested resolution, FPS, bitrate, or switch transport.
 
-- Every consumer has an independent live-edge queue. One blocked consumer
-  cannot pause the source socket or another consumer.
-- Video is capped at three frames or 75 ms of queued PTS. Overflow discards the
-  queued GOP, suppresses deltas, and resumes with cached configuration and the
-  next IDR.
-- Audio is capped at 100 ms. Video resynchronization discards audio older than
-  the resumed keyframe.
-- Source PTS remains authoritative. Dropped media creates a real timestamp gap;
-  no fixed `1 / configured FPS` cadence is synthesized.
-- Keyframe recovery is measured in advancing source PTS. A static screen does
-  not time out merely because it emits no frames.
-- Codec configuration and one complete GOP are cached for reattachment,
-  bounded to two seconds and 16 MiB.
-- Requested resolution, FPS, and bitrate are never silently reduced. Retry may
-  disable audio or stream control, and diagnostics report the reason.
+WebSocket decoding stays in the media worker where browser support permits. Chromium keeps
+encoded access units and decoded frames off the main thread. Firefox uses worker-produced fMP4
+and main-thread MediaSource. Decoder/backlog recovery resynchronizes the consumer rather than
+reconnecting its media socket. PCM is delivered to an AudioWorklet with a bounded ring.
 
-## Browser media planes
+All transports share validated device-control semantics. Discrete controls use reliable delivery;
+WebRTC pointer movement uses an unordered channel and coalesces updates per animation frame.
 
-WebRTC remains on the native `<video>` presentation path. Before creating the
-answer, the sidecar waits for cached SPS/PPS plus an IDR, derives the exact
-`profile-level-id`, validates that the browser offered compatible H.264
-packetization mode 1, and registers only that codec in Pion. Source PTS drives
-RTP timestamps and sender reports. The viewer starts audio and video
-`RTCRtpReceiver.jitterBufferTarget` at 20 ms, increases it in 10 ms steps after
-late frames or repeated gaps, caps it at 40 ms, and decreases it after ten
-stable seconds. Presentation is counted with `requestVideoFrameCallback`.
-The SPS-declared level is reported against the requested pixel rate, but a
-lower declared macroblock rate is diagnostic rather than fatal: scrcpy's
-`max_fps` is a variable-frame-rate ceiling, not proof that every second carries
-that many encoded frames.
+## Protected scrcpy lifecycle
 
-A static source is healthy. Recovery begins only when source frames advance
-while RTP, decode, and presentation remain unchanged for three consecutive
-one-second samples. ICE `disconnected` gets a five-second grace period. Fresh
-peers retry after 300 ms, 750 ms, and 1.5 seconds, then surface a blocking
-WebRTC diagnostic. The viewer never changes the requested transport
-automatically.
+ADB commands, listener registration, video → audio → control socket acquisition, process launch,
+retry, and cleanup are order-sensitive. Do not reorder or merge these operations for style or
+file size. A transport closing must not destroy the source's ADB connection or scrcpy process.
 
-One WebSocket media worker owns the media WebSocket, RBD1 parsing, sequence
-validation, audio decode, reconnect generation, and heartbeat. In Chromium it
-also owns `VideoDecoder` and an OffscreenCanvas WebGL2 renderer. Encoded access
-units and decoded `VideoFrame` objects do not cross the main thread. Normal
-access units are passed directly to WebCodecs; only configuration is
-NAL-parsed. At most one decoded frame waits for the next worker animation
-frame, and a newer frame replaces and closes the older one. The worker starts
-hardware-preferred and can reconfigure software-preferred after repeated
-decoder backlog without reconnecting. Decode backlog resets only the decoder
-and asks the source for a new IDR.
+Without a dedicated Redroid verification pass, refactoring is limited to pure SPS parsing,
+compatibility-probe parsing, retry classification, and stream-option selection. Changes to
+protected ordering require the manual matrix below, with before/after results in the pull request.
 
-In Firefox the worker converts complete Annex-B access units to AVC samples
-and emits a fresh fMP4 initialization segment plus media fragments containing
-at most two frames or 33 ms. The main thread owns MediaSource and a native
-`<video>` because Firefox worker MSE support is insufficient. Adjacent fMP4
-fragments are combined into one append, with a 75 ms operating target and a
-500 ms/16 MiB hard bound. Queue cost is pending frame work rather than source
-PTS duration, so a legitimate variable-frame-rate gap is not mistaken for
-backlog. Old buffered data is pruned after 500 ms, and buffered lead follows
-the same adaptive 20–40 ms target. Overflow, a discontinuity, or a missing IDR
-requests local source resynchronization rather than reconnecting the socket.
-The last presented frame remains visible while MediaSource is replaced. Three
-genuine MSE recovery failures switch the consumer locally to WebCodecs/WebGL2
-without replacing the media socket.
+## Diagnostics
 
-Decoded PCM moves directly to an AudioWorklet over a transferred message port.
-The ring targets 30 ms, has a 60 ms hard cap, drops oldest audio on overflow,
-emits silence on underflow, and rebases on discontinuity. WebSocket playback
-requires Worker, AudioWorklet, and either Chromium WebCodecs/OffscreenCanvas or
-Firefox MediaSource support.
+The viewer reports `ViewerStreamMetricsV4` once per second. Compare stages rather than relying
+on one FPS value:
 
-WebRTC uses an ordered reliable data channel for taps, keys, clipboard, and
-discrete actions. Pointer movement uses an unordered `maxRetransmits: 0`
-channel and is coalesced to one update per browser animation frame.
+- Source, relay, bridge, RTP, receive, decode, and presentation rates and sequence watermarks.
+- Requested/effective profile, actual encoder, H.264 profile, dimensions, source and wire bitrate.
+- Frame gaps, jitter, decode time, live-edge age, queue depth, drops, freezes, RTT, and packet loss.
+- PLI/NACK, resync/reset/restart counts, event-loop utilization, and GC pauses.
 
-## ViewerStreamMetricsV4
+A freeze requires source progress with no presentation for over 100 ms. Static screens do not
+increment it. The encoder bitrate target is an upper quality target, so lower wire bitrate on
+static content is expected.
 
-The iframe reports `rebroid-viewer-stream-metrics-v4` with `version: 4` once
-per second. Metrics are stage-specific instead of hiding bursty delivery behind
-one FPS value:
+## Reverse proxies
 
-- source, relay-ingress, bridge-input, RTP-sent, received, decoded, drawn, and
-  actually-presented FPS;
-- highest received, decoded, and presented RBD1 sequence watermarks;
-- encoder target in the effective profile, source bitrate, and wire bitrate;
-- active-source frame-gap p50/p95/p99/max;
-- source inter-frame p95, network inter-arrival jitter p95, decode p95,
-  decode-to-draw p95, and live-edge age p95;
-- RTP packetization/write p95, Firefox MSE buffered lead, WebCodecs decode
-  depth, relay, pending-render, AudioWorklet, and WebRTC jitter-buffer depth;
-- relay, decode, presentation, and audio drops;
-- reconnect, resync, video-reset, source-restart, PLI, NACK, packet-loss, RTT,
-  and main-thread long-task counters;
-- relay p95/p99, event-loop utilization, GC-pause p95, renderer, actual encoder,
-  SPS profile/level, negotiated SDP profile, dimensions, pixel rate, effective
-  profile, source attempt, and consumer generation.
+Set the final browser host in `REBROID_PUBLIC_HOSTS`. A front proxy can use the edge's private
+TLS SNI name `rebroid-web`; the HTTP Host still needs to match the public allowlist.
 
-A freeze is counted only when the source advanced but no frame was presented
-for more than 100 ms. Static screens do not increment freeze counters. “Encoder
-target” is an upper quality/bitrate target; “wire bitrate” is current encoded
-traffic and is naturally lower on static content.
+Media paths need HTTP/1.1 upgrades, `tcp_nodelay`, long read/send timeouts, and buffering,
+request buffering, caching, and compression disabled. Enable WebSocket support in Nginx Proxy Manager.
+Compare a direct-sidecar path with the Rebroid edge and any additional proxy before blaming the encoder.
 
-## Edge and double reverse proxies
+## Manual verification
 
-The Rebroid edge accepts the private TLS SNI name `rebroid-web` so a master
-Nginx/Nginx Proxy Manager can forward HTTPS to `rebroid-web:3443`. Public HTTP
-Host values still must appear in `REBROID_PUBLIC_HOSTS`. Both proxy layers must
-use HTTP/1.1 upgrades, disable buffering, request buffering, caching, and
-compression on media paths, enable `tcp_nodelay`, and use long read/send
-timeouts. Keep WebSocket support enabled in Nginx Proxy Manager.
+Use a native Linux rootful engine with binder support. Record host, engine, Android image,
+scrcpy version, requested/effective profiles, relevant logs, and observed results.
 
-Compare direct-sidecar, Rebroid-edge, and VPS-master routes. If the master still
-adds more than 5 ms p95 inter-arrival jitter after tuning, use a separately
-allowlisted direct media hostname or L4 route while retaining session-token and
-origin validation.
+| Area            | Required coverage                                                         |
+| --------------- | ------------------------------------------------------------------------- |
+| Android         | ReDroid 13 and 14; 15/16 must fail clearly as unsupported.                |
+| Transport       | WebRTC and WebSocket; Chromium and Firefox.                               |
+| Media           | Video with audio enabled and disabled.                                    |
+| Controls        | Touch, keyboard, actions, clipboard, and ADB fallback.                    |
+| Connections     | Direct and forward tunnels, fallback, repeated create/release.            |
+| Recovery        | Disconnect, retry, reconnect, expiry, shutdown, and final cleanup.        |
+| Virtual display | Rejection while disabled; creation/release after synchronized enablement. |
 
-## Acceptance and escalation
+### Performance validation
 
-For ten minutes of deterministic active native 1080×2340 motion in current
-Chromium and Firefox over wired LAN:
+The interactive profile is native resolution, 60 FPS, H.264, a 16 Mbps encoder target, and a
+one-second IDR interval. Scrcpy is variable-frame-rate; measure sustained FPS only with a
+deterministic motion workload, not a static screen.
 
-- at least 57 presented FPS in 95% of one-second windows;
-- presentation-gap p95 at most 25 ms, p99 at most 50 ms, and no gap above 100 ms;
-- decode p95 at most 10 ms and decode-to-draw p95 at most 16.7 ms;
-- at most one pending presentation frame;
-- input-to-photon p95 below 100 ms for WebRTC and 120 ms for WebSocket;
-- A/V skew within 80 ms;
-- zero scrcpy/ADB restarts during consumer recovery.
+Run ten minutes of active 1080×2340 motion over wired LAN. These are acceptance targets, not
+performance claims: at least 57 presented FPS in 95% of one-second windows; presentation-gap
+p95 ≤25 ms and p99 ≤50 ms with none over 100 ms; decode p95 ≤10 ms; decode-to-draw p95 ≤16.7 ms;
+at most one pending presentation frame; A/V skew within 80 ms; input-to-photon p95 below 100 ms
+for WebRTC and 120 ms for WebSocket; no scrcpy/ADB restarts during consumer recovery.
 
-The ten-minute static test must produce no false freeze, reconnect, encoder
-reset, or ADB reset. Repeat at 50 ms RTT and 1% loss, and verify direct, edge,
-and VPS routes separately. Measure input-to-photon with a synchronized visual
-trigger and high-frame-rate capture; browser and Android clocks are not
-interchangeable.
-
-Keep the Node relay while it stays below 1 ms p95 and 3 ms p99, below 50%
-event-loop utilization, and below 10 ms GC-pause p95. Build the persistent Go
-media gateway only if an acceptance test still fails while scrcpy supplies at
-least 57 FPS and Node crosses one of those gates.
-
-The interactive default is native resolution (`max_size=0`), 60 FPS, 16 Mbps
-encoder target, H.264, no intentional frame reordering, and a fixed one-second
-IDR interval. Scrcpy is variable-frame-rate, so the 57 FPS requirement applies
-only while the deterministic motion workload continuously changes the source.
-Failure to sustain the native profile is reported and never hidden by a
-resolution, frame-rate, or transport downgrade.
-
-Complete the protected manual matrix in
-[operations.md](operations.md#manual-scrcpy-harness) for Redroid 13/14, direct
-and forward tunnels, video/audio/control, reconnect/cleanup, and virtual
-displays.
+Repeat with ten minutes of static content, requiring no false freeze, reconnect, encoder reset,
+or ADB reset. Test direct, edge, and additional proxy routes; repeat WebRTC at 50 ms RTT and 1%
+packet loss. Use a synchronized visual trigger and high-frame-rate capture for input latency;
+browser and Android clocks are not interchangeable.

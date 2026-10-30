@@ -1,22 +1,40 @@
-# Web security invariants
+# Web security
 
-The web application treats browsers and upstream proxy headers as untrusted.
+The web backend treats browsers and upstream proxy headers as untrusted. Vulnerabilities should
+be reported through the [security policy](../SECURITY.md).
 
-- `getCurrentUser()` is the standard authenticated boundary. It validates the database-wide auth epoch, per-user session version, disabled state, and required-password-change state. Only the protected layout and the forced-password-change action may use `getAuthenticatedUser()`.
-- The bootstrap administrator must replace its initial password. Completing a forced change increments the session version and requires a fresh login.
-- Passwords are stored with Argon2id. Existing bcrypt hashes remain readable and are upgraded after the next successful login. Password policy is bounded to 8–128 characters.
-- Login throttling is persisted in SQLite and applied to both hashed account and source-address keys. The nginx edge overwrites forwarded address headers with its observed client address.
-- TOTP MFA is optional for every account. Secrets use AES-256-GCM with `MFA_ENCRYPTION_KEY`; recovery codes are shown once and stored only as hashes.
-- Automation command permissions fail closed. Unknown permissions make definitions unrunnable, and trigger updates and runs revalidate the stored definition, target, and profile permissions.
-- Cookie-authenticated mutation API requests require a same-origin `Origin`. NextAuth routes retain NextAuth's own CSRF handling.
-- Ordinary users receive redacted backend identifiers, endpoints, filesystem paths, and diagnostics. Raw orchestrator errors are never returned to clients or written to application logs.
-- Audit details recursively redact credential-like keys, retention runs automatically from web settings, and CSV exports neutralize spreadsheet formulas.
+## Sessions and account access
 
-The production nginx edge ignores inbound forwarded protocol/address and
-internal-secret headers, permits only `REBROID_PUBLIC_HOSTS`, and falls back to
-the certificate names in `REBROID_TLS_HOSTS`. It overwrites forwarded host and
-protocol before routing. If another reverse proxy sits in front, list the final
-browser host explicitly and treat source addresses as the edge-observed proxy
-address; there is no implicit trusted-forwarded-header mode.
+- `getCurrentUser()` validates auth epoch, per-user session version, disabled state, and required
+  password changes. Only the protected layout and forced-password-change completion use `getAuthenticatedUser()`.
+- The bootstrap admin replaces its initial password before normal access. Password replacement
+  invalidates the old session and requires a fresh login.
+- New password hashes use Argon2id. Existing bcrypt hashes upgrade after successful login.
+- Login throttling persists in SQLite and applies to both account and source-address keys.
+- TOTP secrets use AES-256-GCM with `MFA_ENCRYPTION_KEY`; recovery codes are shown once and stored
+  as hashes. MFA changes invalidate sessions.
 
-The web database schema has no migration path. Security schema changes require the documented clean-state reset workflow.
+## Authorization
+
+Check permissions and resource ownership on the server before orchestrator calls. Shared
+permission/quota types support UI and server code, but browser visibility is not authorization.
+Automation definitions, targets, profiles, and triggers are revalidated before use; unknown command
+permissions fail closed.
+
+Cookie-authenticated mutation APIs require a same-origin `Origin`. NextAuth keeps its own CSRF
+handling. Display session tokens and automation subscription tokens grant narrow, short-lived
+access; platform feature flags never replace permission checks.
+
+## Proxies and public output
+
+The edge accepts only configured public hosts, strips internal-secret headers, and overwrites
+forwarded host, protocol, and client address. With another proxy in front, the observed client
+address is that proxy; there is no implicit trusted-forwarded-header mode.
+
+Public errors contain safe messages and request references. Ordinary users receive redacted
+backend identifiers, endpoints, filesystem paths, and diagnostics. Raw upstream failures and
+secrets must not appear in responses, logs, or client bundles.
+
+Audit details redact credential-like keys. Retention runs automatically from web settings,
+and CSV exports neutralize spreadsheet formulas. Persistence changes use the
+[documented reset procedures](operations.md#stored-state).

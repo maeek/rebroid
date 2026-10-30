@@ -1,138 +1,128 @@
 # Operations
 
-## Health Endpoints
+Use **Platform → Overview** and **Platform → Services** for routine diagnostics.
+For installation and host requirements, see [Deployment](deployment.md).
 
-- Edge `/edge-health`: nginx ingress liveness over HTTPS.
-- Orchestrator `/health/live`: process liveness only.
-- Orchestrator `/health/ready`: required Docker dependency readiness.
-- Orchestrator `/api/v1/diagnostics`: authenticated aggregated diagnostics.
-- Orchestrator `/api/v1/diagnostics/summary`: authenticated shallow diagnostics for routine polling.
-- Orchestrator `/api/v1/metrics`: Prometheus metrics.
-- Orchestrator `/api/v1/metrics/docker`: authenticated Docker access snapshot used by the web dashboard.
-- Display sidecar `/health/live`: process liveness.
-- Display sidecar `/health/ready`: process readiness.
+## Health checks
 
-Docker healthchecks use liveness endpoints so an optional downstream outage does not restart a healthy process.
+The paths below belong to each service; only the edge is published by Compose.
+Use the internal service network or a local development listener for the other checks.
 
-## Docker Socket Stability
+| Service         | Endpoint                                                | Meaning                                              |
+| --------------- | ------------------------------------------------------- | ---------------------------------------------------- |
+| Edge            | `/edge-health`                                          | HTTPS ingress liveness.                              |
+| Orchestrator    | `/health/live`                                          | Process liveness.                                    |
+| Orchestrator    | `/health/ready`                                         | Required Docker dependency readiness.                |
+| Orchestrator    | `/api/v1/diagnostics` and `/api/v1/diagnostics/summary` | Authenticated full and shallow diagnostics.          |
+| Orchestrator    | `/api/v1/metrics` and `/api/v1/metrics/docker`          | Authenticated metrics and Docker access diagnostics. |
+| Display sidecar | `/health/live` and `/health/ready`                      | Process health.                                      |
+| OCR sidecar     | `/health/live` and `/health`                            | Liveness and model readiness.                        |
 
-The supported production target is native rootful Linux Docker Engine. Docker Desktop VM mode, Podman machine VM mode, and rootless engines are unsupported.
+Docker health checks use liveness, so an optional downstream outage does not restart a healthy process.
+OCR readiness stays false until its model has warmed up.
 
-Use **Orchestrator > Overview** first. The dashboard shows Docker API retries, slow operations, failures, active work, queue depth, and the latest sanitized failure events. Local Unix-socket requests intentionally log slow operations without terminating them.
+## Docker troubleshooting
 
-When a socket reset remains, collect the host evidence around the same timestamp:
+Start with the overview's failures, retries, queue depth, and slow operations. Local engine requests
+log slow work without terminating it; remote HTTP/TCP requests have bounded ordinary request timeouts.
+Archive transfers, image pulls, builds, and exec streams have separate concurrency limits and deadlines.
+
+On the Linux host, collect evidence around the failure time:
 
 ```bash
 curl --unix-socket /var/run/docker.sock http://localhost/_ping
 docker version
 docker info
-curl -H "x-orchestrator-secret: $ORCHESTRATOR_SHARED_SECRET" http://127.0.0.1:4100/api/v1/metrics
-systemctl status docker
 journalctl -xu docker.service --since "15 minutes ago"
-dmesg -T | grep -Ei 'oom|killed process|dockerd|containerd'
 df -h /var/lib/docker
 df -i /var/lib/docker
-docker events --since 15m
 ```
 
-Classify the failure before tuning the host:
+| Evidence                               | Next check                                                 |
+| -------------------------------------- | ---------------------------------------------------------- |
+| Slow requests without a daemon restart | Image builds, transfers, cleanup, and competing host work. |
+| Daemon restart or OOM                  | Docker service and kernel logs, host memory limits.        |
+| Disk or inode exhaustion               | Engine storage capacity before retrying.                   |
+| Failure after an engine update         | Engine version and API compatibility.                      |
+| Android exits immediately              | [ReDroid host checks](deployment.md#redroid-host-checks).  |
+| Viewer reconnects repeatedly           | [Display diagnostics](display-streaming.md#diagnostics).   |
 
-- Repeated slow-operation warnings without daemon restart usually mean the engine is busy.
-- Daemon restart, panic, or OOM evidence means the reset originated below Rebroid.
-- Disk or inode exhaustion must be corrected before retrying lifecycle operations.
-- Failures immediately after an engine upgrade should include `docker version` output so API compatibility can be checked.
+## Stored state
 
-If registry or build traffic is the bottleneck, consider lowering dockerd `max-concurrent-downloads` or `max-concurrent-uploads`. Enable Docker `live-restore` when standalone containers should remain running during daemon restarts; it does not make the Docker socket itself reliable.
+Pre-release databases do not have an in-place schema upgrade path. Reset only the state affected
+by a schema change. The commands below delete data when `--execute` is supplied; preview the
+reported paths and resources first.
 
-## Stored State
+### Orchestrator reset
 
-Rebroid is pre-release software. Database layouts are initialized from one baseline migration per application. Schema upgrades intentionally do not repair or migrate existing volumes.
-
-Stop the orchestrator, inspect the reset as a dry run, then execute it:
+This removes the orchestrator database, uploads/build contexts, and Rebroid-managed runtime
+containers, networks, volumes, and managed images. It preserves web data, shared secrets,
+and the orchestrator settings file.
 
 ```bash
+docker compose -f deploy/compose.yaml stop orchestrator
 pnpm reset:orchestrator-state
 pnpm reset:orchestrator-state -- --execute
+docker compose -f deploy/compose.yaml up -d orchestrator
 ```
 
-The targeted reset removes the orchestrator SQLite database (including WAL files), orchestrator uploads/build contexts, and Docker containers, networks, volumes, and managed images marked as Rebroid-managed. It handles both local paths and Compose named volumes; named-volume cleanup uses the existing orchestrator image as a short-lived reset helper. It preserves web data, shared secrets, and the orchestrator settings file. Environment overrides for `DATABASE_PATH`, `UPLOADS_DIR`, and `RESET_HELPER_IMAGE` are honored. Do not use `docker compose down -v` for this migration because that also removes unrelated persistent data.
+For local development, stop the orchestrator process instead of the Compose service. The reset
+supports local paths and Compose volumes; `DATABASE_PATH`, `UPLOADS_DIR`, and `RESET_HELPER_IMAGE`
+can override discovery. The next startup creates the current schema.
 
-After the reset, start the orchestrator normally. The single initialization migration recreates the complete current schema.
+### Full reset
 
-The current baseline includes workload indexes, the unique active-automation-target reservation, and transactional event sequence counters. Existing state created from an older baseline must be reset with the operation above; the application does not apply an in-place schema upgrade.
+Use this when web state also needs a clean schema. It removes local web/orchestrator state,
+uploads, managed runtime resources, and Compose state volumes, including web accounts and
+generated secrets. External environment files and bind-mounted secrets are preserved.
 
-## Google Play Image Patching
+```bash
+docker compose -f deploy/compose.yaml down
+pnpm reset:all-state
+pnpm reset:all-state -- --execute
+docker compose -f deploy/compose.yaml up -d
+```
 
-The managed patcher supports Android 14 (`upsilon`) and Android 13 (`tau`) on
-Linux amd64 with rootful Docker. It requires 10 GB free storage and 3 GB Docker
-memory; 4 GB RAM and 2 CPUs are recommended. CPU count is informational and
-never blocks a build.
+Stop local development processes as well. `docker compose down -v` is not a substitute for the
+targeted reset: it also removes web state and generated credentials.
 
-Each job pins the pulled ReDroid digest and the resolved MindTheGapps commit.
-The package SHA-256 is calculated locally and stored with the job. The worker
-runs non-root without the Docker socket, host paths, or application secrets.
-Generated packages are limited to 2 GB; extraction is limited to 4 GB and
-50,000 entries. Traversal paths, device entries, escaping symlinks, and
-setuid/setgid modes are rejected.
+## Google Play image patching
 
-Canceling a job removes its worker and temporary extraction data while keeping
-the last verified cache. Queued jobs run one at a time. A running job found
-after an orchestrator restart is marked failed; a retry can reuse the verified
-package cache. Use **Advanced cache options** on the builder page to remove the
-Android 13 or 14 cache.
+Open **Runtime → Images** to build a local Android 13 or 14 image with Google Play components.
+The managed builder uses prebuilt ReDroid and a pinned MindTheGapps revision; it does not compile AOSP.
 
-CI can exercise the worker without cloning upstream by running
-`pnpm test:gapps-patcher`; set `CONTAINER_ENGINE=podman` when Docker is not the
-local CLI. The test creates a temporary MindTheGapps-shaped Git repository and
-verifies that the worker produces an x86_64 package.
+| Requirement   | Value                            |
+| ------------- | -------------------------------- |
+| Host          | Linux amd64, rootful Docker.     |
+| Free storage  | At least 10 GB.                  |
+| Docker memory | At least 3 GB; 4 GB recommended. |
+| CPU           | 2 CPUs recommended.              |
 
-The deployment image transfer scripts include the isolated
-`rebroid/gapps-patcher:latest` worker. Run `deploy/save-docker-images.sh` to
-build and export the complete application image set, then run
-`deploy/load-docker-images.sh` on the target host. Both scripts prefer Docker,
-fall back to Podman, accept an optional archive directory as their first
-argument, and support an explicit engine path through `CONTAINER_ENGINE_BIN`.
-The Compose deployment explicitly passes the same worker tag to the
-orchestrator. The worker is not a Compose service: the orchestrator creates a
-short-lived, isolated job container only while a GApps package is being built.
+Only one patch job runs at a time. The non-root worker has no Docker socket, host paths, or app
+secrets. The pulled image digest, source revision, and package checksum are recorded; extraction
+and APK/XML validation complete before the final image is accepted.
 
-Before release, manually complete one build for each Android version and record
-host disk usage, peak Docker memory, duration, payload validation, final image
-ID, and labels. Static success does not prove Google login, Play Protect
-certification, or Play Integrity behavior.
+Canceling removes the worker and temporary files while retaining verified cache entries. A patch
+job interrupted by restart is marked failed; a retry can reuse the cache. **Advanced cache options**
+removes cached Android 13 or 14 packages. The **Custom builder** remains available for Dockerfile workflows.
 
-## Manual Scrcpy Harness
+APK dependency analysis is advisory: it can suggest a matching Google Play image without rejecting
+an otherwise valid upload. Built images are local; Rebroid does not redistribute patched images
+or guarantee Google login, Play Protect certification, or Play Integrity compatibility.
 
-Scrcpy integration work requires a Linux Docker-compatible host with Redroid support, binder devices, and the display-sidecar image. Start the appliance, create an Android application, and manually verify launch, video, input, disconnect, retry, and shutdown before and after any scrcpy change. Record the host configuration and test result in the change description.
+For builder changes, run `pnpm test:gapps-patcher` and manually build both supported Android versions.
+Record image IDs, payload validation, duration, disk usage, and peak memory.
 
-For Redroid display changes, verify both WebRTC and WebSocket streams on
-supported Redroid 13 and 14 images. Confirm the sidecar reports scrcpy server
-4.0 or newer and `scrcpy-server-v4-rbd1`, collect the requested and effective
-stream profiles, and capture sidecar queue and Pion feedback metrics. Verify
-video with and without audio; touch, keyboard, actions, and clipboard through
-scrcpy control and ADB fallback; direct and forward connection paths;
-disconnect/reconnect/final cleanup; and repeated session create/release.
-Confirm virtual-display creation fails while `feature.display-virtual` is
-disabled, then enable it through the feature API and verify creation and
-release. Redroid 15 and 16 are intentionally unsupported until their scrcpy
-video startup issues are resolved upstream; verify they fail with a clear
-unsupported-version message rather than a reconnect loop.
+## Local AI provider compatibility
 
-For the native 1080×2340@60 gate, run the deterministic motion workload for 10
-minutes in current stable Chromium and Firefox over wired LAN through the
-direct-sidecar, Rebroid edge, and VPS master-proxy paths. Record one-second
-`ViewerStreamMetricsV4` windows, stage sequence watermarks,
-source/relay/bridge/RTP/browser drops, Firefox MSE buffered lead, adaptive
-jitter target, freezes, RTT, loss, NACK/PLI, audio skew, CPU, and
-display-sidecar event-loop utilization. Repeat WebRTC at 50 ms RTT and 1% packet
-loss. The exact targets and native gateway escalation gate are documented in
-[display streaming](display-streaming.md#acceptance-and-escalation).
+- Configure llama.cpp and Lemonade with `openai-chat-completions`; native Ollama uses its explicit transport.
+- Keep server flavor separate from transport. Automatic detection checks Lemonade before Ollama compatibility endpoints.
+- Use exact model IDs returned by the chosen transport. Do not append `:latest` to `/v1/models` IDs.
+- Controller models need structured output or tool calling. Use the provider diagnostic to test a real
+  controller response and vision request, rather than relying on an HTTP success status.
+- OCR uses one deployment language through `OCR_LANGUAGE`; requests for another language are rejected.
+- Raw shell access is disabled in device chat by default. A permission-checked approval creates one
+  allowlisted follow-up and does not change future run or provider settings.
 
-## Local AI Provider Compatibility
-
-- Configure llama.cpp and Lemonade with the `openai-chat-completions` protocol. Use server flavor `auto` unless an explicit override is needed; auto-detection checks Lemonade before Ollama compatibility endpoints.
-- Model IDs are exact transport IDs. Do not append Ollama-style `:latest` tags to IDs returned by `/v1/models`.
-- Controller models need structured output or tool calling. The user-invoked provider diagnostic requires a real structured controller response and validates vision against a supplied image instead of treating HTTP 200 as success.
-- Automated tests use recorded SSE/NDJSON and perception fixtures only. They must not call live language or vision models.
-- OCR is adapter-backed and receives the original lossless screenshot. PaddleOCR remains the default adapter; preprocessing selection favors confidence, unique text, and useful coverage instead of raw box count.
-- Raw ADB remains disabled by default in device chat. An approval card starts one allowlisted follow-up only after the server verifies `automations:run-adb-shell`; rejecting it keeps the request blocked, and approval is never persisted to later runs.
+Model and perception tests use recorded fixtures, never live language or vision providers.
+For display changes, follow the [manual verification matrix](display-streaming.md#manual-verification).

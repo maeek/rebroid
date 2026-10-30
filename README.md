@@ -244,12 +244,11 @@ the browser and sidecar. The Next.js process does not relay media.
 
 ## Documentation
 
-- [Deployment and local development](docs/deployment.md) — HTTPS, host requirements, Podman,
-  configuration, and troubleshooting.
+- [Documentation index](docs/README.md) — all installation, operations, and contributor guides.
+- [Deployment](docs/deployment.md) — host requirements, Compose, HTTPS, and configuration.
 - [Operations](docs/operations.md) — diagnostics, stored state, image patching, and AI provider setup.
-- [Architecture](docs/architecture.md) — service boundaries and execution invariants.
+- [Architecture overview](docs/architecture.md) — service diagram, request/media flows, storage, and ownership.
 - [Display streaming](docs/display-streaming.md) — media transport and performance diagnostics.
-- [Runtime file explorer](docs/runtime-file-explorer.md) — file operations and access rules.
 - [Web security](docs/web-security.md) — authentication, sessions, permissions, and audit behavior.
 
 ## Development
@@ -264,7 +263,7 @@ pnpm check
 
 `pnpm check` runs formatting, linting, type checks, tests, contract and dependency checks, and production
 builds. For starting individual services and setting local secrets, follow the
-[local development guide](docs/deployment.md#local-development).
+[local development guide](CONTRIBUTING.md#local-development).
 
 | Path | Contents |
 | --- | --- |

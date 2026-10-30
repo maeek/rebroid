@@ -1,170 +1,115 @@
 # Web design system
 
-Rebroid uses one semantic design system across three page families: standard protected pages, authentication pages, and
-immersive viewer pages. The families may compose content differently, but they share the same tokens, controls,
-surfaces, feedback, typography, and interaction rules.
+Standard protected pages, authentication pages, and immersive viewers share semantic tokens,
+controls, surfaces, feedback, and accessibility behavior. Features compose these primitives;
+they do not define their own visual recipes.
 
-## Principles
+## Tokens and visual hierarchy
 
-- Prefer semantic intent over visual recipes. Features select a component variant; they do not assemble their own
-  border, background, radius, shadow, and state combinations.
-- Keep the current layered and translucent Rebroid identity. Glass effects are reserved for elevated panels and
-  overlays, not applied independently by feature code.
-- Use one accessible hierarchy: one `h1` per page, `h2` for primary sections, and `h3` for nested sections.
-- Keep page rhythm predictable. Standard pages use 16 px mobile and 24 px desktop gutters, a 24 px primary stack gap,
-  and a maximum width of 120 rem.
-- Do not preserve deprecated visual APIs or aliases. When the system changes, migrate every consumer in the same
-  change and delete the old surface.
+Palette variables are private to `apps/web/src/app/globals.css`. Feature code uses semantic utilities.
 
-## Color vocabulary
+| Intent          | Tokens                                                                            |
+| --------------- | --------------------------------------------------------------------------------- |
+| Canvas and text | `background`, `foreground`, `foreground-muted`, `foreground-subtle`.              |
+| Surfaces        | `surface`, `surface-panel`, `surface-band`, `surface-elevated`, `surface-border`. |
+| Controls        | `control`, `control-hover`, `control-border`, `control-border-strong`, `ring`.    |
+| Selection       | `primary`, `primary-foreground`, `accent`, `accent-foreground`.                   |
+| Feedback        | `info`, `success`, `warning`, `danger`, and matching `*-foreground`.              |
 
-Palette variables are private to `src/app/globals.css`. Application code uses semantic utilities only.
+Literal colors and raw palette utilities are reserved for brand artwork, media/canvas rendering,
+chart series, and user-supplied tags. Use semantic radii and shadows:
 
-| Intent          | Tokens                                                                           | Use                                      |
-| --------------- | -------------------------------------------------------------------------------- | ---------------------------------------- |
-| Canvas          | `background`, `foreground`                                                       | Page background and primary text         |
-| Supporting text | `foreground-muted`, `foreground-subtle`                                          | Secondary and tertiary information       |
-| Surfaces        | `surface`, `surface-panel`, `surface-band`, `surface-elevated`, `surface-border` | Page regions ordered by elevation        |
-| Controls        | `control`, `control-hover`, `control-border`, `control-border-strong`, `ring`    | Inputs and interactive boundaries        |
-| Selection       | `primary`, `primary-foreground`, `accent`, `accent-foreground`                   | Primary actions and selected states      |
-| Feedback        | `info`, `success`, `warning`, `danger` and matching `*-foreground`               | Notices, status, and destructive actions |
+| Element                       | Radius                        |
+| ----------------------------- | ----------------------------- |
+| Inputs, buttons, compact rows | `rounded-control` — 0.625rem. |
+| Cards, sections, grids        | `rounded-panel` — 0.875rem.   |
+| Dialogs, sheets, menus        | `rounded-overlay` — 1rem.     |
+| Branded/immersive surfaces    | `rounded-feature` — 1.25rem.  |
+| Avatars, dots, genuine pills  | `rounded-full`.               |
 
-Do not use raw palette utilities, literal hex/RGB/HSL values, or opacity variations invented inside a feature. Literal
-colors are allowed only for brand artwork, viewer/canvas rendering, chart series, and user-supplied tag colors.
-
-## Shape, elevation, and type
-
-- `rounded-control` (`0.625rem`): inputs, buttons, compact rows.
-- `rounded-panel` (`0.875rem`): cards, sections, tables, empty states.
-- `rounded-overlay` (`1rem`): dialogs, sheets, drawers, menus.
-- `rounded-feature` (`1.25rem`): branded and immersive feature surfaces.
-- `rounded-full`: avatars, status dots, and genuine pills only.
-- Use `shadow-control`, `shadow-panel`, `shadow-floating`, or `shadow-emphasis`. Feature-local arbitrary shadows are
-  forbidden. OLED mode removes decorative elevation automatically.
-- Ubuntu weights are limited to 300, 400, 500, and 700. Use `font-light`, `font-normal`, `font-medium`, or `font-bold`.
-  Do not synthesize `font-semibold` or `font-black`.
-- Supporting UI text must be at least `text-xs`; arbitrary font sizes are reserved for rendered media, not interface
-  labels.
-
-## Surfaces and feedback
-
-Use `Surface` when a feature needs a visual container. Its level is `panel`, `band`, `floating`, or `control`; its tone
-is `neutral`, `info`, `success`, `warning`, or `danger`. `Section`, `Card`, overlays, grids, and skeletons use the same
-surface recipes.
-
-- `plain` section: grouping established by spacing and hierarchy.
-- `band` section: low-emphasis nested grouping.
-- `panel` section: primary bounded content group.
-- `StatusBadge`: compact state only; never a call to action.
-- `Notice`: inline informational, success, warning, or danger feedback.
-- `StateView`: loading, empty, unavailable, not-found, and error states at page, section, grid, or immersive scope.
-- Semantic tone styling is authoritative over a surface level. `Surface`, `Notice`, status banners, and toasts set
-  `data-tone`; success uses a visible `bg-success/14` tint in light, dark, and OLED themes. Do not add neutral
-  backgrounds to a toned component or recreate tone styling in a feature.
-- Completion feedback from successful mutations uses the `success` toast variant. Reserve neutral and informational
-  toasts for facts that do not represent successful completion.
-- `Section` owns heading-to-content rhythm through `headingSpacing`: `none`, `compact` (8 px), or `default` (16 px).
-  Use the `description` prop for helper copy and do not add feature-local title padding.
-
-## Controls and forms
-
-- `Button` variants are `primary`, `secondary`, `outline`, `ghost`, `danger`, `link`, and `bare`. `bare` is the
-  focus-safe base for custom clickable cards and rows. Do not use raw buttons in feature code.
-- Button sizes are `sm`, `md`, `lg`, `icon-sm`, and `icon-md`. Icon-only controls require an accessible name.
-- Async submit actions use `MutationButton` so pending labels, spinners, disabled state, and `aria-busy` stay consistent.
-- Destructive row and bulk actions always open `ConfirmMutationDialog`. Name the target or selection count, state the
-  consequence, keep Cancel before Confirm, and prevent dismissal while the mutation is pending.
-- Tabbed interfaces use `TabsRoot`, `TabsList`, `TabsTrigger`, and `TabsPanel`; feature code does not implement its own
-  tab roles, roving focus, or arrow-key handling.
-- Use `FormField` for every labeled control. It owns the label association, description, required indicator, error,
-  `aria-describedby`, and `aria-invalid`. Layout is `vertical` or `horizontal`; use its `band` surface for standalone
-  horizontal toggle rows so label, description, control, and padding remain one visual unit. Every call site declares
-  the layout explicitly; feature forms never depend on the component default.
-- Numeric bounds do not imply a range slider. Use the shared numeric field without its slider when direct range
-  manipulation does not improve the task; bounds and blur normalization still apply to the number input.
-- `SelectTrigger` is intrinsic-width by default. Every feature call site declares its width explicitly; vertical forms,
-  dialogs, and filter panels normally use `w-full`, while compact toolbar controls use a documented fixed width.
-- Multiple searchable relationships use `MultiSelectCombobox`. Options provide a value and label with optional
-  description, keywords, and disabled state; the primitive owns filtering, keyboard navigation, checked options,
-  wrapped removable chips, the empty state, and the anchored scrolling popup.
-- Form actions live in the page header for page forms and in the footer for dialogs. Do not create a second save bar.
-- Hidden file inputs and canvas/media surfaces are the only native-control exceptions.
+Use `shadow-control`, `shadow-panel`, `shadow-floating`, or `shadow-emphasis`; OLED mode removes
+decorative elevation. Glass effects belong to shared elevated panels and overlays.
+Ubuntu supports weights 300, 400, 500, and 700; do not synthesize semibold or black. Supporting
+UI text is at least `text-xs`.
 
 ## Page families
 
-### Standard protected pages
+| Family             | Composition                                                                                |
+| ------------------ | ------------------------------------------------------------------------------------------ |
+| Standard protected | `StandardPage`, one `PageHeader`, and `PageContent`; add `PageAside` for split workspaces. |
+| Authentication     | `AuthPage` owns the branded backdrop and centered form panel.                              |
+| Immersive viewer   | `ImmersiveViewerPage` owns full-bleed media and floating controls.                         |
 
-The protected route layout owns the sidebar offset, `<main>`, minimum height, and maximum width. A page uses
-`StandardPage`, one `PageHeader`, and `PageContent`. Split workspaces add `PageAside`; pages never repeat outer gutters.
-`PageContent` remains a vertical content stack. Responsive page columns belong in a full-width child grid with explicit
-`minmax()` tracks; do not switch `PageContent` to a responsive flex row or size primary columns with fractional flex.
+The protected layout owns sidebar offset, `main`, width, and outer gutters. Standard rhythm uses
+16 px mobile/24 px desktop gutters, 24 px primary gaps, and a 120 rem maximum width.
+Use one `h1`, `h2` for primary sections, and `h3` for nested sections.
 
-`PageHeader` accepts `section`, `trail`, `title`, `description`, `leading`, `badges`, and one `actions` slot. It renders
-the single page `h1` and builds breadcrumbs from the required section and optional trail. Deprecated breadcrumb-array
-and title-prefix APIs do not exist.
+`PageHeader` owns breadcrumbs and the single page title, with one action slot. Keep `PageContent`
+a vertical stack; responsive columns belong to a child grid with explicit `minmax()` tracks.
+Do not repeat outer padding or use fractional flex sizing for primary columns.
 
-### Authentication pages
+## Surfaces and feedback
 
-`AuthPage` owns the branded backdrop and centered form panel. Authentication controls still use the standard fields,
-buttons, notices, tokens, and responsive rules.
+Use `Surface` levels `panel`, `band`, `floating`, or `control` with semantic tones. Sections use
+`plain` for spatial grouping, `band` for nested grouping, and `panel` for primary bounded content.
 
-### Immersive viewer pages
+- `Section.headingSpacing` owns heading rhythm: `none`, `compact` (8 px), or `default` (16 px).
+  Put helper copy in `Section.description`, not feature-local title padding.
+- `StatusBadge` communicates compact state; `Notice` communicates inline feedback; `StateView`
+  covers loading, empty, unavailable, not-found, and error states.
+- `Surface` `data-tone` styling is authoritative. Success keeps its visible semantic tint in light,
+  dark, and OLED themes. Do not override a toned surface with a neutral background.
+- Successful mutations use the success toast variant. Informational toasts are for facts, not completion.
+- Page notices and service banners span the content width; badges remain intrinsic.
 
-`ImmersiveViewerPage` may use full-bleed media and floating controls. Chrome, tools, alerts, and overlays still use the
-standard control, surface, feedback, and focus recipes.
+## Controls and forms
 
-## Data and route states
+Use shared controls, including their focus and keyboard behavior:
 
-- Interactive tables use `DataGrid`, ordered as toolbar, bulk actions, table, empty state, and pagination.
-- Every interactive grid is composed through `DataGridWorkspace`. It owns the icon search field, active-filter chips,
-  contextual bulk actions, and—when appropriate—the collapsible desktop filter sidebar and mobile filter drawer.
-  Filter panels are reserved for page-level datasets with meaningful structured facets. Embedded related-resource
-  grids and small fixed datasets use the workspace's search-only mode. Features provide domain controls and filter
-  state without rebuilding the workspace shell. Desktop filter sidebars are closed by default and open only when the
-  user activates Filters; active-filter counts, chips, reset, and the mobile drawer remain available while closed.
-- Grid search is debounced and does not use a separate submit button. Structured filters apply immediately. Page-level
-  grids keep shareable filter state in validated URL parameters; embedded grids may keep local controlled state.
-- Filtering lives in the workspace sidebar rather than column headers. The column visibility menu remains independent
-  from filtering, and bulk actions are hidden until one or more visible rows are selected.
-- Grids whose rows have one clear primary destination use `DataGrid.rowActivation`. The entire non-control row area
-  activates that destination with pointer, Enter, or Space; nested links, buttons, selection controls, and menus keep
-  their own behavior. Provide a concise activation label for assistive technology.
-- Read-only key/value or metrics tables use `DefinitionTable`.
-- Loading UI uses list, detail, form, split, or immersive page-skeleton compositions and must match the route family.
-- Loading is a state of the component that owns the final geometry. Page shells, responsive grids, table columns,
-  scroll containers, sections, and control groups must not be reimplemented in a parallel skeleton component.
-- Render known breadcrumbs, titles, descriptions, headings, and safe actions immediately. Mask only values and regions
-  that genuinely depend on pending data.
-- `DataGrid` loading states use the same `ColumnDef` values, system columns, table markup, and column metadata as ready
-  states. Do not copy column widths or add placeholder action columns in `loading.tsx` files.
-- Search and filter chrome remains real, disabled UI during loading. Do not replace known search icons, filter labels,
-  or workspace geometry with anonymous skeleton blocks.
-- Route `loading.tsx` files are thin feature entrypoints. Layout markup belongs to the feature's geometry-owning loading
-  state, which is also used by explicit Suspense fallbacks.
-- The protected route contract contains 37 routes: 36 renderable routes have feature-owned loading states and the
-  legacy display-sessions redirect is the sole loader-free route. Keep the static route matrix current when routes are
-  added, removed, or converted to redirects.
-- Natural-height result changes and conditional notices may reflow later content, but corresponding shells, controls,
-  columns, and visible row slots must remain aligned during loading replacement.
-- Page-level notices and service-status banners span the available content width; compact badges remain intrinsic.
-- Error UI displays a safe public message and request reference only. It must not render raw backend errors.
+- `Button`: `primary`, `secondary`, `outline`, `ghost`, `danger`, `link`, or `bare`.
+  Sizes are `sm`, `md`, `lg`, `icon-sm`, and `icon-md`; icon-only actions need accessible names.
+- `MutationButton`: asynchronous actions with pending labels, spinner, disabled state, and `aria-busy`.
+- `ConfirmMutationDialog`: destructive row/bulk actions. Name the target/count and consequence,
+  keep Cancel before Confirm, and prevent dismissal while pending.
+- `FormField`: every labeled control, with explicit `vertical` or `horizontal` layout. It owns
+  label association, description, required/error state, and ARIA relationships. Use `band` for standalone toggle rows.
+- `MultiSelectCombobox`: searchable multiple relationships, preserving removable chips, option descriptions,
+  keyboard behavior, anchored scrolling, and empty state. Do not replace it with an expanded checkbox list.
+- `TabsRoot`, `TabsList`, `TabsTrigger`, `TabsPanel`: tabs without feature-local focus/role implementations.
 
-## Responsive and accessibility constraints
+Declare `SelectTrigger` width explicitly. Use a numeric slider only when direct range manipulation
+helps the task. Page-form actions belong in the header; dialog actions in the footer. Hidden file
+inputs and canvas/media surfaces are the native-control exceptions.
 
-- Design for mobile first; standard breakpoints are 640 px and 1024 px.
-- Pages must not create horizontal document overflow. Tables own their local scrolling.
-- Every interactive element has a visible focus state and keyboard behavior equivalent to pointer behavior.
-- Dialogs, sheets, drawers, menus, and popovers preserve focus trapping and restoration from the shared primitive.
-- Status updates use an appropriate live region. Color is never the only state signal.
-- Motion respects `prefers-reduced-motion`; branded animation must remain optional.
+## Grids and loading
 
-## Review checklist
+Every interactive `DataGrid` uses `DataGridWorkspace` for search, active-filter chips, bulk actions,
+and optional structured filtering. Use filter sidebars/drawers only for page-level datasets with
+meaningful facets; embedded or small fixed datasets use search-only mode.
 
-- Does the page use one documented page family and exactly one `h1`?
-- Are outer gutters, width, and vertical rhythm owned by page components?
-- Are all colors, radii, shadows, and state tones semantic?
-- Are panels built with `Surface`, `Section`, `Card`, `DataGrid`, or `StateView` rather than class recipes?
-- Are fields represented by `FormField` and actions by `Button`?
-- Are loading, empty, unavailable, error, and destructive states represented consistently?
-- Do loading and ready states share the same geometry-owning component rather than duplicate layout classes?
-- Are all literal-color or native-control exceptions within the documented categories?
+Desktop filter sidebars start closed. Keep the filter button, active count/chips, reset, and mobile
+drawer usable while the sidebar is closed. Search is debounced without a submit button; filters apply
+immediately. Page filters use validated URL state. Do not add column-header filters or separate filter popovers.
+
+Keep column visibility independent. Show bulk actions only for selected visible rows. Use
+`DataGrid.rowActivation` for a clear primary row destination, preserving nested controls and providing
+an accessible activation label. Read-only metrics/key/value tables use `DefinitionTable`.
+
+Loading belongs to the component that owns ready-state geometry. Reuse shells, responsive grids,
+sections, columns, system columns, table markup, and scroll containers; define cell placeholders
+through owning column metadata. Known titles, breadcrumbs, headings, and safe actions render
+immediately. Keep known search/filter chrome as real disabled UI rather than skeleton blocks.
+
+Route `loading.tsx` files are thin feature entrypoints. Explicit Suspense fallbacks reuse the same
+feature loading component. The protected-route matrix remains 36 renderable routes with feature-owned
+loaders; the legacy display-sessions redirect is the only loader-free exclusion.
+
+## Responsive behavior and accessibility
+
+Use mobile-first layouts with 640 px and 1024 px breakpoints. Tables own horizontal scrolling;
+pages must not overflow the document. Preserve visible focus, keyboard/pointer equivalence,
+focus trapping/restoration, appropriate live regions, and reduced-motion behavior. Color cannot
+be the only status signal. Public error states show a safe message and request reference only.
+
+When changing a design-system API, migrate every consumer and remove deprecated variants and aliases
+in the same change. Do not add feature-local substitutes.

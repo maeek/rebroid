@@ -1,55 +1,43 @@
-# Rebroid Web
+# Web
 
-Next.js frontend and backend-for-frontend for Rebroid.
+Next.js UI and backend-for-frontend for Rebroid. The web backend owns authentication,
+permissions, users/groups, audit records, persistence, and authorized orchestrator access.
+Display media flows through the edge directly to the sidecar.
 
-See the [web contributor guide](../../docs/web-contributor-guide.md) for ownership boundaries, data-access choices, and
-the page-development workflow.
-
-## Defaults
-
-The Docker image is designed to run without a `.env` file:
-
-- `ORCHESTRATOR_API_URL` defaults to `http://orchestrator:4100`.
-- `DISPLAY_SIDECAR_INTERNAL_BASE_URL` defaults to `http://rebroid-display-sidecar:8000` for server-side health and session checks.
-- Browser viewer traffic is same-origin through the nginx edge, which routes
-  viewer and display paths directly to the sidecar. Next.js uses
-  `DISPLAY_SIDECAR_INTERNAL_BASE_URL` only for server-side health and session
-  operations.
-- `NEXTAUTH_SECRET` is generated into `/app/data` when missing.
-- `MFA_ENCRYPTION_KEY` is generated into `/app/data` when missing.
-- `ORCHESTRATOR_SHARED_SECRET` is read from `/app/secrets/rebroid-shared-secret`, shared with the orchestrator container.
-- `NEXTAUTH_URL` is not required for the compose setup.
-
-The first admin user is created automatically and must change its password on first login. If `INITIAL_ADMIN_PASSWORD` is not provided, the entrypoint writes a generated password to `/app/data/initial-admin-password` with mode `0600`; it is never printed to logs.
+- [Local setup](../../CONTRIBUTING.md#local-development)
+- [Page and data boundaries](../../docs/web-contributor-guide.md)
+- [Design system](../../docs/web-design-system.md)
+- [Security rules](../../docs/web-security.md)
 
 ## Development
 
-```bash
-corepack pnpm install
-corepack pnpm --filter rebroid-web dev
-```
-
-Copy `.env.example` to `.env.local` and set random values for every secret. The development server binds only to `127.0.0.1` unless `DEV_HOST` is explicitly changed.
+After configuring [`.env.example`](.env.example) as `.env.local`, run from the repository root:
 
 ```bash
-ORCHESTRATOR_API_URL=http://localhost:4100
-ORCHESTRATOR_SHARED_SECRET=<random-secret>
-NEXTAUTH_SECRET=<random-secret>
-MFA_ENCRYPTION_KEY=<random-secret>
-INITIAL_ADMIN_PASSWORD=<temporary-random-password>
+./apps/web/dev.sh
 ```
 
-## Upload Limits
+The script requires `ORCHESTRATOR_SHARED_SECRET`, `NEXTAUTH_SECRET`, `MFA_ENCRYPTION_KEY`, and
+`INITIAL_ADMIN_PASSWORD`. It serves `https://127.0.0.1:3000` by default.
 
-The app defaults the Next.js transport ceiling to `512mb`. The effective APK limit shown in the UI is owned by orchestrator settings. If you need a larger transport ceiling, rebuild the web image with:
+The Compose image generates missing auth/encryption secrets and initial admin credentials,
+and reads the shared service secret from its volume. See [Deployment](../../docs/deployment.md)
+for HTTPS and bootstrap login.
+
+## Upload limits
+
+The Next.js transport ceiling defaults to `512mb`; the effective APK limit is an orchestrator setting.
+For a larger upload, align the edge's `client_max_body_size`, the web build argument
+`NEXT_PROXY_CLIENT_MAX_BODY_SIZE`, and the orchestrator limit. Raising only one layer is insufficient.
+
+## Verification
 
 ```bash
-NEXT_PROXY_CLIENT_MAX_BODY_SIZE=8192mb docker compose build web
+pnpm --filter rebroid-web test
+pnpm --filter rebroid-web typecheck
+pnpm --filter rebroid-web lint
+pnpm --filter rebroid-web build
 ```
 
-## Viewer
-
-The browser connects to the display sidecar viewer URL through the same-origin
-nginx edge using a short-lived app-scoped display-session token. Next.js still
-performs authorization before creating that session, while the sidecar owns ADB
-viewer actions and streaming. The Next.js process is not a media relay.
+Playwright journeys use `pnpm --filter rebroid-web test:e2e`. Browser/server contracts and imports
+are checked by `pnpm boundaries`; shared changes also require the root `pnpm check` gate.
