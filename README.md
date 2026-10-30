@@ -1,68 +1,152 @@
-# Rebroid
+<h1 align="center">Rebroid</h1>
 
-**Self-hosted Android apps, controlled from your browser.**
+<p align="center">
+  <b>Self-hosted Android apps, controlled from your browser.</b><br>
+  Run apps on your Linux host. Open their live displays, build workflows,<br>
+  and give an AI a device task — all from one web workspace.
+</p>
 
-Rebroid runs Android applications in [ReDroid](https://github.com/remote-android/redroid-doc) containers
-on your Linux host. Upload an APK, open its live display, and interact with it from a browser.
-Build repeatable workflows or connect an AI provider to carry out tasks on the device.
+<p align="center">
+  <img src="https://img.shields.io/badge/deployment-self--hosted-8b5cf6?style=flat-square" alt="Deployment: self-hosted">
+  <img src="https://img.shields.io/badge/host-Linux%20amd64-475569?style=flat-square" alt="Host: Linux amd64">
+  <img src="https://img.shields.io/badge/Android-13%20%26%2014-3b8763?style=flat-square" alt="Supported Android displays: 13 and 14">
+  <img src="https://img.shields.io/badge/status-pre--release-d69e2e?style=flat-square" alt="Status: pre-release">
+</p>
 
-It brings application management, live control, automation, and host administration into one web UI.
-Use it for remote Android workspaces, manual app testing, and automating repetitive app tasks on a single host.
+<p align="center">
+  <a href="#get-started"><b>Get started</b></a> ·
+  <a href="#features">Features</a> ·
+  <a href="#ai-device-control">AI device control</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="#documentation">Documentation</a> ·
+  <a href="#development">Development</a>
+</p>
 
-[Get started](#get-started) · [Features](#what-you-can-do) · [Screenshots](#screenshots) · [Documentation](#documentation) · [Development](#development)
+<p align="center">
+  <a href="docs/images/viewer.png">
+    <img src="docs/images/viewer.png" alt="Rebroid application workspace with a live Android display, WebRTC stream settings, and device controls" width="100%">
+  </a>
+  <br>
+  <sub>A live Android display, streaming settings, and device controls in one browser workspace.</sub>
+</p>
 
-![Rebroid application workspace with a live Android display, WebRTC stream settings, and device controls](docs/images/viewer.png)
+Rebroid runs Android applications in [ReDroid](https://github.com/remote-android/redroid-doc)
+containers on a single Linux host. Upload an APK, start an application, and open its live display.
+Use it for remote Android workspaces, manual app testing, and repetitive app tasks.
 
-*A live Android workspace with streaming settings and device controls in the browser.*
-
+> [!IMPORTANT]
 > **Pre-release:** Rebroid is under active development. Database schema changes can require a
-> clean-state reset; existing data is not automatically migrated. See the
+> clean-state reset; existing data is not automatically migrated. Read the
 > [state and upgrade notes](docs/operations.md#stored-state) before updating a deployment.
 
-## What you can do
+<table>
+  <tr>
+    <td width="25%" valign="top">
+      <h3>📱 Android in your browser</h3>
+      Live displays with touch, keyboard, and clipboard controls. Your Android runtime stays on your host.
+    </td>
+    <td width="25%" valign="top">
+      <h3>🧩 Reusable workflows</h3>
+      Build steps visually or edit YAML. Add conditions, schedule runs, and inspect execution traces.
+    </td>
+    <td width="25%" valign="top">
+      <h3>🤖 AI device tasks</h3>
+      Connect a local or remote provider to act on the device using screenshots, UI evidence, and OCR.
+    </td>
+    <td width="25%" valign="top">
+      <h3>🛠️ One place to manage it</h3>
+      Applications, resource usage, network policies, users, and audit logs in the same installation.
+    </td>
+  </tr>
+</table>
 
-- **Run Android apps.** Upload APKs, create applications, start and stop them, and configure
-  runtime images, display settings, CPU, and memory limits.
-- **Control apps in the browser.** Use a live scrcpy display over WebRTC or WebSocket, with touch,
-  keyboard, and clipboard controls. Transfer files and browse the application's `/data` volume.
-- **Automate repeatable work.** Build workflows visually or edit YAML, configure scheduled triggers,
-  and inspect execution traces and run history.
-- **Give an AI a device task.** Connect a local or remote provider using OpenAI-compatible chat
-  completions or native Ollama. Device automation uses screenshots, UI evidence, and OCR to ground
-  actions. AI features require a configured provider; ordinary app control does not.
-- **Manage network access.** Apply outbound network policies to running applications through
-  a dedicated host firewall agent.
-- **Administer a shared installation.** Manage users, groups, permissions, optional two-factor
-  authentication, and audit logs. Inspect containers, images, networks, and system resources.
+## Features
+
+### Build a workflow once
+
+Compose actions, conditions, and waits in the visual editor, or work directly in YAML.
+Configure scheduled triggers and inspect run history and execution traces when a task needs attention.
+
+<p align="center">
+  <a href="docs/images/workflow-editor.png">
+    <img src="docs/images/workflow-editor.png" alt="Visual workflow editor showing an ADB shell action, a condition with then and else branches, and a wait step" width="100%">
+  </a>
+  <br>
+  <sub>Arrange steps on the left and configure the selected condition on the right.</sub>
+</p>
+
+### See what your host is doing
+
+Track managed container CPU and memory alongside Docker operation counts, errors, retries, and slow
+requests. Inspect containers, images, networks, and system resources from the same UI.
+
+<p align="center">
+  <a href="docs/images/platform-overview.png">
+    <img src="docs/images/platform-overview.png" alt="Platform overview showing container CPU and memory, Docker operation counts, and workload charts" width="100%">
+  </a>
+  <br>
+  <sub>Resource usage, operation metrics, and workload charts in the platform overview.</sub>
+</p>
+
+### Choose the capabilities you need
+
+Enable or disable OCR, firewall enforcement, image building, and experimental virtual displays
+without restarting the deployment. Check the effective status alongside the configuration you saved.
+
+<p align="center">
+  <a href="docs/images/feature-controls.png">
+    <img src="docs/images/feature-controls.png" alt="Feature controls for OCR, firewall enforcement, image building, and experimental virtual displays" width="100%">
+  </a>
+  <br>
+  <sub>Platform feature settings with their current effective status.</sub>
+</p>
+
+## More in the workspace
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>📦 Application management</h3>
+      Upload APKs, create applications, start and stop them, and configure runtime images, display settings,
+      CPU, and memory limits. Supported live displays run on Android 13 and 14; Android 14 is the default.
+    </td>
+    <td width="50%" valign="top">
+      <h3>🎮 Live control and files</h3>
+      Choose WebRTC or WebSocket streaming, use touch and keyboard input, and share clipboard text.
+      Browse the application's <code>/data</code> volume and transfer files through the browser.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>🔒 Network access</h3>
+      Apply outbound network policies to running applications. A dedicated firewall agent enforces
+      the rules on the host.
+    </td>
+    <td width="50%" valign="top">
+      <h3>👥 Shared installations</h3>
+      Manage users, groups, and permissions, enable optional two-factor authentication,
+      and review activity in the audit log.
+    </td>
+  </tr>
+</table>
 
 For apps that need Google services, the managed image builder can create local Android 13/14
 images with Google Play components. See [Google Play image patching](docs/operations.md#google-play-image-patching)
-for requirements and limitations.
+for build requirements and compatibility limits.
 
-## Screenshots
+## AI device control
 
-<details>
-<summary>Explore the workflow editor, platform overview, and feature controls</summary>
+Configure a provider in **Platform → AI**, then give the device a task from the application's
+**AI agent** workspace. Rebroid supports local or remote providers through OpenAI-compatible chat
+completions or native Ollama.
 
-### Visual workflow editor
+Device automation uses the current screenshot, UI evidence, and OCR to ground its actions.
+AI features require a configured provider. Manual app control and workflows without AI commands run without one.
+Raw ADB shell is not a default AI capability. A permitted escalation is limited to allowlisted,
+read-only commands for one follow-up run.
 
-Compose actions, conditions, and waits, then configure each step alongside the workflow.
-
-![Visual workflow editor showing an ADB shell action, a condition with then and else branches, and a wait step](docs/images/workflow-editor.png)
-
-### Platform overview
-
-Monitor container resource usage, Docker operations, errors, and slow requests from one dashboard.
-
-![Platform overview showing container CPU and memory, Docker operation counts, and workload charts](docs/images/platform-overview.png)
-
-### Feature controls
-
-Enable or disable platform capabilities and inspect their effective status without restarting the deployment.
-
-![Feature controls for OCR, firewall enforcement, image building, and experimental virtual displays](docs/images/feature-controls.png)
-
-</details>
+See the [AI provider compatibility notes](docs/operations.md#local-ai-provider-compatibility)
+for transport selection, model IDs, and provider diagnostics.
 
 ## Get started
 
