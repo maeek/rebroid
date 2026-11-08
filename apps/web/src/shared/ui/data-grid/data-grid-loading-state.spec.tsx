@@ -22,6 +22,28 @@ describe('DataGrid loading state', () => {
     expect(screen.getAllByTestId('data-grid-skeleton-row')).toHaveLength(3)
   })
 
+  it('passes the placeholder row index to feature-owned cell renderers', () => {
+    render(
+      <DataGrid
+        columns={[
+          {
+            id: 'name',
+            header: 'Name',
+            meta: { skeleton: { kind: 'custom', render: index => <span>Known row {index + 1}</span> } }
+          }
+        ]}
+        data={[]}
+        totalItems={0}
+        pageIndex={0}
+        pageSize={20}
+        getRowId={() => ''}
+        loading={{ rowCount: 2, selectable: false, rowMenu: false }}
+      />
+    )
+    expect(screen.getByText('Known row 1')).toBeVisible()
+    expect(screen.getByText('Known row 2')).toBeVisible()
+  })
+
   it('can render embedded grids without selection or row menus', () => {
     render(
       <DataGrid

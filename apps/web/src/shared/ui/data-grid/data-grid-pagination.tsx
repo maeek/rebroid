@@ -31,14 +31,14 @@ export function DataGridPagination({
   return (
     <div
       aria-busy={loading || undefined}
-      className='flex flex-wrap items-center justify-between gap-3 text-sm text-foreground-muted'
+      className='flex flex-wrap items-center justify-between gap-3 px-4 py-1 text-xs text-foreground-muted'
     >
-      <div className='min-w-20'>
+      <div className='flex min-h-5 min-w-20 items-center'>
         {loading ? <Skeleton className='h-5 w-20' /> : `${firstItem}-${lastItem} of ${totalItems}`}
       </div>
-      <div className='flex items-center gap-3'>
+      <div className='flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2'>
         <div className='flex items-center gap-2'>
-          <span>Rows</span>
+          <span>Rows per page</span>
           <Select
             disabled={loading}
             value={String(pageSize)}
@@ -49,6 +49,7 @@ export function DataGridPagination({
           >
             <SelectTrigger
               size='sm'
+              aria-label='Rows per page'
               className='w-20'
             >
               <SelectValue />
@@ -68,20 +69,22 @@ export function DataGridPagination({
         <div className='flex items-center gap-2'>
           <Button
             type='button'
-            variant='secondary'
+            variant='ghost'
             size='icon-md'
+            aria-label='Previous page'
             disabled={loading || pageIndex <= 0}
             onClick={() => onPageIndexChange(Math.max(pageIndex - 1, 0))}
           >
             <IconChevronLeft className='size-4' />
           </Button>
-          <span className='flex min-w-20 justify-center text-center'>
-            {loading ? <Skeleton className='h-5 w-14' /> : `${pageIndex + 1} / ${pageCount}`}
+          <span className='flex min-h-5 min-w-20 items-center justify-center text-center'>
+            {loading ? <Skeleton className='h-5 w-14' /> : `Page ${pageIndex + 1} of ${pageCount}`}
           </span>
           <Button
             type='button'
-            variant='secondary'
+            variant='ghost'
             size='icon-md'
+            aria-label='Next page'
             disabled={loading || pageIndex >= pageCount - 1}
             onClick={() => onPageIndexChange(Math.min(pageIndex + 1, pageCount - 1))}
           >

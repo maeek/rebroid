@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { DataGridWorkspace } from './data-grid-workspace'
 
@@ -20,7 +20,7 @@ describe('DataGridWorkspace', () => {
     expect(screen.getByText('Grid content')).toBeTruthy()
   })
 
-  it('keeps its desktop filter surface closed until requested', () => {
+  it('opens filters without replacing the grid and restores focus on dismissal', async () => {
     render(
       <DataGridWorkspace
         search=''
@@ -35,12 +35,15 @@ describe('DataGridWorkspace', () => {
       </DataGridWorkspace>
     )
 
-    expect(screen.queryByRole('complementary', { name: 'Filter rows' })).toBeNull()
+    expect(screen.queryByRole('dialog')).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
 
-    expect(screen.getByRole('complementary', { name: 'Filter rows' })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: 'Filter rows' })).toBeVisible()
     expect(screen.getByText('State filter')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Filters' })).toHaveFocus())
   })
 
   it('removes active filters and shows contextual bulk actions', () => {

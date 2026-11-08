@@ -25,6 +25,27 @@ const columns: ColumnDef<TestRow>[] = [
 ]
 
 describe('DataGrid row activation', () => {
+  it('preserves row-action focus when selection and menu callbacks update', () => {
+    const grid = (selectedIds: Set<string>) => (
+      <DataGrid
+        columns={columns}
+        data={rows}
+        totalItems={1}
+        pageIndex={0}
+        pageSize={20}
+        getRowId={row => row.id}
+        selection={{ selectedIds, onSelectedIdsChange: () => {} }}
+        rowContextMenu={() => <span>Actions</span>}
+      />
+    )
+    const { rerender } = render(grid(new Set()))
+    const trigger = screen.getByRole('button', { name: 'Open row actions' })
+    trigger.focus()
+    rerender(grid(new Set(['alpha'])))
+    expect(trigger).toBeInTheDocument()
+    expect(trigger).toHaveFocus()
+  })
+
   it('activates rows with pointer, Enter, and Space', () => {
     const onActivate = vi.fn()
     render(

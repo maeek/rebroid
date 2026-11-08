@@ -33,7 +33,7 @@ export type DataGridCellSkeleton =
       secondaryWidth?: string
     }
   | { kind: 'badge'; width?: string }
-  | { kind: 'custom'; render: () => ReactNode }
+  | { kind: 'custom'; render: (rowIndex: number) => ReactNode }
 
 export type DataGridLoadingState = {
   rowCount?: number
@@ -42,6 +42,7 @@ export type DataGridLoadingState = {
 }
 
 export type DataGridSelectionState = {
+  disabled?: boolean
   selectedIds: Set<string>
   onSelectedIdsChange: (selectedIds: Set<string>) => void
 }

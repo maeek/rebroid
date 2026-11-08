@@ -53,8 +53,8 @@ const isNestedInteractiveTarget = (target: EventTarget | null, row: HTMLTableRow
   return interactiveTarget !== null && interactiveTarget !== row
 }
 
-const renderLoadingCell = (skeleton: DataGridCellSkeleton | undefined) => {
-  if (skeleton?.kind === 'custom') return skeleton.render()
+const renderLoadingCell = (skeleton: DataGridCellSkeleton | undefined, rowIndex: number) => {
+  if (skeleton?.kind === 'custom') return skeleton.render(rowIndex)
   if (skeleton?.kind === 'stacked') {
     return (
       <div className={cn('grid min-w-0', skeleton.gap ?? 'gap-1')}>
@@ -96,14 +96,14 @@ export const DataGridTable = <TData,>({
   return (
     <Table
       className='table-fixed'
-      containerClassName='overflow-x-auto overflow-y-hidden rounded-panel border border-surface-border/70 bg-surface-band/35'
+      containerClassName='overflow-x-auto overflow-y-hidden border-b border-surface-border/40'
       containerRef={tableContainerRef}
       style={{
         width: renderedTableWidth,
         minWidth: minWidth ?? '100%'
       }}
     >
-      <TableHeader className='bg-surface-band/55'>
+      <TableHeader className='bg-surface-editor [clip-path:inset(0_round_var(--shape-control))]'>
         {table.getHeaderGroups().map(headerGroup => (
           <TableRow
             key={headerGroup.id}
@@ -118,13 +118,18 @@ export const DataGridTable = <TData,>({
               const hasColumnVisibilityMenu = header.column.id === lastVisibleColumnId && Boolean(columnVisibilityMenu)
               const widthPx = getColumnPixelWidth(header.column)
               const sortDirection = header.column.getIsSorted()
+              let ariaSort: 'ascending' | 'descending' | 'none' | undefined
+              if (canSort) ariaSort = 'none'
+              if (sortDirection === 'asc') ariaSort = 'ascending'
+              if (sortDirection === 'desc') ariaSort = 'descending'
               return (
                 <TableHead
                   key={header.id}
                   className={cn(
-                    'relative overflow-hidden py-3',
+                    'relative overflow-hidden py-2 text-xs font-medium',
                     isSelectColumn || isSpacerColumn ? 'px-0' : isRowMenuColumn ? 'px-2' : 'px-4'
                   )}
+                  aria-sort={ariaSort}
                   style={{
                     width: widthPx,
                     maxWidth: widthPx
@@ -141,7 +146,7 @@ export const DataGridTable = <TData,>({
                     {header.isPlaceholder ? null : canSort ? (
                       <button
                         type='button'
-                        className='flex w-full min-w-0 items-center gap-1 text-left hover:text-foreground'
+                        className='flex w-full min-w-0 items-center gap-1 rounded-control text-left hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
                         onClick={header.column.getToggleSortingHandler()}
                       >
                         <span className='min-w-0 truncate'>
@@ -162,7 +167,7 @@ export const DataGridTable = <TData,>({
                       aria-label={`Resize ${header.column.columnDef.meta?.label ?? header.column.id} column`}
                       className={cn(
                         'absolute right-0 top-0 h-full w-3 cursor-col-resize touch-none select-none',
-                        'after:absolute after:right-1 after:top-1/2 after:h-5 after:w-px after:-translate-y-1/2 after:bg-border',
+                        'after:absolute after:right-1 after:top-1/2 after:h-5 after:w-px after:-translate-y-1/2 after:bg-transparent',
                         'hover:after:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0',
                         header.column.getIsResizing() && 'after:bg-primary'
                       )}
@@ -197,7 +202,7 @@ export const DataGridTable = <TData,>({
                   <TableCell
                     key={column.id}
                     className={cn(
-                      'overflow-hidden py-3 align-middle',
+                      'overflow-hidden py-2 align-middle',
                       isSelectColumn || isSpacerColumn ? 'px-0' : isRowMenuColumn ? 'px-2 text-center' : 'px-4'
                     )}
                     style={{ width: widthPx, maxWidth: widthPx }}
@@ -214,7 +219,7 @@ export const DataGridTable = <TData,>({
                       ) : isRowMenuColumn ? (
                         <Skeleton className='size-8 rounded-control' />
                       ) : (
-                        renderLoadingCell(column.columnDef.meta?.skeleton)
+                        renderLoadingCell(column.columnDef.meta?.skeleton, rowIndex)
                       )}
                     </div>
                   </TableCell>
@@ -230,7 +235,7 @@ export const DataGridTable = <TData,>({
             >
               {emptyState ?? (
                 <div className='mx-auto flex max-w-md flex-col items-center text-center'>
-                  <div className='mb-3 rounded-full border border-surface-border/70 bg-surface-panel/70 p-3'>
+                  <div className='mb-3 text-foreground-muted'>
                     <IconSearch className='size-6 text-foreground-muted' />
                   </div>
                   <div className='font-medium'>No rows found</div>
@@ -245,8 +250,9 @@ export const DataGridTable = <TData,>({
                 key={row.id}
                 aria-label={rowActivation?.getLabel(row.original)}
                 className={cn(
-                  'hover:bg-surface-band/50 data-[state=selected]:border-primary/25',
-                  'data-[state=selected]:bg-primary/8 data-[state=selected]:shadow-[inset_2px_0_0_hsl(var(--primary))]',
+                  'transition-none hover:bg-surface-band/50',
+                  '[clip-path:inset(0_round_var(--shape-control))]',
+                  'data-[state=selected]:bg-primary/8',
                   'data-[state=selected]:hover:bg-primary/12 dark:data-[state=selected]:bg-primary/10',
                   'oled:data-[state=selected]:bg-primary/12 oled:data-[state=selected]:hover:bg-primary/16',
                   rowActivation &&
@@ -270,7 +276,7 @@ export const DataGridTable = <TData,>({
                   <TableCell
                     key={cell.id}
                     className={cn(
-                      'overflow-hidden py-3 align-middle',
+                      'overflow-hidden py-2 align-middle',
                       cell.column.id === '__select' || cell.column.id === '__spacer'
                         ? 'px-0'
                         : cell.column.id === '__row_menu'

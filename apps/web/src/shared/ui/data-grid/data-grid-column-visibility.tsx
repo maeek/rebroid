@@ -9,7 +9,7 @@ export const DataGridColumnVisibilityMenu = <TData,>({ table }: { table: Table<T
     <DropdownMenuTrigger asChild>
       <Button
         type='button'
-        variant='secondary'
+        variant='ghost'
         size='icon-md'
         className='size-8'
         aria-label='Toggle columns'
@@ -32,8 +32,9 @@ export const DataGridColumnVisibilityMenu = <TData,>({ table }: { table: Table<T
             <Checkbox
               checked={column.getIsVisible()}
               className='mr-2'
-              onClick={event => event.stopPropagation()}
-              onCheckedChange={checked => column.toggleVisibility(checked === true)}
+              aria-hidden='true'
+              tabIndex={-1}
+              style={{ pointerEvents: 'none' }}
             />
             {column.columnDef.meta?.label ?? column.id}
           </DropdownMenuItem>

@@ -4,7 +4,7 @@ import { useState, type ReactNode } from 'react'
 import { IconFilter, IconRestore, IconX } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from '@/components/ui/drawer'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { DataGridToolbar } from './data-grid-toolbar'
 
@@ -34,40 +34,6 @@ export type DataGridWorkspaceProps = {
   className?: string
 }
 
-const FilterContent = ({
-  title,
-  description,
-  filters,
-  canReset,
-  onReset
-}: {
-  title: string
-  description?: string
-  filters: ReactNode
-  canReset: boolean
-  onReset: () => void
-}) => (
-  <div className='grid gap-5'>
-    <div className='flex items-start justify-between gap-3'>
-      <div className='grid gap-1'>
-        <h2 className='font-medium'>{title}</h2>
-        {description ? <p className='text-xs leading-5 text-foreground-muted'>{description}</p> : null}
-      </div>
-      <Button
-        type='button'
-        variant='ghost'
-        size='sm'
-        disabled={!canReset}
-        onClick={onReset}
-      >
-        <IconRestore className='size-4' />
-        Reset
-      </Button>
-    </div>
-    <div className='grid gap-5'>{filters}</div>
-  </div>
-)
-
 export const DataGridWorkspace = ({
   search,
   searchPlaceholder,
@@ -86,105 +52,141 @@ export const DataGridWorkspace = ({
   children,
   className
 }: DataGridWorkspaceProps) => {
-  const [desktopFiltersOpen, setDesktopFiltersOpen] = useState(false)
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const hasFilters = Boolean(filters)
-  const filterContent = hasFilters ? (
-    <FilterContent
-      title={filterTitle}
-      description={filterDescription}
-      filters={filters}
-      canReset={activeFilters.length > 0}
-      onReset={onResetFilters ?? (() => undefined)}
-    />
-  ) : null
-
-  const openFilters = () => {
-    const desktop = window.matchMedia?.('(min-width: 1024px)').matches ?? window.innerWidth >= 1024
-
-    if (desktop) {
-      setDesktopFiltersOpen(open => !open)
-      return
-    }
-    setMobileFiltersOpen(true)
-  }
+  const hasSelection = selectedCount > 0
 
   return (
-    <div className={cn('grid min-w-0 gap-4', className)}>
-      {notice}
-      <DataGridToolbar
-        search={search}
-        searchPlaceholder={searchPlaceholder}
-        onSearchChange={onSearchChange}
-        onSearchSubmit={onSearch}
-        onFiltersOpen={hasFilters ? openFilters : undefined}
-        activeFilterCount={activeFilters.length}
-        actions={actions}
-        disabled={disabled}
-      />
-
-      {activeFilters.length > 0 ? (
-        <div className='flex min-h-7 flex-wrap items-center gap-2'>
-          <span className='flex items-center gap-1 text-sm text-foreground-muted'>
-            <IconFilter className='size-4' />
-            {activeFilters.length} active filter{activeFilters.length === 1 ? '' : 's'}
-          </span>
-          {activeFilters.map(filter => (
-            <Badge
-              key={filter.id}
-              variant='neutral'
-              className='gap-1 py-1 font-normal'
-            >
-              <span className='text-foreground-muted'>{filter.label}</span>
-              {filter.value}
-              <button
-                type='button'
-                className='ml-1 rounded-full hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-                aria-label={`Remove ${filter.label} filter`}
-                onClick={filter.onRemove}
-              >
-                <IconX className='size-3' />
-              </button>
-            </Badge>
-          ))}
-        </div>
-      ) : null}
-
-      {selectedCount > 0 ? (
-        <div className='flex flex-wrap items-center justify-between gap-3 rounded-control border border-primary/25 bg-primary/8 px-4 py-3'>
-          <span className='text-sm text-foreground-muted'>{selectedCount} selected</span>
-          <div className='flex flex-wrap items-center gap-2'>{bulkActions}</div>
-        </div>
-      ) : null}
-
-      <div
-        className={cn('grid min-w-0 items-start gap-5', {
-          'lg:grid-cols-[minmax(0,1fr)_20rem]': hasFilters && desktopFiltersOpen
-        })}
-      >
-        <div className='grid min-w-0 gap-4'>{children}</div>
-        {hasFilters && desktopFiltersOpen ? (
-          <aside
-            aria-label={filterTitle}
-            className='sticky top-4 hidden max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-panel border border-surface-border/70 bg-surface-panel/55 p-5 shadow-panel lg:block'
+    <Sheet
+      open={filtersOpen}
+      onOpenChange={setFiltersOpen}
+    >
+      <div className={cn('grid min-w-0 gap-3', className)}>
+        {notice}
+        <div className='grid min-w-0 gap-2'>
+          <div
+            data-slot='data-grid-toolbar'
+            className='grid min-w-0 items-center [&_button]:transition-none'
           >
-            {filterContent}
-          </aside>
+            <div
+              className={cn('col-start-1 row-start-1 min-w-0', hasSelection && 'invisible')}
+              inert={hasSelection}
+              aria-hidden={hasSelection || undefined}
+            >
+              <DataGridToolbar
+                search={search}
+                searchPlaceholder={searchPlaceholder}
+                onSearchChange={onSearchChange}
+                onSearchSubmit={onSearch}
+                filterControl={
+                  hasFilters ? (
+                    <SheetTrigger
+                      render={
+                        <Button
+                          type='button'
+                          variant='ghost'
+                          disabled={disabled}
+                        />
+                      }
+                    >
+                      <IconFilter className='size-4' />
+                      {activeFilters.length ? `Filters (${activeFilters.length})` : 'Filters'}
+                    </SheetTrigger>
+                  ) : undefined
+                }
+                actions={actions}
+                disabled={disabled}
+              />
+            </div>
+            {bulkActions || hasSelection ? (
+              <div
+                className={cn(
+                  'col-start-1 row-start-1 flex min-h-9 min-w-0 items-center gap-3 rounded-control bg-surface-editor px-3',
+                  !hasSelection && 'invisible'
+                )}
+                inert={!hasSelection}
+                aria-hidden={!hasSelection || undefined}
+              >
+                <span className='shrink-0 text-sm tabular-nums text-foreground-muted'>{selectedCount} selected</span>
+                <div className='ml-auto flex min-w-0 items-center gap-2 overflow-x-auto py-1'>{bulkActions}</div>
+              </div>
+            ) : null}
+          </div>
+
+          {activeFilters.length > 0 ? (
+            <div className='flex min-h-7 flex-wrap items-center gap-2'>
+              {activeFilters.map(filter => (
+                <Badge
+                  key={filter.id}
+                  variant='neutral'
+                  className='gap-1 py-1 font-normal'
+                >
+                  <span className='text-foreground-muted'>{filter.label}</span>
+                  <span
+                    className='max-w-64 truncate'
+                    title={filter.value}
+                  >
+                    {filter.value}
+                  </span>
+                  <button
+                    type='button'
+                    disabled={disabled}
+                    className='ml-1 rounded-full hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+                    aria-label={`Remove ${filter.label} filter`}
+                    onClick={filter.onRemove}
+                  >
+                    <IconX className='size-3' />
+                  </button>
+                </Badge>
+              ))}
+              {onResetFilters ? (
+                <Button
+                  type='button'
+                  size='sm'
+                  variant='ghost'
+                  disabled={disabled}
+                  onClick={onResetFilters}
+                >
+                  Clear all
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        <div className='grid min-w-0 gap-3'>{children}</div>
+
+        {hasFilters ? (
+          <SheetContent className='flex w-full flex-col overflow-y-auto sm:max-w-md'>
+            <SheetHeader className='pr-6 text-left'>
+              <SheetTitle>{filterTitle}</SheetTitle>
+              <SheetDescription>{filterDescription ?? 'Refine the rows shown in this grid.'}</SheetDescription>
+            </SheetHeader>
+            <fieldset
+              disabled={disabled}
+              className='mt-4 grid min-w-0 gap-5'
+            >
+              {filters}
+            </fieldset>
+            <div className='mt-auto flex items-center justify-between gap-3 border-t border-surface-border/50 pt-4'>
+              <Button
+                type='button'
+                variant='ghost'
+                disabled={disabled || !activeFilters.length || !onResetFilters}
+                onClick={onResetFilters}
+              >
+                <IconRestore className='size-4' /> Reset
+              </Button>
+              <Button
+                type='button'
+                onClick={() => setFiltersOpen(false)}
+              >
+                Done
+              </Button>
+            </div>
+          </SheetContent>
         ) : null}
       </div>
-
-      {hasFilters ? (
-        <Drawer
-          open={mobileFiltersOpen}
-          onOpenChange={setMobileFiltersOpen}
-        >
-          <DrawerContent className='max-h-[85dvh] overflow-y-auto px-4 pb-6 pt-5 lg:hidden'>
-            <DrawerTitle>{filterTitle}</DrawerTitle>
-            <DrawerDescription className='sr-only'>Refine the rows shown in this grid.</DrawerDescription>
-            <div className='mt-4'>{filterContent}</div>
-          </DrawerContent>
-        </Drawer>
-      ) : null}
-    </div>
+    </Sheet>
   )
 }

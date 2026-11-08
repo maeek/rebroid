@@ -41,8 +41,10 @@ export const selectionColumn = <TData,>({
       <div className='flex min-h-5 items-center justify-center'>
         <Checkbox
           checked={allSelected}
+          disabled={selection.disabled}
           aria-label='Select current page'
           onCheckedChange={checked => {
+            if (selection.disabled) return
             const next = new Set(selection.selectedIds)
             for (const row of rows) {
               const id = getRowId(row.original)
@@ -61,8 +63,10 @@ export const selectionColumn = <TData,>({
       <div className='flex min-h-10 items-center justify-center'>
         <Checkbox
           checked={selection.selectedIds.has(id)}
+          disabled={selection.disabled}
           aria-label='Select row'
           onClick={event => {
+            if (selection.disabled) return
             const next = new Set(selection.selectedIds)
             if (event.shiftKey && lastSelectedIndexRef.current !== null) {
               const rows = table.getRowModel().rows
@@ -110,6 +114,21 @@ export const spacerColumn = <TData,>(): ColumnDef<TData> => ({
   cell: () => null
 })
 
+const RowMenuCell = () => (
+  <div className='flex min-h-10 items-center justify-end'>
+    <Button
+      type='button'
+      variant='ghost'
+      size='icon-md'
+      className='size-8'
+      aria-label='Open row actions'
+      onClick={openContextMenuFromButton}
+    >
+      <IconDotsVertical className='size-4' />
+    </Button>
+  </div>
+)
+
 export const rowMenuColumn = <TData,>(): ColumnDef<TData> => ({
   id: '__row_menu',
   enableHiding: false,
@@ -119,18 +138,5 @@ export const rowMenuColumn = <TData,>(): ColumnDef<TData> => ({
   maxSize: 48,
   enableResizing: false,
   header: () => <span className='sr-only'>Row actions</span>,
-  cell: () => (
-    <div className='flex min-h-10 items-center justify-end'>
-      <Button
-        type='button'
-        variant='ghost'
-        size='icon-md'
-        className='size-8'
-        aria-label='Open row actions'
-        onClick={openContextMenuFromButton}
-      >
-        <IconDotsVertical className='size-4' />
-      </Button>
-    </div>
-  )
+  cell: RowMenuCell
 })
