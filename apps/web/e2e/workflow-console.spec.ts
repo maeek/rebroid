@@ -101,9 +101,16 @@ test('trigger setup groups searchable targets and schedule without nested cards'
 })
 
 test('new workflow loader shares the current ready layout', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  page.on('console', message => {
+    if (message.type() === 'error' && /hydrat|descendant|cannot contain|validateDOMNesting/i.test(message.text()))
+      errors.push(message.text())
+  })
   for (const width of widths) {
     await page.setViewportSize({ width, height: 1000 })
     const boxes = []
+    const descriptions = []
     for (const editor of ['workflow-create-loading', 'workflow-create']) {
       await page.goto(`/skeleton-contract-test?editor=${editor}`)
       await expect(page.getByRole('heading', { name: 'Workflow details' })).toBeVisible()
@@ -118,11 +125,22 @@ test('new workflow loader shares the current ready layout', async ({ page }) => 
           return { x, y, width: fieldWidth, height }
         })
       )
+      const description = await page.locator('#automation-description').boundingBox()
+      const tags = await page.locator('#automation-tags').boundingBox()
+      expect(description!.y).toBeGreaterThanOrEqual(boxes.at(-1)!.y + boxes.at(-1)!.height)
+      expect(description!.y).toBeGreaterThanOrEqual(tags!.y + tags!.height)
+      expect(description!.x).toBe(boxes.at(-1)!.x)
+      descriptions.push(description!)
       await expect(page.getByRole('navigation', { name: 'Workflow navigation' })).toHaveCount(0)
     }
-    for (const key of ['x', 'y', 'width', 'height'] as const)
+    for (const key of ['x', 'y', 'width', 'height'] as const) {
       expect(Math.abs(boxes[0][key] - boxes[1][key]), `${width} ${key}`).toBeLessThanOrEqual(1)
+      expect(Math.abs(descriptions[0][key] - descriptions[1][key]), `${width} description ${key}`).toBeLessThanOrEqual(
+        1
+      )
+    }
   }
+  expect(errors).toEqual([])
 })
 
 test('condition and repeat blocks retain labeled controls and branch editing', async ({ page }) => {

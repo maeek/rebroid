@@ -36,23 +36,23 @@ export function AutomationDetailsSection({
             onChange={event => onChange({ name: event.target.value })}
           />
         </FormField>
-        <FormField
-          controlId='automation-description'
-          label='Description'
-          layout='vertical'
-          className='md:col-start-2 md:row-span-2'
-        >
-          <Textarea
-            value={form.description}
-            className='min-h-28 md:min-h-36'
-            onChange={event => onChange({ description: event.target.value })}
-          />
-        </FormField>
         <AutomationTagsInput
           id='automation-tags'
           value={form.tags}
           onChange={tags => onChange({ tags })}
         />
+        <FormField
+          controlId='automation-description'
+          label='Description'
+          layout='vertical'
+          className='md:col-span-2'
+        >
+          <Textarea
+            value={form.description}
+            className='min-h-28'
+            onChange={event => onChange({ description: event.target.value })}
+          />
+        </FormField>
       </div>
     </Section>
   )
