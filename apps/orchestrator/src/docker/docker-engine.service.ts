@@ -12,6 +12,7 @@ import { DockerErrorClassifier } from './engine/services/docker-error-classifier
 import { DockerMetricsObserver } from './engine/services/docker-metrics-observer.service';
 import { DockerOperationExecutor } from './engine/services/docker-operation-executor.service';
 import type { DockerEnginePort } from './contracts/docker-engine.port';
+import type { DockerOperationLimits } from './contracts/docker-operation-limits';
 
 export { dockerConnectionOptions };
 
@@ -22,6 +23,8 @@ export class DockerEngineService implements DockerEnginePort {
   readonly resourcePrefix: string;
   readonly orchestratorContainerId?: string;
   readonly transport: DockerConnection['transport'];
+  private operationLimits: DockerOperationLimits;
+  private readonly remoteRequestTimeoutMs: number;
 
   constructor(
     config: ConfigService,
@@ -53,13 +56,26 @@ export class DockerEngineService implements DockerEnginePort {
       this.engineConfig.maxConcurrentLongOperations;
     const slowRequestWarningMs = this.engineConfig.slowRequestWarningMs;
     const longOperationTimeoutMs = this.engineConfig.longOperationTimeoutMs;
-    this.executor.configure({
-      transport: this.transport,
+    this.remoteRequestTimeoutMs = connection.remoteRequestTimeoutMs;
+    this.operationLimits = {
       maxConcurrentReads,
       maxConcurrentLongOperations,
       slowRequestWarningMs,
       longOperationTimeoutMs,
-      remoteRequestTimeoutMs: connection.remoteRequestTimeoutMs,
+    };
+    this.setOperationLimits(this.operationLimits);
+  }
+
+  getOperationLimits(): DockerOperationLimits {
+    return { ...this.operationLimits };
+  }
+
+  setOperationLimits(limits: DockerOperationLimits) {
+    this.operationLimits = { ...limits };
+    this.executor.configure({
+      ...limits,
+      transport: this.transport,
+      remoteRequestTimeoutMs: this.remoteRequestTimeoutMs,
     });
   }
 

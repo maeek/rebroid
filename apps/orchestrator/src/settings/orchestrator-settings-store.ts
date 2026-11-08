@@ -4,6 +4,8 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { viewerTransport } from '@rebroid/android-application-core/viewer-control';
 import { numberInRange } from '../common/number-range';
+import type { DockerOperationLimits } from '../docker/contracts/docker-operation-limits';
+import { normalizeDockerOperationLimits } from './docker-operation-limits-settings';
 import {
   defaultAiProviders,
   normalizeAiProviders,
@@ -28,6 +30,7 @@ export interface PersistedFeatureFlags {
 export type StoredOrchestratorSettings = OrchestratorSettingsDto & {
   aiProviders: AutomationAiProvider[];
   featureFlags: PersistedFeatureFlags;
+  dockerOperationLimits?: DockerOperationLimits;
 };
 
 @Injectable()
@@ -145,6 +148,9 @@ export class OrchestratorSettingsStore {
         512,
       ),
       services: this.normalizeServices(value.services, defaults.services),
+      dockerOperationLimits: normalizeDockerOperationLimits(
+        value.dockerOperationLimits,
+      ),
       aiProviders: normalizeAiProviders(value.aiProviders),
       featureFlags: this.normalizeFeatureFlags(
         value.featureFlags,
@@ -159,6 +165,8 @@ export class OrchestratorSettingsStore {
     const publicSettings = { ...settings };
     delete (publicSettings as Partial<StoredOrchestratorSettings>).aiProviders;
     delete (publicSettings as Partial<StoredOrchestratorSettings>).featureFlags;
+    delete (publicSettings as Partial<StoredOrchestratorSettings>)
+      .dockerOperationLimits;
     return publicSettings;
   }
 

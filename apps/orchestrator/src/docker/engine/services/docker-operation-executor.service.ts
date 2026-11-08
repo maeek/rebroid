@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import Dockerode from 'dockerode';
 import { setTimeout as delay } from 'node:timers/promises';
-import pLimit from 'p-limit';
+import { DockerOperationQueue } from '../utils/docker-operation-queue';
 import { DockerConnection } from './docker-connection.factory';
 import { DockerErrorClassifier } from './docker-error-classifier.service';
 import { DockerMetricsObserver } from './docker-metrics-observer.service';
@@ -16,8 +16,8 @@ export class DockerLongOperationTimeoutError extends Error {
 @Injectable()
 export class DockerOperationExecutor {
   private readonly logger = new Logger(DockerOperationExecutor.name);
-  private limitRead: ReturnType<typeof pLimit> = pLimit(1);
-  private limitLongOperation: ReturnType<typeof pLimit> = pLimit(1);
+  private readonly limitRead = new DockerOperationQueue();
+  private readonly limitLongOperation = new DockerOperationQueue();
   private mutationQueue = Promise.resolve();
   private pendingMutations = 0;
   private pendingLongOperations = 0;
@@ -42,8 +42,8 @@ export class DockerOperationExecutor {
     this.transport = options.transport;
     this.slowRequestWarningMs = options.slowRequestWarningMs;
     this.longOperationTimeoutMs = options.longOperationTimeoutMs;
-    this.limitRead = pLimit(options.maxConcurrentReads);
-    this.limitLongOperation = pLimit(options.maxConcurrentLongOperations);
+    this.limitRead.setConcurrency(options.maxConcurrentReads);
+    this.limitLongOperation.setConcurrency(options.maxConcurrentLongOperations);
     this.metrics.configure(options.transport, options);
   }
 
@@ -58,7 +58,7 @@ export class DockerOperationExecutor {
   async read<T>(operation: () => Promise<T>, description = 'Docker read') {
     const operationName = this.stableOperation(description);
     this.metrics.queueDockerOperation('read', 1);
-    return this.limitRead(async () => {
+    return this.limitRead.run(async () => {
       this.metrics.queueDockerOperation('read', -1);
       return this.observe('read', operationName, description, () =>
         this.retryTransient(operation, description, operationName),
@@ -126,7 +126,7 @@ export class DockerOperationExecutor {
     this.pendingLongOperations += 1;
     this.metrics.queueDockerOperation('long', 1);
     try {
-      return await this.limitLongOperation(async () => {
+      return await this.limitLongOperation.run(async () => {
         this.metrics.queueDockerOperation('long', -1);
         return this.observe('long', operationName, description, async () => {
           const controller = new AbortController();

@@ -5216,6 +5216,56 @@
           "health"
         ]
       }
+    },
+    "/api/v1/platform/docker/operation-limits": {
+      "get": {
+        "operationId": "DockerOperationSettingsController_getLimits",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DockerOperationLimitsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "docker"
+        ]
+      },
+      "put": {
+        "operationId": "DockerOperationSettingsController_updateLimits",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DockerOperationLimitsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DockerOperationLimitsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "docker"
+        ]
+      }
     }
   },
   "info": {
@@ -11049,6 +11099,37 @@
           "firewall",
           "ocr",
           "services"
+        ]
+      },
+      "DockerOperationLimitsDto": {
+        "type": "object",
+        "properties": {
+          "maxConcurrentReads": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 64
+          },
+          "maxConcurrentLongOperations": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 16
+          },
+          "slowRequestWarningMs": {
+            "type": "number",
+            "minimum": 100,
+            "maximum": 300000
+          },
+          "longOperationTimeoutMs": {
+            "type": "number",
+            "minimum": 1000,
+            "maximum": 3600000
+          }
+        },
+        "required": [
+          "maxConcurrentReads",
+          "maxConcurrentLongOperations",
+          "slowRequestWarningMs",
+          "longOperationTimeoutMs"
         ]
       }
     }

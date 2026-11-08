@@ -1,5 +1,6 @@
 import { Injectable, PayloadTooLargeException } from '@nestjs/common';
 import type { BufferedUploadFile } from '../common/http-upload';
+import type { DockerOperationLimits } from '../docker/contracts/docker-operation-limits';
 import type { AutomationAiProviderModelRole } from './contracts/ai-provider';
 import { AiProviderSettingsService } from './ai-provider-settings.service';
 import { OrchestratorSettingsDto } from './dto/orchestrator-settings.dto';
@@ -28,6 +29,25 @@ export class SettingsService {
     return this.store.toPublicSettings(normalized);
   }
 
+  async getDockerOperationLimits() {
+    return (await this.store.getStoredSettings()).dockerOperationLimits;
+  }
+
+  async updateDockerOperationLimits(limits: DockerOperationLimits) {
+    await this.store.updateSettings((current) => ({
+      ...current,
+      dockerOperationLimits: { ...limits },
+    }));
+  }
+
+  subscribeDockerOperationLimits(
+    listener: (limits: DockerOperationLimits | undefined) => void,
+  ) {
+    return this.store.subscribe((settings) =>
+      listener(settings.dockerOperationLimits),
+    );
+  }
+
   /**
    * Merges partial updates through normalization so persisted values always stay in range.
    */
@@ -47,6 +67,7 @@ export class SettingsService {
     const updated = await this.store.updateSettings((current) => ({
       ...defaults,
       featureFlags: current.featureFlags,
+      dockerOperationLimits: current.dockerOperationLimits,
     }));
     return this.store.toPublicSettings(updated);
   }
