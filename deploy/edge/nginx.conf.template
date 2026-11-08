@@ -9,7 +9,8 @@ events {
 http {
   include /etc/nginx/mime.types;
   default_type application/octet-stream;
-  access_log /dev/stdout;
+  log_format safe '$remote_addr - [$time_local] "$request_method $uri $server_protocol" $status $body_bytes_sent';
+  access_log /dev/stdout safe;
   error_log /dev/stderr warn;
   client_body_temp_path /tmp/nginx/client;
   fastcgi_temp_path /tmp/nginx/fastcgi;

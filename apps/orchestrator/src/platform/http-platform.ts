@@ -33,6 +33,12 @@ export const createFastifyAdapter = () =>
       return typeof requestId === 'string' ? requestId : randomUUID();
     },
     logger: {
+      serializers: {
+        req: (request: { method: string; url: string }) => ({
+          method: request.method,
+          url: request.url.split('?')[0],
+        }),
+      },
       redact: {
         paths: redactedLogPaths,
         censor: '[redacted]',

@@ -26,7 +26,17 @@ process.on("unhandledRejection", (error) => {
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter({ logger: true, requestIdHeader: "x-request-id" }),
+    new FastifyAdapter({
+      logger: {
+        serializers: {
+          req: (request: { method: string; url: string }) => ({
+            method: request.method,
+            url: request.url.split("?")[0],
+          }),
+        },
+      },
+      requestIdHeader: "x-request-id",
+    }),
     { bufferLogs: true },
   );
   app.useWebSocketAdapter(new WsAdapter(app));
