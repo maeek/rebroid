@@ -1,6 +1,7 @@
 import { Controller, Get, Module, Post, Req } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import type { FastifyRequest } from 'fastify';
 import { MetricsController } from '../metrics/metrics.controller';
@@ -80,12 +81,23 @@ describe('Fastify HTTP platform', () => {
       createFastifyAdapter(),
     );
     await configureFastifyPlatform(app);
+    SwaggerModule.setup(
+      'docs',
+      app,
+      SwaggerModule.createDocument(app, new DocumentBuilder().build()),
+    );
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
   });
 
   afterEach(async () => {
     await app.close();
+  });
+
+  it('serves development documentation and static assets without optional dependency failures', async () => {
+    for (const url of ['/docs', '/docs/swagger-ui-bundle.js', '/docs-json']) {
+      expect((await app.inject({ method: 'GET', url })).statusCode).toBe(200);
+    }
   });
 
   it('uses the shared-secret guard globally and keeps liveness public', async () => {
