@@ -1,5 +1,6 @@
-import type { RefObject } from 'react'
-import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
+import type { ReactNode, RefObject } from 'react'
+import { IconArrowDown } from '@tabler/icons-react'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ChatTurnView } from './ai-agent-chat-events'
 import type { ChatTurn } from './ai-agent-chat-utils'
@@ -12,7 +13,7 @@ const AiAgentTranscriptSkeleton = () => (
     {Array.from({ length: 3 }).map((_, index) => (
       <div
         key={index}
-        className='grid gap-2 rounded-panel border border-surface-border/50 bg-surface-band/25 p-4'
+        className='grid gap-3 py-4'
       >
         <div className='flex items-center gap-2'>
           <Skeleton className='size-6 rounded-full' />
@@ -25,19 +26,14 @@ const AiAgentTranscriptSkeleton = () => (
   </div>
 )
 
-const AiAgentEmptyTranscript = () => (
-  <div className='flex min-h-56 flex-1 items-center justify-center p-6 text-center'>
-    <div className='grid max-w-sm place-items-center gap-4 motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-300'>
-      <div className='relative flex size-12 items-center justify-center rounded-feature border border-primary/20 bg-primary/8 text-primary shadow-[0_16px_40px_-24px_hsl(var(--primary)/0.85)]'>
-        <span className='absolute inset-0 rounded-feature bg-primary/8 motion-safe:animate-ping motion-safe:[animation-duration:2.8s]' />
-        <GradientSparklesIcon className='relative size-5' />
+const AiAgentEmptyTranscript = ({ suggestions }: { suggestions?: ReactNode }) => (
+  <div className='flex min-h-48 flex-1 items-center justify-center py-6 text-center'>
+    <div className='grid max-w-lg place-items-center gap-4'>
+      <div className='grid gap-2'>
+        <h3 className='text-2xl font-medium tracking-tight'>What would you like to do?</h3>
+        <p className='text-sm leading-6 text-foreground-muted'>Ask the agent to help with this device.</p>
       </div>
-      <div className='grid gap-1'>
-        <div className='text-sm font-medium'>What should I do on this device?</div>
-        <p className='text-xs leading-5 text-foreground-muted'>
-          Describe an outcome. The agent will inspect the screen, make a plan when needed, and verify each action.
-        </p>
-      </div>
+      {suggestions}
     </div>
   </div>
 )
@@ -50,7 +46,10 @@ export const AiAgentTranscript = ({
   onSaveWorkflow,
   onTranscriptScroll,
   transcriptRef,
-  turns
+  turns,
+  suggestions,
+  isAtBottom = true,
+  onScrollToLatest
 }: {
   canSaveWorkflow: boolean
   draftingRunId: string | null
@@ -60,26 +59,50 @@ export const AiAgentTranscript = ({
   onTranscriptScroll: () => void
   transcriptRef: RefObject<HTMLDivElement | null>
   turns: ChatTurn[]
+  suggestions?: ReactNode
+  isAtBottom?: boolean
+  onScrollToLatest?: () => void
 }) => (
-  <div
-    ref={transcriptRef}
-    aria-label='AI agent transcript'
-    className='scrollbar-thin flex min-h-0 max-h-[min(46dvh,26rem)] flex-1 flex-col gap-6 overflow-y-auto px-0 py-5 motion-safe:scroll-smooth sm:px-4 md:max-h-none'
-    onScroll={onTranscriptScroll}
-  >
-    {isLoadingHistory ? <AiAgentTranscriptSkeleton /> : null}
-    {!isLoadingHistory && turns.length === 0 ? <AiAgentEmptyTranscript /> : null}
-    {!isLoadingHistory
-      ? turns.map(turn => (
-          <ChatTurnView
-            key={turn.id}
-            turn={turn}
-            canSaveWorkflow={canSaveWorkflow}
-            isSavingWorkflow={draftingRunId === turn.run?.id}
-            onApproveEscalation={onApproveEscalation}
-            onSaveWorkflow={onSaveWorkflow}
-          />
-        ))
-      : null}
+  <div className='relative flex min-h-0 flex-1 flex-col'>
+    <div
+      ref={transcriptRef}
+      aria-label='AI agent transcript'
+      role='region'
+      // This scroll region must be reachable for keyboard scrolling.
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+      tabIndex={0}
+      className='scrollbar-thin flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain rounded-control py-4 focus-visible:outline-2 focus-visible:outline-ring'
+      onScroll={onTranscriptScroll}
+    >
+      <div className='mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-1'>
+        {isLoadingHistory ? <AiAgentTranscriptSkeleton /> : null}
+        {!isLoadingHistory && turns.length === 0 ? <AiAgentEmptyTranscript suggestions={suggestions} /> : null}
+        {!isLoadingHistory
+          ? turns.map(turn => (
+              <ChatTurnView
+                key={turn.id}
+                turn={turn}
+                canSaveWorkflow={canSaveWorkflow}
+                isSavingWorkflow={draftingRunId === turn.run?.id}
+                onApproveEscalation={onApproveEscalation}
+                onSaveWorkflow={onSaveWorkflow}
+              />
+            ))
+          : null}
+      </div>
+    </div>
+    {!isAtBottom && onScrollToLatest ? (
+      <div className='pointer-events-none absolute inset-x-0 bottom-2 flex justify-center'>
+        <Button
+          variant='secondary'
+          size='sm'
+          className='pointer-events-auto shadow-panel'
+          onClick={onScrollToLatest}
+        >
+          <IconArrowDown className='size-4' />
+          Latest messages
+        </Button>
+      </div>
+    ) : null}
   </div>
 )

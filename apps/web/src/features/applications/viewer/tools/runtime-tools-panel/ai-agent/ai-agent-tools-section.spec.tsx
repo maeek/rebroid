@@ -71,6 +71,8 @@ const chatSession = (
   isCheckingHealth: false,
   isClearing: false,
   isLoadingHistory: false,
+  isAtBottom: true,
+  scrollToLatest: vi.fn(),
   onTranscriptScroll: vi.fn(),
   plannerCatalog: [],
   prompt: '',
@@ -105,7 +107,7 @@ describe('AiAgentToolsSection', () => {
     render(<AiAgentToolsSection app={app} />)
 
     expect(screen.getByLabelText('Loading AI chat history')).toBeTruthy()
-    expect(screen.getByPlaceholderText('Describe what you want to accomplish…')).toBeTruthy()
+    expect(screen.getByPlaceholderText('Ask the agent to do something…')).toBeTruthy()
     expect(screen.getByText('No model')).toBeTruthy()
   })
 
@@ -114,7 +116,7 @@ describe('AiAgentToolsSection', () => {
 
     render(<AiAgentToolsSection app={app} />)
 
-    expect(screen.getByText('What should I do on this device?')).toBeTruthy()
+    expect(screen.getByText('What would you like to do?')).toBeTruthy()
     expect(screen.getByText('No model')).toBeTruthy()
     expect(screen.queryByLabelText('Loading AI chat history')).toBeNull()
   })
@@ -127,15 +129,9 @@ describe('AiAgentToolsSection', () => {
       })
     )
 
-    render(
-      <AiAgentToolsSection
-        app={{ ...app, running: false, status: 'stopped' }}
-        hideHeader
-      />
-    )
+    render(<AiAgentToolsSection app={{ ...app, running: false, status: 'stopped' }} />)
 
-    expect(screen.getByText('Device actions are paused')).toBeTruthy()
-    expect(screen.getByText(/Review history, configure the model, or draft the next request/)).toBeTruthy()
+    expect(screen.getByText('Configure an enabled AI provider and model before sending.')).toBeTruthy()
     expect(screen.getByRole('textbox').hasAttribute('disabled')).toBe(false)
     expect(screen.getByRole('button', { name: 'Send message' }).hasAttribute('disabled')).toBe(true)
     expect(screen.getByText('No model')).toBeTruthy()
@@ -155,21 +151,23 @@ describe('AiAgentToolsSection', () => {
     expect(section.className).toContain('overflow-hidden')
   })
 
-  it('keeps the inline composer dock transparent', () => {
-    vi.mocked(useAiAgentChatSession).mockReturnValue(chatSession())
-
-    render(<AiAgentToolsSection app={app} />)
-
-    const composerDock = screen.getByTestId('ai-agent-composer-dock')
-
-    expect(composerDock.className).toContain('bg-transparent')
-    expect(composerDock.className).toContain('px-0')
-    expect(composerDock.className).toContain('sm:px-4')
-    expect(composerDock.className).not.toContain('bg-background')
-    expect(composerDock.className).not.toContain('backdrop-blur')
+  it('does not submit a stopped device draft using Enter', () => {
+    const submit = vi.fn()
+    vi.mocked(useAiAgentChatSession).mockReturnValue(chatSession({ canSubmit: true, submit }))
+    render(<AiAgentToolsSection app={{ ...app, running: false }} />)
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Message the device agent' }), { key: 'Enter' })
+    expect(submit).not.toHaveBeenCalled()
   })
 
-  it('keeps clear available and delegates clearing to the session', () => {
+  it('returns to the latest messages without moving the page', () => {
+    const scrollToLatest = vi.fn()
+    vi.mocked(useAiAgentChatSession).mockReturnValue(chatSession({ isAtBottom: false, scrollToLatest }))
+    render(<AiAgentToolsSection app={app} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Latest messages' }))
+    expect(scrollToLatest).toHaveBeenCalledOnce()
+  })
+
+  it('keeps clear available and delegates clearing to the session', async () => {
     const clearConversation = vi.fn<() => Promise<void>>(() => Promise.resolve())
     vi.mocked(useAiAgentChatSession).mockReturnValue(
       chatSession({
@@ -188,7 +186,8 @@ describe('AiAgentToolsSection', () => {
 
     render(<AiAgentToolsSection app={app} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /clear/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Conversation actions' }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: /clear/i }))
 
     expect(clearConversation).toHaveBeenCalledTimes(1)
   })
@@ -223,7 +222,6 @@ describe('AiAgentToolsSection', () => {
     )
 
     expect(await screen.findByText('Dynamic chip')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Dynamic chip' }).className).toContain('border-surface-border/45')
     expect(screen.getByRole('button', { name: 'Dynamic chip' }).className).toContain('font-normal')
     expect(generatePromptSuggestions.mock.calls[0]?.[0]).toMatchObject({ targetApplicationId: app.id })
   })
@@ -257,14 +255,10 @@ describe('AiAgentToolsSection', () => {
       })
     )
 
-    render(
-      <AiAgentToolsSection
-        app={app}
-        hideHeader
-      />
-    )
+    render(<AiAgentToolsSection app={app} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /export/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Conversation actions' }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: /export/i }))
 
     expect(createObjectURL).toHaveBeenCalledTimes(1)
     const exportedObject = createObjectURL.mock.calls[0]?.[0]

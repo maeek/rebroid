@@ -83,7 +83,7 @@ export const PerceptionDisclosure = ({
   const summary = perceptionSummary(data)
   return (
     <details
-      className='group overflow-hidden rounded-panel border border-surface-border/55 bg-surface-band/24 text-xs text-foreground-muted'
+      className='group overflow-hidden rounded-control bg-surface-editor text-xs text-foreground-muted'
       data-testid='perception-disclosure'
     >
       <summary className='flex cursor-pointer list-none items-center gap-2.5 px-3 py-2.5 transition-colors hover:bg-foreground/3'>

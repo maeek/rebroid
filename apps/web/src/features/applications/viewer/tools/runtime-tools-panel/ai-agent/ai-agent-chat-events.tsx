@@ -37,7 +37,7 @@ export const ChatTurnView = ({
   const hasFinalResponse = chatTurnHasFinalResponse(turn)
   const streamingText = chatTurnStreamingText(turn)
   return (
-    <article className='grid gap-4 py-1 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300'>
+    <article className='grid min-w-0 gap-5 py-1'>
       <AiUserMessage>{turn.prompt}</AiUserMessage>
       <AiAssistantBlock
         title='Agent'

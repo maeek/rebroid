@@ -59,6 +59,8 @@ describe('AiPromptComposer', () => {
     expect(screen.getByText('Qwen')).toBeTruthy()
     expect(screen.getByText('Run timeout: 5 minutes.')).toBeTruthy()
     expect(screen.getByText('Select a model')).toBeTruthy()
+    expect(screen.getByRole('textbox', { name: 'Message' })).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByRole('textbox')).toHaveAccessibleDescription('Select a model')
 
     fireEvent.change(screen.getByPlaceholderText('Ask AI'), { target: { value: 'next' } })
     expect(onChange).toHaveBeenCalledWith('next')
@@ -88,6 +90,25 @@ describe('AiPromptComposer', () => {
 })
 
 describe('AiModelPicker', () => {
+  it('selects a model and its provider directly and closes the menu', async () => {
+    const onProviderChange = vi.fn()
+    const onModelChange = vi.fn()
+    render(
+      <AiModelPicker
+        catalog={catalog}
+        selectedProvider={catalog[0]}
+        selectedModel={catalog[0]?.models[0]}
+        onProviderChange={onProviderChange}
+        onModelChange={onModelChange}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Agent settings: Qwen' }))
+    const choice = await screen.findByRole('button', { name: 'Fast' })
+    expect(screen.getByRole('button', { name: 'Qwen', pressed: true })).toBeTruthy()
+    fireEvent.click(choice)
+    expect(onProviderChange).toHaveBeenCalledWith('cloud')
+    expect(onModelChange).toHaveBeenCalledWith('fast')
+  })
   it('shows the selected model chip', () => {
     render(
       <AiModelPicker
@@ -100,8 +121,8 @@ describe('AiModelPicker', () => {
       />
     )
 
-    expect(screen.getByText('Qwen')).toBeTruthy()
-    expect(screen.getByText('Local Ollama · Ollama')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Qwen', pressed: true })).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Local Ollama' })).toBeTruthy()
   })
 
   it('shows an empty catalog state', () => {
@@ -162,8 +183,8 @@ describe('AiModelPicker', () => {
       />
     )
 
-    expect(screen.getByText('AI model')).toBeTruthy()
-    expect(screen.getByText('Model')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Deep' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Qwen', pressed: true })).toBeTruthy()
     expect(screen.queryByText('Provider')).toBeNull()
   })
 })

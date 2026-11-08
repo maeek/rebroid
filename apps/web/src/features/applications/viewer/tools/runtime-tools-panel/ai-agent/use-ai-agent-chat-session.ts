@@ -56,7 +56,7 @@ export const useAiAgentChatSession = ({
     setError,
     setTurns
   })
-  const { onTranscriptScroll, transcriptRef } = useAiAgentTranscriptScroll(turns)
+  const { isAtBottom, onTranscriptScroll, scrollToLatest, transcriptRef } = useAiAgentTranscriptScroll(turns)
 
   const appendRunEvents = useCallback((runId: string, nextEvents: AutomationRunEvent[]) => {
     if (nextEvents.length === 0) return
@@ -115,6 +115,7 @@ export const useAiAgentChatSession = ({
     isCheckingHealth,
     isClearing,
     isLoadingHistory,
+    isAtBottom,
     plannerCatalog,
     prompt,
     queuedTurn,
@@ -136,6 +137,7 @@ export const useAiAgentChatSession = ({
     submitPrompt,
     timeoutMinutesInput,
     onTranscriptScroll,
+    scrollToLatest,
     transcriptRef,
     turns,
     visionCatalog

@@ -2,13 +2,14 @@ import type { ReactNode } from 'react'
 import { normalizePublicAiText } from '@rebroid/automation-core/ai-public-text'
 import Markdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { cn } from '@/lib/utils'
 
 export const AiUserMessage = ({ children }: { children: ReactNode }) => (
-  <div className='ml-auto grid max-w-[88%] justify-items-end gap-1.5'>
-    <span className='px-1 text-xs font-medium uppercase tracking-[0.12em] text-foreground-muted'>You</span>
-    <div className='wrap-anywhere whitespace-pre-wrap rounded-feature rounded-br-md bg-primary px-3.5 py-2.5 text-sm leading-6 text-primary-foreground shadow-[0_8px_24px_-16px_hsl(var(--primary)/0.9)]'>
+  <div
+    className='ml-auto grid max-w-[88%] justify-items-end'
+    aria-label='Your message'
+  >
+    <div className='wrap-anywhere whitespace-pre-wrap rounded-feature bg-surface-editor px-4 py-3 text-sm leading-6 text-foreground'>
       {children}
     </div>
   </div>
@@ -25,13 +26,10 @@ export const AiAssistantBlock = ({
   children: ReactNode
   className?: string
 }) => (
-  <div className={cn('flex min-w-0 items-start gap-3', className)}>
-    <span className='mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-panel border border-primary/20 bg-primary/8 text-primary shadow-[0_8px_24px_-18px_hsl(var(--primary)/0.8)]'>
-      <GradientSparklesIcon className='size-4' />
-    </span>
+  <div className={cn('min-w-0', className)}>
     <div className='grid min-w-0 flex-1 gap-2.5'>
-      <div className='flex min-w-0 flex-wrap items-center justify-between gap-2'>
-        <span className='truncate text-sm font-medium'>{title}</span>
+      <div className='flex min-w-0 flex-wrap items-center gap-2'>
+        <span className='text-xs font-medium text-foreground-muted'>{title}</span>
         {meta ? <div className='shrink-0'>{meta}</div> : null}
       </div>
       {children}
@@ -40,7 +38,12 @@ export const AiAssistantBlock = ({
 )
 
 export const AiAssistantText = ({ children, muted }: { children: ReactNode; muted?: boolean }) => (
-  <div className={cn('whitespace-pre-wrap text-sm', muted ? 'text-foreground-muted' : 'text-foreground')}>
+  <div
+    className={cn(
+      'wrap-anywhere whitespace-pre-wrap text-sm leading-6',
+      muted ? 'text-foreground-muted' : 'text-foreground'
+    )}
+  >
     {children}
   </div>
 )
@@ -66,8 +69,17 @@ const markdownComponents: Components = {
   ol: ({ children }) => <ol className='my-1 list-decimal space-y-1 pl-5'>{children}</ol>,
   p: ({ children }) => <p className='my-1 first:mt-0 last:mb-0'>{children}</p>,
   pre: ({ children }) => (
-    <pre className='my-2 max-h-72 overflow-auto rounded-control bg-background/30 p-2 font-mono text-xs'>{children}</pre>
+    <pre className='my-3 max-h-72 max-w-full overflow-auto rounded-control bg-surface-editor p-3 font-mono text-xs leading-5'>
+      {children}
+    </pre>
   ),
+  table: ({ children }) => (
+    <div className='my-3 overflow-x-auto'>
+      <table className='w-full text-left text-sm'>{children}</table>
+    </div>
+  ),
+  th: ({ children }) => <th className='px-3 py-2 font-medium'>{children}</th>,
+  td: ({ children }) => <td className='border-t border-surface-border/40 px-3 py-2 align-top'>{children}</td>,
   ul: ({ children }) => <ul className='my-1 list-disc space-y-1 pl-5'>{children}</ul>
 }
 
@@ -80,7 +92,7 @@ export const AiAssistantMarkdownText = ({
   muted?: boolean
   cursor?: ReactNode
 }) => (
-  <div className={cn('text-sm', muted ? 'text-foreground-muted' : 'text-foreground')}>
+  <div className={cn('min-w-0 wrap-anywhere text-sm leading-6', muted ? 'text-foreground-muted' : 'text-foreground')}>
     <Markdown
       skipHtml
       remarkPlugins={[remarkGfm]}
@@ -93,12 +105,5 @@ export const AiAssistantMarkdownText = ({
 )
 
 export const AiToolDetails = ({ children, className }: { children: ReactNode; className?: string }) => (
-  <dl
-    className={cn(
-      'grid max-w-full gap-1.5 rounded-panel border border-surface-border/45 bg-background/24 p-2.5 text-xs text-foreground-muted/90',
-      className
-    )}
-  >
-    {children}
-  </dl>
+  <dl className={cn('grid max-w-full gap-2 text-xs leading-5 text-foreground-muted', className)}>{children}</dl>
 )

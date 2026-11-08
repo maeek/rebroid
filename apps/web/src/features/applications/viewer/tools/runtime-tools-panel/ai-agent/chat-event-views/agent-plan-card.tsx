@@ -9,9 +9,9 @@ export const AgentPlanCard = ({ steps, updated }: { steps: AgentPlanStep[]; upda
   return (
     <section
       aria-label='Agent task plan'
-      className='overflow-hidden rounded-panel border border-surface-border/65 bg-surface-band/28 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]'
+      className='overflow-hidden rounded-panel bg-surface-editor'
     >
-      <div className='flex items-center justify-between gap-3 border-b border-surface-border/50 px-3 py-2.5'>
+      <div className='flex items-center justify-between gap-3 px-3 py-2.5'>
         <div className='flex min-w-0 items-center gap-2'>
           <span className='flex size-7 shrink-0 items-center justify-center rounded-panel bg-primary/10 text-primary'>
             <IconListCheck className='size-4' />

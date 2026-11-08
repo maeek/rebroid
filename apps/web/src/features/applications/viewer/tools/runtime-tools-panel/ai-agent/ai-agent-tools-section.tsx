@@ -1,11 +1,15 @@
 'use client'
 
-import { useMemo } from 'react'
-import { IconDownload, IconPlayerPlay, IconPlayerStop, IconSend, IconTrash } from '@tabler/icons-react'
-import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
+import { useMemo, useRef } from 'react'
+import { IconArrowUp, IconPlayerPlay, IconPlayerStop } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 import { AiPromptComposer } from '@/shared/ui/ai/ai-prompt-composer'
+import {
+  AiAgentConversationLayout,
+  AiAgentConversationToolbar,
+  AiAgentPromptSuggestions,
+  AiAgentSuggestionsMenu
+} from './ai-agent-conversation-layout'
 import { aiAgentPromptPresets } from './ai-agent-prompt-presets'
 import { AiAgentSettingsPopover } from './ai-agent-settings-popover'
 import { AiAgentTranscript } from './ai-agent-transcript'
@@ -16,27 +20,38 @@ import { useAiAgentWorkflowDraft, type DraftWorkflowFromRun } from './use-ai-age
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { AutomationRun } from '@/shared/contracts/automation'
 
-export const AiAgentToolsSection = ({
-  app,
-  canSaveWorkflow = false,
-  className,
-  contextualSuggestionsEnabled = true,
-  draftWorkflowFromRun,
-  generatePromptSuggestions,
-  hideHeader,
-  openWorkflowDraft,
-  onRunStarted
-}: {
+type AiAgentToolsSectionProps = {
   app: AppDefinition
   canSaveWorkflow?: boolean
   className?: string
   contextualSuggestionsEnabled?: boolean
   draftWorkflowFromRun?: DraftWorkflowFromRun
   generatePromptSuggestions?: GeneratePromptSuggestions
-  hideHeader?: boolean
   openWorkflowDraft?: () => void
   onRunStarted?: (run: AutomationRun) => void
-}) => {
+}
+
+export const AiAgentToolsSection = (props: AiAgentToolsSectionProps) => {
+  const session = useAiAgentChatSession({ app: props.app, onRunStarted: props.onRunStarted })
+  return (
+    <AiAgentConversation
+      {...props}
+      session={session}
+    />
+  )
+}
+
+export const AiAgentConversation = ({
+  app,
+  canSaveWorkflow = false,
+  className,
+  contextualSuggestionsEnabled = true,
+  draftWorkflowFromRun,
+  generatePromptSuggestions,
+  openWorkflowDraft,
+  session
+}: AiAgentToolsSectionProps & { session: ReturnType<typeof useAiAgentChatSession> }) => {
+  const composerRef = useRef<HTMLTextAreaElement>(null)
   const fallbackSuggestions = useMemo(() => aiAgentPromptPresets(app), [app])
   const {
     activeTurn,
@@ -51,10 +66,12 @@ export const AiAgentToolsSection = ({
     isCheckingHealth,
     isClearing,
     isLoadingHistory,
+    isAtBottom,
     plannerCatalog,
     prompt,
     queuedTurn,
     onTranscriptScroll,
+    scrollToLatest,
     recheckHealth,
     runQueuedTurn,
     selectedModel,
@@ -75,7 +92,7 @@ export const AiAgentToolsSection = ({
     transcriptRef,
     turns,
     visionCatalog
-  } = useAiAgentChatSession({ app, onRunStarted })
+  } = session
 
   const suggestions = useAiAgentPromptSuggestions({
     activeTurn,
@@ -109,6 +126,7 @@ export const AiAgentToolsSection = ({
 
   const applyPreset = (presetPrompt: string) => {
     setPrompt(current => (current.trim() ? `${current.trim()}\n\n${presetPrompt}` : presetPrompt))
+    composerRef.current?.focus({ preventScroll: true })
   }
 
   const approveEscalation = (program: string) => {
@@ -122,178 +140,91 @@ export const AiAgentToolsSection = ({
     )
   }
 
+  let composerStatus: string | null = null
+  if (selectionMessage && (!selectedProvider || !selectedModel)) composerStatus = selectionMessage
+  else if (!app.running) composerStatus = `Device stopped. Start ${app.name} to send.`
+
   return (
-    <section
-      className={cn('flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background', className)}
-      data-testid='ai-agent-tools-section'
-    >
-      {hideHeader ? null : (
-        <div className='flex min-h-12 items-center justify-between gap-3 border-b border-surface-border/55 px-4 py-2'>
-          <div className='flex min-w-0 items-center gap-2.5'>
-            <span className='flex size-8 shrink-0 items-center justify-center rounded-panel border border-primary/20 bg-primary/8 text-primary'>
-              <GradientSparklesIcon className='size-4' />
-            </span>
-            <div className='min-w-0'>
-              <h3 className='truncate text-sm font-medium'>Device agent</h3>
-              <p className='truncate text-xs text-foreground-muted'>Grounded actions · verified results</p>
-            </div>
-          </div>
-          <div className='flex items-center gap-1'>
-            {turns.length > 0 ? (
-              <Button
-                type='button'
-                size='icon-md'
-                variant='ghost'
-                className='size-8 text-foreground-muted'
-                aria-label='Export conversation'
-                title='Export conversation'
-                onClick={exportConversation}
-              >
-                <IconDownload className='size-4' />
-              </Button>
-            ) : null}
-            {turns.length > 0 ? (
-              <Button
-                type='button'
-                size='icon-md'
-                variant='ghost'
-                className='size-8 text-foreground-muted hover:text-danger'
-                aria-label={isClearing ? 'Clearing conversation' : 'Clear conversation'}
-                title='Clear conversation'
-                disabled={isClearing}
-                onClick={() => void clearConversation()}
-              >
-                <IconTrash className='size-4' />
-              </Button>
-            ) : null}
-          </div>
-        </div>
-      )}
-
-      <AiAgentTranscript
-        canSaveWorkflow={canSaveWorkflow && Boolean(selectedProvider && selectedModel && draftWorkflowFromRun)}
-        draftingRunId={draftingRunId}
-        isLoadingHistory={isLoadingHistory}
-        onApproveEscalation={approveEscalation}
-        onSaveWorkflow={completedTurn => {
-          void saveTurnAsWorkflow(completedTurn)
-        }}
-        onTranscriptScroll={onTranscriptScroll}
-        transcriptRef={transcriptRef}
-        turns={turns}
-      />
-
-      <div
-        className='grid shrink-0 gap-2 border-t border-surface-border/50 bg-transparent px-0 pt-3 pb-4 sm:px-4'
-        data-testid='ai-agent-composer-dock'
-      >
-        {!app.running ? (
-          <div
-            role='status'
-            className='flex items-start gap-2.5 rounded-panel border border-warning/30 bg-warning/8 px-3 py-2.5 text-xs text-foreground-muted'
-          >
-            <span className='mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-panel bg-warning/12 text-warning'>
-              <IconPlayerPlay className='size-3.5' />
-            </span>
-            <div className='grid gap-0.5'>
-              <span className='font-medium text-foreground'>Device actions are paused</span>
-              <span>
-                Review history, configure the model, or draft the next request. Start {app.name} when ready to send.
-              </span>
-            </div>
-          </div>
-        ) : null}
-        <div className='scrollbar-none flex gap-1.5 overflow-x-auto pb-0.5'>
-          {suggestions.map(preset => (
-            <Button
-              key={preset.id}
-              type='button'
-              size='sm'
-              variant='ghost'
-              className='max-w-[18rem] shrink-0 justify-start overflow-hidden text-ellipsis rounded-full border border-surface-border/45 bg-surface-band/18 px-3 font-normal text-foreground-muted shadow-none hover:border-surface-border hover:bg-surface-band/55 hover:text-foreground'
-              title={preset.label}
-              onClick={() => applyPreset(preset.prompt)}
-            >
-              {preset.label}
-            </Button>
-          ))}
-        </div>
-
+    <AiAgentConversationLayout
+      className={className}
+      toolbar={
+        <AiAgentConversationToolbar
+          hasTurns={turns.length > 0}
+          loading={isLoadingHistory}
+          isClearing={isClearing}
+          onExport={exportConversation}
+          onClear={() => void clearConversation()}
+        />
+      }
+      transcript={
+        <AiAgentTranscript
+          canSaveWorkflow={canSaveWorkflow && Boolean(selectedProvider && selectedModel && draftWorkflowFromRun)}
+          draftingRunId={draftingRunId}
+          isLoadingHistory={isLoadingHistory}
+          onApproveEscalation={approveEscalation}
+          onSaveWorkflow={completedTurn => void saveTurnAsWorkflow(completedTurn)}
+          onTranscriptScroll={onTranscriptScroll}
+          transcriptRef={transcriptRef}
+          isAtBottom={isAtBottom}
+          onScrollToLatest={scrollToLatest}
+          turns={turns}
+          suggestions={
+            <AiAgentPromptSuggestions
+              suggestions={suggestions}
+              onSelect={applyPreset}
+            />
+          }
+        />
+      }
+      composer={
         <AiPromptComposer
           value={prompt}
-          rows={3}
-          placeholder={
-            app.running ? 'Describe what you want to accomplish…' : 'Draft a request — start the device to send'
+          rows={2}
+          ariaLabel='Message the device agent'
+          textareaRef={composerRef}
+          placeholder={app.running ? 'Ask the agent to do something…' : 'Draft a request…'}
+          status={composerStatus}
+          leadingControl={
+            <AiAgentSuggestionsMenu
+              suggestions={suggestions}
+              onSelect={applyPreset}
+            />
           }
-          metadata={
-            <span>
-              {app.running ? (
-                <>
-                  <span className='hidden sm:inline'>Enter to send · Shift+Enter for a new line · </span>
-                  {adHocTimeoutMs / 60000} min limit
-                </>
-              ) : (
-                'Read-only while the device is stopped'
-              )}
-            </span>
-          }
-          errors={[selectionMessage, error]}
+          errors={[selectedProvider && selectedModel ? selectionMessage : null, error]}
           onChange={setPrompt}
-          onSubmit={() => void submit()}
+          onSubmit={() => {
+            if (app.running && canSubmit) void submit()
+          }}
           submitOnEnter
           modelControl={
-            <AiAgentSettingsPopover
-              adHocTimeoutMinutes={adHocTimeoutMinutes}
-              catalog={plannerCatalog}
-              health={health}
-              isCheckingHealth={isCheckingHealth}
-              onRecheckHealth={() => void recheckHealth()}
-              selectedModel={selectedModel}
-              selectedProvider={selectedProvider}
-              selectedVisionModel={selectedVisionModel}
-              selectedVisionProvider={selectedVisionProvider}
-              setModelId={setModelId}
-              setProviderId={setProviderId}
-              setVisionModelId={setVisionModelId}
-              setVisionProviderId={setVisionProviderId}
-              setTimeoutMinutesInput={setTimeoutMinutesInput}
-              timeoutMinutesInput={timeoutMinutesInput}
-              visionCatalog={visionCatalog}
-            />
+            <div className='flex min-w-0 flex-wrap items-center gap-1'>
+              <AiAgentSettingsPopover
+                adHocTimeoutMinutes={adHocTimeoutMinutes}
+                catalog={plannerCatalog}
+                health={health}
+                isCheckingHealth={isCheckingHealth}
+                onRecheckHealth={() => void recheckHealth()}
+                selectedModel={selectedModel}
+                selectedProvider={selectedProvider}
+                selectedVisionModel={selectedVisionModel}
+                selectedVisionProvider={selectedVisionProvider}
+                setModelId={setModelId}
+                setProviderId={setProviderId}
+                setVisionModelId={setVisionModelId}
+                setVisionProviderId={setVisionProviderId}
+                setTimeoutMinutesInput={setTimeoutMinutesInput}
+                timeoutMinutesInput={timeoutMinutesInput}
+                visionCatalog={visionCatalog}
+              />
+            </div>
           }
           actions={
             <>
-              {hideHeader && turns.length > 0 ? (
-                <Button
-                  type='button'
-                  size='icon-md'
-                  variant='ghost'
-                  className='size-8 text-foreground-muted'
-                  aria-label='Export conversation'
-                  title='Export conversation'
-                  onClick={exportConversation}
-                >
-                  <IconDownload className='size-4' />
-                </Button>
-              ) : null}
-              {hideHeader && turns.length > 0 ? (
-                <Button
-                  type='button'
-                  size='icon-md'
-                  variant='ghost'
-                  className='size-8 text-foreground-muted hover:text-danger'
-                  aria-label={isClearing ? 'Clearing conversation' : 'Clear conversation'}
-                  title='Clear conversation'
-                  disabled={isClearing}
-                  onClick={() => void clearConversation()}
-                >
-                  <IconTrash className='size-4' />
-                </Button>
-              ) : null}
               {queuedTurn && !activeTurn ? (
                 <Button
                   type='button'
                   variant='ghost'
+                  size='sm'
                   disabled={!app.running}
                   onClick={() => void runQueuedTurn()}
                 >
@@ -304,28 +235,29 @@ export const AiAgentToolsSection = ({
               {showCancelRun ? (
                 <Button
                   type='button'
-                  variant='ghost'
+                  variant='secondary'
+                  size='sm'
                   disabled={isCanceling || activeTurn?.status === 'canceling'}
                   onClick={() => void cancelRun()}
                 >
                   <IconPlayerStop className='size-4' />
-                  {isCanceling ? 'Canceling' : 'Cancel'}
+                  {isCanceling || activeTurn?.status === 'canceling' ? 'Canceling' : 'Stop'}
                 </Button>
               ) : null}
               <Button
                 type='button'
                 size='icon-md'
-                className='size-8 rounded-panel shadow-[0_8px_20px_-12px_hsl(var(--primary)/0.9)]'
+                className='rounded-full'
                 disabled={!app.running || !canSubmit}
                 aria-label={activeTurn ? 'Queue message' : 'Send message'}
                 onClick={() => void submit()}
               >
-                <IconSend className='size-4' />
+                <IconArrowUp className='size-4' />
               </Button>
             </>
           }
         />
-      </div>
-    </section>
+      }
+    />
   )
 }

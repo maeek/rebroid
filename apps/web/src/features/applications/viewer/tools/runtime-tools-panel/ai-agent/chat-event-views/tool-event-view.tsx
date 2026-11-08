@@ -43,10 +43,7 @@ export const ToolEventView = ({ item }: { item: ToolTimelineItem }) => {
 
   return (
     <div
-      className={cn(
-        'overflow-hidden rounded-panel border bg-surface-band/24 transition-[border-color,background-color] duration-150',
-        item.status === 'failed' ? 'border-danger/30 bg-danger/5' : 'border-surface-border/55'
-      )}
+      className={cn('overflow-hidden rounded-control bg-surface-editor', item.status === 'failed' ? 'bg-danger/5' : '')}
     >
       <details className='group'>
         <summary className='flex cursor-pointer list-none items-center gap-2.5 px-3 py-2.5 text-xs text-foreground-muted transition-colors hover:bg-foreground/3'>

@@ -1,10 +1,9 @@
-import type { ReactNode } from 'react'
+import { useId, type ComponentProps, type ReactNode } from 'react'
 import { IconChevronDown, IconRefresh } from '@tabler/icons-react'
-import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
+import { FormField } from '@/components/ui/form-field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { controlHoverClassName, controlSurfaceClassName, focusRingClassName } from '@/components/ui/surface'
+import { controlSurfaceClassName, focusRingClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 import {
   aiModelDisplayName,
@@ -12,8 +11,7 @@ import {
   aiProviderKindLabel,
   nextCatalogProviderAndModel
 } from '@/shared/model/ai-model-catalog'
-import { AiHealthIcon, AiHealthIndicator } from './ai-health-indicator'
-import { AiProviderKindBadge } from './ai-model-badges'
+import { AiHealthIcon, aiHealthLabel } from './ai-health-indicator'
 import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 
 type CatalogModel = AutomationAiModelCatalogProvider['models'][number]
@@ -46,32 +44,41 @@ const ProviderSelect = ({
   onChange: (providerId: string) => void
   placeholder: string
   value: string
-}) => (
-  <div className='grid gap-2'>
-    <Label>{label}</Label>
-    <Select
-      value={value}
-      disabled={disabled}
-      onValueChange={onChange}
+}) => {
+  const id = useId()
+  return (
+    <FormField
+      label={label}
+      layout='vertical'
+      controlId={id}
     >
-      <SelectTrigger className='w-full'>
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {catalog.map(provider => (
-          <SelectItem
-            key={provider.id}
-            value={provider.id}
-            label={provider.label}
-          >
-            <span>{provider.label}</span>
-            <span className='ml-2 text-xs text-foreground-muted'>{aiProviderKindLabel(provider.kind)}</span>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  </div>
-)
+      <Select
+        value={value}
+        disabled={disabled}
+        onValueChange={onChange}
+      >
+        <SelectTrigger
+          id={id}
+          className='w-full'
+        >
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {catalog.map(provider => (
+            <SelectItem
+              key={provider.id}
+              value={provider.id}
+              label={provider.label}
+            >
+              <span>{provider.label}</span>
+              <span className='ml-2 text-xs text-foreground-muted'>{aiProviderKindLabel(provider.kind)}</span>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </FormField>
+  )
+}
 
 const ModelSelect = ({
   disabled,
@@ -87,28 +94,37 @@ const ModelSelect = ({
   onChange: (modelId: string) => void
   placeholder: string
   value: string
-}) => (
-  <div className='grid gap-2'>
-    <Label>{label}</Label>
-    <Select
-      value={value}
-      disabled={disabled}
-      onValueChange={onChange}
+}) => {
+  const id = useId()
+  return (
+    <FormField
+      label={label}
+      layout='vertical'
+      controlId={id}
     >
-      <SelectTrigger className='w-full'>
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {models.map(model => (
-          <ModelSelectItem
-            key={model.id}
-            model={model}
-          />
-        ))}
-      </SelectContent>
-    </Select>
-  </div>
-)
+      <Select
+        value={value}
+        disabled={disabled}
+        onValueChange={onChange}
+      >
+        <SelectTrigger
+          id={id}
+          className='w-full'
+        >
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {models.map(model => (
+            <ModelSelectItem
+              key={model.id}
+              model={model}
+            />
+          ))}
+        </SelectContent>
+      </Select>
+    </FormField>
+  )
+}
 
 const PlannerModelFields = ({
   catalog,
@@ -151,7 +167,7 @@ const PlannerModelFields = ({
   </>
 )
 
-const VisionModelFields = ({
+export const VisionModelFields = ({
   onVisionModelChange,
   onVisionProviderChange,
   selectedVisionModel,
@@ -207,12 +223,11 @@ export const AiModelPickerReadonlyChip = ({
       controlSurfaceClassName
     )}
   >
-    <GradientSparklesIcon className='size-3.5 shrink-0' />
     <span className='min-w-0 truncate text-xs font-medium'>{aiModelDisplayName(selectedModel)}</span>
     {selectedProvider ? (
       <span className='shrink-0 text-xs text-foreground-muted'>{aiProviderKindLabel(selectedProvider.kind)}</span>
     ) : null}
-    {health !== undefined || isCheckingHealth ? (
+    {(health && health.status !== 'ok') || isCheckingHealth ? (
       <AiHealthIcon
         health={health ?? null}
         isChecking={Boolean(isCheckingHealth)}
@@ -225,24 +240,27 @@ export const AiModelPickerReadonlyChip = ({
 export const AiModelPickerTrigger = ({
   health,
   isCheckingHealth,
-  selectedModel
+  selectedModel,
+  className,
+  ...props
 }: {
   health?: AutomationAiProviderHealth | null
   isCheckingHealth?: boolean
   selectedModel?: CatalogModel
-}) => (
+} & ComponentProps<'button'>) => (
   <button
     type='button'
+    aria-label={`Agent settings: ${aiModelDisplayName(selectedModel)}`}
+    title={aiModelDisplayName(selectedModel)}
+    {...props}
     className={cn(
-      'inline-flex h-8 min-w-0 max-w-full cursor-pointer items-center justify-start gap-2 rounded-control px-2.5 text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50',
-      controlSurfaceClassName,
-      controlHoverClassName,
-      focusRingClassName
+      'inline-flex h-8 min-w-0 max-w-full cursor-pointer items-center justify-start gap-1.5 rounded-full px-2.5 text-sm text-foreground-muted hover:bg-control-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-50',
+      focusRingClassName,
+      className
     )}
   >
-    <GradientSparklesIcon className='size-3.5 shrink-0' />
     <span className='min-w-0 truncate text-xs font-medium'>{aiModelDisplayName(selectedModel)}</span>
-    {health !== undefined || isCheckingHealth ? (
+    {(health && health.status !== 'ok') || isCheckingHealth ? (
       <AiHealthIcon
         health={health ?? null}
         isChecking={Boolean(isCheckingHealth)}
@@ -251,18 +269,6 @@ export const AiModelPickerTrigger = ({
     ) : null}
     <IconChevronDown className='size-3.5 shrink-0 opacity-60' />
   </button>
-)
-
-export const AiModelPickerHeader = ({ selectedProvider }: { selectedProvider?: AutomationAiModelCatalogProvider }) => (
-  <div className='flex items-start justify-between gap-3'>
-    <div className='grid min-w-0 gap-1'>
-      <div className='text-sm font-medium'>AI model</div>
-      <div className='min-w-0 truncate text-xs text-foreground-muted'>
-        {selectedProvider ? `${selectedProvider.label} · ${aiProviderKindLabel(selectedProvider.kind)}` : 'No provider'}
-      </div>
-    </div>
-    {selectedProvider ? <AiProviderKindBadge kind={selectedProvider.kind} /> : null}
-  </div>
 )
 
 export const AiModelPickerFields = ({
@@ -323,7 +329,7 @@ export const AiModelPickerFields = ({
 export const AiModelPickerHealthFooter = ({
   health,
   isCheckingHealth,
-  label = 'Planner health',
+  label = 'Connection',
   onRecheckHealth,
   selectedModel
 }: {
@@ -336,23 +342,33 @@ export const AiModelPickerHealthFooter = ({
   if (!onRecheckHealth) return null
 
   return (
-    <AiHealthIndicator
-      health={health ?? null}
-      isChecking={Boolean(isCheckingHealth)}
-      label={label}
-      action={
-        <Button
-          type='button'
-          variant='ghost'
-          size='icon-md'
-          className='size-8'
-          disabled={!selectedModel || isCheckingHealth}
-          aria-label='Re-check planner health'
-          onClick={onRecheckHealth}
-        >
-          <IconRefresh className={isCheckingHealth ? 'size-4 animate-spin' : 'size-4'} />
-        </Button>
-      }
-    />
+    <div
+      className='flex min-w-0 items-center gap-2 px-2 text-xs text-foreground-muted'
+      role='status'
+    >
+      <AiHealthIcon
+        health={health ?? null}
+        isChecking={Boolean(isCheckingHealth)}
+        className='size-3.5 shrink-0'
+      />
+      <span
+        className='min-w-0 flex-1 break-words'
+        title={health?.message}
+      >
+        {health?.status === 'error' && !isCheckingHealth
+          ? health.message
+          : `${label}: ${aiHealthLabel(health ?? null, Boolean(isCheckingHealth))}`}
+      </span>
+      <Button
+        type='button'
+        variant='ghost'
+        size='icon-sm'
+        disabled={!selectedModel || isCheckingHealth}
+        aria-label='Re-check planner health'
+        onClick={onRecheckHealth}
+      >
+        <IconRefresh className='size-3.5' />
+      </Button>
+    </div>
   )
 }

@@ -172,7 +172,7 @@ describe('useAiAgentChatSession', () => {
     })
 
     await waitFor(() => expect(result.current.turns).toHaveLength(1))
-    expect(transcript.scrollTo).toHaveBeenCalledWith({ top: 1000, behavior: 'smooth' })
+    expect(transcript.scrollTo).toHaveBeenCalledWith({ top: 1000, behavior: 'instant' })
   })
 
   it('starts an explicitly approved follow-up with one-run shell escalation', async () => {

@@ -1,11 +1,13 @@
-import type { ReactNode } from 'react'
+'use client'
+
+import { useState, type ReactNode } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { AiModelMenu } from './ai-model-menu'
 import {
-  AiModelPickerFields,
-  AiModelPickerHeader,
   AiModelPickerHealthFooter,
   AiModelPickerReadonlyChip,
-  AiModelPickerTrigger
+  AiModelPickerTrigger,
+  VisionModelFields
 } from './ai-model-picker-parts'
 import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 
@@ -46,9 +48,15 @@ export const AiModelPicker = ({
   onVisionModelChange?: (modelId: string) => void
   onRecheckHealth?: () => void
 }) => {
+  const [open, setOpen] = useState(defaultOpen ?? false)
   const hasVisionPicker = Boolean(onVisionProviderChange && onVisionModelChange)
   const showReadOnlyPlannerChip =
-    !trigger && !hasVisionPicker && catalog.length === 1 && (selectedProvider?.models.length ?? 0) <= 1
+    !trigger &&
+    !hasVisionPicker &&
+    !advanced &&
+    !onRecheckHealth &&
+    catalog.length === 1 &&
+    (selectedProvider?.models.length ?? 0) <= 1
 
   if (showReadOnlyPlannerChip) {
     return (
@@ -62,7 +70,10 @@ export const AiModelPicker = ({
   }
 
   return (
-    <Popover defaultOpen={defaultOpen}>
+    <Popover
+      open={open}
+      onOpenChange={setOpen}
+    >
       {trigger ? (
         <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       ) : (
@@ -75,37 +86,47 @@ export const AiModelPicker = ({
         </PopoverTrigger>
       )}
       <PopoverContent
+        side='top'
         align='end'
-        className='w-[min(calc(100vw-2rem),25rem)]'
+        aria-label='Choose AI model'
+        className='max-h-[var(--available-height)] w-[min(calc(100vw-2rem),22rem)] overflow-y-auto overscroll-contain p-2'
       >
-        <div className='grid gap-4'>
-          <AiModelPickerHeader selectedProvider={selectedProvider} />
-          <AiModelPickerFields
+        <div className='grid gap-3'>
+          <AiModelMenu
             catalog={catalog}
-            selectedProvider={selectedProvider}
-            selectedModel={selectedModel}
-            selectedVisionProvider={selectedVisionProvider}
-            selectedVisionModel={selectedVisionModel}
-            visionCatalog={visionCatalog}
-            advanced={advanced}
-            onProviderChange={onProviderChange}
-            onModelChange={onModelChange}
-            onVisionProviderChange={onVisionProviderChange}
-            onVisionModelChange={onVisionModelChange}
+            providerId={selectedProvider?.id}
+            modelId={selectedModel?.id}
+            onSelect={(providerId, modelId) => {
+              onProviderChange(providerId)
+              onModelChange(modelId)
+              setOpen(false)
+            }}
           />
-
+          {advanced || (hasVisionPicker && visionCatalog.length > 0) ? (
+            <details className='group px-2'>
+              <summary className='cursor-pointer rounded-control py-2 text-xs text-foreground-muted outline-none focus-visible:ring-2 focus-visible:ring-ring'>
+                More options
+              </summary>
+              <div className='grid gap-4 pb-2 pt-3'>
+                {visionCatalog.length > 0 && onVisionProviderChange && onVisionModelChange ? (
+                  <VisionModelFields
+                    visionCatalog={visionCatalog}
+                    selectedVisionProvider={selectedVisionProvider}
+                    selectedVisionModel={selectedVisionModel}
+                    onVisionProviderChange={onVisionProviderChange}
+                    onVisionModelChange={onVisionModelChange}
+                  />
+                ) : null}
+                {advanced}
+              </div>
+            </details>
+          ) : null}
           <AiModelPickerHealthFooter
             health={health}
             isCheckingHealth={isCheckingHealth}
             selectedModel={selectedModel}
             onRecheckHealth={onRecheckHealth}
           />
-
-          {catalog.length === 0 ? (
-            <div className='rounded-control border border-surface-border/70 bg-surface-band/35 px-3 py-2 text-xs text-foreground-muted'>
-              No enabled AI provider or model is configured.
-            </div>
-          ) : null}
         </div>
       </PopoverContent>
     </Popover>

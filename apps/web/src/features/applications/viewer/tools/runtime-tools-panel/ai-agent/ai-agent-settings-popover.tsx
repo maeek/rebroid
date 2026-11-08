@@ -1,5 +1,5 @@
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FormField } from '@/components/ui/form-field'
+import { NumericUnitInput } from '@/components/ui/numeric-unit-input'
 import { AiModelPicker } from '@/shared/ui/ai/ai-model-picker'
 import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 
@@ -53,10 +53,16 @@ export const AiAgentSettingsPopover = ({
     onVisionModelChange={setVisionModelId}
     onRecheckHealth={onRecheckHealth}
     advanced={
-      <>
-        <Label>Timeout</Label>
-        <Input
+      <FormField
+        label='Run time limit'
+        layout='vertical'
+        controlId='ai-agent-timeout'
+        description='Maximum time for each request.'
+      >
+        <NumericUnitInput
           type='number'
+          id='ai-agent-timeout'
+          unit='min'
           min={1}
           max={120}
           step={1}
@@ -67,7 +73,7 @@ export const AiAgentSettingsPopover = ({
             if (/^\d{0,3}$/.test(value)) setTimeoutMinutesInput(value)
           }}
         />
-      </>
+      </FormField>
     }
   />
 )
