@@ -1,6 +1,6 @@
 'use client'
 
-import { Label, PolarGrid, PolarRadiusAxis, RadialBar, RadialBarChart } from 'recharts'
+import { Label, PolarRadiusAxis, RadialBar, RadialBarChart } from 'recharts'
 import { ChartContainer } from '@/components/ui/chart'
 import { formatDisplayNumber } from '@/lib/format'
 
@@ -19,24 +19,20 @@ export function MemoryChart({ totalMemory, freeMemory }: { totalMemory: number; 
           color: memory > 75 ? 'var(--color-chart-3)' : 'var(--color-chart-2)'
         }
       }}
-      className='mx-auto aspect-square max-h-85 w-full flex flex-col'
+      className='mx-auto aspect-square w-full max-w-85'
     >
       <RadialBarChart
         data={chartData}
         startAngle={90}
         endAngle={90 - memory * 3.6}
-        innerRadius={120}
-        outerRadius={170}
+        cx='50%'
+        cy='50%'
+        innerRadius='72%'
+        outerRadius='96%'
       >
-        <PolarGrid
-          gridType='circle'
-          radialLines={false}
-          stroke='none'
-          className='first:fill-surface-band last:fill-background'
-          polarRadius={[126, 114]}
-        />
         <RadialBar
           dataKey='memory'
+          isAnimationActive={false}
           background
           cornerRadius={10}
         />
@@ -57,14 +53,14 @@ export function MemoryChart({ totalMemory, freeMemory }: { totalMemory: number; 
                   >
                     <tspan
                       x={viewBox.cx}
-                      y={viewBox.cy}
+                      y={(viewBox.cy ?? 0) - 8}
                       className='fill-foreground text-5xl font-bold'
                     >
                       {formatDisplayNumber(chartData[0].memory)}
                     </tspan>
                     <tspan
                       x={viewBox.cx}
-                      y={(viewBox.cy || 0) + 32}
+                      y={(viewBox.cy ?? 0) + 26}
                       className='fill-foreground-muted'
                     >
                       % Memory used

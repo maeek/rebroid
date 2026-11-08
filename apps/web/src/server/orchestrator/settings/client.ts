@@ -21,7 +21,7 @@ export const orchestratorSettingsClient = {
     return emptyRequest<OrchestratorSettingsResponse>('/settings')
   },
 
-  updateSettings(input: RuntimeUiSettings) {
+  updateSettings(input: Partial<RuntimeUiSettings>) {
     return jsonRequest<OrchestratorSettingsResponse>('/settings', 'PATCH', input)
   },
 

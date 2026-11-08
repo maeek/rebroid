@@ -13,8 +13,7 @@ import type {
   AiUiSettings,
   GeneralUiSettings,
   OrchestratorUiSettings,
-  RuntimeAdminUiSettings,
-  RuntimeUiSettings
+  RuntimeUiSettingsPatch
 } from '@/shared/model/settings/orchestrator-ui-settings'
 
 const adminLabel = (admin: Awaited<ReturnType<typeof requireAdmin>>) => admin.name || admin.username || admin.id
@@ -74,18 +73,13 @@ export const saveAiUiSettings = async (settings: AiUiSettings) => {
   return combinedSettings()
 }
 
-export const saveRuntimeUiSettings = async (settings: RuntimeUiSettings | RuntimeAdminUiSettings) => {
+export const saveRuntimeUiSettings = async (settings: RuntimeUiSettingsPatch) => {
   const admin = await requireAdmin()
-  if ('removeDataOnDelete' in settings) {
-    await saveWebSettings({ removeDataOnDelete: settings.removeDataOnDelete })
+  const { removeDataOnDelete, ...runtimeSettings } = settings
+  if (Object.keys(runtimeSettings).length > 0) {
+    await orchestratorSettingsClient.updateSettings(runtimeSettings)
   }
-  await orchestratorSettingsClient.updateSettings({
-    defaultContainerImage: settings.defaultContainerImage,
-    dockerImageRegistry: settings.dockerImageRegistry,
-    defaultInactivityTimeoutSeconds: settings.defaultInactivityTimeoutSeconds,
-    maxApkUploadSizeMb: settings.maxApkUploadSizeMb,
-    services: settings.services
-  })
+  if (removeDataOnDelete !== undefined) await saveWebSettings({ removeDataOnDelete })
   recordUpdate(admin, 'runtime')
   return combinedSettings()
 }

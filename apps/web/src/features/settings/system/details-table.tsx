@@ -1,10 +1,13 @@
 'use client'
 
+import { DetailFields } from '@/shared/ui/detail-fields'
 import type { SystemStats } from '@/shared/contracts/system-stats'
 
 export function DetailsTable({
-  systemUtilization
+  systemUtilization,
+  loading = false
 }: {
+  loading?: boolean
   systemUtilization?: Pick<
     SystemStats,
     | 'platform'
@@ -18,37 +21,22 @@ export function DetailsTable({
     | 'uptime'
   >
 }) {
-  if (!systemUtilization) return null
+  if (!systemUtilization && !loading) return null
 
   return (
-    <ul className='divide-y divide-border'>
-      <li className='p-2 flex justify-between gap-2 text-right text-sm'>
-        <span className='font-medium'>Platform:</span> {systemUtilization.platform}
-      </li>
-      <li className='p-2 flex justify-between gap-2 text-right text-sm'>
-        <span className='font-medium'>Architecture:</span> {systemUtilization.architecture}
-      </li>
-      <li className='p-2 flex justify-between gap-2 text-right text-sm'>
-        <span className='font-medium'>CPU:</span> {systemUtilization.cpu}
-      </li>
-      <li className='p-2 flex justify-between gap-2 text-right text-sm'>
-        <span className='font-medium'>CPU Cores:</span> {systemUtilization.cpuCores}
-      </li>
-      <li className='p-2 flex justify-between gap-2 text-right text-sm'>
-        <span className='font-medium'>CPU Usage:</span> {systemUtilization.cpuUsage}
-      </li>
-      <li className='p-2 flex justify-between gap-2 text-right text-sm'>
-        <span className='font-medium'>Total Memory:</span> {systemUtilization.totalMemory}
-      </li>
-      <li className='p-2 flex justify-between gap-2 text-right text-sm'>
-        <span className='font-medium'>Free Memory:</span> {systemUtilization.freeMemory}
-      </li>
-      <li className='p-2 flex justify-between gap-2 text-right text-sm'>
-        <span className='font-medium'>Memory Usage:</span> {systemUtilization.memoryUsage}
-      </li>
-      <li className='p-2 flex justify-between gap-2 text-right text-sm'>
-        <span className='font-medium'>Uptime:</span> {systemUtilization.uptime}
-      </li>
-    </ul>
+    <DetailFields
+      loading={loading}
+      fields={[
+        { label: 'Platform', value: systemUtilization?.platform },
+        { label: 'Architecture', value: systemUtilization?.architecture },
+        { label: 'CPU', value: systemUtilization?.cpu, fullWidth: true },
+        { label: 'CPU cores', value: systemUtilization?.cpuCores },
+        { label: 'CPU usage', value: systemUtilization?.cpuUsage },
+        { label: 'Total memory', value: systemUtilization?.totalMemory },
+        { label: 'Free memory', value: systemUtilization?.freeMemory },
+        { label: 'Memory usage', value: systemUtilization?.memoryUsage },
+        { label: 'Uptime', value: systemUtilization?.uptime }
+      ]}
+    />
   )
 }

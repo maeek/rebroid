@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { PlatformRuntimeFieldsSection } from '@/features/settings/orchestrator/platform-runtime-fields-section'
-import { PlatformRuntimeHeader } from '@/features/settings/orchestrator/platform-runtime-header'
 import { PlatformRuntimeMaintenanceSection } from '@/features/settings/orchestrator/platform-runtime-maintenance-section'
 import { toast } from '@/hooks/use-toast'
 import { getOrchestratorHealthAction } from '@/server/orchestrator/diagnostics/actions'
@@ -10,33 +10,18 @@ import {
   resetOrchestratorUiSettings,
   saveOrchestratorUiSettings
 } from '@/shared/model/settings/use-orchestrator-ui-settings'
-import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { StateView } from '@/shared/ui/state-view'
+import { PlatformRuntimePageLayout } from './platform-runtime-page-layout'
+import { PlatformRuntimePageSkeleton } from './platform-runtime-page-skeleton'
 import type { PlatformImage } from '@/shared/contracts/platform'
-import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
+import type { OrchestratorUiSettings, RuntimeAdminUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
-type SaveOrchestratorUiSettingsInput = Pick<
-  OrchestratorUiSettings,
-  | 'defaultContainerImage'
-  | 'dockerImageRegistry'
-  | 'defaultInactivityTimeoutSeconds'
-  | 'maxApkUploadSizeMb'
-  | 'removeDataOnDelete'
-  | 'services'
->
-
-const persistOrchestratorUiSettings = saveOrchestratorUiSettings
-const restoreOrchestratorUiSettings = resetOrchestratorUiSettings
-
-type HealthState = 'checking' | 'online' | 'offline'
-
-const toRuntimeUiSettings = (settings: OrchestratorUiSettings): SaveOrchestratorUiSettingsInput => ({
+const runtimeSettingsInput = (settings: OrchestratorUiSettings): Omit<RuntimeAdminUiSettings, 'services'> => ({
   defaultContainerImage: settings.defaultContainerImage,
   dockerImageRegistry: settings.dockerImageRegistry,
   defaultInactivityTimeoutSeconds: settings.defaultInactivityTimeoutSeconds,
   maxApkUploadSizeMb: settings.maxApkUploadSizeMb,
-  removeDataOnDelete: settings.removeDataOnDelete,
-  services: settings.services
+  removeDataOnDelete: settings.removeDataOnDelete
 })
 
 export const PlatformRuntimeForm = ({
@@ -46,49 +31,48 @@ export const PlatformRuntimeForm = ({
   images: PlatformImage[]
   initialSettings: OrchestratorUiSettings
 }) => {
-  const [settings, setSettings] = useState(initialSettings)
-  const [isSaving, setIsSaving] = useState(false)
-  const [healthState, setHealthState] = useState<HealthState>('checking')
-  const [healthError, setHealthError] = useState<string | null>(null)
+  const [form, setForm] = useState({ settings: initialSettings, savedSettings: initialSettings })
+  const { settings, savedSettings } = form
+  const [operation, setOperation] = useState<'save' | 'restore' | null>(null)
+  const [restoreOpen, setRestoreOpen] = useState(false)
+  const [healthState, setHealthState] = useState<'checking' | 'online' | 'offline'>('checking')
+  const initialSnapshot = useRef(JSON.stringify(initialSettings))
+  const hasChanges =
+    JSON.stringify(runtimeSettingsInput(settings)) !== JSON.stringify(runtimeSettingsInput(savedSettings))
+  const isBusy = operation !== null
 
   useEffect(() => {
-    setSettings(initialSettings)
+    const snapshot = JSON.stringify(initialSettings)
+    if (initialSnapshot.current === snapshot) return
+    initialSnapshot.current = snapshot
+    setForm(current => {
+      const dirty =
+        JSON.stringify(runtimeSettingsInput(current.settings)) !==
+        JSON.stringify(runtimeSettingsInput(current.savedSettings))
+      return { settings: dirty ? current.settings : initialSettings, savedSettings: initialSettings }
+    })
   }, [initialSettings])
 
   const checkHealth = async () => {
     setHealthState('checking')
     try {
       const health = await getOrchestratorHealthAction()
-      if (!health.services.orchestrator.ok) {
-        throw new Error(health.services.orchestrator.message || 'Could not reach the orchestrator.')
-      }
-
-      if (!health.services.docker.ok) {
-        throw new Error(health.services.docker.message || 'The orchestrator API responded, but Docker is unavailable.')
-      }
-
-      setHealthError(null)
-      setHealthState('online')
-    } catch (error) {
-      setHealthError(error instanceof Error ? error.message : 'Could not reach the orchestrator.')
+      setHealthState(health.services.orchestrator.ok && health.services.docker.ok ? 'online' : 'offline')
+    } catch {
       setHealthState('offline')
     }
   }
-
   useEffect(() => {
     void checkHealth()
   }, [])
 
-  const updateSettings = (patch: Partial<OrchestratorUiSettings>) => {
-    setSettings(current => ({ ...current, ...patch }))
-  }
-
   const saveSettings = async () => {
-    setIsSaving(true)
+    if (isBusy || !hasChanges) return
+    setOperation('save')
     try {
-      const runtimeSettings: SaveOrchestratorUiSettingsInput = toRuntimeUiSettings(settings)
-      const saved: OrchestratorUiSettings = await persistOrchestratorUiSettings(runtimeSettings)
-      setSettings(current => ({ ...saved, orchestratorApiUrl: current.orchestratorApiUrl }))
+      const saved = await saveOrchestratorUiSettings(runtimeSettingsInput(settings))
+      const next = { ...saved, orchestratorApiUrl: settings.orchestratorApiUrl }
+      setForm({ settings: next, savedSettings: next })
       toast({ title: 'Settings saved', variant: 'success' })
     } catch (error) {
       toast({
@@ -97,74 +81,82 @@ export const PlatformRuntimeForm = ({
         variant: 'danger'
       })
     } finally {
-      setIsSaving(false)
+      setOperation(null)
     }
   }
 
-  const resetSettings = async () => {
-    setIsSaving(true)
+  const restoreSettings = async () => {
+    if (isBusy) return
+    setOperation('restore')
     try {
-      const saved: OrchestratorUiSettings = await restoreOrchestratorUiSettings()
-      setSettings(current => ({ ...saved, orchestratorApiUrl: current.orchestratorApiUrl }))
-      toast({ title: 'Settings reset', variant: 'success' })
+      const saved = await resetOrchestratorUiSettings()
+      const next = { ...saved, orchestratorApiUrl: settings.orchestratorApiUrl }
+      setForm({ settings: next, savedSettings: next })
+      setRestoreOpen(false)
+      toast({ title: 'Runtime defaults restored', variant: 'success' })
     } catch (error) {
       toast({
-        title: 'Could not reset settings',
+        title: 'Could not restore defaults',
         description: error instanceof Error ? error.message : 'Unknown error',
         variant: 'danger'
       })
     } finally {
-      setIsSaving(false)
+      setOperation(null)
     }
   }
 
-  if (healthState !== 'online') {
+  if (healthState === 'checking') return <PlatformRuntimePageSkeleton />
+  if (healthState === 'offline')
     return (
-      <StandardPage className='gap-2'>
-        <PlatformRuntimeHeader
-          isSaving={isSaving}
-          onReset={() => void resetSettings()}
-          onSave={() => void saveSettings()}
-          showActions={false}
+      <PlatformRuntimePageLayout showActions={false}>
+        <StateView
+          kind='unavailable'
+          title='Orchestrator unavailable'
+          description='Docker settings and platform management are offline until the orchestrator responds.'
+          detail='Check the orchestrator service and Docker, then try again.'
+          actions={[{ label: 'Try again', onClick: () => void checkHealth() }]}
         />
-        <PageContent>
-          {healthState === 'checking' ? (
-            <StateView
-              kind='loading'
-              title='Checking orchestrator'
-              description='Waiting for the API health check before loading Docker settings.'
-            />
-          ) : (
-            <StateView
-              kind='unavailable'
-              title='Orchestrator unavailable'
-              description='Docker settings and platform management are offline until the orchestrator responds.'
-              detail={healthError ? 'Check the orchestrator service and Docker, then try again.' : undefined}
-              actions={[{ label: 'Try again', onClick: () => void checkHealth() }]}
-            />
-          )}
-        </PageContent>
-      </StandardPage>
+      </PlatformRuntimePageLayout>
     )
-  }
 
   return (
-    <StandardPage className='gap-2'>
-      <PlatformRuntimeHeader
-        isSaving={isSaving}
-        onReset={() => void resetSettings()}
-        onSave={() => void saveSettings()}
+    <PlatformRuntimePageLayout
+      isSaving={operation === 'save'}
+      disabled={isBusy}
+      hasChanges={hasChanges}
+      onDiscard={() => setForm(current => ({ ...current, settings: current.savedSettings }))}
+    >
+      <form
+        id='runtime-defaults-form'
+        aria-label='Runtime defaults'
+        onSubmit={event => {
+          event.preventDefault()
+          void saveSettings()
+        }}
+      >
+        <PlatformRuntimeFieldsSection
+          images={images}
+          settings={settings}
+          disabled={isBusy}
+          onSettingsChange={patch => setForm(current => ({ ...current, settings: { ...current.settings, ...patch } }))}
+        />
+      </form>
+      <PlatformRuntimeMaintenanceSection
+        disabled={isBusy}
+        onRestore={() => setRestoreOpen(true)}
       />
-      <PageContent>
-        <div className='grid w-full items-start gap-6 xl:grid-cols-2'>
-          <PlatformRuntimeFieldsSection
-            images={images}
-            settings={settings}
-            onSettingsChange={updateSettings}
-          />
-          <PlatformRuntimeMaintenanceSection />
-        </div>
-      </PageContent>
-    </StandardPage>
+      <ConfirmMutationDialog
+        open={restoreOpen}
+        onOpenChange={setRestoreOpen}
+        title='Restore runtime defaults?'
+        description='Reset the default image, registry, inactivity timeout, APK upload limit, and optional service connection settings.'
+        consequence='This replaces unsaved edits and saves immediately. The app data deletion policy and existing app definitions are unchanged.'
+        confirmLabel='Restore defaults'
+        tone='warning'
+        pending={operation === 'restore'}
+        pendingLabel='Restoring…'
+        onConfirm={() => void restoreSettings()}
+      />
+    </PlatformRuntimePageLayout>
   )
 }

@@ -63,6 +63,8 @@ export type RuntimeUiSettings = Pick<
 
 export type RuntimeAdminUiSettings = RuntimeUiSettings & Pick<OrchestratorUiSettings, 'removeDataOnDelete'>
 
+export type RuntimeUiSettingsPatch = Partial<RuntimeAdminUiSettings>
+
 export type AiUiSettings = Pick<OrchestratorUiSettings, 'aiContextualSuggestionsEnabled'>
 
 export const defaultOrchestratorUiSettings: OrchestratorUiSettings = {

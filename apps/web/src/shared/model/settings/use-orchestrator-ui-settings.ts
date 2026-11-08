@@ -7,8 +7,7 @@ import type {
   AiUiSettings,
   GeneralUiSettings,
   OrchestratorUiSettings,
-  RuntimeAdminUiSettings,
-  RuntimeUiSettings
+  RuntimeUiSettingsPatch
 } from '@/shared/model/settings/orchestrator-ui-settings'
 
 export type {
@@ -54,9 +53,7 @@ export const saveAiUiSettings = async (settings: AiUiSettings): Promise<Orchestr
   return persistSettings({ operation: 'save-ai', settings })
 }
 
-export const saveOrchestratorUiSettings = async (
-  settings: RuntimeUiSettings | RuntimeAdminUiSettings
-): Promise<OrchestratorUiSettings> => {
+export const saveOrchestratorUiSettings = async (settings: RuntimeUiSettingsPatch): Promise<OrchestratorUiSettings> => {
   return persistSettings({ operation: 'save-runtime', settings })
 }
 

@@ -1,248 +1,124 @@
 'use client'
 
 import { useState } from 'react'
-import {
-  IconBox,
-  IconBoxMultiple,
-  IconDatabase,
-  IconPackage,
-  IconRecycle,
-  IconTopologyStar3
-} from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
+import { Notice, type NoticeTone } from '@/components/ui/notice'
 import { Section } from '@/components/ui/section'
-import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
-import {
-  pruneAllDockerResourcesAction,
-  pruneContainersAction,
-  pruneImagesAction,
-  pruneNetworksAction,
-  pruneVolumesAction
-} from '@/server/orchestrator/docker-maintenance/actions'
-import { cleanupUploadedApksAction } from '@/server/orchestrator/settings/actions'
-import { isActionResult, unwrapActionResult } from '@/shared/actions/action-result'
-import type { CleanupUploadedApksResponse } from '@/shared/contracts/application'
-import type { DockerPruneResponse } from '@/shared/contracts/docker-maintenance'
-
-const formatBytes = (bytes?: number) => {
-  if (!bytes) {
-    return null
-  }
-
-  const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
-  return `${(bytes / 1024 ** index).toFixed(2)} ${units[index]}`
-}
-
-const summarizePruneResult = (result: DockerPruneResponse, label: string) => {
-  const deletedCount =
-    result.ContainersDeleted?.length ??
-    result.ImagesDeleted?.length ??
-    result.NetworksDeleted?.length ??
-    result.VolumesDeleted?.length ??
-    0
-  const reclaimed = formatBytes(result.SpaceReclaimed)
-
-  return reclaimed
-    ? `${label} completed. Removed ${deletedCount} items and reclaimed ${reclaimed}.`
-    : `${label} completed. Removed ${deletedCount} items.`
-}
-
-const MaintenanceActionCard = ({
-  title,
-  description,
-  icon,
-  actionLabel,
-  isBusy,
-  onClick
-}: {
-  title: string
-  description: string
-  icon: React.ReactNode
-  actionLabel: string
-  isBusy: boolean
-  onClick: () => void
-}) => {
-  return (
-    <div className='flex w-full items-center justify-between gap-4 rounded-panel border border-surface-border/70 bg-surface-band/55 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] max-sm:flex-col max-sm:items-stretch'>
-      <div className='flex min-w-0 items-start gap-3'>
-        <div className='rounded-control bg-danger/10 p-2 text-danger'>{icon}</div>
-        <div className='flex flex-col gap-1'>
-          <h3 className='font-medium text-foreground'>{title}</h3>
-          <p className='text-sm leading-5 text-foreground-muted'>{description}</p>
-        </div>
-      </div>
-      <Button
-        variant='danger'
-        className='shrink-0 max-sm:w-full'
-        disabled={isBusy}
-        onClick={onClick}
-      >
-        {actionLabel}
-      </Button>
-    </div>
-  )
-}
+import { ResourceLink } from '@/shared/ui/resource-link'
+import { runtimeMaintenanceOperations, type RuntimeMaintenanceOperation } from './runtime-maintenance-operations'
 
 export const PlatformRuntimeMaintenanceSection = ({
-  onMaintenanceComplete
+  onMaintenanceComplete,
+  onRestore,
+  loading = false,
+  disabled = false
 }: {
   onMaintenanceComplete?: () => void
+  onRestore?: () => void
+  loading?: boolean
+  disabled?: boolean
 }) => {
-  const [activeAction, setActiveAction] = useState<string | null>(null)
-
-  const runMaintenanceAction = async ({
-    action,
-    key,
-    successTitle,
-    successDescription
-  }: {
-    action: () => Promise<unknown>
-    key: string
-    successTitle: string
-    successDescription: (result: unknown) => string
-  }) => {
-    setActiveAction(key)
-
+  const [selected, setSelected] = useState<RuntimeMaintenanceOperation | null>(null)
+  const [pending, setPending] = useState(false)
+  const [feedback, setFeedback] = useState<{ title: string; description: string; tone: NoticeTone } | null>(null)
+  const runSelected = async () => {
+    if (!selected || pending) return
+    setPending(true)
+    setFeedback(null)
     try {
-      const result = await action()
-      const data = isActionResult(result) ? unwrapActionResult(result) : result
-      toast({ title: successTitle, description: successDescription(data) })
+      const description = await selected.run()
+      setFeedback({ title: `${selected.title}: cleanup complete`, description, tone: 'success' })
       onMaintenanceComplete?.()
     } catch (error) {
-      toast({
-        title: `Could not ${successTitle.toLowerCase()}`,
+      setFeedback({
+        title: `${selected.title}: cleanup failed`,
         description: getDisplayErrorMessage(error),
-        variant: 'danger'
+        tone: 'danger'
       })
     } finally {
-      setActiveAction(null)
+      setPending(false)
+      setSelected(null)
     }
   }
 
   return (
-    <Section
-      surface='plain'
-      title='Maintenance'
-      headingSpacing='default'
-      contentClassName='gap-4'
-      className='w-full'
-    >
-      <p className='text-sm text-foreground-muted'>
-        Run one-off Docker cleanup tasks without leaving settings. Recurring cleanup is managed from Scheduler.
-      </p>
-      <div className='grid gap-3'>
-        <MaintenanceActionCard
-          title='Clean APK uploads'
-          description='Removes uploaded APK records and files that are not referenced by any Android application.'
-          icon={<IconPackage className='size-5' />}
-          actionLabel='Clean'
-          isBusy={activeAction !== null}
-          onClick={() =>
-            void runMaintenanceAction({
-              action: cleanupUploadedApksAction,
-              key: 'apks',
-              successTitle: 'APK uploads cleaned',
-              successDescription: result => {
-                const cleanup = result as CleanupUploadedApksResponse
-                return `Removed ${cleanup.deletedRecords} upload records and ${cleanup.removedFiles} files.`
-              }
-            })
-          }
-        />
-        <MaintenanceActionCard
-          title='Prune images'
-          description='Removes dangling images. Use Scheduler to configure recurring image cleanup mode.'
-          icon={<IconBox className='size-5' />}
-          actionLabel='Prune'
-          isBusy={activeAction !== null}
-          onClick={() =>
-            void runMaintenanceAction({
-              action: () => pruneImagesAction(true),
-              key: 'images',
-              successTitle: 'Images pruned',
-              successDescription: result => summarizePruneResult(result as DockerPruneResponse, 'Image prune')
-            })
-          }
-        />
-        <MaintenanceActionCard
-          title='Prune containers'
-          description='Removes stopped containers that are no longer in use.'
-          icon={<IconBoxMultiple className='size-5' />}
-          actionLabel='Prune'
-          isBusy={activeAction !== null}
-          onClick={() =>
-            void runMaintenanceAction({
-              action: pruneContainersAction,
-              key: 'containers',
-              successTitle: 'Containers pruned',
-              successDescription: result => summarizePruneResult(result as DockerPruneResponse, 'Container prune')
-            })
-          }
-        />
-        <MaintenanceActionCard
-          title='Prune networks'
-          description='Removes unused Docker networks that are no longer attached to active containers.'
-          icon={<IconTopologyStar3 className='size-5' />}
-          actionLabel='Prune'
-          isBusy={activeAction !== null}
-          onClick={() =>
-            void runMaintenanceAction({
-              action: pruneNetworksAction,
-              key: 'networks',
-              successTitle: 'Networks pruned',
-              successDescription: result => summarizePruneResult(result as DockerPruneResponse, 'Network prune')
-            })
-          }
-        />
-        <MaintenanceActionCard
-          title='Prune volumes'
-          description='Removes unused volumes that are no longer mounted by managed containers.'
-          icon={<IconDatabase className='size-5' />}
-          actionLabel='Prune'
-          isBusy={activeAction !== null}
-          onClick={() =>
-            void runMaintenanceAction({
-              action: pruneVolumesAction,
-              key: 'volumes',
-              successTitle: 'Volumes pruned',
-              successDescription: result => summarizePruneResult(result as DockerPruneResponse, 'Volume prune')
-            })
-          }
-        />
-      </div>
-      <div className='rounded-control bg-danger/10 p-4 text-foreground'>
-        <div className='flex items-center justify-between gap-4 max-sm:flex-col max-sm:items-stretch'>
-          <div className='flex min-w-0 items-start gap-3'>
-            <div className='rounded-control bg-surface-band/60 p-2 text-danger'>
-              <IconRecycle className='size-5' />
-            </div>
-            <div>
-              <h3 className='font-medium text-foreground'>Full cleanup</h3>
-              <p className='text-sm leading-5 text-foreground-muted'>
-                Prunes stopped containers, unused networks, dangling images, and unused volumes in one pass.
-              </p>
-            </div>
+    <>
+      <Section
+        surface='plain'
+        title='Maintenance'
+        description='Run cleanup independently of settings changes.'
+        actions={
+          <ResourceLink
+            href='/platform/scheduler'
+            aria-label='Manage cleanup schedules'
+            className='text-sm whitespace-nowrap'
+          >
+            Schedules
+          </ResourceLink>
+        }
+        contentClassName='gap-4'
+      >
+        {feedback ? (
+          <Notice
+            title={feedback.title}
+            description={feedback.description}
+            tone={feedback.tone}
+          />
+        ) : null}
+        <ul className='grid min-w-0 gap-x-10 gap-y-6 lg:grid-cols-2'>
+          {runtimeMaintenanceOperations.map(operation => (
+            <li
+              key={operation.key}
+              className='flex min-w-0 items-start justify-between gap-4'
+            >
+              <div className='grid min-w-0 gap-1'>
+                <h3 className='text-sm font-medium'>{operation.title}</h3>
+                <p className='max-w-xl text-sm leading-5 text-foreground-muted'>{operation.description}</p>
+              </div>
+              <Button
+                variant={operation.key === 'all' ? 'danger-ghost' : 'secondary'}
+                size='sm'
+                disabled={loading || disabled || pending}
+                aria-label={`Clean up ${operation.title.toLowerCase()}`}
+                onClick={() => setSelected(operation)}
+              >
+                Clean up…
+              </Button>
+            </li>
+          ))}
+        </ul>
+        <div className='flex min-w-0 flex-wrap items-center justify-between gap-4 pt-4'>
+          <div className='grid gap-1'>
+            <h3 className='text-sm font-medium'>Restore default settings</h3>
+            <p className='text-sm text-foreground-muted'>
+              Reset runtime defaults and optional service connections. Changes are saved immediately.
+            </p>
           </div>
           <Button
-            className='shrink-0 max-sm:w-full'
-            variant='danger'
-            disabled={activeAction !== null}
-            onClick={() =>
-              void runMaintenanceAction({
-                action: pruneAllDockerResourcesAction,
-                key: 'all',
-                successTitle: 'Full cleanup completed',
-                successDescription: () =>
-                  'Stopped containers, unused networks, dangling images, and unused volumes were pruned.'
-              })
-            }
+            variant='ghost'
+            size='sm'
+            disabled={loading || disabled || pending}
+            onClick={onRestore}
           >
-            Full cleanup
+            Restore defaults…
           </Button>
         </div>
-      </div>
-    </Section>
+      </Section>
+      <ConfirmMutationDialog
+        open={selected !== null}
+        title={selected ? `Clean up ${selected.title.toLowerCase()}?` : 'Clean up resources?'}
+        description={selected?.description}
+        consequence={selected?.consequence}
+        confirmLabel='Clean up'
+        pending={pending}
+        pendingLabel='Cleaning up…'
+        onConfirm={() => void runSelected()}
+        onOpenChange={open => {
+          if (!open) setSelected(null)
+        }}
+      />
+    </>
   )
 }

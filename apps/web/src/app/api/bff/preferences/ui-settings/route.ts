@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { PublicActionError } from '@/server/errors/public-action-error'
 import { runRouteHandler } from '@/server/http/route-handler'
 import {
   readUiSettings,
@@ -25,21 +26,24 @@ const optionalServiceSchema = z.object({
   timeoutMs: z.number().int().positive().max(120_000)
 })
 
-const runtimeSettingsSchema = z.object({
-  defaultContainerImage: z.string().trim().min(1).max(512),
-  dockerImageRegistry: z.string().trim().min(1).max(2048).nullable(),
-  defaultInactivityTimeoutSeconds: z.number().int().nonnegative().max(31_536_000),
-  maxApkUploadSizeMb: z.number().int().positive().max(4096),
-  removeDataOnDelete: z.boolean().optional(),
-  services: z.object({
-    ocr: optionalServiceSchema.extend({
-      maxImageDimension: z.number().int().positive().max(16_384),
-      minConfidence: z.number().min(0).max(1),
-      language: z.string().trim().min(1).max(16)
-    }),
-    firewall: optionalServiceSchema
+const runtimeSettingsSchema = z
+  .object({
+    defaultContainerImage: z.string().trim().min(1).max(512),
+    dockerImageRegistry: z.string().trim().min(1).max(2048).nullable(),
+    defaultInactivityTimeoutSeconds: z.number().int().nonnegative().max(31_536_000),
+    maxApkUploadSizeMb: z.number().int().positive().max(4096),
+    removeDataOnDelete: z.boolean().optional(),
+    services: z.object({
+      ocr: optionalServiceSchema.extend({
+        maxImageDimension: z.number().int().positive().max(16_384),
+        minConfidence: z.number().min(0).max(1),
+        language: z.string().trim().min(1).max(16)
+      }),
+      firewall: optionalServiceSchema
+    })
   })
-})
+  .partial()
+  .refine(settings => Object.keys(settings).length > 0, 'At least one runtime setting is required.')
 
 const updateSchema = z.discriminatedUnion('operation', [
   z.object({ operation: z.literal('save-general'), settings: generalSettingsSchema }),
@@ -53,7 +57,11 @@ export const GET = () => runRouteHandler(readUiSettings)
 
 export const POST = (request: Request) =>
   runRouteHandler(async () => {
-    const input = updateSchema.parse(await request.json())
+    const parsed = updateSchema.safeParse(await request.json())
+    if (!parsed.success) {
+      throw new PublicActionError('Review the supplied settings and try again.', { code: 'validation', status: 400 })
+    }
+    const input = parsed.data
     if (input.operation === 'save-general') return saveGeneralUiSettings(input.settings)
     if (input.operation === 'reset-general') return resetGeneralUiSettings()
     if (input.operation === 'save-ai') return saveAiUiSettings(input.settings)
