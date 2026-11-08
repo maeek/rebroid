@@ -11,6 +11,7 @@ export default defineConfig({
     }
   },
   test: {
+    maxWorkers: 4,
     mockReset: true,
     coverage: {
       provider: 'v8',
