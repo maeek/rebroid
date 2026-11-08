@@ -3,13 +3,15 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import Database from 'better-sqlite3'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { auditEventsToCsv, auditSortFromSearchParams, auditSortToSearchParam } from '@/server/audit/query'
+import { auditEventsToCsv, auditSortFromSearchParams } from '@/server/audit/query'
 import { userService } from '@/server/auth/user'
 import { getWebSettings, saveWebSettings } from '@/server/web-settings/store'
+import { serializeSortParam } from '@/shared/model/search-params'
 import {
   appendAuditEvent,
   exportAuditEvents,
   listAuditEvents,
+  listAuditFacetValues,
   pruneAuditEventsOlderThan,
   purgeAuditEvents
 } from './audit-repository'
@@ -107,6 +109,51 @@ describe('fresh web database', () => {
     expect(auditEventsToCsv(exportAuditEvents())).toContain("'=HYPERLINK")
   })
 
+  it('searches readable audit labels without widening the selected application scope', () => {
+    appendAuditEvent({
+      actorLabel: 'Operator',
+      category: 'application',
+      action: 'application.start',
+      resourceType: 'application',
+      resourceId: 'app-a'
+    })
+    appendAuditEvent({
+      actorLabel: 'Operator',
+      category: 'application',
+      action: 'application.start',
+      resourceType: 'application',
+      resourceId: 'app-b'
+    })
+    appendAuditEvent({ actorLabel: 'Operator', category: 'auth', action: 'auth.login.success' })
+    expect(
+      listAuditEvents({ search: 'Start application', resourceType: 'application', resourceId: 'app-a' }).events.map(
+        event => event.resourceId
+      )
+    ).toEqual(['app-a'])
+    expect(listAuditEvents({ search: 'Sign in' }).events.map(event => event.action)).toEqual(['auth.login.success'])
+    expect(listAuditEvents({ search: "' OR 1=1 --" }).total).toBe(0)
+  })
+
+  it('exports matching events in the grid order with a bounded count', () => {
+    appendAuditEvent({ actorLabel: 'Zulu', category: 'application', action: 'application.stop', resourceId: 'app-a' })
+    appendAuditEvent({ actorLabel: 'Alpha', category: 'application', action: 'application.start', resourceId: 'app-a' })
+    appendAuditEvent({ actorLabel: 'Aaron', category: 'application', action: 'application.start', resourceId: 'app-b' })
+    expect(
+      exportAuditEvents({ resourceId: 'app-a' }, { sorting: [{ id: 'actorLabel', desc: false }], limit: 1 }).map(
+        event => event.actorLabel
+      )
+    ).toEqual(['Alpha'])
+    expect(listAuditEvents({ resourceId: 'app-a' }, { page: 999, pageSize: 1 }).page).toBe(2)
+    expect(listAuditEvents({ resourceId: 'missing' }, { page: 999 }).page).toBe(1)
+  })
+
+  it('provides one current actor label per ID while preserving historical event labels', () => {
+    appendAuditEvent({ actorUserId: 'user-a', actorLabel: 'Old name', category: 'auth', action: 'auth.login.success' })
+    appendAuditEvent({ actorUserId: 'user-a', actorLabel: 'New name', category: 'auth', action: 'auth.login.success' })
+    expect(listAuditFacetValues().actors).toEqual([{ id: 'user-a', label: 'New name' }])
+    expect(listAuditEvents().events.map(event => event.actorLabel)).toEqual(['New name', 'Old name'])
+  })
+
   it('persists authentication epochs and login rate limits', () => {
     expect(getAuthEpoch()).toBe(getAuthEpoch())
     expect(consumePersistentRateLimit('account', 2, 60_000)).toBe(true)
@@ -119,6 +166,6 @@ describe('fresh web database', () => {
       { id: 'actorLabel', desc: false },
       { id: 'createdAt', desc: true }
     ])
-    expect(auditSortToSearchParam([{ id: 'outcome', desc: true }])).toBe('outcome:desc')
+    expect(serializeSortParam([{ id: 'outcome', desc: true }])).toBe('outcome:desc')
   })
 })

@@ -1,87 +1,41 @@
 'use client'
 
-import { useEffect, useMemo, useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from '@/hooks/use-toast'
 import { purgeAllAuditEventsAction, saveAuditRetentionAction } from '@/server/audit/actions'
-import { serializeSortParam } from '@/shared/model/search-params'
-import { activityFilterEntries, compactActivityParams } from './activity-format'
-import type { ActivityEventsTableProps, ActivityFilterValues } from './activity-types'
+import { useActivityQuery } from './use-activity-query'
+import type { ActivityEventsTableProps } from './activity-types'
 import type { AuditEvent } from '@/shared/contracts/audit'
-import type { SortingState } from '@tanstack/react-table'
 
-export const useActivityEventsController = ({
-  result,
-  filters,
-  sorting,
-  facets,
-  auditRetentionDays
-}: ActivityEventsTableProps) => {
+export const useActivityEventsController = (props: ActivityEventsTableProps) => {
+  const { auditRetentionDays, application, loading } = props
+  const query = useActivityQuery(props)
   const router = useRouter()
   const [selectedEvent, setSelectedEvent] = useState<AuditEvent | null>(null)
-  const [localFilters, setLocalFilters] = useState<ActivityFilterValues>(filters)
   const [retentionDays, setRetentionDays] = useState(String(auditRetentionDays))
   const [retentionOpen, setRetentionOpen] = useState(false)
   const [purgeOpen, setPurgeOpen] = useState(false)
-  const [isPending, startTransition] = useTransition()
+  const [isSavingRetention, startSavingRetention] = useTransition()
+  const [isRefreshing, startRefreshing] = useTransition()
   const [isPurging, setIsPurging] = useState(false)
-
-  useEffect(() => {
-    setLocalFilters(filters)
-  }, [filters])
 
   useEffect(() => {
     setRetentionDays(String(auditRetentionDays))
   }, [auditRetentionDays])
 
-  const pushParams = (patch: Partial<ActivityFilterValues> & { page?: number; pageSize?: number; sort?: string }) => {
-    const params = compactActivityParams({
-      ...filters,
-      ...patch,
-      page: patch.page ?? 1,
-      pageSize: patch.pageSize ?? result.pageSize,
-      sort: patch.sort ?? serializeSortParam(sorting)
-    })
-    router.push(`/security/audit-log${params.size ? `?${params.toString()}` : ''}`)
-  }
-
-  const exportHref = useMemo(() => {
-    const params = compactActivityParams(filters)
-    return `/api/activity/export${params.size ? `?${params.toString()}` : ''}`
-  }, [filters])
-
-  const activeFilters = useMemo(() => activityFilterEntries(filters, facets), [facets, filters])
-  const resetFilters = () => {
-    setLocalFilters({})
-    router.push('/security/audit-log')
-  }
-
-  const removeFilter = (key: keyof ActivityFilterValues) => {
-    const next = { ...filters, [key]: undefined }
-    setLocalFilters(next)
-    pushParams(next)
-  }
-
-  const setFilterValue = (key: keyof ActivityFilterValues, value: string | undefined) => {
-    const next = { ...filters, [key]: value }
-    setLocalFilters(next)
-    pushParams(next)
-  }
-
-  const setSorting = (nextSorting: SortingState) => {
-    pushParams({ page: 1, sort: serializeSortParam(nextSorting) })
-  }
-
   const saveRetention = () => {
+    if (application || loading || isSavingRetention || isPurging) return
     const nextValue = Number(retentionDays)
-    startTransition(async () => {
+    startSavingRetention(async () => {
       try {
         const saved = await saveAuditRetentionAction(nextValue)
         setRetentionDays(String(saved.auditRetentionDays))
         setRetentionOpen(false)
         toast({
           title: 'Retention updated',
-          description: `Activity logs are retained for ${saved.auditRetentionDays} days.`
+          description: `Activity logs are retained for ${saved.auditRetentionDays} days.`,
+          variant: 'success'
         })
         router.refresh()
       } catch (error) {
@@ -95,10 +49,15 @@ export const useActivityEventsController = ({
   }
 
   const purgeAll = async () => {
+    if (application || loading || isSavingRetention || isPurging) return
     setIsPurging(true)
     try {
       const purgeResult = await purgeAllAuditEventsAction()
-      toast({ title: 'Activity logs purged', description: `${purgeResult.purged} events were removed.` })
+      toast({
+        title: 'Activity logs purged',
+        description: `${purgeResult.purged} events were removed.`,
+        variant: 'success'
+      })
       setPurgeOpen(false)
       router.refresh()
     } catch (error) {
@@ -113,26 +72,22 @@ export const useActivityEventsController = ({
   }
 
   return {
-    activeFilters,
-    exportHref,
-    isPending,
+    ...query,
+    isSavingRetention,
+    isRefreshing,
     isPurging,
-    localFilters,
     purgeAll,
     purgeOpen,
-    pushParams,
-    removeFilter,
-    resetFilters,
+    refresh: () => {
+      if (!loading) startRefreshing(() => router.refresh())
+    },
     retentionDays,
     retentionOpen,
     saveRetention,
     selectedEvent,
-    setFilterValue,
-    setLocalFilters,
     setPurgeOpen,
     setRetentionDays,
     setRetentionOpen,
-    setSelectedEvent,
-    setSorting
+    setSelectedEvent
   }
 }

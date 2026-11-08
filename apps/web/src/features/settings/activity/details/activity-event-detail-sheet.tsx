@@ -1,52 +1,91 @@
 import { Badge } from '@/components/ui/badge'
-import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import {
+  auditActionLabel,
+  auditActorLabel,
+  auditValueLabel,
+  auditTargetLabel
+} from '@/shared/model/audit-event-presentation'
+import { DateTimeValue } from '@/shared/ui/date-time-value'
+import { DetailFields } from '@/shared/ui/detail-fields'
+import { JsonViewer } from '@/shared/ui/json-viewer'
 import { useActivityController } from '../activity-context'
-import { formatAction, formatDetails, outcomeTone } from '../activity-format'
-import { ActivityResourceTypeBadge } from '../common/activity-resource-type-badge'
-import { ActivityDetailField } from './activity-detail-field'
+import { outcomeTone } from '../activity-format'
 import type { AuditEvent } from '@/shared/contracts/audit'
 
-const ActivityUserAgentField = ({ userAgent }: { userAgent: string | null }) =>
-  userAgent ? (
-    <ActivityDetailField
-      label='User agent'
-      value={userAgent}
-    />
-  ) : null
-
 const ActivityEventDetailContent = ({ event }: { event: AuditEvent }) => (
-  <div className='mt-6 grid gap-4'>
-    <div className='flex flex-wrap gap-2'>
-      <Badge variant={outcomeTone(event.outcome)}>{event.outcome}</Badge>
-      <Badge variant='outline'>{event.category}</Badge>
-      <ActivityResourceTypeBadge resourceType={event.resourceType} />
-    </div>
-    <div className='grid gap-3 sm:grid-cols-2'>
-      <ActivityDetailField
-        label='Actor'
-        value={`${event.actorLabel} (${event.actorUserId ?? 'system'})`}
+  <div className='mt-6 grid min-w-0 gap-6'>
+    <DetailFields
+      title='Event'
+      fields={[
+        {
+          label: 'Outcome',
+          value: <Badge variant={outcomeTone(event.outcome)}>{auditValueLabel(event.outcome)}</Badge>
+        },
+        {
+          label: 'Time',
+          value: (
+            <DateTimeValue
+              value={event.createdAt}
+              showSeconds
+            />
+          ),
+          copyValue: event.createdAt
+        },
+        { label: 'Action', value: event.action, code: true, copyValue: event.action },
+        { label: 'Category', value: auditValueLabel(event.category) },
+        { label: 'Event ID', value: String(event.id), copyValue: String(event.id) }
+      ]}
+    />
+    <DetailFields
+      title='Actor'
+      fields={[
+        { label: 'Name', value: auditActorLabel(event) },
+        {
+          label: 'User ID',
+          value: event.actorUserId ?? 'System',
+          code: Boolean(event.actorUserId),
+          copyValue: event.actorUserId ?? undefined
+        }
+      ]}
+    />
+    {event.resourceType || event.resourceId || event.resourceLabel ? (
+      <DetailFields
+        title='Target'
+        fields={[
+          { label: 'Name', value: auditTargetLabel(event), fullWidth: true },
+          { label: 'Resource type', value: event.resourceType ? auditValueLabel(event.resourceType) : 'Not recorded' },
+          {
+            label: 'Resource ID',
+            value: event.resourceId ?? 'Not recorded',
+            code: Boolean(event.resourceId),
+            copyValue: event.resourceId ?? undefined
+          }
+        ]}
       />
-      <ActivityDetailField
-        label='Target'
-        value={event.resourceLabel ?? event.resourceId ?? event.resourceType}
+    ) : null}
+    {event.sourceIp || event.userAgent ? (
+      <DetailFields
+        title='Request'
+        fields={[
+          {
+            label: 'Source IP',
+            value: event.sourceIp ?? 'Not recorded',
+            code: true,
+            copyValue: event.sourceIp ?? undefined
+          },
+          { label: 'User agent', value: event.userAgent ?? 'Not recorded', fullWidth: true }
+        ]}
       />
-      <ActivityDetailField
-        label='Created'
-        value={`${new Date(event.createdAt).toLocaleString()} / ${event.createdAt}`}
+    ) : null}
+    {Object.keys(event.details).length ? (
+      <JsonViewer
+        title='Event data'
+        value={event.details}
       />
-      <ActivityDetailField
-        label='Source'
-        value={event.sourceIp ?? event.userAgent}
-      />
-    </div>
-    <div>
-      <Label>Details JSON</Label>
-      <pre className='mt-2 max-h-[32rem] overflow-auto rounded-panel border border-surface-border/70 bg-background/60 p-4 font-mono text-xs text-foreground-muted'>
-        {formatDetails(event.details)}
-      </pre>
-    </div>
-    <ActivityUserAgentField userAgent={event.userAgent} />
+    ) : (
+      <p className='text-sm text-foreground-muted'>No additional event data recorded.</p>
+    )}
   </div>
 )
 
@@ -60,10 +99,10 @@ export const ActivityEventDetailSheet = () => {
         if (!open) setSelectedEvent(null)
       }}
     >
-      <SheetContent className='w-[min(42rem,calc(100vw-2rem))] overflow-y-auto sm:max-w-none'>
-        <SheetHeader>
-          <SheetTitle>{selectedEvent ? formatAction(selectedEvent.action) : 'Activity details'}</SheetTitle>
-          <SheetDescription>Full audit event metadata for review and troubleshooting.</SheetDescription>
+      <SheetContent className='w-full overflow-y-auto sm:w-[42rem] sm:max-w-[calc(100vw-2rem)]'>
+        <SheetHeader className='pr-6 text-left'>
+          <SheetTitle>{selectedEvent ? auditActionLabel(selectedEvent.action) : 'Activity details'}</SheetTitle>
+          <SheetDescription>Audit event metadata and recorded request data.</SheetDescription>
         </SheetHeader>
         {selectedEvent && <ActivityEventDetailContent event={selectedEvent} />}
       </SheetContent>

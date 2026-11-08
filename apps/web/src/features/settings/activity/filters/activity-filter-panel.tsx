@@ -1,7 +1,9 @@
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SingleSelectCombobox } from '@/components/ui/single-select-combobox'
+import { auditActionLabel, auditValueLabel } from '@/shared/model/audit-event-presentation'
 import { useActivityController, useActivityData } from '../activity-context'
-import { allActivityFilterValue, dateInputValue, formatAction } from '../activity-format'
+import { allActivityFilterValue, dateInputValue } from '../activity-format'
 import { ActivityFilterField } from './activity-filter-field'
 
 export const ActivityFilterPanel = () => {
@@ -13,25 +15,15 @@ export const ActivityFilterPanel = () => {
   return (
     <div className='grid gap-5'>
       <ActivityFilterField label='Actor'>
-        <Select
+        <SingleSelectCombobox
           value={controller.localFilters.actor ?? allActivityFilterValue}
           onValueChange={value => update('actor', value)}
-        >
-          <SelectTrigger className='w-full'>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={allActivityFilterValue}>All actors</SelectItem>
-            {facets.actors.map(actor => (
-              <SelectItem
-                key={actor.id}
-                value={actor.id}
-              >
-                {actor.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          options={[
+            { value: allActivityFilterValue, label: 'All actors' },
+            ...facets.actors.map(actor => ({ value: actor.id, label: actor.label }))
+          ]}
+          placeholder='Search actors'
+        />
       </ActivityFilterField>
       <ActivityFilterField label='Resource type'>
         <Select
@@ -48,7 +40,7 @@ export const ActivityFilterPanel = () => {
                 key={value}
                 value={value}
               >
-                {value}
+                {auditValueLabel(value)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -69,32 +61,22 @@ export const ActivityFilterPanel = () => {
                 key={value}
                 value={value}
               >
-                {value}
+                {auditValueLabel(value)}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </ActivityFilterField>
       <ActivityFilterField label='Action'>
-        <Select
+        <SingleSelectCombobox
           value={controller.localFilters.action ?? allActivityFilterValue}
           onValueChange={value => update('action', value)}
-        >
-          <SelectTrigger className='w-full'>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={allActivityFilterValue}>All actions</SelectItem>
-            {facets.actions.map(value => (
-              <SelectItem
-                key={value}
-                value={value}
-              >
-                {formatAction(value)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          options={[
+            { value: allActivityFilterValue, label: 'All actions' },
+            ...facets.actions.map(value => ({ value, label: auditActionLabel(value), description: value }))
+          ]}
+          placeholder='Search actions'
+        />
       </ActivityFilterField>
       <ActivityFilterField label='Outcome'>
         <Select
@@ -112,14 +94,14 @@ export const ActivityFilterPanel = () => {
         </Select>
       </ActivityFilterField>
       <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-1'>
-        <ActivityFilterField label='From'>
+        <ActivityFilterField label='From (UTC)'>
           <Input
             type='date'
             value={dateInputValue(controller.localFilters.from)}
             onChange={event => controller.setFilterValue('from', event.target.value || undefined)}
           />
         </ActivityFilterField>
-        <ActivityFilterField label='To'>
+        <ActivityFilterField label='To (UTC)'>
           <Input
             type='date'
             value={dateInputValue(controller.localFilters.to)}

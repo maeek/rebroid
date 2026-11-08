@@ -1,15 +1,4 @@
-import type { AuditEventPage, AuditEventSort } from '@/shared/contracts/audit'
-
-export type ActivityFilterValues = {
-  search?: string
-  actor?: string
-  category?: string
-  action?: string
-  resourceType?: string
-  outcome?: string
-  from?: string
-  to?: string
-}
+import type { AuditEventPage, AuditEventSort, AuditFilterValues } from '@/shared/contracts/audit'
 
 export type ActivityFacets = {
   actors: Array<{ id: string; label: string }>
@@ -19,14 +8,16 @@ export type ActivityFacets = {
 }
 
 export type ActivityFilterEntry = {
-  key: keyof ActivityFilterValues
+  key: keyof AuditFilterValues
   label: string
   value: string
 }
 
 export type ActivityEventsTableProps = {
+  loading?: boolean
+  application?: { id: string; name: string }
   result: AuditEventPage
-  filters: ActivityFilterValues
+  filters: AuditFilterValues
   sorting: AuditEventSort[]
   facets: ActivityFacets
   auditRetentionDays: number

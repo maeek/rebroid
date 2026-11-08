@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { recordAuditEvent } from '@/server/audit/events'
-import { auditEventsToCsv, auditFiltersFromSearchParams } from '@/server/audit/query'
+import { auditEventsToCsv, auditFiltersFromSearchParams, auditSortFromSearchParams } from '@/server/audit/query'
 import { getCurrentUser } from '@/server/auth/authorization'
 import { exportAuditEvents } from '@/server/persistence/audit-repository'
 
@@ -12,8 +12,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Administrator access required.' }, { status: 403 })
   }
 
-  const filters = auditFiltersFromSearchParams(Object.fromEntries(request.nextUrl.searchParams.entries()))
-  const events = exportAuditEvents(filters)
+  const searchParams = Object.fromEntries(
+    [...new Set(request.nextUrl.searchParams.keys())].map(key => [key, request.nextUrl.searchParams.getAll(key)])
+  )
+  const filters = auditFiltersFromSearchParams(searchParams)
+  const sorting = auditSortFromSearchParams(searchParams)
+  const events = exportAuditEvents(filters, { sorting })
   recordAuditEvent({
     actorUserId: user.id,
     actorLabel: user.name || user.username || user.id,
@@ -21,7 +25,7 @@ export async function GET(request: NextRequest) {
     action: 'audit.export',
     resourceType: 'audit_log',
     outcome: 'success',
-    details: { filters, exported: events.length }
+    details: { filters, sorting, exported: events.length }
   })
 
   const timestamp = new Date().toISOString().replaceAll(':', '-')

@@ -26,6 +26,9 @@ export const purgeAllAuditEventsAction = async () => {
 
 export const saveAuditRetentionAction = async (auditRetentionDays: number) => {
   const admin = await requireAdmin()
+  if (!Number.isInteger(auditRetentionDays) || auditRetentionDays < 1 || auditRetentionDays > 3650) {
+    throw new Error('Retention must be a whole number between 1 and 3,650 days.')
+  }
   const settings = await saveWebSettings({ auditRetentionDays })
   recordAuditEvent({
     actorUserId: admin.id,

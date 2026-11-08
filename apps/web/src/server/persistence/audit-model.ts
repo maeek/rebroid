@@ -1,3 +1,4 @@
+import { auditActionsMatchingSearch } from '@/shared/model/audit-event-presentation'
 import type {
   AuditEvent,
   AuditEventFilters,
@@ -80,10 +81,20 @@ export const auditWhere = (filters: AuditEventFilters = {}) => {
   const search = filters.search?.trim()
   if (search) {
     const pattern = `%${search.toLowerCase()}%`
-    clauses.push(
-      "(lower(action) LIKE ? OR lower(category) LIKE ? OR lower(actor_label) LIKE ? OR lower(coalesce(resource_type, '')) LIKE ? OR lower(coalesce(resource_id, '')) LIKE ? OR lower(coalesce(resource_label, '')) LIKE ? OR lower(details_json) LIKE ?)"
-    )
-    values.push(pattern, pattern, pattern, pattern, pattern, pattern, pattern)
+    const actions = auditActionsMatchingSearch(search)
+    const matches = [
+      'lower(action) LIKE ?',
+      'lower(category) LIKE ?',
+      'lower(actor_label) LIKE ?',
+      "lower(coalesce(resource_type, '')) LIKE ?",
+      "lower(coalesce(resource_id, '')) LIKE ?",
+      "lower(coalesce(resource_label, '')) LIKE ?",
+      'lower(details_json) LIKE ?',
+      "lower(replace(replace(action, '.', ' '), '_', ' ')) LIKE ?"
+    ]
+    if (actions.length) matches.push(`action IN (${actions.map(() => '?').join(', ')})`)
+    clauses.push(`(${matches.join(' OR ')})`)
+    values.push(pattern, pattern, pattern, pattern, pattern, pattern, pattern, pattern, ...actions)
   }
   if (filters.actorUserId) {
     clauses.push('actor_user_id = ?')
@@ -136,7 +147,7 @@ const auditSortColumns: Record<AuditEventSortField, string> = {
 export const auditOrderBy = (sorting: AuditEventSort[] = []) => {
   const clauses = sorting
     .map(sort => {
-      const column = auditSortColumns[sort.id]
+      const column = Object.hasOwn(auditSortColumns, sort.id) ? auditSortColumns[sort.id] : undefined
       return column ? `${column} ${sort.desc ? 'DESC' : 'ASC'}` : null
     })
     .filter((clause): clause is string => Boolean(clause))

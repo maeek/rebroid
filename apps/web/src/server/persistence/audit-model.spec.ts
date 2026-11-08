@@ -47,18 +47,9 @@ describe('audit model', () => {
 
     expect(where.sql).toContain('WHERE')
     expect(where.sql).toContain('actor_user_id = ?')
-    expect(where.values).toEqual([
-      '%start%',
-      '%start%',
-      '%start%',
-      '%start%',
-      '%start%',
-      '%start%',
-      '%start%',
-      'user-1',
-      'application',
-      'success'
-    ])
+    expect(where.values.slice(0, 8)).toEqual(Array(8).fill('%start%'))
+    expect(where.values).toContain('application.start')
+    expect(where.values.slice(-3)).toEqual(['user-1', 'application', 'success'])
   })
 
   it('builds allowlisted order clauses and pagination', () => {

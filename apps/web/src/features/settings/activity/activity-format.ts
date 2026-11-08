@@ -1,16 +1,8 @@
-import type { ActivityFacets, ActivityFilterEntry, ActivityFilterValues } from './activity-types'
-import type { AuditEvent } from '@/shared/contracts/audit'
+import { auditActionLabel, auditValueLabel } from '@/shared/model/audit-event-presentation'
+import type { ActivityFacets, ActivityFilterEntry } from './activity-types'
+import type { AuditEvent, AuditFilterValues } from '@/shared/contracts/audit'
 
 export const allActivityFilterValue = '__all__'
-
-export const formatAction = (action: string) =>
-  action
-    .split('.')
-    .map(value => value.charAt(0).toUpperCase() + value.slice(1))
-    .join(' ')
-
-export const formatDetails = (details: Record<string, unknown>) =>
-  Object.keys(details).length === 0 ? 'none' : JSON.stringify(details, null, 2)
 
 export const dateInputValue = (value: string | undefined) => {
   if (!value) return ''
@@ -28,9 +20,9 @@ export const compactActivityParams = (values: Record<string, string | number | u
   return params
 }
 
-export const activityFilterEntries = (filters: ActivityFilterValues, facets: ActivityFacets): ActivityFilterEntry[] => {
+export const activityFilterEntries = (filters: AuditFilterValues, facets: ActivityFacets): ActivityFilterEntry[] => {
   const entries: ActivityFilterEntry[] = []
-  const add = (key: keyof ActivityFilterValues, label: string, value: string | undefined) => {
+  const add = (key: keyof AuditFilterValues, label: string, value: string | undefined) => {
     if (value) entries.push({ key, label, value })
   }
 
@@ -40,12 +32,13 @@ export const activityFilterEntries = (filters: ActivityFilterValues, facets: Act
     'Actor',
     filters.actor ? (facets.actors.find(actor => actor.id === filters.actor)?.label ?? filters.actor) : undefined
   )
-  add('category', 'Category', filters.category)
-  add('action', 'Action', filters.action ? formatAction(filters.action) : undefined)
-  add('resourceType', 'Resource', filters.resourceType)
-  add('outcome', 'Outcome', filters.outcome)
-  add('from', 'From', dateInputValue(filters.from))
-  add('to', 'To', dateInputValue(filters.to))
+  add('category', 'Category', filters.category ? auditValueLabel(filters.category) : undefined)
+  add('action', 'Action', filters.action ? auditActionLabel(filters.action) : undefined)
+  add('resourceType', 'Resource', filters.resourceType ? auditValueLabel(filters.resourceType) : undefined)
+  add('resourceId', 'Resource ID', filters.resourceId)
+  add('outcome', 'Outcome', filters.outcome ? auditValueLabel(filters.outcome) : undefined)
+  add('from', 'From (UTC)', dateInputValue(filters.from))
+  add('to', 'To (UTC)', dateInputValue(filters.to))
 
   return entries
 }
@@ -53,22 +46,3 @@ export const activityFilterEntries = (filters: ActivityFilterValues, facets: Act
 export const outcomeTone = (outcome: AuditEvent['outcome']) => (outcome === 'failure' ? 'danger' : 'neutral')
 
 export const metricNumber = (value: number) => new Intl.NumberFormat().format(value)
-
-export const relativeTime = (value: string | null) => {
-  if (!value) return 'No events yet'
-  const date = new Date(value)
-  const seconds = Math.round((date.getTime() - Date.now()) / 1000)
-  const units: Array<[Intl.RelativeTimeFormatUnit, number]> = [
-    ['day', 86_400],
-    ['hour', 3_600],
-    ['minute', 60]
-  ]
-  const [unit, divisor] = units.find(([, unitSeconds]) => Math.abs(seconds) >= unitSeconds) ?? ['second', 1]
-  return new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' }).format(Math.round(seconds / divisor), unit)
-}
-
-export const dateDaysAgo = (days: number) => {
-  const date = new Date()
-  date.setUTCDate(date.getUTCDate() - days)
-  return date.toISOString().slice(0, 10)
-}

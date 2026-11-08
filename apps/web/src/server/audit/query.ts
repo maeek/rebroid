@@ -1,7 +1,8 @@
-import { firstSearchParamValue, positiveIntegerSearchParam, serializeSortParam } from '@/shared/model/search-params'
+import { firstSearchParamValue, positiveIntegerSearchParam } from '@/shared/model/search-params'
 import type {
   AuditEvent,
   AuditEventFilters,
+  AuditFilterValues,
   AuditEventSort,
   AuditEventSortField,
   AuditSearchParams
@@ -17,13 +18,29 @@ const auditSortFields = new Set<AuditEventSortField>([
 ])
 
 const isoDateParam = (value: string | undefined, boundary: 'start' | 'end') => {
-  if (!value) return undefined
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return new Date(`${value}T${boundary === 'start' ? '00:00:00.000' : '23:59:59.999'}Z`).toISOString()
+  const text = value?.trim()
+  if (!text) return undefined
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    const date = new Date(`${text}T00:00:00.000Z`)
+    if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== text) return undefined
+    if (boundary === 'end') date.setUTCHours(23, 59, 59, 999)
+    return date.toISOString()
   }
-  const date = new Date(value)
+  const date = new Date(text)
   return Number.isNaN(date.getTime()) ? undefined : date.toISOString()
 }
+
+export const auditFilterValuesFromFilters = (filters: AuditEventFilters): AuditFilterValues => ({
+  search: filters.search,
+  actor: filters.actorUserId,
+  category: filters.category,
+  action: filters.action,
+  resourceType: filters.resourceType,
+  resourceId: filters.resourceId,
+  outcome: filters.outcome,
+  from: filters.from,
+  to: filters.to
+})
 
 export const auditFiltersFromSearchParams = (searchParams: AuditSearchParams): AuditEventFilters => {
   const outcome = firstSearchParamValue(searchParams.outcome)
@@ -47,20 +64,17 @@ export const auditPageFromSearchParams = (searchParams: AuditSearchParams) => ({
 
 export const auditSortFromSearchParams = (searchParams: AuditSearchParams): AuditEventSort[] => {
   const sort = firstSearchParamValue(searchParams.sort)
-  if (!sort) return [{ id: 'createdAt', desc: true }]
-
-  return sort
+  const sorting = (sort ?? '')
     .split(',')
     .map(part => {
       const [id, direction] = part.split(':')
-      if (!auditSortFields.has(id as AuditEventSortField)) return null
+      if (!auditSortFields.has(id as AuditEventSortField) || !['asc', 'desc'].includes(direction)) return null
       return { id: id as AuditEventSortField, desc: direction === 'desc' }
     })
     .filter((item): item is AuditEventSort => Boolean(item))
     .slice(0, 3)
+  return sorting.length ? sorting : [{ id: 'createdAt', desc: true }]
 }
-
-export const auditSortToSearchParam = serializeSortParam
 
 const csvCell = (value: unknown) => {
   let text: string

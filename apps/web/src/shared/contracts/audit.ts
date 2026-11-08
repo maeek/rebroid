@@ -16,6 +16,18 @@ export interface AuditEvent {
   createdAt: string
 }
 
+export type AuditFilterValues = {
+  search?: string
+  actor?: string
+  category?: string
+  action?: string
+  resourceType?: string
+  resourceId?: string
+  outcome?: AuditEventOutcome
+  from?: string
+  to?: string
+}
+
 export interface AuditEventFilters {
   search?: string
   actorUserId?: string

@@ -1,4 +1,5 @@
 import 'server-only'
+import { auditExportLimit } from '@/shared/model/audit-export'
 import {
   auditOrderBy,
   auditRetentionCutoff,
@@ -39,7 +40,7 @@ export const listAuditEvents = (
   filters: AuditEventFilters = {},
   options: { page?: number; pageSize?: number; sorting?: AuditEventSort[] } = {}
 ): AuditEventPage => {
-  const { page, pageSize } = normalizeAuditPagination(options.page, options.pageSize)
+  const { page: requestedPage, pageSize } = normalizeAuditPagination(options.page, options.pageSize)
   const where = auditWhere(filters)
   const client = getDatabase()
   const total = (
@@ -47,6 +48,7 @@ export const listAuditEvents = (
       count: number
     }
   ).count
+  const page = Math.min(requestedPage, Math.max(Math.ceil(total / pageSize), 1))
   const outcomeRows = client
     .prepare(`SELECT outcome, COUNT(*) AS count FROM audit_events ${where.sql} GROUP BY outcome`)
     .all(...where.values) as Array<{ outcome: AuditEventOutcome; count: number }>
@@ -89,7 +91,7 @@ export const listAuditFacetValues = () => {
   return {
     actors: client
       .prepare(
-        'SELECT DISTINCT actor_user_id AS id, actor_label AS label FROM audit_events WHERE actor_user_id IS NOT NULL ORDER BY actor_label'
+        'SELECT actor_user_id AS id, actor_label AS label FROM audit_events WHERE id IN (SELECT MAX(id) FROM audit_events WHERE actor_user_id IS NOT NULL GROUP BY actor_user_id) ORDER BY actor_label, actor_user_id'
       )
       .all() as Array<{ id: string; label: string }>,
     categories: values('category'),
@@ -98,11 +100,16 @@ export const listAuditFacetValues = () => {
   }
 }
 
-export const exportAuditEvents = (filters: AuditEventFilters = {}, limit = 5000) => {
-  const boundedLimit = Math.min(Math.max(Math.trunc(limit), 1), 10_000)
+export const exportAuditEvents = (
+  filters: AuditEventFilters = {},
+  options: { limit?: number; sorting?: AuditEventSort[] } = {}
+) => {
+  const boundedLimit = Math.min(Math.max(Math.trunc(options.limit ?? auditExportLimit), 1), 10_000)
   const where = auditWhere(filters)
   const rows = getDatabase()
-    .prepare(`SELECT ${auditSelectColumns} FROM audit_events ${where.sql} ORDER BY created_at DESC, id DESC LIMIT ?`)
+    .prepare(
+      `SELECT ${auditSelectColumns} FROM audit_events ${where.sql} ORDER BY ${auditOrderBy(options.sorting)} LIMIT ?`
+    )
     .all(...where.values, boundedLimit) as Parameters<typeof parseAuditRow>[0][]
   return rows.map(parseAuditRow)
 }

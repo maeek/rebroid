@@ -1,9 +1,11 @@
-import type { ReactNode } from 'react'
-import { Label } from '@/components/ui/label'
+import type { ReactElement } from 'react'
+import { FormField } from '@/components/ui/form-field'
 
-export const ActivityFilterField = ({ label, children }: { label: string; children: ReactNode }) => (
-  <div className='grid gap-2'>
-    <Label>{label}</Label>
+export const ActivityFilterField = ({ label, children }: { label: string; children: ReactElement }) => (
+  <FormField
+    label={label}
+    layout='vertical'
+  >
     {children}
-  </div>
+  </FormField>
 )
