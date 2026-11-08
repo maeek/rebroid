@@ -1,5 +1,7 @@
 'use client'
 
+import { MutationButton } from '@/components/ui/mutation-button'
+import { Notice } from '@/components/ui/notice'
 import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
 import { PageHeader } from '@/shared/ui/page/page-header'
@@ -59,17 +61,39 @@ export const SystemResourcesContent = ({
           <p className='text-sm text-foreground-muted'>
             Live aggregated Docker stats across managed app containers, shown separately from host-level usage.
           </p>
-          <Visible when={resourcesError}>
-            <StateView
-              kind='unavailable'
-              scope='grid'
-              title='Orchestrator resources unavailable'
-              description='Docker inventory could not be loaded from the orchestrator.'
-              actions={[{ label: 'Refresh', onClick: () => void refreshResources() }]}
-              className='min-h-64 p-4'
+          <Visible when={resourcesError && Boolean(resources)}>
+            <Notice
+              tone='warning'
+              title='Could not refresh container resources'
+              description='Showing the last available sample. Try again to update it.'
+              actions={
+                <MutationButton
+                  variant='ghost'
+                  pending={isRefreshingResources}
+                  pendingLabel='Retrying…'
+                  onClick={() => void refreshResources()}
+                >
+                  Try again
+                </MutationButton>
+              }
             />
           </Visible>
-          <Visible when={!resourcesError}>
+          <Visible when={resourcesError && !resources}>
+            <StateView
+              kind='unavailable'
+              title='Orchestrator resources unavailable'
+              description='Docker inventory could not be loaded from the orchestrator.'
+              actions={[
+                {
+                  label: 'Try again',
+                  onClick: () => void refreshResources(),
+                  pending: isRefreshingResources,
+                  pendingLabel: 'Retrying…'
+                }
+              ]}
+            />
+          </Visible>
+          <Visible when={!resourcesError || Boolean(resources)}>
             <ManagedContainerDetailsTable
               resources={resources}
               loading={loading || !resources}
@@ -77,7 +101,7 @@ export const SystemResourcesContent = ({
           </Visible>
         </Section>
       </div>
-      <Visible when={!resourcesError}>
+      <Visible when={!resourcesError || Boolean(resources)}>
         <PlatformResources
           loading={loading || !resources}
           resources={resources}
