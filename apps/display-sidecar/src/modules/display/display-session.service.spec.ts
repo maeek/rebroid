@@ -111,3 +111,53 @@ test("display sessions keep only canonical capability labels", () => {
     service.assertCapability(service.get(session.id), "control"),
   );
 });
+
+test("restricted sessions never disclose higher-capability virtual surface tokens", () => {
+  const service = createService();
+  const full = service.create({
+    udid: "device:5555",
+    appId: "app",
+    ownerUserId: "user",
+    capabilities: ["video", "control", "clipboard"],
+  });
+  const stored = service.get(full.id);
+  stored.surfaceKind = "virtual";
+  stored.surfaceId = "virtual-test";
+  const restricted = service.create({
+    udid: "device:5555",
+    appId: "app",
+    ownerUserId: "user",
+    capabilities: ["video"],
+  });
+  assert.equal(
+    restricted.surfaces.some((surface) => surface.sessionId === full.id),
+    false,
+  );
+  assert.equal(JSON.stringify(restricted).includes(stored.token), false);
+});
+
+test("virtual display reuse cannot upgrade a restricted parent's capabilities", () => {
+  const service = createService();
+  const full = service.create({
+    udid: "device:5555",
+    appId: "app",
+    ownerUserId: "user",
+    capabilities: ["video", "control", "clipboard"],
+  });
+  const stored = service.get(full.id);
+  stored.surfaceKind = "virtual";
+  stored.surfaceId = "virtual-test";
+  const restricted = service.create({
+    udid: "device:5555",
+    appId: "app",
+    ownerUserId: "user",
+    capabilities: ["video", "control"],
+  });
+  const features = (service as unknown as { features: SidecarFeatureService })
+    .features;
+  features.assertVirtualDisplayEnabled = () => undefined;
+  assert.throws(
+    () => service.createVirtualSurface(restricted.id),
+    /capabilities/,
+  );
+});

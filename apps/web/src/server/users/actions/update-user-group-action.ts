@@ -3,6 +3,7 @@
 import { runSafeAction } from '@/server/actions/safe-action'
 import { recordAuditEvent } from '@/server/audit/events'
 import { userService } from '@/server/auth/user'
+import { revokeGroupViewerSessions, revokeUserViewerSessions } from '../revoke-viewer-sessions'
 import { requireAdminUser, revalidateUsersPage } from '../shared'
 import type { UserGroup } from '@/shared/contracts/auth-user'
 import type { ResourceQuota } from '@/shared/permissions/permissions'
@@ -16,7 +17,9 @@ export const updateUserGroupAction = async (
   return runSafeAction(
     async () => {
       const admin = await requireAdminUser()
+      const affectedIds = await revokeGroupViewerSessions(id)
       const group = await userService.updateGroup(id, input)
+      for (const userId of affectedIds) await revokeUserViewerSessions(userId)
       recordAuditEvent({
         actorUserId: admin.id,
         actorLabel: admin.name || admin.username || admin.id,

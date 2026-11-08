@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
   ApplicationViewerControlDto,
   ApplicationViewerControlResponseDto,
@@ -62,8 +62,20 @@ export class AndroidAppsViewerController {
     summary: 'Create or reuse one experimental virtual display surface.',
   })
   @ApiOkResponse({ type: DisplaySessionDto })
-  createVirtualDisplay(@Param('id') id: string) {
-    return this.viewer.createVirtualDisplay(id);
+  @ApiQuery({ name: 'control', required: false, type: Boolean })
+  @ApiQuery({ name: 'clipboard', required: false, type: Boolean })
+  @ApiQuery({ name: 'screenshot', required: false, type: Boolean })
+  createVirtualDisplay(
+    @Param('id') id: string,
+    @Query('control') control?: string,
+    @Query('clipboard') clipboard?: string,
+    @Query('screenshot') screenshot?: string,
+  ) {
+    return this.viewer.createVirtualDisplay(id, {
+      control: control === 'true',
+      clipboard: clipboard === 'true',
+      screenshot: screenshot === 'true',
+    });
   }
 
   @Post(':id/viewer/displays/:surfaceId/release')

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   HttpException,
   Injectable,
   NotFoundException,
@@ -107,10 +108,21 @@ export class DisplaySessionService {
       );
     }
 
-    const existing = this.findActiveSurfaces(parent).filter(
-      (session) => session.surfaceKind === "virtual",
+    const existing = [...this.sessions.values()].filter(
+      (session) =>
+        session.appId === parent.appId &&
+        session.udid === parent.udid &&
+        session.ownerUserId === parent.ownerUserId &&
+        session.surfaceKind === "virtual",
     );
     if (existing.length >= VIRTUAL_SURFACE_LIMIT) {
+      if (
+        !this.sameCapabilities(existing[0].capabilities, parent.capabilities)
+      ) {
+        throw new ConflictException(
+          "Close the existing virtual display before changing its capabilities.",
+        );
+      }
       this.extend(existing[0]);
       return this.toPublic(existing[0]);
     }
@@ -335,7 +347,10 @@ export class DisplaySessionService {
         return (
           candidate.appId === session.appId &&
           candidate.udid === session.udid &&
-          candidate.ownerUserId === session.ownerUserId
+          candidate.ownerUserId === session.ownerUserId &&
+          candidate.capabilities.every((capability) =>
+            session.capabilities.includes(capability),
+          )
         );
       })
       .sort((left, right) => {

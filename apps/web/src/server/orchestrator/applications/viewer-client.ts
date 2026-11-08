@@ -26,8 +26,13 @@ export const orchestratorAppViewerClient = {
     })
   },
 
-  createVirtualDisplay(id: string) {
-    return emptyRequest<NonNullable<ScrcpySession['displaySession']>>(`/apps/${id}/viewer/displays`, {
+  createVirtualDisplay(id: string, access: ScrcpySessionAccess = {}) {
+    const query = new URLSearchParams({
+      control: String(access.control === true),
+      clipboard: String(access.clipboard === true),
+      screenshot: String(access.screenshot === true)
+    })
+    return emptyRequest<NonNullable<ScrcpySession['displaySession']>>(`/apps/${id}/viewer/displays?${query}`, {
       method: 'POST'
     })
   },

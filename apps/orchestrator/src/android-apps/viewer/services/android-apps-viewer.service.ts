@@ -280,13 +280,27 @@ export class AndroidAppsViewerService {
   }
 
   /** Creates or reuses the app's single experimental virtual display surface. */
-  async createVirtualDisplay(id: string) {
+  async createVirtualDisplay(
+    id: string,
+    access: {
+      control?: boolean;
+      clipboard?: boolean;
+      screenshot?: boolean;
+    } = {},
+  ) {
     const app = await this.getRunningRuntimeApp(id);
     const surface = await this.displaySidecar.createVirtualSurface(app, {
       name: 'Virtual display',
       width: 1280,
       height: 720,
       dpi: 160,
+      capabilities: [
+        'video',
+        'audio',
+        ...(access.control ? ['control'] : []),
+        ...(access.clipboard ? ['clipboard'] : []),
+        ...(access.screenshot ? ['screenshot'] : []),
+      ],
     });
     await this.recordViewerActivity(id);
     return surface;

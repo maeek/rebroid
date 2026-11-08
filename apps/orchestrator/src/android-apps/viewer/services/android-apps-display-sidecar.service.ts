@@ -22,6 +22,7 @@ type DisplayClipboardResponse =
   DisplaySidecarApiSchemas['DisplayClipboardResultDto'];
 
 interface CreateVirtualSurfaceInput {
+  capabilities?: string[];
   name?: string;
   width?: number;
   height?: number;
@@ -139,12 +140,22 @@ export class AndroidAppsDisplaySidecarService {
   ) {
     this.features.assertEnabled('feature.display-virtual');
     await this.featureSync.synchronizeFeatures();
-    const session = await this.getOrCreateMainSession(app);
+    const udid = await this.prepareUdid(app);
+    const session = await this.createSessionForPreparedTarget(
+      app,
+      udid,
+      input.capabilities ?? ['video', 'audio'],
+    );
     const result = await this.request<DisplaySessionResponse>(
       `/sessions/${encodeURIComponent(session.id)}/surfaces`,
       {
         method: 'POST',
-        body: JSON.stringify(input),
+        body: JSON.stringify({
+          name: input.name,
+          width: input.width,
+          height: input.height,
+          dpi: input.dpi,
+        }),
       },
     );
 
@@ -168,11 +179,6 @@ export class AndroidAppsDisplaySidecarService {
   private async ensureSession(app: AndroidApplication) {
     const udid = await this.prepareUdid(app);
     return this.createSessionForPreparedTarget(app, udid);
-  }
-
-  private async getOrCreateMainSession(app: AndroidApplication) {
-    const existing = await this.findMainSession(app).catch(() => null);
-    return existing ?? this.ensureSession(app);
   }
 
   private async findMainSession(app: AndroidApplication) {

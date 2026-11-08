@@ -4541,7 +4541,11 @@ export interface operations {
     };
     AndroidAppsViewerController_createVirtualDisplay: {
         parameters: {
-            query?: never;
+            query?: {
+                control?: boolean;
+                clipboard?: boolean;
+                screenshot?: boolean;
+            };
             header?: never;
             path: {
                 id: string;
