@@ -7,6 +7,7 @@ import type { AndroidApplication } from '@/shared/contracts/application'
 import type { DisplaySidecarSession, ServiceHealth } from '@/shared/contracts/diagnostics'
 
 export const CastingSidecarSettings = ({
+  loading = false,
   initialHealth,
   initialSessions,
   applications,
@@ -14,6 +15,7 @@ export const CastingSidecarSettings = ({
   refreshKey = 0,
   onRefreshComplete
 }: {
+  loading?: boolean
   initialHealth: ServiceHealth
   initialSessions: DisplaySidecarSession[]
   applications: Pick<AndroidApplication, 'id' | 'name' | 'ownerUserId' | 'runtime'>[]
@@ -32,11 +34,13 @@ export const CastingSidecarSettings = ({
   return (
     <>
       <CastingSidecarServiceSection
+        loading={loading}
         health={controller.health}
         busy={controller.busy}
         onRestart={() => void controller.restartSidecar()}
       />
       <CastingSessionsSection
+        loading={loading}
         controller={controller}
         applications={applications}
         owners={owners}

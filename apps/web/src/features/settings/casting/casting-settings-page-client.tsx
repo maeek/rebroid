@@ -12,8 +12,10 @@ export const CastingSettingsPageClient = ({
   initialHealth,
   initialSessions,
   applications,
-  owners
+  owners,
+  loading = false
 }: {
+  loading?: boolean
   initialHealth: ServiceHealth
   initialSessions: DisplaySidecarSession[]
   applications: Pick<AndroidApplication, 'id' | 'name' | 'ownerUserId' | 'runtime'>[]
@@ -36,6 +38,7 @@ export const CastingSettingsPageClient = ({
         description='Inspect the display service and end active viewer sessions.'
         actions={
           <PlatformPageRefreshButton
+            disabled={loading}
             isRefreshing={isRefreshing}
             onRefresh={refresh}
           />
@@ -43,6 +46,7 @@ export const CastingSettingsPageClient = ({
       />
       <PageContent>
         <CastingSidecarSettings
+          loading={loading}
           initialHealth={initialHealth}
           initialSessions={initialSessions}
           applications={applications}

@@ -1,5 +1,5 @@
-import Link from 'next/link'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { ResourceLink } from '@/shared/ui/resource-link'
 import { formatTimestamp } from './casting-sidecar-utils'
 import type { AndroidApplication } from '@/shared/contracts/application'
 import type { DisplaySidecarSession } from '@/shared/contracts/diagnostics'
@@ -19,7 +19,7 @@ export const createCastingSessionColumns = ({
     accessorFn: session => session.applicationId ?? '',
     header: 'Application and user',
     size: 352,
-    meta: { label: 'Application and user' },
+    meta: { label: 'Application and user', skeleton: { kind: 'stacked' } },
     cell: ({ row }) => (
       <CastingSessionIdentity
         session={row.original}
@@ -41,7 +41,7 @@ export const createCastingSessionColumns = ({
     accessorFn: session => session.status,
     header: 'Status',
     size: 112,
-    meta: { label: 'Status' },
+    meta: { label: 'Status', skeleton: { kind: 'badge' } },
     cell: ({ row }) => <CastingSessionStatusBadge status={row.original.status} />
   },
   {
@@ -81,22 +81,22 @@ const CastingSessionIdentity = ({
   return (
     <div className={className ?? 'flex min-w-0 flex-col gap-1'}>
       {session.applicationId ? (
-        <Link
-          className='block truncate font-medium hover:text-primary'
-          href={`/app/${session.applicationId}/manage`}
+        <ResourceLink
+          className='block truncate font-medium'
+          href={`/app/${session.applicationId}?view=configuration`}
         >
           {app?.name ?? session.applicationId}
-        </Link>
+        </ResourceLink>
       ) : (
         <span>Unassigned application</span>
       )}
       {ownerId ? (
-        <Link
-          className='block truncate text-xs text-foreground-muted hover:text-primary'
+        <ResourceLink
+          className='block truncate text-xs'
           href={`/security/users/${ownerId}`}
         >
           {ownerNames.get(ownerId) ?? ownerId}
-        </Link>
+        </ResourceLink>
       ) : (
         <span className='text-xs text-foreground-muted'>Unknown user</span>
       )}

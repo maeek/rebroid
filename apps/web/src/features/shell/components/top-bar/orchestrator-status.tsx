@@ -7,11 +7,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { cn } from '@/lib/utils'
 import { getOrchestratorHealthSummaryAction } from '@/server/orchestrator/diagnostics/actions'
+import { dockerRuntimeHealth } from '@/shared/model/diagnostics/service-health'
 import type { OrchestratorHealth, ServiceHealth } from '@/shared/contracts/diagnostics'
 
 type HealthState = 'checking' | 'online' | 'degraded' | 'offline'
 type DisplayServiceStatus = ServiceHealth['status'] | 'degraded'
-type DisplayService = Omit<ServiceHealth, 'status'> & { status: DisplayServiceStatus }
 
 const offlineService = (message: string): ServiceHealth => ({
   ok: false,
@@ -24,29 +24,6 @@ const checkingService = (message = 'Checking service health.'): ServiceHealth =>
   status: 'unhealthy',
   message
 })
-
-const mergeDockerAndRuntimeService = (health: OrchestratorHealth | null, fallbackMessage: string): DisplayService => {
-  const docker = health?.services.docker ?? checkingService(fallbackMessage)
-  const runtime = health?.services.runtime ?? checkingService(fallbackMessage)
-
-  if (!docker.ok) {
-    return docker
-  }
-
-  if (!runtime.ok) {
-    return {
-      ok: false,
-      status: 'degraded',
-      message: runtime.message,
-      details: runtime.details
-    }
-  }
-
-  return {
-    ...docker,
-    message: 'Docker API is reachable and the container runtime is suitable for privileged app containers.'
-  }
-}
 
 const getOrchestratorHealth = getOrchestratorHealthSummaryAction
 const dotTone = (status: DisplayServiceStatus) => {
@@ -83,26 +60,31 @@ const badgeTone = (status: DisplayServiceStatus) => {
 
 const serviceRows = (health: OrchestratorHealth | null, fallbackMessage: string) => [
   {
+    impact: 'App lifecycle commands and platform operations depend on this service.',
     name: 'Orchestrator',
-    href: '/platform',
+    href: '/platform/services?service=orchestrator',
     service: health?.services.orchestrator ?? checkingService(fallbackMessage)
   },
   {
+    impact: 'App provisioning and runtime operations depend on Docker.',
     name: 'Docker',
-    href: '/runtime/containers',
-    service: mergeDockerAndRuntimeService(health, fallbackMessage)
+    href: '/platform/services?service=docker',
+    service: health ? dockerRuntimeHealth(health) : checkingService(fallbackMessage)
   },
   {
+    impact: 'Viewer sessions may be unavailable.',
     name: 'Casting',
     href: '/platform/services/display-sessions',
     service: health?.services.display ?? checkingService(fallbackMessage)
   },
   {
+    impact: 'Network policy changes may not be applied.',
     name: 'Firewall',
     href: '/platform/services?service=firewall',
     service: health?.services.firewall ?? checkingService(fallbackMessage)
   },
   {
+    impact: 'Automation text-recognition steps may be unavailable.',
     name: 'OCR',
     href: '/platform/services?service=ocr',
     service: health?.services.ocr ?? checkingService(fallbackMessage)
@@ -194,12 +176,12 @@ export const OrchestratorStatus = () => {
         className='w-80 p-2'
       >
         <div className='space-y-0'>
-          {serviceRows(health, message).map(({ name, href, service }) => (
+          {serviceRows(health, message).map(({ name, href, service, impact }) => (
             <Link
               key={name}
               href={href}
               title={service.message}
-              className='flex items-center gap-3 rounded-control px-3 py-2.5 transition-colors hover:bg-surface-band/55'
+              className='flex flex-wrap items-center gap-3 rounded-control px-3 py-2.5 transition-colors hover:bg-surface-band/55'
             >
               <span className={cn('size-2.5 shrink-0 rounded-full', dotTone(service.status))} />
               <div className='flex min-w-0 grow items-center justify-between gap-2'>
@@ -214,6 +196,11 @@ export const OrchestratorStatus = () => {
                 </span>
               </div>
               <IconChevronRight className='size-4 shrink-0 text-foreground-muted' />
+              {!service.ok && service.status !== 'disabled' ? (
+                <span className='w-full text-xs text-foreground-muted'>
+                  {impact} {service.message}
+                </span>
+              ) : null}
             </Link>
           ))}
         </div>

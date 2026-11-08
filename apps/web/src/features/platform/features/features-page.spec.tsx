@@ -1,7 +1,9 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { updateFeatureFlagsAction } from '@/server/orchestrator/settings/actions'
-import { FeaturesPage, getEffectiveFeatureStatus } from './features-page'
+import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
+import { getEffectiveFeatureStatus } from './feature-status'
+import { FeaturesPage, FeaturesPageLoading } from './features-page'
 import type { FeatureFlagManifest } from '@/shared/contracts/feature-flags'
 
 const refresh = vi.fn()
@@ -59,17 +61,41 @@ describe('FeaturesPage', () => {
     vi.clearAllMocks()
   })
 
+  it('keeps known feature metadata and row geometry while hiding unknown values during loading', () => {
+    render(
+      <FeatureFlagsProvider manifest={manifest}>
+        <FeaturesPageLoading />
+      </FeatureFlagsProvider>
+    )
+    expect(screen.getByText('OCR perception', { exact: true })).toBeVisible()
+    expect(screen.getByText('Experimental virtual display sessions.')).toBeVisible()
+    expect(screen.getAllByTestId('data-grid-skeleton-row')).toHaveLength(manifest.features.length)
+    for (const name of ['Feature', 'Enabled', 'Availability', 'Manage'])
+      expect(screen.getByRole('columnheader', { name })).toBeVisible()
+    expect(screen.queryByRole('switch')).toBeNull()
+    expect(screen.getByRole('searchbox', { name: 'Search features' })).toBeDisabled()
+    expect(screen.queryByText(/Configuration revision/)).toBeNull()
+    expect(updateFeatureFlagsAction).not.toHaveBeenCalled()
+  })
+
   it('renders feature flags in the shared data grid workspace', () => {
     render(<FeaturesPage initialManifest={manifest} />)
 
     expect(screen.getByRole('searchbox', { name: 'Search features' })).toBeTruthy()
     expect(screen.getByRole('columnheader', { name: /Feature/ })).toBeTruthy()
-    expect(screen.getByRole('columnheader', { name: /Configuration/ })).toBeTruthy()
-    expect(screen.getByRole('columnheader', { name: /Effective status/ })).toBeTruthy()
-    expect(screen.getByText('Configuration revision 7')).toBeTruthy()
-    expect(screen.getByRole('row', { name: /feature\.ocr/ })).toBeTruthy()
-    expect(screen.getByRole('row', { name: /feature\.display-virtual/ })).toBeTruthy()
-    expect(screen.queryByRole('heading', { name: 'Feature flags' })).toBeNull()
+    expect(screen.getByRole('columnheader', { name: /Enabled/ })).toBeTruthy()
+    expect(screen.getByRole('columnheader', { name: /Availability/ })).toBeTruthy()
+    expect(screen.queryByText(/Configuration revision/)).toBeNull()
+    expect(screen.getByRole('row', { name: /OCR perception/ })).toBeTruthy()
+    expect(screen.getByRole('row', { name: /Virtual displays/ })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Services', level: 1 })).toBeVisible()
+    const navigation = screen.getByRole('navigation', { name: 'Services sections' })
+    expect(within(navigation).getByRole('link', { name: 'Features' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Connection settings' })).toHaveAttribute(
+      'href',
+      '/platform/services?service=ocr'
+    )
+    expect(screen.getByRole('switch', { name: 'Enable Virtual displays' })).toHaveAttribute('aria-disabled', 'true')
   })
 
   it.each([
@@ -91,8 +117,16 @@ describe('FeaturesPage', () => {
     fireEvent.change(search, { target: { value: 'virtual' } })
     fireEvent.keyDown(search, { key: 'Enter' })
 
-    expect(screen.queryByRole('row', { name: /feature\.ocr/ })).toBeNull()
-    expect(screen.getByRole('row', { name: /feature\.display-virtual/ })).toBeTruthy()
+    expect(screen.queryByRole('row', { name: /OCR perception/ })).toBeNull()
+    expect(screen.getByRole('row', { name: /Virtual displays/ })).toBeTruthy()
+  })
+
+  it('preserves sorting by the requested enabled state', () => {
+    render(<FeaturesPage initialManifest={manifest} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Enabled' }))
+    expect(screen.getAllByRole('row')[1]).toHaveTextContent('Virtual displays')
+    fireEvent.click(screen.getByRole('button', { name: 'Enabled' }))
+    expect(screen.getAllByRole('row')[1]).toHaveTextContent('OCR perception')
   })
 
   it('updates a mutable feature from its table switch', async () => {
@@ -104,9 +138,9 @@ describe('FeaturesPage', () => {
 
     render(<FeaturesPage initialManifest={{ ...manifest, features: [manifest.features[0]] }} />)
 
-    fireEvent.click(screen.getByRole('switch', { name: 'Enable feature.ocr' }))
+    fireEvent.click(screen.getByRole('switch', { name: 'Disable OCR perception' }))
 
-    expect(screen.getByLabelText('Applying feature.ocr')).toBeTruthy()
+    expect(screen.getByLabelText('Applying OCR perception')).toBeTruthy()
 
     await waitFor(() => {
       expect(updateFeatureFlagsAction).toHaveBeenCalledWith({
@@ -115,6 +149,72 @@ describe('FeaturesPage', () => {
       })
     })
     expect(refresh).toHaveBeenCalledOnce()
-    expect(screen.getByText('Configuration revision 8')).toBeTruthy()
+    expect(screen.getByRole('switch', { name: 'Enable OCR perception' })).not.toBeChecked()
+    expect(screen.queryByText(/Configuration revision/)).toBeNull()
+  })
+
+  it('does not overwrite a completed toggle with an older refreshed manifest', async () => {
+    vi.mocked(updateFeatureFlagsAction).mockResolvedValueOnce({
+      revision: 8,
+      features: [{ ...manifest.features[0], revision: 8, enabled: false, effective: false }]
+    })
+    const { rerender } = render(<FeaturesPage initialManifest={{ ...manifest, features: [manifest.features[0]] }} />)
+    fireEvent.click(screen.getByRole('switch', { name: 'Disable OCR perception' }))
+    await waitFor(() => expect(screen.getByRole('switch', { name: 'Enable OCR perception' })).not.toBeChecked())
+    rerender(<FeaturesPage initialManifest={structuredClone(manifest)} />)
+    expect(screen.getByRole('switch', { name: 'Enable OCR perception' })).not.toBeChecked()
+    vi.mocked(updateFeatureFlagsAction).mockResolvedValueOnce({
+      revision: 9,
+      features: [{ ...manifest.features[0], revision: 9 }]
+    })
+    fireEvent.click(screen.getByRole('switch', { name: 'Enable OCR perception' }))
+    await waitFor(() =>
+      expect(updateFeatureFlagsAction).toHaveBeenLastCalledWith({
+        revision: 8,
+        changes: [{ key: 'feature.ocr', enabled: true }]
+      })
+    )
+    await waitFor(() => expect(screen.getByRole('switch', { name: 'Disable OCR perception' })).toBeChecked())
+  })
+
+  it('keeps unsupported and deployment-managed switches read-only', () => {
+    render(
+      <FeaturesPage
+        initialManifest={{
+          ...manifest,
+          features: [
+            { ...manifest.features[0], supported: false, effective: false, enabled: false },
+            manifest.features[1]
+          ]
+        }}
+      />
+    )
+    fireEvent.click(screen.getByRole('switch', { name: 'Enable OCR perception' }))
+    fireEvent.click(screen.getByRole('switch', { name: 'Enable Virtual displays' }))
+    expect(updateFeatureFlagsAction).not.toHaveBeenCalled()
+    expect(screen.getByRole('switch', { name: 'Enable OCR perception' })).not.toBeChecked()
+  })
+
+  it('keeps the requested value on failure and retries using a refreshed revision', async () => {
+    vi.mocked(updateFeatureFlagsAction).mockRejectedValueOnce(new Error('Configuration changed'))
+    const { rerender } = render(<FeaturesPage initialManifest={{ ...manifest, features: [manifest.features[0]] }} />)
+    fireEvent.click(screen.getByRole('switch', { name: 'Disable OCR perception' }))
+    await waitFor(() => expect(refresh).toHaveBeenCalledOnce())
+    expect(screen.getByRole('switch', { name: 'Disable OCR perception' })).toBeChecked()
+    const fresh = { ...manifest, revision: 8, features: [{ ...manifest.features[0], revision: 8 }] }
+    rerender(<FeaturesPage initialManifest={fresh} />)
+    vi.mocked(updateFeatureFlagsAction).mockResolvedValue({
+      ...fresh,
+      revision: 9,
+      features: [{ ...fresh.features[0], enabled: false, effective: false }]
+    })
+    fireEvent.click(screen.getByRole('switch', { name: 'Disable OCR perception' }))
+    await waitFor(() =>
+      expect(updateFeatureFlagsAction).toHaveBeenLastCalledWith({
+        revision: 8,
+        changes: [{ key: 'feature.ocr', enabled: false }]
+      })
+    )
+    await waitFor(() => expect(screen.getByRole('switch', { name: 'Enable OCR perception' })).not.toBeChecked())
   })
 })

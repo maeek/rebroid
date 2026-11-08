@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { requireAdminUser, requireUser } from '../shared'
-import { getDockerMetricsAction, getOrchestratorHealthSummaryAction } from './actions'
+import { requireUser } from '../shared'
+import { getOrchestratorHealthSummaryAction } from './actions'
 import { orchestratorDiagnosticsClient } from './client'
 
 vi.mock('../shared', () => ({
@@ -18,13 +18,6 @@ vi.mock('./client', () => ({
 }))
 
 describe('orchestrator diagnostics actions', () => {
-  it('requires an admin before loading Docker metrics', async () => {
-    await getDockerMetricsAction()
-
-    expect(requireAdminUser).toHaveBeenCalledTimes(1)
-    expect(orchestratorDiagnosticsClient.dockerMetrics).toHaveBeenCalledTimes(1)
-  })
-
   it('uses the shallow health summary for routine status polling', async () => {
     await getOrchestratorHealthSummaryAction()
 

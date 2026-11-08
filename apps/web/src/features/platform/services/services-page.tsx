@@ -1,99 +1,43 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { ReactNode } from 'react'
-import { IconCast, IconListDetails, IconPencil, IconRestore, IconSettings } from '@tabler/icons-react'
-import Link from 'next/link'
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { IconCast, IconServer, IconBrandDocker } from '@tabler/icons-react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { MutationButton } from '@/components/ui/mutation-button'
-import { Section } from '@/components/ui/section'
-import { StatusBadge, type StatusBadgeTone } from '@/components/ui/status-badge'
 import { toast } from '@/hooks/use-toast'
+import { dockerRuntimeHealth } from '@/shared/model/diagnostics/service-health'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
-import {
-  resetOrchestratorUiSettings,
-  saveOrchestratorUiSettings
-} from '@/shared/model/settings/use-orchestrator-ui-settings'
-import { DataGrid } from '@/shared/ui/data-grid/data-grid'
-import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
-import { PageHeader } from '@/shared/ui/page/page-header'
-import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
-import { ServiceSettingsDialog, serviceDetails, serviceMeta, type ServiceId } from './service-settings-dialog'
-import type { ServiceHealth } from '@/shared/contracts/diagnostics'
+import { saveOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
+import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
+import { serviceDetails, serviceIds, serviceMeta, isServiceId, type ServiceId } from './service-definitions'
+import { serviceHealthState } from './service-health-state'
+import { ServiceSettingsDialog } from './service-settings-dialog'
+import { ServicesGrid } from './services-grid'
+import { ServicesPageActions, ServicesSaveStatus } from './services-page-actions'
+import { ServicesPageLayout } from './services-page-layout'
+import type { ServiceRow } from './service-row'
+import type { OrchestratorHealth } from '@/shared/contracts/diagnostics'
 import type {
   OptionalServicesUiSettings,
   OrchestratorUiSettings
 } from '@/shared/model/settings/orchestrator-ui-settings'
-import type { ColumnDef } from '@tanstack/react-table'
-
-type ServiceRow = {
-  id: ServiceId | 'display'
-  title: string
-  description: string
-  icon: ReactNode
-  endpoint: string | null
-  timeoutMs: number | null
-  settingsSummary: string
-  state: {
-    label: string
-    tone: StatusBadgeTone
-  }
-  action:
-    | {
-        type: 'edit'
-        serviceId: ServiceId
-      }
-    | {
-        type: 'link'
-        href: string
-        label: string
-      }
-}
-
-const displayStatusTones = {
-  healthy: 'success',
-  unhealthy: 'danger',
-  offline: 'danger',
-  disabled: 'neutral'
-} satisfies Record<ServiceHealth['status'], StatusBadgeTone>
-
-const displayStatusLabels = {
-  healthy: 'Healthy',
-  unhealthy: 'Unhealthy',
-  offline: 'Offline',
-  disabled: 'Disabled'
-} satisfies Record<ServiceHealth['status'], string>
-
-const runtimeSettings = (settings: OrchestratorUiSettings) => ({
-  defaultContainerImage: settings.defaultContainerImage,
-  dockerImageRegistry: settings.dockerImageRegistry,
-  defaultInactivityTimeoutSeconds: settings.defaultInactivityTimeoutSeconds,
-  maxApkUploadSizeMb: settings.maxApkUploadSizeMb,
-  services: settings.services
-})
-
-const serviceIds = Object.keys(serviceMeta) as ServiceId[]
-
-const isServiceId = (value: string | null | undefined): value is ServiceId =>
-  Boolean(value) && serviceIds.includes(value as ServiceId)
 
 export const PlatformServicesPage = ({
-  initialDisplayHealth,
+  initialHealth,
   initialSettings,
   requestedServiceId
 }: {
-  initialDisplayHealth: ServiceHealth
+  initialHealth: OrchestratorHealth | null
   initialSettings: OrchestratorUiSettings
   requestedServiceId?: string | null
 }) => {
   const pathname = usePathname()
   const router = useRouter()
-  const [settings, setSettings] = useState(initialSettings)
+  const [refreshing, startRefresh] = useTransition()
+  const [form, setForm] = useState({ services: initialSettings.services, savedServices: initialSettings.services })
+  const { services, savedServices } = form
+  const initialSettingsSnapshot = useRef(JSON.stringify(initialSettings.services))
   const [editingService, setEditingService] = useState<ServiceId | null>(null)
-  const [pendingAction, setPendingAction] = useState<'save' | 'reset' | null>(null)
-  const [searchDraft, setSearchDraft] = useState('')
-  const [search, setSearch] = useState('')
+  const [pendingAction, setPendingAction] = useState<'save' | null>(null)
   const { isFeatureEnabled } = useFeatureFlags()
 
   const setServiceRoute = useCallback(
@@ -128,44 +72,63 @@ export const PlatformServicesPage = ({
   )
 
   const serviceRows = useMemo<ServiceRow[]>(() => {
-    const configurableRows: ServiceRow[] = (Object.keys(serviceMeta) as ServiceId[])
-      .filter(id => (id === 'ocr' ? isFeatureEnabled('feature.ocr') : isFeatureEnabled('feature.firewall')))
-      .map(id => {
-        const service = settings.services[id]
-        const meta = serviceMeta[id]
-        return {
-          id,
-          title: meta.title,
-          description: meta.description,
-          icon: meta.icon,
-          endpoint: service.endpoint,
-          timeoutMs: service.timeoutMs,
-          settingsSummary: serviceDetails(settings.services, id),
-          state: {
-            label: service.endpoint ? 'Configured' : 'Needs endpoint',
-            tone: service.endpoint ? 'success' : 'warning'
-          },
-          action: {
-            type: 'edit',
-            serviceId: id
-          }
-        }
-      })
+    const configurableRows: ServiceRow[] = serviceIds.map(id => {
+      const service = services[id]
+      const meta = serviceMeta[id]
+      const featureKey = meta.featureKey
+      const enabled = isFeatureEnabled(featureKey)
+      return {
+        id,
+        title: meta.title,
+        description: meta.description,
+        icon: meta.icon,
+        endpoint: service.endpoint,
+        timeoutMs: service.timeoutMs,
+        settingsSummary: `${serviceDetails(services, id)} ${enabled ? 'enabled' : 'disabled'} ${featureKey}`,
+        state: serviceHealthState(initialHealth?.services[id]),
+        action: enabled
+          ? { type: 'edit', serviceId: id }
+          : {
+              type: 'link',
+              href: `/platform/features#${featureKey}`,
+              label: 'Manage feature'
+            }
+      }
+    })
 
     return [
+      {
+        id: 'orchestrator',
+        title: 'Orchestrator',
+        description: 'Application lifecycle and platform API.',
+        icon: <IconServer className='size-5' />,
+        endpoint: initialSettings.orchestratorApiUrl,
+        timeoutMs: null,
+        settingsSummary: 'Platform API',
+        state: serviceHealthState(initialHealth?.services.orchestrator),
+        action: { type: 'link', href: '/platform/services?service=orchestrator', label: 'View details' }
+      },
+      {
+        id: 'docker',
+        title: 'Docker',
+        description: 'Container engine, runtime, and operation diagnostics.',
+        icon: <IconBrandDocker className='size-5' />,
+        endpoint: 'Managed by deployment',
+        timeoutMs: null,
+        settingsSummary: 'Infrastructure diagnostics and operation limits',
+        state: serviceHealthState(initialHealth ? dockerRuntimeHealth(initialHealth) : undefined),
+        action: { type: 'link', href: '/platform/services?service=docker', label: 'View diagnostics' }
+      },
       ...configurableRows,
       {
         id: 'display',
         title: 'Display service',
-        description: 'Live display streaming and viewer session management.',
+        description: 'Live streaming and viewer sessions.',
         icon: <IconCast className='size-5' />,
         endpoint: 'Managed internally',
         timeoutMs: null,
         settingsSummary: 'Viewer session management',
-        state: {
-          label: displayStatusLabels[initialDisplayHealth.status],
-          tone: displayStatusTones[initialDisplayHealth.status]
-        },
+        state: serviceHealthState(initialHealth?.services.display),
         action: {
           type: 'link',
           href: '/platform/services/display-sessions',
@@ -173,135 +136,41 @@ export const PlatformServicesPage = ({
         }
       }
     ]
-  }, [initialDisplayHealth.status, isFeatureEnabled, settings.services])
+  }, [initialHealth, initialSettings.orchestratorApiUrl, isFeatureEnabled, services])
 
-  const columns = useMemo<ColumnDef<ServiceRow>[]>(
-    () => [
-      {
-        accessorKey: 'title',
-        header: 'Service',
-        meta: { label: 'Service' },
-        size: 320,
-        cell: ({ row }) => (
-          <div className='flex min-w-0 items-center gap-3'>
-            <div className='flex size-9 shrink-0 items-center justify-center rounded-control bg-primary/10 text-primary'>
-              {row.original.icon}
-            </div>
-            <div className='min-w-0'>
-              <div className='truncate font-medium text-foreground'>{row.original.title}</div>
-              <div className='mt-1 truncate text-xs text-foreground-muted'>{row.original.description}</div>
-            </div>
-          </div>
-        )
-      },
-      {
-        id: 'state',
-        header: 'State',
-        meta: { label: 'State' },
-        size: 132,
-        cell: ({ row }) => <StatusBadge tone={row.original.state.tone}>{row.original.state.label}</StatusBadge>
-      },
-      {
-        accessorKey: 'endpoint',
-        header: 'Endpoint',
-        meta: { label: 'Endpoint' },
-        size: 360,
-        cell: ({ row }) => (
-          <span className='truncate text-foreground-muted'>{row.original.endpoint ?? 'Not configured'}</span>
-        )
-      },
-      {
-        accessorKey: 'timeoutMs',
-        header: 'Timeout',
-        meta: { label: 'Timeout' },
-        size: 140,
-        cell: ({ row }) => (
-          <span className='whitespace-nowrap text-foreground-muted'>
-            {row.original.timeoutMs === null ? '—' : `${row.original.timeoutMs} ms`}
-          </span>
-        )
-      },
-      {
-        accessorKey: 'settingsSummary',
-        header: 'Settings',
-        meta: { label: 'Settings' },
-        size: 320,
-        cell: ({ row }) => <span className='truncate text-foreground-muted'>{row.original.settingsSummary}</span>
-      },
-      {
-        id: 'actions',
-        header: '',
-        meta: { label: 'Actions' },
-        enableSorting: false,
-        enableResizing: false,
-        size: 144,
-        cell: ({ row }) => {
-          const action = row.original.action
-          return (
-            <div className='flex justify-end'>
-              {action.type === 'link' ? (
-                <Button
-                  asChild
-                  variant='ghost'
-                  size='sm'
-                >
-                  <Link href={action.href}>
-                    <IconListDetails className='size-4' />
-                    {action.label}
-                  </Link>
-                </Button>
-              ) : (
-                <Button
-                  type='button'
-                  variant='ghost'
-                  size='sm'
-                  onClick={() => openServiceEditor(action.serviceId)}
-                >
-                  <IconPencil className='size-4' />
-                  Edit
-                </Button>
-              )}
-            </div>
-          )
-        }
-      }
-    ],
-    [openServiceEditor]
-  )
-  const visibleServiceRows = useMemo(() => {
-    const query = search.trim().toLowerCase()
-    if (!query) return serviceRows
-    return serviceRows.filter(service =>
-      `${service.title} ${service.description} ${service.endpoint ?? ''} ${service.state.label} ${service.settingsSummary}`
-        .toLowerCase()
-        .includes(query)
-    )
-  }, [search, serviceRows])
+  const hasConfiguration = serviceRows.some(service => service.action.type === 'edit')
+  const hasChanges = JSON.stringify(services) !== JSON.stringify(savedServices)
 
   useEffect(() => {
-    setSettings(initialSettings)
+    const snapshot = JSON.stringify(initialSettings.services)
+    // Editor query changes can return identical settings; retain the current draft.
+    if (initialSettingsSnapshot.current === snapshot) return
+    initialSettingsSnapshot.current = snapshot
+    setForm(current => ({
+      services:
+        JSON.stringify(current.services) === JSON.stringify(current.savedServices)
+          ? initialSettings.services
+          : current.services,
+      savedServices: initialSettings.services
+    }))
   }, [initialSettings])
 
   useEffect(() => {
-    const enabled =
-      requestedServiceId === 'ocr'
-        ? isFeatureEnabled('feature.ocr')
-        : requestedServiceId === 'firewall' && isFeatureEnabled('feature.firewall')
-    setEditingService(enabled && isServiceId(requestedServiceId) ? requestedServiceId : null)
+    const nextService = isServiceId(requestedServiceId) ? requestedServiceId : null
+    setEditingService(nextService && isFeatureEnabled(serviceMeta[nextService].featureKey) ? nextService : null)
   }, [isFeatureEnabled, requestedServiceId])
 
-  const updateServices = (services: OptionalServicesUiSettings) => {
-    setSettings(current => ({
-      ...current,
-      services
-    }))
+  const updateServices = (nextServices: OptionalServicesUiSettings) => {
+    setForm(current => ({ ...current, services: nextServices }))
   }
 
   const saveSettings = async () => {
+    if (pendingAction || !hasChanges) return
     setPendingAction('save')
     try {
-      const saved = await saveOrchestratorUiSettings(runtimeSettings(settings))
-      setSettings(current => ({ ...saved, orchestratorApiUrl: current.orchestratorApiUrl }))
+      const saved = await saveOrchestratorUiSettings({ services })
+      setForm({ services: saved.services, savedServices: saved.services })
+      startRefresh(() => router.refresh())
       toast({ title: 'Service settings saved', variant: 'success' })
     } catch (error) {
       toast({
@@ -314,90 +183,38 @@ export const PlatformServicesPage = ({
     }
   }
 
-  const resetSettings = async () => {
-    setPendingAction('reset')
-    try {
-      const saved = await resetOrchestratorUiSettings()
-      setSettings(current => ({ ...saved, orchestratorApiUrl: current.orchestratorApiUrl }))
-      toast({ title: 'Service settings reset', variant: 'success' })
-    } catch (error) {
-      toast({
-        title: 'Could not reset service settings',
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'danger'
-      })
-    } finally {
-      setPendingAction(null)
-    }
-  }
-
   return (
-    <StandardPage className='gap-2'>
-      <PageHeader
-        section={{ label: 'Platform', href: '/platform' }}
-        title='Services'
-        description='Configure optional sidecar connection and runtime settings. Feature availability is managed separately.'
-        actions={
-          <>
-            <MutationButton
-              type='button'
-              variant='secondary'
-              onClick={() => void resetSettings()}
-              pending={pendingAction === 'reset'}
-              pendingLabel='Resetting…'
-              disabled={pendingAction === 'save'}
-            >
-              <IconRestore className='size-4' />
-              Reset
-            </MutationButton>
-            <MutationButton
-              type='button'
-              onClick={() => void saveSettings()}
-              pending={pendingAction === 'save'}
-              pendingLabel='Saving…'
-              disabled={pendingAction === 'reset'}
-            >
-              <IconSettings className='size-4' />
-              Save
-            </MutationButton>
-          </>
-        }
-      />
-      <PageContent>
-        <Section
-          surface='plain'
-          contentClassName='gap-4'
-        >
-          <DataGridWorkspace
-            search={searchDraft}
-            searchPlaceholder='Search services'
-            onSearchChange={setSearchDraft}
-            onSearch={setSearch}
-          >
-            <DataGrid
-              columns={columns}
-              data={visibleServiceRows}
-              totalItems={visibleServiceRows.length}
-              pageIndex={0}
-              pageSize={Math.max(visibleServiceRows.length, 1)}
-              getRowId={row => row.id}
-              rowActivation={{
-                getLabel: row =>
-                  row.action.type === 'edit' ? `Edit ${row.title}` : `${row.action.label} for ${row.title}`,
-                onActivate: activateService
-              }}
-              minWidth='78rem'
-              emptyState={<div className='text-center text-foreground-muted'>No services match your search.</div>}
+    <ServicesPageLayout
+      actions={
+        <>
+          <PlatformPageRefreshButton
+            isRefreshing={refreshing}
+            onRefresh={() => startRefresh(() => router.refresh())}
+          />
+          {hasConfiguration || hasChanges ? (
+            <ServicesPageActions
+              hasChanges={hasChanges}
+              saving={pendingAction === 'save'}
+              onDiscard={() => setForm(current => ({ ...current, services: current.savedServices }))}
+              onSave={() => void saveSettings()}
             />
-          </DataGridWorkspace>
-        </Section>
-      </PageContent>
+          ) : null}
+        </>
+      }
+      meta={hasConfiguration || hasChanges ? <ServicesSaveStatus hasChanges={hasChanges} /> : undefined}
+    >
+      <ServicesGrid
+        disabled={pendingAction !== null}
+        rows={serviceRows}
+        onEdit={openServiceEditor}
+        onActivate={activateService}
+      />
       <ServiceSettingsDialog
         serviceId={editingService}
-        services={settings.services}
+        services={services}
         onChange={updateServices}
         onClose={closeServiceEditor}
       />
-    </StandardPage>
+    </ServicesPageLayout>
   )
 }

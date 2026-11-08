@@ -15,10 +15,12 @@ import type { CastingSidecarController } from './use-casting-sidecar-controller'
 import type { AndroidApplication } from '@/shared/contracts/application'
 
 export const CastingSessionsSection = ({
+  loading = false,
   controller,
   applications,
   owners
 }: {
+  loading?: boolean
   controller: CastingSidecarController
   applications: Pick<AndroidApplication, 'id' | 'name' | 'ownerUserId' | 'runtime'>[]
   owners: Array<{ id: string; name: string }>
@@ -64,6 +66,7 @@ export const CastingSessionsSection = ({
         contentClassName='gap-4'
       >
         <DataGridWorkspace
+          disabled={loading}
           search={search}
           searchPlaceholder='Search sessions'
           onSearchChange={setSearch}
@@ -190,7 +193,7 @@ export const CastingSessionsSection = ({
           bulkActions={
             <Button
               type='button'
-              variant='secondary'
+              variant='ghost'
               disabled={busy !== null || selectedSessions.length === 0}
               onClick={() => setPendingEndSessions(selectedSessions)}
             >
@@ -199,6 +202,7 @@ export const CastingSessionsSection = ({
           }
         >
           <DataGrid
+            loading={loading}
             columns={columns}
             data={paginatedSessions}
             totalItems={sortedSessions.length}
@@ -210,7 +214,7 @@ export const CastingSessionsSection = ({
               setSorting(current => (typeof updater === 'function' ? updater(current) : updater))
               setPageIndex(0)
             }}
-            selection={{ selectedIds, onSelectedIdsChange: setSelectedIds }}
+            selection={{ disabled: loading, selectedIds, onSelectedIdsChange: setSelectedIds }}
             minWidth='76rem'
             emptyState={
               <div className='text-center text-foreground-muted'>
@@ -242,6 +246,7 @@ export const CastingSessionsSection = ({
             }}
           />
           <DataGridPagination
+            loading={loading}
             totalItems={sortedSessions.length}
             pageIndex={pageIndex}
             pageSize={pageSize}

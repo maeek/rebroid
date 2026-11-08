@@ -1,8 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import type { ReactNode } from 'react'
-import { IconShield, IconSparkles } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -13,63 +11,14 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
+import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { NumericUnitInput } from '@/components/ui/numeric-unit-input'
 import { TabsList, TabsPanel, TabsRoot, TabsTrigger } from '@/components/ui/tabs'
+import { serviceMeta, updateService, type ServiceId } from './service-definitions'
 import type { OptionalServicesUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
-export type ServiceId = keyof OptionalServicesUiSettings
 type DialogTab = 'connection' | 'settings'
-
-export const serviceMeta: Record<
-  ServiceId,
-  {
-    title: string
-    description: string
-    icon: ReactNode
-    endpointPlaceholder: string
-    endpointDescription: string
-    hasSettings: boolean
-  }
-> = {
-  ocr: {
-    title: 'OCR perception',
-    description: 'PaddleOCR screenshot text extraction for AI perception.',
-    icon: <IconSparkles className='size-5' />,
-    endpointPlaceholder: 'http://ocr-sidecar:4300',
-    endpointDescription: 'Base HTTP URL for the OCR sidecar.',
-    hasSettings: true
-  },
-  firewall: {
-    title: 'Firewall agent',
-    description: 'Host-side firewall reconciler for network-access policies.',
-    icon: <IconShield className='size-5' />,
-    endpointPlaceholder: '/run/rebroid-firewall/agent.sock',
-    endpointDescription: 'Unix socket path or HTTP(S) base URL for the firewall agent.',
-    hasSettings: false
-  }
-}
-
-export const serviceDetails = (services: OptionalServicesUiSettings, id: ServiceId) => {
-  if (id === 'ocr') {
-    const ocr = services.ocr
-    return `${ocr.language} · quality-gated cascade · min ${ocr.minConfidence}`
-  }
-
-  return 'Network policy reconciliation'
-}
-
-export const updateService = <T extends ServiceId>(
-  services: OptionalServicesUiSettings,
-  id: T,
-  patch: Partial<OptionalServicesUiSettings[T]>
-): OptionalServicesUiSettings => ({
-  ...services,
-  [id]: {
-    ...services[id],
-    ...patch
-  }
-})
 
 const numberValue = (value: number, fallback: number) => (Number.isFinite(value) ? value : fallback)
 
@@ -112,7 +61,10 @@ export const ServiceSettingsDialog = ({
         if (!open) onClose()
       }}
     >
-      <DialogContent className='sm:max-w-xl'>
+      <DialogContent
+        data-editor-dialog=''
+        className='sm:max-w-xl'
+      >
         <DialogHeader>
           <DialogTitle className='flex items-center gap-2'>
             {meta.icon}
@@ -170,16 +122,6 @@ export const ServiceSettingsDialog = ({
   )
 }
 
-const Field = ({ children, description, label }: { children: ReactNode; description: string; label: string }) => (
-  <div className='grid gap-2'>
-    <div className='grid gap-1'>
-      <Label>{label}</Label>
-      <p className='text-xs text-foreground-muted'>{description}</p>
-    </div>
-    {children}
-  </div>
-)
-
 const ConnectionTab = ({
   description,
   onChange,
@@ -192,7 +134,8 @@ const ConnectionTab = ({
   service: OptionalServicesUiSettings[ServiceId]
 }) => (
   <div className='grid gap-4'>
-    <Field
+    <FormField
+      layout='vertical'
       label='Endpoint'
       description={description}
     >
@@ -201,19 +144,21 @@ const ConnectionTab = ({
         placeholder={placeholder}
         onChange={event => onChange({ endpoint: event.target.value.trim() || null })}
       />
-    </Field>
-    <Field
+    </FormField>
+    <FormField
+      layout='vertical'
       label='Timeout'
       description='Maximum request time before the service is treated as unavailable.'
     >
-      <Input
+      <NumericUnitInput
+        unit='ms'
         type='number'
         min={100}
         max={120000}
         value={service.timeoutMs}
         onChange={event => onChange({ timeoutMs: numberValue(Number(event.target.value), service.timeoutMs) })}
       />
-    </Field>
+    </FormField>
   </div>
 )
 
@@ -225,11 +170,13 @@ const OcrSettingsTab = ({
   services: OptionalServicesUiSettings
 }) => (
   <div className='grid gap-4'>
-    <Field
+    <FormField
+      layout='vertical'
       label='Max image size'
       description='Largest side fed to OCR after resize.'
     >
-      <Input
+      <NumericUnitInput
+        unit='px'
         type='number'
         min={320}
         max={4096}
@@ -240,12 +187,14 @@ const OcrSettingsTab = ({
           })
         }
       />
-    </Field>
-    <Field
+    </FormField>
+    <FormField
+      layout='vertical'
       label='Min confidence'
       description='Discard OCR boxes below this score.'
     >
-      <Input
+      <NumericUnitInput
+        unit='/ 1'
         type='number'
         min={0}
         max={1}
@@ -257,8 +206,9 @@ const OcrSettingsTab = ({
           })
         }
       />
-    </Field>
-    <Field
+    </FormField>
+    <FormField
+      layout='vertical'
       label='Language'
       description='The PaddleOCR language/model selected for this deployment.'
     >
@@ -267,6 +217,6 @@ const OcrSettingsTab = ({
         placeholder='en'
         onChange={event => onChange('ocr', { language: event.target.value })}
       />
-    </Field>
+    </FormField>
   </div>
 )
