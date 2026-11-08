@@ -26,7 +26,7 @@ export type NavigationItem = {
   feature?: FeatureFlagKey
 }
 
-export const appSections: NavigationItem[] = [{ name: 'Installed Apps', Icon: IconApps, href: '/apps' }]
+export const appSections: NavigationItem[] = [{ name: 'All apps', Icon: IconApps, href: '/apps' }]
 
 export const automationSections: NavigationItem[] = [
   { name: 'Workflows', Icon: IconRobot, href: '/automations' },
@@ -40,10 +40,10 @@ export const securitySections: NavigationItem[] = [
   { name: 'Audit log', Icon: IconHistory, href: '/security/audit-log' }
 ]
 
+export const overviewSections: NavigationItem[] = [{ name: 'Overview', Icon: IconChartHistogram, href: '/platform' }]
+
 export const platformSections: NavigationItem[] = [
-  { name: 'Overview', Icon: IconChartHistogram, href: '/platform' },
   { name: 'Runtime defaults', Icon: IconAdjustments, href: '/platform/runtime' },
-  { name: 'Features', Icon: IconAdjustments, href: '/platform/features' },
   { name: 'Services', Icon: IconPlugConnected, href: '/platform/services' },
   { name: 'Scheduler', Icon: IconCalendarTime, href: '/platform/scheduler' },
   { name: 'AI', Icon: GradientSparklesIcon, href: '/platform/ai' }
@@ -111,3 +111,8 @@ export const variantStyles = {
     dashboardSpacing: 'mb-4'
   }
 } as const
+
+export const isNavigationDestinationActive = (pathname: string, href: string, exact = false) => {
+  if (href === '/platform/services' && pathname === '/platform/features') return true
+  return exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`)
+}

@@ -73,7 +73,7 @@ export const TopBarNotifications = () => {
               >
                 <div className='flex items-center justify-between gap-3'>
                   <Link
-                    href={`/app/${app.appId}/manage`}
+                    href={`/app/${app.appId}?view=configuration`}
                     className='truncate text-sm font-medium text-foreground underline-offset-4 hover:underline'
                   >
                     {app.appName}

@@ -113,6 +113,8 @@ export const AuthPixelBackdrop = () => {
 
     const gl = canvas.getContext('webgl2', {
       alpha: true,
+      // The fragment shader outputs straight alpha, including transparent pixels.
+      premultipliedAlpha: false,
       antialias: false,
       depth: false,
       powerPreference: 'low-power'
@@ -180,9 +182,10 @@ export const AuthPixelBackdrop = () => {
       }
       const resize = () => {
         const bounds = canvas.getBoundingClientRect()
-        const ratio = Math.min(window.devicePixelRatio || 1, 2)
-        const width = Math.min(Math.max(Math.round(bounds.width * ratio), 1), 4096)
-        const height = Math.min(Math.max(Math.round(bounds.height * ratio), 1), 4096)
+        // Apply the texture limit uniformly so CSS scaling preserves square pixels.
+        const ratio = Math.min(window.devicePixelRatio || 1, 2, 4096 / Math.max(bounds.width, bounds.height, 1))
+        const width = Math.max(Math.round(bounds.width * ratio), 1)
+        const height = Math.max(Math.round(bounds.height * ratio), 1)
         if (canvas.width !== width || canvas.height !== height) {
           canvas.width = width
           canvas.height = height

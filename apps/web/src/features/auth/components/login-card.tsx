@@ -1,13 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { IconAlertTriangle, IconArrowLeft, IconLoader2, IconLockAccess } from '@tabler/icons-react'
+import { IconArrowLeft } from '@tabler/icons-react'
 import { signIn } from 'next-auth/react'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { MutationButton } from '@/components/ui/mutation-button'
+import { Notice } from '@/components/ui/notice'
 import { Visible } from '@/components/ui/visible'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { beginLoginAction } from '@/server/users/actions/begin-login-action'
@@ -93,29 +94,25 @@ export default function LoginCard({
   }
 
   return (
-    <>
-      <Card className='mx-auto w-full max-w-md border-white/10 bg-surface-panel/58 shadow-emphasis backdrop-blur-xl max-sm:border-0 max-sm:border-transparent! max-sm:bg-transparent! max-sm:shadow-none! max-sm:backdrop-blur-none! max-sm:rounded-none! max-sm:mx-0 max-sm:max-w-full'>
-        <CardHeader className='max-sm:px-0 flex-row gap-4 items-start'>
-          <div className='flex size-14 items-center justify-center rounded-panel border border-primary/30 bg-primary/15 text-primary'>
-            <IconLockAccess className='size-10' />
-          </div>
-          <div>
-            <CardTitle className='text-2xl'>{step === 'mfa' ? 'Two-factor authentication' : 'Login'}</CardTitle>
-            <CardDescription>
-              {step === 'mfa' ? 'Enter the code from your authenticator.' : 'Access your Rebroid workspace.'}
-            </CardDescription>
-          </div>
+    <div className='mx-auto flex w-full max-w-md flex-col gap-4 max-sm:mx-0 max-sm:max-w-full'>
+      <Card className='w-full border-surface-border bg-surface-panel shadow-none max-sm:border-0 max-sm:border-transparent! max-sm:bg-transparent! max-sm:shadow-none! max-sm:backdrop-blur-none! max-sm:rounded-none! max-sm:mx-0 max-sm:max-w-full'>
+        <CardHeader className='max-sm:px-0 gap-2'>
+          <CardTitle className='text-2xl font-medium tracking-tight'>
+            {step === 'mfa' ? 'Verify your identity' : 'Sign in'}
+          </CardTitle>
+          <CardDescription>
+            {step === 'mfa' ? 'Enter your authentication or recovery code.' : 'Continue to your Rebroid workspace.'}
+          </CardDescription>
         </CardHeader>
         <CardContent className='max-sm:px-0'>
           {step === 'credentials' ? (
             <>
-              <div className='flex w-full flex-col gap-4 pt-2'>
-                <Label
-                  className='text-md'
-                  htmlFor='username'
-                >
-                  Username <span className='text-xs font-medium text-foreground-muted'>* (Required)</span>
-                </Label>
+              <FormField
+                layout='vertical'
+                controlId='username'
+                label='Username'
+                className='gap-2 pt-2'
+              >
                 <Input
                   id='username'
                   placeholder='Username'
@@ -128,14 +125,13 @@ export default function LoginCard({
                     if (event.key === 'Enter') document.querySelector<HTMLInputElement>('#password')?.focus()
                   }}
                 />
-              </div>
-              <div className='flex w-full flex-col gap-4 pb-4 pt-5'>
-                <Label
-                  className='text-md'
-                  htmlFor='password'
-                >
-                  Password <span className='text-xs font-medium text-foreground-muted'>* (Required)</span>
-                </Label>
+              </FormField>
+              <FormField
+                layout='vertical'
+                controlId='password'
+                label='Password'
+                className='gap-2 pb-1 pt-5'
+              >
                 <Input
                   id='password'
                   type='password'
@@ -148,16 +144,15 @@ export default function LoginCard({
                   value={password}
                   onKeyDown={event => event.key === 'Enter' && void submitCredentials()}
                 />
-              </div>
+              </FormField>
             </>
           ) : (
-            <div className='flex w-full flex-col gap-4 pb-4 pt-2'>
-              <Label
-                className='text-md'
-                htmlFor='mfa-code'
-              >
-                Authentication or recovery code
-              </Label>
+            <FormField
+              layout='vertical'
+              controlId='mfa-code'
+              label='Authentication or recovery code'
+              className='gap-2 pt-2'
+            >
               <Input
                 id='mfa-code'
                 inputMode='numeric'
@@ -167,30 +162,21 @@ export default function LoginCard({
                 onChange={event => setMfaCode(event.target.value)}
                 onKeyDown={event => event.key === 'Enter' && void submitMfaCode()}
               />
-            </div>
+            </FormField>
           )}
         </CardContent>
         <CardFooter className='max-sm:px-0'>
           <div className='flex w-full flex-col'>
-            <Visible when={!!error}>
-              <Alert
-                variant='danger'
-                className='mb-5 bg-danger/15'
-              >
-                <IconAlertTriangle className='size-4' />
-                <AlertTitle>Could not sign in</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            </Visible>
-            <Button
-              className='w-full font-bold'
+            <MutationButton
+              pending={isSubmitting}
+              pendingLabel={step === 'mfa' ? 'Verifying…' : 'Signing in…'}
+              className='w-full'
               size='lg'
               disabled={isSubmitting}
               onClick={() => void (step === 'mfa' ? submitMfaCode() : submitCredentials())}
             >
-              {isSubmitting ? <IconLoader2 className='mr-2 size-4 animate-spin' /> : null}
-              {step === 'mfa' ? 'Verify' : 'Login'}
-            </Button>
+              {step === 'mfa' ? 'Verify' : 'Sign in'}
+            </MutationButton>
             {step === 'mfa' ? (
               <Button
                 className='mt-2 w-full'
@@ -205,6 +191,14 @@ export default function LoginCard({
           </div>
         </CardFooter>
       </Card>
-    </>
+      <Visible when={!!error}>
+        <Notice
+          tone='danger'
+          className='break-words'
+        >
+          {error}
+        </Notice>
+      </Visible>
+    </div>
   )
 }

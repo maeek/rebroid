@@ -21,7 +21,7 @@ describe('login card', () => {
   it('does not show the MFA field before primary credentials are verified', () => {
     render(<LoginCard />)
 
-    expect(screen.getByRole('heading', { name: 'Login' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument()
     expect(screen.queryByLabelText(/Authentication or recovery code/)).not.toBeInTheDocument()
   })
 
@@ -31,9 +31,9 @@ describe('login card', () => {
 
     fireEvent.change(screen.getByLabelText(/Username/), { target: { value: 'admin' } })
     fireEvent.change(screen.getByLabelText(/Password/), { target: { value: 'correct-password' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Login' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
 
-    expect(await screen.findByRole('heading', { name: 'Two-factor authentication' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Verify your identity' })).toBeInTheDocument()
     expect(screen.getByLabelText(/Authentication or recovery code/)).toBeInTheDocument()
     expect(signIn).not.toHaveBeenCalled()
   })
@@ -45,7 +45,7 @@ describe('login card', () => {
 
     fireEvent.change(screen.getByLabelText(/Username/), { target: { value: 'admin' } })
     fireEvent.change(screen.getByLabelText(/Password/), { target: { value: 'correct-password' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Login' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
 
     await waitFor(() =>
       expect(signIn).toHaveBeenCalledWith('credentials', {
@@ -65,7 +65,7 @@ describe('login card', () => {
 
     fireEvent.change(screen.getByLabelText(/Username/), { target: { value: 'admin' } })
     fireEvent.change(screen.getByLabelText(/Password/), { target: { value: 'temporary-password' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Login' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
 
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/account/required-password-change'))
   })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { Visible } from '@/components/ui/visible'
 import { usePollingQuery } from '@/hooks/use-polling-query'
@@ -9,7 +9,9 @@ import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { recentAppsUpdatedEvent } from '@/shared/model/recent-apps/recent-apps'
 import {
   appSections,
+  isNavigationDestinationActive,
   automationSections,
+  overviewSections,
   platformSections,
   preferenceSections,
   runtimeSections,
@@ -19,7 +21,7 @@ import {
   type NavigationItem,
   type NavigationVariant
 } from './protected-navigation-config'
-import { NavLink, SectionHeader } from './protected-navigation-parts'
+import { NavLink, NestedNavigationMenu, SectionHeader } from './protected-navigation-parts'
 import { RecentAppLink } from './recent-app-link'
 import type { ShellUser } from './shell-user'
 import type { RecentApp } from '@/shared/contracts/recent-app'
@@ -32,6 +34,7 @@ type ProtectedNavigationProps = {
 
 export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: ProtectedNavigationProps) => {
   const pathname = usePathname()
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const { data: recentApps = [], mutate: refreshRecentApps } = usePollingQuery<RecentApp[]>(
     'navigation:recent-apps',
     () => getBff<RecentApp[]>('/api/bff/shell/recent-apps'),
@@ -50,8 +53,7 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
     }
   }, [refreshRecentApps])
 
-  const isActivePath = (href: string, exact = false) =>
-    exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`)
+  const isActivePath = (href: string, exact = false) => isNavigationDestinationActive(pathname, href, exact)
 
   const itemIsActive = (href: string) => {
     if (href === '/security/users') {
@@ -89,6 +91,21 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
 
   return (
     <div className={styles.root}>
+      {isAdmin ? (
+        <ul className={styles.list}>
+          {overviewSections.map(({ name, Icon, href }) => (
+            <NavLink
+              key={href}
+              href={href}
+              label={name}
+              Icon={Icon}
+              isActive={itemIsActive(href)}
+              variant={variant}
+              onNavigate={onNavigate}
+            />
+          ))}
+        </ul>
+      ) : null}
       <SectionHeader
         title='Apps'
         variant={variant}
@@ -124,7 +141,7 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
         title='Automations'
         variant={variant}
         actionHref='/automations/create'
-        actionLabel='Create automation'
+        actionLabel='Create workflow'
         onNavigate={onNavigate}
       />
       <ul className={styles.list}>
@@ -142,10 +159,37 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
       </ul>
 
       <Visible when={isAdmin}>
-        {renderSection('Security', securitySections)}
-        {renderSection('Platform', platformSections)}
-        {renderSection('Runtime', runtimeSections)}
-        {renderSection('System', systemSections)}
+        <SectionHeader
+          title='Administration'
+          variant={variant}
+        />
+        <ul className={styles.list}>
+          {[
+            { label: 'Platform settings', items: platformSections },
+            { label: 'Infrastructure', items: [...runtimeSections, ...systemSections] },
+            { label: 'Access and policies', items: securitySections }
+          ].map(group => {
+            const items = group.items.filter(item => !item.feature || isFeatureEnabled(item.feature))
+            const first = items[0]
+            if (!first) return null
+            const active = items.some(item => itemIsActive(item.href))
+            const isOpen = expanded[group.label] ?? active
+            return (
+              <NestedNavigationMenu
+                key={group.label}
+                href={first.href}
+                label={group.label}
+                Icon={first.Icon}
+                items={items}
+                variant={variant}
+                isOpen={isOpen}
+                isActivePath={isActivePath}
+                onNavigate={onNavigate}
+                onToggle={() => setExpanded(current => ({ ...current, [group.label]: !isOpen }))}
+              />
+            )
+          })}
+        </ul>
         {renderSection('Preferences', preferenceSections)}
       </Visible>
     </div>
