@@ -7,7 +7,7 @@ import { getCurrentUserContext } from '../../../current-user'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
 import { orchestratorAppCatalogClient } from '../../catalog-client'
 import { orchestratorAppLifecycleClient } from '../../lifecycle-client'
-import { sanitizeAndroidApplicationForUser } from '../../safety'
+import { enforceResourceQuotas, enforceSessionQuota, sanitizeAndroidApplicationForUser } from '../../safety'
 import {
   assertCanAccessApplication,
   assertCanOpenApplicationSlot,
@@ -17,13 +17,15 @@ import {
 import type { SwitchApplicationProfileInput } from '@/shared/contracts/application'
 
 export const startApplicationAction = async (id: string, input?: SwitchApplicationProfileInput) => {
-  const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
+  const { app: currentApp, user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:start')) {
     throw new PublicActionError('You do not have permission to start applications.', { code: 'forbidden', status: 403 })
   }
   if (input && user.role !== 'admin' && !hasPermission(user.permissions, 'applications:switch-profile')) {
     throw new PublicActionError('You do not have permission to switch profiles.', { code: 'forbidden', status: 403 })
   }
+  enforceResourceQuotas(currentApp.runtime.resources, user.quotas)
+  enforceSessionQuota({ inactivityTimeoutSeconds: currentApp.runtime.inactivityTimeoutSeconds }, user.quotas)
   await assertCanOpenApplicationSlot(user, id)
   const command = await orchestratorAppLifecycleClient.startApplication(id, input)
   recordAuditEvent({

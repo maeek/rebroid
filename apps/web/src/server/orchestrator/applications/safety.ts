@@ -125,7 +125,7 @@ export const sanitizeApplicationLogForUser = (log: ApplicationLog, context: AppS
 }
 
 const assertQuota = (label: string, value: number | null | undefined, max: number | null) => {
-  if (value !== null && value !== undefined && max !== null && value > max) {
+  if (value !== undefined && max !== null && (value === null || value < 0 || value > max)) {
     throw new PublicActionError(`${label} exceeds your quota of ${max}.`, { code: 'validation', status: 422 })
   }
 }
@@ -144,3 +144,13 @@ export const enforceSessionQuota = (
 ) => {
   assertQuota('Session timeout', input.inactivityTimeoutSeconds, quotas.maxSessionSeconds)
 }
+
+export const applyCreateResourceQuotas = (
+  input: CreateApplicationActionInput,
+  quotas: ResourceQuota
+): CreateApplicationActionInput => ({
+  ...input,
+  memoryLimitMb: input.memoryLimitMb ?? quotas.maxMemoryMb ?? undefined,
+  cpuLimitCpus: input.cpuLimitCpus ?? quotas.maxCpuCpus ?? undefined,
+  inactivityTimeoutSeconds: input.inactivityTimeoutSeconds ?? quotas.maxSessionSeconds ?? undefined
+})

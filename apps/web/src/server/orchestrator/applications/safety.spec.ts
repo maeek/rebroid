@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { sanitizeApplicationLogForUser, sanitizeScrcpySessionForUser } from './safety'
+import {
+  applyCreateResourceQuotas,
+  enforceResourceQuotas,
+  enforceSessionQuota,
+  sanitizeApplicationLogForUser,
+  sanitizeScrcpySessionForUser
+} from './safety'
 import type { ScrcpySession } from '@/shared/contracts/application'
 
 const userContext = {
@@ -108,5 +114,20 @@ describe('application safety redaction', () => {
     expect(output).not.toContain('orchestrator:4100')
     expect(output).not.toContain('/var/lib/rebroid')
     expect(output).not.toContain('aaaaaaaaaaaaaaaa')
+  })
+})
+
+describe('effective resource quotas', () => {
+  it('bounds omitted create resources', () => {
+    expect(applyCreateResourceQuotas({ name: 'test' }, userContext.quotas)).toMatchObject({
+      memoryLimitMb: 1,
+      cpuLimitCpus: 1,
+      inactivityTimeoutSeconds: 1
+    })
+  })
+  it('rejects unlimited updates and session sentinels under finite quotas', () => {
+    expect(() => enforceResourceQuotas({ memoryLimitMb: null }, userContext.quotas)).toThrow()
+    expect(() => enforceResourceQuotas({ cpuLimitCpus: null }, userContext.quotas)).toThrow()
+    expect(() => enforceSessionQuota({ inactivityTimeoutSeconds: -1 }, userContext.quotas)).toThrow()
   })
 })

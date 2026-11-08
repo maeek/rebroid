@@ -7,7 +7,8 @@ import { hasPermission } from '@/shared/permissions/permissions'
 import { getCurrentUserContext } from '../../../current-user'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
 import { orchestratorAppCatalogClient } from '../../catalog-client'
-import { sanitizeAndroidApplicationForUser } from '../../safety'
+import { isTrustedRedroidImage } from '../../image-access'
+import { enforceResourceQuotas, enforceSessionQuota, sanitizeAndroidApplicationForUser } from '../../safety'
 import { assertCanAccessApplication, assertCanOpenApplicationSlot } from '../common/action-helpers'
 
 export const cloneApplicationForCurrentUserAction = async (id: string) => {
@@ -20,6 +21,15 @@ export const cloneApplicationForCurrentUserAction = async (id: string) => {
     })
   }
 
+  const source = await orchestratorAppCatalogClient.getApplication(id)
+  const imagePermission = isTrustedRedroidImage(source.runtime.image)
+    ? 'applications:use-redroid-images'
+    : 'applications:use-custom-images'
+  if (user.role !== 'admin' && !hasPermission(user.permissions, imagePermission)) {
+    throw new PublicActionError('You do not have permission to use this image.', { code: 'forbidden', status: 403 })
+  }
+  enforceResourceQuotas(source.runtime.resources, user.quotas)
+  enforceSessionQuota({ inactivityTimeoutSeconds: source.runtime.inactivityTimeoutSeconds }, user.quotas)
   await assertCanOpenApplicationSlot(user)
   const command = await orchestratorAppCatalogClient.cloneApplication(id, {
     ownerUserId: user.ownerUserId

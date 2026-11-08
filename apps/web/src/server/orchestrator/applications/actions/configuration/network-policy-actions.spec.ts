@@ -31,6 +31,7 @@ vi.mock('../../network-policy-client', () => ({
   }
 }))
 vi.mock('../../safety', () => ({
+  applyCreateResourceQuotas: (input: unknown) => input,
   sanitizeAndroidApplicationForUser: (app: unknown) => app,
   enforceResourceQuotas: vi.fn(),
   enforceSessionQuota: vi.fn()

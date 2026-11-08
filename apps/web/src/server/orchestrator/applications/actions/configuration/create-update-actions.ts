@@ -4,13 +4,19 @@ import { applyRedroidDefaultContainerArgs } from '@rebroid/android-application-c
 import { allowsBroadInternetAccess } from '@rebroid/firewall-policy-core/policy'
 import { recordAuditEvent } from '@/server/audit/events'
 import { PublicActionError } from '@/server/errors/public-action-error'
-import { hasPermission, isRedroidImage } from '@/shared/permissions/permissions'
+import { hasPermission } from '@/shared/permissions/permissions'
 import { getCurrentOwnerUserId, getCurrentUserContext } from '../../../current-user'
 import { requireFeature } from '../../../features'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
 import { orchestratorAppCatalogClient } from '../../catalog-client'
+import { isTrustedRedroidImage } from '../../image-access'
 import { orchestratorAppLifecycleClient } from '../../lifecycle-client'
-import { enforceResourceQuotas, enforceSessionQuota, sanitizeAndroidApplicationForUser } from '../../safety'
+import {
+  applyCreateResourceQuotas,
+  enforceResourceQuotas,
+  enforceSessionQuota,
+  sanitizeAndroidApplicationForUser
+} from '../../safety'
 import { assertCanAccessApplication, assertCanOpenApplicationSlot } from '../common/action-helpers'
 import type { CreateApplicationActionInput, UpdateAndroidApplicationInput } from '@/shared/contracts/application'
 
@@ -78,14 +84,14 @@ const assertCanUseContainerImage = (
   }
   if (
     input.containerImage &&
-    isRedroidImage(input.containerImage) &&
+    isTrustedRedroidImage(input.containerImage) &&
     !hasPermission(user.permissions, 'applications:use-redroid-images')
   ) {
     throw new PublicActionError('You do not have permission to use Redroid images.', { code: 'forbidden', status: 403 })
   }
   if (
     input.containerImage &&
-    !isRedroidImage(input.containerImage) &&
+    !isTrustedRedroidImage(input.containerImage) &&
     !hasPermission(user.permissions, 'applications:use-custom-images')
   ) {
     throw new PublicActionError('You do not have permission to use custom images.', { code: 'forbidden', status: 403 })
@@ -165,7 +171,7 @@ export const createApplicationAction = async (input: CreateApplicationActionInpu
   const ownerUserId = await getCurrentOwnerUserId()
   const containerImage = input.containerImage?.trim()
   const command = await orchestratorAppCatalogClient.createApplication({
-    ...input,
+    ...applyCreateResourceQuotas(input, user.quotas),
     ownerUserId,
     containerArgs: containerImage
       ? applyRedroidDefaultContainerArgs(containerImage, input.containerArgs ?? '') || undefined
