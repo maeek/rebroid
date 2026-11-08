@@ -68,7 +68,12 @@ describe('protected route loading contract', () => {
       expect(existsSync(loadingPath), `${route} loading state`).toBe(true)
 
       const source = readFileSync(loadingPath, 'utf8').trim()
-      expect(source, `${route} loader`).toMatch(/^export \{ [A-Za-z0-9_]+ as default \} from '@\/features\/[^']+'$/)
+      if (route === '(standard)/app/[slug]') {
+        expect(source).toContain('<AppPageSkeleton activity={<AppActivityLoading />} />')
+        expect(source).not.toContain('className')
+      } else {
+        expect(source, `${route} loader`).toMatch(/^export \{ [A-Za-z0-9_]+ as default \} from '@\/features\/[^']+'$/)
+      }
     }
   })
 

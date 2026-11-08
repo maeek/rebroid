@@ -1,7 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ComponentType } from 'react'
 import { Button } from '@/components/ui/button'
+import { FileUploadField } from '@/components/ui/file-upload-field'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
@@ -11,7 +12,10 @@ import { Toaster } from '@/components/ui/toaster'
 import { toast } from '@/hooks/use-toast'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
-import { DataGridToolbar } from '@/shared/ui/data-grid/data-grid-toolbar'
+import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
+import { EditorPage } from '@/shared/ui/page/editor-page'
+import { PageHeader } from '@/shared/ui/page/page-header'
+import { PageContent } from '@/shared/ui/page/page-layout'
 import type { ColumnDef } from '@tanstack/react-table'
 
 type FixtureRow = {
@@ -30,7 +34,7 @@ const rows: FixtureRow[] = Array.from({ length: 20 }, (_, index) => ({
   value: `value-${index + 1}`
 }))
 
-export const SkeletonContractFixture = () => {
+export const SkeletonContractFixture = ({ Charts }: { Charts: ComponentType<{ loading: boolean }> }) => {
   const [loading, setLoading] = useState(true)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const columns = useMemo<ColumnDef<FixtureRow>[]>(
@@ -68,8 +72,55 @@ export const SkeletonContractFixture = () => {
   )
 
   return (
-    <main className='grid gap-4 p-6 max-sm:p-4'>
+    <main className='grid grid-cols-[minmax(0,1fr)] gap-4 p-6 max-sm:p-4'>
       <Toaster />
+      <div data-testid='contract-standard-editor'>
+        <EditorPage width='form'>
+          <PageHeader
+            section={{ label: 'Apps' }}
+            title='Editor preview'
+            actions={<Button>Save changes</Button>}
+          />
+          <PageContent>
+            <Section
+              surface='plain'
+              title='Identity'
+              contentClassName='gap-4'
+            >
+              <FormField
+                label='Editor name'
+                layout='vertical'
+              >
+                <Input
+                  disabled={loading}
+                  defaultValue='Sample app'
+                />
+              </FormField>
+              <FormField
+                label='Package'
+                layout='vertical'
+              >
+                <FileUploadField disabled={loading} />
+              </FormField>
+            </Section>
+            <Section
+              surface='plain'
+              title='Advanced limits'
+              collapsible
+            >
+              <FormField
+                label='Memory'
+                layout='vertical'
+              >
+                <Input
+                  type='number'
+                  defaultValue='512'
+                />
+              </FormField>
+            </Section>
+          </PageContent>
+        </EditorPage>
+      </div>
       <Button
         className='w-32'
         onClick={() => setLoading(current => !current)}
@@ -100,40 +151,47 @@ export const SkeletonContractFixture = () => {
         surface='plain'
         contentClassName='gap-4'
       >
-        <div data-testid='contract-toolbar'>
-          <DataGridToolbar
-            disabled={loading}
-            search=''
-            searchPlaceholder='Search resources'
-            onSearchChange={() => undefined}
-            onSearchSubmit={() => undefined}
-            actions={<Button disabled={loading}>Remove selected</Button>}
-          />
-        </div>
-        <div data-testid='contract-grid'>
-          <DataGrid
-            columns={columns}
-            data={loading ? [] : rows}
-            totalItems={loading ? 0 : rows.length}
-            pageIndex={0}
-            pageSize={20}
-            getRowId={row => row.id}
-            selection={loading ? undefined : { selectedIds, onSelectedIdsChange: setSelectedIds }}
-            rowContextMenu={loading ? undefined : () => null}
-            loading={loading ? { rowCount: 20, selectable: true, rowMenu: true } : false}
-          />
-        </div>
-        <div data-testid='contract-pagination'>
-          <DataGridPagination
-            loading={loading}
-            pageIndex={0}
-            pageSize={20}
-            totalItems={loading ? 0 : rows.length}
-            onPageIndexChange={() => undefined}
-            onPageSizeChange={() => undefined}
-          />
-        </div>
+        <DataGridWorkspace
+          disabled={loading}
+          search=''
+          searchPlaceholder='Search resources'
+          onSearchChange={() => undefined}
+          onSearch={() => undefined}
+          filters={<Input aria-label='Filter by state' />}
+          selectedCount={selectedIds.size}
+          bulkActions={
+            <>
+              <Button variant='ghost'>Stop selected</Button>
+              <Button variant='danger-ghost'>Remove selected</Button>
+            </>
+          }
+        >
+          <div data-testid='contract-grid'>
+            <DataGrid
+              columns={columns}
+              data={loading ? [] : rows}
+              totalItems={loading ? 0 : rows.length}
+              pageIndex={0}
+              pageSize={20}
+              getRowId={row => row.id}
+              selection={loading ? undefined : { selectedIds, onSelectedIdsChange: setSelectedIds }}
+              rowContextMenu={loading ? undefined : () => null}
+              loading={loading ? { rowCount: 20, selectable: true, rowMenu: true } : false}
+            />
+          </div>
+          <div data-testid='contract-pagination'>
+            <DataGridPagination
+              loading={loading}
+              pageIndex={0}
+              pageSize={20}
+              totalItems={loading ? 0 : rows.length}
+              onPageIndexChange={() => undefined}
+              onPageSizeChange={() => undefined}
+            />
+          </div>
+        </DataGridWorkspace>
       </Section>
+      <Charts loading={loading} />
       <div
         data-testid='contract-family-detail'
         className='grid min-h-72 gap-4 lg:grid-cols-2'

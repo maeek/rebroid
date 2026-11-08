@@ -1,0 +1,162 @@
+import { expect, test } from '@playwright/test'
+import { dockerOperationLimitsSchema } from '../src/shared/contracts/docker-operation-limits'
+
+test('Docker failures stay compact and offer scoped recovery', async ({ page }) => {
+  let limitsUnavailable = true
+  const limits = {
+    maxConcurrentReads: 8,
+    maxConcurrentLongOperations: 4,
+    slowRequestWarningMs: 5000,
+    longOperationTimeoutMs: 1_800_000
+  }
+  const unavailable = {
+    ok: false,
+    requestId: 'preview',
+    error: { requestId: 'preview', code: 'upstream_unavailable', message: 'Service unavailable.' }
+  }
+  await page.route('**/api/bff/platform/docker-operation-limits', route =>
+    route.fulfill({
+      status: limitsUnavailable ? 503 : 200,
+      json: limitsUnavailable ? unavailable : { ok: true, data: limits, requestId: 'preview' }
+    })
+  )
+  await page.route('**/api/bff/platform/docker-metrics', route => route.fulfill({ status: 503, json: unavailable }))
+  await page.goto('/skeleton-contract-test?editor=service-docker')
+  const limitsError = page.getByRole('alert').filter({ hasText: 'Operation limits unavailable' })
+  const metricsError = page.getByRole('alert').filter({ hasText: 'Docker metrics unavailable' })
+  await expect(limitsError).toBeVisible()
+  await expect(metricsError).toBeVisible()
+  for (const width of [390, 768, 1440, 2048]) {
+    await page.setViewportSize({ width, height: 1100 })
+    for (const theme of ['light', 'dark', 'oled']) {
+      await page.evaluate(value => {
+        document.documentElement.className = value
+      }, theme)
+      expect((await limitsError.boundingBox())!.height).toBeLessThan(200)
+      expect((await metricsError.boundingBox())!.height).toBeLessThan(200)
+      await expect(page.getByRole('heading', { name: 'Infrastructure diagnostics', exact: true })).toBeInViewport()
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
+    }
+  }
+  await page.screenshot({ path: `/tmp/rebroid-docker-errors-${test.info().project.name}.png`, animations: 'disabled' })
+  limitsUnavailable = false
+  await limitsError.getByRole('button', { name: 'Try again', exact: true }).click()
+  await expect(page.getByRole('spinbutton', { name: 'Concurrent reads', exact: true })).toHaveValue('8')
+  await expect(limitsError).toHaveCount(0)
+  await expect(metricsError).toBeVisible()
+})
+
+test('services show complete observed health and matching loading geometry', async ({ page }) => {
+  for (const width of [390, 768, 1440, 2048]) {
+    await page.setViewportSize({ width, height: 1100 })
+    await page.goto('/skeleton-contract-test?editor=services-all-loading')
+    const loading = await page.getByRole('table').boundingBox()
+    const columns = await page.getByRole('columnheader').allTextContents()
+    await page.goto('/skeleton-contract-test?editor=services-all')
+    const ready = await page.getByRole('table').boundingBox()
+    expect(ready!.y).toBe(loading!.y)
+    expect(ready!.width).toBe(loading!.width)
+    expect(await page.getByRole('columnheader').allTextContents()).toEqual(columns)
+    await expect(page.getByRole('table').getByRole('row')).toHaveCount(6)
+    await expect(page.getByRole('row', { name: 'Edit Firewall agent' })).toContainText('Offline')
+    await expect(page.getByRole('link', { name: 'Docker', exact: true })).toHaveAttribute(
+      'href',
+      '/platform/services?service=docker'
+    )
+    await expect(page.getByRole('link', { name: 'Orchestrator', exact: true })).toHaveAttribute(
+      'href',
+      '/platform/services?service=orchestrator'
+    )
+    for (const theme of ['light', 'dark', 'oled']) {
+      await page.evaluate(value => {
+        document.documentElement.className = value
+      }, theme)
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
+      await page.screenshot({
+        path: `/tmp/rebroid-services-health-${width}-${theme}-${test.info().project.name}.png`,
+        animations: 'disabled'
+      })
+    }
+  }
+})
+
+test('Docker service edits real limits, retains failed drafts, and leaves connection settings separate', async ({
+  page
+}) => {
+  let limits = {
+    maxConcurrentReads: 8,
+    maxConcurrentLongOperations: 4,
+    slowRequestWarningMs: 5000,
+    longOperationTimeoutMs: 1_800_000
+  }
+  let fail = true
+  let saves = 0
+  await page.route('**/api/bff/platform/docker-operation-limits', async route => {
+    if (route.request().method() === 'PATCH') {
+      saves += 1
+      if (fail)
+        return route.fulfill({
+          status: 503,
+          json: {
+            ok: false,
+            requestId: 'preview',
+            error: { requestId: 'preview', code: 'upstream_unavailable', message: 'Docker unavailable.' }
+          }
+        })
+      limits = dockerOperationLimitsSchema.parse(route.request().postDataJSON())
+    }
+    return route.fulfill({ json: { ok: true, data: limits, requestId: 'preview' } })
+  })
+  await page.route('**/api/bff/platform/docker-metrics', route =>
+    route.fulfill({
+      json: {
+        ok: true,
+        requestId: 'preview',
+        data: {
+          collectedAt: new Date().toISOString(),
+          transport: 'local-socket',
+          limits: { ...limits, remoteRequestTimeoutMs: 30_000 },
+          totals: { success: 52, errors: 1, timeouts: 0, retries: 2, slow: 0 },
+          inFlight: { read: 0, mutation: 0, long: 0 },
+          queued: { read: 0, mutation: 0, long: 0 },
+          operations: [],
+          events: []
+        }
+      }
+    })
+  )
+  await page.goto('/skeleton-contract-test?editor=service-docker')
+  await expect(page.getByRole('heading', { level: 1, name: 'Docker', exact: true })).toBeVisible()
+  const reads = page.getByRole('spinbutton', { name: 'Concurrent reads', exact: true })
+  await expect(reads).toHaveValue('8')
+  await reads.fill('12')
+  await page.getByRole('button', { name: 'Save limits', exact: true }).click()
+  await expect(page.getByText('Docker unavailable.', { exact: true })).toBeVisible()
+  await expect(reads).toHaveValue('12')
+  fail = false
+  await page.getByRole('button', { name: 'Save limits', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Save limits', exact: true })).toBeDisabled()
+  expect(limits.maxConcurrentReads).toBe(12)
+  expect(saves).toBe(2)
+  for (const width of [390, 768, 1440, 2048]) {
+    await page.setViewportSize({ width, height: 1100 })
+    for (const theme of ['light', 'dark', 'oled']) {
+      await page.evaluate(value => {
+        document.documentElement.className = value
+      }, theme)
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
+      await page.screenshot({
+        path: `/tmp/rebroid-docker-service-${width}-${theme}-${test.info().project.name}.png`,
+        fullPage: true,
+        animations: 'disabled'
+      })
+    }
+  }
+  await page.goto('/skeleton-contract-test?editor=service-orchestrator')
+  await expect(page.getByRole('heading', { name: 'Orchestrator', exact: true })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Docker diagnostics and limits' })).toHaveAttribute(
+    'href',
+    '/platform/services?service=docker'
+  )
+  await expect(page.getByRole('heading', { name: 'Operation limits' })).toHaveCount(0)
+})
