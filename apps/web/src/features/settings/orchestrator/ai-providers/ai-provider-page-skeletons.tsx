@@ -1,123 +1,118 @@
 'use client'
 
-import { Section } from '@/components/ui/section'
+import { Suspense } from 'react'
+import { IconDeviceFloppy } from '@tabler/icons-react'
+import { useSearchParams } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { FormLoadingBoundary } from '@/components/ui/form-loading-boundary'
 import { Skeleton } from '@/components/ui/skeleton'
-import { DataGrid } from '@/shared/ui/data-grid/data-grid'
-import { createDataGridLoadingProps } from '@/shared/ui/data-grid/data-grid-loading-state'
-import { PageHeader } from '@/shared/ui/page/page-header'
-import { StandardPage } from '@/shared/ui/page/page-layout'
+import { AiProvidersPageLayout } from './ai-providers-page-layout'
+import { ProviderConnectionSection } from './provider-edit-form-sections'
+import { ProviderEditorLayout, type ProviderEditorView } from './provider-editor-layout'
+import { emptyProvider } from './provider-form-model'
+import { ProviderHealthBannerContent } from './provider-health-badge'
+import { ProviderModelDefaults } from './provider-model-defaults'
+import { ProviderModelsGrid } from './provider-models-grid'
+import { ProvidersGrid } from './providers-grid'
 
-const ProviderConnectionSkeleton = () => (
-  <Section
-    surface='panel'
-    contentClassName='gap-5'
-  >
-    <div className='mb-5 grid gap-2'>
-      <Skeleton className='h-4 w-24' />
-      <Skeleton className='h-3 w-full max-w-lg opacity-70' />
-    </div>
-    <div className='grid gap-4'>
-      {Array.from({ length: 5 }).map((_, index) => (
-        <div
-          key={index}
-          className='grid gap-2'
-        >
-          <Skeleton className='h-4 w-24' />
-          <Skeleton className='h-3 w-full max-w-xl opacity-70' />
-          <Skeleton className='h-10 w-full' />
-        </div>
-      ))}
-    </div>
-  </Section>
-)
+const noop = () => undefined
 
 export const AiProvidersPageSkeleton = () => (
-  <StandardPage className='gap-2'>
-    <PageHeader
-      section={{ label: 'Platform', href: '/platform' }}
-      title='AI'
-      description='Configure provider connections and AI-assisted automation behavior.'
-    />
-    <section className='flex w-full flex-col gap-4 px-6 pb-16 max-sm:px-4'>
-      <div
-        className='flex w-full items-start justify-between gap-4 rounded-control border border-surface-border/60 bg-surface-panel/35 px-4 py-3'
-        data-testid='ai-context-suggestions-skeleton'
-      >
-        <div className='grid min-w-0 flex-1 gap-2'>
-          <Skeleton className='h-4 w-36' />
-          <Skeleton className='h-3 w-72 max-w-full opacity-70' />
-        </div>
-        <Skeleton className='h-6 w-12 shrink-0 rounded-full' />
-      </div>
-      <div
-        className='grid gap-2'
-        data-testid='ai-providers-heading-skeleton'
-      >
-        <Skeleton className='h-5 w-20' />
-        <Skeleton className='h-4 w-full max-w-2xl opacity-70' />
-      </div>
-      <DataGrid
-        {...createDataGridLoadingProps({
-          columns: [
-            { width: '20rem', headerWidth: 'w-20', cellWidth: 'w-44', kind: 'stacked' },
-            { width: '10rem', headerWidth: 'w-12', cellWidth: 'w-20' },
-            { width: '24rem', headerWidth: 'w-20', cellWidth: 'w-64' },
-            { width: '20rem', headerWidth: 'w-16', cellWidth: 'w-52' },
-            { width: '10rem', headerWidth: 'w-14', kind: 'badge' },
-            { width: '10rem', headerWidth: 'w-14', kind: 'badge' }
-          ],
-          minWidth: '76rem',
-          rows: 5
-        })}
+  <AiProvidersPageLayout
+    actions={<Skeleton className='h-9 w-32' />}
+    providers={
+      <ProvidersGrid
+        providers={[]}
+        loading
+        busyId={null}
+        selectedIds={new Set()}
+        onSelectedIdsChange={noop}
+        onEnableSelected={noop}
+        onDisableSelected={noop}
+        onDeleteSelected={noop}
+        onEdit={noop}
+        onDelete={noop}
       />
-    </section>
-  </StandardPage>
+    }
+    suggestions={
+      <div
+        data-testid='ai-context-suggestions-skeleton'
+        className='grid gap-3'
+      >
+        <Skeleton className='h-4 w-36' />
+        <Skeleton className='h-4 w-72 max-w-full' />
+        <Skeleton className='h-5 w-9' />
+      </div>
+    }
+  />
 )
 
 export const AiProviderEditPageSkeleton = () => (
-  <StandardPage className='gap-2'>
-    <PageHeader
-      section={{ label: 'Platform', href: '/platform' }}
-      trail={[{ label: 'AI', href: '/platform/ai' }]}
-      title={<Skeleton className='h-8 w-48' />}
-      description='Edit provider connection details and the models exposed to AI automation steps.'
-    />
-    <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
-      <Section
-        surface='panel'
-        contentClassName='gap-0'
-      >
-        <div className='flex flex-wrap items-center justify-between gap-3'>
-          <div className='grid gap-2'>
-            <Skeleton className='h-4 w-28' />
-            <Skeleton className='h-3 w-80 max-w-full opacity-70' />
-          </div>
-          <Skeleton className='h-6 w-16 rounded-full' />
-        </div>
-      </Section>
-      <ProviderConnectionSkeleton />
-      <div className='grid gap-4'>
-        <div className='flex flex-wrap items-center justify-between gap-3'>
-          <div className='grid gap-2'>
-            <Skeleton className='h-4 w-20' />
-            <Skeleton className='h-3 w-96 max-w-full opacity-70' />
-          </div>
-          <Skeleton className='h-9 w-28' />
-        </div>
-        <DataGrid
-          {...createDataGridLoadingProps({
-            columns: [
-              { width: '18rem', headerWidth: 'w-20', cellWidth: 'w-44' },
-              { width: '18rem', headerWidth: 'w-12', cellWidth: 'w-44' },
-              { width: '12rem', headerWidth: 'w-12', cellWidth: 'w-32' },
-              { width: '12rem', headerWidth: 'w-12', cellWidth: 'w-28' },
-              { width: '10rem', headerWidth: 'w-14', kind: 'badge' }
-            ],
-            minWidth: '70rem',
-            rows: 4
-          })}
+  <Suspense fallback={<ProviderEditorSkeleton view='models' />}>
+    <ProviderRouteSkeleton />
+  </Suspense>
+)
+
+const ProviderRouteSkeleton = () => (
+  <ProviderEditorSkeleton view={useSearchParams().get('view') === 'connection' ? 'connection' : 'models'} />
+)
+
+export const ProviderEditorSkeleton = ({ view }: { view: ProviderEditorView }) => (
+  <ProviderEditorLayout
+    provider={{ ...emptyProvider(), label: 'AI provider' }}
+    view={view}
+    loading
+    actions={
+      <>
+        <Button
+          variant='ghost'
+          disabled
+        >
+          Discard changes
+        </Button>
+        <Button disabled>
+          <IconDeviceFloppy className='size-4' />
+          Save
+        </Button>
+      </>
+    }
+    health={<ProviderHealthBannerContent loading />}
+  >
+    {view === 'connection' ? (
+      <FormLoadingBoundary>
+        <ProviderConnectionSection
+          provider={emptyProvider()}
+          disabled
+          onChange={noop}
         />
-      </div>
-    </section>
-  </StandardPage>
+      </FormLoadingBoundary>
+    ) : (
+      <>
+        <ProviderModelDefaults
+          models={[]}
+          disabled
+          loading
+          onChange={noop}
+        />
+        <ProviderModelsGrid
+          initialProvider={emptyProvider()}
+          modelRows={[]}
+          loading
+          disabled
+          onAddModel={() => false}
+          onBulkRemoveModels={noop}
+          onBulkUpdateModels={noop}
+          onDownloadModel={() => Promise.resolve()}
+          onRemoveModel={noop}
+          onUpdateModel={noop}
+          isDownloadingModel={false}
+          isLoadingRemoteModels={false}
+          modelDownloads={{}}
+          remoteModels={[]}
+          remoteModelsError={null}
+          onLoadRemoteModels={noop}
+        />
+      </>
+    )}
+  </ProviderEditorLayout>
 )

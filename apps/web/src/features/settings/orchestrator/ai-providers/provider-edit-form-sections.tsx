@@ -4,53 +4,41 @@ import { Switch } from '@/components/ui/switch'
 import { ProviderConnectionFields } from './provider-connection-fields'
 import type { ProviderFormState } from './provider-form-model'
 
-export const ProviderEnabledSection = ({
-  enabled,
-  onChange
-}: {
-  enabled: boolean
-  onChange: (enabled: boolean) => void
-}) => (
-  <Section
-    surface='panel'
-    contentClassName='gap-5'
-  >
-    <FormField
-      controlId='provider-edit-enabled'
-      label='Enabled'
-      description='Enabled providers with enabled models appear in automation editors.'
-      layout='horizontal'
-    >
-      <Switch
-        className='shrink-0'
-        checked={enabled}
-        onCheckedChange={onChange}
-      />
-    </FormField>
-  </Section>
-)
-
 export const ProviderConnectionSection = ({
   provider,
-  onChange
+  onChange,
+  disabled = false
 }: {
   provider: ProviderFormState
   onChange: (patch: Partial<ProviderFormState>) => void
+  disabled?: boolean
 }) => (
   <Section
     surface='plain'
-    contentClassName='gap-5'
+    title='Connection'
+    description='Connect to a hosted API or a local model server.'
   >
-    <div>
-      <h3 className='text-sm font-medium'>Provider</h3>
-      <p className='text-xs text-foreground-muted'>
-        Local providers can use Ollama or any OpenAI-compatible /v1 endpoint.
-      </p>
-    </div>
-    <ProviderConnectionFields
-      provider={provider}
-      mode='edit'
-      onChange={onChange}
-    />
+    <fieldset
+      disabled={disabled}
+      className='grid min-w-0 gap-6'
+    >
+      <FormField
+        controlId='provider-edit-enabled'
+        label='Available for automation'
+        description='Enable this provider after configuring at least one usable model.'
+        layout='vertical'
+      >
+        <Switch
+          checked={provider.enabled}
+          disabled={disabled}
+          onCheckedChange={enabled => onChange({ enabled })}
+        />
+      </FormField>
+      <ProviderConnectionFields
+        provider={provider}
+        mode='edit'
+        onChange={onChange}
+      />
+    </fieldset>
   </Section>
 )

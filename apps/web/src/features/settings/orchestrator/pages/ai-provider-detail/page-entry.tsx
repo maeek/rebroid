@@ -4,9 +4,10 @@ import { getAiProviderDetailPageData } from './page-data.server'
 
 type AiProviderDetailPageEntryProps = {
   params: Promise<{ providerId: string }>
+  searchParams?: Promise<{ view?: string }>
 }
 
-export default async function AiProviderDetailPageEntry({ params }: AiProviderDetailPageEntryProps) {
+export default async function AiProviderDetailPageEntry({ params, searchParams }: AiProviderDetailPageEntryProps) {
   const { providerId } = await params
   const { provider } = await getAiProviderDetailPageData(providerId)
 
@@ -14,5 +15,12 @@ export default async function AiProviderDetailPageEntry({ params }: AiProviderDe
     notFound()
   }
 
-  return <OrchestratorAiProviderEditPageClient initialProvider={provider} />
+  const query = await searchParams
+  return (
+    <OrchestratorAiProviderEditPageClient
+      key={provider.id}
+      initialProvider={provider}
+      view={query?.view === 'connection' ? 'connection' : 'models'}
+    />
+  )
 }

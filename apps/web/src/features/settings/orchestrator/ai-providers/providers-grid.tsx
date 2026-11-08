@@ -1,15 +1,13 @@
 import { useMemo, useState } from 'react'
 import { IconPencil, IconTrash } from '@tabler/icons-react'
-import Link from 'next/link'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Section } from '@/components/ui/section'
-import { aiModelRoleLabel } from '@/shared/model/ai-model-catalog'
-import { AiProviderKindBadge } from '@/shared/ui/ai/ai-model-badges'
+import { aiProviderKindLabel } from '@/shared/model/ai-model-catalog'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
+import { ResourceLink } from '@/shared/ui/resource-link'
 import { ProviderHealthBadge } from './provider-health-badge'
 import { ProviderStatusBadge } from './provider-status-badge'
 import type { AutomationAiProvider } from '@/shared/contracts/ai-provider'
@@ -24,8 +22,10 @@ export const ProvidersGrid = ({
   onDisableSelected,
   onDeleteSelected,
   onEdit,
-  onDelete
+  onDelete,
+  loading = false
 }: {
+  loading?: boolean
   providers: AutomationAiProvider[]
   busyId: string | null
   selectedIds: Set<string>
@@ -44,64 +44,47 @@ export const ProvidersGrid = ({
         accessorKey: 'label',
         header: 'Provider',
         size: 260,
-        meta: { label: 'Provider' },
+        meta: { label: 'Provider', skeleton: { kind: 'stacked' } },
         cell: ({ row }) => (
           <div className='flex min-h-10 min-w-0 flex-col justify-center'>
-            <Link
+            <ResourceLink
               href={`/platform/ai/${encodeURIComponent(row.original.id)}`}
-              className='block truncate font-medium hover:text-primary'
+              className='block truncate font-medium'
             >
               {row.original.label}
-            </Link>
+            </ResourceLink>
             <div className='truncate text-xs text-foreground-muted'>{row.original.id}</div>
           </div>
         )
       },
       {
-        accessorKey: 'kind',
-        header: 'Kind',
-        size: 170,
-        meta: { label: 'Kind' },
-        cell: ({ row }) => (
-          <div className='flex min-h-10 items-center'>
-            <AiProviderKindBadge kind={row.original.kind} />
-          </div>
-        )
-      },
-      {
         accessorKey: 'baseUrl',
-        header: 'Base URL',
+        header: 'Connection',
         size: 320,
-        meta: { label: 'Base URL' },
+        meta: { label: 'Connection', skeleton: { kind: 'stacked' } },
         cell: ({ row }) => (
-          <div className='flex min-h-10 min-w-0 items-center'>
-            <span className='block truncate font-mono text-xs'>{row.original.baseUrl}</span>
+          <div className='grid min-w-0 gap-1'>
+            <span
+              className='truncate text-sm'
+              title={row.original.baseUrl}
+            >
+              {row.original.baseUrl}
+            </span>
+            <span className='text-xs text-foreground-muted'>{aiProviderKindLabel(row.original.kind)}</span>
           </div>
         )
       },
       {
         id: 'models',
         header: 'Models',
-        size: 300,
-        meta: { label: 'Models' },
+        size: 220,
+        meta: { label: 'Models', skeleton: { kind: 'stacked' } },
         cell: ({ row }) => (
-          <div className='flex min-h-10 min-w-0 items-center'>
-            <div className='flex min-w-0 flex-wrap items-center gap-1'>
-              {row.original.models.slice(0, 3).map(model => (
-                <Badge
-                  key={model.id}
-                  variant={model.enabled ? 'outline' : 'neutral'}
-                  className='max-w-full truncate'
-                >
-                  {model.defaultFor.length > 0
-                    ? `${model.label} ${model.defaultFor.map(aiModelRoleLabel).join('/')} default`
-                    : model.label}
-                </Badge>
-              ))}
-              {row.original.models.length > 3 ? (
-                <Badge variant='neutral'>+{row.original.models.length - 3}</Badge>
-              ) : null}
-            </div>
+          <div className='grid gap-1'>
+            <span className='text-sm'>{row.original.models.length} configured</span>
+            <span className='text-xs text-foreground-muted'>
+              {row.original.models.filter(model => model.enabled).length} enabled
+            </span>
           </div>
         )
       },
@@ -109,7 +92,7 @@ export const ProvidersGrid = ({
         accessorKey: 'enabled',
         header: 'Status',
         size: 140,
-        meta: { label: 'Status' },
+        meta: { label: 'Status', skeleton: { kind: 'badge' } },
         cell: ({ row }) => (
           <div className='flex min-h-10 items-center'>
             <ProviderStatusBadge enabled={row.original.enabled} />
@@ -120,7 +103,7 @@ export const ProvidersGrid = ({
         id: 'health',
         header: 'Health',
         size: 150,
-        meta: { label: 'Health' },
+        meta: { label: 'Health', skeleton: { kind: 'badge' } },
         cell: ({ row }) => (
           <div className='flex min-h-10 items-center'>
             <ProviderHealthBadge provider={row.original} />
@@ -134,7 +117,7 @@ export const ProvidersGrid = ({
     const query = search.trim().toLowerCase()
     if (!query) return providers
     return providers.filter(provider =>
-      `${provider.label} ${provider.id} ${provider.baseUrl} ${provider.models.map(model => model.label).join(' ')}`
+      `${provider.label} ${provider.id} ${provider.baseUrl} ${provider.models.map(model => `${model.label} ${model.id}`).join(' ')}`
         .toLowerCase()
         .includes(query)
     )
@@ -143,6 +126,8 @@ export const ProvidersGrid = ({
   return (
     <Section
       surface='plain'
+      title='Providers'
+      description='Manage connections, registered models, and defaults for each provider.'
       contentClassName='gap-4'
     >
       <DataGridWorkspace
@@ -155,7 +140,7 @@ export const ProvidersGrid = ({
           <>
             <Button
               type='button'
-              variant='secondary'
+              variant='ghost'
               disabled={busyId === 'bulk'}
               onClick={onEnableSelected}
             >
@@ -163,7 +148,7 @@ export const ProvidersGrid = ({
             </Button>
             <Button
               type='button'
-              variant='secondary'
+              variant='ghost'
               disabled={busyId === 'bulk'}
               onClick={onDisableSelected}
             >
@@ -171,7 +156,7 @@ export const ProvidersGrid = ({
             </Button>
             <Button
               type='button'
-              variant='danger'
+              variant='danger-ghost'
               disabled={busyId === 'bulk'}
               onClick={onDeleteSelected}
             >
@@ -188,11 +173,12 @@ export const ProvidersGrid = ({
           pageSize={Math.max(visibleProviders.length, 1)}
           getRowId={provider => provider.id}
           selection={{ selectedIds, onSelectedIdsChange }}
-          minWidth='74rem'
+          minWidth='58rem'
+          loading={loading ? { rowCount: 5 } : false}
           emptyState={
             <div className='flex items-center justify-center gap-2 text-center text-foreground-muted'>
               <GradientSparklesIcon className='size-4' />
-              No AI configured.
+              No providers configured. Add a provider to connect your models.
             </div>
           }
           rowContextMenu={row => {

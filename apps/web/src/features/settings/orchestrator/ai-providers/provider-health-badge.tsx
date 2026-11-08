@@ -3,18 +3,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { IconRefresh } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { MutationButton } from '@/components/ui/mutation-button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Surface, type SurfaceTone } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 import { AiHealthBadge } from '@/shared/ui/ai/ai-health-indicator'
 import type { AutomationAiProvider, AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 
-const healthBannerClassName = (health: AutomationAiProviderHealth | null) =>
-  health?.status === 'ok'
-    ? 'border-success/30 bg-success/10'
-    : health?.status === 'disabled'
-      ? 'border-surface-border/70 bg-surface-band/35'
-      : health
-        ? 'border-danger/40 bg-danger/10'
-        : 'border-surface-border/70 bg-surface-band/35'
+const healthTone = (health: AutomationAiProviderHealth | null): SurfaceTone => {
+  if (health?.status === 'ok') return 'success'
+  if (health?.status === 'error') return 'danger'
+  return 'neutral'
+}
 
 const healthMessage = (health: AutomationAiProviderHealth | null, isChecking: boolean) => {
   if (isChecking && !health) return 'Checking selected provider/model...'
@@ -24,12 +24,21 @@ const healthMessage = (health: AutomationAiProviderHealth | null, isChecking: bo
 
 const healthCache = new Map<string, AutomationAiProviderHealth>()
 
-const healthCacheKey = (providerId: string, modelId?: string) => `${providerId}:${modelId ?? '__provider__'}`
+const healthCacheKey = (provider: AutomationAiProvider, modelId?: string) =>
+  JSON.stringify([
+    provider.id,
+    provider.baseUrl,
+    provider.protocol,
+    provider.serverFlavor,
+    provider.enabled,
+    modelId,
+    provider.models
+  ])
 
 type HealthCheckActivity = 'auto' | 'manual'
 
 const useProviderHealth = (provider: AutomationAiProvider, selectedModelId?: string, autoCheck = false) => {
-  const cacheKey = healthCacheKey(provider.id, selectedModelId)
+  const cacheKey = healthCacheKey(provider, selectedModelId)
   const currentCacheKeyRef = useRef(cacheKey)
   const activeCheckKeyRef = useRef<string | null>(null)
   const [health, setHealth] = useState<AutomationAiProviderHealth | null>(() => healthCache.get(cacheKey) ?? null)
@@ -42,6 +51,7 @@ const useProviderHealth = (provider: AutomationAiProvider, selectedModelId?: str
   const setCachedHealth = useCallback(
     (nextHealth: AutomationAiProviderHealth) => {
       healthCache.set(cacheKey, nextHealth)
+      if (healthCache.size > 128) healthCache.delete(healthCache.keys().next().value ?? '')
       if (currentCacheKeyRef.current === cacheKey) setHealth(nextHealth)
     },
     [cacheKey]
@@ -94,11 +104,13 @@ export const ProviderHealthBadge = ({
   provider,
   modelId,
   compact,
+  disabled = false,
   autoCheck = false
 }: {
   provider: AutomationAiProvider
   modelId?: string
   compact?: boolean
+  disabled?: boolean
   autoCheck?: boolean
 }) => {
   const selectedModelId =
@@ -119,7 +131,7 @@ export const ProviderHealthBadge = ({
           variant='ghost'
           size='icon-md'
           className='size-7 shrink-0'
-          disabled={isManualChecking}
+          disabled={disabled || isManualChecking}
           aria-label='Check AI provider health'
           onClick={() => void checkHealth('manual')}
         >
@@ -135,9 +147,11 @@ export const ProviderHealthBadge = ({
 
 export const ProviderHealthBanner = ({
   provider,
+  disabled = false,
   autoCheck = false
 }: {
   provider: AutomationAiProvider
+  disabled?: boolean
   autoCheck?: boolean
 }) => {
   const selectedModelId =
@@ -146,30 +160,68 @@ export const ProviderHealthBanner = ({
   const { checkHealth, health, isChecking, isManualChecking } = useProviderHealth(provider, selectedModelId, autoCheck)
 
   return (
-    <div
-      className={cn(
-        'flex w-full flex-wrap items-center justify-between gap-3 rounded-panel border px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md',
-        healthBannerClassName(health)
-      )}
+    <ProviderHealthBannerContent
+      health={health}
+      isChecking={isChecking}
+      isManualChecking={isManualChecking}
+      disabled={disabled}
+      onCheck={() => void checkHealth('manual')}
+    />
+  )
+}
+
+export const ProviderHealthBannerContent = ({
+  health = null,
+  isChecking = false,
+  isManualChecking = false,
+  disabled = false,
+  onCheck,
+  loading = false
+}: {
+  health?: AutomationAiProviderHealth | null
+  isChecking?: boolean
+  isManualChecking?: boolean
+  disabled?: boolean
+  onCheck?: () => void
+  loading?: boolean
+}) => {
+  return (
+    <Surface
+      level='band'
+      tone={healthTone(health)}
+      className='flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3'
     >
       <div className='flex min-w-0 flex-wrap items-center gap-3'>
-        <AiHealthBadge
-          health={health}
-          isChecking={isChecking && !health}
-        />
-        <span className='min-w-0 break-words text-sm text-foreground-muted'>{healthMessage(health, isChecking)}</span>
+        {loading ? (
+          <Skeleton className='h-5.5 w-16' />
+        ) : (
+          <AiHealthBadge
+            health={health}
+            isChecking={isChecking && !health}
+          />
+        )}
+        <span className='min-w-0 break-words text-sm text-foreground-muted'>
+          {loading ? (
+            <Skeleton
+              as='span'
+              className='block h-5 w-40 max-w-full'
+            />
+          ) : (
+            healthMessage(health, isChecking)
+          )}
+        </span>
       </div>
-      <Button
+      <MutationButton
         type='button'
         variant='ghost'
-        size='icon-md'
-        className='size-7 shrink-0'
-        disabled={isManualChecking}
+        pending={isManualChecking}
+        pendingLabel='Checking…'
+        disabled={disabled || loading}
         aria-label='Check AI provider health'
-        onClick={() => void checkHealth('manual')}
+        onClick={onCheck}
       >
-        <IconRefresh className={cn('size-4', isManualChecking && 'animate-spin')} />
-      </Button>
-    </div>
+        <IconRefresh className='size-4' /> Check connection
+      </MutationButton>
+    </Surface>
   )
 }

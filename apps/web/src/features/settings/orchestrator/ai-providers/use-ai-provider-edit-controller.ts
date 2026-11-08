@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from '@/hooks/use-toast'
 import {
@@ -17,6 +17,7 @@ import {
   type AutomationAiProviderModelRole,
   type ProviderFormState
 } from './provider-form-model'
+import { normalizeModelDefaults, normalizeModelRoles } from './provider-model-usage'
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,
@@ -28,9 +29,11 @@ const controllerPlannerRoles = (): AutomationAiProviderModelRole[] => ['controll
 
 export const useAiProviderEditController = (initialProvider: AutomationAiProvider) => {
   const router = useRouter()
-  const [provider, setProvider] = useState<ProviderFormState>(
-    JSON.parse(JSON.stringify(initialProvider)) as AutomationAiProvider
-  )
+  const [provider, setProvider] = useState<ProviderFormState>(() => structuredClone(initialProvider))
+  const [savedProvider, setSavedProvider] = useState(initialProvider)
+  const isDirty =
+    JSON.stringify(normalizeProviderForm(provider)) !== JSON.stringify(normalizeProviderForm(savedProvider))
+  const mutationInFlight = useRef(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isDownloadingModel, setIsDownloadingModel] = useState(false)
   const [modelDownloads, setModelDownloads] = useState<Record<string, AutomationAiProviderModelDownload>>({})
@@ -44,13 +47,16 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
   const updateModel = useCallback((index: number, patch: Partial<AutomationAiProviderModel>) => {
     setProvider(current => ({
       ...current,
-      models: updateProviderModelAt(current.models, index, patch)
+      models: normalizeModelDefaults(updateProviderModelAt(current.models, index, patch))
     }))
   }, [])
 
   const removeModel = useCallback(
     (index: number) =>
-      setProvider(current => ({ ...current, models: current.models.filter((_, modelIndex) => modelIndex !== index) })),
+      setProvider(current => ({
+        ...current,
+        models: normalizeModelDefaults(current.models.filter((_, modelIndex) => modelIndex !== index))
+      })),
     []
   )
 
@@ -58,8 +64,8 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
     const selectedIndexes = new Set(indexes)
     setProvider(current => ({
       ...current,
-      models: current.models.map((model, modelIndex) =>
-        selectedIndexes.has(modelIndex) ? { ...model, ...patch } : model
+      models: normalizeModelDefaults(
+        current.models.map((model, modelIndex) => (selectedIndexes.has(modelIndex) ? { ...model, ...patch } : model))
       )
     }))
   }, [])
@@ -68,7 +74,7 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
     const selectedIndexes = new Set(indexes)
     setProvider(current => ({
       ...current,
-      models: current.models.filter((_, modelIndex) => !selectedIndexes.has(modelIndex))
+      models: normalizeModelDefaults(current.models.filter((_, modelIndex) => !selectedIndexes.has(modelIndex)))
     }))
   }, [])
 
@@ -82,7 +88,8 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
   )
 
   const addModel = useCallback(
-    async (modelId: string, label?: string) => {
+    async (modelId: string, label?: string, roles: AutomationAiProviderModelRole[] = controllerPlannerRoles()) => {
+      if (isDirty || mutationInFlight.current) return false
       const normalizedModelId = modelId.trim()
       if (!normalizedModelId) {
         toast({
@@ -107,16 +114,19 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
         ...emptyModel(),
         id: normalizedModelId,
         label: nextLabel,
-        defaultFor: provider.models.length === 0 ? controllerPlannerRoles() : []
+        roles: normalizeModelRoles(roles),
+        defaultFor: provider.models.length === 0 ? normalizeModelRoles(roles) : []
       }
 
+      mutationInFlight.current = true
       try {
         const savedModel = await createAutomationAiProviderModelAction(initialProvider.id, nextModel)
         setProvider(current => ({
           ...current,
-          models: [...current.models, savedModel]
+          models: normalizeModelDefaults([...current.models, savedModel])
         }))
-        toast({ title: 'AI model added', description: normalizedModelId })
+        setSavedProvider(current => ({ ...current, models: normalizeModelDefaults([...current.models, savedModel]) }))
+        toast({ title: 'AI model added', description: normalizedModelId, variant: 'success' })
         router.refresh()
         return true
       } catch (error) {
@@ -126,49 +136,65 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
           variant: 'danger'
         })
         return false
+      } finally {
+        mutationInFlight.current = false
       }
     },
-    [initialProvider.id, provider.models, router]
+    [initialProvider.id, isDirty, provider.models, router]
   )
 
+  const downloadsRef = useRef(modelDownloads)
   useEffect(() => {
-    const activeDownloads = Object.values(modelDownloads).filter(download =>
-      ['queued', 'running'].includes(download.status)
-    )
-    if (activeDownloads.length === 0) return
-
+    downloadsRef.current = modelDownloads
+  }, [modelDownloads])
+  const hasActiveDownloads = Object.values(modelDownloads).some(download =>
+    ['queued', 'running'].includes(download.status)
+  )
+  useEffect(() => {
+    if (!hasActiveDownloads) return
+    let disposed = false
+    let inFlight = false
     const interval = window.setInterval(() => {
-      for (const download of activeDownloads) {
-        void getAutomationAiProviderModelDownloadAction(initialProvider.id, download.id)
-          .then(next => {
-            setModelDownloads(current => ({ ...current, [next.modelId]: next }))
+      if (inFlight) return
+      inFlight = true
+      const active = Object.values(downloadsRef.current).filter(download =>
+        ['queued', 'running'].includes(download.status)
+      )
+      void Promise.all(
+        active.map(async download => {
+          try {
+            return await getAutomationAiProviderModelDownloadAction(initialProvider.id, download.id)
+          } catch {
+            return null
+          }
+        })
+      )
+        .then(results => {
+          if (disposed) return
+          const updates = results.filter((download): download is AutomationAiProviderModelDownload => download !== null)
+          if (updates.length === 0) return
+          setModelDownloads(current => ({
+            ...current,
+            ...Object.fromEntries(updates.map(download => [download.modelId, download]))
+          }))
+          for (const next of updates) {
             if (next.status === 'completed') {
-              toast({ title: 'AI model downloaded', description: next.modelId })
+              toast({ title: 'AI model downloaded', description: next.modelId, variant: 'success' })
               router.refresh()
             }
-            if (next.status === 'failed') {
-              toast({
-                title: 'Could not download AI model',
-                description: next.message,
-                variant: 'danger'
-              })
-            }
-          })
-          .catch(error => {
-            setModelDownloads(current => ({
-              ...current,
-              [download.modelId]: {
-                ...download,
-                status: 'failed',
-                message: error instanceof Error ? error.message : 'Could not read download progress.'
-              }
-            }))
-          })
-      }
+            if (next.status === 'failed')
+              toast({ title: 'Could not download AI model', description: next.message, variant: 'danger' })
+          }
+        })
+        .finally(() => {
+          inFlight = false
+        })
     }, 1500)
-
-    return () => window.clearInterval(interval)
-  }, [initialProvider.id, modelDownloads, router])
+    return () => {
+      disposed = true
+      window.clearInterval(interval)
+    }
+  }, [hasActiveDownloads, initialProvider.id, router])
 
   const loadRemoteModels = useCallback(async () => {
     setIsLoadingRemoteModels(true)
@@ -184,6 +210,7 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
   }, [initialProvider.id])
 
   const downloadModel = async (modelId: string, label?: string) => {
+    if (isDirty || mutationInFlight.current) throw new Error('Save or discard changes before downloading a model.')
     const normalizedModelId = modelId.trim()
     if (!normalizedModelId) {
       toast({
@@ -194,6 +221,7 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
       return
     }
 
+    mutationInFlight.current = true
     setIsDownloadingModel(true)
     try {
       const job = await downloadAutomationAiProviderModelAction(initialProvider.id, {
@@ -201,22 +229,22 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
         label: label?.trim() || undefined
       })
       setModelDownloads(current => ({ ...current, [job.modelId]: job }))
-      setProvider(current => {
+      const appendDownloadedModel = (current: ProviderFormState): ProviderFormState => {
         if (current.models.some(model => model.id === normalizedModelId)) return current
-        const nextLabel = label?.trim() || normalizedModelId
         return {
           ...current,
-          models: [
+          models: normalizeModelDefaults([
             ...current.models,
             {
               ...emptyModel(),
               id: normalizedModelId,
-              label: nextLabel,
-              defaultFor: current.models.length === 0 ? controllerPlannerRoles() : []
+              label: label?.trim() || normalizedModelId
             }
-          ]
+          ])
         }
-      })
+      }
+      setProvider(appendDownloadedModel)
+      setSavedProvider(appendDownloadedModel)
       toast({ title: 'AI model download started', description: normalizedModelId, variant: 'success' })
     } catch (error) {
       toast({
@@ -226,11 +254,13 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
       })
       throw error
     } finally {
+      mutationInFlight.current = false
       setIsDownloadingModel(false)
     }
   }
 
   const saveProvider = async () => {
+    if (mutationInFlight.current) return
     const input = normalizeProviderForm(provider)
     if (!input.id || !input.baseUrl) {
       toast({
@@ -241,11 +271,13 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
       return
     }
 
+    mutationInFlight.current = true
     setIsSaving(true)
     try {
       const saved = await updateAutomationAiProviderAction(initialProvider.id, input)
-      setProvider(JSON.parse(JSON.stringify(saved)) as AutomationAiProvider)
-      toast({ title: 'AI provider updated' })
+      setProvider(structuredClone(saved))
+      setSavedProvider(saved)
+      toast({ title: 'AI provider updated', variant: 'success' })
       if (saved.id !== initialProvider.id) {
         router.replace(`/platform/ai/${encodeURIComponent(saved.id)}`)
       } else {
@@ -258,6 +290,7 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
         variant: 'danger'
       })
     } finally {
+      mutationInFlight.current = false
       setIsSaving(false)
     }
   }
@@ -268,6 +301,9 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
     isDownloadingModel,
     isLoadingRemoteModels,
     isSaving,
+    isDirty,
+    savedProvider,
+    discardChanges: () => setProvider(structuredClone(savedProvider)),
     loadRemoteModels,
     modelDownloads,
     modelRows,

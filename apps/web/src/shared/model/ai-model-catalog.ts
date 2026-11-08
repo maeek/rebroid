@@ -165,6 +165,7 @@ export const aiProviderKindLabel = (kind: AiProviderKind) => {
 }
 
 export const aiModelRoleLabel = (role: AiModelRole) => {
+  if (role === 'controller') return 'Device control'
   if (role === 'vision') return 'Vision'
   return 'Planner'
 }

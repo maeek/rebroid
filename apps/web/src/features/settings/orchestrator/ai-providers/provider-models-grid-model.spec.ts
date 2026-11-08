@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  findProviderModelSettingsRow,
-  nextProviderModelRoles,
-  selectedProviderModelIndexes
-} from './provider-models-grid-model'
+import { findProviderModelSettingsRow, selectedProviderModelIndexes } from './provider-models-grid-model'
 import type { ProviderModelRow } from './provider-form-model'
 
 const modelRow = (override: Partial<ProviderModelRow>): ProviderModelRow => ({
@@ -38,12 +34,5 @@ describe('provider models grid model', () => {
     expect(findProviderModelSettingsRow(rows, 'row-b')?.id).toBe('llama')
     expect(findProviderModelSettingsRow(rows, null)).toBeNull()
     expect(findProviderModelSettingsRow(rows, 'missing')).toBeNull()
-  })
-
-  it('adds and removes model roles without duplicating existing roles', () => {
-    expect(nextProviderModelRoles(['planner'], 'vision', true)).toEqual(['planner', 'vision'])
-    expect(nextProviderModelRoles(['planner', 'vision'], 'vision', true)).toEqual(['planner', 'vision'])
-    expect(nextProviderModelRoles(['planner', 'vision'], 'planner', false)).toEqual(['vision'])
-    expect(nextProviderModelRoles(undefined, 'planner', true)).toEqual(['planner'])
   })
 })

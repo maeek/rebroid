@@ -50,4 +50,16 @@ describe('AI provider form model', () => {
     ])
     expect(setDefaultProviderModelAt(models, 1, 'planner').map(model => model.defaultFor)).toEqual([[], ['planner']])
   })
+
+  it('does not mutate or clear other models when changing a model purpose', () => {
+    const models = [
+      { ...provider.models[0], id: 'planner', roles: ['planner' as const], defaultFor: ['planner' as const] },
+      { ...provider.models[0], id: 'vision', roles: ['vision' as const], defaultFor: ['vision' as const] }
+    ]
+    const before = structuredClone(models)
+    const updated = updateProviderModelAt(models, 0, { roles: ['controller'] })
+    expect(updated[0].defaultFor).toEqual([])
+    expect(updated[1].defaultFor).toEqual(['vision'])
+    expect(models).toEqual(before)
+  })
 })

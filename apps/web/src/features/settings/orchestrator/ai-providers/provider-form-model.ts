@@ -62,7 +62,7 @@ export const updateProviderModelAt = (
 ) =>
   models.map((model, modelIndex) => {
     const nextModel = modelIndex === index ? { ...model, ...patch } : model
-    if (patch.roles) {
+    if (patch.roles && modelIndex === index) {
       nextModel.defaultFor = nextModel.defaultFor.filter(role => patch.roles?.includes(role))
     }
     if (!patch.defaultFor) return nextModel

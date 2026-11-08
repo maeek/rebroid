@@ -3,9 +3,9 @@
 import { useEffect, useState, useTransition } from 'react'
 import { IconPlus } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
-import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
+import { FormField } from '@/components/ui/form-field'
 import { Switch } from '@/components/ui/switch'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
@@ -17,8 +17,7 @@ import {
 } from '@/server/orchestrator/settings/actions'
 import { saveAiUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
-import { PageHeader } from '@/shared/ui/page/page-header'
-import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
+import { AiProvidersPageLayout } from './ai-providers-page-layout'
 import { ProviderDialog } from './provider-dialog'
 import { emptyProvider, normalizeProviderForm, type ProviderFormState } from './provider-form-model'
 import { ProvidersGrid } from './providers-grid'
@@ -117,7 +116,7 @@ export const OrchestratorAiProvidersPageClient = ({
       )
       setProviders(current => current.map(provider => results.find(result => result.id === provider.id) ?? provider))
       setSelectedProviderIds(new Set())
-      toast({ title: enabled ? 'AI enabled' : 'AI disabled' })
+      toast({ title: enabled ? 'Providers enabled' : 'Providers disabled', variant: 'success' })
     } catch (error) {
       toast({
         title: 'Could not update AI',
@@ -175,12 +174,8 @@ export const OrchestratorAiProvidersPageClient = ({
   }
 
   return (
-    <StandardPage className='gap-2'>
-      <PageHeader
-        section={{ label: 'Platform', href: '/platform' }}
-        title='AI'
-        leading={<GradientSparklesIcon className='size-8 max-sm:size-5' />}
-        description='Configure provider connections and AI-assisted automation behavior.'
+    <>
+      <AiProvidersPageLayout
         actions={
           <>
             <PlatformPageRefreshButton
@@ -196,44 +191,37 @@ export const OrchestratorAiProvidersPageClient = ({
             </Button>
           </>
         }
-      />
-      <PageContent className='gap-4'>
-        <label
-          htmlFor='ai-context-suggestions'
-          className='flex w-full items-start justify-between gap-4 rounded-control border border-surface-border/60 bg-surface-panel/35 px-4 py-3 text-sm'
-        >
-          <div className='min-w-0 flex-1'>
-            <div className='font-medium text-foreground'>Context suggestions</div>
-            <div className='mt-1 text-xs text-foreground-muted'>Generate AI prompt chips in app sessions.</div>
-          </div>
-          <Switch
-            id='ai-context-suggestions'
-            className='shrink-0'
-            checked={settings.aiContextualSuggestionsEnabled}
-            disabled={isSavingAiSettings}
-            onCheckedChange={value => void updateContextualSuggestions(value)}
+        providers={
+          <ProvidersGrid
+            providers={providers}
+            busyId={busyId}
+            selectedIds={selectedProviderIds}
+            onSelectedIdsChange={setSelectedProviderIds}
+            onEnableSelected={() => void updateSelectedProviders(true)}
+            onDisableSelected={() => void updateSelectedProviders(false)}
+            onDeleteSelected={() =>
+              setPendingDeleteProviders(providers.filter(provider => selectedProviderIds.has(provider.id)))
+            }
+            onEdit={openEditDialog}
+            onDelete={provider => setPendingDeleteProviders([provider])}
           />
-        </label>
-        <div className='min-w-0'>
-          <h2 className='text-base font-medium text-foreground'>Providers</h2>
-          <p className='mt-1 text-sm text-foreground-muted'>
-            Connections and model defaults available to automation and agent workflows.
-          </p>
-        </div>
-        <ProvidersGrid
-          providers={providers}
-          busyId={busyId}
-          selectedIds={selectedProviderIds}
-          onSelectedIdsChange={setSelectedProviderIds}
-          onEnableSelected={() => void updateSelectedProviders(true)}
-          onDisableSelected={() => void updateSelectedProviders(false)}
-          onDeleteSelected={() =>
-            setPendingDeleteProviders(providers.filter(provider => selectedProviderIds.has(provider.id)))
-          }
-          onEdit={openEditDialog}
-          onDelete={provider => setPendingDeleteProviders([provider])}
-        />
-      </PageContent>
+        }
+        suggestions={
+          <FormField
+            controlId='ai-context-suggestions'
+            label='Context suggestions'
+            description='Generate prompt suggestions in app sessions. Changes save immediately.'
+            layout='vertical'
+          >
+            <Switch
+              checked={settings.aiContextualSuggestionsEnabled}
+              disabled={isSavingAiSettings}
+              onCheckedChange={value => void updateContextualSuggestions(value)}
+            />
+          </FormField>
+        }
+      />
+
       <ProviderDialog
         provider={editingProvider}
         isSaving={isSaving}
@@ -259,6 +247,6 @@ export const OrchestratorAiProvidersPageClient = ({
         }}
         onConfirm={() => void confirmDeleteProviders()}
       />
-    </StandardPage>
+    </>
   )
 }

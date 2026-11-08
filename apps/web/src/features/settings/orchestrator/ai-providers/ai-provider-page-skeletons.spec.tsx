@@ -7,7 +7,7 @@ describe('AiProvidersPageSkeleton', () => {
     render(<AiProvidersPageSkeleton />)
 
     expect(screen.getByTestId('ai-context-suggestions-skeleton')).toBeTruthy()
-    expect(screen.getByTestId('ai-providers-heading-skeleton')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Providers' })).toBeTruthy()
     expect(screen.getAllByTestId('data-grid-skeleton-row')).toHaveLength(5)
   })
 })

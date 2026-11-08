@@ -14,6 +14,7 @@ import {
 import { FormField } from '@/components/ui/form-field'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { Switch } from '@/components/ui/switch'
+import { useDialogPayload } from '@/hooks/use-dialog-payload'
 import { checkAutomationAiProviderCandidateHealthAction } from '@/server/orchestrator/settings/actions'
 import { AiHealthBadge } from '@/shared/ui/ai/ai-health-indicator'
 import { ProviderConnectionFields } from './provider-connection-fields'
@@ -21,7 +22,7 @@ import { normalizeProviderForm, type ProviderFormState } from './provider-form-m
 import type { AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 
 export const ProviderDialog = ({
-  provider,
+  provider: currentProvider,
   isSaving,
   onChange,
   onClose,
@@ -33,6 +34,7 @@ export const ProviderDialog = ({
   onClose: () => void
   onSave: () => void
 }) => {
+  const { payload: provider, onOpenChangeComplete } = useDialogPayload(currentProvider)
   const [health, setHealth] = useState<AutomationAiProviderHealth | null>(null)
   const [isCheckingHealth, setIsCheckingHealth] = useState(false)
   const update = (patch: Partial<ProviderFormState>) => {
@@ -60,23 +62,30 @@ export const ProviderDialog = ({
 
   return (
     <Dialog
-      open={Boolean(provider)}
+      open={Boolean(currentProvider)}
+      onOpenChangeComplete={onOpenChangeComplete}
       onOpenChange={open => {
-        if (!open) onClose()
+        if (!open && !isSaving && !isCheckingHealth) onClose()
       }}
     >
-      <DialogContent className='sm:max-w-xl'>
+      <DialogContent
+        data-editor-dialog=''
+        className='max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-2xl'
+      >
         <DialogHeader>
           <DialogTitle className='flex items-center gap-2'>
             <GradientSparklesIcon className='size-5' />
             Add AI provider
           </DialogTitle>
           <DialogDescription>
-            Configure the provider connection first. Add models from the provider editor after it is created.
+            Connect your model server, then choose which models to make available for automation.
           </DialogDescription>
         </DialogHeader>
         {provider ? (
-          <div className='grid gap-5'>
+          <fieldset
+            disabled={isSaving || isCheckingHealth}
+            className='grid min-w-0 gap-5'
+          >
             <div className='grid gap-4'>
               <ProviderConnectionFields
                 provider={provider}
@@ -97,15 +106,16 @@ export const ProviderDialog = ({
                     <span className='text-sm text-foreground-muted'>Check the provider before saving.</span>
                   )}
                 </div>
-                <Button
+                <MutationButton
                   type='button'
                   variant='secondary'
-                  disabled={isCheckingHealth}
+                  pending={isCheckingHealth}
+                  pendingLabel='Checking connection…'
                   onClick={() => void checkHealth()}
                 >
                   <IconRefresh className={isCheckingHealth ? 'size-4 animate-spin' : 'size-4'} />
                   Check connection
-                </Button>
+                </MutationButton>
               </div>
               <FormField
                 controlId='provider-create-enabled'
@@ -116,17 +126,19 @@ export const ProviderDialog = ({
                 <Switch
                   className='shrink-0'
                   checked={provider.enabled}
+                  disabled={isSaving || isCheckingHealth}
                   onCheckedChange={enabled => update({ enabled })}
                 />
               </FormField>
             </div>
-          </div>
+          </fieldset>
         ) : null}
         <DialogFooter>
           <DialogClose asChild>
             <Button
               type='button'
               variant='secondary'
+              disabled={isSaving || isCheckingHealth}
             >
               Cancel
             </Button>
@@ -135,9 +147,10 @@ export const ProviderDialog = ({
             type='button'
             pending={isSaving}
             pendingLabel='Saving…'
+            disabled={isCheckingHealth || !provider?.id.trim() || !provider.baseUrl.trim()}
             onClick={onSave}
           >
-            Save
+            Create provider
           </MutationButton>
         </DialogFooter>
       </DialogContent>
