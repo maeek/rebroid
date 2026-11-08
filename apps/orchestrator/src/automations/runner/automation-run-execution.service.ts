@@ -1,3 +1,4 @@
+import { AutomationRunAuthorizationService } from './automation-run-authorization.service';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { getErrorMessage } from '../../common/error-message';
 import {
@@ -42,6 +43,7 @@ export class AutomationRunExecutionService {
     private readonly targets: AutomationRunnerTargetService,
     private readonly ephemeralAutomations: EphemeralAutomationRegistryService,
     private readonly metrics: MetricsService,
+    private readonly authorization: AutomationRunAuthorizationService,
   ) {}
 
   async execute(input: AutomationRunExecutionInput) {
@@ -61,6 +63,12 @@ export class AutomationRunExecutionService {
         return;
       }
 
+      await this.authorization.assertAllowed(
+        queuedRun.ownerUserId,
+        runnable.definition,
+        queuedRun.targetApplicationId,
+        input.targetOptions,
+      );
       const target = await this.targets.prepareTarget(
         queuedRun.targetApplicationId,
         input.targetOptions,

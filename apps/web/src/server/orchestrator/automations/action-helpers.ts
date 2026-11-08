@@ -75,6 +75,7 @@ export const assertDefinitionPermissions = async (user: CurrentAutomationUser, d
     }
     assertCommandPermissions(step.uses)
     if (step.uses === 'ai.run') {
+      if (step.with.rawShellPolicy === 'allowlisted') assertAutomationPermission(user, 'automations:run-adb-shell')
       for (const uses of nestedAiTools(step)) {
         assertCommandPermissions(uses)
       }

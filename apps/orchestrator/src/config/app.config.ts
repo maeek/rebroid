@@ -16,6 +16,7 @@ export default registerAs('app', () => {
       process.env.ENABLE_API_DOCS === 'true',
     port: environmentNumber(process.env.PORT, 4100),
     sharedSecret: sharedSecret || undefined,
+    webInternalUrl: process.env.WEB_INTERNAL_URL ?? 'http://localhost:3101',
     corsOrigins: environmentCsv(process.env.ORCHESTRATOR_CORS_ORIGINS, []),
     databasePath: resolve(
       process.env.DATABASE_PATH ?? './data/orchestrator.sqlite',

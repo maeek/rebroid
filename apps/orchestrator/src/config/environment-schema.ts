@@ -7,6 +7,7 @@ const optionalNumber = (minimum: number, maximum: number) =>
   z.coerce.number().min(minimum).max(maximum).optional();
 
 export const orchestratorEnvironmentSchema = z.object({
+  WEB_INTERNAL_URL: z.url({ protocol: /^https?$/ }).optional(),
   PORT: optionalInteger(1, 65_535),
   DOCKER_STOPPING_STALE_TIMEOUT_SECONDS: optionalInteger(1, 86_400),
   DOCKER_REQUEST_TIMEOUT_MS: optionalInteger(1, 300_000),

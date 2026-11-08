@@ -25,6 +25,7 @@ const createExecution = ({
     .fn()
     .mockResolvedValue({ profileMode: 'persistent', profileName: 'default' }),
   executeSteps = jest.fn().mockResolvedValue({ failed: false }),
+  assertAllowed = jest.fn().mockResolvedValue(undefined),
   resolve = jest.fn().mockResolvedValue(runnable),
 } = {}) => {
   const runs = {
@@ -44,6 +45,7 @@ const createExecution = ({
     { prepareTarget } as never,
     ephemeral as never,
     new MetricsService(),
+    { assertAllowed } as never,
   );
   return {
     service,
@@ -53,10 +55,37 @@ const createExecution = ({
     finalizer,
     prepareTarget,
     executeSteps,
+    assertAllowed,
   };
 };
 
 describe('AutomationRunExecutionService', () => {
+  it('fails closed before runtime preparation when current authorization is denied', async () => {
+    const assertAllowed = jest
+      .fn()
+      .mockRejectedValue(new Error('Account disabled'));
+    const { service, runs, prepareTarget, executeSteps } = createExecution({
+      assertAllowed,
+    });
+    runs.transition.mockResolvedValue({
+      ...queuedRun,
+      status: AutomationRunStatus.Failed,
+    });
+    await service.execute({
+      runId: queuedRun.id,
+      automationId: queuedRun.automationId,
+      abortSignal: new AbortController().signal,
+      targetOptions: {},
+    });
+    expect(prepareTarget).not.toHaveBeenCalled();
+    expect(executeSteps).not.toHaveBeenCalled();
+    expect(runs.transition).toHaveBeenCalledWith(
+      queuedRun.id,
+      [AutomationRunStatus.Queued, AutomationRunStatus.Running],
+      expect.objectContaining({ status: AutomationRunStatus.Failed }),
+    );
+  });
+
   it('terminalizes preparation failures and cleans ephemeral definitions', async () => {
     const prepareTarget = jest
       .fn()

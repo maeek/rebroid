@@ -10,6 +10,7 @@ services:
     restart: unless-stopped
     environment:
       DISPLAY_SIDECAR_AUTO_START: "false"
+      WEB_INTERNAL_URL: http://web:3101
       FIREWALL_AGENT_SOCKET: /run/rebroid-firewall/agent.sock
       GAPPS_PATCHER_IMAGE: ${GAPPS_PATCHER_IMAGE:-localhost/rebroid/gapps-patcher:latest}
       OCR_SIDECAR_BASE_URL: http://rebroid-ocr-sidecar:8100
