@@ -184,11 +184,11 @@ test('nested Services loaders show their own sections and remain inert', async (
       ).toBeVisible()
       await expect(page.getByRole('searchbox', { name: 'Search services' })).toHaveCount(0)
       if (service === 'docker') {
-        await expect(page.getByText('Concurrent reads', { exact: true })).toBeVisible()
-        await expect(page.getByRole('button', { name: 'Save limits' })).toBeDisabled()
+        await expect(page.getByRole('heading', { name: 'Operation limits', exact: true })).toBeVisible()
+        await expect(page.getByRole('button', { name: 'Edit limits' })).toBeDisabled()
         await expect(page.getByRole('heading', { name: 'Infrastructure diagnostics' })).toBeVisible()
       } else {
-        await expect(page.getByRole('heading', { name: 'Details' })).toBeVisible()
+        await expect(page.getByRole('heading', { name: 'Connection' })).toBeVisible()
       }
       for (const theme of ['light', 'dark', 'oled']) {
         await page.evaluate(value => {

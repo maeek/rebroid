@@ -45,16 +45,15 @@ export const InfrastructureServiceLayout = ({
       ) : (
         <Section
           surface='panel'
-          title='Details'
+          title='Connection'
+          description='Managed by your deployment configuration.'
+          contentClassName='gap-6'
         >
           <DetailFields
             loading={loading}
-            fields={[
-              { label: 'API URL', value: apiUrl, code: true, copyValue: apiUrl },
-              { label: 'Connection management', value: 'Managed by deployment configuration' }
-            ]}
+            fields={[{ label: 'API URL', value: apiUrl, code: true, copyValue: apiUrl, fullWidth: true }]}
           />
-          <div className='flex flex-wrap gap-4'>
+          <div className='flex flex-wrap gap-x-6 gap-y-2 text-sm'>
             <ResourceLink href='/platform/services?service=docker'>Docker diagnostics and limits</ResourceLink>
             <ResourceLink href='/platform/runtime'>Runtime defaults</ResourceLink>
           </div>

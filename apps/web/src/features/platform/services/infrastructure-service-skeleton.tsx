@@ -4,7 +4,7 @@ import { Notice } from '@/components/ui/notice'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DockerMetricsContent } from '@/features/platform/metrics/docker-metrics-dashboard'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
-import { DockerOperationLimitsForm } from './docker-operation-limits-form'
+import { DockerOperationLimitsSection } from './docker-operation-limits-section'
 import { InfrastructureServiceLayout } from './infrastructure-service-layout'
 
 export const InfrastructureServiceSkeleton = ({ serviceId }: { serviceId: 'orchestrator' | 'docker' }) => (
@@ -27,7 +27,7 @@ export const InfrastructureServiceSkeleton = ({ serviceId }: { serviceId: 'orche
     }
     limits={
       serviceId === 'docker' ? (
-        <DockerOperationLimitsForm
+        <DockerOperationLimitsSection
           loading
           onSaved={() => undefined}
         />

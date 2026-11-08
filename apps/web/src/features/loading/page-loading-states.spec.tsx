@@ -96,11 +96,11 @@ describe('feature-owned page loading states', () => {
         screen.getByRole('heading', { name: serviceId === 'docker' ? 'Docker' : 'Orchestrator', level: 1 })
       ).toBeVisible()
       if (serviceId === 'docker') {
-        expect(screen.getByText('Concurrent reads')).toBeVisible()
+        expect(screen.queryByRole('spinbutton', { name: 'Concurrent reads' })).toBeNull()
         expect(screen.getByRole('heading', { name: 'Infrastructure diagnostics' })).toBeVisible()
-        expect(screen.getByRole('button', { name: 'Save limits' })).toBeDisabled()
+        expect(screen.getByRole('button', { name: 'Edit limits' })).toBeDisabled()
       } else {
-        expect(screen.getByRole('heading', { name: 'Details' })).toBeVisible()
+        expect(screen.getByRole('heading', { name: 'Connection' })).toBeVisible()
       }
       expect(screen.queryByRole('searchbox', { name: 'Search services' })).toBeNull()
       expect(fetch).not.toHaveBeenCalled()
