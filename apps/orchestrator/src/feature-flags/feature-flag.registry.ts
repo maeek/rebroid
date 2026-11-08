@@ -8,7 +8,10 @@ export const featureFlagKeys = [
 export type FeatureFlagKey = (typeof featureFlagKeys)[number];
 export type FeatureFlagControl = 'runtime' | 'deployment';
 export type FeatureDisablePolicy =
-  'block_new' | 'drain_active' | 'stop_active' | 'restart_required';
+  | 'block_new'
+  | 'drain_active'
+  | 'stop_active'
+  | 'restart_required';
 
 export interface FeatureFlagDefinition {
   key: FeatureFlagKey;

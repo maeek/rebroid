@@ -135,7 +135,10 @@ export interface ServiceHealth {
 }
 
 export type ViewerTargetErrorCode =
-  'sidecar_unavailable' | 'adb_missing' | 'adb_unreachable' | 'unknown';
+  | 'sidecar_unavailable'
+  | 'adb_missing'
+  | 'adb_unreachable'
+  | 'unknown';
 
 export interface ViewerTargetError {
   code: ViewerTargetErrorCode;

@@ -32,7 +32,8 @@ describe('PasswordPolicyDialog', () => {
 
   it('shows pending feedback and closes after saving', async () => {
     let resolveSave:
-      ((value: { ok: true; data: { passwordMinimumLength: number }; requestId: string }) => void) | undefined
+      | ((value: { ok: true; data: { passwordMinimumLength: number }; requestId: string }) => void)
+      | undefined
     mocks.saveWebSettingsAction.mockImplementation(
       () =>
         new Promise(resolve => {

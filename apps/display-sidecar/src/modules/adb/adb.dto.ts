@@ -81,7 +81,10 @@ export class AdbRotateDisplayDto {
     example: "landscape",
   })
   orientation!:
-    "portrait" | "landscape" | "reverse-portrait" | "reverse-landscape";
+    | "portrait"
+    | "landscape"
+    | "reverse-portrait"
+    | "reverse-landscape";
 }
 
 export class AdbShellDto {

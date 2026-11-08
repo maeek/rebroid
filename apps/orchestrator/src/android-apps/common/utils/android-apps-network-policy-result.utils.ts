@@ -7,7 +7,10 @@ export const deriveNetworkPolicyResult = (
   app: AndroidApplication,
 ): AndroidNetworkPolicyResult | null => {
   const status = app.networkPolicyStatus as
-    'applied' | 'skipped' | 'error' | null;
+    | 'applied'
+    | 'skipped'
+    | 'error'
+    | null;
   const message = app.networkPolicyMessage?.trim();
 
   if (!status || !message) {
