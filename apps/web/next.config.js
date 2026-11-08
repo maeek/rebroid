@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
-const apkUploadBodySizeLimit =
-  process.env.NEXT_SERVER_ACTIONS_BODY_SIZE_LIMIT || process.env.NEXT_PROXY_CLIENT_MAX_BODY_SIZE || '512mb'
+const apkUploadBodySizeLimit = process.env.NEXT_PROXY_CLIENT_MAX_BODY_SIZE || '512mb'
 const allowedDevOrigins = (process.env.NEXT_ALLOWED_DEV_ORIGINS || process.env.ALLOWED_DEV_ORIGINS || '')
   .split(',')
   .map(origin => origin.trim())
@@ -21,7 +20,7 @@ const nextConfig = {
   experimental: {
     proxyClientMaxBodySize: apkUploadBodySizeLimit,
     serverActions: {
-      bodySizeLimit: apkUploadBodySizeLimit
+      bodySizeLimit: process.env.NEXT_SERVER_ACTIONS_BODY_SIZE_LIMIT || '4mb'
     }
   },
   headers: async () => [
