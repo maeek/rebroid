@@ -9156,6 +9156,10 @@
           "name": {
             "type": "string"
           },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
           "automationId": {
             "type": "string"
           },
@@ -9222,6 +9226,7 @@
           "id",
           "ownerUserId",
           "name",
+          "description",
           "automationId",
           "targetApplicationId",
           "profileMode",
@@ -9320,6 +9325,11 @@
             "type": "string",
             "example": "Daily setup"
           },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 2000
+          },
           "automationId": {
             "type": "string"
           },
@@ -9379,6 +9389,11 @@
           "name": {
             "type": "string",
             "example": "Daily setup"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 2000
           },
           "automationId": {
             "type": "string"

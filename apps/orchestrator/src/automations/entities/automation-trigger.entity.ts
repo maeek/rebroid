@@ -29,6 +29,9 @@ export class AutomationTrigger {
   @Column()
   name!: string;
 
+  @Column({ type: 'text', nullable: true })
+  description!: string | null;
+
   @Column()
   automationId!: string;
 
@@ -44,7 +47,7 @@ export class AutomationTrigger {
   @Column({ default: true })
   enabled!: boolean;
 
-  @Column({ type: 'text', default: "'[]'" })
+  @Column({ type: 'text', default: '[]' })
   tagsJson!: string;
 
   @Column()

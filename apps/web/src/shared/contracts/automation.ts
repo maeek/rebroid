@@ -227,6 +227,7 @@ export interface AutomationTrigger {
   id: string
   ownerUserId: string
   name: string
+  description: string | null
   automationId: string
   targetApplicationId: string
   profileMode: string | null
@@ -245,6 +246,7 @@ export interface AutomationTrigger {
 
 export interface SaveAutomationTriggerInput {
   name: string
+  description?: string | null
   automationId: string
   targetApplicationId: string
   profileMode?: string | null

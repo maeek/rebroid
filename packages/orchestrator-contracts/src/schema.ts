@@ -3024,6 +3024,7 @@ export interface components {
             id: string;
             ownerUserId: string;
             name: string;
+            description: string | null;
             automationId: string;
             targetApplicationId: string;
             profileMode: string | null;
@@ -3066,6 +3067,7 @@ export interface components {
             ownerUserId: string;
             /** @example Daily setup */
             name: string;
+            description?: string | null;
             automationId: string;
             targetApplicationId: string;
             /** @enum {string} */
@@ -3084,6 +3086,7 @@ export interface components {
             ownerUserId?: string;
             /** @example Daily setup */
             name?: string;
+            description?: string | null;
             automationId?: string;
             targetApplicationId?: string;
             /** @enum {string} */

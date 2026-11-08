@@ -116,6 +116,7 @@ export class AutomationTriggersService implements OnModuleInit {
     const trigger = this.triggers.create({
       ownerUserId,
       name: dto.name.trim(),
+      description: dto.description?.trim() || null,
       automationId: dto.automationId,
       targetApplicationId: dto.targetApplicationId,
       profileMode: dto.profileMode ?? ApplicationProfileMode.Persistent,
@@ -152,6 +153,9 @@ export class AutomationTriggersService implements OnModuleInit {
     }
     if (dto.name !== undefined) {
       trigger.name = dto.name.trim();
+    }
+    if (dto.description !== undefined) {
+      trigger.description = dto.description?.trim() || null;
     }
     if (dto.targetApplicationId !== undefined) {
       await this.targetApplications.assertOwnerAccess(

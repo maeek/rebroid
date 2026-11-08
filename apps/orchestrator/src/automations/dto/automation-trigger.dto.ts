@@ -113,6 +113,12 @@ export class CreateAutomationTriggerDto {
   @MaxLength(120)
   name!: string;
 
+  @ApiPropertyOptional({ type: String, nullable: true, maxLength: 2000 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  description?: string | null;
+
   @ApiProperty()
   @IsString()
   @MaxLength(120)
@@ -167,6 +173,9 @@ export class AutomationTriggerDto {
 
   @ApiProperty()
   name!: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  description!: string | null;
 
   @ApiProperty()
   automationId!: string;

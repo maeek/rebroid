@@ -59,6 +59,7 @@ export class AutomationsDtoMapper {
       id: trigger.id,
       ownerUserId: trigger.ownerUserId,
       name: trigger.name,
+      description: trigger.description,
       automationId: trigger.automationId,
       targetApplicationId: trigger.targetApplicationId,
       profileMode: trigger.profileMode,

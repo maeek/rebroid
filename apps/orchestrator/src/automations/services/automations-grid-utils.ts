@@ -99,6 +99,7 @@ export const filterAutomationTriggerGridItems = ({
       (!search ||
         [
           trigger.name,
+          trigger.description,
           trigger.targetApplicationId,
           trigger.profileName,
           trigger.lastStatus,
