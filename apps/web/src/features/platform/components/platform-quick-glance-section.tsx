@@ -45,6 +45,30 @@ export const PlatformQuickGlanceSection = ({
   const { data: resources, error: caughtError, refresh } = useSystemResources()
   const error = caughtError ? getDisplayErrorMessage(caughtError, 'Could not load orchestrator resources.') : null
 
+  useEffect(() => {
+    if (refreshKey > 0) {
+      void refresh().finally(() => onRefreshComplete?.())
+    }
+  }, [onRefreshComplete, refresh, refreshKey])
+
+  return (
+    <PlatformCapacityContent
+      resources={resources}
+      error={error}
+      loading={!resources && !error}
+    />
+  )
+}
+
+export const PlatformCapacityContent = ({
+  resources,
+  error = null,
+  loading = false
+}: {
+  resources?: import('@/shared/contracts/system-resources').SystemResources
+  error?: string | null
+  loading?: boolean
+}) => {
   const cpuHint = () => {
     if (!resources) {
       return loadingHint('Collecting live Docker stats', error, 'Live Docker stats could not be collected')
@@ -65,12 +89,6 @@ export const PlatformQuickGlanceSection = ({
       : 'No running managed containers'
   }
 
-  useEffect(() => {
-    if (refreshKey > 0) {
-      void refresh().finally(() => onRefreshComplete?.())
-    }
-  }, [onRefreshComplete, refresh, refreshKey])
-
   return (
     <>
       <Visible when={error}>
@@ -78,6 +96,7 @@ export const PlatformQuickGlanceSection = ({
       </Visible>
       <div className='grid grid-cols-3 gap-3 max-xl:grid-cols-2 max-sm:grid-cols-1'>
         <QuickGlanceCard
+          loading={loading}
           label='Managed container CPU'
           value={valueOrUnavailable(
             resources ? formatPercent(resources.managedContainersCpuUsagePercent) : undefined,
@@ -87,6 +106,7 @@ export const PlatformQuickGlanceSection = ({
           tone='primary'
         />
         <QuickGlanceCard
+          loading={loading}
           label='Managed container memory'
           value={valueOrUnavailable(
             resources ? formatBytes(resources.managedContainersMemoryUsageBytes) : undefined,
@@ -96,6 +116,7 @@ export const PlatformQuickGlanceSection = ({
           tone='primary'
         />
         <QuickGlanceCard
+          loading={loading}
           label='Containers'
           value={valueOrUnavailable(
             resources ? `${resources.containersRunning}/${resources.containersTotal}` : undefined,
