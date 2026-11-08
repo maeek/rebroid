@@ -46,6 +46,13 @@ for (const width of [390, 768, 1440, 2048]) {
         await page.getByRole('button', { name: 'Add model', exact: true }).click()
         const dialog = page.getByRole('dialog')
         const available = dialog.getByRole('combobox', { name: 'Available model' })
+        const widths = await dialog.evaluate(node => {
+          const source = node.querySelector('#provider-model-source')!.getBoundingClientRect()
+          const picker = node.querySelector('#provider-model-available')!.getBoundingClientRect()
+          return { leftDifference: picker.x - source.x, widthDifference: picker.width - source.width }
+        })
+        expect(widths.leftDifference).toBe(0)
+        expect(widths.widthDifference).toBe(0)
         await available.fill('Another')
         await page.getByRole('option', { name: /Another model/ }).click()
         await expect(available).toHaveValue('Another model')

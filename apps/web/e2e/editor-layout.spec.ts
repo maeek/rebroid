@@ -154,19 +154,31 @@ test('real create form starts with name and uses a normal page header', async ({
 })
 
 test('create editor stacks fields inside rounded sections', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 1100 })
-  await page.goto('/skeleton-contract-test?editor=app')
-  const name = await page.getByRole('textbox', { name: /Name/ }).boundingBox()
-  const runtime = await page.getByRole('combobox', { name: 'Runtime image', exact: true }).boundingBox()
-  const display = await page.getByRole('combobox', { name: 'Display size', exact: true }).boundingBox()
-  expect(name).toBeTruthy()
-  expect(runtime?.x).toBe(name?.x)
-  expect(display?.x).toBe(name?.x)
-  expect(runtime?.width).toBeLessThanOrEqual(name!.width)
-  expect(display?.width).toBeLessThanOrEqual(name!.width)
-  await page.screenshot({ path: `/tmp/rebroid-settings-rows-${test.info().project.name}.png`, animations: 'disabled' })
-  await page.setViewportSize({ width: 390, height: 1100 })
-  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0)
+  for (const width of [390, 768, 1440, 2048]) {
+    await page.setViewportSize({ width, height: 1100 })
+    await page.goto('/skeleton-contract-test?editor=app')
+    const name = await page.getByRole('textbox', { name: /Name/ }).boundingBox()
+    for (const label of ['Runtime image', 'Display size', 'Mode']) {
+      const control = page.getByRole('combobox', { name: label, exact: true })
+      const bounds = await control.boundingBox()
+      expect(bounds!.x).toBe(name!.x)
+      expect(bounds!.width).toBe(name!.width)
+    }
+    for (const theme of ['light', 'dark', 'oled']) {
+      await page.evaluate(value => {
+        document.documentElement.className = value
+      }, theme)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
+      await page.screenshot({
+        path: `/tmp/rebroid-editor-widths-${width}-${theme}-${test.info().project.name}.png`,
+        animations: 'disabled'
+      })
+    }
+    await page.goto('/skeleton-contract-test?editor=app-loading')
+    const loadingRuntime = await page.locator('input[role="combobox"]').first().boundingBox()
+    expect(loadingRuntime!.x).toBe(name!.x)
+    expect(loadingRuntime!.width).toBe(name!.width)
+  }
 })
 
 test('runtime settings separate defaults, connection, and maintenance workflows', async ({ page }) => {
@@ -185,6 +197,10 @@ test('runtime settings separate defaults, connection, and maintenance workflows'
     await expect(maintenance.getByRole('button', { name: /^Clean up / })).toHaveCount(6)
     const numeric = page.getByRole('spinbutton', { name: 'Default inactivity timeout' })
     const input = await numeric.boundingBox()
+    const defaultImage = await page.getByRole('combobox', { name: 'Default image', exact: true }).boundingBox()
+    const imageRegistry = await page.getByRole('textbox', { name: 'Image registry' }).boundingBox()
+    expect(defaultImage!.x).toBe(imageRegistry!.x)
+    expect(defaultImage!.width).toBe(imageRegistry!.width)
     const unit = await page.getByText('seconds', { exact: true }).boundingBox()
     expect(unit!.x - (input!.x + input!.width)).toBeLessThanOrEqual(12)
     await expect(numeric).toHaveValue('900')

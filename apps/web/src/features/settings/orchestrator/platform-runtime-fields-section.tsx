@@ -36,11 +36,10 @@ export const PlatformRuntimeFieldsSection = ({
         <FormField
           label='Default image'
           controlId='runtime-default-image'
-          contentClassName='max-w-[40rem]'
           layout='vertical'
         >
           {loading ? (
-            <Skeleton className='h-9 w-full max-w-[40rem]' />
+            <Skeleton className='h-9 w-full' />
           ) : (
             <RuntimeImagePicker
               images={images}
@@ -53,12 +52,11 @@ export const PlatformRuntimeFieldsSection = ({
         <FormField
           label='Image registry'
           controlId='runtime-image-registry'
-          contentClassName='max-w-[40rem]'
           description='Optional prefix for image names without a registry host.'
           layout='vertical'
         >
           {loading ? (
-            <Skeleton className='h-9 w-full max-w-[40rem]' />
+            <Skeleton className='h-9 w-full' />
           ) : (
             <Input
               className='w-full'

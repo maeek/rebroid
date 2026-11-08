@@ -53,7 +53,6 @@ export function TextField({
       layout='vertical'
     >
       <Input
-        className='max-w-[40rem]'
         value={value}
         onChange={event => onChange(event.target.value)}
       />
@@ -77,7 +76,7 @@ export function TextareaField({
     >
       <Textarea
         value={value}
-        className='min-h-28 max-w-[40rem]'
+        className='min-h-28'
         onChange={event => onChange(event.target.value)}
       />
     </FormField>
@@ -106,7 +105,7 @@ export function SelectField({
         value={value}
         onValueChange={onChange}
       >
-        <SelectTrigger className='w-full max-w-[40rem]'>
+        <SelectTrigger className='w-full'>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

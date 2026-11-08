@@ -54,7 +54,7 @@ export const SingleSelectCombobox = ({
           .includes(query.trim().toLowerCase())
       }}
     >
-      <div className='relative w-full max-w-[40rem]'>
+      <div className='relative w-full min-w-0'>
         <Combobox.Input
           {...attributes}
           onFocus={() => setOpen(true)}
