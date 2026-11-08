@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { sendBff } from '@/lib/http/bff'
@@ -12,12 +12,10 @@ import type {
   GappsBuildPresetsResponse,
   SupportedGappsAndroidVersion
 } from '@/shared/contracts/platform'
-import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 interface GappsBuildControllerInput {
   presetResponse: GappsBuildPresetsResponse
   jobs: ContainerImageBuildJob[]
-  initialSettings: OrchestratorUiSettings
   uploadedApkId?: string
 }
 
@@ -30,6 +28,7 @@ export interface GappsBuildController {
   isCancelling: boolean
   isRunning: boolean
   isStarting: boolean
+  isSettingDefault: boolean
   preset: GappsBuildPreset | undefined
   targetImage: string
   cancelBuild: () => Promise<void>
@@ -43,7 +42,6 @@ export interface GappsBuildController {
 export const useGappsBuildController = ({
   presetResponse,
   jobs,
-  initialSettings,
   uploadedApkId
 }: GappsBuildControllerInput): GappsBuildController => {
   const [androidVersion, setAndroidVersion] = useState<SupportedGappsAndroidVersion>('14')
@@ -55,7 +53,8 @@ export const useGappsBuildController = ({
   const [activeJob, setActiveJob] = useState<ContainerImageBuildJob | null>(
     () => jobs.find(job => job.buildKind === 'redroid_gapps_patch') ?? null
   )
-  const [settings, setSettings] = useState(initialSettings)
+  const startPending = useRef(false)
+  const [isSettingDefault, setIsSettingDefault] = useState(false)
   const [isStarting, setIsStarting] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
@@ -71,6 +70,16 @@ export const useGappsBuildController = ({
   }
 
   const startBuild = async () => {
+    if (
+      startPending.current ||
+      isRunning ||
+      isClearing ||
+      !presetResponse.resources.canBuild ||
+      !preset ||
+      !targetImage.trim()
+    )
+      return
+    startPending.current = true
     setIsStarting(true)
     try {
       const job = await sendBff<ContainerImageBuildJob>('/api/bff/platform/image-builds/gapps', {
@@ -86,6 +95,7 @@ export const useGappsBuildController = ({
         variant: 'danger'
       })
     } finally {
+      startPending.current = false
       setIsStarting(false)
     }
   }
@@ -109,10 +119,10 @@ export const useGappsBuildController = ({
   }
 
   const setAsDefault = async () => {
-    if (!activeJob || activeJob.status !== 'succeeded') return
+    if (!activeJob || activeJob.status !== 'succeeded' || isSettingDefault) return
+    setIsSettingDefault(true)
     try {
-      const saved = await saveOrchestratorUiSettings({ ...settings, defaultContainerImage: activeJob.targetImage })
-      setSettings(saved)
+      await saveOrchestratorUiSettings({ defaultContainerImage: activeJob.targetImage })
       toast({ title: 'Default image updated', variant: 'success' })
     } catch (error) {
       toast({
@@ -120,10 +130,13 @@ export const useGappsBuildController = ({
         description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
+    } finally {
+      setIsSettingDefault(false)
     }
   }
 
   const clearCache = async () => {
+    if (isClearing || isRunning || isStarting) return
     setIsClearing(true)
     try {
       await sendBff<unknown>('/api/bff/platform/image-builds/gapps/cache', { androidVersion }, 'DELETE')
@@ -147,6 +160,7 @@ export const useGappsBuildController = ({
     isCancelling,
     isRunning,
     isStarting,
+    isSettingDefault,
     preset,
     targetImage,
     cancelBuild,

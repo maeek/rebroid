@@ -5,6 +5,7 @@ import { sendBff } from '@/lib/http/bff'
 import { startImageBuildAction } from '@/server/orchestrator/platform/image-actions'
 import { actionOk } from '@/shared/actions/action-result'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
+import { saveOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { useRuntimeImageBuilderController } from './use-runtime-image-builder-controller'
 import type { ContainerImageBuildContextFile, ContainerImageBuildJob } from '@/shared/contracts/platform'
 
@@ -28,6 +29,7 @@ const contextFiles = [
 const job = (status: ContainerImageBuildJob['status']): ContainerImageBuildJob =>
   ({
     id: 'job-1',
+    buildKind: 'dockerfile_overlay',
     status,
     targetImage: 'local/redroid-microg:14',
     logTail: status === 'running' ? 'Building layer' : ''
@@ -38,7 +40,6 @@ const renderBuilder = (jobs: ContainerImageBuildJob[] = []) =>
     useRuntimeImageBuilderController({
       contextFiles,
       images: [],
-      initialSettings: defaultOrchestratorUiSettings,
       jobs,
       recipes: []
     })
@@ -78,6 +79,47 @@ describe('useRuntimeImageBuilderController', () => {
 
     await waitFor(() => expect(result.current.buildSectionProps.activeJob?.status).toBe('cancelled'))
     expect(sendBff).toHaveBeenCalledWith('/api/bff/platform/image-builds/job-1/cancel', {})
+  })
+
+  it('sets the default image without resending unrelated runtime settings', async () => {
+    vi.mocked(saveOrchestratorUiSettings).mockResolvedValue(defaultOrchestratorUiSettings)
+    const { result } = renderBuilder([job('succeeded')])
+    act(() => result.current.buildSectionProps.onSetAsDefault())
+    await waitFor(() => expect(toast).toHaveBeenCalledWith({ title: 'Default image updated', variant: 'success' }))
+    expect(saveOrchestratorUiSettings).toHaveBeenCalledExactlyOnceWith({
+      defaultContainerImage: 'local/redroid-microg:14'
+    })
+  })
+
+  it('ignores jobs belonging to the Google Play builder', () => {
+    const { result } = renderBuilder([{ ...job('running'), buildKind: 'redroid_gapps_patch' }])
+    expect(result.current.buildSectionProps.activeJob).toBeNull()
+  })
+
+  it('prevents another start while a build is running', async () => {
+    const { result } = renderBuilder([job('running')])
+    act(() => {
+      result.current.contextSectionProps.onToggleContextFile('apk', true)
+      result.current.contextSectionProps.onToggleContextFile('permissions', true)
+    })
+    await act(() => result.current.startBuild())
+    expect(result.current.canStart).toBe(false)
+    expect(startImageBuildAction).not.toHaveBeenCalled()
+  })
+
+  it('submits only once for rapid repeated starts', () => {
+    vi.mocked(startImageBuildAction).mockImplementation(() => new Promise(() => undefined))
+    const { result } = renderBuilder()
+    act(() => {
+      result.current.contextSectionProps.onToggleContextFile('apk', true)
+      result.current.contextSectionProps.onToggleContextFile('permissions', true)
+    })
+    act(() => {
+      void result.current.startBuild()
+      void result.current.startBuild()
+    })
+    expect(startImageBuildAction).toHaveBeenCalledTimes(1)
+    expect(result.current.isStarting).toBe(true)
   })
 
   it('keeps a failed start recoverable and reports safe feedback', async () => {

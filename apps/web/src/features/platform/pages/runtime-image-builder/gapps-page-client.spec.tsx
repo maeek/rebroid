@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { sendBff } from '@/lib/http/bff'
 import { RuntimeGappsImageBuilderPageClient } from './gapps-page-client'
 import type { ContainerImageBuildJob, GappsBuildPresetsResponse } from '@/shared/contracts/platform'
-import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 vi.mock('@/lib/http/bff', () => ({
   getBff: vi.fn(),
@@ -54,7 +53,6 @@ describe('RuntimeGappsImageBuilderPageClient', () => {
       <RuntimeGappsImageBuilderPageClient
         presetResponse={presetResponse}
         jobs={[]}
-        initialSettings={{} as OrchestratorUiSettings}
       />
     )
 
@@ -81,19 +79,18 @@ describe('RuntimeGappsImageBuilderPageClient', () => {
         <RuntimeGappsImageBuilderPageClient
           presetResponse={presetResponse}
           jobs={[activeJob]}
-          initialSettings={{} as OrchestratorUiSettings}
         />
       )
 
-      const log = screen.getByTestId('build-log')
-      expect(screen.getByRole('heading', { name: 'Build progress' })).toBeTruthy()
+      const log = screen.getByLabelText('Build logs', { selector: 'pre' })
+      expect(screen.getByRole('heading', { name: 'Build status' })).toBeTruthy()
       expect(screen.getByRole('complementary')).toBeTruthy()
-      expect(screen.getByText('Following latest output')).toBeTruthy()
-      expect(screen.getByText('Step 4 of 8')).toBeTruthy()
+      expect(screen.getByRole('switch', { name: 'Follow latest output' })).toBeChecked()
+      expect(screen.getByText(/Step 4 of 8/)).toBeTruthy()
       const activePhase = screen.getByTestId('active-build-phase')
       expect(activePhase).toHaveAttribute('aria-current', 'step')
       expect(screen.getByTestId('active-phase-spinner')).toHaveClass('animate-spin')
-      expect(screen.getByRole('progressbar', { name: 'Build phase progress' })).toHaveAttribute('aria-valuenow', '4')
+      expect(screen.queryByRole('progressbar')).toBeNull()
       expect(log).toHaveClass('max-w-full', 'min-w-0', 'overflow-auto', 'whitespace-pre')
       expect(log.textContent).toContain('Building package')
       expect(log.scrollTop).toBe(480)
@@ -121,7 +118,6 @@ describe('RuntimeGappsImageBuilderPageClient', () => {
       <RuntimeGappsImageBuilderPageClient
         presetResponse={presetResponse}
         jobs={[]}
-        initialSettings={{} as OrchestratorUiSettings}
       />
     )
 
@@ -151,11 +147,10 @@ describe('RuntimeGappsImageBuilderPageClient', () => {
       <RuntimeGappsImageBuilderPageClient
         presetResponse={presetResponse}
         jobs={[activeJob]}
-        initialSettings={{} as OrchestratorUiSettings}
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel build' }))
 
     expect(await screen.findByRole('button', { name: 'Cancelling…' })).toHaveAttribute('aria-busy', 'true')
   })

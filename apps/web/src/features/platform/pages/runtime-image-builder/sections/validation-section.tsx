@@ -1,37 +1,65 @@
-import { Badge } from '@/components/ui/badge'
-import { Section } from '@/components/ui/section'
-import { cn } from '@/lib/utils'
+import { Notice } from '@/components/ui/notice'
+import { Skeleton } from '@/components/ui/skeleton'
+import { PlatformResourceSection } from '@/shared/ui/platform/platform-resource-section'
 import type { BuildValidation } from '../model/build-validation'
 
-type ValidationSectionProps = {
+export const ValidationSection = ({
+  validation,
+  loading = false
+}: {
   validation: BuildValidation
-}
-
-export const ValidationSection = ({ validation }: ValidationSectionProps) => (
-  <Section
+  loading?: boolean
+}) => (
+  <PlatformResourceSection
     surface='plain'
-    title='Validation'
-    contentClassName='gap-2'
+    title='Build checks'
+    contentClassName='gap-4'
   >
-    <div className='flex flex-wrap gap-2'>
-      <Badge variant={validation.errors.length ? 'danger' : 'success'}>
-        {validation.errors.length ? `${validation.errors.length} errors` : 'Ready'}
-      </Badge>
-      {validation.warnings.length ? <Badge variant='warning'>{validation.warnings.length} warnings</Badge> : null}
-      <Badge variant='neutral'>microG overlay</Badge>
-    </div>
-    {[...validation.errors, ...validation.warnings].map(message => (
-      <div
-        key={message}
-        className={cn(
-          'rounded-control border px-3 py-2 text-sm',
-          validation.errors.includes(message)
-            ? 'border-danger/40 bg-danger/10 text-danger'
-            : 'border-warning/35 bg-warning/10 text-warning'
+    {loading ? (
+      <Skeleton className='h-24 w-full' />
+    ) : (
+      <>
+        {validation.errors.length > 0 ? (
+          <Notice
+            tone='danger'
+            title='Resolve before building'
+          >
+            <ul className='grid gap-2'>
+              {validation.errors.map(message => (
+                <li
+                  className='[overflow-wrap:anywhere]'
+                  key={message}
+                >
+                  {message}
+                </li>
+              ))}
+            </ul>
+          </Notice>
+        ) : (
+          <Notice
+            tone='success'
+            title='Configuration ready'
+            description='Required fields and detected context files are available. The build performs final validation.'
+          />
         )}
-      >
-        {message}
-      </div>
-    ))}
-  </Section>
+        {validation.warnings.length > 0 ? (
+          <Notice
+            tone='warning'
+            title='Review before building'
+          >
+            <ul className='grid gap-2'>
+              {validation.warnings.map(message => (
+                <li
+                  className='[overflow-wrap:anywhere]'
+                  key={message}
+                >
+                  {message}
+                </li>
+              ))}
+            </ul>
+          </Notice>
+        ) : null}
+      </>
+    )}
+  </PlatformResourceSection>
 )

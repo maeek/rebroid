@@ -1,4 +1,3 @@
-import { getServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
 import {
   listImageBuildContextFilesAction,
   listImageBuildJobsAction,
@@ -7,18 +6,16 @@ import {
 } from '@/server/orchestrator/platform/image-actions'
 
 export const loadRuntimeImageBuilderPageData = async () => {
-  const [images, recipes, contextFiles, jobs, initialSettings] = await Promise.all([
+  const [images, recipes, contextFiles, jobs] = await Promise.all([
     listPlatformImagesAction().catch(() => []),
     listImageBuildRecipesAction().catch(() => []),
     listImageBuildContextFilesAction().catch(() => []),
-    listImageBuildJobsAction().catch(() => []),
-    getServerOrchestratorUiSettings()
+    listImageBuildJobsAction().catch(() => [])
   ])
 
   return {
     contextFiles,
     images,
-    initialSettings,
     jobs,
     recipes
   }

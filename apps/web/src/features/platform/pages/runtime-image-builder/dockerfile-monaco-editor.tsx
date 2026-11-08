@@ -1,20 +1,29 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useTheme } from 'next-themes'
+import { Skeleton } from '@/components/ui/skeleton'
+import { controlSurfaceClassName } from '@/components/ui/surface'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import type * as Monaco from 'monaco-editor'
 
+export const dockerfileEditorHeight = 'h-[clamp(22rem,50dvh,36rem)] min-h-[22rem]'
+
 export const DockerfileMonacoEditor = ({
   value,
   className,
-  onChange
+  onChange,
+  disabled = false,
+  loading = false
 }: {
   value: string
   className?: string
+  disabled?: boolean
+  loading?: boolean
   onChange: (value: string) => void
 }) => {
+  const editorId = useId()
   const { resolvedTheme } = useTheme()
   const containerRef = useRef<HTMLDivElement | null>(null)
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null)
@@ -23,15 +32,19 @@ export const DockerfileMonacoEditor = ({
   const valueRef = useRef(value)
   const onChangeRef = useRef(onChange)
   const [fallbackReason, setFallbackReason] = useState<string | null>(null)
-  const monacoTheme = resolvedTheme === 'light' ? 'vs' : 'vs-dark'
+  const monacoTheme = resolvedTheme === 'light' ? 'rebroid-dockerfile-light' : 'rebroid-dockerfile-dark'
+  const themeRef = useRef(monacoTheme)
+  const disabledRef = useRef(disabled)
 
   useEffect(() => {
+    themeRef.current = monacoTheme
+    disabledRef.current = disabled
     valueRef.current = value
     onChangeRef.current = onChange
-  }, [onChange, value])
+  }, [disabled, monacoTheme, onChange, value])
 
   useEffect(() => {
-    if (!containerRef.current || editorRef.current || fallbackReason) return
+    if (loading || !containerRef.current || editorRef.current || fallbackReason) return
     let disposed = false
     let contentDisposable: Monaco.IDisposable | null = null
 
@@ -44,7 +57,19 @@ export const DockerfileMonacoEditor = ({
           monaco.languages.register({ id: 'dockerfile', extensions: ['Dockerfile'], aliases: ['Dockerfile'] })
         }
 
-        const uri = monaco.Uri.parse('file:///Rebroid.Dockerfile')
+        for (const base of ['vs', 'vs-dark'] as const) {
+          monaco.editor.defineTheme(base === 'vs' ? 'rebroid-dockerfile-light' : 'rebroid-dockerfile-dark', {
+            base,
+            inherit: true,
+            rules: [],
+            colors: {
+              'editor.background': '#00000000',
+              'editorGutter.background': '#00000000',
+              'editor.lineHighlightBorder': '#00000000'
+            }
+          })
+        }
+        const uri = monaco.Uri.parse(`inmemory://rebroid/${encodeURIComponent(editorId)}/Dockerfile`)
         const existingModel = monaco.editor.getModel(uri)
         const model = existingModel ?? monaco.editor.createModel(valueRef.current, 'dockerfile', uri)
         if (existingModel && existingModel.getValue() !== valueRef.current) {
@@ -56,13 +81,18 @@ export const DockerfileMonacoEditor = ({
           automaticLayout: true,
           minimap: { enabled: false },
           scrollBeyondLastLine: false,
-          fontSize: 12,
+          fontSize: 13,
+          lineHeight: 22,
+          padding: { top: 16, bottom: 16 },
+          ariaLabel: 'Dockerfile',
+          readOnly: disabledRef.current,
           tabSize: 2,
           wordWrap: 'on',
-          theme: monacoTheme
+          theme: themeRef.current
         })
         contentDisposable = model.onDidChangeContent(() => onChangeRef.current(model.getValue()))
       } catch (error) {
+        if (disposed) return
         setFallbackReason(error instanceof Error ? error.message : 'Monaco failed to load.')
       }
     }
@@ -74,10 +104,11 @@ export const DockerfileMonacoEditor = ({
       contentDisposable?.dispose()
       editorRef.current?.dispose()
       editorRef.current = null
+      modelRef.current?.dispose()
       modelRef.current = null
       monacoRef.current = null
     }
-  }, [fallbackReason, monacoTheme])
+  }, [editorId, fallbackReason, loading])
 
   useEffect(() => {
     const model = modelRef.current
@@ -87,16 +118,20 @@ export const DockerfileMonacoEditor = ({
   }, [value])
 
   useEffect(() => {
-    void import('monaco-editor').then(monaco => {
-      monaco.editor.setTheme(monacoTheme)
-    })
+    monacoRef.current?.editor.setTheme(monacoTheme)
   }, [monacoTheme])
+  useEffect(() => {
+    editorRef.current?.updateOptions({ readOnly: disabled })
+  }, [disabled])
+
+  if (loading) return <Skeleton className={cn(dockerfileEditorHeight, className)} />
 
   if (fallbackReason) {
     return (
       <Textarea
         value={value}
-        className={cn('min-h-[34rem] resize-y font-mono text-xs', className)}
+        disabled={disabled}
+        className={cn(dockerfileEditorHeight, 'resize-y font-mono text-sm', className)}
         aria-label='Dockerfile'
         onChange={event => onChange(event.target.value)}
       />
@@ -106,7 +141,7 @@ export const DockerfileMonacoEditor = ({
   return (
     <div
       ref={containerRef}
-      className={cn('min-h-[34rem] overflow-hidden rounded-control border border-surface-border/60', className)}
+      className={cn(dockerfileEditorHeight, 'overflow-hidden rounded-control', controlSurfaceClassName, className)}
       aria-label='Dockerfile editor'
     />
   )

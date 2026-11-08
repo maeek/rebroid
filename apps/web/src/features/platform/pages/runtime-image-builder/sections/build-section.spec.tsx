@@ -15,17 +15,16 @@ describe('BuildSection', () => {
     render(
       <BuildSection
         activeJob={job}
-        canStart={false}
         isActiveJobRunning
         isCancelling={false}
-        isStarting={false}
         onCancelBuild={vi.fn()}
         onSetAsDefault={vi.fn()}
-        onStartBuild={vi.fn()}
       />
     )
 
-    expect(screen.getByRole('button', { name: 'Build in progress' })).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByRole('heading', { name: 'Build status' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Cancel build' })).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'Build image' })).toBeNull()
     const log = screen.getByText(content => content.startsWith('Building '))
     expect(log).toHaveClass('max-w-full', 'min-w-0', 'overflow-auto', 'whitespace-pre')
   })
@@ -34,13 +33,10 @@ describe('BuildSection', () => {
     render(
       <BuildSection
         activeJob={job}
-        canStart={false}
         isActiveJobRunning
         isCancelling
-        isStarting={false}
         onCancelBuild={vi.fn()}
         onSetAsDefault={vi.fn()}
-        onStartBuild={vi.fn()}
       />
     )
 

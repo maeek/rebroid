@@ -29,16 +29,13 @@ export const buildValidation = (
       reference.uploadFiles.forEach(file => contextPaths.add(file.contextPath))
     }
   }
-  const missingMicrogFiles = requiredMicrogContextPaths.filter(path => !contextPaths.has(path))
-  if (values.gmsMode === 'microg' && missingMicrogFiles.length > 0) {
-    errors.push(`Missing microG context files: ${missingMicrogFiles.join(', ')}.`)
-  }
+  const missingMicrogFiles =
+    values.gmsMode === 'microg' ? requiredMicrogContextPaths.filter(path => !contextPaths.has(path)) : []
   const missingReferences = resolvedContextReferences.filter(reference => reference.status === 'missing')
-  if (missingReferences.length > 0) {
-    errors.push(
-      `Missing Dockerfile context files: ${missingReferences.map(reference => reference.reference.source).join(', ')}.`
-    )
-  }
+  const missingPaths = [
+    ...new Set([...missingMicrogFiles, ...missingReferences.map(reference => reference.reference.source)])
+  ]
+  if (missingPaths.length > 0) errors.push(`Missing build context files: ${missingPaths.join(', ')}.`)
   const unsupportedReferences = resolvedContextReferences.filter(reference => reference.status === 'unsupported')
   if (unsupportedReferences.length > 0) {
     warnings.push(
@@ -54,7 +51,11 @@ export const buildValidation = (
   if (values.runtimeKind === 'redroid' && values.signatureSpoofing === 'external_required') {
     warnings.push('Signature spoofing must already be present in the base image; Dockerfile layering cannot patch it.')
   }
-  if (/FROM\s+redroid\/redroid:/i.test(values.dockerfile) && values.gmsMode === 'microg') {
+  if (
+    /FROM\s+redroid\/redroid:/i.test(values.dockerfile) &&
+    values.gmsMode === 'microg' &&
+    values.signatureSpoofing !== 'external_required'
+  ) {
     warnings.push('Stock Redroid bases are marked as requiring external signature spoofing.')
   }
 

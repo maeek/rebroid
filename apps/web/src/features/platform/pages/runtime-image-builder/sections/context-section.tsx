@@ -2,19 +2,22 @@ import type { ChangeEvent, RefObject } from 'react'
 import { IconFiles, IconFolderOpen, IconTrash, IconUpload } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
+import { FileUploadField } from '@/components/ui/file-upload-field'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
+import { MultiSelectCombobox } from '@/components/ui/multi-select-combobox'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { Section } from '@/components/ui/section'
-import { Visible } from '@/components/ui/visible'
+import { Skeleton } from '@/components/ui/skeleton'
+import { PlatformResourceSection } from '@/shared/ui/platform/platform-resource-section'
 import { detectedContextStatusVariant, directoryInputProps } from '../model/context-selection'
 import type { LocalBuildContextFile, ResolvedContextReference } from '../model/dockerfile-context-types'
 import type { ContainerImageBuildContextFile } from '@/shared/contracts/platform'
 
-const verticalSettingClassName = 'flex-col items-start w-full'
-
 type ContextSectionProps = {
+  disabled?: boolean
+  loading?: boolean
+  removingContextFileId?: string | null
   availableContextFiles: ContainerImageBuildContextFile[]
   detectedContextUploadLabel: string
   detectedUploadableCount: number
@@ -65,152 +68,218 @@ export const ContextSection = ({
   onUpload,
   onUploadDetectedContext,
   onUploadFileChange,
-  onUploadPathChange
-}: ContextSectionProps) => (
-  <Section
-    surface='plain'
-    title='Context'
-    contentClassName='gap-4'
-  >
-    <input
-      ref={folderInputRef}
-      type='file'
-      multiple
-      className='hidden'
-      {...directoryInputProps}
-      onChange={onFolderInputChange}
-    />
-    <input
-      ref={fileInputRef}
-      type='file'
-      multiple
-      className='hidden'
-      onChange={onFileInputChange}
-    />
-    <div className='flex flex-wrap gap-2'>
-      <MutationButton
-        type='button'
-        variant='secondary'
-        pending={isConnectingContext}
-        pendingLabel='Connecting…'
-        onClick={onConnectFolder}
-      >
-        <IconFolderOpen />
-        Connect folder
-      </MutationButton>
-      <Button
-        type='button'
-        variant='secondary'
-        onClick={() => folderInputRef.current?.click()}
-      >
-        <IconFolderOpen className='size-4' />
-        Select folder
-      </Button>
-      <Button
-        type='button'
-        variant='secondary'
-        onClick={() => fileInputRef.current?.click()}
-      >
-        <IconFiles className='size-4' />
-        Select files
-      </Button>
-    </div>
-    <div className='flex flex-wrap items-center gap-2 text-xs text-foreground-muted'>
-      <Badge variant={localContextFiles.length > 0 ? 'success' : 'neutral'}>{localContextFiles.length} local</Badge>
-      {localContextLabel ? <span className='truncate'>{localContextLabel}</span> : null}
-    </div>
-    <Visible when={resolvedContextReferences.length > 0}>
-      <div className='overflow-hidden rounded-control border border-surface-border/60 bg-surface-panel/35'>
-        <div className='grid grid-cols-[minmax(0,1fr)_7rem] gap-2 border-b border-surface-border/60 px-3 py-2 text-xs font-medium text-foreground-muted'>
-          <span>Detected</span>
-          <span>Status</span>
-        </div>
-        <div className='max-h-56 overflow-auto'>
-          {resolvedContextReferences.map(reference => (
-            <div
-              key={reference.reference.id}
-              className='grid grid-cols-[minmax(0,1fr)_7rem] gap-2 border-b border-surface-border/40 px-3 py-2 last:border-b-0'
-            >
-              <div className='min-w-0'>
-                <div className='truncate font-mono text-xs font-medium'>
-                  {reference.contextPath ?? reference.reference.source}
-                </div>
-                <div className='truncate text-xs text-foreground-muted'>
-                  {reference.reference.instruction} line {reference.reference.lineNumber}: {reference.message}
-                </div>
-              </div>
-              <Badge
-                variant={detectedContextStatusVariant(reference.status)}
-                className='w-fit self-start'
-              >
-                {reference.status}
-              </Badge>
-            </div>
-          ))}
-        </div>
-      </div>
-    </Visible>
-    <Visible when={detectedUploadableCount > 0}>
-      <MutationButton
-        type='button'
-        variant='primary'
-        pending={isUploadingDetectedContext}
-        pendingLabel='Uploading detected files…'
-        onClick={onUploadDetectedContext}
-      >
-        <IconUpload />
-        {detectedContextUploadLabel}
-      </MutationButton>
-    </Visible>
-    <FormField
-      label='Path'
-      layout='vertical'
-      className={verticalSettingClassName}
+  onUploadPathChange,
+  disabled = false,
+  loading = false,
+  removingContextFileId = null
+}: ContextSectionProps) => {
+  const busy = disabled || loading || isUploading || isUploadingDetectedContext
+  const selectedFiles = availableContextFiles.filter(file => selectedContextFileIds.has(file.id))
+  return (
+    <PlatformResourceSection
+      surface='plain'
+      title='Build context'
+      description='Files available to Dockerfile COPY and ADD instructions.'
+      contentClassName='gap-6'
     >
-      <Input
-        value={uploadPath}
-        onChange={event => onUploadPathChange(event.target.value)}
+      <input
+        ref={folderInputRef}
+        type='file'
+        multiple
+        hidden
+        {...directoryInputProps}
+        disabled={busy}
+        onChange={onFolderInputChange}
       />
-    </FormField>
-    <Input
-      type='file'
-      onChange={(event: ChangeEvent<HTMLInputElement>) => onUploadFileChange(event.target.files?.[0] ?? null)}
-    />
-    <MutationButton
-      type='button'
-      variant='secondary'
-      disabled={!uploadFile}
-      pending={isUploading}
-      pendingLabel={uploadProgress === null ? 'Uploading…' : `Uploading ${uploadProgress}%`}
-      onClick={onUpload}
-    >
-      <IconUpload />
-      {uploadProgress === null ? 'Upload' : `Upload ${uploadProgress}%`}
-    </MutationButton>
-    <div className='grid gap-2'>
-      {availableContextFiles.map(file => (
-        <div
-          key={file.id}
-          className='flex items-start gap-2 rounded-control border border-surface-border/60 bg-surface-panel/35 p-2'
+      <input
+        ref={fileInputRef}
+        type='file'
+        multiple
+        hidden
+        disabled={busy}
+        onChange={onFileInputChange}
+      />
+      <div className='flex flex-wrap gap-2'>
+        <MutationButton
+          type='button'
+          variant='secondary'
+          pending={isConnectingContext}
+          pendingLabel='Opening folder…'
+          disabled={busy}
+          onClick={onConnectFolder}
         >
-          <Checkbox
-            checked={selectedContextFileIds.has(file.id)}
-            onCheckedChange={checked => onToggleContextFile(file.id, checked === true)}
-          />
-          <div className='min-w-0 flex-1'>
-            <div className='truncate font-mono text-xs font-medium'>{file.contextPath}</div>
-            <div className='truncate text-xs text-foreground-muted'>{file.originalName}</div>
-          </div>
-          <Button
-            type='button'
-            variant='ghost'
-            size='icon-md'
-            onClick={() => onRemoveContextFile(file.id)}
+          <IconFolderOpen className='size-4' />
+          Choose folder
+        </MutationButton>
+        <Button
+          type='button'
+          variant='ghost'
+          disabled={busy || isConnectingContext}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <IconFiles className='size-4' />
+          Choose files
+        </Button>
+      </div>
+      <p className='min-w-0 break-words text-xs leading-5 text-foreground-muted'>
+        {localContextFiles.length} local files{localContextLabel ? ` · ${localContextLabel}` : ''}. Matching files are
+        prepared automatically when you build.
+      </p>
+      {resolvedContextReferences.length > 0 ? (
+        <ul
+          aria-label='Dockerfile context sources'
+          className='grid max-h-72 gap-4 overflow-y-auto'
+        >
+          {resolvedContextReferences.map(reference => {
+            let label: string = reference.status
+            if (reference.status === 'selected') label = 'Ready'
+            if (reference.status === 'uploadable')
+              label = reference.uploadFiles.length > 0 ? 'Uploads on build' : 'Ready to include'
+            return (
+              <li
+                key={reference.reference.id}
+                className='grid min-w-0 gap-1'
+              >
+                {loading ? (
+                  <Skeleton className='h-12 w-full' />
+                ) : (
+                  <>
+                    <div className='flex min-w-0 flex-wrap items-start justify-between gap-2'>
+                      <span className='min-w-0 break-all font-mono text-xs leading-5'>
+                        {reference.contextPath ?? reference.reference.source}
+                      </span>
+                      <Badge
+                        className='shrink-0'
+                        variant={detectedContextStatusVariant(reference.status)}
+                      >
+                        {label}
+                      </Badge>
+                    </div>
+                    <p className='text-xs leading-5 text-foreground-muted [overflow-wrap:anywhere]'>
+                      {reference.reference.instruction} line {reference.reference.lineNumber} · {reference.message}
+                    </p>
+                  </>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      ) : (
+        <p className='text-sm text-foreground-muted'>No local COPY or ADD sources detected.</p>
+      )}
+      {detectedUploadableCount > 0 ? (
+        <MutationButton
+          type='button'
+          variant='secondary'
+          disabled={disabled || loading || isUploading}
+          pending={isUploadingDetectedContext}
+          pendingLabel='Uploading matching files…'
+          onClick={onUploadDetectedContext}
+        >
+          <IconUpload className='size-4' />
+          {detectedContextUploadLabel}
+        </MutationButton>
+      ) : null}
+      {availableContextFiles.length > 0 ? (
+        <>
+          <FormField
+            controlId='builder-uploaded-context'
+            label='Uploaded files'
+            description='Select files already uploaded to the build context.'
+            layout='vertical'
           >
-            <IconTrash className='size-4' />
-          </Button>
+            <MultiSelectCombobox
+              disabled={busy}
+              options={availableContextFiles.map(file => ({
+                value: file.id,
+                label: file.contextPath,
+                description: file.originalName
+              }))}
+              value={[...selectedContextFileIds]}
+              placeholder='Search uploaded files'
+              onValueChange={ids => {
+                const next = new Set(ids)
+                availableContextFiles.forEach(file => {
+                  if (next.has(file.id) !== selectedContextFileIds.has(file.id))
+                    onToggleContextFile(file.id, next.has(file.id))
+                })
+              }}
+            />
+          </FormField>
+          {selectedFiles.length > 0 ? (
+            <ul className='grid gap-2'>
+              {selectedFiles.map(file => (
+                <li
+                  key={file.id}
+                  className='flex min-w-0 items-center justify-between gap-3'
+                >
+                  <span className='break-all font-mono text-xs'>{file.contextPath}</span>
+                  <MutationButton
+                    type='button'
+                    variant='ghost'
+                    size='icon-sm'
+                    pending={removingContextFileId === file.id}
+                    pendingLabel={<span className='sr-only'>Deleting…</span>}
+                    disabled={busy || removingContextFileId !== null}
+                    aria-label={`Delete uploaded ${file.contextPath}`}
+                    onClick={() => onRemoveContextFile(file.id)}
+                  >
+                    <IconTrash className='size-4' />
+                  </MutationButton>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </>
+      ) : null}
+      <Section
+        surface='plain'
+        title='Upload a single file'
+        description='Use a specific path instead of matching a local folder.'
+        collapsible
+      >
+        <div className='grid gap-4'>
+          <FormField
+            controlId='builder-upload-path'
+            label='Path in build context'
+            description='Relative path used by COPY or ADD, for example apks/GmsCore.apk.'
+            layout='vertical'
+          >
+            <Input
+              disabled={busy}
+              value={uploadPath}
+              onChange={event => onUploadPathChange(event.target.value)}
+            />
+          </FormField>
+          <FormField
+            controlId='builder-upload-file'
+            label='File'
+            layout='vertical'
+          >
+            <FileUploadField
+              aria-label='Build context file'
+              disabled={busy}
+              pending={isUploading}
+              filenameLabel={uploadFile?.name ?? 'No file selected'}
+              onChange={event => {
+                onUploadFileChange(event.target.files?.[0] ?? null)
+                event.currentTarget.value = ''
+              }}
+            />
+          </FormField>
+          <MutationButton
+            type='button'
+            variant='secondary'
+            disabled={disabled || loading || !uploadFile || !uploadPath.trim() || isUploadingDetectedContext}
+            pending={isUploading}
+            pendingLabel={uploadProgress === null ? 'Uploading…' : `Uploading ${uploadProgress}%`}
+            onClick={onUpload}
+          >
+            <IconUpload className='size-4' />
+            Upload file
+          </MutationButton>
         </div>
-      ))}
-    </div>
-  </Section>
-)
+      </Section>
+    </PlatformResourceSection>
+  )
+}

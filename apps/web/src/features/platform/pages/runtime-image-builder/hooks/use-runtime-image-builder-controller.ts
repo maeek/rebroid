@@ -38,18 +38,15 @@ import type {
   ContainerImageBuildRecipe,
   PlatformImage
 } from '@/shared/contracts/platform'
-import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 
 export const useRuntimeImageBuilderController = ({
   contextFiles,
   images,
-  initialSettings,
   jobs,
   recipes
 }: {
   contextFiles: ContainerImageBuildContextFile[]
   images: PlatformImage[]
-  initialSettings: OrchestratorUiSettings
   jobs: ContainerImageBuildJob[]
   recipes: ContainerImageBuildRecipe[]
 }) => {
@@ -72,10 +69,14 @@ export const useRuntimeImageBuilderController = ({
     total: number
   } | null>(null)
   const [isSavingRecipe, setIsSavingRecipe] = useState(false)
-  const [activeJob, setActiveJob] = useState<ContainerImageBuildJob | null>(() => jobs[0] ?? null)
+  const [activeJob, setActiveJob] = useState<ContainerImageBuildJob | null>(
+    () => jobs.find(job => job.buildKind === 'dockerfile_overlay') ?? null
+  )
+  const startPending = useRef(false)
+  const [isSettingDefault, setIsSettingDefault] = useState(false)
+  const [removingContextFileId, setRemovingContextFileId] = useState<string | null>(null)
   const [isStarting, setIsStarting] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
-  const [runtimeSettings, setRuntimeSettings] = useState(initialSettings)
   const dockerfileContextReferences = useMemo(
     () => parseDockerfileContextReferences(values.dockerfile),
     [values.dockerfile]
@@ -102,8 +103,14 @@ export const useRuntimeImageBuilderController = ({
     () => resolvedContextReferences.filter(reference => reference.status === 'uploadable').length,
     [resolvedContextReferences]
   )
-  const canStart = validation.errors.length === 0 && !isStarting && !isUploadingDetectedContext
   const isActiveJobRunning = activeJob ? !terminalBuildStatuses.includes(activeJob.status) : false
+  const canStart =
+    validation.errors.length === 0 &&
+    !isStarting &&
+    !isUploading &&
+    !isUploadingDetectedContext &&
+    !isActiveJobRunning &&
+    !removingContextFileId
 
   useActiveBuildPolling(activeJob, setActiveJob)
 
@@ -237,6 +244,8 @@ export const useRuntimeImageBuilderController = ({
   }
 
   const removeContextFile = async (id: string) => {
+    if (removingContextFileId) return
+    setRemovingContextFileId(id)
     try {
       unwrapActionResult(await removeImageBuildContextFileAction(id))
       setAvailableContextFiles(current => current.filter(file => file.id !== id))
@@ -251,6 +260,8 @@ export const useRuntimeImageBuilderController = ({
         description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
+    } finally {
+      setRemovingContextFileId(null)
     }
   }
 
@@ -279,7 +290,8 @@ export const useRuntimeImageBuilderController = ({
   }
 
   const startBuild = async () => {
-    if (!canStart) return
+    if (!canStart || startPending.current) return
+    startPending.current = true
     setIsStarting(true)
     try {
       const resolvedContextFileIds =
@@ -301,6 +313,7 @@ export const useRuntimeImageBuilderController = ({
         variant: 'danger'
       })
     } finally {
+      startPending.current = false
       setIsStarting(false)
     }
   }
@@ -328,13 +341,12 @@ export const useRuntimeImageBuilderController = ({
   }
 
   const setAsDefault = async () => {
-    if (!activeJob || activeJob.status !== 'succeeded') return
+    if (!activeJob || activeJob.status !== 'succeeded' || isSettingDefault) return
+    setIsSettingDefault(true)
     try {
-      const saved = await saveOrchestratorUiSettings({
-        ...runtimeSettings,
+      await saveOrchestratorUiSettings({
         defaultContainerImage: activeJob.targetImage
       })
-      setRuntimeSettings(saved)
       toast({ title: 'Default image updated', variant: 'success' })
     } catch (error) {
       toast({
@@ -342,6 +354,8 @@ export const useRuntimeImageBuilderController = ({
         description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
+    } finally {
+      setIsSettingDefault(false)
     }
   }
 
@@ -363,6 +377,7 @@ export const useRuntimeImageBuilderController = ({
   return {
     canStart,
     isStarting,
+    isActiveJobRunning,
     startBuild,
     dockerfile: values.dockerfile,
     onDockerfileChange: (dockerfile: string) => patchValues({ dockerfile }),
@@ -379,9 +394,10 @@ export const useRuntimeImageBuilderController = ({
     },
     contextSectionProps: {
       availableContextFiles,
+      removingContextFileId,
       detectedContextUploadLabel: detectedContextUploadProgress
         ? `Upload ${detectedContextUploadProgress.completed}/${detectedContextUploadProgress.total}`
-        : 'Upload missing',
+        : 'Prepare matching files',
       detectedUploadableCount,
       fileInputRef,
       folderInputRef,
@@ -407,13 +423,11 @@ export const useRuntimeImageBuilderController = ({
     },
     buildSectionProps: {
       activeJob,
-      canStart,
       isActiveJobRunning,
       isCancelling,
-      isStarting,
+      isSettingDefault,
       onCancelBuild: () => void cancelBuild(),
-      onSetAsDefault: () => void setAsDefault(),
-      onStartBuild: () => void startBuild()
+      onSetAsDefault: () => void setAsDefault()
     }
   }
 }
