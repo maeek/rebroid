@@ -1,5 +1,51 @@
 import { expect, test } from '@playwright/test'
 
+test('shared app chrome stays fixed when switching between diagnostics and AI agent', async ({ page }) => {
+  for (const width of [1024, 1440, 2048]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/skeleton-contract-test?editor=agent&view=diagnostics')
+    const navigation = page.getByRole('navigation', { name: 'App sections' })
+    const heading = page.getByRole('heading', { name: 'Inventory worker', exact: true })
+    const frame = page.getByRole('complementary', { name: 'Android device' }).locator('[data-viewer-frame]')
+    const settings = page.getByRole('button', { name: 'Streaming settings', exact: true })
+    await expect(navigation.getByRole('link', { name: 'Diagnostics', exact: true })).toHaveAttribute(
+      'aria-current',
+      'page'
+    )
+    const original = await Promise.all([
+      heading.boundingBox(),
+      navigation.boundingBox(),
+      frame.boundingBox(),
+      settings.boundingBox()
+    ])
+    for (const view of ['ai-agent', 'diagnostics', 'ai-agent']) {
+      await page.evaluate(next => {
+        history.pushState(null, '', `/skeleton-contract-test?editor=agent&view=${next}`)
+      }, view)
+      await expect(
+        navigation.getByRole('link', { name: view === 'ai-agent' ? 'AI agent' : 'Diagnostics', exact: true })
+      ).toHaveAttribute('aria-current', 'page')
+      const current = await Promise.all([
+        heading.boundingBox(),
+        navigation.boundingBox(),
+        frame.boundingBox(),
+        settings.boundingBox()
+      ])
+      for (let index = 0; index < original.length; index++) {
+        for (const dimension of ['x', 'y', 'width', 'height'] as const)
+          expect(
+            Math.abs(current[index]![dimension] - original[index]![dimension]),
+            `${width} ${view} element ${index} ${dimension}`
+          ).toBeLessThanOrEqual(1)
+      }
+      if (view === 'ai-agent') {
+        await expect(page.getByRole('textbox', { name: 'Message the device agent' })).toBeVisible()
+        expect(await page.evaluate(() => document.documentElement.scrollHeight - innerHeight)).toBeLessThanOrEqual(1)
+      }
+    }
+  }
+})
+
 test('agent chat fits the viewport and keeps its composer reachable', async ({ page }, testInfo) => {
   for (const width of [390, 768, 1024, 1440, 2048]) {
     await page.setViewportSize({ width, height: 900 })

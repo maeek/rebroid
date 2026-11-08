@@ -39,6 +39,7 @@ export const AppResourcePreview = ({ activity, agent = false }: { activity?: Rea
   >({})
   const selected = useSearchParams().get('view')
   const view = selected === 'activity' || selected === 'diagnostics' ? selected : 'overview'
+  const showAgent = agent && (selected === null || selected === 'ai-agent')
   return (
     <QueryClientProvider client={queryClient}>
       <ApplicationViewerContext.Provider
@@ -63,9 +64,9 @@ export const AppResourcePreview = ({ activity, agent = false }: { activity?: Rea
         <main className={agent ? 'min-h-screen bg-background pt-16 lg:pl-72' : 'min-h-screen bg-background pt-16'}>
           <AppDeviceLayout
             viewer={<AppViewerPane placement='top' />}
-            contained={agent}
+            contained={showAgent}
           >
-            {agent ? (
+            {showAgent ? (
               <AppWorkspaceLayout toolId='ai-agent'>
                 <RuntimeToolPanelLayout toolId='ai-agent'>
                   <AiAgentPreview />

@@ -17,7 +17,7 @@ export const AppResourceLayout = ({
   children: ReactNode
   workspace?: boolean
 }) => (
-  <PageContent className={cn(workspace && 'gap-4 pb-4 lg:h-full lg:min-h-0')}>
+  <PageContent className={cn(workspace && 'pb-4 lg:h-full lg:min-h-0')}>
     <div className='shrink-0'>{breadcrumbs}</div>
     <div className='shrink-0'>{heading}</div>
     <div className='shrink-0'>{navigation}</div>

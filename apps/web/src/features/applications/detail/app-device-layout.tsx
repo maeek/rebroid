@@ -13,7 +13,7 @@ export const AppDeviceLayout = ({
   <div
     className={cn(
       'app-device-layout grid w-full min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,40%)]',
-      contained && 'lg:h-[calc(100dvh-4rem)] lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden'
+      contained && 'lg:h-[calc(100dvh-4rem)] lg:grid-rows-[minmax(0,1fr)]'
     )}
   >
     <div className={cn('min-w-0', contained && 'lg:h-full lg:min-h-0')}>{children}</div>
