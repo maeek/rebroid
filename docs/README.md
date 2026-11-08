@@ -20,7 +20,7 @@ Start with the [project README](../README.md) for features, screenshots, and a q
 | [Web contributor guide](web-contributor-guide.md)                  | Page structure, browser/server contracts, and code placement.                           |
 | [Operator console](operator-console.md) | Resource navigation, lifecycle diagnosis, run history, and operational overview. |
 | [Web design system](web-design-system.md)                          | Shared page layouts, tokens, controls, feedback, and loading states.                    |
-| [Web security](web-security.md)                                    | Sessions, authorization, MFA, audit records, and public error handling.                 |
+| [Web security](web-security.md)                                    | Sessions, MFA, execution authorization, viewer revocation, and public error handling.                 |
 | [Display streaming](display-streaming.md)                          | Media transport, protocol invariants, recovery, and manual verification.                |
 
 For vulnerability reports, use the [security policy](../SECURITY.md).

@@ -234,3 +234,15 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 - Trigger dialogs use searchable resource choices with descriptions/IDs and selected context. Reuse owner-scoped tag facets and workflow tags through the shared MultiSelectCombobox with explicit creation; never commit typed tag searches on blur. Trigger descriptions persist through the API and participate in grid search.
 
 - App discovery retains the icon gallery, shared search/selection toolbar, and visible app action menus. Scope bulk actions to selected visible results. Overview recent shortcuts use authenticated per-user visit order, excluding deleted/inaccessible apps; do not reuse the sidebar’s running-first ordering.
+
+- Automation execution must reauthorize current account state, command permissions, target ownership,
+  and startup permissions/quotas through the secret-authenticated web internal authorization endpoint
+  before target preparation. Configure `WEB_INTERNAL_URL` for non-Compose deployments; failure is closed.
+- Runtime image name detection is not a publisher trust policy. Keep Redroid-only authorization scoped
+  to the official repository, and never log query strings containing viewer or event-stream tokens.
+
+- Nest development Swagger UI must retain explicit compatible `@fastify/static` runtime dependencies
+  in both services; bootstrap tests must exercise Swagger assets as well as guarded API routes.
+- Validate viewer control payloads at the shared dispatch boundary, bound WebSocket input, and retain
+  server-owned HTTP action types. Account/group access changes revoke viewer sessions before and
+  after persistence; recheck in-flight viewer grants against fresh account state before returning tokens.
